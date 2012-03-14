@@ -11,12 +11,14 @@ from setuptools import setup, find_packages
 from astropy import setup_helpers
 from astropy.version_helper import get_git_devstr, generate_version_py
 
+import photutils
+
 # Set affiliated package-specific settings
-PACKAGENAME = 'packagename'
-DESCRIPTION = 'Astropy affiliated package'
-LONG_DESCRIPTION = ''
-AUTHOR = ''
-AUTHOR_EMAIL = ''
+PACKAGENAME = 'photutils'
+DESCRIPTION = 'Astropy affiliated package for image photometry tasks.'
+LONG_DESCRIPTION = photutils.__doc__
+AUTHOR = 'Photutils developers, Kyle Barbary'
+AUTHOR_EMAIL = 'kylebarbary@gmail.com'
 LICENSE = 'BSD'
 URL = 'http://astropy.org'
 
