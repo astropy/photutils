@@ -12,3 +12,5 @@ from astropy.tests.helper import TestRunner
 _test_runner = TestRunner(__path__[0])
 del TestRunner
 test = _test_runner.run_tests
+
+from .photometry import *
