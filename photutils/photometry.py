@@ -1,11 +1,12 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # This module contains functions for performing photometry on 2-D arrays.
 
-__all__ = ["aper_circ", "aper_ell", "annulus_circ", "annulus_ell",
-           "background"]
+import math
 
 import numpy as np
-import math
+
+__all__ = ["aper_circ", "aper_ell", "annulus_circ", "annulus_ell",
+           "background"]
 
 
 def aper_circ(arr, xc, yc, r, bkgerr=None, gain=1., mask=None,
