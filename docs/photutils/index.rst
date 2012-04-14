@@ -1,7 +1,7 @@
 Photutils
 =========
 
-This is the documentation for photutils.
+Functions for object detection, parameter estimation, and photometry 
+on 2-d arrays.
 
-.. automodule:: photutils.photometry
-   :members:
+.. automodapi:: photutils.photometry
