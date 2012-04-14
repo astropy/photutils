@@ -1,35 +1,36 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-# This module contains functions for performing photometry on 2-D arrays.
+
+"""Functions for performing aperture photometry on 2-D arrays."""
 
 import math
 
 import numpy as np
 
-__all__ = ["aper_circ", "aper_ell", "annulus_circ", "annulus_ell",
-           "background"]
+__all__ = ["aperture_circular", "aperture_elliptical", "annulus_circular",
+           "annulus_elliptical"]
 
 
-def aper_circ(arr, xc, yc, r, bkgerr=None, gain=1., mask=None,
-              maskmode='mirror', subpixels=5):
+def aperture_circular(arr, xc, yc, r, bkgerr=None, gain=1., mask=None,
+                      maskmode='mirror', subpixels=5):
     """Return sum of array enclosed in circular aperture(s)."""
     pass
 
 
-def aper_ell(arr, xc, yc, a, b, theta, bkgerr=None, gain=1., mask=None,
-             maskmode='mirror', subpixels=5):
+def aperture_elliptical(arr, xc, yc, a, b, theta, bkgerr=None, gain=1.,
+                        mask=None, maskmode='mirror', subpixels=5):
     """Return sum of array enclosed in elliptical aperture(s)."""
     pass
 
 
-def annulus_circ(arr, xc, yc, r_in, r_out, bkgerr=None, gain=1.,
-                 mask=None, maskmode='mirror', subpixels=5):
+def annulus_circular(arr, xc, yc, r_in, r_out, bkgerr=None, gain=1.,
+                     mask=None, maskmode='mirror', subpixels=5):
     """Return sum of array enclosed in circular annuli."""
     pass
 
 
-def annulus_ell(arr, xc, yc, a_in, a_out, b_out, theta,
-                bkgerr=None, gain=1., mask=None, maskmode='mirror',
-                subpixels=5):
+def annulus_elliptical(arr, xc, yc, a_in, a_out, b_out, theta,
+                       bkgerr=None, gain=1., mask=None, maskmode='mirror',
+                       subpixels=5):
     """Sum flux within elliptical annuli.
 
     .. warning::
@@ -254,38 +255,3 @@ def annulus_ell(arr, xc, yc, a_in, a_out, b_out, theta,
             return flux
         else:
             return flux, fluxerr
-
-
-def background(arr, boxsize=None, method='hybrid',
-               mode_estimator=(2.5, 1.5), smoothing=None, mask=None):
-    """Estimate global background and standard deviation of an array.
-
-    .. warning::
-        This is skeleton code!
-
-    Parameters
-    ----------
-    arr : array_like
-        The array on which to estimate the background.
-    boxsize : int, optional
-        The size of boxes in pixels. Can be a tuple (width x height) for
-        rectangles. If None, a scalar (non-variable) background is returned.
-    method : {'mean', 'median', 'mode', 'clipmean',
-        'clipmedian', 'clipmode', 'hybrid'}, optional
-        Method used to estimate background in each box.
-    mode_estimator: sequence, optional
-        For methods that involve the mode, the mode is estimated with
-        mode = mode_estimator[0] * median - mode_estimator[1] * mean
-    smoothing: {''}
-        How to interpolate between boxes. If ``None``, do not interpolate.
-    mask : array_like, bool, optional
-        Pixels to ignore when estimating background. Must be same shape
-        as ``arr``.
-
-    Returns
-    -------
-    bkg : float or `~numpy.ndarray`
-    bkgerr : float or `~numpy.ndarray`
-    """
-
-    pass
