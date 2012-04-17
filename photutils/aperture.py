@@ -8,7 +8,8 @@ import abc
 import numpy as np
 
 __all__ = ["aperture_circular", "aperture_elliptical", "annulus_circular",
-           "annulus_elliptical"]
+           "annulus_elliptical", "Aperture", "EllipticalAnnulus", 
+           "aperture_photometry"]
 
 
 class Aperture(object):
@@ -206,7 +207,7 @@ def aperture_photometry(arr, aperture, bkgerr=None, gain=1., mask=None,
 
         # Fill 'extents' with extent of all apertures for this object.
         for j, aperture in enumerate(apertures[:, i]):
-            extents[j] = apertures.extent()
+            extents[j] = aperture.extent()
 
         # Set array index extents to encompass all apertures for this object.
         x_min = int(extents[:, 0].min() + 0.5)
@@ -350,5 +351,17 @@ def annulus_elliptical(arr, xc, yc, a_in, a_out, b_out, theta,
     fluxerr : float or `~numpy.ndarray`
         Uncertainty in flux values.
     """
+    if (np.isscalar(xc) and np.isscalar(yc) and np.isscalar(a_in) and
+        np.isscalar(a_out) and np.isscalar(b_out) and np.isscalar(theta)):
+        aperture = EllipticalAnnulus(xc, yc, a_in, a_out, b_out, theta)
+    else:
+        xc, yc, a_in, a_out, b_out, theta = \
+            np.broadcast_arrays(xc, yc, a_in, a_out, b_out, theta)
+        aperture = np.empty(xc.shape, dtype=object)
+        for index in np.ndindex(xc.shape):
+            aperture[index] = EllipticalAnnulus(
+                xc[index], yc[index], a_in[index], 
+                a_out[index], b_out[index], theta[index])
 
-    
+    return aperture_photometry(arr, aperture, bkgerr=bkgerr, gain=gain,
+                               mask=mask, subpixels=subpixels)
