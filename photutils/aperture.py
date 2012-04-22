@@ -7,9 +7,9 @@ import abc
 
 import numpy as np
 
-__all__ = ["aperture_circular", "aperture_elliptical", "annulus_circular",
-           "annulus_elliptical", "Aperture", "EllipticalAnnulus", 
-           "aperture_photometry"]
+__all__ = ["EllipticalAnnulus", "aperture_photometry", "aperture_circular",
+           "aperture_elliptical", "annulus_circular", "annulus_elliptical"]
+
 
 
 class Aperture(object):
@@ -51,9 +51,6 @@ class Aperture(object):
         """
         return
 
-    def area():
-        """Return area of aperture or None if too difficult to calculate.""" 
-        return None
 
 class EllipticalAnnulus(Aperture):
     """A class for representing an elliptical annulus."""
@@ -62,7 +59,7 @@ class EllipticalAnnulus(Aperture):
         """
         Parameters
         ----------
-        xc, yc, a_in, a_out, b_out, theta: float
+        xc, yc, a_in, a_out, b_out, theta : float
             Parameters defining the annulus. Respectively, the x coordinate 
             center, y coordinate center, the inner semimajor axis, the outer
             semimajor axis, the outer semiminor axis, and the position angle
@@ -101,7 +98,7 @@ class EllipticalAnnulus(Aperture):
 
     def area():
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
-        
+
 
 def aperture_photometry(arr, aperture, bkgerr=None, gain=1., mask=None,
                         subpixels=5):
@@ -114,24 +111,25 @@ def aperture_photometry(arr, aperture, bkgerr=None, gain=1., mask=None,
     ----------
     arr : array_like
         The 2-d array on which to perform photometry.
-    aperture: an `Aperture`-like object or array of `Aperture`-like objects
+    aperture : an `Aperture`-like object or array of `Aperture`-like objects
         The apertures to use for photometry. For arrays of apertures, 1-d and
         2-d arrays are allowed and the following convention is followed:
+
         1-d
             Each aperture is associated with a different object
         2-d
             Axis=1 (trailing/fast axis) is associated with different objects.
             Axis=0 (leading/slow axis) is associated with multiple apertures
             for a single aperture.
+
         These rules are useful to avoid resampling the input array multiple
         times. (The input array is only resampled once for each object.)
     bkgerr : float or array_like, optional
         Background (sky) error, interpreted as Gaussian 1-sigma uncertainty
-        per pixel. If ``None`` fluxerr is not returned.
-    gain : float or array_like, optional
+        per pixel.
+    gain : float, optional
         Ratio of Counts (or electrons) per flux (units of the array),
         for the purpose of calculating Poisson error.
-        ARRAY_LIKE NOT YET IMPLEMENTED.
     mask : array_like (bool), optional
         Mask to apply to the data.  NOT YET IMPLEMENTED.
     subpixels : int, optional
@@ -145,15 +143,16 @@ def aperture_photometry(arr, aperture, bkgerr=None, gain=1., mask=None,
         Enclosed flux in annuli(s). The output shape matches the shape of
         the input 'aperture'.
     fluxerr : float or `~numpy.ndarray`
-        Uncertainty in flux values. Not returned if bkgerr is `None`.
+        Uncertainty in flux values. Only returned if bkgerr is not `None`.
 
-    .. note::
-        The coordinates are zero-indexed, meaning that ``(x, y) = (0.,
-        0.)`` corresponds to the center of the lower-left array
-        element.  The value of arr[0, 0] is taken as the value over
-        the range ``-0.5 < x <= 0.5``, ``-0.5 < y <= 0.5``. The array
-        is thus defined over the range ``-0.5 < x <= arr.shape[1] -
-        0.5``, ``-0.5 < y <= arr.shape[0] - 0.5``.
+    Notes
+    -----
+    The coordinates are zero-indexed, meaning that ``(x, y) = (0.,
+    0.)`` corresponds to the center of the lower-left array
+    element.  The value of arr[0, 0] is taken as the value over
+    the range ``-0.5 < x <= 0.5``, ``-0.5 < y <= 0.5``. The array
+    is thus defined over the range ``-0.5 < x <= arr.shape[1] -
+    0.5``, ``-0.5 < y <= arr.shape[0] - 0.5``.
 
     """
 
@@ -187,6 +186,15 @@ def aperture_photometry(arr, aperture, bkgerr=None, gain=1., mask=None,
             bkgvar = np.asarray(bkgvar) ** 2
             if bkgvar.shape != arr.shape:
                 raise ValueError('bkgerr must match shape of input array')
+
+    # Check mask shape and type.
+    if mask is not None:
+        mask = np.asarray(mask)
+        if np.iscomplexobj(mask):
+            raise TypeError('Complex type not supported')
+        if mask.ndim != 2:
+            raise ValueError('{0}-d array not supported. '
+                             'Only 2-d arrays supported.'.format(mask.ndim))
 
     # Check that 'subpixels' is an int and is 1 or greater.
     subpixels = int(subpixels)
@@ -227,11 +235,17 @@ def aperture_photometry(arr, aperture, bkgerr=None, gain=1., mask=None,
         y_min = max(y_min, 0)
         y_max = min(y_max, arr.shape[0])
 
-        # Get the sub-array of the image.
+        # Get the sub-array of the image, and resample (if necessary)
         subarr = arr[y_min:y_max, x_min:x_max]
+
+        # 
+
+        # Resample the subarray (if necessary).
         if subpixels > 1:
             subarr = np.repeat(np.repeat(subarr, subpixels, axis=0),
                                subpixels, axis=1)
+
+
 
         # Get the sub-array of background variance.
         if bkgvar is not None and not scalar_bkgvar:
@@ -256,8 +270,9 @@ def aperture_photometry(arr, aperture, bkgerr=None, gain=1., mask=None,
             flux[j, i] = subarr[in_aper].sum() * subpixelarea
             if bkgvar is not None:
                 if scalar_bkgvar:
-                    area = apertures[j, i].area()
-                    if area is None:
+                    if hasattr(apertures[j, i], 'area'):
+                        area = apertures[j, i].area()
+                    else:
                         area = in_aper.sum() * subpixelarea
                     fluxvar[j, i] = (bkgvar * area + flux[j, i] / gain)
                 else:
