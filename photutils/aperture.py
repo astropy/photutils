@@ -4,12 +4,15 @@
 
 import math
 import abc
+import copy
 
 import numpy as np
 
-__all__ = ["EllipticalAnnulus", "aperture_photometry", "aperture_circular",
-           "aperture_elliptical", "annulus_circular", "annulus_elliptical"]
-
+__all__ = ["CircularAperture", "CircularAnnulus",
+           "EllipticalAperture", "EllipticalAnnulus",
+           "aperture_photometry",
+           "aperture_circular", "aperture_elliptical",
+           "annulus_circular", "annulus_elliptical"]
 
 
 class Aperture(object):
@@ -23,6 +26,16 @@ class Aperture(object):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
+    def extent():
+        """Extent of aperture relative to object center.
+
+        Returns
+        -------
+        x_min, x_max, y_min, y_max: float
+        """
+        return
+
+    @abc.abstractmethod
     def encloses(xx, yy):
         """Return a bool array representing which elements of an array
         are in an aperture.
@@ -30,66 +43,256 @@ class Aperture(object):
         Parameters
         ----------
         xx : `~numpy.ndarray`
-            x coordinate of each element
+            x coordinate of each element, relative to object center
         yy : `~numpy.ndarray`
-            y coordinate of each element
+            y coordinate of each element, relative to object center
 
         Returns
         -------
         in_aper : `~numpy.ndarray` (bool)
-            
+            2-d bool array indicating whether each element is within the
+            aperture.
         """
         return
 
-    @abc.abstractmethod
-    def extent():
-        """Smallest parallelpiped containing aperture.
-        
+
+class CircularAperture(Aperture):
+    """A circular aperture.
+
+    Parameters
+    ----------
+    r : float
+        The radius of the aperture.
+    """
+
+    def __init__(self, r):
+        self.r = r
+
+    def extent(self):
+        """Extent of aperture relative to object center.
+
         Returns
         -------
         x_min, x_max, y_min, y_max: float
         """
-        return
+
+        return (-self.r, self.r, -self.r, self.r)
+
+    def encloses(self, xx, yy):
+        """Return a bool array representing which elements of an array
+        are in the aperture.
+
+        Parameters
+        ----------
+        xx : `~numpy.ndarray`
+            x coordinate of each element, relative to object center
+        yy : `~numpy.ndarray`
+            y coordinate of each element, relative to object center
+
+        Returns
+        -------
+        in_aper : `~numpy.ndarray` (bool)
+            bool array indicating whether each element is within the
+            aperture.
+        """
+
+        return (xx ** 2 + yy ** 2) < self.r ** 2
+
+    def area():
+        """Return area enclosed by aperture.
+
+        Returns
+        -------
+        area : float
+            Area in pixels enclosed by aperture.
+        """
+        return math.pi * self.r ** 2
+
+
+class CircularAnnulus(Aperture):
+    """A circular annulus aperture.
+
+    Parameters
+    ----------
+    r_in : float
+        The inner radius of the annulus.
+    r_out : float
+        The outer radius of the annulus.
+    """
+
+    def __init__(self, r_in, r_out):
+        self.r_in = r_in
+        self.r_out = r_out
+
+    def extent(self):
+        """Extent of aperture relative to object center.
+
+        Returns
+        -------
+        x_min, x_max, y_min, y_max: float
+        """
+
+        return (-self.r_out, self.r_out, -self.r_out, self.r_out)
+
+    def encloses(self, xx, yy):
+        """Return a bool array representing which elements of an array
+        are in the aperture.
+
+        Parameters
+        ----------
+        xx : `~numpy.ndarray`
+            x coordinate of each element, relative to object center
+        yy : `~numpy.ndarray`
+            y coordinate of each element, relative to object center
+
+        Returns
+        -------
+        in_aper : `~numpy.ndarray` (bool)
+            bool array indicating whether each element is within the
+            aperture.
+        """
+        dist_sq = (xx ** 2 + yy ** 2)
+        return ((dist_sq < self.r_out ** 2) & (dist_sq > self.r_in ** 2))
+
+    def area():
+        """Return area enclosed by aperture.
+
+        Returns
+        -------
+        area : float
+            Area in pixels enclosed by aperture.
+        """
+        return math.pi * (self.r_out ** 2 - self.r_in ** 2)
+
+
+class EllipticalAperture(Aperture):
+    """An elliptical aperture.
+
+    Parameters
+    ----------
+    a : float
+        The semimajor axis.
+    b : float
+        The semiminor axis.
+    theta : float
+        The position angle of the semimajor axis in radians.
+    """
+
+    def __init__(self, a, b, theta):
+        self.a = a
+        self.b = b
+        self.theta = theta
+
+    def extent(self):
+        """Extent of aperture relative to object center.
+
+        Returns
+        -------
+        x_min, x_max, y_min, y_max: float
+        """
+
+        # TODO: determine a tighter bounding box (may not be worth
+        #       the computation?)
+        r = max(self.a, self.b)
+        return (-r, r, -r, r)
+
+    def encloses(self, xx, yy):
+        """Return a bool array representing which elements of an array
+        are in the aperture.
+
+        Parameters
+        ----------
+        xx : `~numpy.ndarray`
+            x coordinate of each element, relative to object center
+        yy : `~numpy.ndarray`
+            y coordinate of each element, relative to object center
+
+        Returns
+        -------
+        in_aper : `~numpy.ndarray` (bool)
+            bool array indicating whether each element is within the
+            aperture.
+        """
+
+        numerator1 = (xx * math.cos(self.theta) -
+                      yy * math.sin(self.theta))
+        numerator2 = (yy * math.cos(self.theta) +
+                      xx * math.sin(self.theta))
+        return (((numerator1 / self.a_out) ** 2 +
+                 (numerator2 / self.b_out) ** 2) < 1.)
+
+    def area():
+        """Return area enclosed by aperture.
+
+        Returns
+        -------
+        area : float
+            Area in pixels enclosed by aperture.
+        """
+        return math.pi * self.a * self.b
 
 
 class EllipticalAnnulus(Aperture):
-    """A class for representing an elliptical annulus."""
+    """An elliptical annulus aperture.
 
-    def __init__(self, xc, yc, a_in, a_out, b_out, theta):
-        """
-        Parameters
-        ----------
-        xc, yc, a_in, a_out, b_out, theta : float
-            Parameters defining the annulus. Respectively, the x coordinate 
-            center, y coordinate center, the inner semimajor axis, the outer
-            semimajor axis, the outer semiminor axis, and the position angle
-            of the semimajor axis in radians.
-        
-        """
+    Parameters
+    ----------
+    a_in : float
+        The inner semimajor axis.
+    a_out : float
+        The outer semimajor axis.
+    b_out : float
+        The outer semiminor axis. (The inner semiminor axis is determined
+        by scaling by a_in/a_out.)
+    theta : float
+        The position angle of the semimajor axis in radians.
 
-        self.xc = xc
-        self.yc = yc
+    """
+
+    def __init__(self, a_in, a_out, b_out, theta):
+        if not (a_out > a_in):
+            raise ValueError('a_out must be greater than a_in')
         self.a_in = a_in
         self.b_in = a_in * b_out / a_out
         self.a_out = a_out
         self.b_out = b_out
         self.theta = theta
 
-        if not (self.a_out > self.a_in):
-            raise ValueError('a_out must be greater than a_in')
-
     def extent(self):
-        # It is possible to get a tighter bounding box...
-        return (self.xc - self.a_out, self.xc + self.a_out,
-                self.yc - self.a_out, self.yc + self.a_out)
+        """Extent of aperture relative to object center.
+
+        Returns
+        -------
+        x_min, x_max, y_min, y_max: float
+        """
+
+        # TODO: determine a tighter bounding box (may not be worth
+        #       the computation?)
+        r = max(self.a_out, self.b_out)
+        return (-r, r, -r, r)
 
     def encloses(self, xx, yy):
-        xx_off = xx - self.xc
-        yy_off = yy - self.yc
-        numerator1 = (xx_off * math.cos(self.theta) - 
-                      yy_off * math.sin(self.theta))
-        numerator2 = (yy_off * math.cos(self.theta) + 
-                      xx_off * math.sin(self.theta))
+        """Return a bool array representing which elements of an array
+        are in the aperture.
+
+        Parameters
+        ----------
+        xx : `~numpy.ndarray`
+            x coordinate of each element, relative to object center
+        yy : `~numpy.ndarray`
+            y coordinate of each element, relative to object center
+
+        Returns
+        -------
+        in_aper : `~numpy.ndarray` (bool)
+            bool array indicating whether each element is within the
+            aperture.
+        """
+
+        numerator1 = (xx * math.cos(self.theta) -
+                      yy * math.sin(self.theta))
+        numerator2 = (yy * math.cos(self.theta) +
+                      xx * math.sin(self.theta))
         inside_outer_ellipse = ((numerator1 / self.a_out) ** 2 +
                                 (numerator2 / self.b_out) ** 2) < 1.
         outside_inner_ellipse = ((numerator1 / self.a_in) ** 2 +
@@ -97,33 +300,48 @@ class EllipticalAnnulus(Aperture):
         return (inside_outer_ellipse & outside_inner_ellipse)
 
     def area():
+        """Return area enclosed by aperture.
+
+        Returns
+        -------
+        area : float
+            Area in pixels enclosed by aperture.
+        """
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
 
-def aperture_photometry(arr, aperture, bkgerr=None, gain=1., mask=None,
-                        subpixels=5):
-    """Sum flux within aperture(s).
+def aperture_photometry(arr, xc, yc, apertures, bkgerr=None, gain=1.,
+                        mask=None, subpixels=5):
+    r"""Sum flux within aperture(s).
 
-    .. warning::
-        Some options not yet implemented.
+    Multiple objects and multiple apertures per object can be specified.
 
     Parameters
     ----------
     arr : array_like
         The 2-d array on which to perform photometry.
-    aperture : an `Aperture`-like object or array of `Aperture`-like objects
-        The apertures to use for photometry. For arrays of apertures, 1-d and
-        2-d arrays are allowed and the following convention is followed:
+    xc, yc : float or list_like
+        The x and y coordinates of the object center(s). If list_like,
+        the lengths must match.
+    apertures : `Aperture` object or array of `Aperture` objects
 
-        1-d
-            Each aperture is associated with a different object
-        2-d
-            Axis=1 (trailing/fast axis) is associated with different objects.
-            Axis=0 (leading/slow axis) is associated with multiple apertures
-            for a single aperture.
+        The apertures to use for photometry. If an array (of at most 2
+        dimensions), the trailing dimension of the array must be
+        broadcastable to N_objects (= `len(xc)`). In  other words,
+        the trailing dimension must be equal to either 1 or N_objects. The
+        following shapes are thus allowed:
 
-        These rules are useful to avoid resampling the input array multiple
-        times. (The input array is only resampled once for each object.)
+        `()` or `(1,)` or `(1, 1)`
+            The same single aperture is applied to all objects.
+        `(N_objects,)` or `(1, N_objects)`
+            Each object gets its own single aperture.
+        `(N_apertures, 1)`
+            The same `N_aper` apertures are applied to all objects.
+        `(N_apertures, N_objects)`
+            Each object gets its own set of N_apertures apertures.
+
+        Note that for subpixel sampling, the input array is only
+        resampled once for each object.
     bkgerr : float or array_like, optional
         Background (sky) error, interpreted as Gaussian 1-sigma uncertainty
         per pixel.
@@ -131,7 +349,9 @@ def aperture_photometry(arr, aperture, bkgerr=None, gain=1., mask=None,
         Ratio of Counts (or electrons) per flux (units of the array),
         for the purpose of calculating Poisson error.
     mask : array_like (bool), optional
-        Mask to apply to the data.  NOT YET IMPLEMENTED.
+        Mask to apply to the data. The value of masked pixels are replaced
+        by the value of the pixel mirrored across the center of the object,
+        if available. If unavailable, the value is set to zero.
     subpixels : int, optional
         Resample pixels by this factor (in each dimension) when summing
         flux in apertures. That is, each pixel is divided into
@@ -140,8 +360,11 @@ def aperture_photometry(arr, aperture, bkgerr=None, gain=1., mask=None,
     Returns
     -------
     flux : float or `~numpy.ndarray`
-        Enclosed flux in annuli(s). The output shape matches the shape of
-        the input 'aperture'.
+        Enclosed flux in aperture(s). If `xc` and `yc` are floats and
+        there is a single aperture, a float is returned. If xc, yc are
+        list_like and there is a single aperture per object, a 1-d
+        array is returned. If there are multiple apertures per object,
+        a 2-d array is returned.
     fluxerr : float or `~numpy.ndarray`
         Uncertainty in flux values. Only returned if bkgerr is not `None`.
 
@@ -154,6 +377,17 @@ def aperture_photometry(arr, aperture, bkgerr=None, gain=1., mask=None,
     is thus defined over the range ``-0.5 < x <= arr.shape[1] -
     0.5``, ``-0.5 < y <= arr.shape[0] - 0.5``.
 
+    The error in flux is calculated as
+
+    .. math:: \Delta F = \sqrt{A \sigma^2 + F/g}
+
+    where `g` is the gain, `A` is the number of pixels in the aperture, and
+    `sigma` is the background error. For a variable background error,
+
+    .. math:: A \sigma^2 \rightarrow \sum_i \sigma_i^2
+
+    where the sum is over pixels in the aperture.
+
     """
 
     # Check input array type and dimension.
@@ -164,16 +398,36 @@ def aperture_photometry(arr, aperture, bkgerr=None, gain=1., mask=None,
         raise ValueError('{0}-d array not supported. '
                          'Only 2-d arrays supported.'.format(arr.ndim))
 
-    # Check 'aperture' shape and type
-    apertures = np.asarray(aperture)  # numpy array eases shape testing
-    output_shape = apertures.shape  # Original shape to return.
+    # Note whether xc, yc are scalars so we can try to return scalars later.
+    scalar_obj_centers = (np.isscalar(xc) and np.isscalar(yc))
+
+    # Check shapes of xc, yc
+    xc = np.atleast_1d(xc)
+    yc = np.atleast_1d(yc)
+    if xc.ndim > 1 or yc.ndim > 1:
+        raise ValueError('Only 1-d arrays supported for object centers.')
+    if xc.shape[0] != yc.shape[0]:
+        raise ValueError('length of xc and yc must match')
+    n_obj = xc.shape[0]
+
+    # Check 'apertures' dimensions and type
+    apertures = np.atleast_2d(apertures)
     if apertures.ndim > 2:
         raise ValueError('{0}-d aperture array not supported. '
                          'Only 2-d arrays supported.'.format(apertures.ndim))
-    apertures = np.atleast_2d(apertures)  # Make shapes uniform internally
     for aperture in apertures.ravel():
         if not isinstance(aperture, Aperture):
-            raise ValueError("'aperture' must be an instance of Aperture.")
+            raise TypeError("'aperture' must be an instance of Aperture.")
+    n_aper = apertures.shape[0]
+
+    # Check 'apertures' shape and expand trailing dimension to match N_obj
+    # if necessary.
+    if apertures.shape[1] not in [1, n_obj]:
+        raise ValueError("trailing dimension of 'apertures' must be 1 or "
+                         "match length of xc, yc")
+    if apertures.shape[1] != n_obj:
+        # We will not use xc2d. This is just for broadcasting 'apertures':
+        apertures, xc2d = np.broadcast_arrays(apertures, xc)
 
     # Check background error shape, convert to variance for internal use.
     scalar_bkgvar = False
@@ -209,19 +463,19 @@ def aperture_photometry(arr, aperture, bkgerr=None, gain=1., mask=None,
         fluxvar = np.zeros(apertures.shape, dtype=np.float)
 
     # 'extents' will hold the extent of all apertures for a given object.
-    extents = np.empty((apertures.shape[0], 4), dtype=np.float)
+    extents = np.empty((n_aper, 4), dtype=np.float)
 
-    for i in range(apertures.shape[1]):  # Loop over objects.
+    for i in range(n_obj):  # Loop over objects.
 
         # Fill 'extents' with extent of all apertures for this object.
-        for j, aperture in enumerate(apertures[:, i]):
-            extents[j] = aperture.extent()
+        for j in range(n_aper):
+            extents[j] = apertures[j, i].extent()
 
         # Set array index extents to encompass all apertures for this object.
-        x_min = int(extents[:, 0].min() + 0.5)
-        x_max = int(extents[:, 1].max() + 1.5)
-        y_min = int(extents[:, 2].min() + 0.5)
-        y_max = int(extents[:, 3].max() + 1.5)
+        x_min = int(xc[i] + extents[:, 0].min() + 0.5)
+        x_max = int(xc[i] + extents[:, 1].max() + 1.5)
+        y_min = int(yc[i] + extents[:, 2].min() + 0.5)
+        y_max = int(yc[i] + extents[:, 3].max() + 1.5)
 
         # Check that at least part of the sub-array is in the image.
         if (x_min >= arr.shape[1] or x_max <= 0 or
@@ -235,32 +489,65 @@ def aperture_photometry(arr, aperture, bkgerr=None, gain=1., mask=None,
         y_min = max(y_min, 0)
         y_max = min(y_max, arr.shape[0])
 
-        # Get the sub-array of the image, and resample (if necessary)
+        # Get the sub-array of the image.
         subarr = arr[y_min:y_max, x_min:x_max]
 
-        # 
+        # Get the sub-array of the background variance (if array_like)
+        if bkgvar is not None and not scalar_bkgvar:
+            subbkgvar = bkgvar[y_min:y_max, x_min:x_max]
+
+        if mask is not None:
+            subarr = copy.deepcopy(subarr)  # Get a copy of the data to edit.
+            if bkgvar is not None and not scalar_bkgvar:
+                bkgvar = copy.deepcopy(bkgvar)
+            submask = mask[y_min:y_max, x_min:x_max]  # Get sub-mask.
+
+            # Coordinates of masked pixels in sub-array.
+            y_masked, x_masked = np.nonzero(submask)
+
+            # Corresponding coordinates mirrored across xc, yc
+            x_mirror = (2 * (xc[i] - x_min) - x_masked + 0.5).view('int16')
+            y_mirror = (2 * (yc[i] - y_min) - y_masked + 0.5).view('int16')
+
+            # reset pixels that go out of the image.
+            outofimage = ((x_mirror < 0) |
+                          (y_mirror < 0) |
+                          (x_mirror >= subarr.shape[1]) |
+                          (y_mirror >= subarr.shape[0]))
+            if outofimage.any():
+                x_mirror[outofimage] = x_masked[outofimage]
+                y_mirror[outofimage] = y_masked[outofimage]
+
+            # Replace masked pixel values.
+            subarr[y_masked, x_masked] = subarr[y_mirror, x_mirror]
+            if bkgvar is not None and not scalar_bkgvar:
+                bkgvar[y_masked, x_masked] = bkgvar[y_mirror, x_mirror]
+
+            # Set pixels that mirrored to another masked pixel to zero.
+            # This will also set to zero any pixels that mirrored out of
+            # the image.
+            mirrorismasked = mask[y_mirror, x_mirror]
+            x_bad = x_masked[mirrorismasked]
+            y_bad = y_masked[mirrorismasked]
+            subarr[y_bad, x_bad] = 0.
+            if bkgvar is not None and not scalar_bkgvar:
+                bkgvar[y_bad, x_bad] = 0.
 
         # Resample the subarray (if necessary).
         if subpixels > 1:
             subarr = np.repeat(np.repeat(subarr, subpixels, axis=0),
                                subpixels, axis=1)
-
-
-
-        # Get the sub-array of background variance.
-        if bkgvar is not None and not scalar_bkgvar:
-            subbkgvar = bkgvar[y_min:y_max, x_min:x_max]
-            if subpixels > 1:
+            if bkgvar is not None and not scalar_bkgvar:
                 subbkgvar = np.repeat(np.repeat(subbkgvar, subpixels, axis=0),
                                       subpixels, axis=1)
 
         # Get the coordinates of each pixel in the sub-array in units of
-        # the original image pixels.
-        x_vals = np.arange(x_min - 0.5 + subpixelsize / 2.,
-                           x_max - 0.5 + subpixelsize / 2.,
+        # the original image pixels, relative to object center.
+        x_vals = np.arange(x_min - xc[i] - 0.5 + subpixelsize / 2.,
+                           x_max - xc[i] - 0.5 + subpixelsize / 2.,
                            subpixelsize)
-        y_vals = np.arange(y_min - 0.5 + subpixelsize / 2.,
-                           y_max - 0.5 + subpixelsize / 2.,
+        y_vals = np.arange(y_min - yc[i] - 0.5 + subpixelsize / 2.,
+                           y_max - yc[i] - 0.5 + subpixelsize / 2.,
                            subpixelsize)
         xx, yy = np.meshgrid(x_vals, y_vals)
 
@@ -279,20 +566,24 @@ def aperture_photometry(arr, aperture, bkgerr=None, gain=1., mask=None,
                     fluxvar[j, i] = (bkgvar[in_aper].sum() * subpixelarea +
                                      flux[j, i] / gain)
 
-    # Reshape output array(s) to match input array of apertures.
-    flux = flux.reshape(output_shape)
     if bkgvar is not None:
         fluxerr = np.sqrt(fluxvar)
-        fluxerr = fluxerr.reshape(output_shape)
 
-    # If input was a simple 'Aperture' instance, return floats.
-    if isinstance(aperture, Aperture):
+    # If input coordinates were scalars, return scalars (if single aperture)
+    if scalar_obj_centers and n_aper == 1:
         if bkgvar is None:
-            return flux[()]
+            return flux[0, 0]
         else:
-            return flux[()], fluxerr[()]
+            return flux[0, 0], fluxerr[0, 0]
 
-    # Otherwise, input aperture was an array of some sort, so return arrays.
+    # If we only had a single aperture per object, we can return 1-d arrays
+    if n_aper == 1:
+        if bkgvar is None:
+            return flux[0]
+        else:
+            return flux[0], fluxerr[0]
+
+    # Otherwise, return 2-d array
     if bkgvar is None:
         return flux
     else:
@@ -300,83 +591,66 @@ def aperture_photometry(arr, aperture, bkgerr=None, gain=1., mask=None,
 
 
 def aperture_circular(arr, xc, yc, r, bkgerr=None, gain=1., mask=None,
-                      maskmode='mirror', subpixels=5):
-    """Return sum of array enclosed in circular aperture(s)."""
-    pass
+                      subpixels=5):
+    """Sum flux within circular aperture(s).
+
+    See Also
+    --------
+    aperture_photometry
+    """
+    apertures = np.empty(r.shape, dtype=object)
+    for index in np.ndindex(r.shape):
+        apertures[index] = CircularAperture(r[index])
+    return aperture_photometry(arr, xc, yc, apertures, bkgerr=bkgerr,
+                               gain=gain, mask=mask, subpixels=subpixels)
 
 
 def aperture_elliptical(arr, xc, yc, a, b, theta, bkgerr=None, gain=1.,
-                        mask=None, maskmode='mirror', subpixels=5):
-    """Return sum of array enclosed in elliptical aperture(s)."""
-    pass
+                        mask=None, subpixels=5):
+    """Sum flux within elliptical aperture(s).
+
+    See Also
+    --------
+    aperture_photometry
+    """
+    a, b, theta = np.broadcast_arrays(a, b, theta)
+    apertures = np.empty(a.shape, dtype=object)
+    for index in np.ndindex(a.shape):
+        apertures[index] = EllipticalAperture(a[index], b[index], theta[index])
+    return aperture_photometry(arr, xc, yc, apertures, bkgerr=bkgerr,
+                               gain=gain, mask=mask, subpixels=subpixels)
 
 
 def annulus_circular(arr, xc, yc, r_in, r_out, bkgerr=None, gain=1.,
-                     mask=None, maskmode='mirror', subpixels=5):
-    """Return sum of array enclosed in circular annuli."""
-    pass
+                     mask=None, subpixels=5):
+    """Sum flux within circular annuli.
+
+    See Also
+    --------
+    aperture_photometry
+    """
+
+    r_in, r_out = np.broadcast_arrays(r_in, r_out)
+    apertures = np.empty(r_in.shape, dtype=object)
+    for index in np.ndindex(r_in.shape):
+        apertures[index] = CircularAnnulus(r_in[index], r_out[index])
+    return aperture_photometry(arr, xc, yc, apertures, bkgerr=bkgerr,
+                               gain=gain, mask=mask, subpixels=subpixels)
 
 
 def annulus_elliptical(arr, xc, yc, a_in, a_out, b_out, theta,
-                       bkgerr=None, gain=1., mask=None, maskmode='mirror',
-                       subpixels=5):
+                       bkgerr=None, gain=1., mask=None, subpixels=5):
     """Sum flux within elliptical annuli.
 
-    Parameters
-    ----------
-    arr : array_like
-        The 2-d array on which to perform photometry.
-    xc, yc : float or list_like
-        The x and y coordinates of the aperture center(s) in pixels.
-    a_in, a_out, b_out, theta : array_like
-        Parameters specifying the elliptical annuli: respectively the
-        inner semimajor axis in pixels, the outer semimajor axis in
-        pixels, the outer semiminor axis in pixels, and the
-        position angle of the semimajor axis in radians. ``a_in``,
-        ``a_out``, ``b_out``, ``theta`` must be broadcastable to the
-        same shape. Different shapes are treated as follows:
-
-        scalar
-            The same parameters are applied to all objects in ``xc``, ``yc``
-        1-d
-            The parameters must be the same length as ``xc``, ``yc``
-            and each object gets its own annulus parameters.
-        2-d
-            axis=1 corresponds to the object and must be either the same
-            length as ``xc``, ``yc``, or 1. axis=0 specifies multiple
-            annulus parameters for each object.
-    bkgerr : float or array_like, optional
-        Background (sky) error, interpreted as Gaussian 1-sigma uncertainty
-        per pixel. If ``None`` fluxerr is not returned.
-    gain : float or array_like, optional
-        Ratio of Counts (or electrons) per flux (units of the array),
-        for the purpose of calculating Poisson error.
-        ARRAY_LIKE NOT YET IMPLEMENTED.
-    mask : array_like (bool), optional
-        Mask to apply to the data.  NOT YET IMPLEMENTED.
-    subpixels : int, optional
-        Resample pixels by this factor (in each dimension) when summing
-        flux in apertures. That is, each pixel is divided into
-        ``subpixels ** 2`` subpixels.
-
-    Returns
-    -------
-    flux : float or `~numpy.ndarray`
-        Enclosed flux in annuli(s).
-    fluxerr : float or `~numpy.ndarray`
-        Uncertainty in flux values.
+    See Also
+    --------
+    aperture_photometry
     """
-    if (np.isscalar(xc) and np.isscalar(yc) and np.isscalar(a_in) and
-        np.isscalar(a_out) and np.isscalar(b_out) and np.isscalar(theta)):
-        aperture = EllipticalAnnulus(xc, yc, a_in, a_out, b_out, theta)
-    else:
-        xc, yc, a_in, a_out, b_out, theta = \
-            np.broadcast_arrays(xc, yc, a_in, a_out, b_out, theta)
-        aperture = np.empty(xc.shape, dtype=object)
-        for index in np.ndindex(xc.shape):
-            aperture[index] = EllipticalAnnulus(
-                xc[index], yc[index], a_in[index], 
-                a_out[index], b_out[index], theta[index])
-
-    return aperture_photometry(arr, aperture, bkgerr=bkgerr, gain=gain,
-                               mask=mask, subpixels=subpixels)
+    a_in, a_out, b_out, theta = \
+        np.broadcast_arrays(a_in, a_out, b_out, theta)
+    apertures = np.empty(a_in.shape, dtype=object)
+    for index in np.ndindex(a_in.shape):
+        apertures[index] = EllipticalAnnulus(a_in[index], a_out[index],
+                                             b_out[index], theta[index])
+    return aperture_photometry(arr, xc, yc, apertures, bkgerr=bkgerr,
+                               gain=gain, mask=mask, subpixels=subpixels)
