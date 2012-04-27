@@ -399,7 +399,7 @@ def aperture_photometry(arr, xc, yc, apertures, bkgerr=None, gain=1.,
                          'Only 2-d arrays supported.'.format(arr.ndim))
 
     # Note whether xc, yc are scalars so we can try to return scalars later.
-    scalar_obj_centers = (np.isscalar(xc) and np.isscalar(yc))
+    scalar_obj_centers = np.isscalar(xc) and np.isscalar(yc)
 
     # Check shapes of xc, yc
     xc = np.atleast_1d(xc)
