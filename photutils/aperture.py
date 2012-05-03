@@ -310,7 +310,7 @@ class EllipticalAnnulus(Aperture):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
 
-def aperture_photometry(arr, xc, yc, apertures, bkgerr=None, gain=1.,
+def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
                         mask=None, subpixels=5):
     r"""Sum flux within aperture(s).
 
@@ -318,7 +318,7 @@ def aperture_photometry(arr, xc, yc, apertures, bkgerr=None, gain=1.,
 
     Parameters
     ----------
-    arr : array_like
+    data : array_like
         The 2-d array on which to perform photometry.
     xc, yc : float or list_like
         The x and y coordinates of the object center(s). If list_like,
@@ -342,12 +342,15 @@ def aperture_photometry(arr, xc, yc, apertures, bkgerr=None, gain=1.,
 
         Note that for subpixel sampling, the input array is only
         resampled once for each object.
-    bkgerr : float or array_like, optional
-        Background (sky) error, interpreted as Gaussian 1-sigma uncertainty
-        per pixel.
-    gain : float, optional
-        Ratio of Counts (or electrons) per flux (units of the array),
-        for the purpose of calculating Poisson error.
+    error : float or array_like, optional
+        Error in each pixel, interpreted as Gaussian 1-sigma uncertainty.
+    gain : float or array_like, optional
+        Ratio of counts (e.g., electrons or photons) to units of the data
+        (e.g., ADU), for the purpose of calculating Poisson error from the
+        object itself. If `gain` is `None` (default), `error` is assumed to
+        include all uncertainty in each pixel. If `gain` is given, `error`
+        is assumed to be the "background error" only (not accounting for
+        Poisson error in the flux in the apertures).
     mask : array_like (bool), optional
         Mask to apply to the data. The value of masked pixels are replaced
         by the value of the pixel mirrored across the center of the object,
@@ -355,7 +358,7 @@ def aperture_photometry(arr, xc, yc, apertures, bkgerr=None, gain=1.,
     subpixels : int, optional
         Resample pixels by this factor (in each dimension) when summing
         flux in apertures. That is, each pixel is divided into
-        ``subpixels ** 2`` subpixels.
+        `subpixels ** 2` subpixels.
 
     Returns
     -------
@@ -366,12 +369,12 @@ def aperture_photometry(arr, xc, yc, apertures, bkgerr=None, gain=1.,
         array is returned. If there are multiple apertures per object,
         a 2-d array is returned.
     fluxerr : float or `~numpy.ndarray`
-        Uncertainty in flux values. Only returned if bkgerr is not `None`.
+        Uncertainty in flux values. Only returned if error is not `None`.
 
     Notes
     -----
-    The coordinates are zero-indexed, meaning that ``(x, y) = (0.,
-    0.)`` corresponds to the center of the lower-left array
+    The coordinates are zero-indexed, meaning that `(x, y) = (0., 0.)`
+    corresponds to the center of the lower-left array
     element.  The value of arr[0, 0] is taken as the value over
     the range ``-0.5 < x <= 0.5``, ``-0.5 < y <= 0.5``. The array
     is thus defined over the range ``-0.5 < x <= arr.shape[1] -
@@ -391,12 +394,12 @@ def aperture_photometry(arr, xc, yc, apertures, bkgerr=None, gain=1.,
     """
 
     # Check input array type and dimension.
-    arr = np.asarray(arr)
-    if np.iscomplexobj(arr):
+    data = np.asarray(data)
+    if np.iscomplexobj(data):
         raise TypeError('Complex type not supported')
-    if arr.ndim != 2:
+    if data.ndim != 2:
         raise ValueError('{0}-d array not supported. '
-                         'Only 2-d arrays supported.'.format(arr.ndim))
+                         'Only 2-d arrays supported.'.format(data.ndim))
 
     # Note whether xc, yc are scalars so we can try to return scalars later.
     scalar_obj_centers = np.isscalar(xc) and np.isscalar(yc)
@@ -429,17 +432,27 @@ def aperture_photometry(arr, xc, yc, apertures, bkgerr=None, gain=1.,
         # We will not use xc2d. This is just for broadcasting 'apertures':
         apertures, xc2d = np.broadcast_arrays(apertures, xc)
 
-    # Check background error shape, convert to variance for internal use.
-    scalar_bkgvar = False
-    bkgvar = bkgerr
-    if bkgvar is not None:
-        if np.isscalar(bkgvar):
-            scalar_bkgvar = True
-            bkgvar = bkgerr ** 2
+    # Check error shape.
+    scalar_error = False
+    if error is not None:
+        if np.isscalar(error):
+            scalar_error = True
         else:
-            bkgvar = np.asarray(bkgvar) ** 2
-            if bkgvar.shape != arr.shape:
-                raise ValueError('bkgerr must match shape of input array')
+            error = np.asarray(error)
+            if error.shape != data.shape:
+                raise ValueError('shapes of error array and data array must'
+                                 ' match')
+
+    # Check gain shape.
+    scalar_gain = False
+    if gain is not None:
+        if np.isscalar(gain):
+            scalar_gain = True
+        else:
+            gain = np.asarray(gain)
+            if gain.shape != data.shape:
+                raise ValueError('shapes of gain array and data array must'
+                                 ' match')
 
     # Check mask shape and type.
     if mask is not None:
@@ -459,8 +472,8 @@ def aperture_photometry(arr, xc, yc, apertures, bkgerr=None, gain=1.,
 
     # Initialize arrays to return.
     flux = np.zeros(apertures.shape, dtype=np.float)
-    if bkgvar is not None:
-        fluxvar = np.zeros(apertures.shape, dtype=np.float)
+    if error is not None:
+        fluxerr = np.zeros(apertures.shape, dtype=np.float)
 
     # 'extents' will hold the extent of all apertures for a given object.
     extents = np.empty((n_aper, 4), dtype=np.float)
@@ -478,68 +491,80 @@ def aperture_photometry(arr, xc, yc, apertures, bkgerr=None, gain=1.,
         y_max = int(yc[i] + extents[:, 3].max() + 1.5)
 
         # Check that at least part of the sub-array is in the image.
-        if (x_min >= arr.shape[1] or x_max <= 0 or
-            y_min >= arr.shape[0] or y_max <= 0):
+        if (x_min >= data.shape[1] or x_max <= 0 or
+            y_min >= data.shape[0] or y_max <= 0):
             # TODO: flag all the apertures for this object
             continue
 
         # Limit sub-array to be within the image.
         x_min = max(x_min, 0)
-        x_max = min(x_max, arr.shape[1])
+        x_max = min(x_max, data.shape[1])
         y_min = max(y_min, 0)
-        y_max = min(y_max, arr.shape[0])
+        y_max = min(y_max, data.shape[0])
 
-        # Get the sub-array of the image.
-        subarr = arr[y_min:y_max, x_min:x_max]
+        # Get the sub-array of the image and the error
+        subdata = data[y_min:y_max, x_min:x_max]
+        if error is not None and not scalar_error:
+            suberror = error[y_min:y_max, x_min:x_max]
+        if gain is not None and not scalar_gain:
+            subgain = gain[y_min:y_max, x_min:x_max]
 
-        # Get the sub-array of the background variance (if array_like)
-        if bkgvar is not None and not scalar_bkgvar:
-            subbkgvar = bkgvar[y_min:y_max, x_min:x_max]
 
         if mask is not None:
-            subarr = copy.deepcopy(subarr)  # Get a copy of the data to edit.
-            if bkgvar is not None and not scalar_bkgvar:
-                bkgvar = copy.deepcopy(bkgvar)
             submask = mask[y_min:y_max, x_min:x_max]  # Get sub-mask.
+
+            # Get copies of the data and error, because we will edit them.
+            subdata = copy.deepcopy(subdata)
+            if error is not None and not scalar_error:
+                suberror = copy.deepcopy(suberror)
+            if gain is not None and not scalar_gain:
+                subgain = copy.deepcopy(subgain)
 
             # Coordinates of masked pixels in sub-array.
             y_masked, x_masked = np.nonzero(submask)
 
             # Corresponding coordinates mirrored across xc, yc
-            x_mirror = (2 * (xc[i] - x_min) - x_masked + 0.5).view('int16')
-            y_mirror = (2 * (yc[i] - y_min) - y_masked + 0.5).view('int16')
+            x_mirror = (2 * (xc[i] - x_min) - x_masked + 0.5).view('int32')
+            y_mirror = (2 * (yc[i] - y_min) - y_masked + 0.5).view('int32')
 
             # reset pixels that go out of the image.
             outofimage = ((x_mirror < 0) |
                           (y_mirror < 0) |
-                          (x_mirror >= subarr.shape[1]) |
-                          (y_mirror >= subarr.shape[0]))
+                          (x_mirror >= subdata.shape[1]) |
+                          (y_mirror >= subdata.shape[0]))
             if outofimage.any():
                 x_mirror[outofimage] = x_masked[outofimage]
                 y_mirror[outofimage] = y_masked[outofimage]
 
             # Replace masked pixel values.
-            subarr[y_masked, x_masked] = subarr[y_mirror, x_mirror]
-            if bkgvar is not None and not scalar_bkgvar:
-                bkgvar[y_masked, x_masked] = bkgvar[y_mirror, x_mirror]
+            subdata[y_masked, x_masked] = subdata[y_mirror, x_mirror]
+            if error is not None and not scalar_error:
+                suberror[y_masked, x_masked] = suberror[y_mirror, x_mirror]
+            if gain is not None and not scalar_gain:
+                subgain[y_masked, x_masked] = subgain[y_mirror, x_mirror]
 
             # Set pixels that mirrored to another masked pixel to zero.
             # This will also set to zero any pixels that mirrored out of
             # the image.
-            mirrorismasked = mask[y_mirror, x_mirror]
-            x_bad = x_masked[mirrorismasked]
-            y_bad = y_masked[mirrorismasked]
-            subarr[y_bad, x_bad] = 0.
-            if bkgvar is not None and not scalar_bkgvar:
-                bkgvar[y_bad, x_bad] = 0.
+            mirror_is_masked = mask[y_mirror, x_mirror]
+            x_bad = x_masked[mirror_is_masked]
+            y_bad = y_masked[mirror_is_masked]
+            subdata[y_bad, x_bad] = 0.
+            if error is not None and not scalar_error:
+                suberror[y_bad, x_bad] = 0.
+            if gain is not None and not scalar_gain:
+                subgain[y_bad, x_bad] = 0.
 
-        # Resample the subarray (if necessary).
+        # Resample the sub-arrays (if necessary).
         if subpixels > 1:
-            subarr = np.repeat(np.repeat(subarr, subpixels, axis=0),
+            subdata = np.repeat(np.repeat(subdata, subpixels, axis=0),
                                subpixels, axis=1)
-            if bkgvar is not None and not scalar_bkgvar:
-                subbkgvar = np.repeat(np.repeat(subbkgvar, subpixels, axis=0),
-                                      subpixels, axis=1)
+            if error is not None and not scalar_error:
+                suberror = np.repeat(np.repeat(suberror, subpixels, axis=0),
+                                     subpixels, axis=1)
+            if gain is not None and not scalar_gain:
+                subgain = np.repeat(np.repeat(subgain, subpixels, axis=0),
+                                    subpixels, axis=1)
 
         # Get the coordinates of each pixel in the sub-array in units of
         # the original image pixels, relative to object center.
@@ -553,44 +578,56 @@ def aperture_photometry(arr, xc, yc, apertures, bkgerr=None, gain=1.,
 
         # Loop over apertures for this object.
         for j in range(apertures.shape[0]):
+
+            # Which pixels are in this aperture.
             in_aper = apertures[j, i].encloses(xx, yy)
-            flux[j, i] = subarr[in_aper].sum() * subpixelarea
-            if bkgvar is not None:
-                if scalar_bkgvar:
+
+            # Sum the flux in those pixels and assign it to the output array.
+            flux[j, i] = subdata[in_aper].sum() * subpixelarea
+            if error is not None:  # If given, calculate error on flux.
+
+                if scalar_error:
                     if hasattr(apertures[j, i], 'area'):
                         area = apertures[j, i].area()
                     else:
                         area = in_aper.sum() * subpixelarea
-                    fluxvar[j, i] = (bkgvar * area + flux[j, i] / gain)
+                    fluxerr[j, i] = math.sqrt(error ** 2 * area)
                 else:
-                    fluxvar[j, i] = (bkgvar[in_aper].sum() * subpixelarea +
-                                     flux[j, i] / gain)
-
-    if bkgvar is not None:
-        fluxerr = np.sqrt(fluxvar)
+                    fluxerr[j, i] = math.sqrt((suberror[in_aper] ** 2).sum() *
+                                              subpixelarea)
+                
+                # If gain is given, add Poisson noise from the source.
+                if gain is not None:
+                    if scalar_gain:
+                        additional_variance = flux[j, i] / gain
+                    else:
+                        additional_variance = (subdata[in_aper] / 
+                                               subgain[in_aper]).sum()
+                    fluxerr[j, i] = math.sqrt(fluxerr[j, i] ** 2 +
+                                              additional_variance)
 
     # If input coordinates were scalars, return scalars (if single aperture)
     if scalar_obj_centers and n_aper == 1:
-        if bkgvar is None:
+        if error is None:
             return flux[0, 0]
         else:
             return flux[0, 0], fluxerr[0, 0]
 
     # If we only had a single aperture per object, we can return 1-d arrays
     if n_aper == 1:
-        if bkgvar is None:
+        if error is None:
             return flux[0]
         else:
             return flux[0], fluxerr[0]
 
     # Otherwise, return 2-d array
-    if bkgvar is None:
+    if error is None:
         return flux
     else:
         return flux, fluxerr
 
 
-def aperture_circular(arr, xc, yc, r, bkgerr=None, gain=1., mask=None,
+def aperture_circular(data, xc, yc, r, error=None, gain=None, mask=None,
                       subpixels=5):
     """Sum flux within circular aperture(s).
 
@@ -601,11 +638,11 @@ def aperture_circular(arr, xc, yc, r, bkgerr=None, gain=1., mask=None,
     apertures = np.empty(r.shape, dtype=object)
     for index in np.ndindex(r.shape):
         apertures[index] = CircularAperture(r[index])
-    return aperture_photometry(arr, xc, yc, apertures, bkgerr=bkgerr,
+    return aperture_photometry(data, xc, yc, apertures, error=error,
                                gain=gain, mask=mask, subpixels=subpixels)
 
 
-def aperture_elliptical(arr, xc, yc, a, b, theta, bkgerr=None, gain=1.,
+def aperture_elliptical(data, xc, yc, a, b, theta, error=None, gain=None,
                         mask=None, subpixels=5):
     """Sum flux within elliptical aperture(s).
 
@@ -617,11 +654,11 @@ def aperture_elliptical(arr, xc, yc, a, b, theta, bkgerr=None, gain=1.,
     apertures = np.empty(a.shape, dtype=object)
     for index in np.ndindex(a.shape):
         apertures[index] = EllipticalAperture(a[index], b[index], theta[index])
-    return aperture_photometry(arr, xc, yc, apertures, bkgerr=bkgerr,
+    return aperture_photometry(data, xc, yc, apertures, error=error,
                                gain=gain, mask=mask, subpixels=subpixels)
 
 
-def annulus_circular(arr, xc, yc, r_in, r_out, bkgerr=None, gain=1.,
+def annulus_circular(data, xc, yc, r_in, r_out, error=None, gain=None,
                      mask=None, subpixels=5):
     """Sum flux within circular annuli.
 
@@ -634,12 +671,12 @@ def annulus_circular(arr, xc, yc, r_in, r_out, bkgerr=None, gain=1.,
     apertures = np.empty(r_in.shape, dtype=object)
     for index in np.ndindex(r_in.shape):
         apertures[index] = CircularAnnulus(r_in[index], r_out[index])
-    return aperture_photometry(arr, xc, yc, apertures, bkgerr=bkgerr,
+    return aperture_photometry(data, xc, yc, apertures, error=error,
                                gain=gain, mask=mask, subpixels=subpixels)
 
 
-def annulus_elliptical(arr, xc, yc, a_in, a_out, b_out, theta,
-                       bkgerr=None, gain=1., mask=None, subpixels=5):
+def annulus_elliptical(data, xc, yc, a_in, a_out, b_out, theta,
+                       error=None, gain=None, mask=None, subpixels=5):
     """Sum flux within elliptical annuli.
 
     See Also
@@ -652,5 +689,5 @@ def annulus_elliptical(arr, xc, yc, a_in, a_out, b_out, theta,
     for index in np.ndindex(a_in.shape):
         apertures[index] = EllipticalAnnulus(a_in[index], a_out[index],
                                              b_out[index], theta[index])
-    return aperture_photometry(arr, xc, yc, apertures, bkgerr=bkgerr,
+    return aperture_photometry(data, xc, yc, apertures, error=error,
                                gain=gain, mask=mask, subpixels=subpixels)
