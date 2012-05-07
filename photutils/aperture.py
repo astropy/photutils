@@ -66,6 +66,8 @@ class CircularAperture(Aperture):
     """
 
     def __init__(self, r):
+        if not (r >= 0.):
+            raise ValueError('r must be non-negative')
         self.r = r
 
     def extent(self):
@@ -121,6 +123,10 @@ class CircularAnnulus(Aperture):
     """
 
     def __init__(self, r_in, r_out):
+        if not (r_out > r_in):
+            raise ValueError('r_out must be greater than r_in')
+        if not (r_in >= 0.):
+            raise ValueError('r_in must be non-negative')
         self.r_in = r_in
         self.r_out = r_out
 
@@ -152,7 +158,8 @@ class CircularAnnulus(Aperture):
             aperture.
         """
         dist_sq = (xx ** 2 + yy ** 2)
-        return ((dist_sq < self.r_out ** 2) & (dist_sq > self.r_in ** 2))
+        return ((dist_sq < self.r_out ** 2) & 
+                (dist_sq > self.r_in ** 2))
 
     def area():
         """Return area enclosed by aperture.
@@ -179,6 +186,8 @@ class EllipticalAperture(Aperture):
     """
 
     def __init__(self, a, b, theta):
+        if a < 0 or b < 0:
+            raise ValueError('a and b must be nonnegative.')
         self.a = a
         self.b = b
         self.theta = theta
@@ -214,12 +223,14 @@ class EllipticalAperture(Aperture):
             aperture.
         """
 
+        if self.a == 0 or self.b == 0:
+            return np.zeros(xx.shape, dtype=np.bool)
         numerator1 = (xx * math.cos(self.theta) -
                       yy * math.sin(self.theta))
         numerator2 = (yy * math.cos(self.theta) +
                       xx * math.sin(self.theta))
-        return (((numerator1 / self.a_out) ** 2 +
-                 (numerator2 / self.b_out) ** 2) < 1.)
+        return (((numerator1 / self.a) ** 2 +
+                 (numerator2 / self.b) ** 2) < 1.)
 
     def area():
         """Return area enclosed by aperture.
@@ -252,6 +263,8 @@ class EllipticalAnnulus(Aperture):
     def __init__(self, a_in, a_out, b_out, theta):
         if not (a_out > a_in):
             raise ValueError('a_out must be greater than a_in')
+        if a_in < 0 or b_out < 0:
+            raise ValueError('a_in and b_out must be non-negative')
         self.a_in = a_in
         self.b_in = a_in * b_out / a_out
         self.a_out = a_out
@@ -288,13 +301,16 @@ class EllipticalAnnulus(Aperture):
             bool array indicating whether each element is within the
             aperture.
         """
-
+        if self.a_out == 0 or self.b_out == 0:
+            return np.zeros(xx.shape, dtype=np.bool)
         numerator1 = (xx * math.cos(self.theta) -
                       yy * math.sin(self.theta))
         numerator2 = (yy * math.cos(self.theta) +
                       xx * math.sin(self.theta))
         inside_outer_ellipse = ((numerator1 / self.a_out) ** 2 +
                                 (numerator2 / self.b_out) ** 2) < 1.
+        if self.a_in == 0 or self.b_in == 0:
+            return inside_outer_ellipse
         outside_inner_ellipse = ((numerator1 / self.a_in) ** 2 +
                                  (numerator2 / self.b_in) ** 2) > 1.
         return (inside_outer_ellipse & outside_inner_ellipse)
@@ -635,6 +651,7 @@ def aperture_circular(data, xc, yc, r, error=None, gain=None, mask=None,
     --------
     aperture_photometry
     """
+    r = np.asarray(r)
     apertures = np.empty(r.shape, dtype=object)
     for index in np.ndindex(r.shape):
         apertures[index] = CircularAperture(r[index])
