@@ -100,7 +100,7 @@ class CircularAperture(Aperture):
 
         return (xx ** 2 + yy ** 2) < self.r ** 2
 
-    def area():
+    def area(self):
         """Return area enclosed by aperture.
 
         Returns
@@ -161,7 +161,7 @@ class CircularAnnulus(Aperture):
         return ((dist_sq < self.r_out ** 2) & 
                 (dist_sq > self.r_in ** 2))
 
-    def area():
+    def area(self):
         """Return area enclosed by aperture.
 
         Returns
@@ -232,7 +232,7 @@ class EllipticalAperture(Aperture):
         return (((numerator1 / self.a) ** 2 +
                  (numerator2 / self.b) ** 2) < 1.)
 
-    def area():
+    def area(self):
         """Return area enclosed by aperture.
 
         Returns
@@ -315,7 +315,7 @@ class EllipticalAnnulus(Aperture):
                                  (numerator2 / self.b_in) ** 2) > 1.
         return (inside_outer_ellipse & outside_inner_ellipse)
 
-    def area():
+    def area(self):
         """Return area enclosed by aperture.
 
         Returns
@@ -459,6 +459,10 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
                 raise ValueError('shapes of error array and data array must'
                                  ' match')
 
+    # Gain doesn't do anything without error.
+    if gain is not None and error is None:
+        raise ValueError('gain requires error')
+
     # Check gain shape.
     scalar_gain = False
     if gain is not None:
@@ -599,7 +603,8 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
             in_aper = apertures[j, i].encloses(xx, yy)
 
             # Sum the flux in those pixels and assign it to the output array.
-            flux[j, i] = subdata[in_aper].sum() * subpixelarea
+            data_values = subdata[in_aper]
+            flux[j, i] = data_values.sum() * subpixelarea
             if error is not None:  # If given, calculate error on flux.
 
                 if scalar_error:
@@ -617,10 +622,15 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
                     if scalar_gain:
                         additional_variance = flux[j, i] / gain
                     else:
-                        additional_variance = (subdata[in_aper] / 
-                                               subgain[in_aper]).sum()
-                    fluxerr[j, i] = math.sqrt(fluxerr[j, i] ** 2 +
-                                              additional_variance)
+                        additional_variance = ((data_values / 
+                                                subgain[in_aper]).sum() *
+                                               subpixelarea)
+
+                    # Ensure total variance is non-negative.
+                    total_variance = \
+                        max(fluxerr[j, i] ** 2 + additional_variance, 0.)
+                    fluxerr[j, i] = math.sqrt(total_variance)
+
 
     # If input coordinates were scalars, return scalars (if single aperture)
     if scalar_obj_centers and n_aper == 1:
