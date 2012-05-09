@@ -327,7 +327,7 @@ class EllipticalAnnulus(Aperture):
 
 
 def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
-                        mask=None, subpixels=5):
+                        mask=None, subpixels=5, pixelwise_errors=True):
     r"""Sum flux within aperture(s).
 
     Multiple objects and multiple apertures per object can be specified.
@@ -375,6 +375,12 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
         Resample pixels by this factor (in each dimension) when summing
         flux in apertures. That is, each pixel is divided into
         `subpixels ** 2` subpixels.
+    pixelwise_errors : bool, optional
+        For error and/or gain arrays. If True, assume error and/or gain
+        vary significantly within an aperture: sum contribution from each
+        pixel. If False, assume error and gain do not vary significantly
+        within an aperture. Use the single value of error and/or gain at
+        the center of each aperture as the value for the entire aperture.
 
     Returns
     -------
@@ -448,31 +454,31 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
         # We will not use xc2d. This is just for broadcasting 'apertures':
         apertures, xc2d = np.broadcast_arrays(apertures, xc)
 
+    # Check whether we really need to calculate pixelwise errors, even if
+    # requested. (If neither error nor gain is an array, we don't need to.)
+    if ((error is None) or
+        (np.isscalar(error) and gain is None) or
+        (np.isscalar(error) and np.isscalar(gain))):
+        pixelwise_errors = False
+
     # Check error shape.
-    scalar_error = False
     if error is not None:
         if np.isscalar(error):
-            scalar_error = True
-        else:
-            error = np.asarray(error)
-            if error.shape != data.shape:
-                raise ValueError('shapes of error array and data array must'
-                                 ' match')
-
-    # Gain doesn't do anything without error.
-    if gain is not None and error is None:
-        raise ValueError('gain requires error')
+            error, data = np.broadcast_arrays(error, data)
+        if error.shape != data.shape:
+            raise ValueError('shapes of error array and data array must'
+                             ' match')
 
     # Check gain shape.
-    scalar_gain = False
     if gain is not None:
+        # Gain doesn't do anything without error set, so raise an exception.
+        # (TODO: instead, should we just set gain = None and ignore it?)
+        if error is None:
+            raise ValueError('gain requires error')
         if np.isscalar(gain):
-            scalar_gain = True
-        else:
-            gain = np.asarray(gain)
-            if gain.shape != data.shape:
-                raise ValueError('shapes of gain array and data array must'
-                                 ' match')
+            gain, data = np.broadcast_arrays(gain, data)
+        if gain.shape != data.shape:
+            raise ValueError('shapes of gain array and data array must match')
 
     # Check mask shape and type.
     if mask is not None:
@@ -522,23 +528,21 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
         y_min = max(y_min, 0)
         y_max = min(y_max, data.shape[0])
 
-        # Get the sub-array of the image and the error
+        # Get the sub-array of the image and error
         subdata = data[y_min:y_max, x_min:x_max]
-        if error is not None and not scalar_error:
-            suberror = error[y_min:y_max, x_min:x_max]
-        if gain is not None and not scalar_gain:
-            subgain = gain[y_min:y_max, x_min:x_max]
-
+        if pixelwise_errors:
+            subvariance = error[y_min:y_max, x_min:x_max] ** 2
+            # If gain is specified, add poisson noise from the counts above
+            # the background
+            if gain is not None:
+                subgain = gain[y_min:y_max, x_min:x_max]
+                subvariance += subdata / subgain
 
         if mask is not None:
             submask = mask[y_min:y_max, x_min:x_max]  # Get sub-mask.
 
-            # Get copies of the data and error, because we will edit them.
+            # Get a copy of the data, because we will edit it
             subdata = copy.deepcopy(subdata)
-            if error is not None and not scalar_error:
-                suberror = copy.deepcopy(suberror)
-            if gain is not None and not scalar_gain:
-                subgain = copy.deepcopy(subgain)
 
             # Coordinates of masked pixels in sub-array.
             y_masked, x_masked = np.nonzero(submask)
@@ -558,10 +562,9 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
 
             # Replace masked pixel values.
             subdata[y_masked, x_masked] = subdata[y_mirror, x_mirror]
-            if error is not None and not scalar_error:
-                suberror[y_masked, x_masked] = suberror[y_mirror, x_mirror]
-            if gain is not None and not scalar_gain:
-                subgain[y_masked, x_masked] = subgain[y_mirror, x_mirror]
+            if pixelwise_errors:
+                subvariance[y_masked, x_masked] = \
+                    subvariance[y_mirror, x_mirror]
 
             # Set pixels that mirrored to another masked pixel to zero.
             # This will also set to zero any pixels that mirrored out of
@@ -570,21 +573,17 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
             x_bad = x_masked[mirror_is_masked]
             y_bad = y_masked[mirror_is_masked]
             subdata[y_bad, x_bad] = 0.
-            if error is not None and not scalar_error:
-                suberror[y_bad, x_bad] = 0.
-            if gain is not None and not scalar_gain:
-                subgain[y_bad, x_bad] = 0.
+            if pixelwise_errors:
+                subvariance[y_bad, x_bad] = 0.
 
         # Resample the sub-arrays (if necessary).
         if subpixels > 1:
             subdata = np.repeat(np.repeat(subdata, subpixels, axis=0),
                                subpixels, axis=1)
-            if error is not None and not scalar_error:
-                suberror = np.repeat(np.repeat(suberror, subpixels, axis=0),
-                                     subpixels, axis=1)
-            if gain is not None and not scalar_gain:
-                subgain = np.repeat(np.repeat(subgain, subpixels, axis=0),
-                                    subpixels, axis=1)
+            if pixelwise_errors:
+                subvariance = \
+                    np.repeat(np.repeat(subvariance, subpixels, axis=0),
+                              subpixels, axis=1)
 
         # Get the coordinates of each pixel in the sub-array in units of
         # the original image pixels, relative to object center.
@@ -603,34 +602,29 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
             in_aper = apertures[j, i].encloses(xx, yy)
 
             # Sum the flux in those pixels and assign it to the output array.
-            data_values = subdata[in_aper]
-            flux[j, i] = data_values.sum() * subpixelarea
+            flux[j, i] = subdata[in_aper].sum() * subpixelarea
+
             if error is not None:  # If given, calculate error on flux.
 
-                if scalar_error:
+                # If pixelwise, we have to do this the slow way.
+                if pixelwise_errors:
+                    fluxvar = subvariance[in_aper].sum() * subpixelarea
+
+                # Otherwise, assume error and gain are constant over whole
+                # aperture.
+                else:
+                    local_error = error[int(yc[i] + 0.5), int(xc[i] + 0.5)]
                     if hasattr(apertures[j, i], 'area'):
                         area = apertures[j, i].area()
                     else:
                         area = in_aper.sum() * subpixelarea
-                    fluxerr[j, i] = math.sqrt(error ** 2 * area)
-                else:
-                    fluxerr[j, i] = math.sqrt((suberror[in_aper] ** 2).sum() *
-                                              subpixelarea)
-                
-                # If gain is given, add Poisson noise from the source.
-                if gain is not None:
-                    if scalar_gain:
-                        additional_variance = flux[j, i] / gain
-                    else:
-                        additional_variance = ((data_values / 
-                                                subgain[in_aper]).sum() *
-                                               subpixelarea)
+                    fluxvar = local_error ** 2 * area
+                    if gain is not None:
+                        local_gain = gain[int(yc[i] + 0.5), int(xc[i] + 0.5)]
+                        fluxvar += flux[j, i] / local_gain
 
-                    # Ensure total variance is non-negative.
-                    total_variance = \
-                        max(fluxerr[j, i] ** 2 + additional_variance, 0.)
-                    fluxerr[j, i] = math.sqrt(total_variance)
-
+                # Make sure variance is > 0 when converting to st. dev.
+                fluxerr[j, i] = math.sqrt(max(fluxvar, 0.))
 
     # If input coordinates were scalars, return scalars (if single aperture)
     if scalar_obj_centers and n_aper == 1:
@@ -654,7 +648,7 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
 
 
 def aperture_circular(data, xc, yc, r, error=None, gain=None, mask=None,
-                      subpixels=5):
+                      subpixels=5, pixelwise_errors=True):
     """Sum flux within circular aperture(s).
 
     See Also
@@ -666,11 +660,12 @@ def aperture_circular(data, xc, yc, r, error=None, gain=None, mask=None,
     for index in np.ndindex(r.shape):
         apertures[index] = CircularAperture(r[index])
     return aperture_photometry(data, xc, yc, apertures, error=error,
-                               gain=gain, mask=mask, subpixels=subpixels)
+                               gain=gain, mask=mask, subpixels=subpixels,
+                               pixelwise_errors=pixelwise_errors)
 
 
 def aperture_elliptical(data, xc, yc, a, b, theta, error=None, gain=None,
-                        mask=None, subpixels=5):
+                        mask=None, subpixels=5, pixelwise_errors=True):
     """Sum flux within elliptical aperture(s).
 
     See Also
@@ -682,11 +677,12 @@ def aperture_elliptical(data, xc, yc, a, b, theta, error=None, gain=None,
     for index in np.ndindex(a.shape):
         apertures[index] = EllipticalAperture(a[index], b[index], theta[index])
     return aperture_photometry(data, xc, yc, apertures, error=error,
-                               gain=gain, mask=mask, subpixels=subpixels)
+                               gain=gain, mask=mask, subpixels=subpixels,
+                               pixelwise_errors=pixelwise_errors)
 
 
 def annulus_circular(data, xc, yc, r_in, r_out, error=None, gain=None,
-                     mask=None, subpixels=5):
+                     mask=None, subpixels=5, pixelwise_errors=True):
     """Sum flux within circular annuli.
 
     See Also
@@ -699,11 +695,13 @@ def annulus_circular(data, xc, yc, r_in, r_out, error=None, gain=None,
     for index in np.ndindex(r_in.shape):
         apertures[index] = CircularAnnulus(r_in[index], r_out[index])
     return aperture_photometry(data, xc, yc, apertures, error=error,
-                               gain=gain, mask=mask, subpixels=subpixels)
+                               gain=gain, mask=mask, subpixels=subpixels,
+                               pixelwise_errors=pixelwise_errors)
 
 
 def annulus_elliptical(data, xc, yc, a_in, a_out, b_out, theta,
-                       error=None, gain=None, mask=None, subpixels=5):
+                       error=None, gain=None, mask=None, subpixels=5,
+                        pixelwise_errors=True):
     """Sum flux within elliptical annuli.
 
     See Also
@@ -717,4 +715,5 @@ def annulus_elliptical(data, xc, yc, a_in, a_out, b_out, theta,
         apertures[index] = EllipticalAnnulus(a_in[index], a_out[index],
                                              b_out[index], theta[index])
     return aperture_photometry(data, xc, yc, apertures, error=error,
-                               gain=gain, mask=mask, subpixels=subpixels)
+                               gain=gain, mask=mask, subpixels=subpixels,
+                               pixelwise_errors=pixelwise_errors)
