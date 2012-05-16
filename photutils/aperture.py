@@ -158,7 +158,7 @@ class CircularAnnulus(Aperture):
             aperture.
         """
         dist_sq = (xx ** 2 + yy ** 2)
-        return ((dist_sq < self.r_out ** 2) & 
+        return ((dist_sq < self.r_out ** 2) &
                 (dist_sq > self.r_in ** 2))
 
     def area(self):
@@ -381,6 +381,7 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
         pixel. If False, assume error and gain do not vary significantly
         within an aperture. Use the single value of error and/or gain at
         the center of each aperture as the value for the entire aperture.
+        Default is True.
 
     Returns
     -------
@@ -392,27 +393,6 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
         a 2-d array is returned.
     fluxerr : float or `~numpy.ndarray`
         Uncertainty in flux values. Only returned if error is not `None`.
-
-    Notes
-    -----
-    The coordinates are zero-indexed, meaning that `(x, y) = (0., 0.)`
-    corresponds to the center of the lower-left array
-    element.  The value of arr[0, 0] is taken as the value over
-    the range ``-0.5 < x <= 0.5``, ``-0.5 < y <= 0.5``. The array
-    is thus defined over the range ``-0.5 < x <= arr.shape[1] -
-    0.5``, ``-0.5 < y <= arr.shape[0] - 0.5``.
-
-    The error in flux is calculated as
-
-    .. math:: \Delta F = \sqrt{A \sigma^2 + F/g}
-
-    where `g` is the gain, `A` is the number of pixels in the aperture, and
-    `sigma` is the background error. For a variable background error,
-
-    .. math:: A \sigma^2 \rightarrow \sum_i \sigma_i^2
-
-    where the sum is over pixels in the aperture.
-
     """
 
     # Check input array type and dimension.
@@ -649,7 +629,68 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
 
 def aperture_circular(data, xc, yc, r, error=None, gain=None, mask=None,
                       subpixels=5, pixelwise_errors=True):
-    """Sum flux within circular aperture(s).
+    r"""Sum flux within circular apertures.
+
+    Multiple objects and multiple apertures per object can be specified.
+
+    Parameters
+    ----------
+    data : array_like
+        The 2-d array on which to perform photometry.
+    xc, yc : float or list_like
+        The x and y coordinates of the object center(s). If list_like,
+        the lengths must match.
+    r : float or array_like
+        Radius of the aperture(s). If an array (of at most 2
+        dimensions), the trailing dimension of the array must be
+        broadcastable to N_objects (= `len(xc)`). In  other words,
+        the trailing dimension must be equal to either 1 or N_objects. The
+        following shapes are thus allowed:
+
+        `()` or `(1,)` or `(1, 1)`
+            The same single aperture is applied to all objects.
+        `(N_objects,)` or `(1, N_objects)`
+            Each object gets its own single aperture.
+        `(N_apertures, 1)`
+            The same `N_aper` apertures are applied to all objects.
+        `(N_apertures, N_objects)`
+            Each object gets its own set of N_apertures apertures.
+
+    error : float or array_like, optional
+        Error in each pixel, interpreted as Gaussian 1-sigma uncertainty.
+    gain : float or array_like, optional
+        Ratio of counts (e.g., electrons or photons) to units of the data
+        (e.g., ADU), for the purpose of calculating Poisson error from the
+        object itself. If `gain` is `None` (default), `error` is assumed to
+        include all uncertainty in each pixel. If `gain` is given, `error`
+        is assumed to be the "background error" only (not accounting for
+        Poisson error in the flux in the apertures).
+    mask : array_like (bool), optional
+        Mask to apply to the data. The value of masked pixels are replaced
+        by the value of the pixel mirrored across the center of the object,
+        if available. If unavailable, the value is set to zero.
+    subpixels : int, optional
+        Resample pixels by this factor (in each dimension) when summing
+        flux in apertures. That is, each pixel is divided into
+        `subpixels ** 2` subpixels.
+    pixelwise_errors : bool, optional
+        For error and/or gain arrays. If True, assume error and/or gain
+        vary significantly within an aperture: sum contribution from each
+        pixel. If False, assume error and gain do not vary significantly
+        within an aperture. Use the single value of error and/or gain at
+        the center of each aperture as the value for the entire aperture.
+        Default is True.
+
+    Returns
+    -------
+    flux : float or `~numpy.ndarray`
+        Enclosed flux in aperture(s). If `xc` and `yc` are floats and
+        there is a single aperture, a float is returned. If xc, yc are
+        list_like and there is a single aperture per object, a 1-d
+        array is returned. If there are multiple apertures per object,
+        a 2-d array is returned.
+    fluxerr : float or `~numpy.ndarray`
+        Uncertainty in flux values. Only returned if error is not `None`.
 
     See Also
     --------
@@ -666,12 +707,76 @@ def aperture_circular(data, xc, yc, r, error=None, gain=None, mask=None,
 
 def aperture_elliptical(data, xc, yc, a, b, theta, error=None, gain=None,
                         mask=None, subpixels=5, pixelwise_errors=True):
-    """Sum flux within elliptical aperture(s).
+    r"""Sum flux within elliptical apertures.
+
+    Multiple objects and multiple apertures per object can be specified.
+
+    Parameters
+    ----------
+    data : array_like
+        The 2-d array on which to perform photometry.
+    xc, yc : float or list_like
+        The x and y coordinates of the object center(s). If list_like,
+        the lengths must match.
+    a, b, theta : float or array_like
+        The parameters of the aperture(s): respectively, the
+        semimajor, semiminor axes in pixels and the position angle in
+        radians. If an array (of at most 2 dimensions), the trailing
+        dimension of the array must be broadcastable to N_objects (=
+        `len(xc)`). In other words, the trailing dimension must be
+        equal to either 1 or N_objects. The following shapes are thus
+        allowed:
+
+        `()` or `(1,)` or `(1, 1)`
+            The same single aperture is applied to all objects.
+        `(N_objects,)` or `(1, N_objects)`
+            Each object gets its own single aperture.
+        `(N_apertures, 1)`
+            The same `N_aper` apertures are applied to all objects.
+        `(N_apertures, N_objects)`
+            Each object gets its own set of N_apertures apertures.
+
+    error : float or array_like, optional
+        Error in each pixel, interpreted as Gaussian 1-sigma uncertainty.
+    gain : float or array_like, optional
+        Ratio of counts (e.g., electrons or photons) to units of the data
+        (e.g., ADU), for the purpose of calculating Poisson error from the
+        object itself. If `gain` is `None` (default), `error` is assumed to
+        include all uncertainty in each pixel. If `gain` is given, `error`
+        is assumed to be the "background error" only (not accounting for
+        Poisson error in the flux in the apertures).
+    mask : array_like (bool), optional
+        Mask to apply to the data. The value of masked pixels are replaced
+        by the value of the pixel mirrored across the center of the object,
+        if available. If unavailable, the value is set to zero.
+    subpixels : int, optional
+        Resample pixels by this factor (in each dimension) when summing
+        flux in apertures. That is, each pixel is divided into
+        `subpixels ** 2` subpixels.
+    pixelwise_errors : bool, optional
+        For error and/or gain arrays. If True, assume error and/or gain
+        vary significantly within an aperture: sum contribution from each
+        pixel. If False, assume error and gain do not vary significantly
+        within an aperture. Use the single value of error and/or gain at
+        the center of each aperture as the value for the entire aperture.
+        Default is True.
+
+    Returns
+    -------
+    flux : float or `~numpy.ndarray`
+        Enclosed flux in aperture(s). If `xc` and `yc` are floats and
+        there is a single aperture, a float is returned. If xc, yc are
+        list_like and there is a single aperture per object, a 1-d
+        array is returned. If there are multiple apertures per object,
+        a 2-d array is returned.
+    fluxerr : float or `~numpy.ndarray`
+        Uncertainty in flux values. Only returned if error is not `None`.
 
     See Also
     --------
     aperture_photometry
     """
+
     a, b, theta = np.broadcast_arrays(a, b, theta)
     apertures = np.empty(a.shape, dtype=object)
     for index in np.ndindex(a.shape):
@@ -683,7 +788,69 @@ def aperture_elliptical(data, xc, yc, a, b, theta, error=None, gain=None,
 
 def annulus_circular(data, xc, yc, r_in, r_out, error=None, gain=None,
                      mask=None, subpixels=5, pixelwise_errors=True):
-    """Sum flux within circular annuli.
+    r"""Sum flux within circular annuli.
+
+    Multiple objects and multiple apertures per object can be specified.
+
+    Parameters
+    ----------
+    data : array_like
+        The 2-d array on which to perform photometry.
+    xc, yc : float or list_like
+        The x and y coordinates of the object center(s). If list_like,
+        the lengths must match.
+    r_in, r_out : float or array_like
+        The parameters of the annuli: respectively, the inner and
+        outer radii. If an array (of at most 2 dimensions), the
+        trailing dimension of the array must be broadcastable to
+        N_objects (= `len(xc)`). In other words, the trailing
+        dimension must be equal to either 1 or N_objects. The
+        following shapes are thus allowed:
+
+        `()` or `(1,)` or `(1, 1)`
+            The same single aperture is applied to all objects.
+        `(N_objects,)` or `(1, N_objects)`
+            Each object gets its own single aperture.
+        `(N_apertures, 1)`
+            The same `N_aper` apertures are applied to all objects.
+        `(N_apertures, N_objects)`
+            Each object gets its own set of N_apertures apertures.
+
+    error : float or array_like, optional
+        Error in each pixel, interpreted as Gaussian 1-sigma uncertainty.
+    gain : float or array_like, optional
+        Ratio of counts (e.g., electrons or photons) to units of the data
+        (e.g., ADU), for the purpose of calculating Poisson error from the
+        object itself. If `gain` is `None` (default), `error` is assumed to
+        include all uncertainty in each pixel. If `gain` is given, `error`
+        is assumed to be the "background error" only (not accounting for
+        Poisson error in the flux in the apertures).
+    mask : array_like (bool), optional
+        Mask to apply to the data. The value of masked pixels are replaced
+        by the value of the pixel mirrored across the center of the object,
+        if available. If unavailable, the value is set to zero.
+    subpixels : int, optional
+        Resample pixels by this factor (in each dimension) when summing
+        flux in apertures. That is, each pixel is divided into
+        `subpixels ** 2` subpixels.
+    pixelwise_errors : bool, optional
+        For error and/or gain arrays. If True, assume error and/or gain
+        vary significantly within an aperture: sum contribution from each
+        pixel. If False, assume error and gain do not vary significantly
+        within an aperture. Use the single value of error and/or gain at
+        the center of each aperture as the value for the entire aperture.
+        Default is True.
+
+    Returns
+    -------
+    flux : float or `~numpy.ndarray`
+        Enclosed flux in aperture(s). If `xc` and `yc` are floats and
+        there is a single aperture, a float is returned. If xc, yc are
+        list_like and there is a single aperture per object, a 1-d
+        array is returned. If there are multiple apertures per object,
+        a 2-d array is returned.
+    fluxerr : float or `~numpy.ndarray`
+        Uncertainty in flux values. Only returned if error is not `None`.
 
     See Also
     --------
@@ -702,12 +869,76 @@ def annulus_circular(data, xc, yc, r_in, r_out, error=None, gain=None,
 def annulus_elliptical(data, xc, yc, a_in, a_out, b_out, theta,
                        error=None, gain=None, mask=None, subpixels=5,
                         pixelwise_errors=True):
-    """Sum flux within elliptical annuli.
+    r"""Sum flux within elliptical annuli.
+
+    Multiple objects and multiple apertures per object can be specified.
+
+    Parameters
+    ----------
+    data : array_like
+        The 2-d array on which to perform photometry.
+    xc, yc : float or list_like
+        The x and y coordinates of the object center(s). If list_like,
+        the lengths must match.
+    a_in, a_out, b_out, theta : float or array_like
+        The parameters of the annuli: respectively, the inner and
+        outer semimajor axis in pixels, the outer semiminor axis in
+        pixels, the position angle in radians. If an array (of at most
+        2 dimensions), the trailing dimension of the array must be
+        broadcastable to N_objects (= `len(xc)`). In other words, the
+        trailing dimension must be equal to either 1 or N_objects. The
+        following shapes are thus allowed:
+
+        `()` or `(1,)` or `(1, 1)`
+            The same single aperture is applied to all objects.
+        `(N_objects,)` or `(1, N_objects)`
+            Each object gets its own single aperture.
+        `(N_apertures, 1)`
+            The same `N_aper` apertures are applied to all objects.
+        `(N_apertures, N_objects)`
+            Each object gets its own set of N_apertures apertures.
+
+    error : float or array_like, optional
+        Error in each pixel, interpreted as Gaussian 1-sigma uncertainty.
+    gain : float or array_like, optional
+        Ratio of counts (e.g., electrons or photons) to units of the data
+        (e.g., ADU), for the purpose of calculating Poisson error from the
+        object itself. If `gain` is `None` (default), `error` is assumed to
+        include all uncertainty in each pixel. If `gain` is given, `error`
+        is assumed to be the "background error" only (not accounting for
+        Poisson error in the flux in the apertures).
+    mask : array_like (bool), optional
+        Mask to apply to the data. The value of masked pixels are replaced
+        by the value of the pixel mirrored across the center of the object,
+        if available. If unavailable, the value is set to zero.
+    subpixels : int, optional
+        Resample pixels by this factor (in each dimension) when summing
+        flux in apertures. That is, each pixel is divided into
+        `subpixels ** 2` subpixels.
+    pixelwise_errors : bool, optional
+        For error and/or gain arrays. If True, assume error and/or gain
+        vary significantly within an aperture: sum contribution from each
+        pixel. If False, assume error and gain do not vary significantly
+        within an aperture. Use the single value of error and/or gain at
+        the center of each aperture as the value for the entire aperture.
+        Default is True.
+
+    Returns
+    -------
+    flux : float or `~numpy.ndarray`
+        Enclosed flux in aperture(s). If `xc` and `yc` are floats and
+        there is a single aperture, a float is returned. If xc, yc are
+        list_like and there is a single aperture per object, a 1-d
+        array is returned. If there are multiple apertures per object,
+        a 2-d array is returned.
+    fluxerr : float or `~numpy.ndarray`
+        Uncertainty in flux values. Only returned if error is not `None`.
 
     See Also
     --------
     aperture_photometry
     """
+
     a_in, a_out, b_out, theta = \
         np.broadcast_arrays(a_in, a_out, b_out, theta)
     apertures = np.empty(a_in.shape, dtype=object)
