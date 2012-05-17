@@ -13,6 +13,10 @@ The `photutils` package is destined to implement functions for
 
 Currently, only aperture photometry functions have been implemented.
 
+It is possible that `photutils` will eventually be merged into `astropy` as
+`astropy.photometry`.
+
+
 Getting Started
 ---------------
 
@@ -39,8 +43,11 @@ Using `photutils`
 
     aperture.rst
 
-Coordinate Convention
----------------------
+Coordinate Convention in `photutils`
+------------------------------------
+
+.. note:: 
+   This should eventually be moved to the `astropy` core.
 
 In this module the coordinates are zero-indexed, meaning that `(x, y)
 = (0., 0.)` corresponds to the center of the lower-left array element.
@@ -50,12 +57,6 @@ over the range `-0.5 < x <= data.shape[1] - 0.5`, `-0.5 < y <=
 data.shape[0] - 0.5`. (Note that this differs from the
 SourceExtractor_ convention, in which the center of the lower-left
 array element is `(1, 1)`.)
-
-
-See Also
---------
-
-TODO: references? 
 
 .. automodapi:: photutils
 

@@ -266,4 +266,13 @@ third method, `area()`.
   scalar `error`). If not provided, `aperture_photometry` will
   estimate the area using the result of `encloses(xx, yy)`.
 
+See Also
+--------
+
+1. `IRAF's APPHOT specification [PDF]`_ (Sec. 3.3.5.8 - 3.3.5.9)
+
+2. `SourceExtractor Manual [PDF]`_ (Sec. 9.4 p. 36)
+
 .. _SourceExtractor: http://www.astromatic.net/software/sextractor
+.. _SourceExtractor Manual [PDF]: https://www.astromatic.net/pubsvn/software/sextractor/trunk/doc/sextractor.pdf
+.. _IRAF's APPHOT specification [PDF]: http://iraf.net/irafdocs/apspec.pdf
