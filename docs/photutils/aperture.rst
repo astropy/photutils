@@ -48,8 +48,8 @@ aperture. Instead, it subsamples each pixel according to the keyword
 default value is `subpixels=5`, meaning that each pixel is divided
 into 25 subpixels. (This is the method and subsampling used in
 SourceExtractor_.) The precision can be increased by increasing
-`subpixels` but note that computation time will scale with the number
-of subpixels.
+`subpixels` but note that computation time will scale approximately
+linearly with `subpixels ** 2`.
 
 Multiple Apertures and Broadcasting
 -----------------------------------
