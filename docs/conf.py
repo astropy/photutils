@@ -17,10 +17,13 @@ import sys
 # Load all of the global Astropy configuration
 from astropy.sphinx.conf import *
 
+#extensions = ['sphinx.ext.autosummary']
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath('..'))
+
 
 # -- General configuration -----------------------------------------------------
 
@@ -60,6 +63,8 @@ pygments_style = 'sphinx'
 
 # -- Options for HTML output ---------------------------------------------------
 
+
+html_theme = 'default'
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
 # html_logo = ''
