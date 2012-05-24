@@ -7,7 +7,11 @@ from __future__ import division
 import numpy as np
 cimport numpy as np
 
-from libc.math cimport sqrt, asin, sin
+cdef extern from "math.h":
+
+    double asin(double x)
+    double sin(double x)
+    double sqrt(double x)
 
 DTYPE = np.float
 ctypedef np.float_t DTYPE_t
