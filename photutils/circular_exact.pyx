@@ -13,17 +13,17 @@ cdef extern from "math.h":
     double sin(double x)
     double sqrt(double x)
 
-DTYPE = np.float
-ctypedef np.float_t DTYPE_t
+DTYPE = np.float64
+ctypedef np.float64_t DTYPE_t
 
 cimport cython
 
 
-def distance(float x1, float y1, float x2, float y2):
+def distance(double x1, double y1, double x2, double y2):
     return sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
 
-def area_arc(float x1, float y1, float x2, float y2, float R):
+def area_arc(double x1, double y1, double x2, double y2, double R):
     '''
     Area of a circle arc with radius R between points (x1, y1) and (x2, y2)
 
@@ -31,13 +31,13 @@ def area_arc(float x1, float y1, float x2, float y2, float R):
     ----------
     http://mathworld.wolfram.com/CircularSegment.html
     '''
-    cdef float a, theta
+    cdef double a, theta
     a = distance(x1, y1, x2, y2)
     theta = 2. * asin(0.5 * a / R)
     return 0.5 * R * R * (theta - sin(theta))
 
 
-def area_triangle(float x1, float y1, float x2, float y2, float x3, float y3):
+def area_triangle(double x1, double y1, double x2, double y2, double x3, double y3):
     '''
     Area of a triangle defined by three vertices
     '''
@@ -48,7 +48,7 @@ def circular_overlap(np.ndarray[DTYPE_t, ndim=1] xmin,
                      np.ndarray[DTYPE_t, ndim=1] xmax,
                      np.ndarray[DTYPE_t, ndim=1] ymin,
                      np.ndarray[DTYPE_t, ndim=1] ymax,
-                     float R):
+                     double R):
     '''
     Given a grid with walls set by x, y, find the area of overlap in each
     '''
@@ -66,7 +66,7 @@ def circular_overlap(np.ndarray[DTYPE_t, ndim=1] xmin,
     return frac
 
 
-def circular_overlap_single(float xmin, float ymin, float xmax, float ymax, float r):
+def circular_overlap_single(double xmin, double ymin, double xmax, double ymax, double r):
     '''
     Area of overlap of a rectangle and a circle
     '''
@@ -100,12 +100,12 @@ def circular_overlap_single(float xmin, float ymin, float xmax, float ymax, floa
                  + circular_overlap_single(0., 0., xmax, ymax, r)
 
 
-def circular_overlap_core(float xmin, float ymin, float xmax, float ymax, float R):
+def circular_overlap_core(double xmin, double ymin, double xmax, double ymax, double R):
     '''
     Assumes that the center of the circle is <= xmin, ymin (can always modify input to conform to this)
     '''
 
-    cdef float area, d1, d2, x1, x2, y1, y2
+    cdef double area, d1, d2, x1, x2, y1, y2
 
     if xmin * xmin + ymin * ymin > R * R:
         area = 0.
