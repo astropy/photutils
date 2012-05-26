@@ -409,7 +409,7 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
         Uncertainty in flux values. Only returned if error is not `None`.
     """
 
-    from .utils.resample import resample
+    from .utils.downsample import downsample
 
     # Check input array type and dimension.
     data = np.asarray(data)
@@ -604,7 +604,7 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
                 fraction = apertures[j, i].encloses(xx, yy, exact=True)
             else:
                 in_aper = apertures[j, i].encloses(xx, yy).astype(float)
-                fraction = resample(in_aper, subpixels)
+                fraction = downsample(in_aper, subpixels)
 
             # Sum the flux in those pixels and assign it to the output array.
             flux[j, i] = np.sum(subdata * fraction)

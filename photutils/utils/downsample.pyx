@@ -7,7 +7,7 @@ ctypedef np.float_t DTYPE_t
 cimport cython
 
 
-def resample(np.ndarray[DTYPE_t, ndim=2] array, int factor):
+def downsample(np.ndarray[DTYPE_t, ndim=2] array, int factor):
 
     cdef int nx = array.shape[0]
     cdef int ny = array.shape[1]
