@@ -178,9 +178,31 @@ class CircularAnnulus(Aperture):
             bool array indicating whether each element is within the
             aperture.
         """
-        dist_sq = (xx ** 2 + yy ** 2)
-        return ((dist_sq < self.r_out ** 2) &
-                (dist_sq > self.r_in ** 2))
+        dist_sq = xx * xx + yy * yy
+        return (dist_sq < self.r_out * self.r_out) \
+             & (dist_sq > self.r_in * self.r_in)
+
+    def encloses_exact(self, x_edges, y_edges):
+        """
+        Return a float array giving the fraction of each pixel covered
+        by the aperture.
+
+        Parameters
+        ----------
+        x_edges : `~numpy.ndarray`
+            x coordinates of the pixel edges (1-d)
+        y_edges : `~numpy.ndarray`
+            y coordinates of the pixel edges (1-d)
+
+        Returns
+        -------
+        overlap_area : `~numpy.ndarray` (float)
+            2-d array of overlapping fraction. This has dimensions
+            (len(y_edges) - 1, len(x_edges) - 1))
+        """
+        from circular_exact import circular_overlap_grid
+        return circular_overlap_grid(x_edges, y_edges, self.r_out) \
+             - circular_overlap_grid(x_edges, y_edges, self.r_in)
 
     def area(self):
         """Return area enclosed by aperture.
@@ -824,7 +846,7 @@ def aperture_elliptical(data, xc, yc, a, b, theta, error=None, gain=None,
 
 
 def annulus_circular(data, xc, yc, r_in, r_out, error=None, gain=None,
-                     mask=None, subpixels=5, pixelwise_errors=True):
+                     mask=None, subpixels='exact', pixelwise_errors=True):
     r"""Sum flux within circular annuli.
 
     Multiple objects and multiple apertures per object can be specified.
@@ -869,7 +891,8 @@ def annulus_circular(data, xc, yc, r_in, r_out, error=None, gain=None,
     subpixels : int, optional
         Resample pixels by this factor (in each dimension) when summing
         flux in apertures. That is, each pixel is divided into
-        `subpixels ** 2` subpixels.
+        `subpixels ** 2` subpixels. This can also be set to 'exact' to
+        indicate that the exact overlap fraction should be used.
     pixelwise_errors : bool, optional
         For error and/or gain arrays. If True, assume error and/or gain
         vary significantly within an aperture: sum contribution from each
