@@ -44,24 +44,25 @@ def area_triangle(double x1, double y1, double x2, double y2, double x3, double 
     return 0.5 * abs(x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
 
 
-def circular_overlap(np.ndarray[DTYPE_t, ndim=1] xmin,
-                     np.ndarray[DTYPE_t, ndim=1] xmax,
-                     np.ndarray[DTYPE_t, ndim=1] ymin,
-                     np.ndarray[DTYPE_t, ndim=1] ymax,
-                     double R):
+def circular_overlap_grid(np.ndarray[DTYPE_t, ndim=1] x,
+                          np.ndarray[DTYPE_t, ndim=1] y,
+                          double R):
     '''
     Given a grid with walls set by x, y, find the area of overlap in each
     '''
-    cdef int n = xmin.shape[0]
-    cdef np.ndarray[DTYPE_t, ndim=1] frac = np.zeros([n], dtype=DTYPE)
+    cdef int nx = x.shape[0]
+    cdef int ny = y.shape[0]
+    cdef np.ndarray[DTYPE_t, ndim=2] frac = np.zeros([ny - 1, nx - 1], dtype=DTYPE)
     cdef unsigned int i, j
 
-    for i in range(n):
-        # We don't technically need to check this here, but it's faster to pre-check
-        if xmin[i] > R or xmax[i] < - R or ymin[i] > R or ymax[i] < -R:
-            pass
-        else:
-            frac[i] = circular_overlap_single(xmin[i], ymin[i], xmax[i], ymax[i], R)
+    # Even though we don't strictly need to pre-check for overlap in this
+    # routine, it is much more efficient to do so.
+
+    for i in range(nx - 1):
+        if x[i] < R and x[i + 1] > - R:
+            for j in range(ny - 1):
+                if y[j] < R and y[j + 1] > - R:
+                    frac[j, i] = circular_overlap_single(x[i], y[j], x[i + 1], y[j + 1], R)
 
     return frac
 

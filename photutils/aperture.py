@@ -55,9 +55,6 @@ class Aperture(object):
         """
         return
 
-    def has_exact_mode(self):
-        return False
-
 
 class CircularAperture(Aperture):
     """A circular aperture.
@@ -83,7 +80,7 @@ class CircularAperture(Aperture):
 
         return (-self.r, self.r, -self.r, self.r)
 
-    def encloses(self, xx, yy, exact=False):
+    def encloses(self, xx, yy):
         """Return a bool array representing which elements of an array
         are in the aperture.
 
@@ -100,13 +97,29 @@ class CircularAperture(Aperture):
             bool array indicating whether each element is within the
             aperture.
         """
-        if exact:
-            from circular_exact import circular_overlap
-            return circular_overlap(xx.ravel() - 0.5, xx.ravel() + 0.5,
-                                    yy.ravel() - 0.5, yy.ravel() + 0.5,
-                                    self.r).reshape(xx.shape)
-        else:
-            return (xx ** 2 + yy ** 2) < self.r ** 2
+        return xx * xx + yy * yy < self.r * self.r
+
+
+    def encloses_exact(self, x_edges, y_edges):
+        """
+        Return a float array giving the fraction of each pixel covered
+        by the aperture.
+
+        Parameters
+        ----------
+        x_edges : `~numpy.ndarray`
+            x coordinates of the pixel edges (1-d)
+        y_edges : `~numpy.ndarray`
+            y coordinates of the pixel edges (1-d)
+
+        Returns
+        -------
+        overlap_area : `~numpy.ndarray` (float)
+            2-d array of overlapping fraction. This has dimensions
+            (len(y_edges) - 1, len(x_edges) - 1))
+        """
+        from circular_exact import circular_overlap_grid
+        return circular_overlap_grid(x_edges, y_edges, self.r)
 
     def area(self):
         """Return area enclosed by aperture.
@@ -117,9 +130,6 @@ class CircularAperture(Aperture):
             Area in pixels enclosed by aperture.
         """
         return math.pi * self.r ** 2
-
-    def has_exact_mode(self):
-        return True
 
 
 class CircularAnnulus(Aperture):
@@ -575,12 +585,12 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
         # In this case we just compute the position of the pixel 'walls' in x and y
         if subpixels == 'exact':
 
-            x_vals = np.linspace(x_min - xc[i],
-                                 x_max - xc[i] - 1,
-                                 subdata.shape[0])
-            y_vals = np.linspace(y_min - yc[i],
-                                 y_max - yc[i] - 1,
-                                 subdata.shape[1])
+            x_edges = np.linspace(x_min - xc[i] - 0.5,
+                                  x_max - xc[i] - 0.5,
+                                  subdata.shape[0] + 1)
+            y_edges = np.linspace(y_min - yc[i] - 0.5,
+                                  y_max - yc[i] - 0.5,
+                                  subdata.shape[1] + 1)
 
         else:
 
@@ -591,17 +601,18 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
                                y_max - yc[i] - 0.5 + subpixelsize / 2.,
                                subpixelsize)
 
-        xx, yy = np.meshgrid(x_vals, y_vals)
+            xx, yy = np.meshgrid(x_vals, y_vals)
 
         # Loop over apertures for this object.
         for j in range(apertures.shape[0]):
 
             # Find fraction of overlap between aperture and pixels
             if subpixels == 'exact':
-                if not apertures[j, i].has_exact_mode():
+                try:
+                    fraction = apertures[j, i].encloses_exact(x_edges, y_edges)
+                except AttributeError:
                     raise Exception("subpixels='exact' cannot be used for "
                                     "{0:s}".format(apertures[j, i].__class__.__name__))
-                fraction = apertures[j, i].encloses(xx, yy, exact=True)
             else:
                 in_aper = apertures[j, i].encloses(xx, yy).astype(float)
                 fraction = downsample(in_aper, subpixels)
