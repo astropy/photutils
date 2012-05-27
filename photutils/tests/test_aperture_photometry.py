@@ -1,97 +1,48 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
+# The tests in this file test the accuracy of the photometric results.
+# Here we test directly with aperture objects since we are checking the
+# algorithms in aperture_photometry, not in the wrappers.
+
 import pytest
 import numpy as np
 from numpy.testing import assert_array_almost_equal_nulp
 
-from ..aperture import annulus_elliptical
-from ..aperture import aperture_elliptical
+from ..aperture import CircularAperture,\
+                       CircularAnnulus, \
+                       EllipticalAperture, \
+                       EllipticalAnnulus, \
+                       aperture_photometry
 
 
-class TestArrayShapes(object):
-
-    def setup_class(self):
-        self.data = np.ones((10, 10), dtype=np.float)
-
-    def test_single_object_single_aperture(self):
-        # Input single object and single aperture
-        flux = annulus_elliptical(self.data, 5., 5., 2., 5., 5., np.pi / 4.)
-        assert np.isscalar(flux) == True
-
-    def test_single_object_multiple_apertures(self):
-        # One object, multiple apertures
-        flux = annulus_elliptical(self.data, 2., 5.,
-                           [[2.], [5.]], [[5.], [8.]], [[5.], [8.]], np.pi / 2.)
-        assert flux.shape == (2, 1)
-
-    def test_multiple_objects_single_aperture(self):
-        # Multiple objects, single aperture
-        flux = annulus_elliptical(self.data, [2., 3., 4.], [5., 6., 7.],
-                           2., 5., 5., np.pi / 2.)
-        assert flux.shape == (3, )
-
-    def test_multiple_objects_multiple_apertures(self):
-        # Multiple objects, multiple apertures
-        flux = annulus_elliptical(self.data, [2., 3., 4.], [5., 6., 7.],
-                           [2., 3., 4.], [5., 6., 7.], [5., 6., 7.], np.pi / 2.)
-        assert flux.shape == (3, )
-
-    def test_multiple_objects_multiple_aperture_per_object(self):
-        # Multiple objects, multiple apertures per object
-        flux = annulus_elliptical(self.data, [2., 3., 4.], [5., 6., 7.],
-                           [[2.], [5.]], [[5.], [8.]], [[5.], [8.]], np.pi / 2.)
-        assert flux.shape == (2, 3)
-
-    def test_mismatch_object_apertures(self):
-        # Mismatched number of objects and apertures
-        with pytest.raises(ValueError) as exc:
-            annulus_elliptical(self.data, [2., 3., 4.], [5., 6., 7.],
-                               [2., 3.], [5., 6.], [5., 6.], np.pi / 2.)
-        assert exc.value.args[0] == "trailing dimension of 'apertures' must be 1 or match length of xc, yc"
+APERTURES = [CircularAperture(3.),
+             CircularAnnulus(3., 5.),
+             EllipticalAperture(3., 5., 1.),
+             EllipticalAnnulus(3., 5., 4., 1.)]
 
 
-def test_in_and_out_of_array():
-    from ..aperture import annulus_elliptical
-    import numpy as np
+@pytest.mark.parametrize(('aperture'), APERTURES)
+def test_outside_array(aperture):
+    data = np.ones((10, 10), dtype=np.float)
+    flux = aperture_photometry(data, -60., 60., aperture)
+    assert flux == 0.  # aperture is fully outside array
 
-    # An annulus fully in the array
+
+@pytest.mark.parametrize(('aperture'), APERTURES)
+def test_inside_array_simple(aperture):
     data = np.ones((40, 40), dtype=np.float)
-    a_in = 5.
-    a_out = 10.
-    b_out = 5.
-    theta = np.pi / 4.
-    flux = annulus_elliptical(data, 20., 20., a_in, a_out, b_out, theta)
-    true_flux = np.pi * (a_out * b_out - a_in ** 2 * b_out / a_out)
+    flux = aperture_photometry(data, 20., 20., aperture, subpixels=10)
+    true_flux = aperture.area()
     assert abs((flux - true_flux) / true_flux) < 0.01
 
-    # An annulus fully out of the array should return 0
-    a_in = 5.
-    a_out = 10.
-    b_out = 5.
-    theta = np.pi / 4.
-    flux = annulus_elliptical(data, 60., 60., a_in, a_out, b_out, theta)
-    true_flux = np.pi * (a_out * b_out - a_in ** 2 * b_out / a_out)
-    assert abs(flux) < 0.001
 
-
-class TestErrorGain(object):
-
-    def setup_class(self):
-        self.data = np.ones((40, 40), dtype=np.float)
-        self.xc = 20.
-        self.yc = 20.
-        self.a = 10.
-        self.b = 5.
-        self.theta = -np.pi / 4.
-        self.area = np.pi * self.a * self.b
-        self.true_flux = self.area
+class BaseTestErrorGain(object):
 
     def test_scalar_error_no_gain(self):
 
         # Scalar error, no gain.
         error = 1.
-        flux, fluxerr = aperture_elliptical(self.data, self.xc, self.yc,
-                                            self.a, self.b, self.theta,
+        flux, fluxerr = aperture_photometry(self.data, self.xc, self.yc, self.aperture,
                                             error=error)
         assert abs((flux - self.true_flux) / self.true_flux) < 0.01
 
@@ -105,8 +56,7 @@ class TestErrorGain(object):
         # Scalar error, scalar gain.
         error = 1.
         gain = 1.
-        flux, fluxerr = aperture_elliptical(self.data, self.xc, self.yc,
-                                            self.a, self.b, self.theta,
+        flux, fluxerr = aperture_photometry(self.data, self.xc, self.yc, self.aperture,
                                             error=error, gain=gain)
 
         assert abs((flux - self.true_flux) / self.true_flux) < 0.01
@@ -118,8 +68,7 @@ class TestErrorGain(object):
         # Scalar error, Array gain.
         error = 1.
         gain = np.ones(self.data.shape, dtype=np.float)
-        flux, fluxerr = aperture_elliptical(self.data, self.xc, self.yc,
-                                            self.a, self.b, self.theta,
+        flux, fluxerr = aperture_photometry(self.data, self.xc, self.yc, self.aperture,
                                             error=error, gain=gain)
         assert abs((flux - self.true_flux) / self.true_flux) < 0.01
         true_error = np.sqrt(error ** 2 * self.area + flux)
@@ -129,8 +78,7 @@ class TestErrorGain(object):
 
         # Array error, no gain.
         error = np.ones(self.data.shape, dtype=np.float)
-        flux, fluxerr = aperture_elliptical(self.data, self.xc, self.yc,
-                                            self.a, self.b, self.theta,
+        flux, fluxerr = aperture_photometry(self.data, self.xc, self.yc, self.aperture,
                                             error=error)
         assert abs((flux - self.true_flux) / self.true_flux) < 0.01
         true_error = np.sqrt(self.area)
@@ -141,8 +89,7 @@ class TestErrorGain(object):
         # Array error, scalar gain.
         error = np.ones(self.data.shape, dtype=np.float)
         gain = 1.
-        flux, fluxerr = aperture_elliptical(self.data, self.xc, self.yc,
-                                            self.a, self.b, self.theta,
+        flux, fluxerr = aperture_photometry(self.data, self.xc, self.yc, self.aperture,
                                             error=error, gain=gain)
         assert abs((flux - self.true_flux) / self.true_flux) < 0.01
         true_error = np.sqrt(self.area + flux)
@@ -153,9 +100,62 @@ class TestErrorGain(object):
         # Array error, Array gain.
         error = np.ones(self.data.shape, dtype=np.float)
         gain = np.ones(self.data.shape, dtype=np.float)
-        flux, fluxerr = aperture_elliptical(self.data, self.xc, self.yc,
-                                            self.a, self.b, self.theta,
+        flux, fluxerr = aperture_photometry(self.data, self.xc, self.yc, self.aperture,
                                             error=error, gain=gain)
         assert abs((flux - self.true_flux) / self.true_flux) < 0.01
         true_error = np.sqrt(self.area + flux)
         assert abs((fluxerr - true_error) / true_error) < 0.01
+
+
+class TestErrorGainCircular(BaseTestErrorGain):
+
+    def setup_class(self):
+        self.data = np.ones((40, 40), dtype=np.float)
+        self.xc = 20.
+        self.yc = 20.
+        r = 10.
+        self.aperture = CircularAperture(r)
+        self.area = np.pi * r * r
+        self.true_flux = self.area
+
+
+class TestErrorGainCircularAnnulus(BaseTestErrorGain):
+
+    def setup_class(self):
+        self.data = np.ones((40, 40), dtype=np.float)
+        self.xc = 20.
+        self.yc = 20.
+        r_in = 8.
+        r_out = 10.
+        self.aperture = CircularAnnulus(r_in, r_out)
+        self.area = np.pi * (r_out * r_out - r_in * r_in)
+        self.true_flux = self.area
+
+
+class TestErrorGainElliptical(BaseTestErrorGain):
+
+    def setup_class(self):
+        self.data = np.ones((40, 40), dtype=np.float)
+        self.xc = 20.
+        self.yc = 20.
+        a = 10.
+        b = 5.
+        theta = -np.pi / 4.
+        self.aperture = EllipticalAperture(a, b, theta)
+        self.area = np.pi * a * b
+        self.true_flux = self.area
+
+
+class TestErrorGainEllipticalAnnulus(BaseTestErrorGain):
+
+    def setup_class(self):
+        self.data = np.ones((40, 40), dtype=np.float)
+        self.xc = 20.
+        self.yc = 20.
+        a_in = 5.
+        a_out = 8.
+        b_out = 6.
+        theta = -np.pi / 4.
+        self.aperture = EllipticalAnnulus(a_in, a_out, b_out, theta)
+        self.area = np.pi * (a_out * b_out) - np.pi * (a_in * b_out * a_in / a_out)
+        self.true_flux = self.area
