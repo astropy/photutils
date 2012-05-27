@@ -275,6 +275,27 @@ class EllipticalAperture(Aperture):
         return (((numerator1 / self.a) ** 2 +
                  (numerator2 / self.b) ** 2) < 1.)
 
+    def encloses_exact(self, x_edges, y_edges):
+        """
+        Return a float array giving the fraction of each pixel covered
+        by the aperture.
+
+        Parameters
+        ----------
+        x_edges : `~numpy.ndarray`
+            x coordinates of the pixel edges (1-d)
+        y_edges : `~numpy.ndarray`
+            y coordinates of the pixel edges (1-d)
+
+        Returns
+        -------
+        overlap_area : `~numpy.ndarray` (float)
+            2-d array of overlapping fraction. This has dimensions
+            (len(y_edges) - 1, len(x_edges) - 1))
+        """
+        from elliptical_exact import elliptical_overlap_grid
+        return elliptical_overlap_grid(x_edges, y_edges, 2. * self.a, 2. * self.b, -self.theta)
+
     def area(self):
         """Return area enclosed by aperture.
 
@@ -357,6 +378,28 @@ class EllipticalAnnulus(Aperture):
         outside_inner_ellipse = ((numerator1 / self.a_in) ** 2 +
                                  (numerator2 / self.b_in) ** 2) > 1.
         return (inside_outer_ellipse & outside_inner_ellipse)
+
+    def encloses_exact(self, x_edges, y_edges):
+        """
+        Return a float array giving the fraction of each pixel covered
+        by the aperture.
+
+        Parameters
+        ----------
+        x_edges : `~numpy.ndarray`
+            x coordinates of the pixel edges (1-d)
+        y_edges : `~numpy.ndarray`
+            y coordinates of the pixel edges (1-d)
+
+        Returns
+        -------
+        overlap_area : `~numpy.ndarray` (float)
+            2-d array of overlapping fraction. This has dimensions
+            (len(y_edges) - 1, len(x_edges) - 1))
+        """
+        from elliptical_exact import elliptical_overlap_grid
+        return elliptical_overlap_grid(x_edges, y_edges, 2. * self.a_out, 2. * self.b_out, -self.theta) \
+             - elliptical_overlap_grid(x_edges, y_edges, 2. * self.a_in, 2. * self.b_in, -self.theta)
 
     def area(self):
         """Return area enclosed by aperture.
