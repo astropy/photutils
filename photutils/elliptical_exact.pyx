@@ -255,12 +255,15 @@ def elliptical_overlap_grid(np.ndarray[DTYPE_t, ndim=1] x,
     cdef np.ndarray[DTYPE_t, ndim=2] frac = np.zeros([ny - 1, nx - 1], dtype=DTYPE)
     cdef unsigned int i, j
 
-    # This can be sped up by finding a bounding box for the ellipse and
-    # checking if there is any point in doing an accurate calculation of
-    # the overlap.
+    # This could be sped up by finding a better bounding box for the ellipse
+
+    # Find bounding circle radius
+    R = max(dx, dy)
 
     for i in range(nx - 1):
-        for j in range(ny - 1):
-            frac[j, i] = elliptical_overlap_single(x[i], y[j], x[i + 1], y[j + 1], dx, dy, theta)
+        if x[i] < R and x[i + 1] > - R:
+            for j in range(ny - 1):
+                if y[j] < R and y[j + 1] > - R:
+                    frac[j, i] = elliptical_overlap_single(x[i], y[j], x[i + 1], y[j + 1], dx, dy, theta)
 
     return frac
