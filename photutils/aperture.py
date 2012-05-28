@@ -97,8 +97,29 @@ class CircularAperture(Aperture):
             bool array indicating whether each element is within the
             aperture.
         """
+        return xx * xx + yy * yy < self.r * self.r
 
-        return (xx ** 2 + yy ** 2) < self.r ** 2
+
+    def encloses_exact(self, x_edges, y_edges):
+        """
+        Return a float array giving the fraction of each pixel covered
+        by the aperture.
+
+        Parameters
+        ----------
+        x_edges : `~numpy.ndarray`
+            x coordinates of the pixel edges (1-d)
+        y_edges : `~numpy.ndarray`
+            y coordinates of the pixel edges (1-d)
+
+        Returns
+        -------
+        overlap_area : `~numpy.ndarray` (float)
+            2-d array of overlapping fraction. This has dimensions
+            (len(y_edges) - 1, len(x_edges) - 1))
+        """
+        from circular_exact import circular_overlap_grid
+        return circular_overlap_grid(x_edges, y_edges, self.r)
 
     def area(self):
         """Return area enclosed by aperture.
@@ -157,9 +178,31 @@ class CircularAnnulus(Aperture):
             bool array indicating whether each element is within the
             aperture.
         """
-        dist_sq = (xx ** 2 + yy ** 2)
-        return ((dist_sq < self.r_out ** 2) &
-                (dist_sq > self.r_in ** 2))
+        dist_sq = xx * xx + yy * yy
+        return (dist_sq < self.r_out * self.r_out) \
+             & (dist_sq > self.r_in * self.r_in)
+
+    def encloses_exact(self, x_edges, y_edges):
+        """
+        Return a float array giving the fraction of each pixel covered
+        by the aperture.
+
+        Parameters
+        ----------
+        x_edges : `~numpy.ndarray`
+            x coordinates of the pixel edges (1-d)
+        y_edges : `~numpy.ndarray`
+            y coordinates of the pixel edges (1-d)
+
+        Returns
+        -------
+        overlap_area : `~numpy.ndarray` (float)
+            2-d array of overlapping fraction. This has dimensions
+            (len(y_edges) - 1, len(x_edges) - 1))
+        """
+        from circular_exact import circular_overlap_grid
+        return circular_overlap_grid(x_edges, y_edges, self.r_out) \
+             - circular_overlap_grid(x_edges, y_edges, self.r_in)
 
     def area(self):
         """Return area enclosed by aperture.
@@ -371,10 +414,13 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
         Mask to apply to the data. The value of masked pixels are replaced
         by the value of the pixel mirrored across the center of the object,
         if available. If unavailable, the value is set to zero.
-    subpixels : int, optional
+    subpixels : int or 'exact', optional
         Resample pixels by this factor (in each dimension) when summing
         flux in apertures. That is, each pixel is divided into
-        `subpixels ** 2` subpixels.
+        `subpixels ** 2` subpixels. This can also be set to 'exact' to
+        indicate that the exact overlap fraction should be used (this is
+        only available for aperture classes that define the
+        ``overlap_area`` method)
     pixelwise_errors : bool, optional
         For error and/or gain arrays. If True, assume error and/or gain
         vary significantly within an aperture: sum contribution from each
@@ -394,6 +440,8 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
     fluxerr : float or `~numpy.ndarray`
         Uncertainty in flux values. Only returned if error is not `None`.
     """
+
+    from .utils.downsample import downsample
 
     # Check input array type and dimension.
     data = np.asarray(data)
@@ -470,11 +518,11 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
                              'Only 2-d arrays supported.'.format(mask.ndim))
 
     # Check that 'subpixels' is an int and is 1 or greater.
-    subpixels = int(subpixels)
-    if subpixels < 1:
-        raise ValueError('an integer greater than 0 is required')
-    subpixelsize = 1. / subpixels  # Size of subpixels in original pixels.
-    subpixelarea = subpixelsize * subpixelsize
+    if subpixels != 'exact':
+        subpixels = int(subpixels)
+        if subpixels < 1:
+            raise ValueError('an integer greater than 0 is required')
+        subpixelsize = 1. / subpixels  # Size of subpixels in original pixels.
 
     # Initialize arrays to return.
     flux = np.zeros(apertures.shape, dtype=np.float)
@@ -556,39 +604,49 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
             if pixelwise_errors:
                 subvariance[y_bad, x_bad] = 0.
 
-        # Resample the sub-arrays (if necessary).
-        if subpixels > 1:
-            subdata = np.repeat(np.repeat(subdata, subpixels, axis=0),
-                               subpixels, axis=1)
-            if pixelwise_errors:
-                subvariance = \
-                    np.repeat(np.repeat(subvariance, subpixels, axis=0),
-                              subpixels, axis=1)
+        # In this case we just compute the position of the pixel 'walls' in x and y
+        if subpixels == 'exact':
 
-        # Get the coordinates of each pixel in the sub-array in units of
-        # the original image pixels, relative to object center.
-        x_vals = np.arange(x_min - xc[i] - 0.5 + subpixelsize / 2.,
-                           x_max - xc[i] - 0.5 + subpixelsize / 2.,
-                           subpixelsize)
-        y_vals = np.arange(y_min - yc[i] - 0.5 + subpixelsize / 2.,
-                           y_max - yc[i] - 0.5 + subpixelsize / 2.,
-                           subpixelsize)
-        xx, yy = np.meshgrid(x_vals, y_vals)
+            x_edges = np.linspace(x_min - xc[i] - 0.5,
+                                  x_max - xc[i] - 0.5,
+                                  subdata.shape[0] + 1)
+            y_edges = np.linspace(y_min - yc[i] - 0.5,
+                                  y_max - yc[i] - 0.5,
+                                  subdata.shape[1] + 1)
+
+        else:
+
+            x_vals = np.arange(x_min - xc[i] - 0.5 + subpixelsize / 2.,
+                               x_max - xc[i] - 0.5 + subpixelsize / 2.,
+                               subpixelsize)
+            y_vals = np.arange(y_min - yc[i] - 0.5 + subpixelsize / 2.,
+                               y_max - yc[i] - 0.5 + subpixelsize / 2.,
+                               subpixelsize)
+
+            xx, yy = np.meshgrid(x_vals, y_vals)
 
         # Loop over apertures for this object.
         for j in range(apertures.shape[0]):
 
-            # Which pixels are in this aperture.
-            in_aper = apertures[j, i].encloses(xx, yy)
+            # Find fraction of overlap between aperture and pixels
+            if subpixels == 'exact':
+                try:
+                    fraction = apertures[j, i].encloses_exact(x_edges, y_edges)
+                except AttributeError:
+                    raise Exception("subpixels='exact' cannot be used for "
+                                    "{0:s}".format(apertures[j, i].__class__.__name__))
+            else:
+                in_aper = apertures[j, i].encloses(xx, yy).astype(float)
+                fraction = downsample(in_aper, subpixels)
 
             # Sum the flux in those pixels and assign it to the output array.
-            flux[j, i] = subdata[in_aper].sum() * subpixelarea
+            flux[j, i] = np.sum(subdata * fraction)
 
             if error is not None:  # If given, calculate error on flux.
 
                 # If pixelwise, we have to do this the slow way.
                 if pixelwise_errors:
-                    fluxvar = subvariance[in_aper].sum() * subpixelarea
+                    fluxvar = np.sum(subvariance * fraction)
 
                 # Otherwise, assume error and gain are constant over whole
                 # aperture.
@@ -597,7 +655,7 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
                     if hasattr(apertures[j, i], 'area'):
                         area = apertures[j, i].area()
                     else:
-                        area = in_aper.sum() * subpixelarea
+                        area = np.sum(fraction)
                     fluxvar = local_error ** 2 * area
                     if gain is not None:
                         local_gain = gain[int(yc[i] + 0.5), int(xc[i] + 0.5)]
@@ -628,7 +686,7 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
 
 
 def aperture_circular(data, xc, yc, r, error=None, gain=None, mask=None,
-                      subpixels=5, pixelwise_errors=True):
+                      subpixels='exact', pixelwise_errors=True):
     r"""Sum flux within circular apertures.
 
     Multiple objects and multiple apertures per object can be specified.
@@ -672,7 +730,8 @@ def aperture_circular(data, xc, yc, r, error=None, gain=None, mask=None,
     subpixels : int, optional
         Resample pixels by this factor (in each dimension) when summing
         flux in apertures. That is, each pixel is divided into
-        `subpixels ** 2` subpixels.
+        `subpixels ** 2` subpixels. This can also be set to 'exact' to
+        indicate that the exact overlap fraction should be used.
     pixelwise_errors : bool, optional
         For error and/or gain arrays. If True, assume error and/or gain
         vary significantly within an aperture: sum contribution from each
@@ -787,7 +846,7 @@ def aperture_elliptical(data, xc, yc, a, b, theta, error=None, gain=None,
 
 
 def annulus_circular(data, xc, yc, r_in, r_out, error=None, gain=None,
-                     mask=None, subpixels=5, pixelwise_errors=True):
+                     mask=None, subpixels='exact', pixelwise_errors=True):
     r"""Sum flux within circular annuli.
 
     Multiple objects and multiple apertures per object can be specified.
@@ -832,7 +891,8 @@ def annulus_circular(data, xc, yc, r_in, r_out, error=None, gain=None,
     subpixels : int, optional
         Resample pixels by this factor (in each dimension) when summing
         flux in apertures. That is, each pixel is divided into
-        `subpixels ** 2` subpixels.
+        `subpixels ** 2` subpixels. This can also be set to 'exact' to
+        indicate that the exact overlap fraction should be used.
     pixelwise_errors : bool, optional
         For error and/or gain arrays. If True, assume error and/or gain
         vary significantly within an aperture: sum contribution from each
