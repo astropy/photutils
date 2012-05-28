@@ -609,10 +609,10 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
 
             x_edges = np.linspace(x_min - xc[i] - 0.5,
                                   x_max - xc[i] - 0.5,
-                                  subdata.shape[0] + 1)
+                                  subdata.shape[1] + 1)
             y_edges = np.linspace(y_min - yc[i] - 0.5,
                                   y_max - yc[i] - 0.5,
-                                  subdata.shape[1] + 1)
+                                  subdata.shape[0] + 1)
 
         else:
 
