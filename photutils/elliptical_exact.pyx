@@ -227,13 +227,13 @@ def elliptical_overlap_single(double xmin, double ymin, double xmax, double ymax
     cdef double scale
 
     # Find scale by which the areas will be shrunk
-    scale = dx * dy / 4.
+    scale = dx * dy
 
     # Reproject rectangle to frame of reference in which ellipse is a unit circle
-    x1, y1 = (xmin * cos_m_theta - ymin * sin_m_theta) / dx * 2, (xmin * sin_m_theta + ymin * cos_m_theta) / dy * 2
-    x2, y2 = (xmax * cos_m_theta - ymin * sin_m_theta) / dx * 2, (xmax * sin_m_theta + ymin * cos_m_theta) / dy * 2
-    x3, y3 = (xmax * cos_m_theta - ymax * sin_m_theta) / dx * 2, (xmax * sin_m_theta + ymax * cos_m_theta) / dy * 2
-    x4, y4 = (xmin * cos_m_theta - ymax * sin_m_theta) / dx * 2, (xmin * sin_m_theta + ymax * cos_m_theta) / dy * 2
+    x1, y1 = (xmin * cos_m_theta - ymin * sin_m_theta) / dx, (xmin * sin_m_theta + ymin * cos_m_theta) / dy
+    x2, y2 = (xmax * cos_m_theta - ymin * sin_m_theta) / dx, (xmax * sin_m_theta + ymin * cos_m_theta) / dy
+    x3, y3 = (xmax * cos_m_theta - ymax * sin_m_theta) / dx, (xmax * sin_m_theta + ymax * cos_m_theta) / dy
+    x4, y4 = (xmin * cos_m_theta - ymax * sin_m_theta) / dx, (xmin * sin_m_theta + ymax * cos_m_theta) / dy
 
     # Divide resulting quadrilateral into two triangles and find intersection with unit circle
     return (overlap_area_triangle_unit_circle(x1, y1, x2, y2, x3, y3) \

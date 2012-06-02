@@ -295,7 +295,7 @@ class EllipticalAperture(Aperture):
             (len(y_edges) - 1, len(x_edges) - 1))
         """
         from elliptical_exact import elliptical_overlap_grid
-        return elliptical_overlap_grid(x_edges, y_edges, 2. * self.a, 2. * self.b, self.theta)
+        return elliptical_overlap_grid(x_edges, y_edges, self.a, self.b, self.theta)
 
     def area(self):
         """Return area enclosed by aperture.
@@ -399,8 +399,8 @@ class EllipticalAnnulus(Aperture):
             (len(y_edges) - 1, len(x_edges) - 1))
         """
         from elliptical_exact import elliptical_overlap_grid
-        return elliptical_overlap_grid(x_edges, y_edges, 2. * self.a_out, 2. * self.b_out, self.theta) \
-             - elliptical_overlap_grid(x_edges, y_edges, 2. * self.a_in, 2. * self.b_in, self.theta)
+        return elliptical_overlap_grid(x_edges, y_edges, self.a_out, self.b_out, self.theta) \
+             - elliptical_overlap_grid(x_edges, y_edges, self.a_in, self.b_in, self.theta)
 
     def area(self):
         """Return area enclosed by aperture.
