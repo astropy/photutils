@@ -225,7 +225,8 @@ class EllipticalAperture(Aperture):
     b : float
         The semiminor axis.
     theta : float
-        The position angle of the semimajor axis in radians.
+        The position angle of the semimajor axis in radians
+        (counterclockwise).
     """
 
     def __init__(self, a, b, theta):
@@ -268,9 +269,9 @@ class EllipticalAperture(Aperture):
 
         if self.a == 0 or self.b == 0:
             return np.zeros(xx.shape, dtype=np.bool)
-        numerator1 = (xx * math.cos(self.theta) -
+        numerator1 = (xx * math.cos(self.theta) +
                       yy * math.sin(self.theta))
-        numerator2 = (yy * math.cos(self.theta) +
+        numerator2 = (yy * math.cos(self.theta) -
                       xx * math.sin(self.theta))
         return (((numerator1 / self.a) ** 2 +
                  (numerator2 / self.b) ** 2) < 1.)
@@ -294,7 +295,7 @@ class EllipticalAperture(Aperture):
             (len(y_edges) - 1, len(x_edges) - 1))
         """
         from elliptical_exact import elliptical_overlap_grid
-        return elliptical_overlap_grid(x_edges, y_edges, 2. * self.a, 2. * self.b, -self.theta)
+        return elliptical_overlap_grid(x_edges, y_edges, 2. * self.a, 2. * self.b, self.theta)
 
     def area(self):
         """Return area enclosed by aperture.
@@ -321,7 +322,7 @@ class EllipticalAnnulus(Aperture):
         by scaling by a_in/a_out.)
     theta : float
         The position angle of the semimajor axis in radians.
-
+        (counterclockwise).
     """
 
     def __init__(self, a_in, a_out, b_out, theta):
@@ -367,9 +368,9 @@ class EllipticalAnnulus(Aperture):
         """
         if self.a_out == 0 or self.b_out == 0:
             return np.zeros(xx.shape, dtype=np.bool)
-        numerator1 = (xx * math.cos(self.theta) -
+        numerator1 = (xx * math.cos(self.theta) +
                       yy * math.sin(self.theta))
-        numerator2 = (yy * math.cos(self.theta) +
+        numerator2 = (yy * math.cos(self.theta) -
                       xx * math.sin(self.theta))
         inside_outer_ellipse = ((numerator1 / self.a_out) ** 2 +
                                 (numerator2 / self.b_out) ** 2) < 1.
@@ -398,8 +399,8 @@ class EllipticalAnnulus(Aperture):
             (len(y_edges) - 1, len(x_edges) - 1))
         """
         from elliptical_exact import elliptical_overlap_grid
-        return elliptical_overlap_grid(x_edges, y_edges, 2. * self.a_out, 2. * self.b_out, -self.theta) \
-             - elliptical_overlap_grid(x_edges, y_edges, 2. * self.a_in, 2. * self.b_in, -self.theta)
+        return elliptical_overlap_grid(x_edges, y_edges, 2. * self.a_out, 2. * self.b_out, self.theta) \
+             - elliptical_overlap_grid(x_edges, y_edges, 2. * self.a_in, 2. * self.b_in, self.theta)
 
     def area(self):
         """Return area enclosed by aperture.
