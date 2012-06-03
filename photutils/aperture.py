@@ -597,7 +597,7 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
             # Set pixels that mirrored to another masked pixel to zero.
             # This will also set to zero any pixels that mirrored out of
             # the image.
-            mirror_is_masked = mask[y_mirror, x_mirror]
+            mirror_is_masked = submask[y_mirror, x_mirror]
             x_bad = x_masked[mirror_is_masked]
             y_bad = y_masked[mirror_is_masked]
             subdata[y_bad, x_bad] = 0.
