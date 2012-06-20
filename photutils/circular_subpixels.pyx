@@ -13,7 +13,7 @@ ctypedef np.float64_t DTYPE_t
 
 def circular_overlap_grid(double xmin, double xmax, int nx,
                           double ymin, double ymax, int ny,
-			  double R, int subpixels):
+                          double R, int subpixels):
     '''Find area of overlap in each element on grid'''
 
     cdef unsigned int i, j
@@ -47,7 +47,7 @@ def circular_overlap_grid(double xmin, double xmax, int nx,
                     elif d < R + pixrad:
                         frac[j, i] = circular_overlap_single(x - 0.5 * dx, \
                             x + 0.5 * dx, y - 0.5 * dy, y + 0.5 * dy, \
-                            subpixels, R)
+                            R, subpixels)
     return frac
 		        
 def circular_overlap_single(double x0, double x1, double y0, double y1,
