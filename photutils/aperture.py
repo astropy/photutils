@@ -225,7 +225,8 @@ class EllipticalAperture(Aperture):
     b : float
         The semiminor axis.
     theta : float
-        The position angle of the semimajor axis in radians.
+        The position angle of the semimajor axis in radians
+        (counterclockwise).
     """
 
     def __init__(self, a, b, theta):
@@ -268,12 +269,33 @@ class EllipticalAperture(Aperture):
 
         if self.a == 0 or self.b == 0:
             return np.zeros(xx.shape, dtype=np.bool)
-        numerator1 = (xx * math.cos(self.theta) -
+        numerator1 = (xx * math.cos(self.theta) +
                       yy * math.sin(self.theta))
-        numerator2 = (yy * math.cos(self.theta) +
+        numerator2 = (yy * math.cos(self.theta) -
                       xx * math.sin(self.theta))
         return (((numerator1 / self.a) ** 2 +
                  (numerator2 / self.b) ** 2) < 1.)
+
+    def encloses_exact(self, x_edges, y_edges):
+        """
+        Return a float array giving the fraction of each pixel covered
+        by the aperture.
+
+        Parameters
+        ----------
+        x_edges : `~numpy.ndarray`
+            x coordinates of the pixel edges (1-d)
+        y_edges : `~numpy.ndarray`
+            y coordinates of the pixel edges (1-d)
+
+        Returns
+        -------
+        overlap_area : `~numpy.ndarray` (float)
+            2-d array of overlapping fraction. This has dimensions
+            (len(y_edges) - 1, len(x_edges) - 1))
+        """
+        from elliptical_exact import elliptical_overlap_grid
+        return elliptical_overlap_grid(x_edges, y_edges, self.a, self.b, self.theta)
 
     def area(self):
         """Return area enclosed by aperture.
@@ -300,7 +322,7 @@ class EllipticalAnnulus(Aperture):
         by scaling by a_in/a_out.)
     theta : float
         The position angle of the semimajor axis in radians.
-
+        (counterclockwise).
     """
 
     def __init__(self, a_in, a_out, b_out, theta):
@@ -346,9 +368,9 @@ class EllipticalAnnulus(Aperture):
         """
         if self.a_out == 0 or self.b_out == 0:
             return np.zeros(xx.shape, dtype=np.bool)
-        numerator1 = (xx * math.cos(self.theta) -
+        numerator1 = (xx * math.cos(self.theta) +
                       yy * math.sin(self.theta))
-        numerator2 = (yy * math.cos(self.theta) +
+        numerator2 = (yy * math.cos(self.theta) -
                       xx * math.sin(self.theta))
         inside_outer_ellipse = ((numerator1 / self.a_out) ** 2 +
                                 (numerator2 / self.b_out) ** 2) < 1.
@@ -357,6 +379,28 @@ class EllipticalAnnulus(Aperture):
         outside_inner_ellipse = ((numerator1 / self.a_in) ** 2 +
                                  (numerator2 / self.b_in) ** 2) > 1.
         return (inside_outer_ellipse & outside_inner_ellipse)
+
+    def encloses_exact(self, x_edges, y_edges):
+        """
+        Return a float array giving the fraction of each pixel covered
+        by the aperture.
+
+        Parameters
+        ----------
+        x_edges : `~numpy.ndarray`
+            x coordinates of the pixel edges (1-d)
+        y_edges : `~numpy.ndarray`
+            y coordinates of the pixel edges (1-d)
+
+        Returns
+        -------
+        overlap_area : `~numpy.ndarray` (float)
+            2-d array of overlapping fraction. This has dimensions
+            (len(y_edges) - 1, len(x_edges) - 1))
+        """
+        from elliptical_exact import elliptical_overlap_grid
+        return elliptical_overlap_grid(x_edges, y_edges, self.a_out, self.b_out, self.theta) \
+             - elliptical_overlap_grid(x_edges, y_edges, self.a_in, self.b_in, self.theta)
 
     def area(self):
         """Return area enclosed by aperture.
@@ -765,7 +809,7 @@ def aperture_circular(data, xc, yc, r, error=None, gain=None, mask=None,
 
 
 def aperture_elliptical(data, xc, yc, a, b, theta, error=None, gain=None,
-                        mask=None, subpixels=5, pixelwise_errors=True):
+                        mask=None, subpixels='exact', pixelwise_errors=True):
     r"""Sum flux within elliptical apertures.
 
     Multiple objects and multiple apertures per object can be specified.
@@ -778,12 +822,12 @@ def aperture_elliptical(data, xc, yc, a, b, theta, error=None, gain=None,
         The x and y coordinates of the object center(s). If list_like,
         the lengths must match.
     a, b, theta : float or array_like
-        The parameters of the aperture(s): respectively, the
-        semimajor, semiminor axes in pixels and the position angle in
-        radians. If an array (of at most 2 dimensions), the trailing
-        dimension of the array must be broadcastable to N_objects (=
-        `len(xc)`). In other words, the trailing dimension must be
-        equal to either 1 or N_objects. The following shapes are thus
+        The parameters of the aperture(s): respectively, the semimajor,
+        semiminor axes in pixels, and the position angle in radians
+        (measured counterclockwise). If an array (of at most 2 dimensions),
+        the trailing dimension of the array must be broadcastable to
+        N_objects (= `len(xc)`). In other words, the trailing dimension must
+        be equal to either 1 or N_objects. The following shapes are thus
         allowed:
 
         `()` or `(1,)` or `(1, 1)`
@@ -811,7 +855,8 @@ def aperture_elliptical(data, xc, yc, a, b, theta, error=None, gain=None,
     subpixels : int, optional
         Resample pixels by this factor (in each dimension) when summing
         flux in apertures. That is, each pixel is divided into
-        `subpixels ** 2` subpixels.
+        `subpixels ** 2` subpixels. This can also be set to 'exact' to
+        indicate that the exact overlap fraction should be used.
     pixelwise_errors : bool, optional
         For error and/or gain arrays. If True, assume error and/or gain
         vary significantly within an aperture: sum contribution from each
@@ -927,8 +972,8 @@ def annulus_circular(data, xc, yc, r_in, r_out, error=None, gain=None,
 
 
 def annulus_elliptical(data, xc, yc, a_in, a_out, b_out, theta,
-                       error=None, gain=None, mask=None, subpixels=5,
-                        pixelwise_errors=True):
+                       error=None, gain=None, mask=None, subpixels='exact',
+                       pixelwise_errors=True):
     r"""Sum flux within elliptical annuli.
 
     Multiple objects and multiple apertures per object can be specified.
@@ -941,12 +986,12 @@ def annulus_elliptical(data, xc, yc, a_in, a_out, b_out, theta,
         The x and y coordinates of the object center(s). If list_like,
         the lengths must match.
     a_in, a_out, b_out, theta : float or array_like
-        The parameters of the annuli: respectively, the inner and
-        outer semimajor axis in pixels, the outer semiminor axis in
-        pixels, the position angle in radians. If an array (of at most
-        2 dimensions), the trailing dimension of the array must be
-        broadcastable to N_objects (= `len(xc)`). In other words, the
-        trailing dimension must be equal to either 1 or N_objects. The
+        The parameters of the annuli: respectively, the inner and outer
+        semimajor axis in pixels, the outer semiminor axis in pixels, and
+        the position angle in radians (measured counterclockwise). If an
+        array (of at most 2 dimensions), the trailing dimension of the array
+        must be broadcastable to N_objects (= `len(xc)`). In other words,
+        the trailing dimension must be equal to either 1 or N_objects. The
         following shapes are thus allowed:
 
         `()` or `(1,)` or `(1, 1)`
@@ -974,7 +1019,8 @@ def annulus_elliptical(data, xc, yc, a_in, a_out, b_out, theta,
     subpixels : int, optional
         Resample pixels by this factor (in each dimension) when summing
         flux in apertures. That is, each pixel is divided into
-        `subpixels ** 2` subpixels.
+        `subpixels ** 2` subpixels. This can also be set to 'exact' to
+        indicate that the exact overlap fraction should be used.
     pixelwise_errors : bool, optional
         For error and/or gain arrays. If True, assume error and/or gain
         vary significantly within an aperture: sum contribution from each
