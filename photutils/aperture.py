@@ -121,7 +121,7 @@ class CircularAperture(Aperture):
             aperture.
         """
         from circular_subpixels import circular_overlap_grid
-        return circular_overlap_grid(x_min, x_max, nx, y_min, y_max, ny,
+        return circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
                                      self.r, subpixels)
 
 
