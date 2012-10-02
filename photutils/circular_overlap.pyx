@@ -81,12 +81,12 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                 # If pixel center is "close" to circle border, find overlap.
                 elif d < R + pixrad:
 
-		    # Either do exact calculation...
+                    # Either do exact calculation...
                     if use_exact:
                         frac[j, i] = overlap_single_exact(x - 0.5 * dx, \
                             y - 0.5 * dy, x + 0.5 * dx, y + 0.5 * dy, R)
-		    
-		    # or use subpixel samping.
+
+                    # or use subpixel samping.
                     else:
                         frac[j, i] = overlap_single_subpixel(x - 0.5 * dx, \
                             y - 0.5 * dy, x + 0.5 * dx, y + 0.5 * dy, R,
