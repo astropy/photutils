@@ -65,13 +65,11 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     ylim0 = -R - 0.5 * dy                   # ...
     ylim1 = R + 0.5 * dy                    # ...
 
-    x = xmin - 0.5 * dx  # x coordinate of pixel center
     for i in range(nx):
-        x += dx
+        x = xmin + (i + 0.5) * dx  # x coordinate of pixel center
         if x > xlim0 and x < xlim1:
-            y = ymin - 0.5 * dy  # y coordinate of pixel center.
             for j in range(ny):
-                y += dy
+                y = ymin + (j + 0.5) * dy  # y coordinate of pixel center
 
                 # Distance from circle center to pixel center.
                 d = sqrt(x * x + y * y)
