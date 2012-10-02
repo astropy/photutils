@@ -70,29 +70,31 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         if x > xlim0 and x < xlim1:
             for j in range(ny):
                 y = ymin + (j + 0.5) * dy  # y coordinate of pixel center
+		if y > ylim0 and y < ylim1:
 
-                # Distance from circle center to pixel center.
-                d = sqrt(x * x + y * y)
+                    # Distance from circle center to pixel center.
+                    d = sqrt(x * x + y * y)
 
-                # If pixel center is "well within" circle, count full pixel.
-                if d < R - pixrad:
-                    frac[j, i] = 1.
+                    # If pixel center is "well within" circle, count full pixel.
+                    if d < R - pixrad:
+                        frac[j, i] = 1.
 
-                # If pixel center is "close" to circle border, find overlap.
-                elif d < R + pixrad:
+                    # If pixel center is "close" to circle border, find overlap.
+                    elif d < R + pixrad:
 
-                    # Either do exact calculation...
-                    if use_exact:
-                        frac[j, i] = overlap_single_exact(x - 0.5 * dx, \
-                            y - 0.5 * dy, x + 0.5 * dx, y + 0.5 * dy, R)
+                        # Either do exact calculation...
+                        if use_exact:
+                            frac[j, i] = overlap_single_exact(x - 0.5 * dx, \
+                                y - 0.5 * dy, x + 0.5 * dx, y + 0.5 * dy, R)
 
-                    # or use subpixel samping.
-                    else:
-                        frac[j, i] = overlap_single_subpixel(x - 0.5 * dx, \
-                            y - 0.5 * dy, x + 0.5 * dx, y + 0.5 * dy, R,
-                            subpixels)
+                        # or use subpixel samping.
+                        else:
+                            frac[j, i] = overlap_single_subpixel(x - 0.5 * dx, \
+                                y - 0.5 * dy, x + 0.5 * dx, y + 0.5 * dy, R,
+                                subpixels)
 
-                    # Otherwise, it is fully outside circle. No action needed.
+                        # Otherwise, it is fully outside circle.
+                        # No action needed.
 
     return frac
 
