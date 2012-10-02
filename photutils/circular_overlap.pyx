@@ -70,7 +70,7 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         if x > xlim0 and x < xlim1:
             for j in range(ny):
                 y = ymin + (j + 0.5) * dy  # y coordinate of pixel center
-		if y > ylim0 and y < ylim1:
+                if y > ylim0 and y < ylim1:
 
                     # Distance from circle center to pixel center.
                     d = sqrt(x * x + y * y)
