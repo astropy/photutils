@@ -99,27 +99,54 @@ class CircularAperture(Aperture):
         """
         return xx * xx + yy * yy < self.r * self.r
 
+    def encloses_subpixels(self, x_min, x_max, y_min, y_max, nx, ny,
+                           subpixels):
+        """Return a float array giving the fraction of each pixel covered
+        by the aperture, using a sub-pixel sampling method.
 
-    def encloses_exact(self, x_edges, y_edges):
-        """
-        Return a float array giving the fraction of each pixel covered
-        by the aperture.
 
         Parameters
         ----------
-        x_edges : `~numpy.ndarray`
-            x coordinates of the pixel edges (1-d)
-        y_edges : `~numpy.ndarray`
-            y coordinates of the pixel edges (1-d)
+        x_min, x_max : float
+            x coordinates of outer edges of array
+        y_min, y_max : float
+            y coordinates of outer edges of array
+        nx, ny : int
+            dimension of array
+        subpixels : int
+
+        Returns
+        -------
+       overlap_area : `~numpy.ndarray` (float)
+            2-d array of overlapping fraction.
+        """
+        from circular_overlap import circular_overlap_grid
+        return circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
+                                     self.r, 0, subpixels)
+
+
+    def encloses_exact(self, x_min, x_max, y_min, y_max, nx, ny):
+        """
+        Return a float array giving the fraction of each pixel covered
+        by the aperture, using an exact calculation.
+
+        Parameters
+        ----------
+        x_min, x_max : float
+            x coordinates of outer edges of array
+        y_min, y_max : float
+            y coordinates of outer edges of array
+        nx, ny : int
+            dimension of array
 
         Returns
         -------
         overlap_area : `~numpy.ndarray` (float)
-            2-d array of overlapping fraction. This has dimensions
-            (len(y_edges) - 1, len(x_edges) - 1))
+            2-d array of overlapping fraction.
         """
-        from circular_exact import circular_overlap_grid
-        return circular_overlap_grid(x_edges, y_edges, self.r)
+        from circular_overlap import circular_overlap_grid
+        return circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
+                                     self.r, 1, 1)
 
     def area(self):
         """Return area enclosed by aperture.
@@ -182,27 +209,58 @@ class CircularAnnulus(Aperture):
         return (dist_sq < self.r_out * self.r_out) \
              & (dist_sq > self.r_in * self.r_in)
 
-    def encloses_exact(self, x_edges, y_edges):
-        """
-        Return a float array giving the fraction of each pixel covered
-        by the aperture.
+
+    def encloses_subpixels(self, x_min, x_max, y_min, y_max, nx, ny,
+                           subpixels):
+        """Return a float array giving the fraction of each pixel covered
+        by the aperture, using a sub-pixel sampling method.
+
 
         Parameters
         ----------
-        x_edges : `~numpy.ndarray`
-            x coordinates of the pixel edges (1-d)
-        y_edges : `~numpy.ndarray`
-            y coordinates of the pixel edges (1-d)
+        x_min, x_max : float
+            x coordinates of outer edges of array
+        y_min, y_max : float
+            y coordinates of outer edges of array
+        nx, ny : int
+            dimension of array
+        subpixels : int
+
+        Returns
+        -------
+       overlap_area : `~numpy.ndarray` (float)
+            2-d array of overlapping fraction.
+        """
+        from circular_overlap import circular_overlap_grid
+        return (circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
+                                      self.r_out, 0, subpixels) -
+                circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
+                                      self.r_in, 0, subpixels))
+
+    def encloses_exact(self, x_min, x_max, y_min, y_max, nx, ny):
+        """
+        Return a float array giving the fraction of each pixel covered
+        by the aperture, using an exact calculation.
+
+        Parameters
+        ----------
+        x_min, x_max : float
+            x coordinates of outer edges of array
+        y_min, y_max : float
+            y coordinates of outer edges of array
+        nx, ny : int
+            dimension of array
 
         Returns
         -------
         overlap_area : `~numpy.ndarray` (float)
-            2-d array of overlapping fraction. This has dimensions
-            (len(y_edges) - 1, len(x_edges) - 1))
+            2-d array of overlapping fraction.
         """
-        from circular_exact import circular_overlap_grid
-        return circular_overlap_grid(x_edges, y_edges, self.r_out) \
-             - circular_overlap_grid(x_edges, y_edges, self.r_in)
+        from circular_overlap import circular_overlap_grid
+        return (circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
+                                      self.r_out, 1, 1) -
+                circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
+                                      self.r_in, 1, 1))
 
     def area(self):
         """Return area enclosed by aperture.
@@ -648,40 +706,42 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
             if pixelwise_errors:
                 subvariance[y_bad, x_bad] = 0.
 
-        # In this case we just compute the position of the pixel 'walls' in x and y
-        if subpixels == 'exact':
-
-            x_edges = np.linspace(x_min - xc[i] - 0.5,
-                                  x_max - xc[i] - 0.5,
-                                  subdata.shape[1] + 1)
-            y_edges = np.linspace(y_min - yc[i] - 0.5,
-                                  y_max - yc[i] - 0.5,
-                                  subdata.shape[0] + 1)
-
-        else:
-
-            x_vals = np.arange(x_min - xc[i] - 0.5 + subpixelsize / 2.,
-                               x_max - xc[i] - 0.5 + subpixelsize / 2.,
-                               subpixelsize)
-            y_vals = np.arange(y_min - yc[i] - 0.5 + subpixelsize / 2.,
-                               y_max - yc[i] - 0.5 + subpixelsize / 2.,
-                               subpixelsize)
-
-            xx, yy = np.meshgrid(x_vals, y_vals)
-
         # Loop over apertures for this object.
         for j in range(apertures.shape[0]):
 
             # Find fraction of overlap between aperture and pixels
             if subpixels == 'exact':
                 try:
-                    fraction = apertures[j, i].encloses_exact(x_edges, y_edges)
+                    fraction = apertures[j, i].encloses_exact(
+                        x_min - xc[i] - 0.5, x_max - xc[i] - 0.5,
+                        y_min - yc[i] - 0.5, y_max - yc[i] - 0.5,
+                        subdata.shape[1], subdata.shape[0])
                 except AttributeError:
                     raise Exception("subpixels='exact' cannot be used for "
                                     "{0:s}".format(apertures[j, i].__class__.__name__))
+
+            # Otherwise, try to use "fast" subpixel sampling via
+            # `encloses_subpixels(...)`. If that method is not available,
+            # create a big subsampled grid, use the standard `encloses(...)`
+            # method, and then downsample to the original pixel scale.
             else:
-                in_aper = apertures[j, i].encloses(xx, yy).astype(float)
-                fraction = downsample(in_aper, subpixels)
+                try:
+                    fraction = apertures[j, i].encloses_subpixels(
+                        x_min - xc[i] - 0.5, x_max - xc[i] - 0.5,
+                        y_min - yc[i] - 0.5, y_max - yc[i] - 0.5,
+                        subdata.shape[1], subdata.shape[0], subpixels)
+                except AttributeError:
+                    x_vals = np.arange(
+                        x_min - xc[i] - 0.5 + subpixelsize / 2.,
+                        x_max - xc[i] - 0.5 + subpixelsize / 2.,
+                        subpixelsize)
+                    y_vals = np.arange(
+                        y_min - yc[i] - 0.5 + subpixelsize / 2.,
+                        y_max - yc[i] - 0.5 + subpixelsize / 2.,
+                        subpixelsize)
+                    xx, yy = np.meshgrid(x_vals, y_vals)
+                    in_aper = apertures[j, i].encloses(xx, yy).astype(float)
+                    fraction = downsample(in_aper, subpixels)
 
             # Sum the flux in those pixels and assign it to the output array.
             flux[j, i] = np.sum(subdata * fraction)
