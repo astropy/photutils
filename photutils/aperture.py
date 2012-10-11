@@ -26,32 +26,38 @@ class Aperture(object):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def extent():
+    def extent(self):
         """Extent of aperture relative to object center.
 
         Returns
         -------
         x_min, x_max, y_min, y_max: float
+            Extent of the aperture relative to object center.
         """
         return
 
     @abc.abstractmethod
-    def encloses(xx, yy):
-        """Return a bool array representing which elements of an array
-        are in an aperture.
+    def encloses(self, x_min, x_max, y_min, y_max, nx, ny, method='center'):
+        """Return a float array giving the fraction of each pixel covered
+        by the aperture.
 
         Parameters
         ----------
-        xx : `~numpy.ndarray`
-            x coordinate of each element, relative to object center
-        yy : `~numpy.ndarray`
-            y coordinate of each element, relative to object center
+        x_min, x_max : float
+            x coordinates of outer edges of array, relative to object center.
+        y_min, y_max : float
+            y coordinates of outer edges of array, relative to object center.
+        nx, ny : int
+            dimensions of array
+        method : str
+            Which method to use for calculation. Available methods can
+            differ between derived classes.
 
         Returns
         -------
-        in_aper : `~numpy.ndarray` (bool)
-            2-d bool array indicating whether each element is within the
-            aperture.
+        overlap_area : `~numpy.ndarray` (float)
+            2-d array of shape (ny, nx) giving the fraction of each pixel
+            covered by the aperture.
         """
         return
 
@@ -70,92 +76,34 @@ class CircularAperture(Aperture):
             raise ValueError('r must be non-negative')
         self.r = r
 
+
     def extent(self):
-        """Extent of aperture relative to object center.
-
-        Returns
-        -------
-        x_min, x_max, y_min, y_max: float
-        """
-
-        return (-self.r, self.r, -self.r, self.r)
-
-    def encloses(self, xx, yy):
-        """Return a bool array representing which elements of an array
-        are in the aperture.
-
-        Parameters
-        ----------
-        xx : `~numpy.ndarray`
-            x coordinate of each element, relative to object center
-        yy : `~numpy.ndarray`
-            y coordinate of each element, relative to object center
-
-        Returns
-        -------
-        in_aper : `~numpy.ndarray` (bool)
-            bool array indicating whether each element is within the
-            aperture.
-        """
-        return xx * xx + yy * yy < self.r * self.r
-
-    def encloses_subpixels(self, x_min, x_max, y_min, y_max, nx, ny,
-                           subpixels):
-        """Return a float array giving the fraction of each pixel covered
-        by the aperture, using a sub-pixel sampling method.
+        return -self.r, self.r, -self.r, self.r
 
 
-        Parameters
-        ----------
-        x_min, x_max : float
-            x coordinates of outer edges of array
-        y_min, y_max : float
-            y coordinates of outer edges of array
-        nx, ny : int
-            dimension of array
-        subpixels : int
+    def encloses(self, x_min, x_max, y_min, y_max, nx, ny,
+                 method='exact', subpixels=5):
+        if method == 'center':
+            x_size = (x_max - x_min) / nx
+            y_size = (y_max - y_min) / ny
+            x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
+            y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
+            xx, yy = np.meshgrid(x_centers, y_centers)
+            return xx * xx + yy * yy < self.r * self.r
+        elif method == 'subpixel':
+            from circular_overlap import circular_overlap_grid
+            return circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
+                                         self.r, 0, subpixels)
+        elif method == 'exact':
+            from circular_overlap import circular_overlap_grid
+            return circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
+                                         self.r, 1, 1)
+        else:
+            raise ValueError('{0} method not supported for aperture class {1}'
+                             .format(method, self.__class__.__name__))
 
-        Returns
-        -------
-       overlap_area : `~numpy.ndarray` (float)
-            2-d array of overlapping fraction.
-        """
-        from circular_overlap import circular_overlap_grid
-        return circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
-                                     self.r, 0, subpixels)
-
-
-    def encloses_exact(self, x_min, x_max, y_min, y_max, nx, ny):
-        """
-        Return a float array giving the fraction of each pixel covered
-        by the aperture, using an exact calculation.
-
-        Parameters
-        ----------
-        x_min, x_max : float
-            x coordinates of outer edges of array
-        y_min, y_max : float
-            y coordinates of outer edges of array
-        nx, ny : int
-            dimension of array
-
-        Returns
-        -------
-        overlap_area : `~numpy.ndarray` (float)
-            2-d array of overlapping fraction.
-        """
-        from circular_overlap import circular_overlap_grid
-        return circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
-                                     self.r, 1, 1)
 
     def area(self):
-        """Return area enclosed by aperture.
-
-        Returns
-        -------
-        area : float
-            Area in pixels enclosed by aperture.
-        """
         return math.pi * self.r ** 2
 
 
@@ -178,98 +126,40 @@ class CircularAnnulus(Aperture):
         self.r_in = r_in
         self.r_out = r_out
 
+
     def extent(self):
-        """Extent of aperture relative to object center.
-
-        Returns
-        -------
-        x_min, x_max, y_min, y_max: float
-        """
-
         return (-self.r_out, self.r_out, -self.r_out, self.r_out)
 
-    def encloses(self, xx, yy):
-        """Return a bool array representing which elements of an array
-        are in the aperture.
 
-        Parameters
-        ----------
-        xx : `~numpy.ndarray`
-            x coordinate of each element, relative to object center
-        yy : `~numpy.ndarray`
-            y coordinate of each element, relative to object center
+    def encloses(self, x_min, x_max, y_min, y_max, nx, ny,
+                 method='exact', subpixels=5):
+        if method == 'center':
+            x_size = (x_max - x_min) / nx
+            y_size = (y_max - y_min) / ny
+            x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
+            y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
+            xx, yy = np.meshgrid(x_centers, y_centers)
+            dist_sq = xx * xx + yy * yy
+            return (dist_sq < self.r_out * self.r_out) \
+                & (dist_sq > self.r_in * self.r_in)
+        elif method == 'subpixel':
+            from circular_overlap import circular_overlap_grid
+            return (circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
+                                          self.r_out, 0, subpixels) -
+                    circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
+                                          self.r_in, 0, subpixels))
+        elif method == 'exact':
+            from circular_overlap import circular_overlap_grid
+            return (circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
+                                          self.r_out, 1, 1) -
+                    circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
+                                          self.r_in, 1, 1))
+        else:
+            raise ValueError('{0} method not supported for aperture class {1}'
+                             .format(method, self.__class__.__name__))
 
-        Returns
-        -------
-        in_aper : `~numpy.ndarray` (bool)
-            bool array indicating whether each element is within the
-            aperture.
-        """
-        dist_sq = xx * xx + yy * yy
-        return (dist_sq < self.r_out * self.r_out) \
-             & (dist_sq > self.r_in * self.r_in)
-
-
-    def encloses_subpixels(self, x_min, x_max, y_min, y_max, nx, ny,
-                           subpixels):
-        """Return a float array giving the fraction of each pixel covered
-        by the aperture, using a sub-pixel sampling method.
-
-
-        Parameters
-        ----------
-        x_min, x_max : float
-            x coordinates of outer edges of array
-        y_min, y_max : float
-            y coordinates of outer edges of array
-        nx, ny : int
-            dimension of array
-        subpixels : int
-
-        Returns
-        -------
-       overlap_area : `~numpy.ndarray` (float)
-            2-d array of overlapping fraction.
-        """
-        from circular_overlap import circular_overlap_grid
-        return (circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
-                                      self.r_out, 0, subpixels) -
-                circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
-                                      self.r_in, 0, subpixels))
-
-    def encloses_exact(self, x_min, x_max, y_min, y_max, nx, ny):
-        """
-        Return a float array giving the fraction of each pixel covered
-        by the aperture, using an exact calculation.
-
-        Parameters
-        ----------
-        x_min, x_max : float
-            x coordinates of outer edges of array
-        y_min, y_max : float
-            y coordinates of outer edges of array
-        nx, ny : int
-            dimension of array
-
-        Returns
-        -------
-        overlap_area : `~numpy.ndarray` (float)
-            2-d array of overlapping fraction.
-        """
-        from circular_overlap import circular_overlap_grid
-        return (circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
-                                      self.r_out, 1, 1) -
-                circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
-                                      self.r_in, 1, 1))
 
     def area(self):
-        """Return area enclosed by aperture.
-
-        Returns
-        -------
-        area : float
-            Area in pixels enclosed by aperture.
-        """
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
 
@@ -295,74 +185,48 @@ class EllipticalAperture(Aperture):
         self.theta = theta
 
     def extent(self):
-        """Extent of aperture relative to object center.
-
-        Returns
-        -------
-        x_min, x_max, y_min, y_max: float
-        """
-
-        # TODO: determine a tighter bounding box (may not be worth
-        #       the computation?)
         r = max(self.a, self.b)
         return (-r, r, -r, r)
 
-    def encloses(self, xx, yy):
-        """Return a bool array representing which elements of an array
-        are in the aperture.
 
-        Parameters
-        ----------
-        xx : `~numpy.ndarray`
-            x coordinate of each element, relative to object center
-        yy : `~numpy.ndarray`
-            y coordinate of each element, relative to object center
+    def encloses(self, x_min, x_max, y_min, y_max, nx, ny,
+                 method='subpixel', subpixels=5):
 
-        Returns
-        -------
-        in_aper : `~numpy.ndarray` (bool)
-            bool array indicating whether each element is within the
-            aperture.
-        """
-
+        # Shortcut to avoid divide-by-zero errors.
         if self.a == 0 or self.b == 0:
-            return np.zeros(xx.shape, dtype=np.bool)
-        numerator1 = (xx * math.cos(self.theta) +
-                      yy * math.sin(self.theta))
-        numerator2 = (yy * math.cos(self.theta) -
-                      xx * math.sin(self.theta))
-        return (((numerator1 / self.a) ** 2 +
-                 (numerator2 / self.b) ** 2) < 1.)
+            return np.zeros((ny, nx), dtype=np.float)
 
-    def encloses_exact(self, x_edges, y_edges):
-        """
-        Return a float array giving the fraction of each pixel covered
-        by the aperture.
+        if method == 'center' or method == 'subpixel':
+            if method == 'center': subpixels = 1
+            x_size = (x_max - x_min) / (nx * subpixels)
+            y_size = (y_max - y_min) / (ny * subpixels)
+            x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
+            y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
+            xx, yy = np.meshgrid(x_centers, y_centers)
+            numerator1 = (xx * math.cos(self.theta) +
+                          yy * math.sin(self.theta))
+            numerator2 = (yy * math.cos(self.theta) -
+                          xx * math.sin(self.theta))
+            in_aper = (((numerator1 / self.a) ** 2 +
+                        (numerator2 / self.b) ** 2) < 1.).astype(float)
+            if method == 'center':
+                return in_aper
+            else:
+                from .utils.downsample import downsample
+                return downsample(in_aper, subpixels)
 
-        Parameters
-        ----------
-        x_edges : `~numpy.ndarray`
-            x coordinates of the pixel edges (1-d)
-        y_edges : `~numpy.ndarray`
-            y coordinates of the pixel edges (1-d)
+        elif method == 'exact':
+            from elliptical_exact import elliptical_overlap_grid
+            x_edges = np.linspace(x_min, x_max, nx + 1)
+            y_edges = np.linspace(y_min, y_max, ny + 1)
+            return elliptical_overlap_grid(x_edges, y_edges, self.a, self.b,
+                                           self.theta)
+        else:
+            raise ValueError('{0} method not supported for aperture class {1}'
+                             .format(method, self.__class__.__name__))
 
-        Returns
-        -------
-        overlap_area : `~numpy.ndarray` (float)
-            2-d array of overlapping fraction. This has dimensions
-            (len(y_edges) - 1, len(x_edges) - 1))
-        """
-        from elliptical_exact import elliptical_overlap_grid
-        return elliptical_overlap_grid(x_edges, y_edges, self.a, self.b, self.theta)
 
     def area(self):
-        """Return area enclosed by aperture.
-
-        Returns
-        -------
-        area : float
-            Area in pixels enclosed by aperture.
-        """
         return math.pi * self.a * self.b
 
 
@@ -394,85 +258,67 @@ class EllipticalAnnulus(Aperture):
         self.b_out = b_out
         self.theta = theta
 
+
     def extent(self):
-        """Extent of aperture relative to object center.
-
-        Returns
-        -------
-        x_min, x_max, y_min, y_max: float
-        """
-
-        # TODO: determine a tighter bounding box (may not be worth
-        #       the computation?)
         r = max(self.a_out, self.b_out)
         return (-r, r, -r, r)
 
-    def encloses(self, xx, yy):
-        """Return a bool array representing which elements of an array
-        are in the aperture.
 
-        Parameters
-        ----------
-        xx : `~numpy.ndarray`
-            x coordinate of each element, relative to object center
-        yy : `~numpy.ndarray`
-            y coordinate of each element, relative to object center
+    def encloses(self, x_min, x_max, y_min, y_max, nx, ny,
+                 method='subpixel', subpixels=5):
 
-        Returns
-        -------
-        in_aper : `~numpy.ndarray` (bool)
-            bool array indicating whether each element is within the
-            aperture.
-        """
+        # Shortcut to avoid divide-by-zero errors.
         if self.a_out == 0 or self.b_out == 0:
-            return np.zeros(xx.shape, dtype=np.bool)
-        numerator1 = (xx * math.cos(self.theta) +
-                      yy * math.sin(self.theta))
-        numerator2 = (yy * math.cos(self.theta) -
-                      xx * math.sin(self.theta))
-        inside_outer_ellipse = ((numerator1 / self.a_out) ** 2 +
-                                (numerator2 / self.b_out) ** 2) < 1.
-        if self.a_in == 0 or self.b_in == 0:
-            return inside_outer_ellipse
-        outside_inner_ellipse = ((numerator1 / self.a_in) ** 2 +
-                                 (numerator2 / self.b_in) ** 2) > 1.
-        return (inside_outer_ellipse & outside_inner_ellipse)
+            return np.zeros((ny, nx), dtype=np.float)
 
-    def encloses_exact(self, x_edges, y_edges):
-        """
-        Return a float array giving the fraction of each pixel covered
-        by the aperture.
+        if method == 'center' or method == 'subpixel':
+            if method == 'center': subpixels = 1
+            x_size = (x_max - x_min) / (nx * subpixels)
+            y_size = (y_max - y_min) / (ny * subpixels)
+            x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
+            y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
+            xx, yy = np.meshgrid(x_centers, y_centers)
 
-        Parameters
-        ----------
-        x_edges : `~numpy.ndarray`
-            x coordinates of the pixel edges (1-d)
-        y_edges : `~numpy.ndarray`
-            y coordinates of the pixel edges (1-d)
+            numerator1 = (xx * math.cos(self.theta) +
+                          yy * math.sin(self.theta))
+            numerator2 = (yy * math.cos(self.theta) -
+                          xx * math.sin(self.theta))
+            inside_outer_ellipse = ((numerator1 / self.a_out) ** 2 +
+                                    (numerator2 / self.b_out) ** 2) < 1.
+            if self.a_in == 0 or self.b_in == 0:
+                in_aper = inside_outer_ellipse.astype(float)
+            else:
+                outside_inner_ellipse = ((numerator1 / self.a_in) ** 2 +
+                                         (numerator2 / self.b_in) ** 2) > 1.
+                in_aper = (inside_outer_ellipse &
+                           outside_inner_ellipse).astype(float)
 
-        Returns
-        -------
-        overlap_area : `~numpy.ndarray` (float)
-            2-d array of overlapping fraction. This has dimensions
-            (len(y_edges) - 1, len(x_edges) - 1))
-        """
-        from elliptical_exact import elliptical_overlap_grid
-        return elliptical_overlap_grid(x_edges, y_edges, self.a_out, self.b_out, self.theta) \
-             - elliptical_overlap_grid(x_edges, y_edges, self.a_in, self.b_in, self.theta)
+            if method == 'center':
+                return in_aper
+            else:
+                from .utils.downsample import downsample
+                return downsample(in_aper, subpixels)
+
+        elif method == 'exact':
+            from elliptical_exact import elliptical_overlap_grid
+            x_edges = np.linspace(x_min, x_max, nx + 1)
+            y_edges = np.linspace(y_min, y_max, ny + 1)
+            return (elliptical_overlap_grid(x_edges, y_edges, self.a_out,
+                                            self.b_out, self.theta) -
+                    elliptical_overlap_grid(x_edges, y_edges, self.a_in,
+                                            self.b_in, self.theta))
+        else:
+            raise ValueError('{0} method not supported for aperture class {1}'
+                             .format(method, self.__class__.__name__))
+
 
     def area(self):
-        """Return area enclosed by aperture.
-
-        Returns
-        -------
-        area : float
-            Area in pixels enclosed by aperture.
-        """
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
 
 def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
-                        mask=None, subpixels=5, pixelwise_errors=True):
+                        mask=None, method='exact', subpixels=5,
+                        pixelwise_errors=True):
     r"""Sum flux within aperture(s).
 
     Multiple objects and multiple apertures per object can be specified.
@@ -516,13 +362,26 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
         Mask to apply to the data. The value of masked pixels are replaced
         by the value of the pixel mirrored across the center of the object,
         if available. If unavailable, the value is set to zero.
-    subpixels : int or 'exact', optional
-        Resample pixels by this factor (in each dimension) when summing
-        flux in apertures. That is, each pixel is divided into
-        `subpixels ** 2` subpixels. This can also be set to 'exact' to
-        indicate that the exact overlap fraction should be used (this is
-        only available for aperture classes that define the
-        ``overlap_area`` method)
+    method : str, optional
+        Method to use for determining overlap between the aperture and pixels.
+        Options include ['center', 'subpixel', 'exact'], but not all options
+        are available for all types of apertures. More precise methods will
+        generally be slower.
+        
+        'center'
+            A pixel is considered to be entirely in or out of the aperture
+            depending on whether its center is in or out of the aperture.
+        'subpixel'
+            A pixel is divided into subpixels and the center of each subpixel
+            is tested (as above). With `subpixels` set to 1, this method is
+            equivalent to 'center'.
+        'exact'
+            The exact overlap between the aperture and each pixel is
+            calculated.
+    subpixels : int, optional
+        For the 'subpixel' method, resample pixels by this factor (in
+        each dimension). That is, each pixel is divided into
+        `subpixels ** 2` subpixels.
     pixelwise_errors : bool, optional
         For error and/or gain arrays. If True, assume error and/or gain
         vary significantly within an aperture: sum contribution from each
@@ -542,8 +401,6 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
     fluxerr : float or `~numpy.ndarray`
         Uncertainty in flux values. Only returned if error is not `None`.
     """
-
-    from .utils.downsample import downsample
 
     # Check input array type and dimension.
     data = np.asarray(data)
@@ -620,11 +477,9 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
                              'Only 2-d arrays supported.'.format(mask.ndim))
 
     # Check that 'subpixels' is an int and is 1 or greater.
-    if subpixels != 'exact':
-        subpixels = int(subpixels)
-        if subpixels < 1:
-            raise ValueError('an integer greater than 0 is required')
-        subpixelsize = 1. / subpixels  # Size of subpixels in original pixels.
+    subpixels = int(subpixels)
+    if subpixels < 1:
+        raise ValueError('subpixels: an integer greater than 0 is required')
 
     # Initialize arrays to return.
     flux = np.zeros(apertures.shape, dtype=np.float)
@@ -710,38 +565,11 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
         for j in range(apertures.shape[0]):
 
             # Find fraction of overlap between aperture and pixels
-            if subpixels == 'exact':
-                try:
-                    fraction = apertures[j, i].encloses_exact(
-                        x_min - xc[i] - 0.5, x_max - xc[i] - 0.5,
-                        y_min - yc[i] - 0.5, y_max - yc[i] - 0.5,
-                        subdata.shape[1], subdata.shape[0])
-                except AttributeError:
-                    raise Exception("subpixels='exact' cannot be used for "
-                                    "{0:s}".format(apertures[j, i].__class__.__name__))
-
-            # Otherwise, try to use "fast" subpixel sampling via
-            # `encloses_subpixels(...)`. If that method is not available,
-            # create a big subsampled grid, use the standard `encloses(...)`
-            # method, and then downsample to the original pixel scale.
-            else:
-                try:
-                    fraction = apertures[j, i].encloses_subpixels(
-                        x_min - xc[i] - 0.5, x_max - xc[i] - 0.5,
-                        y_min - yc[i] - 0.5, y_max - yc[i] - 0.5,
-                        subdata.shape[1], subdata.shape[0], subpixels)
-                except AttributeError:
-                    x_vals = np.arange(
-                        x_min - xc[i] - 0.5 + subpixelsize / 2.,
-                        x_max - xc[i] - 0.5 + subpixelsize / 2.,
-                        subpixelsize)
-                    y_vals = np.arange(
-                        y_min - yc[i] - 0.5 + subpixelsize / 2.,
-                        y_max - yc[i] - 0.5 + subpixelsize / 2.,
-                        subpixelsize)
-                    xx, yy = np.meshgrid(x_vals, y_vals)
-                    in_aper = apertures[j, i].encloses(xx, yy).astype(float)
-                    fraction = downsample(in_aper, subpixels)
+            fraction = apertures[j, i].encloses(
+                x_min - xc[i] - 0.5, x_max - xc[i] - 0.5,
+                y_min - yc[i] - 0.5, y_max - yc[i] - 0.5,
+                subdata.shape[1], subdata.shape[0],
+                method=method, subpixels=subpixels)
 
             # Sum the flux in those pixels and assign it to the output array.
             flux[j, i] = np.sum(subdata * fraction)
@@ -790,7 +618,7 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
 
 
 def aperture_circular(data, xc, yc, r, error=None, gain=None, mask=None,
-                      subpixels='exact', pixelwise_errors=True):
+                      method='exact', subpixels=5, pixelwise_errors=True):
     r"""Sum flux within circular apertures.
 
     Multiple objects and multiple apertures per object can be specified.
@@ -831,11 +659,25 @@ def aperture_circular(data, xc, yc, r, error=None, gain=None, mask=None,
         Mask to apply to the data. The value of masked pixels are replaced
         by the value of the pixel mirrored across the center of the object,
         if available. If unavailable, the value is set to zero.
+    method : str, optional
+        Method to use for determining overlap between the aperture and pixels.
+        Options are ['center', 'subpixel', 'exact']. More precise methods will
+        generally be slower.
+        
+        'center'
+            A pixel is considered to be entirely in or out of the aperture
+            depending on whether its center is in or out of the aperture.
+        'subpixel'
+            A pixel is divided into subpixels and the center of each subpixel
+            is tested (as above). With `subpixels` set to 1, this method is
+            equivalent to 'center'.
+        'exact'
+            The exact overlap between the aperture and each pixel is
+            calculated.
     subpixels : int, optional
-        Resample pixels by this factor (in each dimension) when summing
-        flux in apertures. That is, each pixel is divided into
-        `subpixels ** 2` subpixels. This can also be set to 'exact' to
-        indicate that the exact overlap fraction should be used.
+        For the 'subpixel' method, resample pixels by this factor (in
+        each dimension). That is, each pixel is divided into
+        `subpixels ** 2` subpixels.
     pixelwise_errors : bool, optional
         For error and/or gain arrays. If True, assume error and/or gain
         vary significantly within an aperture: sum contribution from each
@@ -869,7 +711,8 @@ def aperture_circular(data, xc, yc, r, error=None, gain=None, mask=None,
 
 
 def aperture_elliptical(data, xc, yc, a, b, theta, error=None, gain=None,
-                        mask=None, subpixels='exact', pixelwise_errors=True):
+                        mask=None, method='exact', subpixels=5,
+                        pixelwise_errors=True):
     r"""Sum flux within elliptical apertures.
 
     Multiple objects and multiple apertures per object can be specified.
@@ -912,11 +755,25 @@ def aperture_elliptical(data, xc, yc, a, b, theta, error=None, gain=None,
         Mask to apply to the data. The value of masked pixels are replaced
         by the value of the pixel mirrored across the center of the object,
         if available. If unavailable, the value is set to zero.
+    method : str, optional
+        Method to use for determining overlap between the aperture and pixels.
+        Options are ['center', 'subpixel', 'exact']. More precise methods will
+        generally be slower.
+        
+        'center'
+            A pixel is considered to be entirely in or out of the aperture
+            depending on whether its center is in or out of the aperture.
+        'subpixel'
+            A pixel is divided into subpixels and the center of each subpixel
+            is tested (as above). With `subpixels` set to 1, this method is
+            equivalent to 'center'.
+        'exact'
+            The exact overlap between the aperture and each pixel is
+            calculated.
     subpixels : int, optional
-        Resample pixels by this factor (in each dimension) when summing
-        flux in apertures. That is, each pixel is divided into
-        `subpixels ** 2` subpixels. This can also be set to 'exact' to
-        indicate that the exact overlap fraction should be used.
+        For the 'subpixel' method, resample pixels by this factor (in
+        each dimension). That is, each pixel is divided into
+        `subpixels ** 2` subpixels.
     pixelwise_errors : bool, optional
         For error and/or gain arrays. If True, assume error and/or gain
         vary significantly within an aperture: sum contribution from each
@@ -951,7 +808,8 @@ def aperture_elliptical(data, xc, yc, a, b, theta, error=None, gain=None,
 
 
 def annulus_circular(data, xc, yc, r_in, r_out, error=None, gain=None,
-                     mask=None, subpixels='exact', pixelwise_errors=True):
+                     mask=None, method='exact', subpixels=5,
+                     pixelwise_errors=True):
     r"""Sum flux within circular annuli.
 
     Multiple objects and multiple apertures per object can be specified.
@@ -993,11 +851,25 @@ def annulus_circular(data, xc, yc, r_in, r_out, error=None, gain=None,
         Mask to apply to the data. The value of masked pixels are replaced
         by the value of the pixel mirrored across the center of the object,
         if available. If unavailable, the value is set to zero.
+    method : str, optional
+        Method to use for determining overlap between the aperture and pixels.
+        Options are ['center', 'subpixel', 'exact']. More precise methods will
+        generally be slower.
+        
+        'center'
+            A pixel is considered to be entirely in or out of the aperture
+            depending on whether its center is in or out of the aperture.
+        'subpixel'
+            A pixel is divided into subpixels and the center of each subpixel
+            is tested (as above). With `subpixels` set to 1, this method is
+            equivalent to 'center'.
+        'exact'
+            The exact overlap between the aperture and each pixel is
+            calculated.
     subpixels : int, optional
-        Resample pixels by this factor (in each dimension) when summing
-        flux in apertures. That is, each pixel is divided into
-        `subpixels ** 2` subpixels. This can also be set to 'exact' to
-        indicate that the exact overlap fraction should be used.
+        For the 'subpixel' method, resample pixels by this factor (in
+        each dimension). That is, each pixel is divided into
+        `subpixels ** 2` subpixels.
     pixelwise_errors : bool, optional
         For error and/or gain arrays. If True, assume error and/or gain
         vary significantly within an aperture: sum contribution from each
@@ -1032,8 +904,8 @@ def annulus_circular(data, xc, yc, r_in, r_out, error=None, gain=None,
 
 
 def annulus_elliptical(data, xc, yc, a_in, a_out, b_out, theta,
-                       error=None, gain=None, mask=None, subpixels='exact',
-                       pixelwise_errors=True):
+                       error=None, gain=None, mask=None, method='exact',
+                       subpixels=5, pixelwise_errors=True):
     r"""Sum flux within elliptical annuli.
 
     Multiple objects and multiple apertures per object can be specified.
@@ -1076,11 +948,25 @@ def annulus_elliptical(data, xc, yc, a_in, a_out, b_out, theta,
         Mask to apply to the data. The value of masked pixels are replaced
         by the value of the pixel mirrored across the center of the object,
         if available. If unavailable, the value is set to zero.
+    method : str, optional
+        Method to use for determining overlap between the aperture and pixels.
+        Options are ['center', 'subpixel', 'exact']. More precise methods will
+        generally be slower.
+        
+        'center'
+            A pixel is considered to be entirely in or out of the aperture
+            depending on whether its center is in or out of the aperture.
+        'subpixel'
+            A pixel is divided into subpixels and the center of each subpixel
+            is tested (as above). With `subpixels` set to 1, this method is
+            equivalent to 'center'.
+        'exact'
+            The exact overlap between the aperture and each pixel is
+            calculated.
     subpixels : int, optional
-        Resample pixels by this factor (in each dimension) when summing
-        flux in apertures. That is, each pixel is divided into
-        `subpixels ** 2` subpixels. This can also be set to 'exact' to
-        indicate that the exact overlap fraction should be used.
+        For the 'subpixel' method, resample pixels by this factor (in
+        each dimension). That is, each pixel is divided into
+        `subpixels ** 2` subpixels.
     pixelwise_errors : bool, optional
         For error and/or gain arrays. If True, assume error and/or gain
         vary significantly within an aperture: sum contribution from each
