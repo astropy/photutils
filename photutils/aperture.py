@@ -477,9 +477,11 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
                              'Only 2-d arrays supported.'.format(mask.ndim))
 
     # Check that 'subpixels' is an int and is 1 or greater.
-    subpixels = int(subpixels)
-    if subpixels < 1:
-        raise ValueError('subpixels: an integer greater than 0 is required')
+    if method == 'subpixel':
+        subpixels = int(subpixels)
+        if subpixels < 1:
+            raise ValueError('subpixels: an integer greater than 0 is '
+                             'required')
 
     # Initialize arrays to return.
     flux = np.zeros(apertures.shape, dtype=np.float)
