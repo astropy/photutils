@@ -861,7 +861,7 @@ def aperture_circular(data, xc, yc, r, error=None, gain=None, mask=None,
     """
     r = np.asarray(r)
     apertures = np.empty(r.shape, dtype=object)
-    for index in np.ndindex(r.shape):
+    for index in np.ndindex(*r.shape):
         apertures[index] = CircularAperture(r[index])
     return aperture_photometry(data, xc, yc, apertures, error=error,
                                gain=gain, mask=mask, subpixels=subpixels,
@@ -943,7 +943,7 @@ def aperture_elliptical(data, xc, yc, a, b, theta, error=None, gain=None,
 
     a, b, theta = np.broadcast_arrays(a, b, theta)
     apertures = np.empty(a.shape, dtype=object)
-    for index in np.ndindex(a.shape):
+    for index in np.ndindex(*a.shape):
         apertures[index] = EllipticalAperture(a[index], b[index], theta[index])
     return aperture_photometry(data, xc, yc, apertures, error=error,
                                gain=gain, mask=mask, subpixels=subpixels,
@@ -1024,7 +1024,7 @@ def annulus_circular(data, xc, yc, r_in, r_out, error=None, gain=None,
 
     r_in, r_out = np.broadcast_arrays(r_in, r_out)
     apertures = np.empty(r_in.shape, dtype=object)
-    for index in np.ndindex(r_in.shape):
+    for index in np.ndindex(*r_in.shape):
         apertures[index] = CircularAnnulus(r_in[index], r_out[index])
     return aperture_photometry(data, xc, yc, apertures, error=error,
                                gain=gain, mask=mask, subpixels=subpixels,
@@ -1108,7 +1108,7 @@ def annulus_elliptical(data, xc, yc, a_in, a_out, b_out, theta,
     a_in, a_out, b_out, theta = \
         np.broadcast_arrays(a_in, a_out, b_out, theta)
     apertures = np.empty(a_in.shape, dtype=object)
-    for index in np.ndindex(a_in.shape):
+    for index in np.ndindex(*a_in.shape):
         apertures[index] = EllipticalAnnulus(a_in[index], a_out[index],
                                              b_out[index], theta[index])
     return aperture_photometry(data, xc, yc, apertures, error=error,
