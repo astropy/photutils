@@ -66,24 +66,48 @@ def in_triangle(double x, double y, double x1, double y1, double x2, double y2, 
 def circle_line(double x1, double y1, double x2, double y2):
     '''Intersection of a line defined by two points with a unit circle'''
 
-    cdef double a, b, delta
+    cdef double a, b, delta, dx, dy
 
-    # Find the slope and intercept of the line
-    a = (y2 - y1) / (x2 - x1)
-    b = y1 - a * x1
+    dx = x2 - x1
+    dy = y2 - y1
 
-    # Find the determinant of the quadratic equation
-    delta = 1 + a * a - b * b
+    if abs(dx) > abs(dy):
 
-    if delta > 0.:  # solutions exist
-        delta = sqrt(delta)
-        xi1 = (- a * b - delta) / (1 + a * a)
-        yi1 = a * xi1 + b
-        xi2 = (- a * b + delta) / (1 + a * a)
-        yi2 = a * xi2 + b
-        return xi1, yi1, xi2, yi2
-    else:  # no solution, return values > 1
-        return 2., 2., 2., 2.
+        # Find the slope and intercept of the line
+        a = dy / dx
+        b = y1 - a * x1
+
+        # Find the determinant of the quadratic equation
+        delta = 1. + a * a - b * b
+
+        if delta > 0.:  # solutions exist
+            delta = sqrt(delta)
+            xi1 = (- a * b - delta) / (1. + a * a)
+            yi1 = a * xi1 + b
+            xi2 = (- a * b + delta) / (1. + a * a)
+            yi2 = a * xi2 + b
+            return xi1, yi1, xi2, yi2
+        else:  # no solution, return values > 1
+            return 2., 2., 2., 2.
+
+    else:
+
+        # Find the slope and intercept of the line
+        a = dx / dy
+        b = x1 - a * y1
+
+        # Find the determinant of the quadratic equation
+        delta = 1. + a * a - b * b
+
+        if delta > 0.:  # solutions exist
+            delta = sqrt(delta)
+            yi1 = (- a * b - delta) / (1. + a * a)
+            xi1 = a * yi1 + b
+            yi2 = (- a * b + delta) / (1. + a * a)
+            xi2 = a * yi2 + b
+            return xi1, yi1, xi2, yi2
+        else:  # no solution, return values > 1
+            return 2., 2., 2., 2.
 
 
 def circle_segment_exactly_one(double x1, double y1, double x2, double y2):
@@ -115,7 +139,10 @@ def circle_segment(double x1, double y1, double x2, double y2):
     if (xi2 > x1 and xi2 > x2) or (xi2 < x1 and xi2 < x2):
         xi2, yi2 = 2., 2.
 
-    return xi1, yi1, xi2, yi2
+    if xi1 > 1.:
+        return xi1, yi1, xi2, yi2
+    else:
+        return xi2, yi2, xi1, yi1
 
 
 def overlap_area_triangle_unit_circle(double x1, double y1, double x2, double y2, double x3, double y3):
