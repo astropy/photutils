@@ -31,7 +31,8 @@ def test_outside_array(aperture):
 @pytest.mark.parametrize(('aperture'), APERTURES)
 def test_inside_array_simple(aperture):
     data = np.ones((40, 40), dtype=np.float)
-    flux = aperture_photometry(data, 20., 20., aperture, subpixels=10)
+    flux = aperture_photometry(data, 20., 20., aperture, method='subpixel',
+                               subpixels=10)
     true_flux = aperture.area()
     assert abs((flux - true_flux) / true_flux) < 0.01
 
