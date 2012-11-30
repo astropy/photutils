@@ -85,7 +85,8 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                         # Either do exact calculation...
                         if use_exact:
                             frac[j, i] = overlap_single_exact(x - 0.5 * dx, \
-                                y - 0.5 * dy, x + 0.5 * dx, y + 0.5 * dy, R)
+                                y - 0.5 * dy, x + 0.5 * dx, y + 0.5 * dy, R) \
+                                / (dx * dy)
 
                         # or use subpixel samping.
                         else:
@@ -161,8 +162,8 @@ def overlap_single_exact(double xmin, double ymin, double xmax, double ymax,
 
 def circular_overlap_core(double xmin, double ymin, double xmax, double ymax,
                           double R):
-    """Assumes that the center of the circle is <= xmin, ymin (can always
-    modify input to conform to this).
+    """Assumes that the center of the circle is <= xmin,
+    ymin (can always modify input to conform to this).
     """
 
     cdef double area, d1, d2, x1, x2, y1, y2
