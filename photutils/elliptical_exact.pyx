@@ -71,6 +71,11 @@ def circle_line(double x1, double y1, double x2, double y2):
     dx = x2 - x1
     dy = y2 - y1
 
+
+    if abs(dx) < 1.e-10 and abs(dy) < 1.e-10:
+
+        return 2., 2., 2., 2.
+
     if abs(dx) > abs(dy):
 
         # Find the slope and intercept of the line
@@ -118,7 +123,7 @@ def circle_segment_exactly_one(double x1, double y1, double x2, double y2):
     cdef double xi1, yi1, xi2, yi2
 
     xi1, yi1, xi2, yi2 = circle_line(x1, y1, x2, y2)
-    if (xi1 > x1 and xi1 < x2) or (xi1 < x1 and xi1 > x2):
+    if (xi1 > x1 and xi1 < x2) or (xi1 < x1 and xi1 > x2) or (yi1 > y1 and yi1 < y2) or (yi1 < y1 and yi1 > y2):
         return xi1, yi1
     else:
         return xi2, yi2
@@ -134,12 +139,12 @@ def circle_segment(double x1, double y1, double x2, double y2):
 
     xi1, yi1, xi2, yi2 = circle_line(x1, y1, x2, y2)
 
-    if (xi1 > x1 and xi1 > x2) or (xi1 < x1 and xi1 < x2):
+    if (xi1 > x1 and xi1 > x2) or (xi1 < x1 and xi1 < x2) or (yi1 > y1 and yi1 > y2) or (yi1 > y1 and yi1 > y2):
         xi1, yi1 = 2., 2.
-    if (xi2 > x1 and xi2 > x2) or (xi2 < x1 and xi2 < x2):
+    if (xi2 > x1 and xi2 > x2) or (xi2 < x1 and xi2 < x2) or (yi2 < y1 and yi2 < y2) or (yi2 < y1 and yi2 < y2):
         xi2, yi2 = 2., 2.
 
-    if xi1 > 1.:
+    if xi1 > 1. and xi2 < 2.:
         return xi1, yi1, xi2, yi2
     else:
         return xi2, yi2, xi1, yi1
@@ -190,14 +195,39 @@ def overlap_area_triangle_unit_circle(double x1, double y1, double x2, double y2
     in2 = d2 < 1
     in3 = d3 < 1
 
-    if in1 and in2 and in3:  # triangle is completely in circle
+    # Determine which vertices are on the circle
+    on1 = abs(d1 - 1) < 1.e-10
+    on2 = abs(d2 - 1) < 1.e-10
+    on3 = abs(d3 - 1) < 1.e-10
+
+    if on3 or in3:  # triangle is completely in circle
+
         area = area_triangle(x1, y1, x2, y2, x3, y3)
-    elif in1 and in2:
-        xc1, yc1 = circle_segment_exactly_one(x1, y1, x3, y3)
-        xc2, yc2 = circle_segment_exactly_one(x2, y2, x3, y3)
-        area = area_triangle(x1, y1, x2, y2, xc1, yc1) \
-             + area_triangle(x2, y2, xc1, yc1, xc2, yc2) \
-             + area_arc_unit(xc1, yc1, xc2, yc2)
+
+    elif in2 or on2:
+
+        # If vertex 1 or 2 are on the edge of the circle, then we use the dot
+        # product to vertex 3 to determine whether an intersection takes place.
+        intersect13 = not on1 or x1 * (x3 - x1) + y1 * (y3 - y1) < 0.
+        intersect23 = not on2 or x2 * (x3 - x2) + y2 * (y3 - y2) < 0.
+
+        if intersect13 and intersect23:
+            xc1, yc1 = circle_segment_exactly_one(x1, y1, x3, y3)
+            xc2, yc2 = circle_segment_exactly_one(x2, y2, x3, y3)
+            area = area_triangle(x1, y1, x2, y2, xc1, yc1) \
+                 + area_triangle(x2, y2, xc1, yc1, xc2, yc2) \
+                 + area_arc_unit(xc1, yc1, xc2, yc2)
+        elif intersect13:
+            xc1, yc1 = circle_segment_exactly_one(x1, y1, x3, y3)
+            area = area_triangle(x1, y1, x2, y2, xc1, yc1) \
+                 + area_arc_unit(x2, y2, xc1, yc1)
+        elif intersect23:
+            xc2, yc2 = circle_segment_exactly_one(x2, y2, x3, y3)
+            area = area_triangle(x1, y1, x2, y2, xc2, yc2) \
+                 + area_arc_unit(x1, y1, xc2, yc2)
+        else:
+            area = area_arc_unit(x1, y1, x2, y2)
+
     elif in1:
         # Check for intersections of far side with circle
         xc1, yc1, xc2, yc2 = circle_segment(x2, y2, x3, y3)
