@@ -302,7 +302,7 @@ def elliptical_overlap_grid(np.ndarray[DTYPE_t, ndim=1] x,
                             np.ndarray[DTYPE_t, ndim=1] y,
                             double dx, double dy, double theta):
     '''
-    Given a grid with walls set by x, y, find the area of overlap in
+    Given a grid with walls set by x, y, find the fraction of overlap in
     each with an ellipse with major and minor axes dx and dy
     respectively, position angle theta, and centered at the origin.
     '''
@@ -321,6 +321,6 @@ def elliptical_overlap_grid(np.ndarray[DTYPE_t, ndim=1] x,
         if x[i] < R and x[i + 1] > - R:
             for j in range(ny - 1):
                 if y[j] < R and y[j + 1] > - R:
-                    frac[j, i] = elliptical_overlap_single(x[i], y[j], x[i + 1], y[j + 1], dx, dy, theta)
+                    frac[j, i] = elliptical_overlap_single(x[i], y[j], x[i + 1], y[j + 1], dx, dy, theta) / (x[i+1] - x[i]) / (y[j+1] - y[j])
 
     return frac
