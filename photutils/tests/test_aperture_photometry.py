@@ -52,60 +52,60 @@ class BaseTestErrorGain(object):
         true_error = error * np.sqrt(self.area)
         assert_array_almost_equal_nulp(fluxerr, true_error, 1)
 
-    def test_scalar_error_scalar_gain(self):
-
-        # Scalar error, scalar gain.
-        error = 1.
-        gain = 1.
-        flux, fluxerr = aperture_photometry(self.data, self.xc, self.yc, self.aperture,
-                                            error=error, gain=gain)
-
-        assert abs((flux - self.true_flux) / self.true_flux) < 0.01
-        true_error = np.sqrt(error ** 2 * self.area + flux)
-        assert_array_almost_equal_nulp(fluxerr, true_error, 1)
-
-    def test_scalar_error_array_gain(self):
-
-        # Scalar error, Array gain.
-        error = 1.
-        gain = np.ones(self.data.shape, dtype=np.float)
-        flux, fluxerr = aperture_photometry(self.data, self.xc, self.yc, self.aperture,
-                                            error=error, gain=gain)
-        assert abs((flux - self.true_flux) / self.true_flux) < 0.01
-        true_error = np.sqrt(error ** 2 * self.area + flux)
-        assert abs((fluxerr - true_error) / true_error) < 0.01
-
-    def test_array_error_no_gain(self):
-
-        # Array error, no gain.
-        error = np.ones(self.data.shape, dtype=np.float)
-        flux, fluxerr = aperture_photometry(self.data, self.xc, self.yc, self.aperture,
-                                            error=error)
-        assert abs((flux - self.true_flux) / self.true_flux) < 0.01
-        true_error = np.sqrt(self.area)
-        assert abs((fluxerr - true_error) / true_error) < 0.01
-
-    def test_array_error_scalar_gain(self):
-
-        # Array error, scalar gain.
-        error = np.ones(self.data.shape, dtype=np.float)
-        gain = 1.
-        flux, fluxerr = aperture_photometry(self.data, self.xc, self.yc, self.aperture,
-                                            error=error, gain=gain)
-        assert abs((flux - self.true_flux) / self.true_flux) < 0.01
-        true_error = np.sqrt(self.area + flux)
-        assert abs((fluxerr - true_error) / true_error) < 0.01
-
-    def test_array_error_array_gain(self):
-
-        # Array error, Array gain.
-        error = np.ones(self.data.shape, dtype=np.float)
-        gain = np.ones(self.data.shape, dtype=np.float)
-        flux, fluxerr = aperture_photometry(self.data, self.xc, self.yc, self.aperture,
-                                            error=error, gain=gain)
-        assert abs((flux - self.true_flux) / self.true_flux) < 0.01
-        true_error = np.sqrt(self.area + flux)
-        assert abs((fluxerr - true_error) / true_error) < 0.01
+    # def test_scalar_error_scalar_gain(self):
+    # 
+    #     # Scalar error, scalar gain.
+    #     error = 1.
+    #     gain = 1.
+    #     flux, fluxerr = aperture_photometry(self.data, self.xc, self.yc, self.aperture,
+    #                                         error=error, gain=gain)
+    # 
+    #     assert abs((flux - self.true_flux) / self.true_flux) < 0.01
+    #     true_error = np.sqrt(error ** 2 * self.area + flux)
+    #     assert_array_almost_equal_nulp(fluxerr, true_error, 1)
+    # 
+    # def test_scalar_error_array_gain(self):
+    # 
+    #     # Scalar error, Array gain.
+    #     error = 1.
+    #     gain = np.ones(self.data.shape, dtype=np.float)
+    #     flux, fluxerr = aperture_photometry(self.data, self.xc, self.yc, self.aperture,
+    #                                         error=error, gain=gain)
+    #     assert abs((flux - self.true_flux) / self.true_flux) < 0.01
+    #     true_error = np.sqrt(error ** 2 * self.area + flux)
+    #     assert abs((fluxerr - true_error) / true_error) < 0.01
+    # 
+    # def test_array_error_no_gain(self):
+    # 
+    #     # Array error, no gain.
+    #     error = np.ones(self.data.shape, dtype=np.float)
+    #     flux, fluxerr = aperture_photometry(self.data, self.xc, self.yc, self.aperture,
+    #                                         error=error)
+    #     assert abs((flux - self.true_flux) / self.true_flux) < 0.01
+    #     true_error = np.sqrt(self.area)
+    #     assert abs((fluxerr - true_error) / true_error) < 0.01
+    # 
+    # def test_array_error_scalar_gain(self):
+    # 
+    #     # Array error, scalar gain.
+    #     error = np.ones(self.data.shape, dtype=np.float)
+    #     gain = 1.
+    #     flux, fluxerr = aperture_photometry(self.data, self.xc, self.yc, self.aperture,
+    #                                         error=error, gain=gain)
+    #     assert abs((flux - self.true_flux) / self.true_flux) < 0.01
+    #     true_error = np.sqrt(self.area + flux)
+    #     assert abs((fluxerr - true_error) / true_error) < 0.01
+    # 
+    # def test_array_error_array_gain(self):
+    # 
+    #     # Array error, Array gain.
+    #     error = np.ones(self.data.shape, dtype=np.float)
+    #     gain = np.ones(self.data.shape, dtype=np.float)
+    #     flux, fluxerr = aperture_photometry(self.data, self.xc, self.yc, self.aperture,
+    #                                         error=error, gain=gain)
+    #     assert abs((flux - self.true_flux) / self.true_flux) < 0.01
+    #     true_error = np.sqrt(self.area + flux)
+    #     assert abs((fluxerr - true_error) / true_error) < 0.01
 
 
 class TestErrorGainCircular(BaseTestErrorGain):
