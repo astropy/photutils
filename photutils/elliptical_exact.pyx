@@ -332,5 +332,7 @@ def elliptical_overlap_grid(np.ndarray[DTYPE_t, ndim=1] x,
             for j in range(ny - 1):
                 if y[j] < R and y[j + 1] > - R:
                     frac[j, i] = elliptical_overlap_single(x[i], y[j], x[i + 1], y[j + 1], dx, dy, theta) / (x[i+1] - x[i]) / (y[j+1] - y[j])
-
+                    if frac[j, i] > 1.001:
+                        print(x[i], y[j], x[i + 1], y[j + 1], dx, dy, theta, frac[j, i])
+                        raise ValueError("frac[j, i] > 1.")
     return frac
