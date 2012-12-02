@@ -71,6 +71,7 @@ def circle_line(double x1, double y1, double x2, double y2):
     dx = x2 - x1
     dy = y2 - y1
 
+    print "circle_line", dx, dy
 
     if abs(dx) < 1.e-10 and abs(dy) < 1.e-10:
 
@@ -123,6 +124,7 @@ def circle_segment_exactly_one(double x1, double y1, double x2, double y2):
     cdef double xi1, yi1, xi2, yi2
 
     xi1, yi1, xi2, yi2 = circle_line(x1, y1, x2, y2)
+    print "circle_segment_exactly_one", xi1, yi1, xi2, yi2
     if (xi1 > x1 and xi1 < x2) or (xi1 < x1 and xi1 > x2) or (yi1 > y1 and yi1 < y2) or (yi1 < y1 and yi1 > y2):
         return xi1, yi1
     else:
@@ -143,6 +145,8 @@ def circle_segment(double x1, double y1, double x2, double y2):
         xi1, yi1 = 2., 2.
     if (xi2 > x1 and xi2 > x2) or (xi2 < x1 and xi2 < x2) or (yi2 < y1 and yi2 < y2) or (yi2 < y1 and yi2 < y2):
         xi2, yi2 = 2., 2.
+
+    print "circle_segment", xi1, yi1, xi2, yi2
 
     if xi1 > 1. and xi2 < 2.:
         return xi1, yi1, xi2, yi2
@@ -199,6 +203,12 @@ def overlap_area_triangle_unit_circle(double x1, double y1, double x2, double y2
     on1 = abs(d1 - 1) < 1.e-10
     on2 = abs(d2 - 1) < 1.e-10
     on3 = abs(d3 - 1) < 1.e-10
+
+    print '-' * 72
+    print x1, y1, x2, y2, x3, y3
+    print "D", d1, d2, d3
+    print "IN", in1, in2, in3
+    print "ON", on1, on2, on3
 
     if on3 or in3:  # triangle is completely in circle
 
