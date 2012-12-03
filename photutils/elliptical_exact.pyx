@@ -67,6 +67,7 @@ def circle_line(double x1, double y1, double x2, double y2):
     '''Intersection of a line defined by two points with a unit circle'''
 
     cdef double a, b, delta, dx, dy
+    cdef double xi1, yi1, xi2, yi2
 
     dx = x2 - x1
     dy = y2 - y1
@@ -115,18 +116,33 @@ def circle_line(double x1, double y1, double x2, double y2):
             return 2., 2., 2., 2.
 
 
-def circle_segment_exactly_one(double x1, double y1, double x2, double y2):
+def circle_segment_single2(double x1, double y1, double x2, double y2):
     '''
-    Single intersection of segment with unit circle. This
+    The intersection of a line with the unit circle. The intersection the
+    closest to (x2, y2) is chosen.
     '''
 
     cdef double xi1, yi1, xi2, yi2
+    cdef double dx1, dy1, dx2, dy2
 
     xi1, yi1, xi2, yi2 = circle_line(x1, y1, x2, y2)
-    if (xi1 > x1 and xi1 < x2) or (xi1 < x1 and xi1 > x2) or (yi1 > y1 and yi1 < y2) or (yi1 < y1 and yi1 > y2):
-        return xi1, yi1
+
+    # Can be optimized, but just checking for correctness right now
+    dx1 = abs(xi1 - x2)
+    dy1 = abs(yi1 - y2)
+    dx2 = abs(xi2 - x2)
+    dy2 = abs(yi2 - y2)
+
+    if dx1 > dy1:  # compare based on x-axis
+        if dx1 > dx2:
+            return xi2, yi2
+        else:
+            return xi1, yi1
     else:
-        return xi2, yi2
+        if dy1 > dy2:
+            return xi2, yi2
+        else:
+            return xi1, yi1
 
 
 def circle_segment(double x1, double y1, double x2, double y2):
@@ -139,9 +155,9 @@ def circle_segment(double x1, double y1, double x2, double y2):
 
     xi1, yi1, xi2, yi2 = circle_line(x1, y1, x2, y2)
 
-    if (xi1 > x1 and xi1 > x2) or (xi1 < x1 and xi1 < x2) or (yi1 > y1 and yi1 > y2) or (yi1 > y1 and yi1 > y2):
+    if (xi1 > x1 and xi1 > x2) or (xi1 < x1 and xi1 < x2) or (yi1 > y1 and yi1 > y2) or (yi1 < y1 and yi1 < y2):
         xi1, yi1 = 2., 2.
-    if (xi2 > x1 and xi2 > x2) or (xi2 < x1 and xi2 < x2) or (yi2 < y1 and yi2 < y2) or (yi2 < y1 and yi2 < y2):
+    if (xi2 > x1 and xi2 > x2) or (xi2 < x1 and xi2 < x2) or (yi2 > y1 and yi2 > y2) or (yi2 < y1 and yi2 < y2):
         xi2, yi2 = 2., 2.
 
     if xi1 > 1. and xi2 < 2.:
@@ -212,17 +228,17 @@ def overlap_area_triangle_unit_circle(double x1, double y1, double x2, double y2
         intersect23 = not on2 or x2 * (x3 - x2) + y2 * (y3 - y2) < 0.
 
         if intersect13 and intersect23:
-            xc1, yc1 = circle_segment_exactly_one(x1, y1, x3, y3)
-            xc2, yc2 = circle_segment_exactly_one(x2, y2, x3, y3)
+            xc1, yc1 = circle_segment_single2(x1, y1, x3, y3)
+            xc2, yc2 = circle_segment_single2(x2, y2, x3, y3)
             area = area_triangle(x1, y1, x2, y2, xc1, yc1) \
                  + area_triangle(x2, y2, xc1, yc1, xc2, yc2) \
                  + area_arc_unit(xc1, yc1, xc2, yc2)
         elif intersect13:
-            xc1, yc1 = circle_segment_exactly_one(x1, y1, x3, y3)
+            xc1, yc1 = circle_segment_single2(x1, y1, x3, y3)
             area = area_triangle(x1, y1, x2, y2, xc1, yc1) \
                  + area_arc_unit(x2, y2, xc1, yc1)
         elif intersect23:
-            xc2, yc2 = circle_segment_exactly_one(x2, y2, x3, y3)
+            xc2, yc2 = circle_segment_single2(x2, y2, x3, y3)
             area = area_triangle(x1, y1, x2, y2, xc2, yc2) \
                  + area_arc_unit(x1, y1, xc2, yc2)
         else:
@@ -231,8 +247,8 @@ def overlap_area_triangle_unit_circle(double x1, double y1, double x2, double y2
     elif in1:
         # Check for intersections of far side with circle
         xc1, yc1, xc2, yc2 = circle_segment(x2, y2, x3, y3)
-        xc3, yc3 = circle_segment_exactly_one(x1, y1, x2, y2)
-        xc4, yc4 = circle_segment_exactly_one(x1, y1, x3, y3)
+        xc3, yc3 = circle_segment_single2(x1, y1, x2, y2)
+        xc4, yc4 = circle_segment_single2(x1, y1, x3, y3)
         if xc1 > 1.:  # indicates no intersection
             if in_triangle(0, 0, x1, y1, x2, y2, x3, y3) and not in_triangle(0, 0, x1, y1, xc3, yc3, xc4, yc4):
                 area = area_triangle(x1, y1, xc3, yc3, xc4, yc4) \
