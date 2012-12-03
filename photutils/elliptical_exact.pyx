@@ -68,12 +68,14 @@ def circle_line(double x1, double y1, double x2, double y2):
 
     cdef double a, b, delta, dx, dy
 
+    cdef double TOL=1.e-10
+
     dx = x2 - x1
     dy = y2 - y1
 
-    print "circle_line", dx, dy
+    print "circle_line", dx, dy, x1, y1, x2, y2
 
-    if abs(dx) < 1.e-10 and abs(dy) < 1.e-10:
+    if abs(dx) < TOL and abs(dy) < TOL:
 
         return 2., 2., 2., 2.
 
@@ -86,7 +88,9 @@ def circle_line(double x1, double y1, double x2, double y2):
         # Find the determinant of the quadratic equation
         delta = 1. + a * a - b * b
 
-        if delta > 0.:  # solutions exist
+        print "delta 1 = ", delta
+
+        if delta > TOL:  # solutions exist
             delta = sqrt(delta)
             xi1 = (- a * b - delta) / (1. + a * a)
             yi1 = a * xi1 + b
@@ -105,7 +109,9 @@ def circle_line(double x1, double y1, double x2, double y2):
         # Find the determinant of the quadratic equation
         delta = 1. + a * a - b * b
 
-        if delta > 0.:  # solutions exist
+        print "delta 2 = ", delta
+
+        if delta > TOL:  # solutions exist
             delta = sqrt(delta)
             yi1 = (- a * b - delta) / (1. + a * a)
             xi1 = a * yi1 + b
