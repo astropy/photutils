@@ -154,9 +154,9 @@ def circle_segment(double x1, double y1, double x2, double y2):
 
     xi1, yi1, xi2, yi2 = circle_line(x1, y1, x2, y2)
 
-    if (xi1 > x1 and xi1 > x2) or (xi1 < x1 and xi1 < x2) or (yi1 > y1 and yi1 > y2) or (yi1 > y1 and yi1 > y2):
+    if (xi1 > x1 and xi1 > x2) or (xi1 < x1 and xi1 < x2) or (yi1 > y1 and yi1 > y2) or (yi1 < y1 and yi1 < y2):
         xi1, yi1 = 2., 2.
-    if (xi2 > x1 and xi2 > x2) or (xi2 < x1 and xi2 < x2) or (yi2 < y1 and yi2 < y2) or (yi2 < y1 and yi2 < y2):
+    if (xi2 > x1 and xi2 > x2) or (xi2 < x1 and xi2 < x2) or (yi2 > y1 and yi2 > y2) or (yi2 < y1 and yi2 < y2):
         xi2, yi2 = 2., 2.
 
     if xi1 > 1. and xi2 < 2.:
