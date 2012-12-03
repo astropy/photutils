@@ -67,6 +67,7 @@ def circle_line(double x1, double y1, double x2, double y2):
     '''Intersection of a line defined by two points with a unit circle'''
 
     cdef double a, b, delta, dx, dy
+    cdef double xi1, yi1, xi2, yi2
 
     dx = x2 - x1
     dy = y2 - y1
