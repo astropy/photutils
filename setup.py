@@ -5,8 +5,6 @@
 from distribute_setup import use_setuptools
 use_setuptools()
 
-from distutils.command import sdist
-
 import glob
 import os
 import sys
@@ -42,14 +40,16 @@ version = '0.0.dev'
 # Indicates if this version is a release version
 release = 'dev' not in version
 
-# Adjust the compiler in case the default on this platform is to use a
-# broken one.
-setup_helpers.adjust_compiler()
+cmdclassd = setup_helpers.register_commands(PACKAGENAME, version, release)
 
 if not release:
     version += get_git_devstr(False)
 generate_version_py(PACKAGENAME, version, release,
                     setup_helpers.get_debug_option())
+
+# Adjust the compiler in case the default on this platform is to use a
+# broken one.
+setup_helpers.adjust_compiler(PACKAGENAME)
 
 # Use the find_packages tool to locate all packages and modules
 packagenames = find_packages()
@@ -57,38 +57,6 @@ packagenames = find_packages()
 # Treat everything in scripts except README.rst as a script to be installed
 scripts = glob.glob(os.path.join('scripts', '*'))
 scripts.remove(os.path.join('scripts', 'README.rst'))
-
-# This dictionary stores the command classes used in setup below
-cmdclassd = {'test': setup_helpers.setup_test_command(PACKAGENAME),
-
-             # Use distutils' sdist because it respects package_data.
-             # setuptools/distributes sdist requires duplication of
-             # information in MANIFEST.in
-             'sdist': sdist.sdist,
-
-             # Use a custom build command which understands additional
-             # commandline arguments
-             'build': setup_helpers.AstropyBuild,
-
-             # Use a custom install command which understands additional
-             # commandline arguments
-             'install': setup_helpers.AstropyInstall
-
-             }
-
-if setup_helpers.HAVE_CYTHON and not release:
-    from Cython.Distutils import build_ext
-    # Builds Cython->C if in dev mode and Cython is present
-    cmdclassd['build_ext'] = setup_helpers.wrap_build_ext(build_ext)
-else:
-    cmdclassd['build_ext'] = setup_helpers.wrap_build_ext()
-
-if setup_helpers.HAVE_SPHINX:
-    cmdclassd['build_sphinx'] = setup_helpers.AstropyBuildSphinx
-
-# Set our custom command class mapping in setup_helpers, so that
-# setup_helpers.get_distutils_option will use the custom classes.
-setup_helpers.cmdclassd = cmdclassd
 
 # Additional C extensions that are not Cython-based should be added here.
 extensions = []
