@@ -30,7 +30,7 @@ def _get_test_runner():
 
 def test(package=None, test_path=None, args=None, plugins=None,
          verbose=False, pastebin=None, remote_data=False, pep8=False,
-         pdb=False, coverage=False, **kwargs):
+         pdb=False, coverage=False, open_files=False, **kwargs):
     """
     Run the tests using py.test. A proper set of arguments is constructed and
     passed to `pytest.main`.
@@ -80,6 +80,11 @@ def test(package=None, test_path=None, args=None, plugins=None,
         Generate a test coverage report.  The result will be placed in
         the directory htmlcov.
 
+    open_files : bool, optional
+        Fail when any tests leave files open.  Off by default, because
+        this adds extra run time to the test suite.  Works only on
+        platforms with a working `lsof` command.
+
     kwargs
         Any additional keywords passed into this function will be passed
         on to the astropy test runner.  This allows use of test-related
@@ -96,7 +101,7 @@ def test(package=None, test_path=None, args=None, plugins=None,
         package=package, test_path=test_path, args=args,
         plugins=plugins, verbose=verbose, pastebin=pastebin,
         remote_data=remote_data, pep8=pep8, pdb=pdb,
-        coverage=coverage, **kwargs)
+        coverage=coverage, open_files=open_files)
 
 if not _PACKAGE_SETUP_:
 
