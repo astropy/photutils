@@ -1,5 +1,17 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
+#this indicates whether or not we are in the package's setup.py
+try:
+    _PACKAGE_SETUP_
+except NameError:
+    from sys import version_info
+    if version_info[0] >= 3:
+        import builtins
+    else:
+        import __builtin__ as builtins
+    builtins._PACKAGE_SETUP_ = False
+    del version_info
+
 try:
     from .version import version as __version__
 except ImportError:
@@ -18,7 +30,7 @@ def _get_test_runner():
 
 def test(package=None, test_path=None, args=None, plugins=None,
          verbose=False, pastebin=None, remote_data=False, pep8=False,
-         pdb=False, coverage=False, **kwargs):
+         pdb=False, coverage=False, open_files=False, **kwargs):
     """
     Run the tests using py.test. A proper set of arguments is constructed and
     passed to `pytest.main`.
@@ -68,6 +80,11 @@ def test(package=None, test_path=None, args=None, plugins=None,
         Generate a test coverage report.  The result will be placed in
         the directory htmlcov.
 
+    open_files : bool, optional
+        Fail when any tests leave files open.  Off by default, because
+        this adds extra run time to the test suite.  Works only on
+        platforms with a working `lsof` command.
+
     kwargs
         Any additional keywords passed into this function will be passed
         on to the astropy test runner.  This allows use of test-related
@@ -84,4 +101,24 @@ def test(package=None, test_path=None, args=None, plugins=None,
         package=package, test_path=test_path, args=args,
         plugins=plugins, verbose=verbose, pastebin=pastebin,
         remote_data=remote_data, pep8=pep8, pdb=pdb,
-        coverage=coverage, **kwargs)
+        coverage=coverage, open_files=open_files)
+
+if not _PACKAGE_SETUP_:
+
+    import os
+    from warnings import warn
+    from astropy import config
+
+    # add these here so we only need to cleanup the namespace at the end
+    config_dir = e = None
+
+    if not os.environ.get('ASTROPY_SKIP_CONFIG_UPDATE', False):
+        config_dir = os.path.dirname(__file__)
+        try:
+            config.configuration.update_default_config(__package__, config_dir)
+        except config.configuration.ConfigurationDefaultMissingError as e:
+            wmsg = (e.args[0] + " Cannot install default profile. If you are "
+                    "importing from source, this is expected.")
+            warn(config.configuration.ConfigurationDefaultMissingWarning(wmsg))
+
+    del os, warn, config_dir, e  # clean up namespace
