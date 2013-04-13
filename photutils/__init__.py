@@ -2,14 +2,14 @@
 
 #this indicates whether or not we are in the package's setup.py
 try:
-    _PACKAGE_SETUP_
+    _ASTROPY_SETUP_
 except NameError:
     from sys import version_info
     if version_info[0] >= 3:
         import builtins
     else:
         import __builtin__ as builtins
-    builtins._PACKAGE_SETUP_ = False
+    builtins._ASTROPY_SETUP_ = False
     del version_info
 
 try:
@@ -22,8 +22,6 @@ except ImportError:
     __githash__ = ''
 
 # set up the test command
-from .aperture import *
-
 def _get_test_runner():
     from astropy.tests.helper import TestRunner
     return TestRunner(__path__[0])
@@ -101,16 +99,16 @@ def test(package=None, test_path=None, args=None, plugins=None,
         package=package, test_path=test_path, args=args,
         plugins=plugins, verbose=verbose, pastebin=pastebin,
         remote_data=remote_data, pep8=pep8, pdb=pdb,
-        coverage=coverage, open_files=open_files)
+        coverage=coverage, open_files=open_files, **kwargs)
 
-if not _PACKAGE_SETUP_:
+if not _ASTROPY_SETUP_:
 
     import os
     from warnings import warn
     from astropy import config
 
     # add these here so we only need to cleanup the namespace at the end
-    config_dir = e = None
+    config_dir = None
 
     if not os.environ.get('ASTROPY_SKIP_CONFIG_UPDATE', False):
         config_dir = os.path.dirname(__file__)
@@ -120,5 +118,8 @@ if not _PACKAGE_SETUP_:
             wmsg = (e.args[0] + " Cannot install default profile. If you are "
                     "importing from source, this is expected.")
             warn(config.configuration.ConfigurationDefaultMissingWarning(wmsg))
+            del e
 
-    del os, warn, config_dir, e  # clean up namespace
+    del os, warn, config_dir  # clean up namespace
+
+from .aperture import *
