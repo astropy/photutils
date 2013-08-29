@@ -53,14 +53,14 @@ class DiscretePSF(Kernel2D, Parametric2DModel):
     Base class for discrete PSF models.
     
     """
-    param_names = ['amplitude', 'x_0', 'y_0']
-    linear = True
+    param_names = ['amplitude']
     
-    def __init__(self, array, amplitude):
+    def __init__(self, array):
         Kernel2D.__init__(self, array=array)
         Parametric2DModel.__init__(self, {'amplitude': 1})
         self.normalize()
-        self.fitter = fitting.LinearLSQFitter(self)
+        self.linear = True
+        self.fitter = fitting.NonLinearLSQFitter(self)
         
     def eval(self, x, y, amplitude):
         """
@@ -75,7 +75,28 @@ class DiscretePSF(Kernel2D, Parametric2DModel):
         amplitude : float
             Model amplitude. 
         """
-        return amplitude * self._array[y, x]
+        x_int = np.rint(x).astype('int16')
+        y_int = np.rint(y).astype('int16')
+        return amplitude * self._array[y_int, x_int]
+    
+#    def deriv(self, x, y):
+#        """
+#        Discrete PSF model evaluation.
+#        
+#        Parameters
+#        ----------
+#        x : float
+#            x in pixel coordinates.
+#        y : float 
+#            y in pixel coordinates.
+#        amplitude : float
+#            Model amplitude. 
+#        """
+#        x_int = np.rint(x).astype('int16')
+#        y_int = np.rint(y).astype('int16')
+#        return np.array(self._array[y_int, x_int].T.flatten(), ndmin=2)
+         
+    
         
     def fit(self, data):
         """
@@ -145,7 +166,7 @@ class GaussianPSF(AnalyticalPSF):
 #    pass
 
 
-def psf_photometry(data, xc, yc, psf, mode='simultaneous'):
+def psf_photometry(data, positions, psf, mode='simultaneous'):
     """
     Perform PSF photometry on the data.
     
@@ -156,6 +177,15 @@ def psf_photometry(data, xc, yc, psf, mode='simultaneous'):
     positions : List or array
         List of positions in pixel coordinates
         where to fit the PSF.
+    psf : photutils.psf instance
+        PSF model to fit to the data.
+    mode : string
+         One of the following modes to do PSF photometry:
+            * 'simultaneous' (default)
+                Fit PSF simultaneous to all given positions.
+            * 'sequential'
+                Fit PSF one after another to the given positions .
+    
     """
     # Check input array type and dimension.
     data = np.asarray(data)
@@ -181,7 +211,17 @@ def psf_photometry(data, xc, yc, psf, mode='simultaneous'):
 
 def create_psf(data, positions, size, fluxes=None, mode='mean'):
     """
-    Create PSF from data array.
+    Estimate point spread function from image data.
+    
+    Given a list of positions and desired size this function estimates an image of the PSF
+    by extracting and combining the individual PSFs from the given positions. Different
+    combining modes are available.    
+     
+    NaN values are replaced by the mirrored value, with respect to the center of the PSF.
+    Furthermore it is possible to specify fluxes to have a correct normalization of the 
+    individual PSFs. Otherwise the flux is estimated from a quadratic aperture of the 
+    specified size. 
+     
     
     Parameters
     ----------
@@ -192,6 +232,8 @@ def create_psf(data, positions, size, fluxes=None, mode='mean'):
         where to create the PSF from.
     size : odd int
         Size of the quadratic PSF grid in pixels.
+    fluxes : array (optional)
+        Object fluxes to normalize extracted psfs. 
     mode : string
         One of the following modes to combine
         the extracted PSFs:
@@ -199,7 +241,7 @@ def create_psf(data, positions, size, fluxes=None, mode='mean'):
                 Take the pixelwise mean of the extracted PSFs.
             * 'median'
                 Take the pixelwise median of the extracted PSFs.
-     
+    
     Returns
     -------
     psf : DiscretePSF
@@ -215,19 +257,25 @@ def create_psf(data, positions, size, fluxes=None, mode='mean'):
     if size % 2 == 0:
         raise TypeError("Size must be odd.")
         
+    if fluxes is not None and len(fluxes) != len(positions):
+        raise TypeError("Positions and fluxes must be of equal length.")
+    
     # Setup data cube for extracted PSFs
     extracted_psfs = np.ndarray(shape=(0, size, size))
     
     # Extract PSFs at given pixel positions
-    for x, y in positions:
-        extracted_psf = extract_array_2D(data, (size, size), (x, y))
+    for i, position in enumerate(positions):
+        extracted_psf = extract_array_2D(data, (size, size), position)
         
-        # Check shape to exclude incomplete boundary psfs
+        # Check shape to exclude incomplete psfs at the boundaries of the image
         if extracted_psf.shape == (size, size) and extracted_psf.sum() != 0:
             
             # Replace NaN values by mirrored value, with respect to the psf's center
             psf_nan = np.isnan(extracted_psf)
             if psf_nan.any():
+                
+                # Allow at most 3 NaN values to prevent the unlikely case, 
+                # that the mirrored values are also NaN. 
                 if psf_nan.sum() > 3 or psf_nan[size / 2, size / 2]:
                     continue
                 else:
@@ -240,9 +288,13 @@ def create_psf(data, positions, size, fluxes=None, mode='mean'):
                         else:
                             extracted_psf[y_nan, x_nan] = extracted_psf[-y_nan - 1, x_nan]
             
-            # Add extracted psf to data cube
+            # Normalize and add extracted psf to data cube
+            if fluxes is None:
+                extracted_psf /= extracted_psf.sum()
+            else:
+                extracted_psf /= fluxes[i]
             extracted_psf.shape = (1, size, size)
-            extracted_psfs = np.append(extracted_psfs, extracted_psf / extracted_psf.sum(), axis=0)
+            extracted_psfs = np.append(extracted_psfs, extracted_psf , axis=0)
         else:
             continue
     
@@ -256,69 +308,6 @@ def create_psf(data, positions, size, fluxes=None, mode='mean'):
         raise Exception('Invalid mode to combine PSFs.') 
     return psf
         
-
-def create_prf(data, xc, yc, size, mode='mean', subpixels=5):
-    """
-    Create PSF from data array.
-    
-    Parameters
-    ----------
-    data : array
-        Data array
-    positions : List or array
-        List of positions in pixel coordinates
-        where to create the PSF from.
-    size : odd int
-        Size of the quadratic PSF grid in pixels.
-    mode : string
-        One of the following modes to combine
-        the extracted PSFs:
-            * 'mean' (default)
-                Take the pixelwise mean of the extracted PSFs.
-            * 'median'
-                Take the pixelwise median of the extracted PSFs.
-            * 'min'
-                Take the pixelwise minimum of the extracted PSFs.
-            * 'max'
-                Take the pixelwise maximum of the extracted PSFs.
-     
-    Returns
-    -------
-    psf : DiscretePSF
-        Discrete PSF model estimated from data.
-    """
-    # Check input array type and dimension.
-    data = np.asarray(data)
-    if np.iscomplexobj(data):
-        raise TypeError('Complex type not supported')
-    if data.ndim != 2:
-        raise ValueError('{0}-d array not supported. '
-                         'Only 2-d arrays supported.'.format(data.ndim))
-        
-        
-    sub_x = sub_y = subpixels
-    
-    # Setup data array for extracted PRFs
-    extracted_prfs = np.ndarray(shape=(sub_y, sub_x, 0, size, size))
-    
-    # Extract PRFs at given pixel positions
-    for x, y in zip(xc, yc):
-        extracted_prf = extract_array_2D(data, (size, size), (x, y))
-        extracted_prfs = np.append(extracted_psf / extracted_psf.sum(), axis=0)
-        
-    
-    # Choose combination mode
-    if mode == 'mean':
-        psf = np.mean(extracted_prfs, axis=0)
-    elif mode == 'median':
-        psf = np.median(extracted_prfs, axis=0)
-    elif mode == 'max':
-        psf = np.max(extracted_prfs, axis=0)
-    elif mode == 'min':
-        psf = np.min(extracted_prfs, axis=0)
-    else:
-        raise Exception('Invalid mode to combine PRFs.') 
-    return DiscretePSFModel(psf, 1, 0, 0)
         
         
 class PSFFitter(fitting.Fitter):
