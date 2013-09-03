@@ -7,16 +7,11 @@ import abc
 import numpy as np
 
 from astropy.nddata.convolution.core import Kernel2D
-from astropy.nddata.convolution.kernels import *
-from astropy.nddata.convolution.utils import *
 from astropy.modeling import fitting
 from astropy.modeling.core import Parametric2DModel
-from astropy.table import Table, Column
-from .photometryutils import *
+from .photometryutils import extract_array_2D
+from IPython import embed
 
-
-class ParametricPSFModel():
-    pass
 
 
 class AnalyticalPSF(Kernel2D, Parametric2DModel):
@@ -52,13 +47,18 @@ class DiscretePSF(Kernel2D, Parametric2DModel):
     """
     Base class for discrete PSF models.
     
+    Parameters
+    ----------
+    array : ndarray
+        Array containing PSF image.
     """
     param_names = ['amplitude']
     
-    def __init__(self, array):
+    def __init__(self, array, normalize=True):
         Kernel2D.__init__(self, array=array)
         Parametric2DModel.__init__(self, {'amplitude': 1})
-        self.normalize()
+        if normalize:
+            self.normalize()
         self.linear = True
         self.fitter = fitting.NonLinearLSQFitter(self)
         
@@ -78,95 +78,62 @@ class DiscretePSF(Kernel2D, Parametric2DModel):
         x_int = np.rint(x).astype('int16')
         y_int = np.rint(y).astype('int16')
         return amplitude * self._array[y_int, x_int]
-    
-#    def deriv(self, x, y):
-#        """
-#        Discrete PSF model evaluation.
-#        
-#        Parameters
-#        ----------
-#        x : float
-#            x in pixel coordinates.
-#        y : float 
-#            y in pixel coordinates.
-#        amplitude : float
-#            Model amplitude. 
-#        """
-#        x_int = np.rint(x).astype('int16')
-#        y_int = np.rint(y).astype('int16')
-#        return np.array(self._array[y_int, x_int].T.flatten(), ndmin=2)
-         
-    
-        
+  
     def fit(self, data):
         """
         Fit PSF to data.
+        
+        Parameters
+        ----------
+        data : ndarray
+            Data subarray with the same size as PSF image.
         """
         y, x = np.indices(self.shape)
         self.fitter(x, y, data)
         return self.amplitude
 
 
+class SpitzerPSF():
+    """
+    Spitzer PSF model.
+    """
+    def __init__(self):
+        raise NotImplementedError
 
-#class CompositePSFModel(Parametric2DModel):
-#    """
-#    """
-#    def __init__(self):
-#        pass
-#    
-#    def eval(self, x, y, *amplitudes):
-#        """
-#        """
-#        for psf, amplitude in zip(psf_list, amplitudes):
-#            psf.eval(x, y, amplitude)
-    
 
-#class SpitzerPSF(DiscretePSFModel):
-#    """
-#    Spitzer PSF model.
-#    """
-#    pass
-#
-#
-#class FermiPSF():
-#    """
-#    Fermi PSF model.
-#    """
-#    pass
-#
-#
-class GaussianPSF(AnalyticalPSF):
+class FermiPSF():
+    """
+    Fermi PSF model.
+    """
+    def __init__(self):
+        raise NotImplementedError
+
+
+class GaussianPSF():
     """
     Gaussian PSF model.
     """
-    def __init__(self, width):
-        constraints = {'fixed': {'x_stddev': True,
-                                 'y_stddev': True, 
-                                 'x_mean': True, 
-                                 'y_mean': True,
-                                 'theta': True}}
+    def __init__(self):
+        raise NotImplementedError
         
-        constraints = {'fixed': {'x_stddev': True,
-                                 'y_stddev': True, 
-                                 'theta': True}}
-#        
-#    
-#
-#class LorentzianPSF(Lorentzian2DKernel, PSF):
-#    """
-#    Lorentzian PSF model.
-#    """
-#    pass
-#
-#
-#class MoffatPSF(Beta2DKernel, PSF):
-#    """
-#    Moffat PSF model.
-#    """
-#    pass
+    
+class LorentzianPSF():
+    """
+    Lorentzian PSF model.
+    """
+    def __init__(self):
+        raise NotImplementedError
 
 
-def psf_photometry(data, positions, psf, mode='simultaneous'):
+class MoffatPSF():
+    """
+    Moffat PSF model.
+    """
+    def __init__(self):
+        raise NotImplementedError
+
+
+def psf_photometry(data, positions, psf, mode='sequential'):
     """
     Perform PSF photometry on the data.
     
@@ -194,16 +161,19 @@ def psf_photometry(data, positions, psf, mode='simultaneous'):
     if data.ndim != 2:
         raise ValueError('{0}-d array not supported. '
                          'Only 2-d arrays supported.'.format(data.ndim))
-    if xc.size != yc.size:
-        raise ValueError('xc and yc must have same length')
-     
+    result = np.array([])
     # Actual photometry
     if mode == 'simultaneous':
         raise NotImplementedError('Simultaneous mode not implemented')
     elif mode == 'sequential':
-        for x, y in zip(xc, yc):
-            psf.x_0, psf.y_0 = x, y
-            flux = psf.fit(data)  
+        for i, position in enumerate(positions):
+            sub_array_data = extract_array_2D(data, psf.shape, position)
+            if sub_array_data.shape == psf.shape:
+                flux = psf.fit(sub_array_data)
+                result = np.append(result, flux.value)
+            else:
+                continue
+                 
     else:
         raise Exception('Invalid photometry mode.')
     return result
@@ -211,18 +181,17 @@ def psf_photometry(data, positions, psf, mode='simultaneous'):
 
 def create_psf(data, positions, size, fluxes=None, mode='mean'):
     """
-    Estimate point spread function from image data.
+    Estimate point spread function (PSF) from image data.
     
-    Given a list of positions and desired size this function estimates an image of the PSF
-    by extracting and combining the individual PSFs from the given positions. Different
-    combining modes are available.    
+    Given a list of positions and grid size this function estimates an image of
+    the PSF by extracting and combining the individual PSFs from the given 
+    positions. Different combining modes are available.    
      
-    NaN values are replaced by the mirrored value, with respect to the center of the PSF.
-    Furthermore it is possible to specify fluxes to have a correct normalization of the 
-    individual PSFs. Otherwise the flux is estimated from a quadratic aperture of the 
-    specified size. 
-     
-    
+    NaN values are replaced by the mirrored value, with respect to the center 
+    of the PSF. Furthermore it is possible to specify fluxes to have a correct
+    normalization of the individual PSFs. Otherwise the flux is estimated from
+    a quadratic aperture of the specified size. 
+        
     Parameters
     ----------
     data : array
@@ -270,7 +239,8 @@ def create_psf(data, positions, size, fluxes=None, mode='mean'):
         # Check shape to exclude incomplete psfs at the boundaries of the image
         if extracted_psf.shape == (size, size) and extracted_psf.sum() != 0:
             
-            # Replace NaN values by mirrored value, with respect to the psf's center
+            # Replace NaN values by mirrored value, with respect 
+            #to the psf's center
             psf_nan = np.isnan(extracted_psf)
             if psf_nan.any():
                 
@@ -282,19 +252,22 @@ def create_psf(data, positions, size, fluxes=None, mode='mean'):
                     y_nan_coords, x_nan_coords = np.where(psf_nan==True)
                     for y_nan, x_nan in zip(y_nan_coords, x_nan_coords):
                         if not np.isnan(extracted_psf[-y_nan - 1, -x_nan - 1]):
-                            extracted_psf[y_nan, x_nan] = extracted_psf[-y_nan - 1, -x_nan - 1]
+                            extracted_psf[y_nan, x_nan] = \
+                             extracted_psf[-y_nan - 1, -x_nan - 1]
                         elif not np.isnan(extracted_psf[y_nan, -x_nan]):
-                            extracted_psf[y_nan, x_nan] = extracted_psf[y_nan, -x_nan - 1]
+                            extracted_psf[y_nan, x_nan] = \
+                            extracted_psf[y_nan, -x_nan - 1]
                         else:
-                            extracted_psf[y_nan, x_nan] = extracted_psf[-y_nan - 1, x_nan]
+                            extracted_psf[y_nan, x_nan] = \
+                            extracted_psf[-y_nan - 1, x_nan]
             
             # Normalize and add extracted psf to data cube
             if fluxes is None:
-                extracted_psf /= extracted_psf.sum()
+                extracted_psf_copy = np.copy(extracted_psf, extracted_psf.sum())
             else:
-                extracted_psf /= fluxes[i]
-            extracted_psf.shape = (1, size, size)
-            extracted_psfs = np.append(extracted_psfs, extracted_psf , axis=0)
+                extracted_psf_copy = np.copy(extracted_psf, fluxes[i])
+            extracted_psf_copy.shape = (1, size, size)
+            extracted_psfs = np.append(extracted_psfs, extracted_psf_copy , axis=0)
         else:
             continue
     
@@ -303,10 +276,9 @@ def create_psf(data, positions, size, fluxes=None, mode='mean'):
         psf = np.mean(extracted_psfs, axis=0)
     elif mode == 'median':
         psf = np.median(extracted_psfs, axis=0)
-        psf /= psf.sum()
     else:
         raise Exception('Invalid mode to combine PSFs.') 
-    return psf
+    return DiscretePSF(psf)
         
         
         
@@ -339,7 +311,7 @@ class PSFFitter(fitting.Fitter):
     def __call__(self):
         """
         """
-        pass
+        pass    
     
     
     
