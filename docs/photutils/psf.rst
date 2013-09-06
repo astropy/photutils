@@ -1,0 +1,5 @@
+PSF photometry
+==============
+
+
+.. automodapi:: psf

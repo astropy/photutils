@@ -130,3 +130,4 @@ if not _ASTROPY_SETUP_:
     del os, warn, config_dir  # clean up namespace
 
 from .aperture import *
+from .psf import *
