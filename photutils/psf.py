@@ -8,8 +8,7 @@ import numpy as np
 from astropy.nddata.convolution.core import Kernel2D
 from astropy.modeling import fitting
 from astropy.modeling.core import Parametric2DModel
-from .photometryutils import extract_array_2D, subpixel_indices, add_array_2D
-from IPython import embed
+from .arrayutils import extract_array_2D, subpixel_indices, add_array_2D
 
 
 __all__ = ['DiscretePRF', 'create_prf', 'psf_photometry', 'GaussianPSF']

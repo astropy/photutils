@@ -88,7 +88,7 @@ def test_psf_photometry_discrete():
     """
     prf = DiscretePRF(test_psf, subsampling=1)
     f = psf_photometry(image, positions, prf)
-    assert np.all(np.abs(fluxes - f) < 1E-12)
+    assert np.all(np.abs(fluxes - f) < 1E-5)
 
 
 def test_psf_photometry_gaussian():

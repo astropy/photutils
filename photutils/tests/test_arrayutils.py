@@ -26,7 +26,8 @@ def test_add_array_2D():
     """
     large_test_array = np.zeros((11, 11))
     small_test_array = np.ones((5, 5))
-    large_test_array_ref = large_test_array[3:8, 3:8] + small_test_array
+    large_test_array_ref = large_test_array.copy()
+    large_test_array_ref[3:8, 3:8] += small_test_array
     
     added_array = add_array_2D(large_test_array, small_test_array, (5, 5))
     assert np.all(added_array == large_test_array_ref)
