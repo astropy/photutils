@@ -25,5 +25,13 @@ def test_subpixel_gauss_psf(width):
     y, x = np.mgrid[-10:11, -10:11]
     assert np.abs(gauss_psf(x, y).sum() - 1) < 1E-12
     
+@pytest.mark.skipif('not HAS_SCIPY')    
+def test_gaussian_PSF_integral():
+    """
+    Test if Gaussian PSF integrates to unity on larger scales.
+    """
+    psf = GaussianPSF(10)
+    y, x = np.mgrid[-100:101, -100:101]
+    assert np.abs(psf(y, x).sum() - 1) < 1E-12 
     
     
