@@ -1,60 +1,58 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module includes helper functions for photometry. 
+This module includes helper functions for array operations. 
 """
 import numpy as np
 from astropy import log
 
-__all__ = ['extract_array_2D', 'add_array_2D']
+__all__ = ['extract_array_2D', 'add_array_2D', 'subpixel_indices']
 
 
 def _get_slices(large_array_shape, small_array_shape, position):
     """
-    Get slices for a given small and large array shape and position. 
+    Get slices for the overlapping part of a small and a large array.
+    
+    Given a certain position of the center of the small array, with respect to 
+    the large array, four slices are computed, which can be used to extract, 
+    add or subtract the small array at the given position. This function takes 
+    care of the correct behavior at the boundaries, where the small array is cut
+    of appropriately.
+     
+    Parameters
+    ----------
+    large_array_shape : tuple
+        Shape of the large array.
+    small_array_shape : tuple
+        Shape of the small array.
+    position : tuple, (x, y)
+        Position of the small array's center, with respect
+        to the large array.
+    
+    Returns
+    -------
+    s_y : slice
+        Slice in y direction for the large array.
+    s_x : slice
+        Slice in x direction for the large array.
+    b_y : slice
+        Slice in y direction for the small array.
+    b_x : slice
+        Slice in x direction for the small array.
     """
-    large_width = large_array_shape[1]
-    large_height = large_array_shape[0]
-    y_min, x_min = np.array(position) - np.array(small_array_shape) // 2
-    y_max, x_max = np.array(position) + np.array(small_array_shape) // 2 + 1
+    # Get edge coordinates
+    y_min = position[1] - small_array_shape[0] // 2
+    x_min = position[0] - small_array_shape[1] // 2
+    y_max = position[1] + small_array_shape[0] // 2 + 1
+    x_max = position[0] + small_array_shape[1] // 2 + 1
 
     # Set up slices in x direction
-    if x_min < 0:
-        log.debug('Left side out of range')
-        s_x = slice(0, x_max)
-        b_x = slice(-x_min, x_max - x_min)
-
-    elif x_max > large_width:
-        log.debug('Right side out of range')
-        s_x = slice(x_min, large_width)
-        b_x = slice(0, large_width - x_min)
-
-    elif x_min < 0 and x_max > large_width:
-        s_x = slice(0, large_width)
-        b_x = slice(-x_min, large_width - x_min)
-
-    else:
-        s_x = slice(x_min, x_max)
-        b_x = slice(0, x_max - x_min)
-
+    s_x = slice(max(0, x_min), min(large_array_shape[1], x_max))
+    b_x = slice(max(0, -x_min), min(large_array_shape[1] - x_min, x_max - x_min))
+    
     # Set up slices in y direction
-    if y_min < 0:
-        log.debug('Bottom side out of range')
-        s_y = slice(0, y_max)
-        b_y = slice(-y_min, y_max - y_min)
-
-    elif y_max > large_height:
-        log.debug('Top side out of range')
-        s_y = slice(y_min, large_height)
-        b_y = slice(0, large_height - y_min)
-
-    elif y_min < 0 and y_max > large_height:
-        s_y = slice(0, large_height)
-        b_y = slice(-left_bottom, large_height - y_min)
-
-    else:
-        s_y = slice(y_min, y_max)
-        b_y = slice(0, y_max - y_min)
-
-    return s_x, s_y, b_x, b_y
+    s_y = slice(max(0, y_min), min(large_array_shape[0], y_max))
+    b_y = slice(max(0, -y_min), min(large_array_shape[0] - y_min, y_max - y_min))
+    return s_y, s_x, b_y, b_x
 
 
 def extract_array_2D(array_large, shape, position):
@@ -67,29 +65,81 @@ def extract_array_2D(array_large, shape, position):
         Array to extract another array from.
     shape : tuple
         Shape of the extracted array.
-    position : tuple
-        x and y position of the center of the small array.
+    position : tuple, (x, y)
+        Position of the small array's center, with respect
+        to the large array.
+    
+   
+    Examples
+    --------
+    We consider a large array of zeros with the shape 21x21 and a small 
+    array of ones with a shape of 9x9:
+    
+    >>> import numpy as np
+    >>> from photutils.arrayutils import extract_array_2D
+    >>> large_array = np.zeros((21, 21))
+    >>> large_array[6:14, 6:14] = np.ones((9, 9))
+    >>> extract_array_2D(large_array, (9, 9), (10, 10))
     """
-    # Check if one array is larger than the other
+    # Check if larger array is really larger
     if array_large.shape > shape:
-        s_y_large, s_x_large, s_y_small, s_x_small = _get_slices(array_large.shape, shape, position)
-        return array_large[s_y_large, s_x_large]
+        s_y, s_x, _, _ = _get_slices(array_large.shape, shape, position)
+        return array_large[s_y, s_x]
+    else:
+        raise Exception("Can't extract array. Shape too large.")
 
 
 def add_array_2D(array_large, array_small, position):
     """
-    Add a smaller 2D arrays at a given position in a larger 2D array.
+    Add a smaller 2D array at a given position in a larger 2D array.
 
     Parameters
     ----------
     array_large : ndarray
-
+        Large array.
     array_small : ndarray
-    position : tuple
-        x and y position of the center of the small array.
+        Small array to add.
+    position : tuple, (x, y)
+        Position of the small array's center, with respect
+        to the large array.
+    
+    Examples
+    --------
+    We consider a large array of zeros with the shape 21x21 and a small 
+    array of ones with a shape of 9x9:
+    
+    >>> import numpy as np
+    >>> from photutils.arrayutils import add_array_2D
+    >>> large_array = np.zeros((21, 21))
+    >>> small_array = np.ones((9, 9))
+    >>> add_array_2D(large_array, small_array, (10, 10))
     """
-    # Check if one array is larger than the other
-    if array_large.shape > array_small.shape:
-        s_y_large, s_x_large, s_y_small, s_x_small = _get_slices(array_large.shape, array_small.shape, position)
-        res = array_large[s_y_large, s_x_large] + array_small[s_y_small, s_x_small]
-        return res
+    # Check if larger array is really larger
+    if array_large.shape >= array_small.shape:
+        s_y, s_x, b_y, b_x = _get_slices(array_large.shape, array_small.shape, position)
+        array_large[s_y, s_x] += array_small[b_y, b_x]
+        return array_large
+    else:
+        raise Exception("Can't add array. Small array too large.")
+
+
+def subpixel_indices(position, subsampling):
+    """
+    Convert decimal points to indices, given a subsampling factor.
+    
+    Parameters
+    ----------
+    position : tuple (x, y)
+        Position in pixels.
+    subsampling : int
+        Subsampling factor per pixel.
+        
+    """
+    # Get decimal points
+    x_frac, y_frac = np.modf(position)[0]
+    
+    # Convert to int
+    x_sub = np.int(x_frac * subsampling)
+    y_sub = np.int(y_frac * subsampling)
+    return y_sub, x_sub
+    
