@@ -48,9 +48,9 @@ def test_create_prf():
     assert np.all(np.abs(prf._prf_array[0, 0] - test_psf) < 0.02)
   
 
-def test_create_psf_nan():
+def test_create_prf_nan():
     """
-    Check if create_psf deals correctly with nan values.
+    Check if create_prf deals correctly with nan values.
     """
     image[52, 52] = np.nan
     image[52, 48] = np.nan
@@ -58,26 +58,28 @@ def test_create_psf_nan():
     assert not np.isnan(prf._prf_array[0, 0]).any()
 
 
-def test_create_psf_flux():
+def test_create_prf_flux():
     """
-    Check if create_psf works correctly when fluxes are specified. 
+    Check if create_prf works correctly when fluxes are specified. 
     """
     prf = create_prf(image, positions, psf_size, fluxes=fluxes, subsampling=1)
     assert np.abs(prf._prf_array[0, 0].sum() - 1) < 0.001
     assert np.all(np.abs(prf._prf_array[0, 0] - test_psf) < 0.1)
     
     
-#def test_discrete_psf_fit():
-#    """
-#    Check if fitting of discrete PSF model works.
-#    """
-#    prf = DiscretePRF(test_psf, subsampling=1)
-#    prf.x_0 = psf_size // 2
-#    prf.y_0 = psf_size // 2
-#    data = 10 * test_psf
-#    indices = np.indices(data.shape) 
-#    flux = prf.fit(data, indices)
-#    assert np.abs(flux - 10) < 0.1
+def test_discrete_prf_fit():
+    """
+    Check if fitting of discrete PSF model works.
+    """
+    prf = DiscretePRF(test_psf, subsampling=1)
+    prf.x_0 = psf_size // 2
+    prf.y_0 = psf_size // 2
+    
+    # test_psf is normalized to unity 
+    data = 10 * test_psf
+    indices = np.indices(data.shape) 
+    flux = prf.fit(data, indices)
+    assert np.abs(flux - 10) < 0.1
     
     
 def test_psf_photometry_discrete():
@@ -87,11 +89,11 @@ def test_psf_photometry_discrete():
     prf = DiscretePRF(test_psf, subsampling=1)
     f = psf_photometry(image, positions, prf)
     assert np.all(np.abs(fluxes - f) < 1E-12)
-    
+
 
 def test_psf_photometry_gaussian():
     """
-    Test psf_photometry with Gaussian PRF model.
+    Test psf_photometry with Gaussian PSF model.
     """
     prf = GaussianPSF(gaussian_width)
     f = psf_photometry(image, positions, prf)
