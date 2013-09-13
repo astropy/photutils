@@ -8,7 +8,7 @@ import numpy as np
 from astropy.nddata.convolution.core import Kernel2D
 from astropy.modeling import fitting
 from astropy.modeling.core import Parametric2DModel
-from .photometryutils import extract_array_2D
+from .photometryutils import extract_array_2D, subpixel_indices, add_array_2D
 from IPython import embed
 
 
@@ -36,17 +36,19 @@ class DiscretePRF(Parametric2DModel):
     The total array therefore has the following shape
     (subsampling, subsampling, prf_size, prf_size)
      
-    
     Parameters
     ----------
     prf_array : ndarray
         Array containing PRF images.
-    subsampling : int
-        Factor of subsampling.
+    normalize : bool
+        Normalize PRF images to unity.
+    subsampling : int, optional
+        Factor of subsampling. Default = 1.
+        
     """
     param_names = ['amplitude', 'x_0', 'y_0']
     
-    def __init__(self, prf_array, normalize=True, subsampling=5):
+    def __init__(self, prf_array, normalize=True, subsampling=1):
 
         # Array shape and dimension check
         if subsampling == 1:
@@ -56,25 +58,43 @@ class DiscretePRF(Parametric2DModel):
             raise TypeError('Array must have 4 dimensions.')
         if prf_array.shape[:2] != (subsampling, subsampling):
             raise TypeError('Incompatible subsampling and array size')
+        if np.isnan(prf_array).any():
+            raise Exception("Array contains NaN values. Can't create PRF.")
        
+        # Normalize if requested
+        if normalize:
+            for i in range(prf_array.shape[0]):
+                for j in range(prf_array.shape[1]):
+                    prf_array[i, j] /= prf_array[i, j].sum()
+        
         # Set PRF asttributes
         self._prf_array = prf_array
         self.subsampling = subsampling
         
         Parametric2DModel.__init__(self, {'amplitude': 1, 'x_0': 0, 'y_0': 0,
                                    'fixed': {'x_0': True, 'y_0': True}})
+        
         self.linear = True
         self.fitter = fitting.NonLinearLSQFitter(self)
+        
+        # Fix position per default
+        self.x_0.fixed = True
+        self.y_0.fixed = True
     
     @property
     def shape(self):
         """
+        Shape of the PRF image.
         """
         return self._prf_array.shape[-2:]
         
     def eval(self, x, y, amplitude, x_0, y_0):
         """
         Discrete PRF model evaluation.
+        
+        Given a certain position and amplitude the corresponding image of the PSF 
+        is chosen and scaled to the amplitude. If x and y are outside the 
+        boundaries of the image, zero will be returned.
         
         Parameters
         ----------
@@ -84,37 +104,69 @@ class DiscretePRF(Parametric2DModel):
             y in pixel coordinates.
         amplitude : float
             Model amplitude. 
+        x_0 : float
+            x position of the center.
+        y_0 : float
+            y position of the center.
         """
-        x = x.astype('int')
-        y = y.astype('int')
-        y_sub, x_sub = subpixel_indices(x_0, y_0, self.subsampling)
-        return amplitude * self._prf_array[y_sub, x_sub][y, x]
+        # Convert x and y to index arrays
+        x = (x - int(x_0)).astype('int') + self.shape[1] // 2
+        y = (y - int(y_0)).astype('int') + self.shape[0] // 2
+        
+        # Get subpixel indices
+        y_sub, x_sub = subpixel_indices((x_0, y_0), self.subsampling)
+        
+        # Out of boundary masks
+        x_bound = np.logical_or(x < 0, x >= self.shape[1])
+        y_bound = np.logical_or(y < 0, y >= self.shape[0])
+        out_of_bounds = np.logical_or(x_bound, y_bound)
+        
+        # Set out of boundary indices to zero
+        x[x_bound] = 0
+        y[y_bound] = 0
+        result = amplitude * self._prf_array[y_sub, x_sub][y, x]
+        
+        # Set out of boundary values to zero
+        result[out_of_bounds] = 0
+        return result
         
     def fit(self, data, indices):
         """
-        Fit PRF to data.
+        Fit PSF/PRF to data.
         
+        Fits the PSF/PRF to the data and returns the best fitting flux. 
+        If the data contains NaN values or if the source is not completely 
+        contained in the image data the fitting is omitted and a flux of 0 
+        is returned.  
+        
+        For reasons of performance, indices for the data have to be created 
+        outside and passed to the function. 
+        
+        The fit is performed on a slice of the data with the same size as the PRF.
+         
         Parameters
         ----------
         data : ndarray
-            Data subarray with the same size as PSF image.
+            Array containig image data.
+        indices : ndarray
+            Array with indices of the data. As
+            returned by np.indices(data.shape)
         """
-        sub_array_data = extract_array_2D(data, self.shape, (self.x_0.value, self.y_0.value))
+        # Extract sub array of the data of the size of the PRF grid
+        sub_array_data = extract_array_2D(data, self.shape, 
+                                          (self.x_0.value, self.y_0.value))
+        
+        # Fit only if PSF is completely contained in the image and no NaN values
+        # are present
         if sub_array_data.shape == self.shape and not np.isnan(sub_array_data).any():
-            y, x = np.indices(self.shape)
+            y = extract_array_2D(indices[0], self.shape, 
+                                 (self.x_0.value, self.y_0.value))
+            x = extract_array_2D(indices[1], self.shape, 
+                                 (self.x_0.value, self.y_0.value))
             self.fitter(x, y, sub_array_data)
             return self.amplitude.value
         else:
             return 0
-        
-def subpixel_indices(x, y, subsampling):
-    """
-    """
-    x_frac, _ = np.modf(x)
-    y_frac, _ = np.modf(y)
-    x_sub = np.int(x_frac * subsampling)
-    y_sub = np.int(y_frac * subsampling)
-    return y_sub, x_sub
     
 
 class GaussianPSF(Parametric2DModel):
@@ -138,20 +190,23 @@ class GaussianPSF(Parametric2DModel):
         
     Notes
     -----
-    
-    Model Formula:
+    The PSF model is evaluated according to the following formula:
     
         .. math:: 
             
             f(x, y) =
                 \\frac{A}{4} 
                 \\left[
-                \\textnormal{erf} \\left(\\frac{x - x_0 + 0.5}{\\sqrt{2} \\sigma} \\right) -
-                \\textnormal{erf} \\left(\\frac{x - x_0 - 0.5}{\\sqrt{2} \\sigma} \\right)
+                \\textnormal{erf} \\left(\\frac{x - x_0 + 0.5}
+                {\\sqrt{2} \\sigma} \\right) -
+                \\textnormal{erf} \\left(\\frac{x - x_0 - 0.5}
+                {\\sqrt{2} \\sigma} \\right)
                 \\right]
                 \\left[
-                \\textnormal{erf} \\left(\\frac{y - y_0 + 0.5}{\\sqrt{2} \\sigma} \\right) -
-                \\textnormal{erf} \\left(\\frac{y - y_0 - 0.5}{\\sqrt{2} \\sigma} \\right)
+                \\textnormal{erf} \\left(\\frac{y - y_0 + 0.5}
+                {\\sqrt{2} \\sigma} \\right) -
+                \\textnormal{erf} \\left(\\frac{y - y_0 - 0.5}
+                {\\sqrt{2} \\sigma} \\right)
                 \\right]    
     
     Where `erf` denotes the error function.  
@@ -165,11 +220,18 @@ class GaussianPSF(Parametric2DModel):
             self.erf = erf
         except ImportError:
             raise Exception('Gaussian PSF model requires scipy.')
-        Parametric2DModel.__init__(self, {'sigma': sigma, 'x_0': 0, 'y_0': 0,
-                                          'amplitude': 1})
+        Parametric2DModel.__init__(self, {'sigma': sigma, 'x_0': 0, 
+                                          'y_0': 0, 'amplitude': 1, 
+                                          'fixed': {'x_0': True, 'y_0': True, 'sigma': True}})
+        
+        # Default size is 8 * sigma
         self.shape = (int(8 * sigma) + 1, int(8 * sigma) + 1)
         self.fitter = fitting.NonLinearLSQFitter(self)
         
+        # Fix position per default
+        self.x_0.fixed = True
+        self.y_0.fixed = True
+                
     def eval(self, x, y, amplitude, x_0, y_0, sigma):
         """
         Model function Gaussian PSF model.
@@ -181,26 +243,37 @@ class GaussianPSF(Parametric2DModel):
         
     def fit(self, data, indices):
         """
-        Fit PSF to data.
+        Fit PSF/PRF to data.
         
-        Tries to fit the PSF to the data and returns the best fitting flux. 
+        Fits the PSF/PRF to the data and returns the best fitting flux. 
         If the data contains NaN values or if the source is not completely 
         contained in the image data the fitting is omitted and a flux of 0 
         is returned.  
         
-        Indices have to be passed. 
+        For reasons of performance, indices for the data have to be created 
+        outside and passed to the function. 
+        
+        The fit is performed on a slice of the data with the same size as the PRF.
          
         Parameters
         ----------
         data : ndarray
             Array containig image data.
         indices : ndarray
-            Array with indices of the data.
+            Array with indices of the data. As
+            returned by np.indices(data.shape)
         """
-        sub_array_data = extract_array_2D(data, self.shape, (self.x_0.value, self.y_0.value))
+        # Set position
+        position = (self.x_0.value, self.y_0.value)
+        
+        # Extract sub array with data of interest
+        sub_array_data = extract_array_2D(data, self.shape, position)
+        
+        # Fit only if PSF is completely contained in the image and no NaN values
+        # are present
         if sub_array_data.shape == self.shape and not np.isnan(sub_array_data).any():
-            y = extract_array_2D(indices[0], self.shape, (self.x_0.value, self.y_0.value))
-            x = extract_array_2D(indices[1], self.shape, (self.x_0.value, self.y_0.value))
+            y = extract_array_2D(indices[0], self.shape, position)
+            x = extract_array_2D(indices[1], self.shape, position)
             self.fitter(x, y, sub_array_data)
             return self.amplitude.value
         else:
@@ -239,25 +312,40 @@ class FermiPSF():
         raise NotImplementedError
 
 
-def psf_photometry(data, positions, prf, mask=None, mode='sequential', tune_coordinates=False):
+def psf_photometry(data, positions, prf, mask=None, mode='sequential', 
+                   tune_coordinates=False):
     """
     Perform PSF photometry on the data.
     
+    Given a PSF or PRF model, the model is fitted simultaneously or sequentially
+    to the given positions to obtain an estimate of the flux. If required, coordinates 
+    are also tuned to match best the data. 
+    
+    If the data contains NaN values or the PSF/PRF is not completely contained in
+    the image, a flux of zero is returned.
+    
+    
     Parameters
     ----------
-    data : array
-        Data array
+    data : ndarray
+        Image data array
     positions : List or array
         List of positions in pixel coordinates
         where to fit the PSF.
-    psf : photutils.psf instance
+    prf : photutils.psf instance
         PSF model to fit to the data.
+    mask : ndarray, optional
+        Mask to be applied to the data.
     mode : string
          One of the following modes to do PSF photometry:
-            * 'simultaneous' (default)
+            * 'simultaneous' 
                 Fit PSF simultaneous to all given positions.
-            * 'sequential'
+            * 'sequential' (default)
                 Fit PSF one after another to the given positions .
+    
+    Examples
+    --------
+    See [] for a demonstration on Spitzer data. 
     
     """
     # Check input array type and dimension.
@@ -272,9 +360,10 @@ def psf_photometry(data, positions, prf, mask=None, mode='sequential', tune_coor
         prf.fixed['x_0'] = False
         prf.fixed['y_0'] = False
     
-    result = np.array([])
     # Actual photometry
+    result = np.array([])
     indices = np.indices(data.shape)
+    
     if mode == 'simultaneous':
         raise NotImplementedError('Simultaneous mode not implemented')
     elif mode == 'sequential':
@@ -287,7 +376,8 @@ def psf_photometry(data, positions, prf, mask=None, mode='sequential', tune_coor
     return result
 
 
-def create_prf(data, positions, size, mask=None, fluxes=None, mode='mean', subsampling=1, fix_nan=False):
+def create_prf(data, positions, size, fluxes=None, mask=None, mode='mean', 
+               subsampling=1, fix_nan=False):
     """
     Estimate point response function (PRF) from image data.
     
@@ -296,7 +386,7 @@ def create_prf(data, positions, size, mask=None, fluxes=None, mode='mean', subsa
     positions. Different modes of combining are available.    
      
     NaN values are either ignored by passing a mask or can be replaced by 
-    the mirrored value     with respect to the center of the PRF. 
+    the mirrored value with respect to the center of the PRF. 
     
     Furthermore it is possible to specify fluxes to have a correct
     normalization of the individual PRFs. Otherwise the flux is estimated from
@@ -332,16 +422,13 @@ def create_prf(data, positions, size, mask=None, fluxes=None, mode='mean', subsa
     -------
     prf : DiscretePRF
         Discrete PRF model estimated from data.
-        
     
     Notes
     -----
     In contrast to the Point Spread Function (PSF) the Point Response Function (PRF)
     is a map or an image of a point source after discretization e.g. with a CCD.
-     
     """
     # Check input array type and dimension.
-      
     if np.iscomplexobj(data):
         raise TypeError('Complex type not supported')
     if data.ndim != 2:
@@ -351,13 +438,15 @@ def create_prf(data, positions, size, mask=None, fluxes=None, mode='mean', subsa
         raise TypeError("Size must be odd.")
         
     if fluxes is not None and len(fluxes) != len(positions):
-        raise TypeError("Positions and fluxes must be of equal length.")
+        raise TypeError("Position and flux arrays must be of equal length.")
     
     # Setup data structure for extracted PRFs
-    extracted_prfs = np.ndarray(shape=(len(positions), subsampling, subsampling, size, size))
+    extracted_prfs = np.ndarray(shape=(len(positions), 
+                                       subsampling, subsampling, size, size))
     
     # Setup data structure for extracted masks
-    extracted_masks = np.ndarray(shape=(len(positions), subsampling, subsampling, size, size))
+    extracted_masks = np.ndarray(shape=(len(positions), 
+                                        subsampling, subsampling, size, size))
     extracted_masks.fill(False)
         
     
@@ -395,7 +484,7 @@ def create_prf(data, positions, size, mask=None, fluxes=None, mode='mean', subsa
                 else:
                     extracted_prf_copy = extracted_prf.copy() / fluxes[i]
                     
-                y_sub, x_sub = subpixel_indices(position[0], position[1], subsampling)
+                y_sub, x_sub = subpixel_indices(position, subsampling)
                 extracted_prfs[i, y_sub, x_sub] = extracted_prf_copy
                 
                 # Mark values as set otherwise the later calculation of the mean
@@ -408,7 +497,6 @@ def create_prf(data, positions, size, mask=None, fluxes=None, mode='mean', subsa
         for i, position in enumerate(positions):
             extracted_prf = extract_array_2D(data, (size, size), position)
             extracted_mask = extract_array_2D(mask, (size, size), position)
-            
             # Check shape to exclude incomplete PRFs at the boundaries of the image
             if extracted_prf.shape == (size, size) and extracted_prf.sum() != 0:
                 # Normalize and add extracted PRF to data cube
@@ -416,11 +504,12 @@ def create_prf(data, positions, size, mask=None, fluxes=None, mode='mean', subsa
                     extracted_prf_copy = extracted_prf.copy() / extracted_prf.sum()
                 else:
                     extracted_prf_copy = extracted_prf.copy() / fluxes[i]
-                y_sub, x_sub = subpixel_indices(position[0], position[1], subsampling)
+                y_sub, x_sub = subpixel_indices(position, subsampling)
                 extracted_prfs[i, y_sub, x_sub] = extracted_prf_copy
                 extracted_masks[i, y_sub, x_sub]= extracted_mask
             else:
                 continue
+            
     # Choose combination mode
     if mode == 'mean':
         prf = np.nansum(extracted_prfs, axis=0) / np.sum(extracted_masks, axis=0)
@@ -429,5 +518,36 @@ def create_prf(data, positions, size, mask=None, fluxes=None, mode='mean', subsa
     else:
         raise Exception('Invalid mode to combine prfs.') 
     return DiscretePRF(prf, subsampling=subsampling)
-        
+
+
+def remove_prf(data, prf, positions, fluxes, mask=None):
+    """
+    Removes PSF/PRF at the given positions.
+    
+    To calculate residual images the PSF/PRF model is subtracted from the data
+    at the given positions. 
+    
+    Parameters
+    ----------
+    data : ndarray
+        Image data.
+    prf : prf instance
+        PSF/PRF model to be substracted from the data.
+    positions : ndarray
+        List of center positions where PRF is removed.
+    fluxes : ndarray
+        List of fluxes of the sources, for correct 
+        normalization.
+    
+    """
+    # Set up indices
+    indices = np.indices(data.shape)
+    
+    # Loop over position
+    for i, position in enumerate(positions):
+        y = extract_array_2D(indices[0], prf.shape, position)
+        x = extract_array_2D(indices[1], prf.shape, position)
+        prf_image = prf.eval(x, y, fluxes[i], position[0], position[1])
+        data = add_array_2D(data, -prf_image, position)
+    return data
     
