@@ -82,7 +82,7 @@ def extract_array_2D(array_large, shape, position):
     >>> extract_array_2D(large_array, (9, 9), (10, 10))
     """
     # Check if larger array is really larger
-    if array_large.shape > shape:
+    if array_large.shape >= shape:
         s_y, s_x, _, _ = _get_slices(array_large.shape, shape, position)
         return array_large[s_y, s_x]
     else:
