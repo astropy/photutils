@@ -5,7 +5,6 @@ from __future__ import division
 
 import numpy as np
 
-from astropy.nddata.convolution.core import Kernel2D
 from astropy.modeling import fitting
 from astropy.modeling.core import Parametric2DModel
 from .arrayutils import extract_array_2D, subpixel_indices, add_array_2D
