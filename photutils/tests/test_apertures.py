@@ -2,7 +2,7 @@ import random
 
 import numpy as np
 
-from astropy.tests.compat import assert_allclose
+from numpy.testing import assert_allclose
 
 from ..aperture import CircularAperture, \
                        CircularAnnulus, \
