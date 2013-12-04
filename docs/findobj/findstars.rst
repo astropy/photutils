@@ -67,7 +67,8 @@ of the found sources:
     img += 250.0 * np.exp(-((x-65.2)**2/4.0 + (y-75.9)**2/4.0))
     img += 500.0 * np.exp(-((x-30.78)**2/3.0 + (y-25.313)**2/3.2))
     tbl = findobj.daofind(img, 3.0, 1.0)
-    fig = plt.imshow(img, vmax=200.0, extent=(0,100,0,100))
+    fig = plt.imshow(img, vmax=200.0, origin='lower',
+        extent=(0, 100, 0, 100))
     fig.set_cmap('hot')
     plt.scatter(tbl['xcen'], tbl['ycen'], s=800, color='cyan',
         facecolor='none')
