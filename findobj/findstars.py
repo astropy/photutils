@@ -226,9 +226,9 @@ def daofind(data, fwhm, threshold, sigma_radius=1.5, ratio=1.0, theta=0.0,
         positive x axis.
 
     sky : float, optional
-        The background sky level of the image.  The ``sky`` value
-        affects only the output values of the object ``peak``.
-        The default is 0.0.
+        The background sky level of the image.  Setting ``sky``
+        affects only the output values of the object ``peak``,
+        ``flux``, and ``mag`` values.  The default is 0.0.
 
     sharplo : float, optional
         The lower bound on sharpness for object detection.
@@ -254,7 +254,6 @@ def daofind(data, fwhm, threshold, sigma_radius=1.5, ratio=1.0, theta=0.0,
               fits.
             * ``npix``: number of pixels in the Gaussian kernel.
             * ``sky``: the input ``sky`` parameter.
-
             * ``peak``: the peak, sky-subtracted, pixel value of
               the object
             * ``flux``: the object flux calculated as the peak density
@@ -328,7 +327,8 @@ def irafstarfind(data, fwhm, threshold, sigma_radius=1.5, sky=None,
         The background sky level of the image.  Inputing a ``sky``
         value will override the background sky estimate.  Setting
         ``sky`` affects only the output values of the object ``peak``,
-        ``flux``, and ``mag`` values.  The default is 0.0.
+        ``flux``, and ``mag`` values.  The default is ``None``, which
+        means the sky value will be estimated.
 
     sharplo : float, optional
         The lower bound on sharpness for object detection.
@@ -362,10 +362,11 @@ def irafstarfind(data, fwhm, threshold, sigma_radius=1.5, sky=None,
               the object
             * ``flux``: the object sky-subtracted flux, calculated by
               summing object pixels over the Gaussian kernel.  The
-              derivation matches that of `starfind`_ if ``sky`` is 0.0.
+              derivation matches that of `starfind`_ if ``sky`` is
+              ``None``.
             * ``mag``: the object instrumental magnitude calculated as
               ``-2.5 * log10(flux)``.  The derivation matches that of
-              `starfind`_ if ``sky`` is 0.0.
+              `starfind`_ if ``sky`` is ``None``.
 
     Notes
     -----
