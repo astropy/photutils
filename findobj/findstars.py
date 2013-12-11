@@ -277,22 +277,21 @@ def daofind(data, fwhm, threshold, sigma_radius=1.5, ratio=1.0, theta=0.0,
     daofind_kernel = _FindObjKernel(fwhm, sigma_radius, ratio, theta)
     threshold *= daofind_kernel.relerr
     objs = _findobjs(data, daofind_kernel.kern, threshold)
-    result = _daofind_objparams(objs, daofind_kernel, threshold, sky)
+    tbl = _daofind_objparams(objs, daofind_kernel, threshold, sky)
     if len(objs) == 0:
         warnings.warn('No sources were found.', UserWarning)
-        return result     # empty table
-    table_mask = ((result['sharp'] > sharplo) &
-                  (result['sharp'] < sharphi) &
-                  (result['round1'] > roundlo) &
-                  (result['round1'] < roundhi) &
-                  (result['round2'] > roundlo) &
-                  (result['round2'] < roundhi))
-    tbl = result[table_mask]
+        return tbl     # empty table
+    table_mask = ((tbl['sharp'] > sharplo) &
+                  (tbl['sharp'] < sharphi) &
+                  (tbl['round1'] > roundlo) &
+                  (tbl['round1'] < roundhi) &
+                  (tbl['round2'] > roundlo) &
+                  (tbl['round2'] < roundhi))
+    tbl = tbl[table_mask]
     idcol = Column(name='id', data=np.arange(len(tbl)) + 1)
     tbl.add_column(idcol, 0)
     if len(tbl) == 0:
         warnings.warn('Sources were found, but none pass the sharpness and roundness criteria.', UserWarning)
-        return result     # empty table
     return tbl
 
 
@@ -395,20 +394,19 @@ def irafstarfind(data, fwhm, threshold, sigma_radius=1.5, sky=None,
     starfind_kernel = _FindObjKernel(fwhm, sigma_radius, ratio=1.0,
                                      theta=0.0)
     objs = _findobjs(data, starfind_kernel.kern, threshold)
-    result = _irafstarfind_objparams(objs, starfind_kernel, sky)
+    tbl = _irafstarfind_objparams(objs, starfind_kernel, sky)
     if len(objs) == 0:
         warnings.warn('No sources were found.', UserWarning)
-        return result     # empty table
-    table_mask = ((result['sharp'] > sharplo) &
-                  (result['sharp'] < sharphi) &
-                  (result['round'] > roundlo) &
-                  (result['round'] < roundhi))
-    tbl = result[table_mask]
+        return tbl     # empty table
+    table_mask = ((tbl['sharp'] > sharplo) &
+                  (tbl['sharp'] < sharphi) &
+                  (tbl['round'] > roundlo) &
+                  (tbl['round'] < roundhi))
+    tbl = tbl[table_mask]
     idcol = Column(name='id', data=np.arange(len(tbl)) + 1)
     tbl.add_column(idcol, 0)
     if len(tbl) == 0:
         warnings.warn('Sources were found, but none pass the sharpness and roundness criteria.', UserWarning)
-        return result     # empty table
     return tbl
 
 
@@ -447,10 +445,10 @@ def _findobjs(data, kernel, threshold):
     shape = scipy.ndimage.generate_binary_structure(2, 2)
     objlabels, nobj = scipy.ndimage.label(convdata > threshold,
                                           structure=shape)
-    if nobj == 0:
-        return None
-    objslices = scipy.ndimage.find_objects(objlabels)
     objs = []
+    if nobj == 0:
+        return objs
+    objslices = scipy.ndimage.find_objects(objlabels)
     for objslice in objslices:
         # extract the object from the unconvolved image, centered on
         # the brightest pixel in the thresholded segment and with the
