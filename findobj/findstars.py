@@ -20,15 +20,16 @@ class _ImgCutout(object):
         Parameters
         ----------
         data : array_like
-            The cutout image from the original (unconvolved) image.
+            The cutout 2D image from the original (unconvolved) 2D image.
 
         convdata : array_like
-            The cutout image from the convolved image.
+            The cutout 2D image from the convolved 2D image.
 
         x0, y0 : float
             Image coordinates of the lower left pixel of the cutout region.
             The pixel origin is (0, 0).
         """
+
         self.data = data
         self.convdata = convdata
         self.x0 = x0
@@ -61,13 +62,14 @@ class _FindObjKernel(object):
         Gaussian kernel in units of pixels.
 
     nsigma : float, optional
-        The truncation radius of the Gaussian kernel in units of sigma
+        The truncation radius of the Gaussian kernel in units of
+        sigma (standard deviation)
         [1 sigma = FWHM / 2.0*sqrt(2.0*log(2.0))].
         The default is 1.5.
 
     ratio : float, optional
         Ratio of the lengths of the minor over major axis.  Must be
-        between 0 and 1.  The default is 1.0 (circular Gaussian
+        between 0 and 1.  The default is 1.0 (a circular Gaussian
         kernel).
 
     theta : float, optional
@@ -77,8 +79,8 @@ class _FindObjKernel(object):
 
     Notes
     -----
-    The attributes include the dimensions of the elliptical kernel and
-    the coefficients of a 2D elliptical Gaussian function expressed
+    The object attributes include the dimensions of the elliptical kernel
+    and the coefficients of a 2D elliptical Gaussian function expressed
     as:
         f(x,y) = A * exp(-g(x,y)), where
         g(x,y) = a*(x-x0)**2 + 2*b*(x-x0)*(y-y0) + c*(y-y0)**2
@@ -574,10 +576,7 @@ def _irafstarfind_moments(imgcutout, kernel, sky):
 
 def _daofind_objparams(imgcutouts, kernel, threshold, sky=0.0):
     """
-    Find the parameters for each source as defined by `DAOFIND`_.  The
-    returned fluxes represent the total source flux within a region
-    defined by the kernel.  This is different from `DAOFIND`_'s
-    calculation of the fluxes.
+    Find the parameters for each source as defined by `DAOFIND`_.
 
     Parameters
     ----------
