@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 """Functions for performing aperture photometry on 2-D arrays."""
+from __future__ import division
 
 import math
 import abc
@@ -337,8 +338,10 @@ class RectangularAperture(Aperture):
         self.h = h
         self.theta = theta
 
+
     def extent(self):
-        r = max(self.a, self.b)
+        r = max(self.h, self.w) * 2 ** -0.5
+        #this is an overestimate by up to sqrt(2) unless theta = 45 deg
         return (-r, r, -r, r)
 
 
@@ -347,22 +350,31 @@ class RectangularAperture(Aperture):
         raise NotImplementedError('rect not done')
 
         # Shortcut to avoid divide-by-zero errors.
-        if self.a == 0 or self.b == 0:
+        if self.w == 0 or self.h == 0:
             return np.zeros((ny, nx), dtype=np.float)
 
-        if method == 'center' or method == 'subpixel':
-            if method == 'center': subpixels = 1
+        if method in ('center', 'subpixel'):
+            if method == 'center':
+                subpixels = 1
+
             x_size = (x_max - x_min) / (nx * subpixels)
             y_size = (y_max - y_min) / (ny * subpixels)
+
             x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
             y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
+
             xx, yy = np.meshgrid(x_centers, y_centers)
-            numerator1 = (xx * math.cos(self.theta) +
-                          yy * math.sin(self.theta))
-            numerator2 = (yy * math.cos(self.theta) -
-                          xx * math.sin(self.theta))
-            in_aper = (((numerator1 / self.a) ** 2 +
-                        (numerator2 / self.b) ** 2) < 1.).astype(float)
+
+            newx = (xx * math.cos(self.theta) +
+                    yy * math.sin(self.theta))
+            newy = (yy * math.cos(self.theta) -
+                    xx * math.sin(self.theta))
+
+            halfw = self.w / 2
+            halfh = self.h / 2
+            in_aper = ((-halfw < newx) & (newx < halfw) &
+                       (-halfh < newy) & (newy < halfh)).astype(float)
+
             if method == 'center':
                 return in_aper
             else:
@@ -370,11 +382,8 @@ class RectangularAperture(Aperture):
                 return downsample(in_aper, subpixels)
 
         elif method == 'exact':
-            from .elliptical_exact import elliptical_overlap_grid
-            x_edges = np.linspace(x_min, x_max, nx + 1)
-            y_edges = np.linspace(y_min, y_max, ny + 1)
-            return elliptical_overlap_grid(x_edges, y_edges, self.a, self.b,
-                                           self.theta)
+            raise NotImplementedError('exact method not yet supported for '
+                                      'RectangularAperture')
         else:
             raise ValueError('{0} method not supported for aperture class {1}'
                              .format(method, self.__class__.__name__))
