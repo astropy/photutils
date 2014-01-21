@@ -347,7 +347,6 @@ class RectangularAperture(Aperture):
 
     def encloses(self, x_min, x_max, y_min, y_max, nx, ny,
                  method='subpixel', subpixels=5):
-        raise NotImplementedError('rect not done')
 
         # Shortcut to avoid divide-by-zero errors.
         if self.w == 0 or self.h == 0:
