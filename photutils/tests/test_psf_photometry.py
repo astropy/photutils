@@ -4,8 +4,8 @@ from __future__ import division
 import numpy as np
 
 from astropy.tests.helper import pytest
-from astropy.modeling.models import Gaussian2DModel
-from astropy.nddata.convolution.utils import discretize_model
+from astropy.modeling.models import Gaussian2D
+from astropy.convolution.utils import discretize_model
 
 from photutils.psf import create_prf, DiscretePRF, psf_photometry, GaussianPSF
 
@@ -25,7 +25,7 @@ positions = [(50, 50), (23, 83), (12, 80), (86, 84)]
 fluxes = [np.pi * 10, 3.654, 20., 80 / np.sqrt(3)]
 
 # Create test psf
-psf_model = Gaussian2DModel(1. / (2 * np.pi * gaussian_width ** 2), 
+psf_model = Gaussian2D(1. / (2 * np.pi * gaussian_width ** 2), 
                             psf_size // 2, psf_size // 2, gaussian_width, gaussian_width)
 test_psf = discretize_model(psf_model, (0, psf_size), (0, psf_size), mode='oversample')
 
@@ -35,7 +35,7 @@ image = np.zeros((image_size, image_size))
 # Add sources to test image
 for i, position in enumerate(positions):
     x, y = position
-    model = Gaussian2DModel(fluxes[i] / (2 * np.pi * gaussian_width ** 2), 
+    model = Gaussian2D(fluxes[i] / (2 * np.pi * gaussian_width ** 2), 
                             x, y, gaussian_width, gaussian_width)
     image += discretize_model(model, (0, image_size), (0, image_size), mode='oversample')
 

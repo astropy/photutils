@@ -7,6 +7,7 @@ import numpy as np
 
 from astropy.modeling import fitting
 from astropy.modeling.core import Parametric2DModel
+from astropy.modeling.parameters import Parameter
 from .arrayutils import extract_array_2D, subpixel_indices, add_array_2D
 
 
@@ -44,7 +45,9 @@ class DiscretePRF(Parametric2DModel):
         Factor of subsampling. Default = 1.
         
     """
-    param_names = ['amplitude', 'x_0', 'y_0']
+    amplitude = Parameter('amplitude')
+    x_0 = Parameter('x_0')
+    y_0 = Parameter('y_0')
     
     def __init__(self, prf_array, normalize=True, subsampling=1):
 
@@ -69,11 +72,14 @@ class DiscretePRF(Parametric2DModel):
         self._prf_array = prf_array
         self.subsampling = subsampling
         
-        Parametric2DModel.__init__(self, {'amplitude': 1, 'x_0': 0, 'y_0': 0,
-                                   'fixed': {'x_0': True, 'y_0': True}})
-        
+        constraints = {'fixed': {'x_0': True, 'y_0': True}}
+        x_0 = 0
+        y_0 = 0
+        amplitude = 1
+        super(DiscretePRF, self).__init__(param_dim=1, x_0=x_0, y_0=y_0, 
+                                    amplitude=amplitude, **constraints)
         self.linear = True
-        self.fitter = fitting.NonLinearLSQFitter(self)
+        self.fitter = fitting.NonLinearLSQFitter()
         
         # Fix position per default
         self.x_0.fixed = True
@@ -161,7 +167,7 @@ class DiscretePRF(Parametric2DModel):
                                  (self.x_0.value, self.y_0.value))
             x = extract_array_2D(indices[1], self.shape, 
                                  (self.x_0.value, self.y_0.value))
-            self.fitter(x, y, sub_array_data)
+            self.fitter(self, x, y, sub_array_data)
             return self.amplitude.value
         else:
             return 0
@@ -210,21 +216,30 @@ class GaussianPSF(Parametric2DModel):
     Where `erf` denotes the error function.  
     
     """
-    param_names = ['amplitude', 'x_0', 'y_0', 'sigma']
+    amplitude = Parameter('amplitude')
+    x_0 = Parameter('x_0')
+    y_0 = Parameter('y_0')
+    sigma = Parameter('sigma')
+
+    try:
+        from scipy.special import erf
+        erf = erf
+    except ImportError:
+        raise Exception('Gaussian PSF model requires scipy.')
+
+
 
     def __init__(self, sigma):
-        try:
-            from scipy.special import erf
-            self.erf = erf
-        except ImportError:
-            raise Exception('Gaussian PSF model requires scipy.')
-        Parametric2DModel.__init__(self, {'sigma': sigma, 'x_0': 0, 
-                                          'y_0': 0, 'amplitude': 1, 
-                                          'fixed': {'x_0': True, 'y_0': True, 'sigma': True}})
+        x_0 = 0
+        y_0 = 0
+        amplitude = 1
+        constraints = {'fixed': {'x_0': True, 'y_0': True, 'sigma': True}}
+        super(GaussianPSF, self).__init__(param_dim=1, sigma=sigma, x_0=x_0, y_0=y_0, 
+                                          amplitude=amplitude, **constraints)
         
         # Default size is 8 * sigma
         self.shape = (int(8 * sigma) + 1, int(8 * sigma) + 1)
-        self.fitter = fitting.NonLinearLSQFitter(self)
+        self.fitter = fitting.NonLinearLSQFitter()
         
         # Fix position per default
         self.x_0.fixed = True
@@ -272,7 +287,7 @@ class GaussianPSF(Parametric2DModel):
         if sub_array_data.shape == self.shape and not np.isnan(sub_array_data).any():
             y = extract_array_2D(indices[0], self.shape, position)
             x = extract_array_2D(indices[1], self.shape, position)
-            self.fitter(x, y, sub_array_data)
+            self.fitter(self, x, y, sub_array_data)
             return self.amplitude.value
         else:
             return 0
