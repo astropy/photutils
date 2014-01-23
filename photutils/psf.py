@@ -167,8 +167,8 @@ class DiscretePRF(Parametric2DModel):
                                  (self.x_0.value, self.y_0.value))
             x = extract_array_2D(indices[1], self.shape, 
                                  (self.x_0.value, self.y_0.value))
-            self.fitter(self, x, y, sub_array_data)
-            return self.amplitude.value
+            m = self.fitter(self, x, y, sub_array_data)
+            return m.amplitude.value
         else:
             return 0
     
@@ -287,8 +287,8 @@ class GaussianPSF(Parametric2DModel):
         if sub_array_data.shape == self.shape and not np.isnan(sub_array_data).any():
             y = extract_array_2D(indices[0], self.shape, position)
             x = extract_array_2D(indices[1], self.shape, position)
-            self.fitter(self, x, y, sub_array_data)
-            return self.amplitude.value
+            m = self.fitter(self, x, y, sub_array_data)
+            return m.amplitude.value
         else:
             return 0
     
