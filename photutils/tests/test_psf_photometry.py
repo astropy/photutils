@@ -2,6 +2,7 @@
 from __future__ import division
 
 import numpy as np
+from numpy.testing import assert_allclose
 
 from astropy.tests.helper import pytest
 from astropy.modeling.models import Gaussian2D
@@ -45,8 +46,8 @@ def test_create_prf():
     Check if create_prf works correctly on simulated data.
     """
     prf = create_prf(image, positions, psf_size, subsampling=1)
-    assert np.all(np.abs(prf._prf_array[0, 0] - test_psf) < 0.02)
-  
+    assert_allclose(prf._prf_array[0, 0], test_psf, atol=0.1)
+    
 
 def test_create_prf_nan():
     """
@@ -79,7 +80,7 @@ def test_discrete_prf_fit():
     data = 10 * test_psf
     indices = np.indices(data.shape) 
     flux = prf.fit(data, indices)
-    assert np.abs(flux - 10) < 0.1
+    assert_allclose(flux, 10, 0.01)
     
     
 def test_psf_photometry_discrete():
@@ -88,7 +89,7 @@ def test_psf_photometry_discrete():
     """
     prf = DiscretePRF(test_psf, subsampling=1)
     f = psf_photometry(image, positions, prf)
-    assert np.all(np.abs(fluxes - f) < 1E-5)
+    assert_allclose(f, fluxes, 1E-5)
 
 
 def test_psf_photometry_gaussian():
@@ -97,5 +98,5 @@ def test_psf_photometry_gaussian():
     """
     prf = GaussianPSF(gaussian_width)
     f = psf_photometry(image, positions, prf)
-    assert np.all(np.abs(fluxes - f) < 1E-5)
+    assert_allclose(f, fluxes, 1E-2)
     
