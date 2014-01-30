@@ -324,9 +324,9 @@ class RectangularAperture(Aperture):
     Parameters
     ----------
     w : float
-        The full width of the aperture (at `theta`=0, this is the "x" axis).
+        The full width of the aperture (at `theta` = 0, this is the "x" axis).
     h : float
-        The full height of the aperture (at `theta`=0, this is the "y" axis).
+        The full height of the aperture (at `theta` = 0, this is the "y" axis).
     theta : float
         The position angle of the semimajor axis in radians
         (counterclockwise).
