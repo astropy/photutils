@@ -11,6 +11,7 @@ import numpy as np
 
 __all__ = ["CircularAperture", "CircularAnnulus",
            "EllipticalAperture", "EllipticalAnnulus",
+           "RectangularAperture",
            "aperture_photometry",
            "aperture_circular", "aperture_elliptical",
            "annulus_circular", "annulus_elliptical"]
