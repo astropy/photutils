@@ -16,6 +16,7 @@ benchmarks/_results
 # Sphinx
 _build
 _generated
+docs/api
 
 # Packages/installer info
 *.egg
