@@ -7,8 +7,9 @@ from numpy.testing import assert_allclose
 from ..aperture import CircularAperture, \
                        CircularAnnulus, \
                        EllipticalAperture, \
-                       EllipticalAnnulus
-                               
+                       EllipticalAnnulus, \
+                       RectangularAperture
+
 
 NITER = 1000
 TOL = 1.e-10
@@ -71,3 +72,21 @@ def test_accuracy_elliptical_annulus_exact():
         xmin, xmax, ymin, ymax, nx, ny, area = sample_grid(a_out)
         frac = ap.encloses(xmin, xmax, ymin, ymax, nx, ny, method='exact')
         assert_allclose(np.sum(frac) * area, ap.area(), rtol=TOL)
+
+def test_rectangular():
+    #test a few specific cases, mainly to ensure the sign is right
+    ap = RectangularAperture(w=.2, h=1, theta=0)
+    vertical = ap.encloses(-1, 1, -1, 1, 100, 100, method='center')
+
+    ap2 = RectangularAperture(w=.2, h=1, theta=np.pi/4)  # 45 deg
+    tilted = ap2.encloses(-1, 1, -1, 1, 100, 100, method='center')
+    tiltedss = ap2.encloses(-1, 1, -1, 1, 100, 100, method='subpixel')
+
+    #make sure subpixel is doing something
+    assert np.any(tilted != tiltedss)
+
+    #check the tilted and vertical versions behave correctly
+    assert vertical[70,50] > 0
+    assert vertical[60,35] < 1
+    assert tilted[70,50] < 1
+    assert tilted[60,35] > 0

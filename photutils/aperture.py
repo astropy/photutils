@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 """Functions for performing aperture photometry on 2-D arrays."""
+from __future__ import division
 
 import math
 import abc
@@ -10,6 +11,7 @@ import numpy as np
 
 __all__ = ["CircularAperture", "CircularAnnulus",
            "EllipticalAperture", "EllipticalAnnulus",
+           "RectangularAperture",
            "aperture_photometry",
            "aperture_circular", "aperture_elliptical",
            "annulus_circular", "annulus_elliptical"]
@@ -316,6 +318,81 @@ class EllipticalAnnulus(Aperture):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
 
+class RectangularAperture(Aperture):
+    """A rectangular aperture.
+
+    Parameters
+    ----------
+    w : float
+        The full width of the aperture (at `theta` = 0, this is the "x" axis).
+    h : float
+        The full height of the aperture (at `theta` = 0, this is the "y" axis).
+    theta : float
+        The position angle of the semimajor axis in radians
+        (counterclockwise).
+    """
+
+    def __init__(self, w, h, theta):
+        if w < 0 or h < 0:
+            raise ValueError('w and h must be nonnegative.')
+        self.w = w
+        self.h = h
+        self.theta = theta
+
+
+    def extent(self):
+        r = max(self.h, self.w) * 2 ** -0.5
+        #this is an overestimate by up to sqrt(2) unless theta = 45 deg
+        return (-r, r, -r, r)
+
+
+    def encloses(self, x_min, x_max, y_min, y_max, nx, ny,
+                 method='subpixel', subpixels=5):
+
+        # Shortcut to avoid divide-by-zero errors.
+        if self.w == 0 or self.h == 0:
+            return np.zeros((ny, nx), dtype=np.float)
+
+        if method in ('center', 'subpixel'):
+            if method == 'center':
+                subpixels = 1
+
+            x_size = (x_max - x_min) / (nx * subpixels)
+            y_size = (y_max - y_min) / (ny * subpixels)
+
+            x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
+            y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
+
+            xx, yy = np.meshgrid(x_centers, y_centers)
+
+            newx = (xx * math.cos(self.theta) +
+                    yy * math.sin(self.theta))
+            newy = (yy * math.cos(self.theta) -
+                    xx * math.sin(self.theta))
+
+            halfw = self.w / 2
+            halfh = self.h / 2
+            in_aper = ((-halfw < newx) & (newx < halfw) &
+                       (-halfh < newy) & (newy < halfh)).astype(float)
+
+            if method == 'center':
+                return in_aper
+            else:
+                from .utils.downsample import downsample
+                return downsample(in_aper, subpixels)
+
+        elif method == 'exact':
+            raise NotImplementedError('exact method not yet supported for '
+                                      'RectangularAperture')
+        else:
+            raise ValueError('{0} method not supported for aperture class {1}'
+                             .format(method, self.__class__.__name__))
+
+
+    def area(self):
+        return self.w * self.h
+
+
 def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
                         mask=None, method='exact', subpixels=5,
                         pixelwise_errors=True):
@@ -367,7 +444,7 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
         Options include ['center', 'subpixel', 'exact'], but not all options
         are available for all types of apertures. More precise methods will
         generally be slower.
-        
+
         'center'
             A pixel is considered to be entirely in or out of the aperture
             depending on whether its center is in or out of the aperture.
@@ -665,7 +742,7 @@ def aperture_circular(data, xc, yc, r, error=None, gain=None, mask=None,
         Method to use for determining overlap between the aperture and pixels.
         Options are ['center', 'subpixel', 'exact']. More precise methods will
         generally be slower.
-        
+
         'center'
             A pixel is considered to be entirely in or out of the aperture
             depending on whether its center is in or out of the aperture.
@@ -764,7 +841,7 @@ def aperture_elliptical(data, xc, yc, a, b, theta, error=None, gain=None,
         Method to use for determining overlap between the aperture and pixels.
         Options are ['center', 'subpixel', 'exact']. More precise methods will
         generally be slower.
-        
+
         'center'
             A pixel is considered to be entirely in or out of the aperture
             depending on whether its center is in or out of the aperture.
@@ -863,7 +940,7 @@ def annulus_circular(data, xc, yc, r_in, r_out, error=None, gain=None,
         Method to use for determining overlap between the aperture and pixels.
         Options are ['center', 'subpixel', 'exact']. More precise methods will
         generally be slower.
-        
+
         'center'
             A pixel is considered to be entirely in or out of the aperture
             depending on whether its center is in or out of the aperture.
@@ -963,7 +1040,7 @@ def annulus_elliptical(data, xc, yc, a_in, a_out, b_out, theta,
         Method to use for determining overlap between the aperture and pixels.
         Options are ['center', 'subpixel', 'exact']. More precise methods will
         generally be slower.
-        
+
         'center'
             A pixel is considered to be entirely in or out of the aperture
             depending on whether its center is in or out of the aperture.
