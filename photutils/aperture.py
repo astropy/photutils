@@ -9,7 +9,8 @@ import copy
 
 import numpy as np
 
-__all__ = ["CircularAperture", "CircularAnnulus",
+__all__ = ["Aperture",
+           "CircularAperture", "CircularAnnulus",
            "EllipticalAperture", "EllipticalAnnulus",
            "RectangularAperture",
            "aperture_photometry",
@@ -18,7 +19,7 @@ __all__ = ["CircularAperture", "CircularAnnulus",
 
 
 class Aperture(object):
-    """An abstract base class for an arbitrary 2-d aperture.
+    """Abstract base class for an arbitrary 2-d aperture.
 
     Derived classes should contain whatever internal data is needed to define
     the aperture, and provide methods 'encloses' and 'extent' (and optionally,
@@ -788,7 +789,8 @@ def aperture_circular(data, xc, yc, r, error=None, gain=None, mask=None,
     else:
         apertures = CircularAperture(r)
     return aperture_photometry(data, xc, yc, apertures, error=error,
-                               gain=gain, mask=mask, subpixels=subpixels,
+                               gain=gain, mask=mask, method=method,
+                               subpixels=subpixels,
                                pixelwise_errors=pixelwise_errors)
 
 
@@ -888,7 +890,8 @@ def aperture_elliptical(data, xc, yc, a, b, theta, error=None, gain=None,
     else:
         apertures = EllipticalAperture(a, b, theta)
     return aperture_photometry(data, xc, yc, apertures, error=error,
-                               gain=gain, mask=mask, subpixels=subpixels,
+                               gain=gain, mask=mask, method=method,
+                               subpixels=subpixels,
                                pixelwise_errors=pixelwise_errors)
 
 
@@ -987,7 +990,8 @@ def annulus_circular(data, xc, yc, r_in, r_out, error=None, gain=None,
     else:
         apertures = CircularAnnulus(r_in, r_out)
     return aperture_photometry(data, xc, yc, apertures, error=error,
-                               gain=gain, mask=mask, subpixels=subpixels,
+                               gain=gain, mask=mask, method=method,
+                               subpixels=subpixels,
                                pixelwise_errors=pixelwise_errors)
 
 
@@ -1089,5 +1093,6 @@ def annulus_elliptical(data, xc, yc, a_in, a_out, b_out, theta,
     else:
         apertures = EllipticalAnnulus(a_in, a_out, b_out, theta)
     return aperture_photometry(data, xc, yc, apertures, error=error,
-                               gain=gain, mask=mask, subpixels=subpixels,
+                               gain=gain, mask=mask, method=method,
+                               subpixels=subpixels,
                                pixelwise_errors=pixelwise_errors)
