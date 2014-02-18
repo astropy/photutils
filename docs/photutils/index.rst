@@ -13,8 +13,8 @@ The `photutils` package is destined to implement functions for
 
 Currently, only aperture photometry functions have been implemented.
 
-It is possible that `photutils` will eventually be merged into `astropy` as
-`astropy.photometry`.
+It is possible that `photutils` will eventually be merged into ``astropy`` as
+``astropy.photometry``.
 
 
 Getting Started
@@ -43,20 +43,28 @@ Using `photutils`
 
     aperture.rst
 
-Coordinate Convention in `photutils`
-------------------------------------
+.. _coordinate-conventions:
 
-.. note:: 
-   This should eventually be moved to the `astropy` core.
+Coordinate Conventions in `photutils`
+-------------------------------------
 
-In this module the coordinates are zero-indexed, meaning that `(x, y)
-= (0., 0.)` corresponds to the center of the lower-left array element.
-For example, the value of `data[0, 0]` is taken as the value over the
-range `-0.5 < x <= 0.5`, `-0.5 < y <= 0.5`. The array is thus defined
-over the range `-0.5 < x <= data.shape[1] - 0.5`, `-0.5 < y <=
-data.shape[0] - 0.5`. (Note that this differs from the
-SourceExtractor_ convention, in which the center of the lower-left
-array element is `(1, 1)`.)
+.. note::
+
+   This should eventually be moved to the ``astropy`` core.
+
+In this module the coordinates are zero-indexed, meaning that ``(x, y)
+= (0., 0.)`` corresponds to the center of the lower-left array
+element.  For example, the value of ``data[0, 0]`` is taken as the
+value over the range ``-0.5 < x <= 0.5``, ``-0.5 < y <= 0.5``. Note
+that this differs from the SourceExtractor_ convention, in which the
+center of the lower-left array element is (1, 1).
+
+The ``x`` coordinate corresponds to the second (fast) array index and
+the ``y`` coordinate corresponds to the first (slow) index. So
+``data[y, x]`` gives the value at coordinates (x, y). Along with the
+zero-indexing, this means that the array is defined over the
+coordinate range ``-0.5 < x <= data.shape[1] - 0.5``, ``-0.5 < y <=
+data.shape[0] - 0.5``.
 
 .. automodapi:: photutils
 
