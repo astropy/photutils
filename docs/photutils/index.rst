@@ -63,8 +63,8 @@ The ``x`` coordinate corresponds to the second (fast) array index and
 the ``y`` coordinate corresponds to the first (slow) index. So
 ``data[y, x]`` gives the value at coordinates (x, y). Along with the
 zero-indexing, this means that the array is defined over the
-coordinate range ``-0.5 < x <= data.shape[1] - 0.5``, ``-0.5 < y <=
-data.shape[0] - 0.5``.
+coordinate range ``-0.5 < x <= data.shape[1] - 0.5``,
+``-0.5 < y <= data.shape[0] - 0.5``.
 
 .. automodapi:: photutils
 

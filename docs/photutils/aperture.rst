@@ -63,9 +63,9 @@ Multiple Apertures and Broadcasting
 -----------------------------------
 
 In the above example, suppose we wished to use a different radius
-aperture for each object. Instead of setting `r = 3.`, we could have
-used a list specifying an aperture for each `xc` and `yc` (the length
-of `r` must match that of `xc` and `yc` in this case):
+aperture for each object. Instead of setting ``r = 3.``, we could have
+used a list specifying an aperture for each ``xc`` and ``yc`` (the length
+of ``r`` must match that of ``xc`` and ``yc`` in this case):
 
   >>> flux = photutils.aperture_circular(data, xc, yc, [1., 2., 3., 4.])
   >>> flux
@@ -200,7 +200,7 @@ is given by
 
   .. math:: \Delta F = \sqrt{\sum_i (\sigma_i^2 + f_i / g_i)}
 
-where :math:`f_i` is the value of the data (`data - sky_level` in this
+where :math:`f_i` is the value of the data (``data - sky_level`` in this
 case) at each pixel and :math:`g_i` is the value of the gain at each
 pixel.
 
