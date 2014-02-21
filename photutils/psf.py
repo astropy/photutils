@@ -221,15 +221,15 @@ class GaussianPSF(Parametric2DModel):
     y_0 = Parameter('y_0')
     sigma = Parameter('sigma')
 
-    try:
-        from scipy.special import erf
-        erf = erf
-    except ImportError:
-        raise Exception('Gaussian PSF model requires scipy.')
-
-
+    _erf = None
 
     def __init__(self, sigma):
+        if self._erf is None:
+            try:
+                from scipy.special import erf
+                self.__class__._erf = erf
+            except (ValueError, ImportError):
+                raise ImportError("Gaussian PSF model requires scipy.")
         x_0 = 0
         y_0 = 0
         amplitude = 1
@@ -249,10 +249,10 @@ class GaussianPSF(Parametric2DModel):
         """
         Model function Gaussian PSF model.
         """
-        return amplitude / 4 * ((self.erf((x - x_0 + 0.5) / (np.sqrt(2) * sigma)) 
-                            - self.erf((x - x_0 - 0.5) / (np.sqrt(2) * sigma))) 
-                            * (self.erf((y - y_0 + 0.5) / (np.sqrt(2) * sigma)) 
-                            - self.erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma))))
+        return amplitude / 4 * ((self._erf((x - x_0 + 0.5) / (np.sqrt(2) * sigma)) 
+                            - self._erf((x - x_0 - 0.5) / (np.sqrt(2) * sigma))) 
+                            * (self._erf((y - y_0 + 0.5) / (np.sqrt(2) * sigma)) 
+                            - self._erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma))))
         
     def fit(self, data, indices):
         """

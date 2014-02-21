@@ -91,7 +91,7 @@ def test_psf_photometry_discrete():
     f = psf_photometry(image, positions, prf)
     assert_allclose(f, fluxes, 1E-5)
 
-
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_psf_photometry_gaussian():
     """
     Test psf_photometry with Gaussian PSF model.
