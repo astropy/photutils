@@ -68,6 +68,7 @@ def test_create_prf_flux():
     assert np.all(np.abs(prf._prf_array[0, 0] - test_psf) < 0.1)
     
     
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_discrete_prf_fit():
     """
     Check if fitting of discrete PSF model works.
@@ -83,6 +84,7 @@ def test_discrete_prf_fit():
     assert_allclose(flux, 10, 0.01)
     
     
+@pytest.mark.skipif('not HAS_SCIPY') 
 def test_psf_photometry_discrete():
     """
     Test psf_photometry with discrete PRF model.

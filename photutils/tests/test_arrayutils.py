@@ -2,7 +2,7 @@ import pytest
 
 import numpy as np
 
-from ..arrayutils import * 
+from ..arrayutils import extract_array_2D, add_array_2D
 
 
 def test_extract_array_2D():
