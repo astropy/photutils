@@ -8,11 +8,11 @@ import numpy as np
 from astropy.modeling import fitting
 from astropy.modeling.core import Parametric2DModel
 from astropy.modeling.parameters import Parameter
-from .arrayutils import extract_array_2D, subpixel_indices, add_array_2D
+from .arrayutils import (extract_array_2D, subpixel_indices, 
+                        add_array_2D, fix_prf_nan)
 
 
-__all__ = ['DiscretePRF', 'create_prf', 'psf_photometry', 'GaussianPSF']
-
+__all__ = ['DiscretePRF', 'create_prf', 'psf_photometry', 'GaussianPSF', 'remove_prf']
 
 
 class DiscretePRF(Parametric2DModel):
@@ -275,6 +275,12 @@ class GaussianPSF(Parametric2DModel):
         indices : ndarray
             Array with indices of the data. As
             returned by np.indices(data.shape)
+            
+        Returns
+        -------
+        flux : float
+            Best fit flux value. Returns flux = 0 if PSF is not completely
+            contained in the image or if NaN values are present. 
         """
         # Set position
         position = (self.x_0.value, self.y_0.value)
@@ -292,38 +298,6 @@ class GaussianPSF(Parametric2DModel):
         else:
             return 0
     
-    
-class LorentzianPSF():
-    """
-    Lorentzian PSF model.
-    """
-    def __init__(self):
-        raise NotImplementedError
-
-
-class MoffatPSF():
-    """
-    Moffat PSF model.
-    """
-    def __init__(self):
-        raise NotImplementedError
-
-
-class SpitzerPSF():
-    """
-    Spitzer PSF model.
-    """
-    def __init__(self):
-        raise NotImplementedError
-
-
-class FermiPSF():
-    """
-    Fermi PSF model.
-    """
-    def __init__(self):
-        raise NotImplementedError
-
 
 def psf_photometry(data, positions, prf, mask=None, mode='sequential', 
                    tune_coordinates=False):
@@ -345,11 +319,11 @@ def psf_photometry(data, positions, prf, mask=None, mode='sequential',
     positions : List or array
         List of positions in pixel coordinates
         where to fit the PSF.
-    prf : photutils.psf instance
+    prf : `photutils.psf.DiscretePRF` or `photutils.psf.GaussianPSF` 
         PSF model to fit to the data.
     mask : ndarray, optional
         Mask to be applied to the data.
-    mode : string
+    mode : {'sequential', 'simultaneous'}
          One of the following modes to do PSF photometry:
             * 'simultaneous' 
                 Fit PSF simultaneous to all given positions.
@@ -358,7 +332,8 @@ def psf_photometry(data, positions, prf, mask=None, mode='sequential',
     
     Examples
     --------
-    See [] for a demonstration on Spitzer data. 
+    See `Spitzer PSF Photometry <http://nbviewer.ipython.org/gist/adonath/
+    6550989/PSFPhotometrySpitzer.ipynb>`_ for a short tutorial. 
     
     """
     # Check input array type and dimension.
@@ -433,7 +408,7 @@ def create_prf(data, positions, size, fluxes=None, mask=None, mode='mean',
     
     Returns
     -------
-    prf : DiscretePRF
+    prf : `photutils.psf.DiscretePRF`
         Discrete PRF model estimated from data.
     
     Notes
@@ -475,22 +450,10 @@ def create_prf(data, positions, size, fluxes=None, mask=None, mode='mean',
                 if fix_nan:
                     prf_nan = np.isnan(extracted_prf)
                     if prf_nan.any():
-                        # Allow at most 3 NaN values to prevent the unlikely case, 
-                        # that the mirrored values are also NaN. 
                         if prf_nan.sum() > 3 or prf_nan[size / 2, size / 2]:
                             continue
                         else:
-                            y_nan_coords, x_nan_coords = np.where(prf_nan==True)
-                            for y_nan, x_nan in zip(y_nan_coords, x_nan_coords):
-                                if not np.isnan(extracted_prf[-y_nan - 1, -x_nan - 1]):
-                                    extracted_prf[y_nan, x_nan] = \
-                                     extracted_prf[-y_nan - 1, -x_nan - 1]
-                                elif not np.isnan(extracted_prf[y_nan, -x_nan]):
-                                    extracted_prf[y_nan, x_nan] = \
-                                    extracted_prf[y_nan, -x_nan - 1]
-                                else:
-                                    extracted_prf[y_nan, x_nan] = \
-                                    extracted_prf[-y_nan - 1, x_nan]                    
+                            extracted_prf = fix_prf_nan(extracted_prf, prf_nan)
                 # Normalize and add extracted PRF to data cube
                 if fluxes is None:
                     extracted_prf_copy = extracted_prf.copy() / extracted_prf.sum()
@@ -544,7 +507,7 @@ def remove_prf(data, prf, positions, fluxes, mask=None):
     ----------
     data : ndarray
         Image data.
-    prf : prf instance
+    prf : `photutils.psf.DiscretePRF` or `photutils.psf.GaussianPSF`
         PSF/PRF model to be substracted from the data.
     positions : ndarray
         List of center positions where PRF is removed.
@@ -563,4 +526,3 @@ def remove_prf(data, prf, positions, fluxes, mask=None):
         prf_image = prf.eval(x, y, fluxes[i], position[0], position[1])
         data = add_array_2D(data, -prf_image, position)
     return data
-    
