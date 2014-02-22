@@ -48,16 +48,12 @@ Using `photutils`
 Coordinate Conventions in `photutils`
 -------------------------------------
 
-.. note::
-
-   This should eventually be moved to the ``astropy`` core.
-
 In this module the coordinates are zero-indexed, meaning that ``(x, y)
 = (0., 0.)`` corresponds to the center of the lower-left array
 element.  For example, the value of ``data[0, 0]`` is taken as the
 value over the range ``-0.5 < x <= 0.5``, ``-0.5 < y <= 0.5``. Note
 that this differs from the SourceExtractor_ convention, in which the
-center of the lower-left array element is (1, 1).
+center of the lower-left array element is ``(1, 1)``.
 
 The ``x`` coordinate corresponds to the second (fast) array index and
 the ``y`` coordinate corresponds to the first (slow) index. So
