@@ -11,7 +11,7 @@ using three methods:
 
     * IRAF's `starfind <http://iraf.net/irafhelp.php?val=starfind&help=Help+Page>`_ algorithm
 
-    * fit empirical PSFs
+    * fit empirical PSFs (work in progress)
 
 It is likely that ``findobj`` will eventually be merged into
 `photutils <http://photutils.readthedocs.org/en/latest/>`_ or

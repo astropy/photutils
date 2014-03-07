@@ -5,7 +5,7 @@ The following functions are provided to find stars in an image:
 
 * `daofind(data, fwhm, threshold, ....)`
 * `starfind(data, fwhm, threshold, ....)`
-* `epsffind(data, psf, threshold, ....)`
+* `epsffind(data, psf, threshold, ....)`   (work in progress)
 
 
 Examples
