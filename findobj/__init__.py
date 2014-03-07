@@ -130,5 +130,6 @@ if not _ASTROPY_SETUP_:
     del os, warn, config_dir  # clean up namespace
 
 from .findstars import *
+from .objshapes import *
 from .utils.moments import *
 
