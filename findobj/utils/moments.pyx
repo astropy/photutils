@@ -2,6 +2,8 @@
 #cython: boundscheck=False
 #cython: nonecheck=False
 #cython: wraparound=False
+# Credits:  slighly modified version from scikit-image
+#           (scikit-image.measure_moments.pyx)
 import numpy as np
 
 
@@ -42,7 +44,7 @@ def moments(double[:, :] image, Py_ssize_t order=3):
     return moments_central(image, 0, 0, order)
 
 
-def moments_central(double[:, :] image, double cr, double cc,
+def moments_central(double[:, :] image, double xc, double yc,
                     Py_ssize_t order=3):
     """Calculate all central image moments up to a certain order.
 
@@ -53,10 +55,14 @@ def moments_central(double[:, :] image, double cr, double cc,
     ----------
     image : 2D double array
         Rasterized shape as image.
-    cr : double
-        Center row coordinate.
-    cc : double
-        Center column coordinate.
+    xc : double
+        Center x (column) coordinate.
+    yc : double
+        Center y (row) coordinate.
+    #cr : double
+    #    Center row coordinate.
+    #cc : double
+    #    Center column coordinate.
     order : int, optional
         Maximum order of moments. Default is 3.
 
@@ -81,8 +87,8 @@ def moments_central(double[:, :] image, double cr, double cc,
     cdef double[:, ::1] mu = np.zeros((order + 1, order + 1), dtype=np.double)
     for p in range(order + 1):
         for q in range(order + 1):
-            for r in range(image.shape[0]):
-                for c in range(image.shape[1]):
-                    mu[p, q] += image[r, c] * (r - cr) ** q * (c - cc) ** p
+            for y in range(image.shape[0]):
+                for x in range(image.shape[1]):
+                    mu[p, q] += image[y, x] * (y - yc) ** q * (x - xc) ** p
     return np.asarray(mu)
 
