@@ -68,16 +68,26 @@ def centroid_1dg(data, data_err=None, data_mask=None):
     centroid : tuple
         (x, y) coordinates of the centroid.
     """
+
     gaussian_x = data.sum(axis=0)
     gaussian_y = data.sum(axis=1)
-    marginal_dists = [gaussian_x, gaussian_y]
+    if data_err is None:
+        weights_x = None
+        weights_y = None
+    else:
+        data_err_x = np.sqrt(np.sum(data_err**2, axis=0))
+        data_err_y = np.sqrt(np.sum(data_err**2, axis=1))
+        weights_x = 1. / data_err_x
+        weights_y = 1. / data_err_y
+
+    gaussians = [gaussian_x, gaussian_y]
+    data_weights = [weights_x, weights_y]
     centroid = []
-    for data in marginal_dists:
+    for (data, weights) in zip(gaussians, data_weights):
         params_init = findobj.gaussian1d_moments(data)
         g_init = models.Gaussian1D(*params_init)
         f = fitting.NonLinearLSQFitter()
         x = np.arange(data.size)
-        weights = None
         g_fit = f(g_init, x, data, weights=weights)
         centroid.append(g_fit.mean.value)
     return centroid
@@ -106,13 +116,16 @@ def centroid_2dg(data, data_err=None, data_mask=None):
         (x, y) coordinates of the centroid.
     """
 
+    if data_err is None:
+        weights = None
+    else:
+        weights = 1. / data_err
     gparams = shape_params(data)
     amplitude = np.max(data) - np.median(data)
     g_init = models.Gaussian2D(amplitude, gparams['xcen'], gparams['ycen'],
                                gparams['major_axis'], gparams['minor_axis'],
                                theta=gparams['pa'])
     f = fitting.NonLinearLSQFitter()
-    weights = None
     y, x = np.indices(data.shape)
     gfit = f(g_init, x, y, data, weights=weights)
     return gfit.x_mean.value, gfit.y_mean.value
