@@ -131,19 +131,41 @@ def centroid_2dg(data, data_err=None, data_mask=None):
     return gfit.x_mean.value, gfit.y_mean.value
 
 
-def shape_params(data):
+def shape_params(data, data_mask=False):
     """
-    Calculate the centroid and basic shape parameters for an object
-    using image moments.
+    Calculate the centroid and shape parameters for an object using
+    image moments.
 
     Parameters
     ----------
     data : array_like
         The 2D image data.
 
-    linear_eccen : is the distance between the object center and either of
-                   its two ellipse foci.
+    data_mask : array_like, boolean, optional
+        A boolean mask with the same shape as `data`, where a `True`
+        value indicates the corresponding element of data in invalid.
+
+    Returns
+    -------
+    dict :  A dictionary containing the object shape parameters:
+
+        * ``xcen, ycen``: object centroid (zero-based origin).
+        * ``major_axis``: length of the major axis
+        * ``minor_axis``: length of the minor axis
+        * ``eccen``: eccentricity.  The ratio of half the distance
+          between its two ellipse foci to the length of the the
+          semimajor axis.
+        * ``pa``: position angle of the major axis.  Increases
+          clockwise from the positive x axis.
+        * ``covar``: corresponding covariance matrix for a 2D Gaussian
+        * ``linear_eccen`` : linear eccentricity is the distance between
+          the object center and either of its two ellipse foci.
     """
+
+    if data_mask is not None:
+        if data.shape != data_mask.shape:
+            raise ValueError('data and data_mask must have the same shape')
+        data[data_mask] = 0.
 
     result = {}
     xcen, ycen = centroid_com(data)
