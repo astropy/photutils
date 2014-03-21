@@ -1,5 +1,5 @@
-Source identification and segmentation (`findobj`)
-==================================================
+Source identification and segmentation
+======================================
 
 Introduction
 ------------
@@ -45,13 +45,38 @@ a star and find it in the image using ``daofind``:
 Using findobj
 -------------
 
-.. toctree::
+.. toctree:: findstars.rst
 
-    findstars.rst
+
+Centroiding an Object
+=====================
+
+The ``findobj`` package allows one to centroid objects using three
+different methods:
+
+    * Object center of mass determined from 2D image moments.
+
+    * Fitting 1D Gaussians to the marginal x and y distributions of the data.
+
+    * Fitting a 2D Gaussian to the 2D distribution of the data.
+
+
+Object Shape Parameters
+=======================
+
+The ``findobj`` package allows one to calculate morphological shape
+parameters of an object.  These include:
+
+    * centroid
+    * eccentricity
+    * linear eccentricity
+    * major axis length
+    * minor axis length
+    * position angle
+    * covariance matrix
 
 
 Reference/API
 =============
 
 .. automodapi:: findobj
-

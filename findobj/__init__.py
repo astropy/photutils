@@ -1,4 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+The findobj package...
+"""
+
+from .findstars import *
+from .objshapes import *
+from .utils.moments import *
 
 #this indicates whether or not we are in the package's setup.py
 try:
@@ -22,10 +29,12 @@ try:
 except ImportError:
     __githash__ = ''
 
+
 # set up the test command
 def _get_test_runner():
     from astropy.tests.helper import TestRunner
     return TestRunner(__path__[0])
+
 
 def test(package=None, test_path=None, args=None, plugins=None,
          verbose=False, pastebin=None, remote_data=False, pep8=False,
@@ -128,8 +137,4 @@ if not _ASTROPY_SETUP_:
             del e
 
     del os, warn, config_dir  # clean up namespace
-
-from .findstars import *
-from .objshapes import *
-from .utils.moments import *
 

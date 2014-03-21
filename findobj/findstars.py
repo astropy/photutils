@@ -62,9 +62,8 @@ class _FindObjKernel(object):
         Gaussian kernel in units of pixels.
 
     nsigma : float, optional
-        The truncation radius of the Gaussian kernel in units of
-        sigma (standard deviation)
-        [1 sigma = FWHM / 2.0*sqrt(2.0*log(2.0))].
+        The truncation radius of the Gaussian kernel in units of sigma
+        (standard deviation) [1 sigma = FWHM / 2.0*sqrt(2.0*log(2.0))].
         The default is 1.5.
 
     ratio : float, optional
@@ -82,8 +81,12 @@ class _FindObjKernel(object):
     The object attributes include the dimensions of the elliptical kernel
     and the coefficients of a 2D elliptical Gaussian function expressed
     as:
-        f(x,y) = A * exp(-g(x,y)), where
-        g(x,y) = a*(x-x0)**2 + 2*b*(x-x0)*(y-y0) + c*(y-y0)**2
+
+        ``f(x,y) = A * exp(-g(x,y))``
+
+        where
+
+        ``g(x,y) = a*(x-x0)**2 + 2*b*(x-x0)*(y-y0) + c*(y-y0)**2``
 
     References
     ----------
@@ -170,36 +173,37 @@ class _FindObjKernel(object):
 def daofind(data, fwhm, threshold, sigma_radius=1.5, ratio=1.0, theta=0.0,
             sky=0.0, sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0):
     """
-    ``daofind`` detects stars in an image using the `DAOFIND
-    <http://iraf.net/irafhelp.php?val=daofind&help=Help+Page>`_
+    ``daofind`` detects stars in an image using the `DAOFIND`_
     algorithm.  ``daofind`` searches images for local density maxima
     that have a peak amplitude greater than ``threshold``
     (approximately; ``threshold`` is applied to a convolved image) and
     have a size and shape similar to the defined 2D Gaussian kernel.
-    The Gaussian kernel is defined by the ``fwhm``, ``ratio``,
-    ``theta``, and ``sigma_radius`` input parameters.
+    The Gaussian kernel is defined by the ``fwhm``, ``ratio``, `theta``,
+    and ``sigma_radius`` input parameters.
 
-    ``daofind`` finds the object centroid by fitting 1D Gaussians,
-    which are the marginal x or y distributions of the kernel, to the
-    marginal x or y distribution of the original (unconvolved) image.
+    .. _DAOFIND: http://iraf.net/irafhelp.php?val=daofind&help=Help+Page
 
-    ``daofind`` calculates the object roundness using two methods.
-    The ``roundlo`` and ``roundhi`` bounds are applied to both
-    measures of roundness.  The first method (``round1``; called
-    ``SROUND`` in `DAOFIND`_) is based on the source symmetry and is
-    the ratio of a measure of the object's bilateral (2-fold) to
-    four-fold symmetry.  The second roundness statistic (``round2``;
-    called ``GROUND`` in `DAOFIND`_) measures the ratio of the
-    difference in the height of the best fitting Gaussian function in
-    x minus the best fitting Gaussian function in y, divided by the
-    average of the best fitting Gaussian functions in x and y.  A
-    circular source will have a zero roundness.  An source extended in
-    x [y] will have a negative [positive] roundness.
+    ``daofind`` finds the object centroid by fitting 1D Gaussians, taken
+    as the marginal x or y distributions of the kernel, to the marginal
+    x or y distribution of the original (unconvolved) image.
 
-    The sharpness statistic measures the ratio of the difference
-    between the height of the central pixel and the mean of the
-    surrounding non-bad pixels in the convolved image, to the height
-    of the best fitting Gaussian function at that point.
+    ``daofind`` calculates the object roundness using two methods.  The
+    ``roundlo`` and ``roundhi`` bounds are applied to both measures of
+    roundness.  The first method (``round1``; called ``SROUND`` in
+    `DAOFIND`_) is based on the source symmetry and is the ratio of a
+    measure of the object's bilateral (2-fold) to four-fold symmetry.
+    The second roundness statistic (``round2``; called ``GROUND`` in
+    `DAOFIND`_) measures the ratio of the difference in the height of
+    the best fitting Gaussian function in x minus the best fitting
+    Gaussian function in y, divided by the average of the best fitting
+    Gaussian functions in x and y.  A circular source will have a zero
+    roundness.  An source extended in x [y] will have a negative
+    [positive] roundness.
+
+    The sharpness statistic measures the ratio of the difference between
+    the height of the central pixel and the mean of the surrounding
+    non-bad pixels in the convolved image, to the height of the best
+    fitting Gaussian function at that point.
 
     Parameters
     ----------
@@ -215,7 +219,7 @@ def daofind(data, fwhm, threshold, sigma_radius=1.5, ratio=1.0, theta=0.0,
 
     sigma_radius : float, optional
         The truncation radius of the Gaussian kernel in units of sigma
-        [``1 sigma = FWHM / 2.0*sqrt(2.0*log(2.0))``].
+        (standard deviation) [``1 sigma = FWHM / 2.0*sqrt(2.0*log(2.0))``].
 
     ratio : float, optional
         The ratio of the minor to major axis of the Gaussian kernel.
@@ -223,14 +227,14 @@ def daofind(data, fwhm, threshold, sigma_radius=1.5, ratio=1.0, theta=0.0,
         default is 1.0 (circular Gaussian kernel)
 
     theta : float, optional
-        The position angle (in decimal degrees) of the major axis of
-        the Gaussian kernel measured counter-clockwise from the
-        positive x axis.
+        The position angle (in decimal degrees) of the major axis of the
+        Gaussian kernel measured counter-clockwise from the positive x
+        axis.
 
     sky : float, optional
-        The background sky level of the image.  Setting ``sky``
-        affects only the output values of the object ``peak``,
-        ``flux``, and ``mag`` values.  The default is 0.0.
+        The background sky level of the image.  Setting ``sky`` affects
+        only the output values of the object ``peak``, ``flux``, and
+        ``mag`` values.  The default is 0.0.
 
     sharplo : float, optional
         The lower bound on sharpness for object detection.
@@ -247,7 +251,9 @@ def daofind(data, fwhm, threshold, sigma_radius=1.5, ratio=1.0, theta=0.0,
     Returns
     -------
     table : `astropy.table.table.Table <http://docs.astropy.org/en/stable/_generated/astropy.table.table.Table.html>`_ object
+
         A table of found objects with the following parameters:
+
             * ``id``: unique object identification number
             * ``xcen, ycen``: object centroid (zero-based origin).
             * ``sharp``: object sharpness.
@@ -256,12 +262,12 @@ def daofind(data, fwhm, threshold, sigma_radius=1.5, ratio=1.0, theta=0.0,
               fits.
             * ``npix``: number of pixels in the Gaussian kernel.
             * ``sky``: the input ``sky`` parameter.
-            * ``peak``: the peak, sky-subtracted, pixel value of
-              the object
+            * ``peak``: the peak, sky-subtracted, pixel value of the
+              object
             * ``flux``: the object flux calculated as the peak density
               (from the convolved image) divided by the detection
-              threshold.  This derivation matches that of `DAOFIND`_
-              if ``sky`` is 0.0.
+              threshold.  This derivation matches that of `DAOFIND`_ if
+              ``sky`` is 0.0.
             * ``mag``: the object instrumental magnitude calculated as
               ``-2.5 * log10(flux)``.  The derivation matches that of
               `DAOFIND`_ if ``sky`` is 0.0.
@@ -300,13 +306,14 @@ def daofind(data, fwhm, threshold, sigma_radius=1.5, ratio=1.0, theta=0.0,
 def irafstarfind(data, fwhm, threshold, sigma_radius=1.5, sky=None,
                  sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2):
     """
-    ``irafstarfind`` detects stars in an image using IRAF's `starfind
-    <http://iraf.net/irafhelp.php?val=starfind&help=Help+Page>`_
+    ``irafstarfind`` detects stars in an image using IRAF's `starfind`_
     algorithm.  ``irafstarfind`` searches images for local density
     maxima that have a peak amplitude greater than ``threshold`` above
-    the local background and have a PSF full-width half-maximum
-    similar to the input ``fwhm``.  The objects' centroid, roundness
+    the local background and have a PSF full-width half-maximum similar
+    to the input ``fwhm``.  The objects' centroid, roundness
     (ellipticity), and sharpness are calculated using image moments.
+
+    .. _starfind: http://iraf.net/irafhelp.php?val=starfind&help=Help+Page
 
     Parameters
     ----------
@@ -314,22 +321,22 @@ def irafstarfind(data, fwhm, threshold, sigma_radius=1.5, sky=None,
         The 2D array of the image.
 
     fwhm : float
-        The full-width half-maximum (FWHM) of the 2D circular
-        Gaussian kernel in units of pixels.
+        The full-width half-maximum (FWHM) of the 2D circular Gaussian
+        kernel in units of pixels.
 
     threshold : float
         The absolute image level above which to select sources.
 
     sigma_radius : float, optional
         The truncation radius of the Gaussian kernel in units of sigma
-        [``1 sigma = FWHM / 2.0*sqrt(2.0*log(2.0))``].
+        (standard deviation) [``1 sigma = FWHM / 2.0*sqrt(2.0*log(2.0))``].
 
     sky : float, optional
-        The background sky level of the image.  Inputing a ``sky``
-        value will override the background sky estimate.  Setting
-        ``sky`` affects only the output values of the object ``peak``,
-        ``flux``, and ``mag`` values.  The default is ``None``, which
-        means the sky value will be estimated.
+        The background sky level of the image.  Inputing a ``sky`` value
+        will override the background sky estimate.  Setting ``sky``
+        affects only the output values of the object ``peak``, ``flux``,
+        and ``mag`` values.  The default is ``None``, which means the
+        sky value will be estimated.
 
     sharplo : float, optional
         The lower bound on sharpness for object detection.
@@ -346,7 +353,9 @@ def irafstarfind(data, fwhm, threshold, sigma_radius=1.5, sky=None,
     Returns
     -------
     table : `astropy.table.table.Table <http://docs.astropy.org/en/stable/_generated/astropy.table.table.Table.html>`_ object
+
         A table of found objects with the following parameters:
+
             * ``id``: unique object identification number
             * ``xcen, ycen``: object centroid (zero-based origin)
             * ``fwhm``: estimate of object FWHM from image moments
@@ -354,13 +363,13 @@ def irafstarfind(data, fwhm, threshold, sigma_radius=1.5, sky=None,
             * ``round``: object ellipticity calculated from image moments
             * ``pa``:  object position angle in decimal degrees from the
               positive x axis calculated from image moments
-            * ``npix``: number of pixels in the object used to
-              calculate ``flux``
+            * ``npix``: number of pixels in the object used to calculate
+              ``flux``
             * ``sky``: the derived background sky value, unless ``sky``
-              was input.  If ``sky`` was input, then that value overrides
-              the background sky estimation.
-            * ``peak``: the peak, sky-subtracted, pixel value of
-              the object
+              was input.  If ``sky`` was input, then that value
+              overrides the background sky estimation.
+            * ``peak``: the peak, sky-subtracted, pixel value of the
+              object
             * ``flux``: the object sky-subtracted flux, calculated by
               summing object pixels over the Gaussian kernel.  The
               derivation matches that of `starfind`_ if ``sky`` is
@@ -373,15 +382,17 @@ def irafstarfind(data, fwhm, threshold, sigma_radius=1.5, sky=None,
     -----
     IRAF's `starfind`_ uses ``hwhmpsf`` and ``fradius`` as input
     parameters.  The equivalent input values for ``irafstarfind`` are:
+
         * ``fwhm = hwhmpsf * 2``
         * ``sigma_radius = fradius * sqrt(2.0*log(2.0))``
 
     The main differences between ``daofind`` and ``irafstarfind`` are:
+
         * ``irafstarfind`` always uses a 2D circular Gaussian kernel,
           while ``daofind`` can use an elliptical Gaussian kernel.
 
-        * ``irafstarfind`` calculates the objects' centroid,
-          roundness, and sharpness using image moments.
+        * ``irafstarfind`` calculates the objects' centroid, roundness,
+          and sharpness using image moments.
 
     References
     ----------
@@ -423,8 +434,8 @@ def _findobjs(data, kernel, threshold):
         The 2D array of the image.
 
     kernel : array_like
-        The 2D array of the kernel.  This kernel should be normalized
-        to zero sum.
+        The 2D array of the kernel.  This kernel should be normalized to
+        zero sum.
 
     threshold : float
         The absolute image level above which to select sources.
@@ -432,8 +443,8 @@ def _findobjs(data, kernel, threshold):
     Returns
     -------
     objs : list
-        A list of ``findstars._ImgCutout`` objects containing the
-        image cutout for each source.
+        A list of ``findstars._ImgCutout`` objects containing the image
+        cutout for each source.
     """
 
     # astropy's convolve fails with zero-sum kernels (use scipy for now)
@@ -482,17 +493,17 @@ def _irafstarfind_objparams(imgcutouts, kernel, sky=None):
     Parameters
     ----------
     imgcutouts : list
-        A list of ``findstars._ImgCutout`` objects containing the
-        image cutout for each source.
+        A list of ``findstars._ImgCutout`` objects containing the image
+        cutout for each source.
 
     kernel : ``findstars.FindObjKernel``
         The convolution kernel.  The dimensions should match those of
-        ``obj``.  ``kernel.gkernel`` should have a peak pixel value of 1.0
-        and not contain any masked pixels.
+        ``obj``.  ``kernel.gkernel`` should have a peak pixel value of
+        1.0 and not contain any masked pixels.
 
     sky : float, optional
-        The absolute sky level.  If sky is ``None``, then a local
-        sky level will be estimated (in a crude fashion).
+        The absolute sky level.  If sky is ``None``, then a local sky
+        level will be estimated (in a crude fashion).
 
     Returns
     -------
@@ -535,8 +546,8 @@ def _irafstarfind_moments(imgcutout, kernel, sky):
 
     kernel : ``findstars.FindObjKernel``
         The convolution kernel.  The dimensions should match those of
-        ``imgcutout``.  ``kernel.gkernel`` should have a peak pixel value
-        of 1.0 and not contain any masked pixels.
+        ``imgcutout``.  ``kernel.gkernel`` should have a peak pixel
+        value of 1.0 and not contain any masked pixels.
 
     sky : float
         The local sky level around the source.
@@ -581,8 +592,8 @@ def _daofind_objparams(imgcutouts, kernel, threshold, sky=0.0):
     Parameters
     ----------
     imgcutouts : list
-        A list of ``findstars._ImgCutout`` objects containing the
-        image cutout for each source.
+        A list of ``findstars._ImgCutout`` objects containing the image
+        cutout for each source.
 
     kernel : ``findstars.FindObjKernel``
         The convolution kernel.  The dimensions should match those of
@@ -593,9 +604,8 @@ def _daofind_objparams(imgcutouts, kernel, threshold, sky=0.0):
         The absolute image level above which to select sources.
 
     sky : float, optional
-        The local sky level around the source.  ``sky`` is used only
-        to calculate the source peak value and flux.  The default is
-        0.0.
+        The local sky level around the source.  ``sky`` is used only to
+        calculate the source peak value and flux.  The default is 0.0.
 
     Returns
     -------
@@ -655,12 +665,12 @@ def _daofind_centroid_roundness(obj, kernel):
     distributions of the kernel) to the marginal x/y distributions of
     the original (unconvolved) image.
 
-    The roundness statistic measures the ratio of the difference in
-    the height of the best fitting Gaussian function in x minus the
-    best fitting Gaussian function in y, divided by the average of the
-    best fitting Gaussian functions in x and y.  A circular source
-    will have a zero roundness.  An source extended in x (y) will have
-    a negative (positive) roundness.
+    The roundness statistic measures the ratio of the difference in the
+    height of the best fitting Gaussian function in x minus the best
+    fitting Gaussian function in y, divided by the average of the best
+    fitting Gaussian functions in x and y.  A circular source will have
+    a zero roundness.  An source extended in x (y) will have a negative
+    (positive) roundness.
 
     Parameters
     ----------
@@ -679,7 +689,7 @@ def _daofind_centroid_roundness(obj, kernel):
         the maximum pixel.
 
     g_roundness : float
-        `DAOFIND`_ roundness (GROUND) statistic
+        `DAOFIND`_ roundness (GROUND) statistic.
     """
 
     dx, hx = _daofind_centroidfit(obj, kernel, axis=0)
@@ -704,15 +714,16 @@ def _daofind_centroidfit(obj, kernel, axis):
         1.0 and not contain any masked pixels.
 
     axis : {0, 1}
-        The axis for which the centroid is computed.
+        The axis for which the centroid is computed:
+
             * 0: for the x axis
             * 1: for the y axis
 
     Returns
     -------
     dx : float
-        Fractional shift in x or y (depending on ``axis`` value) of
-        the image centroid relative to the maximum pixel.
+        Fractional shift in x or y (depending on ``axis`` value) of the
+        image centroid relative to the maximum pixel.
 
     hx : float
         Height of the best-fitting Gaussian to the marginal x or y
