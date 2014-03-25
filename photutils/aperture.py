@@ -506,6 +506,8 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
 
     if isinstance(apertures, (list, tuple)):
         el = apertures
+    elif isinstance(apertures, np.ndarray):
+        el = apertures.tolist()
     else:
         el = [apertures]
 
