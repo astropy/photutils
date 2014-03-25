@@ -502,24 +502,21 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
         raise ValueError('length of xc and yc must match')
     n_obj = xc.shape[0]
 
-    # Check 'apertures' dimensions and type
-    apertures = np.atleast_2d(apertures)
-    if apertures.ndim > 2:
-        raise ValueError('{0}-d aperture array not supported. '
-                         'Only 2-d arrays supported.'.format(apertures.ndim))
-    for aperture in apertures.ravel():
-        if not isinstance(aperture, Aperture):
-            raise TypeError("'aperture' must be an instance of Aperture.")
-    n_aper = apertures.shape[0]
+    superaper = [None] * yc.shape[0]
 
-    # Check 'apertures' shape and expand trailing dimension to match N_obj
-    # if necessary.
-    if apertures.shape[1] not in [1, n_obj]:
-        raise ValueError("trailing dimension of 'apertures' must be 1 or "
-                         "match length of xc, yc")
-    if apertures.shape[1] != n_obj:
-        # We will not use xc2d. This is just for broadcasting 'apertures':
-        apertures, xc2d = np.broadcast_arrays(apertures, xc)
+    if isinstance(apertures, (list, tuple)):
+        el = apertures
+    elif isinstance(apertures, np.ndarray):
+        el = apertures.tolist()
+    else:
+        el = [apertures]
+
+    for idx,_ in enumerate(superaper):
+        superaper[idx] = el
+
+    n_aper = len(el)
+    apershape = (n_aper, yc.shape[0])
+    apertures = superaper
 
     # Check whether we really need to calculate pixelwise errors, even if
     # requested. (If neither error nor gain is an array, we don't need to.)
@@ -564,9 +561,10 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
                              'required')
 
     # Initialize arrays to return.
-    flux = np.zeros(apertures.shape, dtype=np.float)
+
+    flux = np.zeros(apershape, dtype=np.float)
     if error is not None:
-        fluxerr = np.zeros(apertures.shape, dtype=np.float)
+        fluxerr = np.zeros(apershape, dtype=np.float)
 
     # 'extents' will hold the extent of all apertures for a given object.
     extents = np.empty((n_aper, 4), dtype=np.float)
@@ -575,7 +573,7 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
 
         # Fill 'extents' with extent of all apertures for this object.
         for j in range(n_aper):
-            extents[j] = apertures[j, i].extent()
+            extents[j] = apertures[i][j].extent()
 
         # Set array index extents to encompass all apertures for this object.
         x_min = int(xc[i] + extents[:, 0].min() + 0.5)
@@ -644,10 +642,10 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
                 subvariance[y_bad, x_bad] = 0.
 
         # Loop over apertures for this object.
-        for j in range(apertures.shape[0]):
+        for j in range(apershape[0]):
 
             # Find fraction of overlap between aperture and pixels
-            fraction = apertures[j, i].encloses(
+            fraction = apertures[i][j].encloses(
                 x_min - xc[i] - 0.5, x_max - xc[i] - 0.5,
                 y_min - yc[i] - 0.5, y_max - yc[i] - 0.5,
                 subdata.shape[1], subdata.shape[0],
@@ -666,8 +664,8 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
                 # aperture.
                 else:
                     local_error = error[int(yc[i] + 0.5), int(xc[i] + 0.5)]
-                    if hasattr(apertures[j, i], 'area'):
-                        area = apertures[j, i].area()
+                    if hasattr(apertures[j][i], 'area'):
+                        area = apertures[j][i].area()
                     else:
                         area = np.sum(fraction)
                     fluxvar = local_error ** 2 * area
