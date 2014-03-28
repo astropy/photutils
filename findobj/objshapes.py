@@ -116,6 +116,32 @@ def centroid_2dg(data, data_err=None, data_mask=None):
         (x, y) coordinates of the centroid.
     """
 
+    gfit = fit_2dgaussian(data, data_err=data_err, data_mask=data_mask)
+    return gfit.x_mean.value, gfit.y_mean.value
+
+
+def fit_2dgaussian(data, data_err=None, data_mask=None):
+    """
+    Fit a 2D Gaussian to data.
+
+    Parameters
+    ----------
+    data : array_like
+        The image data.  (should be background subtracted)
+
+    data_err : array_like, optional
+        The 1-sigma errors for `data`.
+
+    data_mask : array_like, boolean, optional
+        A boolean mask with the same shape as `data`, where a `True`
+        value indicates the corresponding element of data in invalid.
+
+    Returns
+    -------
+    centroid : tuple
+        (x, y) coordinates of the centroid.
+    """
+
     if data_err is None:
         weights = None
     else:
@@ -128,7 +154,7 @@ def centroid_2dg(data, data_err=None, data_mask=None):
     f = fitting.NonLinearLSQFitter()
     y, x = np.indices(data.shape)
     gfit = f(g_init, x, y, data, weights=weights)
-    return gfit.x_mean.value, gfit.y_mean.value
+    return gfit
 
 
 def shape_params(data, data_mask=None):
