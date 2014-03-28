@@ -131,7 +131,7 @@ def centroid_2dg(data, data_err=None, data_mask=None):
     return gfit.x_mean.value, gfit.y_mean.value
 
 
-def shape_params(data, data_mask=False):
+def shape_params(data, data_mask=None):
     """
     Calculate the centroid and shape parameters for an object using
     image moments.
