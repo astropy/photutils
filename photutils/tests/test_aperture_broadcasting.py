@@ -2,7 +2,8 @@
 
 # These tests test the wrappers that do not require Aperture objects but
 # instead ensure that the apertures are created and broadcast correctly.
-
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 import pytest
 import numpy as np
 
