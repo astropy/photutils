@@ -7,11 +7,9 @@ Introduction
 The ``findobj`` package allows one to detect stars in astronomical images
 using three methods:
 
-    * `DAOFIND <http://iraf.net/irafhelp.php?val=daofind&help=Help+Page>`_ algorithm
-
-    * IRAF's `starfind <http://iraf.net/irafhelp.php?val=starfind&help=Help+Page>`_ algorithm
-
-    * fit empirical PSFs (work in progress)
+* `DAOFIND <http://iraf.net/irafhelp.php?val=daofind&help=Help+Page>`_ algorithm
+* IRAF's `starfind <http://iraf.net/irafhelp.php?val=starfind&help=Help+Page>`_ algorithm
+* fit empirical PSFs (work in progress)
 
 It is likely that ``findobj`` will eventually be merged into
 `photutils <http://photutils.readthedocs.org/en/latest/>`_ or

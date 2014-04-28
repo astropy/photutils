@@ -52,7 +52,7 @@ and (30.78, 25.313)``.  Now display the image and mark the location
 of the found sources:
 
   >>> import matplotlib.pyplot as plt
-  >>> plt.imshow(img, cmap=cm.Greys)
+  >>> plt.imshow(img, cmap=plt.cm.Greys)
   >>> plt.scatter(tbl['xcen'], tbl['ycen'], s=800, color='cyan', facecolor='none')
   >>> plt.show()
 

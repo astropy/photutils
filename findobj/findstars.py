@@ -178,7 +178,7 @@ def daofind(data, fwhm, threshold, sigma_radius=1.5, ratio=1.0, theta=0.0,
     that have a peak amplitude greater than ``threshold``
     (approximately; ``threshold`` is applied to a convolved image) and
     have a size and shape similar to the defined 2D Gaussian kernel.
-    The Gaussian kernel is defined by the ``fwhm``, ``ratio``, `theta``,
+    The Gaussian kernel is defined by the ``fwhm``, ``ratio``, ``theta``,
     and ``sigma_radius`` input parameters.
 
     .. _DAOFIND: http://iraf.net/irafhelp.php?val=daofind&help=Help+Page
@@ -250,27 +250,27 @@ def daofind(data, fwhm, threshold, sigma_radius=1.5, ratio=1.0, theta=0.0,
 
     Returns
     -------
-    table : `astropy.table.table.Table <http://docs.astropy.org/en/stable/_generated/astropy.table.table.Table.html>`_ object
+    table : `astropy.table.Table`
 
         A table of found objects with the following parameters:
 
-            * ``id``: unique object identification number
-            * ``xcen, ycen``: object centroid (zero-based origin).
-            * ``sharp``: object sharpness.
-            * ``round1``: object roundness based on symmetry.
-            * ``round2``: object roundness based on marginal Gaussian
-              fits.
-            * ``npix``: number of pixels in the Gaussian kernel.
-            * ``sky``: the input ``sky`` parameter.
-            * ``peak``: the peak, sky-subtracted, pixel value of the
-              object
-            * ``flux``: the object flux calculated as the peak density
-              (from the convolved image) divided by the detection
-              threshold.  This derivation matches that of `DAOFIND`_ if
-              ``sky`` is 0.0.
-            * ``mag``: the object instrumental magnitude calculated as
-              ``-2.5 * log10(flux)``.  The derivation matches that of
-              `DAOFIND`_ if ``sky`` is 0.0.
+        * ``id``: unique object identification number
+        * ``xcen, ycen``: object centroid (zero-based origin).
+        * ``sharp``: object sharpness.
+        * ``round1``: object roundness based on symmetry.
+        * ``round2``: object roundness based on marginal Gaussian
+          fits.
+        * ``npix``: number of pixels in the Gaussian kernel.
+        * ``sky``: the input ``sky`` parameter.
+        * ``peak``: the peak, sky-subtracted, pixel value of the
+          object
+        * ``flux``: the object flux calculated as the peak density
+          (from the convolved image) divided by the detection
+          threshold.  This derivation matches that of `DAOFIND`_ if
+          ``sky`` is 0.0.
+        * ``mag``: the object instrumental magnitude calculated as
+          ``-2.5 * log10(flux)``.  The derivation matches that of
+          `DAOFIND`_ if ``sky`` is 0.0.
 
     References
     ----------
@@ -352,47 +352,47 @@ def irafstarfind(data, fwhm, threshold, sigma_radius=1.5, sky=None,
 
     Returns
     -------
-    table : `astropy.table.table.Table <http://docs.astropy.org/en/stable/_generated/astropy.table.table.Table.html>`_ object
+    table : `astropy.table.Table`
 
         A table of found objects with the following parameters:
 
-            * ``id``: unique object identification number
-            * ``xcen, ycen``: object centroid (zero-based origin)
-            * ``fwhm``: estimate of object FWHM from image moments
-            * ``sharp``: object sharpness calculated from image moments
-            * ``round``: object ellipticity calculated from image moments
-            * ``pa``:  object position angle in decimal degrees from the
-              positive x axis calculated from image moments
-            * ``npix``: number of pixels in the object used to calculate
-              ``flux``
-            * ``sky``: the derived background sky value, unless ``sky``
-              was input.  If ``sky`` was input, then that value
-              overrides the background sky estimation.
-            * ``peak``: the peak, sky-subtracted, pixel value of the
-              object
-            * ``flux``: the object sky-subtracted flux, calculated by
-              summing object pixels over the Gaussian kernel.  The
-              derivation matches that of `starfind`_ if ``sky`` is
-              ``None``.
-            * ``mag``: the object instrumental magnitude calculated as
-              ``-2.5 * log10(flux)``.  The derivation matches that of
-              `starfind`_ if ``sky`` is ``None``.
+        * ``id``: unique object identification number
+        * ``xcen, ycen``: object centroid (zero-based origin)
+        * ``fwhm``: estimate of object FWHM from image moments
+        * ``sharp``: object sharpness calculated from image moments
+        * ``round``: object ellipticity calculated from image moments
+        * ``pa``:  object position angle in decimal degrees from the
+          positive x axis calculated from image moments
+        * ``npix``: number of pixels in the object used to calculate
+          ``flux``
+        * ``sky``: the derived background sky value, unless ``sky``
+          was input.  If ``sky`` was input, then that value
+          overrides the background sky estimation.
+        * ``peak``: the peak, sky-subtracted, pixel value of the
+          object
+        * ``flux``: the object sky-subtracted flux, calculated by
+          summing object pixels over the Gaussian kernel.  The
+          derivation matches that of `starfind`_ if ``sky`` is
+          ``None``.
+        * ``mag``: the object instrumental magnitude calculated as
+          ``-2.5 * log10(flux)``.  The derivation matches that of
+          `starfind`_ if ``sky`` is ``None``.
 
     Notes
     -----
     IRAF's `starfind`_ uses ``hwhmpsf`` and ``fradius`` as input
     parameters.  The equivalent input values for ``irafstarfind`` are:
 
-        * ``fwhm = hwhmpsf * 2``
-        * ``sigma_radius = fradius * sqrt(2.0*log(2.0))``
+    * ``fwhm = hwhmpsf * 2``
+    * ``sigma_radius = fradius * sqrt(2.0*log(2.0))``
 
     The main differences between ``daofind`` and ``irafstarfind`` are:
 
-        * ``irafstarfind`` always uses a 2D circular Gaussian kernel,
-          while ``daofind`` can use an elliptical Gaussian kernel.
+    * ``irafstarfind`` always uses a 2D circular Gaussian kernel,
+      while ``daofind`` can use an elliptical Gaussian kernel.
 
-        * ``irafstarfind`` calculates the objects' centroid, roundness,
-          and sharpness using image moments.
+    * ``irafstarfind`` calculates the objects' centroid, roundness,
+      and sharpness using image moments.
 
     References
     ----------
@@ -507,7 +507,7 @@ def _irafstarfind_objparams(imgcutouts, kernel, sky=None):
 
     Returns
     -------
-    table : `astropy.table.table.Table <http://docs.astropy.org/en/stable/_generated/astropy.table.table.Table.html>`_ object
+    table : `astropy.table.Table`
         A table of the object parameters.
     """
 
@@ -554,7 +554,7 @@ def _irafstarfind_moments(imgcutout, kernel, sky):
 
     Returns
     -------
-    table : `astropy.table.table.Table <http://docs.astropy.org/en/stable/_generated/astropy.table.table.Table.html>`_ object
+    table : `astropy.table.Table`
         A table of the object parameters.
     """
 
@@ -609,7 +609,7 @@ def _daofind_objparams(imgcutouts, kernel, threshold, sky=0.0):
 
     Returns
     -------
-    table : `astropy.table.table.Table <http://docs.astropy.org/en/stable/_generated/astropy.table.table.Table.html>`_ object
+    table : `astropy.table.Table`
         A table of the object parameters.
     """
 
@@ -716,8 +716,8 @@ def _daofind_centroidfit(obj, kernel, axis):
     axis : {0, 1}
         The axis for which the centroid is computed:
 
-            * 0: for the x axis
-            * 1: for the y axis
+        * 0: for the x axis
+        * 1: for the y axis
 
     Returns
     -------
