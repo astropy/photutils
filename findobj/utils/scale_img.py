@@ -1,4 +1,6 @@
-
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 import numpy as np
 from astropy.stats import sigma_clip
 
@@ -10,7 +12,7 @@ DTYPE_RANGE = {np.bool_: (False, True),
                np.int16: (-32768, 32767),
                np.float32: (-1, 1),
                np.float64: (-1, 1)}
-DTYPE_RANGE.update((d.__name__, limits) for d, limits in DTYPE_RANGE.items())
+DTYPE_RANGE.update((d.__name__, limits) for d, limits in list(DTYPE_RANGE.items()))
 DTYPE_RANGE.update({'uint10': (0, 2**10 - 1), 'uint12': (0, 2**12 - 1),
                     'uint14': (0, 2**14 - 1), 'bool': DTYPE_RANGE[np.bool_],
                     'float': DTYPE_RANGE[np.float64]})
@@ -137,7 +139,6 @@ def scale_asinh(img, noiselevel=None, sigma=2.0, mincut=None, maxcut=None,
     if not noiselevel:
         mean, median, std = imgstats(img)
         noiselevel = mean + (sigma * std)
-        print noiselevel
     z = (noiselevel - mincut) / (maxcut - mincut)
     outimg = np.arcsinh(outimg / z) / np.arcsinh(1.0 / z)
     # identical, alternate derivation:

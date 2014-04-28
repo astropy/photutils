@@ -1,7 +1,8 @@
-
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 import findobj
 import numpy as np
-from astropy.convolution import Kernel2D
 from astropy.modeling import models, fitting
 
 
@@ -199,7 +200,7 @@ def shape_params(data, data_mask=None):
     mu = findobj.moments_central(data, ycen, xcen, 2) / m[0, 0]
     result['xcen'] = xcen
     result['ycen'] = ycen
-    musum = mu[2, 0] + mu[0, 2]
+    #musum = mu[2, 0] + mu[0, 2]
     mudiff = mu[2, 0] - mu[0, 2]
     pa = 0.5 * np.arctan2(2.0*mu[1, 1], mudiff) * (180.0 / np.pi)
     if pa < 0.0:
