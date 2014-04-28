@@ -35,6 +35,9 @@ distribute-*.tar.gz
 # Other
 .*.swp
 *~
+.project
+.pydevproject
+.settings
 photutils/cython_version.py
 photutils.cfg
 
