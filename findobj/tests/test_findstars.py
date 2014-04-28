@@ -46,9 +46,9 @@ def _subimg_bbox(img, subimage, xc, yc):
     """
     ys, xs = subimage.shape
     y, x = img.shape
-    y0 = yc - (ys - 1) / 2.0
+    y0 = int(yc - (ys - 1) / 2.0)
     y1 = y0 + ys
-    x0 = xc - (xs - 1) / 2.0
+    x0 = int(xc - (xs - 1) / 2.0)
     x1 = x0 + xs
     if (x0 >= 0) and (y0 >= 0) and (x1 < x) and (y1 < y):
         return (x0, x1, y0, y1)
@@ -135,7 +135,7 @@ class SetupData1Obj(object):
 class SetupData(object):
     def _setup(self, nobj=200, xsize=501, ysize=501):
         img = np.zeros((ysize, xsize))
-        nround = nobj * 0.1
+        nround = int(nobj * 0.1)
         prng = np.random.RandomState(1234567890)
         xcens = prng.uniform(0, xsize, nobj)
         ycens = prng.uniform(0, ysize, nobj)
