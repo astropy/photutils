@@ -7,7 +7,7 @@ import math
 import abc
 import copy
 import numpy as np
-from astropy.extern.six import with_metaclass
+from astropy.extern import six
 
 __all__ = ["Aperture",
            "CircularAperture", "CircularAnnulus",
@@ -18,7 +18,8 @@ __all__ = ["Aperture",
            "annulus_circular", "annulus_elliptical"]
 
 
-class Aperture(with_metaclass(abc.ABCMeta, object)):
+@six.add_metaclass(abc.ABCMeta)
+class Aperture(object):
     """Abstract base class for an arbitrary 2-d aperture.
 
     Derived classes should contain whatever internal data is needed to define
