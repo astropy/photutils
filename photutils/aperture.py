@@ -1,13 +1,13 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 """Functions for performing aperture photometry on 2-D arrays."""
-from __future__ import division
-
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 import math
 import abc
 import copy
-
 import numpy as np
+from astropy.extern import six
 
 __all__ = ["Aperture",
            "CircularAperture", "CircularAnnulus",
@@ -18,6 +18,7 @@ __all__ = ["Aperture",
            "annulus_circular", "annulus_elliptical"]
 
 
+@six.add_metaclass(abc.ABCMeta)
 class Aperture(object):
     """Abstract base class for an arbitrary 2-d aperture.
 
@@ -25,8 +26,6 @@ class Aperture(object):
     the aperture, and provide methods 'encloses' and 'extent' (and optionally,
     'area').
     """
-
-    __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def extent(self):

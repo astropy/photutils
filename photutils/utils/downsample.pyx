@@ -1,3 +1,6 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 import numpy as np
 cimport numpy as np
 
@@ -11,8 +14,8 @@ def downsample(np.ndarray[DTYPE_t, ndim=2] array, int factor):
 
     cdef int nx = array.shape[0]
     cdef int ny = array.shape[1]
-    cdef int nx_new = nx / factor
-    cdef int ny_new = ny / factor
+    cdef int nx_new = nx // factor
+    cdef int ny_new = ny // factor
     cdef unsigned int i, j, ii, jj
     cdef np.ndarray[DTYPE_t, ndim=2] result = np.zeros([nx_new, ny_new], dtype=DTYPE)
     cdef float factor_sq = factor * factor

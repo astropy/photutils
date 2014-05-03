@@ -3,7 +3,8 @@
 # The tests in this file test the accuracy of the photometric results.
 # Here we test directly with aperture objects since we are checking the
 # algorithms in aperture_photometry, not in the wrappers.
-
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 import pytest
 import numpy as np
 from numpy.testing import assert_array_almost_equal_nulp
