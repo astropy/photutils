@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from astropy.stats import sigma_clip
 
+# from scikit-image
 DTYPE_RANGE = {np.bool_: (False, True),
                np.bool8: (False, True),
                np.uint8: (0, 255),
@@ -18,134 +19,182 @@ DTYPE_RANGE.update({'uint10': (0, 2**10 - 1), 'uint12': (0, 2**12 - 1),
                     'float': DTYPE_RANGE[np.float64]})
 
 
-def find_imgcuts(img, mincut=None, maxcut=None, minper=None, maxper=None,
-                 per=None):
+def find_imgcuts(image, min_cut=None, max_cut=None, min_percent=None,
+                 max_percent=None, percent=None):
     """
-    Find image minimum and maximum cut levels from percentiles.
+    Find minimum and maximum image cut levels from percentiles of the
+    image values.
 
     Parameters
     ----------
-    img :
-    mincut :
-    maxcut :
-    minper :
-    maxper :
-    per :
+    image : array_like
+        The 2D array of the image.
+
+    min_cut : float, optional
+        The minimum cut level.  Data values less than `min_cut` will set to
+        `min_cut` before scaling the image.
+
+    max_cut : float, optional
+        The maximum cut level.  Data values greater than `max_cut` will set
+        to `max_cut` before scaling the image.
+
+    min_percent : float, optional
+        The minimum cut level as a percentile of the values in the image.
+        If `min_cut` is input, then `min_percent` will be ignored.
+
+    max_percent : float, optional
+        The maximum cut level as a percentile of the values in the image.
+        If `max_cut` is input, then `max_percent` will be ignored.
+
+    percent : float, optional
+        The percentage of the image values to scale.  The lower image cut
+        level will set at the `(100 - percent) / 2` percentile, while the
+        upper cut level will be set at the `(100 + percent) / 2` percentile.
+        This value overrides the values of  `min_percent` and `max_percent`.
     """
 
-    if mincut is not None and maxcut is not None:
-        return mincut, maxcut
-    if per:
-        assert (per >= 0) and (per <= 100.0), 'per must be >=0 and <= 100.0'
-        if not minper and not maxper:
-            minper = (100.0 - float(per)) / 2.0
-            maxper = 100.0 - minper
-    if mincut is None:
-        if minper is None:
-            minper = 0.0
-        assert minper >= 0, 'minper must be >= 0'
-        mincut = np.percentile(img, minper)
-    if maxcut is None:
-        if maxper is None:
-            maxper = 100.0
-        assert maxper <= 100.0, 'maxper must be <= 100.0'
-        maxcut = np.percentile(img, maxper)
-    assert mincut <= maxcut, 'mincut must be <= maxcut'
-    return mincut, maxcut
+    if min_cut is not None and max_cut is not None:
+        return min_cut, max_cut
+    if percent:
+        assert (percent >= 0) and (percent <= 100.0), 'percent must be >= 0 and <= 100.0'
+        if not min_percent and not max_percent:
+            min_percent = (100.0 - float(percent)) / 2.0
+            max_percent = 100.0 - min_percent
+    if min_cut is None:
+        if min_percent is None:
+            min_percent = 0.0
+        assert min_percent >= 0, 'min_percent must be >= 0'
+        min_cut = np.percentile(image, min_percent)
+    if max_cut is None:
+        if max_percent is None:
+            max_percent = 100.0
+        assert max_percent <= 100.0, 'max_percent must be <= 100.0'
+        max_cut = np.percentile(image, max_percent)
+    assert min_cut <= max_cut, 'min_cut must be <= max_cut'
+    return min_cut, max_cut
 
 
-def imgstats(img, sig=3.0, iters=None):
+def _imgstats(image, image_mask=None, mask_val=None, sig=3.0, iters=None):
     """
-    Perform sigma-clipped statistics on the image.
+    Perform sigma-clipped statistics on an image.
+
+    Parameters
+    ----------
+    image : array_like
+        The 2D array of the image.
+
+    image_mask : boolean, array_like, optional
+        The 2D array of image mask values.  Bad pixels have a value of
+        `True` and bad pixels have a value of `False.`
+
+    mask_val : float, optional
+        An image data value (e.g. 0.0) that is ignored when computing
+        the image statistics (crude!).  `mask_val` is ignored if
+        `image_mask` is input.
+
+    sig : float, optional
+        The number of standard deviations to use as the clipping limit.
+
+    iters : float, optional
+       The number of iterations to perform clipping, or `None` to clip
+       until convergence is achieved (i.e. continue until the last
+       iteration clips nothing).
     """
 
-    idx = (img != 0.0).nonzero()    # remove padding zeros (crude)
-    img_clip = sigma_clip(img[idx], sig=sig, iters=iters)
-    vals = img_clip.data[~img_clip.mask]    # only good values
-    return np.mean(vals), np.median(vals), np.std(vals)
+    if image_mask:
+        image = image[~image_mask]
+    if mask_val and not image_mask:
+        idx = (image != mask_val).nonzero()
+        image = image[idx]
+    image_clip = sigma_clip(image, sig=sig, iters=iters)
+    goodvals = image_clip.data[~image_clip.mask]
+    return np.mean(goodvals), np.median(goodvals), np.std(goodvals)
 
 
-def rescale_img(img, mincut=None, maxcut=None, minper=None, maxper=None,
-                per=None):
+def rescale_img(image, min_cut=None, max_cut=None, min_percent=None,
+                max_percent=None, percent=None):
     """
-    Rescale image to values between 0 and 1, inclusive.
+    Rescale image values between minimum and maximum cut levels to
+    values between 0 and 1, inclusive.
     """
 
-    img = img.astype(np.float64)
-    mincut, maxcut = find_imgcuts(img, mincut=mincut, maxcut=maxcut,
-                                  minper=minper, maxper=maxper, per=per)
-    outimg = rescale_intensity(img, in_range=(mincut, maxcut),
+    image = image.astype(np.float64)
+    min_cut, max_cut = find_imgcuts(image, min_cut=min_cut, max_cut=max_cut,
+                                    min_percent=min_percent,
+                                    max_percent=max_percent, percent=percent)
+    outimg = rescale_intensity(image, in_range=(min_cut, max_cut),
                                out_range=(0, 1))
-    return outimg, mincut, maxcut
+    return outimg, min_cut, max_cut
 
 
-def scale_linear(img, mincut=None, maxcut=None, minper=None, maxper=None,
-                 per=None):
+def scale_linear(image, min_cut=None, max_cut=None, min_percent=None,
+                 max_percent=None, percent=None):
     """
-    Perform linear scaling of image.
+    Perform linear scaling of image between minimum and maximum cut levels.
     """
 
-    outimg, mincut, maxcut = rescale_img(img, mincut=mincut, maxcut=maxcut,
-                                         minper=minper, maxper=maxper,
-                                         per=per)
+    result = rescale_img(image, min_cut=min_cut, max_cut=max_cut,
+                         min_percent=min_percent, max_percent=max_percent,
+                         percent=percent)
+    return result[0]
+
+
+def scale_sqrt(image, min_cut=None, max_cut=None, min_percent=None,
+               max_percent=None, percent=None):
+    """
+    Perform square-root scaling of image between minimum and maximum
+    cut levels.
+    """
+
+    result = rescale_img(image, min_cut=min_cut, max_cut=max_cut,
+                         min_percent=min_percent, max_percent=max_percent,
+                         percent=percent)
+    return np.sqrt(result[0])
+
+
+def scale_power(image, power, min_cut=None, max_cut=None, min_percent=None,
+                max_percent=None, percent=None):
+    """
+    Perform power scaling of image between minimum and maximum cut levels.
+    """
+
+    result = rescale_img(image, min_cut=min_cut, max_cut=max_cut,
+                         min_percent=min_percent, max_percent=max_percent,
+                         percent=percent)
+    return (result[0])**power
+
+
+def scale_log(image, min_cut=None, max_cut=None, min_percent=None,
+              max_percent=None, percent=None):
+    """
+    Perform logarithmic (log10) scaling of image between minimum and
+    maximum cut levels.
+    """
+
+    result = rescale_img(image, min_cut=min_cut, max_cut=max_cut,
+                         min_percent=min_percent, max_percent=max_percent,
+                         percent=percent)
+    outimg = np.log10(result[0] + 1.0) / np.log10(2.0)
     return outimg
 
 
-def scale_sqrt(img, mincut=None, maxcut=None, minper=None, maxper=None,
-               per=None):
+def scale_asinh(image, noise_level=None, sigma=2.0, min_cut=None,
+                max_cut=None, min_percent=None, max_percent=None,
+                percent=None):
     """
-    Perform sqrt scaling of image.
-    """
-
-    outimg, mincut, maxcut = rescale_img(img, mincut=mincut, maxcut=maxcut,
-                                         minper=minper, maxper=maxper,
-                                         per=per)
-    return np.sqrt(outimg)
-
-
-def scale_power(img, power, mincut=None, maxcut=None, minper=None,
-                maxper=None, per=None):
-    """
-    Perform power scaling of image.
+    Perform inverse hyperbolic sin (asinh) scaling of image between minimum
+    and maximum cut levels.
     """
 
-    outimg, mincut, maxcut = rescale_img(img, mincut=mincut, maxcut=maxcut,
-                                         minper=minper, maxper=maxper,
-                                         per=per)
-    return (outimg)**power
-
-
-def scale_log(img, mincut=None, maxcut=None, minper=None, maxper=None,
-              per=None):
-    """
-    Perform log scaling of image.
-    """
-
-    outimg, mincut, maxcut = rescale_img(img, mincut=mincut, maxcut=maxcut,
-                                         minper=minper, maxper=maxper,
-                                         per=per)
-    outimg = np.log10(outimg + 1.0) / np.log10(2.0)
-    return outimg
-
-
-def scale_asinh(img, noiselevel=None, sigma=2.0, mincut=None, maxcut=None,
-                minper=None, maxper=None, per=None):
-    """
-    Perform asinh scaling of image.
-    """
-    outimg, mincut, maxcut = rescale_img(img, mincut=mincut, maxcut=maxcut,
-                                         minper=minper, maxper=maxper,
-                                         per=per)
-    if not noiselevel:
-        mean, median, std = imgstats(img)
-        noiselevel = mean + (sigma * std)
-    z = (noiselevel - mincut) / (maxcut - mincut)
+    result = rescale_img(image, min_cut=min_cut, max_cut=max_cut,
+                         min_percent=min_percent, max_percent=max_percent,
+                         percent=percent)
+    outimg, min_cut, max_cut = result
+    if not noise_level:
+        mean, median, stddev = _imgstats(outimg)
+        noise_level = mean + (sigma * stddev)
+    z = (noise_level - min_cut) / (max_cut - min_cut)
     outimg = np.arcsinh(outimg / z) / np.arcsinh(1.0 / z)
-    # identical, alternate derivation:
-    # outimg2= np.arcsinh((img - mincut) / (noiselevel - mincut))
-    # in_range = (np.min(outimg2), np.max(outimg2))
-    # outimg2 = rescale_intensity(outimg2, in_range=in_range,
-    #                             out_range=(0, 1))
     return outimg
 
 
