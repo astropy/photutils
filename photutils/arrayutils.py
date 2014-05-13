@@ -39,10 +39,10 @@ def _get_slices(large_array_shape, small_array_shape, position):
         Slice in x direction for the small array.
     """
     # Get edge coordinates
-    y_min = position[1] + 0.5 - small_array_shape[0] // 2
-    x_min = position[0] + 0.5 - small_array_shape[1] // 2
-    y_max = position[1] + 0.5 + small_array_shape[0] // 2 + 1
-    x_max = position[0] + 0.5 + small_array_shape[1] // 2 + 1
+    y_min = int(position[1] + 0.5) - small_array_shape[0] // 2
+    x_min = int(position[0] + 0.5) - small_array_shape[1] // 2
+    y_max = int(position[1] + 0.5) + small_array_shape[0] // 2 + 1
+    x_max = int(position[0] + 0.5) + small_array_shape[1] // 2 + 1
 
     # Set up slices in x direction
     s_x = slice(max(0, x_min), min(large_array_shape[1], x_max))
@@ -141,7 +141,7 @@ def subpixel_indices(position, subsampling):
     # Convert to int
     x_sub = np.int(x_frac * subsampling)
     y_sub = np.int(y_frac * subsampling)
-    return y_sub, x_sub
+    return x_sub, y_sub
 
 
 def fix_prf_nan(extracted_prf, prf_nan):

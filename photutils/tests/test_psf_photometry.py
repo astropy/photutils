@@ -21,7 +21,7 @@ psf_size = 11
 gaussian_width = 1.
 image_size = 101.
 
-# Position and fluxes
+# Position and fluxes of tes sources
 positions = [(50, 50), (23, 83), (12, 80), (86, 84)]
 fluxes = [np.pi * 10, 3.654, 20., 80 / np.sqrt(3)]
 
@@ -41,21 +41,29 @@ for i, position in enumerate(positions):
     image += discretize_model(model, (0, image_size), (0, image_size), mode='oversample')
 
 
-def test_create_prf():
+def test_create_prf_mean():
     """
     Check if create_prf works correctly on simulated data.
     """
-    prf = create_prf(image, positions, psf_size, subsampling=1)
-    assert_allclose(prf._prf_array[0, 0], test_psf, atol=0.1)
+    prf = create_prf(image, positions, psf_size, subsampling=1, mode='mean')
+    assert_allclose(prf._prf_array[0, 0], test_psf, atol=1E-8)
     
+def test_create_prf_median():
+    """
+    Check if create_prf works correctly on simulated data.
+    """
+    prf = create_prf(image, positions, psf_size, subsampling=1, mode='median')
+    assert_allclose(prf._prf_array[0, 0], test_psf, atol=1E-8)
+
 
 def test_create_prf_nan():
     """
     Check if create_prf deals correctly with nan values.
     """
-    image[52, 52] = np.nan
-    image[52, 48] = np.nan
-    prf = create_prf(image, positions, psf_size, fix_nan=True, subsampling=1)
+    image_nan = image.copy()
+    image_nan[52, 52] = np.nan
+    image_nan[52, 48] = np.nan
+    prf = create_prf(image_nan, positions, psf_size, subsampling=1)
     assert not np.isnan(prf._prf_array[0, 0]).any()
 
 
@@ -64,8 +72,8 @@ def test_create_prf_flux():
     Check if create_prf works correctly when fluxes are specified. 
     """
     prf = create_prf(image, positions, psf_size, fluxes=fluxes, subsampling=1)
-    assert np.abs(prf._prf_array[0, 0].sum() - 1) < 0.001
-    assert np.all(np.abs(prf._prf_array[0, 0] - test_psf) < 0.1)
+    assert np.abs(prf._prf_array[0, 0].sum() - 1) < 1E-10
+    assert_allclose(prf._prf_array[0, 0], test_psf, atol=1E-8)
     
     
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -81,7 +89,7 @@ def test_discrete_prf_fit():
     data = 10 * test_psf
     indices = np.indices(data.shape) 
     flux = prf.fit(data, indices)
-    assert_allclose(flux, 10, 0.01)
+    assert_allclose(flux, 10, rtol=1E-5)
     
     
 @pytest.mark.skipif('not HAS_SCIPY') 
@@ -91,7 +99,7 @@ def test_psf_photometry_discrete():
     """
     prf = DiscretePRF(test_psf, subsampling=1)
     f = psf_photometry(image, positions, prf)
-    assert_allclose(f, fluxes, 1E-5)
+    assert_allclose(f, fluxes, rtol=1E-6)
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_psf_photometry_gaussian():
@@ -100,5 +108,5 @@ def test_psf_photometry_gaussian():
     """
     prf = GaussianPSF(gaussian_width)
     f = psf_photometry(image, positions, prf)
-    assert_allclose(f, fluxes, 1E-2)
+    assert_allclose(f, fluxes, rtol=1E-3)
     

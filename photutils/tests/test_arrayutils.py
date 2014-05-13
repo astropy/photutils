@@ -1,11 +1,21 @@
-import pytest
-
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 import numpy as np
+from astropy.tests.helper import pytest
+from ..arrayutils import extract_array_2d, add_array_2d, subpixel_indices
 
-from astropy.modeling.models import Gaussian2D
-from astropy.convolution.utils import discretize_model
+test_positions = [(10.52, 3.12), (5.62, 12.97), (31.33, 31.77),
+                  (0.46, 0.94), (20.45, 12.12), (42.24, 24.42)]
 
-from ..arrayutils import extract_array_2d, add_array_2d
+test_position_indices = [(0, 3), (0, 2), (4, 1),
+                         (4, 2), (4, 3), (3, 4)]
+
+test_slices = [slice(10.52, 3.12), slice(5.62, 12.97), 
+               slice(31.33, 31.77), slice(0.46, 0.94), 
+               slice(20.45, 12.12), slice(42.24, 24.42)]
+
+subsampling = 5
 
 
 def test_extract_array_2d():
@@ -33,3 +43,16 @@ def test_add_array_2d():
     
     added_array = add_array_2d(large_test_array, small_test_array, (5, 5))
     assert np.all(added_array == large_test_array_ref)
+        
+@pytest.mark.parametrize(('position', 'subpixel_index'), zip(test_positions, test_position_indices))
+def test_subpixel_indices(position, subpixel_index):
+    """
+    Test subpixel_indices utility function.
+    
+    Test by asserting that the function returns correct results for 
+    given test values.
+    """
+    assert subpixel_indices(position, subsampling) == subpixel_index
+    
+    
+    
