@@ -39,10 +39,10 @@ def _get_slices(large_array_shape, small_array_shape, position):
         Slice in x direction for the small array.
     """
     # Get edge coordinates
-    y_min = position[1] - small_array_shape[0] // 2
-    x_min = position[0] - small_array_shape[1] // 2
-    y_max = position[1] + small_array_shape[0] // 2 + 1
-    x_max = position[0] + small_array_shape[1] // 2 + 1
+    y_min = position[1] + 0.5 - small_array_shape[0] // 2
+    x_min = position[0] + 0.5 - small_array_shape[1] // 2
+    y_max = position[1] + 0.5 + small_array_shape[0] // 2 + 1
+    x_max = position[0] + 0.5 + small_array_shape[1] // 2 + 1
 
     # Set up slices in x direction
     s_x = slice(max(0, x_min), min(large_array_shape[1], x_max))
@@ -54,10 +54,10 @@ def _get_slices(large_array_shape, small_array_shape, position):
     return s_y, s_x, b_y, b_x
 
 
-def extract_array_2D(array_large, shape, position):
+def extract_array_2d(array_large, shape, position):
     """
     Extract smaller array of given shape and position out of a larger array.
-
+    
     Parameters
     ----------
     array_large : ndarray
@@ -88,7 +88,7 @@ def extract_array_2D(array_large, shape, position):
         raise Exception("Can't extract array. Shape too large.")
 
 
-def add_array_2D(array_large, array_small, position):
+def add_array_2d(array_large, array_small, position):
     """
     Add a smaller 2D array at a given position in a larger 2D array.
 
@@ -129,13 +129,14 @@ def subpixel_indices(position, subsampling):
 
     Parameters
     ----------
-    position : tuple (x, y)
-        Position in pixels.
+    position : ndarray [x, y]
+        Positions in pixels.
     subsampling : int
         Subsampling factor per pixel.
     """
     # Get decimal points
-    x_frac, y_frac = np.modf(position)[0]
+    x_frac, y_frac = np.modf((position[0] + 0.5,
+                             position[1] + 0.5))[0]
 
     # Convert to int
     x_sub = np.int(x_frac * subsampling)

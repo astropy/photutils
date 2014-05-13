@@ -2,10 +2,13 @@ import pytest
 
 import numpy as np
 
-from ..arrayutils import extract_array_2D, add_array_2D
+from astropy.modeling.models import Gaussian2D
+from astropy.convolution.utils import discretize_model
+
+from ..arrayutils import extract_array_2d, add_array_2d
 
 
-def test_extract_array_2D():
+def test_extract_array_2d():
     """
     Test extract_array utility function.
     
@@ -14,11 +17,10 @@ def test_extract_array_2D():
     large_test_array = np.zeros((11, 11))
     small_test_array = np.ones((5, 5))
     large_test_array[3:8, 3:8] = small_test_array
-    extracted_array = extract_array_2D(large_test_array, (5, 5), (5, 5))
+    extracted_array = extract_array_2d(large_test_array, (5, 5), (5, 5))
     assert np.all(extracted_array == small_test_array)
 
-
-def test_add_array_2D():
+def test_add_array_2d():
     """
     Test add_array_2D utility function.
     
@@ -29,5 +31,5 @@ def test_add_array_2D():
     large_test_array_ref = large_test_array.copy()
     large_test_array_ref[3:8, 3:8] += small_test_array
     
-    added_array = add_array_2D(large_test_array, small_test_array, (5, 5))
+    added_array = add_array_2d(large_test_array, small_test_array, (5, 5))
     assert np.all(added_array == large_test_array_ref)
