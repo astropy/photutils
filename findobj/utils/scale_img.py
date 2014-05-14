@@ -87,13 +87,14 @@ def img_stats(image, image_mask=None, mask_val=None, sig=3.0, iters=None):
     image : array_like
         The 2D array of the image.
 
-    image_mask : boolean, array_like, optional
-        The 2D array of image mask values.  Bad pixels have a value of
-        `True` and bad pixels have a value of `False.`
+    image_mask : array_like, boolean, optional
+        A boolean mask with the same shape as `image`, where a `True`
+        value indicates the corresponding element of `image` is invalid.
+        Masked pixels are ignored when computing the image statistics.
 
     mask_val : float, optional
-        An image data value (e.g. 0.0) that is ignored when computing
-        the image statistics (crude!).  ``mask_val`` is ignored if
+        An image data value (e.g., ``0.0``) that is ignored when
+        computing the image statistics.  ``mask_val`` will be ignored if
         ``image_mask`` is input.
 
     sig : float, optional
