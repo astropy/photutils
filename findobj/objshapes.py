@@ -18,7 +18,7 @@ def centroid_com(data, data_mask=None):
 
     data_mask : array_like, boolean, optional
         A boolean mask with the same shape as `data`, where a `True`
-        value indicates the corresponding element of data in invalid.
+        value indicates the corresponding element of `data` is invalid.
 
     Returns
     -------
@@ -62,7 +62,7 @@ def centroid_1dg(data, data_err=None, data_mask=None):
 
     data_mask : array_like, boolean, optional
         A boolean mask with the same shape as `data`, where a `True`
-        value indicates the corresponding element of data in invalid.
+        value indicates the corresponding element of `data` is invalid.
 
     Returns
     -------
@@ -109,7 +109,7 @@ def centroid_2dg(data, data_err=None, data_mask=None):
 
     data_mask : array_like, boolean, optional
         A boolean mask with the same shape as `data`, where a `True`
-        value indicates the corresponding element of data in invalid.
+        value indicates the corresponding element of `data` is invalid.
 
     Returns
     -------
@@ -135,7 +135,7 @@ def fit_2dgaussian(data, data_err=None, data_mask=None):
 
     data_mask : array_like, boolean, optional
         A boolean mask with the same shape as `data`, where a `True`
-        value indicates the corresponding element of data in invalid.
+        value indicates the corresponding element of `data` is invalid.
 
     Returns
     -------
@@ -170,7 +170,7 @@ def shape_params(data, data_mask=None):
 
     data_mask : array_like, boolean, optional
         A boolean mask with the same shape as `data`, where a `True`
-        value indicates the corresponding element of data in invalid.
+        value indicates the corresponding element of `data` is invalid.
 
     Returns
     -------
