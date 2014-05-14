@@ -8,7 +8,7 @@ from astropy.tests.helper import pytest
 from astropy.modeling.models import Gaussian2D
 from astropy.convolution.utils import discretize_model
 
-from photutils.psf import create_prf, DiscretePRF, psf_photometry, GaussianPSF
+from ..psf import create_prf, DiscretePRF, psf_photometry, GaussianPSF
 
 try:
     from scipy import optimize
@@ -19,7 +19,7 @@ except ImportError:
 
 psf_size = 11
 gaussian_width = 1.
-image_size = 101.
+image_size = 101
 
 # Position and fluxes of tes sources
 positions = [(50, 50), (23, 83), (12, 80), (86, 84)]

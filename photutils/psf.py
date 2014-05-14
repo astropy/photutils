@@ -9,9 +9,9 @@ from astropy.modeling import fitting
 from astropy.modeling.parameters import Parameter
 
 try:
-    from astropy.modeling.core import Fittable2DModel
+    from astropy.modeling import Fittable2DModel
 except ImportError:
-    from astropy.modeling.core import Parametric2DModel as  Fittable2DModel
+    from astropy.modeling import Parametric2DModel as Fittable2DModel
     
     
 from .arrayutils import (extract_array_2d, subpixel_indices,
