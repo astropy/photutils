@@ -6,6 +6,7 @@ The findobj package...
 from .findstars import *
 from .objshapes import *
 from .utils.moments import *
+from .utils.scale_img import *
 
 #this indicates whether or not we are in the package's setup.py
 try:
