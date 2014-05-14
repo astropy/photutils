@@ -7,7 +7,8 @@ from .objshapes import shape_params
 from .utils.scale_img import img_stats
 
 
-def detect_obj(image, snr_threshold, npixels, filter_fwhm=None, image_mask=None, mask_val=None, sig=3.0, iters=None):
+def detect_obj(image, snr_threshold, npixels, filter_fwhm=None,
+               image_mask=None, mask_val=None, sig=3.0, iters=None):
     """
     Detect sources in a 2D image above a specified signal-to-noise ratio
     threshold and return a 2D segmentation image.
@@ -87,17 +88,94 @@ def detect_obj(image, snr_threshold, npixels, filter_fwhm=None, image_mask=None,
     return objlabels
 
 
-def find_peaks(img, min_distance=5., threshold_abs=0.03, threshold_rel=0.0, indices=True):
+def find_peaks(image, snr_threshold, min_distance=5, exclude_border=True,
+               indices=True, num_peaks=np.inf, footprint=None, labels=None):
+    """
+    Find peaks in an image above above a specified signal-to-noise ratio
+    threshold and return them as coordinates or a boolean array.
 
+    Peaks are the local maxima in a region of `2 * min_distance + 1`
+    (i.e. peaks are separated by at least `min_distance`).
 
+    NOTE: If peaks are flat (i.e. multiple adjacent pixels have identical
+    intensities), the coordinates of all such pixels are returned.
 
-    from skimage.feature import peak_local_max
+    Parameters
+    ----------
+    image : array_like
+        The 2D array of the image.
 
+    snr_threshold : float
+        The signal-to-noise ratio threshold above which to detect
+        sources.  The background rms noise level is computed using
+        sigma-clipped statistics, which can be controlled via the
+        ``sig`` and ``iters`` keywords.
 
-    idx = peak_local_max(img, min_distance=min_distance, threshold_abs=threshold_abs, threshold_rel=threshold_rel, indices=True)
-    #idx = peak_local_max(img, min_distance=5, threshold_abs=0.03, threshold_rel=0, indices=True)
-    #print idx.shape
-    return idx
+    min_distance : int
+        Minimum number of pixels separating peaks in a region of `2 *
+        min_distance + 1` (i.e. peaks are separated by at least
+        `min_distance`). If `exclude_border` is True, this value also
+        excludes a border `min_distance` from the image boundary.  To
+        find the maximum number of peaks, use `min_distance=1`.
+
+    exclude_border : bool
+        If True, `min_distance` excludes peaks from the border of the
+        image as well as from each other.
+
+    indices : bool
+        If True, the output will be an array representing peak
+        coordinates.  If False, the output will be a boolean array
+        shaped as `image.shape` with peaks present at True elements.
+
+    num_peaks : int
+        Maximum number of peaks. When the number of peaks exceeds
+        `num_peaks`, return `num_peaks` peaks based on highest peak
+        intensity.
+
+    footprint : ndarray of bools, optional
+        If provided, `footprint == 1` represents the local region within
+        which to search for peaks at every point in `image`.  Overrides
+        `min_distance`, except for border exclusion if
+        `exclude_border=True`.
+
+    labels : ndarray of ints, optional
+        If provided, each unique region `labels == value` represents a
+        unique region to search for peaks. Zero is reserved for
+        background.
+
+    Returns
+    -------
+    output : ndarray or ndarray of bools
+
+        * If `indices = True`  : (row, column, ...) coordinates of
+          peaks.
+        * If `indices = False` : Boolean array shaped like `image`, with
+          peaks represented by True values.
+
+    Notes
+    -----
+    The peak local maximum function returns the coordinates of local
+    peaks (maxima) in a image. A maximum filter is used for finding
+    local maxima.  This operation dilates the original image. After
+    comparison between dilated and original image, peak_local_max
+    function returns the coordinates of peaks where dilated image =
+    original.
+    """
+
+    try:
+        from skimage.feature import peak_local_max
+    except (ImportError):
+        raise ImportError('find_peaks requires scikit-image.')
+
+    bkgrd, median, bkgrd_rms = img_stats(image, image_mask=image_mask,
+                                         mask_val=mask_val, sig=sig,
+                                         iters=iters)
+    level = bkgrd + (bkgrd_rms * snr_threshold)
+    return peak_local_max(image, snr_threshold, min_distance=min_distance,
+                          exclude_border=exclude_border, indices=indices,
+                          num_peaks=num_peaks, footprint=footprint,
+                          labels=labels)
+
 
 #def outline_segments(img, objlabels):
 #    x = np.arange(1000)
@@ -105,9 +183,6 @@ def find_peaks(img, min_distance=5., threshold_abs=0.03, threshold_rel=0.0, indi
 #    X, Y = np.meshgrid(x, y)
 #    plt.imshow(findobj.scale_sqrt (img, per=99.), cmap=cm.Greys)
 #    plt.contour(X, Y, objlabels>0)
-
-
-
 
 
 def kron_apers(img, objlabels):
@@ -126,5 +201,4 @@ def kron_apers(img, objlabels):
         mins.append(sp['minor_axis'])
         thetas.append(sp['pa'])
     return xcens, ycens, majs, mins, thetas
-
 
