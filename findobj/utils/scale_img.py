@@ -74,7 +74,7 @@ def find_imgcuts(image, min_cut=None, max_cut=None, min_percent=None,
     return min_cut, max_cut
 
 
-def _imgstats(image, image_mask=None, mask_val=None, sig=3.0, iters=None):
+def img_stats(image, image_mask=None, mask_val=None, sig=3.0, iters=None):
     """
     Perform sigma-clipped statistics on an image.
 
@@ -157,7 +157,8 @@ def rescale_img(image, min_cut=None, max_cut=None, min_percent=None,
 def scale_linear(image, min_cut=None, max_cut=None, min_percent=None,
                  max_percent=None, percent=None):
     """
-    Perform linear scaling of image between minimum and maximum cut levels.
+    Perform linear scaling of an image between minimum and maximum cut
+    levels.
 
     Parameters
     ----------
@@ -196,7 +197,7 @@ def scale_linear(image, min_cut=None, max_cut=None, min_percent=None,
 def scale_sqrt(image, min_cut=None, max_cut=None, min_percent=None,
                max_percent=None, percent=None):
     """
-    Perform square-root scaling of image between minimum and maximum
+    Perform square-root scaling of an image between minimum and maximum
     cut levels.
 
     Parameters
@@ -236,7 +237,8 @@ def scale_sqrt(image, min_cut=None, max_cut=None, min_percent=None,
 def scale_power(image, power, min_cut=None, max_cut=None, min_percent=None,
                 max_percent=None, percent=None):
     """
-    Perform power scaling of image between minimum and maximum cut levels.
+    Perform power scaling of an image between minimum and maximum cut
+    levels.
 
     Parameters
     ----------
@@ -278,7 +280,7 @@ def scale_power(image, power, min_cut=None, max_cut=None, min_percent=None,
 def scale_log(image, min_cut=None, max_cut=None, min_percent=None,
               max_percent=None, percent=None):
     """
-    Perform logarithmic (base 10) scaling of image between minimum and
+    Perform logarithmic (base 10) scaling of an image between minimum and
     maximum cut levels.
 
     Parameters
@@ -320,8 +322,8 @@ def scale_asinh(image, noise_level=None, sigma=2.0, min_cut=None,
                 max_cut=None, min_percent=None, max_percent=None,
                 percent=None):
     """
-    Perform inverse hyperbolic sin (asinh) scaling of image between minimum
-    and maximum cut levels.
+    Perform inverse hyperbolic sin (asinh) scaling of an image between
+    minimum and maximum cut levels.
 
     Parameters
     ----------
@@ -366,7 +368,7 @@ def scale_asinh(image, noise_level=None, sigma=2.0, min_cut=None,
                          percent=percent)
     outimg, min_cut, max_cut = result
     if not noise_level:
-        mean, median, stddev = _imgstats(outimg)
+        mean, median, stddev = img_stats(outimg)
         noise_level = mean + (sigma * stddev)
     z = (noise_level - min_cut) / (max_cut - min_cut)
     outimg = np.arcsinh(outimg / z) / np.arcsinh(1.0 / z)
