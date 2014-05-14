@@ -55,6 +55,11 @@ def find_imgcuts(image, min_cut=None, max_cut=None, min_percent=None,
         percentile.  This value overrides the values of ``min_percent``
         and ``max_percent``, but is ignored if ``min_cut`` and
         ``max_cut`` are both input.
+
+    Returns
+    -------
+    cutlevels : tuple
+        (min_cut, max_cut) image cut levels
     """
 
     if min_cut is not None and max_cut is not None:
@@ -105,6 +110,11 @@ def img_stats(image, image_mask=None, mask_val=None, sig=3.0, iters=None):
        The number of iterations to perform clipping, or `None` to clip
        until convergence is achieved (i.e. continue until the last
        iteration clips nothing).
+
+    Returns
+    -------
+    stats : tuple
+        (mean, median, stddev) of sigma-clipped image.
     """
 
     if image_mask:
@@ -153,6 +163,12 @@ def rescale_img(image, min_cut=None, max_cut=None, min_percent=None,
         percentile.  This value overrides the values of ``min_percent``
         and ``max_percent``, but is ignored if ``min_cut`` and
         ``max_cut`` are both input.
+
+    Returns
+    -------
+    results : tuple
+        (outimg, min_cut, max_cut) The output scaled image and the
+        minimum and maximum cut levels.
     """
 
     image = image.astype(np.float64)
@@ -200,6 +216,11 @@ def scale_linear(image, min_cut=None, max_cut=None, min_percent=None,
         percentile.  This value overrides the values of ``min_percent``
         and ``max_percent``, but is ignored if ``min_cut`` and
         ``max_cut`` are both input.
+
+    Returns
+    -------
+    scaled_image : array_like
+        The 2D array of the scaled/stretched image.
     """
 
     result = rescale_img(image, min_cut=min_cut, max_cut=max_cut,
@@ -244,6 +265,11 @@ def scale_sqrt(image, min_cut=None, max_cut=None, min_percent=None,
         the upper cut level will be set at the ``(100 + percent) / 2``
         percentile.  This value overrides the values of ``min_percent``
         and ``max_percent``.
+
+    Returns
+    -------
+    scaled_image : array_like
+        The 2D array of the scaled/stretched image.
     """
 
     result = rescale_img(image, min_cut=min_cut, max_cut=max_cut,
@@ -291,6 +317,11 @@ def scale_power(image, power, min_cut=None, max_cut=None, min_percent=None,
         percentile.  This value overrides the values of ``min_percent``
         and ``max_percent``, but is ignored if ``min_cut`` and
         ``max_cut`` are both input.
+
+    Returns
+    -------
+    scaled_image : array_like
+        The 2D array of the scaled/stretched image.
     """
 
     result = rescale_img(image, min_cut=min_cut, max_cut=max_cut,
@@ -335,6 +366,11 @@ def scale_log(image, min_cut=None, max_cut=None, min_percent=None,
         percentile.  This value overrides the values of ``min_percent``
         and ``max_percent``, but is ignored if ``min_cut`` and
         ``max_cut`` are both input.
+
+    Returns
+    -------
+    scaled_image : array_like
+        The 2D array of the scaled/stretched image.
     """
 
     result = rescale_img(image, min_cut=min_cut, max_cut=max_cut,
@@ -391,6 +427,11 @@ def scale_asinh(image, noise_level=None, sigma=2.0, min_cut=None,
         percentile.  This value overrides the values of ``min_percent``
         and ``max_percent``, but is ignored if ``min_cut`` and
         ``max_cut`` are both input.
+
+    Returns
+    -------
+    scaled_image : array_like
+        The 2D array of the scaled/stretched image.
     """
 
     result = rescale_img(image, min_cut=min_cut, max_cut=max_cut,
