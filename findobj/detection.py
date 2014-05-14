@@ -1,9 +1,10 @@
-
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 import numpy as np
 from scipy import ndimage
 from .objshapes import shape_params
 from .utils.scale_img import img_stats
-from skimage.feature import peak_local_max
 
 
 def detect_obj(image, snr_threshold, npixels, filter_fwhm=None, image_mask=None, mask_val=None, sig=3.0, iters=None):
@@ -63,8 +64,6 @@ def detect_obj(image, snr_threshold, npixels, filter_fwhm=None, image_mask=None,
     bkgrd, median, bkgrd_rms = img_stats(image, image_mask=image_mask,
                                          mask_val=mask_val, sig=sig,
                                          iters=iters)
-
-    # filtering
     if filter_fhwm is not None:
         img_smooth = ndimage.gaussian_filter(image, filter_fwhm)
 
@@ -72,11 +71,8 @@ def detect_obj(image, snr_threshold, npixels, filter_fwhm=None, image_mask=None,
     level = bkgrd + (bkgrd_rms * snr_threshold)
     img_thresh = img_smooth >= level
 
-    # segment the thresholded image
     struct = ndimage.generate_binary_structure(2, 1)
     objlabels, nobj = ndimage.label(img_thresh, structure=struct)
-
-    # slice the segments
     objslices = ndimage.find_objects(objlabels)
 
     # remove objects smaller than npixels size
@@ -85,12 +81,19 @@ def detect_obj(image, snr_threshold, npixels, filter_fwhm=None, image_mask=None,
         obj_npix = len(np.where(objlabel.ravel() != 0)[0])
         if obj_npix < npixels:
             objlabels[objslice] = 0
-    # relabel (labeled indices must be consecutive!)
+
+    # relabel (labeled indices must be consecutive)
     objlabels, nobj = ndimage.label(objlabels, structure=struct)
     return objlabels
 
 
 def find_peaks(img, min_distance=5., threshold_abs=0.03, threshold_rel=0.0, indices=True):
+
+
+
+    from skimage.feature import peak_local_max
+
+
     idx = peak_local_max(img, min_distance=min_distance, threshold_abs=threshold_abs, threshold_rel=threshold_rel, indices=True)
     #idx = peak_local_max(img, min_distance=5, threshold_abs=0.03, threshold_rel=0, indices=True)
     #print idx.shape
