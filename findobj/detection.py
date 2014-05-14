@@ -1,66 +1,92 @@
 
-#from astropy.io import fits
-#from scale_img import *
-#from matplotlib import cm
 import numpy as np
 from scipy import ndimage
-from astropy.stats import sigma_clip
 from .objshapes import shape_params
+from .utils.scale_img import img_stats
 from skimage.feature import peak_local_max
 
 
-def imgstats(img, sig=3.0, iters=None):
+def detect_obj(image, snr_threshold, npixels, filter_fwhm=None, image_mask=None, mask_val=None, sig=3.0, iters=None):
     """
-    Perform sigma-clipped statistics on the image.
+    Detect sources in a 2D image above a specified signal-to-noise ratio
+    threshold and return a 2D segmentation image.
+
+    This routine does not yet deblend overlapping sources.
+
+    Parameters
+    ----------
+    image : array_like
+        The 2D array of the image.
+
+    snr_threshold : float
+        The signal-to-noise ratio threshold above which to detect
+        sources.  The background rms noise level is computed using
+        sigma-clipped statistics, which can be controlled via the
+        ``sig`` and ``iters`` keywords.
+
+    npixels : float
+        The number of connected pixels an object must have above the
+        threshold level to be detected.
+
+    filter_fwhm : float, optional
+        The FWHM of the circular 2D Gaussian filter that is applied to
+        the input image before it is thresholded.  Filtering the image
+        will maximize detectability of objects with a FWHM similar to
+        ``filter_fwhm``.  Set to `None` (the default) to turn off image
+        filtering.
+
+    image_mask : array_like, boolean, optional
+        A boolean mask with the same shape as ``image``, where a `True`
+        value indicates the corresponding element of ``image`` is
+        invalid.  Masked pixels are ignored when computing the image
+        statistics.
+
+    mask_val : float, optional
+        An image data value (e.g., ``0.0``) that is ignored when
+        computing the image statistics.  ``mask_val`` will be ignored if
+        ``image_mask`` is input.
+
+    sig : float, optional
+        The number of standard deviations to use as the clipping limit.
+
+    iters : float, optional
+       The number of iterations to perform clipping, or `None` to clip
+       until convergence is achieved (i.e. continue until the last
+       iteration clips nothing).
+
+    Returns
+    -------
+    segment_image:  array_like
+        A 2D segmentation image of integers indicating segment labels.
     """
 
-    idx = (img != 0.0).nonzero()    # remove padding zeros (crude)
-    img_clip = sigma_clip(img[idx], sig=sig, iters=iters)
-    vals = img_clip.data[~img_clip.mask]    # only good values
-    return np.mean(vals), np.median(vals), np.std(vals)
+    bkgrd, median, bkgrd_rms = img_stats(image, image_mask=image_mask,
+                                         mask_val=mask_val, sig=sig,
+                                         iters=iters)
 
-
-def segment(img, snr_threshold, npixels, filter_fwhm=2.5):
-    # background
-    # bkgrd, rms =
-
-    bkgrd, img_median, rms = imgstats(img, sig=3.0)
-
-    # filtering (ideally a "matched filter" will maximize detectability)
-    # Smooth with a 2.5 pixel gaussian
-    img_smooth = ndimage.gaussian_filter(img, filter_fwhm)
+    # filtering
+    if filter_fhwm is not None:
+        img_smooth = ndimage.gaussian_filter(image, filter_fwhm)
 
     # threshold the smoothed image
-    nsigma = snr_threshold
-    level = bkgrd + nsigma*rms
-    #print 'threshold level', level
-    img_thresh = img_smooth > level
+    level = bkgrd + (bkgrd_rms * snr_threshold)
+    img_thresh = img_smooth >= level
 
     # segment the thresholded image
-    shape = ndimage.generate_binary_structure(2, 2)
-    objlabels, nobj = ndimage.label(img_thresh, structure=shape)
-    #print 'nobj', nobj
+    struct = ndimage.generate_binary_structure(2, 1)
+    objlabels, nobj = ndimage.label(img_thresh, structure=struct)
 
     # slice the segments
     objslices = ndimage.find_objects(objlabels)
 
-    #objslices_new = []
-    #objlables_new = []
-    idx = []
-    for (i, objslice) in enumerate(objslices):
-        # extract the object from the unconvolved image, centered on
-        # the brightest pixel in the thresholded segment and with the
-        # same size of the kernel
-        tseg = objlabels[objslice]
-        npix = len(np.where(tseg.ravel() != 0)[0])
-        #if npix >= npixels:
-        if npix < npixels:
+    # remove objects smaller than npixels size
+    for objslice in objslices:
+        objlabel = objlabels[objslice]
+        obj_npix = len(np.where(objlabel.ravel() != 0)[0])
+        if obj_npix < npixels:
             objlabels[objslice] = 0
-            idx.append(i)
-    #print 'Removed nobj:', len(idx)
-    #return objlabels[idx]
-    # relabel (indices must be consecutive for find_objects, etc.)
-    objlabels, nobj = ndimage.label(objlabels, structure=shape)
+    # relabel (labeled indices must be consecutive!)
+    objlabels, nobj = ndimage.label(objlabels, structure=struct)
     return objlabels
 
 
