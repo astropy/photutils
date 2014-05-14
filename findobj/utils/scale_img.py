@@ -88,9 +88,10 @@ def img_stats(image, image_mask=None, mask_val=None, sig=3.0, iters=None):
         The 2D array of the image.
 
     image_mask : array_like, boolean, optional
-        A boolean mask with the same shape as `image`, where a `True`
-        value indicates the corresponding element of `image` is invalid.
-        Masked pixels are ignored when computing the image statistics.
+        A boolean mask with the same shape as ``image``, where a `True`
+        value indicates the corresponding element of ``image`` is
+        invalid.  Masked pixels are ignored when computing the image
+        statistics.
 
     mask_val : float, optional
         An image data value (e.g., ``0.0``) that is ignored when
@@ -211,7 +212,8 @@ def scale_sqrt(image, min_cut=None, max_cut=None, min_percent=None,
                max_percent=None, percent=None):
     """
     Perform square-root scaling of an image between minimum and maximum
-    cut levels.
+    cut levels.  This is equivalent to using `scale_power` with a
+    ``power`` of ``0.5``.
 
     Parameters
     ----------
@@ -265,20 +267,22 @@ def scale_power(image, power, min_cut=None, max_cut=None, min_percent=None,
         The power index for the image scaling.
 
     min_cut : float, optional
-        The minimum cut level.  Data values less than ``min_cut`` will set to
-        ``min_cut`` before scaling the image.
+        The minimum cut level.  Data values less than ``min_cut`` will
+        set to ``min_cut`` before scaling the image.
 
     max_cut : float, optional
-        The maximum cut level.  Data values greater than ``max_cut`` will set
-        to ``max_cut`` before scaling the image.
+        The maximum cut level.  Data values greater than ``max_cut``
+        will set to ``max_cut`` before scaling the image.
 
     min_percent : float, optional
-        The minimum cut level as a percentile of the values in the image.
-        If ``min_cut`` is input, then ``min_percent`` will be ignored.
+        The minimum cut level as a percentile of the values in the
+        image.  If ``min_cut`` is input, then ``min_percent`` will be
+        ignored.
 
     max_percent : float, optional
-        The maximum cut level as a percentile of the values in the image.
-        If ``max_cut`` is input, then ``max_percent`` will be ignored.
+        The maximum cut level as a percentile of the values in the
+        image.  If ``max_cut`` is input, then ``max_percent`` will be
+        ignored.
 
     percent : float, optional
         The percentage of the image values to scale.  The lower cut
@@ -307,20 +311,22 @@ def scale_log(image, min_cut=None, max_cut=None, min_percent=None,
         The 2D array of the image.
 
     min_cut : float, optional
-        The minimum cut level.  Data values less than ``min_cut`` will set to
-        ``min_cut`` before scaling the image.
+        The minimum cut level.  Data values less than ``min_cut`` will
+        set to ``min_cut`` before scaling the image.
 
     max_cut : float, optional
-        The maximum cut level.  Data values greater than ``max_cut`` will set
-        to ``max_cut`` before scaling the image.
+        The maximum cut level.  Data values greater than ``max_cut``
+        will set to ``max_cut`` before scaling the image.
 
     min_percent : float, optional
-        The minimum cut level as a percentile of the values in the image.
-        If ``min_cut`` is input, then ``min_percent`` will be ignored.
+        The minimum cut level as a percentile of the values in the
+        image.  If ``min_cut`` is input, then ``min_percent`` will be
+        ignored.
 
     max_percent : float, optional
-        The maximum cut level as a percentile of the values in the image.
-        If ``max_cut`` is input, then ``max_percent`` will be ignored.
+        The maximum cut level as a percentile of the values in the
+        image.  If ``max_cut`` is input, then ``max_percent`` will be
+        ignored.
 
     percent : float, optional
         The percentage of the image values to scale.  The lower cut
@@ -342,8 +348,8 @@ def scale_asinh(image, noise_level=None, sigma=2.0, min_cut=None,
                 max_cut=None, min_percent=None, max_percent=None,
                 percent=None):
     """
-    Perform inverse hyperbolic sin (asinh) scaling of an image between
-    minimum and maximum cut levels.
+    Perform inverse hyperbolic sine (arcsinh) scaling of an image
+    between minimum and maximum cut levels.
 
     Parameters
     ----------
@@ -356,25 +362,27 @@ def scale_asinh(image, noise_level=None, sigma=2.0, min_cut=None,
         noise_level will approximately be logarithmically scaled.
 
     sigma: float, optional
-        The number of standard deviations of the background noise level
-        used to estimate the noise level.  This value is ignored if
-        `noise_level` is input.
+        The number of standard deviations of the background noise used
+        to estimate the absolute noise level.  This value is ignored if
+        ``noise_level`` is input.
 
     min_cut : float, optional
-        The minimum cut level.  Data values less than ``min_cut`` will set to
-        ``min_cut`` before scaling the image.
+        The minimum cut level.  Data values less than ``min_cut`` will
+        set to ``min_cut`` before scaling the image.
 
     max_cut : float, optional
-        The maximum cut level.  Data values greater than ``max_cut`` will set
-        to ``max_cut`` before scaling the image.
+        The maximum cut level.  Data values greater than ``max_cut``
+        will set to ``max_cut`` before scaling the image.
 
     min_percent : float, optional
-        The minimum cut level as a percentile of the values in the image.
-        If ``min_cut`` is input, then ``min_percent`` will be ignored.
+        The minimum cut level as a percentile of the values in the
+        image.  If ``min_cut`` is input, then ``min_percent`` will be
+        ignored.
 
     max_percent : float, optional
-        The maximum cut level as a percentile of the values in the image.
-        If ``max_cut`` is input, then ``max_percent`` will be ignored.
+        The maximum cut level as a percentile of the values in the
+        image.  If ``max_cut`` is input, then ``max_percent`` will be
+        ignored.
 
     percent : float, optional
         The percentage of the image values to scale.  The lower cut
