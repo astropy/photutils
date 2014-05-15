@@ -3,7 +3,6 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
 from scipy import ndimage
-from .objshapes import shape_params
 from .utils.scale_img import img_stats
 
 
@@ -58,7 +57,7 @@ def detect_obj(image, snr_threshold, npixels, filter_fwhm=None,
 
     Returns
     -------
-    segment_image:  array_like
+    segment_image :  array_like
         A 2D segmentation image of integers indicating segment labels.
     """
 
@@ -94,11 +93,12 @@ def find_peaks(image, snr_threshold, min_distance=5, exclude_border=True,
     Find peaks in an image above above a specified signal-to-noise ratio
     threshold and return them as coordinates or a boolean array.
 
-    Peaks are the local maxima in a region of `2 * min_distance + 1`
-    (i.e. peaks are separated by at least `min_distance`).
+    Peaks are the local maxima in a region of ``2 * min_distance + 1``
+    (i.e. peaks are separated by at least ``min_distance``).
 
-    NOTE: If peaks are flat (i.e. multiple adjacent pixels have identical
-    intensities), the coordinates of all such pixels are returned.
+    NOTE: If peaks are flat (i.e. multiple adjacent pixels have
+    identical intensities), the coordinates of all such pixels are
+    returned.
 
     Parameters
     ----------
@@ -112,20 +112,20 @@ def find_peaks(image, snr_threshold, min_distance=5, exclude_border=True,
         ``sig`` and ``iters`` keywords.
 
     min_distance : int
-        Minimum number of pixels separating peaks in a region of `2 *
-        min_distance + 1` (i.e. peaks are separated by at least
-        `min_distance`). If `exclude_border` is True, this value also
-        excludes a border `min_distance` from the image boundary.  To
-        find the maximum number of peaks, use `min_distance=1`.
+        Minimum number of pixels separating peaks in a region of ``2 *
+        min_distance + 1`` (i.e. peaks are separated by at least
+        ``min_distance``). If ``exclude_border`` is `True`, this value
+        also excludes a border ``min_distance`` from the image boundary.
+        To find the maximum number of peaks, use ``min_distance=1``.
 
     exclude_border : bool
-        If True, `min_distance` excludes peaks from the border of the
-        image as well as from each other.
+        If `True`, ``min_distance`` excludes peaks from the border of
+        the image as well as from each other.
 
     indices : bool
-        If True, the output will be an array representing peak
-        coordinates.  If False, the output will be a boolean array
-        shaped as `image.shape` with peaks present at True elements.
+        If `True`, the output will be an array representing peak
+        coordinates.  If `False`, the output will be a boolean array
+        shaped as ``image.shape`` with peaks present at `True` elements.
 
     num_peaks : int
         Maximum number of peaks. When the number of peaks exceeds
@@ -133,24 +133,24 @@ def find_peaks(image, snr_threshold, min_distance=5, exclude_border=True,
         intensity.
 
     footprint : ndarray of bools, optional
-        If provided, `footprint == 1` represents the local region within
-        which to search for peaks at every point in `image`.  Overrides
-        `min_distance`, except for border exclusion if
-        `exclude_border=True`.
+        If provided, ``footprint == 1`` represents the local region
+        within which to search for peaks at every point in ``image``.
+        Overrides ``min_distance``, except for border exclusion if
+        ``exclude_border=True``.
 
     labels : ndarray of ints, optional
-        If provided, each unique region `labels == value` represents a
-        unique region to search for peaks. Zero is reserved for
+        If provided, each unique region ``labels == value`` represents a
+        unique region to search for peaks.  Zero is reserved for
         background.
 
     Returns
     -------
     output : ndarray or ndarray of bools
 
-        * If `indices = True`  : (row, column, ...) coordinates of
+        * If ``indices = True`` : (row, column, ...) coordinates of
           peaks.
-        * If `indices = False` : Boolean array shaped like `image`, with
-          peaks represented by True values.
+        * If ``indices = False`` : Boolean array shaped like ``image``,
+          with peaks represented by True values.
 
     Notes
     -----
