@@ -1,6 +1,14 @@
 Source Morphological Shape Parameters
 =====================================
 
+.. warning::
+    These functions require `astropy`_ version 0.3.0 (or newer).
+
+    `scikit-image`_ is required for some functionality.
+
+.. _scikit-image: http://scikit-image.org/
+
+
 The ``findobj`` package allows one to calculate morphological shape
 parameters of an object.  These include:
 
