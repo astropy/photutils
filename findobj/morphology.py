@@ -16,7 +16,7 @@ def centroid_com(data, data_mask=None):
     data : array_like
         The image data.
 
-    data_mask : array_like, boolean, optional
+    data_mask : array_like, bool, optional
         A boolean mask with the same shape as `data`, where a `True`
         value indicates the corresponding element of `data` is invalid.
 
@@ -60,7 +60,7 @@ def centroid_1dg(data, data_err=None, data_mask=None):
     data_err : array_like, optional
         The 1-sigma errors for `data`.
 
-    data_mask : array_like, boolean, optional
+    data_mask : array_like, bool, optional
         A boolean mask with the same shape as `data`, where a `True`
         value indicates the corresponding element of `data` is invalid.
 
@@ -107,7 +107,7 @@ def centroid_2dg(data, data_err=None, data_mask=None):
     data_err : array_like, optional
         The 1-sigma errors for `data`.
 
-    data_mask : array_like, boolean, optional
+    data_mask : array_like, bool, optional
         A boolean mask with the same shape as `data`, where a `True`
         value indicates the corresponding element of `data` is invalid.
 
@@ -133,7 +133,7 @@ def fit_2dgaussian(data, data_err=None, data_mask=None):
     data_err : array_like, optional
         The 1-sigma errors for `data`.
 
-    data_mask : array_like, boolean, optional
+    data_mask : array_like, bool, optional
         A boolean mask with the same shape as `data`, where a `True`
         value indicates the corresponding element of `data` is invalid.
 
@@ -168,7 +168,7 @@ def shape_params(data, data_mask=None):
     data : array_like
         The 2D image data.
 
-    data_mask : array_like, boolean, optional
+    data_mask : array_like, bool, optional
         A boolean mask with the same shape as `data`, where a `True`
         value indicates the corresponding element of `data` is invalid.
 

@@ -9,10 +9,10 @@ from .utils.scale_img import img_stats
 def detect_obj(image, snr_threshold, npixels, filter_fwhm=None,
                image_mask=None, mask_val=None, sig=3.0, iters=None):
     """
-    Detect sources in a 2D image above a specified signal-to-noise ratio
-    threshold and return a 2D segmentation image.
+    Detect sources above a specified signal-to-noise ratio
+    in a 2D image and return a 2D segmentation image.
 
-    This routine does not yet deblend overlapping sources.
+    This routine does not deblend overlapping sources.
 
     Parameters
     ----------
@@ -36,24 +36,26 @@ def detect_obj(image, snr_threshold, npixels, filter_fwhm=None,
         ``filter_fwhm``.  Set to `None` (the default) to turn off image
         filtering.
 
-    image_mask : array_like, boolean, optional
+    image_mask : array_like, bool, optional
         A boolean mask with the same shape as ``image``, where a `True`
         value indicates the corresponding element of ``image`` is
         invalid.  Masked pixels are ignored when computing the image
-        statistics.
+        background statistics.
 
     mask_val : float, optional
         An image data value (e.g., ``0.0``) that is ignored when
-        computing the image statistics.  ``mask_val`` will be ignored if
-        ``image_mask`` is input.
+        computing the image background statistics.  ``mask_val`` will be
+        ignored if ``image_mask`` is input.
 
     sig : float, optional
-        The number of standard deviations to use as the clipping limit.
+        The number of standard deviations to use as the clipping limit
+        when calculating the image background statistics.
 
     iters : float, optional
        The number of iterations to perform clipping, or `None` to clip
        until convergence is achieved (i.e. continue until the last
-       iteration clips nothing).
+       iteration clips nothing) when calculating the image background
+       statistics.
 
     Returns
     -------
