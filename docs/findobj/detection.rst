@@ -13,17 +13,6 @@ in astronomical images using two methods:
 * `DAOFIND <http://iraf.net/irafhelp.php?val=daofind&help=Help+Page>`_ algorithm
 * IRAF's `starfind <http://iraf.net/irafhelp.php?val=starfind&help=Help+Page>`_ algorithm
 
-It is likely that ``findobj`` will eventually be merged into
-`photutils <http://photutils.readthedocs.org/en/latest/>`_ or
-`astropy`_.
-
-.. warning::
-    ``findobj`` requires `astropy`_ version 0.3.0 (or newer).
-
-.. warning::
-    ``findobj`` is currently a work-in-progress, and thus it is
-    possible there will be significant API changes in later versions.
-
 
 Getting Started
 ---------------
