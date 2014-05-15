@@ -33,4 +33,5 @@ Reference/API
 =============
 
 .. automodapi:: findobj.morphology
+    :no-heading:
 
