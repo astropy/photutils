@@ -4,7 +4,7 @@ The findobj package...
 """
 
 from .findstars import *
-from .objshapes import *
+from .morphology import *
 from .detection import *
 from .utils.moments import *
 from .utils.scale_img import *

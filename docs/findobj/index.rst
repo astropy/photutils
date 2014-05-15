@@ -1,22 +1,16 @@
 findobj
 =======
 
-findstars
----------
-
-.. toctree:: findstars.rst
-
-
-detection
----------
+source detection
+----------------
 
 .. toctree:: detection.rst
 
 
-objshapes
----------
+source morphology
+-----------------
 
-.. toctree:: objshapes.rst
+.. toctree:: morphology.rst
 
 
 utils
