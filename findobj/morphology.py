@@ -171,8 +171,9 @@ def shape_params(data, data_mask=None):
         The 2D image data.
 
     data_mask : array_like, bool, optional
-        A boolean mask with the same shape as `data`, where a `True`
-        value indicates the corresponding element of `data` is invalid.
+        A boolean mask with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is
+        invalid.
 
     Returns
     -------
@@ -231,17 +232,17 @@ def shape_params(data, data_mask=None):
     return result
 
 
-def moments_to_2DGaussian(amplitude, x_mean, y_mean, mu):
+def _moments_to_2DGaussian(amplitude, x_mean, y_mean, mu):
     """
     mu:  normalized second-order central moments matrix [units of pixels**2]
-        mu = moments_central(data, ycen, xcen, 2) / m[0, 0]
+    mu = moments_central(data, ycen, xcen, 2) / m[0, 0]
     """
 
     cov_matrix = np.array([[mu[2, 0], mu[1, 1]], [mu[1, 1], mu[0, 2]]])
     return models.Gaussian2D(amplitude, x_mean, y_mean, cov_matrix=cov_matrix)
 
 
-def moments_to_2DGaussian2(amplitude, x_mean, y_mean, Ixx, Ixy, Iyy):
+def _moments_to_2DGaussian2(amplitude, x_mean, y_mean, Ixx, Ixy, Iyy):
     """
     Ixx, Ixy, Iyy:  second-order central moments [units of pixels**2]
     """
