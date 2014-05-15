@@ -200,4 +200,3 @@ def find_peaks(image, snr_threshold, min_distance=5, exclude_border=True,
                           exclude_border=exclude_border, indices=indices,
                           num_peaks=num_peaks, footprint=footprint,
                           labels=labels)
-

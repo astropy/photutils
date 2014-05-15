@@ -207,7 +207,7 @@ def shape_params(data, data_mask=None):
     mu = moments_central(data, ycen, xcen, 2) / m[0, 0]
     result['xcen'] = xcen
     result['ycen'] = ycen
-    #musum = mu[2, 0] + mu[0, 2]
+    # musum = mu[2, 0] + mu[0, 2]
     mudiff = mu[2, 0] - mu[0, 2]
     pa = 0.5 * np.arctan2(2.0*mu[1, 1], mudiff) * (180.0 / np.pi)
     if pa < 0.0:
@@ -220,12 +220,12 @@ def shape_params(data, data_mask=None):
     minsq = np.min(eigvals)
     result['major_axis'] = np.sqrt(majsq)
     result['minor_axis'] = np.sqrt(minsq)
-    #if True:   # equivalent calculation
-    #   tmp = np.sqrt(4.0*mu[1,1]**2 + mudiff**2)
-    #   majsq = 0.5 * (musum + tmp)
-    #   minsq = 0.5 * (musum - tmp)
-    #   result['major_axis2'] = np.sqrt(majsq)
-    #   result['minor_axis2'] = np.sqrt(minsq)
+    # if True:   # equivalent calculation
+    #     tmp = np.sqrt(4.0*mu[1,1]**2 + mudiff**2)
+    #     majsq = 0.5 * (musum + tmp)
+    #     minsq = 0.5 * (musum - tmp)
+    #     result['major_axis2'] = np.sqrt(majsq)
+    #     result['minor_axis2'] = np.sqrt(minsq)
     result['eccen'] = np.sqrt(1.0 - (minsq / majsq))
     result['linear_eccen'] = np.sqrt(majsq - minsq)
     return result
@@ -248,5 +248,3 @@ def moments_to_2DGaussian2(amplitude, x_mean, y_mean, Ixx, Ixy, Iyy):
 
     cov_matrix = np.array([[Ixx, Ixy], [Ixy, Iyy]])
     return models.Gaussian2D(amplitude, x_mean, y_mean, cov_matrix=cov_matrix)
-
-

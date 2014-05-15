@@ -6,7 +6,7 @@ import warnings
 import math
 import numpy as np
 import scipy.ndimage
-#import astropy.nddata
+# import astropy.nddata
 from astropy.table import Column, Table
 
 
@@ -449,8 +449,8 @@ def _findobjs(data, kernel, threshold):
 
     # astropy's convolve fails with zero-sum kernels (use scipy for now)
     # https://github.com/astropy/astropy/issues/1647
-    #convimg = astropy.nddata.convolve(data, kernel, boundary='fill',
-    #                                  fill_value=0.0)
+    # convimg = astropy.nddata.convolve(data, kernel, boundary='fill',
+    #                                   fill_value=0.0)
     xkrad = kernel.shape[1] // 2
     ykrad = kernel.shape[0] // 2
     convdata = scipy.ndimage.convolve(data, kernel, mode='constant',
@@ -770,7 +770,6 @@ def _daofind_centroidfit(obj, kernel, axis):
     # linear least-squares fit (data = sky + hx*gkernel) to find amplitudes
     denom = (n*sumg2 - sumg**2)
     hx = (n*sumgd - sumg*sumd) / denom
-    #sky = (sumg2*sumd - sumg*sumgd) / denom
+    # sky = (sumg2*sumd - sumg*sumgd) / denom
     dx = (sgdgdx - (sddgdx - sdgdx*sumd)) / (hx * sdgdx2 / kernel_sigma**2)
     return dx, hx
-
