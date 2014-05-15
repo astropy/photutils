@@ -1,7 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-import findobj
 import numpy as np
 from astropy.modeling import models, fitting
 
@@ -25,12 +24,15 @@ def centroid_com(data, data_mask=None):
     centroid : tuple
         (x, y) coordinates of the centroid.
     """
-
+    try:
+        from skimage import moments
+    except (ImportError):
+        raise ImportError('centroid_com requires scikit-image.')
     if data_mask is not None:
         if data.shape != data_mask.shape:
             raise ValueError('data and data_mask must have the same shape')
         data[data_mask] = 0.
-    m = findobj.moments(data, 1)
+    m = moments(data, 1)
     xcen = m[1, 0] / m[0, 0]
     ycen = m[0, 1] / m[0, 0]
     return xcen, ycen
@@ -85,7 +87,7 @@ def centroid_1dg(data, data_err=None, data_mask=None):
     data_weights = [weights_x, weights_y]
     centroid = []
     for (data, weights) in zip(gaussians, data_weights):
-        params_init = findobj.gaussian1d_moments(data)
+        params_init = gaussian1d_moments(data)
         g_init = models.Gaussian1D(*params_init)
         f = fitting.NonLinearLSQFitter()
         x = np.arange(data.size)
@@ -189,6 +191,11 @@ def shape_params(data, data_mask=None):
           the object center and either of its two ellipse foci.
     """
 
+    try:
+        from skimage import moments, moments_central
+    except (ImportError):
+        raise ImportError('shape_params requires scikit-image.')
+
     if data_mask is not None:
         if data.shape != data_mask.shape:
             raise ValueError('data and data_mask must have the same shape')
@@ -196,8 +203,8 @@ def shape_params(data, data_mask=None):
 
     result = {}
     xcen, ycen = centroid_com(data)
-    m = findobj.moments(data, 1)
-    mu = findobj.moments_central(data, ycen, xcen, 2) / m[0, 0]
+    m = moments(data, 1)
+    mu = moments_central(data, ycen, xcen, 2) / m[0, 0]
     result['xcen'] = xcen
     result['ycen'] = ycen
     #musum = mu[2, 0] + mu[0, 2]
@@ -227,7 +234,7 @@ def shape_params(data, data_mask=None):
 def moments_to_2DGaussian(amplitude, x_mean, y_mean, mu):
     """
     mu:  normalized second-order central moments matrix [units of pixels**2]
-        mu = findobj.moments_central(data, ycen, xcen, 2) / m[0, 0]
+        mu = moments_central(data, ycen, xcen, 2) / m[0, 0]
     """
 
     cov_matrix = np.array([[mu[2, 0], mu[1, 1]], [mu[1, 1], mu[0, 2]]])

@@ -8,7 +8,6 @@ import numpy as np
 import scipy.ndimage
 #import astropy.nddata
 from astropy.table import Column, Table
-from .utils.moments import moments, moments_central
 
 
 warnings.simplefilter('always', UserWarning)
@@ -559,6 +558,10 @@ def _irafstarfind_moments(imgcutout, kernel, sky):
         A table of the object parameters.
     """
 
+    try:
+        from skimage.measure import moments, moments_central
+    except (ImportError):
+        raise ImportError('irafstarfind requires scikit-image.')
     result = defaultdict(list)
     img = np.array(imgcutout.data * kernel.mask) - sky
     img = np.where(img > 0, img, 0)    # starfind discards negative pixels
@@ -571,7 +574,7 @@ def _irafstarfind_moments(imgcutout, kernel, sky):
     flux = img.sum()
     result['flux'] = flux
     result['mag'] = -2.5 * np.log10(flux)
-    mu = moments_central(img, result['xcen'], result['ycen'], 2) / m[0, 0]
+    mu = moments_central(img, result['ycen'], result['xcen'], 2) / m[0, 0]
     musum = mu[2, 0] + mu[0, 2]
     mudiff = mu[2, 0] - mu[0, 2]
     result['fwhm'] = 2.0 * np.sqrt(np.log(2.0) * musum)

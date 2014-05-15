@@ -4,9 +4,8 @@ The findobj package...
 """
 
 from .findstars import *
-from .morphology import *
 from .detection import *
-from .utils.moments import *
+from .morphology import *
 from .utils.scale_img import *
 
 #this indicates whether or not we are in the package's setup.py
