@@ -9,7 +9,7 @@ Source Morphological Shape Parameters
 .. _scikit-image: http://scikit-image.org/
 
 
-The ``findobj`` package allows one to calculate morphological shape
+The ``photutils`` package allows one to calculate morphological shape
 parameters of an object.  These include:
 
 * centroid
@@ -24,7 +24,7 @@ parameters of an object.  These include:
 Centroiding an Object
 =====================
 
-The ``findobj`` package allows one to centroid objects using three
+The ``photutils`` package allows one to centroid objects using three
 different methods:
 
 * Object center of mass determined from 2D image moments.

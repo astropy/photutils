@@ -12,7 +12,7 @@ Source Detection and Segmentation
 Introduction
 ------------
 
-The ``findobj`` package provides methods to detect sources in an
+The ``photutils`` package provides methods to detect sources in an
 astronomical image above a specified signal-to-noise threshold similar
 to that used by SExtractor.  It also provides methods to detect stars
 in astronomical images using two methods:
@@ -28,10 +28,10 @@ Create an image with a single 2D circular Gaussian source to represent
 a star and find it in the image using ``daofind``:
 
   >>> import numpy as np
-  >>> import findobj
+  >>> import photutils
   >>> y, x = np.mgrid[-50:51, -50:51]
   >>> img = 100.0 * np.exp(-(x**2/5.0 + y**2/5.0))
-  >>> tbl = findobj.daofind(img, 3.0, 1.0)
+  >>> tbl = photutils.daofind(img, 3.0, 1.0)
   >>> tbl.pprint(max_width=-1)
     id xcen ycen     sharp      round1 round2 npix sky  peak      flux          mag
    --- ---- ---- -------------- ------ ------ ---- --- ----- ------------- --------------

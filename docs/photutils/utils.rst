@@ -1,7 +1,7 @@
 Introduction
 ============
 
-The ``findobj`` package also contains general-purpose utility
+The ``photutils`` package also contains general-purpose utility
 functions for scaling images.
 
 

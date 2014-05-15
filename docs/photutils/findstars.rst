@@ -14,10 +14,10 @@ Create an image with a single 2D circular Gaussian source to represent
 a star and find it in the image using ``daofind``:
 
   >>> import numpy as np
-  >>> import findobj
+  >>> import photutils
   >>> y, x = np.mgrid[-50:51, -50:51]
   >>> img = 100.0 * np.exp(-(x**2/5.0 + y**2/5.0))
-  >>> tbl = findobj.daofind(img, 3.0, 1.0)
+  >>> tbl = photutils.daofind(img, 3.0, 1.0)
   >>> tbl.pprint(max_width=-1)
     id xcen ycen     sharp      round1 round2 npix sky  peak      flux          mag
    --- ---- ---- -------------- ------ ------ ---- --- ----- ------------- --------------
@@ -26,7 +26,7 @@ a star and find it in the image using ``daofind``:
 
 Search the same image, but using ``irafstarfind``:
 
-  >>> tbl2 = findobj.irafstarfind(img, 3.0, 1.0)
+  >>> tbl2 = photutils.irafstarfind(img, 3.0, 1.0)
   >>> tbl2.pprint(max_width=-1)
     id xcen ycen      fwhm         sharp            round             pa      npix      sky           peak          flux          mag
    --- ---- ---- ------------- -------------- ----------------- ------------- ---- ------------- ------------- ------------- --------------
@@ -38,12 +38,12 @@ stars, find them in the image using ``daofind``, and display the
 results in a browser with interactive searching and sorting:
 
   >>> import numpy as np
-  >>> import findobj
+  >>> import photutils
   >>> y, x = np.mgrid[0:101, 0:101]
   >>> img = 100.0 * np.exp(-((x-50)**2/5.0 + (y-50)**2/5.0))
   >>> img += 250.0 * np.exp(-((x-65.2)**2/4.0 + (y-75.9)**2/4.0))
   >>> img += 500.0 * np.exp(-((x-30.78)**2/3.0 + (y-25.313)**2/3.2))
-  >>> tbl = findobj.daofind(img, 3.0, 1.0)
+  >>> tbl = photutils.daofind(img, 3.0, 1.0)
   >>> tbl.show_in_browser(jsviewer=True)
 
 The three sources should be centered at ``(x, y) = (50, 50), (65.2, 75.9),
@@ -60,12 +60,12 @@ of the found sources:
 
     import numpy as np
     import matplotlib.pyplot as plt
-    import findobj
+    import photutils
     y, x = np.mgrid[0:101, 0:101]
     img = 100.0 * np.exp(-((x-50)**2/5.0 + (y-50)**2/5.0))
     img += 250.0 * np.exp(-((x-65.2)**2/4.0 + (y-75.9)**2/4.0))
     img += 500.0 * np.exp(-((x-30.78)**2/3.0 + (y-25.313)**2/3.2))
-    tbl = findobj.daofind(img, 3.0, 1.0)
+    tbl = photutils.daofind(img, 3.0, 1.0)
     fig = plt.imshow(img, vmax=200.0, origin='lower',
         extent=(0, 100, 0, 100))
     fig.set_cmap('hot')
