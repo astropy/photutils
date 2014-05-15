@@ -6,8 +6,8 @@ from scipy import ndimage
 from .utils.scale_img import img_stats
 
 
-def detect_obj(image, snr_threshold, npixels, filter_fwhm=None,
-               image_mask=None, mask_val=None, sig=3.0, iters=None):
+def detect_sources(image, snr_threshold, npixels, filter_fwhm=None,
+                   image_mask=None, mask_val=None, sig=3.0, iters=None):
     """
     Detect sources above a specified signal-to-noise ratio
     in a 2D image and return a 2D segmentation image.
