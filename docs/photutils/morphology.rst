@@ -31,5 +31,5 @@ Getting Started
 Reference/API
 =============
 
-.. automodapi:: findobj.morphology
+.. automodapi:: photutils.detection.morphology
     :no-heading:

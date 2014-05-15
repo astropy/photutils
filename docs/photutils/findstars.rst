@@ -3,8 +3,8 @@ Finding stars
 
 The following functions are provided to find stars in an image:
 
-* `daofind(data, fwhm, threshold, ....)`
-* `starfind(data, fwhm, threshold, ....)`
+* ``daofind(data, fwhm, threshold, ....)``
+* ``irafstarfind(data, fwhm, threshold, ....)``
 
 
 Examples

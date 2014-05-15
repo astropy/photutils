@@ -39,8 +39,8 @@ Finding Stars in an Image
 Reference/API
 =============
 
-.. automodapi:: findobj.detection
+.. automodapi:: photutils.detection.detection
     :no-heading:
     :skip: img_stats
-.. automodapi:: findobj.findstars
+.. automodapi:: photutils.detection.findstars
     :no-heading:

@@ -24,6 +24,24 @@ The `photutils` package is destined to implement functions for
     `scikit-image <http://scikit-image.org/>`__ are installed, users are
     encouraged to install those optional dependencies.
 
+Source Detection and Segmentation
+---------------------------------
+
+.. toctree:: detection.rst
+
+
+Source Morphology
+-----------------
+
+.. toctree:: morphology.rst
+
+
+Utils
+-----
+
+.. toctree:: utils.rst
+
+
 Getting Started
 ---------------
 
