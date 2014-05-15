@@ -7,6 +7,12 @@ findstars
 .. toctree:: findstars.rst
 
 
+detection
+---------
+
+.. toctree:: detection.rst
+
+
 objshapes
 ---------
 

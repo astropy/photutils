@@ -176,29 +176,3 @@ def find_peaks(image, snr_threshold, min_distance=5, exclude_border=True,
                           num_peaks=num_peaks, footprint=footprint,
                           labels=labels)
 
-
-#def outline_segments(img, objlabels):
-#    x = np.arange(1000)
-#    y = np.arange(1000)
-#    X, Y = np.meshgrid(x, y)
-#    plt.imshow(findobj.scale_sqrt (img, per=99.), cmap=cm.Greys)
-#    plt.contour(X, Y, objlabels>0)
-
-
-def kron_apers(img, objlabels):
-    objslices = ndimage.find_objects(objlabels)
-    xcens = []
-    ycens = []
-    majs = []
-    mins = []
-    thetas = []
-    for objslice in objslices:
-        tobj = img[objslice]
-        sp = shape_params(tobj)
-        xcens.append(sp['xcen'] + objslice[1].start)
-        ycens.append(sp['ycen'] + objslice[0].start)
-        majs.append(sp['major_axis'])
-        mins.append(sp['minor_axis'])
-        thetas.append(sp['pa'])
-    return xcens, ycens, majs, mins, thetas
-
