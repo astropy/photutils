@@ -1,4 +1,3 @@
-
 Source Detection and Segmentation
 =================================
 
@@ -45,4 +44,3 @@ Reference/API
     :skip: img_stats
 .. automodapi:: findobj.findstars
     :no-heading:
-

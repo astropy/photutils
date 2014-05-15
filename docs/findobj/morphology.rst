@@ -1,4 +1,3 @@
-
 Source Morphological Shape Parameters
 =====================================
 
@@ -34,4 +33,3 @@ Reference/API
 
 .. automodapi:: findobj.morphology
     :no-heading:
-
