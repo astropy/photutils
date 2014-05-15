@@ -12,3 +12,8 @@ from ._astropy_init import *
 
 from .aperture import *
 from .psf import *
+from .aperture import *
+from .detection.findstars import *
+from .detection.detection import *
+from .detection.morphology import *
+from .utils.scale_img import *

@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
 from scipy import ndimage
-from .utils.scale_img import img_stats
+from ..utils.scale_img import img_stats
 
 
 def detect_sources(image, snr_threshold, npixels, filter_fwhm=None,
