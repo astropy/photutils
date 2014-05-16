@@ -46,7 +46,5 @@ Reference/API
 =============
 
 .. automodapi:: photutils.detection.core
-    :no-heading:
-    :skip: img_stats
+
 .. automodapi:: photutils.detection.findstars
-    :no-heading:

@@ -10,4 +10,3 @@ Reference/API
 
 .. automodapi:: photutils.utils.scale_img
     :no-heading:
-    :skip: sigma_clip
