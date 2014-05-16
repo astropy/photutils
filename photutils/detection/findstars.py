@@ -172,8 +172,9 @@ class _FindObjKernel(object):
 def daofind(data, fwhm, threshold, sigma_radius=1.5, ratio=1.0, theta=0.0,
             sky=0.0, sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0):
     """
-    ``daofind`` detects stars in an image using the `DAOFIND`_
-    algorithm.  ``daofind`` searches images for local density maxima
+    Detect stars in an image using the DAOFIND algorithm.
+    
+    `DAOFIND`_ searches images for local density maxima
     that have a peak amplitude greater than ``threshold``
     (approximately; ``threshold`` is applied to a convolved image) and
     have a size and shape similar to the defined 2D Gaussian kernel.
@@ -305,8 +306,9 @@ def daofind(data, fwhm, threshold, sigma_radius=1.5, ratio=1.0, theta=0.0,
 def irafstarfind(data, fwhm, threshold, sigma_radius=1.5, sky=None,
                  sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2):
     """
-    ``irafstarfind`` detects stars in an image using IRAF's `starfind`_
-    algorithm.  ``irafstarfind`` searches images for local density
+    Detect stars in an image using IRAF's starfind algorithm.
+
+    `starfind`_ searches images for local density
     maxima that have a peak amplitude greater than ``threshold`` above
     the local background and have a PSF full-width half-maximum similar
     to the input ``fwhm``.  The objects' centroid, roundness
