@@ -5,7 +5,6 @@ from collections import defaultdict
 import warnings
 import math
 import numpy as np
-import scipy.ndimage
 # import astropy.nddata
 from astropy.table import Column, Table
 
@@ -447,6 +446,10 @@ def _findobjs(data, kernel, threshold):
         cutout for each source.
     """
 
+    try:
+        from scipy import ndimage
+    except (ImportError):
+        raise ImportError('daofind and irafstarfind require scipy.')
     # astropy's convolve fails with zero-sum kernels (use scipy for now)
     # https://github.com/astropy/astropy/issues/1647
     # convimg = astropy.nddata.convolve(data, kernel, boundary='fill',

@@ -2,7 +2,6 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
-from scipy import ndimage
 from ..utils.scale_img import img_stats
 
 
@@ -63,6 +62,10 @@ def detect_sources(image, snr_threshold, npixels, filter_fwhm=None,
         A 2D segmentation image of integers indicating segment labels.
     """
 
+    try:
+        from scipy import ndimage
+    except (ImportError):
+        raise ImportError('detect_sources requires scipy.')
     bkgrd, median, bkgrd_rms = img_stats(image, image_mask=image_mask,
                                          mask_val=mask_val, sig=sig,
                                          iters=iters)
