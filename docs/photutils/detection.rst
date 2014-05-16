@@ -2,8 +2,6 @@ Source Detection and Segmentation
 =================================
 
 .. warning::
-    These functions require `astropy`_ version 0.3.0 (or newer).
-
     `scikit-image`_ is required for some functionality.
 
 .. _scikit-image: http://scikit-image.org/
