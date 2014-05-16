@@ -4,6 +4,11 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from astropy.modeling import models, fitting
 
+__all__ = ['centroid_com', 'gaussian1d_moments',
+           'centroid_1dg', 'centroid_2dg',
+           'fit_2dgaussian', 'shape_params'
+           ]
+
 
 def centroid_com(data, data_mask=None):
     """

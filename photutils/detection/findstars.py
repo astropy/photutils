@@ -7,6 +7,7 @@ import math
 import numpy as np
 from astropy.table import Column, Table
 
+__all__ = ['daofind', 'irafstarfind']
 
 warnings.simplefilter('always', UserWarning)
 FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
