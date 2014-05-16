@@ -456,15 +456,14 @@ def _findobjs(data, kernel, threshold):
     #                                   fill_value=0.0)
     xkrad = kernel.shape[1] // 2
     ykrad = kernel.shape[0] // 2
-    convdata = scipy.ndimage.convolve(data, kernel, mode='constant',
+    convdata = ndimage.convolve(data, kernel, mode='constant',
                                       cval=0.0)
-    shape = scipy.ndimage.generate_binary_structure(2, 2)
-    objlabels, nobj = scipy.ndimage.label(convdata > threshold,
-                                          structure=shape)
+    shape = ndimage.generate_binary_structure(2, 2)
+    objlabels, nobj = ndimage.label(convdata > threshold, structure=shape)
     objs = []
     if nobj == 0:
         return objs
-    objslices = scipy.ndimage.find_objects(objlabels)
+    objslices = ndimage.find_objects(objlabels)
     for objslice in objslices:
         # extract the object from the unconvolved image, centered on
         # the brightest pixel in the thresholded segment and with the
