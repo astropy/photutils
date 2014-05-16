@@ -11,11 +11,18 @@ The `photutils` package is destined to implement functions for
   (e.g., centroid and shape parameters)
 * performing photometry (both aperture and PSF)
 
-Currently, only aperture photometry functions have been implemented.
+.. note::
 
-It is possible that `photutils` will eventually be merged into ``astropy`` as
-``astropy.photometry``.
+    It is possible that `photutils` will eventually be merged into ``astropy`` as
+    ``astropy.photometry``.
 
+.. note::
+
+    `photutils` requires `numpy <http://www.numpy.org/>`__ and
+    `astropy <http://www.astropy.org/>`__ to be installed.
+    Some functionality is only available if `scipy <http://www.scipy.org/>`__ or 
+    `scikit-image <http://scikit-image.org/>`__ are installed, users are
+    encouraged to install those optional dependencies.
 
 Getting Started
 ---------------
