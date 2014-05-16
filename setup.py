@@ -78,7 +78,7 @@ try:
     package_info = get_package_info(PACKAGENAME)
 
     # Add the project-global data
-    package_info['package_data'][PACKAGENAME] = ['data/*', 'tests/data/*.txt']
+    package_info['package_data'][PACKAGENAME] = ['data/*', 'detection/tests/data/*.txt']
 
 except ImportError: # compatibility with Astropy 0.2 - can be removed in cases
                     # where Astropy 0.2 is no longer supported
