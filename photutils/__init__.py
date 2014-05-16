@@ -15,5 +15,7 @@ from .psf import *
 from .aperture import *
 from .detection.core import *
 from .detection.findstars import *
-from .detection.morphology import *
-from .utils.scale_img import *
+
+# TODO: discuss if this should be imported into the top-level namespace:
+# from .detection.morphology import *
+# from .utils.scale_img import *
