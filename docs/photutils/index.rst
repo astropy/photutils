@@ -42,6 +42,7 @@ Using `photutils`
 .. toctree::
 
     aperture.rst
+    psf.rst
 
 .. _coordinate-conventions:
 

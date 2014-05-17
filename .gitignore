@@ -41,5 +41,8 @@ distribute-*.tar.gz
 photutils/cython_version.py
 photutils.cfg
 
+.project
+.pydevproject
+
 # Mac OSX
 .DS_Store
