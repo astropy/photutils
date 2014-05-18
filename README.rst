@@ -11,4 +11,3 @@ photometry tools.
   :target: https://coveralls.io/r/astropy/photutils
 
 .. _AstroPy: http://www.astropy.org/
-
