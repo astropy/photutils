@@ -2,9 +2,11 @@
 """
 This module includes helper functions for array operations.
 """
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 import numpy as np
 
-__all__ = ['extract_array_2D', 'add_array_2D', 'subpixel_indices']
+__all__ = ['extract_array_2d', 'add_array_2d', 'subpixel_indices', 'fix_prf_nan']
 
 
 def _get_slices(large_array_shape, small_array_shape, position):
@@ -73,12 +75,11 @@ def extract_array_2d(array_large, shape, position):
     We consider a large array of zeros with the shape 21x21 and a small
     array of ones with a shape of 9x9:
 
-        >>> import numpy as np
-        >>> from photutils.arrayutils import extract_array_2D
-        >>> large_array = np.zeros((21, 21))
-        >>> large_array[6:14, 6:14] = np.ones((9, 9))
-        >>> extract_array_2D(large_array, (9, 9), (10, 10))
-    
+    >>> import numpy as np
+    >>> from photutils.arrayutils import extract_array_2d
+    >>> large_array = np.zeros((21, 21))
+    >>> large_array[6:14, 6:14] = np.ones((9, 9))
+    >>> extract_array_2d(large_array, (9, 9), (10, 10))
     """
     # Check if larger array is really larger
     if array_large.shape >= shape:
@@ -107,12 +108,11 @@ def add_array_2d(array_large, array_small, position):
     We consider a large array of zeros with the shape 21x21 and a small
     array of ones with a shape of 9x9:
 
-        >>> import numpy as np
-        >>> from photutils.arrayutils import add_array_2D
-        >>> large_array = np.zeros((21, 21))
-        >>> small_array = np.ones((9, 9))
-        >>> add_array_2D(large_array, small_array, (10, 10))
-    
+    >>> import numpy as np
+    >>> from photutils.arrayutils import add_array_2d
+    >>> large_array = np.zeros((21, 21))
+    >>> small_array = np.ones((9, 9))
+    >>> add_array_2d(large_array, small_array, (10, 10))
     """
     # Check if larger array is really larger
     if array_large.shape >= array_small.shape:
