@@ -513,12 +513,9 @@ def aperture_photometry(data, xc, yc, apertures, error=None, gain=None,
 
     # Check 'apertures' shape and expand trailing dimension to match N_obj
     # if necessary.
-    if apertures.shape[1] not in [1, n_obj]:
-        raise ValueError("trailing dimension of 'apertures' must be 1 or "
-                         "match length of xc, yc")
     if apertures.shape[1] != n_obj:
-        # We will not use xc2d. This is just for broadcasting 'apertures':
-        apertures, xc2d = np.broadcast_arrays(apertures, xc)
+        raise ValueError("trailing dimension of 'apertures' must "
+                         "match the length of xc, yc")
 
     # Check whether we really need to calculate pixelwise errors, even if
     # requested. (If neither error nor gain is an array, we don't need to.)
