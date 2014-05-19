@@ -95,7 +95,7 @@ except ImportError: # compatibility with Astropy 0.2 - can be removed in cases
     package_info['ext_modules'] = []
 
     # A dictionary to keep track of all package data to install
-    package_info['package_data'] = {PACKAGENAME: ['data/*', 'tests/data/*.txt']}
+    package_info['package_data'] = {PACKAGENAME: ['data/*', 'detection/tests/data/*.txt']}
 
     # A dictionary to keep track of extra packagedir mappings
     package_info['package_dir'] = {}

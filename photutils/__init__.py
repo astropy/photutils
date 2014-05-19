@@ -12,7 +12,6 @@ from ._astropy_init import *
 
 from .aperture import *
 from .psf import *
-from .aperture import *
 from .detection.core import *
 from .detection.findstars import *
 

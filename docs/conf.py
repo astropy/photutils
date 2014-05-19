@@ -8,7 +8,7 @@
 # Note that not all possible configuration values are present in this file.
 #
 # All configuration values have a default. Some values are defined in
-# the global Astropy configuration which is loaded here before anything else. 
+# the global Astropy configuration which is loaded here before anything else.
 # See astropy.sphinx.conf for which values are set there.
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -25,23 +25,20 @@
 # Thus, any C-extensions that are needed to build the documentation will *not*
 # be accessible, and the documentation will not build correctly.
 
+import datetime
+import os
+import sys
+
 # Load all of the global Astropy configuration
 from astropy.sphinx.conf import *
 
+# Get configuration information from setup.cfg
+from distutils import config
+conf = config.ConfigParser()
+conf.read([os.path.join(os.path.dirname(__file__), '..', 'setup.cfg')])
+setup_cfg = dict(conf.items('metadata'))
 
 # -- General configuration ----------------------------------------------------
-
-# We don't have references to `h5py` ...
-# removing it so it the intersphinx mapping file isn't downloaded.
-del intersphinx_mapping['h5py']
-
-# We currently want to link to the latest development version of the astropy docs,
-# so we override the `intersphinx_mapping` entry pointing to the stable docs version
-# that is listed in `astropy/sphinx/conf.py`.
-intersphinx_mapping['astropy'] = ('http://docs.astropy.org/en/latest/', None)
-
-intersphinx_mapping['skimage'] = ('http://scikit-image.org/docs/stable/', None)
-
 
 # If your documentation needs a minimal Sphinx version, state it here.
 #needs_sphinx = '1.1'
@@ -58,19 +55,22 @@ rst_epilog += """
 # -- Project information ------------------------------------------------------
 
 # This does not *have* to match the package name, but typically does
-project = u'photutils' 
-author = u'Photutils Developers'
-copyright = u'2012, ' + author
+project = setup_cfg['package_name']
+author = setup_cfg['author']
+copyright = '{0}, {1}'.format(
+    datetime.datetime.now().year, setup_cfg['author'])
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 
-import photutils
+__import__(setup_cfg['package_name'])
+package = sys.modules[setup_cfg['package_name']]
+
 # The short X.Y version.
-version = photutils.__version__.split('-', 1)[0]
+version = package.__version__.split('-', 1)[0]
 # The full version, including alpha/beta/rc tags.
-release = photutils.__version__
+release = package.__version__
 
 
 # -- Options for HTML output ---------------------------------------------------
@@ -127,17 +127,16 @@ man_pages = [('index', project.lower(), project + u' Documentation',
               [author], 1)]
 
 ## -- Options for the edit_on_github extension ----------------------------------------
-#
-#extensions += ['astropy.sphinx.ext.edit_on_github']
-#
-## Don't import the module as "version" or it will override the
-## "version" configuration parameter
-#from packagename import version as versionmod
-#edit_on_github_project = "astropy/reponame"
-#if versionmod.release:
-#    edit_on_github_branch = "v" + versionmod.version
-#else:
-#    edit_on_github_branch = "master"
-#
-#edit_on_github_source_root = ""
-#edit_on_github_doc_root = "docs"
+
+if eval(setup_cfg.get('edit_on_github')):
+    extensions += ['astropy.sphinx.ext.edit_on_github']
+
+    versionmod = __import__(setup_cfg['package_name'] + '.version')
+    edit_on_github_project = setup_cfg['github_project']
+    if versionmod.release:
+        edit_on_github_branch = "v" + versionmod.version
+    else:
+        edit_on_github_branch = "master"
+
+    edit_on_github_source_root = ""
+    edit_on_github_doc_root = "docs"

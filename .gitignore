@@ -1,9 +1,8 @@
 # Compiled files
-*.py[cod]
+*.py[co]
 *.a
 *.o
 *.so
-*.pyd
 __pycache__
 
 # Ignore .c files by default to avoid including generated code. If you want to
@@ -11,9 +10,7 @@ __pycache__
 *.c
 
 # Other generated files
-findobj/version.py
-findobj/cython_version.py
-findobj/findobj.cfg
+*/version.py
 benchmarks/_results
 htmlcov
 .coverage
@@ -39,7 +36,6 @@ distribute-*.tar.gz
 
 # Other
 .cache
-.tox
 .*.swp
 *~
 .project
