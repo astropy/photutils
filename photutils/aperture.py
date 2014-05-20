@@ -13,9 +13,7 @@ __all__ = ["Aperture",
            "CircularAperture", "CircularAnnulus",
            "EllipticalAperture", "EllipticalAnnulus",
            "RectangularAperture",
-           "aperture_photometry",
-           "aperture_circular", "aperture_elliptical",
-           "annulus_circular", "annulus_elliptical"]
+           "aperture_photometry"]
 
 
 @six.add_metaclass(abc.ABCMeta)

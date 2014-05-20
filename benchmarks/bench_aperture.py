@@ -9,7 +9,7 @@ import numpy as np
 import photutils
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("-l", "--label", dest="label", default=None, 
+parser.add_argument("-l", "--label", dest="label", default=None,
                     help="Save results to a pickle with this label, so that"
                     "they can be displayed later. Pickles are save in a "
                     "'_results' directory in the same parent directory as "
@@ -117,13 +117,6 @@ c[name]['elli_ann'] = (20., 50., 40., 0.5)
 c[name]['iter']     = 1
 
 
-f = {}
-f['circ'] = photutils.aperture_circular
-f['circ_ann'] = photutils.annulus_circular
-f['elli'] = photutils.aperture_elliptical
-f['elli_ann'] = photutils.annulus_elliptical
-
-
 # Select subset of defined tests and functions to run, to save time.
 names_to_run = ["Small data, single small aperture",
                 "Big data, single small aperture",
@@ -209,7 +202,7 @@ if args.show:
     # Loop over different cases
     firstlabel = results.keys()[0]
     for name in results[firstlabel]:
-   
+
         # Print header for this case
         print "=" * 79
         print "%-63s (milliseconds)" % name
@@ -219,7 +212,7 @@ if args.show:
             print str(subpixels).center(8) + " ",
         print ""
         print "-" * 79
-        
+
         for t in functions_to_run:
             for label, result in results.iteritems():
                 if t not in result[name]: continue
