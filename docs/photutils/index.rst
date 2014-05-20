@@ -51,6 +51,28 @@ Using `photutils`
     aperture.rst
     psf.rst
 
+
+Source Detection and Segmentation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. toctree:: detection.rst
+    :maxdepth: 1
+
+
+Source Morphology
+^^^^^^^^^^^^^^^^^
+
+.. toctree:: morphology.rst
+    :maxdepth: 1
+
+
+Utils
+^^^^^
+
+.. toctree:: utils.rst
+    :maxdepth: 1
+
+
 .. _coordinate-conventions:
 
 Coordinate Conventions in `photutils`
