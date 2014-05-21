@@ -24,8 +24,8 @@ aperture of radius 3 pixels centered on each object,:
     >>> data = np.ones((100, 100))
     >>> xc = [10., 20., 30., 40.]
     >>> yc = [10., 20., 30., 40.]
-    >>> photutils.aperture_photometry(data, xc, yc,
-    ...     photutils.CircularAperture(3.))
+    >>> apertures = [photutils.CircularAperture(3.)] * len(xc)
+    >>> photutils.aperture_photometry(data, xc, yc, apertures)
     array([ 28.27433388,  28.27433388,  28.27433388,  28.27433388])
 
 Since all the data values are 1, we expect the answer to equal the area of
@@ -42,8 +42,8 @@ used is ``'exact'``, wherein the exact intersection of the aperture with
 each pixel is calculated. There are other options that are faster but
 at the expense of less precise answers. For example,:
 
-    >>> photutils.aperture_photometry(data, xc, yc,
-    ...     photutils.CircularAperture(3.), method='subpixel', subpixels=5)
+    >>> photutils.aperture_photometry(data, xc, yc, apertures,
+    ...                               method='subpixel', subpixels=5)
     array([ 27.96,  27.96,  27.96,  27.96])
 
 The result differs from the true value because this method subsamples
@@ -76,7 +76,7 @@ pixels on each source (each source gets the same 3 apertures):
   >>> r = [3., 4., 5.]
   >>> apertures = []
   >>> for index in range(len(r)):
-          apertures.append([photutils.CircularAperture(r[index])])
+          apertures.append([photutils.CircularAperture(r[index])] * len(xc))
   >>> flux = photutils.aperture_photometry(data, xc, yc, apertures)
   >>> flux
   array([[ 28.27433388,  28.27433388,  28.27433388,  28.27433388],
@@ -111,7 +111,7 @@ must specify ``a``, ``b``, and ``theta``:
   >>> a = 5.
   >>> b = 3.
   >>> theta = np.pi / 4.
-  >>> apertures = photutils.EllipticalAperture(a, b, theta)
+  >>> apertures = [photutils.EllipticalAperture(a, b, theta)] * len(xc)
   >>> flux = photutils.aperture_photometry(data, xc, yc, apertures)
   >>> flux
   array([ 47.1238898,  47.1238898,  47.1238898,  47.1238898])
@@ -148,9 +148,9 @@ subtraction is left up to the user or calling function.
   Suppose we want to estimate the local background level around each pixel
   with a circular annulus of inner radius 6 pixels and outer radius 8 pixels:
 
-    >>> apertures = photutils.CircularAperture(3.)
+    >>> apertures = [photutils.CircularAperture(3.)] * len(xc)
     >>> rawflux = photutils.aperture_photometry(data, xc, yc, apertures)
-    >>> annulus_apertures = photutils.CircularAnnulus(6., 8.)
+    >>> annulus_apertures = [photutils.CircularAnnulus(6., 8.)] * len(xc)
     >>> bkgflux = photutils.aperture_photometry(data, xc, yc, annulus_apertures)
     >>> aperture_area = np.pi * 3 ** 2
     >>> annulus_area = np.pi * (8 ** 2 - 6 ** 2)
