@@ -33,6 +33,7 @@ sdist
 develop-eggs
 .installed.cfg
 distribute-*.tar.gz
+.cache
 
 # Other
 .cache
