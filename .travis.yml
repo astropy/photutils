@@ -10,39 +10,39 @@ env:
     global:
         - PIP_WHEEL_COMMAND="pip install --find-links http://wheels.astropy.org/ --find-links http://wheels2.astropy.org/ --use-wheel --use-mirrors"
     matrix:
-        - SETUP_CMD='egg_info' NUMPY_VERSION=1.8.0 OPTIONAL_DEPS=false
+        - SETUP_CMD='egg_info' NUMPY_VERSION=1.8.0 ASTROPY_VERSION=stable OPTIONAL_DEPS=false
 
 matrix:
     include:
 
         # Do a coverage test in Python 2
         - python: 2.7
-          env: NUMPY_VERSION=1.8.0 SETUP_CMD='test --coverage' OPTIONAL_DEPS=true
+          env: NUMPY_VERSION=1.8.0 ASTROPY_VERSION=development SETUP_CMD='test --coverage' OPTIONAL_DEPS=true
 
         # Check for sphinx doc build warnings - we do this first because it
         # runs for a long time
         - python: 2.7
-          env: SETUP_CMD='build_sphinx -w -n' NUMPY_VERSION=1.8.0 OPTIONAL_DEPS=true
+          env: SETUP_CMD='build_sphinx -w -n' NUMPY_VERSION=1.8.0 ASTROPY_VERSION=stable OPTIONAL_DEPS=true
           # OPTIONAL_DEPS needed because the plot_directive in sphinx needs them
 
         # Try all python versions with the latest numpy
         - python: 2.6
-          env: SETUP_CMD='test --parallel=8' NUMPY_VERSION=1.8.0 OPTIONAL_DEPS=false
+          env: SETUP_CMD='test --parallel=8' NUMPY_VERSION=1.8.0 ASTROPY_VERSION=stable OPTIONAL_DEPS=false
         - python: 2.7
-          env: SETUP_CMD='test --parallel=8' NUMPY_VERSION=1.8.0 OPTIONAL_DEPS=false
+          env: SETUP_CMD='test --parallel=8' NUMPY_VERSION=1.8.0 ASTROPY_VERSION=stable OPTIONAL_DEPS=false
         # There is a bug in pytest-xdist that prevents it from working
         # on Python 3.x.  See:
         # https://bitbucket.org/hpk42/pytest/issue/301/internal-error-during-test-collecting
         - python: 3.2
-          env: SETUP_CMD='test' NUMPY_VERSION=1.8.0 OPTIONAL_DEPS=false
+          env: SETUP_CMD='test' NUMPY_VERSION=1.8.0 ASTROPY_VERSION=stable OPTIONAL_DEPS=false
         - python: 3.3
-          env: SETUP_CMD='test' NUMPY_VERSION=1.8.0 OPTIONAL_DEPS=false
+          env: SETUP_CMD='test' NUMPY_VERSION=1.8.0 ASTROPY_VERSION=stable OPTIONAL_DEPS=false
 
         # Now try do scipy on 2.7 and an appropriate 3.x build (with latest numpy)
         - python: 2.7
-          env: SETUP_CMD='test --parallel=8' NUMPY_VERSION=1.8.0 OPTIONAL_DEPS=true LC_CTYPE=C.ascii
+          env: SETUP_CMD='test --parallel=8' NUMPY_VERSION=1.8.0 ASTROPY_VERSION=stable OPTIONAL_DEPS=true LC_CTYPE=C.ascii
         - python: 3.2
-          env: SETUP_CMD='test' NUMPY_VERSION=1.8.0 OPTIONAL_DEPS=true LC_CTYPE=C.ascii
+          env: SETUP_CMD='test' NUMPY_VERSION=1.8.0 ASTROPY_VERSION=stable OPTIONAL_DEPS=true LC_CTYPE=C.ascii
 
         # Try alternate numpy versions
         #- python: 3.2
@@ -85,7 +85,10 @@ install:
     - if [[ $SETUP_CMD != egg_info ]]; then $PIP_WHEEL_COMMAND "Cython==0.20.1"; fi
     - if [[ $SETUP_CMD != egg_info ]]; then $PIP_WHEEL_COMMAND "pytest==2.5.1"; fi
     - if [[ $SETUP_CMD != egg_info ]]; then $PIP_WHEEL_COMMAND "pytest-xdist==1.10"; fi
-    - $PIP_WHEEL_COMMAND "astropy"
+
+    # ASTROPY CORE
+    - if [[ $ASTROPY_VERSION == stable ]]; then $PIP_WHEEL_COMMAND "astropy"; fi
+    - if [[ $ASTROPY_VERSION == development ]]; then pip -q install git+http://github.com/astropy/astropy.git#egg=astropy --use-mirrors; fi
 
     # OPTIONAL DEPENDENCIES
     - if $OPTIONAL_DEPS; then $PIP_WHEEL_COMMAND "scipy==0.13.3"; fi
