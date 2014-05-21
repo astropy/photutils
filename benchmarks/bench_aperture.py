@@ -1,5 +1,7 @@
 """Run benchmarks for aperture photometry functions."""
 
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 import time
 import os
 import glob
@@ -99,6 +101,7 @@ c[name]['elli']     = (5., 2., 0.5)
 c[name]['elli_ann'] = (2., 5., 4., 0.5)
 c[name]['iter']     = 1
 
+# TODO: multiple apertures per object are not supported by the Aperture objects
 name = "Big data, multiple small apertures, multiple per object"
 c[name] = {}
 c[name]['dims']     = (1000, 1000)
@@ -117,12 +120,22 @@ c[name]['elli_ann'] = (20., 50., 40., 0.5)
 c[name]['iter']     = 1
 
 
+f = {}
+f['circ'] = photutils.CircularAperture
+f['circ_ann'] = photutils.CircularAnnulus
+f['elli'] = photutils.EllipticalAperture
+f['elli_ann'] = photutils.EllipticalAnnulus
+
+
 # Select subset of defined tests and functions to run, to save time.
+
+# Removed as not yet supported:
+#               "Big data, multiple small apertures, multiple per object",
+
 names_to_run = ["Small data, single small aperture",
                 "Big data, single small aperture",
                 "Big data, single big aperture",
                 "Small data, multiple small apertures",
-                "Big data, multiple small apertures, multiple per object",
                 "Big data, multiple small apertures",
                 "Big data, multiple big apertures"]
 functions_to_run = ['circ']
@@ -144,36 +157,38 @@ if not args.show:
         data = np.ones(c[name]['dims'])
 
         # Print header for this benchmark
-        print "=" * 79
-        print name, "  (milliseconds)"
-        print "%30s " % ("subpixels ="),
+        print("=" * 79)
+        print(name, "  (milliseconds)")
+        print("%30s " % ("subpixels ="),)
         for subpixels in [1, 5, 10, 'exact']:
-            print str(subpixels).center(10) + " ",
-        print ""
-        print "-" * 79
+            print(str(subpixels).center(10) + " ",)
+        print("")
+        print("-" * 79)
 
         t0 = time.time()
 
         for t in functions_to_run:
 
             if t not in c[name]: continue
-            print "%30s " % t,
+            print("%30s " % t,)
 
             for subpixels in [1, 5, 10, 'exact']:
                 time1 = time.time()
                 for i in range(c[name]['iter']):
-                    f[t](data, x, y, *c[name][t], subpixels=subpixels)
+                    photutils.aperture_photometry(data, x, y,
+                                                  f[t](*c[name][t]),
+                                                  subpixels=subpixels)
                 time2 = time.time()
                 time_sec = (time2 - time1) / c[name]['iter']
-                print "%10.5f " % (time_sec * 1000.),
+                print("%10.5f " % (time_sec * 1000.),)
                 results[name][t][subpixels] = time_sec
-            print ""
+            print("")
 
         t1 = time.time()
 
-        print "-" * 79
-        print 'Real time: %10.4f s' % (t1 - t0)
-        print ""
+        print("-" * 79)
+        print('Real time: %10.4f s' % (t1 - t0))
+        print("")
 
     # If a label was specified, save results to a pickle.
     if args.label is not None:
@@ -204,23 +219,23 @@ if args.show:
     for name in results[firstlabel]:
 
         # Print header for this case
-        print "=" * 79
-        print "%-63s (milliseconds)" % name
-        print " " * 45, "subpixels"
-        print "%15s %20s" % ("function", "label"),
+        print("=" * 79)
+        print("%-63s (milliseconds)" % name)
+        print(" " * 45, "subpixels")
+        print("%15s %20s" % ("function", "label"),)
         for subpixels in [1, 5, 10, 'exact']:
-            print str(subpixels).center(8) + " ",
-        print ""
-        print "-" * 79
+            print(str(subpixels).center(8) + " ",)
+        print("")
+        print("-" * 79)
 
         for t in functions_to_run:
             for label, result in results.iteritems():
                 if t not in result[name]: continue
-                print "%15s %20s" % (t, label),
+                print("%15s %20s" % (t, label),)
                 for subpixels in [1, 5, 10, 'exact']:
                     time_sec = result[name][t][subpixels]
-                    print "%8.3f " % (time_sec * 1000.),
-                print ""
+                    print("%8.3f " % (time_sec * 1000.),)
+                print("")
 
-        print "-" * 79
-        print ""
+        print("-" * 79)
+        print("")
