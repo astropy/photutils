@@ -99,10 +99,8 @@ Finally, suppose we wish to use a different set of 3 apertures for each source:
 These examples illustrate that the ``apertures`` parameter can be an array
 of up to two dimensions where the "fast" (or trailing) dimension corresponds
 to different objects, and the "slow" (or "leading") dimension corresponds to
-multiple apertures per object. The ``apertures`` parameter obeys
-broadcasting rules in that the trailing dimension can either be equal to the
-number of objects (``len(xc)``) or 1. If 1, the array is effectively
-broadcast so that the trailing dimension matches the number of objects.
+multiple apertures per object. Always make sure the trailing dimension of the
+``apertures`` matches the number of objects (``len(xc)``).
 
 Other aperture photometry functions have multiple parameters
 specifying the apertures. For example, for elliptical apertures, one

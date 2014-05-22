@@ -404,16 +404,10 @@ doc_template = ("""\
         the lengths must match.
     {args}
         If an array (of at most 2 dimensions), the trailing dimension
-        of the array must be broadcastable to match ``xc`` and ``yc``.
-        That is, the trailing dimension must be either 1 or
-        ``len(xc)``. The following shapes are thus allowed:
-
-        ``()`` or ``(1,)`` or ``(1, 1)``
-            The same single aperture is applied to all objects.
+        of the array must match ``len(xc)`` and ``len(yc)``.
+        The following shapes are thus allowed:
         ``(N_objects,)`` or ``(1, N_objects)``
             Each object gets its own single aperture.
-        ``(N_apertures, 1)``
-            The same ``N_aper`` apertures are applied to all objects.
         ``(N_apertures, N_objects)``
             Each object gets its own set of ``N_apertures`` apertures.
 
