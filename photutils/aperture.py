@@ -406,6 +406,7 @@ doc_template = ("""\
         If an array (of at most 2 dimensions), the trailing dimension
         of the array must match ``len(xc)`` and ``len(yc)``.
         The following shapes are thus allowed:
+
         ``(N_objects,)`` or ``(1, N_objects)``
             Each object gets its own single aperture.
         ``(N_apertures, N_objects)``

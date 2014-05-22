@@ -65,7 +65,7 @@ of the aperture list must match that of ``xc`` and ``yc`` in this case):
   >>> r = [1., 2., 3., 4.]
   >>> apertures = []
   >>> for index in range(len(r)):
-          apertures.append(photutils.CircularAperture(r[index]))
+  ...     apertures.append(photutils.CircularAperture(r[index]))
   >>> flux = photutils.aperture_photometry(data, xc, yc, apertures)
   >>> flux
   array([  3.14159265,  12.56637061,  28.27433388,  50.26548246])
@@ -76,7 +76,7 @@ pixels on each source (each source gets the same 3 apertures):
   >>> r = [3., 4., 5.]
   >>> apertures = []
   >>> for index in range(len(r)):
-          apertures.append([photutils.CircularAperture(r[index])] * len(xc))
+  ...     apertures.append([photutils.CircularAperture(r[index])] * len(xc))
   >>> flux = photutils.aperture_photometry(data, xc, yc, apertures)
   >>> flux
   array([[ 28.27433388,  28.27433388,  28.27433388,  28.27433388],
@@ -89,7 +89,7 @@ Finally, suppose we wish to use a different set of 3 apertures for each source:
   >>> r = np.asarray([[3., 4., 5., 6.], [4., 5., 6., 7.], [5., 6., 7., 8.]])
   >>> apertures = np.empty(r.shape, dtype=object)
   >>> for index in np.ndindex(r.shape):
-          apertures[index] = photutils.CircularAperture(r[index])
+  ...     apertures[index] = photutils.CircularAperture(r[index])
   >>> flux = photutils.aperture_photometry(data, xc, yc, apertures)
   >>> flux
   array([[  28.27433388,   50.26548246,   78.53981634,  113.09733553],
@@ -122,7 +122,7 @@ different sizes but with the same position angle, we could do:
  >>> theta = np.pi / 4.
  >>> apertures = []
  >>> for index in range(len(a)):
-         apertures.append(photutils.EllipticalAperture(a[index], b[index], theta))
+ ...     apertures.append(photutils.EllipticalAperture(a[index], b[index], theta))
  >>> flux = photutils.aperture_photometry(data, xc, yc, apertures)
  >>> flux
  array([  47.1238898 ,   75.39822369,  109.95574288,  150.79644737])
@@ -174,7 +174,7 @@ pixel's value and saved it in the array ``data_error``:
 
   >>> data_error = 0.1 * data  # (100 x 100 array)
   >>> flux, fluxerr = photutils.aperture_photometry(data, xc, yc, apertures,
-  >>>                                               error=data_error)
+  ...                                               error=data_error)
   >>> fluxerr
   array([ 0.53173616,  0.53173616,  0.53173616,  0.53173616])
 
@@ -198,9 +198,9 @@ position-dependent background level and variance of our data:
   >>> myimagegain = 1.5
   >>> sky_level, sky_sigma = background(data)  # function returns two arrays
   >>> flux, fluxerr = photutils.aperture_photometry(data - sky_level, xc,
-  >>>                                               yc, apertures,
-  >>>                                               error=sky_sigma,
-  >>>                                               gain=myimagegain)
+  ...                                               yc, apertures,
+  ...                                               error=sky_sigma,
+  ...                                               gain=myimagegain)
 
 In this case, and indeed whenever ``gain`` is not `None`, then ``fluxerr``
 is given by

@@ -169,9 +169,9 @@ if not args.show:
         # Print header for this benchmark
         print("=" * 79)
         print(name, "  (milliseconds)")
-        print("%30s " % ("subpixels ="),)
+        print("{0}".format("subpixels ="))
         for subpixels in [1, 5, 10, 'exact']:
-            print(str(subpixels).center(10) + " ",)
+            print(str(subpixels).center(10) + " ")
         print("")
         print("-" * 79)
 
@@ -180,7 +180,7 @@ if not args.show:
         for t in functions_to_run:
 
             if t not in c[name]: continue
-            print("%30s " % t,)
+            print("{0} ".format(t))
 
             for subpixels in [1, 5, 10, 'exact']:
                 time1 = time.time()
@@ -212,14 +212,14 @@ if not args.show:
 
                 time2 = time.time()
                 time_sec = (time2 - time1) / c[name]['iter']
-                print("%10.5f " % (time_sec * 1000.),)
+                print("{0:10.5f} ".format(time_sec * 1000.))
                 results[name][t][subpixels] = time_sec
             print("")
 
         t1 = time.time()
 
         print("-" * 79)
-        print('Real time: %10.4f s' % (t1 - t0))
+        print('Real time: {0:10.4f} s'.format(t1 - t0))
         print("")
 
     # If a label was specified, save results to a pickle.
@@ -252,21 +252,21 @@ if args.show:
 
         # Print header for this case
         print("=" * 79)
-        print("%-63s (milliseconds)" % name)
+        print("{0} (milliseconds)".format(name))
         print(" " * 45, "subpixels")
-        print("%15s %20s" % ("function", "label"),)
+        print("{0}s {1}s".format("function", "label"))
         for subpixels in [1, 5, 10, 'exact']:
-            print(str(subpixels).center(8) + " ",)
+            print(str(subpixels).center(8) + " ")
         print("")
         print("-" * 79)
 
         for t in functions_to_run:
             for label, result in results.iteritems():
                 if t not in result[name]: continue
-                print("%15s %20s" % (t, label),)
+                print("{0}s {1}s".format(t, label))
                 for subpixels in [1, 5, 10, 'exact']:
                     time_sec = result[name][t][subpixels]
-                    print("%8.3f " % (time_sec * 1000.),)
+                    print("{0:8.3f} " .format(time_sec * 1000.))
                 print("")
 
         print("-" * 79)
