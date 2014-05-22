@@ -60,6 +60,7 @@ c[name]['circ_ann'] = (5., 6.)
 c[name]['elli']     = (5., 2., 0.5)
 c[name]['elli_ann'] = (2., 5., 4., 0.5)
 c[name]['iter']     = 1000
+c[name]['multiap']  = False
 
 name = "Big data, single small aperture"
 c[name] = {}
@@ -70,6 +71,7 @@ c[name]['circ_ann'] = (5., 6.)
 c[name]['elli']     = (5., 2., 0.5)
 c[name]['elli_ann'] = (2., 5., 4., 0.5)
 c[name]['iter']     = 1000
+c[name]['multiap']  = False
 
 name = "Big data, single big aperture"
 c[name] = {}
@@ -80,6 +82,7 @@ c[name]['circ_ann'] = (50., 60.)
 c[name]['elli']     = (50., 20., 0.5)
 c[name]['elli_ann'] = (20., 50., 40., 0.5)
 c[name]['iter']     = 10
+c[name]['multiap']  = False
 
 name = "Small data, multiple small apertures"
 c[name] = {}
@@ -90,6 +93,7 @@ c[name]['circ_ann'] = (5., 6.)
 c[name]['elli']     = (5., 2., 0.5)
 c[name]['elli_ann'] = (2., 5., 4., 0.5)
 c[name]['iter']     = 1
+c[name]['multiap']  = True
 
 name = "Big data, multiple small apertures"
 c[name] = {}
@@ -100,6 +104,7 @@ c[name]['circ_ann'] = (5., 6.)
 c[name]['elli']     = (5., 2., 0.5)
 c[name]['elli_ann'] = (2., 5., 4., 0.5)
 c[name]['iter']     = 1
+c[name]['multiap']  = True
 
 # TODO: multiple apertures per object are not supported by the Aperture objects
 name = "Big data, multiple small apertures, multiple per object"
@@ -108,6 +113,7 @@ c[name]['dims']     = (1000, 1000)
 c[name]['pos']      = (np.random.uniform(250., 750., 1000), np.random.uniform(250., 750., 1000))
 c[name]['circ']     = (np.linspace(1., 10., 10).reshape((10, 1)),)
 c[name]['iter']     = 1
+c[name]['multiap']  = True
 
 name = "Big data, multiple big apertures"
 c[name] = {}
@@ -118,7 +124,7 @@ c[name]['circ_ann'] = (50., 60.)
 c[name]['elli']     = (50., 20., 0.5)
 c[name]['elli_ann'] = (20., 50., 40., 0.5)
 c[name]['iter']     = 1
-
+c[name]['multiap']  = True
 
 f = {}
 f['circ'] = photutils.CircularAperture
@@ -132,12 +138,14 @@ f['elli_ann'] = photutils.EllipticalAnnulus
 # Removed as not yet supported:
 #               "Big data, multiple small apertures, multiple per object",
 
+
 names_to_run = ["Small data, single small aperture",
                 "Big data, single small aperture",
                 "Big data, single big aperture",
                 "Small data, multiple small apertures",
                 "Big data, multiple small apertures",
                 "Big data, multiple big apertures"]
+
 functions_to_run = ['circ']
 
 if not args.show:
@@ -175,9 +183,15 @@ if not args.show:
             for subpixels in [1, 5, 10, 'exact']:
                 time1 = time.time()
                 for i in range(c[name]['iter']):
-                    photutils.aperture_photometry(data, x, y,
-                                                  f[t](*c[name][t]),
-                                                  subpixels=subpixels)
+                    # Check whether it is single or multiple apertures
+                    if c[name]['multiap']:
+                        photutils.aperture_photometry(data, x, y,
+                                                      [f[t](*c[name][t])] * len(x),
+                                                      subpixels=subpixels)
+                    else:
+                        photutils.aperture_photometry(data, x, y,
+                                                      f[t](*c[name][t]),
+                                                      subpixels=subpixels)
                 time2 = time.time()
                 time_sec = (time2 - time1) / c[name]['iter']
                 print("%10.5f " % (time_sec * 1000.),)
