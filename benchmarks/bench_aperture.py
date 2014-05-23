@@ -1,5 +1,7 @@
 """Run benchmarks for aperture photometry functions."""
 
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 import time
 import os
 import glob
@@ -9,7 +11,7 @@ import numpy as np
 import photutils
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("-l", "--label", dest="label", default=None, 
+parser.add_argument("-l", "--label", dest="label", default=None,
                     help="Save results to a pickle with this label, so that"
                     "they can be displayed later. Pickles are save in a "
                     "'_results' directory in the same parent directory as "
@@ -58,6 +60,8 @@ c[name]['circ_ann'] = (5., 6.)
 c[name]['elli']     = (5., 2., 0.5)
 c[name]['elli_ann'] = (2., 5., 4., 0.5)
 c[name]['iter']     = 1000
+c[name]['multiap']  = False
+c[name]['multipos'] = False
 
 name = "Big data, single small aperture"
 c[name] = {}
@@ -68,6 +72,8 @@ c[name]['circ_ann'] = (5., 6.)
 c[name]['elli']     = (5., 2., 0.5)
 c[name]['elli_ann'] = (2., 5., 4., 0.5)
 c[name]['iter']     = 1000
+c[name]['multiap']  = False
+c[name]['multipos'] = False
 
 name = "Big data, single big aperture"
 c[name] = {}
@@ -78,6 +84,8 @@ c[name]['circ_ann'] = (50., 60.)
 c[name]['elli']     = (50., 20., 0.5)
 c[name]['elli_ann'] = (20., 50., 40., 0.5)
 c[name]['iter']     = 10
+c[name]['multiap']  = False
+c[name]['multipos'] = False
 
 name = "Small data, multiple small apertures"
 c[name] = {}
@@ -88,6 +96,8 @@ c[name]['circ_ann'] = (5., 6.)
 c[name]['elli']     = (5., 2., 0.5)
 c[name]['elli_ann'] = (2., 5., 4., 0.5)
 c[name]['iter']     = 1
+c[name]['multiap']  = False
+c[name]['multipos'] = True
 
 name = "Big data, multiple small apertures"
 c[name] = {}
@@ -98,6 +108,8 @@ c[name]['circ_ann'] = (5., 6.)
 c[name]['elli']     = (5., 2., 0.5)
 c[name]['elli_ann'] = (2., 5., 4., 0.5)
 c[name]['iter']     = 1
+c[name]['multiap']  = False
+c[name]['multipos'] = True
 
 name = "Big data, multiple small apertures, multiple per object"
 c[name] = {}
@@ -105,6 +117,8 @@ c[name]['dims']     = (1000, 1000)
 c[name]['pos']      = (np.random.uniform(250., 750., 1000), np.random.uniform(250., 750., 1000))
 c[name]['circ']     = (np.linspace(1., 10., 10).reshape((10, 1)),)
 c[name]['iter']     = 1
+c[name]['multiap']  = True
+c[name]['multipos'] = True
 
 name = "Big data, multiple big apertures"
 c[name] = {}
@@ -115,13 +129,14 @@ c[name]['circ_ann'] = (50., 60.)
 c[name]['elli']     = (50., 20., 0.5)
 c[name]['elli_ann'] = (20., 50., 40., 0.5)
 c[name]['iter']     = 1
-
+c[name]['multiap']  = False
+c[name]['multipos'] = True
 
 f = {}
-f['circ'] = photutils.aperture_circular
-f['circ_ann'] = photutils.annulus_circular
-f['elli'] = photutils.aperture_elliptical
-f['elli_ann'] = photutils.annulus_elliptical
+f['circ'] = photutils.CircularAperture
+f['circ_ann'] = photutils.CircularAnnulus
+f['elli'] = photutils.EllipticalAperture
+f['elli_ann'] = photutils.EllipticalAnnulus
 
 
 # Select subset of defined tests and functions to run, to save time.
@@ -129,9 +144,10 @@ names_to_run = ["Small data, single small aperture",
                 "Big data, single small aperture",
                 "Big data, single big aperture",
                 "Small data, multiple small apertures",
-                "Big data, multiple small apertures, multiple per object",
                 "Big data, multiple small apertures",
-                "Big data, multiple big apertures"]
+                "Big data, multiple big apertures",
+                "Big data, multiple small apertures, multiple per object"]
+
 functions_to_run = ['circ']
 
 if not args.show:
@@ -151,36 +167,60 @@ if not args.show:
         data = np.ones(c[name]['dims'])
 
         # Print header for this benchmark
-        print "=" * 79
-        print name, "  (milliseconds)"
-        print "%30s " % ("subpixels ="),
+        print("=" * 79)
+        print(name, "  (milliseconds)")
+        print("{0}".format("subpixels ="))
         for subpixels in [1, 5, 10, 'exact']:
-            print str(subpixels).center(10) + " ",
-        print ""
-        print "-" * 79
+            print(str(subpixels).center(10) + " ")
+        print("")
+        print("-" * 79)
 
         t0 = time.time()
 
         for t in functions_to_run:
 
             if t not in c[name]: continue
-            print "%30s " % t,
+            print("{0} ".format(t))
 
             for subpixels in [1, 5, 10, 'exact']:
                 time1 = time.time()
                 for i in range(c[name]['iter']):
-                    f[t](data, x, y, *c[name][t], subpixels=subpixels)
+                    # Check whether it is single or multiple apertures
+                    if not c[name]['multipos'] and not c[name]['multiap']:
+                        photutils.aperture_photometry(data, x, y,
+                                                      f[t](*c[name][t]),
+                                                      subpixels=subpixels)
+
+                    elif c[name]['multipos'] and not c[name]['multiap']:
+                        photutils.aperture_photometry(data, x, y,
+                                                      [f[t](*c[name][t])] * len(x),
+                                                      subpixels=subpixels)
+
+                    elif c[name]['multipos'] and c[name]['multiap']:
+                        apertures = []
+                        for index in range(len(c[name][t][0])):
+                            apertures.append([f[t](*c[name][t][0][index])] * len(x))
+                        photutils.aperture_photometry(data, x, y, apertures,
+                                                      subpixels=subpixels)
+
+                    else:
+                        apertures = []
+                        for index in range(len(c[name][t][0])):
+                            apertures.append(f[t](*c[name][t][0][index]))
+                        photutils.aperture_photometry(data, x, y, apertures,
+                                                      subpixels=subpixels)
+
                 time2 = time.time()
                 time_sec = (time2 - time1) / c[name]['iter']
-                print "%10.5f " % (time_sec * 1000.),
+                print("{0:10.5f} ".format(time_sec * 1000.))
                 results[name][t][subpixels] = time_sec
-            print ""
+            print("")
 
         t1 = time.time()
 
-        print "-" * 79
-        print 'Real time: %10.4f s' % (t1 - t0)
-        print ""
+        print("-" * 79)
+        print('Real time: {0:10.4f} s'.format(t1 - t0))
+        print("")
 
     # If a label was specified, save results to a pickle.
     if args.label is not None:
@@ -209,25 +249,25 @@ if args.show:
     # Loop over different cases
     firstlabel = results.keys()[0]
     for name in results[firstlabel]:
-   
+
         # Print header for this case
-        print "=" * 79
-        print "%-63s (milliseconds)" % name
-        print " " * 45, "subpixels"
-        print "%15s %20s" % ("function", "label"),
+        print("=" * 79)
+        print("{0} (milliseconds)".format(name))
+        print(" " * 45, "subpixels")
+        print("{0}s {1}s".format("function", "label"))
         for subpixels in [1, 5, 10, 'exact']:
-            print str(subpixels).center(8) + " ",
-        print ""
-        print "-" * 79
-        
+            print(str(subpixels).center(8) + " ")
+        print("")
+        print("-" * 79)
+
         for t in functions_to_run:
             for label, result in results.iteritems():
                 if t not in result[name]: continue
-                print "%15s %20s" % (t, label),
+                print("{0}s {1}s".format(t, label))
                 for subpixels in [1, 5, 10, 'exact']:
                     time_sec = result[name][t][subpixels]
-                    print "%8.3f " % (time_sec * 1000.),
-                print ""
+                    print("{0:8.3f} " .format(time_sec * 1000.))
+                print("")
 
-        print "-" * 79
-        print ""
+        print("-" * 79)
+        print("")
