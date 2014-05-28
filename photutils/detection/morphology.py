@@ -31,7 +31,7 @@ def centroid_com(data, data_mask=None):
     """
     try:
         from skimage.measure import moments
-    except (ImportError):
+    except ImportError:
         raise ImportError('centroid_com requires scikit-image.')
     if data_mask is not None:
         if data.shape != data_mask.shape:
@@ -199,7 +199,7 @@ def shape_params(data, data_mask=None):
 
     try:
         from skimage.measure import moments, moments_central
-    except (ImportError):
+    except ImportError:
         raise ImportError('shape_params requires scikit-image.')
 
     if data_mask is not None:

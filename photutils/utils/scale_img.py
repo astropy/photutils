@@ -167,7 +167,7 @@ def rescale_img(image, min_cut=None, max_cut=None, min_percent=None,
 
     try:
         from skimage import exposure
-    except (ImportError):
+    except ImportError:
         raise ImportError('The image scaling functions require scikit-image.')
     image = image.astype(np.float64)
     min_cut, max_cut = find_imgcuts(image, min_cut=min_cut, max_cut=max_cut,

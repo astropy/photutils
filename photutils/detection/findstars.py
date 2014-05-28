@@ -173,7 +173,7 @@ def daofind(data, fwhm, threshold, sigma_radius=1.5, ratio=1.0, theta=0.0,
             sky=0.0, sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0):
     """
     Detect stars in an image using the DAOFIND algorithm.
-    
+
     `DAOFIND`_ searches images for local density maxima
     that have a peak amplitude greater than ``threshold``
     (approximately; ``threshold`` is applied to a convolved image) and
@@ -450,7 +450,7 @@ def _findobjs(data, kernel, threshold):
 
     try:
         from scipy import ndimage
-    except (ImportError):
+    except ImportError:
         raise ImportError('daofind and irafstarfind require scipy.')
     # TODO: astropy's convolve fails with zero-sum kernels (use scipy for now)
     # https://github.com/astropy/astropy/issues/1647
@@ -564,7 +564,7 @@ def _irafstarfind_moments(imgcutout, kernel, sky):
 
     try:
         from skimage.measure import moments, moments_central
-    except (ImportError):
+    except ImportError:
         raise ImportError('irafstarfind requires scikit-image.')
     result = defaultdict(list)
     img = np.array(imgcutout.data * kernel.mask) - sky
