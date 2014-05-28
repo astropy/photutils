@@ -30,7 +30,7 @@ def centroid_com(data, data_mask=None):
         (x, y) coordinates of the centroid.
     """
     try:
-        from skimage import moments
+        from skimage.measure import moments
     except (ImportError):
         raise ImportError('centroid_com requires scikit-image.')
     if data_mask is not None:
@@ -198,7 +198,7 @@ def shape_params(data, data_mask=None):
     """
 
     try:
-        from skimage import moments, moments_central
+        from skimage.measure import moments, moments_central
     except (ImportError):
         raise ImportError('shape_params requires scikit-image.')
 
