@@ -204,5 +204,3 @@ class TestIRAFStarFind(SetupData):
         t = Table.read(datafn, format='ascii')
         assert_allclose(np.array(tbl).view(np.float),
                         np.array(t).view(np.float))
-
-

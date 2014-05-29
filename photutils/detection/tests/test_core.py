@@ -25,7 +25,7 @@ REF3 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
 
 PEAKDATA = np.array([[1, 0, 0], [0, 0, 0], [0, 0, 1]]).astype(np.float)
 PEAKREF1 = np.array([[0, 0], [2, 2]])
-PEAKREF2 = np.array([]).reshape(0,2)
+PEAKREF2 = np.array([]).reshape(0, 2)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -109,5 +109,3 @@ class TestFindPeaks(object):
         """Test with large snr_threshold giving no sources."""
         segm = find_peaks(PEAKDATA, 0., min_distance=1, exclude_border=True)
         assert_array_equal(segm, PEAKREF2)
-
-

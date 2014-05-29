@@ -6,9 +6,9 @@ import numpy as np
 from numpy.testing import assert_allclose, assert_equal
 from .. import scale_img
 
-
 DATA = np.array([0, 1., 2.])
 DATASCL = 0.5 * DATA
+
 
 class TestImgCuts(object):
     def test_find_imgcuts(self):
@@ -40,10 +40,12 @@ class TestImgCuts(object):
                                                 max_percent=80, percent=90)
         assert_equal([mincut, maxcut], [20, 80])
 
-        mincut, maxcut = scale_img.find_imgcuts(data, min_cut=10, min_percent=20)
+        mincut, maxcut = scale_img.find_imgcuts(data, min_cut=10,
+                                                min_percent=20)
         assert_equal([mincut, maxcut], [10, 100])
 
-        mincut, maxcut = scale_img.find_imgcuts(data, max_cut=90, max_percent=80)
+        mincut, maxcut = scale_img.find_imgcuts(data, max_cut=90,
+                                                max_percent=80)
         assert_equal([mincut, maxcut], [0, 90])
 
 
@@ -90,5 +92,3 @@ class TestImageScaling(object):
         z = 1.e-2
         ref = np.arcsinh(DATASCL / z) / np.arcsinh(1.0 / z)
         assert_allclose(img, ref, atol=0, rtol=1.e-5)
-
-
