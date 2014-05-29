@@ -50,6 +50,7 @@ def _subimg_bbox(img, subimage, xc, yc):
     ``None`` if the ``subimage`` would extend past the ``img``
     boundary.
     """
+
     ys, xs = subimage.shape
     y, x = img.shape
     y0 = int(yc - (ys - 1) / 2.0)
@@ -62,22 +63,18 @@ def _subimg_bbox(img, subimage, xc, yc):
         return None
 
 
-def _addsubimg(img, subimage, bbox, flux=None, peak=None):
+def _addsubimg(img, subimage, bbox):
     """
     Add a ``subimage`` to ``img`` at the specified ``bbox`` bounding
     box.
     """
-    if flux is not None:
-        subimage *= flux
-    if peak is not None and flux is None:
-        subimage = subimage / np.max(subimage) * peak
+
     x0, x1, y0, y1 = bbox
     img[y0:y1, x0:x1] += subimage
     return img
 
 
-def _gaussian2d(shape, xcen, ycen, xfwhm, yfwhm, rot=0.0, normalize=True,
-                insigma=False):
+def _gaussian2d(shape, xcen, ycen, xfwhm, yfwhm, rot=0.0, normalize=True):
     """
     Generate a 2D Gaussian function.
 
@@ -101,21 +98,13 @@ def _gaussian2d(shape, xcen, ycen, xfwhm, yfwhm, rot=0.0, normalize=True,
         Set to normalize the total of the Gaussian function to 1.0.
         Default is ``True``.
 
-    insigma : boolean, optional
-        If ``insigma = True``, then ``[x/y]fwhm`` are in units of
-        sigma (i.e. standard deviation), instead of FWHM.  Default is
-        ``False``.
-
     Returns
     -------
     data : array-like
         A 2D array of given ``shape`` (``shape`` will be made odd).
     """
 
-    if insigma:
-        sigtofwhm = 1.0
-    else:
-        sigtofwhm = 2.0 * np.sqrt(2.0 * np.log(2.0))
+    sigtofwhm = 2.0 * np.sqrt(2.0 * np.log(2.0))
     xsigma = xfwhm / sigtofwhm
     ysigma = yfwhm / sigtofwhm
     shape = [(n - 1) if (n % 2 == 0) else n for n in shape]   # make odd
@@ -128,14 +117,6 @@ def _gaussian2d(shape, xcen, ycen, xfwhm, yfwhm, rot=0.0, normalize=True,
     if normalize:
         g2d /= g2d.sum()
     return g2d
-
-
-class SetupData1Obj(object):
-    def _setup(self):
-        ysize, xsize = 501, 501
-        ycen, xcen = ysize // 2, xsize // 2
-        self.img = _gaussian2d((ysize, xsize), xcen, ycen, 3.0, 3.2,
-                               rot=35.0) * 100.0
 
 
 class SetupData(object):
