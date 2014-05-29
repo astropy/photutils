@@ -35,10 +35,6 @@ class _ImgCutout(object):
         self.y0 = y0
 
     @property
-    def shape(self):
-        return self.data.shape
-
-    @property
     def radius(self):
         return [size // 2 for size in self.data.shape]
 
