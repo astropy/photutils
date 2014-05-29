@@ -26,9 +26,9 @@ def detect_sources(image, snr_threshold, npixels, filter_fwhm=None,
         sigma-clipped statistics, which can be controlled via the
         ``sig`` and ``iters`` keywords.
 
-    npixels : float
+    npixels : int
         The number of connected pixels an object must have above the
-        threshold level to be detected.
+        threshold level to be detected.  Must be a positive integer.
 
     filter_fwhm : float, optional
         The FWHM of the circular 2D Gaussian filter that is applied to
@@ -71,8 +71,13 @@ def detect_sources(image, snr_threshold, npixels, filter_fwhm=None,
     bkgrd, median, bkgrd_rms = img_stats(image, image_mask=image_mask,
                                          mask_val=mask_val, sig=sig,
                                          iters=iters)
+    assert npixels > 0, 'npixels must be a positive integer'
+    assert int(npixels) == npixels, 'npixels must be a positive integer'
+
     if filter_fwhm is not None:
         img_smooth = ndimage.gaussian_filter(image, filter_fwhm)
+    else:
+        img_smooth = image
 
     # threshold the smoothed image
     level = bkgrd + (bkgrd_rms * snr_threshold)
