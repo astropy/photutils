@@ -437,9 +437,11 @@ def scale_asinh(image, noise_level=None, sigma=2.0, min_cut=None,
                          min_percent=min_percent, max_percent=max_percent,
                          percent=percent)
     outimg, min_cut, max_cut = result
-    if not noise_level:
+    if noise_level is None:
         mean, median, stddev = img_stats(outimg)
         noise_level = mean + (sigma * stddev)
     z = (noise_level - min_cut) / (max_cut - min_cut)
+    if z == 0.0:
+        z = 1.e-2
     outimg = np.arcsinh(outimg / z) / np.arcsinh(1.0 / z)
     return outimg
