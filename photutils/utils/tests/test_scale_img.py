@@ -5,6 +5,12 @@ from __future__ import (absolute_import, unicode_literals, division,
 import numpy as np
 from numpy.testing import assert_allclose, assert_equal
 from .. import scale_img
+try:
+    import skimage
+    HAS_SKIMAGE = True
+except ImportError:
+    HAS_SKIMAGE = False
+
 
 DATA = np.array([0, 1., 2.])
 DATASCL = 0.5 * DATA
@@ -49,6 +55,7 @@ class TestImgCuts(object):
         assert_equal([mincut, maxcut], [0, 90])
 
 
+@pytest.mark.skipif('not HAS_SKIMAGE')
 class TestImageScaling(object):
     def test_linear(self):
         """Test linear scaling."""
