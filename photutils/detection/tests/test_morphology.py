@@ -5,7 +5,7 @@ from astropy.tests.helper import pytest
 import numpy as np
 from numpy.testing import assert_allclose
 import itertools
-from photutils.detection import morphology
+from ..morphology import centroid_com, centroid_1dg, centroid_2dg
 from astropy.modeling import models
 try:
     import scipy
@@ -35,9 +35,9 @@ def test_centroids(xc_ref, yc_ref, x_stddev, y_stddev, theta):
                               y_stddev=y_stddev, theta=theta)
     y, x = np.mgrid[0:50, 0:50]
     data = model(x, y)
-    xc, yc = morphology.centroid_com(data)
+    xc, yc = centroid_com(data)
     assert_allclose([xc_ref, yc_ref], [xc, yc], rtol=0, atol=1.e-3)
-    xc2, yc2 = morphology.centroid_1dg(data)
+    xc2, yc2 = centroid_1dg(data)
     assert_allclose([xc_ref, yc_ref], [xc2, yc2], rtol=0, atol=1.e-3)
-    xc3, yc3 = morphology.centroid_2dg(data)
+    xc3, yc3 = centroid_2dg(data)
     assert_allclose([xc_ref, yc_ref], [xc3, yc3], rtol=0, atol=1.e-3)
