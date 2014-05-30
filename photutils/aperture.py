@@ -87,17 +87,18 @@ class CircularAperture(Aperture):
         extents = []
         centers = []
         for x, y in self.positions:
-            extents.append((int(x - self.r - 0.5), int(x + self.r + 1.5),
-                            int(y - self.r - 0.5), int(y + self.r + 1.5)))
+            extents.append((int(x - self.r + 0.5), int(x + self.r + 1.5),
+                            int(y - self.r + 0.5), int(y + self.r + 1.5)))
             centers.append((x, x, y, y))
 
-        self._centers  = np.array(centers)
+        self._centers = np.array(centers)
+
         return np.array(extents)
 
-    def encloses(self, nx, ny, method='exact', subpixels=5):
+    def encloses(self, extent, nx, ny, method='exact', subpixels=5):
         aperture_enclose = []
         for i in range(len(self.positions)):
-            x_min, x_max, y_min, y_max = self.extent()[i] - self._centers[i]
+            x_min, x_max, y_min, y_max = extent
             if method == 'center':
                 x_size = (x_max - x_min) / nx
                 y_size = (y_max - y_min) / ny
@@ -577,17 +578,7 @@ def aperture_photometry(data, apertures, error=None, gain=None,
 #        for j in range(n_aper):
 #            extents[j] = apertures[j, i].extent()
 #
-#        # Set array index extents to encompass all apertures for this object.
-#        x_min = int(xc[i] + extents[:, 0].min() + 0.5)
-#        x_max = int(xc[i] + extents[:, 1].max() + 1.5)
-#        y_min = int(yc[i] + extents[:, 2].min() + 0.5)
-#        y_max = int(yc[i] + extents[:, 3].max() + 1.5)
-#
-#        # Check that at least part of the sub-array is in the image.
-#        if (x_min >= data.shape[1] or x_max <= 0 or
-#            y_min >= data.shape[0] or y_max <= 0):
-#            # TODO: flag all the apertures for this object
-#            continue
+
 #
 #
 #        # Get the sub-array of the image and error
@@ -632,9 +623,21 @@ def aperture_photometry(data, apertures, error=None, gain=None,
 
     # Loop over apertures for this object.
     for j in range(len(apertures.positions)):
-        extent = apertures.extent()[j]
 
         # Limit sub-array to be within the image.
+
+        extent = apertures.extent()[j]
+
+        # Check that at least part of the sub-array is in the image.
+        if (extent[0] >= data.shape[1] or extent[1] <= 0 or
+            extent[2] >= data.shape[0] or extent[3] <= 0):
+
+            # TODO: flag these objects
+            flux[j] = np.nan
+            print("Position {0} and its aperture is out of the data"
+                  " area".format(apertures.positions[j]))
+            continue
+
         extent[0] = max(extent[0], 0)
         extent[1] = min(extent[1], data.shape[1])
         extent[2] = max(extent[2], 0)
@@ -650,8 +653,13 @@ def aperture_photometry(data, apertures, error=None, gain=None,
                 subgain = gain[extent[2]:extent[3], extent[0]:extent[1]]
                 subvariance += subdata / subgain
 
+        # To keep the aperture reusable, define new extent for the actual
+        # photometry rather than overwrite the aperture's extents parameter
+
+        photom_extent = extent - apertures._centers[j] - 0.5
+
         # Find fraction of overlap between aperture and pixels
-        fraction = apertures.encloses(subdata.shape[1],
+        fraction = apertures.encloses(photom_extent, subdata.shape[1],
                                       subdata.shape[0],
                                       method=method, subpixels=subpixels)[j]
 
