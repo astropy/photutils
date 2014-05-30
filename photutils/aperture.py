@@ -67,21 +67,31 @@ class CircularAperture(Aperture):
 
     Parameters
     ----------
-    positions : tuple or list or tuples
-        Center coordinates of the apertures as (x, y) pixelcoordinate tuples.
+    positions : tuple, or list, or array
+        Center coordinates of the apertures as list or array of (x, y)
+        pixelcoordinates.
     r : float
         The radius of the aperture.
     """
 
     def __init__(self, positions, r):
+        try:
+            self.r = float(r)
+        except TypeError:
+            raise TypeError('r must be numeric, received {0}'.format(type(r)))
+
         if not (r >= 0.):
             raise ValueError('r must be non-negative')
-        self.r = r
 
         if isinstance(positions, (list, tuple)):
-            self.positions = np.array(positions)
-        # TODO raise IndexError, and other self checks from commented out
-        # parts of aperture_photometry(), etc.
+            self.positions = np.atleast_2d(positions)
+        else:
+            raise TypeError("List or array of (x,y) pixel coordinates is "
+                            "expected got '{0}'.".format(positions))
+
+        if self.positions.ndim > 2:
+            raise ValueError('{0}-d position array not supported. Only 2-d '
+                             'arrays supported.'.format(self.positions.ndim))
 
     def extent(self):
         extents = []
@@ -494,34 +504,6 @@ def aperture_photometry(data, apertures, error=None, gain=None,
         raise ValueError('{0}-d array not supported. '
                          'Only 2-d arrays supported.'.format(data.ndim))
 
-#    # Note whether xc, yc are scalars so we can try to return scalars later.
-#    scalar_obj_centers = np.isscalar(xc) and np.isscalar(yc)
-#
-#    # Check shapes of xc, yc
-#    xc = np.atleast_1d(xc)
-#    yc = np.atleast_1d(yc)
-#    if xc.ndim > 1 or yc.ndim > 1:
-#        raise ValueError('Only 1-d arrays supported for object centers.')
-#    if xc.shape[0] != yc.shape[0]:
-#        raise ValueError('length of xc and yc must match')
-#    n_obj = xc.shape[0]
-
-    # Check 'apertures' dimensions and type
-#    apertures = np.atleast_2d(apertures)
-#    if apertures.ndim > 2:
-#        raise ValueError('{0}-d aperture array not supported. '
-#                         'Only 2-d arrays supported.'.format(apertures.ndim))
-#    for aperture in apertures.ravel():
-#        if not isinstance(aperture, Aperture):
-#            raise TypeError("'aperture' must be an instance of Aperture.")
-    #    n_aper = apertures.shape[0]
-
-    # Check 'apertures' shape and expand trailing dimension to match N_obj
-    # if necessary.
-#    if apertures.shape[1] != n_obj:
-#        raise ValueError("trailing dimension of 'apertures' must "
-#                         "match the length of xc, yc")
-
     # Check whether we really need to calculate pixelwise errors, even if
     # requested. (If neither error nor gain is an array, we don't need to.)
     if ((error is None) or
@@ -567,61 +549,9 @@ def aperture_photometry(data, apertures, error=None, gain=None,
     # Initialize arrays to return.
     flux = np.zeros(len(apertures.positions), dtype=np.float)
     if error is not None:
-        fluxerr = np.zeros((apertures.positions), dtype=np.float)
+        fluxerr = np.zeros(len(apertures.positions), dtype=np.float)
 
-# 'extents' will hold the extent of all apertures for a given object.
-#    extents = np.empty((n_aper, 4), dtype=np.float)
-
-#    for i in range(n_obj):  # Loop over objects.
-#
-#        # Fill 'extents' with extent of all apertures for this object.
-#        for j in range(n_aper):
-#            extents[j] = apertures[j, i].extent()
-#
-
-#
-#
-#        # Get the sub-array of the image and error
-#
-#        if mask is not None:
-#            submask = mask[y_min:y_max, x_min:x_max]  # Get sub-mask.
-#
-#            # Get a copy of the data, because we will edit it
-#            subdata = copy.deepcopy(subdata)
-#
-#            # Coordinates of masked pixels in sub-array.
-#            y_masked, x_masked = np.nonzero(submask)
-#
-#            # Corresponding coordinates mirrored across xc, yc
-#            x_mirror = (2 * (xc[i] - x_min) - x_masked + 0.5).view('int32')
-#            y_mirror = (2 * (yc[i] - y_min) - y_masked + 0.5).view('int32')
-#
-#            # reset pixels that go out of the image.
-#            outofimage = ((x_mirror < 0) |
-#                          (y_mirror < 0) |
-#                          (x_mirror >= subdata.shape[1]) |
-#                          (y_mirror >= subdata.shape[0]))
-#            if outofimage.any():
-#                x_mirror[outofimage] = x_masked[outofimage]
-#                y_mirror[outofimage] = y_masked[outofimage]
-#
-#            # Replace masked pixel values.
-#            subdata[y_masked, x_masked] = subdata[y_mirror, x_mirror]
-#            if pixelwise_errors:
-#                subvariance[y_masked, x_masked] = \
-#                    subvariance[y_mirror, x_mirror]
-#
-#            # Set pixels that mirrored to another masked pixel to zero.
-#            # This will also set to zero any pixels that mirrored out of
-#            # the image.
-#            mirror_is_masked = submask[y_mirror, x_mirror]
-#            x_bad = x_masked[mirror_is_masked]
-#            y_bad = y_masked[mirror_is_masked]
-#            subdata[y_bad, x_bad] = 0.
-#            if pixelwise_errors:
-#                subvariance[y_bad, x_bad] = 0.
-
-    # Loop over apertures for this object.
+    # Loop over apertures.
     for j in range(len(apertures.positions)):
 
         # Limit sub-array to be within the image.
@@ -638,11 +568,17 @@ def aperture_photometry(data, apertures, error=None, gain=None,
                   " area".format(apertures.positions[j]))
             continue
 
+        # TODO check whether it makes sense to have negative pixel
+        # coordinate, one could imagine a stackes image where the reference
+        # was a bit offset from some of the images? Or in those cases just
+        # give Skycoord to the Aperture and it should deal with the
+        # conversion for the actual case?
         extent[0] = max(extent[0], 0)
         extent[1] = min(extent[1], data.shape[1])
         extent[2] = max(extent[2], 0)
         extent[3] = min(extent[3], data.shape[0])
 
+        # Get the sub-array of the image and error
         subdata = data[extent[2]:extent[3], extent[0]:extent[1]]
 
         if pixelwise_errors:
@@ -652,6 +588,46 @@ def aperture_photometry(data, apertures, error=None, gain=None,
             if gain is not None:
                 subgain = gain[extent[2]:extent[3], extent[0]:extent[1]]
                 subvariance += subdata / subgain
+
+        if mask is not None:
+            submask = mask[extent[2]:extent[3], extent[0]:extent[1]]
+
+            # Get a copy of the data, because we will edit it
+            subdata = copy.deepcopy(subdata)
+
+            # Coordinates of masked pixels in sub-array.
+            y_masked, x_masked = np.nonzero(submask)
+
+            # Corresponding coordinates mirrored across xc, yc
+            x_mirror = (2 * (apertures.positions[j][0] - extent[0])
+                        - x_masked + 0.5).view('int32')
+            y_mirror = (2 * (apertures.positions[j][1] - extent[2])
+                        - y_masked + 0.5).view('int32')
+
+            # reset pixels that go out of the image.
+            outofimage = ((x_mirror < 0) |
+                          (y_mirror < 0) |
+                          (x_mirror >= subdata.shape[1]) |
+                          (y_mirror >= subdata.shape[0]))
+            if outofimage.any():
+                x_mirror[outofimage] = x_masked[outofimage]
+                y_mirror[outofimage] = y_masked[outofimage]
+
+            # Replace masked pixel values.
+            subdata[y_masked, x_masked] = subdata[y_mirror, x_mirror]
+            if pixelwise_errors:
+                subvariance[y_masked, x_masked] = \
+                    subvariance[y_mirror, x_mirror]
+
+            # Set pixels that mirrored to another masked pixel to zero.
+            # This will also set to zero any pixels that mirrored out of
+            # the image.
+            mirror_is_masked = submask[y_mirror, x_mirror]
+            x_bad = x_masked[mirror_is_masked]
+            y_bad = y_masked[mirror_is_masked]
+            subdata[y_bad, x_bad] = 0.
+            if pixelwise_errors:
+                subvariance[y_bad, x_bad] = 0.
 
         # To keep the aperture reusable, define new extent for the actual
         # photometry rather than overwrite the aperture's extents parameter
@@ -690,21 +666,6 @@ def aperture_photometry(data, apertures, error=None, gain=None,
                 # Make sure variance is > 0 when converting to st. dev.
                 fluxerr[j] = math.sqrt(max(fluxvar, 0.))
 
-    # If input coordinates were scalars, return scalars (if single aperture)
-#    if scalar_obj_centers and n_aper == 1:
-#        if error is None:
-#            return flux[0, 0]
-#        else:
-#            return flux[0, 0], fluxerr[0, 0]
-
-#    # If we only had a single aperture per object, we can return 1-d arrays
-#    if n_aper == 1:
-#        if error is None:
-#            return flux[0]
-#        else:
-#            return flux[0], fluxerr[0]
-#
-#    # Otherwise, return 2-d array
     if error is None:
         return flux
     else:
