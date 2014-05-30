@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
 from __future__ import (absolute_import, unicode_literals, division,
                         print_function)
+from astropy.tests.helper import pytest
 import numpy as np
 from numpy.testing import assert_allclose, assert_equal
 from .. import scale_img
