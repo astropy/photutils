@@ -43,9 +43,9 @@ def find_imgcuts(image, min_cut=None, max_cut=None, min_percent=None,
         The percentage of the image values to scale.  The lower cut
         level will set at the ``(100 - percent) / 2`` percentile, while
         the upper cut level will be set at the ``(100 + percent) / 2``
-        percentile.  This value overrides the values of ``min_percent``
-        and ``max_percent``, but is ignored if ``min_cut`` and
-        ``max_cut`` are both input.
+        percentile.  This value is ignored if both ``min_cut`` and
+        ``max_cut`` are input or if both ``min_percent`` and
+        ``max_percent`` are input.
 
     Returns
     -------
@@ -56,9 +56,9 @@ def find_imgcuts(image, min_cut=None, max_cut=None, min_percent=None,
 
     if min_cut is not None and max_cut is not None:
         return min_cut, max_cut
-    if percent:
+    if percent is not None:
         assert (percent >= 0) and (percent <= 100.0), 'percent must be >= 0 and <= 100.0'
-        if not min_percent and not max_percent:
+        if min_percent is None and max_percent is None:
             min_percent = (100.0 - float(percent)) / 2.0
             max_percent = 100.0 - min_percent
     if min_cut is None:
@@ -110,9 +110,10 @@ def img_stats(image, image_mask=None, mask_val=None, sig=3.0, iters=None):
         sigma-clipped image.
     """
 
-    if image_mask:
+    if image_mask is not None:
+        assert image_mask.dtype == np.bool, 'image_mask must be a boolean ndarray'
         image = image[~image_mask]
-    if mask_val and not image_mask:
+    if mask_val is not None and image_mask is None:
         idx = (image != mask_val).nonzero()
         image = image[idx]
     image_clip = sigma_clip(image, sig=sig, iters=iters)
@@ -167,7 +168,7 @@ def rescale_img(image, min_cut=None, max_cut=None, min_percent=None,
 
     try:
         from skimage import exposure
-    except (ImportError):
+    except ImportError:
         raise ImportError('The image scaling functions require scikit-image.')
     image = image.astype(np.float64)
     min_cut, max_cut = find_imgcuts(image, min_cut=min_cut, max_cut=max_cut,
@@ -436,9 +437,11 @@ def scale_asinh(image, noise_level=None, sigma=2.0, min_cut=None,
                          min_percent=min_percent, max_percent=max_percent,
                          percent=percent)
     outimg, min_cut, max_cut = result
-    if not noise_level:
+    if noise_level is None:
         mean, median, stddev = img_stats(outimg)
         noise_level = mean + (sigma * stddev)
     z = (noise_level - min_cut) / (max_cut - min_cut)
+    if z == 0.0:
+        z = 1.e-2
     outimg = np.arcsinh(outimg / z) / np.arcsinh(1.0 / z)
     return outimg
