@@ -137,50 +137,85 @@ class CircularAperture(Aperture):
 
 
 class CircularAnnulus(Aperture):
-    """A circular annulus aperture.
+    """
+    Circular annulus aperture.
 
     Parameters
     ----------
+    positions : tuple, or list, or array
+        Center coordinates of the apertures as list or array of (x, y)
+        pixelcoordinates.
     r_in : float
         The inner radius of the annulus.
     r_out : float
         The outer radius of the annulus.
     """
 
-    def __init__(self, r_in, r_out):
+    def __init__(self, positions, r_in, r_out):
+        try:
+            self.r_in = r_in
+            self.r_out = r_out
+        except TypeError:
+            raise TypeError('r_in and r_out must be numeric, received {0} '
+                            'and {1}'.format((type(r_in), type(r_out))))
+
         if not (r_out > r_in):
             raise ValueError('r_out must be greater than r_in')
         if not (r_in >= 0.):
             raise ValueError('r_in must be non-negative')
-        self.r_in = r_in
-        self.r_out = r_out
+
+        if isinstance(positions, (list, tuple)):
+            self.positions = np.atleast_2d(positions)
+        else:
+            raise TypeError("List or array of (x,y) pixel coordinates is "
+                            "expected got '{0}'.".format(positions))
+
+        if self.positions.ndim > 2:
+            raise ValueError('{0}-d position array not supported. Only 2-d '
+                             'arrays supported.'.format(self.positions.ndim))
 
     def extent(self):
-        return (-self.r_out, self.r_out, -self.r_out, self.r_out)
+        extents = []
+        centers = []
+        for x, y in self.positions:
+            extents.append((int(x - self.r_out + 0.5),
+                            int(x + self.r_out + 1.5),
+                            int(y - self.r_out + 0.5),
+                            int(y + self.r_out + 1.5)))
+            centers.append(x, x, y, y)
 
-    def encloses(self, x_min, x_max, y_min, y_max, nx, ny,
-                 method='exact', subpixels=5):
-        if method == 'center':
-            x_size = (x_max - x_min) / nx
-            y_size = (y_max - y_min) / ny
-            x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
-            y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
-            xx, yy = np.meshgrid(x_centers, y_centers)
-            dist_sq = xx * xx + yy * yy
-            return (dist_sq < self.r_out * self.r_out) \
-                & (dist_sq > self.r_in * self.r_in)
-        elif method == 'subpixel':
-            from .circular_overlap import circular_overlap_grid
-            return (circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
-                                          self.r_out, 0, subpixels) -
-                    circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
-                                          self.r_in, 0, subpixels))
-        elif method == 'exact':
-            from .circular_overlap import circular_overlap_grid
-            return (circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
-                                          self.r_out, 1, 1) -
-                    circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
-                                          self.r_in, 1, 1))
+        self._centers = np.array(centers)
+        return np.array(extents)
+
+    def encloses(self, extent, nx, ny, method='exact', subpixels=5):
+        aperture_enclose = []
+        for i in range(len(self.positions)):
+            x_min, x_max, y_min, y_max = extent
+            if method == 'center':
+                x_size = (x_max - x_min) / nx
+                y_size = (y_max - y_min) / ny
+                x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
+                y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
+                xx, yy = np.meshgrid(x_centers, y_centers)
+                dist_sq = xx * xx + yy * yy
+                aperture_enclose.append((dist_sq < self.r_out * self.r_out)
+                                        & (dist_sq > self.r_in * self.r_in))
+            elif method == 'subpixel':
+                from .circular_overlap import circular_overlap_grid
+                aperture_enclose.append(circular_overlap_grid
+                                        (x_min, x_max, y_min, y_max, nx, ny,
+                                         self.r_out, 0, subpixels) -
+                                        circular_overlap_grid
+                                        (x_min, x_max, y_min, y_max, nx, ny,
+                                         self.r_in, 0, subpixels))
+            elif method == 'exact':
+                from .circular_overlap import circular_overlap_grid
+                aperture_enclose.append(circular_overlap_grid
+                                        (x_min, x_max, y_min, y_max, nx, ny,
+                                         self.r_out, 1, 1) -
+                                        circular_overlap_grid
+                                        (x_min, x_max, y_min, y_max, nx, ny,
+                                         self.r_in, 1, 1))
         else:
             raise ValueError('{0} method not supported for aperture class {1}'
                              .format(method, self.__class__.__name__))
