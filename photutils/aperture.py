@@ -83,7 +83,7 @@ class CircularAperture(Aperture):
         if r < 0:
             raise ValueError('r must be non-negative')
 
-        if isinstance(positions, (list, tuple)):
+        if isinstance(positions, (list, tuple, np.ndarray)):
             self.positions = np.atleast_2d(positions)
         else:
             raise TypeError("List or array of (x,y) pixel coordinates is "
@@ -163,7 +163,7 @@ class CircularAnnulus(Aperture):
         if r_in < 0:
             raise ValueError('r_in must be non-negative')
 
-        if isinstance(positions, (list, tuple)):
+        if isinstance(positions, (list, tuple, np.ndarray)):
             self.positions = np.atleast_2d(positions)
         else:
             raise TypeError("List or array of (x,y) pixel coordinates is "
@@ -254,7 +254,7 @@ class EllipticalAperture(Aperture):
         if a < 0 or b < 0:
             raise ValueError("'a' and 'b' must be non-negative.")
 
-        if isinstance(positions, (list, tuple)):
+        if isinstance(positions, (list, tuple, np.ndarray)):
             self.positions = np.atleast_2d(positions)
         else:
             raise TypeError("List or array of (x,y) pixel coordinates is "
@@ -300,30 +300,37 @@ class EllipticalAperture(Aperture):
                 in_aper = (((numerator1 / self.a) ** 2 +
                             (numerator2 / self.b) ** 2) < 1.).astype(float)
                 if method == 'center':
-                    return in_aper
+                    aperture_enclose.append(in_aper)
                 else:
                     from .utils.downsample import downsample
-                    return downsample(in_aper, subpixels)
+                    aperture_enclose.append(downsample(in_aper, subpixels))
 
             elif method == 'exact':
                 from .elliptical_exact import elliptical_overlap_grid
                 x_edges = np.linspace(x_min, x_max, nx + 1)
                 y_edges = np.linspace(y_min, y_max, ny + 1)
-                return elliptical_overlap_grid(x_edges, y_edges, self.a,
-                                               self.b, self.theta)
+                aperture_enclose.append(elliptical_overlap_grid
+                                        (x_edges, y_edges, self.a,
+                                         self.b, self.theta))
             else:
                 raise ValueError('{0} method not supported for aperture class '
                                  '{1}'.format(method, self.__class__.__name__))
+
+        return aperture_enclose
 
     def area(self):
         return math.pi * self.a * self.b
 
 
 class EllipticalAnnulus(Aperture):
-    """An elliptical annulus aperture.
+    """
+    An elliptical annulus aperture.
 
     Parameters
     ----------
+    positions : tuple, or list, or array
+        Center coordinates of the apertures as list or array of (x, y)
+        pixelcoordinates.
     a_in : float
         The inner semimajor axis.
     a_out : float
@@ -336,68 +343,99 @@ class EllipticalAnnulus(Aperture):
         (counterclockwise).
     """
 
-    def __init__(self, a_in, a_out, b_out, theta):
+    def __init__(self, positions, a_in, a_out, b_out, theta):
+        try:
+            self.a_in = float(a_in)
+            self.a_out = float(a_out)
+            self.b_out = float(b_out)
+            self.theta = float(theta)
+        except TypeError:
+            raise TypeError("'a_in' and 'a_out' and 'b_out' and 'theta' must "
+                            "be numeric, received {0} and {1} and {2} and {3}."
+                            .format((type(a_in), type(a_out),
+                                     type(b_out), type(theta))))
+
         if not (a_out > a_in):
-            raise ValueError('a_out must be greater than a_in')
+            raise ValueError("'a_out' must be greater than 'a_in'")
         if a_in < 0 or b_out < 0:
-            raise ValueError('a_in and b_out must be non-negative')
-        self.a_in = a_in
+            raise ValueError("'a_in' and 'b_out' must be non-negative")
+
         self.b_in = a_in * b_out / a_out
-        self.a_out = a_out
-        self.b_out = b_out
-        self.theta = theta
+
+        if isinstance(positions, (list, tuple, np.ndarray)):
+            self.positions = np.atleast_2d(positions)
+        else:
+            raise TypeError("List or array of (x,y) pixel coordinates is "
+                            "expected got '{0}'.".format(positions))
+
+        if self.positions.ndim > 2:
+            raise ValueError('{0}-d position array not supported. Only 2-d '
+                             'arrays supported.'.format(self.positions.ndim))
 
     def extent(self):
         r = max(self.a_out, self.b_out)
-        return (-r, r, -r, r)
+        extents = []
+        centers = []
+        for x, y in self.positions:
+            extents.append((int(x - r + 0.5), int(x + r + 1.5),
+                            int(y - r + 0.5), int(y + r + 1.5)))
+            centers.append((x, x, y, y))
 
-    def encloses(self, x_min, x_max, y_min, y_max, nx, ny,
-                 method='subpixel', subpixels=5):
+        self._centers = np.array(centers)
+        return np.array(extents)
+
+    def encloses(self, extent, nx, ny, method='subpixel', subpixels=5):
 
         # Shortcut to avoid divide-by-zero errors.
         if self.a_out == 0 or self.b_out == 0:
             return np.zeros((ny, nx), dtype=np.float)
 
-        if method == 'center' or method == 'subpixel':
-            if method == 'center': subpixels = 1
-            x_size = (x_max - x_min) / (nx * subpixels)
-            y_size = (y_max - y_min) / (ny * subpixels)
-            x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
-            y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
-            xx, yy = np.meshgrid(x_centers, y_centers)
+        aperture_enclose = []
+        for i in range(len(self.positions)):
+            x_min, x_max, y_min, y_max = extent
+            if method == 'center' or method == 'subpixel':
+                if method == 'center': subpixels = 1
+                x_size = (x_max - x_min) / (nx * subpixels)
+                y_size = (y_max - y_min) / (ny * subpixels)
+                x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
+                y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
+                xx, yy = np.meshgrid(x_centers, y_centers)
 
-            numerator1 = (xx * math.cos(self.theta) +
-                          yy * math.sin(self.theta))
-            numerator2 = (yy * math.cos(self.theta) -
-                          xx * math.sin(self.theta))
-            inside_outer_ellipse = ((numerator1 / self.a_out) ** 2 +
-                                    (numerator2 / self.b_out) ** 2) < 1.
-            if self.a_in == 0 or self.b_in == 0:
-                in_aper = inside_outer_ellipse.astype(float)
+                numerator1 = (xx * math.cos(self.theta) +
+                              yy * math.sin(self.theta))
+                numerator2 = (yy * math.cos(self.theta) -
+                              xx * math.sin(self.theta))
+                inside_outer_ellipse = ((numerator1 / self.a_out) ** 2 +
+                                        (numerator2 / self.b_out) ** 2) < 1.
+                if self.a_in == 0 or self.b_in == 0:
+                    in_aper = inside_outer_ellipse.astype(float)
+                else:
+                    outside_inner_ellipse = ((numerator1 / self.a_in) ** 2 +
+                                             (numerator2 / self.b_in) ** 2) > 1.
+                    in_aper = (inside_outer_ellipse &
+                               outside_inner_ellipse).astype(float)
+
+                if method == 'center':
+                    aperture_enclose.append(in_aper)
+                else:
+                    from .utils.downsample import downsample
+                    aperture_enclose.append(downsample(in_aper, subpixels))
+
+            elif method == 'exact':
+                from .elliptical_exact import elliptical_overlap_grid
+                x_edges = np.linspace(x_min, x_max, nx + 1)
+                y_edges = np.linspace(y_min, y_max, ny + 1)
+                aperture_enclose.append(elliptical_overlap_grid
+                                        (x_edges, y_edges, self.a_out,
+                                         self.b_out, self.theta) -
+                                        elliptical_overlap_grid
+                                        (x_edges, y_edges, self.a_in,
+                                         self.b_in, self.theta))
             else:
-                outside_inner_ellipse = ((numerator1 / self.a_in) ** 2 +
-                                         (numerator2 / self.b_in) ** 2) > 1.
-                in_aper = (inside_outer_ellipse &
-                           outside_inner_ellipse).astype(float)
-                in_aper /= subpixels**2    # conserve aperture area
+                raise ValueError('{0} method not supported for aperture class '
+                                 '{1}'.format(method, self.__class__.__name__))
 
-            if method == 'center':
-                return in_aper
-            else:
-                from .utils import downsample
-                return downsample(in_aper, subpixels)
-
-        elif method == 'exact':
-            from .elliptical_exact import elliptical_overlap_grid
-            x_edges = np.linspace(x_min, x_max, nx + 1)
-            y_edges = np.linspace(y_min, y_max, ny + 1)
-            return (elliptical_overlap_grid(x_edges, y_edges, self.a_out,
-                                            self.b_out, self.theta) -
-                    elliptical_overlap_grid(x_edges, y_edges, self.a_in,
-                                            self.b_in, self.theta))
-        else:
-            raise ValueError('{0} method not supported for aperture class {1}'
-                             .format(method, self.__class__.__name__))
+            return aperture_enclose
 
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
