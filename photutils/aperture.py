@@ -435,17 +435,21 @@ class EllipticalAnnulus(Aperture):
                 raise ValueError('{0} method not supported for aperture class '
                                  '{1}'.format(method, self.__class__.__name__))
 
-            return aperture_enclose
+        return aperture_enclose
 
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
 
 class RectangularAperture(Aperture):
-    """A rectangular aperture.
+    """
+    A rectangular aperture.
 
     Parameters
     ----------
+    positions : tuple, or list, or array
+        Center coordinates of the apertures as list or array of (x, y)
+        pixelcoordinates.
     w : float
         The full width of the aperture (at theta = 0, this is the "x" axis).
     h : float
@@ -455,59 +459,86 @@ class RectangularAperture(Aperture):
         (counterclockwise).
     """
 
-    def __init__(self, w, h, theta):
+    def __init__(self, positions, w, h, theta):
+        try:
+            self.w = float(w)
+            self.h = float(h)
+            self.theta = float(theta)
+        except TypeError:
+            raise TypeError("'w' and 'h' and 'theta' must "
+                            "be numeric, received {0} and {1} and {2}."
+                            .format((type(w), type(h), type(theta))))
         if w < 0 or h < 0:
-            raise ValueError('w and h must be nonnegative.')
-        self.w = w
-        self.h = h
-        self.theta = theta
+            raise ValueError("'w' and 'h' must be nonnegative.")
+
+        if isinstance(positions, (list, tuple, np.ndarray)):
+            self.positions = np.atleast_2d(positions)
+        else:
+            raise TypeError("List or array of (x,y) pixel coordinates is "
+                            "expected got '{0}'.".format(positions))
+
+        if self.positions.ndim > 2:
+            raise ValueError('{0}-d position array not supported. Only 2-d '
+                             'arrays supported.'.format(self.positions.ndim))
 
     def extent(self):
         r = max(self.h, self.w) * 2 ** -0.5
         # this is an overestimate by up to sqrt(2) unless theta = 45 deg
-        return (-r, r, -r, r)
+        extents = []
+        centers = []
+        for x, y in self.positions:
+            extents.append((int(x - r + 0.5), int(x + r + 1.5),
+                            int(y - r + 0.5), int(y + r + 1.5)))
+            centers.append((x, x, y, y))
 
-    def encloses(self, x_min, x_max, y_min, y_max, nx, ny,
-                 method='subpixel', subpixels=5):
+        self._centers = np.array(centers)
+        return np.array(extents)
+
+    def encloses(self, extent, nx, ny, method='subpixel', subpixels=5):
 
         # Shortcut to avoid divide-by-zero errors.
         if self.w == 0 or self.h == 0:
             return np.zeros((ny, nx), dtype=np.float)
 
-        if method in ('center', 'subpixel'):
-            if method == 'center':
-                subpixels = 1
+        aperture_enclose = []
+        for i in range(len(self.positions)):
+            x_min, x_max, y_min, y_max = extent
+            if method in ('center', 'subpixel'):
+                if method == 'center':
+                    subpixels = 1
 
-            x_size = (x_max - x_min) / (nx * subpixels)
-            y_size = (y_max - y_min) / (ny * subpixels)
+                x_size = (x_max - x_min) / (nx * subpixels)
+                y_size = (y_max - y_min) / (ny * subpixels)
 
-            x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
-            y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
+                x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
+                y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
 
-            xx, yy = np.meshgrid(x_centers, y_centers)
+                xx, yy = np.meshgrid(x_centers, y_centers)
 
-            newx = (xx * math.cos(self.theta) +
-                    yy * math.sin(self.theta))
-            newy = (yy * math.cos(self.theta) -
-                    xx * math.sin(self.theta))
+                newx = (xx * math.cos(self.theta) +
+                        yy * math.sin(self.theta))
+                newy = (yy * math.cos(self.theta) -
+                        xx * math.sin(self.theta))
 
-            halfw = self.w / 2
-            halfh = self.h / 2
-            in_aper = ((-halfw < newx) & (newx < halfw) &
-                       (-halfh < newy) & (newy < halfh)).astype(float)
+                halfw = self.w / 2
+                halfh = self.h / 2
+                in_aper = ((-halfw < newx) & (newx < halfw) &
+                           (-halfh < newy) & (newy < halfh)).astype(float)
 
-            if method == 'center':
-                return in_aper
+                if method == 'center':
+                    aperture_enclose.append(in_aper)
+                else:
+                    from .utils.downsample import downsample
+                    aperture_enclose.append(downsample(in_aper, subpixels))
+
+            elif method == 'exact':
+                raise NotImplementedError('exact method not yet supported for '
+                                          'RectangularAperture')
             else:
-                from .utils import downsample
-                return downsample(in_aper, subpixels)
+                raise ValueError('{0} method not supported for aperture class '
+                                 '{1}'.format(method, self.__class__.__name__))
 
-        elif method == 'exact':
-            raise NotImplementedError('exact method not yet supported for '
-                                      'RectangularAperture')
-        else:
-            raise ValueError('{0} method not supported for aperture class {1}'
-                             .format(method, self.__class__.__name__))
+        return aperture_enclose
 
     def area(self):
         return self.w * self.h
