@@ -1,11 +1,8 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import division
-
 import numpy as np
-
 from astropy.tests.helper import pytest
-from photutils.psf import  GaussianPSF
-
+from ..psf import GaussianPSF
 try:
     from scipy import optimize
     HAS_SCIPY = True
@@ -14,6 +11,7 @@ except ImportError:
 
 
 widths = [0.001, 0.01, 0.1, 1]
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize(('width'), widths)
@@ -24,14 +22,13 @@ def test_subpixel_gauss_psf(width):
     gauss_psf = GaussianPSF(width)
     y, x = np.mgrid[-10:11, -10:11]
     assert np.abs(gauss_psf(x, y).sum() - 1) < 1E-12
-    
-@pytest.mark.skipif('not HAS_SCIPY')    
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_gaussian_PSF_integral():
     """
     Test if Gaussian PSF integrates to unity on larger scales.
     """
     psf = GaussianPSF(10)
     y, x = np.mgrid[-100:101, -100:101]
-    assert np.abs(psf(y, x).sum() - 1) < 1E-12 
-    
-    
+    assert np.abs(psf(y, x).sum() - 1) < 1E-12
