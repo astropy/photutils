@@ -454,8 +454,7 @@ def _findobjs(data, kernel, threshold):
     #                                   fill_value=0.0)
     xkrad = kernel.shape[1] // 2
     ykrad = kernel.shape[0] // 2
-    convdata = ndimage.convolve(data, kernel, mode='constant',
-                                      cval=0.0)
+    convdata = ndimage.convolve(data, kernel, mode='constant', cval=0.0)
     shape = ndimage.generate_binary_structure(2, 2)
     objlabels, nobj = ndimage.label(convdata > threshold, structure=shape)
     objs = []
