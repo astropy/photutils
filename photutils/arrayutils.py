@@ -6,18 +6,19 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
 
-__all__ = ['extract_array_2d', 'add_array_2d', 'subpixel_indices', 'fix_prf_nan']
+__all__ = ['extract_array_2d', 'add_array_2d', 'subpixel_indices',
+           'fix_prf_nan']
 
 
 def _get_slices(large_array_shape, small_array_shape, position):
     """
     Get slices for the overlapping part of a small and a large array.
 
-    Given a certain position of the center of the small array, with respect to
-    the large array, four slices are computed, which can be used to extract,
-    add or subtract the small array at the given position. This function takes
-    care of the correct behavior at the boundaries, where the small array is cut
-    of appropriately.
+    Given a certain position of the center of the small array, with
+    respect to the large array, four slices are computed, which can be
+    used to extract, add or subtract the small array at the given
+    position. This function takes care of the correct behavior at the
+    boundaries, where the small array is cut of appropriately.
 
     Parameters
     ----------
@@ -48,18 +49,20 @@ def _get_slices(large_array_shape, small_array_shape, position):
 
     # Set up slices in x direction
     s_x = slice(max(0, x_min), min(large_array_shape[1], x_max))
-    b_x = slice(max(0, -x_min), min(large_array_shape[1] - x_min, x_max - x_min))
+    b_x = slice(max(0, -x_min), min(large_array_shape[1] - x_min,
+                                    x_max - x_min))
 
     # Set up slices in y direction
     s_y = slice(max(0, y_min), min(large_array_shape[0], y_max))
-    b_y = slice(max(0, -y_min), min(large_array_shape[0] - y_min, y_max - y_min))
+    b_y = slice(max(0, -y_min), min(large_array_shape[0] - y_min,
+                                    y_max - y_min))
     return s_y, s_x, b_y, b_x
 
 
 def extract_array_2d(array_large, shape, position):
     """
     Extract smaller array of given shape and position out of a larger array.
-    
+
     Parameters
     ----------
     array_large : ndarray
@@ -116,7 +119,8 @@ def add_array_2d(array_large, array_small, position):
     """
     # Check if larger array is really larger
     if array_large.shape >= array_small.shape:
-        s_y, s_x, b_y, b_x = _get_slices(array_large.shape, array_small.shape, position)
+        s_y, s_x, b_y, b_x = _get_slices(array_large.shape,
+                                         array_small.shape, position)
         array_large[s_y, s_x] += array_small[b_y, b_x]
         return array_large
     else:
@@ -155,21 +159,21 @@ def fix_prf_nan(extracted_prf, prf_nan):
     ----------
     extracted_prf : array
         PRF array to be fixed.
-    prf_nan : array
+    prf_nan : array, bool
         Mask indicating where NaN values are present
         extracted_prf.
     """
     # Allow at most 3 NaN values to prevent the unlikely case,
     # that the mirrored values are also NaN.
-    y_nan_coords, x_nan_coords = np.where(prf_nan == True)
+    y_nan_coords, x_nan_coords = np.nonzero(prf_nan)
     for y_nan, x_nan in zip(y_nan_coords, x_nan_coords):
         if not np.isnan(extracted_prf[-y_nan - 1, -x_nan - 1]):
             extracted_prf[y_nan, x_nan] = \
-             extracted_prf[-y_nan - 1, -x_nan - 1]
+                extracted_prf[-y_nan - 1, -x_nan - 1]
         elif not np.isnan(extracted_prf[y_nan, -x_nan]):
             extracted_prf[y_nan, x_nan] = \
-            extracted_prf[y_nan, -x_nan - 1]
+                extracted_prf[y_nan, -x_nan - 1]
         else:
             extracted_prf[y_nan, x_nan] = \
-            extracted_prf[-y_nan - 1, x_nan]
+                extracted_prf[-y_nan - 1, x_nan]
     return extracted_prf
