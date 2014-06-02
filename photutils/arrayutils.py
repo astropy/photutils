@@ -159,13 +159,13 @@ def fix_prf_nan(extracted_prf, prf_nan):
     ----------
     extracted_prf : array
         PRF array to be fixed.
-    prf_nan : array
+    prf_nan : array, bool
         Mask indicating where NaN values are present
         extracted_prf.
     """
     # Allow at most 3 NaN values to prevent the unlikely case,
     # that the mirrored values are also NaN.
-    y_nan_coords, x_nan_coords = np.where(prf_nan == True)
+    y_nan_coords, x_nan_coords = np.nonzero(prf_nan)
     for y_nan, x_nan in zip(y_nan_coords, x_nan_coords):
         if not np.isnan(extracted_prf[-y_nan - 1, -x_nan - 1]):
             extracted_prf[y_nan, x_nan] = \
