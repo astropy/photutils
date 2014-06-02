@@ -90,7 +90,7 @@ c[name]['multipos'] = False
 name = "Small data, multiple small apertures"
 c[name] = {}
 c[name]['dims']     = (20, 20)
-c[name]['pos']      = (np.random.uniform(5., 15., 1000), np.random.uniform(5., 15., 1000))
+c[name]['pos']      = (zip(np.random.uniform(5., 15., 1000), np.random.uniform(5., 15., 1000)))
 c[name]['circ']     = (5.,)
 c[name]['circ_ann'] = (5., 6.)
 c[name]['elli']     = (5., 2., 0.5)
@@ -102,7 +102,7 @@ c[name]['multipos'] = True
 name = "Big data, multiple small apertures"
 c[name] = {}
 c[name]['dims']     = (1000, 1000)
-c[name]['pos']      = (np.random.uniform(250., 750., 1000), np.random.uniform(250., 750., 1000))
+c[name]['pos']      = (zip(np.random.uniform(250., 750., 1000), np.random.uniform(250., 750., 1000)))
 c[name]['circ']     = (5.,)
 c[name]['circ_ann'] = (5., 6.)
 c[name]['elli']     = (5., 2., 0.5)
@@ -114,7 +114,7 @@ c[name]['multipos'] = True
 name = "Big data, multiple small apertures, multiple per object"
 c[name] = {}
 c[name]['dims']     = (1000, 1000)
-c[name]['pos']      = (np.random.uniform(250., 750., 1000), np.random.uniform(250., 750., 1000))
+c[name]['pos']      = (zip(np.random.uniform(250., 750., 1000), np.random.uniform(250., 750., 1000)))
 c[name]['circ']     = (np.linspace(1., 10., 10).reshape((10, 1)),)
 c[name]['iter']     = 1
 c[name]['multiap']  = True
@@ -123,7 +123,7 @@ c[name]['multipos'] = True
 name = "Big data, multiple big apertures"
 c[name] = {}
 c[name]['dims']     = (1000, 1000)
-c[name]['pos']      = (np.random.uniform(250., 750., 100), np.random.uniform(250., 750., 100))
+c[name]['pos']      = (zip(np.random.uniform(250., 750., 100), np.random.uniform(250., 750., 100)))
 c[name]['circ']     = (50.,)
 c[name]['circ_ann'] = (50., 60.)
 c[name]['elli']     = (50., 20., 0.5)
@@ -163,7 +163,7 @@ if not args.show:
             results[name][t] = OrderedDict()
 
         # Initialize data
-        x, y = c[name]['pos']
+        # x, y = c[name]['pos']
         data = np.ones(c[name]['dims'])
 
         # Print header for this benchmark
@@ -186,30 +186,14 @@ if not args.show:
                 time1 = time.time()
                 for i in range(c[name]['iter']):
                     # Check whether it is single or multiple apertures
-                    if not c[name]['multipos'] and not c[name]['multiap']:
-                        photutils.aperture_photometry(data, x, y,
-                                                      f[t](*c[name][t]),
-                                                      subpixels=subpixels)
-
-                    elif c[name]['multipos'] and not c[name]['multiap']:
-                        photutils.aperture_photometry(data, x, y,
-                                                      [f[t](*c[name][t])] * len(x),
-                                                      subpixels=subpixels)
-
-                    elif c[name]['multipos'] and c[name]['multiap']:
-                        apertures = []
-                        for index in range(len(c[name][t][0])):
-                            apertures.append([f[t](*c[name][t][0][index])] * len(x))
-                        photutils.aperture_photometry(data, x, y, apertures,
+                    if not c[name]['multiap']:
+                        photutils.aperture_photometry(data, f[t](c[name]['pos'], *c[name][t]),
                                                       subpixels=subpixels)
 
                     else:
-                        apertures = []
                         for index in range(len(c[name][t][0])):
-                            apertures.append(f[t](*c[name][t][0][index]))
-                        photutils.aperture_photometry(data, x, y, apertures,
-                                                      subpixels=subpixels)
-
+                            photutils.aperture_photometry(data,f[t](c[name]['pos'], *c[name][t][0][index]),
+                                                          subpixels=subpixels)
                 time2 = time.time()
                 time_sec = (time2 - time1) / c[name]['iter']
                 print("{0:10.5f} ".format(time_sec * 1000.))
