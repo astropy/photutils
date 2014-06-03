@@ -25,6 +25,5 @@ def downsample(np.ndarray[DTYPE_t, ndim=2] array, int factor):
             for ii in range(factor):
                 for jj in range(factor):
                     result[i, j] += array[i * factor + ii, j * factor + jj]
-            result[i, j] /= factor_sq
 
     return result
