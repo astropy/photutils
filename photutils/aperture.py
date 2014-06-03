@@ -678,12 +678,13 @@ def aperture_photometry(data, apertures, error=None, gain=None,
     if error is not None:
         fluxerr = np.zeros(len(apertures.positions), dtype=np.float)
 
+    extents = apertures.extent()
     # Loop over apertures.
     for j in range(len(apertures.positions)):
 
         # Limit sub-array to be within the image.
 
-        extent = apertures.extent()[j]
+        extent = extents[j]
 
         # Check that at least part of the sub-array is in the image.
         if (extent[0] >= data.shape[1] or extent[1] <= 0 or
