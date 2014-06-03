@@ -283,6 +283,7 @@ class EllipticalAperture(Aperture):
                           xx * math.sin(self.theta))
             in_aper = (((numerator1 / self.a) ** 2 +
                         (numerator2 / self.b) ** 2) < 1.).astype(float)
+            in_aper /= subpixels**2    # conserve aperture area
             if method == 'center':
                 return in_aper
             else:
@@ -393,6 +394,7 @@ class EllipticalAnnulus(Aperture):
                                          (numerator2 / self.b_in) ** 2) > 1.
                 in_aper = (inside_outer_ellipse &
                            outside_inner_ellipse).astype(float)
+                in_aper /= subpixels**2    # conserve aperture area
 
             if method == 'center':
                 return in_aper
