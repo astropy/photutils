@@ -52,6 +52,7 @@ Using `photutils`
 
     aperture.rst
     psf.rst
+    datasets.rst
 
 
 Source Detection and Segmentation
