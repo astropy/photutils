@@ -4,8 +4,7 @@ from __future__ import (absolute_import, unicode_literals, division,
 from astropy.tests.helper import pytest
 import numpy as np
 from numpy.testing import assert_allclose
-from ..downsample import downsample
-from ..upsample import upsample
+from ..sampling import downsample, upsample
 
 DATA1 = np.array([[0., 1.], [2., 3.]])
 DATA2 = np.array([[0., 0., 0.25, 0.25],

@@ -6,8 +6,7 @@
 from .scale_img import *
 try:
     # not guaranteed to be available at setup time
-    from .downsample import *
-    from .upsample import *
+    from .sampling import *
 except ImportError:
     if not _ASTROPY_SETUP_:
         raise
