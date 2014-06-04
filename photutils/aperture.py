@@ -213,7 +213,7 @@ class EllipticalAperture(Aperture):
             if method == 'center':
                 return in_aper
             else:
-                from .utils.downsample import downsample
+                from .utils import downsample
                 return downsample(in_aper, subpixels)
 
         elif method == 'exact':
@@ -298,7 +298,7 @@ class EllipticalAnnulus(Aperture):
             if method == 'center':
                 return in_aper
             else:
-                from .utils.downsample import downsample
+                from .utils import downsample
                 return downsample(in_aper, subpixels)
 
         elif method == 'exact':
@@ -378,7 +378,7 @@ class RectangularAperture(Aperture):
             if method == 'center':
                 return in_aper
             else:
-                from .utils.downsample import downsample
+                from .utils import downsample
                 return downsample(in_aper, subpixels)
 
         elif method == 'exact':
