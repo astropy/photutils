@@ -100,7 +100,7 @@ class TestDownsample(object):
     def test_factor4_6x6size(self):
         """
         Test downsampling when image dimensions are not a whole multiple
-        of factor.  A 9x9 image downsampled by a factor for 4.
+        of factor.  A 6x6 image downsampled by a factor for 4.
         """
         img = downsample(DATA3, 4)
         assert_allclose(img, np.array([[12.]]), rtol=0, atol=1e-6)
