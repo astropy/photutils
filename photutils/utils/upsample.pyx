@@ -22,5 +22,5 @@ def upsample(np.ndarray[DTYPE_t, ndim=2] array, int factor):
     cdef float factor_sq = factor * factor
     for i in range(nx_new):
         for j in range(ny_new):
-            result[j, i] += array[int(j / 2), int(i / 2)] / factor_sq
+            result[j, i] += array[int(j / factor), int(i / factor)] / factor_sq
     return result
