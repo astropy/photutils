@@ -1,20 +1,16 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 Make example datasets.
-
-We could put more useful functions here ... e.g. tiny subsets of the functionality here: 
-* http://www.astromatic.net/software/stuff
-* http://www.astromatic.net/software/skymaker
 """
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
-#from astropy.modeling.models import Gaussian2D
+from astropy.modeling.models import Gaussian2D
 
 __all__ = ['make_example_image']
 
 
-def make_example_image(shape=(1000, 1000), n_sources=42, psf_width=3):
+def make_example_image(shape=(100, 100), psf_width=5):
     """Make example image.
     
     Randomly distribute Gaussian sources.
@@ -23,5 +19,9 @@ def make_example_image(shape=(1000, 1000), n_sources=42, psf_width=3):
     TODO: move the example code from ``photutils/detection/test/test_findstars.py`` here.
 
     """
-    # TODO: implement me
-    return np.random.random(shape)
+    y, x = np.mgrid[:shape[1], :shape[0]]
+    model = Gaussian2D(amplitude=42, x_mean=30, y_mean=70,
+                       x_stddev=psf_width, y_stddev=psf_width)
+    image = model(x, y)
+
+    return image

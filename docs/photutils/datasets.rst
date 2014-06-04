@@ -6,7 +6,7 @@ Datasets (`photutils.datasets`)
 .. currentmodule:: photutils.datasets
 
 Introduction
-============
+------------
 
 `photutils.datasets` gives easy access to a few example datasets
 (mostly images, but also e.g. source catalogs or PSF models).
@@ -28,12 +28,32 @@ that can simulate much more realistic astronomical images.
 
 
 Getting Started
-===============
+---------------
 
-TODO: write me
+To load an example image with `~photutils.datasets.load_fermi_image`::
+
+   >>> from photutils import datasets
+   >>> hdu = datasets.load_fermi_image()
+   >>> print(hdu.data.shape)
+   (201, 401)
+
+``hdu`` is an `astropy.io.fits.ImageHDU` object and ``hdu.data`` is a `numpy.array` object
+that you can analyse with photutils.   
+
+Let's plot the image:
+
+.. plot::
+   :include-source:
+
+    from photutils import datasets
+    hdu = datasets.load_fermi_image()
+    plt.imshow(hdu.data, origin='lower', vmax=10)
+    plt.tight_layout()
+    plt.show()
+
 
 Reference/API
-=============
+-------------
 
 .. automodapi:: photutils.datasets
     :no-heading:

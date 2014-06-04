@@ -49,6 +49,7 @@ Using `photutils`
 -----------------
 
 .. toctree::
+    :maxdepth: 2
 
     aperture.rst
     psf.rst
@@ -74,6 +75,13 @@ Utils
 
 .. toctree:: utils.rst
     :maxdepth: 1
+
+
+.. note::
+   We also have a series of IPython notebooks that demonstrate how to use photutils.
+   You can view them online `here <http://nbviewer.ipython.org/github/astropy/photutils-datasets/tree/master/notebooks/>`__
+   or download them `here <https://github.com/astropy/photutils-datasets>`__ if you'd like to execute them on your machine. 
+   Contributions welcome!
 
 
 .. _coordinate-conventions:
