@@ -36,7 +36,6 @@ class Aperture(object):
         x_min, x_max, y_min, y_max: list of floats
             Extent of the apertures relative to object center.
         """
-        return
 
     @abc.abstractmethod
     def encloses(self, nx, ny, method='center'):
@@ -58,7 +57,6 @@ class Aperture(object):
             2-d array of shape (ny, nx) giving the fraction of each pixel
             covered by the aperture.
         """
-        return
 
 
 class CircularAperture(Aperture):

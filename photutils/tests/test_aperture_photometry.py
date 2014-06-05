@@ -44,11 +44,7 @@ def test_inside_array_simple(aperture, radius):
     flux3 = aperture_photometry(data, aperture((20., 20.), *radius),
                                 method='exact', subpixels=10)
     true_flux = aperture((20., 20.), *radius).area()
-    #    TODO
-    #    Not yet working for elliptical apertures
-    #    assert abs((flux - true_flux) / true_flux) < 0.1
-    # TODO flux2 problematic
-    print(flux1, flux2, flux3, aperture, radius)
+
     assert np.fabs((flux3 - true_flux) / true_flux) < 0.1
     assert flux1 < flux3
     assert np.fabs(flux2 - flux3 ) < 0.1
@@ -89,7 +85,7 @@ class BaseTestErrorGain(object):
                                             error=error, gain=gain)
         assert np.fabs((flux - self.true_flux) / self.true_flux) < 0.01
         true_error = np.sqrt(error ** 2 * self.area + flux)
-        print(true_error, flux, fluxerr)
+
         assert np.fabs((fluxerr - true_error) / true_error) < 0.01
 
     def test_array_error_no_gain(self):
@@ -193,6 +189,5 @@ def test_rectangular_aperture():
 
     true_flux = aperture.area()
 
-    print(flux1, flux2, true_flux)
     assert flux1 < true_flux
     assert np.fabs(flux2 - true_flux) < 0.1
