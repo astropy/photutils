@@ -232,11 +232,9 @@ class GaussianPSF(Fittable2DModel):
 
     def __init__(self, sigma, amplitude=1, x_0=0, y_0=0):
         if self._erf is None:
-            try:
-                from scipy.special import erf
-                self.__class__._erf = erf
-            except (ValueError, ImportError):
-                raise ImportError("Gaussian PSF model requires scipy.")
+            from scipy.special import erf
+            self.__class__._erf = erf
+
         constraints = {'fixed': {'x_0': True, 'y_0': True, 'sigma': True}}
         super(GaussianPSF, self).__init__(param_dim=1, sigma=sigma,
                                           x_0=x_0, y_0=y_0,
