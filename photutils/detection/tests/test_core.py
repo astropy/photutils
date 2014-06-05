@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from astropy.tests.helper import pytest
 import numpy as np
-from numpy.testing import assert_allclose, assert_array_equal
+from numpy.testing import assert_array_equal
 from ..core import detect_sources, find_peaks
 
 try:
@@ -39,6 +39,7 @@ class TestDetectSources(object):
     def test_small_sources(self):
         """Test detection where sources are smaller than npixels size."""
         segm = detect_sources(DATA, 0.1, 5)
+        assert_array_equal(segm, REF1)
 
     def test_zerothresh(self):
         """Test detection with zero snr_threshold."""
