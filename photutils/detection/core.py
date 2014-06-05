@@ -66,7 +66,7 @@ def detect_sources(image, snr_threshold, npixels, filter_fwhm=None,
 
     try:
         from scipy import ndimage
-    except ImportError:
+    except ImportError:   # pragma: no cover
         raise ImportError('detect_sources requires scipy.')
     bkgrd, median, bkgrd_rms = img_stats(image, image_mask=image_mask,
                                          mask_val=mask_val, sig=sig,
@@ -198,7 +198,7 @@ def find_peaks(image, snr_threshold, min_distance=5, exclude_border=True,
 
     try:
         from skimage.feature import peak_local_max
-    except ImportError:
+    except ImportError:   # pragma: no cover
         raise ImportError('find_peaks requires scikit-image.')
 
     bkgrd, median, bkgrd_rms = img_stats(image, image_mask=image_mask,
