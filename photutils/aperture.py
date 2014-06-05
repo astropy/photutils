@@ -758,8 +758,8 @@ def aperture_photometry(data, apertures, error=None, gain=None,
             else:
                 local_error = error[int((extent[2] + extent[3]) / 2 + 0.5),
                                     int((extent[0] + extent[1]) / 2 + 0.5)]
-                if hasattr(apertures[j], 'area'):
-                    area = apertures[j].area()
+                if hasattr(apertures, 'area'):
+                    area = apertures.area()
                 else:
                     area = np.sum(fraction)
                 fluxvar = local_error ** 2 * area
@@ -768,8 +768,8 @@ def aperture_photometry(data, apertures, error=None, gain=None,
                                       int((extent[0] + extent[1]) / 2 + 0.5)]
                     fluxvar += flux[j] / local_gain
 
-                # Make sure variance is > 0 when converting to st. dev.
-                fluxerr[j] = math.sqrt(max(fluxvar, 0.))
+            # Make sure variance is > 0 when converting to st. dev.
+            fluxerr[j] = math.sqrt(max(fluxvar, 0.))
 
     if error is None:
         return flux
