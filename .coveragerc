@@ -2,9 +2,9 @@
 source =
     photutils
 
-omit = photutils/tests*
-omit = photutils/detection/tests*
-omit = photutils/utils/tests*
+omit =
+    photutils/_astropy_init.py
+    */tests/*
 
 [report]
 exclude_lines =
@@ -20,4 +20,3 @@ exclude_lines =
 
    # Don't complain about script hooks
    def main\(.*\):
-
