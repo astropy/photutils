@@ -13,6 +13,7 @@ from ..aperture import CircularAperture,\
                        CircularAnnulus, \
                        EllipticalAperture, \
                        EllipticalAnnulus, \
+                       RectangularAperture,\
                        aperture_photometry
 
 
@@ -177,3 +178,21 @@ class TestErrorGainEllipticalAnnulus(BaseTestErrorGain):
                                           a_in, a_out, b_out, theta)
         self.area = np.pi * (a_out * b_out) - np.pi * (a_in * b_out * a_in / a_out)
         self.true_flux = self.area
+
+
+def test_rectangular_aperture():
+    data = np.ones((40, 40), dtype=np.float)
+    x = 20.
+    y = 20.
+    aperture = RectangularAperture((x, y), 1., 2., np.pi / 4)
+    flux1 = aperture_photometry(data, aperture, method='center')
+    flux2 = aperture_photometry(data, aperture, method='subpixel', subpixels=8)
+
+    with pytest.raises(NotImplementedError):
+        aperture_photometry(data, aperture, method='exact')
+
+    true_flux = aperture.area()
+
+    print(flux1, flux2, true_flux)
+    assert flux1 < true_flux
+    assert np.fabs(flux2 - true_flux) < 0.1
