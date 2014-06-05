@@ -8,11 +8,19 @@ import numpy as np
 from astropy.table import Table
 from numpy.testing import assert_allclose
 from ..findstars import daofind, irafstarfind
+
 try:
     import scipy
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
+
+try:
+    import skimage
+    HAS_SKIMAGE = True
+except ImportError:
+    HAS_SKIMAGE = False
+
 
 VALS1 = [0.5, 1.0, 2.0, 5.0, 10.0]
 VALS2 = [1.3, 1.5, 2.0, 5.0, 10.0]
@@ -176,10 +184,11 @@ class TestDAOFind(SetupData):
                         np.array(t).view(np.float))
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SKIMAGE')
 class TestIRAFStarFind(SetupData):
     @pytest.mark.parametrize(('fwhm', 'sigma_radius'),
                              list(itertools.product(VALS1, VALS2)))
-    @pytest.mark.skipif('not HAS_SCIPY')
     def test_isf_ellrotobj(self, fwhm, sigma_radius):
         self._setup()
         threshold = 5.0
@@ -192,7 +201,6 @@ class TestIRAFStarFind(SetupData):
                         np.array(t).view(np.float))
 
     @pytest.mark.parametrize(('threshold'), THRESHOLDS)
-    @pytest.mark.skipif('not HAS_SCIPY')
     def test_isf_ellrotobj_threshold(self, threshold):
         self._setup()
         fwhm = 3.0
