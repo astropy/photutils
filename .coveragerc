@@ -4,6 +4,8 @@ source =
 
 omit =
     photutils/_astropy_init.py
+    photutils/cython_version.py
+    photutils/version.py
     */tests/*
 
 [report]
