@@ -33,9 +33,9 @@ Getting Started
 To load an example image with `~photutils.datasets.load_fermi_image`::
 
    >>> from photutils import datasets
-   >>> hdu = datasets.load_fermi_image()
+   >>> hdu = datasets.load_star_image()
    >>> print(hdu.data.shape)
-   (201, 401)
+   (1059, 1059)
 
 ``hdu`` is an `astropy.io.fits.ImageHDU` object and ``hdu.data`` is a `numpy.array` object
 that you can analyse with photutils.   
@@ -46,8 +46,8 @@ Let's plot the image:
    :include-source:
 
     from photutils import datasets
-    hdu = datasets.load_fermi_image()
-    plt.imshow(hdu.data, origin='lower', vmax=10)
+    hdu = datasets.load_star_image()
+    plt.imshow(hdu.data, origin='lower')
     plt.tight_layout()
     plt.show()
 

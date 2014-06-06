@@ -22,7 +22,7 @@ def get_path(filename, location='local'):
         File name in the local or remote data folder
     location : {'local', 'remote'}
         File location.
-        ``'local'`` means bundled with ``photutils`.
+        ``'local'`` means bundled with ``photutils``.
         ``'remote'`` means a server or the Astropy cache on your machine.
 
     Returns
@@ -54,6 +54,14 @@ def load_fermi_image():
     -------
     hdu : `~astropy.io.fits.ImageHDU`
         Image HDU
+
+    Examples
+    --------
+    .. plot::
+
+        from photutils import datasets
+        hdu = datasets.load_fermi_image()
+        plt.imshow(hdu.data, origin='lower', vmax=10)
     """
     path = get_path('fermi_counts.fits.gz', location='local')
     hdu = fits.open(path)[1]
@@ -68,6 +76,14 @@ def load_star_image():
     -------
     hdu : `~astropy.io.fits.ImageHDU`
         Image HDU
+
+    Examples
+    --------
+    .. plot::
+
+        from photutils import datasets
+        hdu = datasets.load_star_image()
+        plt.imshow(hdu.data, origin='lower')
     """
     path = get_path('M6707HH.fits.gz', location='remote')
     hdu = fits.open(path)[0]
