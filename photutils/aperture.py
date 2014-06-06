@@ -575,13 +575,9 @@ doc_template = ("""\
 
     Returns
     -------
-    flux : float or `~numpy.ndarray`
-        Enclosed flux in aperture(s). If ``xc`` and ``yc`` are floats and
-        there is a single aperture, a float is returned. If ``xc``, ``yc`` are
-        list_like and there is a single aperture per object, a 1-d
-        array is returned. If there are multiple apertures per object,
-        a 2-d array is returned.
-    fluxerr : float or `~numpy.ndarray`
+    flux : `~numpy.ndarray`
+        Enclosed flux in aperture(s).
+    fluxerr : `~numpy.ndarray`
         Uncertainty in flux values. Only returned if error is not `None`.
 
     {seealso}
