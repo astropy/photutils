@@ -1,10 +1,20 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-from .. import make
+from numpy.testing import assert_allclose
+from astropy.table import Table
+from .. import make_gaussian_image
 
 
-def test_make_example_image():
+def test_make_gaussian_image():
+    table = Table()
+    table['amplitude'] = [1, 2, 3]
+    table['x_0'] = [30, 50, 70.5]
+    table['y_0'] = [50, 50, 50.5]
+    table['sigma'] = [1, 2, 3.5]
+
     shape = (100, 100)
-    image = make.make_example_image(shape)
+    image = make_gaussian_image(shape, table)
+
     assert image.shape == shape
+    assert_allclose(image.sum(), table['amplitude'].sum())
