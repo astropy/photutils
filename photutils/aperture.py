@@ -529,19 +529,7 @@ doc_template = ("""\
     ----------
     data : array_like
         The 2-d array on which to perform photometry.
-    xc, yc : float or list_like
-        The x and y coordinates of the object center(s). If list_like,
-        the lengths must match.
     {args}
-        If an array (of at most 2 dimensions), the trailing dimension
-        of the array must match ``len(xc)`` and ``len(yc)``.
-        The following shapes are thus allowed:
-
-        ``(N_objects,)`` or ``(1, N_objects)``
-            Each object gets its own single aperture.
-        ``(N_apertures, N_objects)``
-            Each object gets its own set of ``N_apertures`` apertures.
-
         Note that for subpixel sampling, the input array is only
         resampled once for each object.
     error : float or array_like, optional
@@ -783,6 +771,7 @@ def aperture_photometry(data, apertures, error=None, gain=None,
 
 aperture_photometry.__doc__ = doc_template.format(
     desc=aperture_photometry.__doc__,
-    args="""apertures : `~photutils.Aperture` or array thereof
-        The apertures to use for photometry.""",
+    args="""apertures : `~photutils.Aperture`
+        The `~photutils.Aperture` object containing the apertures to use for
+        photometry.""",
     seealso="")
