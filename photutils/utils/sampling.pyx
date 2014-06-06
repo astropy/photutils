@@ -32,6 +32,14 @@ def downsample(np.ndarray[DTYPE_t, ndim=2] array, int factor):
     -------
     output : array_like
         The 2D array of the resampled image.
+
+    Examples
+    --------
+    >>> from photutils import utils
+    >>> img = np.arange(16.).reshape((4,4))
+    >>> utils.downsample(img, 2)
+    array([[ 10.,  18.],
+           [ 42.,  50.]])
     """
 
     cdef int nx = array.shape[1]
@@ -66,6 +74,16 @@ def upsample(np.ndarray[DTYPE_t, ndim=2] array, int factor):
     -------
     output : array_like
         The 2D array of the resampled image.
+
+    Examples
+    --------
+    >>> from photutils import utils
+    >>> img = np.array([[0., 1.], [2., 3.]])
+    >>> utils.upsample(img, 2)
+    array([[ 0.  ,  0.  ,  0.25,  0.25],
+           [ 0.  ,  0.  ,  0.25,  0.25],
+           [ 0.5 ,  0.5 ,  0.75,  0.75],
+           [ 0.5 ,  0.5 ,  0.75,  0.75]])
     """
 
     cdef int nx = array.shape[1]
