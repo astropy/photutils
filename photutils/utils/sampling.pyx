@@ -10,8 +10,30 @@ cimport numpy as np
 DTYPE = np.float
 ctypedef np.float_t DTYPE_t
 
+__all__ = ['downsample', 'upsample']
+
 
 def downsample(np.ndarray[DTYPE_t, ndim=2] array, int factor):
+    """
+    Downsample an image by combining image pixels.  This process
+    conserves image flux.  If the dimensions of `image` are
+    not a whole-multiple of `factor`, the extra rows/columns will
+    not be included in the output downsampled image.
+
+    Parameters
+    ----------
+    image : array_like, float
+        The 2D array of the image.
+
+    factor : int
+        Downsampling integer factor along each axis.
+
+    Returns
+    -------
+    output : array_like
+        The 2D array of the resampled image.
+    """
+
     cdef int nx = array.shape[1]
     cdef int ny = array.shape[0]
     cdef int nx_new = nx // factor
@@ -28,6 +50,24 @@ def downsample(np.ndarray[DTYPE_t, ndim=2] array, int factor):
 
 
 def upsample(np.ndarray[DTYPE_t, ndim=2] array, int factor):
+    """
+    Upsample an image by replicating image pixels.  This process
+    conserves image flux.
+
+    Parameters
+    ----------
+    image : array_like, float
+        The 2D array of the image.
+
+    factor : int
+        Upsampling integer factor along each axis.
+
+    Returns
+    -------
+    output : array_like
+        The 2D array of the resampled image.
+    """
+
     cdef int nx = array.shape[1]
     cdef int ny = array.shape[0]
     cdef int nx_new = nx * factor

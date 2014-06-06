@@ -10,3 +10,7 @@ try:
 except ImportError:
     if not _ASTROPY_SETUP_:
         raise
+
+__all__ = ['downsample', 'upsample', 'find_imgcuts', 'img_stats',
+           'rescale_img', 'scale_linear', 'scale_sqrt', 'scale_power',
+           'scale_log', 'scale_asinh', 'downsample', 'upsample']

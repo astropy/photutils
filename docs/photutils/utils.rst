@@ -8,5 +8,5 @@ functions for scaling images.
 Reference/API
 =============
 
-.. automodapi:: photutils.utils.scale_img
+.. automodapi:: photutils.utils
     :no-heading:
