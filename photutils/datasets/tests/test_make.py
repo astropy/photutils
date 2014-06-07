@@ -2,10 +2,18 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from numpy.testing import assert_allclose
+from astropy.tests.helper import pytest
 from astropy.table import Table
 from .. import make_gaussian_image
 
+try:
+    import scipy
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
 
+
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_make_gaussian_image():
     table = Table()
     table['amplitude'] = [1, 2, 3]

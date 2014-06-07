@@ -30,7 +30,7 @@ that can simulate much more realistic astronomical images.
 Getting Started
 ---------------
 
-To load an example image with `~photutils.datasets.load_fermi_image`::
+To load an example image with `~photutils.datasets.load_star_image`::
 
    >>> from photutils import datasets
    >>> hdu = datasets.load_star_image()
