@@ -295,7 +295,8 @@ def daofind(data, fwhm, threshold, sigma_radius=1.5, ratio=1.0, theta=0.0,
     idcol = Column(name='id', data=np.arange(len(tbl)) + 1)
     tbl.add_column(idcol, 0)
     if len(tbl) == 0:
-        warnings.warn('Sources were found, but none pass the sharpness and roundness criteria.', UserWarning)
+        warnings.warn('Sources were found, but none pass the sharpness and '
+                      'roundness criteria.', UserWarning)
     return tbl
 
 
@@ -416,7 +417,8 @@ def irafstarfind(data, fwhm, threshold, sigma_radius=1.5, sky=None,
     idcol = Column(name='id', data=np.arange(len(tbl)) + 1)
     tbl.add_column(idcol, 0)
     if len(tbl) == 0:
-        warnings.warn('Sources were found, but none pass the sharpness and roundness criteria.', UserWarning)
+        warnings.warn('Sources were found, but none pass the sharpness and '
+                      'roundness criteria.', UserWarning)
     return tbl
 
 

@@ -12,10 +12,10 @@ try:
     from astropy.modeling import Fittable2DModel
 except ImportError:
     from astropy.modeling import Parametric2DModel as Fittable2DModel
-    
-    
+
+
 from .arrayutils import (extract_array_2d, subpixel_indices,
-                        add_array_2d, fix_prf_nan)
+                         add_array_2d, fix_prf_nan)
 
 
 __all__ = ['DiscretePRF', 'create_prf', 'psf_photometry',
@@ -28,7 +28,8 @@ class DiscretePRF(Fittable2DModel):
 
     The discrete PRF model stores images of the PRF at different subpixel
     positions or offsets as a lookup table. The resolution is given by the
-    subsampling parameter, which states in how many subpixels a pixel is divided.
+    subsampling parameter, which states in how many subpixels a pixel is
+    divided.
 
     The discrete PRF model class in initialized with a 4 dimensional
     array, that contains the PRF images at different subpixel positions.
@@ -83,7 +84,7 @@ class DiscretePRF(Fittable2DModel):
         y_0 = 0
         amplitude = 1
         super(DiscretePRF, self).__init__(param_dim=1, x_0=x_0, y_0=y_0,
-                                    amplitude=amplitude, **constraints)
+                                          amplitude=amplitude, **constraints)
         self.linear = True
         self.fitter = fitting.NonLinearLSQFitter()
 
@@ -102,9 +103,9 @@ class DiscretePRF(Fittable2DModel):
         """
         Discrete PRF model evaluation.
 
-        Given a certain position and amplitude the corresponding image of the PSF
-        is chosen and scaled to the amplitude. If x and y are outside the
-        boundaries of the image, zero will be returned.
+        Given a certain position and amplitude the corresponding image of
+        the PSF is chosen and scaled to the amplitude. If x and y are
+        outside the boundaries of the image, zero will be returned.
 
         Parameters
         ----------
@@ -152,7 +153,8 @@ class DiscretePRF(Fittable2DModel):
         For reasons of performance, indices for the data have to be created
         outside and passed to the function.
 
-        The fit is performed on a slice of the data with the same size as the PRF.
+        The fit is performed on a slice of the data with the same size as
+        the PRF.
 
         Parameters
         ----------
@@ -166,8 +168,8 @@ class DiscretePRF(Fittable2DModel):
         sub_array_data = extract_array_2d(data, self.shape,
                                           (self.x_0.value, self.y_0.value))
 
-        # Fit only if PSF is completely contained in the image and no NaN values
-        # are present
+        # Fit only if PSF is completely contained in the image and no NaN
+        # values are present
         if sub_array_data.shape == self.shape and not np.isnan(sub_array_data).any():
             y = extract_array_2d(indices[0], self.shape,
                                  (self.x_0.value, self.y_0.value))
@@ -183,7 +185,7 @@ class GaussianPSF(Fittable2DModel):
     """
     Symmetrical Gaussian PSF model.
 
-    The PSF is evaluated by using the 'scipy.special.erf` function
+    The PSF is evaluated by using the `scipy.special.erf` function
     on a fixed grid of the size of 1 pixel to assure flux conservation
     on subpixel scale.
 
@@ -239,7 +241,8 @@ class GaussianPSF(Fittable2DModel):
         y_0 = 0
         amplitude = 1
         constraints = {'fixed': {'x_0': True, 'y_0': True, 'sigma': True}}
-        super(GaussianPSF, self).__init__(param_dim=1, sigma=sigma, x_0=x_0, y_0=y_0,
+        super(GaussianPSF, self).__init__(param_dim=1, sigma=sigma,
+                                          x_0=x_0, y_0=y_0,
                                           amplitude=amplitude, **constraints)
 
         # Default size is 8 * sigma
@@ -271,7 +274,8 @@ class GaussianPSF(Fittable2DModel):
         For reasons of performance, indices for the data have to be created
         outside and passed to the function.
 
-        The fit is performed on a slice of the data with the same size as the PRF.
+        The fit is performed on a slice of the data with the same size as
+        the PRF.
 
         Parameters
         ----------
@@ -293,8 +297,8 @@ class GaussianPSF(Fittable2DModel):
         # Extract sub array with data of interest
         sub_array_data = extract_array_2d(data, self.shape, position)
 
-        # Fit only if PSF is completely contained in the image and no NaN values
-        # are present
+        # Fit only if PSF is completely contained in the image and no NaN
+        # values are present
         if sub_array_data.shape == self.shape and not np.isnan(sub_array_data).any():
             y = extract_array_2d(indices[0], self.shape, position)
             x = extract_array_2d(indices[1], self.shape, position)
@@ -309,12 +313,12 @@ def psf_photometry(data, positions, psf, mask=None, mode='sequential',
     """
     Perform PSF/PRF photometry on the data.
 
-    Given a PSF or PRF model, the model is fitted simultaneously or sequentially
-    to the given positions to obtain an estimate of the flux. If required, coordinates
-    are also tuned to match best the data.
+    Given a PSF or PRF model, the model is fitted simultaneously or
+    sequentially to the given positions to obtain an estimate of the
+    flux. If required, coordinates are also tuned to match best the data.
 
-    If the data contains NaN values or the PSF/PRF is not completely contained in
-    the image, a flux of zero is returned.
+    If the data contains NaN values or the PSF/PRF is not completely
+    contained in the image, a flux of zero is returned.
 
     Parameters
     ----------
@@ -414,16 +418,22 @@ def create_prf(data, positions, size, fluxes=None, mask=None, mode='mean',
 
     Notes
     -----
-    In Astronomy different definitions of Point Spread Function (PSF) and Point Response Function (PRF)
-    are used. Here we assume that the PRF is an image of a point source after discretization
-    e.g. with a CCD. This definition is equivalent to the `Spitzer definiton of the PRF 
-    <http://irsa.ipac.caltech.edu/data/SPITZER/docs/dataanalysistools/tools/mopex/mopexusersguide/89/>`.
-       
+    In Astronomy different definitions of Point Spread Function (PSF) and
+    Point Response Function (PRF) are used. Here we assume that the PRF is
+    an image of a point source after discretization e.g. with a CCD. This
+    definition is equivalent to the `Spitzer definiton of the PRF
+    <http://irsa.ipac.caltech.edu/data/SPITZER/docs/dataanalysistools/tools/mopex/mopexusersguide/89/>`_.
+
     Further references:
-    `Spitzer PSF vs. PRF <http://irsa.ipac.caltech.edu/data/SPITZER/docs/files/spitzer/PRF_vs_PSF.pdf>`_
-    `Kepler PSF calibration <http://keplerscience.arc.nasa.gov/CalibrationPSF.shtml>`_
-    'The Kepler Pixel Response Function <http://adsabs.harvard.edu/abs/2010ApJ...713L..97B>'_
+    -------------------
+    `Spitzer PSF vs. PRF
+    <http://irsa.ipac.caltech.edu/data/SPITZER/docs/files/spitzer/PRF_vs_PSF.pdf>`_
+    `Kepler PSF calibration
+    <http://keplerscience.arc.nasa.gov/CalibrationPSF.shtml>`_
+    `The Kepler Pixel Response Function
+    <http://adsabs.harvard.edu/abs/2010ApJ...713L..97B>`_
     """
+
     # Check input array type and dimension.
     if np.iscomplexobj(data):
         raise TypeError('Complex type not supported')
@@ -438,32 +448,36 @@ def create_prf(data, positions, size, fluxes=None, mask=None, mode='mean',
 
     if mask is None:
         mask = np.isnan(data)
-        
+
     if isinstance(positions, (list, tuple)):
         positions = np.array(positions)
-    
+
     if isinstance(fluxes, (list, tuple)):
         fluxes = np.array(fluxes)
-        
+
     if mode == 'mean':
         combine = np.ma.mean
     elif mode == 'median':
         combine = np.ma.median
     else:
         raise Exception('Invalid mode to combine prfs.')
-    
+
     data_internal = np.ma.array(data=data, mask=mask)
     prf_model = np.ndarray(shape=(subsampling, subsampling, size, size))
-    positions_subpixel_indices = np.array([subpixel_indices(_, subsampling) for _ in positions])
+    positions_subpixel_indices = np.array([subpixel_indices(_, subsampling)
+                                           for _ in positions])
 
     for i in range(subsampling):
         for j in range(subsampling):
             extracted_sub_prfs = []
-            sub_prf_indices = np.all(positions_subpixel_indices == [j, i], axis=1)
+            sub_prf_indices = np.all(positions_subpixel_indices == [j, i],
+                                     axis=1)
             positions_sub_prfs = positions[sub_prf_indices]
             for k, position in enumerate(positions_sub_prfs):
-                extracted_prf = extract_array_2d(data_internal, (size, size), position)
-                # Check shape to exclude incomplete PRFs at the boundaries of the image
+                extracted_prf = extract_array_2d(data_internal, (size, size),
+                                                 position)
+                # Check shape to exclude incomplete PRFs at the boundaries
+                # of the image
                 if extracted_prf.shape == (size, size) and np.ma.sum(extracted_prf) != 0:
                     # Replace NaN values by mirrored value, with respect
                     # to the prf's center
@@ -473,12 +487,13 @@ def create_prf(data, positions, size, fluxes=None, mask=None, mode='mean',
                             if prf_nan.sum() > 3 or prf_nan[size / 2, size / 2]:
                                 continue
                             else:
-                                extracted_prf = fix_prf_nan(extracted_prf, prf_nan)
+                                extracted_prf = fix_prf_nan(extracted_prf,
+                                                            prf_nan)
                     # Normalize and add extracted PRF to data cube
                     if fluxes is None:
                         extracted_prf_norm = np.ma.copy(extracted_prf) / np.ma.sum(extracted_prf)
                     else:
-                        fluxes_sub_prfs = fluxes[sub_prf_indices]  
+                        fluxes_sub_prfs = fluxes[sub_prf_indices]
                         extracted_prf_norm = np.ma.copy(extracted_prf) / fluxes_sub_prfs[k]
                     extracted_sub_prfs.append(extracted_prf_norm)
                 else:
@@ -511,8 +526,8 @@ def subtract_psf(data, psf, positions, fluxes, mask=None):
 
     # Loop over position
     for i, position in enumerate(positions):
-        y = extract_array_2d(indices[0], prf.shape, position)
-        x = extract_array_2d(indices[1], prf.shape, position)
+        y = extract_array_2d(indices[0], psf.shape, position)
+        x = extract_array_2d(indices[1], psf.shape, position)
         psf_image = psf.eval(x, y, fluxes[i], position[0], position[1])
         data = add_array_2d(data, -psf_image, position)
     return data
