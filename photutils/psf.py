@@ -424,12 +424,14 @@ def create_prf(data, positions, size, fluxes=None, mask=None, mode='mean',
     definition is equivalent to the `Spitzer definiton of the PRF
     <http://irsa.ipac.caltech.edu/data/SPITZER/docs/dataanalysistools/tools/mopex/mopexusersguide/89/>`_.
 
-    Further references:
-    -------------------
+    References
+    ----------
     `Spitzer PSF vs. PRF
     <http://irsa.ipac.caltech.edu/data/SPITZER/docs/files/spitzer/PRF_vs_PSF.pdf>`_
+
     `Kepler PSF calibration
     <http://keplerscience.arc.nasa.gov/CalibrationPSF.shtml>`_
+
     `The Kepler Pixel Response Function
     <http://adsabs.harvard.edu/abs/2010ApJ...713L..97B>`_
     """
