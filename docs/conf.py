@@ -43,6 +43,18 @@ setup_cfg = dict(conf.items('metadata'))
 # If your documentation needs a minimal Sphinx version, state it here.
 #needs_sphinx = '1.1'
 
+# We don't have references to `h5py` ... no need to load the intersphinx mapping file.
+del intersphinx_mapping['h5py']
+
+# We currently want to link to the latest development version of the astropy docs,
+# so we override the `intersphinx_mapping` entry pointing to the stable docs version
+# that is listed in `astropy/sphinx/conf.py`.
+intersphinx_mapping['astropy'] = ('http://docs.astropy.org/en/latest/', None)
+
+# Extend astropy intersphinx_mapping with packages we use here
+intersphinx_mapping['skimage'] = ('http://scikit-image.org/docs/stable/', None)
+
+
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 exclude_patterns.append('_templates')
