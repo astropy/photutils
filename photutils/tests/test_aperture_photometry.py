@@ -56,44 +56,60 @@ class BaseTestErrorGain(object):
 
         # Scalar error, no gain.
         error = 1.
+        if not hasattr(self, 'mask'):
+            mask = None
+        else:
+            mask = self.mask
+
         flux, fluxerr = aperture_photometry(self.data, self.aperture,
-                                            error=error)
+                                            mask=mask, error=error)
         assert np.fabs((flux - self.true_flux) / self.true_flux) < 0.01
 
-        # Error should be exact to machine precision for apertures
-        # with defined area.
         true_error = error * np.sqrt(self.area)
-        assert_array_almost_equal_nulp(fluxerr, true_error, 1)
+        assert np.fabs((fluxerr - true_error) / true_error) < 0.01
 
     def test_scalar_error_scalar_gain(self):
 
         # Scalar error, scalar gain.
         error = 1.
         gain = 1.
+        if not hasattr(self, 'mask'):
+            mask = None
+        else:
+            mask = self.mask
+
         flux, fluxerr = aperture_photometry(self.data, self.aperture,
-                                            error=error, gain=gain)
+                                            mask=mask, error=error, gain=gain)
         assert np.fabs((flux - self.true_flux) / self.true_flux) < 0.01
         true_error = np.sqrt(error ** 2 * self.area + flux)
-        assert_array_almost_equal_nulp(fluxerr, true_error, 1)
+        assert np.fabs((fluxerr - true_error) / true_error) < 0.01
 
     def test_scalar_error_array_gain(self):
 
         # Scalar error, Array gain.
         error = 1.
         gain = np.ones(self.data.shape, dtype=np.float)
+        if not hasattr(self, 'mask'):
+            mask = None
+        else:
+            mask = self.mask
         flux, fluxerr = aperture_photometry(self.data, self.aperture,
-                                            error=error, gain=gain)
+                                            mask=mask, error=error, gain=gain)
         assert np.fabs((flux - self.true_flux) / self.true_flux) < 0.01
         true_error = np.sqrt(error ** 2 * self.area + flux)
-
         assert np.fabs((fluxerr - true_error) / true_error) < 0.01
 
     def test_array_error_no_gain(self):
 
         # Array error, no gain.
         error = np.ones(self.data.shape, dtype=np.float)
+        if not hasattr(self, 'mask'):
+            mask = None
+        else:
+            mask = self.mask
+
         flux, fluxerr = aperture_photometry(self.data, self.aperture,
-                                            error=error)
+                                            mask=mask, error=error)
         assert np.fabs((flux - self.true_flux) / self.true_flux) < 0.01
         true_error = np.sqrt(self.area)
         assert np.fabs((fluxerr - true_error) / true_error) < 0.01
@@ -103,8 +119,12 @@ class BaseTestErrorGain(object):
         # Array error, scalar gain.
         error = np.ones(self.data.shape, dtype=np.float)
         gain = 1.
+        if not hasattr(self, 'mask'):
+            mask = None
+        else:
+            mask = self.mask
         flux, fluxerr = aperture_photometry(self.data, self.aperture,
-                                            error=error, gain=gain)
+                                            mask=mask, error=error, gain=gain)
         assert np.fabs((flux - self.true_flux) / self.true_flux) < 0.01
         true_error = np.sqrt(self.area + flux)
         assert np.fabs((fluxerr - true_error) / true_error) < 0.01
@@ -114,8 +134,13 @@ class BaseTestErrorGain(object):
         # Array error, Array gain.
         error = np.ones(self.data.shape, dtype=np.float)
         gain = np.ones(self.data.shape, dtype=np.float)
+        if not hasattr(self, 'mask'):
+            mask = None
+        else:
+            mask = self.mask
+
         flux, fluxerr = aperture_photometry(self.data, self.aperture,
-                                            error=error, gain=gain)
+                                            mask=mask, error=error, gain=gain)
         assert np.fabs((flux - self.true_flux) / self.true_flux) < 0.01
         true_error = np.sqrt(self.area + flux)
         assert np.fabs((fluxerr - true_error) / true_error) < 0.01
@@ -191,3 +216,31 @@ def test_rectangular_aperture():
 
     assert flux1 < true_flux
     assert np.fabs(flux2 - true_flux) < 0.1
+
+
+class TestMasked(BaseTestErrorGain):
+
+    def setup_class(self):
+        self.data = np.ones((40, 40), dtype=np.float)
+        self.mask = np.zeros((40, 40), dtype=bool)
+        self.mask[20, 20] = True
+        self.xc = 20.
+        self.yc = 20.
+        r = 10.
+        self.aperture = CircularAperture((self.xc, self.yc), r)
+        self.area = np.pi * r * r - 1
+        self.true_flux = self.area
+
+
+class TestMaskedMirrored(BaseTestErrorGain):
+
+    def setup_class(self):
+        self.data = np.ones((40, 40), dtype=np.float)
+        self.mask = np.zeros((40, 40), dtype=bool)
+        self.mask[22, 20] = True
+        self.xc = 20.
+        self.yc = 20.
+        r = 10.
+        self.aperture = CircularAperture((self.xc, self.yc), r)
+        self.area = np.pi * r * r
+        self.true_flux = self.area
