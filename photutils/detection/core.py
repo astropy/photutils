@@ -63,11 +63,8 @@ def detect_sources(image, snr_threshold, npixels, filter_fwhm=None,
     segment_image :  array_like
         A 2D segmentation image of integers indicating segment labels.
     """
+    from scipy import ndimage
 
-    try:
-        from scipy import ndimage
-    except ImportError:
-        raise ImportError('detect_sources requires scipy.')
     bkgrd, median, bkgrd_rms = img_stats(image, image_mask=image_mask,
                                          mask_val=mask_val, sig=sig,
                                          iters=iters)
@@ -195,11 +192,7 @@ def find_peaks(image, snr_threshold, min_distance=5, exclude_border=True,
     function returns the coordinates of peaks where dilated image =
     original.
     """
-
-    try:
-        from skimage.feature import peak_local_max
-    except ImportError:
-        raise ImportError('find_peaks requires scikit-image.')
+    from skimage.feature import peak_local_max
 
     bkgrd, median, bkgrd_rms = img_stats(image, image_mask=image_mask,
                                          mask_val=mask_val, sig=sig,

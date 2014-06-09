@@ -29,14 +29,13 @@ def centroid_com(data, data_mask=None):
     centroid : tuple
         (x, y) coordinates of the centroid.
     """
-    try:
-        from skimage.measure import moments
-    except ImportError:
-        raise ImportError('centroid_com requires scikit-image.')
+    from skimage.measure import moments
+
     if data_mask is not None:
         if data.shape != data_mask.shape:
             raise ValueError('data and data_mask must have the same shape')
         data[data_mask] = 0.
+
     m = moments(data, 1)
     xcen = m[1, 0] / m[0, 0]
     ycen = m[0, 1] / m[0, 0]
@@ -196,11 +195,7 @@ def shape_params(data, data_mask=None):
         * ``linear_eccen`` : linear eccentricity is the distance between
           the object center and either of its two ellipse foci.
     """
-
-    try:
-        from skimage.measure import moments, moments_central
-    except ImportError:
-        raise ImportError('shape_params requires scikit-image.')
+    from skimage.measure import moments, moments_central
 
     if data_mask is not None:
         if data.shape != data_mask.shape:
