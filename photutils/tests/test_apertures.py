@@ -31,9 +31,9 @@ def test_accuracy_circular_exact():
     random.seed('test_accuracy_circular_exact')
     for _ in range(NITER):
         r = random.uniform(0., 10.)
-        ap = CircularAperture(r)
         xmin, xmax, ymin, ymax, nx, ny, area = sample_grid(r)
-        frac = ap.encloses(xmin, xmax, ymin, ymax, nx, ny, method='exact')
+        ap = CircularAperture(((xmax + xmin) / 2, (ymax + ymin) / 2), r)
+        frac = ap.encloses((xmin, xmax, ymin, ymax), nx, ny, method='exact')
         assert_allclose(np.sum(frac) * area, ap.area(), rtol=TOL)
 
 
@@ -42,9 +42,9 @@ def test_accuracy_circular_annulus_exact():
     for _ in range(NITER):
         r1 = random.uniform(0., 10.)
         r2 = random.uniform(r1, 10.)
-        ap = CircularAnnulus(r1, r2)
         xmin, xmax, ymin, ymax, nx, ny, area = sample_grid(r2)
-        frac = ap.encloses(xmin, xmax, ymin, ymax, nx, ny, method='exact')
+        ap = CircularAnnulus(((xmax + xmin) / 2, (ymax + ymin) / 2), r1, r2)
+        frac = ap.encloses((xmin, xmax, ymin, ymax), nx, ny, method='exact')
         assert_allclose(np.sum(frac) * area, ap.area(), rtol=TOL)
 
 
@@ -54,9 +54,10 @@ def test_accuracy_elliptical_exact():
         a = random.uniform(0., 10.)
         b = random.uniform(0., a)
         theta = random.uniform(0., 2. * np.pi)
-        ap = EllipticalAperture(a, b, theta)
         xmin, xmax, ymin, ymax, nx, ny, area = sample_grid(a)
-        frac = ap.encloses(xmin, xmax, ymin, ymax, nx, ny, method='exact')
+        ap = EllipticalAperture(((xmax + xmin) / 2, (ymax + ymin) / 2),
+                                a, b, theta)
+        frac = ap.encloses((xmin, xmax, ymin, ymax), nx, ny, method='exact')
         assert_allclose(np.sum(frac) * area, ap.area(), rtol=TOL)
 
 
@@ -67,25 +68,28 @@ def test_accuracy_elliptical_annulus_exact():
         a_out = random.uniform(a_in, 10.)
         b_out = random.uniform(0., a_out)
         theta = random.uniform(0., 2. * np.pi)
-        ap = EllipticalAnnulus(a_in, a_out, b_out, theta)
         xmin, xmax, ymin, ymax, nx, ny, area = sample_grid(a_out)
-        frac = ap.encloses(xmin, xmax, ymin, ymax, nx, ny, method='exact')
+        ap = EllipticalAnnulus(((xmax + xmin) / 2, (ymax + ymin) / 2),
+                               a_in, a_out, b_out, theta)
+        frac = ap.encloses((xmin, xmax, ymin, ymax), nx, ny, method='exact')
         assert_allclose(np.sum(frac) * area, ap.area(), rtol=TOL)
 
+
 def test_rectangular():
-    #test a few specific cases, mainly to ensure the sign is right
-    ap = RectangularAperture(w=.2, h=1, theta=0)
-    vertical = ap.encloses(-1, 1, -1, 1, 100, 100, method='center')
+    # test a few specific cases, mainly to ensure the sign is right
+    ap = RectangularAperture((1, 1), .2, 1., 0)
+    vertical = ap.encloses(ap.extent()[0], 100, 100, method='center')
 
-    ap2 = RectangularAperture(w=.2, h=1, theta=np.pi/4)  # 45 deg
-    tilted = ap2.encloses(-1, 1, -1, 1, 100, 100, method='center')
-    tiltedss = ap2.encloses(-1, 1, -1, 1, 100, 100, method='subpixel')
+    ap2 = RectangularAperture((0, 0), .2, 1., np.pi / 4)  # 45 deg
+    tilted = ap2.encloses(ap.extent()[0], 100, 100, method='center')
+    tiltedss = ap2.encloses(ap.extent()[0], 100, 100, method='subpixel')
 
-    #make sure subpixel is doing something
+    # make sure subpixel is doing something
     assert np.any(tilted != tiltedss)
 
-    #check the tilted and vertical versions behave correctly
-    assert vertical[70,50] > 0
-    assert vertical[60,35] < 1
-    assert tilted[70,50] < 1
-    assert tilted[60,35] > 0
+    # check the tilted and vertical versions behave correctly
+
+    assert vertical[10, 2] > 0
+    assert vertical[10, 5] < 1
+    assert tilted[10, 2] < 1
+    assert tilted[0, 3] > 0
