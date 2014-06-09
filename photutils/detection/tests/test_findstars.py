@@ -166,8 +166,8 @@ class TestDAOFind(SetupData):
             (fwhm, threshold, sigma_radius)
         datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
         t = Table.read(datafn, format='ascii')
-        assert_allclose(np.array(tbl).view(np.float),
-                        np.array(t).view(np.float))
+        assert_allclose(np.array(tbl).astype(np.float),
+                        np.array(t).astype(np.float))
 
     @pytest.mark.parametrize(('threshold'), THRESHOLDS)
     @pytest.mark.skipif('not HAS_SCIPY')
@@ -180,8 +180,8 @@ class TestDAOFind(SetupData):
             (fwhm, threshold, sigma_radius)
         datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
         t = Table.read(datafn, format='ascii')
-        assert_allclose(np.array(tbl).view(np.float),
-                        np.array(t).view(np.float))
+        assert_allclose(np.array(tbl).astype(np.float),
+                        np.array(t).astype(np.float))
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -198,8 +198,8 @@ class TestIRAFStarFind(SetupData):
             .format(fwhm, threshold, sigma_radius)
         datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
         t = Table.read(datafn, format='ascii')
-        assert_allclose(np.array(tbl).view(np.float),
-                        np.array(t).view(np.float))
+        assert_allclose(np.array(tbl).astype(np.float),
+                        np.array(t).astype(np.float))
 
     @pytest.mark.parametrize(('threshold'), THRESHOLDS)
     def test_isf_ellrotobj_threshold(self, threshold):
@@ -212,5 +212,5 @@ class TestIRAFStarFind(SetupData):
             .format(fwhm, threshold, sigma_radius)
         datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
         t = Table.read(datafn, format='ascii')
-        assert_allclose(np.array(tbl).view(np.float),
-                        np.array(t).view(np.float))
+        assert_allclose(np.array(tbl).astype(np.float),
+                        np.array(t).astype(np.float))
