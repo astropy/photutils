@@ -191,14 +191,14 @@ class GaussianPSF(Fittable2DModel):
 
     Parameters
     ----------
+    sigma : float
+        Width of the Gaussian PSF.
     amplitude : float (default 1)
         Amplitude at the peak value.
     x_0 : float (default 0)
         Position of the peak in x direction.
     y_0 : float (default 0)
         Position of the peak in y direction.
-    sigma : float
-        Width of the Gaussian PSF.
 
     Notes
     -----
@@ -230,16 +230,13 @@ class GaussianPSF(Fittable2DModel):
 
     _erf = None
 
-    def __init__(self, sigma):
+    def __init__(self, sigma, amplitude=1, x_0=0, y_0=0):
         if self._erf is None:
             try:
                 from scipy.special import erf
                 self.__class__._erf = erf
             except (ValueError, ImportError):
                 raise ImportError("Gaussian PSF model requires scipy.")
-        x_0 = 0
-        y_0 = 0
-        amplitude = 1
         constraints = {'fixed': {'x_0': True, 'y_0': True, 'sigma': True}}
         super(GaussianPSF, self).__init__(param_dim=1, sigma=sigma,
                                           x_0=x_0, y_0=y_0,
