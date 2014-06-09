@@ -47,7 +47,7 @@ Let's plot the image:
 
     from photutils import datasets
     hdu = datasets.load_star_image()
-    plt.imshow(hdu.data, origin='lower')
+    plt.imshow(hdu.data, origin='lower', cmap='gray')
     plt.tight_layout()
     plt.show()
 

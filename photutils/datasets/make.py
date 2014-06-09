@@ -34,6 +34,7 @@ def make_gaussian_image(shape, table):
     --------
 
     .. plot::
+        :include-source:
 
         # Simulate a Gaussian source catalog
         from numpy.random import uniform

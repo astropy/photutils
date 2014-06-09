@@ -58,6 +58,7 @@ def load_fermi_image():
     Examples
     --------
     .. plot::
+        :include-source:
 
         from photutils import datasets
         hdu = datasets.load_fermi_image()
@@ -80,10 +81,11 @@ def load_star_image():
     Examples
     --------
     .. plot::
+        :include-source:
 
         from photutils import datasets
         hdu = datasets.load_star_image()
-        plt.imshow(hdu.data, origin='lower')
+        plt.imshow(hdu.data, origin='lower', cmap='gray')
     """
     path = get_path('M6707HH.fits.gz', location='remote')
     hdu = fits.open(path)[0]
