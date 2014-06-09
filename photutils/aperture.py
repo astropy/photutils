@@ -694,9 +694,9 @@ def aperture_photometry(data, apertures, error=None, gain=None,
 
             # Corresponding coordinates mirrored across xc, yc
             x_mirror = (2 * (apertures.positions[j][0] - extent[0])
-                        - x_masked + 0.5).view('int32')
+                        - x_masked + 0.5).astype('int32')
             y_mirror = (2 * (apertures.positions[j][1] - extent[2])
-                        - y_masked + 0.5).view('int32')
+                        - y_masked + 0.5).astype('int32')
 
             # reset pixels that go out of the image.
             outofimage = ((x_mirror < 0) |
