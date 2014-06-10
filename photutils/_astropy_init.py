@@ -140,9 +140,9 @@ if not _ASTROPY_SETUP_:
     except ImportError:
         if is_photutils_source_dir:
             _rollback_import(
-                ('You appear to be trying to import photutils from within'
-                'a source checkout; please run `./setup.py develop` or'
-                '`./setup.py build_ext --inplace` first so that extension'
+                ('You appear to be trying to import photutils from within '
+                'a source checkout; please run `./setup.py develop` or '
+                '`./setup.py build_ext --inplace` first so that extension '
                 'modules can be compiled and made importable.'))
         else:
             # Outright broken installation; don't be nice.
