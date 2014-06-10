@@ -130,8 +130,8 @@ if not _ASTROPY_SETUP_:
     from warnings import warn
     from astropy import config
 
-    # If this __init__.py file is in ./photutils/ then import is within a
-    # source dir
+    # If this _astropy_init.py file is in ./photutils/ then import is
+    # within a source directory
     is_photutils_source_dir = (os.path.abspath(os.path.dirname(__file__)) ==
                                os.path.abspath('photutils') and
                                os.path.exists('setup.py'))
