@@ -51,7 +51,7 @@ def test_inside_array_simple(aperture, radius):
     assert np.fabs(flux2 - flux3 ) < 0.1
 
 
-class BaseTestError(object):
+class BaseTestAperturePhotometry(object):
 
     def test_scalar_error_no_gain(self):
 
@@ -99,8 +99,8 @@ class BaseTestError(object):
                                             mask=mask, error=error, gain=gain)
         assert_allclose(flux, self.true_flux)
 
-        if hasattr(self, 'true_var'):
-            true_error = np.sqrt(error ** 2 * self.true_var -
+        if hasattr(self, 'true_variance'):
+            true_error = np.sqrt(error ** 2 * self.true_variance -
                                  (error ** 2 - 1) * flux)
         else:
             true_error = np.sqrt((error ** 2 * self.area) + flux)
@@ -119,8 +119,8 @@ class BaseTestError(object):
                                             mask=mask, error=error)
         assert_allclose(flux, self.true_flux)
 
-        if hasattr(self, 'true_var'):
-            true_error = np.sqrt(self.true_var - self.true_flux)
+        if hasattr(self, 'true_variance'):
+            true_error = np.sqrt(self.true_variance - self.true_flux)
         else:
             true_error = np.sqrt(self.area)
 
@@ -139,8 +139,8 @@ class BaseTestError(object):
                                             mask=mask, error=error, gain=gain)
         assert_allclose(flux, self.true_flux)
 
-        if hasattr(self, 'true_var'):
-            true_error = np.sqrt(self.true_var)
+        if hasattr(self, 'true_variance'):
+            true_error = np.sqrt(self.true_variance)
         else:
             true_error = np.sqrt((self.area) + flux)
 
@@ -160,15 +160,15 @@ class BaseTestError(object):
                                             mask=mask, error=error, gain=gain)
         assert_allclose(flux, self.true_flux)
 
-        if hasattr(self, 'true_var'):
-            true_error = np.sqrt(self.true_var)
+        if hasattr(self, 'true_variance'):
+            true_error = np.sqrt(self.true_variance)
         else:
             true_error = np.sqrt((self.area) + flux)
 
         assert_allclose(fluxerr, true_error)
 
 
-class TestCircular(BaseTestError):
+class TestCircular(BaseTestAperturePhotometry):
 
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=np.float)
@@ -180,7 +180,7 @@ class TestCircular(BaseTestError):
         self.true_flux = self.area
 
 
-class TestCircularAnnulus(BaseTestError):
+class TestCircularAnnulus(BaseTestAperturePhotometry):
 
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=np.float)
@@ -193,7 +193,7 @@ class TestCircularAnnulus(BaseTestError):
         self.true_flux = self.area
 
 
-class TestElliptical(BaseTestError):
+class TestElliptical(BaseTestAperturePhotometry):
 
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=np.float)
@@ -207,7 +207,7 @@ class TestElliptical(BaseTestError):
         self.true_flux = self.area
 
 
-class TestEllipticalAnnulus(BaseTestError):
+class TestEllipticalAnnulus(BaseTestAperturePhotometry):
 
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=np.float)
@@ -240,7 +240,7 @@ def test_rectangular_aperture():
     assert np.fabs(flux2 - true_flux) < 0.1
 
 
-class TestMaskedCircular(BaseTestError):
+class TestMaskedCircular(BaseTestAperturePhotometry):
 
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=np.float)
@@ -252,10 +252,10 @@ class TestMaskedCircular(BaseTestError):
         self.aperture = CircularAperture((self.xc, self.yc), r)
         self.area = np.pi * r * r
         self.true_flux = self.area - 1
-        self.true_var = self.area - 1 + self.true_flux
+        self.true_variance = self.area - 1 + self.true_flux
 
 
-class TestMaskedMirrored(BaseTestError):
+class TestMaskedMirrored(BaseTestAperturePhotometry):
 
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=np.float)
