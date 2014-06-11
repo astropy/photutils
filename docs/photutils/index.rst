@@ -35,13 +35,13 @@ Getting Started
 Given a list of source locations, sum flux in identical circular apertures:
 
   >>> import numpy as np
-  >>> import photutils
+  >>> from photutils import CircularAperture, aperture_photometry
   >>> data = np.ones((100, 100))
   >>> xc = [10., 20., 30., 40.]
   >>> yc = [10., 20., 30., 40.]
   >>> positions = zip(xc, yc)
-  >>> apertures = photutils.CircularAperture(positions, 3.)
-  >>> flux = photutils.aperture_photometry(data, apertures)
+  >>> apertures = CircularAperture(positions, 3.)
+  >>> flux = aperture_photometry(data, apertures)
   >>> flux
   array([ 28.27433388,  28.27433388,  28.27433388,  28.27433388])
 

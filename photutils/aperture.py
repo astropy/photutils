@@ -48,7 +48,7 @@ class Aperture(object):
 
         Parameters
         ----------
-        extent: sequence of integers
+        extent : sequence of integers
             x_min, x_max, y_min, y_max extent of the aperture
         nx, ny : int
             dimensions of array

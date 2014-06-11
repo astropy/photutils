@@ -17,13 +17,13 @@ Suppose there are 4 sources located at (10, 10), (20, 20), and (30,
 aperture of radius 3 pixels centered on each object,:
 
     >>> import numpy as np
-    >>> import photutils
+    >>> from photutils import CircularAperture, aperture_photometry
     >>> data = np.ones((100, 100))
     >>> xc = [10., 20., 30., 40.]
     >>> yc = [10., 20., 30., 40.]
     >>> positions = zip(xc, yc)
-    >>> apertures = photutils.CircularAperture(positions, 3.)
-    >>> photutils.aperture_photometry(data, apertures)
+    >>> apertures = CircularAperture(positions, 3.)
+    >>> aperture_photometry(data, apertures)
     array([ 28.27433388,  28.27433388,  28.27433388,  28.27433388])
 
 Since all the data values are 1, we expect the answer to equal the area of
@@ -40,8 +40,8 @@ used is ``'exact'``, wherein the exact intersection of the aperture with
 each pixel is calculated. There are other options that are faster but
 at the expense of less precise answers. For example,:
 
-    >>> photutils.aperture_photometry(data, apertures,
-    ...                               method='subpixel', subpixels=5)
+    >>> aperture_photometry(data, apertures,
+    ...                     method='subpixel', subpixels=5)
     array([ 27.96,  27.96,  27.96,  27.96])
 
 The result differs from the true value because this method subsamples
@@ -55,7 +55,7 @@ will be increased.
 Aperture Photometry for Multiple Apertures
 ------------------------------------------
 
-Currently the `~photometry.Aperture` objects only support single radius
+Currently the `~photutils.Aperture` objects only support single radius
 apertures. As a workaround one may loop over different apertures.
 
 Suppose that we wish to use 3 apertures of radius 3, 4, and 5
@@ -64,8 +64,7 @@ pixels on each source (each source gets the same 3 apertures):
   >>> r = [3., 4., 5.]
   >>> flux = []
   >>> for radius in r:
-  ...     flux.append(photutils.aperture_photometry(data,
-  ...        photutils.CircularAperture(positions, radius)))
+  ...     flux.append(aperture_photometry(data, CircularAperture(positions, radius)))
   >>> flux
   [array([ 28.27433388,  28.27433388,  28.27433388,  28.27433388]),
    array([ 50.26548246,  50.26548246,  50.26548246,  50.26548246]),
@@ -77,11 +76,12 @@ Other aperture photometry functions have multiple parameters
 specifying the apertures. For example, for elliptical apertures, one
 must specify ``a``, ``b``, and ``theta``:
 
+  >>> from photutils import EllipticalAperture
   >>> a = 5.
   >>> b = 3.
   >>> theta = np.pi / 4.
-  >>> apertures = photutils.EllipticalAperture(positions, a, b, theta)
-  >>> flux = photutils.aperture_photometry(data, apertures)
+  >>> apertures = EllipticalAperture(positions, a, b, theta)
+  >>> flux = aperture_photometry(data, apertures)
   >>> flux
   array([ 47.1238898,  47.1238898,  47.1238898,  47.1238898])
 
@@ -93,8 +93,7 @@ Again, for multiple apertures one should loop over them.
  >>> theta = np.pi / 4.
  >>> flux = []
  >>> for index in range(len(a)):
- ...     flux.append(photutils.aperture_photometry(data,
- ...        photutils.EllipticalAperture(positions, a[index], b[index], theta)))
+ ...     flux.append(aperture_photometry(data, EllipticalAperture(positions, a[index], b[index], theta)))
  >>> flux
  [array([ 47.1238898,  47.1238898,  47.1238898,  47.1238898]),
   array([ 75.39822369,  75.39822369,  75.39822369,  75.39822369]),
@@ -114,17 +113,18 @@ subtraction is left up to the user or calling function.
   If ``bkg`` is an array representing the background level of the data
   (determined in an external function), simply do
 
-    >>> flux = photutils.aperture_photometry(data - bkg, apertures)
+    >>> flux = aperture_photometry(data - bkg, apertures)
 
 * *Local background subtraction*
 
   Suppose we want to estimate the local background level around each pixel
   with a circular annulus of inner radius 6 pixels and outer radius 8 pixels:
 
-    >>> apertures = photutils.CircularAperture(positions, 3.)
-    >>> rawflux = photutils.aperture_photometry(data, apertures)
-    >>> annulus_apertures = photutils.CircularAnnulus(positions, 6., 8.)
-    >>> bkgflux = photutils.aperture_photometry(data, annulus_apertures)
+    >>> from photutils import CircularAnnulus
+    >>> apertures = CircularAperture(positions, 3.)
+    >>> rawflux = aperture_photometry(data, apertures)
+    >>> annulus_apertures = CircularAnnulus(positions, 6., 8.)
+    >>> bkgflux = aperture_photometry(data, annulus_apertures)
     >>> aperture_area = np.pi * 3 ** 2
     >>> annulus_area = np.pi * (8 ** 2 - 6 ** 2)
     >>> flux = rawflux - bkgflux * aperture_area / annulus_area
@@ -148,8 +148,7 @@ For example, suppose we have previously calculated the error on each
 pixel's value and saved it in the array ``data_error``:
 
   >>> data_error = 0.1 * data  # (100 x 100 array)
-  >>> flux, fluxerr = photutils.aperture_photometry(data, apertures,
-  ...                                               error=data_error)
+  >>> flux, fluxerr = aperture_photometry(data, apertures, error=data_error)
   >>> fluxerr
   array([ 0.53173616,  0.53173616,  0.53173616,  0.53173616])
 
@@ -172,10 +171,8 @@ position-dependent background level and variance of our data:
 
   >>> myimagegain = 1.5
   >>> sky_level, sky_sigma = background(data)  # function returns two arrays
-  >>> flux, fluxerr = photutils.aperture_photometry(data - sky_level,
-  ...                                               apertures,
-  ...                                               error=sky_sigma,
-  ...                                               gain=myimagegain)
+  >>> flux, fluxerr = aperture_photometry(data - sky_level, apertures,
+  ...                                     error=sky_sigma, gain=myimagegain)
 
 In this case, and indeed whenever ``gain`` is not `None`, then ``fluxerr``
 is given by
