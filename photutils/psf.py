@@ -4,10 +4,15 @@
 from __future__ import division
 
 import numpy as np
-
-from astropy.modeling import fitting
 from astropy.modeling.parameters import Parameter
 
+# TODO: remove try ... except when Astropy 0.3 support is dropped
+try:
+    from astropy.modeling.fitting import LevMarLSQFitter
+except ImportError:
+    from astropy.modeling.fitting import NonLinearLSQFitter as LevMarLSQFitter
+
+# TODO: remove try ... except when Astropy 0.3 support is dropped
 try:
     from astropy.modeling import Fittable2DModel
 except ImportError:
@@ -86,7 +91,7 @@ class DiscretePRF(Fittable2DModel):
         super(DiscretePRF, self).__init__(param_dim=1, x_0=x_0, y_0=y_0,
                                           amplitude=amplitude, **constraints)
         self.linear = True
-        self.fitter = fitting.NonLinearLSQFitter()
+        self.fitter = LevMarLSQFitter()
 
         # Fix position per default
         self.x_0.fixed = True
@@ -242,7 +247,7 @@ class GaussianPSF(Fittable2DModel):
 
         # Default size is 8 * sigma
         self.shape = (int(8 * sigma) + 1, int(8 * sigma) + 1)
-        self.fitter = fitting.NonLinearLSQFitter()
+        self.fitter = LevMarLSQFitter()
 
         # Fix position per default
         self.x_0.fixed = True
