@@ -55,28 +55,9 @@ Using `photutils`
     aperture.rst
     psf.rst
     datasets.rst
-
-
-Source Detection and Segmentation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. toctree:: detection.rst
-    :maxdepth: 1
-
-
-Source Morphology
-^^^^^^^^^^^^^^^^^
-
-.. toctree:: morphology.rst
-    :maxdepth: 1
-
-
-Utils
-^^^^^
-
-.. toctree:: utils.rst
-    :maxdepth: 1
-
+    detection.rst
+    morphology.rst
+    utils.rst
 
 .. note::
    We also have a series of IPython notebooks that demonstrate how to use photutils.

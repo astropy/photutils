@@ -43,8 +43,9 @@ Finding Stars in an Image
 
 
 Reference/API
-=============
+-------------
 
 .. automodapi:: photutils.detection.core
-
+    :no-heading:
 .. automodapi:: photutils.detection.findstars
+    :no-heading:
