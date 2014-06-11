@@ -16,6 +16,7 @@ env:
         - ASTROPY_VERSION=stable
         - CONDA_INSTALL='conda install -c astropy-ci-extras --yes'
         - PIP_INSTALL='pip install'
+        - INSTALL_OPTIONAL=true
     matrix:
         - SETUP_CMD='egg_info'
 
@@ -44,22 +45,22 @@ matrix:
           env: SETUP_CMD='test'
         - python: 2.7
           env: SETUP_CMD='test'
-        - python: 3.2
-          env: SETUP_CMD='test'
         - python: 3.3
           env: SETUP_CMD='test'
         - python: 3.4
           env: SETUP_CMD='test'
 
+        # Try with optional dependencies disabled
+        - python: 2.7
+          env: SETUP_CMD='test' INSTALL_OPTIONAL=false
+        - python: 3.4
+          env: SETUP_CMD='test' INSTALL_OPTIONAL=false
+
         # Try older numpy versions
-        - python: 3.2
-          env: NUMPY_VERSION=1.6 SETUP_CMD='test'
         - python: 2.7
           env: NUMPY_VERSION=1.7 SETUP_CMD='test'
         - python: 2.7
           env: NUMPY_VERSION=1.6 SETUP_CMD='test'
-        - python: 2.7
-          env: NUMPY_VERSION=1.5 SETUP_CMD='test'
 
 before_install:
 
@@ -94,7 +95,7 @@ install:
     # conda for packages available through conda, or pip for any other
     # packages. You should leave the `numpy=$NUMPY_VERSION` in the `conda` 
     # install since this ensures Numpy does not get automatically upgraded.
-    - if [[ $SETUP_CMD != egg_info ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION scipy scikit-image ; fi
+    - if [[ $SETUP_CMD != egg_info ]] && $INSTALL_OPTIONAL; then $CONDA_INSTALL numpy=$NUMPY_VERSION scipy scikit-image ; fi
     # - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL ...; fi
 
     # DOCUMENTATION DEPENDENCIES
