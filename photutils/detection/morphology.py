@@ -2,7 +2,14 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
-from astropy.modeling import models, fitting
+from astropy.modeling import models
+
+# TODO: remove try ... except when Astropy 0.3 support is dropped
+try:
+    from astropy.modeling.fitting import LevMarLSQFitter
+except ImportError:
+    from astropy.modeling.fitting import NonLinearLSQFitter as LevMarLSQFitter
+
 
 __all__ = ['centroid_com', 'gaussian1d_moments',
            'centroid_1dg', 'centroid_2dg',
@@ -93,9 +100,9 @@ def centroid_1dg(data, data_err=None, data_mask=None):
     for (data, weights) in zip(gaussians, data_weights):
         params_init = gaussian1d_moments(data)
         g_init = models.Gaussian1D(*params_init)
-        f = fitting.NonLinearLSQFitter()
+        fitter = LevMarLSQFitter()
         x = np.arange(data.size)
-        g_fit = f(g_init, x, data, weights=weights)
+        g_fit = fitter(g_init, x, data, weights=weights)
         centroid.append(g_fit.mean.value)
     return centroid
 
@@ -158,9 +165,9 @@ def fit_2dgaussian(data, data_err=None, data_mask=None):
     g_init = models.Gaussian2D(amplitude, gparams['xcen'], gparams['ycen'],
                                gparams['major_axis'], gparams['minor_axis'],
                                theta=gparams['pa'])
-    f = fitting.NonLinearLSQFitter()
+    fitter = LevMarLSQFitter()
     y, x = np.indices(data.shape)
-    gfit = f(g_init, x, y, data, weights=weights)
+    gfit = fitter(g_init, x, y, data, weights=weights)
     return gfit
 
 
