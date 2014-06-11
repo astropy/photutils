@@ -12,6 +12,7 @@ __pycache__
 # Other generated files
 */version.py
 benchmarks/_results
+*/cython_version.py
 htmlcov
 .coverage
 
