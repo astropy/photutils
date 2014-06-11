@@ -2,7 +2,7 @@ Introduction
 ============
 
 The ``photutils`` package also contains general-purpose utility
-functions for scaling images.
+functions for scaling and resampling images.
 
 
 Reference/API
