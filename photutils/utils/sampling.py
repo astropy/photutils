@@ -7,11 +7,11 @@ from ._sampling import _downsample, _upsample
 __all__ = ['downsample', 'upsample']
 
 
-def downsample(array, factor):
+def downsample(array, block_size):
     """
     Downsample an image by combining image pixels.  This process
     conserves image flux.  If the dimensions of `image` are
-    not a whole-multiple of `factor`, the extra rows/columns will
+    not a whole-multiple of `block_size`, the extra rows/columns will
     not be included in the output downsampled image.
 
     Parameters
@@ -19,7 +19,7 @@ def downsample(array, factor):
     image : array_like, float
         The 2D array of the image.
 
-    factor : int
+    block_size : int
         Downsampling integer factor along each axis.
 
     Returns
@@ -36,10 +36,10 @@ def downsample(array, factor):
            [ 42.,  50.]])
     """
 
-    return _downsample(array, factor)
+    return _downsample(array, block_size)
 
 
-def upsample(array, factor):
+def upsample(array, block_size):
     """
     Upsample an image by replicating image pixels.  This process
     conserves image flux.
@@ -49,7 +49,7 @@ def upsample(array, factor):
     image : array_like, float
         The 2D array of the image.
 
-    factor : int
+    block_size : int
         Upsampling integer factor along each axis.
 
     Returns
@@ -68,4 +68,4 @@ def upsample(array, factor):
            [ 0.5 ,  0.5 ,  0.75,  0.75]])
     """
 
-    return _upsample(array, factor)
+    return _upsample(array, block_size)
