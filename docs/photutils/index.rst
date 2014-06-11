@@ -39,8 +39,9 @@ Given a list of source locations, sum flux in identical circular apertures:
   >>> data = np.ones((100, 100))
   >>> xc = [10., 20., 30., 40.]
   >>> yc = [10., 20., 30., 40.]
-  >>> apertures = [photutils.CircularAperture(3.)] * len(xc)
-  >>> flux = photutils.aperture_photometry(data, xc, yc, apertures)
+  >>> positions = zip(xc, yc)
+  >>> apertures = photutils.CircularAperture(positions, 3.)
+  >>> flux = photutils.aperture_photometry(data, apertures)
   >>> flux
   array([ 28.27433388,  28.27433388,  28.27433388,  28.27433388])
 
@@ -80,7 +81,7 @@ Utils
 .. note::
    We also have a series of IPython notebooks that demonstrate how to use photutils.
    You can view them online `here <http://nbviewer.ipython.org/github/astropy/photutils-datasets/tree/master/notebooks/>`__
-   or download them `here <https://github.com/astropy/photutils-datasets>`__ if you'd like to execute them on your machine. 
+   or download them `here <https://github.com/astropy/photutils-datasets>`__ if you'd like to execute them on your machine.
    Contributions welcome!
 
 
