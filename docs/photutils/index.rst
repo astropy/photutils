@@ -35,12 +35,13 @@ Getting Started
 Given a list of source locations, sum flux in identical circular apertures:
 
   >>> import numpy as np
-  >>> import photutils
+  >>> from photutils import CircularAperture, aperture_photometry
   >>> data = np.ones((100, 100))
   >>> xc = [10., 20., 30., 40.]
   >>> yc = [10., 20., 30., 40.]
-  >>> apertures = [photutils.CircularAperture(3.)] * len(xc)
-  >>> flux = photutils.aperture_photometry(data, xc, yc, apertures)
+  >>> positions = zip(xc, yc)
+  >>> apertures = CircularAperture(positions, 3.)
+  >>> flux = aperture_photometry(data, apertures)
   >>> flux
   array([ 28.27433388,  28.27433388,  28.27433388,  28.27433388])
 
@@ -54,33 +55,20 @@ Using `photutils`
     aperture.rst
     psf.rst
     datasets.rst
+    detection.rst
+    morphology.rst
+    utils.rst
 
+.. toctree::
+  :maxdepth: 1
 
-Source Detection and Segmentation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. toctree:: detection.rst
-    :maxdepth: 1
-
-
-Source Morphology
-^^^^^^^^^^^^^^^^^
-
-.. toctree:: morphology.rst
-    :maxdepth: 1
-
-
-Utils
-^^^^^
-
-.. toctree:: utils.rst
-    :maxdepth: 1
+  high-level_API.rst
 
 
 .. note::
    We also have a series of IPython notebooks that demonstrate how to use photutils.
    You can view them online `here <http://nbviewer.ipython.org/github/astropy/photutils-datasets/tree/master/notebooks/>`__
-   or download them `here <https://github.com/astropy/photutils-datasets>`__ if you'd like to execute them on your machine. 
+   or download them `here <https://github.com/astropy/photutils-datasets>`__ if you'd like to execute them on your machine.
    Contributions welcome!
 
 
@@ -103,6 +91,5 @@ zero-indexing, this means that the array is defined over the
 coordinate range ``-0.5 < x <= data.shape[1] - 0.5``,
 ``-0.5 < y <= data.shape[0] - 0.5``.
 
-.. automodapi:: photutils
 
 .. _SourceExtractor: http://www.astromatic.net/software/sextractor

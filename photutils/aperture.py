@@ -29,22 +29,27 @@ class Aperture(object):
     @abc.abstractmethod
     def extent(self):
         """
-        Extent of apertures relative to objects centers.
+        Extent of apertures. In the case when part of an aperture's extent
+        falls out of the actual data region,
+        `~photutils.aperture_photometry` calls the ``encloses()`` method of
+        the aperture with a redefined extent which has data coverage.
 
         Returns
         -------
         x_min, x_max, y_min, y_max: list of floats
-            Extent of the apertures relative to object center.
+            Extent of the apertures.
         """
 
     @abc.abstractmethod
-    def encloses(self, nx, ny, method='center'):
+    def encloses(self, extent, nx, ny, method='center'):
         """
-        Return array of float arrays giving the fraction of each pixel covered
-        by the apertures.
+        Returns and array of float arrays giving the fraction of each pixel
+        covered by the apertures.
 
         Parameters
         ----------
+        extent : sequence of integers
+            x_min, x_max, y_min, y_max extent of the aperture
         nx, ny : int
             dimensions of array
         method : str

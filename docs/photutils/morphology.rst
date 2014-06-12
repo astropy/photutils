@@ -20,7 +20,7 @@ parameters of an object.  These include:
 
 
 Centroiding an Object
-=====================
+---------------------
 
 The ``photutils`` package allows one to centroid objects using three
 different methods:
@@ -31,11 +31,11 @@ different methods:
 
 
 Getting Started
-===============
+---------------
 
 
 Reference/API
-=============
+-------------
 
 .. automodapi:: photutils.detection.morphology
     :no-heading:

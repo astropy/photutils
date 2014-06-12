@@ -2,10 +2,7 @@ Aperture photometry
 ===================
 
 .. warning:: The aperture photometry API is currently *experimental*
-   and may change in the future. For example, the functions currently
-   accept `~numpy.ndarray` objects for the parameters ``data``,
-   ``error`` and ``gain``. They may be changed to accept objects that
-   encompass all these parameters for a single image.
+   and will change in the near future.
 
 The following functions are provided for different types of apertures:
 
@@ -20,12 +17,13 @@ Suppose there are 4 sources located at (10, 10), (20, 20), and (30,
 aperture of radius 3 pixels centered on each object,:
 
     >>> import numpy as np
-    >>> import photutils
+    >>> from photutils import CircularAperture, aperture_photometry
     >>> data = np.ones((100, 100))
     >>> xc = [10., 20., 30., 40.]
     >>> yc = [10., 20., 30., 40.]
-    >>> apertures = [photutils.CircularAperture(3.)] * len(xc)
-    >>> photutils.aperture_photometry(data, xc, yc, apertures)
+    >>> positions = zip(xc, yc)
+    >>> apertures = CircularAperture(positions, 3.)
+    >>> aperture_photometry(data, apertures)
     array([ 28.27433388,  28.27433388,  28.27433388,  28.27433388])
 
 Since all the data values are 1, we expect the answer to equal the area of
@@ -42,8 +40,8 @@ used is ``'exact'``, wherein the exact intersection of the aperture with
 each pixel is calculated. There are other options that are faster but
 at the expense of less precise answers. For example,:
 
-    >>> photutils.aperture_photometry(data, xc, yc, apertures,
-    ...                               method='subpixel', subpixels=5)
+    >>> aperture_photometry(data, apertures,
+    ...                     method='subpixel', subpixels=5)
     array([ 27.96,  27.96,  27.96,  27.96])
 
 The result differs from the true value because this method subsamples
@@ -57,75 +55,51 @@ will be increased.
 Aperture Photometry for Multiple Apertures
 ------------------------------------------
 
-In the above example, suppose we wished to use a different radius
-aperture for each object. Instead of setting ``r = 3.``, we could have
-used a list specifying an aperture for each ``xc`` and ``yc`` (the length
-of the aperture list must match that of ``xc`` and ``yc`` in this case):
+Currently the `~photutils.Aperture` objects only support single radius
+apertures. As a workaround one may loop over different apertures.
 
-  >>> r = [1., 2., 3., 4.]
-  >>> apertures = []
-  >>> for index in range(len(r)):
-  ...     apertures.append(photutils.CircularAperture(r[index]))
-  >>> flux = photutils.aperture_photometry(data, xc, yc, apertures)
-  >>> flux
-  array([  3.14159265,  12.56637061,  28.27433388,  50.26548246])
-
-Suppose instead that we wish to use 3 apertures of radius 3, 4, and 5
+Suppose that we wish to use 3 apertures of radius 3, 4, and 5
 pixels on each source (each source gets the same 3 apertures):
 
   >>> r = [3., 4., 5.]
-  >>> apertures = []
-  >>> for index in range(len(r)):
-  ...     apertures.append([photutils.CircularAperture(r[index])] * len(xc))
-  >>> flux = photutils.aperture_photometry(data, xc, yc, apertures)
+  >>> flux = []
+  >>> for radius in r:
+  ...     flux.append(aperture_photometry(data, CircularAperture(positions, radius)))
   >>> flux
-  array([[ 28.27433388,  28.27433388,  28.27433388,  28.27433388],
-         [ 50.26548246,  50.26548246,  50.26548246,  50.26548246],
-         [ 78.53981634,  78.53981634,  78.53981634,  78.53981634]])
+  [array([ 28.27433388,  28.27433388,  28.27433388,  28.27433388]),
+   array([ 50.26548246,  50.26548246,  50.26548246,  50.26548246]),
+   array([ 78.53981634,  78.53981634,  78.53981634,  78.53981634])]
 
 
-Finally, suppose we wish to use a different set of 3 apertures for each source:
-
-  >>> r = np.asarray([[3., 4., 5., 6.], [4., 5., 6., 7.], [5., 6., 7., 8.]])
-  >>> apertures = np.empty(r.shape, dtype=object)
-  >>> for index in np.ndindex(r.shape):
-  ...     apertures[index] = photutils.CircularAperture(r[index])
-  >>> flux = photutils.aperture_photometry(data, xc, yc, apertures)
-  >>> flux
-  array([[  28.27433388,   50.26548246,   78.53981634,  113.09733553],
-         [  50.26548246,   78.53981634,  113.09733553,  153.93804003],
-         [  78.53981634,  113.09733553,  153.93804003,  201.06192983]])
-
-These examples illustrate that the ``apertures`` parameter can be an array
-of up to two dimensions where the "fast" (or trailing) dimension corresponds
-to different objects, and the "slow" (or "leading") dimension corresponds to
-multiple apertures per object. Always make sure the trailing dimension of the
-``apertures`` matches the number of objects (``len(xc)``).
 
 Other aperture photometry functions have multiple parameters
 specifying the apertures. For example, for elliptical apertures, one
 must specify ``a``, ``b``, and ``theta``:
 
+  >>> from photutils import EllipticalAperture
   >>> a = 5.
   >>> b = 3.
   >>> theta = np.pi / 4.
-  >>> apertures = [photutils.EllipticalAperture(a, b, theta)] * len(xc)
-  >>> flux = photutils.aperture_photometry(data, xc, yc, apertures)
+  >>> apertures = EllipticalAperture(positions, a, b, theta)
+  >>> flux = aperture_photometry(data, apertures)
   >>> flux
   array([ 47.1238898,  47.1238898,  47.1238898,  47.1238898])
 
-One may prefer to have multiple apertures. For example, to use 4 ellipses of
-different sizes but with the same position angle, we could do:
+
+Again, for multiple apertures one should loop over them.
 
  >>> a = [5., 6., 7., 8.]
  >>> b = [3., 4., 5., 6.]
  >>> theta = np.pi / 4.
- >>> apertures = []
+ >>> flux = []
  >>> for index in range(len(a)):
- ...     apertures.append(photutils.EllipticalAperture(a[index], b[index], theta))
- >>> flux = photutils.aperture_photometry(data, xc, yc, apertures)
+ ...     flux.append(aperture_photometry(data, EllipticalAperture(positions, a[index], b[index], theta)))
  >>> flux
- array([  47.1238898 ,   75.39822369,  109.95574288,  150.79644737])
+ [array([ 47.1238898,  47.1238898,  47.1238898,  47.1238898]),
+  array([ 75.39822369,  75.39822369,  75.39822369,  75.39822369]),
+  array([ 109.95574288,  109.95574288,  109.95574288,  109.95574288]),
+  array([ 150.79644737,  150.79644737,  150.79644737,  150.79644737])]
+
 
 
 Background Subtraction
@@ -139,17 +113,18 @@ subtraction is left up to the user or calling function.
   If ``bkg`` is an array representing the background level of the data
   (determined in an external function), simply do
 
-    >>> flux = photutils.aperture_photometry(data - bkg, xc, yc, apertures)
+    >>> flux = aperture_photometry(data - bkg, apertures)
 
 * *Local background subtraction*
 
   Suppose we want to estimate the local background level around each pixel
   with a circular annulus of inner radius 6 pixels and outer radius 8 pixels:
 
-    >>> apertures = [photutils.CircularAperture(3.)] * len(xc)
-    >>> rawflux = photutils.aperture_photometry(data, xc, yc, apertures)
-    >>> annulus_apertures = [photutils.CircularAnnulus(6., 8.)] * len(xc)
-    >>> bkgflux = photutils.aperture_photometry(data, xc, yc, annulus_apertures)
+    >>> from photutils import CircularAnnulus
+    >>> apertures = CircularAperture(positions, 3.)
+    >>> rawflux = aperture_photometry(data, apertures)
+    >>> annulus_apertures = CircularAnnulus(positions, 6., 8.)
+    >>> bkgflux = aperture_photometry(data, annulus_apertures)
     >>> aperture_area = np.pi * 3 ** 2
     >>> annulus_area = np.pi * (8 ** 2 - 6 ** 2)
     >>> flux = rawflux - bkgflux * aperture_area / annulus_area
@@ -173,8 +148,7 @@ For example, suppose we have previously calculated the error on each
 pixel's value and saved it in the array ``data_error``:
 
   >>> data_error = 0.1 * data  # (100 x 100 array)
-  >>> flux, fluxerr = photutils.aperture_photometry(data, xc, yc, apertures,
-  ...                                               error=data_error)
+  >>> flux, fluxerr = aperture_photometry(data, apertures, error=data_error)
   >>> fluxerr
   array([ 0.53173616,  0.53173616,  0.53173616,  0.53173616])
 
@@ -197,10 +171,8 @@ position-dependent background level and variance of our data:
 
   >>> myimagegain = 1.5
   >>> sky_level, sky_sigma = background(data)  # function returns two arrays
-  >>> flux, fluxerr = photutils.aperture_photometry(data - sky_level, xc,
-  ...                                               yc, apertures,
-  ...                                               error=sky_sigma,
-  ...                                               gain=myimagegain)
+  >>> flux, fluxerr = aperture_photometry(data - sky_level, apertures,
+  ...                                     error=sky_sigma, gain=myimagegain)
 
 In this case, and indeed whenever ``gain`` is not `None`, then ``fluxerr``
 is given by
@@ -252,20 +224,21 @@ to extend functionality: a new type of aperture photometry simply
 requires the definition of a new `~photutils.Aperture` subclass.
 
 All `~photutils.Aperture` subclasses must implement only two methods,
-``encloses(xx, yy)`` and ``extent()``. They can optionally implement a
-third method, ``area()``.
+``encloses(extent, nx, ny)`` and ``extent()``. They can optionally implement
+a third method, ``area()``.
 
-* ``encloses(xx, yy)``: Takes two 2-d arrays of x and y positions
-  *relative to the object center* and returns a bool array indicating
-  whether each position is in the aperture.
-* ``extent()``: Returns the maximum extent of the aperture, (x_min,
-  x_max, y_min, y_max) *relative to the object center*. This is used
-  to determine the portion of the data array to subsample (if
+* ``encloses(extent, nx, ny)``: Takes an extent and two dimensions and
+  returns an array of shape (ny, nx) giving the fraction of each pixel
+  covered by the aperture.
+* ``extent()``: Returns the maximum extent of the aperture, (x_min, x_max,
+  y_min, y_max). This may be out of the data area, and thus may be
+  different, than the ``extent`` parameter of the ``encloses()`` method. It
+  is used to determine the portion of the data array to subsample (if
   necessary).
 * ``area()``: If convenient to calculate, this returns the area of the
   aperture.  This speeds computation in certain situations (such as a
   scalar error). If not provided, ``~photutils.aperture_photometry`` will
-  estimate the area using the result of ``encloses(xx, yy)``.
+  estimate the area using the result of ``encloses(extent, nx, ny)``.
 
 Note that all x and y coordinates here refer to the fast and slow
 (second and first) axis of the data array respectively. See
