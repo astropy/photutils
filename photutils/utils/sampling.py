@@ -14,6 +14,12 @@ def downsample(array, block_size):
     whole-multiple of ``block_size``, the extra rows/columns will not be
     included in the output downsampled image.
 
+    This function is similar to the `scikit-image`_ `block_reduce`_
+    function, which is more flexible, but slower than `downsample`.
+
+    .. _scikit-image: http://scikit-image.org/
+    .. _block_reduce: http://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.block_reduce
+
     Parameters
     ----------
     image : array_like, float
@@ -26,6 +32,10 @@ def downsample(array, block_size):
     -------
     output : array_like
         The 2D array of the resampled image.
+
+    See Also
+    --------
+    upsample
 
     Examples
     --------
@@ -58,6 +68,10 @@ def upsample(array, block_size):
     -------
     output : array_like
         The 2D array of the resampled image.
+
+    See Also
+    --------
+    downsample
 
     Examples
     --------
