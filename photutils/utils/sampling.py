@@ -9,10 +9,10 @@ __all__ = ['downsample', 'upsample']
 
 def downsample(array, block_size):
     """
-    Downsample an image by combining image pixels.  This process
-    conserves image flux.  If the dimensions of `image` are
-    not a whole-multiple of `block_size`, the extra rows/columns will
-    not be included in the output downsampled image.
+    Downsample an image by block summing image pixels.  This process
+    conserves image flux.  If the dimensions of ``image`` are not a
+    whole-multiple of ``block_size``, the extra rows/columns will not be
+    included in the output downsampled image.
 
     Parameters
     ----------
@@ -29,6 +29,7 @@ def downsample(array, block_size):
 
     Examples
     --------
+    >>> import numpy as np
     >>> from photutils import utils
     >>> img = np.arange(16.).reshape((4, 4))
     >>> utils.downsample(img, 2)
@@ -41,8 +42,9 @@ def downsample(array, block_size):
 
 def upsample(array, block_size):
     """
-    Upsample an image by replicating image pixels.  This process
-    conserves image flux.
+    Upsample an image by block replicating image pixels.  To conserve
+    image flux, the block-replicated image is then divided by
+    ``block_size**2``.
 
     Parameters
     ----------
@@ -59,6 +61,7 @@ def upsample(array, block_size):
 
     Examples
     --------
+    >>> import numpy as np
     >>> from photutils import utils
     >>> img = np.array([[0., 1.], [2., 3.]])
     >>> utils.upsample(img, 2)
