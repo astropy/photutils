@@ -59,6 +59,12 @@ Using `photutils`
     morphology.rst
     utils.rst
 
+.. toctree::
+  :maxdepth: 1
+
+  high-level_API.rst
+
+
 .. note::
    We also have a series of IPython notebooks that demonstrate how to use photutils.
    You can view them online `here <http://nbviewer.ipython.org/github/astropy/photutils-datasets/tree/master/notebooks/>`__
@@ -85,6 +91,5 @@ zero-indexing, this means that the array is defined over the
 coordinate range ``-0.5 < x <= data.shape[1] - 0.5``,
 ``-0.5 < y <= data.shape[0] - 0.5``.
 
-.. automodapi:: photutils
 
 .. _SourceExtractor: http://www.astromatic.net/software/sextractor
