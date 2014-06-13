@@ -246,7 +246,7 @@ def daofind(data, fwhm, threshold, sigma_radius=1.5, ratio=1.0, theta=0.0,
 
     Returns
     -------
-    table : `astropy.table.Table`
+    table : `~astropy.table.Table`
 
         A table of found objects with the following parameters:
 
@@ -350,7 +350,7 @@ def irafstarfind(data, fwhm, threshold, sigma_radius=1.5, sky=None,
 
     Returns
     -------
-    table : `astropy.table.Table`
+    table : `~astropy.table.Table`
 
         A table of found objects with the following parameters:
 

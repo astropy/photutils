@@ -226,7 +226,7 @@ class GaussianPSF(Fittable2DModel):
                 {\\sqrt{2} \\sigma} \\right)
                 \\right]
 
-    Where `erf` denotes the error function.
+    Where ``erf`` denotes the error function.
     """
     amplitude = Parameter('amplitude')
     x_0 = Parameter('x_0')

@@ -139,7 +139,7 @@ def find_peaks(image, snr_threshold, min_distance=5, exclude_border=True,
 
     num_peaks : int
         Maximum number of peaks. When the number of peaks exceeds
-        `num_peaks`, return `num_peaks` peaks based on highest peak
+        ``num_peaks``, return ``num_peaks`` peaks based on highest peak
         intensity.
 
     footprint : ndarray of bools, optional
