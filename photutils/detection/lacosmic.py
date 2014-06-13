@@ -10,7 +10,77 @@ __all__ = ['lacosmic']
 def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
              error_image=None, mask_image=None, background=None,
              gain=None, readnoise=None, maxiters=4):
-    """Identify cosmic rays in single images."""
+    """
+    Remove cosmic rays from a single astronomical image using the
+    `L.A.Cosmic`_ algorithm.  The algorithm is based on Laplacian edge
+    detection and is described in `PASP 113, 1420 (2001)`_.
+
+    .. _L.A.Cosmic: http://www.astro.yale.edu/dokkum/lacosmic/
+    .. _PASP 113, 1420 (2001): http://adsabs.harvard.edu/abs/2001PASP..113.1420V
+
+    Parameters
+    ----------
+    image : array_like
+        The 2D array of the image.
+
+    contrast : float
+        Contrast threshold between the Laplacian image and the
+        fine-structure image.
+
+    cr_threshold : float
+        The signal-to-noise ratio threshold for cosmic ray detection.
+
+    neighbor_threshold :
+        The signal-to-noise ratio threshold for detection of neighboring
+        cosmic rays
+
+    error_image : array_like, optional
+        The 2D array of the 1-sigma errors of the input ``image``.
+        ``error_image`` must have the same shape as ``image``.  If
+        ``error_image`` is not input, then ``gain`` and ``readnoise``
+        will be used to construct an approximate model of the
+        ``error_image``.  If ``error_image`` is input, it will override
+        the ``gain`` and ``readnoise`` parameters.
+
+    mask_image : array_like, bool, optional
+        A boolean mask with the same shape as ``image``, where a `True`
+        value indicates the corresponding element of ``image`` is
+        ignored when identifying cosmic rays.  It is highly recommended
+        that saturated stars be included in ``mask_image``.
+
+    background : float, optional
+        The background level previously subtracted from the input
+        ``image``.  If the input ``image`` has not been
+        background-subtracted, then set ``background=None`` (default).
+
+    gain : float, optional
+        The gain factor that when multiplied by the input ``image``
+        results in an image in units of electrons.  For example, if your
+        input ``image`` is in units of ADU, then ``gain`` should be
+        electrons/ADU.  If your input ``image`` is in units of
+        electrons/s then ``gain`` should be the exposure time.  ``gain``
+        and ``readnoise`` must be specified if an ``error_image`` is not
+        input.
+
+    readnoise : float, optional
+        The read noise (electrons) in the input ``image``.  ``gain`` and
+        ``readnoise`` must be specified if an ``error_image`` is not
+        input.
+
+    maxiters : float, optional
+        The maximum number of interations.  The default is ``4``.  The
+        routine will automatically exit if no additional cosmic rays are
+        identified.  If the routine is still identifying cosmic rays
+        after ``4`` iterations, then you are likely digging into sources
+        and/or the noise.  In that case, try increasing the value of
+        ``cr_threshold``.
+
+    Returns
+    -------
+    crmask_image :  array_like
+        A 2D mask image indicating the location of detected cosmic rays.
+    """
+
     from scipy import ndimage
 
     block_size = 2.0
