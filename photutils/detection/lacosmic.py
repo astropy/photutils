@@ -3,10 +3,13 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
 from photutils import utils
+from photutils.utils import _filtering
+import bottleneck as bn
 
 __all__ = ['lacosmic']
 
 
+@profile
 def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
              error_image=None, mask_image=None, background=None,
              gain=None, readnoise=None, maxiters=4):
@@ -91,7 +94,7 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
     kernel = np.array([[0.0, -1.0, 0.0], [-1.0, 4.0, -1.0], [0.0, -1.0, 0.0]])
     conv_img = ndimage.convolve(sampl_img, kernel,
                                 mode='mirror').clip(min=0.0)
-    laplacian_img = utils.downsample(conv_img, 2)
+    laplacian_img = utils.downsample(conv_img, block_size)
 
     if error_image is None:
         if gain is None and readnoise is None:
@@ -120,6 +123,7 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
     # "> constract * block_size".  "lacos_im.cl" uses simply "> constrast"
     cr_mask2 = (snr_img / finestruct_img) > contrast
     cr_mask = cr_mask1 * cr_mask2
+    #cr_mask = np.logical_and(cr_mask1, cr_mask2)
 
     # check neighbors in snr_img
     struct = np.ones((3, 3))
@@ -128,4 +132,45 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
 
     neigh_mask = ndimage.binary_dilation(cr_mask, struct)
     cr_mask = (snr_img > neighbor_threshold) * neigh_mask
-    return cr_mask
+
+    #return cr_mask, cr_mask
+
+    # create cleaned image
+    size = 5.0
+    clean_image = clean(image, cr_mask, size)
+    outimage = image
+    outimage[cr_mask] = clean_image[cr_mask]
+
+    return outimage, cr_mask
+
+
+@profile
+def clean(image, mask, size):
+    return masked_median_filter(image, mask, size)
+
+    #mask = mask.astype(np.int)
+    #return _filtering._masked_median_filter(image, mask, size)
+
+
+@profile
+def masked_median_filter(image, mask, size):
+    # this is likely to be slow -> cython
+    outimg = np.zeros_like(image)
+    ny, nx = image.shape
+    #for jj in range(ny):
+    #    for ii in range(nx):
+    for ii in range(nx):
+        for jj in range(ny):
+            # NOTE:  this simply clips image at image boundaries
+            minx, maxx = max([ii - size/2, 0]), min([ii + size/2 + 1, nx])
+            miny, maxy = max([jj - size/2, 0]), min([jj + size/2 + 1, ny])
+            image_region = image[miny:maxy, minx:maxx]
+            mask_region = mask[miny:maxy, minx:maxx]
+            #print(jj, ii)
+            #outimg[jj, ii] = np.median(image_region[mask_region == 0])
+            zz = image_region[mask_region == 0]
+            #outimg[jj, ii] = zz.mean()
+            #outimg[jj, ii] = np.median(zz)
+            outimg[jj, ii] = bn.median(zz)
+    return outimg
+
