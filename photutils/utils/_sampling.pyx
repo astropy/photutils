@@ -43,6 +43,5 @@ def _upsample(np.ndarray[DTYPE_t, ndim=2] array, int block_size):
     cdef float block_size_sq = block_size * block_size
     for i in range(nx_new):
         for j in range(ny_new):
-            result[j, i] += array[int(j / block_size),
-                                  int(i / block_size)] / block_size_sq
-    return result
+            result[j, i] += array[j // block_size, i // block_size]
+    return result / block_size_sq
