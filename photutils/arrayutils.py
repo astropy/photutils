@@ -81,8 +81,17 @@ def extract_array_2d(array_large, shape, position):
     >>> import numpy as np
     >>> from photutils.arrayutils import extract_array_2d
     >>> large_array = np.zeros((21, 21))
-    >>> large_array[6:14, 6:14] = np.ones((9, 9))
+    >>> large_array[6:15, 6:15] = np.ones((9, 9))
     >>> extract_array_2d(large_array, (9, 9), (10, 10))
+    array([[ 1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.],
+           [ 1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.],
+           [ 1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.],
+           [ 1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.],
+           [ 1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.],
+           [ 1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.],
+           [ 1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.],
+           [ 1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.],
+           [ 1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.]])
     """
     # Check if larger array is really larger
     if array_large.shape >= shape:
@@ -108,14 +117,25 @@ def add_array_2d(array_large, array_small, position):
 
     Examples
     --------
-    We consider a large array of zeros with the shape 21x21 and a small
-    array of ones with a shape of 9x9:
+    We consider a large array of zeros with the shape 11x11 and a small
+    array of ones with a shape of 3x3:
 
     >>> import numpy as np
     >>> from photutils.arrayutils import add_array_2d
-    >>> large_array = np.zeros((21, 21))
-    >>> small_array = np.ones((9, 9))
-    >>> add_array_2d(large_array, small_array, (10, 10))
+    >>> large_array = np.zeros((11, 11))
+    >>> small_array = np.ones((3, 3))
+    >>> add_array_2d(large_array, small_array, (6, 6))
+    array([[ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+           [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+           [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+           [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+           [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+           [ 0.,  0.,  0.,  0.,  0.,  1.,  1.,  1.,  0.,  0.,  0.],
+           [ 0.,  0.,  0.,  0.,  0.,  1.,  1.,  1.,  0.,  0.,  0.],
+           [ 0.,  0.,  0.,  0.,  0.,  1.,  1.,  1.,  0.,  0.,  0.],
+           [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+           [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
+           [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.]])
     """
     # Check if larger array is really larger
     if array_large.shape >= array_small.shape:

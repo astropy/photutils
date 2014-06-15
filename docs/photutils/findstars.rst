@@ -44,16 +44,16 @@ results in a browser with interactive searching and sorting:
   >>> img += 250.0 * np.exp(-((x-65.2)**2/4.0 + (y-75.9)**2/4.0))
   >>> img += 500.0 * np.exp(-((x-30.78)**2/3.0 + (y-25.313)**2/3.2))
   >>> tbl = photutils.daofind(img, 3.0, 1.0)
-  >>> tbl.show_in_browser(jsviewer=True)
+  >>> tbl.show_in_browser(jsviewer=True)   # doctest: +SKIP
 
 The three sources should be centered at ``(x, y) = (50, 50), (65.2, 75.9),
 and (30.78, 25.313)``.  Now display the image and mark the location
 of the found sources:
 
-  >>> import matplotlib.pyplot as plt
-  >>> plt.imshow(img, cmap=plt.cm.Greys)
-  >>> plt.scatter(tbl['xcen'], tbl['ycen'], s=800, color='cyan', facecolor='none')
-  >>> plt.show()
+  >>> import matplotlib.pyplot as plt   # doctest: +SKIP
+  >>> plt.imshow(img, cmap=plt.cm.Greys)   # doctest: +SKIP
+  >>> plt.scatter(tbl['xcen'], tbl['ycen'], s=800, color='cyan', facecolor='none')   # doctest: +SKIP
+  >>> plt.show()   # doctest: +SKIP
 
 
 .. plot::
@@ -79,7 +79,7 @@ Finally, filter the catalog to include only sources with a peak flux > 200
 (resulting in only two sources):
 
   >>> newtbl = tbl[tbl['peak'] > 200]
-  >>> newtbl.show_in_browser(jsviewer=True)
+  >>> newtbl.show_in_browser(jsviewer=True)   # doctest: +SKIP
   >>> newtbl.pprint(max_width=-1)
     id      xcen          ycen         sharp           round1           round2      npix sky      peak          flux          mag
    --- ------------- ------------- -------------- ---------------- ---------------- ---- --- ------------- ------------- --------------
