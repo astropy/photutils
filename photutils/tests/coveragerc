@@ -1,6 +1,12 @@
 [run]
 source = {packagename}
 
+omit =
+    photutils/_astropy_init.py
+    photutils/cython_version.py
+    photutils/version.py
+    */tests/*
+
 [report]
 exclude_lines =
    # Have to re-enable the standard pragma
