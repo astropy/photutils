@@ -9,7 +9,7 @@ import bottleneck as bn
 __all__ = ['lacosmic']
 
 
-@profile
+#@profile
 def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
              error_image=None, mask_image=None, background=None,
              gain=None, readnoise=None, maxiters=4):
@@ -144,16 +144,28 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
     return outimage, cr_mask
 
 
-@profile
+#@profile
 def clean(image, mask, size):
+    #return masked_median_filter_slow(image, mask, size)
     return masked_median_filter(image, mask, size)
 
     #mask = mask.astype(np.int)
     #return _filtering._masked_median_filter(image, mask, size)
 
-
-@profile
+#@profile
 def masked_median_filter(image, mask, size):
+    import bottleneck as bn
+    from scipy import ndimage
+    idx = np.where(mask == 1)
+    img = image.copy()
+    img[idx] = np.nan
+    z = ndimage.generic_filter(img, bn.nanmedian, 5)
+    img[idx] = z[idx]
+    return img
+
+
+#@profile
+def masked_median_filter_slow(image, mask, size):
     # this is likely to be slow -> cython
     outimg = np.zeros_like(image)
     ny, nx = image.shape
