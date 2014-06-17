@@ -2,9 +2,11 @@
 """Functions for performing PSF fitting photometry on 2-D arrays."""
 
 from __future__ import division
+import warnings
 
 import numpy as np
 from astropy.modeling.parameters import Parameter
+from astropy.utils.exceptions import AstropyUserWarning
 
 # TODO: remove try ... except when Astropy 0.3 support is dropped
 try:
@@ -60,6 +62,7 @@ class DiscretePRF(Fittable2DModel):
     amplitude = Parameter('amplitude')
     x_0 = Parameter('x_0')
     y_0 = Parameter('y_0')
+    linear = True
 
     def __init__(self, prf_array, normalize=True, subsampling=1):
 
@@ -90,7 +93,6 @@ class DiscretePRF(Fittable2DModel):
         amplitude = 1
         super(DiscretePRF, self).__init__(param_dim=1, x_0=x_0, y_0=y_0,
                                           amplitude=amplitude, **constraints)
-        self.linear = True
         self.fitter = LevMarLSQFitter()
 
         # Fix position per default
@@ -180,7 +182,11 @@ class DiscretePRF(Fittable2DModel):
                                  (self.x_0.value, self.y_0.value))
             x = extract_array_2d(indices[1], self.shape,
                                  (self.x_0.value, self.y_0.value))
-            m = self.fitter(self, x, y, sub_array_data)
+            # TODO: It should be discussed whether this is  the right place to fix
+            # the warning. Maybe it should be handled better in astropy.modeling.fitting  
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", AstropyUserWarning)
+                m = self.fitter(self, x, y, sub_array_data)
             return m.amplitude.value
         else:
             return 0
