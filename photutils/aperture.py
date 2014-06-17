@@ -178,6 +178,46 @@ class CircularAperture(Aperture):
             patch = mpatches.Circle(position, self.r, **kwargs)
             ax.add_patch(patch)
 
+    def do_photometry(self, data, method='exact', subpixels=5):
+        flux = np.zeros(len(self.positions), dtype=np.float)
+
+        extents = self.extent()
+        for j in range(len(self.positions)):
+            extent = extents[j]
+            if (extent[0] >= data.shape[1] or extent[1] <= 0 or
+                extent[2] >= data.shape[0] or extent[3] <= 0):
+
+                # TODO: flag these objects
+                flux[j] = np.nan
+                print("Position {0} and its aperture is out of the data"
+                      " area".format(self.positions[j]))
+                continue
+
+            # TODO check whether it makes sense to have negative pixel
+            # coordinate, one could imagine a stackes image where the reference
+            # was a bit offset from some of the images? Or in those cases just
+            # give Skycoord to the Aperture and it should deal with the
+            # conversion for the actual case?
+            extent[0] = max(extent[0], 0)
+            extent[1] = min(extent[1], data.shape[1])
+            extent[2] = max(extent[2], 0)
+            extent[3] = min(extent[3], data.shape[0])
+
+            # Get the sub-array of the image and error
+            subdata = data[extent[2]:extent[3], extent[0]:extent[1]]
+
+            photom_extent = extent - self._centers[j] - 0.5
+
+            # Find fraction of overlap between aperture and pixels
+            fraction = self.encloses(photom_extent, subdata.shape[1],
+                                     subdata.shape[0],
+                                     method=method, subpixels=subpixels)
+
+            # Sum the flux in those pixels and assign it to the output array.
+            flux[j] = np.sum(subdata * fraction)
+
+        return flux
+
 
 class CircularAnnulus(Aperture):
     """
@@ -697,7 +737,7 @@ doc_template = ("""\
     """)
 
 
-def aperture_photometry(data, apertures, error=None, gain=None,
+def aperture_photometry(data, positions, apertures, error=None, gain=None,
                         mask=None, method='exact', subpixels=5,
                         pixelwise_errors=True):
     """Sum flux within aperture(s)."""
@@ -763,159 +803,11 @@ def aperture_photometry(data, apertures, error=None, gain=None,
             raise ValueError('subpixels: an integer greater than 0 is '
                              'required')
 
-    # Initialize arrays to return.
-    flux = u.Quantity(np.zeros(len(apertures.positions), dtype=np.float),
-                      unit=data.unit)
-    if error is not None:
-        fluxerr = u.Quantity(np.zeros(len(apertures.positions),
-                                      dtype=np.float), unit=data.unit)
+    pixelpositions = positions
+    if apertures[0] == 'circular':
+        r = apertures[1]
+        return CircularAperture(pixelpositions, r).do_photometry(data)
 
-    extents = apertures.extent()
-    # Loop over apertures.
-    for j in range(len(apertures.positions)):
-
-        # Limit sub-array to be within the image.
-
-        extent = extents[j]
-
-        # Check that at least part of the sub-array is in the image.
-        if (extent[0] >= data.shape[1] or extent[1] <= 0 or
-            extent[2] >= data.shape[0] or extent[3] <= 0):
-
-            # TODO: flag these objects
-            flux[j] = np.nan
-            warnings.warn('The aperture at position ({0}, {1}) does not have '
-                          'any overlap with the data'
-                          .format(apertures.positions[j][0],
-                                  apertures.positions[j][1]),
-                          AstropyUserWarning)
-            continue
-
-        # TODO check whether it makes sense to have negative pixel
-        # coordinate, one could imagine a stackes image where the reference
-        # was a bit offset from some of the images? Or in those cases just
-        # give Skycoord to the Aperture and it should deal with the
-        # conversion for the actual case?
-        extent[0] = max(extent[0], 0)
-        extent[1] = min(extent[1], data.shape[1])
-        extent[2] = max(extent[2], 0)
-        extent[3] = min(extent[3], data.shape[0])
-
-        # Get the sub-array of the image and error
-        subdata = data[extent[2]:extent[3], extent[0]:extent[1]]
-
-        if pixelwise_errors:
-            subvariance = error[extent[2]:extent[3], extent[0]:extent[1]] ** 2
-            # If gain is specified, add poisson noise from the counts above
-            # the background
-            if gain is not None:
-                subgain = gain[extent[2]:extent[3], extent[0]:extent[1]]
-                subvariance += subdata / subgain
-
-        if mask is not None:
-            submask = mask[extent[2]:extent[3], extent[0]:extent[1]]
-
-            # Get a copy of the data, because we will edit it
-            subdata = copy.deepcopy(subdata)
-
-            # Coordinates of masked pixels in sub-array.
-            y_masked, x_masked = np.nonzero(submask)
-
-            # Corresponding coordinates mirrored across xc, yc
-            x_mirror = (2 * (apertures.positions[j][0] - extent[0])
-                        - x_masked + 0.5).astype('int32')
-            y_mirror = (2 * (apertures.positions[j][1] - extent[2])
-                        - y_masked + 0.5).astype('int32')
-
-            # reset pixels that go out of the image.
-            outofimage = ((x_mirror < 0) |
-                          (y_mirror < 0) |
-                          (x_mirror >= subdata.shape[1]) |
-                          (y_mirror >= subdata.shape[0]))
-            if outofimage.any():
-                x_mirror[outofimage] = x_masked[outofimage]
-                y_mirror[outofimage] = y_masked[outofimage]
-
-            # Replace masked pixel values.
-            subdata[y_masked, x_masked] = subdata[y_mirror, x_mirror]
-            if pixelwise_errors:
-                subvariance[y_masked, x_masked] = \
-                    subvariance[y_mirror, x_mirror]
-
-            # Set pixels that mirrored to another masked pixel to zero.
-            # This will also set to zero any pixels that mirrored out of
-            # the image.
-            mirror_is_masked = submask[y_mirror, x_mirror]
-            x_bad = x_masked[mirror_is_masked]
-            y_bad = y_masked[mirror_is_masked]
-            subdata[y_bad, x_bad] = 0.
-            if pixelwise_errors:
-                subvariance[y_bad, x_bad] = 0.
-
-        # To keep the aperture reusable, define new extent for the actual
-        # photometry rather than overwrite the aperture's extents parameter
-
-        photom_extent = extent - apertures._centers[j] - 0.5
-
-        # Find fraction of overlap between aperture and pixels
-        fraction = apertures.encloses(photom_extent, subdata.shape[1],
-                                      subdata.shape[0],
-                                      method=method, subpixels=subpixels)
-
-        # Sum the flux in those pixels and assign it to the output array.
-        flux[j] = np.sum(subdata * fraction)
-
-        if error is not None:  # If given, calculate error on flux.
-
-            # If pixelwise, we have to do this the slow way.
-            if pixelwise_errors:
-                fluxvar = np.sum(subvariance * fraction)
-
-                # Otherwise, assume error and gain are constant over whole
-                # aperture.
-            else:
-                local_error = error[int((extent[2] + extent[3]) / 2 + 0.5),
-                                    int((extent[0] + extent[1]) / 2 + 0.5)]
-                if hasattr(apertures, 'area'):
-                    area = apertures.area()
-                else:
-                    area = np.sum(fraction)
-                fluxvar = local_error ** 2 * area
-                if gain is not None:
-                    local_gain = gain[int((extent[2] + extent[3]) / 2 + 0.5),
-                                      int((extent[0] + extent[1]) / 2 + 0.5)]
-                    fluxvar += flux[j] / local_gain
-
-            # Make sure variance is > 0 when converting to st. dev.
-            fluxerr[j] = math.sqrt(max(fluxvar, 0.))
-
-    # Prepare version return data
-    from astropy import __version__
-    astropy_version = __version__
-
-    from photutils import __version__
-    photutils_version = __version__
-
-    if hasattr(data, 'unit'):
-        flux = u.Quantity(flux, unit=data.unit)
-        if error is not None:
-            fluxerr = u.Quantity(fluxerr, data.unit)
-    else:
-        flux = u.Quantity(flux, unit=None)
-        if error is not None:
-            fluxerr = u.Quantity(fluxerr, unit=None)
-
-    # TODO: maybe include positions, mask, etc in the output
-    if error is None:
-        return Table([flux, ], names=('aperture_sum',),
-                     meta={'name': 'Aperture photometry results',
-                           'version': 'astropy: {0}, photutils: {1}'
-                           .format(astropy_version, photutils_version)})
-    else:
-        return Table([flux, fluxerr], names=('aperture_sum', 'aperture_sum_err'),
-                     meta={'name': 'Aperture photometry results',
-                           'version': 'astropy: {0}, photutils: {1}'
-                           .format(astropy_version, photutils_version)})
 
 aperture_photometry.__doc__ = doc_template.format(
     desc=aperture_photometry.__doc__,
