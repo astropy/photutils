@@ -85,16 +85,13 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
     """
 
     from scipy import ndimage
-
     block_size = 2.0
-    if background is not None:
-        image += background
-
-    sampl_img = utils.upsample(image, block_size)
     kernel = np.array([[0.0, -1.0, 0.0], [-1.0, 4.0, -1.0], [0.0, -1.0, 0.0]])
-    conv_img = ndimage.convolve(sampl_img, kernel,
-                                mode='mirror').clip(min=0.0)
-    laplacian_img = utils.downsample(conv_img, block_size)
+
+    clean_image = image
+    if background is not None:
+        clean_image += background
+    final_crmask = np.zeros(image.shape, dtype=bool)
 
     if error_image is None:
         if gain is None and readnoise is None:
@@ -108,55 +105,65 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
         assert image.shape == error_image.shape, ('error_image must have the '
                                                   'same shape as image')
 
-    snr_img = laplacian_img / (block_size * error_image)
+    ncosmics, ncosmics_tot = 0, 0
+    for iteration in range(maxiters):
+        sampl_img = utils.upsample(clean_image, block_size)
+        conv_img = ndimage.convolve(sampl_img, kernel,
+                                    mode='mirror').clip(min=0.0)
+        laplacian_img = utils.downsample(conv_img, block_size)
+        # TODO:  recompute error_image each iteration?
+        snr_img = laplacian_img / (block_size * error_image)
 
-    # remove extended structures (larger than ~5x5)
-    snr_img -= ndimage.median_filter(snr_img, size=5, mode='mirror')
+        # used to remove extended structures (larger than ~5x5)
+        snr_img -= ndimage.median_filter(snr_img, size=5, mode='mirror')
 
-    # remove compact bright objects
-    med3_img = ndimage.median_filter(image, size=3, mode='mirror')
-    med7_img = ndimage.median_filter(med3_img, size=7, mode='mirror')
+        # used to remove compact bright objects
+        med3_img = ndimage.median_filter(image, size=3, mode='mirror')
+        med7_img = ndimage.median_filter(med3_img, size=7, mode='mirror')
+        finestruct_img = ((med3_img - med7_img) / error_image).clip(min=0.01)
 
-    finestruct_img = ((med3_img - med7_img) / error_image).clip(min=0.01)
-    cr_mask1 = snr_img > cr_threshold
-    # NOTE: to follow the paper exactly, this condition should be
-    # "> constract * block_size".  "lacos_im.cl" uses simply "> constrast"
-    cr_mask2 = (snr_img / finestruct_img) > contrast
-    cr_mask = cr_mask1 * cr_mask2
-    #cr_mask = np.logical_and(cr_mask1, cr_mask2)
+        cr_mask1 = snr_img > cr_threshold
+        # NOTE: to follow the paper exactly, this condition should be
+        # "> constrast * block_size".  "lacos_im.cl" uses simply "> constrast"
+        cr_mask2 = (snr_img / finestruct_img) > contrast
+        cr_mask = cr_mask1 * cr_mask2
 
-    # check neighbors in snr_img
-    struct = np.ones((3, 3))
-    neigh_mask = ndimage.binary_dilation(cr_mask, struct)
-    cr_mask = cr_mask1 * neigh_mask
+        # grow cosmic rays by one pixel and check in snr_img
+        selem = np.ones((3, 3))
+        neigh_mask = ndimage.binary_dilation(cr_mask, selem)
+        cr_mask = cr_mask1 * neigh_mask
+        # now grow one more pixel and lower the detection threshold
+        neigh_mask = ndimage.binary_dilation(cr_mask, selem)
+        cr_mask = (snr_img > neighbor_threshold) * neigh_mask
 
-    neigh_mask = ndimage.binary_dilation(cr_mask, struct)
-    cr_mask = (snr_img > neighbor_threshold) * neigh_mask
+        ncosmics = np.count_nonzero(cr_mask)
+        final_crmask = np.logical_or(final_crmask, cr_mask)
+        ncosmics_tot += ncosmics
+        #ncosmics_tot2 = np.count_nonzero(final_crmask)
+        print('Iteration: {0}, Number of cosmic rays: {1}, Total number of cosmic rays: {2}'.format(iteration + 1, ncosmics, ncosmics_tot))
+        if ncosmics == 0:
+            if background is not None:
+                clean_image -= background
+            return clean_image, final_crmask
+        clean_image = clean_masked_pixels(clean_image, cr_mask, size=5)
 
-    #return cr_mask, cr_mask
-
-    # create cleaned image
-    size = 5.0
-    #clean_image = clean(image, cr_mask, size)
-    clean_image = clean_masked_pixels(image, cr_mask, size)
-    outimage = image
-    outimage[cr_mask] = clean_image[cr_mask]
-
-    return outimage, cr_mask
+    if background is not None:
+        clean_image -= background
+    return clean_image, final_crmask
 
 
 def local_median(image_nanmask, x, y, nx, ny, size=5):
     hy, hx = size // 2, size // 2
     x0, x1 = np.array([x - hx, x + hx]).clip(0, nx)
     y0, y1 = np.array([y - hy, y + hy]).clip(0, ny)
-    region = image_nanmask[x0:x1, y0:y1].ravel()
+    region = image_nanmask[y0:y1, x0:x1].ravel()
     goodpixels = region[np.isfinite(region)]
     if len(goodpixels) > 0:
         median_val = np.median(goodpixels)
     else:
-        size += 2     # keep size odd
-        print("Found a 5x5 masked region while cleaning, increasing local window size to {0}x{0}".format(size))
-        median_val = local_median(image_nanmask, x, y, nx, ny, size=size)
+        newsize = size + 2     # keep size odd
+        print("Found a {0}x{0} masked region while cleaning, increasing local window size to {1}x{1}".format(size, newsize))
+        median_val = local_median(image_nanmask, x, y, nx, ny, size=newsize)
     return median_val
 
 
@@ -176,9 +183,9 @@ def clean_masked_pixels(image, mask, size):
     image_nanmask[mask_idx] = np.nan
     mask_coords = np.transpose(mask_idx)
     for coord in mask_coords:
-        x, y = coord
+        y, x = coord
         median_val = local_median(image_nanmask, x, y, nx, ny, size=5)
-        image[x, y] = median_val
+        image[y, x] = median_val
     return image
 
 
