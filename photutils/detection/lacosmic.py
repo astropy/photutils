@@ -145,14 +145,49 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
             if background is not None:
                 clean_image -= background
             return clean_image, final_crmask
-        clean_image = clean_masked_pixels(clean_image, cr_mask, size=5)
+        clean_image = _clean_masked_pixels(clean_image, cr_mask, size=5)
 
     if background is not None:
         clean_image -= background
     return clean_image, final_crmask
 
 
-def local_median(image_nanmask, x, y, nx, ny, size=5):
+def _clean_masked_pixels(image, mask_image, size=5, exclude_mask=None):
+    """
+    Clean masked pixels in an image.  Each masked pixel is replaced by
+    the median of unmasked pixels in a 2D window of ``size`` centered on
+    it.  If all pixels in the window are masked, then the window is
+    increased in size until unmasked pixels are found.
+
+    Pixels in ``exclude_mask`` are not cleaned, but they are excluded
+    when calculating the local median.
+    """
+
+    assert size % 2 == 1, 'size must be an odd integer'
+    assert image.shape == mask_image.shape, \
+        'mask_image must have the same shape as image'
+    ny, nx = image.shape
+    image_nanmask = image.copy()
+    mask_coords = np.argwhere(mask_image)
+
+    if exclude_mask is not None:
+        assert image.shape == exclude_mask.shape, \
+            'exclude_mask must have the same shape as image'
+        mask = np.logical_or(mask_image, exclude_mask)
+    else:
+        mask = mask_image
+    mask_idx = mask.nonzero()
+    image_nanmask[mask_idx] = np.nan
+
+    for coord in mask_coords:
+        y, x = coord
+        median_val = _local_median(image_nanmask, x, y, nx, ny, size=size)
+        image[y, x] = median_val
+    return image
+
+
+def _local_median(image_nanmask, x, y, nx, ny, size=5):
+    """Compute the local median in a 2D window."""
     hy, hx = size // 2, size // 2
     x0, x1 = np.array([x - hx, x + hx]).clip(0, nx)
     y0, y1 = np.array([y - hy, y + hy]).clip(0, ny)
@@ -162,72 +197,7 @@ def local_median(image_nanmask, x, y, nx, ny, size=5):
         median_val = np.median(goodpixels)
     else:
         newsize = size + 2     # keep size odd
-        print("Found a {0}x{0} masked region while cleaning, increasing local window size to {1}x{1}".format(size, newsize))
-        median_val = local_median(image_nanmask, x, y, nx, ny, size=newsize)
+        print('Found a {0}x{0} masked region while cleaning, increasing '
+              'local window size to {1}x{1}'.format(size, newsize))
+        median_val = _local_median(image_nanmask, x, y, nx, ny, size=newsize)
     return median_val
-
-
-def clean_masked_pixels(image, mask, size):
-    """
-    Clean masked pixels in an image.  The input masked pixels
-    should include the identified cosmic rays and any user-defined
-    mask (e.g. saturated stars).  The masked pixels are replaced by
-    the median value of unmasked values in a centered 5x5 window.
-    If all pixels in the window are masked, then the window is increased
-    in size until XX good pixels are found.
-    """
-    # assert size is odd
-    ny, nx = image.shape
-    image_nanmask = image.copy()
-    mask_idx = mask.nonzero()
-    image_nanmask[mask_idx] = np.nan
-    mask_coords = np.transpose(mask_idx)
-    for coord in mask_coords:
-        y, x = coord
-        median_val = local_median(image_nanmask, x, y, nx, ny, size=5)
-        image[y, x] = median_val
-    return image
-
-
-#@profile
-def clean(image, mask, size):
-    #return masked_median_filter_slow(image, mask, size)
-    return masked_median_filter(image, mask, size)
-
-    #mask = mask.astype(np.int)
-    #return _filtering._masked_median_filter(image, mask, size)
-
-#@profile
-def masked_median_filter(image, mask, size):
-    import bottleneck as bn
-    from scipy import ndimage
-    idx = np.where(mask == 1)
-    img = image.copy()
-    img[idx] = np.nan
-    z = ndimage.generic_filter(img, bn.nanmedian, 5)
-    img[idx] = z[idx]
-    return img
-
-
-#@profile
-def masked_median_filter_slow(image, mask, size):
-    # this is likely to be slow -> cython
-    outimg = np.zeros_like(image)
-    ny, nx = image.shape
-    #for jj in range(ny):
-    #    for ii in range(nx):
-    for ii in range(nx):
-        for jj in range(ny):
-            # NOTE:  this simply clips image at image boundaries
-            minx, maxx = max([ii - size/2, 0]), min([ii + size/2 + 1, nx])
-            miny, maxy = max([jj - size/2, 0]), min([jj + size/2 + 1, ny])
-            image_region = image[miny:maxy, minx:maxx]
-            mask_region = mask[miny:maxy, minx:maxx]
-            #print(jj, ii)
-            #outimg[jj, ii] = np.median(image_region[mask_region == 0])
-            zz = image_region[mask_region == 0]
-            #outimg[jj, ii] = zz.mean()
-            #outimg[jj, ii] = np.median(zz)
-            outimg[jj, ii] = bn.median(zz)
-    return outimg
-
