@@ -13,6 +13,8 @@ Examples
 Create an image with a single 2D circular Gaussian source to represent
 a star and find it in the image using ``daofind``:
 
+.. doctest-requires:: scipy
+
   >>> import numpy as np
   >>> import photutils
   >>> y, x = np.mgrid[-50:51, -50:51]
@@ -26,6 +28,8 @@ a star and find it in the image using ``daofind``:
 
 Search the same image, but using ``irafstarfind``:
 
+.. doctest-requires:: scipy
+
   >>> tbl2 = photutils.irafstarfind(img, 3.0, 1.0)
   >>> tbl2.pprint(max_width=-1)
     id xcen ycen      fwhm         sharp            round             pa      npix      sky           peak          flux          mag
@@ -36,6 +40,8 @@ Search the same image, but using ``irafstarfind``:
 Create an image with three 2D circular Gaussian source to represent
 stars, find them in the image using ``daofind``, and display the
 results in a browser with interactive searching and sorting:
+
+.. doctest-requires:: scipy
 
   >>> import numpy as np
   >>> import photutils
@@ -77,6 +83,8 @@ of the found sources:
 
 Finally, filter the catalog to include only sources with a peak flux > 200
 (resulting in only two sources):
+
+.. doctest-requires:: scipy
 
   >>> newtbl = tbl[tbl['peak'] > 200]
   >>> newtbl.show_in_browser(jsviewer=True)   # doctest: +SKIP
