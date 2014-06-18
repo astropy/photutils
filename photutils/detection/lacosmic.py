@@ -137,11 +137,49 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
 
     # create cleaned image
     size = 5.0
-    clean_image = clean(image, cr_mask, size)
+    #clean_image = clean(image, cr_mask, size)
+    clean_image = clean_masked_pixels(image, cr_mask, size)
     outimage = image
     outimage[cr_mask] = clean_image[cr_mask]
 
     return outimage, cr_mask
+
+
+def local_median(image_nanmask, x, y, nx, ny, size=5):
+    hy, hx = size // 2, size // 2
+    x0, x1 = np.array([x - hx, x + hx]).clip(0, nx)
+    y0, y1 = np.array([y - hy, y + hy]).clip(0, ny)
+    region = image_nanmask[x0:x1, y0:y1].ravel()
+    goodpixels = region[np.isfinite(region)]
+    if len(goodpixels) > 0:
+        median_val = np.median(goodpixels)
+    else:
+        size += 2     # keep size odd
+        print("Found a 5x5 masked region while cleaning, increasing local window size to {0}x{0}".format(size))
+        median_val = local_median(image_nanmask, x, y, nx, ny, size=size)
+    return median_val
+
+
+def clean_masked_pixels(image, mask, size):
+    """
+    Clean masked pixels in an image.  The input masked pixels
+    should include the identified cosmic rays and any user-defined
+    mask (e.g. saturated stars).  The masked pixels are replaced by
+    the median value of unmasked values in a centered 5x5 window.
+    If all pixels in the window are masked, then the window is increased
+    in size until XX good pixels are found.
+    """
+    # assert size is odd
+    ny, nx = image.shape
+    image_nanmask = image.copy()
+    mask_idx = mask.nonzero()
+    image_nanmask[mask_idx] = np.nan
+    mask_coords = np.transpose(mask_idx)
+    for coord in mask_coords:
+        x, y = coord
+        median_val = local_median(image_nanmask, x, y, nx, ny, size=5)
+        image[x, y] = median_val
+    return image
 
 
 #@profile
