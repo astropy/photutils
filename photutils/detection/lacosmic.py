@@ -3,8 +3,6 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
 from photutils import utils
-from photutils.utils import _filtering
-import bottleneck as bn
 
 __all__ = ['lacosmic']
 
@@ -12,14 +10,15 @@ __all__ = ['lacosmic']
 #@profile
 def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
              error_image=None, mask_image=None, background=None,
-             gain=None, readnoise=None, maxiters=4):
+             gain=None, readnoise=None, maxiter=4):
     """
     Remove cosmic rays from a single astronomical image using the
-    `L.A.Cosmic`_ algorithm.  The algorithm is based on Laplacian edge
-    detection and is described in `PASP 113, 1420 (2001)`_.
+    `L.A.Cosmic <http://www.astro.yale.edu/dokkum/lacosmic/>`_
+    algorithm.  The algorithm is based on Laplacian edge detection and
+    is described in `PASP 113, 1420 (2001)`_.
 
-    .. _L.A.Cosmic: http://www.astro.yale.edu/dokkum/lacosmic/
-    .. _PASP 113, 1420 (2001): http://adsabs.harvard.edu/abs/2001PASP..113.1420V
+    .. _PASP 113, 1420 (2001):
+        http://adsabs.harvard.edu/abs/2001PASP..113.1420V
 
     Parameters
     ----------
@@ -70,7 +69,7 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
         ``readnoise`` must be specified if an ``error_image`` is not
         input.
 
-    maxiters : float, optional
+    maxiter : float, optional
         The maximum number of interations.  The default is ``4``.  The
         routine will automatically exit if no additional cosmic rays are
         identified.  If the routine is still identifying cosmic rays
@@ -93,27 +92,29 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
         clean_image += background
     final_crmask = np.zeros(image.shape, dtype=bool)
 
-    if error_image is None:
-        if gain is None and readnoise is None:
-            print('Warning message')
-            import sys
-            sys.exit()
-        med5_img = ndimage.median_filter(image, size=5,
-                                         mode='mirror').clip(min=1.e-5)
-        error_image = np.sqrt(gain*med5_img + readnoise**2) / gain
-    else:
-        assert image.shape == error_image.shape, ('error_image must have the '
-                                                  'same shape as image')
+    if error_image is not None:
+        assert image.shape == error_image.shape, \
+            'error_image must have the same shape as image'
+    clean_error_image = error_image
 
     ncosmics, ncosmics_tot = 0, 0
-    for iteration in range(maxiters):
+    for iteration in range(maxiter):
         sampl_img = utils.upsample(clean_image, block_size)
         conv_img = ndimage.convolve(sampl_img, kernel,
                                     mode='mirror').clip(min=0.0)
         laplacian_img = utils.downsample(conv_img, block_size)
-        # TODO:  recompute error_image each iteration?
-        snr_img = laplacian_img / (block_size * error_image)
 
+        if clean_error_image is None:
+            if gain is None or readnoise is None:
+                raise AssertionError('gain and readnoise must be input if '
+                                     'error_image is not input')
+            med5_img = ndimage.median_filter(image, size=5,
+                                             mode='mirror').clip(min=1.e-5)
+            error_image = np.sqrt(gain*med5_img + readnoise**2) / gain
+        else:
+            error_image = clean_error_image
+
+        snr_img = laplacian_img / (block_size * error_image)
         # used to remove extended structures (larger than ~5x5)
         snr_img -= ndimage.median_filter(snr_img, size=5, mode='mirror')
 
@@ -137,16 +138,19 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
         neigh_mask = ndimage.binary_dilation(cr_mask, selem)
         cr_mask = (snr_img > neighbor_threshold) * neigh_mask
 
-        ncosmics = np.count_nonzero(cr_mask)
+        # previously unknown cosmics rays found in this iteration
+        crmask_new = np.logical_and(np.logical_not(final_crmask), cr_mask)
+        ncosmics = np.count_nonzero(crmask_new)
+
         final_crmask = np.logical_or(final_crmask, cr_mask)
         ncosmics_tot += ncosmics
-        #ncosmics_tot2 = np.count_nonzero(final_crmask)
-        print('Iteration: {0}, Number of cosmic rays: {1}, Total number of cosmic rays: {2}'.format(iteration + 1, ncosmics, ncosmics_tot))
+        print('Iteration {0}: Found {1} cosmic-ray pixels, '
+              'Total: {2}'.format(iteration + 1, ncosmics, ncosmics_tot))
         if ncosmics == 0:
             if background is not None:
                 clean_image -= background
             return clean_image, final_crmask
-        clean_image = _clean_masked_pixels(clean_image, cr_mask, size=5,
+        clean_image = _clean_masked_pixels(clean_image, final_crmask, size=5,
                                            exclude_mask=mask_image)
 
     if background is not None:
@@ -169,9 +173,7 @@ def _clean_masked_pixels(image, mask_image, size=5, exclude_mask=None):
     assert image.shape == mask_image.shape, \
         'mask_image must have the same shape as image'
     ny, nx = image.shape
-    image_nanmask = image.copy()
     mask_coords = np.argwhere(mask_image)
-
     if exclude_mask is not None:
         assert image.shape == exclude_mask.shape, \
             'exclude_mask must have the same shape as image'
@@ -179,27 +181,34 @@ def _clean_masked_pixels(image, mask_image, size=5, exclude_mask=None):
     else:
         mask = mask_image
     mask_idx = mask.nonzero()
+    image_nanmask = image.copy()
     image_nanmask[mask_idx] = np.nan
 
+    nexpanded = 0
     for coord in mask_coords:
         y, x = coord
-        median_val = _local_median(image_nanmask, x, y, nx, ny, size=size)
+        median_val, expanded = _local_median(image_nanmask, x, y, nx, ny,
+                                             size=size)
         image[y, x] = median_val
+        if expanded:
+            nexpanded += 1
+    if nexpanded > 0:
+        print('    Found {0} {1}x{1} masked regions while '
+              'cleaning.'.format(nexpanded, size))
     return image
 
 
-def _local_median(image_nanmask, x, y, nx, ny, size=5):
-    """Compute the local median in a 2D window."""
+def _local_median(image_nanmask, x, y, nx, ny, size=5, expanded=False):
+    """Compute the local median in a 2D window, excluding NaN.."""
     hy, hx = size // 2, size // 2
-    x0, x1 = np.array([x - hx, x + hx]).clip(0, nx)
-    y0, y1 = np.array([y - hy, y + hy]).clip(0, ny)
+    x0, x1 = np.array([x - hx, x + hx + 1]).clip(0, nx)
+    y0, y1 = np.array([y - hy, y + hy + 1]).clip(0, ny)
     region = image_nanmask[y0:y1, x0:x1].ravel()
     goodpixels = region[np.isfinite(region)]
     if len(goodpixels) > 0:
         median_val = np.median(goodpixels)
     else:
         newsize = size + 2     # keep size odd
-        print('Found a {0}x{0} masked region while cleaning, increasing '
-              'local window size to {1}x{1}'.format(size, newsize))
-        median_val = _local_median(image_nanmask, x, y, nx, ny, size=newsize)
-    return median_val
+        median_val, expanded = _local_median(image_nanmask, x, y, nx, ny,
+                                             size=newsize, expanded=True)
+    return median_val, expanded
