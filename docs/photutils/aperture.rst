@@ -113,7 +113,7 @@ subtraction is left up to the user or calling function.
   If ``bkg`` is an array representing the background level of the data
   (determined in an external function), simply do
 
-    >>> flux = aperture_photometry(data - bkg, apertures)
+    >>> flux = aperture_photometry(data - bkg, apertures)  # doctest: +SKIP
 
 * *Local background subtraction*
 
@@ -170,9 +170,9 @@ suppose we have a function ``background()`` that calculates the
 position-dependent background level and variance of our data:
 
   >>> myimagegain = 1.5
-  >>> sky_level, sky_sigma = background(data)  # function returns two arrays
+  >>> sky_level, sky_sigma = background(data)  # function returns two arrays   # doctest: +SKIP
   >>> flux, fluxerr = aperture_photometry(data - sky_level, apertures,
-  ...                                     error=sky_sigma, gain=myimagegain)
+  ...                                     error=sky_sigma, gain=myimagegain)   # doctest: +SKIP
 
 In this case, and indeed whenever ``gain`` is not `None`, then ``fluxerr``
 is given by

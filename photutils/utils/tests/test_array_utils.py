@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
 from astropy.tests.helper import pytest
-from ..arrayutils import extract_array_2d, add_array_2d, subpixel_indices
+from ..array_utils import extract_array_2d, add_array_2d, subpixel_indices
 
 test_positions = [(10.52, 3.12), (5.62, 12.97), (31.33, 31.77),
                   (0.46, 0.94), (20.45, 12.12), (42.24, 24.42)]

@@ -33,12 +33,12 @@ Getting Started
 To load an example image with `~photutils.datasets.load_star_image`::
 
    >>> from photutils import datasets
-   >>> hdu = datasets.load_star_image()
-   >>> print(hdu.data.shape)
+   >>> hdu = datasets.load_star_image()  # doctest: +REMOTE_DATA
+   >>> print(hdu.data.shape)  # doctest: +REMOTE_DATA
    (1059, 1059)
 
 ``hdu`` is an `astropy.io.fits.ImageHDU` object and ``hdu.data`` is a `numpy.array` object
-that you can analyse with photutils.   
+that you can analyse with photutils.
 
 Let's plot the image:
 

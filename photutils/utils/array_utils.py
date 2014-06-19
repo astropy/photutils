@@ -75,14 +75,17 @@ def extract_array_2d(array_large, shape, position):
 
     Examples
     --------
-    We consider a large array of zeros with the shape 21x21 and a small
-    array of ones with a shape of 9x9:
+    We consider a large array of zeros with the shape 11x10 and a small
+    array of ones with a shape of 3x4:
 
     >>> import numpy as np
-    >>> from photutils.arrayutils import extract_array_2d
-    >>> large_array = np.zeros((21, 21))
-    >>> large_array[6:14, 6:14] = np.ones((9, 9))
-    >>> extract_array_2d(large_array, (9, 9), (10, 10))
+    >>> from photutils.utils import extract_array_2d
+    >>> large_array = np.zeros((11, 10))
+    >>> large_array[4:9, 4:9] = np.ones((5, 5))
+    >>> extract_array_2d(large_array, (3, 4), (7, 7))
+    array([[ 1.,  1.,  1.,  1.,  0.],
+           [ 1.,  1.,  1.,  1.,  0.],
+           [ 1.,  1.,  1.,  1.,  0.]])
     """
     # Check if larger array is really larger
     if array_large.shape >= shape:
@@ -108,14 +111,19 @@ def add_array_2d(array_large, array_small, position):
 
     Examples
     --------
-    We consider a large array of zeros with the shape 21x21 and a small
-    array of ones with a shape of 9x9:
+    We consider a large array of zeros with the shape 5x5 and a small
+    array of ones with a shape of 3x3:
 
     >>> import numpy as np
-    >>> from photutils.arrayutils import add_array_2d
-    >>> large_array = np.zeros((21, 21))
-    >>> small_array = np.ones((9, 9))
-    >>> add_array_2d(large_array, small_array, (10, 10))
+    >>> from photutils.utils import add_array_2d
+    >>> large_array = np.zeros((5, 5))
+    >>> small_array = np.ones((3, 3))
+    >>> add_array_2d(large_array, small_array, (2, 1))
+    array([[ 0.,  1.,  1.,  1.,  0.],
+           [ 0.,  1.,  1.,  1.,  0.],
+           [ 0.,  1.,  1.,  1.,  0.],
+           [ 0.,  0.,  0.,  0.,  0.],
+           [ 0.,  0.,  0.,  0.,  0.]])
     """
     # Check if larger array is really larger
     if array_large.shape >= array_small.shape:
@@ -161,7 +169,7 @@ def fix_prf_nan(extracted_prf, prf_nan):
         PRF array to be fixed.
     prf_nan : array, bool
         Mask indicating where NaN values are present
-        extracted_prf.
+        ``extracted_prf``.
     """
     # Allow at most 3 NaN values to prevent the unlikely case,
     # that the mirrored values are also NaN.
