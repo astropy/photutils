@@ -56,10 +56,12 @@ The three sources should be centered at ``(x, y) = (50, 50), (65.2, 75.9),
 and (30.78, 25.313)``.  Now display the image and mark the location
 of the found sources:
 
-  >>> import matplotlib.pyplot as plt   # doctest: +SKIP
-  >>> plt.imshow(img, cmap=plt.cm.Greys)   # doctest: +SKIP
-  >>> plt.scatter(tbl['xcen'], tbl['ycen'], s=800, color='cyan', facecolor='none')   # doctest: +SKIP
-  >>> plt.show()   # doctest: +SKIP
+.. doctest-skip::
+
+  >>> import matplotlib.pyplot as plt
+  >>> plt.imshow(img, cmap=plt.cm.Greys)
+  >>> plt.scatter(tbl['xcen'], tbl['ycen'], s=800, color='cyan', facecolor='none')
+  >>> plt.show()
 
 
 .. plot::
