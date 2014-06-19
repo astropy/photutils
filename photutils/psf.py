@@ -19,7 +19,7 @@ except ImportError:
     from astropy.modeling import Parametric2DModel as Fittable2DModel
 
 
-from .arrayutils import (extract_array_2d, subpixel_indices,
+from .utils import (extract_array_2d, subpixel_indices,
                          add_array_2d, fix_prf_nan)
 
 

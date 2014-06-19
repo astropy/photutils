@@ -79,7 +79,7 @@ def extract_array_2d(array_large, shape, position):
     array of ones with a shape of 9x9:
 
     >>> import numpy as np
-    >>> from photutils.arrayutils import extract_array_2d
+    >>> from photutils.utils import extract_array_2d
     >>> large_array = np.zeros((21, 21))
     >>> large_array[6:15, 6:15] = np.ones((9, 9))
     >>> extract_array_2d(large_array, (9, 9), (10, 10))
@@ -121,7 +121,7 @@ def add_array_2d(array_large, array_small, position):
     array of ones with a shape of 3x3:
 
     >>> import numpy as np
-    >>> from photutils.arrayutils import add_array_2d
+    >>> from photutils.utils import add_array_2d
     >>> large_array = np.zeros((11, 11))
     >>> small_array = np.ones((3, 3))
     >>> add_array_2d(large_array, small_array, (6, 6))
