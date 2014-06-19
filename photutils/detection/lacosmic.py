@@ -7,7 +7,6 @@ from photutils import utils
 __all__ = ['lacosmic']
 
 
-#@profile
 def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
              error_image=None, mask_image=None, background=None,
              gain=None, readnoise=None, maxiter=4):
@@ -27,14 +26,23 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
 
     contrast : float
         Contrast threshold between the Laplacian image and the
-        fine-structure image.
+        fine-structure image.  If your image is critially sampled, use a
+        value around 2.  If your image is undersampled (e.g. HST data),
+        a value of 4 or 5 (or more) is more appropriate.  If your image
+        is oversampled, use a value between 1 and 2.  For details,
+        please see `PASP 113, 1420 (2001)`_, which calls this parameter
+        :math:`f_{\mbox{lim}}`.  In particular, figure 4 shows the
+        approximate relationship between the ``constrast`` parameter and
+        the pixel full-width half-maximum of stars in your image.
 
     cr_threshold : float
-        The signal-to-noise ratio threshold for cosmic ray detection.
+        The Laplacian signal-to-noise ratio threshold for cosmic ray
+        detection.
 
     neighbor_threshold :
-        The signal-to-noise ratio threshold for detection of neighboring
-        cosmic rays
+        The Laplacian signal-to-noise ratio threshold for detection of
+        cosmic rays in pixels neighboring the initially-identified
+        cosmic rays.
 
     error_image : array_like, optional
         The 2D array of the 1-sigma errors of the input ``image``.
@@ -50,23 +58,25 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
         ignored when identifying cosmic rays.  It is highly recommended
         that saturated stars be included in ``mask_image``.
 
-    background : float, optional
+    background : float or array_like, optional
         The background level previously subtracted from the input
-        ``image``.  If the input ``image`` has not been
-        background-subtracted, then set ``background=None`` (default).
+        ``image``.  ``background`` may either be a scalar value or a 2D
+        image with the same shape as the input ``image``.  If the input
+        ``image`` has not been background-subtracted, then set
+        ``background=None`` (default).
 
     gain : float, optional
         The gain factor that when multiplied by the input ``image``
         results in an image in units of electrons.  For example, if your
-        input ``image`` is in units of ADU, then ``gain`` should be
-        electrons/ADU.  If your input ``image`` is in units of
+        input ``image`` is in units of ADU, then ``gain`` should
+        represent electrons/ADU.  If your input ``image`` is in units of
         electrons/s then ``gain`` should be the exposure time.  ``gain``
         and ``readnoise`` must be specified if an ``error_image`` is not
         input.
 
     readnoise : float, optional
-        The read noise (electrons) in the input ``image``.  ``gain`` and
-        ``readnoise`` must be specified if an ``error_image`` is not
+        The read noise (in electrons) in the input ``image``.  ``gain``
+        and ``readnoise`` must be specified if an ``error_image`` is not
         input.
 
     maxiter : float, optional
@@ -74,20 +84,25 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
         routine will automatically exit if no additional cosmic rays are
         identified.  If the routine is still identifying cosmic rays
         after ``4`` iterations, then you are likely digging into sources
-        and/or the noise.  In that case, try increasing the value of
+        (e.g. saturated stars) and/or the noise.  In that case, try
+        inputing a ``mask_image`` or increasing the value of
         ``cr_threshold``.
 
     Returns
     -------
-    crmask_image :  array_like
-        A 2D mask image indicating the location of detected cosmic rays.
+    cleaned_image : array_like
+        The cosmic-ray cleaned image.
+
+    crmask_image : array_like, bool
+        A mask image of the identified cosmic rays.  Cosmic-ray pixels
+        have a value of `True`.
     """
 
     from scipy import ndimage
     block_size = 2.0
     kernel = np.array([[0.0, -1.0, 0.0], [-1.0, 4.0, -1.0], [0.0, -1.0, 0.0]])
 
-    clean_image = image
+    clean_image = image.copy()
     if background is not None:
         clean_image += background
     final_crmask = np.zeros(image.shape, dtype=bool)
