@@ -124,7 +124,7 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
             if gain is None or readnoise is None:
                 raise AssertionError('gain and readnoise must be input if '
                                      'error_image is not input')
-            med5_img = ndimage.median_filter(image, size=5,
+            med5_img = ndimage.median_filter(clean_image, size=5,
                                              mode='mirror').clip(min=1.e-5)
             error_image = np.sqrt(gain*med5_img + readnoise**2) / gain
         else:
@@ -135,7 +135,7 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
         snr_img -= ndimage.median_filter(snr_img, size=5, mode='mirror')
 
         # used to remove compact bright objects
-        med3_img = ndimage.median_filter(image, size=3, mode='mirror')
+        med3_img = ndimage.median_filter(clean_image, size=3, mode='mirror')
         med7_img = ndimage.median_filter(med3_img, size=7, mode='mirror')
         finestruct_img = ((med3_img - med7_img) / error_image).clip(min=0.01)
 

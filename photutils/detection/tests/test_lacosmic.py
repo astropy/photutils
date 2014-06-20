@@ -31,14 +31,14 @@ class TestLACosmic(object):
 
     def test_background_scalar(self):
         """Test lacosmic with a background scalar."""
-        crclean_img, crmask_img = lacosmic(CR_IMG, 3, 2, 2, gain=1,
+        crclean_img, crmask_img = lacosmic(CR_IMG, 3, 1, 1, gain=1,
                                            readnoise=0, background=10)
         assert_allclose(crclean_img, IMG, atol=0.76)
         assert_array_equal(crmask_img, MASK_REF)
 
     def test_background_maxiter(self):
         """Test lacosmic with a background scalar."""
-        crclean_img, crmask_img = lacosmic(CR_IMG, 3, 2, 2, gain=1,
+        crclean_img, crmask_img = lacosmic(CR_IMG, 3, 1, 1, gain=1,
                                            readnoise=0, background=10,
                                            maxiter=1)
         assert_allclose(crclean_img, IMG, atol=0.76)
@@ -47,7 +47,7 @@ class TestLACosmic(object):
     def test_background_image(self):
         """Test lacosmic with a 2D background image."""
         bkgrd_img = np.ones(IMG.shape) * 10.
-        crclean_img, crmask_img = lacosmic(CR_IMG, 3, 2, 2, gain=1,
+        crclean_img, crmask_img = lacosmic(CR_IMG, 3, 1, 1, gain=1,
                                            readnoise=0, background=bkgrd_img)
         assert_allclose(crclean_img, IMG, atol=0.76)
         assert_array_equal(crmask_img, MASK_REF)
@@ -72,7 +72,7 @@ class TestLACosmic(object):
 
     def test_large_cosmics(self):
         """Test lacosmic cleaning with large cosmic rays."""
-        test_img = np.random.RandomState(1234567890).randn(7, 7) * 0.5
+        test_img = np.ones((7, 7))
         test_img[1:6, 1:6] = 100.
         mask_ref2 = np.zeros((7, 7), dtype=np.bool)
         mask_ref2[1:6, 1:6] = True
@@ -83,8 +83,7 @@ class TestLACosmic(object):
     def test_error_image_size(self):
         """
         Test if AssertionError raises if shape of error_img doesn't
-        match image.
-        """
+        match image.  """
         error_img = np.zeros((7, 7))
         with pytest.raises(AssertionError):
             crclean_img, crmask_img = lacosmic(CR_IMG, 3, 2, 2, gain=1,
