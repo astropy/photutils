@@ -143,7 +143,7 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
         # "> constrast * block_size".  "lacos_im.cl" uses simply "> constrast"
         cr_mask2 = (snr_img / finestruct_img) > contrast
         cr_mask = cr_mask1 * cr_mask2
-        cr_mask = np.logical_and(cr_mask, np.logical_not(mask_image))
+        cr_mask = np.logical_and(cr_mask, ~mask_image)
 
         # grow cosmic rays by one pixel and check in snr_img
         selem = np.ones((3, 3))
@@ -154,7 +154,7 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
         cr_mask = (snr_img > neighbor_threshold) * neigh_mask
 
         # previously unknown cosmics rays found in this iteration
-        crmask_new = np.logical_and(np.logical_not(final_crmask), cr_mask)
+        crmask_new = np.logical_and(~final_crmask, cr_mask)
         ncosmics = np.count_nonzero(crmask_new)
 
         final_crmask = np.logical_or(final_crmask, cr_mask)
