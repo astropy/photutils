@@ -51,3 +51,5 @@ Reference/API
     :no-heading:
 .. automodapi:: photutils.detection.findstars
     :no-heading:
+.. automodapi:: photutils.detection.lacosmic
+    :no-heading:
