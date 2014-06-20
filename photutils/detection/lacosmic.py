@@ -26,20 +26,20 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
 
     contrast : float
         Contrast threshold between the Laplacian image and the
-        fine-structure image.  If your image is critially sampled, use a
-        value around 2.  If your image is undersampled (e.g. HST data),
-        a value of 4 or 5 (or more) is more appropriate.  If your image
-        is oversampled, use a value between 1 and 2.  For details,
+        fine-structure image.  If your image is critically sampled, use
+        a value around 2.  If your image is undersampled (e.g. HST
+        data), a value of 4 or 5 (or more) is more appropriate.  If your
+        image is oversampled, use a value between 1 and 2.  For details,
         please see `PASP 113, 1420 (2001)`_, which calls this parameter
         :math:`f_{\mbox{lim}}`.  In particular, figure 4 shows the
-        approximate relationship between the ``constrast`` parameter and
+        approximate relationship between the ``contrast`` parameter and
         the pixel full-width half-maximum of stars in your image.
 
     cr_threshold : float
         The Laplacian signal-to-noise ratio threshold for cosmic ray
         detection.
 
-    neighbor_threshold :
+    neighbor_threshold : float
         The Laplacian signal-to-noise ratio threshold for detection of
         cosmic rays in pixels neighboring the initially-identified
         cosmic rays.
@@ -80,7 +80,7 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
         input.
 
     maxiter : float, optional
-        The maximum number of interations.  The default is ``4``.  The
+        The maximum number of iterations.  The default is ``4``.  The
         routine will automatically exit if no additional cosmic rays are
         identified.  If the routine is still identifying cosmic rays
         after ``4`` iterations, then you are likely digging into sources
@@ -140,7 +140,7 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
 
         cr_mask1 = snr_img > cr_threshold
         # NOTE: to follow the paper exactly, this condition should be
-        # "> constrast * block_size".  "lacos_im.cl" uses simply "> constrast"
+        # "> contrast * block_size".  "lacos_im.cl" uses simply "> contrast"
         cr_mask2 = (snr_img / finestruct_img) > contrast
         cr_mask = cr_mask1 * cr_mask2
         cr_mask = np.logical_and(cr_mask, ~mask_image)
@@ -153,7 +153,7 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
         neigh_mask = ndimage.binary_dilation(cr_mask, selem)
         cr_mask = (snr_img > neighbor_threshold) * neigh_mask
 
-        # previously unknown cosmics rays found in this iteration
+        # previously unknown cosmic rays found in this iteration
         crmask_new = np.logical_and(~final_crmask, cr_mask)
         ncosmics = np.count_nonzero(crmask_new)
 
