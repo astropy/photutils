@@ -3,6 +3,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
 from photutils import utils
+from astropy import log
 
 __all__ = ['lacosmic']
 
@@ -143,7 +144,8 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
         # "> contrast * block_size".  "lacos_im.cl" uses simply "> contrast"
         cr_mask2 = (snr_img / finestruct_img) > contrast
         cr_mask = cr_mask1 * cr_mask2
-        cr_mask = np.logical_and(cr_mask, ~mask_image)
+        if mask_image is not None:
+            cr_mask = np.logical_and(cr_mask, ~mask_image)
 
         # grow cosmic rays by one pixel and check in snr_img
         selem = np.ones((3, 3))
@@ -159,8 +161,8 @@ def lacosmic(image, contrast, cr_threshold, neighbor_threshold,
 
         final_crmask = np.logical_or(final_crmask, cr_mask)
         ncosmics_tot += ncosmics
-        print('Iteration {0}: Found {1} cosmic-ray pixels, '
-              'Total: {2}'.format(iteration + 1, ncosmics, ncosmics_tot))
+        log.info('Iteration {0}: Found {1} cosmic-ray pixels, '
+                 'Total: {2}'.format(iteration + 1, ncosmics, ncosmics_tot))
         if ncosmics == 0:
             if background is not None:
                 clean_image -= background
@@ -208,8 +210,8 @@ def _clean_masked_pixels(image, mask_image, size=5, exclude_mask=None):
         if expanded:
             nexpanded += 1
     if nexpanded > 0:
-        print('    Found {0} {1}x{1} masked regions while '
-              'cleaning.'.format(nexpanded, size))
+        log.info('    Found {0} {1}x{1} masked regions while '
+                 'cleaning.'.format(nexpanded, size))
     return image
 
 
