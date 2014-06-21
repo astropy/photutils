@@ -25,9 +25,7 @@ ctypedef np.float64_t DTYPE_t
 
 cimport cython
 
-
-def distance(double x1, double y1, double x2, double y2):
-    return sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+from ..geometry import distance, area_triangle
 
 
 def area_arc_unit(double x1, double y1, double x2, double y2):
@@ -42,13 +40,6 @@ def area_arc_unit(double x1, double y1, double x2, double y2):
     a = distance(x1, y1, x2, y2)
     theta = 2. * asin(0.5 * a)
     return 0.5 * (theta - sin(theta))
-
-
-def area_triangle(double x1, double y1, double x2, double y2, double x3, double y3):
-    '''
-    Area of a triangle defined by three vertices
-    '''
-    return 0.5 * abs(x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
 
 
 def in_triangle(double x, double y, double x1, double y1, double x2, double y2, double x3, double y3):
