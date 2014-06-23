@@ -144,23 +144,83 @@ class CircularAperture(Aperture):
         self._centers = np.array(centers)
         return np.array(extents)
 
-    def encloses(self, extent, nx, ny, method='exact', subpixels=5):
-        x_min, x_max, y_min, y_max = extent
+    def area(self):
+        return math.pi * self.r ** 2
+
+    def do_photometry(self, data, method='exact', subpixels=5):
+        flux = np.zeros(len(self.positions), dtype=np.float)
+
+        extents = self.extent()
+
+        # Check if an aperture is fully out of data
+        ood_filter = np.logical_or(extents[:, 0] >= data.shape[1],
+                                   extents[:, 1] <= 0)
+        np.logical_or(ood_filter, extents[:, 2] >= data.shape[0],
+                      out=ood_filter)
+        np.logical_or(ood_filter, extents[:, 3] <= 0, out=ood_filter)
+
+        # TODO: flag these objects
+        if np.sum(ood_filter):
+            flux[ood_filter] = np.nan
+            print("Position {0} and its aperture is out of the data"
+                  " area".format(self.positions[ood_filter]))
+
+        # TODO check whether it makes sense to have negative pixel
+        # coordinate, one could imagine a stackes image where the reference
+        # was a bit offset from some of the images? Or in those cases just
+        # give Skycoord to the Aperture and it should deal with the
+        # conversion for the actual case?
+        extents[:, 0] = np.maximum(extents[:, 0], 0)
+        extents[:, 1] = np.minimum(extents[:, 1], data.shape[1])
+        extents[:, 2] = np.maximum(extents[:, 2], 0)
+        extents[:, 3] = np.minimum(extents[:, 3], data.shape[0])
+
+        x_min = extents[:, 0]
+        x_max = extents[:, 1]
+        y_min = extents[:, 2]
+        y_max = extents[:, 3]
+
+        x_pmin = x_min - self.positions[:, 0] - 0.5
+        x_pmax = x_max - self.positions[:, 0] - 0.5
+        y_pmin = y_min - self.positions[:, 1] - 0.5
+        y_pmax = y_max - self.positions[:, 1] - 0.5
+
+        # Find fraction of overlap between aperture and pixels
+
         if method == 'center':
-            x_size = (x_max - x_min) / nx
-            y_size = (y_max - y_min) / ny
-            x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
-            y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
-            xx, yy = np.meshgrid(x_centers, y_centers)
-            return xx * xx + yy * yy < self.r * self.r
+            for i in range(len(self.positions)):
+                x_size = (x_pmax[i] - x_pmin[i] /
+                          data[x_min[i]:x_max[i]].shape)
+                y_size = (y_pmax[i] - y_pmin[i] /
+                          data[y_min[i]:y_max[i]].shape)
+
+                x_centers = np.arange(x_pmin[i] + x_size / 2.,
+                                      x_pmax[i], x_size)
+                y_centers = np.arange(y_pmin[i] + y_size / 2.,
+                                      y_pmax[i], y_size)
+                xx, yy = np.meshgrid(x_centers, y_centers)
+                flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
+                                 (xx * xx + yy * yy < self.r * self.r))
+
         elif method == 'subpixel':
             from .geometry import circular_overlap_grid
-            return circular_overlap_grid(x_min, x_max, y_min, y_max,
-                                         nx, ny, self.r, 0, subpixels)
+            for i in range(len(self.positions)):
+                flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
+                                 circular_overlap_grid(x_pmin[i], x_pmax[i],
+                                                       y_pmin[i], y_pmax[i],
+                                                       x_pmax[i] - x_pmin[i],
+                                                       y_pmax[i] - y_pmin[i],
+                                                       self.r, 0, subpixels))
+
         elif method == 'exact':
             from .geometry import circular_overlap_grid
-            return circular_overlap_grid(x_min, x_max, y_min, y_max,
-                                         nx, ny, self.r, 1, 1)
+            for i in range(len(self.positions)):
+                flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
+                                 circular_overlap_grid(x_pmin[i], x_pmax[i],
+                                                       y_pmin[i], y_pmax[i],
+                                                       x_pmax[i] - x_pmin[i],
+                                                       y_pmax[i] - y_pmin[i],
+                                                       self.r, 1, 1))
         else:
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
@@ -803,7 +863,9 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
             raise ValueError('subpixels: an integer greater than 0 is '
                              'required')
 
+    # TODO check whether positions is wcs or pixel
     pixelpositions = positions
+
     if apertures[0] == 'circular':
         r = apertures[1]
         return CircularAperture(pixelpositions, r).do_photometry(data)
