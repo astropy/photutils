@@ -937,7 +937,7 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
     if apertures[0] == 'circular':
         r = apertures[1]
         return CircularAperture(pixelpositions, r).do_photometry(data)
-    elif apertures[0] == 'circular_annul':
+    elif apertures[0] == 'circular_annulus':
         r_in, r_out = apertures[1:3]
         return CircularAnnulus(pixelpositions, r_in, r_out).do_photometry(data)
 

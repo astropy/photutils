@@ -134,7 +134,7 @@ c[name]['multipos'] = True
 
 f = {}
 f['circ'] = 'circular'
-f['circ_ann'] = photutils.CircularAnnulus
+f['circ_ann'] = 'circular_annulus'
 f['elli'] = photutils.EllipticalAperture
 f['elli_ann'] = photutils.EllipticalAnnulus
 
