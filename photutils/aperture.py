@@ -170,15 +170,10 @@ class CircularAperture(Aperture):
         # was a bit offset from some of the images? Or in those cases just
         # give Skycoord to the Aperture and it should deal with the
         # conversion for the actual case?
-        extents[:, 0] = np.maximum(extents[:, 0], 0)
-        extents[:, 1] = np.minimum(extents[:, 1], data.shape[1])
-        extents[:, 2] = np.maximum(extents[:, 2], 0)
-        extents[:, 3] = np.minimum(extents[:, 3], data.shape[0])
-
-        x_min = extents[:, 0]
-        x_max = extents[:, 1]
-        y_min = extents[:, 2]
-        y_max = extents[:, 3]
+        x_min = np.maximum(extents[:, 0], 0)
+        x_max = np.minimum(extents[:, 1], data.shape[1])
+        y_min = np.maximum(extents[:, 2], 0)
+        y_max = np.minimum(extents[:, 3], data.shape[0])
 
         x_pmin = x_min - self.positions[:, 0] - 0.5
         x_pmax = x_max - self.positions[:, 0] - 0.5
@@ -189,10 +184,10 @@ class CircularAperture(Aperture):
 
         if method == 'center':
             for i in range(len(self.positions)):
-                x_size = (x_pmax[i] - x_pmin[i] /
-                          data[x_min[i]:x_max[i]].shape)
-                y_size = (y_pmax[i] - y_pmin[i] /
-                          data[y_min[i]:y_max[i]].shape)
+                x_size = ((x_pmax[i] - x_pmin[i]) /
+                          data[:, x_min[i]:x_max[i]].shape[1])
+                y_size = ((y_pmax[i] - y_pmin[i]) /
+                          data[y_min[i]:y_max[i], :].shape[0])
 
                 x_centers = np.arange(x_pmin[i] + x_size / 2.,
                                       x_pmax[i], x_size)
@@ -359,15 +354,10 @@ class CircularAnnulus(Aperture):
         # was a bit offset from some of the images? Or in those cases just
         # give Skycoord to the Aperture and it should deal with the
         # conversion for the actual case?
-        extents[:, 0] = np.maximum(extents[:, 0], 0)
-        extents[:, 1] = np.minimum(extents[:, 1], data.shape[1])
-        extents[:, 2] = np.maximum(extents[:, 2], 0)
-        extents[:, 3] = np.minimum(extents[:, 3], data.shape[0])
-
-        x_min = extents[:, 0]
-        x_max = extents[:, 1]
-        y_min = extents[:, 2]
-        y_max = extents[:, 3]
+        x_min = np.maximum(extents[:, 0], 0)
+        x_max = np.minimum(extents[:, 1], data.shape[1])
+        y_min = np.maximum(extents[:, 2], 0)
+        y_max = np.minimum(extents[:, 3], data.shape[0])
 
         x_pmin = x_min - self.positions[:, 0] - 0.5
         x_pmax = x_max - self.positions[:, 0] - 0.5
@@ -378,10 +368,10 @@ class CircularAnnulus(Aperture):
 
         if method == 'center':
             for i in range(len(self.positions)):
-                x_size = (x_pmax[i] - x_pmin[i] /
-                          data[x_min[i]:x_max[i]].shape)
-                y_size = (y_pmax[i] - y_pmin[i] /
-                          data[y_min[i]:y_max[i]].shape)
+                x_size = ((x_pmax[i] - x_pmin[i]) /
+                          data[:, x_min[i]:x_max[i]].shape[1])
+                y_size = ((y_pmax[i] - y_pmin[i]) /
+                          data[y_min[i]:y_max[i], :].shape[0])
 
                 x_centers = np.arange(x_pmin[i] + x_size / 2.,
                                       x_pmax[i], x_size)
@@ -936,7 +926,7 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
 
     if apertures[0] == 'circular':
         r = apertures[1]
-        return CircularAperture(pixelpositions, r).do_photometry(data)
+        return CircularAperture(pixelpositions, r).do_photometry(data, method=method, subpixels=subpixels)
     elif apertures[0] == 'circular_annulus':
         r_in, r_out = apertures[1:3]
         return CircularAnnulus(pixelpositions, r_in, r_out).do_photometry(data)
