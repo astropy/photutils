@@ -135,8 +135,8 @@ c[name]['multipos'] = True
 f = {}
 f['circ'] = 'circular'
 f['circ_ann'] = 'circular_annulus'
-f['elli'] = photutils.EllipticalAperture
-f['elli_ann'] = photutils.EllipticalAnnulus
+f['elli'] = 'elliptical'
+f['elli_ann'] = 'elliptical_annulus'
 
 
 # Select subset of defined tests and functions to run, to save time.
