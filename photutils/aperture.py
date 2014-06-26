@@ -7,6 +7,7 @@ import math
 import abc
 import copy
 import numpy as np
+from astropy.table import Table
 from astropy.extern import six
 import warnings
 from astropy.utils.exceptions import AstropyUserWarning
@@ -874,10 +875,13 @@ def aperture_photometry(data, apertures, error=None, gain=None,
             # Make sure variance is > 0 when converting to st. dev.
             fluxerr[j] = math.sqrt(max(fluxvar, 0.))
 
+    # TODO: maybe include positions, mask, etc in the output
     if error is None:
-        return flux
+        return Table([flux, ], names=('flux',),
+                     meta={'name': 'Aperture photometry results'})
     else:
-        return flux, fluxerr
+        return Table([flux, fluxerr], names=('flux', 'fluxerr'),
+                     meta={'name': 'Aperture photometry results'})
 
 aperture_photometry.__doc__ = doc_template.format(
     desc=aperture_photometry.__doc__,
