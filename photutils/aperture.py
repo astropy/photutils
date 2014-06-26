@@ -58,30 +58,6 @@ class Aperture(object):
         x_min, x_max, y_min, y_max: list of floats
             Extent of the apertures.
         """
-
-    @abc.abstractmethod
-    def encloses(self, extent, nx, ny, method='center'):
-        """
-        Returns and array of float arrays giving the fraction of each pixel
-        covered by the apertures.
-
-        Parameters
-        ----------
-        extent : sequence of integers
-            x_min, x_max, y_min, y_max extent of the aperture
-        nx, ny : int
-            dimensions of array
-        method : str
-            Which method to use for calculation. Available methods can
-            differ between derived classes.
-
-        Returns
-        -------
-        overlap_area : `~numpy.ndarray` (float)
-            2-d array of shape (ny, nx) giving the fraction of each pixel
-            covered by the aperture.
-        """
-
     @abc.abstractmethod
     def plot(self, ax=None, fill=False, **kwargs):
         """
@@ -141,9 +117,6 @@ class CircularAperture(Aperture):
 
         return np.array(extents)
 
-    def encloses(self):
-        return
-
     def area(self):
         return math.pi * self.r ** 2
 
@@ -164,6 +137,8 @@ class CircularAperture(Aperture):
             flux[ood_filter] = np.nan
             print("Position {0} and its aperture is out of the data"
                   " area".format(self.positions[ood_filter]))
+            if np.sum(ood_filter) == len(self.positions):
+                return flux
 
         # TODO check whether it makes sense to have negative pixel
         # coordinate, one could imagine a stackes image where the reference
@@ -325,9 +300,6 @@ class CircularAnnulus(Aperture):
         self._centers = np.array(centers)
         return np.array(extents)
 
-    def encloses(self):
-        return
-
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
@@ -348,6 +320,8 @@ class CircularAnnulus(Aperture):
             flux[ood_filter] = np.nan
             print("Position {0} and its aperture is out of the data"
                   " area".format(self.positions[ood_filter]))
+            if np.sum(ood_filter) == len(self.positions):
+                return flux
 
         # TODO check whether it makes sense to have negative pixel
         # coordinate, one could imagine a stackes image where the reference
@@ -488,9 +462,6 @@ class EllipticalAperture(Aperture):
         self._centers = np.array(centers)
         return np.array(extents)
 
-    def encloses(self):
-        return
-
     def area(self):
         return math.pi * self.a * self.b
 
@@ -515,6 +486,8 @@ class EllipticalAperture(Aperture):
             flux[ood_filter] = np.nan
             print("Position {0} and its aperture is out of the data"
                   " area".format(self.positions[ood_filter]))
+            if np.sum(ood_filter) == len(self.positions):
+                return flux
 
         # TODO check whether it makes sense to have negative pixel
         # coordinate, one could imagine a stackes image where the reference
@@ -565,158 +538,6 @@ class EllipticalAperture(Aperture):
 
         elif method == 'exact':
             from .geometry import elliptical_overlap_grid
-            for i in range(len(self.positions)):
-                x_edges = np.linspace(x_pmin[i], x_pmax[i],
-                                      data[:, x_min[i]:x_max[i]].shape[1] + 1)
-                y_edges = np.linspace(y_pmin[i], y_pmax[i],
-                                      data[y_min[i]:y_max[i], :].shape[0] + 1)
-                flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                                 elliptical_overlap_grid(x_edges, y_edges,
-                                                         self.a, self.b,
-                                                         self.theta))
-
-        else:
-            raise ValueError('{0} method not supported for aperture class '
-                             '{1}'.format(method, self.__class__.__name__))
-
-        return flux
-
-
-class EllipticalAnnulus(Aperture):
-    """
-    An elliptical annulus aperture.
-
-    Parameters
-    ----------
-    positions : tuple, or list, or array
-        Center coordinates of the apertures as list or array of (x, y)
-        pixelcoordinates.
-    a_in : float
-        The inner semimajor axis.
-    a_out : float
-        The outer semimajor axis.
-    b_out : float
-        The outer semiminor axis. (The inner semiminor axis is determined
-        by scaling by a_in/a_out.)
-    theta : float
-        The position angle of the semimajor axis in radians.
-        (counterclockwise).
-    """
-
-    def __init__(self, positions, a_in, a_out, b_out, theta):
-        try:
-            self.a_in = float(a_in)
-            self.a_out = float(a_out)
-            self.b_out = float(b_out)
-            self.theta = float(theta)
-        except TypeError:
-            raise TypeError("'a_in' and 'a_out' and 'b_out' and 'theta' must "
-                            "be numeric, received {0} and {1} and {2} and {3}."
-                            .format((type(a_in), type(a_out),
-                                     type(b_out), type(theta))))
-
-        if not (a_out > a_in):
-            raise ValueError("'a_out' must be greater than 'a_in'")
-        if a_in < 0 or b_out < 0:
-            raise ValueError("'a_in' and 'b_out' must be non-negative")
-
-        self.b_in = a_in * b_out / a_out
-
-        if isinstance(positions, (list, tuple, np.ndarray)):
-            self.positions = np.atleast_2d(positions)
-        else:
-            raise TypeError("List or array of (x,y) pixel coordinates is "
-                            "expected got '{0}'.".format(positions))
-
-        if self.positions.ndim > 2:
-            raise ValueError('{0}-d position array not supported. Only 2-d '
-                             'arrays supported.'.format(self.positions.ndim))
-
-    def extent(self):
-        r = max(self.a_out, self.b_out)
-        extents = []
-        centers = []
-        for x, y in self.positions:
-            extents.append((int(x - r + 0.5), int(x + r + 1.5),
-                            int(y - r + 0.5), int(y + r + 1.5)))
-            centers.append((x, x, y, y))
-
-        self._centers = np.array(centers)
-        return np.array(extents)
-
-    def encloses(self):
-        return
-
-    def area(self):
-        return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
-
-    def do_photometry(self, data, method='exact', subpixels=5):
-        flux = np.zeros(len(self.positions), dtype=np.float)
-
-        extents = self.extent()
-
-        # Check if an aperture is fully out of data
-        ood_filter = np.logical_or(extents[:, 0] >= data.shape[1],
-                                   extents[:, 1] <= 0)
-        np.logical_or(ood_filter, extents[:, 2] >= data.shape[0],
-                      out=ood_filter)
-        np.logical_or(ood_filter, extents[:, 3] <= 0, out=ood_filter)
-
-        # TODO: flag these objects
-        if np.sum(ood_filter):
-            flux[ood_filter] = np.nan
-            print("Position {0} and its aperture is out of the data"
-                  " area".format(self.positions[ood_filter]))
-
-        # TODO check whether it makes sense to have negative pixel
-        # coordinate, one could imagine a stackes image where the reference
-        # was a bit offset from some of the images? Or in those cases just
-        # give Skycoord to the Aperture and it should deal with the
-        # conversion for the actual case?
-        x_min = np.maximum(extents[:, 0], 0)
-        x_max = np.minimum(extents[:, 1], data.shape[1])
-        y_min = np.maximum(extents[:, 2], 0)
-        y_max = np.minimum(extents[:, 3], data.shape[0])
-
-        x_pmin = x_min - self.positions[:, 0] - 0.5
-        x_pmax = x_max - self.positions[:, 0] - 0.5
-        y_pmin = y_min - self.positions[:, 1] - 0.5
-        y_pmax = y_max - self.positions[:, 1] - 0.5
-
-        # Find fraction of overlap between aperture and pixels
-
-        if method == 'center' or method == 'subpixel':
-            if method == 'center': subpixels = 1
-            for i in range(len(self.positions)):
-                x_size = ((x_pmax[i] - x_pmin[i]) /
-                          (data[:, x_min[i]:x_max[i]].shape[1] * subpixels))
-                y_size = ((y_pmax[i] - y_pmin[i]) /
-                          (data[y_min[i]:y_max[i], :].shape[0] * subpixels))
-
-                x_centers = np.arange(x_pmin[i] + x_size / 2.,
-                                      x_pmax[i], x_size)
-                y_centers = np.arange(y_pmin[i] + y_size / 2.,
-                                      y_pmax[i], y_size)
-                xx, yy = np.meshgrid(x_centers, y_centers)
-                numerator1 = (xx * math.cos(self.theta) +
-                              yy * math.sin(self.theta))
-                numerator2 = (yy * math.cos(self.theta) -
-                              xx * math.sin(self.theta))
-
-                in_aper = ((((numerator1 / self.a) ** 2 +
-                             (numerator2 / self.b) ** 2) < 1.).astype(float)
-                           / subpixels ** 2)
-
-                if method == 'center':
-                    flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                                     in_aper)
-                else:
-                    from .utils import downsample
-                    flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                                     downsample(in_aper, subpixels))
-
-        elif method == 'exact':
-            from .elliptical_exact import elliptical_overlap_grid
             for i in range(len(self.positions)):
                 x_edges = np.linspace(x_pmin[i], x_pmax[i],
                                       data[:, x_min[i]:x_max[i]].shape[1] + 1)
@@ -808,54 +629,6 @@ class EllipticalAnnulus(Aperture):
         self._centers = np.array(centers)
         return np.array(extents)
 
-    def encloses(self, extent, nx, ny, method='subpixel', subpixels=5):
-
-        # Shortcut to avoid divide-by-zero errors.
-        if self.a_out == 0 or self.b_out == 0:
-            return np.zeros((ny, nx), dtype=np.float)
-
-        x_min, x_max, y_min, y_max = extent
-        if method == 'center' or method == 'subpixel':
-            if method == 'center': subpixels = 1
-            x_size = (x_max - x_min) / (nx * subpixels)
-            y_size = (y_max - y_min) / (ny * subpixels)
-            x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
-            y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
-            xx, yy = np.meshgrid(x_centers, y_centers)
-
-            numerator1 = (xx * math.cos(self.theta) +
-                          yy * math.sin(self.theta))
-            numerator2 = (yy * math.cos(self.theta) -
-                          xx * math.sin(self.theta))
-            inside_outer_ellipse = ((numerator1 / self.a_out) ** 2 +
-                                    (numerator2 / self.b_out) ** 2) < 1.
-            if self.a_in == 0 or self.b_in == 0:
-                in_aper = inside_outer_ellipse.astype(float)
-            else:
-                outside_inner_ellipse = ((numerator1 / self.a_in) ** 2 +
-                                         (numerator2 / self.b_in) ** 2) > 1.
-                in_aper = (inside_outer_ellipse &
-                           outside_inner_ellipse).astype(float)
-            in_aper /= subpixels ** 2    # conserve aperture area
-
-            if method == 'center':
-                return in_aper
-            else:
-                from imageutils import downsample
-                return downsample(in_aper, subpixels)
-
-        elif method == 'exact':
-            from .geometry import elliptical_overlap_grid
-            x_edges = np.linspace(x_min, x_max, nx + 1)
-            y_edges = np.linspace(y_min, y_max, ny + 1)
-            return (elliptical_overlap_grid(x_edges, y_edges, self.a_out,
-                                            self.b_out, self.theta) -
-                    elliptical_overlap_grid(x_edges, y_edges, self.a_in,
-                                            self.b_in, self.theta))
-        else:
-            raise ValueError('{0} method not supported for aperture class '
-                             '{1}'.format(method, self.__class__.__name__))
-
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
@@ -874,7 +647,6 @@ class EllipticalAnnulus(Aperture):
             path = _make_annulus_path(patch_inner, patch_outer)
             patch = mpatches.PathPatch(path, **kwargs)
             ax.add_patch(patch)
-
 
     def do_photometry(self, data, method='exact', subpixels=5):
         flux = np.zeros(len(self.positions), dtype=np.float)
@@ -897,6 +669,8 @@ class EllipticalAnnulus(Aperture):
             flux[ood_filter] = np.nan
             print("Position {0} and its aperture is out of the data"
                   " area".format(self.positions[ood_filter]))
+            if np.sum(ood_filter) == len(self.positions):
+                return flux
 
         # TODO check whether it makes sense to have negative pixel
         # coordinate, one could imagine a stackes image where the reference
@@ -960,7 +734,7 @@ class EllipticalAnnulus(Aperture):
                                       data[y_min[i]:y_max[i], :].shape[0] + 1)
                 flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
                                  (elliptical_overlap_grid(x_edges, y_edges,
-                                                          self.a_in, self.b_in,
+                                                          self.a_out, self.b_out,
                                                           self.theta) -
                                   elliptical_overlap_grid(x_edges, y_edges,
                                                           self.a_in, self.b_in,
