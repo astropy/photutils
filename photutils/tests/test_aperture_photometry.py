@@ -18,10 +18,15 @@ from ..aperture import CircularAperture,\
                        aperture_photometry
 
 
-APERTURES = [CircularAperture,
-             CircularAnnulus,
-             EllipticalAperture,
-             EllipticalAnnulus]
+APERTURES = ['circular',
+             'circular_annulus',
+             'elliptical',
+             'elliptical_annulus']
+
+APERTURE_CL = [CircularAperture,
+               CircularAnnulus,
+               EllipticalAperture,
+               EllipticalAnnulus]
 
 
 @pytest.mark.parametrize(('aperture', 'radius'),
@@ -29,22 +34,22 @@ APERTURES = [CircularAperture,
                                          (3., 5., 4., 1.))))
 def test_outside_array(aperture, radius):
     data = np.ones((10, 10), dtype=np.float)
-    table = aperture_photometry(data, aperture((-60, 60), *radius))
+    fluxtable = aperture_photometry(data, (-60, 60), ((aperture,) + radius))
     assert np.isnan(table['aperture_sum'])   # aperture is fully outside array
 
 
-@pytest.mark.parametrize(('aperture', 'radius'),
-                         zip(APERTURES, ((3.,), (3., 5.), (3., 5., 1.),
-                                         (3., 5., 4., 1.))))
-def test_inside_array_simple(aperture, radius):
+@pytest.mark.parametrize(('aperture_cl', 'aperture', 'radius'),
+                         zip(APERTURE_CL, APERTURES, ((3.,), (3., 5.), (3., 5., 1.),
+                                                      (3., 5., 4., 1.))))
+def test_inside_array_simple(aperture_cl, aperture, radius):
     data = np.ones((40, 40), dtype=np.float)
-    table1 = aperture_photometry(data, aperture((20., 20.), *radius),
+    table1 = aperture_photometry(data, (20., 20.), ((aperture,) + radius),
                                  method='center', subpixels=10)
-    table2 = aperture_photometry(data, aperture((20., 20.), *radius),
+    table2 = aperture_photometry(data, (20., 20.), ((aperture,) + radius),
                                  method='subpixel', subpixels=10)
-    table3 = aperture_photometry(data, aperture((20., 20.), *radius),
+    table3 = aperture_photometry(data, (20., 20.), ((aperture,) + radius),
                                  method='exact', subpixels=10)
-    true_flux = aperture((20., 20.), *radius).area()
+    true_flux = aperture_cl((20., 20.), *radius).area()
 
     assert_allclose(table3['aperture_sum'], true_flux)
     assert table1['aperture_sum'] < table3['aperture_sum']
