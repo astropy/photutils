@@ -21,14 +21,17 @@ def detect_sources(image, snr_threshold, npixels, filter_fwhm=None,
         The 2D array of the image.
 
     snr_threshold : float
-        The signal-to-noise ratio threshold above which to detect
-        sources.  The background rms noise level is computed using
-        sigma-clipped statistics, which can be controlled via the
+        The signal-to-noise ratio per pixel above which to consider a
+        pixel as possibly being part of a source.  Detected sources must
+        have ``npixels`` connected pixels that are greater than
+        ``snr_threshold``.  The background rms noise level is computed
+        using sigma-clipped statistics, which can be controlled via the
         ``sig`` and ``iters`` keywords.
 
     npixels : int
-        The number of connected pixels an object must have above the
-        threshold level to be detected.  Must be a positive integer.
+        The number of connected pixels, each greater than the
+        ``snr_threshold`` level, that an object must have to be
+        detected.  Must be a positive integer.
 
     filter_fwhm : float, optional
         The FWHM of the circular 2D Gaussian filter that is applied to
