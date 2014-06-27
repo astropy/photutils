@@ -16,6 +16,7 @@ Suppose there are 2 sources located at (30, 30) and (40, 40), in pixel
 coordinates. To sum the pixel values (flux) inside a circular aperture of
 radius 3 pixels centered on each object:
 
+.. doctest-skip::
     >>> import numpy as np
     >>> from photutils import CircularAperture, aperture_photometry
     >>> data = np.ones((100, 100))
@@ -33,6 +34,7 @@ The results are returned in a `~astropy.table.Table` with a column, named
 Since all the data values are 1, we expect the answer to equal the area of
 a circle with the same radius, and it does:
 
+.. doctest-skip::
     >>> print np.pi * 3. ** 2
     28.2743338823
 
@@ -44,6 +46,7 @@ used is ``'exact'``, wherein the exact intersection of the aperture with
 each pixel is calculated. There are other options that are faster but
 at the expense of less precise answers. For example,:
 
+.. doctest-skip::
     >>> aperture_photometry(data, apertures,
     ...                     method='subpixel', subpixels=5)
     <Table rows=2 names=('aperture_sum') units=('')>
@@ -67,6 +70,7 @@ apertures. As a workaround one may loop over different apertures.
 Suppose that we wish to use 3 apertures of radius 3, 4, and 5
 pixels on each source (each source gets the same 3 apertures):
 
+.. doctest-skip::
   >>> r = [3., 4., 5.]
   >>> flux = []
   >>> for radius in r:
@@ -89,6 +93,7 @@ Other aperture photometry functions have multiple parameters
 specifying the apertures. For example, for elliptical apertures, one
 must specify ``a``, ``b``, and ``theta``:
 
+.. doctest-skip::
   >>> from photutils import EllipticalAperture
   >>> a = 5.
   >>> b = 3.
@@ -102,6 +107,7 @@ must specify ``a``, ``b``, and ``theta``:
 
 Again, for multiple apertures one should loop over them.
 
+.. doctest-skip::
  >>> a = [5., 6., 7., 8.]
  >>> b = [3., 4., 5., 6.]
  >>> theta = np.pi / 4.
@@ -134,6 +140,7 @@ subtraction is left up to the user or calling function.
   Suppose we want to estimate the local background level around each pixel
   with a circular annulus of inner radius 6 pixels and outer radius 8 pixels:
 
+.. doctest-skip::
     >>> from photutils import CircularAnnulus
     >>> apertures = CircularAperture(positions, 3.)
     >>> rawflux_table = aperture_photometry(data, apertures)
@@ -162,6 +169,7 @@ value.
 For example, suppose we have previously calculated the error on each
 pixel's value and saved it in the array ``data_error``:
 
+.. doctest-skip::
   >>> data_error = 0.1 * data  # (100 x 100 array)
   >>> fluxtable = aperture_photometry(data, apertures, error=data_error)
   >>> fluxtable   # doctest: +FLOAT_CMP

@@ -40,6 +40,7 @@ and perform aperture photometry on them.
 
 The dataset in this example is `~photutils.datasets.load_star_image`:
 
+.. doctest-skip::
   >>> import numpy as np
   >>> from photutils import datasets
   >>> hdu = datasets.load_star_image()   # doctest: +REMOTE_DATA
