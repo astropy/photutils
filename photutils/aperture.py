@@ -875,13 +875,24 @@ def aperture_photometry(data, apertures, error=None, gain=None,
             # Make sure variance is > 0 when converting to st. dev.
             fluxerr[j] = math.sqrt(max(fluxvar, 0.))
 
+    # Prepare version return data
+    from astropy import __version__
+    astropy_version = __version__
+
+    from photutils import __version__
+    photutils_version = __version__
+
     # TODO: maybe include positions, mask, etc in the output
     if error is None:
-        return Table([flux, ], names=('flux',),
-                     meta={'name': 'Aperture photometry results'})
+        return Table([flux, ], names=('FLUX',),
+                     meta={'name': 'Aperture photometry results',
+                           'version': 'astropy: {0}, photutils: {1}'
+                           .format(astropy_version, photutils_version)})
     else:
-        return Table([flux, fluxerr], names=('flux', 'fluxerr'),
-                     meta={'name': 'Aperture photometry results'})
+        return Table([flux, fluxerr], names=('FLUX', 'FLUXERR'),
+                     meta={'name': 'Aperture photometry results',
+                           'version': 'astropy: {0}, photutils: {1}'
+                           .format(astropy_version, photutils_version)})
 
 aperture_photometry.__doc__ = doc_template.format(
     desc=aperture_photometry.__doc__,
