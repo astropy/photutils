@@ -77,7 +77,7 @@ each aperture. One may use `~astropy.table.hstack` to stack them into one `~astr
 
   >>> from astropy.table import hstack
   >>> fluxtable = hstack(flux)
-  >>> fluxtable
+  >>> fluxtable    # doctest: +FLOAT_CMP
   <Table rows=4 names=('FLUX_1','FLUX_2','FLUX_3')>
   array([(28.274333882308134, 50.26548245743669, 78.53981633974482),
          (28.274333882308134, 50.26548245743669, 78.53981633974482),
@@ -95,8 +95,8 @@ must specify ``a``, ``b``, and ``theta``:
   >>> b = 3.
   >>> theta = np.pi / 4.
   >>> apertures = EllipticalAperture(positions, a, b, theta)
-  >>> flux = aperture_photometry(data, apertures)
-  >>> flux
+  >>> fluxtable = aperture_photometry(data, apertures)
+  >>> fluxtable   # doctest: +FLOAT_CMP
   <Table rows=4 names=('FLUX')>
   array([(47.1238898038469,), (47.1238898038469,), (47.1238898038469,),
          (47.1238898038469,)],
@@ -112,7 +112,7 @@ Again, for multiple apertures one should loop over them.
  >>> for index in range(len(a)):
  ...     flux.append(aperture_photometry(data, EllipticalAperture(positions, a[index], b[index], theta)))
  >>> fluxtable = hstack(flux)
- >>> fluxtable
+ >>> fluxtable   # doctest: +FLOAT_CMP
  <Table rows=4 names=('FLUX_1','FLUX_2','FLUX_3','FLUX_4')>
  array([ (47.1238898038469, 75.39822368615505, 109.9557428756428, 150.7964473723101),
          (47.1238898038469, 75.39822368615505, 109.9557428756428, 150.7964473723101),
@@ -148,7 +148,7 @@ subtraction is left up to the user or calling function.
     >>> annulus_area = np.pi * (8 ** 2 - 6 ** 2)
     >>> fluxtable = hstack([rawflux_table, bkgflux_table], table_names=['RAW', 'BKG'])
     >>> fluxtable['resultflux'] = fluxtable['FLUX_RAW'] - fluxtable['FLUX_BKG'] * aperture_area / annulus_area
-    >>> fluxtable['resultflux']
+    >>> fluxtable['resultflux']   # doctest: +FLOAT_CMP
     <Column name='resultflux' unit=None format=None description=None>
     array([ -1.77635684e-14,  -1.77635684e-14,  -1.77635684e-14,
             -1.77635684e-14])
@@ -169,7 +169,7 @@ pixel's value and saved it in the array ``data_error``:
 
   >>> data_error = 0.1 * data  # (100 x 100 array)
   >>> fluxtable = aperture_photometry(data, apertures, error=data_error)
-  >>> fluxtable
+  >>> fluxtable   # doctest: +FLOAT_CMP
   <Table rows=4 names=('FLUX','FLUXERR')>
     array([(28.274333882308134, 0.531736155271655),
            (28.274333882308134, 0.531736155271655),
