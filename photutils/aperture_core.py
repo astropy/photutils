@@ -8,6 +8,7 @@ import abc
 import numpy as np
 import warnings
 from astropy.table import Table
+from astropy.coordinates import SkyCoord
 from astropy.extern import six
 from astropy.utils.exceptions import AstropyUserWarning
 import astropy.units as u
@@ -772,10 +773,11 @@ doc_template = ("""\
     """)
 
 
-def aperture_photometry(data, positions, apertures, error=None, gain=None,
-                        mask=None, method='exact', subpixels=5,
+def aperture_photometry(data, positions, apertures, wcs=None, error=None,
+                        gain=None, mask=None, method='exact', subpixels=5,
                         pixelwise_error=True, mask_method='skip'):
-    """Sum flux within aperture(s)."""
+
+    wcs_transformation = wcs
 
     # Check input array type and dimension.
     data = u.Quantity(data)
@@ -861,7 +863,13 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
                              'required')
 
     # TODO check whether positions is wcs or pixel
-    pixelpositions = positions
+    if isinstance(positions, SkyCoord):
+        from astropy.wcs import wcs
+        if wcs_transformation is None:
+            wcs_transformation = wcs.WCS(data.header)
+        pixelpositions = wcs_transformation.wcs_world2pix(positions)
+    else:
+        pixelpositions = positions
 
     if apertures[0] == 'circular':
         ap = CircularAperture(pixelpositions, apertures[1])
