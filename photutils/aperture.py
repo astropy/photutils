@@ -884,12 +884,12 @@ def aperture_photometry(data, apertures, error=None, gain=None,
 
     # TODO: maybe include positions, mask, etc in the output
     if error is None:
-        return Table([flux, ], names=('FLUX',),
+        return Table([flux, ], names=('flux',),
                      meta={'name': 'Aperture photometry results',
                            'version': 'astropy: {0}, photutils: {1}'
                            .format(astropy_version, photutils_version)})
     else:
-        return Table([flux, fluxerr], names=('FLUX', 'FLUXERR'),
+        return Table([flux, fluxerr], names=('flux', 'fluxerr'),
                      meta={'name': 'Aperture photometry results',
                            'version': 'astropy: {0}, photutils: {1}'
                            .format(astropy_version, photutils_version)})

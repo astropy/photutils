@@ -24,10 +24,10 @@ aperture of radius 3 pixels centered on each object,:
     >>> positions = zip(xc, yc)
     >>> apertures = CircularAperture(positions, 3.)
     >>> aperture_photometry(data, apertures)
-    <Table rows=4 names=('FLUX')>
+    <Table rows=4 names=('flux')>
     array([(28.274333882308134,), (28.274333882308134,), (28.274333882308134,),
            (28.274333882308134,)],
-          dtype=[('FLUX', '<f8')])
+          dtype=[('flux', '<f8')])
 
 Since all the data values are 1, we expect the answer to equal the area of
 a circle with the same radius, and it does:
@@ -45,10 +45,10 @@ at the expense of less precise answers. For example,:
 
     >>> aperture_photometry(data, apertures,
     ...                     method='subpixel', subpixels=5)
-    <Table rows=4 names=('FLUX')>
+    <Table rows=4 names=('flux')>
     array([(27.959999999999997,), (27.959999999999997,), (27.959999999999997,),
            (27.959999999999997,)],
-          dtype=[('FLUX', '<f8')])
+          dtype=[('flux', '<f8')])
 
 The result differs from the true value because this method subsamples
 each pixel according to the keyword ``subpixels`` and either includes
@@ -78,12 +78,12 @@ each aperture. One may use `~astropy.table.hstack` to stack them into one `~astr
   >>> from astropy.table import hstack
   >>> fluxtable = hstack(flux)
   >>> fluxtable    # doctest: +FLOAT_CMP
-  <Table rows=4 names=('FLUX_1','FLUX_2','FLUX_3')>
+  <Table rows=4 names=('flux_1','flux_2','flux_3')>
   array([(28.274333882308134, 50.26548245743669, 78.53981633974482),
          (28.274333882308134, 50.26548245743669, 78.53981633974482),
          (28.274333882308134, 50.26548245743669, 78.53981633974482),
          (28.274333882308134, 50.26548245743669, 78.53981633974482)],
-        dtype=[('FLUX_1', '<f8'), ('FLUX_2', '<f8'), ('FLUX_3', '<f8')])
+        dtype=[('flux_1', '<f8'), ('flux_2', '<f8'), ('flux_3', '<f8')])
 
 
 Other aperture photometry functions have multiple parameters
@@ -97,10 +97,10 @@ must specify ``a``, ``b``, and ``theta``:
   >>> apertures = EllipticalAperture(positions, a, b, theta)
   >>> fluxtable = aperture_photometry(data, apertures)
   >>> fluxtable   # doctest: +FLOAT_CMP
-  <Table rows=4 names=('FLUX')>
+  <Table rows=4 names=('flux')>
   array([(47.1238898038469,), (47.1238898038469,), (47.1238898038469,),
          (47.1238898038469,)],
-        dtype=[('FLUX', '<f8')])
+        dtype=[('flux', '<f8')])
 
 
 Again, for multiple apertures one should loop over them.
@@ -113,12 +113,12 @@ Again, for multiple apertures one should loop over them.
  ...     flux.append(aperture_photometry(data, EllipticalAperture(positions, a[index], b[index], theta)))
  >>> fluxtable = hstack(flux)
  >>> fluxtable   # doctest: +FLOAT_CMP
- <Table rows=4 names=('FLUX_1','FLUX_2','FLUX_3','FLUX_4')>
+ <Table rows=4 names=('flux_1','flux_2','flux_3','flux_4')>
  array([ (47.1238898038469, 75.39822368615505, 109.9557428756428, 150.7964473723101),
          (47.1238898038469, 75.39822368615505, 109.9557428756428, 150.7964473723101),
          (47.1238898038469, 75.39822368615505, 109.9557428756428, 150.7964473723101),
          (47.1238898038469, 75.39822368615505, 109.9557428756428, 150.7964473723101)],
-          dtype=[('FLUX_1', '<f8'), ('FLUX_2', '<f8'), ('FLUX_3', '<f8'), ('FLUX_4', '<f8')])
+          dtype=[('flux_1', '<f8'), ('flux_2', '<f8'), ('flux_3', '<f8'), ('flux_4', '<f8')])
 
 
 Background Subtraction
@@ -146,8 +146,8 @@ subtraction is left up to the user or calling function.
     >>> bkgflux_table = aperture_photometry(data, annulus_apertures)
     >>> aperture_area = np.pi * 3 ** 2
     >>> annulus_area = np.pi * (8 ** 2 - 6 ** 2)
-    >>> fluxtable = hstack([rawflux_table, bkgflux_table], table_names=['RAW', 'BKG'])
-    >>> fluxtable['resultflux'] = fluxtable['FLUX_RAW'] - fluxtable['FLUX_BKG'] * aperture_area / annulus_area
+    >>> fluxtable = hstack([rawflux_table, bkgflux_table], table_names=['raw', 'bkg'])
+    >>> fluxtable['resultflux'] = fluxtable['flux_raw'] - fluxtable['flux_bkg'] * aperture_area / annulus_area
     >>> fluxtable['resultflux']   # doctest: +FLOAT_CMP
     <Column name='resultflux' unit=None format=None description=None>
     array([ -1.77635684e-14,  -1.77635684e-14,  -1.77635684e-14,
@@ -170,12 +170,12 @@ pixel's value and saved it in the array ``data_error``:
   >>> data_error = 0.1 * data  # (100 x 100 array)
   >>> fluxtable = aperture_photometry(data, apertures, error=data_error)
   >>> fluxtable   # doctest: +FLOAT_CMP
-  <Table rows=4 names=('FLUX','FLUXERR')>
+  <Table rows=4 names=('flux','fluxerr')>
     array([(28.274333882308134, 0.531736155271655),
            (28.274333882308134, 0.531736155271655),
            (28.274333882308134, 0.531736155271655),
            (28.274333882308134, 0.531736155271655)],
-          dtype=[('FLUX', '<f8'), ('FLUXERR', '<f8')])
+          dtype=[('flux', '<f8'), ('fluxerr', '<f8')])
 
 ``fluxerr`` values are given by
 
