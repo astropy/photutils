@@ -313,6 +313,23 @@ def elliptical_overlap_grid(np.ndarray[DTYPE_t, ndim=1] x,
     Given a grid with walls set by x, y, find the fraction of overlap in
     each with an ellipse with major and minor axes dx and dy
     respectively, position angle theta, and centered at the origin.
+    The ellipse is centered on the 0,0 position.
+
+    Parameters
+    ----------
+    x, y : `~numpy.ndarray`
+        Extent of grid.
+    dx : float
+        The semimajor axis.
+    dy : float
+        The semiminor axis.
+    theta : float
+        The position angle of the semimajor axis in radians (counterclockwise)
+
+    Returns
+    -------
+    frac : `~numpy.ndarray`
+        2-d array giving the fraction of the overlap.
     '''
 
     cdef int nx = x.shape[0]
