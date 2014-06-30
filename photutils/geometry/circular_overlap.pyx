@@ -47,7 +47,28 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                           int subpixels):
     """For a circle of radius R, find the area of overlap in each element on
     a given grid of pixels, using either an exact overlap method, or by
-    subsampling a pixel."""
+    subsampling a pixel. The circle is centered on 0,0 position.
+
+    Parameters
+    ----------
+    xmin, xmax, ymin, ymax : float
+        Extent of the area in x and y direction.
+    nx, ny : int
+        Dimension of array.
+    R : float
+        Radius of the circle.
+    use_exact : 0 or 1
+        If ``1`` calculates exact overlap, if ``0`` uses ``subpixel`` number
+        of subpixels to calculate the overlap.
+    subpixels : int
+        Each pixel resampled by this factor in each dimension, thus each
+        pixel is devided into ``subpixels ** 2`` subpixels.
+
+    Returns
+    -------
+    frac : `~numpy.ndarray` (float)
+        2-d array of shape (ny, nx) giving the fraction of the overlap.
+    """
 
     cdef unsigned int i, j
     cdef double x, y, dx, dy, d, pixrad, xlim0, xlim1, ylim0, ylim1
