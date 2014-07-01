@@ -79,7 +79,6 @@ class Aperture(object):
     @abc.abstractmethod
     def do_photometry(self, data, method='exact', subpixels=5):
         """Sum flux within aperture(s)."""
-        flux = np.zeros(len(self.positions), dtype=np.float)
         extents = self.extent()
 
         # Check if an aperture is fully out of data
@@ -88,12 +87,6 @@ class Aperture(object):
         np.logical_or(ood_filter, extents[:, 2] >= data.shape[0],
                       out=ood_filter)
         np.logical_or(ood_filter, extents[:, 3] <= 0, out=ood_filter)
-
-        # TODO: flag these objects
-        if np.sum(ood_filter):
-            flux[ood_filter] = np.nan
-            print("Position {0} and its aperture is out of the data"
-                  " area".format(self.positions[ood_filter]))
 
         # TODO check whether it makes sense to have negative pixel
         # coordinate, one could imagine a stackes image where the reference
@@ -110,7 +103,7 @@ class Aperture(object):
         y_pmin = y_min - self.positions[:, 1] - 0.5
         y_pmax = y_max - self.positions[:, 1] - 0.5
 
-        return (flux, x_min, x_max, y_min, y_max,
+        return (ood_filter, x_min, x_max, y_min, y_max,
                 x_pmin, x_pmax, y_pmin, y_pmax)
 
 
@@ -158,11 +151,18 @@ class CircularAperture(Aperture):
         return math.pi * self.r ** 2
 
     def do_photometry(self, data, method='exact', subpixels=5):
-        (flux, x_min, x_max, y_min, y_max, x_pmin, x_pmax, y_pmin, y_pmax) = \
+        (ood_filter, x_min, x_max, y_min, y_max, x_pmin, x_pmax, y_pmin, y_pmax) = \
             super(CircularAperture, self).do_photometry(data)
 
-        if np.sum(np.isfinite(flux)) == 0:
-            return flux
+        flux = np.zeros(len(self.positions), dtype=np.float)
+
+        # TODO: flag these objects
+        if np.sum(ood_filter):
+            flux[ood_filter] = np.nan
+            print("Position {0} and its aperture is out of the data"
+                  " area".format(self.positions[ood_filter]))
+            if np.sum(ood_filter) == len(self.positions):
+                return flux
 
         # Find fraction of overlap between aperture and pixels
 
@@ -313,11 +313,18 @@ class CircularAnnulus(Aperture):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
     def do_photometry(self, data, method='exact', subpixels=5):
-        (flux, x_min, x_max, y_min, y_max, x_pmin, x_pmax, y_pmin, y_pmax) = \
+        (ood_filter, x_min, x_max, y_min, y_max, x_pmin, x_pmax, y_pmin, y_pmax) = \
             super(CircularAnnulus, self).do_photometry(data)
 
-        if np.sum(np.isfinite(flux)) == 0:
-            return flux
+        flux = np.zeros(len(self.positions), dtype=np.float)
+
+        # TODO: flag these objects
+        if np.sum(ood_filter):
+            flux[ood_filter] = np.nan
+            print("Position {0} and its aperture is out of the data"
+                  " area".format(self.positions[ood_filter]))
+            if np.sum(ood_filter) == len(self.positions):
+                return flux
 
         # Find fraction of overlap between aperture and pixels
 
@@ -447,11 +454,18 @@ class EllipticalAperture(Aperture):
         return math.pi * self.a * self.b
 
     def do_photometry(self, data, method='exact', subpixels=5):
-        (flux, x_min, x_max, y_min, y_max, x_pmin, x_pmax, y_pmin, y_pmax) = \
+        (ood_filter, x_min, x_max, y_min, y_max, x_pmin, x_pmax, y_pmin, y_pmax) = \
             super(EllipticalAperture, self).do_photometry(data)
 
-        if np.sum(np.isfinite(flux)) == 0:
-            return flux
+        flux = np.zeros(len(self.positions), dtype=np.float)
+
+        # TODO: flag these objects
+        if np.sum(ood_filter):
+            flux[ood_filter] = np.nan
+            print("Position {0} and its aperture is out of the data"
+                  " area".format(self.positions[ood_filter]))
+            if np.sum(ood_filter) == len(self.positions):
+                return flux
 
         # Find fraction of overlap between aperture and pixels
 
@@ -598,11 +612,18 @@ class EllipticalAnnulus(Aperture):
             ax.add_patch(patch)
 
     def do_photometry(self, data, method='exact', subpixels=5):
-        (flux, x_min, x_max, y_min, y_max, x_pmin, x_pmax, y_pmin, y_pmax) = \
+        (ood_filter, x_min, x_max, y_min, y_max, x_pmin, x_pmax, y_pmin, y_pmax) = \
             super(EllipticalAnnulus, self).do_photometry(data)
 
-        if np.sum(np.isfinite(flux)) == 0:
-            return flux
+        flux = np.zeros(len(self.positions), dtype=np.float)
+
+        # TODO: flag these objects
+        if np.sum(ood_filter):
+            flux[ood_filter] = np.nan
+            print("Position {0} and its aperture is out of the data"
+                  " area".format(self.positions[ood_filter]))
+            if np.sum(ood_filter) == len(self.positions):
+                return flux
 
         # Find fraction of overlap between aperture and pixels
 
