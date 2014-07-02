@@ -91,7 +91,7 @@ class DiscretePRF(Fittable2DModel):
         x_0 = 0
         y_0 = 0
         amplitude = 1
-        super(DiscretePRF, self).__init__(param_dim=1, x_0=x_0, y_0=y_0,
+        super(DiscretePRF, self).__init__(n_models=1, x_0=x_0, y_0=y_0,
                                           amplitude=amplitude, **constraints)
         self.fitter = LevMarLSQFitter()
 
@@ -183,7 +183,7 @@ class DiscretePRF(Fittable2DModel):
             x = extract_array_2d(indices[1], self.shape,
                                  (self.x_0.value, self.y_0.value))
             # TODO: It should be discussed whether this is  the right place to fix
-            # the warning. Maybe it should be handled better in astropy.modeling.fitting  
+            # the warning. Maybe it should be handled better in astropy.modeling.fitting
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", AstropyUserWarning)
                 m = self.fitter(self, x, y, sub_array_data)
@@ -247,7 +247,7 @@ class GaussianPSF(Fittable2DModel):
             self.__class__._erf = erf
 
         constraints = {'fixed': {'x_0': True, 'y_0': True, 'sigma': True}}
-        super(GaussianPSF, self).__init__(param_dim=1, sigma=sigma,
+        super(GaussianPSF, self).__init__(n_models=1, sigma=sigma,
                                           x_0=x_0, y_0=y_0,
                                           amplitude=amplitude, **constraints)
 
