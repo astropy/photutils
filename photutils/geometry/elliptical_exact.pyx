@@ -11,6 +11,8 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 cimport numpy as np
 
+__all__ = ['elliptical_overlap_grid']
+
 cdef extern from "math.h":
 
     double asin(double x)
@@ -25,7 +27,10 @@ ctypedef np.float64_t DTYPE_t
 
 cimport cython
 
-from ..geometry import distance, area_triangle
+try:
+    from ..geometry import distance, area_triangle
+except ImportError:
+    from .circular_overlap import distance, area_triangle
 
 
 def area_arc_unit(double x1, double y1, double x2, double y2):

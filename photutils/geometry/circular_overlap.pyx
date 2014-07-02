@@ -8,6 +8,8 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 cimport numpy as np
 
+__all__ = ['circular_overlap_grid']
+
 cdef extern from "math.h":
 
     double asin(double x)
