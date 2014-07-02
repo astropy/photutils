@@ -8,6 +8,7 @@ import abc
 import copy
 import numpy as np
 from astropy.extern import six
+from astropy import log
 
 __all__ = ["Aperture",
            "CircularAperture", "CircularAnnulus",
@@ -661,8 +662,9 @@ def aperture_photometry(data, apertures, error=None, gain=None,
 
             # TODO: flag these objects
             flux[j] = np.nan
-            print("Position {0} and its aperture is out of the data"
-                  " area".format(apertures.positions[j]))
+            log.warn('The aperture at position ({0}, {1}) does not have any '
+                     'overlap with the data'.format(apertures.positions[j][0],
+                                                    apertures.positions[j][1]))
             continue
 
         # TODO check whether it makes sense to have negative pixel
