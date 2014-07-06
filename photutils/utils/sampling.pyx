@@ -15,6 +15,8 @@ __all__ = ['downsample', 'upsample']
 
 def downsample(np.ndarray[DTYPE_t, ndim=2] array, int block_size):
     """
+    downsample(np.ndarray[DTYPE_t, ndim=2] array, int block_size)
+
     Downsample an image by block summing image pixels.  This process
     conserves image flux.  If the dimensions of ``image`` are not a
     whole-multiple of ``block_size``, the extra rows/columns will not be
@@ -71,6 +73,8 @@ def downsample(np.ndarray[DTYPE_t, ndim=2] array, int block_size):
 
 def upsample(np.ndarray[DTYPE_t, ndim=2] array, int block_size):
     """
+    upsample(np.ndarray[DTYPE_t, ndim=2] array, int block_size)
+    
     Upsample an image by block replicating image pixels.  To conserve
     image flux, the block-replicated image is then divided by
     ``block_size**2``.
