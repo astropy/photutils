@@ -384,8 +384,11 @@ class EllipticalAperture(Aperture):
         return math.pi * self.a * self.b
 
     def do_photometry(self, data, method='exact', subpixels=5):
-        (ood_filter, x_min, x_max, y_min, y_max, x_pmin, x_pmax, y_pmin, y_pmax) = \
-            super(EllipticalAperture, self).do_photometry(data)
+        superparams = super(EllipticalAperture, self).do_photometry(data)
+
+        ood_filter = superparams[0]
+        extent = superparams[1:5]
+        phot_extent = superparams[5:9]
 
         flux = np.zeros(len(self.positions), dtype=np.float)
 
@@ -397,53 +400,14 @@ class EllipticalAperture(Aperture):
             if np.sum(ood_filter) == len(self.positions):
                 return flux
 
-        # Find fraction of overlap between aperture and pixels
-
-        if method == 'center' or method == 'subpixel':
-            if method == 'center': subpixels = 1
-            for i in range(len(self.positions)):
-                x_size = ((x_pmax[i] - x_pmin[i]) /
-                          (data[:, x_min[i]:x_max[i]].shape[1] * subpixels))
-                y_size = ((y_pmax[i] - y_pmin[i]) /
-                          (data[y_min[i]:y_max[i], :].shape[0] * subpixels))
-
-                x_centers = np.arange(x_pmin[i] + x_size / 2.,
-                                      x_pmax[i], x_size)
-                y_centers = np.arange(y_pmin[i] + y_size / 2.,
-                                      y_pmax[i], y_size)
-                xx, yy = np.meshgrid(x_centers, y_centers)
-                numerator1 = (xx * math.cos(self.theta) +
-                              yy * math.sin(self.theta))
-                numerator2 = (yy * math.cos(self.theta) -
-                              xx * math.sin(self.theta))
-
-                in_aper = ((((numerator1 / self.a) ** 2 +
-                             (numerator2 / self.b) ** 2) < 1.).astype(float)
-                           / subpixels ** 2)
-
-                if method == 'center':
-                    flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                                     in_aper)
-                else:
-                    from imageutils import downsample
-                    flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                                     downsample(in_aper, subpixels))
-
-        elif method == 'exact':
-            from .geometry import elliptical_overlap_grid
-            for i in range(len(self.positions)):
-                x_edges = np.linspace(x_pmin[i], x_pmax[i],
-                                      data[:, x_min[i]:x_max[i]].shape[1] + 1)
-                y_edges = np.linspace(y_pmin[i], y_pmax[i],
-                                      data[y_min[i]:y_max[i], :].shape[0] + 1)
-                flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                                 elliptical_overlap_grid(x_edges, y_edges,
-                                                         self.a, self.b,
-                                                         self.theta))
-
-        else:
+        if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
+
+        flux = do_elliptical_photometry(data, flux, extent, phot_extent,
+                                        self.a, self.b, self.theta,
+                                        method=method,
+                                        subpixels=subpixels)
 
         return flux
 
@@ -842,6 +806,54 @@ def do_circular_photometry(data, flux, extent, phot_extent, radius,
                                                        x_pmax[i] - x_pmin[i],
                                                        y_pmax[i] - y_pmin[i],
                                                        radius, 1, 1))
+
+    return flux
+
+
+def do_elliptical_photometry(data, flux, extent, phot_extent, a, b, theta,
+                             method, subpixels):
+
+    x_min, x_max, y_min, y_max = extent
+    x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
+
+    if method == 'center' or method == 'subpixel':
+        if method == 'center': subpixels = 1
+        for i in range(len(flux)):
+            x_size = ((x_pmax[i] - x_pmin[i]) /
+                      (data[:, x_min[i]:x_max[i]].shape[1] * subpixels))
+            y_size = ((y_pmax[i] - y_pmin[i]) /
+                      (data[y_min[i]:y_max[i], :].shape[0] * subpixels))
+
+            x_centers = np.arange(x_pmin[i] + x_size / 2.,
+                                  x_pmax[i], x_size)
+            y_centers = np.arange(y_pmin[i] + y_size / 2.,
+                                  y_pmax[i], y_size)
+            xx, yy = np.meshgrid(x_centers, y_centers)
+            numerator1 = (xx * math.cos(theta) + yy * math.sin(theta))
+            numerator2 = (yy * math.cos(theta) - xx * math.sin(theta))
+
+            in_aper = ((((numerator1 / a) ** 2 +
+                         (numerator2 / b) ** 2) < 1.).astype(float)
+                       / subpixels ** 2)
+
+            if method == 'center':
+                flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
+                                 in_aper)
+            else:
+                from .utils import downsample
+                flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
+                                 downsample(in_aper, subpixels))
+
+    elif method == 'exact':
+        from .elliptical_exact import elliptical_overlap_grid
+        for i in range(len(flux)):
+            x_edges = np.linspace(x_pmin[i], x_pmax[i],
+                                  data[:, x_min[i]:x_max[i]].shape[1] + 1)
+            y_edges = np.linspace(y_pmin[i], y_pmax[i],
+                                  data[y_min[i]:y_max[i], :].shape[0] + 1)
+            flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
+                             elliptical_overlap_grid(x_edges, y_edges,
+                                                     a, b, theta))
 
     return flux
 
