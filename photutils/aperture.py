@@ -65,6 +65,17 @@ class Aperture(object):
             covered by the aperture.
         """
 
+    @abc.abstractmethod
+    def plot(self, **kwargs):
+        """
+        Plot the aperture(s) on the current matplotlib Axes instance.
+
+        Parameters
+        ----------
+        kwargs
+            Any keyword arguments accepted by `matplotlib.patches.Patch`.
+        """
+
 
 class CircularAperture(Aperture):
     """
