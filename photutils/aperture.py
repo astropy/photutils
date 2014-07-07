@@ -146,9 +146,10 @@ class CircularAperture(Aperture):
 
     def plot(self, **kwargs):
         import matplotlib.pyplot as plt
+        import matplotlib.patches as mpatches
         ax = plt.gca()
         for position in self.positions:
-            patch = plt.Circle(position, self.r, **kwargs)
+            patch = mpatches.Circle(position, self.r, **kwargs)
             ax.add_patch(patch)
 
 
