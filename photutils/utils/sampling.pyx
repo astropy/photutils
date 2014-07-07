@@ -1,14 +1,22 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+#cython: boundscheck=False
+#cython: wraparound=False
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
-from ._sampling import _downsample, _upsample
+
+cimport cython
+cimport numpy as np
+DTYPE = np.float
+ctypedef np.float_t DTYPE_t
 
 __all__ = ['downsample', 'upsample']
 
 
-def downsample(array, block_size):
+def downsample(np.ndarray[DTYPE_t, ndim=2] array, int block_size):
     """
+    downsample(np.ndarray[DTYPE_t, ndim=2] array, int block_size)
+
     Downsample an image by block summing image pixels.  This process
     conserves image flux.  If the dimensions of ``image`` are not a
     whole-multiple of ``block_size``, the extra rows/columns will not be
@@ -47,11 +55,26 @@ def downsample(array, block_size):
            [ 42.,  50.]])
     """
 
-    return _downsample(array, block_size)
+    cdef int nx = array.shape[1]
+    cdef int ny = array.shape[0]
+    cdef int nx_new = nx // block_size
+    cdef int ny_new = ny // block_size
+    cdef unsigned int i, j, ii, jj
+    cdef np.ndarray[DTYPE_t, ndim=2] result = np.zeros([ny_new, nx_new],
+                                                       dtype=DTYPE)
+    for i in range(nx_new):
+        for j in range(ny_new):
+            for ii in range(block_size):
+                for jj in range(block_size):
+                    result[j, i] += array[j * block_size + jj,
+                                          i * block_size + ii]
+    return result
 
 
-def upsample(array, block_size):
+def upsample(np.ndarray[DTYPE_t, ndim=2] array, int block_size):
     """
+    upsample(np.ndarray[DTYPE_t, ndim=2] array, int block_size)
+    
     Upsample an image by block replicating image pixels.  To conserve
     image flux, the block-replicated image is then divided by
     ``block_size**2``.
@@ -85,4 +108,15 @@ def upsample(array, block_size):
            [ 0.5 ,  0.5 ,  0.75,  0.75]])
     """
 
-    return _upsample(array, block_size)
+    cdef int nx = array.shape[1]
+    cdef int ny = array.shape[0]
+    cdef int nx_new = nx * block_size
+    cdef int ny_new = ny * block_size
+    cdef unsigned int i, j
+    cdef np.ndarray[DTYPE_t, ndim=2] result = np.zeros((ny_new, nx_new),
+                                                       dtype=DTYPE)
+    cdef float block_size_sq = block_size * block_size
+    for i in range(nx_new):
+        for j in range(ny_new):
+            result[j, i] += array[j // block_size, i // block_size]
+    return result / block_size_sq
