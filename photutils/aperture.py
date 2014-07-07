@@ -234,6 +234,17 @@ class CircularAnnulus(Aperture):
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
+    def plot(self, **kwargs):
+        # TODO:  Create custom patch to allow fills
+        import matplotlib.pyplot as plt
+        import matplotlib.patches as mpatches
+        ax = plt.gca()
+        for position in self.positions:
+            patch1 = mpatches.Circle(position, self.r_in, **kwargs)
+            patch2 = mpatches.Circle(position, self.r_out, **kwargs)
+            ax.add_patch(patch1)
+            ax.add_patch(patch2)
+
 
 class EllipticalAperture(Aperture):
     """
@@ -452,6 +463,20 @@ class EllipticalAnnulus(Aperture):
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
+    def plot(self, **kwargs):
+        # TODO:  Create custom patch to allow fills
+        import matplotlib.pyplot as plt
+        import matplotlib.patches as mpatches
+        ax = plt.gca()
+        theta_deg = self.theta * 180. / np.pi
+        for position in self.positions:
+            patch1 = mpatches.Ellipse(position, self.a_in, self.b_in,
+                                      theta_deg, **kwargs)
+            patch2 = mpatches.Ellipse(position, self.a_out, self.b_out,
+                                      theta_deg, **kwargs)
+            ax.add_patch(patch1)
+            ax.add_patch(patch2)
+
 
 class RectangularAperture(Aperture):
     """
@@ -564,9 +589,9 @@ class RectangularAperture(Aperture):
         dx = (hh * sint) - (hw * cost)
         dy = -(hh * cost) - (hw * sint)
         positions = self.positions + np.array([dx, dy])
-        angle = self.theta * 180. / np.pi
+        theta_deg = self.theta * 180. / np.pi
         for position in positions:
-            patch = mpatches.Rectangle(position, self.w, self.h, angle,
+            patch = mpatches.Rectangle(position, self.w, self.h, theta_deg,
                                        **kwargs)
             ax.add_patch(patch)
 
