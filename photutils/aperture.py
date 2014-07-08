@@ -81,7 +81,7 @@ class Aperture(object):
         """
 
     @abc.abstractmethod
-    def plot(self, ax=None, **kwargs):
+    def plot(self, ax=None, fill=False, **kwargs):
         """
         Plot the aperture(s) on the current matplotlib Axes instance.
 
@@ -89,6 +89,10 @@ class Aperture(object):
         ----------
         ax : `matplotlib.axes.Axes` instance, optional
             If `None`, then the current ``Axes`` instance is used.
+
+        fill : bool, optional
+            Set whether to fill the aperture patch.  The default is
+            `False`.
 
         kwargs
             Any keyword arguments accepted by `matplotlib.patches.Patch`.
@@ -162,9 +166,10 @@ class CircularAperture(Aperture):
     def area(self):
         return math.pi * self.r ** 2
 
-    def plot(self, ax=None, **kwargs):
+    def plot(self, ax=None, fill=False, **kwargs):
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
+        kwargs['fill'] = fill
         if ax is None:
             ax = plt.gca()
         for position in self.positions:
@@ -253,9 +258,10 @@ class CircularAnnulus(Aperture):
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
-    def plot(self, ax=None, **kwargs):
+    def plot(self, ax=None, fill=False, **kwargs):
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
+        kwargs['fill'] = fill
         if ax is None:
             ax = plt.gca()
         resolution = 20
@@ -362,9 +368,10 @@ class EllipticalAperture(Aperture):
     def area(self):
         return math.pi * self.a * self.b
 
-    def plot(self, ax=None, **kwargs):
+    def plot(self, ax=None, fill=False, **kwargs):
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
+        kwargs['fill'] = fill
         if ax is None:
             ax = plt.gca()
         theta_deg = self.theta * 180. / np.pi
@@ -487,9 +494,10 @@ class EllipticalAnnulus(Aperture):
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
-    def plot(self, ax=None, **kwargs):
+    def plot(self, ax=None, fill=False, **kwargs):
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
+        kwargs['fill'] = fill
         if ax is None:
             ax = plt.gca()
         theta_deg = self.theta * 180. / np.pi
@@ -603,9 +611,10 @@ class RectangularAperture(Aperture):
     def area(self):
         return self.w * self.h
 
-    def plot(self, ax=None, **kwargs):
+    def plot(self, ax=None, fill=False, **kwargs):
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
+        kwargs['fill'] = fill
         if ax is None:
             ax = plt.gca()
         hw = self.w / 2.
