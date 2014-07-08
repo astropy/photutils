@@ -87,8 +87,8 @@ class Aperture(object):
 
         Parameters
         ----------
-        ax : matplotlib Axes instance, optional
-            If `None`, then the current Axes instance is used.
+        ax : `matplotlib.axes.Axes` instance, optional
+            If `None`, then the current ``Axes`` instance is used.
 
         kwargs
             Any keyword arguments accepted by `matplotlib.patches.Patch`.
