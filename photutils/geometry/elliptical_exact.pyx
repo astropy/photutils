@@ -286,10 +286,12 @@ def overlap_area_triangle_unit_circle(double x1, double y1, double x2, double y2
     return area
 
 
-def elliptical_overlap_single(double xmin, double ymin, double xmax, double ymax, double dx, double dy, double theta):
+def elliptical_overlap_single(double xmin, double ymin, double xmax,
+                              double ymax, double dx, double dy, double theta):
     '''
-    Given a rectangle defined by (xmin, ymin, xmax, ymax) and an ellipse with major and minor axes dx and dy
-    respectively, position angle theta, and centered at the origin, find the area of overlap
+    Given a rectangle defined by (xmin, ymin, xmax, ymax) and an ellipse
+    with major and minor axes dx and dy respectively, position angle theta,
+    and centered at the origin, find the area of overlap.
     '''
 
     cdef double cos_m_theta = cos(-theta)
@@ -315,6 +317,9 @@ def elliptical_overlap_grid(np.ndarray[DTYPE_t, ndim=1] x,
                             np.ndarray[DTYPE_t, ndim=1] y,
                             double dx, double dy, double theta):
     '''
+    elliptical_overlap_grid(x, y, dx, dy, theta)
+
+    Area of overlap between an ellipse and a pixelgrid.
     Given a grid with walls set by x, y, find the fraction of overlap in
     each with an ellipse with major and minor axes dx and dy
     respectively, position angle theta, and centered at the origin.

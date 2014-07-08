@@ -47,7 +47,12 @@ def area_triangle(double x1, double y1, double x2, double y2, double x3,
 def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                           int nx, int ny, double R, int use_exact,
                           int subpixels):
-    """For a circle of radius R, find the area of overlap in each element on
+    """
+    circular_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, R, use_exact,
+                          subpixels)
+
+    Area of overlap between a circle and pixelgrid.
+    For a circle of radius R, find the area of overlap in each element on
     a given grid of pixels, using either an exact overlap method, or by
     subsampling a pixel. The circle is centered on 0,0 position.
 
