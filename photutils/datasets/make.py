@@ -59,7 +59,7 @@ def make_gaussian_image(shape, table):
         for source in table:
             aperture = CircularAperture((source['x_0'], source['y_0']),
                                         3 * source['sigma'])
-            aperture.plot(color='white', fill=False)
+            aperture.plot(color='white')
     """
 
     y, x = np.indices(shape)

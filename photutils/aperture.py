@@ -173,7 +173,7 @@ class CircularAperture(Aperture):
         if ax is None:
             ax = plt.gca()
         for position in self.positions:
-            patch = mpatches.Circle(position, self.r, **kwargs)
+            patch = mpatches.Circle(position, self.r, fill=False, **kwargs)
             ax.add_patch(patch)
 
 
@@ -271,7 +271,7 @@ class CircularAnnulus(Aperture):
             patch_outer = mpatches.CirclePolygon(position, self.r_out,
                                                  resolution=resolution)
             path = _make_annulus_path(patch_inner, patch_outer)
-            patch = mpatches.PathPatch(path, **kwargs)
+            patch = mpatches.PathPatch(path, fill=False, **kwargs)
             ax.add_patch(patch)
 
 
@@ -377,7 +377,7 @@ class EllipticalAperture(Aperture):
         theta_deg = self.theta * 180. / np.pi
         for position in self.positions:
             patch = mpatches.Ellipse(position, self.a, self.b, theta_deg,
-                                     **kwargs)
+                                     fill=False, **kwargs)
             ax.add_patch(patch)
 
 
@@ -503,11 +503,11 @@ class EllipticalAnnulus(Aperture):
         theta_deg = self.theta * 180. / np.pi
         for position in self.positions:
             patch_inner = mpatches.Ellipse(position, self.a_in, self.b_in,
-                                           theta_deg, **kwargs)
+                                           theta_deg, fill=False, **kwargs)
             patch_outer = mpatches.Ellipse(position, self.a_out, self.b_out,
-                                           theta_deg, **kwargs)
+                                           theta_deg, fill=False, **kwargs)
             path = _make_annulus_path(patch_inner, patch_outer)
-            patch = mpatches.PathPatch(path, **kwargs)
+            patch = mpatches.PathPatch(path, fill=False, **kwargs)
             ax.add_patch(patch)
 
 
@@ -627,7 +627,7 @@ class RectangularAperture(Aperture):
         theta_deg = self.theta * 180. / np.pi
         for position in positions:
             patch = mpatches.Rectangle(position, self.w, self.h, theta_deg,
-                                       **kwargs)
+                                       fill=False, **kwargs)
             ax.add_patch(patch)
 
 
