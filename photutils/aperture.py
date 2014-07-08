@@ -81,12 +81,15 @@ class Aperture(object):
         """
 
     @abc.abstractmethod
-    def plot(self, **kwargs):
+    def plot(self, ax=None, **kwargs):
         """
         Plot the aperture(s) on the current matplotlib Axes instance.
 
         Parameters
         ----------
+        ax : matplotlib Axes instance, optional
+            If `None`, then the current Axes instance is used.
+
         kwargs
             Any keyword arguments accepted by `matplotlib.patches.Patch`.
         """
@@ -159,10 +162,11 @@ class CircularAperture(Aperture):
     def area(self):
         return math.pi * self.r ** 2
 
-    def plot(self, **kwargs):
+    def plot(self, ax=None, **kwargs):
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
-        ax = plt.gca()
+        if ax is None:
+            ax = plt.gca()
         for position in self.positions:
             patch = mpatches.Circle(position, self.r, **kwargs)
             ax.add_patch(patch)
@@ -249,10 +253,11 @@ class CircularAnnulus(Aperture):
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
-    def plot(self, **kwargs):
+    def plot(self, ax=None, **kwargs):
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
-        ax = plt.gca()
+        if ax is None:
+            ax = plt.gca()
         resolution = 20
         for position in self.positions:
             patch_inner = mpatches.CirclePolygon(position, self.r_in,
@@ -357,10 +362,11 @@ class EllipticalAperture(Aperture):
     def area(self):
         return math.pi * self.a * self.b
 
-    def plot(self, **kwargs):
+    def plot(self, ax=None, **kwargs):
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
-        ax = plt.gca()
+        if ax is None:
+            ax = plt.gca()
         theta_deg = self.theta * 180. / np.pi
         for position in self.positions:
             patch = mpatches.Ellipse(position, self.a, self.b, theta_deg,
@@ -481,10 +487,11 @@ class EllipticalAnnulus(Aperture):
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
-    def plot(self, **kwargs):
+    def plot(self, ax=None, **kwargs):
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
-        ax = plt.gca()
+        if ax is None:
+            ax = plt.gca()
         theta_deg = self.theta * 180. / np.pi
         for position in self.positions:
             patch_inner = mpatches.Ellipse(position, self.a_in, self.b_in,
@@ -596,10 +603,11 @@ class RectangularAperture(Aperture):
     def area(self):
         return self.w * self.h
 
-    def plot(self, **kwargs):
+    def plot(self, ax=None, **kwargs):
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
-        ax = plt.gca()
+        if ax is None:
+            ax = plt.gca()
         hw = self.w / 2.
         hh = self.h / 2.
         sint = math.sin(self.theta)
