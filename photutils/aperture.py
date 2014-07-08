@@ -18,6 +18,21 @@ __all__ = ["Aperture",
            "aperture_photometry"]
 
 
+def _make_annulus_path(patch_inner, patch_outer):
+    import matplotlib.path as mpath
+    verts_inner = patch_inner.get_verts()
+    verts_outer = patch_outer.get_verts()
+    codes_inner = (np.ones(len(verts_inner), dtype=mpath.Path.code_type) *
+                   mpath.Path.LINETO)
+    codes_inner[0] = mpath.Path.MOVETO
+    codes_outer = (np.ones(len(verts_outer), dtype=mpath.Path.code_type) *
+                   mpath.Path.LINETO)
+    codes_outer[0] = mpath.Path.MOVETO
+    codes = np.concatenate((codes_inner, codes_outer))
+    verts = np.concatenate((verts_inner, verts_outer[::-1]))
+    return mpath.Path(verts, codes)
+
+
 @six.add_metaclass(abc.ABCMeta)
 class Aperture(object):
     """
@@ -235,15 +250,18 @@ class CircularAnnulus(Aperture):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
     def plot(self, **kwargs):
-        # TODO:  Create custom patch to allow fills
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
         ax = plt.gca()
+        resolution = 20
         for position in self.positions:
-            patch1 = mpatches.Circle(position, self.r_in, **kwargs)
-            patch2 = mpatches.Circle(position, self.r_out, **kwargs)
-            ax.add_patch(patch1)
-            ax.add_patch(patch2)
+            patch_inner = mpatches.CirclePolygon(position, self.r_in,
+                                                 resolution=resolution)
+            patch_outer = mpatches.CirclePolygon(position, self.r_out,
+                                                 resolution=resolution)
+            path = _make_annulus_path(patch_inner, patch_outer)
+            patch = mpatches.PathPatch(path, **kwargs)
+            ax.add_patch(patch)
 
 
 class EllipticalAperture(Aperture):
@@ -464,18 +482,18 @@ class EllipticalAnnulus(Aperture):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
     def plot(self, **kwargs):
-        # TODO:  Create custom patch to allow fills
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
         ax = plt.gca()
         theta_deg = self.theta * 180. / np.pi
         for position in self.positions:
-            patch1 = mpatches.Ellipse(position, self.a_in, self.b_in,
-                                      theta_deg, **kwargs)
-            patch2 = mpatches.Ellipse(position, self.a_out, self.b_out,
-                                      theta_deg, **kwargs)
-            ax.add_patch(patch1)
-            ax.add_patch(patch2)
+            patch_inner = mpatches.Ellipse(position, self.a_in, self.b_in,
+                                           theta_deg, **kwargs)
+            patch_outer = mpatches.Ellipse(position, self.a_out, self.b_out,
+                                           theta_deg, **kwargs)
+            path = _make_annulus_path(patch_inner, patch_outer)
+            patch = mpatches.PathPatch(path, **kwargs)
+            ax.add_patch(patch)
 
 
 class RectangularAperture(Aperture):
