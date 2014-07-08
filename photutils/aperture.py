@@ -18,6 +18,21 @@ __all__ = ["Aperture",
            "aperture_photometry"]
 
 
+def _make_annulus_path(patch_inner, patch_outer):
+    import matplotlib.path as mpath
+    verts_inner = patch_inner.get_verts()
+    verts_outer = patch_outer.get_verts()
+    codes_inner = (np.ones(len(verts_inner), dtype=mpath.Path.code_type) *
+                   mpath.Path.LINETO)
+    codes_inner[0] = mpath.Path.MOVETO
+    codes_outer = (np.ones(len(verts_outer), dtype=mpath.Path.code_type) *
+                   mpath.Path.LINETO)
+    codes_outer[0] = mpath.Path.MOVETO
+    codes = np.concatenate((codes_inner, codes_outer))
+    verts = np.concatenate((verts_inner, verts_outer[::-1]))
+    return mpath.Path(verts, codes)
+
+
 @six.add_metaclass(abc.ABCMeta)
 class Aperture(object):
     """
@@ -63,6 +78,17 @@ class Aperture(object):
         overlap_area : `~numpy.ndarray` (float)
             2-d array of shape (ny, nx) giving the fraction of each pixel
             covered by the aperture.
+        """
+
+    @abc.abstractmethod
+    def plot(self, **kwargs):
+        """
+        Plot the aperture(s) on the current matplotlib Axes instance.
+
+        Parameters
+        ----------
+        kwargs
+            Any keyword arguments accepted by `matplotlib.patches.Patch`.
         """
 
 
@@ -132,6 +158,14 @@ class CircularAperture(Aperture):
 
     def area(self):
         return math.pi * self.r ** 2
+
+    def plot(self, **kwargs):
+        import matplotlib.pyplot as plt
+        import matplotlib.patches as mpatches
+        ax = plt.gca()
+        for position in self.positions:
+            patch = mpatches.Circle(position, self.r, **kwargs)
+            ax.add_patch(patch)
 
 
 class CircularAnnulus(Aperture):
@@ -214,6 +248,20 @@ class CircularAnnulus(Aperture):
 
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
+
+    def plot(self, **kwargs):
+        import matplotlib.pyplot as plt
+        import matplotlib.patches as mpatches
+        ax = plt.gca()
+        resolution = 20
+        for position in self.positions:
+            patch_inner = mpatches.CirclePolygon(position, self.r_in,
+                                                 resolution=resolution)
+            patch_outer = mpatches.CirclePolygon(position, self.r_out,
+                                                 resolution=resolution)
+            path = _make_annulus_path(patch_inner, patch_outer)
+            patch = mpatches.PathPatch(path, **kwargs)
+            ax.add_patch(patch)
 
 
 class EllipticalAperture(Aperture):
@@ -308,6 +356,16 @@ class EllipticalAperture(Aperture):
 
     def area(self):
         return math.pi * self.a * self.b
+
+    def plot(self, **kwargs):
+        import matplotlib.pyplot as plt
+        import matplotlib.patches as mpatches
+        ax = plt.gca()
+        theta_deg = self.theta * 180. / np.pi
+        for position in self.positions:
+            patch = mpatches.Ellipse(position, self.a, self.b, theta_deg,
+                                     **kwargs)
+            ax.add_patch(patch)
 
 
 class EllipticalAnnulus(Aperture):
@@ -423,6 +481,20 @@ class EllipticalAnnulus(Aperture):
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
+    def plot(self, **kwargs):
+        import matplotlib.pyplot as plt
+        import matplotlib.patches as mpatches
+        ax = plt.gca()
+        theta_deg = self.theta * 180. / np.pi
+        for position in self.positions:
+            patch_inner = mpatches.Ellipse(position, self.a_in, self.b_in,
+                                           theta_deg, **kwargs)
+            patch_outer = mpatches.Ellipse(position, self.a_out, self.b_out,
+                                           theta_deg, **kwargs)
+            path = _make_annulus_path(patch_inner, patch_outer)
+            patch = mpatches.PathPatch(path, **kwargs)
+            ax.add_patch(patch)
+
 
 class RectangularAperture(Aperture):
     """
@@ -523,6 +595,23 @@ class RectangularAperture(Aperture):
 
     def area(self):
         return self.w * self.h
+
+    def plot(self, **kwargs):
+        import matplotlib.pyplot as plt
+        import matplotlib.patches as mpatches
+        ax = plt.gca()
+        hw = self.w / 2.
+        hh = self.h / 2.
+        sint = math.sin(self.theta)
+        cost = math.cos(self.theta)
+        dx = (hh * sint) - (hw * cost)
+        dy = -(hh * cost) - (hw * sint)
+        positions = self.positions + np.array([dx, dy])
+        theta_deg = self.theta * 180. / np.pi
+        for position in positions:
+            patch = mpatches.Rectangle(position, self.w, self.h, theta_deg,
+                                       **kwargs)
+            ax.add_patch(patch)
 
 
 doc_template = ("""\

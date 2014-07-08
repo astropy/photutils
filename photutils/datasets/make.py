@@ -49,6 +49,7 @@ def make_gaussian_image(shape, table):
 
         # Make an image of the sources
         from photutils.datasets import make_gaussian_image
+        from photutils import CircularAperture
         image = make_gaussian_image(shape, table)
 
         # Plot the image
@@ -56,20 +57,17 @@ def make_gaussian_image(shape, table):
         fig, ax = plt.subplots(1, 1)
         ax.imshow(image, origin='lower', interpolation='nearest')
         for source in table:
-            circle = plt.Circle((source['x_0'], source['y_0']),
-                                3 * source['sigma'],
-                                color='white', fill=False)
-            ax.add_patch(circle)
+            aperture = CircularAperture((source['x_0'], source['y_0']),
+                                        3 * source['sigma'])
+            aperture.plot(color='white', fill=False)
     """
+
     y, x = np.indices(shape)
     image = np.zeros(shape, dtype=np.float64)
 
     for source in table:
-        model = GaussianPSF(amplitude=source['amplitude'],
-                            x_0=source['x_0'],
-                            y_0=source['y_0'],
-                            sigma=source['sigma'],
-                           )
+        model = GaussianPSF(amplitude=source['amplitude'], x_0=source['x_0'],
+                            y_0=source['y_0'], sigma=source['sigma'])
         image += model(x, y)
 
     return image
