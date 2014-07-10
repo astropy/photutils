@@ -73,7 +73,8 @@ pixels on each source (each source gets the same 3 apertures):
   ...     flux.append(aperture_photometry(data, CircularAperture(positions, radius)))
 
 Now we have 3 separate tables containing the photometry results, one for
-each aperture. One may use `~astropy.table.hstack` to stack them into one `~astropy.Table`:
+each aperture. One may use `~astropy.table.hstack` to stack them into one
+`~astropy.table.Table`:
 
   >>> from astropy.table import hstack
   >>> fluxtable = hstack(flux)
