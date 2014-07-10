@@ -152,11 +152,11 @@ class CircularAperture(Aperture):
             xx, yy = np.meshgrid(x_centers, y_centers)
             return xx * xx + yy * yy < self.r * self.r
         elif method == 'subpixel':
-            from .circular_overlap import circular_overlap_grid
+            from .geometry import circular_overlap_grid
             return circular_overlap_grid(x_min, x_max, y_min, y_max,
                                          nx, ny, self.r, 0, subpixels)
         elif method == 'exact':
-            from .circular_overlap import circular_overlap_grid
+            from .geometry import circular_overlap_grid
             return circular_overlap_grid(x_min, x_max, y_min, y_max,
                                          nx, ny, self.r, 1, 1)
         else:
@@ -240,13 +240,13 @@ class CircularAnnulus(Aperture):
             return ((dist_sq < self.r_out * self.r_out) &
                     (dist_sq > self.r_in * self.r_in))
         elif method == 'subpixel':
-            from .circular_overlap import circular_overlap_grid
+            from .geometry import circular_overlap_grid
             return (circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
                                           self.r_out, 0, subpixels) -
                     circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
                                           self.r_in, 0, subpixels))
         elif method == 'exact':
-            from .circular_overlap import circular_overlap_grid
+            from .geometry import circular_overlap_grid
             return (circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
                                           self.r_out, 1, 1) -
                     circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
@@ -356,7 +356,7 @@ class EllipticalAperture(Aperture):
                 return downsample(in_aper, subpixels)
 
         elif method == 'exact':
-            from .elliptical_exact import elliptical_overlap_grid
+            from .geometry import elliptical_overlap_grid
             x_edges = np.linspace(x_min, x_max, nx + 1)
             y_edges = np.linspace(y_min, y_max, ny + 1)
             return elliptical_overlap_grid(x_edges, y_edges, self.a,
@@ -480,7 +480,7 @@ class EllipticalAnnulus(Aperture):
                 return downsample(in_aper, subpixels)
 
         elif method == 'exact':
-            from .elliptical_exact import elliptical_overlap_grid
+            from .geometry import elliptical_overlap_grid
             x_edges = np.linspace(x_min, x_max, nx + 1)
             y_edges = np.linspace(y_min, y_max, ny + 1)
             return (elliptical_overlap_grid(x_edges, y_edges, self.a_out,

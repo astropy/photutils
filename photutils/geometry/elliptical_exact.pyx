@@ -11,6 +11,8 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 cimport numpy as np
 
+__all__ = ['elliptical_overlap_grid']
+
 cdef extern from "math.h":
 
     double asin(double x)
@@ -25,9 +27,10 @@ ctypedef np.float64_t DTYPE_t
 
 cimport cython
 
-
-def distance(double x1, double y1, double x2, double y2):
-    return sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+try:
+    from ..geometry import distance, area_triangle
+except ImportError:
+    from .circular_overlap import distance, area_triangle
 
 
 def area_arc_unit(double x1, double y1, double x2, double y2):
@@ -42,13 +45,6 @@ def area_arc_unit(double x1, double y1, double x2, double y2):
     a = distance(x1, y1, x2, y2)
     theta = 2. * asin(0.5 * a)
     return 0.5 * (theta - sin(theta))
-
-
-def area_triangle(double x1, double y1, double x2, double y2, double x3, double y3):
-    '''
-    Area of a triangle defined by three vertices
-    '''
-    return 0.5 * abs(x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
 
 
 def in_triangle(double x, double y, double x1, double y1, double x2, double y2, double x3, double y3):
@@ -290,10 +286,12 @@ def overlap_area_triangle_unit_circle(double x1, double y1, double x2, double y2
     return area
 
 
-def elliptical_overlap_single(double xmin, double ymin, double xmax, double ymax, double dx, double dy, double theta):
+def elliptical_overlap_single(double xmin, double ymin, double xmax,
+                              double ymax, double dx, double dy, double theta):
     '''
-    Given a rectangle defined by (xmin, ymin, xmax, ymax) and an ellipse with major and minor axes dx and dy
-    respectively, position angle theta, and centered at the origin, find the area of overlap
+    Given a rectangle defined by (xmin, ymin, xmax, ymax) and an ellipse
+    with major and minor axes dx and dy respectively, position angle theta,
+    and centered at the origin, find the area of overlap.
     '''
 
     cdef double cos_m_theta = cos(-theta)
@@ -319,9 +317,29 @@ def elliptical_overlap_grid(np.ndarray[DTYPE_t, ndim=1] x,
                             np.ndarray[DTYPE_t, ndim=1] y,
                             double dx, double dy, double theta):
     '''
+    elliptical_overlap_grid(x, y, dx, dy, theta)
+
+    Area of overlap between an ellipse and a pixelgrid.
     Given a grid with walls set by x, y, find the fraction of overlap in
     each with an ellipse with major and minor axes dx and dy
     respectively, position angle theta, and centered at the origin.
+    The ellipse is centered on the 0,0 position.
+
+    Parameters
+    ----------
+    x, y : `~numpy.ndarray`
+        Extent of grid.
+    dx : float
+        The semimajor axis.
+    dy : float
+        The semiminor axis.
+    theta : float
+        The position angle of the semimajor axis in radians (counterclockwise)
+
+    Returns
+    -------
+    frac : `~numpy.ndarray`
+        2-d array giving the fraction of the overlap.
     '''
 
     cdef int nx = x.shape[0]

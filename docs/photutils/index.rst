@@ -118,6 +118,7 @@ Using `photutils`
     datasets.rst
     detection.rst
     morphology.rst
+    geometry.rst
     utils.rst
 
 .. toctree::
