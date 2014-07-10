@@ -46,9 +46,9 @@ def test_inside_array_simple(aperture, radius):
                                  method='exact', subpixels=10)
     true_flux = aperture((20., 20.), *radius).area()
 
-    assert np.fabs((table3['flux'] - true_flux) / true_flux) < 0.1
+    assert_allclose(np.fabs(table3['flux'] / true_flux), 1)
     assert table1['flux'] < table3['flux']
-    assert np.fabs(table2['flux'] - table3['flux'] ) < 0.1
+    assert_allclose(table2['flux'], table3['flux'], atol=0.1)
 
 
 class BaseTestAperturePhotometry(object):
@@ -237,7 +237,7 @@ def test_rectangular_aperture():
     true_flux = aperture.area()
 
     assert table1['flux'] < true_flux
-    assert np.fabs(table2['flux'] - true_flux) < 0.1
+    assert_allclose(table2['flux'], true_flux, atol=0.1)
 
 
 class TestMaskedCircular(BaseTestAperturePhotometry):

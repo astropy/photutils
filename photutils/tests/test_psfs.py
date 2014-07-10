@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import division
 import numpy as np
+from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 from ..psf import GaussianPSF
 try:
@@ -21,7 +22,7 @@ def test_subpixel_gauss_psf(width):
     """
     gauss_psf = GaussianPSF(width)
     y, x = np.mgrid[-10:11, -10:11]
-    assert np.abs(gauss_psf(x, y).sum() - 1) < 1E-12
+    assert_allclose(np.abs(gauss_psf(x, y).sum()), 1)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -31,4 +32,4 @@ def test_gaussian_PSF_integral():
     """
     psf = GaussianPSF(10)
     y, x = np.mgrid[-100:101, -100:101]
-    assert np.abs(psf(y, x).sum() - 1) < 1E-12
+    assert_allclose(np.abs(psf(y, x).sum()), 1)
