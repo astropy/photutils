@@ -83,7 +83,7 @@ class Aperture(object):
     @abc.abstractmethod
     def plot(self, ax=None, fill=False, **kwargs):
         """
-        Plot the aperture(s) on the current matplotlib Axes instance.
+        Plot the aperture(s) on a matplotlib Axes instance.
 
         Parameters
         ----------
