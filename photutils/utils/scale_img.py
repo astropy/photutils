@@ -55,7 +55,8 @@ def find_imgcuts(image, min_cut=None, max_cut=None, min_percent=None,
     if min_cut is not None and max_cut is not None:
         return min_cut, max_cut
     if percent is not None:
-        assert (percent >= 0) and (percent <= 100.0), 'percent must be >= 0 and <= 100.0'
+        assert (percent >= 0) and (percent <= 100.0), \
+            'percent must be >= 0 and <= 100.0'
         if min_percent is None and max_percent is None:
             min_percent = (100.0 - float(percent)) / 2.0
             max_percent = 100.0 - min_percent
@@ -109,7 +110,8 @@ def img_stats(image, image_mask=None, mask_val=None, sig=3.0, iters=None):
     """
 
     if image_mask is not None:
-        assert image_mask.dtype == np.bool, 'image_mask must be a boolean ndarray'
+        assert image_mask.dtype == np.bool, \
+            'image_mask must be a boolean ndarray'
         image = image[~image_mask]
     if mask_val is not None and image_mask is None:
         idx = (image != mask_val).nonzero()
@@ -119,8 +121,7 @@ def img_stats(image, image_mask=None, mask_val=None, sig=3.0, iters=None):
     return np.mean(goodvals), np.median(goodvals), np.std(goodvals)
 
 
-def rescale_img(image, min_cut=None, max_cut=None, min_percent=None,
-                max_percent=None, percent=None):
+def rescale_img(image, **kwargs):
     """
     Rescale image values between minimum and maximum cut levels to
     values between 0 and 1, inclusive.
@@ -166,16 +167,13 @@ def rescale_img(image, min_cut=None, max_cut=None, min_percent=None,
     from skimage import exposure
 
     image = image.astype(np.float64)
-    min_cut, max_cut = find_imgcuts(image, min_cut=min_cut, max_cut=max_cut,
-                                    min_percent=min_percent,
-                                    max_percent=max_percent, percent=percent)
+    min_cut, max_cut = find_imgcuts(image, **kwargs)
     outimg = exposure.rescale_intensity(image, in_range=(min_cut, max_cut),
                                         out_range=(0, 1))
     return outimg, min_cut, max_cut
 
 
-def scale_linear(image, min_cut=None, max_cut=None, min_percent=None,
-                 max_percent=None, percent=None):
+def scale_linear(image, **kwargs):
     """
     Perform linear scaling of an image between minimum and maximum cut
     levels.
@@ -217,14 +215,11 @@ def scale_linear(image, min_cut=None, max_cut=None, min_percent=None,
         The 2D array of the scaled/stretched image.
     """
 
-    result = rescale_img(image, min_cut=min_cut, max_cut=max_cut,
-                         min_percent=min_percent, max_percent=max_percent,
-                         percent=percent)
+    result = rescale_img(image, **kwargs)
     return result[0]
 
 
-def scale_sqrt(image, min_cut=None, max_cut=None, min_percent=None,
-               max_percent=None, percent=None):
+def scale_sqrt(image, **kwargs):
     """
     Perform square-root scaling of an image between minimum and maximum
     cut levels.  This is equivalent to using `scale_power` with a
@@ -266,14 +261,11 @@ def scale_sqrt(image, min_cut=None, max_cut=None, min_percent=None,
         The 2D array of the scaled/stretched image.
     """
 
-    result = rescale_img(image, min_cut=min_cut, max_cut=max_cut,
-                         min_percent=min_percent, max_percent=max_percent,
-                         percent=percent)
+    result = rescale_img(image, **kwargs)
     return np.sqrt(result[0])
 
 
-def scale_power(image, power, min_cut=None, max_cut=None, min_percent=None,
-                max_percent=None, percent=None):
+def scale_power(image, power, **kwargs):
     """
     Perform power scaling of an image between minimum and maximum cut
     levels.
@@ -318,14 +310,11 @@ def scale_power(image, power, min_cut=None, max_cut=None, min_percent=None,
         The 2D array of the scaled/stretched image.
     """
 
-    result = rescale_img(image, min_cut=min_cut, max_cut=max_cut,
-                         min_percent=min_percent, max_percent=max_percent,
-                         percent=percent)
+    result = rescale_img(image, **kwargs)
     return (result[0])**power
 
 
-def scale_log(image, min_cut=None, max_cut=None, min_percent=None,
-              max_percent=None, percent=None):
+def scale_log(image, **kwargs):
     """
     Perform logarithmic (base 10) scaling of an image between minimum and
     maximum cut levels.
@@ -367,16 +356,12 @@ def scale_log(image, min_cut=None, max_cut=None, min_percent=None,
         The 2D array of the scaled/stretched image.
     """
 
-    result = rescale_img(image, min_cut=min_cut, max_cut=max_cut,
-                         min_percent=min_percent, max_percent=max_percent,
-                         percent=percent)
+    result = rescale_img(image, **kwargs)
     outimg = np.log10(result[0] + 1.0) / np.log10(2.0)
     return outimg
 
 
-def scale_asinh(image, noise_level=None, sigma=2.0, min_cut=None,
-                max_cut=None, min_percent=None, max_percent=None,
-                percent=None):
+def scale_asinh(image, noise_level=None, sigma=2.0, **kwargs):
     """
     Perform inverse hyperbolic sine (arcsinh) scaling of an image
     between minimum and maximum cut levels.
@@ -428,9 +413,7 @@ def scale_asinh(image, noise_level=None, sigma=2.0, min_cut=None,
         The 2D array of the scaled/stretched image.
     """
 
-    result = rescale_img(image, min_cut=min_cut, max_cut=max_cut,
-                         min_percent=min_percent, max_percent=max_percent,
-                         percent=percent)
+    result = rescale_img(image, **kwargs)
     outimg, min_cut, max_cut = result
     if noise_level is None:
         mean, median, stddev = img_stats(outimg)
