@@ -187,13 +187,22 @@ if not args.show:
                 for i in range(c[name]['iter']):
                     # Check whether it is single or multiple apertures
                     if not c[name]['multiap']:
-                        photutils.aperture_photometry(data, f[t](c[name]['pos'], *c[name][t]),
-                                                      subpixels=subpixels)
+                        if subpixels == 'exact':
+                            photutils.aperture_photometry(data, f[t](c[name]['pos'], *c[name][t]),
+                                                          method='exact')
+                        else:
+                            photutils.aperture_photometry(data, f[t](c[name]['pos'], *c[name][t]),
+                                                          method='subpixel', subpixels=subpixels)
 
                     else:
-                        for index in range(len(c[name][t][0])):
-                            photutils.aperture_photometry(data,f[t](c[name]['pos'], *c[name][t][0][index]),
-                                                          subpixels=subpixels)
+                        if subpixels == 'exact':
+                            for index in range(len(c[name][t][0])):
+                                photutils.aperture_photometry(data, f[t](c[name]['pos'], *c[name][t][0][index]),
+                                                              method='exact')
+                        else:
+                            for index in range(len(c[name][t][0])):
+                                photutils.aperture_photometry(data, f[t](c[name]['pos'], *c[name][t][0][index]),
+                                                              method='subpixel', subpixels=subpixels)
                 time2 = time.time()
                 time_sec = (time2 - time1) / c[name]['iter']
                 print("{0:10.5f} ".format(time_sec * 1000.))
