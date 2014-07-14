@@ -243,8 +243,11 @@ class CircularAnnulus(Aperture):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
     def do_photometry(self, data, method='exact', subpixels=5):
-        (ood_filter, x_min, x_max, y_min, y_max, x_pmin, x_pmax, y_pmin, y_pmax) = \
-            super(CircularAnnulus, self).do_photometry(data)
+        superparams = super(CircularAnnulus, self).do_photometry(data)
+
+        ood_filter = superparams[0]
+        extent = superparams[1:5]
+        phot_extent = superparams[5:9]
 
         flux = np.zeros(len(self.positions), dtype=np.float)
 
@@ -256,57 +259,15 @@ class CircularAnnulus(Aperture):
             if np.sum(ood_filter) == len(self.positions):
                 return flux
 
-        # Find fraction of overlap between aperture and pixels
-
-        if method == 'center':
-            for i in range(len(self.positions)):
-                x_size = ((x_pmax[i] - x_pmin[i]) /
-                          data[:, x_min[i]:x_max[i]].shape[1])
-                y_size = ((y_pmax[i] - y_pmin[i]) /
-                          data[y_min[i]:y_max[i], :].shape[0])
-
-                x_centers = np.arange(x_pmin[i] + x_size / 2.,
-                                      x_pmax[i], x_size)
-                y_centers = np.arange(y_pmin[i] + y_size / 2.,
-                                      y_pmax[i], y_size)
-                xx, yy = np.meshgrid(x_centers, y_centers)
-                dist_sq = xx * xx + yy * yy
-                flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                                 ((dist_sq < self.r_out * self.r_out) &
-                                  (dist_sq > self.r_in * self.r_in)))
-
-        elif method == 'subpixel':
-            from .geometry import circular_overlap_grid
-            for i in range(len(self.positions)):
-                flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                                 circular_overlap_grid(x_pmin[i], x_pmax[i],
-                                                       y_pmin[i], y_pmax[i],
-                                                       x_pmax[i] - x_pmin[i],
-                                                       y_pmax[i] - y_pmin[i],
-                                                       self.r_out, 0, subpixels) -
-                                 circular_overlap_grid(x_pmin[i], x_pmax[i],
-                                                       y_pmin[i], y_pmax[i],
-                                                       x_pmax[i] - x_pmin[i],
-                                                       y_pmax[i] - y_pmin[i],
-                                                       self.r_in, 0, subpixels))
-
-        elif method == 'exact':
-            from .geometry import circular_overlap_grid
-            for i in range(len(self.positions)):
-                flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                                 circular_overlap_grid(x_pmin[i], x_pmax[i],
-                                                       y_pmin[i], y_pmax[i],
-                                                       x_pmax[i] - x_pmin[i],
-                                                       y_pmax[i] - y_pmin[i],
-                                                       self.r_out, 1, 1) -
-                                 circular_overlap_grid(x_pmin[i], x_pmax[i],
-                                                       y_pmin[i], y_pmax[i],
-                                                       x_pmax[i] - x_pmin[i],
-                                                       y_pmax[i] - y_pmin[i],
-                                                       self.r_in, 1, 1))
-        else:
+        if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
+
+        flux = do_annulus_photometry(data, flux, 'circular',
+                                     extent, phot_extent,
+                                     (self.r_in, ), (self.r_out, ),
+                                     method=method,
+                                     subpixels=subpixels)
 
         return flux
 
@@ -506,8 +467,11 @@ class EllipticalAnnulus(Aperture):
             ax.add_patch(patch)
 
     def do_photometry(self, data, method='exact', subpixels=5):
-        (ood_filter, x_min, x_max, y_min, y_max, x_pmin, x_pmax, y_pmin, y_pmax) = \
-            super(EllipticalAnnulus, self).do_photometry(data)
+        superparams = super(EllipticalAnnulus, self).do_photometry(data)
+
+        ood_filter = superparams[0]
+        extent = superparams[1:5]
+        phot_extent = superparams[5:9]
 
         flux = np.zeros(len(self.positions), dtype=np.float)
 
@@ -519,62 +483,16 @@ class EllipticalAnnulus(Aperture):
             if np.sum(ood_filter) == len(self.positions):
                 return flux
 
-        # Find fraction of overlap between aperture and pixels
-
-        if method == 'center' or method == 'subpixel':
-            if method == 'center': subpixels = 1
-            for i in range(len(self.positions)):
-                x_size = ((x_pmax[i] - x_pmin[i]) /
-                          (data[:, x_min[i]:x_max[i]].shape[1] * subpixels))
-                y_size = ((y_pmax[i] - y_pmin[i]) /
-                          (data[y_min[i]:y_max[i], :].shape[0] * subpixels))
-
-                x_centers = np.arange(x_pmin[i] + x_size / 2.,
-                                      x_pmax[i], x_size)
-                y_centers = np.arange(y_pmin[i] + y_size / 2.,
-                                      y_pmax[i], y_size)
-                xx, yy = np.meshgrid(x_centers, y_centers)
-                numerator1 = (xx * math.cos(self.theta) +
-                              yy * math.sin(self.theta))
-                numerator2 = (yy * math.cos(self.theta) -
-                              xx * math.sin(self.theta))
-
-                inside_outer_ellipse = ((((numerator1 / self.a_out) ** 2 +
-                                          (numerator2 / self.b_out) ** 2) < 1.))
-                if self.a_in == 0 or self.b_in == 0:
-                    in_aper = inside_outer_ellipse.astype(float) / subpixels ** 2
-                else:
-                    outside_inner_ellipse = ((numerator1 / self.a_in) ** 2 +
-                                             (numerator2 / self.b_in) ** 2) > 1.
-                    in_aper = (inside_outer_ellipse &
-                               outside_inner_ellipse).astype(float) / subpixels ** 2
-
-                if method == 'center':
-                    flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                                     in_aper)
-                else:
-                    from .utils import downsample
-                    flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                                     downsample(in_aper, subpixels))
-
-        elif method == 'exact':
-            from .elliptical_exact import elliptical_overlap_grid
-            for i in range(len(self.positions)):
-                x_edges = np.linspace(x_pmin[i], x_pmax[i],
-                                      data[:, x_min[i]:x_max[i]].shape[1] + 1)
-                y_edges = np.linspace(y_pmin[i], y_pmax[i],
-                                      data[y_min[i]:y_max[i], :].shape[0] + 1)
-                flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                                 (elliptical_overlap_grid(x_edges, y_edges,
-                                                          self.a_out, self.b_out,
-                                                          self.theta) -
-                                  elliptical_overlap_grid(x_edges, y_edges,
-                                                          self.a_in, self.b_in,
-                                                          self.theta)))
-
-        else:
+        if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
+
+        flux = do_annulus_photometry(data, flux, 'elliptical',
+                                     extent, phot_extent,
+                                     (self.a_in, self.b_in, self.theta),
+                                     (self.a_out, self.b_out, self.theta),
+                                     method=method,
+                                     subpixels=subpixels)
 
         return flux
 
@@ -854,6 +772,36 @@ def do_elliptical_photometry(data, flux, extent, phot_extent, a, b, theta,
             flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
                              elliptical_overlap_grid(x_edges, y_edges,
                                                      a, b, theta))
+
+    return flux
+
+
+def do_annulus_photometry(data, flux, mode, extent, phot_extent,
+                          inner_params, outer_params, method, subpixels):
+
+    if mode == 'circular':
+        flux_inner = do_circular_photometry(data, flux, extent,
+                                            phot_extent, *inner_params,
+                                            method=method, subpixels=subpixels)
+        flux_outer = do_circular_photometry(data, flux, extent,
+                                            phot_extent, *outer_params,
+                                            method=method, subpixels=subpixels)
+        flux = flux_outer - flux_inner
+
+    elif mode == 'elliptical':
+        flux_inner = do_elliptical_photometry(data, flux,
+                                              extent, phot_extent,
+                                              *inner_params,
+                                              method=method, subpixels=subpixels)
+        flux_outer = do_elliptical_photometry(data, flux,
+                                              extent, phot_extent,
+                                              *outer_params,
+                                              method=method, subpixels=subpixels)
+        flux = flux_outer - flux_inner
+
+    else:
+        raise ValueError('{0} mode is not supported for annular photometry'
+                         '{1}'.format(mode))
 
     return flux
 
