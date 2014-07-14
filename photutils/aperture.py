@@ -172,8 +172,10 @@ class CircularAperture(Aperture):
         # TODO: flag these objects
         if np.sum(ood_filter):
             flux[ood_filter] = np.nan
-            print("Position {0} and its aperture is out of the data"
-                  " area".format(self.positions[ood_filter]))
+            warnings.warn("The aperture at position {0} does not have any "
+                          "overlap with the data"
+                          .format(self.positions[ood_filter]),
+                          AstropyUserWarning)
             if np.sum(ood_filter) == len(self.positions):
                 return flux
 
@@ -254,8 +256,10 @@ class CircularAnnulus(Aperture):
         # TODO: flag these objects
         if np.sum(ood_filter):
             flux[ood_filter] = np.nan
-            print("Position {0} and its aperture is out of the data"
-                  " area".format(self.positions[ood_filter]))
+            warnings.warn("The aperture at position {0} does not have any "
+                          "overlap with the data"
+                          .format(self.positions[ood_filter]),
+                          AstropyUserWarning)
             if np.sum(ood_filter) == len(self.positions):
                 return flux
 
@@ -356,8 +360,10 @@ class EllipticalAperture(Aperture):
         # TODO: flag these objects
         if np.sum(ood_filter):
             flux[ood_filter] = np.nan
-            print("Position {0} and its aperture is out of the data"
-                  " area".format(self.positions[ood_filter]))
+            warnings.warn("The aperture at position {0} does not have any "
+                          "overlap with the data"
+                          .format(self.positions[ood_filter]),
+                          AstropyUserWarning)
             if np.sum(ood_filter) == len(self.positions):
                 return flux
 
@@ -478,8 +484,10 @@ class EllipticalAnnulus(Aperture):
         # TODO: flag these objects
         if np.sum(ood_filter):
             flux[ood_filter] = np.nan
-            print("Position {0} and its aperture is out of the data"
-                  " area".format(self.positions[ood_filter]))
+            warnings.warn("The aperture at position {0} does not have any "
+                          "overlap with the data"
+                          .format(self.positions[ood_filter]),
+                          AstropyUserWarning)
             if np.sum(ood_filter) == len(self.positions):
                 return flux
 
@@ -704,7 +712,7 @@ def do_circular_photometry(data, flux, extent, phot_extent, radius,
                                  (xx * xx + yy * yy < radius * radius))
 
     elif method == 'subpixel':
-        from .circular_overlap import circular_overlap_grid
+        from .geometry import circular_overlap_grid
         for i in range(len(flux)):
             if not np.isnan(flux[i]):
                 flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
@@ -715,7 +723,7 @@ def do_circular_photometry(data, flux, extent, phot_extent, radius,
                                                        radius, 0, subpixels))
 
     elif method == 'exact':
-        from .circular_overlap import circular_overlap_grid
+        from .geometry import circular_overlap_grid
         for i in range(len(flux)):
             if not np.isnan(flux[i]):
                 flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
@@ -766,7 +774,7 @@ def do_elliptical_photometry(data, flux, extent, phot_extent, a, b, theta,
                                      downsample(in_aper, subpixels))
 
     elif method == 'exact':
-        from .elliptical_exact import elliptical_overlap_grid
+        from .geometry import elliptical_overlap_grid
         for i in range(len(flux)):
             x_edges = np.linspace(x_pmin[i], x_pmax[i],
                                   data[:, x_min[i]:x_max[i]].shape[1] + 1)
