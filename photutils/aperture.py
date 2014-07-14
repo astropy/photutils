@@ -699,14 +699,14 @@ def do_circular_photometry(data, flux, extent, phot_extent, radius,
             y_centers = np.arange(y_pmin[i] + y_size / 2.,
                                   y_pmax[i], y_size)
             xx, yy = np.meshgrid(x_centers, y_centers)
-            if flux[i] is not np.nan:
+            if not np.isnan(flux[i]):
                 flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
                                  (xx * xx + yy * yy < radius * radius))
 
     elif method == 'subpixel':
         from .circular_overlap import circular_overlap_grid
         for i in range(len(flux)):
-            if flux[i] is not np.nan:
+            if not np.isnan(flux[i]):
                 flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
                                  circular_overlap_grid(x_pmin[i], x_pmax[i],
                                                        y_pmin[i], y_pmax[i],
@@ -717,7 +717,7 @@ def do_circular_photometry(data, flux, extent, phot_extent, radius,
     elif method == 'exact':
         from .circular_overlap import circular_overlap_grid
         for i in range(len(flux)):
-            if flux[i] is not np.nan:
+            if not np.isnan(flux[i]):
                 flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
                                  circular_overlap_grid(x_pmin[i], x_pmax[i],
                                                        y_pmin[i], y_pmax[i],
@@ -736,6 +736,8 @@ def do_elliptical_photometry(data, flux, extent, phot_extent, a, b, theta,
 
     if method == 'center' or method == 'subpixel':
         if method == 'center': subpixels = 1
+        if method == 'subpixel': from .utils import downsample
+
         for i in range(len(flux)):
             x_size = ((x_pmax[i] - x_pmin[i]) /
                       (data[:, x_min[i]:x_max[i]].shape[1] * subpixels))
@@ -755,12 +757,13 @@ def do_elliptical_photometry(data, flux, extent, phot_extent, a, b, theta,
                        / subpixels ** 2)
 
             if method == 'center':
-                flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                                 in_aper)
+                if not np.isnan(flux[i]):
+                    flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
+                                     in_aper)
             else:
-                from .utils import downsample
-                flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                                 downsample(in_aper, subpixels))
+                if not np.isnan(flux[i]):
+                    flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
+                                     downsample(in_aper, subpixels))
 
     elif method == 'exact':
         from .elliptical_exact import elliptical_overlap_grid
@@ -769,9 +772,10 @@ def do_elliptical_photometry(data, flux, extent, phot_extent, a, b, theta,
                                   data[:, x_min[i]:x_max[i]].shape[1] + 1)
             y_edges = np.linspace(y_pmin[i], y_pmax[i],
                                   data[y_min[i]:y_max[i], :].shape[0] + 1)
-            flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                             elliptical_overlap_grid(x_edges, y_edges,
-                                                     a, b, theta))
+            if flux[i] is not np.nan:
+                flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
+                                 elliptical_overlap_grid(x_edges, y_edges,
+                                                         a, b, theta))
 
     return flux
 
