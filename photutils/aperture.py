@@ -163,27 +163,11 @@ class CircularAperture(Aperture):
     def do_photometry(self, data, method='exact', subpixels=5):
         superparams = super(CircularAperture, self).do_photometry(data)
 
-        ood_filter = superparams[0]
-        extent = superparams[1:5]
-        phot_extent = superparams[5:9]
-
-        flux = np.zeros(len(self.positions), dtype=np.float)
-
-        # TODO: flag these objects
-        if np.sum(ood_filter):
-            flux[ood_filter] = np.nan
-            warnings.warn("The aperture at position {0} does not have any "
-                          "overlap with the data"
-                          .format(self.positions[ood_filter]),
-                          AstropyUserWarning)
-            if np.sum(ood_filter) == len(self.positions):
-                return flux
-
         if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
-        flux = do_circular_photometry(data, flux, extent, phot_extent,
+        flux = do_circular_photometry(data, self.positions, superparams,
                                       self.r, method=method,
                                       subpixels=subpixels)
 
@@ -247,28 +231,12 @@ class CircularAnnulus(Aperture):
     def do_photometry(self, data, method='exact', subpixels=5):
         superparams = super(CircularAnnulus, self).do_photometry(data)
 
-        ood_filter = superparams[0]
-        extent = superparams[1:5]
-        phot_extent = superparams[5:9]
-
-        flux = np.zeros(len(self.positions), dtype=np.float)
-
-        # TODO: flag these objects
-        if np.sum(ood_filter):
-            flux[ood_filter] = np.nan
-            warnings.warn("The aperture at position {0} does not have any "
-                          "overlap with the data"
-                          .format(self.positions[ood_filter]),
-                          AstropyUserWarning)
-            if np.sum(ood_filter) == len(self.positions):
-                return flux
-
         if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
-        flux = do_annulus_photometry(data, flux, 'circular',
-                                     extent, phot_extent,
+        flux = do_annulus_photometry(data, self.positions, 'circular',
+                                     superparams,
                                      (self.r_in, ), (self.r_out, ),
                                      method=method,
                                      subpixels=subpixels)
@@ -351,27 +319,11 @@ class EllipticalAperture(Aperture):
     def do_photometry(self, data, method='exact', subpixels=5):
         superparams = super(EllipticalAperture, self).do_photometry(data)
 
-        ood_filter = superparams[0]
-        extent = superparams[1:5]
-        phot_extent = superparams[5:9]
-
-        flux = np.zeros(len(self.positions), dtype=np.float)
-
-        # TODO: flag these objects
-        if np.sum(ood_filter):
-            flux[ood_filter] = np.nan
-            warnings.warn("The aperture at position {0} does not have any "
-                          "overlap with the data"
-                          .format(self.positions[ood_filter]),
-                          AstropyUserWarning)
-            if np.sum(ood_filter) == len(self.positions):
-                return flux
-
         if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
-        flux = do_elliptical_photometry(data, flux, extent, phot_extent,
+        flux = do_elliptical_photometry(data, self.positions, superparams,
                                         self.a, self.b, self.theta,
                                         method=method,
                                         subpixels=subpixels)
@@ -475,28 +427,12 @@ class EllipticalAnnulus(Aperture):
     def do_photometry(self, data, method='exact', subpixels=5):
         superparams = super(EllipticalAnnulus, self).do_photometry(data)
 
-        ood_filter = superparams[0]
-        extent = superparams[1:5]
-        phot_extent = superparams[5:9]
-
-        flux = np.zeros(len(self.positions), dtype=np.float)
-
-        # TODO: flag these objects
-        if np.sum(ood_filter):
-            flux[ood_filter] = np.nan
-            warnings.warn("The aperture at position {0} does not have any "
-                          "overlap with the data"
-                          .format(self.positions[ood_filter]),
-                          AstropyUserWarning)
-            if np.sum(ood_filter) == len(self.positions):
-                return flux
-
         if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
-        flux = do_annulus_photometry(data, flux, 'elliptical',
-                                     extent, phot_extent,
+        flux = do_annulus_photometry(data, self.positions, 'elliptical',
+                                     superparams,
                                      (self.a_in, self.b_in, self.theta),
                                      (self.a_out, self.b_out, self.theta),
                                      method=method,
@@ -689,8 +625,24 @@ doc_template = ("""\
     """)
 
 
-def do_circular_photometry(data, flux, extent, phot_extent, radius,
-                           method, subpixels):
+def do_circular_photometry(data, positions, superparams,
+                           radius, method, subpixels):
+
+    ood_filter = superparams[0]
+    extent = superparams[1:5]
+    phot_extent = superparams[5:9]
+
+    flux = np.zeros(len(positions), dtype=np.float)
+
+    # TODO: flag these objects
+    if np.sum(ood_filter):
+        flux[ood_filter] = np.nan
+        warnings.warn("The aperture at position {0} does not have any "
+                      "overlap with the data"
+                      .format(positions[ood_filter]),
+                      AstropyUserWarning)
+        if np.sum(ood_filter) == len(positions):
+            return flux
 
     x_min, x_max, y_min, y_max = extent
     x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
@@ -736,8 +688,24 @@ def do_circular_photometry(data, flux, extent, phot_extent, radius,
     return flux
 
 
-def do_elliptical_photometry(data, flux, extent, phot_extent, a, b, theta,
+def do_elliptical_photometry(data, positions, superparams, a, b, theta,
                              method, subpixels):
+
+    ood_filter = superparams[0]
+    extent = superparams[1:5]
+    phot_extent = superparams[5:9]
+
+    flux = np.zeros(len(positions), dtype=np.float)
+
+    # TODO: flag these objects
+    if np.sum(ood_filter):
+        flux[ood_filter] = np.nan
+        warnings.warn("The aperture at position {0} does not have any "
+                      "overlap with the data"
+                      .format(positions[ood_filter]),
+                      AstropyUserWarning)
+        if np.sum(ood_filter) == len(positions):
+            return flux
 
     x_min, x_max, y_min, y_max = extent
     x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
@@ -788,27 +756,25 @@ def do_elliptical_photometry(data, flux, extent, phot_extent, a, b, theta,
     return flux
 
 
-def do_annulus_photometry(data, flux, mode, extent, phot_extent,
+def do_annulus_photometry(data, positions, mode, superparams,
                           inner_params, outer_params, method, subpixels):
 
     if mode == 'circular':
-        flux_inner = do_circular_photometry(data, flux, extent,
-                                            phot_extent, *inner_params,
+        flux_outer = do_circular_photometry(data, positions, superparams,
+                                            *outer_params,
                                             method=method, subpixels=subpixels)
-        flux_outer = do_circular_photometry(data, flux, extent,
-                                            phot_extent, *outer_params,
+        flux_inner = do_circular_photometry(data, positions, superparams,
+                                            *inner_params,
                                             method=method, subpixels=subpixels)
         flux = flux_outer - flux_inner
 
     elif mode == 'elliptical':
-        flux_inner = do_elliptical_photometry(data, flux,
-                                              extent, phot_extent,
-                                              *inner_params,
-                                              method=method, subpixels=subpixels)
-        flux_outer = do_elliptical_photometry(data, flux,
-                                              extent, phot_extent,
-                                              *outer_params,
-                                              method=method, subpixels=subpixels)
+        flux_inner = do_elliptical_photometry(data, positions, superparams,
+                                              *inner_params, method=method,
+                                              subpixels=subpixels)
+        flux_outer = do_elliptical_photometry(data, positions, superparams,
+                                              *outer_params, method=method,
+                                              subpixels=subpixels)
         flux = flux_outer - flux_inner
 
     else:
