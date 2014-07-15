@@ -63,19 +63,20 @@ a column named ``'aperture_sum'``:
 
   >>> from photutils import CircularAperture, CircularAnnulus, aperture_photometry
   >>> positions = zip(sources['xcen'], sources['ycen'])   # doctest: +REMOTE_DATA
-  >>> apertures = CircularAperture(positions, 4.)   # doctest: +REMOTE_DATA
-  >>> fluxtable = aperture_photometry(image, apertures)   # doctest: +REMOTE_DATA
+  >>> radius = 4.
+  >>> apertures = ('circular', radius)   # doctest: +REMOTE_DATA
+  >>> fluxtable, ap_plot = aperture_photometry(image, positions, apertures,
+  ...                                          plot=dict(color='gray', lw=1.5))   # doctest: +REMOTE_DATA
 
 And now check which one is the fainest and brightest source in this dataset:
 
-  >>> faintest = (apertures.positions[fluxtable['aperture_sum'].argmin()],
+  >>> faintest = (positions[fluxtable['aperture_sum'].argmin()],
   ...             fluxtable['aperture_sum'].min())   # doctest: +REMOTE_DATA
   >>> print(faintest)   # doctest: +REMOTE_DATA
   (array([ 118.71993103,   66.80723769]), -342.91175178365006)
-  >>> brightest = (apertures.positions[fluxtable['aperture_sum'].argmax()],
-  ...             fluxtable['aperture_sum'].max())   # doctest: +REMOTE_DATA
-  >>> print(brightest)   # doctest: +REMOTE_DATA
-  (array([ 57.85429092,  99.22152913]), 387408.0358707984)
+  >>> brightest = (positions[fluxtable['aperture_sum'].argmax()],
+  ...              fluxtable['aperture_sum'].max())   # doctest: +REMOTE_DATA
+  (array([57.85429092,  99.22152913]), 387408.0358707984)
 
 
 Let's plot the image and the apertures. The apertures of all the
@@ -87,10 +88,10 @@ marked with red while the faintest is with blue:
   >>> import matplotlib.patches as patches
   >>> import matplotlib.pylab as plt
   >>> plt.imshow(image, cmap='gray_r', origin='lower')
-  >>> apertures.plot(color='gray', lw=1.5)
-  >>> plt.gca().add_patch(patches.Circle(faintest[0], apertures.r, color='blue',
+  >>> ap_plot
+  >>> plt.gca().add_patch(patches.Circle(faintest[0], radius, color='blue',
   ...                                    fill=False, lw=1.5))
-  >>> plt.gca().add_patch(patches.Circle(brightest[0], apertures.r, color='red',
+  >>> plt.gca().add_patch(patches.Circle(brightest[0], radius, color='red',
   ...                                    fill=False, lw=1.5))
 
 
@@ -107,15 +108,16 @@ marked with red while the faintest is with blue:
   bkg_sigma = 1.48 * mad(image)
   sources = daofind(image, fwhm=4.0, threshold=3*bkg_sigma)
   positions = zip(sources['xcen'], sources['ycen'])
-  apertures = CircularAperture(positions, 4.)
-  fluxtable = aperture_photometry(image, apertures)
-  faintest = (apertures.positions[fluxtable['aperture_sum'].argmin()], fluxtable['aperture_sum'].min())
-  brightest = (apertures.positions[fluxtable['aperture_sum'].argmax()], fluxtable['aperture_sum'].max())
+  radius = 4.
+  apertures = ('circular', radius)
+  fluxtable, ap_plot = aperture_photometry(image, positions, apertures, plot=dict(color='gray', lw=1.5))
+  faintest = (positions[fluxtable['aperture_sum'].argmin()], fluxtable['aperture_sum'].min())
+  brightest = (positions[fluxtable['aperture_sum'].argmax()], fluxtable['aperture_sum'].max())
   plt.imshow(image, cmap='gray_r', origin='lower')
-  apertures.plot(color='gray', lw=1.5)
-  plt.gca().add_patch(patches.Circle(faintest[0], apertures.r, color='blue',
+  ap_plot
+  plt.gca().add_patch(patches.Circle(faintest[0], radius, color='blue',
                                      fill=False, lw=1.5))
-  plt.gca().add_patch(patches.Circle(brightest[0], apertures.r, color='red',
+  plt.gca().add_patch(patches.Circle(brightest[0], radius, color='red',
                                      fill=False, lw=1.5))
 
 
