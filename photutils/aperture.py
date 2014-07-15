@@ -786,7 +786,7 @@ def do_annulus_photometry(data, positions, mode, superparams,
 
 def aperture_photometry(data, positions, apertures, error=None, gain=None,
                         mask=None, method='exact', subpixels=5,
-                        pixelwise_errors=True):
+                        pixelwise_errors=True, plot=None):
     """Sum flux within aperture(s)."""
 
     # Check input array type and dimension.
@@ -854,17 +854,20 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
     pixelpositions = positions
 
     if apertures[0] == 'circular':
-        return CircularAperture(pixelpositions, apertures[1])\
-            .do_photometry(data, method=method, subpixels=subpixels)
+        ap = CircularAperture(pixelpositions, apertures[1])
     elif apertures[0] == 'circular_annulus':
-        return CircularAnnulus(pixelpositions, *apertures[1:3])\
-            .do_photometry(data, method=method, subpixels=subpixels)
+        ap = CircularAnnulus(pixelpositions, *apertures[1:3])
     elif apertures[0] == 'elliptical':
-        return EllipticalAperture(pixelpositions, *apertures[1:4])\
-            .do_photometry(data, method=method, subpixels=subpixels)
+        ap = EllipticalAperture(pixelpositions, *apertures[1:4])
     elif apertures[0] == 'elliptical_annulus':
-        return EllipticalAnnulus(pixelpositions, *apertures[1:5])\
-            .do_photometry(data, method=method, subpixels=subpixels)
+        ap = EllipticalAnnulus(pixelpositions, *apertures[1:5])
+
+    if plot is None:
+        return ap.do_photometry(data, method=method, subpixels=subpixels)
+    else:
+        return (ap.do_photometry(data, method=method, subpixels=subpixels),
+                ap.plot(ax=None, **plot))
+
 
 
 aperture_photometry.__doc__ = doc_template.format(
