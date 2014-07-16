@@ -16,4 +16,5 @@ if not _ASTROPY_SETUP_:
     from .aperture_funcs import *
     from .psf import *
     from .detection.core import *
+    from .photometry import *
     from .detection.findstars import *
