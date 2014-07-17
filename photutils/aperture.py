@@ -338,12 +338,23 @@ class EllipticalAperture(Aperture):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
-        flux = do_elliptical_photometry(data, self.positions, superparams,
-                                        self.a, self.b, self.theta,
-                                        method=method,
-                                        subpixels=subpixels)
-
-        return flux
+        if error is None:
+            flux = do_elliptical_photometry(data, self.positions, superparams,
+                                            self.a, self.b, self.theta,
+                                            error=error,
+                                            pixelwise_error=pixelwise_error,
+                                            method=method,
+                                            subpixels=subpixels)
+            return flux
+        else:
+            flux, fluxerr = do_elliptical_photometry(data, self.positions,
+                                                     superparams, self.a,
+                                                     self.b, self.theta,
+                                                     error=error,
+                                                     pixelwise_error=pixelwise_error,
+                                                     method=method,
+                                                     subpixels=subpixels)
+            return flux, fluxerr
 
     def plot(self, ax=None, fill=False, **kwargs):
         import matplotlib.pyplot as plt
@@ -442,7 +453,6 @@ class EllipticalAnnulus(Aperture):
     def do_photometry(self, data, error=None, pixelwise_error=True,
                       method='exact', subpixels=5):
         superparams = super(EllipticalAnnulus, self).do_photometry(data)
-
         if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
@@ -451,9 +461,9 @@ class EllipticalAnnulus(Aperture):
                                      superparams,
                                      (self.a_in, self.b_in, self.theta),
                                      (self.a_out, self.b_out, self.theta),
-                                     method=method,
-                                     subpixels=subpixels)
-
+                                     error=error,
+                                     pixelwise_error=pixelwise_error,
+                                     method=method, subpixels=subpixels)
         return flux
 
 
@@ -692,8 +702,8 @@ def do_circular_photometry(data, positions, superparams,
                         # Make sure variance is > 0
                         fluxvar[i] = max(np.sum(subvarience * fraction), 0)
                     else:
-                        local_error = [int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                       int((x_min[i] + x_max[i]) / 2 + 0.5)]
+                        local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
+                                            int((x_min[i] + x_max[i]) / 2 + 0.5)]
                         fluxvar[i] = max(local_error ** 2 * np.sum(fraction), 0)
 
     elif method == 'subpixel':
@@ -724,8 +734,8 @@ def do_circular_photometry(data, positions, superparams,
                         # Make sure variance is > 0
                         fluxvar[i] = max(np.sum(subvarience * fraction), 0)
                     else:
-                        local_error = [int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                       int((x_min[i] + x_max[i]) / 2 + 0.5)]
+                        local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
+                                            int((x_min[i] + x_max[i]) / 2 + 0.5)]
                         fluxvar[i] = max(local_error ** 2 * np.sum(fraction), 0)
 
     elif method == 'exact':
@@ -754,8 +764,8 @@ def do_circular_photometry(data, positions, superparams,
                         # Make sure variance is > 0
                         fluxvar[i] = max(np.sum(subvarience * fraction), 0)
                     else:
-                        local_error = [int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                       int((x_min[i] + x_max[i]) / 2 + 0.5)]
+                        local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
+                                            int((x_min[i] + x_max[i]) / 2 + 0.5)]
                         fluxvar[i] = max(local_error ** 2 * np.sum(fraction), 0)
 
     if error is None:
@@ -765,13 +775,15 @@ def do_circular_photometry(data, positions, superparams,
 
 
 def do_elliptical_photometry(data, positions, superparams, a, b, theta,
-                             method, subpixels):
+                             error, pixelwise_error, method, subpixels):
 
     ood_filter = superparams[0]
     extent = superparams[1:5]
     phot_extent = superparams[5:9]
 
     flux = np.zeros(len(positions), dtype=np.float)
+    if error is not None:
+        fluxvar = np.zeros(len(positions), dtype=np.float)
 
     # TODO: flag these objects
     if np.sum(ood_filter):
@@ -810,12 +822,39 @@ def do_elliptical_photometry(data, positions, superparams, a, b, theta,
 
             if method == 'center':
                 if not np.isnan(flux[i]):
-                    flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                                     in_aper)
+                    flux[i] = np.sum(data[y_min[i]:y_max[i],
+                                          x_min[i]:x_max[i]] * in_aper)
+                    if error is not None:
+                        if pixelwise_error:
+                            subvarience = error[y_min[i]:y_max[i],
+                                                x_min[i]:x_max[i]] ** 2
+                            # Make sure varience is > 0
+                            fluxvar[i] = max(np.sum(subvarience * in_aper), 0)
+                        else:
+                            local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
+                                                int((x_min[i] + x_max[i]) / 2 + 0.5)]
+                            fluxvar[i] = max(local_error ** 2 * np.sum(in_aper), 0)
+
             else:
                 if not np.isnan(flux[i]):
-                    flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                                     downsample(in_aper, subpixels))
+                    if error is None:
+                        flux[i] = np.sum(data[y_min[i]:y_max[i],
+                                              x_min[i]:x_max[i]] *
+                                         downsample(in_aper, subpixels))
+                    else:
+                        fraction = downsample(in_aper, subpixels)
+                        flux[i] = np.sum(data[y_min[i]:y_max[i],
+                                              x_min[i]:x_max[i]] * fraction)
+
+                        if pixelwise_error:
+                            subvarience = error[y_min[i]:y_max[i],
+                                                x_min[i]:x_max[i]] ** 2
+                            # Make sure varience is > 0
+                            fluxvar[i] = max(np.sum(subvarience * fraction), 0)
+                        else:
+                            local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
+                                                int((x_min[i] + x_max[i]) / 2 + 0.5)]
+                            fluxvar[i] = max(local_error ** 2 * np.sum(fraction), 0)
 
     elif method == 'exact':
         from .geometry import elliptical_overlap_grid
@@ -825,11 +864,31 @@ def do_elliptical_photometry(data, positions, superparams, a, b, theta,
             y_edges = np.linspace(y_pmin[i], y_pmax[i],
                                   data[y_min[i]:y_max[i], :].shape[0] + 1)
             if flux[i] is not np.nan:
-                flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                                 elliptical_overlap_grid(x_edges, y_edges,
-                                                         a, b, theta))
+                if error is None:
+                    flux[i] = np.sum(data[y_min[i]:y_max[i],
+                                          x_min[i]:x_max[i]] *
+                                     elliptical_overlap_grid(x_edges, y_edges,
+                                                             a, b, theta))
+                else:
+                    fraction = elliptical_overlap_grid(x_edges, y_edges,
+                                                       a, b, theta)
+                    flux[i] = np.sum(data[y_min[i]:y_max[i],
+                                          x_min[i]:x_max[i]] * fraction)
 
-    return flux
+                    if pixelwise_error:
+                        subvarience = error[y_min[i]:y_max[i],
+                                            x_min[i]:x_max[i]] ** 2
+                        # Make sure variance is > 0
+                        fluxvar[i] = max(np.sum(subvarience * fraction), 0)
+                    else:
+                        local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
+                                            int((x_min[i] + x_max[i]) / 2 + 0.5)]
+                        fluxvar[i] = max(local_error ** 2 * np.sum(fraction), 0)
+
+    if error is None:
+        return flux
+    else:
+        return flux, np.sqrt(fluxvar)
 
 
 def do_annulus_photometry(data, positions, mode, superparams,
@@ -838,30 +897,73 @@ def do_annulus_photometry(data, positions, mode, superparams,
                           method='exact', subpixels=5):
 
     if mode == 'circular':
-        flux_outer = do_circular_photometry(data, positions, superparams,
-                                            *outer_params,
-                                            error=error, pixelwise_error=True,
-                                            method=method, subpixels=subpixels)
-        flux_inner = do_circular_photometry(data, positions, superparams,
-                                            *inner_params,
-                                            error=error, pixelwise_error=True,
-                                            method=method, subpixels=subpixels)
+        if error is None:
+            flux_outer = do_circular_photometry(data, positions, superparams,
+                                                *outer_params,
+                                                error=error, pixelwise_error=True,
+                                                method=method, subpixels=subpixels)
+            flux_inner = do_circular_photometry(data, positions, superparams,
+                                                *inner_params,
+                                                error=error, pixelwise_error=True,
+                                                method=method, subpixels=subpixels)
+        else:
+            flux_outer, fluxerr_o = do_circular_photometry(data, positions,
+                                                           superparams,
+                                                           *outer_params,
+                                                           error=error,
+                                                           pixelwise_error=True,
+                                                           method=method,
+                                                           subpixels=subpixels)
+            flux_inner, fluxerr_i = do_circular_photometry(data, positions,
+                                                           superparams,
+                                                           *inner_params,
+                                                           error=error,
+                                                           pixelwise_error=True,
+                                                           method=method,
+                                                           subpixels=subpixels)
+            fluxvar = max((fluxerr_o ** 2 - fluxerr_i ** 2), 0)
         flux = flux_outer - flux_inner
 
     elif mode == 'elliptical':
-        flux_inner = do_elliptical_photometry(data, positions, superparams,
-                                              *inner_params, method=method,
-                                              subpixels=subpixels)
-        flux_outer = do_elliptical_photometry(data, positions, superparams,
-                                              *outer_params, method=method,
-                                              subpixels=subpixels)
+        if error is None:
+            flux_inner = do_elliptical_photometry(data, positions, superparams,
+                                                  *inner_params, error=error,
+                                                  pixelwise_error=True,
+                                                  method=method,
+                                                  subpixels=subpixels)
+            flux_outer = do_elliptical_photometry(data, positions, superparams,
+                                                  *outer_params, error=error,
+                                                  pixelwise_error=True,
+                                                  method=method,
+                                                  subpixels=subpixels)
+        else:
+            flux_inner, fluxerr_i = do_elliptical_photometry(data, positions,
+                                                             superparams,
+                                                             *inner_params,
+                                                             error=error,
+                                                             pixelwise_error=True,
+                                                             method=method,
+                                                             subpixels=subpixels)
+            flux_outer, fluxerr_o = do_elliptical_photometry(data, positions,
+                                                             superparams,
+                                                             *outer_params,
+                                                             error=error,
+                                                             pixelwise_error=True,
+                                                             method=method,
+                                                             subpixels=subpixels)
+            fluxvar = max((fluxerr_o ** 2 - fluxerr_i ** 2), 0)
         flux = flux_outer - flux_inner
 
     else:
         raise ValueError('{0} mode is not supported for annular photometry'
                          '{1}'.format(mode))
 
-    return flux
+    if error is None:
+        print('ize')
+        return flux
+    else:
+        print('zizi')
+        return flux, np.sqrt(fluxvar)
 
 
 def aperture_photometry(data, positions, apertures, error=None, gain=None,
