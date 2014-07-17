@@ -64,10 +64,12 @@ def detect_sources(image, snr_threshold, npixels, filter_fwhm=None,
     Returns
     -------
     segment_image :  array_like
-        A 2D segmentation image of integers indicating segment labels.
+        A 2D segmentation image of positive integers indicating labels
+        for detected sources.  A value of zero is reserved for the
+        background.
     """
-    from scipy import ndimage
 
+    from scipy import ndimage
     bkgrd, median, bkgrd_rms = img_stats(image, image_mask=image_mask,
                                          mask_val=mask_val, sig=sig,
                                          iters=iters)
