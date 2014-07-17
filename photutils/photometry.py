@@ -8,7 +8,7 @@ from astropy.table import Table
 __all__ = ['segment_photometry']
 
 
-def segment_photometry(image, segment_image):
+def segment_photometry(image, segment_image, index=None):
     """
     Perform photometry using a labeled segmentation image.  This can be
     used to perform isophotal photometry when ``segment_image`` is
@@ -20,8 +20,14 @@ def segment_photometry(image, segment_image):
         The 2D array of the image.
 
     segment_image : array_like
-        A 2D segmentation image of positive integers indicating segment
-        labels.  A value of zero is reserved for the background.
+        A 2D segmentation image of positive integers indicating labels
+        for detected sources.  A value of zero is reserved for the
+        background.
+
+    index : int, sequence of ints or None
+        Subset of ``segment_image`` labels for which to perform the
+        photometry.  If `None`, then photometry will be performed for
+        all source segments.
 
     Returns
     -------
@@ -29,6 +35,8 @@ def segment_photometry(image, segment_image):
         A table of the segmented photometry containing the following
         parameters:
 
+        * ``id``: the source identification number corresponding to the
+          object label in the ``segment_image``
         * ``xcen, ycen``: object centroid (zero-based origin)
         * ``area``: the number pixels in the source segment
         * ``radius_equiv``: the equivalent circular radius derived from the
@@ -42,15 +50,19 @@ def segment_photometry(image, segment_image):
 
     assert image.shape == segment_image.shape, \
         ('image and segment_image must have the same shape')
-    idx = np.arange(np.max(segment_image)) + 1
+    if index is None:
+        objids = np.unique(segment_image[segment_image > 0])
+    else:
+        objids = index
     # TODO:  allow alternate centroid methods
-    centroids = ndimage.center_of_mass(image, segment_image, idx)
+    centroids = ndimage.center_of_mass(image, segment_image, objids)
     ycen, xcen = np.transpose(centroids)
-    npix = ndimage.labeled_comprehension(image, segment_image, idx, len,
-                                         np.float, np.nan)
+    npix = ndimage.labeled_comprehension(image, segment_image, objids, len,
+                                         np.float32, np.nan)
     radii = np.sqrt(npix / np.pi)
-    fluxes = ndimage.measurements.sum(image, labels=segment_image, index=idx)
-    data = [xcen, ycen, npix, radii, fluxes]
-    names = ('xcen', 'ycen', 'area', 'radius_equiv', 'flux')
+    fluxes = ndimage.measurements.sum(image, labels=segment_image,
+                                      index=objids)
+    data = [objids, xcen, ycen, npix, radii, fluxes]
+    names = ('id', 'xcen', 'ycen', 'area', 'radius_equiv', 'flux')
     phot_table = Table(data, names=names)
     return phot_table
