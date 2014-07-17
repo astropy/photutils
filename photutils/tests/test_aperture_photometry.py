@@ -106,3 +106,42 @@ class TestCircular(BaseTestAperturePhotometry):
         self.aperture = ('circular', r)
         self.area = np.pi * r * r
         self.true_flux = self.area
+
+
+class TestCircularAnnulus(BaseTestAperturePhotometry):
+
+    def setup_class(self):
+        self.data = np.ones((40, 40), dtype=np.float)
+        self.position = (20., 20.)
+        r_in = 8.
+        r_out = 10.
+        self.aperture = ('circular_annulus', r_in, r_out)
+        self.area = np.pi * (r_out * r_out - r_in * r_in)
+        self.true_flux = self.area
+
+
+class TestElliptical(BaseTestAperturePhotometry):
+
+    def setup_class(self):
+        self.data = np.ones((40, 40), dtype=np.float)
+        self.position = (20., 20.)
+        a = 10.
+        b = 5.
+        theta = -np.pi / 4.
+        self.aperture = ('elliptical', a, b, theta)
+        self.area = np.pi * a * b
+        self.true_flux = self.area
+
+
+class TestEllipticalAnnulus(BaseTestAperturePhotometry):
+
+    def setup_class(self):
+        self.data = np.ones((40, 40), dtype=np.float)
+        self.position = (20., 20.)
+        a_in = 5.
+        a_out = 8.
+        b_out = 6.
+        theta = -np.pi / 4.
+        self.aperture = ('elliptical_annulus', a_in, a_out, b_out, theta)
+        self.area = np.pi * (a_out * b_out) - np.pi * (a_in * b_out * a_in / a_out)
+        self.true_flux = self.area
