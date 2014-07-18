@@ -8,7 +8,7 @@ from astropy.table import Table
 __all__ = ['segment_photometry']
 
 
-def segment_photometry(image, segment_image, index=None):
+def segment_photometry(image, segment_image, labels=None):
     """
     Perform photometry using a labeled segmentation image.  This can be
     used to perform isophotal photometry when ``segment_image`` is
@@ -24,7 +24,7 @@ def segment_photometry(image, segment_image, index=None):
         for detected sources.  A value of zero is reserved for the
         background.
 
-    index : int, sequence of ints or None
+    labels : int, sequence of ints or None
         Subset of ``segment_image`` labels for which to perform the
         photometry.  If `None`, then photometry will be performed for
         all source segments.
@@ -50,11 +50,13 @@ def segment_photometry(image, segment_image, index=None):
 
     assert image.shape == segment_image.shape, \
         ('image and segment_image must have the same shape')
-    if index is None:
+    if labels is None:
         objids = np.unique(segment_image[segment_image > 0])
     else:
-        objids = index
-    # TODO:  allow alternate centroid methods
+        objids = np.atleast_1d(labels)
+    # TODO:  allow alternate centroid methods via input centroid_func:
+    # npix = ndimage.labeled_comprehension(image, segment_image, objids,
+    #                                      centroid_func, np.float32, np.nan)
     centroids = ndimage.center_of_mass(image, segment_image, objids)
     ycen, xcen = np.transpose(centroids)
     npix = ndimage.labeled_comprehension(image, segment_image, objids, len,
@@ -65,4 +67,6 @@ def segment_photometry(image, segment_image, index=None):
     data = [objids, xcen, ycen, npix, radii, fluxes]
     names = ('id', 'xcen', 'ycen', 'area', 'radius_equiv', 'flux')
     phot_table = Table(data, names=names)
+    bad_labels = (~np.isfinite(phot_table['xcen'])).nonzero()
+    phot_table['flux'][bad_labels] = np.nan   # change flux from 0 to np.nan
     return phot_table
