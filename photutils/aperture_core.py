@@ -7,11 +7,12 @@ import math
 import abc
 import numpy as np
 import warnings
+import astropy.units as u
+from astropy.io import fits
 from astropy.table import Table
 from astropy.coordinates import SkyCoord
 from astropy.extern import six
 from astropy.utils.exceptions import AstropyUserWarning
-import astropy.units as u
 from .aperture_funcs import do_circular_photometry, do_elliptical_photometry, \
                             do_annulus_photometry
 
@@ -775,9 +776,26 @@ doc_template = ("""\
 
 def aperture_photometry(data, positions, apertures, wcs=None, error=None,
                         gain=None, mask=None, method='exact', subpixels=5,
-                        pixelwise_error=True, mask_method='skip'):
+                        pixelcoord=True, pixelwise_error=True,
+                        mask_method='skip'):
 
     wcs_transformation = wcs
+
+    # TODO check data type, iterate over all possibilities...
+    if isinstance(data, fits.hdu.image.PrimaryHDU):
+        header = data.header
+        data = data.data
+    elif isinstance(data, fits.hdu.hdulist.HDUList):
+        # TODO: do it in a 2d array, and thus get the light curves as a
+        # side-product? Although it's not usual to store time series as
+        # HDUList
+        fluxlist = []
+        for i in range(len(data)):
+            fluxlist.append(aperture_photometry(data[i], positions, apertures,
+                                                wcs, error, gain, mask, method,
+                                                subpixels, pixelcoord,
+                                                pixelwise_error, plot))
+        return fluxlist
 
     # Check input array type and dimension.
     data = u.Quantity(data)
@@ -863,11 +881,11 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
                              'required')
 
     # TODO check whether positions is wcs or pixel
-    if isinstance(positions, SkyCoord):
+    if not pixelcoord or isinstance(positions, SkyCoord):
         from astropy.wcs import wcs
         if wcs_transformation is None:
-            wcs_transformation = wcs.WCS(data.header)
-        pixelpositions = wcs_transformation.wcs_world2pix(positions)
+            wcs_transformation = wcs.WCS(header)
+        pixelpositions = wcs_transformation.wcs_world2pix(positions, 0)
     else:
         pixelpositions = positions
 
