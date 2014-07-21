@@ -5,7 +5,6 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import math
 import abc
-import copy
 import numpy as np
 from astropy.table import Table
 from astropy.extern import six
@@ -103,6 +102,9 @@ class Aperture(object):
         x_pmax = x_max - self.positions[:, 0] - 0.5
         y_pmin = y_min - self.positions[:, 1] - 0.5
         y_pmax = y_max - self.positions[:, 1] - 0.5
+
+        # TODO: check whether any pixel is nan in data[y_min[i]:y_max[i],
+        # x_min[i]:x_max[i])), if yes return something valid rather than nan
 
         return (ood_filter, x_min, x_max, y_min, y_max,
                 x_pmin, x_pmax, y_pmin, y_pmax)
@@ -696,15 +698,16 @@ def do_circular_photometry(data, positions, superparams,
                                           x_min[i]:x_max[i]] *
                                      circular_overlap_grid(x_pmin[i], x_pmax[i],
                                                            y_pmin[i], y_pmax[i],
-                                                           x_pmax[i] - x_pmin[i],
-                                                           y_pmax[i] - y_pmin[i],
-                                                           radius, 0, subpixels))
+                                                           x_max[i] - x_min[i],
+                                                           y_max[i] - y_min[i],
+                                                           radius, 0,
+                                                           subpixels))
 
                 else:
                     fraction = circular_overlap_grid(x_pmin[i], x_pmax[i],
                                                      y_pmin[i], y_pmax[i],
-                                                     x_pmax[i] - x_pmin[i],
-                                                     y_pmax[i] - y_pmin[i],
+                                                     x_max[i] - x_min[i],
+                                                     y_max[i] - y_min[i],
                                                      radius, 0, subpixels)
                     flux[i] = np.sum(data[y_min[i]:y_max[i],
                                           x_min[i]:x_max[i]] * fraction)
@@ -727,14 +730,14 @@ def do_circular_photometry(data, positions, superparams,
                     flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
                                      circular_overlap_grid(x_pmin[i], x_pmax[i],
                                                            y_pmin[i], y_pmax[i],
-                                                           x_pmax[i] - x_pmin[i],
-                                                           y_pmax[i] - y_pmin[i],
+                                                           x_max[i] - x_min[i],
+                                                           y_max[i] - y_min[i],
                                                            radius, 1, 1))
                 else:
                     fraction = circular_overlap_grid(x_pmin[i], x_pmax[i],
                                                      y_pmin[i], y_pmax[i],
-                                                     x_pmax[i] - x_pmin[i],
-                                                     y_pmax[i] - y_pmin[i],
+                                                     x_max[i] - x_min[i],
+                                                     y_max[i] - y_min[i],
                                                      radius, 1, 1)
                     flux[i] = np.sum(data[y_min[i]:y_max[i],
                                           x_min[i]:x_max[i]] * fraction)
