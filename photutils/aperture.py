@@ -169,21 +169,12 @@ class CircularAperture(Aperture):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
-        if error is None:
-            flux = do_circular_photometry(data, self.positions, superparams,
-                                          self.r,
-                                          error=error, pixelwise_error=True,
-                                          method=method,
-                                          subpixels=subpixels)
-            return flux
-        else:
-            flux, fluxerr = do_circular_photometry(data, self.positions,
-                                                   superparams, self.r,
-                                                   error=error,
-                                                   pixelwise_error=True,
-                                                   method=method,
-                                                   subpixels=subpixels)
-            return flux, fluxerr
+        flux = do_circular_photometry(data, self.positions, superparams,
+                                      self.r,
+                                      error=error, pixelwise_error=True,
+                                      method=method,
+                                      subpixels=subpixels)
+        return flux
 
 
 class CircularAnnulus(Aperture):
@@ -338,23 +329,13 @@ class EllipticalAperture(Aperture):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
-        if error is None:
-            flux = do_elliptical_photometry(data, self.positions, superparams,
-                                            self.a, self.b, self.theta,
-                                            error=error,
-                                            pixelwise_error=pixelwise_error,
-                                            method=method,
-                                            subpixels=subpixels)
-            return flux
-        else:
-            flux, fluxerr = do_elliptical_photometry(data, self.positions,
-                                                     superparams, self.a,
-                                                     self.b, self.theta,
-                                                     error=error,
-                                                     pixelwise_error=pixelwise_error,
-                                                     method=method,
-                                                     subpixels=subpixels)
-            return flux, fluxerr
+        flux = do_elliptical_photometry(data, self.positions, superparams,
+                                        self.a, self.b, self.theta,
+                                        error=error,
+                                        pixelwise_error=pixelwise_error,
+                                        method=method,
+                                        subpixels=subpixels)
+        return flux
 
     def plot(self, ax=None, fill=False, **kwargs):
         import matplotlib.pyplot as plt
