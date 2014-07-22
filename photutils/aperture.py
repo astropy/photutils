@@ -641,9 +641,11 @@ def do_circular_photometry(data, positions, superparams,
     extent = superparams[1:5]
     phot_extent = superparams[5:9]
 
-    flux = np.zeros(len(positions), dtype=np.float)
+    flux = u.Quantity(np.zeros(len(positions), dtype=np.float), unit=data.unit)
+
     if error is not None:
-        fluxvar = np.zeros(len(positions), dtype=np.float)
+        fluxvar = u.Quantity(np.zeros(len(positions), dtype=np.float),
+                             unit=data.unit)
 
     # TODO: flag these objects
     if np.sum(ood_filter):
@@ -765,9 +767,11 @@ def do_elliptical_photometry(data, positions, superparams, a, b, theta,
     extent = superparams[1:5]
     phot_extent = superparams[5:9]
 
-    flux = np.zeros(len(positions), dtype=np.float)
+    flux = u.Quantity(np.zeros(len(positions), dtype=np.float), unit=data.unit)
+
     if error is not None:
-        fluxvar = np.zeros(len(positions), dtype=np.float)
+        fluxvar = u.Quantity(np.zeros(len(positions), dtype=np.float),
+                             unit=data.unit)
 
     # TODO: flag these objects
     if np.sum(ood_filter):
@@ -1027,6 +1031,13 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
         ap = EllipticalAperture(pixelpositions, *apertures[1:4])
     elif apertures[0] == 'elliptical_annulus':
         ap = EllipticalAnnulus(pixelpositions, *apertures[1:5])
+
+    # Prepare version return data
+    from astropy import __version__
+    astropy_version = __version__
+
+    from photutils import __version__
+    photutils_version = __version__
 
     if plot is None:
         return ap.do_photometry(data, method=method, subpixels=subpixels,
