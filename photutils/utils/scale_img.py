@@ -8,17 +8,8 @@ __all__ = ['find_imgcuts', 'img_stats', 'rescale_img', 'scale_linear',
            'scale_sqrt', 'scale_power', 'scale_log', 'scale_asinh']
 
 
-def find_imgcuts(image, min_cut=None, max_cut=None, min_percent=None,
-                 max_percent=None, percent=None):
+_CUTLEVEL_PARAMS = \
     """
-    Find minimum and maximum image cut levels from percentiles of the
-    image values.
-
-    Parameters
-    ----------
-    image : array_like
-        The 2D array of the image.
-
     min_cut : float, optional
         The minimum cut level.  Data values less than ``min_cut`` will
         set to ``min_cut`` before scaling the image.
@@ -41,9 +32,31 @@ def find_imgcuts(image, min_cut=None, max_cut=None, min_percent=None,
         The percentage of the image values to scale.  The lower cut
         level will set at the ``(100 - percent) / 2`` percentile, while
         the upper cut level will be set at the ``(100 + percent) / 2``
-        percentile.  This value is ignored if both ``min_cut`` and
-        ``max_cut`` are input or if both ``min_percent`` and
-        ``max_percent`` are input.
+        percentile.  This value overrides the values of ``min_percent``
+        and ``max_percent``, but is ignored if ``min_cut`` and
+        ``max_cut`` are both input.
+    """.strip()
+
+
+def _insert_cutlevel_params(func):
+    """Insert the cutlevel parameters into the function documentation."""
+    func.__doc__ = func.__doc__.format(cutlevel_params=_CUTLEVEL_PARAMS)
+    return func
+
+
+@_insert_cutlevel_params
+def find_imgcuts(image, min_cut=None, max_cut=None, min_percent=None,
+                 max_percent=None, percent=None):
+    """
+    Find minimum and maximum image cut levels from percentiles of the
+    image values.
+
+    Parameters
+    ----------
+    image : array_like
+        The 2D array of the image.
+
+    {cutlevel_params}
 
     Returns
     -------
@@ -121,6 +134,7 @@ def img_stats(image, image_mask=None, mask_val=None, sig=3.0, iters=None):
     return np.mean(goodvals), np.median(goodvals), np.std(goodvals)
 
 
+@_insert_cutlevel_params
 def rescale_img(image, **kwargs):
     """
     Rescale image values between minimum and maximum cut levels to
@@ -131,31 +145,7 @@ def rescale_img(image, **kwargs):
     image : array_like
         The 2D array of the image.
 
-    min_cut : float, optional
-        The minimum cut level.  Data values less than ``min_cut`` will
-        set to ``min_cut`` before scaling the image.
-
-    max_cut : float, optional
-        The maximum cut level.  Data values greater than ``max_cut``
-        will set to ``max_cut`` before scaling the image.
-
-    min_percent : float, optional
-        The minimum cut level as a percentile of the values in the
-        image.  If ``min_cut`` is input, then ``min_percent`` will be
-        ignored.
-
-    max_percent : float, optional
-        The maximum cut level as a percentile of the values in the
-        image.  If ``max_cut`` is input, then ``max_percent`` will be
-        ignored.
-
-    percent : float, optional
-        The percentage of the image values to scale.  The lower cut
-        level will set at the ``(100 - percent) / 2`` percentile, while
-        the upper cut level will be set at the ``(100 + percent) / 2``
-        percentile.  This value overrides the values of ``min_percent``
-        and ``max_percent``, but is ignored if ``min_cut`` and
-        ``max_cut`` are both input.
+    {cutlevel_params}
 
     Returns
     -------
@@ -164,8 +154,8 @@ def rescale_img(image, **kwargs):
         ``max_cut``), which are the output scaled image and the minimum
         and maximum cut levels.
     """
-    from skimage import exposure
 
+    from skimage import exposure
     image = image.astype(np.float64)
     min_cut, max_cut = find_imgcuts(image, **kwargs)
     outimg = exposure.rescale_intensity(image, in_range=(min_cut, max_cut),
@@ -173,6 +163,7 @@ def rescale_img(image, **kwargs):
     return outimg, min_cut, max_cut
 
 
+@_insert_cutlevel_params
 def scale_linear(image, **kwargs):
     """
     Perform linear scaling of an image between minimum and maximum cut
@@ -183,31 +174,7 @@ def scale_linear(image, **kwargs):
     image : array_like
         The 2D array of the image.
 
-    min_cut : float, optional
-        The minimum cut level.  Data values less than ``min_cut`` will
-        set to ``min_cut`` before scaling the image.
-
-    max_cut : float, optional
-        The maximum cut level.  Data values greater than ``max_cut``
-        will set to ``max_cut`` before scaling the image.
-
-    min_percent : float, optional
-        The minimum cut level as a percentile of the values in the
-        image.  If ``min_cut`` is input, then ``min_percent`` will be
-        ignored.
-
-    max_percent : float, optional
-        The maximum cut level as a percentile of the values in the
-        image.  If ``max_cut`` is input, then ``max_percent`` will be
-        ignored.
-
-    percent : float, optional
-        The percentage of the image values to scale.  The lower cut
-        level will set at the ``(100 - percent) / 2`` percentile, while
-        the upper cut level will be set at the ``(100 + percent) / 2``
-        percentile.  This value overrides the values of ``min_percent``
-        and ``max_percent``, but is ignored if ``min_cut`` and
-        ``max_cut`` are both input.
+    {cutlevel_params}
 
     Returns
     -------
@@ -219,6 +186,7 @@ def scale_linear(image, **kwargs):
     return result[0]
 
 
+@_insert_cutlevel_params
 def scale_sqrt(image, **kwargs):
     """
     Perform square-root scaling of an image between minimum and maximum
@@ -230,30 +198,7 @@ def scale_sqrt(image, **kwargs):
     image : array_like
         The 2D array of the image.
 
-    min_cut : float, optional
-        The minimum cut level.  Data values less than ``min_cut`` will
-        set to ``min_cut`` before scaling the image.
-
-    max_cut : float, optional
-        The maximum cut level.  Data values greater than ``max_cut``
-        will set to ``max_cut`` before scaling the image.
-
-    min_percent : float, optional
-        The minimum cut level as a percentile of the values in the
-        image.  If ``min_cut`` is input, then ``min_percent`` will be
-        ignored.
-
-    max_percent : float, optional
-        The maximum cut level as a percentile of the values in the
-        image.  If ``max_cut`` is input, then ``max_percent`` will be
-        ignored.
-
-    percent : float, optional
-        The percentage of the image values to scale.  The lower cut
-        level will set at the ``(100 - percent) / 2`` percentile, while
-        the upper cut level will be set at the ``(100 + percent) / 2``
-        percentile.  This value overrides the values of ``min_percent``
-        and ``max_percent``.
+    {cutlevel_params}
 
     Returns
     -------
@@ -265,6 +210,7 @@ def scale_sqrt(image, **kwargs):
     return np.sqrt(result[0])
 
 
+@_insert_cutlevel_params
 def scale_power(image, power, **kwargs):
     """
     Perform power scaling of an image between minimum and maximum cut
@@ -278,31 +224,7 @@ def scale_power(image, power, **kwargs):
     power : float
         The power index for the image scaling.
 
-    min_cut : float, optional
-        The minimum cut level.  Data values less than ``min_cut`` will
-        set to ``min_cut`` before scaling the image.
-
-    max_cut : float, optional
-        The maximum cut level.  Data values greater than ``max_cut``
-        will set to ``max_cut`` before scaling the image.
-
-    min_percent : float, optional
-        The minimum cut level as a percentile of the values in the
-        image.  If ``min_cut`` is input, then ``min_percent`` will be
-        ignored.
-
-    max_percent : float, optional
-        The maximum cut level as a percentile of the values in the
-        image.  If ``max_cut`` is input, then ``max_percent`` will be
-        ignored.
-
-    percent : float, optional
-        The percentage of the image values to scale.  The lower cut
-        level will set at the ``(100 - percent) / 2`` percentile, while
-        the upper cut level will be set at the ``(100 + percent) / 2``
-        percentile.  This value overrides the values of ``min_percent``
-        and ``max_percent``, but is ignored if ``min_cut`` and
-        ``max_cut`` are both input.
+    {cutlevel_params}
 
     Returns
     -------
@@ -314,6 +236,7 @@ def scale_power(image, power, **kwargs):
     return (result[0])**power
 
 
+@_insert_cutlevel_params
 def scale_log(image, **kwargs):
     """
     Perform logarithmic (base 10) scaling of an image between minimum and
@@ -324,31 +247,7 @@ def scale_log(image, **kwargs):
     image : array_like
         The 2D array of the image.
 
-    min_cut : float, optional
-        The minimum cut level.  Data values less than ``min_cut`` will
-        set to ``min_cut`` before scaling the image.
-
-    max_cut : float, optional
-        The maximum cut level.  Data values greater than ``max_cut``
-        will set to ``max_cut`` before scaling the image.
-
-    min_percent : float, optional
-        The minimum cut level as a percentile of the values in the
-        image.  If ``min_cut`` is input, then ``min_percent`` will be
-        ignored.
-
-    max_percent : float, optional
-        The maximum cut level as a percentile of the values in the
-        image.  If ``max_cut`` is input, then ``max_percent`` will be
-        ignored.
-
-    percent : float, optional
-        The percentage of the image values to scale.  The lower cut
-        level will set at the ``(100 - percent) / 2`` percentile, while
-        the upper cut level will be set at the ``(100 + percent) / 2``
-        percentile.  This value overrides the values of ``min_percent``
-        and ``max_percent``, but is ignored if ``min_cut`` and
-        ``max_cut`` are both input.
+    {cutlevel_params}
 
     Returns
     -------
@@ -361,6 +260,7 @@ def scale_log(image, **kwargs):
     return outimg
 
 
+@_insert_cutlevel_params
 def scale_asinh(image, noise_level=None, sigma=2.0, **kwargs):
     """
     Perform inverse hyperbolic sine (arcsinh) scaling of an image
@@ -381,31 +281,7 @@ def scale_asinh(image, noise_level=None, sigma=2.0, **kwargs):
         to estimate the absolute noise level.  This value is ignored if
         ``noise_level`` is input.
 
-    min_cut : float, optional
-        The minimum cut level.  Data values less than ``min_cut`` will
-        set to ``min_cut`` before scaling the image.
-
-    max_cut : float, optional
-        The maximum cut level.  Data values greater than ``max_cut``
-        will set to ``max_cut`` before scaling the image.
-
-    min_percent : float, optional
-        The minimum cut level as a percentile of the values in the
-        image.  If ``min_cut`` is input, then ``min_percent`` will be
-        ignored.
-
-    max_percent : float, optional
-        The maximum cut level as a percentile of the values in the
-        image.  If ``max_cut`` is input, then ``max_percent`` will be
-        ignored.
-
-    percent : float, optional
-        The percentage of the image values to scale.  The lower cut
-        level will set at the ``(100 - percent) / 2`` percentile, while
-        the upper cut level will be set at the ``(100 + percent) / 2``
-        percentile.  This value overrides the values of ``min_percent``
-        and ``max_percent``, but is ignored if ``min_cut`` and
-        ``max_cut`` are both input.
+    {cutlevel_params}
 
     Returns
     -------
