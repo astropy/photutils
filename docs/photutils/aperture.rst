@@ -12,9 +12,9 @@ The following functions are provided for different types of apertures:
 A Simple Example
 ----------------
 
-Suppose there are 4 sources located at (10, 10), (20, 20), and (30,
-30), (40, 40), in pixel coordinates. To sum the flux inside a circular
-aperture of radius 3 pixels centered on each object,:
+Suppose there are 4 sources located at (10, 10), (20, 20), and (30, 30),
+(40, 40), in pixel coordinates. To sum the pixel values (flux) inside a
+circular aperture of radius 3 pixels centered on each object:
 
     >>> import numpy as np
     >>> from photutils import CircularAperture, aperture_photometry
@@ -29,6 +29,8 @@ aperture of radius 3 pixels centered on each object,:
            (28.274333882308134,)],
           dtype=[('flux', '<f8')])
 
+The results are returned in a `~astropy.table.Table` with two columns, named
+``'flux'`` and ``'fluxerr'``.
 Since all the data values are 1, we expect the answer to equal the area of
 a circle with the same radius, and it does:
 
