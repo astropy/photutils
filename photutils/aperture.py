@@ -11,7 +11,7 @@ from astropy.table import Table
 from astropy.extern import six
 import warnings
 from astropy.utils.exceptions import AstropyUserWarning
-
+import astropy.units as u
 __all__ = ["Aperture",
            "CircularAperture", "CircularAnnulus",
            "EllipticalAperture", "EllipticalAnnulus",
@@ -883,9 +883,13 @@ def aperture_photometry(data, apertures, error=None, gain=None,
     photutils_version = __version__
 
     if hasattr(data, 'unit'):
-        flux = flux * data.unit
+        flux = u.Quantity(flux, unit=data.unit)
         if error is not None:
-            fluxerr = fluxerr * data.unit
+            fluxerr = u.Quantity(fluxerr, data.unit)
+    else:
+        flux = u.Quantity(flux, unit=None)
+        if error is not None:
+            fluxerr = u.Quantity(fluxerr, unit=None)
 
     # TODO: maybe include positions, mask, etc in the output
     if error is None:
