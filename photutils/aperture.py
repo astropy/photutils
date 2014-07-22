@@ -882,14 +882,19 @@ def aperture_photometry(data, apertures, error=None, gain=None,
     from photutils import __version__
     photutils_version = __version__
 
+    if hasattr(data, 'unit'):
+        flux = flux * data.unit
+        if error is not None:
+            fluxerr = fluxerr * data.unit
+
     # TODO: maybe include positions, mask, etc in the output
     if error is None:
-        return Table([flux, ], names=('flux',),
+        return Table([flux, ], names=('aperture_sum',),
                      meta={'name': 'Aperture photometry results',
                            'version': 'astropy: {0}, photutils: {1}'
                            .format(astropy_version, photutils_version)})
     else:
-        return Table([flux, fluxerr], names=('flux', 'fluxerr'),
+        return Table([flux, fluxerr], names=('aperture_sum', 'aperture_sum_err'),
                      meta={'name': 'Aperture photometry results',
                            'version': 'astropy: {0}, photutils: {1}'
                            .format(astropy_version, photutils_version)})

@@ -49,8 +49,8 @@ in a `~astropy.table.Table`:
   >>> sources = daofind(image, fwhm=4.0, threshold=3*bkg_sigma)   # doctest: +REMOTE_DATA
 
 Given the list of source location, summing the pixel values in identical circular
-apertures. The result is returned in a `~astropy.table.Table`, with two
-columns named ``'flux'`` and ``'fluxerr'``:
+apertures. The result is returned in a `~astropy.table.Table`, with a
+column named ``'aperture_sum'``:
 
   >>> from photutils import CircularAperture, CircularAnnulus, aperture_photometry
   >>> positions = zip(sources['xcen'], sources['ycen'])   # doctest: +REMOTE_DATA
@@ -59,12 +59,12 @@ columns named ``'flux'`` and ``'fluxerr'``:
 
 And now check which one is the fainest and brightest source in this dataset:
 
-  >>> faintest = (apertures.positions[fluxtable['flux'].argmin()],
-  ...             fluxtable['flux'].min())   # doctest: +REMOTE_DATA
+  >>> faintest = (apertures.positions[fluxtable['aperture_sum'].argmin()],
+  ...             fluxtable['aperture_sum'].min())   # doctest: +REMOTE_DATA
   >>> print(faintest)   # doctest: +REMOTE_DATA
   (array([ 118.71993103,   66.80723769]), -342.91175178365006)
-  >>> brightest = (apertures.positions[fluxtable['flux'].argmax()],
-  ...             fluxtable['flux'].max())   # doctest: +REMOTE_DATA
+  >>> brightest = (apertures.positions[fluxtable['aperture_sum'].argmax()],
+  ...             fluxtable['aperture_sum'].max())   # doctest: +REMOTE_DATA
   >>> print(brightest)   # doctest: +REMOTE_DATA
   (array([ 57.85429092,  99.22152913]), 387408.0358707984)
 
@@ -100,8 +100,8 @@ marked with red while the faintest is with blue:
   positions = zip(sources['xcen'], sources['ycen'])
   apertures = CircularAperture(positions, 4.)
   fluxtable = aperture_photometry(image, apertures)
-  faintest = (apertures.positions[fluxtable['flux'].argmin()], fluxtable['flux'].min())
-  brightest = (apertures.positions[fluxtable['flux'].argmax()], fluxtable['flux'].max())
+  faintest = (apertures.positions[fluxtable['aperture_sum'].argmin()], fluxtable['aperture_sum'].min())
+  brightest = (apertures.positions[fluxtable['aperture_sum'].argmax()], fluxtable['aperture_sum'].max())
   plt.imshow(image, cmap='gray_r', origin='lower')
   apertures.plot(color='gray', lw=1.5)
   plt.gca().add_patch(patches.Circle(faintest[0], apertures.r, color='blue',
