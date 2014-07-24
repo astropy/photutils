@@ -9,7 +9,7 @@ from astropy.table import Table
 __all__ = ['segment_photometry']
 
 
-def segment_photometry(image, segment_image, error_image=None,
+def segment_photometry(image, segment_image, error_image=None, gain=None,
                        mask_image=None, background=None, labels=None):
     """
     Perform photometry of sources whose extents are defined by a labeled
@@ -96,10 +96,20 @@ def segment_photometry(image, segment_image, error_image=None,
     else:
         objids = np.atleast_1d(labels)
 
+    image_iscopy = False
+    if background is not None:
+        if not np.isscalar(background):
+            assert image.shape == background.shape, \
+                ('image and background image must have the same shape')
+        image = copy.deepcopy(image)
+        image_iscopy = True
+        image -= background
+
     if mask_image is not None:
         assert image.shape == mask_image.shape, \
             ('image and mask_image must have the same shape')
-        image = copy.deepcopy(image)
+        if not image_iscopy:
+            image = copy.deepcopy(image)
         image[mask_image.nonzero()] = 0.0
         if error_image is not None:
             assert image.shape == mask_image.shape, \
@@ -124,7 +134,7 @@ def segment_photometry(image, segment_image, error_image=None,
     if error_image is not None:
         variance_image = error_image**2
         if gain is not None:
-            variance_image += gain / image
+            variance_image += image / gain
         flux_variance = ndimage.measurements.sum(variance_image,
                                                labels=segment_image,
                                                index=objids)
