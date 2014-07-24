@@ -35,7 +35,7 @@ APERTURE_CL = [CircularAperture,
 def test_outside_array(aperture, radius):
     data = np.ones((10, 10), dtype=np.float)
     fluxtable = aperture_photometry(data, (-60, 60), ((aperture,) + radius))
-    assert np.isnan(table['aperture_sum'])   # aperture is fully outside array
+    assert np.isnan(fluxtable['aperture_sum'])   # aperture is fully outside array
 
 
 @pytest.mark.parametrize(('aperture_cl', 'aperture', 'radius'),

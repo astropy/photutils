@@ -6,9 +6,9 @@ from __future__ import (absolute_import, division, print_function,
 import math
 import abc
 import numpy as np
+import warnings
 from astropy.table import Table
 from astropy.extern import six
-import warnings
 from astropy.utils.exceptions import AstropyUserWarning
 import astropy.units as u
 
@@ -655,7 +655,7 @@ def do_circular_photometry(data, positions, superparams,
                       .format(positions[ood_filter]),
                       AstropyUserWarning)
         if np.sum(ood_filter) == len(positions):
-            return flux
+            return (flux, )
 
     x_min, x_max, y_min, y_max = extent
     x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
@@ -755,9 +755,9 @@ def do_circular_photometry(data, positions, superparams,
                         fluxvar[i] = max(local_error ** 2 * np.sum(fraction), 0)
 
     if error is None:
-        return flux
+        return (flux, )
     else:
-        return flux, np.sqrt(fluxvar)
+        return (flux, np.sqrt(fluxvar))
 
 
 def do_elliptical_photometry(data, positions, superparams, a, b, theta,
@@ -781,7 +781,7 @@ def do_elliptical_photometry(data, positions, superparams, a, b, theta,
                       .format(positions[ood_filter]),
                       AstropyUserWarning)
         if np.sum(ood_filter) == len(positions):
-            return flux
+            return (flux, )
 
     x_min, x_max, y_min, y_max = extent
     x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
@@ -874,9 +874,9 @@ def do_elliptical_photometry(data, positions, superparams, a, b, theta,
                         fluxvar[i] = max(local_error ** 2 * np.sum(fraction), 0)
 
     if error is None:
-        return flux
+        return (flux, )
     else:
-        return flux, np.sqrt(fluxvar)
+        return (flux, np.sqrt(fluxvar))
 
 
 def do_annulus_photometry(data, positions, mode, superparams,
@@ -910,7 +910,6 @@ def do_annulus_photometry(data, positions, mode, superparams,
                                                            method=method,
                                                            subpixels=subpixels)
             fluxvar = max((fluxerr_o ** 2 - fluxerr_i ** 2), 0)
-        flux = flux_outer - flux_inner
 
     elif mode == 'elliptical':
         if error is None:
@@ -940,18 +939,17 @@ def do_annulus_photometry(data, positions, mode, superparams,
                                                              method=method,
                                                              subpixels=subpixels)
             fluxvar = max((fluxerr_o ** 2 - fluxerr_i ** 2), 0)
-        flux = flux_outer - flux_inner
 
     else:
         raise ValueError('{0} mode is not supported for annular photometry'
                          '{1}'.format(mode))
 
     if error is None:
-        print('ize')
-        return flux
+        flux = flux_outer[0] - flux_inner[0]
+        return (flux, )
     else:
-        print('zizi')
-        return flux, np.sqrt(fluxvar)
+        flux = flux_outer - flux_inner
+        return (flux, np.sqrt(fluxvar))
 
 
 def aperture_photometry(data, positions, apertures, error=None, gain=None,
@@ -1039,12 +1037,24 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
     from photutils import __version__
     photutils_version = __version__
 
-    if plot is None:
-        return ap.do_photometry(data, method=method, subpixels=subpixels,
-                                error=error, pixelwise_error=pixelwise_error)
+    photometry_result = ap.do_photometry(data, method=method,
+                                         subpixels=subpixels, error=error,
+                                         pixelwise_error=pixelwise_error)
+    if error is None:
+        col_names = ('aperture_sum', )
     else:
-        return (ap.do_photometry(data, method=method, subpixels=subpixels,
-                                 error=error, pixelwise_error=True),
+        col_names = ('aperture_sum', 'aperture_sum_err')
+
+    if plot is None:
+        return Table(data=photometry_result, names=col_names,
+                     meta={'name': 'Aperture photometry results',
+                           'version': 'astropy: {0}, photutils: {1}'
+                           .format(astropy_version, photutils_version)})
+    else:
+        return (Table(data=photometry_result, names=col_names,
+                      meta={'name': 'Aperture photometry results',
+                            'version': 'astropy: {0}, photutils: {1}'
+                            .format(astropy_version, photutils_version)}),
                 ap.plot(ax=None, **plot))
 
 
