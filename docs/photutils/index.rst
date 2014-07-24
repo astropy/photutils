@@ -40,7 +40,6 @@ and perform aperture photometry on them.
 
 The dataset in this example is `~photutils.datasets.load_star_image`:
 
-.. doctest-skip::
   >>> import numpy as np
   >>> from photutils import datasets
   >>> hdu = datasets.load_star_image()   # doctest: +REMOTE_DATA
@@ -72,11 +71,12 @@ And now check which one is the fainest and brightest source in this dataset:
 
   >>> faintest = (positions[fluxtable['aperture_sum'].argmin()],
   ...             fluxtable['aperture_sum'].min())   # doctest: +REMOTE_DATA
-  >>> print(faintest)   # doctest: +REMOTE_DATA
-  (array([ 118.71993103,   66.80723769]), -342.91175178365006)
+  >>> print(faintest)   # doctest: +REMOTE_DATA +FLOAT_CMP
+  ((118.71993103,   66.80723769), -342.91175178365006)
   >>> brightest = (positions[fluxtable['aperture_sum'].argmax()],
   ...              fluxtable['aperture_sum'].max())   # doctest: +REMOTE_DATA
-  (array([57.85429092,  99.22152913]), 387408.0358707984)
+  >>> print(brightest)   # doctest: +REMOTE_DATA +FLOAT_CMP
+  ((57.85429092,  99.22152913), 387408.0358707984)
 
 
 Let's plot the image and the apertures. The apertures of all the
