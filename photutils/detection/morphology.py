@@ -57,12 +57,25 @@ def centroid_com(image, image_mask=None):
 
 def gaussian1d_moments(data):
     """
-    Estimate 1D Gaussian parameters from moments.
+    Estimate 1D Gaussian parameters from the moments of 1D data.  This
+    function can be useful for providing initial parameter values when
+    fitting a 1D Gaussian to the ``data``.
+
+    Parameters
+    ----------
+    data : array_like
+        The 1D array of the data.
+
+    Returns
+    -------
+    output : tuple
+        The estimated (amplitude, mean, stddev) of a 1D Gaussian.
     """
+
     x = np.arange(data.size)
     xc = np.sum(x * data) / np.sum(data)
     stddev = np.sqrt(abs(np.sum(data * (x - xc)**2) / np.sum(data)))
-    amplitude = np.max(data) - np.median(data)
+    amplitude = np.ptp(data)
     return amplitude, xc, stddev
 
 
