@@ -11,10 +11,52 @@ except ImportError:
     from astropy.modeling.fitting import NonLinearLSQFitter as LevMarLSQFitter
 
 
-__all__ = ['centroid_com', 'gaussian1d_moments',
-           'centroid_1dg', 'centroid_2dg',
-           'fit_2dgaussian', 'shape_params'
-           ]
+__all__ = ['centroid_com', 'gaussian1d_moments', 'centroid_1dg',
+           'centroid_2dg', 'fit_2dgaussian', 'shape_params']
+
+
+def _convert_image(image, image_mask=None):
+    """
+    Convert the input image to a float64 (double) `numpy.ndarray`,
+    required for input to `skimage.measure.moments` and
+    `skimage.measure.moments_central`.
+
+    The input ``image`` is copied unless it already has that
+    `numpy.dtype`.
+
+    If ``image_mask`` is input, then masked pixels are set to zero in
+    the output ``image``.
+
+    Parameters
+    ----------
+    image : array_like
+        The 2D array of the image.
+
+    image_mask : array_like, bool, optional
+        A boolean mask with the same shape as ``image``, where a `True`
+        value indicates the corresponding element of ``image`` is
+        invalid.  Masked pixels are set to zero in the output ``image``.
+
+    Returns
+    -------
+    image : `numpy.ndarray`, float64
+        The converted 2D array of the image.
+    """
+
+    try:
+        if image_mask is None:
+            copy = False
+        else:
+            copy = True
+        image = np.asarray(image).astype(np.float, copy=copy)
+    except TypeError:
+        image = np.asarray(image).astype(np.float)    # for numpy <= 1.6
+    if image_mask is not None:
+        image_mask = np.asarray(image_mask)
+        if image.shape != image_mask.shape:
+            raise ValueError('image and image_mask must have the same shape')
+        image[image_mask] = 0.0
+    return image
 
 
 def centroid_com(image, image_mask=None):
@@ -39,16 +81,7 @@ def centroid_com(image, image_mask=None):
     """
 
     from skimage.measure import moments
-    try:
-        image = np.asarray(image).astype(np.float, copy=False)
-    except TypeError:
-        image = np.asarray(image).astype(np.float)    # for numpy <= 1.6
-
-    if image_mask is not None:
-        if image.shape != image_mask.shape:
-            raise ValueError('image and image_mask must have the same shape')
-        image[image_mask] = 0.
-
+    image = _convert_image(image, image_mask=None)
     m = moments(image, 1)
     xcen = m[1, 0] / m[0, 0]
     ycen = m[0, 1] / m[0, 0]
@@ -79,22 +112,24 @@ def gaussian1d_moments(data):
     return amplitude, xc, stddev
 
 
-def centroid_1dg(data, data_err=None, data_mask=None):
+def centroid_1dg(image, image_error=None, image_mask=None):
     """
-    Calculate the centroid of an array from fitting 1D Gaussians
-    to the marginal x and y distributions of the data.
+    Calculate the centroid of a 2D array by fitting 1D Gaussians to the
+    marginal x and y distributions of the image.
 
     Parameters
     ----------
-    data : array_like
-        The image data.  (should be background subtracted)
+    image : array_like
+        The 2D array of the image.
 
-    data_err : array_like, optional
-        The 1-sigma errors for ``data``.
+    image_error : array_like, optional
+        The 2D array of the 1-sigma errors of the input ``image``.
 
-    data_mask : array_like, bool, optional
-        A boolean mask with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is invalid.
+    image_mask : array_like, bool, optional
+        (Not yet implemented).
+        A boolean mask with the same shape as ``image``, where a `True`
+        value indicates the corresponding element of ``image`` is
+        invalid.
 
     Returns
     -------
@@ -102,21 +137,21 @@ def centroid_1dg(data, data_err=None, data_mask=None):
         (x, y) coordinates of the centroid.
     """
 
-    gaussian_x = data.sum(axis=0)
-    gaussian_y = data.sum(axis=1)
-    if data_err is None:
+    data_x = image.sum(axis=0)
+    data_y = image.sum(axis=1)
+    if image_error is None:
         weights_x = None
         weights_y = None
     else:
-        data_err_x = np.sqrt(np.sum(data_err**2, axis=0))
-        data_err_y = np.sqrt(np.sum(data_err**2, axis=1))
-        weights_x = 1. / data_err_x
-        weights_y = 1. / data_err_y
+        image_err_x = np.sqrt(np.sum(image_error**2, axis=0))
+        image_err_y = np.sqrt(np.sum(image_error**2, axis=1))
+        weights_x = 1.0 / image_err_x
+        weights_y = 1.0 / image_err_y
 
-    gaussians = [gaussian_x, gaussian_y]
-    data_weights = [weights_x, weights_y]
+    marginal_data = [data_x, data_y]
+    marginal_weights = [weights_x, weights_y]
     centroid = []
-    for (data, weights) in zip(gaussians, data_weights):
+    for (data, weights) in zip(marginal_data, marginal_weights):
         params_init = gaussian1d_moments(data)
         g_init = models.Gaussian1D(*params_init)
         fitter = LevMarLSQFitter()
@@ -126,22 +161,24 @@ def centroid_1dg(data, data_err=None, data_mask=None):
     return centroid
 
 
-def centroid_2dg(data, data_err=None, data_mask=None):
+def centroid_2dg(image, image_error=None, image_mask=None):
     """
-    Calculate the centroid of an array from fitting a
-    2D Gaussian to the data.
+    Calculate the centroid of a 2D array by fitting a 2D Gaussian to the
+    image.
 
     Parameters
     ----------
-    data : array_like
-        The image data.  (should be background subtracted)
+    image : array_like
+        The 2D array of the image.
 
-    data_err : array_like, optional
-        The 1-sigma errors for ``data``.
+    image_error : array_like, optional
+        The 2D array of the 1-sigma errors of the input ``image``.
 
-    data_mask : array_like, bool, optional
-        A boolean mask with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is invalid.
+    image_mask : array_like, bool, optional
+        (Not yet implemented).
+        A boolean mask with the same shape as ``image``, where a `True`
+        value indicates the corresponding element of ``image`` is
+        invalid.
 
     Returns
     -------
@@ -149,25 +186,28 @@ def centroid_2dg(data, data_err=None, data_mask=None):
         (x, y) coordinates of the centroid.
     """
 
-    gfit = fit_2dgaussian(data, data_err=data_err, data_mask=data_mask)
+    gfit = fit_2dgaussian(image, image_error=image_error,
+                          image_mask=image_mask)
     return gfit.x_mean.value, gfit.y_mean.value
 
 
-def fit_2dgaussian(data, data_err=None, data_mask=None):
+def fit_2dgaussian(image, image_error=None, image_mask=None):
     """
-    Fit a 2D Gaussian to data.
+    Fit a 2D Gaussian to a 2D image.
 
     Parameters
     ----------
-    data : array_like
-        The image data.  (should be background subtracted)
+    image : array_like
+        The 2D array of the image.
 
-    data_err : array_like, optional
-        The 1-sigma errors for ``data``.
+    image_error : array_like, optional
+        The 2D array of the 1-sigma errors of the input ``image``.
 
-    data_mask : array_like, bool, optional
-        A boolean mask with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is invalid.
+    image_mask : array_like, bool, optional
+        (Not yet implemented).
+        A boolean mask with the same shape as ``image``, where a `True`
+        value indicates the corresponding element of ``image`` is
+        invalid.
 
     Returns
     -------
@@ -175,71 +215,75 @@ def fit_2dgaussian(data, data_err=None, data_mask=None):
         (x, y) coordinates of the centroid.
     """
 
-    if data_err is None:
+    if image_error is None:
         weights = None
     else:
-        weights = 1. / data_err
-    gparams = shape_params(data)
-    amplitude = np.max(data) - np.median(data)
-    g_init = models.Gaussian2D(amplitude, gparams['xcen'], gparams['ycen'],
-                               gparams['major_axis'], gparams['minor_axis'],
-                               theta=gparams['pa'])
+        weights = 1.0 / image_error
+    init_param = shape_params(image)
+    init_amplitude = np.ptp(image)
+    g_init = models.Gaussian2D(init_amplitude, init_param['xcen'],
+                               init_param['ycen'], init_param['major_axis'],
+                               init_param['minor_axis'],
+                               theta=init_param['angle'])
     fitter = LevMarLSQFitter()
-    y, x = np.indices(data.shape)
-    gfit = fitter(g_init, x, y, data, weights=weights)
+    y, x = np.indices(image.shape)
+    gfit = fitter(g_init, x, y, image, weights=weights)
     return gfit
 
 
-def shape_params(data, data_mask=None):
+def shape_params(image, image_mask=None):
     """
-    Calculate the centroid and shape parameters for an object using
-    image moments.
+    Calculate the centroid and shape parameters of a 2D array (e.g., an
+    image cutout of an object) using image moments.
 
     Parameters
     ----------
-    data : array_like
-        The 2D image data.
+    image : array_like
+        The 2D array of the image.
 
-    data_mask : array_like, bool, optional
-        A boolean mask with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is
+    image_mask : array_like, bool, optional
+        A boolean mask with the same shape as ``image``, where a `True`
+        value indicates the corresponding element of ``image`` is
         invalid.
 
     Returns
     -------
     dict :  A dictionary containing the object shape parameters:
 
-        * ``xcen, ycen``: object centroid (zero-based origin).
-        * ``major_axis``: length of the major axis
-        * ``minor_axis``: length of the minor axis
-        * ``eccen``: eccentricity.  The ratio of half the distance
-          between its two ellipse foci to the length of the the
-          semimajor axis.
-        * ``pa``: position angle of the major axis.  Increases
-          clockwise from the positive x axis.
-        * ``covar``: corresponding covariance matrix for a 2D Gaussian
-        * ``linear_eccen`` : linear eccentricity is the distance between
-          the object center and either of its two ellipse foci.
+        * ``xcen, ycen``: The object centroid (zero-based origin).
+        * ``major_axis``: The length of the major axis of the ellipse
+          that has the same second-order moments as the input image.
+        * ``minor_axis``: The length of the minor axis of the ellipse
+          that has the same second-order moments as the input image.
+        * ``eccen``: The eccentricity of the ellipse that has the same
+          second-order moments as the input image.  The eccentricity is
+          the ratio of half the distance between the two ellipse foci to
+          the length of the semimajor axis.
+        * ``angle``: Angle in radians between the positive x axis and
+          the major axis of the ellipse that has the same second-order
+          moments as the input image.  The angle increases
+          counter-clockwise.
+        * ``covar``: The covariance matrix of the ellipse that has the
+          same second-order moments as the input image.
+        * ``linear_eccen`` : The linear eccentricity of the ellipse that
+          has the same second-order moments as the input image.  Linear
+          eccentricity is the distance between the ellipse center and
+          either of its two foci.
     """
+
     from skimage.measure import moments, moments_central
-
-    if data_mask is not None:
-        if data.shape != data_mask.shape:
-            raise ValueError('data and data_mask must have the same shape')
-        data[data_mask] = 0.
-
+    image = _convert_image(image, image_mask=None)
+    xcen, ycen = centroid_com(image)
+    m = moments(image, 1)
+    mu = moments_central(image, ycen, xcen, 2) / m[0, 0]
     result = {}
-    xcen, ycen = centroid_com(data)
-    m = moments(data, 1)
-    mu = moments_central(data, ycen, xcen, 2) / m[0, 0]
     result['xcen'] = xcen
     result['ycen'] = ycen
-    # musum = mu[2, 0] + mu[0, 2]
     mudiff = mu[2, 0] - mu[0, 2]
-    pa = 0.5 * np.arctan2(2.0*mu[1, 1], mudiff) * (180.0 / np.pi)
-    if pa < 0.0:
-        pa += 180.0
-    result['pa'] = pa
+    angle = 0.5 * np.arctan2(2.0 * mu[1, 1], mudiff) * (180.0 / np.pi)
+    if angle < 0.0:
+        angle += np.pi
+    result['angle'] = angle
     covar = np.array([[mu[2, 0], mu[1, 1]], [mu[1, 1], mu[0, 2]]])
     result['covar'] = covar
     eigvals, eigvecs = np.linalg.eigh(covar)
@@ -247,8 +291,9 @@ def shape_params(data, data_mask=None):
     minsq = np.min(eigvals)
     result['major_axis'] = np.sqrt(majsq)
     result['minor_axis'] = np.sqrt(minsq)
-    # if True:   # equivalent calculation
+    # equivalent calculation of major/minor axes:
     #     tmp = np.sqrt(4.0*mu[1,1]**2 + mudiff**2)
+    #     musum = mu[2, 0] + mu[0, 2]
     #     majsq = 0.5 * (musum + tmp)
     #     minsq = 0.5 * (musum - tmp)
     #     result['major_axis2'] = np.sqrt(majsq)
@@ -261,7 +306,7 @@ def shape_params(data, data_mask=None):
 def _moments_to_2DGaussian(amplitude, x_mean, y_mean, mu):
     """
     mu:  normalized second-order central moments matrix [units of pixels**2]
-    mu = moments_central(data, ycen, xcen, 2) / m[0, 0]
+    mu = moments_central(image, ycen, xcen, 2) / m[0, 0]
     """
 
     cov_matrix = np.array([[mu[2, 0], mu[1, 1]], [mu[1, 1], mu[0, 2]]])
