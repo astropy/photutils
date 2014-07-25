@@ -56,7 +56,6 @@ def _convert_image(image, image_mask=None):
         if image.shape != image_mask.shape:
             raise ValueError('image and image_mask must have the same shape')
         image[image_mask] = 0.0
-        print(image)
     return image
 
 
