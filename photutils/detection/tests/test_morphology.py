@@ -5,13 +5,9 @@ from astropy.tests.helper import pytest
 import numpy as np
 from numpy.testing import assert_allclose
 import itertools
-from ..morphology import centroid_com, centroid_1dg, centroid_2dg
+from ..morphology import (centroid_com, centroid_1dg, centroid_2dg,
+                          gaussian1d_moments)
 from astropy.modeling import models
-try:
-    import scipy
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
 try:
     import skimage
     HAS_SKIMAGE = True
@@ -41,3 +37,12 @@ def test_centroids(xc_ref, yc_ref, x_stddev, y_stddev, theta):
     assert_allclose([xc_ref, yc_ref], [xc2, yc2], rtol=0, atol=1.e-3)
     xc3, yc3 = centroid_2dg(data)
     assert_allclose([xc_ref, yc_ref], [xc3, yc3], rtol=0, atol=1.e-3)
+
+
+def test_gaussian1d_moments():
+    x = np.arange(100)
+    ref = (75, 50, 5)
+    g = models.Gaussian1D(*ref)
+    data = g(x)
+    result = gaussian1d_moments(data)
+    assert_allclose(ref, result, rtol=0, atol=1.e-6)
