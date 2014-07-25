@@ -56,6 +56,7 @@ def _convert_image(image, image_mask=None):
         if image.shape != image_mask.shape:
             raise ValueError('image and image_mask must have the same shape')
         image[image_mask] = 0.0
+        print(image)
     return image
 
 
@@ -81,7 +82,7 @@ def centroid_com(image, image_mask=None):
     """
 
     from skimage.measure import moments
-    image = _convert_image(image, image_mask=None)
+    image = _convert_image(image, image_mask=image_mask)
     m = moments(image, 1)
     xcen = m[1, 0] / m[0, 0]
     ycen = m[0, 1] / m[0, 0]
@@ -272,7 +273,7 @@ def shape_params(image, image_mask=None):
     """
 
     from skimage.measure import moments, moments_central
-    image = _convert_image(image, image_mask=None)
+    image = _convert_image(image, image_mask=image_mask)
     xcen, ycen = centroid_com(image)
     m = moments(image, 1)
     mu = moments_central(image, ycen, xcen, 2) / m[0, 0]
