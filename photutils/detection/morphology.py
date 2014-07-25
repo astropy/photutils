@@ -17,33 +17,39 @@ __all__ = ['centroid_com', 'gaussian1d_moments',
            ]
 
 
-def centroid_com(data, data_mask=None):
+def centroid_com(image, image_mask=None):
     """
-    Calculate the centroid of an array as its center of mass determined
-    from image moments.
+    Calculate the centroid of a 2D array as its center of mass
+    determined from image moments.
 
     Parameters
     ----------
-    data : array_like
-        The image data.
+    image : array_like
+        The 2D array of the image.
 
-    data_mask : array_like, bool, optional
-        A boolean mask with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is invalid.
+    image_mask : array_like, bool, optional
+        A boolean mask with the same shape as ``image``, where a `True`
+        value indicates the corresponding element of ``image`` is
+        invalid.
 
     Returns
     -------
     centroid : tuple
         (x, y) coordinates of the centroid.
     """
+
     from skimage.measure import moments
+    try:
+        image = np.asarray(image).astype(np.float, copy=False)
+    except TypeError:
+        image = np.asarray(image).astype(np.float)    # for numpy <= 1.6
 
-    if data_mask is not None:
-        if data.shape != data_mask.shape:
-            raise ValueError('data and data_mask must have the same shape')
-        data[data_mask] = 0.
+    if image_mask is not None:
+        if image.shape != image_mask.shape:
+            raise ValueError('image and image_mask must have the same shape')
+        image[image_mask] = 0.
 
-    m = moments(data, 1)
+    m = moments(image, 1)
     xcen = m[1, 0] / m[0, 0]
     ycen = m[0, 1] / m[0, 0]
     return xcen, ycen
