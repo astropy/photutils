@@ -35,7 +35,8 @@ APERTURE_CL = [CircularAperture,
 def test_outside_array(aperture, radius):
     data = np.ones((10, 10), dtype=np.float)
     fluxtable = aperture_photometry(data, (-60, 60), ((aperture,) + radius))
-    assert np.isnan(fluxtable['aperture_sum'])   # aperture is fully outside array
+    # aperture is fully outside array:
+    assert np.isnan(fluxtable['aperture_sum'])
 
 
 @pytest.mark.parametrize(('aperture_cl', 'aperture', 'radius'),
@@ -67,13 +68,31 @@ class BaseTestAperturePhotometry(object):
         else:
             mask = self.mask
 
-        fluxtable = aperture_photometry(self.data, self.position,
-                                        self.aperture,
-                                        mask=mask, error=error)
-        assert_allclose(fluxtable['aperture_sum'], self.true_flux)
+        table1 = aperture_photometry(self.data, self.position,
+                                     self.aperture, method='center',
+                                     mask=mask, error=error)
+        table2 = aperture_photometry(self.data, self.position,
+                                     self.aperture,
+                                     method='subpixel', subpixels=12,
+                                     mask=mask, error=error)
+        table3 = aperture_photometry(self.data, self.position,
+                                     self.aperture, method='exact',
+                                     mask=mask, error=error)
+        assert_allclose(table3['aperture_sum'], self.true_flux)
+        assert table1['aperture_sum'] < table3['aperture_sum']
+        assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
+                        atol=0.1)
 
-        true_error = error * np.sqrt(self.area)
-        assert_allclose(fluxtable['aperture_sum_err'], true_error)
+        if hasattr(self, 'true_variance'):
+            true_error = np.sqrt(self.true_variance - self.true_flux)
+        else:
+            true_error = np.sqrt(self.area)
+
+        assert_allclose(table3['aperture_sum_err'], true_error)
+        assert table1['aperture_sum_err'] < table3['aperture_sum_err']
+        assert_allclose(table2['aperture_sum_err'], table3['aperture_sum_err'],
+                        atol=0.1)
+
 
     def test_array_error_no_gain(self):
 
@@ -84,17 +103,30 @@ class BaseTestAperturePhotometry(object):
         else:
             mask = self.mask
 
-        fluxtable = aperture_photometry(self.data, self.position,
-                                        self.aperture,
-                                        mask=mask, error=error)
-        assert_allclose(fluxtable['aperture_sum'], self.true_flux)
+        table1 = aperture_photometry(self.data, self.position,
+                                     self.aperture, method='center',
+                                     mask=mask, error=error)
+        table2 = aperture_photometry(self.data, self.position,
+                                     self.aperture,
+                                     method='subpixel', subpixels=12,
+                                     mask=mask, error=error)
+        table3 = aperture_photometry(self.data, self.position,
+                                     self.aperture, method='exact',
+                                     mask=mask, error=error)
+        assert_allclose(table3['aperture_sum'], self.true_flux)
+        assert table1['aperture_sum'] < table3['aperture_sum']
+        assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
+                        atol=0.1)
 
         if hasattr(self, 'true_variance'):
             true_error = np.sqrt(self.true_variance - self.true_flux)
         else:
             true_error = np.sqrt(self.area)
 
-        assert_allclose(fluxtable['aperture_sum_err'], true_error)
+        assert_allclose(table3['aperture_sum_err'], true_error)
+        assert table1['aperture_sum_err'] < table3['aperture_sum_err']
+        assert_allclose(table2['aperture_sum_err'], table3['aperture_sum_err'],
+                        atol=0.1)
 
 
 class TestCircular(BaseTestAperturePhotometry):
