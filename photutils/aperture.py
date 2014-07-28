@@ -172,8 +172,8 @@ class CircularAperture(Aperture):
                              '{1}'.format(method, self.__class__.__name__))
 
         flux = do_circular_photometry(data, self.positions, superparams,
-                                      self.r,
-                                      error=error, pixelwise_error=True,
+                                      self.r, error=error,
+                                      pixelwise_error=pixelwise_error,
                                       method=method,
                                       subpixels=subpixels)
         return flux
@@ -244,7 +244,8 @@ class CircularAnnulus(Aperture):
         flux = do_annulus_photometry(data, self.positions, 'circular',
                                      superparams,
                                      (self.r_in, ), (self.r_out, ),
-                                     error=error, pixelwise_error=True,
+                                     error=error,
+                                     pixelwise_error=pixelwise_error,
                                      method=method,
                                      subpixels=subpixels)
 
@@ -887,26 +888,28 @@ def do_annulus_photometry(data, positions, mode, superparams,
     if mode == 'circular':
         if error is None:
             flux_outer = do_circular_photometry(data, positions, superparams,
-                                                *outer_params,
-                                                error=error, pixelwise_error=True,
-                                                method=method, subpixels=subpixels)
+                                                *outer_params, error=error,
+                                                pixelwise_error=pixelwise_error,
+                                                method=method,
+                                                subpixels=subpixels)
             flux_inner = do_circular_photometry(data, positions, superparams,
-                                                *inner_params,
-                                                error=error, pixelwise_error=True,
-                                                method=method, subpixels=subpixels)
+                                                *inner_params, error=error,
+                                                pixelwise_error=pixelwise_error,
+                                                method=method,
+                                                subpixels=subpixels)
         else:
             flux_outer, fluxerr_o = do_circular_photometry(data, positions,
                                                            superparams,
                                                            *outer_params,
                                                            error=error,
-                                                           pixelwise_error=True,
+                                                           pixelwise_error=pixelwise_error,
                                                            method=method,
                                                            subpixels=subpixels)
             flux_inner, fluxerr_i = do_circular_photometry(data, positions,
                                                            superparams,
                                                            *inner_params,
                                                            error=error,
-                                                           pixelwise_error=True,
+                                                           pixelwise_error=pixelwise_error,
                                                            method=method,
                                                            subpixels=subpixels)
             fluxvar = max((fluxerr_o ** 2 - fluxerr_i ** 2), 0)
@@ -915,12 +918,12 @@ def do_annulus_photometry(data, positions, mode, superparams,
         if error is None:
             flux_inner = do_elliptical_photometry(data, positions, superparams,
                                                   *inner_params, error=error,
-                                                  pixelwise_error=True,
+                                                  pixelwise_error=pixelwise_error,
                                                   method=method,
                                                   subpixels=subpixels)
             flux_outer = do_elliptical_photometry(data, positions, superparams,
                                                   *outer_params, error=error,
-                                                  pixelwise_error=True,
+                                                  pixelwise_error=pixelwise_error,
                                                   method=method,
                                                   subpixels=subpixels)
         else:
@@ -928,14 +931,14 @@ def do_annulus_photometry(data, positions, mode, superparams,
                                                              superparams,
                                                              *inner_params,
                                                              error=error,
-                                                             pixelwise_error=True,
+                                                             pixelwise_error=pixelwise_error,
                                                              method=method,
                                                              subpixels=subpixels)
             flux_outer, fluxerr_o = do_elliptical_photometry(data, positions,
                                                              superparams,
                                                              *outer_params,
                                                              error=error,
-                                                             pixelwise_error=True,
+                                                             pixelwise_error=pixelwise_error,
                                                              method=method,
                                                              subpixels=subpixels)
             fluxvar = max((fluxerr_o ** 2 - fluxerr_i ** 2), 0)
