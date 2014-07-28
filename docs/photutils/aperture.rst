@@ -12,21 +12,20 @@ The following functions are provided for different types of apertures:
 A Simple Example
 ----------------
 
-Suppose there are 4 sources located at (10, 10), (20, 20), and (30, 30),
-(40, 40), in pixel coordinates. To sum the pixel values (flux) inside a
-circular aperture of radius 3 pixels centered on each object:
+Suppose there are 2 sources located at (30, 30) and (40, 40), in pixel
+coordinates. To sum the pixel values (flux) inside a circular aperture of
+radius 3 pixels centered on each object:
 
     >>> import numpy as np
     >>> from photutils import CircularAperture, aperture_photometry
     >>> data = np.ones((100, 100))
-    >>> xc = [10., 20., 30., 40.]
-    >>> yc = [10., 20., 30., 40.]
+    >>> xc = [30., 40.]
+    >>> yc = [30., 40.]
     >>> positions = zip(xc, yc)
     >>> apertures = CircularAperture(positions, 3.)
     >>> aperture_photometry(data, apertures)
-    <Table rows=4 names=('aperture_sum') units=('')>
-    array([(28.274333882308134,), (28.274333882308134,), (28.274333882308134,),
-           (28.274333882308134,)],
+    <Table rows=2 names=('aperture_sum') units=('')>
+    array([(28.274333882308134,), (28.274333882308134,)],
           dtype=[('aperture_sum', '<f8')])
 
 The results are returned in a `~astropy.table.Table` with a column, named
@@ -47,9 +46,8 @@ at the expense of less precise answers. For example,:
 
     >>> aperture_photometry(data, apertures,
     ...                     method='subpixel', subpixels=5)
-    <Table rows=4 names=('aperture_sum') units=('')>
-    array([(27.959999999999997,), (27.959999999999997,), (27.959999999999997,),
-           (27.959999999999997,)],
+    <Table rows=2 names=('aperture_sum') units=('')>
+    array([(27.959999999999997,), (27.959999999999997,)],
           dtype=[('aperture_sum', '<f8')])
 
 The result differs from the true value because this method subsamples
@@ -81,10 +79,8 @@ each aperture. One may use `~astropy.table.hstack` to stack them into one
   >>> from astropy.table import hstack
   >>> fluxtable = hstack(flux)
   >>> fluxtable    # doctest: +FLOAT_CMP
-  <Table rows=4 names=('aperture_sum_1','aperture_sum_2','aperture_sum_3') units=('','','')>
+  <Table rows=2 names=('aperture_sum_1','aperture_sum_2','aperture_sum_3') units=('','','')>
   array([(28.274333882308134, 50.26548245743669, 78.53981633974482),
-         (28.274333882308134, 50.26548245743669, 78.53981633974482),
-         (28.274333882308134, 50.26548245743669, 78.53981633974482),
          (28.274333882308134, 50.26548245743669, 78.53981633974482)],
         dtype=[('aperture_sum_1', '<f8'), ('aperture_sum_2', '<f8'), ('aperture_sum_3', '<f8')])
 
@@ -100,11 +96,9 @@ must specify ``a``, ``b``, and ``theta``:
   >>> apertures = EllipticalAperture(positions, a, b, theta)
   >>> fluxtable = aperture_photometry(data, apertures)
   >>> fluxtable   # doctest: +FLOAT_CMP
-  <Table rows=4 names=('aperture_sum') units=('')>
-  array([(47.1238898038469,), (47.1238898038469,), (47.1238898038469,),
-         (47.1238898038469,)],
+  <Table rows=2 names=('aperture_sum') units=('')>
+  array([(47.1238898038469,), (47.1238898038469,)],
         dtype=[('aperture_sum', '<f8')])
-
 
 Again, for multiple apertures one should loop over them.
 
@@ -116,10 +110,8 @@ Again, for multiple apertures one should loop over them.
  ...     flux.append(aperture_photometry(data, EllipticalAperture(positions, a[index], b[index], theta)))
  >>> fluxtable = hstack(flux)
  >>> fluxtable   # doctest: +FLOAT_CMP
- <Table rows=4 names=('aperture_sum_1','aperture_sum_2','aperture_sum_3','aperture_sum_4') units=('','','','')>
+ <Table rows=2 names=('aperture_sum_1','aperture_sum_2','aperture_sum_3','aperture_sum_4') units=('','','','')>
  array([ (47.1238898038469, 75.39822368615505, 109.9557428756428, 150.7964473723101),
-         (47.1238898038469, 75.39822368615505, 109.9557428756428, 150.7964473723101),
-         (47.1238898038469, 75.39822368615505, 109.9557428756428, 150.7964473723101),
          (47.1238898038469, 75.39822368615505, 109.9557428756428, 150.7964473723101)],
           dtype=[('aperture_sum_1', '<f8'), ('aperture_sum_2', '<f8'), ('aperture_sum_3', '<f8'), ('aperture_sum_4', '<f8')])
 
@@ -153,8 +145,7 @@ subtraction is left up to the user or calling function.
     >>> fluxtable['result_aperture_sum'] = fluxtable['aperture_sum_raw'] - fluxtable['aperture_sum_bkg'] * aperture_area / annulus_area
     >>> fluxtable['result_aperture_sum']   # doctest: +FLOAT_CMP
     <Column name='result_aperture_sum' unit=u'' format=None description=None>
-    array([ -1.77635684e-14,  -1.77635684e-14,  -1.77635684e-14,
-            -1.77635684e-14])
+    array([ -1.77635684e-14, -1.77635684e-14])
 
   (The result differs from 0 due to inclusion or exclusion of
   subpixels in the apertures.)
@@ -164,7 +155,7 @@ Error Estimation
 
 If, and only if, the ``error`` keyword is specified, the return table will
 have ``'aperture_sum'`` and ``'aperture_sum_err'`` columns rather than just
-``'aperture_sum'``. ``'aperture_sum_err'`` has same lenght as
+``'aperture_sum'``. ``'aperture_sum_err'`` has same length as
 ``'aperture_sum'``, specifying the uncertainty in each corresponding flux
 value.
 
@@ -174,10 +165,8 @@ pixel's value and saved it in the array ``data_error``:
   >>> data_error = 0.1 * data  # (100 x 100 array)
   >>> fluxtable = aperture_photometry(data, apertures, error=data_error)
   >>> fluxtable   # doctest: +FLOAT_CMP
-  <Table rows=4 names=('aperture_sum','aperture_sum_err') units=('','')>
+  <Table rows=2 names=('aperture_sum','aperture_sum_err') units=('','')>
   array([(28.274333882308134, 0.531736155271655),
-         (28.274333882308134, 0.531736155271655),
-         (28.274333882308134, 0.531736155271655),
          (28.274333882308134, 0.531736155271655)],
         dtype=[('aperture_sum', '<f8'), ('aperture_sum_err', '<f8')])
 

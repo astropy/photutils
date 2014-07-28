@@ -46,7 +46,7 @@ def test_inside_array_simple(aperture, radius):
                                  method='exact', subpixels=10)
     true_flux = aperture((20., 20.), *radius).area()
 
-    assert_allclose(np.fabs(table3['aperture_sum'] / true_flux), 1)
+    assert_allclose(table3['aperture_sum'], true_flux)
     assert table1['aperture_sum'] < table3['aperture_sum']
     assert_allclose(table2['aperture_sum'], table3['aperture_sum'], atol=0.1)
 

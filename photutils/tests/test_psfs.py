@@ -22,7 +22,7 @@ def test_subpixel_gauss_psf(width):
     """
     gauss_psf = GaussianPSF(width)
     y, x = np.mgrid[-10:11, -10:11]
-    assert_allclose(np.abs(gauss_psf(x, y).sum()), 1)
+    assert_allclose(gauss_psf(x, y).sum(), 1)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -32,4 +32,4 @@ def test_gaussian_PSF_integral():
     """
     psf = GaussianPSF(10)
     y, x = np.mgrid[-100:101, -100:101]
-    assert_allclose(np.abs(psf(y, x).sum()), 1)
+    assert_allclose(psf(y, x).sum(), 1)
