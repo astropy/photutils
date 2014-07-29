@@ -177,3 +177,22 @@ class TestEllipticalAnnulus(BaseTestAperturePhotometry):
         self.aperture = ('elliptical_annulus', a_in, a_out, b_out, theta)
         self.area = np.pi * (a_out * b_out) - np.pi * (a_in * b_out * a_in / a_out)
         self.true_flux = self.area
+
+
+def test_rectangular_aperture():
+    data = np.ones((40, 40), dtype=np.float)
+    position = (20., 20.)
+
+    aperture = ('rectangular', 1., 2., np.pi / 4)
+
+    table1 = aperture_photometry(data, position, aperture, method='center')
+    table2 = aperture_photometry(data, position, aperture, method='subpixel',
+                                 subpixels=8)
+
+    with pytest.raises(NotImplementedError):
+        aperture_photometry(data, position, aperture, method='exact')
+
+    true_flux = 1. * 2.
+
+    assert table1['aperture_sum'] < true_flux
+    assert_allclose(table2['aperture_sum'], true_flux, atol=0.1)

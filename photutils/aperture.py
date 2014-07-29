@@ -16,7 +16,8 @@ __all__ = ["Aperture",
            "CircularAperture", "CircularAnnulus",
            "EllipticalAperture", "EllipticalAnnulus",
            "RectangularAperture",
-           "aperture_photometry"]
+           "aperture_photometry", "do_circular_photometry",
+           "do_elliptical_photometry", "do_annulus_photometry"]
 
 
 def _make_annulus_path(patch_inner, patch_outer):
@@ -504,50 +505,6 @@ class RectangularAperture(Aperture):
         self._centers = np.array(centers)
         return np.array(extents)
 
-    def encloses(self, extent, nx, ny, method='subpixel', subpixels=5):
-
-        # Shortcut to avoid divide-by-zero errors.
-        if self.w == 0 or self.h == 0:
-            return np.zeros((ny, nx), dtype=np.float)
-
-        x_min, x_max, y_min, y_max = extent
-        if method in ('center', 'subpixel'):
-            if method == 'center':
-                subpixels = 1
-
-            x_size = (x_max - x_min) / (nx * subpixels)
-            y_size = (y_max - y_min) / (ny * subpixels)
-
-            x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
-            y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
-
-            xx, yy = np.meshgrid(x_centers, y_centers)
-
-            newx = (xx * math.cos(self.theta) +
-                    yy * math.sin(self.theta))
-            newy = (yy * math.cos(self.theta) -
-                    xx * math.sin(self.theta))
-
-            halfw = self.w / 2
-            halfh = self.h / 2
-            in_aper = ((-halfw < newx) & (newx < halfw) &
-                       (-halfh < newy) & (newy < halfh)).astype(float)
-
-            in_aper /= subpixels ** 2
-
-            if method == 'center':
-                return in_aper
-            else:
-                from imageutils import downsample
-                return downsample(in_aper, subpixels)
-
-        elif method == 'exact':
-            raise NotImplementedError('exact method not yet supported for '
-                                      'RectangularAperture')
-        else:
-            raise ValueError('{0} method not supported for aperture class '
-                             '{1}'.format(method, self.__class__.__name__))
-
     def area(self):
         return self.w * self.h
 
@@ -569,6 +526,116 @@ class RectangularAperture(Aperture):
             patch = mpatches.Rectangle(position, self.w, self.h, theta_deg,
                                        **kwargs)
             ax.add_patch(patch)
+
+    def do_photometry(self, data, error=None, pixelwise_error=True,
+                      method='subpixel', subpixels=5):
+
+        superparams = super(RectangularAperture, self).do_photometry(data)
+
+        if method not in ('center', 'subpixel', 'exact'):
+            raise ValueError('{0} method not supported for aperture class '
+                             '{1}'.format(method, self.__class__.__name__))
+
+        ood_filter = superparams[0]
+        x_min, x_max, y_min, y_max = superparams[1:5]
+        x_pmin, x_pmax, y_pmin, y_pmax = superparams[5:9]
+
+        flux = u.Quantity(np.zeros(len(self.positions), dtype=np.float),
+                          unit=data.unit)
+
+        # Check for invalid aperture
+        if self.w == 0 or self.h == 0:
+            return (flux, )
+
+        # TODO: flag these objects
+        if np.sum(ood_filter):
+            flux[ood_filter] = np.nan
+            warnings.warn("The aperture at position {0} does not have any "
+                          "overlap with the data"
+                          .format(self.positions[ood_filter]),
+                          AstropyUserWarning)
+            if np.sum(ood_filter) == len(self.positions):
+                return (flux, )
+
+        if error is not None:
+            fluxvar = u.Quantity(np.zeros(len(self.positions), dtype=np.float),
+                                 unit=data.unit)
+
+        if method in ('center', 'subpixel'):
+            if method == 'center': subpixels = 1
+            if method == 'subpixel': from .utils import downsample
+
+            for i in range(len(flux)):
+                x_size = ((x_pmax[i] - x_pmin[i]) /
+                          (data[:, x_min[i]:x_max[i]].shape[1] * subpixels))
+                y_size = ((y_pmax[i] - y_pmin[i]) /
+                          (data[y_min[i]:y_max[i], :].shape[0] * subpixels))
+
+                x_centers = np.arange(x_pmin[i] + x_size / 2.,
+                                      x_pmax[i], x_size)
+                y_centers = np.arange(y_pmin[i] + y_size / 2.,
+                                      y_pmax[i], y_size)
+
+                xx, yy = np.meshgrid(x_centers, y_centers)
+
+                newx = (xx * math.cos(self.theta) +
+                        yy * math.sin(self.theta))
+                newy = (yy * math.cos(self.theta) -
+                        xx * math.sin(self.theta))
+
+                halfw = self.w / 2
+                halfh = self.h / 2
+                in_aper = (((-halfw < newx) & (newx < halfw) &
+                            (-halfh < newy) & (newy < halfh)).astype(float)
+                           / subpixels ** 2)
+
+                if method == 'center':
+                    if not np.isnan(flux[i]):
+                        flux[i] = np.sum(data[y_min[i]:y_max[i],
+                                              x_min[i]:x_max[i]] * in_aper)
+                        if error is not None:
+                            if pixelwise_error:
+                                subvarience = error[y_min[i]:y_max[i],
+                                                    x_min[i]:x_max[i]] ** 2
+                                # Make sure varience is > 0
+                                fluxvar[i] = max(np.sum(subvarience * in_aper), 0)
+                            else:
+                                local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
+                                                    int((x_min[i] + x_max[i]) / 2 + 0.5)]
+                                fluxvar[i] = max(local_error ** 2 * np.sum(in_aper), 0)
+
+                else:
+                    if not np.isnan(flux[i]):
+                        if error is None:
+                            flux[i] = np.sum(data[y_min[i]:y_max[i],
+                                                  x_min[i]:x_max[i]] *
+                                             downsample(in_aper, subpixels))
+                        else:
+                            fraction = downsample(in_aper, subpixels)
+                            flux[i] = np.sum(data[y_min[i]:y_max[i],
+                                                  x_min[i]:x_max[i]] * fraction)
+
+                            if pixelwise_error:
+                                subvarience = error[y_min[i]:y_max[i],
+                                                    x_min[i]:x_max[i]] ** 2
+                                # Make sure varience is > 0
+                                fluxvar[i] = max(np.sum(subvarience * fraction), 0)
+                            else:
+                                local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
+                                                    int((x_min[i] + x_max[i]) / 2 + 0.5)]
+                                fluxvar[i] = max(local_error ** 2 * np.sum(fraction), 0)
+
+        elif method == 'exact':
+            raise NotImplementedError("'exact' method not yet supported for "
+                                      "RectangularAperture")
+        else:
+            raise ValueError('{0} method not supported for aperture class '
+                             '{1}'.format(method, self.__class__.__name__))
+
+        if error is None:
+            return (flux, )
+        else:
+            return (flux, np.sqrt(fluxvar))
 
 
 doc_template = ("""\
@@ -1032,6 +1099,12 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
         ap = EllipticalAperture(pixelpositions, *apertures[1:4])
     elif apertures[0] == 'elliptical_annulus':
         ap = EllipticalAnnulus(pixelpositions, *apertures[1:5])
+    elif apertures[0] == 'rectangular':
+        if method == 'exact':
+            warnings.warn("'exact' method is not implemented, defaults to "
+                          "'subpixel' instead", AstropyUserWarning)
+            method = 'subpixel'
+        ap = RectangularAperture(pixelpositions, *apertures[1:4])
 
     # Prepare version return data
     from astropy import __version__
