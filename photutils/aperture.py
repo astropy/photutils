@@ -7,9 +7,11 @@ import math
 import abc
 import copy
 import numpy as np
+from astropy.table import Table
 from astropy.extern import six
 import warnings
 from astropy.utils.exceptions import AstropyUserWarning
+import astropy.units as u
 
 __all__ = ["Aperture",
            "CircularAperture", "CircularAnnulus",
@@ -701,7 +703,7 @@ def aperture_photometry(data, apertures, error=None, gain=None,
     """Sum flux within aperture(s)."""
 
     # Check input array type and dimension.
-    data = np.asarray(data)
+    data = u.Quantity(data)
     if np.iscomplexobj(data):
         raise TypeError('Complex type not supported')
     if data.ndim != 2:
@@ -717,8 +719,13 @@ def aperture_photometry(data, apertures, error=None, gain=None,
 
     # Check error shape.
     if error is not None:
-        if np.isscalar(error):
-            error, data = np.broadcast_arrays(error, data)
+        if isinstance(error, u.Quantity):
+            if np.isscalar(error.value):
+                error = u.Quantity(np.broadcast_arrays(error, data),
+                                   unit=error.unit)[0]
+        elif np.isscalar(error):
+            error = np.broadcast_arrays(error, data)[0]
+
         if error.shape != data.shape:
             raise ValueError('shapes of error array and data array must'
                              ' match')
@@ -729,8 +736,14 @@ def aperture_photometry(data, apertures, error=None, gain=None,
         # (TODO: instead, should we just set gain = None and ignore it?)
         if error is None:
             raise ValueError('gain requires error')
-        if np.isscalar(gain):
-            gain, data = np.broadcast_arrays(gain, data)
+
+        if isinstance(gain, u.Quantity):
+            if np.isscalar(gain.value):
+                gain = u.Quantity(np.broadcast_arrays(gain, data),
+                                  unit=gain.unit)[0]
+
+        elif np.isscalar(gain):
+            gain = np.broadcast_arrays(gain, data)[0]
         if gain.shape != data.shape:
             raise ValueError('shapes of gain array and data array must match')
 
@@ -751,9 +764,11 @@ def aperture_photometry(data, apertures, error=None, gain=None,
                              'required')
 
     # Initialize arrays to return.
-    flux = np.zeros(len(apertures.positions), dtype=np.float)
+    flux = u.Quantity(np.zeros(len(apertures.positions), dtype=np.float),
+                      unit=data.unit)
     if error is not None:
-        fluxerr = np.zeros(len(apertures.positions), dtype=np.float)
+        fluxerr = u.Quantity(np.zeros(len(apertures.positions),
+                                      dtype=np.float), unit=data.unit)
 
     extents = apertures.extent()
     # Loop over apertures.
@@ -874,10 +889,33 @@ def aperture_photometry(data, apertures, error=None, gain=None,
             # Make sure variance is > 0 when converting to st. dev.
             fluxerr[j] = math.sqrt(max(fluxvar, 0.))
 
-    if error is None:
-        return flux
+    # Prepare version return data
+    from astropy import __version__
+    astropy_version = __version__
+
+    from photutils import __version__
+    photutils_version = __version__
+
+    if hasattr(data, 'unit'):
+        flux = u.Quantity(flux, unit=data.unit)
+        if error is not None:
+            fluxerr = u.Quantity(fluxerr, data.unit)
     else:
-        return flux, fluxerr
+        flux = u.Quantity(flux, unit=None)
+        if error is not None:
+            fluxerr = u.Quantity(fluxerr, unit=None)
+
+    # TODO: maybe include positions, mask, etc in the output
+    if error is None:
+        return Table([flux, ], names=('aperture_sum',),
+                     meta={'name': 'Aperture photometry results',
+                           'version': 'astropy: {0}, photutils: {1}'
+                           .format(astropy_version, photutils_version)})
+    else:
+        return Table([flux, fluxerr], names=('aperture_sum', 'aperture_sum_err'),
+                     meta={'name': 'Aperture photometry results',
+                           'version': 'astropy: {0}, photutils: {1}'
+                           .format(astropy_version, photutils_version)})
 
 aperture_photometry.__doc__ = doc_template.format(
     desc=aperture_photometry.__doc__,

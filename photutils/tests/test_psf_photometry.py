@@ -75,7 +75,7 @@ def test_create_prf_flux():
     Check if create_prf works correctly when fluxes are specified.
     """
     prf = create_prf(image, positions, psf_size, fluxes=fluxes, subsampling=1)
-    assert np.abs(prf._prf_array[0, 0].sum() - 1) < 1E-10
+    assert_allclose(prf._prf_array[0, 0].sum(), 1)
     assert_allclose(prf._prf_array[0, 0], test_psf, atol=1E-8)
 
 
