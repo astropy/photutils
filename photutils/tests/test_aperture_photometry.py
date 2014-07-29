@@ -34,7 +34,7 @@ APERTURE_CL = [CircularAperture,
                                          (3., 5., 4., 1.))))
 def test_outside_array(aperture, radius):
     data = np.ones((10, 10), dtype=np.float)
-    fluxtable = aperture_photometry(data, (-60, 60), ((aperture,) + radius))
+    fluxtable = aperture_photometry(data, (-60, 60), ((aperture,) + radius))[0]
     # aperture is fully outside array:
     assert np.isnan(fluxtable['aperture_sum'])
 
@@ -45,11 +45,11 @@ def test_outside_array(aperture, radius):
 def test_inside_array_simple(aperture_cl, aperture, radius):
     data = np.ones((40, 40), dtype=np.float)
     table1 = aperture_photometry(data, (20., 20.), ((aperture,) + radius),
-                                 method='center', subpixels=10)
+                                 method='center', subpixels=10)[0]
     table2 = aperture_photometry(data, (20., 20.), ((aperture,) + radius),
-                                 method='subpixel', subpixels=10)
+                                 method='subpixel', subpixels=10)[0]
     table3 = aperture_photometry(data, (20., 20.), ((aperture,) + radius),
-                                 method='exact', subpixels=10)
+                                 method='exact', subpixels=10)[0]
     true_flux = aperture_cl((20., 20.), *radius).area()
 
     assert_allclose(table3['aperture_sum'], true_flux)
@@ -70,14 +70,14 @@ class BaseTestAperturePhotometry(object):
 
         table1 = aperture_photometry(self.data, self.position,
                                      self.aperture, method='center',
-                                     mask=mask, error=error)
+                                     mask=mask, error=error)[0]
         table2 = aperture_photometry(self.data, self.position,
                                      self.aperture,
                                      method='subpixel', subpixels=12,
-                                     mask=mask, error=error)
+                                     mask=mask, error=error)[0]
         table3 = aperture_photometry(self.data, self.position,
                                      self.aperture, method='exact',
-                                     mask=mask, error=error)
+                                     mask=mask, error=error)[0]
         assert_allclose(table3['aperture_sum'], self.true_flux)
         assert table1['aperture_sum'] < table3['aperture_sum']
         assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
@@ -93,7 +93,6 @@ class BaseTestAperturePhotometry(object):
         assert_allclose(table2['aperture_sum_err'], table3['aperture_sum_err'],
                         atol=0.1)
 
-
     def test_array_error_no_gain(self):
 
         # Array error, no gain.
@@ -105,14 +104,14 @@ class BaseTestAperturePhotometry(object):
 
         table1 = aperture_photometry(self.data, self.position,
                                      self.aperture, method='center',
-                                     mask=mask, error=error)
+                                     mask=mask, error=error)[0]
         table2 = aperture_photometry(self.data, self.position,
                                      self.aperture,
                                      method='subpixel', subpixels=12,
-                                     mask=mask, error=error)
+                                     mask=mask, error=error)[0]
         table3 = aperture_photometry(self.data, self.position,
                                      self.aperture, method='exact',
-                                     mask=mask, error=error)
+                                     mask=mask, error=error)[0]
         assert_allclose(table3['aperture_sum'], self.true_flux)
         assert table1['aperture_sum'] < table3['aperture_sum']
         assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
@@ -185,12 +184,9 @@ def test_rectangular_aperture():
 
     aperture = ('rectangular', 1., 2., np.pi / 4)
 
-    table1 = aperture_photometry(data, position, aperture, method='center')
+    table1 = aperture_photometry(data, position, aperture, method='center')[0]
     table2 = aperture_photometry(data, position, aperture, method='subpixel',
-                                 subpixels=8)
-
-    with pytest.raises(NotImplementedError):
-        aperture_photometry(data, position, aperture, method='exact')
+                                 subpixels=8)[0]
 
     true_flux = 1. * 2.
 

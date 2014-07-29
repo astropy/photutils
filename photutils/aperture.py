@@ -1024,7 +1024,7 @@ def do_annulus_photometry(data, positions, mode, superparams,
 
 def aperture_photometry(data, positions, apertures, error=None, gain=None,
                         mask=None, method='exact', subpixels=5,
-                        pixelwise_error=True, plot=None):
+                        pixelwise_error=True):
     """Sum flux within aperture(s)."""
 
     # Check input array type and dimension.
@@ -1121,18 +1121,11 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
     else:
         col_names = ('aperture_sum', 'aperture_sum_err')
 
-    if plot is None:
-        return Table(data=photometry_result, names=col_names,
-                     meta={'name': 'Aperture photometry results',
-                           'version': 'astropy: {0}, photutils: {1}'
-                           .format(astropy_version, photutils_version)})
-    else:
-        return (Table(data=photometry_result, names=col_names,
-                      meta={'name': 'Aperture photometry results',
-                            'version': 'astropy: {0}, photutils: {1}'
-                            .format(astropy_version, photutils_version)}),
-                ap.plot(ax=None, **plot))
-
+    return (Table(data=photometry_result, names=col_names,
+                  meta={'name': 'Aperture photometry results',
+                        'version': 'astropy: {0}, photutils: {1}'
+                        .format(astropy_version, photutils_version)}),
+            {'apertures': ap})
 
 
 aperture_photometry.__doc__ = doc_template.format(
