@@ -144,13 +144,13 @@ subtraction is left up to the user or calling function.
     >>> aperture_area = np.pi * 3 ** 2
     >>> annulus_area = np.pi * (8 ** 2 - 6 ** 2)
     >>> fluxtable = hstack([rawflux_table, bkgflux_table], table_names=['raw', 'bkg'])
-    >>> fluxtable['result_aperture_sum'] = fluxtable['aperture_sum_raw'] - fluxtable['aperture_sum_bkg'] * aperture_area / annulus_area
-    >>> fluxtable['result_aperture_sum']   # doctest: +FLOAT_CMP
-    <Column name='result_aperture_sum' unit=u'' format=None description=None>
-    array([ -1.77635684e-14, -1.77635684e-14])
+    >>> fluxtable['residual_aperture_sum'] = fluxtable['aperture_sum_raw'] - fluxtable['aperture_sum_bkg'] * aperture_area / annulus_area
+    >>> fluxtable['residual_aperture_sum']   # doctest: +FLOAT_CMP
+    <Column name='residual_aperture_sum' unit=u'' format=None description=None>
+    array([  2.48689958e-14,   2.48689958e-14])
 
-  (The result differs from 0 due to inclusion or exclusion of
-  subpixels in the apertures.)
+  (The result differs from 0 due to inclusion or exclusion of subpixels in
+  the apertures.)
 
 Error Estimation
 ----------------
