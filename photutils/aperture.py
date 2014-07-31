@@ -559,7 +559,7 @@ class RectangularAperture(Aperture):
 
         if error is not None:
             fluxvar = u.Quantity(np.zeros(len(self.positions), dtype=np.float),
-                                 unit=data.unit)
+                                 unit=error.unit ** 2)
 
         if method in ('center', 'subpixel'):
             if method == 'center': subpixels = 1
@@ -713,7 +713,7 @@ def do_circular_photometry(data, positions, superparams,
 
     if error is not None:
         fluxvar = u.Quantity(np.zeros(len(positions), dtype=np.float),
-                             unit=data.unit)
+                             unit=error.unit ** 2)
 
     # TODO: flag these objects
     if np.sum(ood_filter):
@@ -839,7 +839,7 @@ def do_elliptical_photometry(data, positions, superparams, a, b, theta,
 
     if error is not None:
         fluxvar = u.Quantity(np.zeros(len(positions), dtype=np.float),
-                             unit=data.unit)
+                             unit=error.unit ** 2)
 
     # TODO: flag these objects
     if np.sum(ood_filter):
@@ -1024,7 +1024,7 @@ def do_annulus_photometry(data, positions, mode, superparams,
 
 def aperture_photometry(data, positions, apertures, error=None, gain=None,
                         mask=None, method='exact', subpixels=5,
-                        pixelwise_error=True):
+                        pixelwise_error=True, mask_method='skip'):
     """Sum flux within aperture(s)."""
 
     # Check input array type and dimension.
@@ -1034,6 +1034,28 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
     if data.ndim != 2:
         raise ValueError('{0}-d array not supported. '
                          'Only 2-d arrays supported.'.format(data.ndim))
+
+    # Deal with the mask if it exist
+    if mask is not None or hasattr(data, 'mask'):
+        if mask is None:
+            mask = data.mask
+        else:
+            mask = np.asarray(mask)
+            if np.iscomplexobj(mask):
+                raise TypeError('Complex type not supported')
+            if mask.ndim != 2:
+                raise ValueError('{0}-d array not supported. '
+                                 'Only 2-d arrays supported.'
+                                 .format(mask.ndim))
+            if mask.shape != data.shape:
+                raise ValueError('Shapes of mask array and data array '
+                                 'must match')
+
+            if hasattr(data, 'mask'):
+                mask *= data.mask
+
+        if mask_method == 'skip':
+            data *= ~mask
 
     # Check whether we really need to calculate pixelwise errors, even if
     # requested. (If neither error nor gain is an array, we don't need to.)
@@ -1049,7 +1071,10 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
                 error = u.Quantity(np.broadcast_arrays(error, data),
                                    unit=error.unit)[0]
         elif np.isscalar(error):
-            error = np.broadcast_arrays(error, data)[0]
+            error = u.Quantity(np.broadcast_arrays(error, data),
+                               unit=data.unit)[0]
+        else:
+            error = u.Quantity(error, unit=data.unit)
 
         if error.shape != data.shape:
             raise ValueError('shapes of error array and data array must'
@@ -1071,15 +1096,6 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
             gain = np.broadcast_arrays(gain, data)[0]
         if gain.shape != data.shape:
             raise ValueError('shapes of gain array and data array must match')
-
-    # Check mask shape and type.
-    if mask is not None:
-        mask = np.asarray(mask)
-        if np.iscomplexobj(mask):
-            raise TypeError('Complex type not supported')
-        if mask.ndim != 2:
-            raise ValueError('{0}-d array not supported. '
-                             'Only 2-d arrays supported.'.format(mask.ndim))
 
     # Check that 'subpixels' is an int and is 1 or greater.
     if method == 'subpixel':
