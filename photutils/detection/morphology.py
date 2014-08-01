@@ -3,13 +3,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
 from astropy.modeling import models
-
-# TODO: remove try ... except when Astropy 0.3 support is dropped
-try:
-    from astropy.modeling.fitting import LevMarLSQFitter
-except ImportError:
-    from astropy.modeling.fitting import NonLinearLSQFitter as LevMarLSQFitter
-
+from astropy.modeling.fitting import LevMarLSQFitter
 
 __all__ = ['centroid_com', 'gaussian1d_moments', 'centroid_1dg',
            'centroid_2dg', 'fit_2dgaussian', 'shape_params']
