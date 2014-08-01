@@ -192,3 +192,16 @@ def test_rectangular_aperture():
 
     assert table1['aperture_sum'] < true_flux
     assert_allclose(table2['aperture_sum'], true_flux, atol=0.1)
+
+
+class TestMaskedCircular(BaseTestAperturePhotometry):
+
+    def setup_class(self):
+        self.data = np.ones((40, 40), dtype=np.float)
+        self.mask = np.zeros((40, 40), dtype=bool)
+        self.mask[20, 20] = True
+        self.position = (20., 20.)
+        r = 10.
+        self.aperture = ('circular', r)
+        self.area = np.pi * r * r
+        self.true_flux = self.area - 1
