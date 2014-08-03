@@ -1057,6 +1057,11 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
         if mask_method == 'skip':
             data *= ~mask
 
+        if mask_method == 'interpolation':
+            for i, j in zip(*np.nonzero(mask)):
+                data[i, j] = np.nanmean(data[i-1:i+2, j-1:j+2]
+                                        [mask[i-1:i+2, j-1:j+2]])
+
     # Check whether we really need to calculate pixelwise errors, even if
     # requested. (If neither error nor gain is an array, we don't need to.)
     if ((error is None) or

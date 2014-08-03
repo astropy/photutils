@@ -68,16 +68,25 @@ class BaseTestAperturePhotometry(object):
         else:
             mask = self.mask
 
+        if not hasattr(self, 'mask_method'):
+            mask_method = 'skip'
+        else:
+            mask_method = self.mask_method
+
         table1 = aperture_photometry(self.data, self.position,
                                      self.aperture, method='center',
-                                     mask=mask, error=error)[0]
+                                     mask=mask, mask_method=mask_method,
+                                     error=error)[0]
         table2 = aperture_photometry(self.data, self.position,
                                      self.aperture,
                                      method='subpixel', subpixels=12,
-                                     mask=mask, error=error)[0]
+                                     mask=mask, mask_method=mask_method,
+                                     error=error)[0]
         table3 = aperture_photometry(self.data, self.position,
                                      self.aperture, method='exact',
-                                     mask=mask, error=error)[0]
+                                     mask=mask, mask_method=mask_method,
+                                     error=error)[0]
+
         assert_allclose(table3['aperture_sum'], self.true_flux)
         assert table1['aperture_sum'] < table3['aperture_sum']
         assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
@@ -102,16 +111,25 @@ class BaseTestAperturePhotometry(object):
         else:
             mask = self.mask
 
+        if not hasattr(self, 'mask_method'):
+            mask_method = 'skip'
+        else:
+            mask_method = self.mask_method
+
         table1 = aperture_photometry(self.data, self.position,
                                      self.aperture, method='center',
-                                     mask=mask, error=error)[0]
+                                     mask=mask, mask_method=mask_method,
+                                     error=error)[0]
         table2 = aperture_photometry(self.data, self.position,
                                      self.aperture,
                                      method='subpixel', subpixels=12,
-                                     mask=mask, error=error)[0]
+                                     mask=mask, mask_method=mask_method,
+                                     error=error)[0]
         table3 = aperture_photometry(self.data, self.position,
                                      self.aperture, method='exact',
-                                     mask=mask, error=error)[0]
+                                     mask=mask, mask_method=mask_method,
+                                     error=error)[0]
+
         assert_allclose(table3['aperture_sum'], self.true_flux)
         assert table1['aperture_sum'] < table3['aperture_sum']
         assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
@@ -194,7 +212,7 @@ def test_rectangular_aperture():
     assert_allclose(table2['aperture_sum'], true_flux, atol=0.1)
 
 
-class TestMaskedCircular(BaseTestAperturePhotometry):
+class TestMaskedSkipCircular(BaseTestAperturePhotometry):
 
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=np.float)
@@ -205,3 +223,18 @@ class TestMaskedCircular(BaseTestAperturePhotometry):
         self.aperture = ('circular', r)
         self.area = np.pi * r * r
         self.true_flux = self.area - 1
+        self.mask_method = 'skip'
+
+
+class TestMaskedInterpolationCircular(BaseTestAperturePhotometry):
+
+    def setup_class(self):
+        self.data = np.ones((40, 40), dtype=np.float)
+        self.mask = np.zeros((40, 40), dtype=bool)
+        self.mask[20, 20] = True
+        self.position = (20., 20.)
+        r = 10.
+        self.aperture = ('circular', r)
+        self.area = np.pi * r * r
+        self.true_flux = self.area
+        self.mask_method = 'interpolation'
