@@ -641,7 +641,7 @@ class RectangularAperture(Aperture):
 doc_template = ("""\
     {desc}
 
-    Multiple objects and multiple apertures per object can be specified.
+    Multiple objects can be specified.
 
     Parameters
     ----------
@@ -650,6 +650,13 @@ doc_template = ("""\
     {args}
         Note that for subpixel sampling, the input array is only
         resampled once for each object.
+    positions : list, tuple or nd.array
+        Pixel positions.
+    apertures : tuple
+        First element of the tuple is the mode, currently supported ones
+        are: ``circular``, ``elliptical``, ``circular_annulus``,
+        ``elliptical_annulus``, ``rectangular``. The remaining (1 to 4)
+        elements are the parameters for the given mode.
     error : float or array_like, optional
         Error in each pixel, interpreted as Gaussian 1-sigma uncertainty.
     gain : float or array_like, optional
@@ -660,9 +667,7 @@ doc_template = ("""\
         is assumed to be the "background error" only (not accounting for
         Poisson error in the flux in the apertures).
     mask : array_like (bool), optional
-        Mask to apply to the data. The value of masked pixels are replaced
-        by the value of the pixel mirrored across the center of the object,
-        if available. If unavailable, the value is set to zero.
+        Mask to apply to the data.
     method : str, optional
         Method to use for determining overlap between the aperture and pixels.
         Options include ['center', 'subpixel', 'exact'], but not all options
@@ -690,13 +695,26 @@ doc_template = ("""\
         within an aperture. Use the single value of error and/or gain at
         the center of each aperture as the value for the entire aperture.
         Default is `True`.
+    mask_method : str, optional
+        Method to threat masked pixels. Currently supported methods:
+
+        'skip'
+            Leave out the masked pixels from all calculations.
+        'interpolation'
+            The value of the masked pixels are replaced by the mean value of
+            the neighbouring non-masked pixels.
 
     Returns
     -------
-    flux : `~numpy.ndarray`
-        Enclosed flux in aperture(s).
-    fluxerr : `~numpy.ndarray`
+    phot_table : `~astropy.table.Table`
         Uncertainty in flux values. Only returned if error is not `None`.
+    aux_dict : dict
+        Auxilary dictionary storing all the auxilary informations
+        available. The element are the following:
+
+        'apertures'
+            The `~photutils.Aperture` object containing the apertures to use
+            during the photometry.
 
     {seealso}
     """)
