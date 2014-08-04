@@ -2,7 +2,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
-from ..utils import img_stats
+from imageutils import img_stats
 
 __all__ = ['detect_sources', 'find_peaks']
 
