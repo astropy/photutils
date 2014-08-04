@@ -11,7 +11,7 @@ from astropy.table import Table
 from astropy.extern import six
 from astropy.utils.exceptions import AstropyUserWarning
 import astropy.units as u
-from .aperture_engine import do_circular_photometry, do_elliptical_photometry, \
+from .aperture_funcs import do_circular_photometry, do_elliptical_photometry, \
                              do_annulus_photometry
 
 __all__ = ["Aperture",

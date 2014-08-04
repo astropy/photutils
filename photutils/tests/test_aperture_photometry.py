@@ -10,12 +10,12 @@ import numpy as np
 from numpy.testing import assert_allclose
 
 
-from ..aperture import CircularAperture,\
-                       CircularAnnulus, \
-                       EllipticalAperture, \
-                       EllipticalAnnulus, \
-                       RectangularAperture,\
-                       aperture_photometry
+from ..aperture_core import CircularAperture,\
+                            CircularAnnulus, \
+                            EllipticalAperture, \
+                            EllipticalAnnulus, \
+                            RectangularAperture,\
+                            aperture_photometry
 
 
 APERTURES = ['circular',

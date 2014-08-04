@@ -32,7 +32,7 @@ radius 3 pixels centered on each object:
     28.2743338823
     28.2743338823
     >>> type(aux_dict['apertures'])
-    <class 'photutils.aperture.CircularAperture'>
+    <class 'photutils.aperture_core.CircularAperture'>
 
 `aperture_photometry` returns with a 2-tuple. The first element contains the
 result of the photometry in a `~astropy.table.Table`. In this example case
