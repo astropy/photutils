@@ -25,7 +25,7 @@ Getting Started
 Create an image with a single 2D circular Gaussian source to represent
 a star and find it in the image using ``daofind``:
 
-.. doctest-requires:: scipy
+.. doctest-requires:: scipy, skimage
 
   >>> import numpy as np
   >>> import photutils
