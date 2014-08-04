@@ -155,6 +155,14 @@ if not args.show:
     # Initialize results
     results = OrderedDict()
 
+    # print version information
+    print("=" * 79)
+    from astropy import __version__
+    print("astropy version:", __version__)
+    print("photutils version:", photutils.__version__)
+    print("numpy version:", np.__version__)
+    print("=" * 79)
+
     for name in names_to_run:
 
         # Initialize results container for this benchmark
