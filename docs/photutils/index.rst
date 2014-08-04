@@ -21,6 +21,11 @@ Dependencies
 * `imageutils <https://imageutils.readthedocs.org/en/latest/imageutils/index.html>`__
   (planned to be included in the Astropy core as ``astropy.image`` before the 1.0 release)
 
+You will also need `Cython <http://cython.org/>`__ installed to build
+from source, unless you are installing a numbered release. (The
+released packages have the necessary C files packaged with them, and
+hence do not require Cython.)
+
 Some functionality is only available if the following optional dependencies are installed:
 
 * `scipy <http://www.scipy.org/>`__
