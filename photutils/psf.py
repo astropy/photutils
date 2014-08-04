@@ -21,8 +21,8 @@ except ImportError:
     from astropy.modeling import Parametric2DModel as Fittable2DModel
 
 
-from .utils import (extract_array_2d, subpixel_indices,
-                         add_array_2d, fix_prf_nan)
+from imageutils import (extract_array_2d, subpixel_indices, add_array_2d,
+                        mask_to_mirrored_num)
 
 
 __all__ = ['DiscretePRF', 'create_prf', 'psf_photometry',
@@ -495,8 +495,8 @@ def create_prf(data, positions, size, fluxes=None, mask=None, mode='mean',
                             if prf_nan.sum() > 3 or prf_nan[size / 2, size / 2]:
                                 continue
                             else:
-                                extracted_prf = fix_prf_nan(extracted_prf,
-                                                            prf_nan)
+                                extracted_prf = mask_to_mirrored_num(
+                                    extracted_prf, prf_nan)
                     # Normalize and add extracted PRF to data cube
                     if fluxes is None:
                         extracted_prf_norm = np.ma.copy(extracted_prf) / np.ma.sum(extracted_prf)
