@@ -9,6 +9,7 @@ import numpy as np
 import warnings
 import astropy.units as u
 from astropy.io import fits
+from astropy.nddata import NDData
 from astropy.table import Table
 from astropy.coordinates import SkyCoord
 from astropy.extern import six
@@ -782,23 +783,38 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
     wcs_transformation = wcs
 
     # TODO check data type, iterate over all possibilities...
-    if isinstance(data, fits.hdu.image.PrimaryHDU):
+    if isinstance(data, (fits.PrimaryHDU, fits.ImageHDU)):
         header = data.header
         data = data.data
+        if 'BUNIT' in header:
+            unit = header['BUNIT']
+        else:
+            unit = ""
+        data = u.Quantity(data, unit=unit)
+
+        if 'MASK' in header:
+            data.mask = header.mask
+
     elif isinstance(data, fits.hdu.hdulist.HDUList):
         # TODO: do it in a 2d array, and thus get the light curves as a
         # side-product? Although it's not usual to store time series as
         # HDUList
         fluxlist = []
-        for i in range(len(data)):
+        for i in xrange(1, len(data)):
             fluxlist.append(aperture_photometry(data[i], positions, apertures,
                                                 wcs, error, gain, mask, method,
                                                 subpixels, pixelcoord,
-                                                pixelwise_error, plot))
+                                                pixelwise_error, mask_method))
         return fluxlist
 
+    elif isinstance(data, NDData):
+        # Check is unit is missing
+        if data.unit is None:
+            data.unit = ""
+
+    else:
+        data = u.Quantity(data)
     # Check input array type and dimension.
-    data = u.Quantity(data)
     if np.iscomplexobj(data):
         raise TypeError('Complex type not supported')
     if data.ndim != 2:
