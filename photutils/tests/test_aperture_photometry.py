@@ -87,17 +87,15 @@ class BaseTestAperturePhotometry(object):
                                      mask=mask, mask_method=mask_method,
                                      error=error)[0]
 
-        assert_allclose(table3['aperture_sum'], self.true_flux)
+        if self.aperture[0] != 'rectangular':
+            assert_allclose(table3['aperture_sum'], self.true_flux)
         assert table1['aperture_sum'] < table3['aperture_sum']
         assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
                         atol=0.1)
 
-        if hasattr(self, 'true_variance'):
-            true_error = np.sqrt(self.true_variance - self.true_flux)
-        else:
-            true_error = np.sqrt(self.area)
-
-        assert_allclose(table3['aperture_sum_err'], true_error)
+        true_error = np.sqrt(self.area)
+        if self.aperture[0] != 'rectangular':
+            assert_allclose(table3['aperture_sum_err'], true_error)
         assert table1['aperture_sum_err'] < table3['aperture_sum_err']
         assert_allclose(table2['aperture_sum_err'], table3['aperture_sum_err'],
                         atol=0.1)
@@ -117,15 +115,32 @@ class BaseTestAperturePhotometry(object):
         else:
             mask_method = self.mask_method
 
-        table = aperture_photometry(self.data, self.position,
-                                    self.aperture, method='exact',
-                                    mask=mask, mask_method=mask_method,
-                                    error=error, gain=gain)[0]
+        table1 = aperture_photometry(self.data, self.position,
+                                     self.aperture, method='center',
+                                     mask=mask, mask_method=mask_method,
+                                     error=error, gain=gain)[0]
+        table2 = aperture_photometry(self.data, self.position,
+                                     self.aperture,
+                                     method='subpixel', subpixels=12,
+                                     mask=mask, mask_method=mask_method,
+                                     error=error, gain=gain)[0]
+        table3 = aperture_photometry(self.data, self.position,
+                                     self.aperture, method='exact',
+                                     mask=mask, mask_method=mask_method,
+                                     error=error, gain=gain)[0]
 
-        assert_allclose(table['aperture_sum'], self.true_flux)
+        if self.aperture[0] != 'rectangular':
+            assert_allclose(table3['aperture_sum'], self.true_flux)
+        assert table1['aperture_sum'] < table3['aperture_sum']
+        assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
+                        atol=0.1)
 
         true_error = np.sqrt(self.area + self.true_flux)
-        assert_allclose(table['aperture_sum_err'], true_error)
+        if self.aperture[0] != 'rectangular':
+            assert_allclose(table3['aperture_sum_err'], true_error)
+        assert table1['aperture_sum_err'] < table3['aperture_sum_err']
+        assert_allclose(table2['aperture_sum_err'], table3['aperture_sum_err'],
+                        atol=0.1)
 
     def test_scalar_error_array_gain(self):
 
@@ -142,15 +157,32 @@ class BaseTestAperturePhotometry(object):
         else:
             mask_method = self.mask_method
 
-        table = aperture_photometry(self.data, self.position,
-                                    self.aperture, method='exact',
-                                    mask=mask, mask_method=mask_method,
-                                    error=error, gain=gain)[0]
+        table1 = aperture_photometry(self.data, self.position,
+                                     self.aperture, method='center',
+                                     mask=mask, mask_method=mask_method,
+                                     error=error, gain=gain)[0]
+        table2 = aperture_photometry(self.data, self.position,
+                                     self.aperture,
+                                     method='subpixel', subpixels=12,
+                                     mask=mask, mask_method=mask_method,
+                                     error=error, gain=gain)[0]
+        table3 = aperture_photometry(self.data, self.position,
+                                     self.aperture, method='exact',
+                                     mask=mask, mask_method=mask_method,
+                                     error=error, gain=gain)[0]
 
-        assert_allclose(table['aperture_sum'], self.true_flux)
+        if self.aperture[0] != 'rectangular':
+            assert_allclose(table3['aperture_sum'], self.true_flux)
+        assert table1['aperture_sum'] < table3['aperture_sum']
+        assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
+                        atol=0.1)
 
         true_error = np.sqrt(self.area + self.true_flux)
-        assert_allclose(table['aperture_sum_err'], true_error)
+        if self.aperture[0] != 'rectangular':
+            assert_allclose(table3['aperture_sum_err'], true_error)
+        assert table1['aperture_sum_err'] < table3['aperture_sum_err']
+        assert_allclose(table2['aperture_sum_err'], table3['aperture_sum_err'],
+                        atol=0.1)
 
     def test_array_error_no_gain(self):
 
@@ -180,14 +212,15 @@ class BaseTestAperturePhotometry(object):
                                      mask=mask, mask_method=mask_method,
                                      error=error)[0]
 
-        assert_allclose(table3['aperture_sum'], self.true_flux)
+        if self.aperture[0] != 'rectangular':
+            assert_allclose(table3['aperture_sum'], self.true_flux)
         assert table1['aperture_sum'] < table3['aperture_sum']
         assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
                         atol=0.1)
 
         true_error = np.sqrt(self.area)
-
-        assert_allclose(table3['aperture_sum_err'], true_error)
+        if self.aperture[0] != 'rectangular':
+            assert_allclose(table3['aperture_sum_err'], true_error)
         assert table1['aperture_sum_err'] < table3['aperture_sum_err']
         assert_allclose(table2['aperture_sum_err'], table3['aperture_sum_err'],
                         atol=0.1)
@@ -206,14 +239,32 @@ class BaseTestAperturePhotometry(object):
         else:
             mask_method = self.mask_method
 
-        table = aperture_photometry(self.data, self.position,
-                                    self.aperture, method='exact',
-                                    mask=mask, mask_method=mask_method,
-                                    error=error, gain=gain)[0]
-        assert_allclose(table['aperture_sum'], self.true_flux)
+        table1 = aperture_photometry(self.data, self.position,
+                                     self.aperture, method='center',
+                                     mask=mask, mask_method=mask_method,
+                                     error=error, gain=gain)[0]
+        table2 = aperture_photometry(self.data, self.position,
+                                     self.aperture,
+                                     method='subpixel', subpixels=12,
+                                     mask=mask, mask_method=mask_method,
+                                     error=error, gain=gain)[0]
+        table3 = aperture_photometry(self.data, self.position,
+                                     self.aperture, method='exact',
+                                     mask=mask, mask_method=mask_method,
+                                     error=error, gain=gain)[0]
+
+        if self.aperture[0] != 'rectangular':
+            assert_allclose(table3['aperture_sum'], self.true_flux)
+        assert table1['aperture_sum'] < table3['aperture_sum']
+        assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
+                        atol=0.1)
 
         true_error = np.sqrt(self.area + self.true_flux)
-        assert_allclose(table['aperture_sum_err'], true_error)
+        if self.aperture[0] != 'rectangular':
+            assert_allclose(table3['aperture_sum_err'], true_error)
+        assert table1['aperture_sum_err'] < table3['aperture_sum_err']
+        assert_allclose(table2['aperture_sum_err'], table3['aperture_sum_err'],
+                        atol=0.1)
 
 
 class TestCircular(BaseTestAperturePhotometry):
@@ -266,20 +317,17 @@ class TestEllipticalAnnulus(BaseTestAperturePhotometry):
         self.true_flux = self.area
 
 
-def test_rectangular_aperture():
-    data = np.ones((40, 40), dtype=np.float)
-    position = (20., 20.)
+class TestRectangularAperture(BaseTestAperturePhotometry):
 
-    aperture = ('rectangular', 1., 2., np.pi / 4)
-
-    table1 = aperture_photometry(data, position, aperture, method='center')[0]
-    table2 = aperture_photometry(data, position, aperture, method='subpixel',
-                                 subpixels=8)[0]
-
-    true_flux = 1. * 2.
-
-    assert table1['aperture_sum'] < true_flux
-    assert_allclose(table2['aperture_sum'], true_flux, atol=0.1)
+    def setup_class(self):
+        self.data = np.ones((40, 40), dtype=np.float)
+        self.position = (20., 20.)
+        h = 5.
+        w = 8.
+        theta = np.pi / 4.
+        self.aperture = ('rectangular', h, w, theta)
+        self.area = h * w
+        self.true_flux = self.area
 
 
 class TestMaskedSkipCircular(BaseTestAperturePhotometry):
