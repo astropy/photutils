@@ -12,7 +12,7 @@ from astropy.extern import six
 from astropy.utils.exceptions import AstropyUserWarning
 import astropy.units as u
 from .aperture_funcs import do_circular_photometry, do_elliptical_photometry, \
-                             do_annulus_photometry
+                            do_annulus_photometry
 
 __all__ = ["Aperture",
            "CircularAperture", "CircularAnnulus",
@@ -592,7 +592,7 @@ class RectangularAperture(Aperture):
 
         if method in ('center', 'subpixel'):
             if method == 'center': subpixels = 1
-            if method == 'subpixel': from .utils import downsample
+            if method == 'subpixel': from imageutils import downsample
 
             for i in range(len(flux)):
                 x_size = ((x_pmax[i] - x_pmin[i]) /
