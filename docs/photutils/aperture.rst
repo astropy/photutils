@@ -26,19 +26,21 @@ radius 3 pixels centered on each object:
     >>> apertures = ('circular', radius)
     >>> phot_table, aux_dict = aperture_photometry(data, positions, apertures)
     >>> print phot_table
-    aperture_sum
-    <BLANKLINE>
-    -------------
-    28.2743338823
-    28.2743338823
+     aperture_sum pixel_center [2] input_center [2]
+                      pix              pix
+    ------------- ---------------- ----------------
+    28.2743338823     30.0 .. 30.0     30.0 .. 30.0
+    28.2743338823     40.0 .. 40.0     40.0 .. 40.0
+
     >>> type(aux_dict['apertures'])
     <class 'photutils.aperture_core.CircularAperture'>
 
 `aperture_photometry` returns with a 2-tuple. The first element contains the
 result of the photometry in a `~astropy.table.Table`. In this example case
-it has one column, named ``'aperture_sum'``.  The second element is an
-auxiliary information dictionary. The apertures, used during the photometry,
-are returned as the ``'apertures'`` element of this dictionary.
+it has 3 columns, named ``'aperture_sum'``, ``'pixel_center'``,
+``'input_center'``.  The second element is an auxiliary information
+dictionary. The apertures, used during the photometry, are returned as the
+``'apertures'`` element of this dictionary.
 
 Since all the data values are 1, we expect the answer to equal the area of
 a circle with the same radius, and it does:
@@ -54,9 +56,9 @@ used is ``'exact'``, wherein the exact intersection of the aperture with
 each pixel is calculated. There are other options that are faster but
 at the expense of less precise answers. For example,:
 
-    >>> phottable = aperture_photometry(data, positions, apertures,
-    ...                                 method='subpixel', subpixels=5)[0]
-    >>> print phottable
+    >>> phot_table = aperture_photometry(data, positions, apertures,
+    ...                                  method='subpixel', subpixels=5)[0]
+    >>> print phot_table['aperture_sum']
     aperture_sum
     <BLANKLINE>
     ------------
@@ -91,7 +93,7 @@ each aperture. One may use `~astropy.table.hstack` to stack them into one
 
   >>> from astropy.table import hstack
   >>> phot_table = hstack(flux)
-  >>> print phot_table    # doctest: +FLOAT_CMP
+  >>> print phot_table['aperture_sum_1', 'aperture_sum_2', 'aperture_sum_3']    # doctest: +FLOAT_CMP
   aperture_sum_1 aperture_sum_2 aperture_sum_3
   <BLANKLINE>
   -------------- -------------- --------------
@@ -109,7 +111,7 @@ must specify ``a``, ``b``, and ``theta``:
   >>> theta = np.pi / 4.
   >>> apertures = ('elliptical', a, b, theta)
   >>> phot_table = aperture_photometry(data, positions, apertures)[0]
-  >>> print phot_table   # doctest: +FLOAT_CMP
+  >>> print phot_table['aperture_sum']   # doctest: +FLOAT_CMP
   aperture_sum
   <BLANKLINE>
   -------------
@@ -126,7 +128,8 @@ Again, for multiple apertures one should loop over them.
  >>> for index in range(len(a)):
  ...     flux.append(aperture_photometry(data, positions, ('elliptical', a[index], b[index], theta))[0])
  >>> phot_table = hstack(flux)
- >>> print phot_table   # doctest: +FLOAT_CMP
+ >>> print phot_table['aperture_sum_1', 'aperture_sum_2',
+ ...                  'aperture_sum_3', 'aperture_sum_4']   # doctest: +FLOAT_CMP
  aperture_sum_1 aperture_sum_2 aperture_sum_3 aperture_sum_4
  <BLANKLINE>
  -------------- -------------- -------------- --------------
@@ -185,11 +188,11 @@ pixel's value and saved it in the array ``data_error``:
   >>> data_error = 0.1 * data  # (100 x 100 array)
   >>> phot_table = aperture_photometry(data, positions, apertures, error=data_error)[0]
   >>> print phot_table   # doctest: +FLOAT_CMP
-   aperture_sum aperture_sum_err
-  <BLANKLINE>
-  ------------- ----------------
-  28.2743338823   0.531736155272
-  28.2743338823   0.531736155272
+   aperture_sum aperture_sum_err pixel_center [2] input_center [2]
+                                      pix              pix
+  ------------- ---------------- ---------------- ----------------
+  28.2743338823   0.531736155272     30.0 .. 30.0     30.0 .. 30.0
+  28.2743338823   0.531736155272     40.0 .. 40.0     40.0 .. 40.0
 
 
 ``'aperture_sum_err'`` values are given by

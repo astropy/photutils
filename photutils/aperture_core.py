@@ -160,11 +160,13 @@ class CircularAperture(Aperture):
         try:
             self.r = float(r)
         except TypeError:
-            raise TypeError('r must be numeric, received {0}'.format(type(r)))
+            raise TypeError('r must be numeric received {0}'.format(type(r)))
 
         if r < 0:
             raise ValueError('r must be non-negative')
 
+        if isinstance(positions, u.Quantity):
+            positions = positions.value
         if isinstance(positions, (list, tuple, np.ndarray)):
             self.positions = np.atleast_2d(positions)
         else:
@@ -240,6 +242,8 @@ class CircularAnnulus(Aperture):
         if r_in < 0:
             raise ValueError('r_in must be non-negative')
 
+        if isinstance(positions, u.Quantity):
+            positions = positions.value
         if isinstance(positions, (list, tuple, np.ndarray)):
             self.positions = np.atleast_2d(positions)
         else:
@@ -331,6 +335,8 @@ class EllipticalAperture(Aperture):
         if a < 0 or b < 0:
             raise ValueError("'a' and 'b' must be non-negative.")
 
+        if isinstance(positions, u.Quantity):
+            positions = positions.value
         if isinstance(positions, (list, tuple, np.ndarray)):
             self.positions = np.atleast_2d(positions)
         else:
@@ -425,6 +431,8 @@ class EllipticalAnnulus(Aperture):
 
         self.b_in = a_in * b_out / a_out
 
+        if isinstance(positions, u.Quantity):
+            positions = positions.value
         if isinstance(positions, (list, tuple, np.ndarray)):
             self.positions = np.atleast_2d(positions)
         else:
@@ -514,6 +522,8 @@ class RectangularAperture(Aperture):
         if w < 0 or h < 0:
             raise ValueError("'w' and 'h' must be nonnegative.")
 
+        if isinstance(positions, u.Quantity):
+            positions = positions.value
         if isinstance(positions, (list, tuple, np.ndarray)):
             self.positions = np.atleast_2d(positions)
         else:
@@ -898,27 +908,31 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
 
     # TODO check whether positions is wcs or pixel
     if not pixelcoord or isinstance(positions, SkyCoord):
+        if not isinstance(positions, u.Quantity):
+            # TODO figure out the unit of the input positions for this case
+            positions = u.Quantity(positions)
         from astropy.wcs import wcs
         if wcs_transformation is None:
             wcs_transformation = wcs.WCS(header)
         pixelpositions = wcs_transformation.wcs_world2pix(positions, 0)
     else:
+        positions = u.Quantity(positions, unit=u.pixel)
         pixelpositions = positions
 
     if apertures[0] == 'circular':
-        ap = CircularAperture(pixelpositions, apertures[1])
+        ap = CircularAperture(pixelpositions.value, apertures[1])
     elif apertures[0] == 'circular_annulus':
-        ap = CircularAnnulus(pixelpositions, *apertures[1:3])
+        ap = CircularAnnulus(pixelpositions.value, *apertures[1:3])
     elif apertures[0] == 'elliptical':
-        ap = EllipticalAperture(pixelpositions, *apertures[1:4])
+        ap = EllipticalAperture(pixelpositions.value, *apertures[1:4])
     elif apertures[0] == 'elliptical_annulus':
-        ap = EllipticalAnnulus(pixelpositions, *apertures[1:5])
+        ap = EllipticalAnnulus(pixelpositions.value, *apertures[1:5])
     elif apertures[0] == 'rectangular':
         if method == 'exact':
             warnings.warn("'exact' method is not implemented, defaults to "
                           "'subpixel' instead", AstropyUserWarning)
             method = 'subpixel'
-        ap = RectangularAperture(pixelpositions, *apertures[1:4])
+        ap = RectangularAperture(pixelpositions.value, *apertures[1:4])
 
     # Prepare version return data
     from astropy import __version__
@@ -932,11 +946,22 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
                                          error=error, gain=gain,
                                          pixelwise_error=pixelwise_error)
     if error is None:
-        col_names = ('aperture_sum', )
+        phot_col_names = ('aperture_sum', )
     else:
-        col_names = ('aperture_sum', 'aperture_sum_err')
+        phot_col_names = ('aperture_sum', 'aperture_sum_err')
 
-    return (Table(data=photometry_result, names=col_names,
+    # Note: if wcs is None pixelcoordinates are the same as the input positions
+
+    # check whether single or multiple positions
+    if pixelpositions[0].size < 2:
+        coord_columns = ((pixelpositions,), (positions,))
+    else:
+        coord_columns = (pixelpositions, positions)
+
+    coord_col_names = ('pixel_center', 'input_center')
+
+    return (Table(data=(photometry_result + coord_columns),
+                  names=(phot_col_names + coord_col_names),
                   meta={'name': 'Aperture photometry results',
                         'version': 'astropy: {0}, photutils: {1}'
                         .format(astropy_version, photutils_version)}),
