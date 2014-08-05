@@ -137,7 +137,7 @@ if not _ASTROPY_SETUP_:
                                os.path.abspath('photutils') and
                                os.path.exists('setup.py'))
     try:
-        from .utils import sampling
+        from .geometry import circular_overlap
     except ImportError:
         if is_photutils_source_dir:
             _rollback_import(
