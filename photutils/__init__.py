@@ -11,7 +11,9 @@ from ._astropy_init import *
 # ----------------------------------------------------------------------------
 
 if not _ASTROPY_SETUP_:
-    from .aperture import *
+
+    from .aperture_core import *
+    from .aperture_funcs import *
     from .psf import *
     from .detection.core import *
     from .detection.findstars import *

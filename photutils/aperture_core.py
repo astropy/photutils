@@ -5,13 +5,14 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import math
 import abc
-import copy
 import numpy as np
+import warnings
 from astropy.table import Table
 from astropy.extern import six
-import warnings
 from astropy.utils.exceptions import AstropyUserWarning
 import astropy.units as u
+from .aperture_funcs import do_circular_photometry, do_elliptical_photometry, \
+                            do_annulus_photometry
 
 __all__ = ["Aperture",
            "CircularAperture", "CircularAnnulus",
@@ -40,48 +41,24 @@ class Aperture(object):
     """
     Abstract base class for an arbitrary 2-d aperture.
 
-    Derived classes should contain whatever internal data is needed to define
-    the aperture, and provide methods 'encloses' and 'extent' (and optionally,
-    'area').
+    Derived classes should contain whatever internal data is needed to
+    define the aperture, and provide methods 'do_photometry' and 'extent'
+    (and optionally, 'area').
     """
 
     @abc.abstractmethod
     def extent(self):
         """
         Extent of apertures. In the case when part of an aperture's extent
-        falls out of the actual data region,
-        `~photutils.aperture_photometry` calls the ``encloses()`` method of
-        the aperture with a redefined extent which has data coverage.
+        falls out of the actual data region, the
+        `~photutils.Aperture.get_phot_extent` function redefines the extent
+        which has data coverage.
 
         Returns
         -------
         x_min, x_max, y_min, y_max: list of floats
             Extent of the apertures.
         """
-
-    @abc.abstractmethod
-    def encloses(self, extent, nx, ny, method='center'):
-        """
-        Returns and array of float arrays giving the fraction of each pixel
-        covered by the apertures.
-
-        Parameters
-        ----------
-        extent : sequence of integers
-            x_min, x_max, y_min, y_max extent of the aperture
-        nx, ny : int
-            dimensions of array
-        method : str
-            Which method to use for calculation. Available methods can
-            differ between derived classes.
-
-        Returns
-        -------
-        overlap_area : `~numpy.ndarray` (float)
-            2-d array of shape (ny, nx) giving the fraction of each pixel
-            covered by the aperture.
-        """
-
     @abc.abstractmethod
     def plot(self, ax=None, fill=False, **kwargs):
         """
@@ -99,6 +76,68 @@ class Aperture(object):
         kwargs
             Any keyword arguments accepted by `matplotlib.patches.Patch`.
         """
+
+    @abc.abstractmethod
+    def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
+                      method='exact', subpixels=5):
+        """Sum flux within aperture(s)."""
+
+    def get_phot_extents(self, data):
+        """
+        Get the photometry extents and check if the apertures is fully out
+        of data.
+
+        Parameters
+        ----------
+        data : array_like
+            The 2-d array on which to perform photometry.
+
+        Returns
+        -------
+        extents : dict
+            ``extents`` dictionary contains 3 elements:
+
+            ``'ood_filter'``
+                A boolean array with `True` elements where the aperture is
+                falling out of the data region.
+            ``'pixel_extent'``
+                x_min, x_max, y_min, y_max : Refined extent of apertures with
+                data coverage.
+            ``'phot_extent'``
+                x_pmin, x_pmax, y_pmin, y_pmax: Extent centered to the 0, 0
+                positions as required by the `~photutils.geometry` functions.
+
+        """
+        extents = self.extent()
+
+        # Check if an aperture is fully out of data
+        ood_filter = np.logical_or(extents[:, 0] >= data.shape[1],
+                                   extents[:, 1] <= 0)
+        np.logical_or(ood_filter, extents[:, 2] >= data.shape[0],
+                      out=ood_filter)
+        np.logical_or(ood_filter, extents[:, 3] <= 0, out=ood_filter)
+
+        # TODO check whether it makes sense to have negative pixel
+        # coordinate, one could imagine a stackes image where the reference
+        # was a bit offset from some of the images? Or in those cases just
+        # give Skycoord to the Aperture and it should deal with the
+        # conversion for the actual case?
+        x_min = np.maximum(extents[:, 0], 0)
+        x_max = np.minimum(extents[:, 1], data.shape[1])
+        y_min = np.maximum(extents[:, 2], 0)
+        y_max = np.minimum(extents[:, 3], data.shape[0])
+
+        x_pmin = x_min - self.positions[:, 0] - 0.5
+        x_pmax = x_max - self.positions[:, 0] - 0.5
+        y_pmin = y_min - self.positions[:, 1] - 0.5
+        y_pmax = y_max - self.positions[:, 1] - 0.5
+
+        # TODO: check whether any pixel is nan in data[y_min[i]:y_max[i],
+        # x_min[i]:x_max[i])), if yes return something valid rather than nan
+
+        return {'ood_filter': ood_filter,
+                'pixel_extent': [x_min, x_max, y_min, y_max],
+                'phot_extent': [x_pmin, x_pmax, y_pmin, y_pmax]}
 
 
 class CircularAperture(Aperture):
@@ -135,35 +174,11 @@ class CircularAperture(Aperture):
 
     def extent(self):
         extents = []
-        centers = []
         for x, y in self.positions:
             extents.append((int(x - self.r + 0.5), int(x + self.r + 1.5),
                             int(y - self.r + 0.5), int(y + self.r + 1.5)))
-            centers.append((x, x, y, y))
 
-        self._centers = np.array(centers)
         return np.array(extents)
-
-    def encloses(self, extent, nx, ny, method='exact', subpixels=5):
-        x_min, x_max, y_min, y_max = extent
-        if method == 'center':
-            x_size = (x_max - x_min) / nx
-            y_size = (y_max - y_min) / ny
-            x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
-            y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
-            xx, yy = np.meshgrid(x_centers, y_centers)
-            return xx * xx + yy * yy < self.r * self.r
-        elif method == 'subpixel':
-            from .geometry import circular_overlap_grid
-            return circular_overlap_grid(x_min, x_max, y_min, y_max,
-                                         nx, ny, self.r, 0, subpixels)
-        elif method == 'exact':
-            from .geometry import circular_overlap_grid
-            return circular_overlap_grid(x_min, x_max, y_min, y_max,
-                                         nx, ny, self.r, 1, 1)
-        else:
-            raise ValueError('{0} method not supported for aperture class '
-                             '{1}'.format(method, self.__class__.__name__))
 
     def area(self):
         return math.pi * self.r ** 2
@@ -177,6 +192,21 @@ class CircularAperture(Aperture):
         for position in self.positions:
             patch = mpatches.Circle(position, self.r, **kwargs)
             ax.add_patch(patch)
+
+    def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
+                      method='exact', subpixels=5):
+        extents = super(CircularAperture, self).get_phot_extents(data)
+
+        if method not in ('center', 'subpixel', 'exact'):
+            raise ValueError('{0} method not supported for aperture class '
+                             '{1}'.format(method, self.__class__.__name__))
+
+        flux = do_circular_photometry(data, self.positions, extents,
+                                      self.r, error=error, gain=gain,
+                                      pixelwise_error=pixelwise_error,
+                                      method=method,
+                                      subpixels=subpixels)
+        return flux
 
 
 class CircularAnnulus(Aperture):
@@ -230,35 +260,25 @@ class CircularAnnulus(Aperture):
         self._centers = np.array(centers)
         return np.array(extents)
 
-    def encloses(self, extent, nx, ny, method='exact', subpixels=5):
-        x_min, x_max, y_min, y_max = extent
-        if method == 'center':
-            x_size = (x_max - x_min) / nx
-            y_size = (y_max - y_min) / ny
-            x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
-            y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
-            xx, yy = np.meshgrid(x_centers, y_centers)
-            dist_sq = xx * xx + yy * yy
-            return ((dist_sq < self.r_out * self.r_out) &
-                    (dist_sq > self.r_in * self.r_in))
-        elif method == 'subpixel':
-            from .geometry import circular_overlap_grid
-            return (circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
-                                          self.r_out, 0, subpixels) -
-                    circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
-                                          self.r_in, 0, subpixels))
-        elif method == 'exact':
-            from .geometry import circular_overlap_grid
-            return (circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
-                                          self.r_out, 1, 1) -
-                    circular_overlap_grid(x_min, x_max, y_min, y_max, nx, ny,
-                                          self.r_in, 1, 1))
-        else:
-            raise ValueError('{0} method not supported for aperture class {1}'
-                             .format(method, self.__class__.__name__))
-
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
+
+    def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
+                      method='exact', subpixels=5):
+        extents = super(CircularAnnulus, self).get_phot_extents(data)
+
+        if method not in ('center', 'subpixel', 'exact'):
+            raise ValueError('{0} method not supported for aperture class '
+                             '{1}'.format(method, self.__class__.__name__))
+
+        flux = do_annulus_photometry(data, self.positions, 'circular', extents,
+                                     (self.r_in, ), (self.r_out, ),
+                                     error=error, gain=gain,
+                                     pixelwise_error=pixelwise_error,
+                                     method=method,
+                                     subpixels=subpixels)
+
+        return flux
 
     def plot(self, ax=None, fill=False, **kwargs):
         import matplotlib.pyplot as plt
@@ -330,45 +350,24 @@ class EllipticalAperture(Aperture):
         self._centers = np.array(centers)
         return np.array(extents)
 
-    def encloses(self, extent, nx, ny, method='exact', subpixels=5):
-        # Shortcut to avoid divide-by-zero errors.
-        if self.a == 0 or self.b == 0:
-            return np.zeros((ny, nx), dtype=np.float)
+    def area(self):
+        return math.pi * self.a * self.b
 
-        x_min, x_max, y_min, y_max = extent
-        if method == 'center' or method == 'subpixel':
-            if method == 'center': subpixels = 1
-            x_size = (x_max - x_min) / (nx * subpixels)
-            y_size = (y_max - y_min) / (ny * subpixels)
-            x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
-            y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
-            xx, yy = np.meshgrid(x_centers, y_centers)
-            numerator1 = (xx * math.cos(self.theta) +
-                          yy * math.sin(self.theta))
-            numerator2 = (yy * math.cos(self.theta) -
-                          xx * math.sin(self.theta))
-            in_aper = (((numerator1 / self.a) ** 2 +
-                        (numerator2 / self.b) ** 2) < 1.).astype(float)
-            in_aper /= subpixels ** 2    # conserve aperture area
+    def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
+                      method='exact', subpixels=5):
+        extents = super(EllipticalAperture, self).get_phot_extents(data)
 
-            if method == 'center':
-                return in_aper
-            else:
-                from imageutils import downsample
-                return downsample(in_aper, subpixels)
-
-        elif method == 'exact':
-            from .geometry import elliptical_overlap_grid
-            x_edges = np.linspace(x_min, x_max, nx + 1)
-            y_edges = np.linspace(y_min, y_max, ny + 1)
-            return elliptical_overlap_grid(x_edges, y_edges, self.a,
-                                           self.b, self.theta)
-        else:
+        if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
-    def area(self):
-        return math.pi * self.a * self.b
+        flux = do_elliptical_photometry(data, self.positions, extents,
+                                        self.a, self.b, self.theta,
+                                        error=error, gain=gain,
+                                        pixelwise_error=pixelwise_error,
+                                        method=method,
+                                        subpixels=subpixels)
+        return flux
 
     def plot(self, ax=None, fill=False, **kwargs):
         import matplotlib.pyplot as plt
@@ -445,54 +444,6 @@ class EllipticalAnnulus(Aperture):
         self._centers = np.array(centers)
         return np.array(extents)
 
-    def encloses(self, extent, nx, ny, method='subpixel', subpixels=5):
-
-        # Shortcut to avoid divide-by-zero errors.
-        if self.a_out == 0 or self.b_out == 0:
-            return np.zeros((ny, nx), dtype=np.float)
-
-        x_min, x_max, y_min, y_max = extent
-        if method == 'center' or method == 'subpixel':
-            if method == 'center': subpixels = 1
-            x_size = (x_max - x_min) / (nx * subpixels)
-            y_size = (y_max - y_min) / (ny * subpixels)
-            x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
-            y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
-            xx, yy = np.meshgrid(x_centers, y_centers)
-
-            numerator1 = (xx * math.cos(self.theta) +
-                          yy * math.sin(self.theta))
-            numerator2 = (yy * math.cos(self.theta) -
-                          xx * math.sin(self.theta))
-            inside_outer_ellipse = ((numerator1 / self.a_out) ** 2 +
-                                    (numerator2 / self.b_out) ** 2) < 1.
-            if self.a_in == 0 or self.b_in == 0:
-                in_aper = inside_outer_ellipse.astype(float)
-            else:
-                outside_inner_ellipse = ((numerator1 / self.a_in) ** 2 +
-                                         (numerator2 / self.b_in) ** 2) > 1.
-                in_aper = (inside_outer_ellipse &
-                           outside_inner_ellipse).astype(float)
-            in_aper /= subpixels ** 2    # conserve aperture area
-
-            if method == 'center':
-                return in_aper
-            else:
-                from imageutils import downsample
-                return downsample(in_aper, subpixels)
-
-        elif method == 'exact':
-            from .geometry import elliptical_overlap_grid
-            x_edges = np.linspace(x_min, x_max, nx + 1)
-            y_edges = np.linspace(y_min, y_max, ny + 1)
-            return (elliptical_overlap_grid(x_edges, y_edges, self.a_out,
-                                            self.b_out, self.theta) -
-                    elliptical_overlap_grid(x_edges, y_edges, self.a_in,
-                                            self.b_in, self.theta))
-        else:
-            raise ValueError('{0} method not supported for aperture class '
-                             '{1}'.format(method, self.__class__.__name__))
-
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
@@ -511,6 +462,23 @@ class EllipticalAnnulus(Aperture):
             path = _make_annulus_path(patch_inner, patch_outer)
             patch = mpatches.PathPatch(path, **kwargs)
             ax.add_patch(patch)
+
+    def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
+                      method='exact', subpixels=5):
+        extents = super(EllipticalAnnulus, self).get_phot_extents(data)
+
+        if method not in ('center', 'subpixel', 'exact'):
+            raise ValueError('{0} method not supported for aperture class '
+                             '{1}'.format(method, self.__class__.__name__))
+
+        flux = do_annulus_photometry(data, self.positions, 'elliptical',
+                                     extents,
+                                     (self.a_in, self.b_in, self.theta),
+                                     (self.a_out, self.b_out, self.theta),
+                                     error=error, gain=gain,
+                                     pixelwise_error=pixelwise_error,
+                                     method=method, subpixels=subpixels)
+        return flux
 
 
 class RectangularAperture(Aperture):
@@ -566,50 +534,6 @@ class RectangularAperture(Aperture):
         self._centers = np.array(centers)
         return np.array(extents)
 
-    def encloses(self, extent, nx, ny, method='subpixel', subpixels=5):
-
-        # Shortcut to avoid divide-by-zero errors.
-        if self.w == 0 or self.h == 0:
-            return np.zeros((ny, nx), dtype=np.float)
-
-        x_min, x_max, y_min, y_max = extent
-        if method in ('center', 'subpixel'):
-            if method == 'center':
-                subpixels = 1
-
-            x_size = (x_max - x_min) / (nx * subpixels)
-            y_size = (y_max - y_min) / (ny * subpixels)
-
-            x_centers = np.arange(x_min + x_size / 2., x_max, x_size)
-            y_centers = np.arange(y_min + y_size / 2., y_max, y_size)
-
-            xx, yy = np.meshgrid(x_centers, y_centers)
-
-            newx = (xx * math.cos(self.theta) +
-                    yy * math.sin(self.theta))
-            newy = (yy * math.cos(self.theta) -
-                    xx * math.sin(self.theta))
-
-            halfw = self.w / 2
-            halfh = self.h / 2
-            in_aper = ((-halfw < newx) & (newx < halfw) &
-                       (-halfh < newy) & (newy < halfh)).astype(float)
-
-            in_aper /= subpixels ** 2
-
-            if method == 'center':
-                return in_aper
-            else:
-                from imageutils import downsample
-                return downsample(in_aper, subpixels)
-
-        elif method == 'exact':
-            raise NotImplementedError('exact method not yet supported for '
-                                      'RectangularAperture')
-        else:
-            raise ValueError('{0} method not supported for aperture class '
-                             '{1}'.format(method, self.__class__.__name__))
-
     def area(self):
         return self.w * self.h
 
@@ -632,11 +556,138 @@ class RectangularAperture(Aperture):
                                        **kwargs)
             ax.add_patch(patch)
 
+    def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
+                      method='subpixel', subpixels=5):
+
+        extents = super(RectangularAperture, self).get_phot_extents(data)
+
+        if method not in ('center', 'subpixel', 'exact'):
+            raise ValueError('{0} method not supported for aperture class '
+                             '{1}'.format(method, self.__class__.__name__))
+
+        ood_filter = extents['ood_filter']
+        x_min, x_max, y_min, y_max = extents['pixel_extent']
+        x_pmin, x_pmax, y_pmin, y_pmax = extents['phot_extent']
+
+        flux = u.Quantity(np.zeros(len(self.positions), dtype=np.float),
+                          unit=data.unit)
+
+        # Check for invalid aperture
+        if self.w == 0 or self.h == 0:
+            return (flux, )
+
+        # TODO: flag these objects
+        if np.sum(ood_filter):
+            flux[ood_filter] = np.nan
+            warnings.warn("The aperture at position {0} does not have any "
+                          "overlap with the data"
+                          .format(self.positions[ood_filter]),
+                          AstropyUserWarning)
+            if np.sum(ood_filter) == len(self.positions):
+                return (flux, )
+
+        if error is not None:
+            fluxvar = u.Quantity(np.zeros(len(self.positions), dtype=np.float),
+                                 unit=error.unit ** 2)
+
+        if method in ('center', 'subpixel'):
+            if method == 'center': subpixels = 1
+            if method == 'subpixel': from imageutils import downsample
+
+            for i in range(len(flux)):
+                x_size = ((x_pmax[i] - x_pmin[i]) /
+                          (data[:, x_min[i]:x_max[i]].shape[1] * subpixels))
+                y_size = ((y_pmax[i] - y_pmin[i]) /
+                          (data[y_min[i]:y_max[i], :].shape[0] * subpixels))
+
+                x_centers = np.arange(x_pmin[i] + x_size / 2.,
+                                      x_pmax[i], x_size)
+                y_centers = np.arange(y_pmin[i] + y_size / 2.,
+                                      y_pmax[i], y_size)
+
+                xx, yy = np.meshgrid(x_centers, y_centers)
+
+                newx = (xx * math.cos(self.theta) +
+                        yy * math.sin(self.theta))
+                newy = (yy * math.cos(self.theta) -
+                        xx * math.sin(self.theta))
+
+                halfw = self.w / 2
+                halfh = self.h / 2
+                in_aper = (((-halfw < newx) & (newx < halfw) &
+                            (-halfh < newy) & (newy < halfh)).astype(float)
+                           / subpixels ** 2)
+
+                if method == 'center':
+                    if not np.isnan(flux[i]):
+                        flux[i] = np.sum(data[y_min[i]:y_max[i],
+                                              x_min[i]:x_max[i]] * in_aper)
+                        if error is not None:
+                            if pixelwise_error:
+                                subvariance = error[y_min[i]:y_max[i],
+                                                    x_min[i]:x_max[i]] ** 2
+                                if gain is not None:
+                                    subvariance += (data[y_min[i]:y_max[i],
+                                                         x_min[i]:x_max[i]] /
+                                                    gain[y_min[i]:y_max[i],
+                                                         x_min[i]:x_max[i]])
+                                # Make sure variance is > 0
+                                fluxvar[i] = max(np.sum(subvariance * in_aper), 0)
+                            else:
+                                local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
+                                                    int((x_min[i] + x_max[i]) / 2 + 0.5)]
+                                fluxvar[i] = max(local_error ** 2 * np.sum(in_aper), 0)
+                                if gain is not None:
+                                    local_gain = gain[int((y_min[i] + y_max[i]) / 2 + 0.5),
+                                                      int((x_min[i] + x_max[i]) / 2 + 0.5)]
+                                    fluxvar[i] += flux[i] / local_gain
+                else:
+                    if not np.isnan(flux[i]):
+                        if error is None:
+                            flux[i] = np.sum(data[y_min[i]:y_max[i],
+                                                  x_min[i]:x_max[i]] *
+                                             downsample(in_aper, subpixels))
+                        else:
+                            fraction = downsample(in_aper, subpixels)
+                            flux[i] = np.sum(data[y_min[i]:y_max[i],
+                                                  x_min[i]:x_max[i]] * fraction)
+
+                            if pixelwise_error:
+                                subvariance = error[y_min[i]:y_max[i],
+                                                    x_min[i]:x_max[i]] ** 2
+                                if gain is not None:
+                                    subvariance += (data[y_min[i]:y_max[i],
+                                                         x_min[i]:x_max[i]] /
+                                                    gain[y_min[i]:y_max[i],
+                                                         x_min[i]:x_max[i]])
+                                # Make sure variance is > 0
+                                fluxvar[i] = max(np.sum(subvariance * fraction), 0)
+                            else:
+                                local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
+                                                    int((x_min[i] + x_max[i]) / 2 + 0.5)]
+                                fluxvar[i] = max(local_error ** 2 * np.sum(fraction), 0)
+                                if gain is not None:
+                                    local_gain = gain[int((y_min[i] + y_max[i]) / 2 + 0.5),
+                                                      int((x_min[i] + x_max[i]) / 2 + 0.5)]
+                                    fluxvar[i] += flux[i] / local_gain
+
+        elif method == 'exact':
+            raise NotImplementedError("'exact' method not yet supported for "
+                                      "RectangularAperture")
+        else:
+            raise ValueError('{0} method not supported for aperture class '
+                             '{1}'.format(method, self.__class__.__name__))
+
+        if error is None:
+            return (flux, )
+        else:
+            return (flux, np.sqrt(fluxvar))
+
 
 doc_template = ("""\
     {desc}
 
-    Multiple objects and multiple apertures per object can be specified.
+    Multiple objects can be specified.
 
     Parameters
     ----------
@@ -645,6 +696,13 @@ doc_template = ("""\
     {args}
         Note that for subpixel sampling, the input array is only
         resampled once for each object.
+    positions : list, tuple or nd.array
+        Pixel positions.
+    apertures : tuple
+        First element of the tuple is the mode, currently supported ones
+        are: ``circular``, ``elliptical``, ``circular_annulus``,
+        ``elliptical_annulus``, ``rectangular``. The remaining (1 to 4)
+        elements are the parameters for the given mode.
     error : float or array_like, optional
         Error in each pixel, interpreted as Gaussian 1-sigma uncertainty.
     gain : float or array_like, optional
@@ -655,9 +713,7 @@ doc_template = ("""\
         is assumed to be the "background error" only (not accounting for
         Poisson error in the flux in the apertures).
     mask : array_like (bool), optional
-        Mask to apply to the data. The value of masked pixels are replaced
-        by the value of the pixel mirrored across the center of the object,
-        if available. If unavailable, the value is set to zero.
+        Mask to apply to the data.
     method : str, optional
         Method to use for determining overlap between the aperture and pixels.
         Options include ['center', 'subpixel', 'exact'], but not all options
@@ -678,28 +734,41 @@ doc_template = ("""\
         For the 'subpixel' method, resample pixels by this factor (in
         each dimension). That is, each pixel is divided into
         ``subpixels ** 2`` subpixels.
-    pixelwise_errors : bool, optional
+    pixelwise_error : bool, optional
         For error and/or gain arrays. If `True`, assume error and/or gain
         vary significantly within an aperture: sum contribution from each
         pixel. If False, assume error and gain do not vary significantly
         within an aperture. Use the single value of error and/or gain at
         the center of each aperture as the value for the entire aperture.
         Default is `True`.
+    mask_method : str, optional
+        Method to threat masked pixels. Currently supported methods:
+
+        'skip'
+            Leave out the masked pixels from all calculations.
+        'interpolation'
+            The value of the masked pixels are replaced by the mean value of
+            the neighbouring non-masked pixels.
 
     Returns
     -------
-    flux : `~numpy.ndarray`
-        Enclosed flux in aperture(s).
-    fluxerr : `~numpy.ndarray`
+    phot_table : `~astropy.table.Table`
         Uncertainty in flux values. Only returned if error is not `None`.
+    aux_dict : dict
+        Auxilary dictionary storing all the auxilary informations
+        available. The element are the following:
+
+        'apertures'
+            The `~photutils.Aperture` object containing the apertures to use
+            during the photometry.
 
     {seealso}
     """)
 
 
-def aperture_photometry(data, apertures, error=None, gain=None,
+def aperture_photometry(data, positions, apertures, error=None, gain=None,
                         mask=None, method='exact', subpixels=5,
-                        pixelwise_errors=True):
+                        pixelwise_error=True, mask_method='skip'):
     """Sum flux within aperture(s)."""
 
     # Check input array type and dimension.
@@ -710,12 +779,41 @@ def aperture_photometry(data, apertures, error=None, gain=None,
         raise ValueError('{0}-d array not supported. '
                          'Only 2-d arrays supported.'.format(data.ndim))
 
+    # Deal with the mask if it exist
+    if mask is not None or hasattr(data, 'mask'):
+        if mask is None:
+            mask = data.mask
+        else:
+            mask = np.asarray(mask)
+            if np.iscomplexobj(mask):
+                raise TypeError('Complex type not supported')
+            if mask.ndim != 2:
+                raise ValueError('{0}-d array not supported. '
+                                 'Only 2-d arrays supported.'
+                                 .format(mask.ndim))
+            if mask.shape != data.shape:
+                raise ValueError('Shapes of mask array and data array '
+                                 'must match')
+
+            if hasattr(data, 'mask'):
+                mask *= data.mask
+
+        if mask_method == 'skip':
+            data *= ~mask
+
+        if mask_method == 'interpolation':
+            for i, j in zip(*np.nonzero(mask)):
+                data[i, j] = np.mean(data[np.max((i-1, 0)):i+2,
+                                          np.max((j-1, 0)):j+2]
+                                     [mask[np.max((i-1, 0)):i+2,
+                                           np.max((j-1, 0)):j+2]])
+
     # Check whether we really need to calculate pixelwise errors, even if
     # requested. (If neither error nor gain is an array, we don't need to.)
     if ((error is None) or
         (np.isscalar(error) and gain is None) or
         (np.isscalar(error) and np.isscalar(gain))):
-        pixelwise_errors = False
+        pixelwise_error = False
 
     # Check error shape.
     if error is not None:
@@ -724,7 +822,10 @@ def aperture_photometry(data, apertures, error=None, gain=None,
                 error = u.Quantity(np.broadcast_arrays(error, data),
                                    unit=error.unit)[0]
         elif np.isscalar(error):
-            error = np.broadcast_arrays(error, data)[0]
+            error = u.Quantity(np.broadcast_arrays(error, data),
+                               unit=data.unit)[0]
+        else:
+            error = u.Quantity(error, unit=data.unit)
 
         if error.shape != data.shape:
             raise ValueError('shapes of error array and data array must'
@@ -747,15 +848,6 @@ def aperture_photometry(data, apertures, error=None, gain=None,
         if gain.shape != data.shape:
             raise ValueError('shapes of gain array and data array must match')
 
-    # Check mask shape and type.
-    if mask is not None:
-        mask = np.asarray(mask)
-        if np.iscomplexobj(mask):
-            raise TypeError('Complex type not supported')
-        if mask.ndim != 2:
-            raise ValueError('{0}-d array not supported. '
-                             'Only 2-d arrays supported.'.format(mask.ndim))
-
     # Check that 'subpixels' is an int and is 1 or greater.
     if method == 'subpixel':
         subpixels = int(subpixels)
@@ -763,131 +855,23 @@ def aperture_photometry(data, apertures, error=None, gain=None,
             raise ValueError('subpixels: an integer greater than 0 is '
                              'required')
 
-    # Initialize arrays to return.
-    flux = u.Quantity(np.zeros(len(apertures.positions), dtype=np.float),
-                      unit=data.unit)
-    if error is not None:
-        fluxerr = u.Quantity(np.zeros(len(apertures.positions),
-                                      dtype=np.float), unit=data.unit)
+    # TODO check whether positions is wcs or pixel
+    pixelpositions = positions
 
-    extents = apertures.extent()
-    # Loop over apertures.
-    for j in range(len(apertures.positions)):
-
-        # Limit sub-array to be within the image.
-
-        extent = extents[j]
-
-        # Check that at least part of the sub-array is in the image.
-        if (extent[0] >= data.shape[1] or extent[1] <= 0 or
-            extent[2] >= data.shape[0] or extent[3] <= 0):
-
-            # TODO: flag these objects
-            flux[j] = np.nan
-            warnings.warn('The aperture at position ({0}, {1}) does not have '
-                          'any overlap with the data'
-                          .format(apertures.positions[j][0],
-                                  apertures.positions[j][1]),
-                          AstropyUserWarning)
-            continue
-
-        # TODO check whether it makes sense to have negative pixel
-        # coordinate, one could imagine a stackes image where the reference
-        # was a bit offset from some of the images? Or in those cases just
-        # give Skycoord to the Aperture and it should deal with the
-        # conversion for the actual case?
-        extent[0] = max(extent[0], 0)
-        extent[1] = min(extent[1], data.shape[1])
-        extent[2] = max(extent[2], 0)
-        extent[3] = min(extent[3], data.shape[0])
-
-        # Get the sub-array of the image and error
-        subdata = data[extent[2]:extent[3], extent[0]:extent[1]]
-
-        if pixelwise_errors:
-            subvariance = error[extent[2]:extent[3], extent[0]:extent[1]] ** 2
-            # If gain is specified, add poisson noise from the counts above
-            # the background
-            if gain is not None:
-                subgain = gain[extent[2]:extent[3], extent[0]:extent[1]]
-                subvariance += subdata / subgain
-
-        if mask is not None:
-            submask = mask[extent[2]:extent[3], extent[0]:extent[1]]
-
-            # Get a copy of the data, because we will edit it
-            subdata = copy.deepcopy(subdata)
-
-            # Coordinates of masked pixels in sub-array.
-            y_masked, x_masked = np.nonzero(submask)
-
-            # Corresponding coordinates mirrored across xc, yc
-            x_mirror = (2 * (apertures.positions[j][0] - extent[0])
-                        - x_masked + 0.5).astype('int32')
-            y_mirror = (2 * (apertures.positions[j][1] - extent[2])
-                        - y_masked + 0.5).astype('int32')
-
-            # reset pixels that go out of the image.
-            outofimage = ((x_mirror < 0) |
-                          (y_mirror < 0) |
-                          (x_mirror >= subdata.shape[1]) |
-                          (y_mirror >= subdata.shape[0]))
-            if outofimage.any():
-                x_mirror[outofimage] = x_masked[outofimage]
-                y_mirror[outofimage] = y_masked[outofimage]
-
-            # Replace masked pixel values.
-            subdata[y_masked, x_masked] = subdata[y_mirror, x_mirror]
-            if pixelwise_errors:
-                subvariance[y_masked, x_masked] = \
-                    subvariance[y_mirror, x_mirror]
-
-            # Set pixels that mirrored to another masked pixel to zero.
-            # This will also set to zero any pixels that mirrored out of
-            # the image.
-            mirror_is_masked = submask[y_mirror, x_mirror]
-            x_bad = x_masked[mirror_is_masked]
-            y_bad = y_masked[mirror_is_masked]
-            subdata[y_bad, x_bad] = 0.
-            if pixelwise_errors:
-                subvariance[y_bad, x_bad] = 0.
-
-        # To keep the aperture reusable, define new extent for the actual
-        # photometry rather than overwrite the aperture's extents parameter
-
-        photom_extent = extent - apertures._centers[j] - 0.5
-
-        # Find fraction of overlap between aperture and pixels
-        fraction = apertures.encloses(photom_extent, subdata.shape[1],
-                                      subdata.shape[0],
-                                      method=method, subpixels=subpixels)
-
-        # Sum the flux in those pixels and assign it to the output array.
-        flux[j] = np.sum(subdata * fraction)
-
-        if error is not None:  # If given, calculate error on flux.
-
-            # If pixelwise, we have to do this the slow way.
-            if pixelwise_errors:
-                fluxvar = np.sum(subvariance * fraction)
-
-                # Otherwise, assume error and gain are constant over whole
-                # aperture.
-            else:
-                local_error = error[int((extent[2] + extent[3]) / 2 + 0.5),
-                                    int((extent[0] + extent[1]) / 2 + 0.5)]
-                if hasattr(apertures, 'area'):
-                    area = apertures.area()
-                else:
-                    area = np.sum(fraction)
-                fluxvar = local_error ** 2 * area
-                if gain is not None:
-                    local_gain = gain[int((extent[2] + extent[3]) / 2 + 0.5),
-                                      int((extent[0] + extent[1]) / 2 + 0.5)]
-                    fluxvar += flux[j] / local_gain
-
-            # Make sure variance is > 0 when converting to st. dev.
-            fluxerr[j] = math.sqrt(max(fluxvar, 0.))
+    if apertures[0] == 'circular':
+        ap = CircularAperture(pixelpositions, apertures[1])
+    elif apertures[0] == 'circular_annulus':
+        ap = CircularAnnulus(pixelpositions, *apertures[1:3])
+    elif apertures[0] == 'elliptical':
+        ap = EllipticalAperture(pixelpositions, *apertures[1:4])
+    elif apertures[0] == 'elliptical_annulus':
+        ap = EllipticalAnnulus(pixelpositions, *apertures[1:5])
+    elif apertures[0] == 'rectangular':
+        if method == 'exact':
+            warnings.warn("'exact' method is not implemented, defaults to "
+                          "'subpixel' instead", AstropyUserWarning)
+            method = 'subpixel'
+        ap = RectangularAperture(pixelpositions, *apertures[1:4])
 
     # Prepare version return data
     from astropy import __version__
@@ -896,26 +880,21 @@ def aperture_photometry(data, apertures, error=None, gain=None,
     from photutils import __version__
     photutils_version = __version__
 
-    if hasattr(data, 'unit'):
-        flux = u.Quantity(flux, unit=data.unit)
-        if error is not None:
-            fluxerr = u.Quantity(fluxerr, data.unit)
-    else:
-        flux = u.Quantity(flux, unit=None)
-        if error is not None:
-            fluxerr = u.Quantity(fluxerr, unit=None)
-
-    # TODO: maybe include positions, mask, etc in the output
+    photometry_result = ap.do_photometry(data, method=method,
+                                         subpixels=subpixels,
+                                         error=error, gain=gain,
+                                         pixelwise_error=pixelwise_error)
     if error is None:
-        return Table([flux, ], names=('aperture_sum',),
-                     meta={'name': 'Aperture photometry results',
-                           'version': 'astropy: {0}, photutils: {1}'
-                           .format(astropy_version, photutils_version)})
+        col_names = ('aperture_sum', )
     else:
-        return Table([flux, fluxerr], names=('aperture_sum', 'aperture_sum_err'),
-                     meta={'name': 'Aperture photometry results',
-                           'version': 'astropy: {0}, photutils: {1}'
-                           .format(astropy_version, photutils_version)})
+        col_names = ('aperture_sum', 'aperture_sum_err')
+
+    return (Table(data=photometry_result, names=col_names,
+                  meta={'name': 'Aperture photometry results',
+                        'version': 'astropy: {0}, photutils: {1}'
+                        .format(astropy_version, photutils_version)}),
+            {'apertures': ap})
+
 
 aperture_photometry.__doc__ = doc_template.format(
     desc=aperture_photometry.__doc__,
