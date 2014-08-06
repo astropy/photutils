@@ -796,12 +796,16 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
     if isinstance(data, (fits.PrimaryHDU, fits.ImageHDU)):
         header = data.header
         data = data.data
+
         if 'BUNIT' in header:
             unit = header['BUNIT']
         else:
             unit = ""
-        data = u.Quantity(data, unit=unit)
+        data = u.Quantity(data, unit=unit, copy=False)
 
+        # TODO check how a mask can be stored in the header, it seems like
+        # full pixel masks are not supported by the FITS standard, look for
+        # real life examples
         if 'MASK' in header:
             data.mask = header.mask
 
@@ -809,21 +813,27 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
         # TODO: do it in a 2d array, and thus get the light curves as a
         # side-product? Although it's not usual to store time series as
         # HDUList
-        fluxlist = []
-        for i in xrange(1, len(data)):
-            fluxlist.append(aperture_photometry(data[i], positions, apertures,
-                                                wcs, error, gain, mask, method,
-                                                subpixels, pixelcoord,
-                                                pixelwise_error, mask_method))
-        return fluxlist
+
+        for i in range(len(data)):
+            if data[i].data is not None:
+                warnings.warn("Input data is a HDUList object, photometry is "
+                              "onry run for the %s. HDU."
+                              .format(i), AstropyUserWarning)
+                return aperture_photometry(data[i], positions, apertures, wcs,
+                                           error, gain, mask, method,
+                                           subpixels, pixelcoord,
+                                           pixelwise_error, mask_method)
 
     elif isinstance(data, NDData):
-        # Check is unit is missing
-        if data.unit is None:
-            data.unit = ""
+        datamask = data.mask
+        if data.wcs is not None and wcs is None:
+            wcs = data.wcs
+        data = u.Quantity(data, unit=data.unit, copy=False)
+        data.mask = datamask
 
     else:
-        data = u.Quantity(data)
+        data = u.Quantity(data, copy=False)
+
     # Check input array type and dimension.
     if np.iscomplexobj(data):
         raise TypeError('Complex type not supported')
@@ -832,7 +842,7 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
                          'Only 2-d arrays supported.'.format(data.ndim))
 
     # Deal with the mask if it exist
-    if mask is not None or hasattr(data, 'mask'):
+    if mask is not None or (hasattr(data, 'mask') and data.mask is not None):
         if mask is None:
             mask = data.mask
         else:
@@ -876,7 +886,7 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
             error = u.Quantity(np.broadcast_arrays(error, data),
                                unit=data.unit)[0]
         else:
-            error = u.Quantity(error, unit=data.unit)
+            error = u.Quantity(error, unit=data.unit, copy=False)
 
         if error.shape != data.shape:
             raise ValueError('shapes of error array and data array must'
@@ -910,13 +920,13 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
     if not pixelcoord or isinstance(positions, SkyCoord):
         if not isinstance(positions, u.Quantity):
             # TODO figure out the unit of the input positions for this case
-            positions = u.Quantity(positions)
+            positions = u.Quantity(positions, copy=False)
         from astropy.wcs import wcs
         if wcs_transformation is None:
             wcs_transformation = wcs.WCS(header)
         pixelpositions = wcs_transformation.wcs_world2pix(positions, 0)
     else:
-        positions = u.Quantity(positions, unit=u.pixel)
+        positions = u.Quantity(positions, unit=u.pixel, copy=False)
         pixelpositions = positions
 
     if apertures[0] == 'circular':

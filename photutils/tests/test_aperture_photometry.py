@@ -8,7 +8,9 @@ from __future__ import (absolute_import, division, print_function,
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose
-
+import astropy.units as u
+from astropy.io import fits
+from astropy.nddata import NDData
 
 from ..aperture_core import CircularAperture,\
                             CircularAnnulus, \
@@ -356,3 +358,55 @@ class TestMaskedInterpolationCircular(BaseTestAperturePhotometry):
         self.area = np.pi * r * r
         self.true_flux = self.area
         self.mask_method = 'interpolation'
+
+
+class BaseTestDifferentData(object):
+
+    def test_basic_circular_aperture_photometry(self):
+
+        aperture = ('circular', self.radius)
+        table = aperture_photometry(self.data, self.position, aperture,
+                                    method='exact')[0]
+
+        print(table['aperture_sum'], self.true_flux)
+        assert_allclose(table['aperture_sum'], self.true_flux)
+        assert table['aperture_sum'].unit, self.fluxunit
+
+        assert np.all(table['input_center'] == self.position)
+
+
+class TestInputPrimaryHDU(BaseTestDifferentData):
+
+    def setup_class(self):
+        data = np.ones((40, 40), dtype=np.float)
+        self.data = fits.ImageHDU(data=data)
+        self.data.header['BUNIT'] = 'adu'
+        self.radius = 3
+        self.position = (20, 20)
+        self.true_flux = np.pi * self.radius * self.radius
+        self.fluxunit = u.adu
+
+
+class TestInputHDUList(BaseTestDifferentData):
+
+    def setup_class(self):
+        data0 = np.ones((40, 40), dtype=np.float)
+        data1 = np.empty((40, 40), dtype=np.float)
+        data1.fill(2)
+        self.data = fits.HDUList([fits.ImageHDU(data=data0),
+                                  fits.ImageHDU(data=data1)])
+        self.radius = 3
+        self.position = (20, 20)
+        # It should stop at the first extension
+        self.true_flux = np.pi * self.radius * self.radius
+
+
+class TestInputNDData(BaseTestDifferentData):
+
+    def setup_class(self):
+        data = np.ones((40, 40), dtype=np.float)
+        self.data = NDData(data, unit=u.adu)
+        self.radius = 3
+        self.position = [(20, 20), (30, 30)]
+        self.true_flux = np.pi * self.radius * self.radius
+        self.fluxunit = u.adu
