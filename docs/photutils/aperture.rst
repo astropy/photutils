@@ -243,13 +243,41 @@ pixel.
 Pixel Masking
 -------------
 
-If the ``mask`` keyword is specified, masked pixels are treated in the
-following way:
+If an image mask is specified via the ``mask`` keyword, masked pixels
+can either be ignored (``mask_method='skip'``, which is the default)
+or interpolated (``mask_method='interpolation'``).  Interpolated
+pixels are replaced by the mean value of the neighboring non-masked
+pixels.  Some examples are below.
 
-* Find the pixel the same distance from the object center,
-  but 180 degrees away ("reflected" through the center).
-* If this pixel is unmasked, set the masked pixel to its value.
-* If this pixel is also masked, set the masked pixel to 0.
+Without a mask image::
+
+  >>> data = np.ones((5, 5))
+  >>> mask = np.zeros_like(data, dtype=bool)
+  >>> data[2, 2] = 100.
+  >>> mask[2, 2] = True
+  >>> t1, d1 = aperture_photometry(data, (2, 2), ('circular', 2))
+  >>> print t1['aperture_sum']
+   aperture_sum
+  -------------
+  111.566370614
+
+With the mask image and the default ``mask_method``
+(``mask_method='skip'``)::
+
+  >>> t2, d2 = aperture_photometry(data, (2, 2), ('circular', 2), mask=mask)
+  >>> print t2['aperture_sum']
+   aperture_sum
+  -------------
+  11.5663706144
+
+With the mask image and ``mask_method='interpolation'``::
+
+  >>> t3, d3 = aperture_photometry(data, (2, 2), ('circular', 2), mask=mask,
+  >>>                              mask_method='interpolation')
+  >>> print t3['aperture_sum']
+   aperture_sum
+  -------------
+  12.5663706144
 
 
 Extension to arbitrary apertures using `~photutils.Aperture` objects
