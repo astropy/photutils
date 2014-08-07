@@ -38,7 +38,7 @@ radius 3 pixels centered on each object:
 result of the photometry in a `~astropy.table.Table`. In this example case
 it has one column, named ``'aperture_sum'``.  The second element is an
 auxiliary information dictionary. The apertures, used during the photometry,
-is returned as the ``'apertures'`` element of this dictionary.
+are returned as the ``'apertures'`` element of this dictionary.
 
 Since all the data values are 1, we expect the answer to equal the area of
 a circle with the same radius, and it does:
