@@ -755,7 +755,7 @@ doc_template = ("""\
     phot_table : `~astropy.table.Table`
         Uncertainty in flux values. Only returned if error is not `None`.
     aux_dict : dict
-        Auxilary dictionary storing all the auxilary informations
+        Auxilary dictionary storing all the auxilary information
         available. The element are the following:
 
         'apertures'
