@@ -803,10 +803,9 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
 
         if mask_method == 'interpolation':
             for i, j in zip(*np.nonzero(mask)):
-                data[i, j] = np.mean(data[np.max((i-1, 0)):i+2,
-                                          np.max((j-1, 0)):j+2]
-                                     [mask[np.max((i-1, 0)):i+2,
-                                           np.max((j-1, 0)):j+2]])
+                y0, y1 = max(i - 1, 0), min(i + 2, data.shape[0])
+                x0, x1 = max(j - 1, 0), min(j + 2, data.shape[1])
+                data[i, j] = np.mean(data[y0:y1, x0:x1][~mask[y0:y1, x0:x1]])
 
     # Check whether we really need to calculate pixelwise errors, even if
     # requested. (If neither error nor gain is an array, we don't need to.)
