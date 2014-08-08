@@ -272,8 +272,7 @@ With the mask image and the default ``mask_method``
 
 With the mask image and ``mask_method='interpolation'``::
 
-  >>> t3, d3 = aperture_photometry(data, (2, 2), ('circular', 2), mask=mask,
-  >>>                              mask_method='interpolation')
+  >>> t3, d3 = aperture_photometry(data, (2, 2), ('circular', 2), mask=mask, mask_method='interpolation')
   >>> print t3['aperture_sum']
    aperture_sum
   -------------
