@@ -753,7 +753,13 @@ doc_template = ("""\
     Returns
     -------
     phot_table : `~astropy.table.Table`
-        Uncertainty in flux values. Only returned if error is not `None`.
+        A table of the photometry with the following columns:
+
+        * ``aperture_sum``: Sum of the values within the aperture.
+        * ``aperture_sum_err``: Corresponding uncertainty in
+          ``aperture_sum`` values.  Returned only if input ``error`` is not
+          `None`.
+
     aux_dict : dict
         Auxilary dictionary storing all the auxilary information
         available. The element are the following:
