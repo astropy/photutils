@@ -106,7 +106,7 @@ class DiscretePRF(Fittable2DModel):
         """
         return self._prf_array.shape[-2:]
 
-    def evaluate(self, x, y, amplitude, x_0, y_0):
+    def eval(self, x, y, amplitude, x_0, y_0):
         """
         Discrete PRF model evaluation.
 
@@ -259,7 +259,7 @@ class GaussianPSF(Fittable2DModel):
         self.x_0.fixed = True
         self.y_0.fixed = True
 
-    def evaluate(self, x, y, amplitude, x_0, y_0, sigma):
+    def eval(self, x, y, amplitude, x_0, y_0, sigma):
         """
         Model function Gaussian PSF model.
         """
@@ -536,6 +536,6 @@ def subtract_psf(data, psf, positions, fluxes, mask=None):
     for i, position in enumerate(positions):
         y = extract_array_2d(indices[0], psf.shape, position)
         x = extract_array_2d(indices[1], psf.shape, position)
-        psf_image = psf.evaluate(x, y, fluxes[i], position[0], position[1])
+        psf_image = psf.eval(x, y, fluxes[i], position[0], position[1])
         data = add_array_2d(data, -psf_image, position)
     return data
