@@ -10,7 +10,7 @@ __all__ = ['segment_photometry']
 
 
 def segment_photometry(image, segment_image, error_image=None, gain=None,
-                       mask_image=None, background=None, labels=None):
+                       mask_image=None, mask_method='exclude', labels=None):
     """
     Perform photometry of sources whose extents are defined by a labeled
     segmentation image.
@@ -56,6 +56,18 @@ def segment_photometry(image, segment_image, error_image=None, gain=None,
         A boolean mask with the same shape as ``image``, where a `True`
         value indicates the corresponding element of ``image`` is
         ignored when computing the photometry.
+
+    mask_method : {'exclude', 'interpolate'}, optional
+        Method used to treat masked pixels.  The currently supported
+        methods are:
+
+        'exclude'
+            Exclude masked pixels from all calculations.  This is the
+            default.
+
+        'interpolate'
+            The value of masked pixels are replaced by the mean value of
+            the neighboring non-masked pixels.
 
     background : float or array_like, optional
         The background level of the input ``image``.  ``background`` may
@@ -105,17 +117,33 @@ def segment_photometry(image, segment_image, error_image=None, gain=None,
         image_iscopy = True
         image -= background
 
+    if error_image is not None:
+        assert image.shape == mask_image.shape, \
+            ('image and error_image must have the same shape')
+        variance_image = error_image**2
+
     if mask_image is not None:
         assert image.shape == mask_image.shape, \
             ('image and mask_image must have the same shape')
         if not image_iscopy:
             image = copy.deepcopy(image)
-        image[mask_image.nonzero()] = 0.0
-        if error_image is not None:
-            assert image.shape == mask_image.shape, \
-                ('image and error_image must have the same shape')
-            error_image = copy.deepcopy(error_image)
-            error_image[mask_image.nonzero()] = 0.0
+
+        if mask_method == 'exclude':
+            image[mask_image.nonzero()] = 0.0
+            if error_image is not None:
+                error_image[mask_image.nonzero()] = 0.0
+        elif mask_method == 'interpolate':
+            for j, i in zip(*mask_image.nonzero())
+                y0, y1 = max(j - 1, 0), min(j + 2, image.shape[0])
+                x0, x1 = max(i - 1, 0), min(i + 2, image.shape[1])
+                goodpix = ~mask_image[y0:y1, x0:x1]
+                image[j, i] = np.mean(image[y0:y1, x0:x1][goodpix])
+                if error_image is not None:
+                    error_image[j, i] = np.sqrt(np.mean(
+                        variance_image[y0:y1, x0:x1][goodpix]))
+        else:
+            raise ValueError(
+                'mask_method {0} is not valid'.format(mask_method))
 
     # TODO:  allow alternate centroid methods via input centroid_func:
     # npix = ndimage.labeled_comprehension(image, segment_image, objids,
@@ -132,7 +160,6 @@ def segment_photometry(image, segment_image, error_image=None, gain=None,
     phot_table = Table(data, names=names)
 
     if error_image is not None:
-        variance_image = error_image**2
         if gain is not None:
             variance_image += image / gain
         flux_variance = ndimage.measurements.sum(variance_image,
