@@ -824,11 +824,12 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
                                            subpixels, pixelcoord,
                                            pixelwise_error, mask_method)
 
-    elif isinstance(data, NDData):
+    # this is basically for NDData inputs and alike
+    elif hasattr(data, 'data') and not isinstance(data, np.ndarray):
         datamask = data.mask
         if data.wcs is not None and wcs is None:
             wcs = data.wcs
-        data = u.Quantity(data, unit=data.unit, copy=False)
+        data = u.Quantity(data.data, unit=data.unit, copy=False)
         data.mask = datamask
 
     else:
