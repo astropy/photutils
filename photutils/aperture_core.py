@@ -742,7 +742,7 @@ doc_template = ("""\
         the center of each aperture as the value for the entire aperture.
         Default is `True`.
     mask_method : str, optional
-        Method to threat masked pixels. Currently supported methods:
+        Method to treat masked pixels. Currently supported methods:
 
         'skip'
             Leave out the masked pixels from all calculations.
