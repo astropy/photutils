@@ -11,6 +11,7 @@ from numpy.testing import assert_allclose
 import astropy.units as u
 from astropy.io import fits
 from astropy.nddata import NDData
+from astropy.tests.helper import remote_data
 
 from ..aperture_core import CircularAperture,\
                             CircularAnnulus, \
@@ -410,3 +411,29 @@ class TestInputNDData(BaseTestDifferentData):
         self.position = [(20, 20), (30, 30)]
         self.true_flux = np.pi * self.radius * self.radius
         self.fluxunit = u.adu
+
+
+@remote_data
+def test_wcs_based_photometry():
+    from astropy.table import Table
+    from astropy.coordinates import SkyCoord
+    from ..datasets import get_path
+
+    pathcat = get_path('spitzer_example_catalog.xml', location='remote')
+    pathhdu = get_path('spitzer_example_image.fits', location='remote')
+    hdu = fits.open(pathhdu)
+    catalog = Table.read(pathcat)
+    fluxes_catalog = catalog['f4_5']
+    pos_gal = zip(catalog['l'], catalog['b'])
+    pos_skycoord = SkyCoord(catalog['l'], catalog['b'], frame='galactic')
+
+    photometry_non_skycoord = aperture_photometry(hdu, pos_gal,
+                                                  ('circular', 4),
+                                                  pixelcoord=False)
+    photometry_skycoord = aperture_photometry(hdu, pos_skycoord,
+                                              ('circular', 4))
+
+    assert_allclose(photometry_non_skycoord[0]['aperture_sum'],
+                    photometry_skycoord[0]['aperture_sum'])
+
+    # TODO compare with fluxes_catalog
