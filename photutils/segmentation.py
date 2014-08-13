@@ -16,19 +16,30 @@ class _SegmentProperties(object):
         self._label_image = segment_image
         self._intensity_image = image
         self._cache_active = True
+
+    image = _RegionProperties.image
+    _image_double = _RegionProperties._image_double
+    moments = _RegionProperties.moments
+    centroid = _RegionProperties.centroid
+    local_centroid = _RegionProperties.local_centroid
     area = _RegionProperties.area
     bbox = _RegionProperties.bbox
-    _centroid = _RegionProperties.centroid
-    xcen, ycen = _centroid
-    local_centroid = _RegionProperties.local_centroid
-    moments = _RegionProperties.moments
-    _image_double = _RegionProperties._image_double
-    image = _RegionProperties.image
+    min_value = _RegionProperties.min_intensity
+    max_value = _RegionProperties.max_intensity
+
+    region = self._intensity_image[self.image]
+    @_cached_property
+    def min_position(self):
+        return np.where(self.region == self.min_value)
+
+    @_cached_property
+    def max_position(self):
+        return np.where(self.region == self.max_value)
 
 
 
 def segment_props(image, segment_image, mask_image=None,
-                  mask_method='exclude', labels=None):
+                  mask_method='exclude', labels=None, out_table=False):
     """
     Parameters
     ----------
@@ -58,13 +69,27 @@ def segment_props(image, segment_image, mask_image=None,
         objprops = _SegmentProperties(image, segment_image, label, sl)
         objpropslist.append(objprops)
 
-    #props = ['centroid', 'area', 'radius']
-    props = ['_centroid', 'area', 'bbox', 'xcen', 'ycen']
-    props_table = Table()
-    for prop in props:
-        data = [getattr(objprops, prop) for objprops in objpropslist]
-        props_table[prop] = Column(data)
-    return props_table
+    if not out_table:
+        return objpropslist
+    else:
+        props_table = Table()
+        data = [getattr(objprops, 'centroid') for objprops in objpropslist]
+        xcen, ycen = np.transpose(data)
+
+        props_table['xmin'] = Column(xmin)
+        data = [getattr(objprops, 'bbox') for objprops in objpropslist]
+        xmin, ymin, xmax, ymax = np.transpose(data)
+        props_table['xmin'] = Column(xmin)
+        props_table['xmax'] = Column(xmax)
+        props_table['ymin'] = Column(ymin)
+        props_table['ymax'] = Column(ymax)
+
+        props = ['area', 'min_value', 'max_value', 'min_position',
+                 'max_position']
+        for prop in props:
+            data = [getattr(objprops, prop) for objprops in objpropslist]
+            props_table[prop] = Column(data)
+        return props_table
 
 
 def segment_photometry(image, segment_image, error_image=None, gain=None,
