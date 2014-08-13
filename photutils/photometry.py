@@ -3,10 +3,68 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import copy
 import numpy as np
-from scipy import ndimage
-from astropy.table import Table
+from astropy.table import Table, Column
+from skimage.measure._regionprops import _RegionProperties
 
-__all__ = ['segment_photometry']
+__all__ = ['segment_props', 'segment_photometry']
+
+
+class _SegmentProperties(object):
+    def __init__(self, image, segment_image, label, slice):
+        self.label = label
+        self._slice = slice
+        self._label_image = segment_image
+        self._intensity_image = image
+        self._cache_active = True
+    area = _RegionProperties.area
+    bbox = _RegionProperties.bbox
+    _centroid = _RegionProperties.centroid
+    xcen, ycen = _centroid
+    local_centroid = _RegionProperties.local_centroid
+    moments = _RegionProperties.moments
+    _image_double = _RegionProperties._image_double
+    image = _RegionProperties.image
+
+
+
+def segment_props(image, segment_image, mask_image=None,
+                  mask_method='exclude', labels=None):
+    """
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    xcen, ycen: centroids
+    area
+    radius_equivalent
+    major/minor axis
+    eccen
+    theta
+    2nd order central moments
+
+    """
+
+    from scipy import ndimage
+    objects = ndimage.find_objects(segment_image)
+    objpropslist = []
+    for i, sl in enumerate(objects):
+        if sl is None:
+            continue
+        label = i + 1
+        cache = True
+        #objprops = _RegionProperties(sl, label, segment_image, image, cache)
+        objprops = _SegmentProperties(image, segment_image, label, sl)
+        objpropslist.append(objprops)
+
+    #props = ['centroid', 'area', 'radius']
+    props = ['_centroid', 'area', 'bbox', 'xcen', 'ycen']
+    props_table = Table()
+    for prop in props:
+        data = [getattr(objprops, prop) for objprops in objpropslist]
+        props_table[prop] = Column(data)
+    return props_table
 
 
 def segment_photometry(image, segment_image, error_image=None, gain=None,
@@ -101,6 +159,7 @@ def segment_photometry(image, segment_image, error_image=None, gain=None,
     detect_sources
     """
 
+    from scipy import ndimage
     assert image.shape == segment_image.shape, \
         ('image and segment_image must have the same shape')
     if labels is None:
@@ -133,7 +192,7 @@ def segment_photometry(image, segment_image, error_image=None, gain=None,
             if error_image is not None:
                 error_image[mask_image.nonzero()] = 0.0
         elif mask_method == 'interpolate':
-            for j, i in zip(*mask_image.nonzero())
+            for j, i in zip(*mask_image.nonzero()):
                 y0, y1 = max(j - 1, 0), min(j + 2, image.shape[0])
                 x0, x1 = max(i - 1, 0), min(i + 2, image.shape[1])
                 goodpix = ~mask_image[y0:y1, x0:x1]
