@@ -817,7 +817,7 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
         for i in range(len(data)):
             if data[i].data is not None:
                 warnings.warn("Input data is a HDUList object, photometry is "
-                              "onry run for the %s. HDU."
+                              "onry run for the {0}. HDU."
                               .format(i), AstropyUserWarning)
                 return aperture_photometry(data[i], positions, apertures, wcs,
                                            error, gain, mask, method,
@@ -917,15 +917,29 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
             raise ValueError('subpixels: an integer greater than 0 is '
                              'required')
 
-    # TODO check whether positions is wcs or pixel
     if not pixelcoord or isinstance(positions, SkyCoord):
-        if not isinstance(positions, u.Quantity):
-            # TODO figure out the unit of the input positions for this case
-            positions = u.Quantity(positions, copy=False)
-        from astropy.wcs import wcs
+        from astropy.wcs import wcs, utils
         if wcs_transformation is None:
             wcs_transformation = wcs.WCS(header)
-        pixelpositions = wcs_transformation.wcs_world2pix(positions, 0)
+
+        # TODO this should be simplified once wcs_world2pix()
+        # supports SkyCoord objects as input
+        if isinstance(positions, SkyCoord):
+            # Check which frame the wcs uses
+            framename = utils.wcs_to_celestial_frame(wcs_transformation).name
+            frame = getattr(positions, framename)
+            component_names = frame.representation_component_names.keys()[0:2]
+            positions_repr = u.Quantity(zip(getattr(frame, component_names[0]).deg,
+                                            getattr(frame, component_names[1]).deg),
+                                        unit=u.deg)
+
+        elif not isinstance(positions, u.Quantity):
+            # TODO figure out the unit of the input positions for this case
+            positions_repr = u.Quantity(positions, copy=False)
+
+        pixelpositions = u.Quantity(wcs_transformation.wcs_world2pix
+                                    (positions_repr, 0), unit=u.pixel,
+                                    copy=False)
     else:
         positions = u.Quantity(positions, unit=u.pixel, copy=False)
         pixelpositions = positions
