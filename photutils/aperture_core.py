@@ -9,7 +9,6 @@ import numpy as np
 import warnings
 import astropy.units as u
 from astropy.io import fits
-from astropy.nddata import NDData
 from astropy.table import Table
 from astropy.coordinates import SkyCoord
 from astropy.extern import six
@@ -929,14 +928,25 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
             framename = utils.wcs_to_celestial_frame(wcs_transformation).name
             frame = getattr(positions, framename)
             component_names = frame.representation_component_names.keys()[0:2]
-            positions_repr = u.Quantity(zip(getattr(frame, component_names[0]).deg,
-                                            getattr(frame, component_names[1]).deg),
-                                        unit=u.deg)
-
+            if len(positions.shape) > 0:
+                positions_repr = u.Quantity(zip(getattr(frame,
+                                                        component_names[0]).deg,
+                                                getattr(frame,
+                                                        component_names[1]).deg),
+                                            unit=u.deg)
+            else:
+                positions_repr = (u.Quantity((getattr(frame,
+                                                      component_names[0]).deg,
+                                              getattr(frame,
+                                                      component_names[1]).deg),
+                                             unit=u.deg), )
         elif not isinstance(positions, u.Quantity):
             # TODO figure out the unit of the input positions for this case
-            positions_repr = u.Quantity(positions, copy=False)
-
+            # TODO revise this once wcs_world2pix accepts more input formats
+            if len(positions) > 1 and not isinstance(positions, tuple):
+                positions_repr = u.Quantity(positions, copy=False)
+            else:
+                positions_repr = (u.Quantity(positions, copy=False), )
         pixelpositions = u.Quantity(wcs_transformation.wcs_world2pix
                                     (positions_repr, 0), unit=u.pixel,
                                     copy=False)
@@ -978,10 +988,10 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
     # Note: if wcs is None pixelcoordinates are the same as the input positions
 
     # check whether single or multiple positions
-    if pixelpositions[0].size < 2:
-        coord_columns = ((pixelpositions,), (positions,))
-    else:
+    if len(pixelpositions) > 1 and pixelpositions[0].size >= 2:
         coord_columns = (pixelpositions, positions)
+    else:
+        coord_columns = ((pixelpositions,), (positions,))
 
     coord_col_names = ('pixel_center', 'input_center')
 
@@ -989,7 +999,12 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
                   names=(phot_col_names + coord_col_names),
                   meta={'name': 'Aperture photometry results',
                         'version': 'astropy: {0}, photutils: {1}'
-                        .format(astropy_version, photutils_version)}),
+                        .format(astropy_version, photutils_version),
+                        'calling_args': ('method={0}, subpixels={1}, '
+                                         'error={2}, gain={3}, '
+                                         'pixelwise_error={4}')
+                        .format(method, subpixels, error is not None,
+                                gain is not None, pixelwise_error)}),
             {'apertures': ap})
 
 
