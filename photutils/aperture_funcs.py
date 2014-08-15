@@ -10,8 +10,7 @@ import warnings
 import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
 
-__all__ = ["do_circular_photometry",
-           "do_elliptical_photometry", "do_annulus_photometry"]
+__all__ = []
 
 
 def do_circular_photometry(data, positions, extents, radius,
