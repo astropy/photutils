@@ -398,7 +398,6 @@ class BaseTestDifferentData(object):
         table = aperture_photometry(self.data, self.position, aperture,
                                     method='exact')[0]
 
-        print(table['aperture_sum'], self.true_flux)
         assert_allclose(table['aperture_sum'], self.true_flux)
         assert table['aperture_sum'].unit, self.fluxunit
 
@@ -482,3 +481,29 @@ def test_wcs_based_photometry():
                     photometry_skycoord_s[0]['aperture_sum'])
 
     # TODO compare with fluxes_catalog
+
+
+def test_basic_circular_aperture_photometry_unit():
+
+    data1 = np.ones((40, 40), dtype=np.float)
+    data2 = u.Quantity(data1, unit=u.adu)
+    data3 = u.Quantity(data1, unit=u.Jy)
+
+    radius = 3
+    position = (20, 20)
+    true_flux = np.pi * radius * radius
+    unit = u.adu
+
+    table1 = aperture_photometry(data1, position, ('circular', radius),
+                                 unit=unit)[0]
+    table2 = aperture_photometry(data2, position, ('circular', radius),
+                                 unit=unit)[0]
+    with pytest.raises(u.UnitsError) as err:
+        aperture_photometry(data3, position, ('circular', radius), unit=unit)
+    assert ("UnitsError: Unit of input data (Jy) and unit given by unit "
+            "argument (adu) are not identical." in str(err))
+
+    assert_allclose(table1['aperture_sum'], true_flux)
+    assert_allclose(table2['aperture_sum'], true_flux)
+    assert table1['aperture_sum'].unit == unit
+    assert table2['aperture_sum'].unit == data2.unit == unit

@@ -697,9 +697,9 @@ class RectangularAperture(Aperture):
             return (flux, np.sqrt(fluxvar))
 
 
-def aperture_photometry(data, positions, apertures, wcs=None, error=None,
-                        gain=None, mask=None, method='exact', subpixels=5,
-                        pixelcoord=True, pixelwise_error=True,
+def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
+                        error=None, gain=None, mask=None, method='exact',
+                        subpixels=5, pixelcoord=True, pixelwise_error=True,
                         mask_method='skip'):
     """
     Sum flux within an aperture at the given position(s).
@@ -724,6 +724,11 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
         elements are the parameters for the given mode. Check the
         documentation of the relevant ``Aperture`` classes for more
         information.
+    unit : `~astropy.units.UnitBase` instance, str
+        An object that represents the unit associated with ``data``.  Must
+        be an `~astropy.units.UnitBase` object or a string parseable by the
+        :mod:`~astropy.units` package. An error is raised if ``data``
+        already has a different unit.
     wcs : `~astropy.wcs.WCS`, optional
         Use this as the wcs transformation when either ``pixelcoord`` is
         `False` or ``positions`` is `~astropy.coordinates.SkyCoord`. It
@@ -808,7 +813,8 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
             during the photometry.
 
     """
-
+    dataunit = None
+    datamask = None
     wcs_transformation = wcs
 
     if isinstance(data, (fits.PrimaryHDU, fits.ImageHDU)):
@@ -816,17 +822,14 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
         data = data.data
 
         if 'BUNIT' in header:
-            unit = header['BUNIT']
-        else:
-            unit = ""
-        data = u.Quantity(data, unit=unit, copy=False)
+            dataunit = header['BUNIT']
 
         # TODO check how a mask can be stored in the header, it seems like
         # full pixel masks are not supported by the FITS standard, look for
         # real life examples (e.g. header value stores the fits number of
         # fits extension where the pixelmask is stored?)
         if 'MASK' in header:
-            data.mask = header.mask
+            datamask = header.mask
 
     elif isinstance(data, fits.HDUList):
         # TODO: do it in a 2d array, and thus get the light curves as a
@@ -838,21 +841,36 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
                 warnings.warn("Input data is a HDUList object, photometry is "
                               "onry run for the {0}. HDU."
                               .format(i), AstropyUserWarning)
-                return aperture_photometry(data[i], positions, apertures, wcs,
-                                           error, gain, mask, method,
+                return aperture_photometry(data[i], positions, apertures, unit,
+                                           wcs, error, gain, mask, method,
                                            subpixels, pixelcoord,
                                            pixelwise_error, mask_method)
 
     # this is basically for NDData inputs and alike
     elif hasattr(data, 'data') and not isinstance(data, np.ndarray):
-        datamask = data.mask
         if data.wcs is not None and wcs_transformation is None:
             wcs_transformation = data.wcs
-        data = u.Quantity(data.data, unit=data.unit, copy=False)
-        data.mask = datamask
+        datamask = data.mask
 
+    if hasattr(data, 'unit'):
+        dataunit = data.unit
+
+    if unit is not None and dataunit is not None:
+        if unit != dataunit:
+            raise u.UnitsError('Unit of input data ({0}) and unit given by '
+                               'unit argument ({1}) are not identical.'.
+                               format(dataunit, unit))
+        data = u.Quantity(data, unit=dataunit, copy=False)
+    elif unit is None:
+        if hasattr(data, 'unit'):
+            data = u.Quantity(data, unit=dataunit, copy=False)
+        else:
+            data = u.Quantity(data, copy=False)
     else:
-        data = u.Quantity(data, copy=False)
+        data = u.Quantity(data, unit=unit, copy=False)
+
+    if datamask is None:
+        data.mask = datamask
 
     # Check input array type and dimension.
     if np.iscomplexobj(data):
@@ -862,9 +880,9 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
                          'Only 2-d arrays supported.'.format(data.ndim))
 
     # Deal with the mask if it exist
-    if mask is not None or (hasattr(data, 'mask') and data.mask is not None):
+    if mask is not None or datamask is not None:
         if mask is None:
-            mask = data.mask
+            mask = datamask
         else:
             mask = np.asarray(mask)
             if np.iscomplexobj(mask):
@@ -877,8 +895,8 @@ def aperture_photometry(data, positions, apertures, wcs=None, error=None,
                 raise ValueError('Shapes of mask array and data array '
                                  'must match')
 
-            if hasattr(data, 'mask'):
-                mask *= data.mask
+            if datamask is not None:
+                mask *= datamask
 
         if mask_method == 'skip':
             data *= ~mask
