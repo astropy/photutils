@@ -9,27 +9,27 @@ __all__ = ['centroid_com', 'gaussian1d_moments', 'centroid_1dg',
            'centroid_2dg', 'fit_2dgaussian', 'shape_params']
 
 
-def _convert_image(image, image_mask=None):
+def _convert_image(data, mask=None):
     """
-    Convert the input image to a float64 (double) `numpy.ndarray`,
+    Convert the input data to a float64 (double) `numpy.ndarray`,
     required for input to `skimage.measure.moments` and
     `skimage.measure.moments_central`.
 
-    The input ``image`` is copied unless it already has that
+    The input ``data`` is copied unless it already has that
     `numpy.dtype`.
 
-    If ``image_mask`` is input, then masked pixels are set to zero in
-    the output ``image``.
+    If ``mask`` is input, then masked pixels are set to zero in the
+    output ``data``.
 
     Parameters
     ----------
-    image : array_like
+    data : array_like
         The 2D array of the image.
 
-    image_mask : array_like, bool, optional
-        A boolean mask with the same shape as ``image``, where a `True`
-        value indicates the corresponding element of ``image`` is
-        invalid.  Masked pixels are set to zero in the output ``image``.
+    mask : array_like, bool, optional
+        A boolean mask with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is
+        invalid.  Masked pixels are set to zero in the output ``data``.
 
     Returns
     -------
@@ -38,45 +38,46 @@ def _convert_image(image, image_mask=None):
     """
 
     try:
-        if image_mask is None:
+        if mask is None:
             copy = False
         else:
             copy = True
-        image = np.asarray(image).astype(np.float, copy=copy)
+        image = np.asarray(data).astype(np.float, copy=copy)
     except TypeError:
-        image = np.asarray(image).astype(np.float)    # for numpy <= 1.6
-    if image_mask is not None:
-        image_mask = np.asarray(image_mask)
-        if image.shape != image_mask.shape:
-            raise ValueError('image and image_mask must have the same shape')
-        image[image_mask] = 0.0
+        image = np.asarray(data).astype(np.float)    # for numpy <= 1.6
+    if mask is not None:
+        mask = np.asarray(mask)
+        if data.shape != mask.shape:
+            raise ValueError('data and mask must have the same shape')
+        image[mask] = 0.0
     return image
 
 
-def centroid_com(image, image_mask=None):
+def centroid_com(data, mask=None):
     """
     Calculate the centroid of a 2D array as its center of mass
     determined from image moments.
 
     Parameters
     ----------
-    image : array_like
+    data : array_like or `~astropy.nddata.NDData`
         The 2D array of the image.
 
-    image_mask : array_like, bool, optional
-        A boolean mask with the same shape as ``image``, where a `True`
-        value indicates the corresponding element of ``image`` is
-        invalid.
+    mask : array_like, bool, optional
+        A boolean mask with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is
+        invalid.  If ``mask`` is input it will override ``data.mask``
+        for `~astropy.nddata.NDData` inputs.
 
     Returns
     -------
-    centroid : tuple
+    xcen, ycen : tuple of floats
         (x, y) coordinates of the centroid.
     """
 
     from skimage.measure import moments
-    image = _convert_image(image, image_mask=image_mask)
-    m = moments(image, 1)
+    data = _convert_image(data, mask=mask)
+    m = moments(data, 1)
     xcen = m[1, 0] / m[0, 0]
     ycen = m[0, 1] / m[0, 0]
     return xcen, ycen
@@ -90,8 +91,8 @@ def gaussian1d_moments(data):
 
     Parameters
     ----------
-    data : array_like
-        The 1D array of the data.
+    data : array_like or `~astropy.nddata.NDData`
+        The 1D array of the image.
 
     Returns
     -------
@@ -106,39 +107,42 @@ def gaussian1d_moments(data):
     return amplitude, xc, stddev
 
 
-def centroid_1dg(image, image_error=None, image_mask=None):
+def centroid_1dg(data, uncertainty=None, mask=None):
     """
     Calculate the centroid of a 2D array by fitting 1D Gaussians to the
     marginal x and y distributions of the image.
 
     Parameters
     ----------
-    image : array_like
+    data : array_like or `~astropy.nddata.NDData`
         The 2D array of the image.
 
-    image_error : array_like, optional
-        The 2D array of the 1-sigma errors of the input ``image``.
+    uncertainty : array_like, optional
+        The 2D array of the 1-sigma errors of the input ``data``.  If
+        ``uncertainty`` is input it will override ``data.uncertainty``
+        for `~astropy.nddata.NDData` inputs.
 
-    image_mask : array_like, bool, optional
+    mask : array_like, bool, optional
         (Not yet implemented).
-        A boolean mask with the same shape as ``image``, where a `True`
-        value indicates the corresponding element of ``image`` is
-        invalid.
+        A boolean mask with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is
+        invalid.  If ``mask`` is input it will override ``data.mask``
+        for `~astropy.nddata.NDData` inputs.
 
     Returns
     -------
-    centroid : tuple
+    xcen, ycen : tuple of floats
         (x, y) coordinates of the centroid.
     """
 
-    data_x = image.sum(axis=0)
-    data_y = image.sum(axis=1)
-    if image_error is None:
+    data_x = data.sum(axis=0)
+    data_y = data.sum(axis=1)
+    if uncertainty is None:
         weights_x = None
         weights_y = None
     else:
-        image_err_x = np.sqrt(np.sum(image_error**2, axis=0))
-        image_err_y = np.sqrt(np.sum(image_error**2, axis=1))
+        image_err_x = np.sqrt(np.sum(uncertainty**2, axis=0))
+        image_err_y = np.sqrt(np.sum(uncertainty**2, axis=1))
         weights_x = 1.0 / image_err_x
         weights_y = 1.0 / image_err_y
 
@@ -155,24 +159,25 @@ def centroid_1dg(image, image_error=None, image_mask=None):
     return centroid
 
 
-def centroid_2dg(image, image_error=None, image_mask=None):
+def centroid_2dg(data, uncertainty=None, mask=None):
     """
     Calculate the centroid of a 2D array by fitting a 2D Gaussian to the
     image.
 
     Parameters
     ----------
-    image : array_like
+    data : array_like or `~astropy.nddata.NDData`
         The 2D array of the image.
 
-    image_error : array_like, optional
-        The 2D array of the 1-sigma errors of the input ``image``.
+    uncertainty : array_like, optional
+        The 2D array of the 1-sigma errors of the input ``data``.
 
-    image_mask : array_like, bool, optional
+    mask : array_like, bool, optional
         (Not yet implemented).
-        A boolean mask with the same shape as ``image``, where a `True`
-        value indicates the corresponding element of ``image`` is
-        invalid.
+        A boolean mask with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is
+        invalid.  If ``mask`` is input it will override ``data.mask``
+        for `~astropy.nddata.NDData` inputs.
 
     Returns
     -------
@@ -180,28 +185,28 @@ def centroid_2dg(image, image_error=None, image_mask=None):
         (x, y) coordinates of the centroid.
     """
 
-    gfit = fit_2dgaussian(image, image_error=image_error,
-                          image_mask=image_mask)
+    gfit = fit_2dgaussian(data, uncertainty=uncertainty, mask=mask)
     return gfit.x_mean.value, gfit.y_mean.value
 
 
-def fit_2dgaussian(image, image_error=None, image_mask=None):
+def fit_2dgaussian(data, uncertainty=None, mask=None):
     """
     Fit a 2D Gaussian to a 2D image.
 
     Parameters
     ----------
-    image : array_like
+    data : array_like or `~astropy.nddata.NDData`
         The 2D array of the image.
 
-    image_error : array_like, optional
-        The 2D array of the 1-sigma errors of the input ``image``.
+    uncertainty : array_like, optional
+        The 2D array of the 1-sigma errors of the input ``data``.
 
-    image_mask : array_like, bool, optional
+    mask : array_like, bool, optional
         (Not yet implemented).
-        A boolean mask with the same shape as ``image``, where a `True`
-        value indicates the corresponding element of ``image`` is
-        invalid.
+        A boolean mask with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is
+        invalid.  If ``mask`` is input it will override ``data.mask``
+        for `~astropy.nddata.NDData` inputs.
 
     Returns
     -------
@@ -209,40 +214,42 @@ def fit_2dgaussian(image, image_error=None, image_mask=None):
         (x, y) coordinates of the centroid.
     """
 
-    if image_error is None:
+    if uncertainty is None:
         weights = None
     else:
-        weights = 1.0 / image_error
-    init_param = shape_params(image)
-    init_amplitude = np.ptp(image)
+        weights = 1.0 / uncertainty
+    init_param = shape_params(data, mask=mask)
+    init_amplitude = np.ptp(data)
     g_init = models.Gaussian2D(init_amplitude, init_param['xcen'],
                                init_param['ycen'], init_param['major_axis'],
                                init_param['minor_axis'],
                                theta=init_param['angle'])
     fitter = LevMarLSQFitter()
-    y, x = np.indices(image.shape)
-    gfit = fitter(g_init, x, y, image, weights=weights)
+    y, x = np.indices(data.shape)
+    gfit = fitter(g_init, x, y, data, weights=weights)
     return gfit
 
 
-def shape_params(image, image_mask=None):
+def shape_params(data, mask=None):
     """
     Calculate the centroid and shape parameters of a 2D array (e.g., an
     image cutout of an object) using image moments.
 
     Parameters
     ----------
-    image : array_like
+    data : array_like or `~astropy.nddata.NDData`
         The 2D array of the image.
 
-    image_mask : array_like, bool, optional
-        A boolean mask with the same shape as ``image``, where a `True`
-        value indicates the corresponding element of ``image`` is
-        invalid.
+    mask : array_like, bool, optional
+        A boolean mask with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is
+        invalid.  If ``mask`` is input it will override ``data.mask``
+        for `~astropy.nddata.NDData` inputs.
 
     Returns
     -------
-    dict :  A dictionary containing the object shape parameters:
+    params : dict
+        A dictionary containing the object shape parameters:
 
         * ``xcen, ycen``: The object centroid (zero-based origin).
         * ``major_axis``: The length of the major axis of the ellipse
@@ -266,10 +273,10 @@ def shape_params(image, image_mask=None):
     """
 
     from skimage.measure import moments, moments_central
-    image = _convert_image(image, image_mask=image_mask)
-    xcen, ycen = centroid_com(image)
-    m = moments(image, 1)
-    mu = moments_central(image, ycen, xcen, 2) / m[0, 0]
+    data = _convert_image(data, mask=mask)
+    xcen, ycen = centroid_com(data)
+    m = moments(data, 1)
+    mu = moments_central(data, ycen, xcen, 2) / m[0, 0]
     result = {}
     result['xcen'] = xcen
     result['ycen'] = ycen

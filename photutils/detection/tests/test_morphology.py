@@ -44,8 +44,8 @@ def test_centroid_com_mask():
     """Test centroid_com with and without an image_mask."""
     data = np.ones((2, 2)).astype(np.float)
     mask = [[False, False], [True, True]]
-    centroid = centroid_com(data, image_mask=None)
-    centroid_mask = centroid_com(data, image_mask=mask)
+    centroid = centroid_com(data, mask=None)
+    centroid_mask = centroid_com(data, mask=mask)
     assert_allclose([0.5, 0.5], centroid, rtol=0, atol=1.e-6)
     assert_allclose([0.5, 0.0], centroid_mask, rtol=0, atol=1.e-6)
 
@@ -53,20 +53,20 @@ def test_centroid_com_mask():
 @pytest.mark.skipif('not HAS_SKIMAGE')
 def test_centroid_com_mask_shape():
     """
-    Test if ValueError raises if image_mask shape doesn't match image
+    Test if ValueError raises if mask shape doesn't match data
     shape.
     """
     with pytest.raises(ValueError):
         mask = np.zeros((2, 2), dtype=bool)
-        centroid_com(np.zeros((4, 4)), image_mask=mask)
+        centroid_com(np.zeros((4, 4)), mask=mask)
 
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 def test_shape_params_mask():
     data = np.ones((2, 2)).astype(np.float)
     mask = [[False, False], [True, True]]
-    params = shape_params(data, image_mask=None)
-    params_mask = shape_params(data, image_mask=mask)
+    params = shape_params(data, mask=None)
+    params_mask = shape_params(data, mask=mask)
     result = [params['xcen'], params['ycen'], params['eccen']]
     result_mask = [params_mask['xcen'], params_mask['ycen'],
                    params_mask['eccen']]

@@ -203,7 +203,7 @@ def daofind(data, fwhm, threshold, sigma_radius=1.5, ratio=1.0, theta=0.0,
 
     Parameters
     ----------
-    data : array_like
+    data : array_like or `~astropy.nddata.NDData`
         The 2D array of the image.
 
     fwhm : float
@@ -315,7 +315,7 @@ def irafstarfind(data, fwhm, threshold, sigma_radius=1.5, sky=None,
 
     Parameters
     ----------
-    data : array_like
+    data : array_like or `~astropy.nddata.NDData`
         The 2D array of the image.
 
     fwhm : float
