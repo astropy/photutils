@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import copy
 import numpy as np
 from astropy.table import Table, Column
-from skimage.measure._regionprops import _RegionProperties
+from skimage.measure._regionprops import _RegionProperties, _cached_property
 
 __all__ = ['segment_props', 'segment_photometry']
 
@@ -18,16 +18,21 @@ class _SegmentProperties(object):
         self._cache_active = True
 
     image = _RegionProperties.image
+    intensity_image = _RegionProperties.intensity_image
     _image_double = _RegionProperties._image_double
     moments = _RegionProperties.moments
     centroid = _RegionProperties.centroid
     local_centroid = _RegionProperties.local_centroid
+
     area = _RegionProperties.area
     bbox = _RegionProperties.bbox
     min_value = _RegionProperties.min_intensity
     max_value = _RegionProperties.max_intensity
 
-    region = self._intensity_image[self.image]
+    @_cached_property
+    def region(self):
+        return self.intensity_image[self.image]
+
     @_cached_property
     def min_position(self):
         return np.where(self.region == self.min_value)
