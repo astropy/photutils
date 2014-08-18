@@ -3,12 +3,10 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
 from imageutils import img_stats
-from astropy.nddata import expand_nddata_args
 
 __all__ = ['detect_sources', 'find_peaks']
 
 
-@expand_nddata_args
 def detect_sources(data, snr_threshold, npixels, filter_fwhm=None,
                    mask=None, mask_val=None, sig=3.0, iters=None):
     """
@@ -104,7 +102,6 @@ def detect_sources(data, snr_threshold, npixels, filter_fwhm=None,
     return objlabels
 
 
-@expand_nddata_args
 def find_peaks(data, snr_threshold, min_distance=5, exclude_border=True,
                indices=True, num_peaks=np.inf, footprint=None, labels=None,
                mask=None, mask_val=None, sig=3.0, iters=None):
