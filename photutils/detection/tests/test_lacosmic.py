@@ -54,11 +54,11 @@ class TestLACosmic(object):
 
     def test_mask_image(self):
         """Test lacosmic with an input mask image."""
-        mask_image = MASK_REF.copy()
-        mask_image[2, 1] = False
-        mask_ref2 = np.logical_and(MASK_REF, ~mask_image)
+        mask = MASK_REF.copy()
+        mask[2, 1] = False
+        mask_ref2 = np.logical_and(MASK_REF, ~mask)
         crclean_img, crmask_img = lacosmic(CR_IMG, 3, 2, 2, gain=1,
-                                           readnoise=0, mask_image=mask_image)
+                                           readnoise=0, mask=mask)
         assert_allclose(crclean_img * mask_ref2, IMG * mask_ref2, atol=0.76)
         assert_array_equal(crmask_img, mask_ref2)
 
@@ -66,7 +66,7 @@ class TestLACosmic(object):
         """Test lacosmic with an input error image."""
         error_img = np.sqrt(IMG.clip(min=0.001))
         crclean_img, crmask_img = lacosmic(CR_IMG, 3, 2, 2, gain=1,
-                                           readnoise=0, error_image=error_img)
+                                           readnoise=0, uncertainty=error_img)
         assert_allclose(crclean_img, IMG, atol=0.76)
         assert_array_equal(crmask_img, MASK_REF)
 
@@ -88,4 +88,4 @@ class TestLACosmic(object):
         with pytest.raises(AssertionError):
             crclean_img, crmask_img = lacosmic(CR_IMG, 3, 2, 2, gain=1,
                                                readnoise=0,
-                                               error_image=error_img)
+                                               uncertainty=error_img)
