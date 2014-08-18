@@ -82,16 +82,15 @@ class TestDetectSources(object):
         sig=10 and iters=1 to prevent sigma clipping after applying the mask.
         """
 
-        image_mask = REF3.astype(np.bool)
-        segm = detect_sources(DATA, 0.1, 1, image_mask=image_mask, sig=10,
-                              iters=1)
+        mask = REF3.astype(np.bool)
+        segm = detect_sources(DATA, 0.1, 1, mask=mask, sig=10, iters=1)
         assert_array_equal(segm, REF2)
 
     def test_image_mask_override(self):
         """Test that image_mask overrides mask_val."""
-        image_mask = REF3.astype(np.bool)
-        segm = detect_sources(DATA, 0.1, 1, mask_val=0.0,
-                              image_mask=image_mask, sig=10, iters=1)
+        mask = REF3.astype(np.bool)
+        segm = detect_sources(DATA, 0.1, 1, mask_val=0.0, mask=mask,
+                              sig=10, iters=1)
         assert_array_equal(segm, REF2)
 
 

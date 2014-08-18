@@ -3,12 +3,14 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
 from imageutils import img_stats
+from astropy.nddata import expand_nddata_args
 
 __all__ = ['detect_sources', 'find_peaks']
 
 
-def detect_sources(image, snr_threshold, npixels, filter_fwhm=None,
-                   image_mask=None, mask_val=None, sig=3.0, iters=None):
+@expand_nddata_args
+def detect_sources(data, snr_threshold, npixels, filter_fwhm=None,
+                   mask=None, mask_val=None, sig=3.0, iters=None):
     """
     Detect sources above a specified signal-to-noise ratio
     in a 2D image and return a 2D segmentation image.
@@ -17,7 +19,7 @@ def detect_sources(image, snr_threshold, npixels, filter_fwhm=None,
 
     Parameters
     ----------
-    image : array_like
+    data : array_like or `~astropy.nddata.NDData`
         The 2D array of the image.
 
     snr_threshold : float
@@ -40,11 +42,12 @@ def detect_sources(image, snr_threshold, npixels, filter_fwhm=None,
         ``filter_fwhm``.  Set to `None` (the default) to turn off image
         filtering.
 
-    image_mask : array_like, bool, optional
+    mask : array_like, bool, optional
         A boolean mask with the same shape as ``image``, where a `True`
         value indicates the corresponding element of ``image`` is
         invalid.  Masked pixels are ignored when computing the image
-        background statistics.
+        background statistics.  If ``mask`` is input it will override
+        ``data.mask`` for `~astropy.nddata.NDData` inputs.
 
     mask_val : float, optional
         An image data value (e.g., ``0.0``) that is ignored when
@@ -70,16 +73,16 @@ def detect_sources(image, snr_threshold, npixels, filter_fwhm=None,
     """
 
     from scipy import ndimage
-    bkgrd, median, bkgrd_rms = img_stats(image, image_mask=image_mask,
+    bkgrd, median, bkgrd_rms = img_stats(data, image_mask=mask,
                                          mask_val=mask_val, sig=sig,
                                          iters=iters)
     assert npixels > 0, 'npixels must be a positive integer'
     assert int(npixels) == npixels, 'npixels must be a positive integer'
 
     if filter_fwhm is not None:
-        img_smooth = ndimage.gaussian_filter(image, filter_fwhm)
+        img_smooth = ndimage.gaussian_filter(data, filter_fwhm)
     else:
-        img_smooth = image
+        img_smooth = data
 
     # threshold the smoothed image
     level = bkgrd + (bkgrd_rms * snr_threshold)
@@ -101,9 +104,10 @@ def detect_sources(image, snr_threshold, npixels, filter_fwhm=None,
     return objlabels
 
 
-def find_peaks(image, snr_threshold, min_distance=5, exclude_border=True,
+@expand_nddata_args
+def find_peaks(data, snr_threshold, min_distance=5, exclude_border=True,
                indices=True, num_peaks=np.inf, footprint=None, labels=None,
-               image_mask=None, mask_val=None, sig=3.0, iters=None):
+               mask=None, mask_val=None, sig=3.0, iters=None):
     """
     Find peaks in an image above above a specified signal-to-noise ratio
     threshold and return them as coordinates or a boolean array.
@@ -117,7 +121,7 @@ def find_peaks(image, snr_threshold, min_distance=5, exclude_border=True,
 
     Parameters
     ----------
-    image : array_like
+    data : array_like or `~astropy.nddata.NDData`
         The 2D array of the image.
 
     snr_threshold : float
@@ -158,11 +162,12 @@ def find_peaks(image, snr_threshold, min_distance=5, exclude_border=True,
         unique region to search for peaks.  Zero is reserved for
         background.
 
-    image_mask : array_like, bool, optional
+    mask : array_like, bool, optional
         A boolean mask with the same shape as ``image``, where a `True`
         value indicates the corresponding element of ``image`` is
         invalid.  Masked pixels are ignored when computing the image
-        background statistics.
+        background statistics.  If ``mask`` is input it will override
+        ``data.mask`` for `~astropy.nddata.NDData` inputs.
 
     mask_val : float, optional
         An image data value (e.g., ``0.0``) that is ignored when
@@ -199,11 +204,11 @@ def find_peaks(image, snr_threshold, min_distance=5, exclude_border=True,
     """
     from skimage.feature import peak_local_max
 
-    bkgrd, median, bkgrd_rms = img_stats(image, image_mask=image_mask,
+    bkgrd, median, bkgrd_rms = img_stats(data, image_mask=mask,
                                          mask_val=mask_val, sig=sig,
                                          iters=iters)
     level = bkgrd + (bkgrd_rms * snr_threshold)
-    return peak_local_max(image, min_distance=min_distance,
+    return peak_local_max(data, min_distance=min_distance,
                           threshold_abs=level, threshold_rel=0.0,
                           exclude_border=exclude_border, indices=indices,
                           num_peaks=num_peaks, footprint=footprint,
