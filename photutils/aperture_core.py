@@ -18,8 +18,11 @@ from .aperture_funcs import do_circular_photometry, do_elliptical_photometry, \
                             do_annulus_photometry
 
 __all__ = ["Aperture",
-           "CircularAperture", "CircularAnnulus",
-           "EllipticalAperture", "EllipticalAnnulus",
+           "SkyCircularAperture",
+           "CircularAperture",
+           "CircularAnnulus",
+           "EllipticalAperture",
+           "EllipticalAnnulus",
            "RectangularAperture",
            "aperture_photometry"]
 
@@ -39,12 +42,57 @@ def _make_annulus_path(patch_inner, patch_outer):
     return mpath.Path(verts, codes)
 
 
+def skycoord_to_pixel(positions, wcs):
+
+    from astropy.wcs import wcs
+
+    try:
+        from astropy.wcs.utils import wcs_to_celestial_frame
+    except ImportError:  # Astropy < 1.0
+        from .extern.wcs_utils import wcs_to_celestial_frame
+
+    # TODO this should be simplified once wcs_world2pix() supports
+    # SkyCoord objects as input
+
+    # Check which frame the wcs uses
+    framename = wcs_to_celestial_frame(wcs).name
+    frame = getattr(positions, framename)
+    component_names = frame.representation_component_names.keys()[0:2]
+    if len(positions.shape) > 0:
+        positions_repr = u.Quantity(zip(getattr(frame,
+                                                component_names[0]).deg,
+                                        getattr(frame,
+                                                component_names[1]).deg),
+                                    unit=u.deg)
+    else:
+        positions_repr = (u.Quantity((getattr(frame,
+                                              component_names[0]).deg,
+                                      getattr(frame,
+                                              component_names[1]).deg),
+                                     unit=u.deg), )
+
+    pixelpositions = u.Quantity(wcs.wcs_world2pix(positions_repr, 0),
+                                unit=u.pixel, copy=False)
+
+    return pixelpositions
+
+
 class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
     pass
 
 
 @six.add_metaclass(_ABCMetaAndInheritDocstrings)
 class Aperture(object):
+    pass
+
+
+@six.add_metaclass(_ABCMetaAndInheritDocstrings)
+class SkyAperture(Aperture):
+    pass
+
+
+@six.add_metaclass(_ABCMetaAndInheritDocstrings)
+class PixelAperture(Aperture):
     """
     Abstract base class for an arbitrary 2-d aperture.
 
@@ -181,6 +229,40 @@ class Aperture(object):
         return {'ood_filter': ood_filter,
                 'pixel_extent': [x_min, x_max, y_min, y_max],
                 'phot_extent': [x_pmin, x_pmax, y_pmin, y_pmax]}
+
+
+class SkyCircularAperture(SkyAperture):
+    """
+    Circular aperture(s), defined in sky coordinates
+
+    Parameters
+    ----------
+    positions : tuple, or list, or array
+        Center coordinates of the apertures as list or array of (x, y)
+        pixelcoordinates.
+    r : float
+        The radius of the aperture.
+    """
+
+    def __init__(self, positions, r):
+
+        if isinstance(positions, SkyCoord):
+            self.positions = positions
+        else:
+            raise TypeError("positions should be a SkyCoord instance")
+
+        if not isinstance(r, u.Quantity):
+            self.r = r
+        else:
+            raise TypeError("r should be a Quantity instance")
+
+    def to_pixel(self, wcs):
+        """
+        Return a CircularAperture instance in pixel coordinates
+        """
+        pixelpositions = skycoord_to_pixel(self.positions)
+        r = self.r.value  # TODO: fix, wrong for now, requires pixel scale
+        return CircularAperture(pixelpositions, r)
 
 
 class CircularAperture(Aperture):
@@ -799,7 +881,7 @@ class RectangularAperture(Aperture):
             return (flux, np.sqrt(fluxvar))
 
 
-def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
+def aperture_photometry(data, apertures, unit=None, wcs=None,
                         error=None, gain=None, mask=None, method='exact',
                         subpixels=5, pixelcoord=True, pixelwise_error=True,
                         mask_method='skip'):
@@ -812,20 +894,8 @@ def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
         The 2-d array on which to perform photometry. Units are used during
         the photometry, either provided along with the data array, or stored
         in the header keyword ``'BUNIT'``.
-    positions : list, tuple, nd.array or `~astropy.coordinates.SkyCoord`
-        Positions of the aperture centers, either in pixel or sky
-        coordinates. If positions is `~astropy.coordinates.SkyCoord` or
-        ``pixelcoord`` is `False` a wcs transformation is also needed to
-        convert the input positions to pixel positions. If ``positions`` are
-        sky positions but not an `~astropy.coordinates.SkyCoord` object, it
-        need to be in the same celestial frame as the wcs transformation.
-    apertures : tuple
-        First element of the tuple is the mode, the currently supported ones
-        are: ``'circular'``, ``'elliptical'``, ``'circular_annulus'``,
-        ``'elliptical_annulus'``, ``'rectangular'``. The remaining (1 to 4)
-        elements are the parameters for the given mode. Check the
-        documentation of the relevant ``Aperture`` classes for more
-        information.
+    apertures : Aperture instance
+        The apertures to use for the photometry
     unit : `~astropy.units.UnitBase` instance, str
         An object that represents the unit associated with ``data``.  Must
         be an `~astropy.units.UnitBase` object or a string parseable by the
@@ -943,7 +1013,7 @@ def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
                 warnings.warn("Input data is a HDUList object, photometry is "
                               "only run for the {0}. HDU."
                               .format(i), AstropyUserWarning)
-                return aperture_photometry(data[i], positions, apertures, unit,
+                return aperture_photometry(data[i], apertures, unit,
                                            wcs, error, gain, mask, method,
                                            subpixels, pixelcoord,
                                            pixelwise_error, mask_method)
@@ -1056,65 +1126,15 @@ def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
             raise ValueError('subpixels: an integer greater than 0 is '
                              'required')
 
-    if not pixelcoord or isinstance(positions, SkyCoord):
+    if wcs_transformation is None:
+        wcs_transformation = wcs.WCS(header)
 
-        from astropy.wcs import wcs
+    ap = apertures
 
-        try:
-            from astropy.wcs.utils import wcs_to_celestial_frame
-        except ImportError:  # Astropy < 1.0
-            from .extern.wcs_utils import wcs_to_celestial_frame
-
-        if wcs_transformation is None:
-            wcs_transformation = wcs.WCS(header)
-
-        # TODO this should be simplified once wcs_world2pix() supports
-        # SkyCoord objects as input
-        if isinstance(positions, SkyCoord):
-            # Check which frame the wcs uses
-            framename = wcs_to_celestial_frame(wcs_transformation).name
-            frame = getattr(positions, framename)
-            component_names = list(frame.representation_component_names.keys())[0:2]
-            if len(positions.shape) > 0:
-                positions_repr = u.Quantity(zip(getattr(frame,
-                                                        component_names[0]).deg,
-                                                getattr(frame,
-                                                        component_names[1]).deg),
-                                            unit=u.deg)
-            else:
-                positions_repr = (u.Quantity((getattr(frame,
-                                                      component_names[0]).deg,
-                                              getattr(frame,
-                                                      component_names[1]).deg),
-                                             unit=u.deg), )
-        elif not isinstance(positions, u.Quantity):
-            # TODO figure out the unit of the input positions for this case
-            # TODO revise this once wcs_world2pix() accepts more input formats
-            if len(positions) > 1 and not isinstance(positions, tuple):
-                positions_repr = u.Quantity(positions, copy=False)
-            else:
-                positions_repr = (u.Quantity(positions, copy=False), )
-        pixelpositions = u.Quantity(wcs_transformation.wcs_world2pix
-                                    (positions_repr, 0), unit=u.pixel,
-                                    copy=False)
-    else:
-        positions = u.Quantity(positions, unit=u.pixel, copy=False)
-        pixelpositions = positions
-
-    if apertures[0] == 'circular':
-        ap = CircularAperture(pixelpositions.value, apertures[1])
-    elif apertures[0] == 'circular_annulus':
-        ap = CircularAnnulus(pixelpositions.value, *apertures[1:3])
-    elif apertures[0] == 'elliptical':
-        ap = EllipticalAperture(pixelpositions.value, *apertures[1:4])
-    elif apertures[0] == 'elliptical_annulus':
-        ap = EllipticalAnnulus(pixelpositions.value, *apertures[1:5])
-    elif apertures[0] == 'rectangular':
-        if method == 'exact':
-            warnings.warn("'exact' method is not implemented, defaults to "
-                          "'subpixel' instead", AstropyUserWarning)
-            method = 'subpixel'
-        ap = RectangularAperture(pixelpositions.value, *apertures[1:4])
+    positions = ap.positions
+    if isinstance(apertures, SkyAperture):
+        apertures = ap.with_wcs(wcs_transformation)
+    pixelpositions = ap.positions
 
     # Prepare version return data
     from astropy import __version__
