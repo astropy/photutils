@@ -7,10 +7,12 @@ import math
 import abc
 import numpy as np
 import warnings
+import astropy.units as u
+from astropy.io import fits
 from astropy.table import Table
+from astropy.coordinates import SkyCoord
 from astropy.extern import six
 from astropy.utils.exceptions import AstropyUserWarning
-import astropy.units as u
 from .aperture_funcs import do_circular_photometry, do_elliptical_photometry, \
                             do_annulus_photometry
 
@@ -51,7 +53,7 @@ class Aperture(object):
         """
         Extent of apertures. In the case when part of an aperture's extent
         falls out of the actual data region, the
-        `~photutils.Aperture.get_phot_extent` function redefines the extent
+        ``~photutils.Aperture.get_phot_extent`` method redefines the extent
         which has data coverage.
 
         Returns
@@ -59,6 +61,7 @@ class Aperture(object):
         x_min, x_max, y_min, y_max: list of floats
             Extent of the apertures.
         """
+
     @abc.abstractmethod
     def plot(self, ax=None, fill=False, **kwargs):
         """
@@ -95,15 +98,15 @@ class Aperture(object):
         Returns
         -------
         extents : dict
-            ``extents`` dictionary contains 3 elements:
+            The ``extents`` dictionary contains 3 elements:
 
-            ``'ood_filter'``
+            * ``'ood_filter'``
                 A boolean array with `True` elements where the aperture is
                 falling out of the data region.
-            ``'pixel_extent'``
+            * ``'pixel_extent'``
                 x_min, x_max, y_min, y_max : Refined extent of apertures with
                 data coverage.
-            ``'phot_extent'``
+            * ``'phot_extent'``
                 x_pmin, x_pmax, y_pmin, y_pmax: Extent centered to the 0, 0
                 positions as required by the `~photutils.geometry` functions.
 
@@ -162,6 +165,8 @@ class CircularAperture(Aperture):
         if r < 0:
             raise ValueError('r must be non-negative')
 
+        if isinstance(positions, u.Quantity):
+            positions = positions.value
         if isinstance(positions, (list, tuple, np.ndarray)):
             self.positions = np.atleast_2d(positions)
         else:
@@ -237,6 +242,8 @@ class CircularAnnulus(Aperture):
         if r_in < 0:
             raise ValueError('r_in must be non-negative')
 
+        if isinstance(positions, u.Quantity):
+            positions = positions.value
         if isinstance(positions, (list, tuple, np.ndarray)):
             self.positions = np.atleast_2d(positions)
         else:
@@ -328,6 +335,8 @@ class EllipticalAperture(Aperture):
         if a < 0 or b < 0:
             raise ValueError("'a' and 'b' must be non-negative.")
 
+        if isinstance(positions, u.Quantity):
+            positions = positions.value
         if isinstance(positions, (list, tuple, np.ndarray)):
             self.positions = np.atleast_2d(positions)
         else:
@@ -422,6 +431,8 @@ class EllipticalAnnulus(Aperture):
 
         self.b_in = a_in * b_out / a_out
 
+        if isinstance(positions, u.Quantity):
+            positions = positions.value
         if isinstance(positions, (list, tuple, np.ndarray)):
             self.positions = np.atleast_2d(positions)
         else:
@@ -511,6 +522,8 @@ class RectangularAperture(Aperture):
         if w < 0 or h < 0:
             raise ValueError("'w' and 'h' must be nonnegative.")
 
+        if isinstance(positions, u.Quantity):
+            positions = positions.value
         if isinstance(positions, (list, tuple, np.ndarray)):
             self.positions = np.atleast_2d(positions)
         else:
@@ -684,25 +697,43 @@ class RectangularAperture(Aperture):
             return (flux, np.sqrt(fluxvar))
 
 
-doc_template = ("""\
-    {desc}
-
-    Multiple objects can be specified.
+def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
+                        error=None, gain=None, mask=None, method='exact',
+                        subpixels=5, pixelcoord=True, pixelwise_error=True,
+                        mask_method='skip'):
+    """
+    Sum flux within an aperture at the given position(s).
 
     Parameters
     ----------
-    data : array_like
-        The 2-d array on which to perform photometry.
-    {args}
-        Note that for subpixel sampling, the input array is only
-        resampled once for each object.
-    positions : list, tuple or nd.array
-        Pixel positions.
+    data : array_like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
+        The 2-d array on which to perform photometry. Units are used during
+        the photometry, either provided along with the data array, or stored
+        in the header keyword ``'BUNIT'``.
+    positions : list, tuple, nd.array or `~astropy.coordinates.SkyCoord`
+        Positions of the aperture centers, either in pixel or sky
+        coordinates. If positions is `~astropy.coordinates.SkyCoord` or
+        ``pixelcoord`` is `False` a wcs transformation is also needed to
+        convert the input positions to pixel positions. If ``positions`` are
+        sky positions but not an `~astropy.coordinates.SkyCoord` object, it
+        need to be in the same celestial frame as the wcs transformation.
     apertures : tuple
-        First element of the tuple is the mode, currently supported ones
-        are: ``circular``, ``elliptical``, ``circular_annulus``,
-        ``elliptical_annulus``, ``rectangular``. The remaining (1 to 4)
-        elements are the parameters for the given mode.
+        First element of the tuple is the mode, the currently supported ones
+        are: ``'circular'``, ``'elliptical'``, ``'circular_annulus'``,
+        ``'elliptical_annulus'``, ``'rectangular'``. The remaining (1 to 4)
+        elements are the parameters for the given mode. Check the
+        documentation of the relevant ``Aperture`` classes for more
+        information.
+    unit : `~astropy.units.UnitBase` instance, str
+        An object that represents the unit associated with ``data``.  Must
+        be an `~astropy.units.UnitBase` object or a string parseable by the
+        :mod:`~astropy.units` package. An error is raised if ``data``
+        already has a different unit.
+    wcs : `~astropy.wcs.WCS`, optional
+        Use this as the wcs transformation when either ``pixelcoord`` is
+        `False` or ``positions`` is `~astropy.coordinates.SkyCoord`. It
+        overrides any wcs transformation passed along with ``data`` either
+        in the header or in an attribute.
     error : float or array_like, optional
         Error in each pixel, interpreted as Gaussian 1-sigma uncertainty.
     gain : float or array_like, optional
@@ -720,33 +751,40 @@ doc_template = ("""\
         are available for all types of apertures. More precise methods will
         generally be slower.
 
-        'center'
+        * ``'center'``
             A pixel is considered to be entirely in or out of the aperture
             depending on whether its center is in or out of the aperture.
-        'subpixel'
-            A pixel is divided into subpixels and the center of each subpixel
-            is tested (as above). With ``subpixels`` set to 1, this method is
-            equivalent to 'center'.
-        'exact' (default)
+        * ``'subpixel'``
+            A pixel is divided into subpixels and the center of each
+            subpixel is tested (as above). With ``subpixels`` set to 1, this
+            method is equivalent to 'center'. Note that for subpixel
+            sampling, the input array is only resampled once for each
+            object.
+        * ``'exact'`` (default)
             The exact overlap between the aperture and each pixel is
             calculated.
     subpixels : int, optional
-        For the 'subpixel' method, resample pixels by this factor (in
+        For the ``'subpixel'`` method, resample pixels by this factor (in
         each dimension). That is, each pixel is divided into
         ``subpixels ** 2`` subpixels.
+    pixelcoord : bool, optional
+        If `True` (default), assume ``positions`` are pixel positions. If
+        `False`, assume the input positions are sky coordinates and uses the
+        wcs transformation (provided either via ``wcs`` or along with
+        ``data``) to convert them to pixel positions.
     pixelwise_error : bool, optional
         For error and/or gain arrays. If `True`, assume error and/or gain
         vary significantly within an aperture: sum contribution from each
-        pixel. If False, assume error and gain do not vary significantly
+        pixel. If `False`, assume error and gain do not vary significantly
         within an aperture. Use the single value of error and/or gain at
         the center of each aperture as the value for the entire aperture.
         Default is `True`.
     mask_method : str, optional
         Method to treat masked pixels. Currently supported methods:
 
-        'skip'
+        * ``'skip'``
             Leave out the masked pixels from all calculations.
-        'interpolation'
+        * ``'interpolation'``
             The value of the masked pixels are replaced by the mean value of
             the neighbouring non-masked pixels.
 
@@ -755,30 +793,86 @@ doc_template = ("""\
     phot_table : `~astropy.table.Table`
         A table of the photometry with the following columns:
 
-        * ``aperture_sum``: Sum of the values within the aperture.
-        * ``aperture_sum_err``: Corresponding uncertainty in
-          ``aperture_sum`` values.  Returned only if input ``error`` is not
+        * ``'aperture_sum'``: Sum of the values within the aperture.
+        * ``'aperture_sum_err'``: Corresponding uncertainty in
+          ``'aperture_sum'`` values.  Returned only if input ``error`` is not
           `None`.
+        * ``'pixel_center'``: pixel coordinate pairs of the center of the
+          apertures. Unit is pixel.
+        * ``'input_center'``: input coordinate pairs as they were given in the
+          ``positions`` parameter.
 
+        The metadata of the table stores the version numbers of both astropy
+        and photutils, as well as the calling arguments.
     aux_dict : dict
         Auxilary dictionary storing all the auxilary information
         available. The element are the following:
 
-        'apertures'
+        * ``'apertures'``
             The `~photutils.Aperture` object containing the apertures to use
             during the photometry.
 
-    {seealso}
-    """)
+    """
+    dataunit = None
+    datamask = None
+    wcs_transformation = wcs
 
+    if isinstance(data, (fits.PrimaryHDU, fits.ImageHDU)):
+        header = data.header
+        data = data.data
 
-def aperture_photometry(data, positions, apertures, error=None, gain=None,
-                        mask=None, method='exact', subpixels=5,
-                        pixelwise_error=True, mask_method='skip'):
-    """Sum flux within aperture(s)."""
+        if 'BUNIT' in header:
+            dataunit = header['BUNIT']
+
+        # TODO check how a mask can be stored in the header, it seems like
+        # full pixel masks are not supported by the FITS standard, look for
+        # real life examples (e.g. header value stores the fits number of
+        # fits extension where the pixelmask is stored?)
+        if 'MASK' in header:
+            datamask = header.mask
+
+    elif isinstance(data, fits.HDUList):
+        # TODO: do it in a 2d array, and thus get the light curves as a
+        # side-product? Although it's not usual to store time series as
+        # HDUList
+
+        for i in range(len(data)):
+            if data[i].data is not None:
+                warnings.warn("Input data is a HDUList object, photometry is "
+                              "onry run for the {0}. HDU."
+                              .format(i), AstropyUserWarning)
+                return aperture_photometry(data[i], positions, apertures, unit,
+                                           wcs, error, gain, mask, method,
+                                           subpixels, pixelcoord,
+                                           pixelwise_error, mask_method)
+
+    # this is basically for NDData inputs and alike
+    elif hasattr(data, 'data') and not isinstance(data, np.ndarray):
+        if data.wcs is not None and wcs_transformation is None:
+            wcs_transformation = data.wcs
+        datamask = data.mask
+
+    if hasattr(data, 'unit'):
+        dataunit = data.unit
+
+    if unit is not None and dataunit is not None:
+        if unit != dataunit:
+            raise u.UnitsError('Unit of input data ({0}) and unit given by '
+                               'unit argument ({1}) are not identical.'.
+                               format(dataunit, unit))
+        data = u.Quantity(data, unit=dataunit, copy=False)
+    elif unit is None:
+        if hasattr(data, 'unit'):
+            data = u.Quantity(data, unit=dataunit, copy=False)
+        else:
+            data = u.Quantity(data, copy=False)
+    else:
+        data = u.Quantity(data, unit=unit, copy=False)
+
+    if datamask is None:
+        data.mask = datamask
 
     # Check input array type and dimension.
-    data = u.Quantity(data)
     if np.iscomplexobj(data):
         raise TypeError('Complex type not supported')
     if data.ndim != 2:
@@ -786,9 +880,9 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
                          'Only 2-d arrays supported.'.format(data.ndim))
 
     # Deal with the mask if it exist
-    if mask is not None or hasattr(data, 'mask'):
+    if mask is not None or datamask is not None:
         if mask is None:
-            mask = data.mask
+            mask = datamask
         else:
             mask = np.asarray(mask)
             if np.iscomplexobj(mask):
@@ -801,8 +895,8 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
                 raise ValueError('Shapes of mask array and data array '
                                  'must match')
 
-            if hasattr(data, 'mask'):
-                mask *= data.mask
+            if datamask is not None:
+                mask *= datamask
 
         if mask_method == 'skip':
             data *= ~mask
@@ -830,7 +924,7 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
             error = u.Quantity(np.broadcast_arrays(error, data),
                                unit=data.unit)[0]
         else:
-            error = u.Quantity(error, unit=data.unit)
+            error = u.Quantity(error, unit=data.unit, copy=False)
 
         if error.shape != data.shape:
             raise ValueError('shapes of error array and data array must'
@@ -860,23 +954,58 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
             raise ValueError('subpixels: an integer greater than 0 is '
                              'required')
 
-    # TODO check whether positions is wcs or pixel
-    pixelpositions = positions
+    if not pixelcoord or isinstance(positions, SkyCoord):
+        from astropy.wcs import wcs, utils
+        if wcs_transformation is None:
+            wcs_transformation = wcs.WCS(header)
+
+        # TODO this should be simplified once wcs_world2pix() supports
+        # SkyCoord objects as input
+        if isinstance(positions, SkyCoord):
+            # Check which frame the wcs uses
+            framename = utils.wcs_to_celestial_frame(wcs_transformation).name
+            frame = getattr(positions, framename)
+            component_names = frame.representation_component_names.keys()[0:2]
+            if len(positions.shape) > 0:
+                positions_repr = u.Quantity(zip(getattr(frame,
+                                                        component_names[0]).deg,
+                                                getattr(frame,
+                                                        component_names[1]).deg),
+                                            unit=u.deg)
+            else:
+                positions_repr = (u.Quantity((getattr(frame,
+                                                      component_names[0]).deg,
+                                              getattr(frame,
+                                                      component_names[1]).deg),
+                                             unit=u.deg), )
+        elif not isinstance(positions, u.Quantity):
+            # TODO figure out the unit of the input positions for this case
+            # TODO revise this once wcs_world2pix() accepts more input formats
+            if len(positions) > 1 and not isinstance(positions, tuple):
+                positions_repr = u.Quantity(positions, copy=False)
+            else:
+                positions_repr = (u.Quantity(positions, copy=False), )
+        pixelpositions = u.Quantity(wcs_transformation.wcs_world2pix
+                                    (positions_repr, 0), unit=u.pixel,
+                                    copy=False)
+    else:
+        positions = u.Quantity(positions, unit=u.pixel, copy=False)
+        pixelpositions = positions
 
     if apertures[0] == 'circular':
-        ap = CircularAperture(pixelpositions, apertures[1])
+        ap = CircularAperture(pixelpositions.value, apertures[1])
     elif apertures[0] == 'circular_annulus':
-        ap = CircularAnnulus(pixelpositions, *apertures[1:3])
+        ap = CircularAnnulus(pixelpositions.value, *apertures[1:3])
     elif apertures[0] == 'elliptical':
-        ap = EllipticalAperture(pixelpositions, *apertures[1:4])
+        ap = EllipticalAperture(pixelpositions.value, *apertures[1:4])
     elif apertures[0] == 'elliptical_annulus':
-        ap = EllipticalAnnulus(pixelpositions, *apertures[1:5])
+        ap = EllipticalAnnulus(pixelpositions.value, *apertures[1:5])
     elif apertures[0] == 'rectangular':
         if method == 'exact':
             warnings.warn("'exact' method is not implemented, defaults to "
                           "'subpixel' instead", AstropyUserWarning)
             method = 'subpixel'
-        ap = RectangularAperture(pixelpositions, *apertures[1:4])
+        ap = RectangularAperture(pixelpositions.value, *apertures[1:4])
 
     # Prepare version return data
     from astropy import __version__
@@ -890,20 +1019,29 @@ def aperture_photometry(data, positions, apertures, error=None, gain=None,
                                          error=error, gain=gain,
                                          pixelwise_error=pixelwise_error)
     if error is None:
-        col_names = ('aperture_sum', )
+        phot_col_names = ('aperture_sum', )
     else:
-        col_names = ('aperture_sum', 'aperture_sum_err')
+        phot_col_names = ('aperture_sum', 'aperture_sum_err')
 
-    return (Table(data=photometry_result, names=col_names,
+    # Note: if wcs_transformation is None, 'pixel_center' will be the same
+    # as 'input_center'
+
+    # check whether single or multiple positions
+    if len(pixelpositions) > 1 and pixelpositions[0].size >= 2:
+        coord_columns = (pixelpositions, positions)
+    else:
+        coord_columns = ((pixelpositions,), (positions,))
+
+    coord_col_names = ('pixel_center', 'input_center')
+
+    return (Table(data=(photometry_result + coord_columns),
+                  names=(phot_col_names + coord_col_names),
                   meta={'name': 'Aperture photometry results',
                         'version': 'astropy: {0}, photutils: {1}'
-                        .format(astropy_version, photutils_version)}),
+                        .format(astropy_version, photutils_version),
+                        'calling_args': ('method={0}, subpixels={1}, '
+                                         'error={2}, gain={3}, '
+                                         'pixelwise_error={4}')
+                        .format(method, subpixels, error is not None,
+                                gain is not None, pixelwise_error)}),
             {'apertures': ap})
-
-
-aperture_photometry.__doc__ = doc_template.format(
-    desc=aperture_photometry.__doc__,
-    args="""apertures : `~photutils.Aperture`
-        The `~photutils.Aperture` object containing the apertures to use for
-        photometry.""",
-    seealso="")

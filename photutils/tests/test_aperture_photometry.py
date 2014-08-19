@@ -8,7 +8,10 @@ from __future__ import (absolute_import, division, print_function,
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose
-
+import astropy.units as u
+from astropy.io import fits
+from astropy.nddata import NDData
+from astropy.tests.helper import remote_data
 
 from ..aperture_core import CircularAperture,\
                             CircularAnnulus, \
@@ -21,17 +24,19 @@ from ..aperture_core import CircularAperture,\
 APERTURES = ['circular',
              'circular_annulus',
              'elliptical',
-             'elliptical_annulus']
+             'elliptical_annulus',
+             'rectangular']
 
 APERTURE_CL = [CircularAperture,
                CircularAnnulus,
                EllipticalAperture,
-               EllipticalAnnulus]
+               EllipticalAnnulus,
+               RectangularAperture]
 
 
 @pytest.mark.parametrize(('aperture', 'radius'),
                          zip(APERTURES, ((3.,), (3., 5.), (3., 5., 1.),
-                                         (3., 5., 4., 1.))))
+                                         (3., 5., 4., 1.), (5, 8, np.pi / 4))))
 def test_outside_array(aperture, radius):
     data = np.ones((10, 10), dtype=np.float)
     fluxtable = aperture_photometry(data, (-60, 60), ((aperture,) + radius))[0]
@@ -40,8 +45,10 @@ def test_outside_array(aperture, radius):
 
 
 @pytest.mark.parametrize(('aperture_cl', 'aperture', 'radius'),
-                         zip(APERTURE_CL, APERTURES, ((3.,), (3., 5.), (3., 5., 1.),
-                                                      (3., 5., 4., 1.))))
+                         zip(APERTURE_CL, APERTURES, ((3.,), (3., 5.),
+                                                      (3., 5., 1.),
+                                                      (3., 5., 4., 1.),
+                                                      (5, 8, np.pi / 4))))
 def test_inside_array_simple(aperture_cl, aperture, radius):
     data = np.ones((40, 40), dtype=np.float)
     table1 = aperture_photometry(data, (20., 20.), ((aperture,) + radius),
@@ -52,7 +59,8 @@ def test_inside_array_simple(aperture_cl, aperture, radius):
                                  method='exact', subpixels=10)[0]
     true_flux = aperture_cl((20., 20.), *radius).area()
 
-    assert_allclose(table3['aperture_sum'], true_flux)
+    if aperture != 'rectangular':
+        assert_allclose(table3['aperture_sum'], true_flux)
     assert table1['aperture_sum'] < table3['aperture_sum']
     assert_allclose(table2['aperture_sum'], table3['aperture_sum'], atol=0.1)
 
@@ -141,6 +149,30 @@ class BaseTestAperturePhotometry(object):
         assert table1['aperture_sum_err'] < table3['aperture_sum_err']
         assert_allclose(table2['aperture_sum_err'], table3['aperture_sum_err'],
                         atol=0.1)
+
+    def test_quantity_scalar_error_scalar_gain(self):
+
+        # Scalar error, scalar gain.
+        error = u.Quantity(1.)
+        gain = u.Quantity(1.)
+        if not hasattr(self, 'mask'):
+            mask = None
+        else:
+            mask = self.mask
+
+        if not hasattr(self, 'mask_method'):
+            mask_method = 'skip'
+        else:
+            mask_method = self.mask_method
+
+        table1 = aperture_photometry(self.data, self.position,
+                                     self.aperture, method='center',
+                                     mask=mask, mask_method=mask_method,
+                                     error=error, gain=gain)[0]
+        assert table1['aperture_sum'] < self.true_flux
+
+        true_error = np.sqrt(self.area + self.true_flux)
+        assert table1['aperture_sum_err'] < true_error
 
     def test_scalar_error_array_gain(self):
 
@@ -356,3 +388,122 @@ class TestMaskedInterpolationCircular(BaseTestAperturePhotometry):
         self.area = np.pi * r * r
         self.true_flux = self.area
         self.mask_method = 'interpolation'
+
+
+class BaseTestDifferentData(object):
+
+    def test_basic_circular_aperture_photometry(self):
+
+        aperture = ('circular', self.radius)
+        table = aperture_photometry(self.data, self.position, aperture,
+                                    method='exact')[0]
+
+        assert_allclose(table['aperture_sum'], self.true_flux)
+        assert table['aperture_sum'].unit, self.fluxunit
+
+        assert np.all(table['input_center'] == self.position)
+
+
+class TestInputPrimaryHDU(BaseTestDifferentData):
+
+    def setup_class(self):
+        data = np.ones((40, 40), dtype=np.float)
+        self.data = fits.ImageHDU(data=data)
+        self.data.header['BUNIT'] = 'adu'
+        self.radius = 3
+        self.position = (20, 20)
+        self.true_flux = np.pi * self.radius * self.radius
+        self.fluxunit = u.adu
+
+
+class TestInputHDUList(BaseTestDifferentData):
+
+    def setup_class(self):
+        data0 = np.ones((40, 40), dtype=np.float)
+        data1 = np.empty((40, 40), dtype=np.float)
+        data1.fill(2)
+        self.data = fits.HDUList([fits.ImageHDU(data=data0),
+                                  fits.ImageHDU(data=data1)])
+        self.radius = 3
+        self.position = (20, 20)
+        # It should stop at the first extension
+        self.true_flux = np.pi * self.radius * self.radius
+
+
+class TestInputNDData(BaseTestDifferentData):
+
+    def setup_class(self):
+        data = np.ones((40, 40), dtype=np.float)
+        self.data = NDData(data, unit=u.adu)
+        self.radius = 3
+        self.position = [(20, 20), (30, 30)]
+        self.true_flux = np.pi * self.radius * self.radius
+        self.fluxunit = u.adu
+
+
+@remote_data
+def test_wcs_based_photometry():
+    from astropy.table import Table
+    from astropy.coordinates import SkyCoord
+    from ..datasets import get_path
+
+    pathcat = get_path('spitzer_example_catalog.xml', location='remote')
+    pathhdu = get_path('spitzer_example_image.fits', location='remote')
+    hdu = fits.open(pathhdu)
+    catalog = Table.read(pathcat)
+    fluxes_catalog = catalog['f4_5']
+    pos_gal = zip(catalog['l'], catalog['b'])
+    pos_gal_s = zip(catalog['l'], catalog['b'])[0]
+    pos_skycoord = SkyCoord(catalog['l'], catalog['b'], frame='galactic')
+    pos_skycoord_s = SkyCoord(catalog['l'][0] * catalog['l'].unit,
+                              catalog['b'][0] * catalog['b'].unit,
+                              frame='galactic')
+
+    photometry_non_skycoord = aperture_photometry(hdu, pos_gal,
+                                                  ('circular', 4),
+                                                  pixelcoord=False)
+    photometry_skycoord = aperture_photometry(hdu, pos_skycoord,
+                                              ('circular', 4))
+
+    photometry_non_skycoord_s = aperture_photometry(hdu, pos_gal_s,
+                                                    ('circular', 4),
+                                                    pixelcoord=False)
+    photometry_skycoord_s = aperture_photometry(hdu, pos_skycoord_s,
+                                                ('circular', 4))
+
+    assert_allclose(photometry_non_skycoord[0]['aperture_sum'],
+                    photometry_skycoord[0]['aperture_sum'])
+
+    assert_allclose(photometry_non_skycoord_s[0]['aperture_sum'],
+                    photometry_skycoord_s[0]['aperture_sum'])
+
+    assert_allclose(photometry_skycoord[0]['aperture_sum'][0],
+                    photometry_skycoord_s[0]['aperture_sum'])
+
+    # TODO compare with fluxes_catalog
+
+
+def test_basic_circular_aperture_photometry_unit():
+
+    data1 = np.ones((40, 40), dtype=np.float)
+    data2 = u.Quantity(data1, unit=u.adu)
+    data3 = u.Quantity(data1, unit=u.Jy)
+
+    radius = 3
+    position = (20, 20)
+    true_flux = np.pi * radius * radius
+    unit = u.adu
+
+    table1 = aperture_photometry(data1, position, ('circular', radius),
+                                 unit=unit)[0]
+    table2 = aperture_photometry(data2, position, ('circular', radius),
+                                 unit=unit)[0]
+    with pytest.raises(u.UnitsError) as err:
+        aperture_photometry(data3, position, ('circular', radius), unit=unit)
+    assert ("UnitsError: Unit of input data (Jy) and unit given by unit "
+            "argument (adu) are not identical." in str(err))
+
+    assert_allclose(table1['aperture_sum'], true_flux)
+    assert_allclose(table2['aperture_sum'], true_flux)
+    assert table1['aperture_sum'].unit == unit
+    assert table2['aperture_sum'].unit == data2.unit == unit

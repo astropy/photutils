@@ -4,9 +4,18 @@ Aperture photometry
 .. warning:: The aperture photometry API is currently *experimental*
    and will change in the near future.
 
-The following functions are provided for different types of apertures:
-
 .. currentmodule:: photutils
+
+
+Introduction
+------------
+
+In ``photutils`` `aperture_photometry` is the main tool to carry out
+aperture photometry in an astronomical image for a given list of
+sources. Currently 3 types of apertures are supported: circular, elliptical
+and rectangular as well as two types of annulus apertures: circular and
+elliptical.  The objects can be identified either by providing a list of
+pixel positions, or a list of sky positions along with a wcs transformation.
 
 
 A Simple Example
@@ -26,19 +35,21 @@ radius 3 pixels centered on each object:
     >>> apertures = ('circular', radius)
     >>> phot_table, aux_dict = aperture_photometry(data, positions, apertures)
     >>> print phot_table
-    aperture_sum
-    <BLANKLINE>
-    -------------
-    28.2743338823
-    28.2743338823
+     aperture_sum pixel_center [2] input_center [2]
+                      pix              pix
+    ------------- ---------------- ----------------
+    28.2743338823     30.0 .. 30.0     30.0 .. 30.0
+    28.2743338823     40.0 .. 40.0     40.0 .. 40.0
+
     >>> type(aux_dict['apertures'])
     <class 'photutils.aperture_core.CircularAperture'>
 
 `aperture_photometry` returns with a 2-tuple. The first element contains the
 result of the photometry in a `~astropy.table.Table`. In this example case
-it has one column, named ``'aperture_sum'``.  The second element is an
-auxiliary information dictionary. The apertures, used during the photometry,
-are returned as the ``'apertures'`` element of this dictionary.
+it has 3 columns, named ``'aperture_sum'``, ``'pixel_center'``,
+``'input_center'``.  The second element is an auxiliary information
+dictionary. The apertures, used during the photometry, are returned as the
+``'apertures'`` element of this dictionary.
 
 Since all the data values are 1, we expect the answer to equal the area of
 a circle with the same radius, and it does:
@@ -54,9 +65,9 @@ used is ``'exact'``, wherein the exact intersection of the aperture with
 each pixel is calculated. There are other options that are faster but
 at the expense of less precise answers. For example,:
 
-    >>> phottable = aperture_photometry(data, positions, apertures,
-    ...                                 method='subpixel', subpixels=5)[0]
-    >>> print phottable
+    >>> phot_table = aperture_photometry(data, positions, apertures,
+    ...                                  method='subpixel', subpixels=5)[0]
+    >>> print phot_table['aperture_sum']
     aperture_sum
     <BLANKLINE>
     ------------
@@ -91,7 +102,7 @@ each aperture. One may use `~astropy.table.hstack` to stack them into one
 
   >>> from astropy.table import hstack
   >>> phot_table = hstack(flux)
-  >>> print phot_table    # doctest: +FLOAT_CMP
+  >>> print phot_table['aperture_sum_1', 'aperture_sum_2', 'aperture_sum_3']    # doctest: +FLOAT_CMP
   aperture_sum_1 aperture_sum_2 aperture_sum_3
   <BLANKLINE>
   -------------- -------------- --------------
@@ -109,7 +120,7 @@ must specify ``a``, ``b``, and ``theta``:
   >>> theta = np.pi / 4.
   >>> apertures = ('elliptical', a, b, theta)
   >>> phot_table = aperture_photometry(data, positions, apertures)[0]
-  >>> print phot_table   # doctest: +FLOAT_CMP
+  >>> print phot_table['aperture_sum']   # doctest: +FLOAT_CMP
   aperture_sum
   <BLANKLINE>
   -------------
@@ -126,7 +137,8 @@ Again, for multiple apertures one should loop over them.
  >>> for index in range(len(a)):
  ...     flux.append(aperture_photometry(data, positions, ('elliptical', a[index], b[index], theta))[0])
  >>> phot_table = hstack(flux)
- >>> print phot_table   # doctest: +FLOAT_CMP
+ >>> print phot_table['aperture_sum_1', 'aperture_sum_2',
+ ...                  'aperture_sum_3', 'aperture_sum_4']   # doctest: +FLOAT_CMP
  aperture_sum_1 aperture_sum_2 aperture_sum_3 aperture_sum_4
  <BLANKLINE>
  -------------- -------------- -------------- --------------
@@ -185,11 +197,11 @@ pixel's value and saved it in the array ``data_error``:
   >>> data_error = 0.1 * data  # (100 x 100 array)
   >>> phot_table = aperture_photometry(data, positions, apertures, error=data_error)[0]
   >>> print phot_table   # doctest: +FLOAT_CMP
-   aperture_sum aperture_sum_err
-  <BLANKLINE>
-  ------------- ----------------
-  28.2743338823   0.531736155272
-  28.2743338823   0.531736155272
+   aperture_sum aperture_sum_err pixel_center [2] input_center [2]
+                                      pix              pix
+  ------------- ---------------- ---------------- ----------------
+  28.2743338823   0.531736155272     30.0 .. 30.0     30.0 .. 30.0
+  28.2743338823   0.531736155272     40.0 .. 40.0     40.0 .. 40.0
 
 
 ``'aperture_sum_err'`` values are given by
@@ -277,6 +289,81 @@ With the mask image and ``mask_method='interpolation'``::
    aperture_sum
   -------------
   12.5663706144
+
+
+Photometry using sky coordinates
+------------------------------------------
+
+Although internally all the photometry functions use pixel coordinates,
+there is a possibility to provide sky coordinates as input positions to
+`aperture_photometry`.  In this example we use a Spitzer image stored in
+``photutils-dataset``. There is also a catalog provided with the example
+fits file, containing, among others, the galactic coordinates of the sources
+in the image. Note: if the coordinates are provided as a list of sky
+coordinates, but not as a `~astropy.coordinates.SkyCoord` object, they are
+assumed to be in the same celestial frame as the wcs transformation.
+
+>>> from astropy.io import fits
+>>> from astropy.table import Table
+>>> from photutils.datasets import get_path
+>>> pathcat = get_path('spitzer_example_catalog.xml', location='remote')   # doctest: +REMOTE_DATA
+>>> pathhdu = get_path('spitzer_example_image.fits', location='remote')   # doctest: +REMOTE_DATA
+>>> hdu = fits.open(pathhdu)   # doctest: +REMOTE_DATA
+>>> catalog = Table.read(pathcat)   # doctest: +REMOTE_DATA
+>>> pos_gal = zip(catalog['l'], catalog['b'])   # doctest: +REMOTE_DATA
+>>> photometry_pos_gal = aperture_photometry(hdu, pos_gal, ('circular', 4),
+...                                          pixelcoord=False)[0]   # doctest: +REMOTE_DATA
+
+
+The same can be achieved with providing the positions as a
+`~astropy.coordinates.SkyCoord` object:
+
+>>> from astropy.coordinates import SkyCoord
+>>> pos_skycoord = SkyCoord(catalog['l'], catalog['b'], frame='galactic')   # doctest: +REMOTE_DATA
+>>> photometry_skycoord = aperture_photometry(hdu, pos_skycoord,
+...                                           ('circular', 4))[0]   # doctest: +REMOTE_DATA
+
+>>> np.all(photometry_skycoord['aperture_sum'] == photometry_pos_gal['aperture_sum'])   # doctest: +REMOTE_DATA
+    True
+
+The coordinate catalog also contains the fluxes for the sources. The catalog
+units are mJy while the data is in MJy/sr, so we have to do the conversion
+before comparing the results. (The image data has the pixel scale of
+1.2 arcsec / pixel)
+
+>>> import astropy.units as u
+>>> factor = (1.2 * u.arcsec) ** 2 / u.pixel
+>>> fluxes_catalog = catalog['f4_5']   # doctest: +REMOTE_DATA
+>>> converted_aperture_sum = (photometry_skycoord['aperture_sum'] * factor).to(u.mJy / u.pixel)   # doctest: +REMOTE_DATA
+
+
+.. doctest-skip::
+
+  >>> import matplotlib.pylab as plt
+  >>> plt.scatter(fluxes_catalog, converted_aperture_sum.value)
+
+.. plot::
+
+  import matplotlib.pylab as plt
+  import astropy.units as u
+  from astropy.io import fits
+  from astropy.table import Table
+  from astropy.coordinates import SkyCoord
+  from photutils.datasets import get_path
+  from photutils import aperture_photometry
+  pathcat = get_path('spitzer_example_catalog.xml', location='remote')
+  pathhdu = get_path('spitzer_example_image.fits', location='remote')
+  hdu = fits.open(pathhdu)
+  catalog = Table.read(pathcat)
+  pos_skycoord = SkyCoord(catalog['l'], catalog['b'], frame='galactic')
+  photometry_skycoord = aperture_photometry(hdu, pos_skycoord, ('circular', 4))[0]
+  factor = (1.2 * u.arcsec) ** 2 / u.pixel
+  fluxes_catalog = catalog['f4_5']
+  converted_aperture_sum = (photometry_skycoord['aperture_sum'] * factor).to(u.mJy / u.pixel)
+  plt.scatter(fluxes_catalog, converted_aperture_sum.value)
+  plt.xlabel('Fluxes catalog')
+  plt.ylabel('Fluxes aperture photometry')
+  plt.plot([40,100,450],[40,100,450], color='black', lw=2)
 
 
 Extension to arbitrary apertures using `~photutils.Aperture` objects

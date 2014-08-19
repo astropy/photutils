@@ -57,8 +57,8 @@ in a `~astropy.table.Table`:
   >>> sources = daofind(image, fwhm=4.0, threshold=3*bkg_sigma)   # doctest: +REMOTE_DATA
 
 Given the list of source locations, summing the pixel values in identical
-circular apertures. The result is returned in a `~astropy.table.Table`, with
-a column named ``'aperture_sum'``:
+circular apertures. The result is returned in a `~astropy.table.Table`, in
+the column named ``'aperture_sum'``:
 
   >>> from photutils import aperture_photometry
   >>> positions = zip(sources['xcen'], sources['ycen'])   # doctest: +REMOTE_DATA
