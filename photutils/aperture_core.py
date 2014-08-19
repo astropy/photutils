@@ -348,7 +348,7 @@ class CircularAperture(PixelAperture):
         return flux
 
 
-class CircularAnnulus(Aperture):
+class CircularAnnulus(PixelAperture):
     """
     Circular annulus aperture.
 
@@ -451,7 +451,7 @@ class CircularAnnulus(Aperture):
             ax.add_patch(patch)
 
 
-class EllipticalAperture(Aperture):
+class EllipticalAperture(PixelAperture):
     """
     An elliptical aperture.
 
@@ -550,7 +550,7 @@ class EllipticalAperture(Aperture):
             ax.add_patch(patch)
 
 
-class EllipticalAnnulus(Aperture):
+class EllipticalAnnulus(PixelAperture):
     """
     An elliptical annulus aperture.
 
@@ -666,7 +666,7 @@ class EllipticalAnnulus(Aperture):
         return flux
 
 
-class RectangularAperture(Aperture):
+class RectangularAperture(PixelAperture):
     """
     A rectangular aperture.
 
@@ -756,6 +756,11 @@ class RectangularAperture(Aperture):
 
     def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
                       method='subpixel', subpixels=5):
+
+        if method == 'exact':
+            warnings.warn("'exact' method is not implemented, defaults to "
+                          "'subpixel' instead", AstropyUserWarning)
+            method = 'subpixel'
 
         extents = super(RectangularAperture, self).get_phot_extents(data)
 
@@ -1127,13 +1132,12 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
             raise ValueError('subpixels: an integer greater than 0 is '
                              'required')
 
-    if wcs_transformation is None:
-        wcs_transformation = WCS(header)
-
     ap = apertures
 
     positions = ap.positions
     if isinstance(apertures, SkyAperture):
+        if wcs_transformation is None:
+            wcs_transformation = WCS(header)
         ap = ap.to_pixel(wcs_transformation)
     pixelpositions = ap.positions
 
