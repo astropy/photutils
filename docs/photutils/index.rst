@@ -60,11 +60,11 @@ Given the list of source locations, summing the pixel values in identical
 circular apertures. The result is returned in a `~astropy.table.Table`, in
 the column named ``'aperture_sum'``:
 
-  >>> from photutils import aperture_photometry
+  >>> from photutils import aperture_photometry, CircularAperture
   >>> positions = zip(sources['xcen'], sources['ycen'])   # doctest: +REMOTE_DATA
   >>> radius = 4.
-  >>> apertures = ('circular', radius)   # doctest: +REMOTE_DATA
-  >>> fluxtable, aux_dict = aperture_photometry(image, positions, apertures)   # doctest: +REMOTE_DATA
+  >>> apertures = CircularAperture(positions, radius)   # doctest: +REMOTE_DATA
+  >>> fluxtable, aux_dict = aperture_photometry(image, apertures)   # doctest: +REMOTE_DATA
 
 And now check which one is the fainest and brightest source in this dataset:
 
@@ -108,8 +108,8 @@ marked with red while the faintest is with blue:
   sources = daofind(image, fwhm=4.0, threshold=3*bkg_sigma)
   positions = zip(sources['xcen'], sources['ycen'])
   radius = 4.
-  apertures = ('circular', radius)
-  fluxtable, aux_dict = aperture_photometry(image, positions, apertures)
+  apertures = CircularAperture(positions, radius)
+  fluxtable, aux_dict = aperture_photometry(image, apertures)
   faintest = (positions[fluxtable['aperture_sum'].argmin()], fluxtable['aperture_sum'].min())
   brightest = (positions[fluxtable['aperture_sum'].argmax()], fluxtable['aperture_sum'].max())
   plt.imshow(image, cmap='gray_r', origin='lower')

@@ -1134,12 +1134,15 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
 
     ap = apertures
 
-    positions = ap.positions
     if isinstance(apertures, SkyAperture):
+        positions = ap.positions
         if wcs_transformation is None:
             wcs_transformation = WCS(header)
         ap = ap.to_pixel(wcs_transformation)
-    pixelpositions = ap.positions
+        pixelpositions = ap.positions
+    else:
+        positions = ap.positions * u.pixel
+        pixelpositions = ap.positions * u.pixel
 
     # Prepare version return data
     from astropy import __version__
