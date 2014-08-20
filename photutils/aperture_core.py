@@ -955,7 +955,14 @@ def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
                              'required')
 
     if not pixelcoord or isinstance(positions, SkyCoord):
-        from astropy.wcs import wcs, utils
+
+        from astropy.wcs import wcs
+
+        try:
+            from astropy.wcs import utils
+        except ImportError:  # Astropy < 1.0
+            from . import wcs_utils as utils
+
         if wcs_transformation is None:
             wcs_transformation = wcs.WCS(header)
 
