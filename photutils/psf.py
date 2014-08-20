@@ -7,20 +7,8 @@ import warnings
 import numpy as np
 from astropy.modeling.parameters import Parameter
 from astropy.utils.exceptions import AstropyUserWarning
-
-# TODO: remove try ... except when Astropy 0.3 support is dropped
-try:
-    from astropy.modeling.fitting import LevMarLSQFitter
-except ImportError:
-    from astropy.modeling.fitting import NonLinearLSQFitter as LevMarLSQFitter
-
-# TODO: remove try ... except when Astropy 0.3 support is dropped
-try:
-    from astropy.modeling import Fittable2DModel
-except ImportError:
-    from astropy.modeling import Parametric2DModel as Fittable2DModel
-
-
+from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling import Fittable2DModel
 from imageutils import (extract_array_2d, subpixel_indices, add_array_2d,
                         mask_to_mirrored_num)
 
