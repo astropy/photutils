@@ -11,7 +11,6 @@ import astropy.units as u
 from astropy.io import fits
 from astropy.table import Table
 from astropy.coordinates import SkyCoord
-from astropy import wcs
 from astropy.extern import six
 from astropy.utils.exceptions import AstropyUserWarning
 from .aperture_funcs import do_circular_photometry, do_elliptical_photometry, \
@@ -964,8 +963,7 @@ def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
         # SkyCoord objects as input
         if isinstance(positions, SkyCoord):
             # Check which frame the wcs uses
-            framename = wcs.utils.wcs_to_celestial_frame(
-                wcs_transformation).name
+            framename = utils.wcs_to_celestial_frame(wcs_transformation).name
             frame = getattr(positions, framename)
             component_names = frame.representation_component_names.keys()[0:2]
             if len(positions.shape) > 0:
