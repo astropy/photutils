@@ -972,7 +972,7 @@ def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
             # Check which frame the wcs uses
             framename = utils.wcs_to_celestial_frame(wcs_transformation).name
             frame = getattr(positions, framename)
-            component_names = frame.representation_component_names.keys()[0:2]
+            component_names = list(frame.representation_component_names.keys())[0:2]
             if len(positions.shape) > 0:
                 positions_repr = u.Quantity(zip(getattr(frame,
                                                         component_names[0]).deg,
