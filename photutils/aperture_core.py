@@ -223,7 +223,10 @@ class SkyCircularAperture(SkyAperture):
             raise TypeError("positions should be a SkyCoord instance")
 
         if isinstance(r, u.Quantity):
-            self.r = r
+            if r.unit.physical_type == 'angle' or r.unit is u.pixel:
+                self.r = r
+            else:
+                raise ValueError("r should have angular or pixel units")
         else:
             raise TypeError("r should be a Quantity instance")
 
@@ -231,15 +234,16 @@ class SkyCircularAperture(SkyAperture):
         """
         Return a CircularAperture instance in pixel coordinates
         """
-        pixelpositions = skycoord_to_pixel(self.positions, wcs)
+
+        pixel_positions = skycoord_to_pixel(self.positions, wcs)
+
         if self.r.unit.physical_type == 'angle':
             from .extern.wcs_utils import celestial_scale
             r = (self.r / celestial_scale(wcs)).decompose().value
-        elif self.r.unit is u.pixel:
+        else:  # pixel
             r = self.r.value
-        else:
-            raise ValueError("Cannot convert radius with physical type {0}".format(self.r.unit.physical_type))
-        return CircularAperture(pixelpositions, r)
+
+        return CircularAperture(pixel_positions, r)
 
 
 class CircularAperture(PixelAperture):
