@@ -439,26 +439,14 @@ def test_wcs_based_photometry():
     hdu = fits.open(pathhdu)
     catalog = Table.read(pathcat)
     fluxes_catalog = catalog['f4_5']
-    pos_gal = list(zip(catalog['l'], catalog['b']))
-    pos_gal_s = list(zip(catalog['l'], catalog['b']))[0]
     pos_skycoord = SkyCoord(catalog['l'], catalog['b'], frame='galactic')
     pos_skycoord_s = SkyCoord(catalog['l'][0] * catalog['l'].unit,
                               catalog['b'][0] * catalog['b'].unit,
                               frame='galactic')
 
-    photometry_non_skycoord = aperture_photometry(hdu, SkyCircularAperture(pos_gal, 4 * u.pixel),
-                                                  pixelcoord=False)
     photometry_skycoord = aperture_photometry(hdu, SkyCircularAperture(pos_skycoord, 4 * u.pixel))
 
-    photometry_non_skycoord_s = aperture_photometry(hdu, SkyCircularAperture(pos_gal_s, 4 * u.pixel),
-                                                    pixelcoord=False)
     photometry_skycoord_s = aperture_photometry(hdu, SkyCircularAperture(pos_skycoord_s, 4 * u.pixel))
-
-    assert_allclose(photometry_non_skycoord[0]['aperture_sum'],
-                    photometry_skycoord[0]['aperture_sum'])
-
-    assert_allclose(photometry_non_skycoord_s[0]['aperture_sum'],
-                    photometry_skycoord_s[0]['aperture_sum'])
 
     assert_allclose(photometry_skycoord[0]['aperture_sum'][0],
                     photometry_skycoord_s[0]['aperture_sum'])

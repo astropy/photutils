@@ -17,6 +17,7 @@ from astropy.utils.misc import InheritDocstrings
 from astropy.utils.exceptions import AstropyUserWarning
 from .aperture_funcs import do_circular_photometry, do_elliptical_photometry, \
                             do_annulus_photometry
+from .utils import skycoord_to_pixel
 
 __all__ = ["Aperture",
            "SkyCircularAperture",
@@ -41,39 +42,6 @@ def _make_annulus_path(patch_inner, patch_outer):
     codes = np.concatenate((codes_inner, codes_outer))
     verts = np.concatenate((verts_inner, verts_outer[::-1]))
     return mpath.Path(verts, codes)
-
-
-def skycoord_to_pixel(positions, wcs):
-
-    try:
-        from astropy.wcs.utils import wcs_to_celestial_frame
-    except ImportError:  # Astropy < 1.0
-        from .extern.wcs_utils import wcs_to_celestial_frame
-
-    # TODO this should be simplified once wcs_world2pix() supports
-    # SkyCoord objects as input
-
-    # Check which frame the wcs uses
-    framename = wcs_to_celestial_frame(wcs).name
-    frame = getattr(positions, framename)
-    component_names = list(frame.representation_component_names.keys())[0:2]
-    if len(positions.shape) > 0:
-        positions_repr = u.Quantity(zip(getattr(frame,
-                                                component_names[0]).deg,
-                                        getattr(frame,
-                                                component_names[1]).deg),
-                                    unit=u.deg)
-    else:
-        positions_repr = (u.Quantity((getattr(frame,
-                                              component_names[0]).deg,
-                                      getattr(frame,
-                                              component_names[1]).deg),
-                                     unit=u.deg), )
-
-    pixelpositions = u.Quantity(wcs.wcs_world2pix(positions_repr, 0),
-                                unit=u.pixel, copy=False)
-
-    return pixelpositions
 
 
 class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
