@@ -959,9 +959,9 @@ def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
         from astropy.wcs import wcs
 
         try:
-            from astropy.wcs import utils
+            from astropy.wcs.utils import wcs_to_celestial_frame
         except ImportError:  # Astropy < 1.0
-            from . import wcs_utils as utils
+            from .wcs_utils import wcs_to_celestial_frame
 
         if wcs_transformation is None:
             wcs_transformation = wcs.WCS(header)
@@ -970,7 +970,7 @@ def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
         # SkyCoord objects as input
         if isinstance(positions, SkyCoord):
             # Check which frame the wcs uses
-            framename = utils.wcs_to_celestial_frame(wcs_transformation).name
+            framename = wcs_to_celestial_frame(wcs_transformation).name
             frame = getattr(positions, framename)
             component_names = list(frame.representation_component_names.keys())[0:2]
             if len(positions.shape) > 0:
