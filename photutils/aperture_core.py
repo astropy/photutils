@@ -884,7 +884,7 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
         The 2-d array on which to perform photometry. Units are used during
         the photometry, either provided along with the data array, or stored
         in the header keyword ``'BUNIT'``.
-    apertures : Aperture instance
+    apertures : `~photutils.Aperture` instance
         The apertures to use for the photometry.
     unit : `~astropy.units.UnitBase` instance, str
         An object that represents the unit associated with ``data``.  Must
