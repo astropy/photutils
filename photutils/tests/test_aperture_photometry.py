@@ -22,9 +22,10 @@ APERTURE_CL = [CircularAperture,
                RectangularAperture]
 
 
-@pytest.mark.parametrize(('aperture_class', 'params'),
-                         zip(APERTURE_CL, ((3.,), (3., 5.), (3., 5., 1.),
-                                         (3., 5., 4., 1.), (5, 8, np.pi / 4))))
+TEST_APERTURES = list(zip(APERTURE_CL, ((3.,), (3., 5.), (3., 5., 1.),
+                                        (3., 5., 4., 1.), (5, 8, np.pi / 4))))
+                                         
+@pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
 def test_outside_array(aperture_class, params):
     data = np.ones((10, 10), dtype=np.float)
     aperture = aperture_class((-60, 60), *params)
@@ -33,11 +34,7 @@ def test_outside_array(aperture_class, params):
     assert np.isnan(fluxtable['aperture_sum'])
 
 
-@pytest.mark.parametrize(('aperture_class', 'params'),
-                         zip(APERTURE_CL, ((3.,), (3., 5.),
-                                           (3., 5., 1.),
-                                           (3., 5., 4., 1.),
-                                           (5, 8, np.pi / 4))))
+@pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
 def test_inside_array_simple(aperture_class, params):
     data = np.ones((40, 40), dtype=np.float)
     aperture = aperture_class((20., 20.), *params)
