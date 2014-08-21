@@ -45,8 +45,6 @@ def _make_annulus_path(patch_inner, patch_outer):
 
 def skycoord_to_pixel(positions, wcs):
 
-    from astropy.wcs import wcs
-
     try:
         from astropy.wcs.utils import wcs_to_celestial_frame
     except ImportError:  # Astropy < 1.0

@@ -100,7 +100,7 @@ marked with red while the faintest is with blue:
   import matplotlib.pylab as plt
   import matplotlib.patches as patches
   from astropy.stats import median_absolute_deviation as mad
-  from photutils import datasets, daofind, aperture_photometry
+  from photutils import datasets, daofind, aperture_photometry, CircularAperture
   hdu = datasets.load_star_image()
   image = hdu.data[500:700, 500:700]
   image -= np.median(image)

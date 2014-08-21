@@ -350,13 +350,13 @@ before comparing the results. (The image data has the pixel scale of
   from astropy.table import Table
   from astropy.coordinates import SkyCoord
   from photutils.datasets import get_path
-  from photutils import aperture_photometry, CircularAperture
+  from photutils import aperture_photometry, SkyCircularAperture
   pathcat = get_path('spitzer_example_catalog.xml', location='remote')
   pathhdu = get_path('spitzer_example_image.fits', location='remote')
   hdu = fits.open(pathhdu)
   catalog = Table.read(pathcat)
   pos_skycoord = SkyCoord(catalog['l'], catalog['b'], frame='galactic')
-  photometry_skycoord = aperture_photometry(hdu, CircularAperture(pos_skycoord, 4))[0]
+  photometry_skycoord = aperture_photometry(hdu, SkyCircularAperture(pos_skycoord, 4 * u.pixel))[0]
   factor = (1.2 * u.arcsec) ** 2 / u.pixel
   fluxes_catalog = catalog['f4_5']
   converted_aperture_sum = (photometry_skycoord['aperture_sum'] * factor).to(u.mJy / u.pixel)
