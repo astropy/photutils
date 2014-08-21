@@ -162,8 +162,8 @@ def pixel_scale_matrix(inwcs):
 
 def celestial_scale(inwcs):
     """
-    For a WCS, if the pixels are square, return the pixel scale in the spatial.
-    dimensions
+    For a WCS, if the pixels are square, return the pixel scale in the spatial
+    dimensions.
 
     Parameters
     ----------
