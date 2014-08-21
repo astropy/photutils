@@ -862,7 +862,7 @@ def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
                                format(dataunit, unit))
         data = u.Quantity(data, unit=dataunit, copy=False)
     elif unit is None:
-        if hasattr(data, 'unit'):
+        if dataunit is not None:
             data = u.Quantity(data, unit=dataunit, copy=False)
         else:
             data = u.Quantity(data, copy=False)
