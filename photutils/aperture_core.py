@@ -51,7 +51,7 @@ class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
 @six.add_metaclass(_ABCMetaAndInheritDocstrings)
 class Aperture(object):
     """
-    Abstract base class for all apertures
+    Abstract base class for all apertures.
     """
 
 
@@ -204,15 +204,15 @@ class PixelAperture(Aperture):
 
 class SkyCircularAperture(SkyAperture):
     """
-    Circular aperture(s), defined in sky coordinates
+    Circular aperture(s), defined in sky coordinates.
 
     Parameters
     ----------
-    positions : tuple, or list, or array
-        Center coordinates of the apertures as list or array of (x, y)
-        pixelcoordinates.
-    r : float
-        The radius of the aperture.
+    positions : `~astropy.coordinates.SkyCoord`
+        Celestial coordinates of the aperture center(s). This can be either
+        scalar coordinates or an array of coordinates.
+    r : `~astropy.units.Quantity`
+        The radius of the aperture(s), either in angular or pixel units.
     """
 
     def __init__(self, positions, r):
@@ -232,7 +232,7 @@ class SkyCircularAperture(SkyAperture):
 
     def to_pixel(self, wcs):
         """
-        Return a CircularAperture instance in pixel coordinates
+        Return a CircularAperture instance in pixel coordinates.
         """
 
         pixel_positions = skycoord_to_pixel(self.positions, wcs)
@@ -248,15 +248,16 @@ class SkyCircularAperture(SkyAperture):
 
 class CircularAperture(PixelAperture):
     """
-    Circular aperture(s).
+    Circular aperture(s), defined in pixel coordinates.
 
     Parameters
     ----------
-    positions : tuple, or list, or array
-        Center coordinates of the apertures as list or array of (x, y)
-        pixelcoordinates.
+    positions : tuple, list, array, or `~astropy.units.Quantity`
+        Pixel coordinates of the aperture center(s), either as a single
+        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` Numpy
+        array, or an ``Nx2`` `~astropy.units.Quantity` in units of pixels.
     r : float
-        The radius of the aperture.
+        The radius of the aperture(s), in pixels.
 
     Raises
     ------
@@ -265,6 +266,7 @@ class CircularAperture(PixelAperture):
     """
 
     def __init__(self, positions, r):
+
         try:
             self.r = float(r)
         except TypeError:
@@ -274,16 +276,18 @@ class CircularAperture(PixelAperture):
             raise ValueError('r must be non-negative')
 
         if isinstance(positions, u.Quantity):
-            positions = positions.value
-        if isinstance(positions, (list, tuple, np.ndarray)):
-            self.positions = np.atleast_2d(positions)
-        else:
-            raise TypeError("List or array of (x,y) pixel coordinates is "
-                            "expected got '{0}'.".format(positions))
+            if positions.unit is u.pixel:
+                positions = positions.value
+            else:
+                raise u.UnitsError("positions should be in pixel units")
 
-        if self.positions.ndim > 2:
-            raise ValueError('{0}-d position array not supported. Only 2-d '
-                             'arrays supported.'.format(self.positions.ndim))
+        self.positions = np.asarray(positions)
+
+        if self.positions.ndim == 1 and len(self.positions) == 2:
+            self.positions = np.atleast_2d(positions)
+        elif self.positions.ndim != 2 or self.positions.shape[1] != 2:
+            raise TypeError("Expected (x, y) tuple, a list of (x, y) "
+                            "tuples, or an Nx2 array, got {0}".format(positions))
 
     def extent(self):
         extents = []

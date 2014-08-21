@@ -115,7 +115,7 @@ def wcs_to_celestial_frame(wcs):
     Paramters
     ---------
     wcs : :class:`~astropy.wcs.WCS` instance
-        The WCS to find the frame for
+        The WCS to find the frame for.
 
     Returns
     -------
@@ -149,11 +149,11 @@ def wcs_to_celestial_frame(wcs):
 
 def pixel_scale_matrix(inwcs):
     """
-    Find the matrix of pixel scales
+    Find the matrix of pixel scales.
     """
     from astropy.wcs import WCSSUB_CELESTIAL
     cwcs = inwcs.sub([WCSSUB_CELESTIAL]).wcs
-    cdelt = np.matrix([[cwcs.get_cdelt()[0],0],
+    cdelt = np.matrix([[cwcs.get_cdelt()[0], 0],
                        [0, cwcs.get_cdelt()[1]]])
     pc = np.matrix(cwcs.get_pc())
     pccd = np.array(cdelt * pc)
@@ -162,22 +162,22 @@ def pixel_scale_matrix(inwcs):
 
 def celestial_scale(inwcs):
     """
-    For a WCS, if the pixels are square, return the pixel scale in the spatial
+    For a WCS, if the pixels are square, return the pixel scale in the spatial.
     dimensions
 
     Parameters
     ----------
     inwcs: `astropy.wcs.WCS`
-        The world coordinate system object
+        The world coordinate system object.
 
     Returns
     -------
     scale : float
-        The square pixel scale
+        The square pixel scale.
 
     Raises
     ------
-    ValueError if the pixels are asymmetric
+    ValueError if the pixels are asymmetric.
     """
 
     scale = (pixel_scale_matrix(inwcs)**2).sum(axis=0)**0.5

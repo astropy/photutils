@@ -291,40 +291,30 @@ With the mask image and ``mask_method='interpolation'``::
 
 
 Photometry using sky coordinates
-------------------------------------------
+--------------------------------
 
 Although internally all the photometry functions use pixel coordinates,
 there is a possibility to provide sky coordinates as input positions to
 `aperture_photometry`.  In this example we use a Spitzer image stored in
 ``photutils-dataset``. There is also a catalog provided with the example
 fits file, containing, among others, the galactic coordinates of the sources
-in the image. Note: if the coordinates are provided as a list of sky
-coordinates, but not as a `~astropy.coordinates.SkyCoord` object, they are
-assumed to be in the same celestial frame as the wcs transformation.
+in the image. The apertures can be defined in world coordinates by providing
+the positions as a `~astropy.coordinates.SkyCoord` object:
 
 >>> from astropy.io import fits
 >>> from astropy.table import Table
+>>> from astropy.coordinates import SkyCoord
+>>> from astropy import units as u
+>>> from photutils import SkyCircularAperture
 >>> from photutils.datasets import get_path
 >>> pathcat = get_path('spitzer_example_catalog.xml', location='remote')   # doctest: +REMOTE_DATA
+Downloading https://github.com/astropy/photutils-datasets/blob/master/data/spitzer_example_catalog.xml?raw=true [Done]
 >>> pathhdu = get_path('spitzer_example_image.fits', location='remote')   # doctest: +REMOTE_DATA
+Downloading https://github.com/astropy/photutils-datasets/blob/master/data/spitzer_example_image.fits?raw=true [Done]
 >>> hdu = fits.open(pathhdu)   # doctest: +REMOTE_DATA
 >>> catalog = Table.read(pathcat)   # doctest: +REMOTE_DATA
->>> pos_gal = zip(catalog['l'], catalog['b'])   # doctest: +REMOTE_DATA
->>> photometry_pos_gal = aperture_photometry(hdu, CircularAperture(pos_gal, 4),
-...                                          pixelcoord=False)[0]   # doctest: +REMOTE_DATA
-
-
-The same can be achieved with providing the positions as a
-`~astropy.coordinates.SkyCoord` object:
-
->>> from astropy.coordinates import SkyCoord
->>> from photutils import SkyCircularAperture
->>> from astropy import units as u
 >>> pos_skycoord = SkyCoord(catalog['l'], catalog['b'], frame='galactic')   # doctest: +REMOTE_DATA
->>> photometry_skycoord = aperture_photometry(hdu, SkyCircularAperture(pos_skycoord, 5 * u.arcsec))[0]    # doctest: +REMOTE_DATA
-
->>> np.all(photometry_skycoord['aperture_sum'] == photometry_pos_gal['aperture_sum'])   # doctest: +REMOTE_DATA
-    True
+>>> photometry_skycoord = aperture_photometry(hdu, SkyCircularAperture(pos_skycoord, 4.8 * u.arcsec))[0]    # doctest: +REMOTE_DATA
 
 The coordinate catalog also contains the fluxes for the sources. The catalog
 units are mJy while the data is in MJy/sr, so we have to do the conversion
