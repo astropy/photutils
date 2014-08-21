@@ -321,7 +321,7 @@ The same can be achieved with providing the positions as a
 >>> from photutils import SkyCircularAperture
 >>> from astropy import units as u
 >>> pos_skycoord = SkyCoord(catalog['l'], catalog['b'], frame='galactic')   # doctest: +REMOTE_DATA
->>> photometry_skycoord = aperture_photometry(hdu, SkyCircularAperture(pos_skycoord, 4 * u.pixel))[0]    # doctest: +REMOTE_DATA
+>>> photometry_skycoord = aperture_photometry(hdu, SkyCircularAperture(pos_skycoord, 5 * u.arcsec))[0]    # doctest: +REMOTE_DATA
 
 >>> np.all(photometry_skycoord['aperture_sum'] == photometry_pos_gal['aperture_sum'])   # doctest: +REMOTE_DATA
     True
@@ -356,7 +356,7 @@ before comparing the results. (The image data has the pixel scale of
   hdu = fits.open(pathhdu)
   catalog = Table.read(pathcat)
   pos_skycoord = SkyCoord(catalog['l'], catalog['b'], frame='galactic')
-  photometry_skycoord = aperture_photometry(hdu, SkyCircularAperture(pos_skycoord, 4 * u.pixel))[0]
+  photometry_skycoord = aperture_photometry(hdu, SkyCircularAperture(pos_skycoord, 5 * u.arcsec))[0]
   factor = (1.2 * u.arcsec) ** 2 / u.pixel
   fluxes_catalog = catalog['f4_5']
   converted_aperture_sum = (photometry_skycoord['aperture_sum'] * factor).to(u.mJy / u.pixel)
