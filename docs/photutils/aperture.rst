@@ -350,7 +350,7 @@ before comparing the results. (The image data has the pixel scale of
   from astropy.table import Table
   from astropy.coordinates import SkyCoord
   from photutils.datasets import get_path
-  from photutils import aperture_photometry
+  from photutils import aperture_photometry, CircularAperture
   pathcat = get_path('spitzer_example_catalog.xml', location='remote')
   pathhdu = get_path('spitzer_example_image.fits', location='remote')
   hdu = fits.open(pathhdu)
