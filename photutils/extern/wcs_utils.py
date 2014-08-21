@@ -39,9 +39,9 @@ __doctest_skip__ = ['wcs_to_celestial_frame']
 
 def _wcs_to_celestial_frame_builtin(wcs):
 
-    from ..coordinates import FK4, FK4NoETerms, FK5, ICRS, Galactic
-    from ..time import Time
-    from . import WCSSUB_CELESTIAL
+    from astropy.coordinates import FK4, FK4NoETerms, FK5, ICRS, Galactic
+    from astropy.time import Time
+    from astropy.wcs import WCSSUB_CELESTIAL
 
     # Keep only the celestial part of the axes
     wcs = wcs.sub([WCSSUB_CELESTIAL])
