@@ -50,18 +50,22 @@ class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
 
 @six.add_metaclass(_ABCMetaAndInheritDocstrings)
 class Aperture(object):
-    pass
+    """
+    Abstract base class for all apertures
+    """
 
 
 @six.add_metaclass(_ABCMetaAndInheritDocstrings)
 class SkyAperture(Aperture):
-    pass
+    """
+    Abstract base class for 2-d apertures defined in celestial coordinates.
+    """
 
 
 @six.add_metaclass(_ABCMetaAndInheritDocstrings)
 class PixelAperture(Aperture):
     """
-    Abstract base class for an arbitrary 2-d aperture.
+    Abstract base class for 2-d apertures defined in pixel coordinates.
 
     Derived classes should contain whatever internal data is needed to
     define the aperture, and provide methods `do_photometry` and `extent`
