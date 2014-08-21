@@ -12,6 +12,7 @@ from astropy.io import fits
 from astropy.table import Table
 from astropy.coordinates import SkyCoord
 from astropy.extern import six
+from astropy.utils.misc import InheritDocstrings
 from astropy.utils.exceptions import AstropyUserWarning
 from .aperture_funcs import do_circular_photometry, do_elliptical_photometry, \
                             do_annulus_photometry
@@ -38,14 +39,18 @@ def _make_annulus_path(patch_inner, patch_outer):
     return mpath.Path(verts, codes)
 
 
-@six.add_metaclass(abc.ABCMeta)
+class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
+    pass
+
+
+@six.add_metaclass(_ABCMetaAndInheritDocstrings)
 class Aperture(object):
     """
     Abstract base class for an arbitrary 2-d aperture.
 
     Derived classes should contain whatever internal data is needed to
-    define the aperture, and provide methods 'do_photometry' and 'extent'
-    (and optionally, 'area').
+    define the aperture, and provide methods `do_photometry` and `extent`
+    (and optionally, ``area``).
     """
 
     @abc.abstractmethod
@@ -53,12 +58,12 @@ class Aperture(object):
         """
         Extent of apertures. In the case when part of an aperture's extent
         falls out of the actual data region, the
-        ``~photutils.Aperture.get_phot_extent`` method redefines the extent
+        `~photutils.Aperture.get_phot_extents` method redefines the extent
         which has data coverage.
 
         Returns
         -------
-        x_min, x_max, y_min, y_max: list of floats
+        x_min, x_max, y_min, y_max : lists of floats
             Extent of the apertures.
         """
 
@@ -83,7 +88,42 @@ class Aperture(object):
     @abc.abstractmethod
     def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
                       method='exact', subpixels=5):
-        """Sum flux within aperture(s)."""
+        """Sum flux within aperture(s).
+
+        Parameters
+        ----------
+        data : array_like
+            The 2-d array on which to perform photometry.
+        error : array_like, optional
+            Error in each pixel, interpreted as Gaussian 1-sigma uncertainty.
+            ``error`` has to have the same shape as ``data``.
+        gain : array_like, optional
+            Ratio of counts (e.g., electrons or photons) to units of the
+            data (e.g., ADU), for the purpose of calculating Poisson error from
+            the object itself. ``gain`` has to have the same shape as ``data``.
+        pixelwise_error : bool, optional
+            For error and/or gain arrays. If `True`, assume error and/or gain
+            vary significantly within an aperture: sum contribution from each
+            pixel. If `False`, assume error and gain do not vary significantly
+            within an aperture.
+        method : str, optional
+            Method to threat masked pixels. For the currently supported methods
+            see the documentation of `aperture_photometry`.
+        subpixels : int, optional
+            For the ``'subpixel'`` method, resample pixels by this factor (in
+            each dimension). That is, each pixel is divided into
+            ``subpixels ** 2`` subpixels.
+
+        Returns
+        -------
+        flux : `~astropy.units.Quantity`
+            Sum of the values withint the aperture(s). Unit is kept to be the
+            unit of the input ``data``.
+
+        fluxvar :  `~astropy.units.Quantity`
+            Corresponting uncertainity in the ``flux`` values. Returned only
+            if input ``error`` is not `None`.
+        """
 
     def get_phot_extents(self, data):
         """
@@ -109,8 +149,8 @@ class Aperture(object):
             * ``'phot_extent'``
                 x_pmin, x_pmax, y_pmin, y_pmax: Extent centered to the 0, 0
                 positions as required by the `~photutils.geometry` functions.
-
         """
+
         extents = self.extent()
 
         # Check if an aperture is fully out of data
@@ -154,6 +194,11 @@ class CircularAperture(Aperture):
         pixelcoordinates.
     r : float
         The radius of the aperture.
+
+    Raises
+    ------
+    ValueError : `~.exceptions.ValueError`
+        If the radius is negative.
     """
 
     def __init__(self, positions, r):
@@ -186,6 +231,12 @@ class CircularAperture(Aperture):
         return np.array(extents)
 
     def area(self):
+        """
+        Returns
+        -------
+        area : float
+            Area of aperture.
+        """
         return math.pi * self.r ** 2
 
     def plot(self, ax=None, fill=False, **kwargs):
@@ -227,6 +278,13 @@ class CircularAnnulus(Aperture):
         The inner radius of the annulus.
     r_out : float
         The outer radius of the annulus.
+
+    Raises
+    ------
+    ValueError : `~.exceptions.ValueError`
+        If inner radius (``r_in``) is greater than outer radius (``r_out``).
+    ValueError : `~.exceptions.ValueError`
+        If inner radius is negative.
     """
 
     def __init__(self, positions, r_in, r_out):
@@ -268,6 +326,12 @@ class CircularAnnulus(Aperture):
         return np.array(extents)
 
     def area(self):
+        """
+        Returns
+        -------
+        area : float
+            Area of aperture.
+        """
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
     def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
@@ -320,6 +384,12 @@ class EllipticalAperture(Aperture):
     theta : float
         The position angle of the semimajor axis in radians
         (counterclockwise).
+
+    Raises
+    ------
+    ValueError : `~.exceptions.ValueError`
+        If either axis (``a`` or ``b``) is negative.
+
     """
 
     def __init__(self, positions, a, b, theta):
@@ -360,6 +430,12 @@ class EllipticalAperture(Aperture):
         return np.array(extents)
 
     def area(self):
+        """
+        Returns
+        -------
+        area : float
+            Area of aperture.
+        """
         return math.pi * self.a * self.b
 
     def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
@@ -410,6 +486,15 @@ class EllipticalAnnulus(Aperture):
     theta : float
         The position angle of the semimajor axis in radians.
         (counterclockwise).
+
+    Raises
+    ------
+    ValueError : `~.exceptions.ValueError`
+        If inner semimajor axis (``a_in``) is greater than outer semimajor
+        axis (``a_out``).
+    ValueError : `~.exceptions.ValueError`
+        If either the inner semimajor axis (``a_in``) or the outer semiminor
+        axis (``b_out``) is negative.
     """
 
     def __init__(self, positions, a_in, a_out, b_out, theta):
@@ -456,6 +541,12 @@ class EllipticalAnnulus(Aperture):
         return np.array(extents)
 
     def area(self):
+        """
+        Returns
+        -------
+        area : float
+            Area of aperture.
+        """
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
     def plot(self, ax=None, fill=False, **kwargs):
@@ -508,6 +599,11 @@ class RectangularAperture(Aperture):
     theta : float
         The position angle of the semimajor axis in radians
         (counterclockwise).
+
+    Raises
+    ------
+    ValueError : `~.exceptions.ValueError`
+        If either width (``w``) or height (``h``) is negative.
     """
 
     def __init__(self, positions, w, h, theta):
@@ -548,6 +644,12 @@ class RectangularAperture(Aperture):
         return np.array(extents)
 
     def area(self):
+        """
+        Returns
+        -------
+        area : float
+            Area of aperture.
+        """
         return self.w * self.h
 
     def plot(self, ax=None, fill=False, **kwargs):
