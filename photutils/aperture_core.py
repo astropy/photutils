@@ -961,7 +961,7 @@ def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
         try:
             from astropy.wcs.utils import wcs_to_celestial_frame
         except ImportError:  # Astropy < 1.0
-            from .wcs_utils import wcs_to_celestial_frame
+            from .extern.wcs_utils import wcs_to_celestial_frame
 
         if wcs_transformation is None:
             wcs_transformation = wcs.WCS(header)
