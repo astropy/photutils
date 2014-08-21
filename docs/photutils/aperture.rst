@@ -334,7 +334,7 @@ before comparing the results. (The image data has the pixel scale of
 >>> import astropy.units as u
 >>> factor = (1.2 * u.arcsec) ** 2 / u.pixel
 >>> fluxes_catalog = catalog['f4_5']   # doctest: +REMOTE_DATA
->>> apeture_sum = photometry_skycoord['aperture_sum'] * u.MJy / u.sr
+>>> apeture_sum = photometry_skycoord['aperture_sum'] * u.MJy / u.sr   # doctest: +REMOTE_DATA
 >>> converted_aperture_sum = (aperture_sum * factor).to(u.mJy / u.pixel)   # doctest: +REMOTE_DATA
 
 
