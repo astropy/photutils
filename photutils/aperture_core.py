@@ -232,7 +232,13 @@ class SkyCircularAperture(SkyAperture):
         Return a CircularAperture instance in pixel coordinates
         """
         pixelpositions = skycoord_to_pixel(self.positions, wcs)
-        r = self.r.value  # TODO: fix, wrong for now, requires pixel scale
+        if self.r.unit.physical_type == 'angle':
+            from .extern.wcs_utils import celestial_scale
+            r = (self.r / celestial_scale(wcs)).decompose().value
+        elif self.r.unit is u.pixel:
+            r = self.r.value
+        else:
+            raise ValueError("Cannot convert radius with physical type {0}".format(self.r.unit.physical_type))
         return CircularAperture(pixelpositions, r)
 
 
