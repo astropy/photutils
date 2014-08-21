@@ -839,7 +839,7 @@ def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
         for i in range(len(data)):
             if data[i].data is not None:
                 warnings.warn("Input data is a HDUList object, photometry is "
-                              "onry run for the {0}. HDU."
+                              "only run for the {0}. HDU."
                               .format(i), AstropyUserWarning)
                 return aperture_photometry(data[i], positions, apertures, unit,
                                            wcs, error, gain, mask, method,
