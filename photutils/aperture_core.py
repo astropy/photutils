@@ -873,7 +873,7 @@ class RectangularAperture(PixelAperture):
 
 def aperture_photometry(data, apertures, unit=None, wcs=None,
                         error=None, gain=None, mask=None, method='exact',
-                        subpixels=5, pixelcoord=True, pixelwise_error=True,
+                        subpixels=5, pixelwise_error=True,
                         mask_method='skip'):
     """
     Sum flux within an aperture at the given position(s).
@@ -892,10 +892,8 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
         :mod:`~astropy.units` package. An error is raised if ``data``
         already has a different unit.
     wcs : `~astropy.wcs.WCS`, optional
-        Use this as the wcs transformation when either ``pixelcoord`` is
-        `False` or ``positions`` is `~astropy.coordinates.SkyCoord`. It
-        overrides any wcs transformation passed along with ``data`` either
-        in the header or in an attribute.
+        Use this as the wcs transformation. It overrides any wcs transformation
+        passed along with ``data`` either in the header or in an attribute.
     error : float or array_like, optional
         Error in each pixel, interpreted as Gaussian 1-sigma uncertainty.
     gain : float or array_like, optional
@@ -929,11 +927,6 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
         For the ``'subpixel'`` method, resample pixels by this factor (in
         each dimension). That is, each pixel is divided into
         ``subpixels ** 2`` subpixels.
-    pixelcoord : bool, optional
-        If `True` (default), assume ``positions`` are pixel positions. If
-        `False`, assume the input positions are sky coordinates and uses the
-        wcs transformation (provided either via ``wcs`` or along with
-        ``data``) to convert them to pixel positions.
     pixelwise_error : bool, optional
         For error and/or gain arrays. If `True`, assume error and/or gain
         vary significantly within an aperture: sum contribution from each
@@ -1005,7 +998,7 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
                               .format(i), AstropyUserWarning)
                 return aperture_photometry(data[i], apertures, unit,
                                            wcs, error, gain, mask, method,
-                                           subpixels, pixelcoord,
+                                           subpixels,
                                            pixelwise_error, mask_method)
 
     # this is basically for NDData inputs and alike
