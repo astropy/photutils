@@ -92,7 +92,7 @@ photometry:
   >>> positions = zip(sources['xcen'], sources['ycen'])   # doctest: +REMOTE_DATA
   >>> apertures = CircularAperture(positions, r=4)   # doctest: +REMOTE_DATA
   >>> phot_table = aperture_photometry(image, apertures)   # doctest: +REMOTE_DATA
-  >>> print phot_table
+  >>> print phot_table   # doctest: +REMOTE_DATA
    aperture_sum         pixel_center [2]                input_center [2]
                               pix                             pix
   ------------- ------------------------------- -------------------------------
