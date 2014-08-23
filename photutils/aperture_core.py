@@ -426,14 +426,24 @@ class CircularAnnulus(PixelAperture):
 
         return flux
 
-    def plot(self, ax=None, fill=False, **kwargs):
+    def plot(self, ax=None, fill=False, source_id=None, **kwargs):
+
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
+
         kwargs['fill'] = fill
+
         if ax is None:
             ax = plt.gca()
+
+        if source_id is None:
+            positions = self.positions
+        else:
+            positions = self.positions[np.atleast_1d(source_id)]
+
         resolution = 20
-        for position in self.positions:
+
+        for position in positions:
             patch_inner = mpatches.CirclePolygon(position, self.r_in,
                                                  resolution=resolution)
             patch_outer = mpatches.CirclePolygon(position, self.r_out,
@@ -529,14 +539,23 @@ class EllipticalAperture(PixelAperture):
                                         subpixels=subpixels)
         return flux
 
-    def plot(self, ax=None, fill=False, **kwargs):
+    def plot(self, ax=None, fill=False, source_id=None, **kwargs):
+
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
+
         kwargs['fill'] = fill
+
         if ax is None:
             ax = plt.gca()
+
+        if source_id is None:
+            positions = self.positions
+        else:
+            positions = self.positions[np.atleast_1d(source_id)]
+
         theta_deg = self.theta * 180. / np.pi
-        for position in self.positions:
+        for position in positions:
             patch = mpatches.Ellipse(position, self.a, self.b, theta_deg,
                                      **kwargs)
             ax.add_patch(patch)
@@ -624,14 +643,23 @@ class EllipticalAnnulus(PixelAperture):
         """
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
-    def plot(self, ax=None, fill=False, **kwargs):
+    def plot(self, ax=None, fill=False, source_id=None, **kwargs):
+
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
+
         kwargs['fill'] = fill
+
         if ax is None:
             ax = plt.gca()
+
+        if source_id is None:
+            positions = self.positions
+        else:
+            positions = self.positions[np.atleast_1d(source_id)]
+
         theta_deg = self.theta * 180. / np.pi
-        for position in self.positions:
+        for position in positions:
             patch_inner = mpatches.Ellipse(position, self.a_in, self.b_in,
                                            theta_deg, **kwargs)
             patch_outer = mpatches.Ellipse(position, self.a_out, self.b_out,
@@ -727,19 +755,28 @@ class RectangularAperture(PixelAperture):
         """
         return self.w * self.h
 
-    def plot(self, ax=None, fill=False, **kwargs):
+    def plot(self, ax=None, fill=False, source_id=None, **kwargs):
+
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
+
         kwargs['fill'] = fill
+
         if ax is None:
             ax = plt.gca()
+
+        if source_id is None:
+            positions = self.positions
+        else:
+            positions = self.positions[np.atleast_1d(source_id)]
+
         hw = self.w / 2.
         hh = self.h / 2.
         sint = math.sin(self.theta)
         cost = math.cos(self.theta)
         dx = (hh * sint) - (hw * cost)
         dy = -(hh * cost) - (hw * sint)
-        positions = self.positions + np.array([dx, dy])
+        positions = positions + np.array([dx, dy])
         theta_deg = self.theta * 180. / np.pi
         for position in positions:
             patch = mpatches.Rectangle(position, self.w, self.h, theta_deg,
