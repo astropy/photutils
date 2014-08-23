@@ -20,7 +20,7 @@ set of apertures. Currently five aperture shapes are supported:
 The positions can be provided either as pixel coordinates, or coordinates on
 the sky (provided that the data is specified with a WCS transformation). In
 addition, users can create their own aperture classes for use with
-``photutils``.
+``photutils`` (see `Defining your own aperture objects`_).
 
 Creating the aperture objects
 -----------------------------
@@ -50,17 +50,26 @@ use of the :class:`~photutils.SkyCircularAperture` class, and the Astropy
                            frame='galactic')
   >>> apertures = SkyCircularAperture(positions, r=4. * u.arcsec)
 
+.. note:: At this time, the apertures are not strictly defined completely in
+          celestial coordinates in the sense that they simply use celestial
+          coordinates to define the central position, and the remaining
+          parameters are converted to pixels using the pixel scale of the
+          image (so projection distortions are not taken into account). If
+          the apertures were truly completely defined in celestial
+          coordinates, the shapes would not be preserved when converting to
+          pixel coordinates.
+
 Carrying out the photometry
 ---------------------------
 
 Once the aperture object is created, we can carry out the photometry using
-the :func:`photutils.aperture_photometry` function. We start off by defining
+the :func:`~photutils.aperture_photometry` function. We start off by defining
 the apertures as described above:
 
     >>> positions = [(30., 30.), (40., 40.)]
     >>> apertures = CircularAperture(positions, r=3.)
 
-and we then call the :func:`photutils.aperture_photometry` function with the
+and we then call the :func:`~photutils.aperture_photometry` function with the
 data and the apertures:
 
     >>> import numpy as np
@@ -198,7 +207,7 @@ subtraction is left up to the user or calling function.
     >>> apertures = CircularAperture(positions, r=3)
     >>> annulus_apertures = CircularAnnulus(positions, r_in=6., r_out=8.)
 
-  We can then compute the sum of the pixels inside each aperture, and combine
+  then we compute the sum of the pixels inside each aperture, and combine
   the tables:
 
     >>> rawflux_table = aperture_photometry(data, apertures)[0]
@@ -338,7 +347,8 @@ Photometry using sky coordinates
 
 As mentioned in `Creating the aperture objects`_, doing photometry using
 apertures defined in celestial coordinates simply requires defining a 'sky'
-aperture using a :class:`~astropy.coordinates.SkyCoord` object.
+aperture using a :class:`~astropy.coordinates.SkyCoord` object. We show here
+an example of photometry on real data in celestial coordinates.
 
 We start off by loading Spitzer 4.5 micron observations of a region of the
 Galactic plane:
@@ -371,6 +381,8 @@ image data has a pixel scale of 1.2 arcsec / pixel)
 >>> factor = (1.2 * u.arcsec) ** 2 / u.pixel
 >>> fluxes_catalog = catalog['f4_5']   # doctest: +REMOTE_DATA
 >>> converted_aperture_sum = (photometry_skycoord['aperture_sum'] * factor).to(u.mJy / u.pixel)   # doctest: +REMOTE_DATA
+
+Finally, we can plot the comparison:
 
 .. doctest-skip::
 
@@ -410,8 +422,8 @@ image data has a pixel scale of 1.2 arcsec / pixel)
 The two catalogs are in good agreement. The Spitzer fluxes were computed
 using PSF photometry, and therefore differences are expected between the two.
 
-Extension to arbitrary apertures using `~photutils.Aperture` objects
---------------------------------------------------------------------
+Defining your own aperture objects
+----------------------------------
 
 The photometry function, `~photutils.aperture_photometry`, performs
 aperture photometry in arbitrary apertures. This function accepts
