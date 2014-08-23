@@ -58,7 +58,16 @@ def load_spitzer_image():
     Returns
     -------
     hdu : `~astropy.io.fits.ImageHDU`
-        Image HDU
+        The 4.5 micron image
+
+    Examples
+    --------
+    .. plot::
+        :include-source:
+
+        from photutils import datasets
+        hdu = datasets.load_spitzer_image()
+        plt.imshow(hdu.data, origin='lower', vmax=50)
     """
     path = get_path('spitzer_example_image.fits', location='remote')
     hdu = fits.open(path)[0]
@@ -70,10 +79,24 @@ def load_spitzer_catalog():
     """
     Load 4.5 micron Spitzer catalog.
 
+    This is the catalog corresponding to the image returned by
+    `~photutils.datasets.load_spitzer_image`.
+
     Returns
     -------
-    hdu : `~astropy.io.fits.ImageHDU`
-        Image HDU
+    catalog : `~astropy.table.Table`
+        The catalog of sources
+        
+    Examples
+    --------
+    .. plot::
+        :include-source:
+
+        from photutils import datasets
+        catalog = datasets.load_spitzer_catalog()
+        plt.scatter(catalog['l'], catalog['b'])
+        plt.xlim(18.39, 18.05)
+        plt.ylim(0.13, 0.30)
     """
     path = get_path('spitzer_example_catalog.xml', location='remote')
     table = Table.read(path)
