@@ -47,7 +47,7 @@ use of the :class:`~photutils.SkyCircularAperture` class, and the Astropy
   >>> from astropy.coordinates import SkyCoord
   >>> from photutils import SkyCircularAperture
   >>> positions = SkyCoord(l=[1.2, 2.3] * u.deg, b=[0.1, 0.2] * u.deg,
-                           frame='galactic')
+  ...                      frame='galactic')
   >>> apertures = SkyCircularAperture(positions, r=4. * u.arcsec)
 
 .. note:: At this time, the apertures are not strictly defined completely in
@@ -204,6 +204,7 @@ subtraction is left up to the user or calling function.
   with a circular annulus of inner radius 6 pixels and outer radius 8 pixels.
   We can start off by defining the apertures:
 
+    >>> from photutils import CircularAnnulus
     >>> apertures = CircularAperture(positions, r=3)
     >>> annulus_apertures = CircularAnnulus(positions, r_in=6., r_out=8.)
 
@@ -220,7 +221,7 @@ subtraction is left up to the user or calling function.
     >>> aperture_area = np.pi * 3 ** 2
     >>> annulus_area = np.pi * (8 ** 2 - 6 ** 2)
     >>> final_sum = (phot_table['aperture_sum_raw'] -
-                     phot_table['aperture_sum_bkg'] * aperture_area / annulus_area)
+    ...              phot_table['aperture_sum_bkg'] * aperture_area / annulus_area)
     >>> phot_table['residual_aperture_sum'] = final_sum
     >>> print phot_table['residual_aperture_sum']   # doctest: +FLOAT_CMP
     residual_aperture_sum
@@ -335,7 +336,7 @@ With the mask image and the default ``mask_method``
 With the mask image and ``mask_method='interpolation'``::
 
   >>> t3, d3 = aperture_photometry(data, aperture, mask=mask,
-                                   mask_method='interpolation')
+  ...                              mask_method='interpolation')
   >>> print t3['aperture_sum']
    aperture_sum
   -------------
@@ -380,7 +381,7 @@ image data has a pixel scale of 1.2 arcsec / pixel)
 >>> import astropy.units as u
 >>> factor = (1.2 * u.arcsec) ** 2 / u.pixel
 >>> fluxes_catalog = catalog['f4_5']   # doctest: +REMOTE_DATA
->>> converted_aperture_sum = (photometry_skycoord['aperture_sum'] * factor).to(u.mJy / u.pixel)   # doctest: +REMOTE_DATA
+>>> converted_aperture_sum = (phot_table['aperture_sum'] * factor).to(u.mJy / u.pixel)   # doctest: +REMOTE_DATA
 
 Finally, we can plot the comparison:
 

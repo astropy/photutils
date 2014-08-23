@@ -92,7 +92,7 @@ photometry:
   >>> positions = zip(sources['xcen'], sources['ycen'])   # doctest: +REMOTE_DATA
   >>> apertures = CircularAperture(positions, r=4)   # doctest: +REMOTE_DATA
   >>> results, meta = aperture_photometry(image, apertures)   # doctest: +REMOTE_DATA
-  >>> results
+  >>> print results
    aperture_sum         pixel_center [2]                input_center [2]
                               pix                             pix
   ------------- ------------------------------- -------------------------------
@@ -124,7 +124,7 @@ We can now check which is the brightest source in the dataset:
 
 and the faintest:
 
-  >>> faintest_source_id = results['aperture_sum'].argmax()   # doctest: +REMOTE_DATA
+  >>> faintest_source_id = results['aperture_sum'].argmin()   # doctest: +REMOTE_DATA
   >>> print positions[faintest_source_id]   # doctest: +REMOTE_DATA
   (118.71993103386939, 66.807237693649185)
   >>> print results['aperture_sum'][faintest_source_id]   # doctest: +REMOTE_DATA
