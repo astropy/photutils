@@ -6,7 +6,7 @@ from astropy.wcs import WCSSUB_CELESTIAL
 
 def skycoord_to_pixel(coords, wcs):
     """
-    Convert a set of SkyCoord coordinates into pixels.
+    Convert a set of SkyCoord coordinates into pixel coordinates.
 
     This function assumes that the coordinates are celestial.
 
@@ -16,6 +16,11 @@ def skycoord_to_pixel(coords, wcs):
         The coordinates to convert
     wcs : `~astropy.wcs.WCS`
         The WCS transformation to use
+
+    Returns
+    -------
+    x, y : `~numpy.ndarray`
+        The x and y pixel coordinates corresponding to the input coordinates
     """
 
     # TODO this should be simplified once wcs_world2pix() supports
