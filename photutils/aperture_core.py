@@ -237,6 +237,7 @@ class SkyCircularAperture(SkyAperture):
 
         if self.r.unit.physical_type == 'angle':
             x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
+            # TODO: no need to use the mean once we support arrays of aperture values
             r = (np.mean(scale) * self.r).to(u.pixel).value
         else:  # pixel
             x, y = skycoord_to_pixel(self.positions, wcs)
@@ -343,15 +344,76 @@ class CircularAperture(PixelAperture):
         return flux
 
 
-class CircularAnnulus(PixelAperture):
+class SkyCircularAnnulus(SkyAperture):
     """
-    Circular annulus aperture.
+    Circular annulus aperture(s), defined in sky coordinates.
 
     Parameters
     ----------
-    positions : tuple, or list, or array
-        Center coordinates of the apertures as list or array of (x, y)
-        pixelcoordinates.
+
+    positions : `~astropy.coordinates.SkyCoord`
+        Celestial coordinates of the aperture center(s). This can be either
+        scalar coordinates or an array of coordinates.
+    r : `~astropy.units.Quantity`
+        The radius of the aperture(s), either in angular or pixel units.
+    """
+
+    def __init__(self, positions, r_in, r_out):
+
+        if isinstance(positions, SkyCoord):
+            self.positions = positions
+        else:
+            raise TypeError("positions should be a SkyCoord instance")
+
+        if isinstance(r_in, u.Quantity):
+            if r_in.unit.physical_type == 'angle' or r_in.unit is u.pixel:
+                self.r_in = r_in
+            else:
+                raise ValueError("r_in should have angular or pixel units")
+        else:
+            raise TypeError("r_in should be a Quantity instance")
+
+        if isinstance(r_out, u.Quantity):
+            if r_out.unit.physical_type == 'angle' or r_out.unit is u.pixel:
+                self.r_out = r_out
+            else:
+                raise ValueError("r_out should have angular or pixel units")
+        else:
+            raise TypeError("r_out should be a Quantity instance")
+
+        if self.r_in.physical_type != self.r_out.physical_type:
+            raise ValueError("r_in and r_out should either both be angles or in pixels")
+
+    def to_pixel(self, wcs):
+        """
+        Return a CircularAnnulus instance in pixel coordinates.
+        """
+
+        if self.r.unit.physical_type == 'angle':
+            x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
+            # TODO: no need to use the mean once we support arrays of aperture values
+            r_in = (np.mean(scale) * self.r_in).to(u.pixel).value
+            r_out = (np.mean(scale) * self.r_out).to(u.pixel).value
+        else:  # pixel
+            x, y = skycoord_to_pixel(self.positions, wcs)
+            r_in = self.r_in.value
+            r_out = self.r_out.value
+
+        pixel_positions = np.array([x, y]).transpose()
+
+        return CircularAnnulus(pixel_positions, r_in, r_out)
+
+
+class CircularAnnulus(PixelAperture):
+    """
+    Circular annulus aperture(s), defined in pixel coordinates.
+
+    Parameters
+    ----------
+    positions : tuple, list, array, or `~astropy.units.Quantity`
+        Pixel coordinates of the aperture center(s), either as a single
+        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` Numpy
+        array, or an ``Nx2`` `~astropy.units.Quantity` in units of pixels.
     r_in : float
         The inner radius of the annulus.
     r_out : float
