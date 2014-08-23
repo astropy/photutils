@@ -1004,14 +1004,6 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
 
         The metadata of the table stores the version numbers of both astropy
         and photutils, as well as the calling arguments.
-    aux_dict : dict
-        Auxilary dictionary storing all the auxilary information
-        available. The element are the following:
-
-        * ``'apertures'``
-            The `~photutils.Aperture` object containing the apertures to use
-            during the photometry.
-
     """
     dataunit = None
     datamask = None
@@ -1193,14 +1185,13 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
 
     coord_col_names = ('pixel_center', 'input_center')
 
-    return (Table(data=(photometry_result + coord_columns),
-                  names=(phot_col_names + coord_col_names),
-                  meta={'name': 'Aperture photometry results',
-                        'version': 'astropy: {0}, photutils: {1}'
-                        .format(astropy_version, photutils_version),
-                        'calling_args': ('method={0}, subpixels={1}, '
-                                         'error={2}, gain={3}, '
-                                         'pixelwise_error={4}')
-                        .format(method, subpixels, error is not None,
-                                gain is not None, pixelwise_error)}),
-            {'apertures': ap})
+    return Table(data=(photometry_result + coord_columns),
+                 names=(phot_col_names + coord_col_names),
+                 meta={'name': 'Aperture photometry results',
+                       'version': 'astropy: {0}, photutils: {1}'
+                       .format(astropy_version, photutils_version),
+                       'calling_args': ('method={0}, subpixels={1}, '
+                                        'error={2}, gain={3}, '
+                                        'pixelwise_error={4}')
+                       .format(method, subpixels, error is not None,
+                               gain is not None, pixelwise_error)})

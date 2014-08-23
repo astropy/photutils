@@ -91,8 +91,8 @@ photometry:
   >>> from photutils import aperture_photometry, CircularAperture
   >>> positions = zip(sources['xcen'], sources['ycen'])   # doctest: +REMOTE_DATA
   >>> apertures = CircularAperture(positions, r=4)   # doctest: +REMOTE_DATA
-  >>> results, meta = aperture_photometry(image, apertures)   # doctest: +REMOTE_DATA
-  >>> print results
+  >>> phot_table = aperture_photometry(image, apertures)   # doctest: +REMOTE_DATA
+  >>> print phot_table
    aperture_sum         pixel_center [2]                input_center [2]
                               pix                             pix
   ------------- ------------------------------- -------------------------------
@@ -116,18 +116,18 @@ The sum of the pixels is given in the column ``aperture_sum``.
 
 We can now check which is the brightest source in the dataset:
 
-  >>> brightest_source_id = results['aperture_sum'].argmax()   # doctest: +REMOTE_DATA
+  >>> brightest_source_id = phot_table['aperture_sum'].argmax()   # doctest: +REMOTE_DATA
   >>> print positions[brightest_source_id]   # doctest: +REMOTE_DATA
   (57.85429091791125, 99.221529128911058)
-  >>> print results['aperture_sum'][brightest_source_id]   # doctest: +REMOTE_DATA
+  >>> print phot_table['aperture_sum'][brightest_source_id]   # doctest: +REMOTE_DATA
   387408.035871
 
 and the faintest:
 
-  >>> faintest_source_id = results['aperture_sum'].argmin()   # doctest: +REMOTE_DATA
+  >>> faintest_source_id = phot_table['aperture_sum'].argmin()   # doctest: +REMOTE_DATA
   >>> print positions[faintest_source_id]   # doctest: +REMOTE_DATA
   (118.71993103386939, 66.807237693649185)
-  >>> print results['aperture_sum'][faintest_source_id]   # doctest: +REMOTE_DATA
+  >>> print phot_table['aperture_sum'][faintest_source_id]   # doctest: +REMOTE_DATA
   -342.911751784
 
 We can now plot the image and the apertures. The apertures of all the sources
@@ -158,9 +158,9 @@ marked with red while the faintest is with blue:
   positions = zip(sources['xcen'], sources['ycen'])
   radius = 4.
   apertures = CircularAperture(positions, radius)
-  results, meta = aperture_photometry(image, apertures)
-  faintest_source_id = results['aperture_sum'].argmin()
-  brightest_source_id = results['aperture_sum'].argmax()
+  phot_table = aperture_photometry(image, apertures)
+  faintest_source_id = phot_table['aperture_sum'].argmin()
+  brightest_source_id = phot_table['aperture_sum'].argmax()
   plt.imshow(image, cmap='gray_r', origin='lower')
   apertures.plot(color='gray', lw=1.5)
   apertures.plot(color='blue', lw=1.5, source_id=faintest_source_id)
