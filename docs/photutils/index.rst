@@ -39,6 +39,8 @@ In this documentation, we use example datasets by calling functions such as
 :func:`~photutils.datasets.load_star_image`. This function returns an Astropy
 :class:`~astropy.io.fits.ImageHDU` object, and is equivalent to doing:
 
+.. doctest-skip::
+
   >>> from astropy.io import fits
   >>> hdu = fits.open('dataset.fits')[0]
 
