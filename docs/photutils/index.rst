@@ -32,13 +32,25 @@ Some functionality is only available if the following optional dependencies are 
 * `scikit-image <http://scikit-image.org/>`__
 * `matplotlib <http://matplotlib.org/>`__
 
+Datasets bundled with photutils
+-------------------------------
+
+In this documentation, we use one of datasets bundled with `photutils` by
+calling functions such as :func:`~photutils.datasets.load_star_image`. This
+function returns an Astropy :class:`~astropy.io.fits.ImageHDU` object, and is
+equivalent to doing:
+
+  >>> from astropy.io import fits
+  >>> hdu = fits.open('dataset.fits')[0]
+
+where the ``[0]`` accesses the first HDU in the FITS file.
+
 Getting Started
 ---------------
 
 Given a data array, the following example uses `photutils` to find sources
-and perform aperture photometry on them.
-
-The dataset in this example is `~photutils.datasets.load_star_image`:
+and perform aperture photometry on them. We start off by selecting a subset
+of the data and subtracting the median in order to get rid of the background:
 
   >>> import numpy as np
   >>> from photutils import datasets
@@ -46,40 +58,79 @@ The dataset in this example is `~photutils.datasets.load_star_image`:
   >>> image = hdu.data[500:700, 500:700]   # doctest: +REMOTE_DATA
   >>> image -= np.median(image)   # doctest: +REMOTE_DATA
 
-In this example we assume that the data is background-subtracted.
-`photutils` supports different source detection algorithms, this example
-uses `~photutils.daofind`. The parameters of the detected sources are returned
-in a `~astropy.table.Table`:
+In the remainder of the example, we assume that the data is
+background-subtracted. `photutils` supports different source detection
+algorithms, and this example uses `~photutils.daofind`. The parameters of the
+detected sources are returned as an Astropy `~astropy.table.Table`:
 
-  >>> from astropy.stats import median_absolute_deviation as mad
   >>> from photutils import daofind
+  >>> from astropy.stats import median_absolute_deviation as mad
   >>> bkg_sigma = 1.48 * mad(image)   # doctest: +REMOTE_DATA
   >>> sources = daofind(image, fwhm=4.0, threshold=3*bkg_sigma)   # doctest: +REMOTE_DATA
+  >>> print sources   # doctest: +REMOTE_DATA
+   id      xcen          ycen      ...  peak       flux           mag
+  --- ------------- -------------- ... ------ ------------- ---------------
+    1   5.711139137  3.74389258926 ... 8750.0  1.1355985048 -0.138062030087
+    2 36.9311803628 0.999800648995 ... 8829.0 4.30200108896  -1.58417628996
+    3 135.905023257  9.10944508218 ... 8880.0 2.88029075308  -1.14859082538
+    4  55.046682459  11.0380934125 ... 8659.0 2.19524464207 -0.853707314613
+    5 93.5564238612  7.38602419245 ... 7440.0  7.0473473444  -2.12006419302
+  ...           ...            ... ...    ...           ...             ...
+  102 124.313272579  188.305229159 ... 6702.0 6.64693826121  -2.05655411233
+  103 25.7834226993  196.021796422 ... 8795.0 3.55206363482  -1.37620184378
+  104 111.525751196  195.731917995 ... 8109.0 7.94107811571   -2.2496986704
+  105 116.449998422  195.059233325 ... 3299.0 2.88250295796  -1.14942440408
 
-Given the list of source locations, summing the pixel values in identical
-circular apertures. The result is returned in a `~astropy.table.Table`, in
-the column named ``'aperture_sum'``:
+Given the list of source locations, we now compute the sum of the pixel
+values in identical circular apertures. The
+:func:`~photutils.aperture_photometry` function returns an Astropy
+`~astropy.table.Table` and a dictionary containing information about the
+photometry:
 
   >>> from photutils import aperture_photometry, CircularAperture
   >>> positions = zip(sources['xcen'], sources['ycen'])   # doctest: +REMOTE_DATA
-  >>> radius = 4.
-  >>> apertures = CircularAperture(positions, radius)   # doctest: +REMOTE_DATA
-  >>> fluxtable, aux_dict = aperture_photometry(image, apertures)   # doctest: +REMOTE_DATA
+  >>> apertures = CircularAperture(positions, r=4)   # doctest: +REMOTE_DATA
+  >>> results, meta = aperture_photometry(image, apertures)   # doctest: +REMOTE_DATA
+  >>> results
+   aperture_sum         pixel_center [2]                input_center [2]
+                              pix                             pix
+  ------------- ------------------------------- -------------------------------
+  385745.166653    5.711139137 .. 3.74389258926    5.711139137 .. 3.74389258926
+  181641.994629 36.9311803628 .. 0.999800648995 36.9311803628 .. 0.999800648995
+   356417.35327  135.905023257 .. 9.10944508218  135.905023257 .. 9.10944508218
+  368058.976195   55.046682459 .. 11.0380934125   55.046682459 .. 11.0380934125
+  66815.0304252  93.5564238612 .. 7.38602419245  93.5564238612 .. 7.38602419245
+  49273.9292606  19.1364892873 .. 9.04066195256  19.1364892873 .. 9.04066195256
+  203403.359483  67.6959251013 .. 13.0152136495  67.6959251013 .. 13.0152136495
+            ...                             ...                             ...
+  143839.371649  14.5104744617 .. 185.863679944  14.5104744617 .. 185.863679944
+  142341.472824  153.652189075 .. 185.982720367  153.652189075 .. 185.982720367
+  137250.763761  197.312181397 .. 186.177540419  197.312181397 .. 186.177540419
+  45084.8737867  124.313272579 .. 188.305229159  124.313272579 .. 188.305229159
+  341222.112791  25.7834226993 .. 196.021796422  25.7834226993 .. 196.021796422
+  82795.7145661  111.525751196 .. 195.731917995  111.525751196 .. 195.731917995
+  31232.9117818  116.449998422 .. 195.059233325  116.449998422 .. 195.059233325
 
-And now check which one is the fainest and brightest source in this dataset:
+The sum of the pixels is given in the column ``aperture_sum``.
 
-  >>> faintest = (positions[fluxtable['aperture_sum'].argmin()],
-  ...             fluxtable['aperture_sum'].min())   # doctest: +REMOTE_DATA
-  >>> print(faintest)   # doctest: +REMOTE_DATA +FLOAT_CMP
-  ((118.71993103,   66.80723769), -342.91175178365006)
-  >>> brightest = (positions[fluxtable['aperture_sum'].argmax()],
-  ...              fluxtable['aperture_sum'].max())   # doctest: +REMOTE_DATA
-  >>> print(brightest)   # doctest: +REMOTE_DATA +FLOAT_CMP
-  ((57.85429092,  99.22152913), 387408.0358707984)
+We can now check which is the brightest source in the dataset:
 
+  >>> brightest_source_id = results['aperture_sum'].argmax()   # doctest: +REMOTE_DATA
+  >>> print positions[brightest_source_id]   # doctest: +REMOTE_DATA
+  (57.85429091791125, 99.221529128911058)
+  >>> print results['aperture_sum'][brightest_source_id]   # doctest: +REMOTE_DATA
+  387408.035871
 
-Let's plot the image and the apertures. The apertures of all the
-sources found in this image are marked with gray circles. The brightest source is
+and the faintest:
+
+  >>> faintest_source_id = results['aperture_sum'].argmax()   # doctest: +REMOTE_DATA
+  >>> print positions[faintest_source_id]   # doctest: +REMOTE_DATA
+  (118.71993103386939, 66.807237693649185)
+  >>> print results['aperture_sum'][faintest_source_id]   # doctest: +REMOTE_DATA
+  -342.911751784
+
+We can now plot the image and the apertures. The apertures of all the sources
+found in this image are marked with gray circles. The brightest source is
 marked with red while the faintest is with blue:
 
 .. doctest-skip::
@@ -87,12 +138,9 @@ marked with red while the faintest is with blue:
   >>> import matplotlib.patches as patches
   >>> import matplotlib.pylab as plt
   >>> plt.imshow(image, cmap='gray_r', origin='lower')
-  >>> aux_dict['apertures'].plot(color='gray', lw=1.5)
-  >>> plt.gca().add_patch(patches.Circle(faintest[0], radius, color='blue',
-  ...                                    fill=False, lw=1.5))
-  >>> plt.gca().add_patch(patches.Circle(brightest[0], radius, color='red',
-  ...                                    fill=False, lw=1.5))
-
+  >>> apertures.plot(color='gray', lw=1.5)
+  >>> apertures.plot(color='blue', lw=1.5, source_id=faintest_source_id)
+  >>> apertures.plot(color='red', lw=1.5, source_id=brightest_source_id)
 
 .. plot::
 
@@ -109,15 +157,13 @@ marked with red while the faintest is with blue:
   positions = zip(sources['xcen'], sources['ycen'])
   radius = 4.
   apertures = CircularAperture(positions, radius)
-  fluxtable, aux_dict = aperture_photometry(image, apertures)
-  faintest = (positions[fluxtable['aperture_sum'].argmin()], fluxtable['aperture_sum'].min())
-  brightest = (positions[fluxtable['aperture_sum'].argmax()], fluxtable['aperture_sum'].max())
+  results, meta = aperture_photometry(image, apertures)
+  faintest_source_id = results['aperture_sum'].argmin()
+  brightest_source_id = results['aperture_sum'].argmax()
   plt.imshow(image, cmap='gray_r', origin='lower')
-  aux_dict['apertures'].plot(color='gray', lw=1.5)
-  plt.gca().add_patch(patches.Circle(faintest[0], radius, color='blue',
-                                     fill=False, lw=1.5))
-  plt.gca().add_patch(patches.Circle(brightest[0], radius, color='red',
-                                     fill=False, lw=1.5))
+  apertures.plot(color='gray', lw=1.5)
+  apertures.plot(color='blue', lw=1.5, source_id=faintest_source_id)
+  apertures.plot(color='red', lw=1.5, source_id=brightest_source_id)
 
 
 Using `photutils`

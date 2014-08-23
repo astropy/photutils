@@ -306,13 +306,21 @@ class CircularAperture(PixelAperture):
         """
         return math.pi * self.r ** 2
 
-    def plot(self, ax=None, fill=False, **kwargs):
+    def plot(self, ax=None, fill=False, source_id=None, **kwargs):
+
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
+
         kwargs['fill'] = fill
+
         if ax is None:
             ax = plt.gca()
-        for position in self.positions:
+        if source_id is None:
+            positions = self.positions
+        else:
+            positions = self.positions[np.atleast_1d(source_id)]
+
+        for position in positions:
             patch = mpatches.Circle(position, self.r, **kwargs)
             ax.add_patch(patch)
 
