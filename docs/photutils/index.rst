@@ -85,8 +85,7 @@ detected sources are returned as an Astropy `~astropy.table.Table`:
 Given the list of source locations, we now compute the sum of the pixel
 values in identical circular apertures. The
 :func:`~photutils.aperture_photometry` function returns an Astropy
-`~astropy.table.Table` and a dictionary containing information about the
-photometry:
+`~astropy.table.Table` with the results of the photometry:
 
   >>> from photutils import aperture_photometry, CircularAperture
   >>> positions = zip(sources['xcen'], sources['ycen'])   # doctest: +REMOTE_DATA
@@ -112,36 +111,14 @@ photometry:
   82795.7145661  111.525751196 .. 195.731917995  111.525751196 .. 195.731917995
   31232.9117818  116.449998422 .. 195.059233325  116.449998422 .. 195.059233325
 
-The sum of the pixels is given in the column ``aperture_sum``.
-
-We can now check which is the brightest source in the dataset:
-
-  >>> brightest_source_id = phot_table['aperture_sum'].argmax()   # doctest: +REMOTE_DATA
-  >>> print positions[brightest_source_id]   # doctest: +REMOTE_DATA
-  (57.85429091791125, 99.221529128911058)
-  >>> print phot_table['aperture_sum'][brightest_source_id]   # doctest: +REMOTE_DATA
-  387408.035871
-
-and the faintest:
-
-  >>> faintest_source_id = phot_table['aperture_sum'].argmin()   # doctest: +REMOTE_DATA
-  >>> print positions[faintest_source_id]   # doctest: +REMOTE_DATA
-  (118.71993103386939, 66.807237693649185)
-  >>> print phot_table['aperture_sum'][faintest_source_id]   # doctest: +REMOTE_DATA
-  -342.911751784
-
-We can now plot the image and the apertures. The apertures of all the sources
-found in this image are marked with gray circles. The brightest source is
-marked with red while the faintest is with blue:
+The sum of the pixels is given in the column ``aperture_sum``. We can now plot the image and the apertures:
 
 .. doctest-skip::
 
   >>> import matplotlib.patches as patches
   >>> import matplotlib.pylab as plt
   >>> plt.imshow(image, cmap='gray_r', origin='lower')
-  >>> apertures.plot(color='gray', lw=1.5)
-  >>> apertures.plot(color='blue', lw=1.5, source_id=faintest_source_id)
-  >>> apertures.plot(color='red', lw=1.5, source_id=brightest_source_id)
+  >>> apertures.plot(color='blue', lw=1.5, alpha=0.5)
 
 .. plot::
 
@@ -159,12 +136,9 @@ marked with red while the faintest is with blue:
   radius = 4.
   apertures = CircularAperture(positions, radius)
   phot_table = aperture_photometry(image, apertures)
-  faintest_source_id = phot_table['aperture_sum'].argmin()
   brightest_source_id = phot_table['aperture_sum'].argmax()
   plt.imshow(image, cmap='gray_r', origin='lower')
-  apertures.plot(color='gray', lw=1.5)
-  apertures.plot(color='blue', lw=1.5, source_id=faintest_source_id)
-  apertures.plot(color='red', lw=1.5, source_id=brightest_source_id)
+  apertures.plot(color='blue', lw=1.5, alpha=0.5)
 
 
 Using `photutils`

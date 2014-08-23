@@ -413,8 +413,8 @@ Finally, we can plot the comparison:
   # Plot
   import matplotlib.pylab as plt
   plt.scatter(fluxes_catalog, converted_aperture_sum.value)
-  plt.xlabel('Fluxes catalog')
-  plt.ylabel('Fluxes aperture photometry')
+  plt.xlabel('Spitzer catalog fluxes ')
+  plt.ylabel('Aperture photometry fluxes')
   plt.plot([40, 100, 450],[40, 100, 450], color='black', lw=2)
 
 The two catalogs are in good agreement. The Spitzer fluxes were computed
