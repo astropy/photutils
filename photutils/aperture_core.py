@@ -17,7 +17,7 @@ from astropy.utils.misc import InheritDocstrings
 from astropy.utils.exceptions import AstropyUserWarning
 from .aperture_funcs import do_circular_photometry, do_elliptical_photometry, \
                             do_annulus_photometry
-from .utils import skycoord_to_pixel
+from .utils import skycoord_to_pixel, skycoord_to_pixel_scale_angle
 
 __all__ = ["Aperture",
            "SkyCircularAperture",
@@ -235,13 +235,14 @@ class SkyCircularAperture(SkyAperture):
         Return a CircularAperture instance in pixel coordinates.
         """
 
-        pixel_positions = skycoord_to_pixel(self.positions, wcs)
-
         if self.r.unit.physical_type == 'angle':
-            from .extern.wcs_utils import celestial_scale
-            r = (self.r / celestial_scale(wcs)).decompose().value
+            x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
+            r = (np.mean(scale) * self.r).to(u.pixel).value
         else:  # pixel
+            x, y = skycoord_to_pixel(self.positions, wcs)
             r = self.r.value
+
+        pixel_positions = np.array([x, y]).transpose()
 
         return CircularAperture(pixel_positions, r)
 
@@ -282,6 +283,8 @@ class CircularAperture(PixelAperture):
                 raise u.UnitsError("positions should be in pixel units")
 
         self.positions = np.asarray(positions)
+
+        print(self.positions.ndim, len(self.positions))
 
         if self.positions.ndim == 1 and len(self.positions) == 2:
             self.positions = np.atleast_2d(positions)
