@@ -108,6 +108,26 @@ def skycoord_to_pixel_scale_angle(coords, wcs):
     scale = np.hypot(dx, dy) * u.pixel / dlat
 
     # Find the position angle
-    angle = np.arctan2(dy, dx)
+    angle = np.arctan2(dy, dx) * u.radian
 
     return x, y, scale, angle
+
+
+def assert_angle_or_pixel(name, q):
+    if isinstance(q, u.Quantity):
+        if q.unit.physical_type == 'angle' or q.unit is u.pixel:
+            pass
+        else:
+            raise ValueError("{0} should have angular or pixel units".format(name))
+    else:
+        raise TypeError("{0} should be a Quantity instance".format(name))
+
+
+def assert_angle(name, q):
+    if isinstance(q, u.Quantity):
+        if q.unit.physical_type == 'angle':
+            pass
+        else:
+            raise ValueError("{0} should have angular units".format(name))
+    else:
+        raise TypeError("{0} should be a Quantity instance".format(name))

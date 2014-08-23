@@ -17,13 +17,16 @@ from astropy.utils.misc import InheritDocstrings
 from astropy.utils.exceptions import AstropyUserWarning
 from .aperture_funcs import do_circular_photometry, do_elliptical_photometry, \
                             do_annulus_photometry
-from .utils import skycoord_to_pixel, skycoord_to_pixel_scale_angle
+from .utils import skycoord_to_pixel, skycoord_to_pixel_scale_angle, assert_angle_or_pixel, assert_angle
 
 __all__ = ["Aperture",
            "SkyCircularAperture",
            "CircularAperture",
+           "SkyCircularAnnulus",
            "CircularAnnulus",
+           "SkyEllipticalAperture",
            "EllipticalAperture",
+           "SkyEllipticalAnnulus",
            "EllipticalAnnulus",
            "RectangularAperture",
            "aperture_photometry"]
@@ -222,13 +225,8 @@ class SkyCircularAperture(SkyAperture):
         else:
             raise TypeError("positions should be a SkyCoord instance")
 
-        if isinstance(r, u.Quantity):
-            if r.unit.physical_type == 'angle' or r.unit is u.pixel:
-                self.r = r
-            else:
-                raise ValueError("r should have angular or pixel units")
-        else:
-            raise TypeError("r should be a Quantity instance")
+        assert_angle_or_pixel('r', r)
+        self.r = r
 
     def to_pixel(self, wcs):
         """
@@ -284,8 +282,6 @@ class CircularAperture(PixelAperture):
                 raise u.UnitsError("positions should be in pixel units")
 
         self.positions = np.asarray(positions)
-
-        print(self.positions.ndim, len(self.positions))
 
         if self.positions.ndim == 1 and len(self.positions) == 2:
             self.positions = np.atleast_2d(positions)
@@ -365,31 +361,21 @@ class SkyCircularAnnulus(SkyAperture):
         else:
             raise TypeError("positions should be a SkyCoord instance")
 
-        if isinstance(r_in, u.Quantity):
-            if r_in.unit.physical_type == 'angle' or r_in.unit is u.pixel:
-                self.r_in = r_in
-            else:
-                raise ValueError("r_in should have angular or pixel units")
-        else:
-            raise TypeError("r_in should be a Quantity instance")
+        assert_angle_or_pixel('r_in', r_in)
+        assert_angle_or_pixel('r_out', r_out)
 
-        if isinstance(r_out, u.Quantity):
-            if r_out.unit.physical_type == 'angle' or r_out.unit is u.pixel:
-                self.r_out = r_out
-            else:
-                raise ValueError("r_out should have angular or pixel units")
-        else:
-            raise TypeError("r_out should be a Quantity instance")
-
-        if self.r_in.physical_type != self.r_out.physical_type:
+        if r_in.unit.physical_type != r_out.unit.physical_type:
             raise ValueError("r_in and r_out should either both be angles or in pixels")
+
+        self.r_in = r_in
+        self.r_out = r_out
 
     def to_pixel(self, wcs):
         """
         Return a CircularAnnulus instance in pixel coordinates.
         """
 
-        if self.r.unit.physical_type == 'angle':
+        if self.r_in.unit.physical_type == 'angle':
             x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
             # TODO: no need to use the mean once we support arrays of aperture values
             r_in = (np.mean(scale) * self.r_in).to(u.pixel).value
@@ -518,15 +504,74 @@ class CircularAnnulus(PixelAperture):
             ax.add_patch(patch)
 
 
-class EllipticalAperture(PixelAperture):
+class SkyEllipticalAperture(SkyAperture):
     """
-    An elliptical aperture.
+    Elliptical aperture(s), defined in sky coordinates.
 
     Parameters
     ----------
-    positions : tuple, or list, or array
-        Center coordinates of the apertures as list or array of (x, y)
-        pixelcoordinates.
+    positions : `~astropy.coordinates.SkyCoord`
+        Celestial coordinates of the aperture center(s). This can be either
+        scalar coordinates or an array of coordinates.
+    a : `~astropy.units.Quantity`
+        The semimajor axis, either in angular or pixel units.
+    b : `~astropy.units.Quantity`
+        The semiminor axis, either in angular or pixel units.
+    theta : `~astropy.units.Quantity`
+        The position angle of the semimajor axis (counterclockwise), either
+        in angular or pixel units.
+    """
+
+    def __init__(self, positions, a, b, theta):
+
+        if isinstance(positions, SkyCoord):
+            self.positions = positions
+        else:
+            raise TypeError("positions should be a SkyCoord instance")
+
+        assert_angle_or_pixel('a', a)
+        assert_angle_or_pixel('b', b)
+        assert_angle('theta', theta)
+
+        if a.unit.physical_type != b.unit.physical_type:
+            raise ValueError("a and b should either both be angles or in pixels")
+
+        self.a = a
+        self.b = b
+        self.theta = theta
+
+    def to_pixel(self, wcs):
+        """
+        Return a EllipticalAperture instance in pixel coordinates.
+        """
+
+        x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
+
+        # TODO: no need to use the mean once we support arrays of aperture values
+        if self.a.unit.physical_type == 'angle':
+            a = (np.mean(scale) * self.a).to(u.pixel).value
+            b = (np.mean(scale) * self.b).to(u.pixel).value
+        else:  # pixel
+            a = self.a.value
+            b = self.b.value
+
+        theta = (angle + self.theta).to(u.radian).value
+
+        pixel_positions = np.array([x, y]).transpose()
+
+        return EllipticalAperture(pixel_positions, a, b, theta)
+
+
+class EllipticalAperture(PixelAperture):
+    """
+    Elliptical aperture(s), defined in pixel coordinates.
+
+    Parameters
+    ----------
+    positions : tuple, list, array, or `~astropy.units.Quantity`
+        Pixel coordinates of the aperture center(s), either as a single
+        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` Numpy
+        array, or an ``Nx2`` `~astropy.units.Quantity` in units of pixels.
     a : float
         The semimajor axis.
     b : float
@@ -626,15 +671,84 @@ class EllipticalAperture(PixelAperture):
             ax.add_patch(patch)
 
 
-class EllipticalAnnulus(PixelAperture):
+class SkyEllipticalAnnulus(SkyAperture):
     """
-    An elliptical annulus aperture.
+    Elliptical annulus aperture(s), defined in sky coordinates.
 
     Parameters
     ----------
-    positions : tuple, or list, or array
-        Center coordinates of the apertures as list or array of (x, y)
-        pixelcoordinates.
+    positions : `~astropy.coordinates.SkyCoord`
+        Celestial coordinates of the aperture center(s). This can be either
+        scalar coordinates or an array of coordinates.
+    a_in : `~astropy.units.Quantity`
+        The inner semimajor axis, either in angular or pixel units.
+    a_out : `~astropy.units.Quantity`
+        The outer semimajor axis, either in angular or pixel units.
+    b_out : `~astropy.units.Quantity`
+        The outer semiminor axis, either in angular or pixel units. The inner
+        semiminor axis is determined by scaling by a_in/a_out.
+    theta : `~astropy.units.Quantity`
+        The position angle of the semimajor axis (counterclockwise), either
+        in angular or pixel units.
+    """
+
+    def __init__(self, positions, a_in, a_out, b_out, theta):
+
+        if isinstance(positions, SkyCoord):
+            self.positions = positions
+        else:
+            raise TypeError("positions should be a SkyCoord instance")
+
+        assert_angle_or_pixel('a_in', a_in)
+        assert_angle_or_pixel('a_out', a_out)
+        assert_angle_or_pixel('b_out', b_out)
+        assert_angle('theta', theta)
+
+        if a_in.unit.physical_type != a_out.unit.physical_type:
+            raise ValueError("a_in and a_out should either both be angles or in pixels")
+
+        if a_out.unit.physical_type != b_out.unit.physical_type:
+            raise ValueError("a_out and b_out should either both be angles or in pixels")
+
+        self.a_in = a_in
+        self.a_out = a_out
+        self.b_out = b_out
+        self.theta = theta
+
+    def to_pixel(self, wcs):
+        """
+        Return a EllipticalAnnulus instance in pixel coordinates.
+        """
+
+        x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
+
+        # TODO: no need to use the mean once we support arrays of aperture values
+        if self.a_in.unit.physical_type == 'angle':
+            a_in = (np.mean(scale) * self.a_in).to(u.pixel).value
+            a_out = (np.mean(scale) * self.a_out).to(u.pixel).value
+            b_out = (np.mean(scale) * self.b_out).to(u.pixel).value
+        else:
+            a_in = self.a_in.value
+            a_out = self.a_out.value
+            b_out = self.b_out.value
+
+        theta = (angle + self.theta).to(u.radian).value
+
+        pixel_positions = np.array([x, y]).transpose()
+
+        return EllipticalAnnulus(pixel_positions, a_in, a_out, b_out, theta)
+
+
+class EllipticalAnnulus(PixelAperture):
+    """
+    Elliptical annulus aperture(s), defined in pixel coordinates.
+
+    Parameters
+    ----------
+    positions : tuple, list, array, or `~astropy.units.Quantity`
+        Pixel coordinates of the aperture center(s), either as a single
+        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` Numpy
+        array, or an ``Nx2`` `~astropy.units.Quantity` in units of pixels.
     a_in : float
         The inner semimajor axis.
     a_out : float
