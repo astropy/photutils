@@ -42,6 +42,15 @@ class _SegmentProperties(object):
     def max_position(self):
         return np.where(self.region == self.max_value)
 
+    # TODO:  allow alternate centroid methods via input centroid_func:
+    # npix = ndimage.labeled_comprehension(image, segment_image, label_ids,
+    #                                      centroid_func, np.float32, np.nan)
+    #centroids = ndimage.center_of_mass(image, segment_image, objids)
+    #ycen, xcen = np.transpose(centroids)
+    #npix = ndimage.labeled_comprehension(image, segment_image, objids, len,
+    #                                     np.float32, np.nan)
+    #radii = np.sqrt(npix / np.pi)
+
 
 
 def segment_props(image, segment_image, mask_image=None,
@@ -60,6 +69,12 @@ def segment_props(image, segment_image, mask_image=None,
     eccen
     theta
     2nd order central moments
+
+
+        * ``'xcen', 'ycen'``: object centroid (zero-based origin).
+        * ``'area'``: the number pixels in the source segment.
+        * ``'radius_equiv'``: the equivalent circular radius derived
+          from the source ``area``.
 
     """
 
@@ -177,10 +192,6 @@ def segment_photometry(image, segment_image, error=None, gain=None,
 
         * ``'id'``: the source identification number corresponding to
           the object label in the ``segment_image``.
-        * ``'xcen', 'ycen'``: object centroid (zero-based origin).
-        * ``'area'``: the number pixels in the source segment.
-        * ``'radius_equiv'``: the equivalent circular radius derived
-          from the source ``area``.
         * ``'flux'``: the total flux within the source segment.
         * ``'flux_error'``: the 1-sigma flux error within the source
           segment.  Returned only if `error` is input.
@@ -191,73 +202,67 @@ def segment_photometry(image, segment_image, error=None, gain=None,
     """
 
     from scipy import ndimage
-    assert image.shape == segment_image.shape, \
-        ('image and segment_image must have the same shape')
+    if data.shape != segment_image.shape:
+        raise ValueError('data and segment_image must have the same shape')
     if labels is None:
-        objids = np.unique(segment_image[segment_image > 0])
+        label_ids = np.unique(segment_image[segment_image > 0])
     else:
-        objids = np.atleast_1d(labels)
+        label_ids = np.atleast_1d(labels)
 
-    image_iscopy = False
+    data_iscopy = False
     if background is not None:
         if not np.isscalar(background):
-            assert image.shape == background.shape, \
-                ('image and background image must have the same shape')
-        image = copy.deepcopy(image)
-        image_iscopy = True
-        image -= background
+            if data.shape != background.shape:
+                raise ValueError('If input background is 2D, then it must '
+                                 'have the same shape as the input data.')
+        data = copy.deepcopy(data)
+        data_iscopy = True
+        data -= background
 
-    if error_image is not None:
-        assert image.shape == mask_image.shape, \
-            ('image and error_image must have the same shape')
-        variance_image = error_image**2
+    if error is not None:
+        if data.shape != error.shape:
+            raise ValueError('data and error must have the same shape')
+        variance = error**2
 
-    if mask_image is not None:
-        assert image.shape == mask_image.shape, \
-            ('image and mask_image must have the same shape')
-        if not image_iscopy:
-            image = copy.deepcopy(image)
+    if mask is not None:
+        if data.shape != mask.shape:
+            raise ValueError('data and mask must have the same shape')
+        if not data_iscopy:
+            data = copy.deepcopy(data)
 
         if mask_method == 'exclude':
-            image[mask_image.nonzero()] = 0.0
-            if error_image is not None:
-                error_image[mask_image.nonzero()] = 0.0
+            # masked pixel will not contribute to sums
+            data[mask.nonzero()] = 0.0
+            if error is not None:
+                error[mask.nonzero()] = 0.0
         elif mask_method == 'interpolate':
-            for j, i in zip(*mask_image.nonzero()):
-                y0, y1 = max(j - 1, 0), min(j + 2, image.shape[0])
-                x0, x1 = max(i - 1, 0), min(i + 2, image.shape[1])
-                goodpix = ~mask_image[y0:y1, x0:x1]
-                image[j, i] = np.mean(image[y0:y1, x0:x1][goodpix])
-                if error_image is not None:
-                    error_image[j, i] = np.sqrt(np.mean(
-                        variance_image[y0:y1, x0:x1][goodpix]))
+            for j, i in zip(*mask.nonzero()):
+                y0, y1 = max(j - 1, 0), min(j + 2, data.shape[0])
+                x0, x1 = max(i - 1, 0), min(i + 2, data.shape[1])
+                goodpix = ~mask[y0:y1, x0:x1]
+                data[j, i] = np.mean(data[y0:y1, x0:x1][goodpix])
+                if error is not None:
+                    error[j, i] = np.sqrt(np.mean(
+                        variance[y0:y1, x0:x1][goodpix]))
         else:
             raise ValueError(
-                'mask_method {0} is not valid'.format(mask_method))
+                'mask_method "{0}" is not valid'.format(mask_method))
 
-    # TODO:  allow alternate centroid methods via input centroid_func:
-    # npix = ndimage.labeled_comprehension(image, segment_image, objids,
-    #                                      centroid_func, np.float32, np.nan)
-    centroids = ndimage.center_of_mass(image, segment_image, objids)
-    ycen, xcen = np.transpose(centroids)
-    npix = ndimage.labeled_comprehension(image, segment_image, objids, len,
-                                         np.float32, np.nan)
-    radii = np.sqrt(npix / np.pi)
-    fluxes = ndimage.measurements.sum(image, labels=segment_image,
-                                      index=objids)
-    data = [objids, xcen, ycen, npix, radii, fluxes]
-    names = ('id', 'xcen', 'ycen', 'area', 'radius_equiv', 'flux')
+    segment_sums = ndimage.measurements.sum(data, labels=segment_image,
+                                            index=label_ids)
+    data = [label_ids, segment_sum]
+    names = ('id', 'segment_sum')
     phot_table = Table(data, names=names)
 
-    if error_image is not None:
+    if error is not None:
         if gain is not None:
-            variance_image += image / gain
-        flux_variance = ndimage.measurements.sum(variance_image,
-                                               labels=segment_image,
-                                               index=objids)
-        flux_errors = np.sqrt(flux_variance)
-        phot_table['flux_error'] = flux_errors
+            variance += data / gain
+        segment_sum_var = ndimage.measurements.sum(variance,
+                                                   labels=segment_image,
+                                                   index=label_ids)
+        segment_sum_err = np.sqrt(segment_sum_var)
+        phot_table['segment_sum_err'] = segment_sum_err
 
-    bad_labels = (~np.isfinite(phot_table['xcen'])).nonzero()
-    phot_table['flux'][bad_labels] = np.nan
+    #bad_labels = (~np.isfinite(phot_table['xcen'])).nonzero()
+    #phot_table['flux'][bad_labels] = np.nan
     return phot_table
