@@ -4,7 +4,8 @@ from __future__ import (absolute_import, division, print_function,
 import copy
 import numpy as np
 from astropy.table import Table, Column
-from skimage.measure._regionprops import _RegionProperties, _cached_property
+from skimage.measure._regionprops import _cached_property, _RegionProperties
+
 
 __all__ = ['segment_props', 'segment_photometry']
 
@@ -97,8 +98,8 @@ def segment_props(image, segment_image, mask_image=None,
         return props_table
 
 
-def segment_photometry(image, segment_image, error_image=None, gain=None,
-                       mask_image=None, mask_method='exclude', labels=None):
+def segment_photometry(image, segment_image, error=None, gain=None,
+                       mask=None, mask_method='exclude', labels=None):
     """
     Perform photometry of sources whose extents are defined by a labeled
     segmentation image.
@@ -109,41 +110,40 @@ def segment_photometry(image, segment_image, error_image=None, gain=None,
 
     Parameters
     ----------
-    image : array_like
-        The 2D array of the image.
+    data : array_like
+        The 2D array on which to perform photometry.
 
     segment_image : array_like
-        A 2D segmentation image of positive integers indicating labels
-        for detected sources.  A value of zero is reserved for the
+        A 2D segmentation image where sources are marked by different
+        positive integer values.  A value of zero is reserved for the
         background.
 
-    error_image : array_like, optional
+    error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``image``.  If
-        ``gain`` is input, then ``error_image`` should include all
-        sources of "background" error but *exclude* the Poission error
-        of the sources.  If ``gain`` is `None`, then the ``error_image``
+        ``gain`` is input, then ``error`` should include all sources of
+        "background" error but *exclude* the Poission error of the
+        sources.  If ``gain`` is `None`, then the ``error_image`` is
+        assumed to include *all* sources of error, including the
+        Poission error of the sources.  ``error`` must have the same
+        shape as ``image``.
+
+    gain : float or array-like, optional
+        Ratio of counts (e.g., electrons or photons) to the units of
+        ``data``.  This is used to calculate the Poisson error of the
+        sources.  If ``gain`` is input, then ``error`` should include
+        all sources of "background" error but *exclude* the Poission
+        error of the sources.  If ``gain`` is `None`, then the ``error``
         is assumed to include *all* sources of error, including the
-        Poission error of the sources.  ``error_image`` must have the
-        same shape as ``image``.
+        Poission error of the sources.  For example, if your input
+        ``data`` is in units of ADU, then ``gain`` should represent
+        electrons/ADU.  If your input ``data`` is in units of
+        electrons/s then ``gain`` should be the exposure time.
 
-    gain : float, optional
-        The gain factor that when multiplied by the input ``image``
-        results in an image in units of electrons.  If ``gain`` is input,
-        then ``error_image`` should include all sources of "background"
-        error but *exclude* the Poission error of the sources.  If
-        ``gain`` is `None`, then the ``error_image`` is assumed to include
-        *all* sources of error, including the Poission error of the
-        sources.
-
-        For example, if your input ``image`` is in units of ADU, then
-        ``gain`` should represent electrons/ADU.  If your input
-        ``image`` is in units of electrons/s then ``gain`` should be the
-        exposure time.
-
-    mask_image : array_like, bool, optional
-        A boolean mask with the same shape as ``image``, where a `True`
-        value indicates the corresponding element of ``image`` is
-        ignored when computing the photometry.
+    mask : array_like, bool, optional
+        A boolean mask with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``image`` is masked
+        when computing the photometry.  Use the ``mask_method`` keyword
+        to select the method used to treat masked pixels.
 
     mask_method : {'exclude', 'interpolate'}, optional
         Method used to treat masked pixels.  The currently supported
@@ -158,10 +158,11 @@ def segment_photometry(image, segment_image, error_image=None, gain=None,
             the neighboring non-masked pixels.
 
     background : float or array_like, optional
-        The background level of the input ``image``.  ``background`` may
+        The background level of the input ``data``.  ``background`` may
         either be a scalar value or a 2D image with the same shape as
-        the input ``image``.  If the input ``image`` has been
-        background-subtracted, then set ``background=None`` (default).
+        the input ``data``.  If the input ``data`` has been
+        background-subtracted, then set ``background`` to `None` (which
+        is the default).
 
     labels : int, sequence of ints or None
         Subset of ``segment_image`` labels for which to perform the
@@ -171,18 +172,18 @@ def segment_photometry(image, segment_image, error_image=None, gain=None,
     Returns
     -------
     table : `astropy.table.Table`
-        A table of the segmented photometry containing the following
-        parameters:
+        A table of the photometry of the segmented sources containing
+        the following columns:
 
-        * ``id``: the source identification number corresponding to the
-          object label in the ``segment_image``.
-        * ``xcen, ycen``: object centroid (zero-based origin).
-        * ``area``: the number pixels in the source segment.
-        * ``radius_equiv``: the equivalent circular radius derived from the
-          source ``area``.
-        * ``flux``: the total flux within the source segment.
-        * ``flux_error``: the 1-sigma flux error within the source segment.
-          ``flux_error`` is returned only if `error_image` is input.
+        * ``'id'``: the source identification number corresponding to
+          the object label in the ``segment_image``.
+        * ``'xcen', 'ycen'``: object centroid (zero-based origin).
+        * ``'area'``: the number pixels in the source segment.
+        * ``'radius_equiv'``: the equivalent circular radius derived
+          from the source ``area``.
+        * ``'flux'``: the total flux within the source segment.
+        * ``'flux_error'``: the 1-sigma flux error within the source
+          segment.  Returned only if `error` is input.
 
     See Also
     --------
