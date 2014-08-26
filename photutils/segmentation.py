@@ -240,9 +240,9 @@ def segment_photometry(data, segment_image, background=None, error=None,
             if background is not None:
                 bkgrd_image[mask_idx] = 0.0
             if error is not None:
-                error[mask_idx] = 0.0
+                variance[mask_idx] = 0.0
         elif mask_method == 'interpolate':
-            for j, i in zip(mask_idx):
+            for j, i in zip(*mask_idx):
                 y0, y1 = max(j - 1, 0), min(j + 2, data.shape[0])
                 x0, x1 = max(i - 1, 0), min(i + 2, data.shape[1])
                 goodpix = ~mask[y0:y1, x0:x1]
@@ -251,7 +251,7 @@ def segment_photometry(data, segment_image, background=None, error=None,
                     bkgrd_image[j, i] = np.mean(
                         bkgrd_image[y0:y1, x0:x1][goodpix])
                 if error is not None:
-                    error[j, i] = np.sqrt(np.mean(
+                    variance[j, i] = np.sqrt(np.mean(
                         variance[y0:y1, x0:x1][goodpix]))
         else:
             raise ValueError(
