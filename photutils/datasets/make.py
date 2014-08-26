@@ -77,9 +77,10 @@ def make_gaussian_image(shape, table):
 
 
 def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
-                          seed=None):
+                          noise_lambda=None, seed=None):
     """
-    Make an image containing 2D Gaussian sources.
+    Make an image containing 2D Gaussian sources with optional Gaussian
+    or Poisson noise.
 
     Parameters
     ----------
@@ -93,18 +94,25 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
         parameter names.
 
     noise_stddev : float, optional
-        The standard deviation of the noise to add to the output image.
-        The default is `None`, meaning no noise will be added to the
-        output image.
+        The standard deviation of the Gaussian noise to add to the
+        output image.  The default is `None`, meaning no Gaussian noise
+        will be added to the output image.  ``noise_stddev`` and
+        ``noise_lambda`` should not both be set.
+
+    noise_lambda : positive float, optional
+        The expectation value of the Poisson noise to add to the output
+        image.  The default is `None`, meaning no Poisson noise will be
+        added to the output image.  ``noise_stddev`` and
+        ``noise_lambda`` should not both be set.
 
     seed : `None`, int, or array_like, optional
         Random seed initializing the pseudo-random number generator used
         to generate the noise image.  ``seed`` can be an integer, an
         array (or other sequence) of integers of any length, or `None`
-        (the default).  Separate function calls with the same
-        ``noise_stddev`` and ``seed`` will generate the identical noise
-        image.  If ``seed`` is `None`, then a new random noise image
-        will be generated each time.
+        (the default).  Separate function calls with the same noise
+        parameters and ``seed`` will generate the identical noise image.
+        If ``seed`` is `None`, then a new random noise image will be
+        generated each time.
 
     Returns
     -------
@@ -127,14 +135,13 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
         table['y_stddev'] = [2.6, 2.5, 3., 4.7]
         table['theta'] = np.array([145., 20., 0., 60.]) * np.pi / 180.
 
-        # make an image of the sources with and without noise
+        # make an image of the sources with and without Gaussian noise
         from photutils.datasets import make_gaussian_sources
         shape = (100, 200)
         image1 = make_gaussian_sources(shape, table)
         image2 = make_gaussian_sources(shape, table, noise_stddev=5.,
                                        seed=12345)
 
-        # make an image of the sources with and without noise
         # plot the images
         import matplotlib.pyplot as plt
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
@@ -152,21 +159,24 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
                            y_stddev=source['y_stddev'], theta=source['theta'])
         image += model(x, y)
 
+    if seed:
+        prng = np.random.RandomState(seed)
+    else:
+        prng = np.random
     if noise_stddev is not None:
-        if seed:
-            prng = np.random.RandomState(seed)
-        else:
-            prng = np.random
         image += prng.normal(loc=0.0, scale=noise_stddev, size=image_shape)
+    if noise_lambda is not None:
+        image += prng.poisson(lam=noise_lambda, size=image_shape)
     return image
 
 
 def make_random_gaussians(image_shape, n_sources, amplitude_range,
                           xstddev_range, ystddev_range, noise_stddev=None,
-                          seed=None):
+                          noise_lambda=None, seed=None):
     """
-    Make an image containing random 2D Gaussian sources whose parameters
-    are drawn from a uniform distribution.
+    Make an image containing random 2D Gaussian sources, whose
+    parameters are drawn from a uniform distribution, with optional
+    Gaussian or Poisson noise.
 
     Parameters
     ----------
@@ -189,9 +199,16 @@ def make_random_gaussians(image_shape, n_sources, amplitude_range,
         which draw source y_stddev from a uniform distribution.
 
     noise_stddev : float, optional
-        The standard deviation of the noise to add to the output image.
-        The default is `None`, meaning no noise will be added to the
-        output image.
+        The standard deviation of the Gaussian noise to add to the
+        output image.  The default is `None`, meaning no Gaussian noise
+        will be added to the output image.  ``noise_stddev`` and
+        ``noise_lambda`` should not both be set.
+
+    noise_lambda : positive float, optional
+        The expectation value of the Poisson noise to add to the output
+        image.  The default is `None`, meaning no Poisson noise will be
+        added to the output image.  ``noise_stddev`` and
+        ``noise_lambda`` should not both be set.
 
     seed : `None`, int, or array_like, optional
         Random seed initializing the pseudo-random number generator used
@@ -251,4 +268,5 @@ def make_random_gaussians(image_shape, n_sources, amplitude_range,
                                        n_sources)
     sources['theta'] = prng.uniform(0, 2.*np.pi, n_sources)
     return make_gaussian_sources(image_shape, sources,
-                                 noise_stddev=noise_stddev, seed=seed)
+                                 noise_stddev=noise_stddev,
+                                 noise_lambda=noise_lambda, seed=seed)
