@@ -113,8 +113,9 @@ def segment_props(image, segment_image, mask_image=None,
         return props_table
 
 
-def segment_photometry(image, segment_image, error=None, gain=None,
-                       mask=None, mask_method='exclude', labels=None):
+def segment_photometry(data, segment_image, background=None, error=None,
+                       gain=None, mask=None, mask_method='exclude',
+                       labels=None):
     """
     Perform photometry of sources whose extents are defined by a labeled
     segmentation image.
@@ -192,13 +193,13 @@ def segment_photometry(image, segment_image, error=None, gain=None,
 
         * ``'id'``: the source identification number corresponding to
           the object label in the ``segment_image``.
-        * ``'flux'``: the total flux within the source segment.
-        * ``'flux_error'``: the 1-sigma flux error within the source
+        * ``'segment_sum'``: the total flux within the source segment.
+        * ``'segment_sum_errr'``: the 1-sigma flux error within the source
           segment.  Returned only if `error` is input.
 
     See Also
     --------
-    detect_sources
+    detect_sources, segment_props
     """
 
     from scipy import ndimage
@@ -248,8 +249,8 @@ def segment_photometry(image, segment_image, error=None, gain=None,
             raise ValueError(
                 'mask_method "{0}" is not valid'.format(mask_method))
 
-    segment_sums = ndimage.measurements.sum(data, labels=segment_image,
-                                            index=label_ids)
+    segment_sum = ndimage.measurements.sum(data, labels=segment_image,
+                                           index=label_ids)
     data = [label_ids, segment_sum]
     names = ('id', 'segment_sum')
     phot_table = Table(data, names=names)
