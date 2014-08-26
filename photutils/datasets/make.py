@@ -6,10 +6,12 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
 from ..psf import GaussianPSF
+from astropy.table import Table
 from astropy.modeling.models import Gaussian2D
 
 
-__all__ = ['make_gaussian_image', 'make_gaussian_sources']
+__all__ = ['make_gaussian_image', 'make_gaussian_sources',
+           'make_random_gaussians']
 
 
 def make_gaussian_image(shape, table):
@@ -92,15 +94,17 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
 
     noise_stddev : float, optional
         The standard deviation of the noise to add to the output image.
+        The default is `None`, meaning no noise will be added to the
+        output image.
 
     seed : `None`, int, or array_like, optional
         Random seed initializing the pseudo-random number generator used
-        to generate the noise image if ``noise_stddev`` is input.  Can
-        be an integer, an array (or other sequence) of integers of any
-        length, or `None` (the default).  Separate function calls with
-        the same ``noise_stddev`` and ``seed`` will generate the
-        identical noise image.  If ``seed`` is `None`, then a new random
-        noise image will be generated each time.
+        to generate the noise image.  ``seed`` can be an integer, an
+        array (or other sequence) of integers of any length, or `None`
+        (the default).  Separate function calls with the same
+        ``noise_stddev`` and ``seed`` will generate the identical noise
+        image.  If ``seed`` is `None`, then a new random noise image
+        will be generated each time.
 
     Returns
     -------
@@ -130,6 +134,7 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
         image2 = make_gaussian_sources(shape, table, noise_stddev=5.,
                                        seed=12345)
 
+        # make an image of the sources with and without noise
         # plot the images
         import matplotlib.pyplot as plt
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
@@ -154,3 +159,96 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
             prng = np.random
         image += prng.normal(loc=0.0, scale=noise_stddev, size=image_shape)
     return image
+
+
+def make_random_gaussians(image_shape, n_sources, amplitude_range,
+                          xstddev_range, ystddev_range, noise_stddev=None,
+                          seed=None):
+    """
+    Make an image containing random 2D Gaussian sources whose parameters
+    are drawn from a uniform distribution.
+
+    Parameters
+    ----------
+    image_shape : 2-tuple of int
+        Shape of the output 2D image.
+
+    n_sources : float
+        The number of random Gaussian sources to add to the image.
+
+    amplitude_range : array-like
+        The lower and upper boundaries input as ``(lower, upper)`` over
+        which draw source amplitudes from a uniform distribution.
+
+    xstddev_range : array-like
+        The lower and upper boundaries input as ``(lower, upper)`` over
+        which draw source x_stddev from a uniform distribution.
+
+    ystddev_range : array-like
+        The lower and upper boundaries input as ``(lower, upper)`` over
+        which draw source y_stddev from a uniform distribution.
+
+    noise_stddev : float, optional
+        The standard deviation of the noise to add to the output image.
+        The default is `None`, meaning no noise will be added to the
+        output image.
+
+    seed : `None`, int, or array_like, optional
+        Random seed initializing the pseudo-random number generator used
+        to generate the Gaussian source parameters and noise image.
+        ``seed`` can be an integer, an array (or other sequence) of
+        integers of any length, or `None` (the default).  Separate
+        function calls with the same ``seed`` will generate the
+        identical sources and noise image.
+
+    Returns
+    -------
+    image : `numpy.ndarray`
+        Image containing 2D Gaussian sources and optional noise.
+
+    Examples
+    --------
+
+    .. plot::
+        :include-source:
+
+        from photutils.datasets import make_random_gaussians
+        shape = (300, 500)
+        n_sources = 100
+        amplitude_range = [50, 100]
+        xstddev_range = [1, 5]
+        ystddev_range = [1, 5]
+
+        # make an image of random sources with and without noise.
+        # seed is used here to generate the same random sources across
+        # function calls.
+        image1 = make_random_gaussians(shape, n_sources, amplitude_range,
+                                       xstddev_range, ystddev_range,
+                                       seed=12345)
+        image2 = make_random_gaussians(shape, n_sources, amplitude_range,
+                                       xstddev_range, ystddev_range,
+                                       noise_stddev=5., seed=12345)
+
+        # plot the images
+        import matplotlib.pyplot as plt
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
+        ax1.imshow(image1, origin='lower', interpolation='nearest')
+        ax2.imshow(image2, origin='lower', interpolation='nearest')
+    """
+
+    if seed:
+        prng = np.random.RandomState(seed)
+    else:
+        prng = np.random
+    sources = Table()
+    sources['amplitude'] = prng.uniform(amplitude_range[0],
+                                        amplitude_range[1], n_sources)
+    sources['x_mean'] = prng.uniform(0, image_shape[1], n_sources)
+    sources['y_mean'] = prng.uniform(0, image_shape[0], n_sources)
+    sources['x_stddev'] = prng.uniform(xstddev_range[0], xstddev_range[1],
+                                       n_sources)
+    sources['y_stddev'] = prng.uniform(ystddev_range[0], ystddev_range[1],
+                                       n_sources)
+    sources['theta'] = prng.uniform(0, 2.*np.pi, n_sources)
+    return make_gaussian_sources(image_shape, sources,
+                                 noise_stddev=noise_stddev, seed=seed)
