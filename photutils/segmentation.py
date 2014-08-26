@@ -52,7 +52,6 @@ class _SegmentProperties(object):
     #radii = np.sqrt(npix / np.pi)
 
 
-
 def segment_props(image, segment_image, mask_image=None,
                   mask_method='exclude', labels=None, out_table=False):
     """
@@ -145,15 +144,15 @@ def segment_photometry(data, segment_image, background=None, error=None,
 
     gain : float or array-like, optional
         Ratio of counts (e.g., electrons or photons) to the units of
-        ``data``.  This is used to calculate the Poisson error of the
-        sources.  If ``gain`` is input, then ``error`` should include
-        all sources of "background" error but *exclude* the Poission
-        error of the sources.  If ``gain`` is `None`, then the ``error``
-        is assumed to include *all* sources of error, including the
-        Poission error of the sources.  For example, if your input
-        ``data`` is in units of ADU, then ``gain`` should represent
-        electrons/ADU.  If your input ``data`` is in units of
-        electrons/s then ``gain`` should be the exposure time.
+        ``data`` used to calculate the Poisson error of the sources.  If
+        ``gain`` is input, then ``error`` should include all sources of
+        "background" error but *exclude* the Poission error of the
+        sources.  If ``gain`` is `None`, then the ``error`` is assumed
+        to include *all* sources of error, including the Poission error
+        of the sources.  For example, if your input ``data`` is in units
+        of ADU, then ``gain`` should represent electrons/ADU.  If your
+        input ``data`` is in units of electrons/s then ``gain`` should
+        be the exposure time.
 
     mask : array_like, bool, optional
         A boolean mask with the same shape as ``data``, where a `True`
@@ -203,8 +202,8 @@ def segment_photometry(data, segment_image, background=None, error=None,
     """
 
     from scipy import ndimage
-    if data.shape != segment_image.shape:
-        raise ValueError('data and segment_image must have the same shape')
+    if segment_image.shape != data.shape:
+        raise ValueError('segment_image and data must have the same shape')
     if labels is None:
         label_ids = np.unique(segment_image[segment_image > 0])
     else:
@@ -215,7 +214,7 @@ def segment_photometry(data, segment_image, background=None, error=None,
         if np.isscalar(background):
             bkgrd_image = np.zeros_like(data) + background
         else:
-            if data.shape != background.shape:
+            if background.shape != data.shape:
                 raise ValueError('If input background is 2D, then it must '
                                  'have the same shape as the input data.')
             bkgrd_image = background
@@ -236,7 +235,7 @@ def segment_photometry(data, segment_image, background=None, error=None,
 
         mask_idx = mask.nonzero()
         if mask_method == 'exclude':
-            # masked pixel will not contribute to sums
+            # masked pixels will not contribute to sums
             data[mask_idx] = 0.0
             if background is not None:
                 bkgrd_image[mask_idx] = 0.0
@@ -260,12 +259,20 @@ def segment_photometry(data, segment_image, background=None, error=None,
 
     segment_sum = ndimage.measurements.sum(data, labels=segment_image,
                                            index=label_ids)
-    data = [label_ids, segment_sum]
+    columns = [label_ids, segment_sum]
     names = ('id', 'segment_sum')
-    phot_table = Table(data, names=names)
+    phot_table = Table(columns, names=names)
 
     if error is not None:
         if gain is not None:
+            if np.isscalar(gain):
+                gain = np.broadcast_arrays(gain, data)[0]
+            gain = np.asarray(gain)
+            if gain.shape != data.shape:
+                raise ValueError('If input gain is 2D, then it must have '
+                                 'the same shape as the input data.')
+            if np.any(gain <= 0):
+                raise ValueError('gain must be positive everywhere')
             variance += data / gain
         segment_sum_var = ndimage.measurements.sum(variance,
                                                    labels=segment_image,
@@ -278,11 +285,8 @@ def segment_photometry(data, segment_image, background=None, error=None,
                                                   labels=segment_image,
                                                   index=label_ids)
         background_mean = ndimage.measurements.mean(bkgrd_image,
-                                                  labels=segment_image,
-                                                  index=label_ids)
+                                                    labels=segment_image,
+                                                    index=label_ids)
         phot_table['background_sum'] = background_sum
         phot_table['background_mean'] = background_mean
-
-    #bad_labels = (~np.isfinite(phot_table['xcen'])).nonzero()
-    #phot_table['flux'][bad_labels] = np.nan
     return phot_table
