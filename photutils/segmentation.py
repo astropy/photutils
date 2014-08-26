@@ -112,8 +112,8 @@ def segment_props(image, segment_image, mask_image=None,
         return props_table
 
 
-def segment_photometry(data, segment_image, background=None, error=None,
-                       gain=None, mask=None, mask_method='exclude',
+def segment_photometry(data, segment_image, error=None, gain=None,
+                       mask=None, mask_method='exclude', background=None,
                        labels=None):
     """
     Perform photometry of sources whose extents are defined by a labeled
@@ -121,7 +121,9 @@ def segment_photometry(data, segment_image, background=None, error=None,
 
     When the segmentation image is defined using a thresholded flux
     level (e.g., see `detect_sources`), this is equivalent to performing
-    isophotal photometry.
+    isophotal photometry in `SExtractor`_.
+
+    .. _SExtractor : http://www.astromatic.net/software/sextractor
 
     Parameters
     ----------
@@ -190,11 +192,17 @@ def segment_photometry(data, segment_image, background=None, error=None,
         A table of the photometry of the segmented sources containing
         the following columns:
 
-        * ``'id'``: the source identification number corresponding to
+        * ``'id'``: The source identification number corresponding to
           the object label in the ``segment_image``.
-        * ``'segment_sum'``: the total flux within the source segment.
-        * ``'segment_sum_errr'``: the 1-sigma flux error within the source
-          segment.  Returned only if `error` is input.
+        * ``'segment_sum'``: The sum of image values within the source
+          segment.
+        * ``'segment_sum_err'``: The corresponding uncertainty in
+          ``'segment_sum'`` values.  Returned only if ``error`` is
+          input.
+        * ``'background_sum'``: The sum of background values within the
+          source segment.  Returned only if ``background`` is input.
+        * ``'background_mean'``: The mean of background values within
+          the source segment.  Returned only if ``background`` is input.
 
     See Also
     --------
