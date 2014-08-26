@@ -212,13 +212,16 @@ def segment_photometry(data, segment_image, background=None, error=None,
 
     data_iscopy = False
     if background is not None:
-        if not np.isscalar(background):
+        if np.isscalar(background):
+            bkgrd_image = np.zeros_like(data) + background
+        else:
             if data.shape != background.shape:
                 raise ValueError('If input background is 2D, then it must '
                                  'have the same shape as the input data.')
+            bkgrd_image = background
         data = copy.deepcopy(data)
         data_iscopy = True
-        data -= background
+        data -= bkgrd_image
 
     if error is not None:
         if data.shape != error.shape:
@@ -231,17 +234,23 @@ def segment_photometry(data, segment_image, background=None, error=None,
         if not data_iscopy:
             data = copy.deepcopy(data)
 
+        mask_idx = mask.nonzero()
         if mask_method == 'exclude':
             # masked pixel will not contribute to sums
-            data[mask.nonzero()] = 0.0
+            data[mask_idx] = 0.0
+            if background is not None:
+                bkgrd_image[mask_idx] = 0.0
             if error is not None:
-                error[mask.nonzero()] = 0.0
+                error[mask_idx] = 0.0
         elif mask_method == 'interpolate':
-            for j, i in zip(*mask.nonzero()):
+            for j, i in zip(mask_idx):
                 y0, y1 = max(j - 1, 0), min(j + 2, data.shape[0])
                 x0, x1 = max(i - 1, 0), min(i + 2, data.shape[1])
                 goodpix = ~mask[y0:y1, x0:x1]
                 data[j, i] = np.mean(data[y0:y1, x0:x1][goodpix])
+                if background is not None:
+                    bkgrd_image[j, i] = np.mean(
+                        bkgrd_image[y0:y1, x0:x1][goodpix])
                 if error is not None:
                     error[j, i] = np.sqrt(np.mean(
                         variance[y0:y1, x0:x1][goodpix]))
@@ -263,6 +272,16 @@ def segment_photometry(data, segment_image, background=None, error=None,
                                                    index=label_ids)
         segment_sum_err = np.sqrt(segment_sum_var)
         phot_table['segment_sum_err'] = segment_sum_err
+
+    if background is not None:
+        background_sum = ndimage.measurements.sum(bkgrd_image,
+                                                  labels=segment_image,
+                                                  index=label_ids)
+        background_mean = ndimage.measurements.mean(bkgrd_image,
+                                                  labels=segment_image,
+                                                  index=label_ids)
+        phot_table['background_sum'] = background_sum
+        phot_table['background_mean'] = background_mean
 
     #bad_labels = (~np.isfinite(phot_table['xcen'])).nonzero()
     #phot_table['flux'][bad_labels] = np.nan
