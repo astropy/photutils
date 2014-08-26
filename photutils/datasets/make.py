@@ -88,31 +88,30 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
         Shape of the output 2D image.
 
     source_table : `astropy.table.Table`
-        Table of parameters for Gaussian sources.  The table must
-        contain parameters for one Gaussian source per row with column
-        names matching the `astropy.modeling.functional_models.Gaussian2D`
-        parameter names.
+        Table of parameters for the Gaussian sources.  Each row of the
+        table corresponds to a Gaussian source whose parameters are
+        defined by the column names, which must match the
+        `astropy.modeling.functional_models.Gaussian2D` parameter names.
 
     noise_stddev : float, optional
         The standard deviation of the Gaussian noise to add to the
         output image.  The default is `None`, meaning no Gaussian noise
-        will be added to the output image.  ``noise_stddev`` and
-        ``noise_lambda`` should not both be set.
+        will be added.  ``noise_stddev`` and ``noise_lambda`` should not
+        both be set.
 
     noise_lambda : positive float, optional
         The expectation value of the Poisson noise to add to the output
         image.  The default is `None`, meaning no Poisson noise will be
-        added to the output image.  ``noise_stddev`` and
-        ``noise_lambda`` should not both be set.
+        added.  ``noise_stddev`` and ``noise_lambda`` should not both be
+        set.
 
-    seed : `None`, int, or array_like, optional
+    seed : int, or array_like, optional
         Random seed initializing the pseudo-random number generator used
-        to generate the noise image.  ``seed`` can be an integer, an
-        array (or other sequence) of integers of any length, or `None`
-        (the default).  Separate function calls with the same noise
-        parameters and ``seed`` will generate the identical noise image.
-        If ``seed`` is `None`, then a new random noise image will be
-        generated each time.
+        to generate the noise image.  ``seed`` can be an integer or an
+        array (or other sequence) of integers of any length.  Separate
+        function calls with the same noise parameters and ``seed`` will
+        generate the identical noise image.  If ``seed`` is `None`, then
+        a new random noise image will be generated each time.
 
     Returns
     -------
@@ -135,18 +134,20 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
         table['y_stddev'] = [2.6, 2.5, 3., 4.7]
         table['theta'] = np.array([145., 20., 0., 60.]) * np.pi / 180.
 
-        # make an image of the sources with and without Gaussian noise
+        # make an image of the sources without noise, with Gaussian
+        # noise, and with Poisson noise
         from photutils.datasets import make_gaussian_sources
         shape = (100, 200)
         image1 = make_gaussian_sources(shape, table)
-        image2 = make_gaussian_sources(shape, table, noise_stddev=5.,
-                                       seed=12345)
+        image2 = make_gaussian_sources(shape, table, noise_stddev=5.)
+        image3 = make_gaussian_sources(shape, table, noise_lambda=5.)
 
         # plot the images
         import matplotlib.pyplot as plt
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 12))
         ax1.imshow(image1, origin='lower', interpolation='nearest')
         ax2.imshow(image2, origin='lower', interpolation='nearest')
+        ax3.imshow(image3, origin='lower', interpolation='nearest')
     """
 
     image = np.zeros(image_shape, dtype=np.float64)
@@ -201,22 +202,22 @@ def make_random_gaussians(image_shape, n_sources, amplitude_range,
     noise_stddev : float, optional
         The standard deviation of the Gaussian noise to add to the
         output image.  The default is `None`, meaning no Gaussian noise
-        will be added to the output image.  ``noise_stddev`` and
-        ``noise_lambda`` should not both be set.
+        will be added.  ``noise_stddev`` and ``noise_lambda`` should not
+        both be set.
 
     noise_lambda : positive float, optional
         The expectation value of the Poisson noise to add to the output
         image.  The default is `None`, meaning no Poisson noise will be
-        added to the output image.  ``noise_stddev`` and
-        ``noise_lambda`` should not both be set.
+        added.  ``noise_stddev`` and ``noise_lambda`` should not both be
+        set.
 
-    seed : `None`, int, or array_like, optional
+    seed : int, or array_like, optional
         Random seed initializing the pseudo-random number generator used
-        to generate the Gaussian source parameters and noise image.
-        ``seed`` can be an integer, an array (or other sequence) of
-        integers of any length, or `None` (the default).  Separate
-        function calls with the same ``seed`` will generate the
-        identical sources and noise image.
+        to generate the noise image.  ``seed`` can be an integer or an
+        array (or other sequence) of integers of any length.  Separate
+        function calls with the same noise parameters and ``seed`` will
+        generate the identical noise image.  If ``seed`` is `None`, then
+        a new random noise image will be generated each time.
 
     Returns
     -------
@@ -236,21 +237,25 @@ def make_random_gaussians(image_shape, n_sources, amplitude_range,
         xstddev_range = [1, 5]
         ystddev_range = [1, 5]
 
-        # make an image of random sources with and without noise.
-        # seed is used here to generate the same random sources across
-        # function calls.
+        # make an image of random sources without noise, with Gaussian
+        # noise, and with Poisson noise.  Note that "seed" is used here
+        # to generate the same random sources across function calls.
         image1 = make_random_gaussians(shape, n_sources, amplitude_range,
                                        xstddev_range, ystddev_range,
                                        seed=12345)
         image2 = make_random_gaussians(shape, n_sources, amplitude_range,
                                        xstddev_range, ystddev_range,
                                        noise_stddev=5., seed=12345)
+        image3 = make_random_gaussians(shape, n_sources, amplitude_range,
+                                       xstddev_range, ystddev_range,
+                                       noise_lambda=5., seed=12345)
 
         # plot the images
         import matplotlib.pyplot as plt
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 12))
         ax1.imshow(image1, origin='lower', interpolation='nearest')
         ax2.imshow(image2, origin='lower', interpolation='nearest')
+        ax3.imshow(image3, origin='lower', interpolation='nearest')
     """
 
     if seed:
