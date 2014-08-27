@@ -11,6 +11,11 @@ The `photutils` package is destined to implement functions for
   (e.g., centroid and shape parameters)
 * performing photometry (both aperture and PSF)
 
+The code and the documentation are available at the following links:
+
+* Code: https://github.com/astropy/photutils
+* Docs: https://photutils.readthedocs.org/
+
 Dependencies
 ------------
 
