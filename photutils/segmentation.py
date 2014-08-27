@@ -21,14 +21,32 @@ class SegmentProperties(object):
     image = _RegionProperties.image
     intensity_image = _RegionProperties.intensity_image
     _image_double = _RegionProperties._image_double
-    moments = _RegionProperties.moments
-    centroid = _RegionProperties.centroid
     local_centroid = _RegionProperties.local_centroid
+    moments = _RegionProperties.moments
+    moments_central = _RegionProperties.moments_central
+    inertia_tensor = _RegionProperties.inertia_tensor
+    inertia_tensor_eigvals = _RegionProperties.inertia_tensor_eigvals
 
-    area = _RegionProperties.area
-    bbox = _RegionProperties.bbox
+    centroid = _RegionProperties.centroid
     min_value = _RegionProperties.min_intensity
     max_value = _RegionProperties.max_intensity
+    area = _RegionProperties.area
+    equivalent_diameter= _RegionProperties.equivalent_diameter
+    perimeter = _RegionProperties.perimeter
+    major_axis_length = _RegionProperties.major_axis_length
+    minor_axis_length = _RegionProperties.minor_axis_length
+    eccentricity = _RegionProperties.eccentricity
+    orientation = _RegionProperties.orientation
+
+    bbox = _RegionProperties.bbox
+    coords = _RegionProperties.coords
+
+    def __getitem__(self, key):
+        return getattr(self, key, None)
+
+    @_cached_property
+    def equivalent_radius(self):
+        return 0.5 * self.equivalent_diameter
 
     @_cached_property
     def region(self):
@@ -36,11 +54,11 @@ class SegmentProperties(object):
 
     @_cached_property
     def min_position(self):
-        return np.where(self.region == self.min_value)
+        return np.argwhere(self.region == self.min_value)
 
     @_cached_property
     def max_position(self):
-        return np.where(self.region == self.max_value)
+        return np.argwhere(self.region == self.max_value)
 
     # TODO:  allow alternate centroid methods via input centroid_func:
     # npix = ndimage.labeled_comprehension(image, segment_image, label_ids,
@@ -194,7 +212,7 @@ def segment_props(image, segment_image, mask=None, mask_method='exclude',
     """
 
     from scipy import ndimage
-    objslicess = ndimage.find_objects(segment_image)
+    objslices = ndimage.find_objects(segment_image)
     objpropslist = []
     for i, objslice in enumerate(objslices):
         if objslice is None:
@@ -207,23 +225,44 @@ def segment_props(image, segment_image, mask=None, mask_method='exclude',
         return objpropslist
     else:
         props_table = Table()
-        data = [getattr(objprops, 'centroid') for objprops in objpropslist]
-        xcen, ycen = np.transpose(data)
-
+        ids = [getattr(obj, 'label') for obj in objpropslist]
+        props_table['id'] = Column(ids)
+        centroid = [getattr(objprops, 'centroid') for objprops in
+                    objpropslist]
+        xcen, ycen = np.transpose(centroid)
         props_table['xcen'] = Column(xcen)
         props_table['ycen'] = Column(ycen)
-        data = [getattr(objprops, 'bbox') for objprops in objpropslist]
-        xmin, ymin, xmax, ymax = np.transpose(data)
+        bbox = [getattr(objprops, 'bbox') for objprops in objpropslist]
+        xmin, ymin, xmax, ymax = np.transpose(bbox)
         props_table['xmin'] = Column(xmin)
         props_table['xmax'] = Column(xmax)
         props_table['ymin'] = Column(ymin)
         props_table['ymax'] = Column(ymax)
 
-        props = ['area', 'min_value', 'max_value', 'min_position',
-                 'max_position']
+        props = ['min_value', 'max_value']
         for prop in props:
             data = [getattr(objprops, prop) for objprops in objpropslist]
             props_table[prop] = Column(data)
+
+        #minpos = [getattr(objprops, 'min_position') for objprops in
+        #          objpropslist]
+        #xmin_position, ymin_position = np.transpose(minpos)
+        #props_table['xmin_position'] = Column(xmin_position)
+        #props_table['ymin_position'] = Column(ymin_position)
+
+        #maxpos = [getattr(objprops, 'max_position') for objprops in
+        #          objpropslist]
+        #xmax_position, ymax_position = np.transpose(maxpos)
+        #props_table['xmax_position'] = Column(xmax_position)
+        #props_table['ymax_position'] = Column(ymax_position)
+
+        props = ['area', 'equivalent_radius', 'perimeter',
+                 'major_axis_length', 'minor_axis_length', 'eccentricity',
+                 'orientation']
+        for prop in props:
+            data = [getattr(objprops, prop) for objprops in objpropslist]
+            props_table[prop] = Column(data)
+
         return props_table
 
 
