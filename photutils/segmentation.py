@@ -21,6 +21,7 @@ class SegmentProperties(object):
     image = _RegionProperties.image
     intensity_image = _RegionProperties.intensity_image
     _image_double = _RegionProperties._image_double
+    coords = _RegionProperties.coords
     local_centroid = _RegionProperties.local_centroid
     moments = _RegionProperties.moments
     moments_central = _RegionProperties.moments_central
@@ -28,37 +29,95 @@ class SegmentProperties(object):
     inertia_tensor_eigvals = _RegionProperties.inertia_tensor_eigvals
 
     centroid = _RegionProperties.centroid
+    bbox = _RegionProperties.bbox
     min_value = _RegionProperties.min_intensity
     max_value = _RegionProperties.max_intensity
     area = _RegionProperties.area
-    equivalent_diameter= _RegionProperties.equivalent_diameter
     perimeter = _RegionProperties.perimeter
     major_axis_length = _RegionProperties.major_axis_length
     minor_axis_length = _RegionProperties.minor_axis_length
     eccentricity = _RegionProperties.eccentricity
     orientation = _RegionProperties.orientation
 
-    bbox = _RegionProperties.bbox
-    coords = _RegionProperties.coords
-
     def __getitem__(self, key):
         return getattr(self, key, None)
 
     @_cached_property
+    def id(self):
+        return self.label
+
+    @_cached_property
+    def xcentroid(self):
+        return self.centroid[1]
+
+    @_cached_property
+    def ycentroid(self):
+        return self.centroid[0]
+
+    @_cached_property
+    def bbox(self):
+        # (stop - 1) to return the max pixel location, not the slice index
+        return (self._slice[0].start, self._slice[1].start,
+                self._slice[0].stop - 1, self._slice[1].stop - 1)
+
+    @_cached_property
+    def xmin(self):
+        return self.bbox[1]
+
+    @_cached_property
+    def xmax(self):
+        return self.bbox[3]
+
+    @_cached_property
+    def ymin(self):
+        return self.bbox[0]
+
+    @_cached_property
+    def ymax(self):
+        return self.bbox[2]
+
+    @_cached_property
+    def minval_pos(self):
+        return np.argwhere(self.cutout_image == self.min_value)[0]
+
+    @_cached_property
+    def maxval_pos(self):
+        return np.argwhere(self.cutout_image == self.max_value)[0]
+
+    @_cached_property
+    def minval_xpos(self):
+        return self.minval_pos[1] + self._slice[1].start
+
+    @_cached_property
+    def minval_ypos(self):
+        return self.minval_pos[0] + self._slice[0].start
+
+    @_cached_property
+    def maxval_xpos(self):
+        return self.maxval_pos[1] + self._slice[1].start
+
+    @_cached_property
+    def maxval_ypos(self):
+        return self.maxval_pos[0] + self._slice[0].start
+
+    @_cached_property
     def equivalent_radius(self):
-        return 0.5 * self.equivalent_diameter
+        return np.sqrt(self.area / np.pi)
 
     @_cached_property
-    def region(self):
-        return self.intensity_image[self.image]
+    def covariance(self):
+        mu = self.moments_central
+        m = mu / mu[0, 0]
+        return np.array([[m[2, 0], m[1, 1]], [m[1, 1], m[0, 2]]])
 
     @_cached_property
-    def min_position(self):
-        return np.argwhere(self.region == self.min_value)
+    def cutout_image(self):
+        return self._intensity_image[self._slice]
 
     @_cached_property
-    def max_position(self):
-        return np.argwhere(self.region == self.max_value)
+    def masked_cutout_image(self):
+        return self._intensity_image[self._slice] * self.image
+
 
     # TODO:  allow alternate centroid methods via input centroid_func:
     # npix = ndimage.labeled_comprehension(image, segment_image, label_ids,
@@ -141,12 +200,22 @@ def segment_props(data, segment_image, mask=None, mask_method='exclude',
         The source identification number corresponding to the object
         label in the ``segment_image``.
 
-    **xcen**, **ycen** : float
+    **xcentroid**, **ycentroid** : float
         The ``x`` and ``y`` coordinates of the centroid within the
         source segment.
 
-    **max_value**, **min_value** : float
+    **xmin**, **xmax**, **ymin**, **ymax** : float
+        The pixel locations defining the bounding box of the source
+        segment.
+
+    **min_value**, **max_value** : float
         The minimum and maximum pixel values within the source segment.
+
+    **minval_xpos**, **minval_ypos** : float
+        The ``x`` and ``y`` coordinates of the minimum pixel value.
+
+    **maxval_xpos**, **maxval_ypos** : float
+        The ``x`` and ``y`` coordinates of the maximum pixel value.
 
     **area** : float
         The number pixels in the source segment.
@@ -156,50 +225,65 @@ def segment_props(data, segment_image, mask=None, mask_method='exclude',
         segment.
 
     **perimeter** : float
-        The perimeter of source segment, approximated using a line
+        The perimeter of the source segment, approximated using a line
         through the centers of the border pixels using a 4-connectivity.
 
     **major_axis_length** : float
         The length of the major axis of the ellipse that has the same
-        normalized second central moments as the region.
+        second-order central moments as the region.
 
     **minor_axis_length** : float
         The length of the minor axis of the ellipse that has the same
-        normalized second central moments as the region.
+        second-order central moments as the region.
 
     **eccentricity** : float
-        The cccentricity of the ellipse that has the same second-moments
-        as the region. The eccentricity is the ratio of the distance
-        between its minor and major axis length. The value is between 0
-        and 1.
+        The eccentricity of the ellipse that has the same second-order
+        moments as the source segment.  The eccentricity is the fraction
+        of the distance along the semimajor axis at which the focus
+        lies.
 
     **orientation** : float
-        The ngle between the X-axis and the major axis of the ellipse
-        that has the same second-moments as the region. Ranging from
-        -pi/2 to pi/2 in counter-clockwise direction.
-
-    The following properties can be accessed only as columns in an
-    `astropy.table.Table`:
-
-    **xmin**, **xmax**, **ymin**, **ymax** : float
-        The bounding box of the source segment.
+        The angle in radians between the `x` axis and the major axis of
+        the ellipse that has the same second-order moments as the source
+        segment.  The angle increases in the counter-clockwise
+        direction.
 
     The following properties can be accessed only as attributes or keys
     of `SegmentProperties`:
 
-    **min_position**, **max_position** : 2-tuple
+    **centroid** : 2-tuple
+        The image ``(y, x)`` coordinates of the centroid.
+
+    **local_centroid** : 2-tuple
+        The ``cutout_image`` ``(y, x)`` coordinates of the centroid.
+
+    **minval_pos**, **maxval_pos** : 2-tuple
         The image coordinates ``(y, x)`` of the minimum and maximum
         pixel values.
 
     **bbox** : 4-tuple
-        The bounding box ``(min_row, min_col, max_row, max_col)`` of the
-        source segment.
+        The bounding box ``(ymin, xmin, ymax, xmax)`` of the source
+        segment.
 
     **coords** : (N, 2) `numpy.ndarray`
-        The coordinate list ``(row, col)`` of the source segment.
+        The ``(y, x)`` pixel coordinate list of the source segment.
 
-    **moments** :
-        2nd order central moments
+    **moments** : (3, 3) `numpy.ndarray`
+        Spatial moments up to 3rd order of the source segment.
+
+    **moments_central** : (3, 3) `numpy.ndarray`
+        Central moments (translation invariant) of the source segment
+        up to 3rd order.
+
+    **covariance** : (2, 2) `numpy.ndarray`
+        The covariance matrix of the ellipse that has the same
+        second-order moments as the source segment.
+
+    **inertia_tensor** : (2, 2) `numpy.ndarray`
+        Inertia tensor of the segment for the rotation around its mass.
+
+    **inertia_tensor_eigvals** : tuple
+        The two eigenvalues of the inertia tensor in decreasing order.
 
     **cutout_image** : `numpy.ndarray`
         A 2D cutout image based on the bounding box (``bbox``) of the
@@ -214,18 +298,17 @@ def segment_props(data, segment_image, mask=None, mask_method='exclude',
     from scipy import ndimage
     if segment_image.shape != data.shape:
         raise ValueError('segment_image and data must have the same shape')
+
     if labels is None:
         label_ids = np.unique(segment_image[segment_image > 0])
     else:
         label_ids = np.atleast_1d(labels)
 
-
-
     objslices = ndimage.find_objects(segment_image)
     objpropslist = []
     for i, objslice in enumerate(objslices):
         label = i + 1     # true even if some label numbers are mising
-        # note objslice is None for missing label numbers
+        # objslice is None for missing label numbers
         if objslice is None or label not in label_ids:
             continue
         objprops = SegmentProperties(data, segment_image, label, objslice)
@@ -235,44 +318,14 @@ def segment_props(data, segment_image, mask=None, mask_method='exclude',
         return objpropslist
     else:
         props_table = Table()
-        ids = [getattr(obj, 'label') for obj in objpropslist]
-        props_table['id'] = Column(ids)
-        centroid = [getattr(objprops, 'centroid') for objprops in
-                    objpropslist]
-        xcen, ycen = np.transpose(centroid)
-        props_table['xcen'] = Column(xcen)
-        props_table['ycen'] = Column(ycen)
-        bbox = [getattr(objprops, 'bbox') for objprops in objpropslist]
-        xmin, ymin, xmax, ymax = np.transpose(bbox)
-        props_table['xmin'] = Column(xmin)
-        props_table['xmax'] = Column(xmax)
-        props_table['ymin'] = Column(ymin)
-        props_table['ymax'] = Column(ymax)
-
-        props = ['min_value', 'max_value']
-        for prop in props:
-            data = [getattr(objprops, prop) for objprops in objpropslist]
-            props_table[prop] = Column(data)
-
-        #minpos = [getattr(objprops, 'min_position') for objprops in
-        #          objpropslist]
-        #xmin_position, ymin_position = np.transpose(minpos)
-        #props_table['xmin_position'] = Column(xmin_position)
-        #props_table['ymin_position'] = Column(ymin_position)
-
-        #maxpos = [getattr(objprops, 'max_position') for objprops in
-        #          objpropslist]
-        #xmax_position, ymax_position = np.transpose(maxpos)
-        #props_table['xmax_position'] = Column(xmax_position)
-        #props_table['ymax_position'] = Column(ymax_position)
-
-        props = ['area', 'equivalent_radius', 'perimeter',
-                 'major_axis_length', 'minor_axis_length', 'eccentricity',
-                 'orientation']
-        for prop in props:
-            data = [getattr(objprops, prop) for objprops in objpropslist]
-            props_table[prop] = Column(data)
-
+        columns = ['id', 'xcentroid', 'ycentroid', 'xmin', 'xmax', 'ymin',
+                   'ymax', 'min_value', 'max_value', 'minval_xpos',
+                   'minval_ypos', 'maxval_xpos', 'maxval_ypos', 'area',
+                   'equivalent_radius', 'perimeter', 'major_axis_length',
+                   'minor_axis_length', 'eccentricity', 'orientation']
+        for column in columns:
+            values = [getattr(props, column) for props in objpropslist]
+            props_table[column] = Column(values)
         return props_table
 
 
