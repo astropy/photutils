@@ -70,7 +70,7 @@ class SegmentProperties(object):
     #radii = np.sqrt(npix / np.pi)
 
 
-def segment_props(image, segment_image, mask=None, mask_method='exclude',
+def segment_props(data, segment_image, mask=None, mask_method='exclude',
                   background=None, labels=None, output_table=False):
     """
 
@@ -212,13 +212,23 @@ def segment_props(image, segment_image, mask=None, mask_method='exclude',
     """
 
     from scipy import ndimage
+    if segment_image.shape != data.shape:
+        raise ValueError('segment_image and data must have the same shape')
+    if labels is None:
+        label_ids = np.unique(segment_image[segment_image > 0])
+    else:
+        label_ids = np.atleast_1d(labels)
+
+
+
     objslices = ndimage.find_objects(segment_image)
     objpropslist = []
     for i, objslice in enumerate(objslices):
-        if objslice is None:
+        label = i + 1     # true even if some label numbers are mising
+        # note objslice is None for missing label numbers
+        if objslice is None or label not in label_ids:
             continue
-        label = i + 1
-        objprops = SegmentProperties(image, segment_image, label, objslice)
+        objprops = SegmentProperties(data, segment_image, label, objslice)
         objpropslist.append(objprops)
 
     if not output_table:
