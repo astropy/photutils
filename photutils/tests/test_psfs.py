@@ -12,7 +12,7 @@ except ImportError:
 
 
 widths = [0.001, 0.01, 0.1, 1]
-sigmas = [0.5, 1., 2.]
+sigmas = [0.5, 1., 2.,10., 12.34]
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -32,6 +32,6 @@ def test_gaussian_PSF_integral():
     """
     Test if Gaussian PSF integrates to unity on larger scales.
     """
-    psf = GaussianPSF(10, sigma=sigma)
+    psf = GaussianPSF(sigma=sigma)
     y, x = np.mgrid[-100:101, -100:101]
     assert_allclose(psf(y, x).sum(), 1)
