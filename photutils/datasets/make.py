@@ -28,7 +28,7 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
         Table of parameters for the Gaussian sources.  Each row of the
         table corresponds to a Gaussian source whose parameters are
         defined by the column names.  The column names must include
-        either ``amplitude`` or ``flux``, ``x_mean``, ``y_mean``,
+        either ``flux`` or ``amplitude``, ``x_mean``, ``y_mean``,
         ``x_stddev``, ``y_stddev``, and ``theta`` (see
         `astropy.modeling.functional_models.Gaussian2D` parameter
         names).  If both ``flux`` and ``amplitude`` are present, then
@@ -122,45 +122,53 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
     return image
 
 
-def make_random_gaussians(image_shape, n_sources, amplitude_range,
-                          xstddev_range, ystddev_range, noise_stddev=None,
-                          noise_lambda=None, seed=None, output_table=False):
+def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
+                          xstddev_range, ystddev_range, amplitude_range=None,
+                          seed=None):
     """
-    Make an image containing random 2D Gaussian sources, whose
-    parameters are drawn from a uniform distribution, with optional
-    Gaussian or Poisson noise.
+    Make a table containing parameters for randomly generated 2D
+    Gaussian sources.
+
+    Each row of the table corresponds to a Gaussian source whose
+    parameters are defined by the column names.  The parameters are
+    drawn from a uniform distribution over the specified input bounds.
+
+    The output table can be input into `make_gaussian_sources` to create
+    an image containing the 2D Gaussian sources with optional Gaussian
+    or Poisson noise.
 
     Parameters
     ----------
-    image_shape : 2-tuple of int
-        Shape of the output 2D image.
-
     n_sources : float
-        The number of random Gaussian sources to add to the image.
+        The number of random Gaussian sources to generate.
 
-    amplitude_range : array-like
-        The lower and upper boundaries input as ``(lower, upper)`` over
-        which draw source amplitudes from a uniform distribution.
+    flux_range : array-like
+        The lower and upper boundaries, ``(lower, upper)``, of the
+        uniform distribution from which to draw source fluxes.  If
+        ``amplitude_range`` is input, then ``flux_range`` will be
+        ignored.
+
+    xmean_range : array-like
+        The lower and upper boundaries, ``(lower, upper)``, of the
+        uniform distribution from which to draw source ``x_mean``.
+
+    ymean_range : array-like
+        The lower and upper boundaries, ``(lower, upper)``, of the
+        uniform distribution from which to draw source ``y_mean``.
 
     xstddev_range : array-like
-        The lower and upper boundaries input as ``(lower, upper)`` over
-        which draw source x_stddev from a uniform distribution.
+        The lower and upper boundaries, ``(lower, upper)``, of the
+        uniform distribution from which to draw source ``x_stddev``.
 
     ystddev_range : array-like
-        The lower and upper boundaries input as ``(lower, upper)`` over
-        which draw source y_stddev from a uniform distribution.
+        The lower and upper boundaries, ``(lower, upper)``, of the
+        uniform distribution from which to draw source ``y_stddev``.
 
-    noise_stddev : float, optional
-        The standard deviation of the Gaussian noise to add to the
-        output image.  The default is `None`, meaning no Gaussian noise
-        will be added.  ``noise_stddev`` and ``noise_lambda`` should not
-        both be set.
-
-    noise_lambda : positive float, optional
-        The expectation value of the Poisson noise to add to the output
-        image.  The default is `None`, meaning no Poisson noise will be
-        added.  ``noise_stddev`` and ``noise_lambda`` should not both be
-        set.
+    amplitude_range : array-like, optional
+        The lower and upper boundaries, ``(lower, upper)``, of the
+        uniform distribution from which to draw source amplitude.  If
+        ``amplitude_range`` is input, then ``flux_range`` will be
+        ignored.
 
     seed : int, or array_like, optional
         Random seed initializing the pseudo-random number generator used
@@ -170,21 +178,16 @@ def make_random_gaussians(image_shape, n_sources, amplitude_range,
         generate the identical noise image.  If ``seed`` is `None`, then
         a new random noise image will be generated each time.
 
-    output_table : bool, optional
-        Set to return a table of parameters for the randomly generated
-        Gaussian sources.
-
     Returns
     -------
-    image : `numpy.ndarray`
-        Image containing 2D Gaussian sources and optional noise.
-
     table : `astropy.table.Table`
         A table of parameters for the randomly generated Gaussian
         sources.  Each row of the table corresponds to a Gaussian source
-        whose parameters are defined by the column names, which must
-        match the `astropy.modeling.functional_models.Gaussian2D`
-        parameter names.  Returned *only* if ``output_table`` is `True`.
+        whose parameters are defined by the column names The column
+        names will include either ``flux`` or ``amplitude``, ``x_mean``,
+        ``y_mean``, ``x_stddev``, ``y_stddev``, and ``theta`` (see
+        `astropy.modeling.functional_models.Gaussian2D` parameter
+        names).
 
     Examples
     --------
@@ -192,25 +195,21 @@ def make_random_gaussians(image_shape, n_sources, amplitude_range,
     .. plot::
         :include-source:
 
+        # create the random sources
         from photutils.datasets import make_random_gaussians
-        shape = (300, 500)
         n_sources = 100
-        amplitude_range = [50, 100]
+        flux_range = [50, 100]
         xstddev_range = [1, 5]
         ystddev_range = [1, 5]
+        table = make_random_gaussians(n_sources, flux_range, xstddev_range,
+                                      ystddev_range, seed=12345)
 
-        # make an image of random sources without noise, with Gaussian
-        # noise, and with Poisson noise.  Note that "seed" is used here
-        # to generate the same random sources across function calls.
-        image1 = make_random_gaussians(shape, n_sources, amplitude_range,
-                                       xstddev_range, ystddev_range,
-                                       seed=12345)
-        image2 = make_random_gaussians(shape, n_sources, amplitude_range,
-                                       xstddev_range, ystddev_range,
-                                       noise_stddev=5., seed=12345)
-        image3 = make_random_gaussians(shape, n_sources, amplitude_range,
-                                       xstddev_range, ystddev_range,
-                                       noise_lambda=5., seed=12345)
+        # make an image of the random sources without noise, with
+        # Gaussian noise, and with Poisson noise
+        shape = (300, 500)
+        image1 = make_gaussian_sources(shape, table)
+        image2 = make_gaussian_sources(shape, table, noise_stddev=5.)
+        image3 = make_gaussian_sources(shape, table, noise_lambda=5.)
 
         # plot the images
         import matplotlib.pyplot as plt
@@ -224,20 +223,18 @@ def make_random_gaussians(image_shape, n_sources, amplitude_range,
         prng = np.random.RandomState(seed)
     else:
         prng = np.random
+
     sources = Table()
-    sources['amplitude'] = prng.uniform(amplitude_range[0],
-                                        amplitude_range[1], n_sources)
-    sources['x_mean'] = prng.uniform(0, image_shape[1], n_sources)
-    sources['y_mean'] = prng.uniform(0, image_shape[0], n_sources)
+    if amplitude_range is None:
+        sources['flux'] = prng.uniform(flux_range[0], flux_range[1], n_sources)
+    else:
+        sources['amplitude'] = prng.uniform(amplitude_range[0],
+                                            amplitude_range[1], n_sources)
+    sources['x_mean'] = prng.uniform(xmean_range[0], xmean_range[1], n_sources)
+    sources['y_mean'] = prng.uniform(ymean_range[0], ymean_range[1], n_sources)
     sources['x_stddev'] = prng.uniform(xstddev_range[0], xstddev_range[1],
                                        n_sources)
     sources['y_stddev'] = prng.uniform(ystddev_range[0], ystddev_range[1],
                                        n_sources)
     sources['theta'] = prng.uniform(0, 2.*np.pi, n_sources)
-    image = make_gaussian_sources(image_shape, sources,
-                                  noise_stddev=noise_stddev,
-                                  noise_lambda=noise_lambda, seed=seed)
-    if output_table:
-        return image, sources
-    else:
-        return image
+    return sources
