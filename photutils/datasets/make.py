@@ -173,7 +173,7 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
 
 def make_random_gaussians(image_shape, n_sources, amplitude_range,
                           xstddev_range, ystddev_range, noise_stddev=None,
-                          noise_lambda=None, seed=None):
+                          noise_lambda=None, seed=None, output_table=False):
     """
     Make an image containing random 2D Gaussian sources, whose
     parameters are drawn from a uniform distribution, with optional
@@ -219,10 +219,21 @@ def make_random_gaussians(image_shape, n_sources, amplitude_range,
         generate the identical noise image.  If ``seed`` is `None`, then
         a new random noise image will be generated each time.
 
+    output_table : bool, optional
+        Set to return a table of parameters for the randomly generated
+        Gaussian sources.
+
     Returns
     -------
     image : `numpy.ndarray`
         Image containing 2D Gaussian sources and optional noise.
+
+    table : `astropy.table.Table`
+        A table of parameters for the randomly generated Gaussian
+        sources.  Each row of the table corresponds to a Gaussian source
+        whose parameters are defined by the column names, which must
+        match the `astropy.modeling.functional_models.Gaussian2D`
+        parameter names.  Returned *only* if ``output_table`` is `True`.
 
     Examples
     --------
@@ -272,6 +283,10 @@ def make_random_gaussians(image_shape, n_sources, amplitude_range,
     sources['y_stddev'] = prng.uniform(ystddev_range[0], ystddev_range[1],
                                        n_sources)
     sources['theta'] = prng.uniform(0, 2.*np.pi, n_sources)
-    return make_gaussian_sources(image_shape, sources,
-                                 noise_stddev=noise_stddev,
-                                 noise_lambda=noise_lambda, seed=seed)
+    image = make_gaussian_sources(image_shape, sources,
+                                  noise_stddev=noise_stddev,
+                                  noise_lambda=noise_lambda, seed=seed)
+    if output_table:
+        return image, sources
+    else:
+        return image
