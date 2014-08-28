@@ -27,8 +27,12 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
     source_table : `astropy.table.Table`
         Table of parameters for the Gaussian sources.  Each row of the
         table corresponds to a Gaussian source whose parameters are
-        defined by the column names, which must match the
-        `astropy.modeling.functional_models.Gaussian2D` parameter names.
+        defined by the column names.  The column names must include
+        either ``amplitude`` or ``flux``, ``x_mean``, ``y_mean``,
+        ``x_stddev``, ``y_stddev``, and ``theta`` (see
+        `astropy.modeling.functional_models.Gaussian2D` parameter
+        names).  If both ``flux`` and ``amplitude`` are present, then
+        ``amplitude`` will be ignored.
 
     noise_stddev : float, optional
         The standard deviation of the Gaussian noise to add to the
@@ -90,9 +94,19 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
     image = np.zeros(image_shape, dtype=np.float64)
     y, x = np.indices(image_shape)
 
-    for source in source_table:
-        model = Gaussian2D(amplitude=source['amplitude'],
-                           x_mean=source['x_mean'], y_mean=source['y_mean'],
+    if 'flux' in source_table.colnames:
+        amplitude = source_table['flux'] / (2. * np.pi *
+                                            source_table['x_stddev'] *
+                                            source_table['y_stddev'])
+    elif 'amplitude' in source_table.colnames:
+        amplitude = source_table['amplitude']
+    else:
+        raise ValueError('either "amplitude" or "flux" must be columns in '
+                         'the input source_table')
+
+    for i, source in enumerate(source_table):
+        model = Gaussian2D(amplitude=amplitude[i], x_mean=source['x_mean'],
+                           y_mean=source['y_mean'],
                            x_stddev=source['x_stddev'],
                            y_stddev=source['y_stddev'], theta=source['theta'])
         image += model(x, y)
