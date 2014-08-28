@@ -8,13 +8,15 @@ import numpy as np
 from ..utils import check_random_state
 from astropy.table import Table
 from astropy.modeling.models import Gaussian2D
+from astropy.convolution import discretize_model
 
 
 __all__ = ['make_gaussian_sources', 'make_random_gaussians']
 
 
 def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
-                          noise_lambda=None, random_state=None):
+                          noise_lambda=None, discretize_method='center',
+                          discretize_subpixels=10, random_state=None):
     """
     Make an image containing 2D Gaussian sources with optional Gaussian
     or Poisson noise.
@@ -45,6 +47,31 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
         image.  The default is `None`, meaning no Poisson noise will be
         added.  ``noise_stddev`` and ``noise_lambda`` should not both be
         set.
+
+    discretize_method : str, optional
+        Set to one of the following methods used to evaluate the
+        `~astropy.modeling.functional_models.Gaussian2D` models on a
+        pixel grid:
+
+            * ``'center'`` (default): Discretize the model by taking the
+              value at the center of the pixel bin.  Note that this
+              method will not preserve the total flux of very small
+              sources.
+
+            * ``'linear_interp'``: Discretize the model by bilinearly
+              interpolating between the values at the corners of the
+              pixel bin.
+
+            * ``'oversample'``: Discretize the model by taking the
+              average on an oversampled grid.
+
+            * ``'integrate'``: Discretize the model by integrating the
+              model over the pixel bin using `scipy.integrate.quad`.
+              This method is very slow.
+
+    discretize_subpixels : int or float
+        For ``discretize_method = 'oversample'``, oversample the pixels
+        by this factor.  The default is 10.
 
     random_state : int or `numpy.random.RandomState`, optional
         Pseudo-random number generator state used for random sampling.
@@ -106,7 +133,13 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
                            y_mean=source['y_mean'],
                            x_stddev=source['x_stddev'],
                            y_stddev=source['y_stddev'], theta=source['theta'])
-        image += model(x, y)
+        if discretize_method is 'center':
+            image += model(x, y)
+        else:
+            image += discretize_model(model, (0, image_shape[1]),
+                                      (0, image_shape[0]),
+                                      mode=discretize_method,
+                                      factor=discretize_subpixels)
 
     prng = check_random_state(random_state)
     if noise_stddev is not None:
