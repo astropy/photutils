@@ -28,8 +28,8 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
         Table of parameters for the Gaussian sources.  Each row of the
         table corresponds to a Gaussian source whose parameters are
         defined by the column names.  The column names must include
-        either ``flux`` or ``amplitude``, ``x_mean``, ``y_mean``,
-        ``x_stddev``, ``y_stddev``, and ``theta`` (see
+        ``flux`` or ``amplitude``, ``x_mean``, ``y_mean``, ``x_stddev``,
+        ``y_stddev``, and ``theta`` (see
         `astropy.modeling.functional_models.Gaussian2D` parameter
         names).  If both ``flux`` and ``amplitude`` are present, then
         ``amplitude`` will be ignored.
@@ -183,8 +183,8 @@ def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
     table : `astropy.table.Table`
         A table of parameters for the randomly generated Gaussian
         sources.  Each row of the table corresponds to a Gaussian source
-        whose parameters are defined by the column names The column
-        names will include either ``flux`` or ``amplitude``, ``x_mean``,
+        whose parameters are defined by the column names.  The column
+        names will include ``flux`` or ``amplitude``, ``x_mean``,
         ``y_mean``, ``x_stddev``, ``y_stddev``, and ``theta`` (see
         `astropy.modeling.functional_models.Gaussian2D` parameter
         names).
@@ -198,17 +198,21 @@ def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
         # create the random sources
         from photutils.datasets import make_random_gaussians
         n_sources = 100
-        flux_range = [50, 100]
+        flux_range = [500, 1000]
+        xmean_range = [0, 500]
+        ymean_range = [0, 300]
         xstddev_range = [1, 5]
         ystddev_range = [1, 5]
-        table = make_random_gaussians(n_sources, flux_range, xstddev_range,
+        table = make_random_gaussians(n_sources, flux_range, xmean_range,
+                                      ymean_range, xstddev_range,
                                       ystddev_range, seed=12345)
 
         # make an image of the random sources without noise, with
         # Gaussian noise, and with Poisson noise
+        from photutils.datasets import make_gaussian_sources
         shape = (300, 500)
         image1 = make_gaussian_sources(shape, table)
-        image2 = make_gaussian_sources(shape, table, noise_stddev=5.)
+        image2 = make_gaussian_sources(shape, table, noise_stddev=3.)
         image3 = make_gaussian_sources(shape, table, noise_lambda=5.)
 
         # plot the images
