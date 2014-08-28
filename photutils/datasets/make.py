@@ -10,70 +10,7 @@ from astropy.table import Table
 from astropy.modeling.models import Gaussian2D
 
 
-__all__ = ['make_gaussian_image', 'make_gaussian_sources',
-           'make_random_gaussians']
-
-
-def make_gaussian_image(shape, table):
-    """Make an image of Gaussian sources.
-
-    The input table must contain parameters for one Gaussian
-    source per row with column names matching the
-    `~photutils.GaussianPSF` parameter names.
-
-    Parameters
-    ----------
-    shape : tuple of int
-        Output image shape
-    table : `~astropy.table.Table`
-        Gaussian source catalog
-
-    Returns
-    -------
-    image : `numpy.array`
-        Gaussian source model image
-
-    Examples
-    --------
-
-    .. plot::
-        :include-source:
-
-        # Simulate a Gaussian source catalog
-        from numpy.random import uniform
-        from astropy.table import Table
-        n_sources = 100
-        shape = (100, 200) # axis order: (y, x)
-        table = Table()
-        table['sigma'] = uniform(1, 2, n_sources)
-        table['amplitude'] = uniform(2, 3, n_sources)
-        table['x_0'] = uniform(0, shape[1], n_sources)
-        table['y_0'] = uniform(0, shape[0], n_sources)
-
-        # Make an image of the sources
-        from photutils.datasets import make_gaussian_image
-        from photutils import CircularAperture
-        image = make_gaussian_image(shape, table)
-
-        # Plot the image
-        import matplotlib.pyplot as plt
-        fig, ax = plt.subplots(1, 1)
-        ax.imshow(image, origin='lower', interpolation='nearest')
-        for source in table:
-            aperture = CircularAperture((source['x_0'], source['y_0']),
-                                        3 * source['sigma'])
-            aperture.plot(color='white')
-    """
-
-    y, x = np.indices(shape)
-    image = np.zeros(shape, dtype=np.float64)
-
-    for source in table:
-        model = GaussianPSF(amplitude=source['amplitude'], x_0=source['x_0'],
-                            y_0=source['y_0'], sigma=source['sigma'])
-        image += model(x, y)
-
-    return image
+__all__ = ['make_gaussian_sources', 'make_random_gaussians']
 
 
 def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
