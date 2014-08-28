@@ -5,7 +5,7 @@ Make example datasets.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
-from ..psf import GaussianPSF
+from ..utils import check_random_state
 from astropy.table import Table
 from astropy.modeling.models import Gaussian2D
 
@@ -14,7 +14,7 @@ __all__ = ['make_gaussian_sources', 'make_random_gaussians']
 
 
 def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
-                          noise_lambda=None, seed=None):
+                          noise_lambda=None, random_state=None):
     """
     Make an image containing 2D Gaussian sources with optional Gaussian
     or Poisson noise.
@@ -46,13 +46,10 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
         added.  ``noise_stddev`` and ``noise_lambda`` should not both be
         set.
 
-    seed : int, or array_like, optional
-        Random seed initializing the pseudo-random number generator used
-        to generate the noise image.  ``seed`` can be an integer or an
-        array (or other sequence) of integers of any length.  Separate
-        function calls with the same noise parameters and ``seed`` will
-        generate the identical noise image.  If ``seed`` is `None`, then
-        a new random noise image will be generated each time.
+    random_state : int or `numpy.random.RandomState`, optional
+        Pseudo-random number generator state used for random sampling.
+        Separate function calls with the same noise parameters and
+        ``random_state`` will generate the identical noise image.
 
     Returns
     -------
@@ -111,10 +108,7 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
                            y_stddev=source['y_stddev'], theta=source['theta'])
         image += model(x, y)
 
-    if seed:
-        prng = np.random.RandomState(seed)
-    else:
-        prng = np.random
+    prng = check_random_state(random_state)
     if noise_stddev is not None:
         image += prng.normal(loc=0.0, scale=noise_stddev, size=image_shape)
     if noise_lambda is not None:
@@ -124,7 +118,7 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
 
 def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
                           xstddev_range, ystddev_range, amplitude_range=None,
-                          seed=None):
+                          random_state=None):
     """
     Make a table containing parameters for randomly generated 2D
     Gaussian sources.
@@ -170,13 +164,10 @@ def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
         ``amplitude_range`` is input, then ``flux_range`` will be
         ignored.
 
-    seed : int, or array_like, optional
-        Random seed initializing the pseudo-random number generator used
-        to generate the noise image.  ``seed`` can be an integer or an
-        array (or other sequence) of integers of any length.  Separate
-        function calls with the same noise parameters and ``seed`` will
-        generate the identical noise image.  If ``seed`` is `None`, then
-        a new random noise image will be generated each time.
+    random_state : int or `numpy.random.RandomState`, optional
+        Pseudo-random number generator state used for random sampling.
+        Separate function calls with the same parameters and
+        ``random_state`` will generate the identical sources.
 
     Returns
     -------
@@ -205,7 +196,7 @@ def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
         ystddev_range = [1, 5]
         table = make_random_gaussians(n_sources, flux_range, xmean_range,
                                       ymean_range, xstddev_range,
-                                      ystddev_range, seed=12345)
+                                      ystddev_range, random_state=12345)
 
         # make an image of the random sources without noise, with
         # Gaussian noise, and with Poisson noise
@@ -223,11 +214,7 @@ def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
         ax3.imshow(image3, origin='lower', interpolation='nearest')
     """
 
-    if seed:
-        prng = np.random.RandomState(seed)
-    else:
-        prng = np.random
-
+    prng = check_random_state(random_state)
     sources = Table()
     if amplitude_range is None:
         sources['flux'] = prng.uniform(flux_range[0], flux_range[1], n_sources)
