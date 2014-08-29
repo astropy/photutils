@@ -850,7 +850,7 @@ class EllipticalAnnulus(PixelAperture):
 
 class RectangularAperture(PixelAperture):
     """
-    A rectangular aperture.
+    A rectangular aperture, defined in pixel coordinates.
 
     Parameters
     ----------
@@ -862,7 +862,7 @@ class RectangularAperture(PixelAperture):
     h : float
         The full height of the aperture (at theta = 0, this is the "y" axis).
     theta : float
-        The position angle of the semimajor axis in radians
+        The position angle of the width side in radians
         (counterclockwise).
 
     Raises
@@ -896,7 +896,7 @@ class RectangularAperture(PixelAperture):
                              'arrays supported.'.format(self.positions.ndim))
 
     def extent(self):
-        r = max(self.h, self.w) * 2 ** -0.5
+        r = max(self.h, self.w) * (2 ** -0.5)
         # this is an overestimate by up to sqrt(2) unless theta = 45 deg
         extents = []
         centers = []
