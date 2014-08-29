@@ -11,15 +11,84 @@ from astropy.modeling.models import Gaussian2D
 from astropy.convolution import discretize_model
 
 
-__all__ = ['make_gaussian_sources', 'make_random_gaussians']
+__all__ = ['make_noise_image', 'make_gaussian_sources',
+           'make_random_gaussians']
 
 
-def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
-                          noise_lambda=None, discretize_method='center',
-                          discretize_subpixels=10, random_state=None):
+def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
+                     random_state=None):
     """
-    Make an image containing 2D Gaussian sources with optional Gaussian
-    or Poisson noise.
+    Make a noise image containing Gaussian or Poisson noise.
+
+    Parameters
+    ----------
+    image_shape : 2-tuple of int
+        Shape of the output 2D image.
+
+    type : str
+        The distribution used to generate the random noise.
+
+            * ``'gaussian'``: Gaussian distributed noise.
+            * ``'poisson'``: Poisson distributed nose.
+
+    mean : float
+        The mean of the random distribution.  Required for both Gaussian
+        and Poisson noise.
+
+    stddev : float, optional
+        The standard deviation of the Gaussian noise to add to the
+        output image.  Required for Gaussian noise and ignored for
+        Poisson noise (the variance of the Poisson distribution is equal
+        to its mean).
+
+    random_state : int or `numpy.random.RandomState`, optional
+        Pseudo-random number generator state used for random sampling.
+        Separate function calls with the same noise parameters and
+        ``random_state`` will generate the identical noise image.
+
+    Returns
+    -------
+    image : `numpy.ndarray`
+        Image containing random noise.
+
+    See Also
+    --------
+    make_gaussian_sources, make_random_gaussians
+
+    Examples
+    --------
+
+    .. plot::
+        :include-source:
+
+        # make a Gaussian and Poisson noise image
+        from photutils.datasets import make_noise_image
+        shape = (100, 200)
+        image1 = make_noise_image(shape, type='gaussian', mean=0., stddev=5.)
+        image2 = make_noise_image(shape, type='poisson', mean=5.)
+
+        # plot the images
+        import matplotlib.pyplot as plt
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
+        ax1.imshow(image1, origin='lower', interpolation='nearest')
+        ax2.imshow(image2, origin='lower', interpolation='nearest')
+    """
+
+    if mean is None:
+        raise ValueError('"mean" must be input')
+    prng = check_random_state(random_state)
+    if type == 'gaussian':
+        image = prng.normal(loc=mean, scale=stddev, size=image_shape)
+    elif type == 'poisson':
+        image = prng.poisson(lam=mean, size=image_shape)
+    return image
+
+
+def make_gaussian_sources(image_shape, source_table,
+                          discretize_method='center',
+                          discretize_subpixels=10):
+    """
+    Make an image containing 2D Gaussian sources.
 
     Parameters
     ----------
@@ -32,21 +101,10 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
         defined by the column names.  The column names must include
         ``flux`` or ``amplitude``, ``x_mean``, ``y_mean``, ``x_stddev``,
         ``y_stddev``, and ``theta`` (see
-        `astropy.modeling.functional_models.Gaussian2D` parameter
-        names).  If both ``flux`` and ``amplitude`` are present, then
-        ``amplitude`` will be ignored.
-
-    noise_stddev : float, optional
-        The standard deviation of the Gaussian noise to add to the
-        output image.  The default is `None`, meaning no Gaussian noise
-        will be added.  ``noise_stddev`` and ``noise_lambda`` should not
-        both be set.
-
-    noise_lambda : positive float, optional
-        The expectation value of the Poisson noise to add to the output
-        image.  The default is `None`, meaning no Poisson noise will be
-        added.  ``noise_stddev`` and ``noise_lambda`` should not both be
-        set.
+        `~astropy.modeling.functional_models.Gaussian2D` for a
+        description of most of these parameter names).  If both ``flux``
+        and ``amplitude`` are present, then ``amplitude`` will be
+        ignored.
 
     discretize_method : str, optional
         Set to one of the following methods used to evaluate the
@@ -73,15 +131,14 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
         For ``discretize_method = 'oversample'``, oversample the pixels
         by this factor.  The default is 10.
 
-    random_state : int or `numpy.random.RandomState`, optional
-        Pseudo-random number generator state used for random sampling.
-        Separate function calls with the same noise parameters and
-        ``random_state`` will generate the identical noise image.
-
     Returns
     -------
     image : `numpy.ndarray`
-        Image containing 2D Gaussian sources and optional noise.
+        Image containing 2D Gaussian sources.
+
+    See Also
+    --------
+    make_random_gaussians, make_noise_image
 
     Examples
     --------
@@ -102,10 +159,12 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
         # make an image of the sources without noise, with Gaussian
         # noise, and with Poisson noise
         from photutils.datasets import make_gaussian_sources
+        from photutils.datasets import make_noise_image
         shape = (100, 200)
         image1 = make_gaussian_sources(shape, table)
-        image2 = make_gaussian_sources(shape, table, noise_stddev=5.)
-        image3 = make_gaussian_sources(shape, table, noise_lambda=5.)
+        image2 = image1 + make_noise_image(shape, type='gaussian', mean=0.,
+                                           stddev=5.)
+        image3 = image1 + make_noise_image(shape, type='poisson', mean=5.)
 
         # plot the images
         import matplotlib.pyplot as plt
@@ -140,12 +199,6 @@ def make_gaussian_sources(image_shape, source_table, noise_stddev=None,
                                       (0, image_shape[0]),
                                       mode=discretize_method,
                                       factor=discretize_subpixels)
-
-    prng = check_random_state(random_state)
-    if noise_stddev is not None:
-        image += prng.normal(loc=0.0, scale=noise_stddev, size=image_shape)
-    if noise_lambda is not None:
-        image += prng.poisson(lam=noise_lambda, size=image_shape)
     return image
 
 
@@ -153,16 +206,15 @@ def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
                           xstddev_range, ystddev_range, amplitude_range=None,
                           random_state=None):
     """
-    Make a table containing parameters for randomly generated 2D
-    Gaussian sources.
+    Make a `astropy.table.Table` containing parameters for randomly
+    generated 2D Gaussian sources.
 
     Each row of the table corresponds to a Gaussian source whose
     parameters are defined by the column names.  The parameters are
     drawn from a uniform distribution over the specified input bounds.
 
     The output table can be input into `make_gaussian_sources` to create
-    an image containing the 2D Gaussian sources with optional Gaussian
-    or Poisson noise.
+    an image containing the 2D Gaussian sources.
 
     Parameters
     ----------
@@ -171,9 +223,8 @@ def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
 
     flux_range : array-like
         The lower and upper boundaries, ``(lower, upper)``, of the
-        uniform distribution from which to draw source fluxes.  If
-        ``amplitude_range`` is input, then ``flux_range`` will be
-        ignored.
+        uniform distribution from which to draw source fluxes.
+        ``flux_range`` will be ignored if ``amplitude_range`` is input.
 
     xmean_range : array-like
         The lower and upper boundaries, ``(lower, upper)``, of the
@@ -193,7 +244,7 @@ def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
 
     amplitude_range : array-like, optional
         The lower and upper boundaries, ``(lower, upper)``, of the
-        uniform distribution from which to draw source amplitude.  If
+        uniform distribution from which to draw source amplitudes.  If
         ``amplitude_range`` is input, then ``flux_range`` will be
         ignored.
 
@@ -210,8 +261,12 @@ def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
         whose parameters are defined by the column names.  The column
         names will include ``flux`` or ``amplitude``, ``x_mean``,
         ``y_mean``, ``x_stddev``, ``y_stddev``, and ``theta`` (see
-        `astropy.modeling.functional_models.Gaussian2D` parameter
-        names).
+        `~astropy.modeling.functional_models.Gaussian2D` for a
+        description of most of these parameter names).
+
+    See Also
+    --------
+    make_gaussian_sources, make_noise_image
 
     Examples
     --------
@@ -234,10 +289,12 @@ def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
         # make an image of the random sources without noise, with
         # Gaussian noise, and with Poisson noise
         from photutils.datasets import make_gaussian_sources
+        from photutils.datasets import make_noise_image
         shape = (300, 500)
         image1 = make_gaussian_sources(shape, table)
-        image2 = make_gaussian_sources(shape, table, noise_stddev=3.)
-        image3 = make_gaussian_sources(shape, table, noise_lambda=5.)
+        image2 = image1 + make_noise_image(shape, type='gaussian', mean=0.,
+                                           stddev=2.)
+        image3 = image1 + make_noise_image(shape, type='poisson', mean=5.)
 
         # plot the images
         import matplotlib.pyplot as plt
