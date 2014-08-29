@@ -666,8 +666,8 @@ class EllipticalAperture(PixelAperture):
 
         theta_deg = self.theta * 180. / np.pi
         for position in positions:
-            patch = mpatches.Ellipse(position, self.a, self.b, theta_deg,
-                                     **kwargs)
+            patch = mpatches.Ellipse(position, 2.*self.a, 2.*self.b,
+                                     theta_deg, **kwargs)
             ax.add_patch(patch)
 
 
@@ -839,10 +839,10 @@ class EllipticalAnnulus(PixelAperture):
 
         theta_deg = self.theta * 180. / np.pi
         for position in positions:
-            patch_inner = mpatches.Ellipse(position, self.a_in, self.b_in,
-                                           theta_deg, **kwargs)
-            patch_outer = mpatches.Ellipse(position, self.a_out, self.b_out,
-                                           theta_deg, **kwargs)
+            patch_inner = mpatches.Ellipse(position, 2.*self.a_in,
+                                           2.*self.b_in, theta_deg, **kwargs)
+            patch_outer = mpatches.Ellipse(position, 2.*self.a_out,
+                                           2.*self.b_out, theta_deg, **kwargs)
             path = _make_annulus_path(patch_inner, patch_outer)
             patch = mpatches.PathPatch(path, **kwargs)
             ax.add_patch(patch)
