@@ -11,7 +11,7 @@ from astropy.modeling.models import Gaussian2D
 from astropy.convolution import discretize_model
 
 
-__all__ = ['make_noise_image', 'make_gaussian_sources',
+__all__ = ['make_noise_image', 'apply_poisson_noise', 'make_gaussian_sources',
            'make_random_gaussians']
 
 
@@ -53,7 +53,7 @@ def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
 
     See Also
     --------
-    make_gaussian_sources, make_random_gaussians
+    apply_poisson_noise, make_gaussian_sources, make_random_gaussians
 
     Examples
     --------
@@ -82,6 +82,66 @@ def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
     elif type == 'poisson':
         image = prng.poisson(lam=mean, size=image_shape)
     return image
+
+
+def apply_poisson_noise(image, random_state=None):
+    """
+    Apply Poisson noise to an image, where the value of each pixel
+    represents the expected number of counts.
+
+    Parameters
+    ----------
+    image : `numpy.ndarray`
+        The 2D image on which to apply Poisson noise.  Each pixel in the
+        image must have a positive value (e.g., electron or photon
+        counts).
+
+    random_state : int or `numpy.random.RandomState`, optional
+        Pseudo-random number generator state used for random sampling.
+
+    Returns
+    -------
+    image : `numpy.ndarray`
+        The 2D image after applying Poisson noise.
+
+    See Also
+    --------
+    make_noise_image, make_gaussian_sources, make_random_gaussians
+
+    Examples
+    --------
+
+    .. plot::
+        :include-source:
+
+        # make a table of Gaussian sources
+        from astropy.table import Table
+        table = Table()
+        table['amplitude'] = [50, 70, 150, 210]
+        table['x_mean'] = [160, 25, 150, 90]
+        table['y_mean'] = [70, 40, 25, 60]
+        table['x_stddev'] = [15.2, 5.1, 3., 8.1]
+        table['y_stddev'] = [2.6, 2.5, 3., 4.7]
+        table['theta'] = np.array([145., 20., 0., 60.]) * np.pi / 180.
+
+        # make an image of the sources and add a background level,
+        # then apply Poisson noise to the image values.
+        from photutils.datasets import make_gaussian_sources
+        from photutils.datasets import apply_poisson_noise
+        shape = (100, 200)
+        bkgrd = 10.
+        image1 = make_gaussian_sources(shape, table) + bkgrd
+        image2 = apply_poisson_noise(image1, random_state=12345)
+
+        # plot the images
+        import matplotlib.pyplot as plt
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
+        ax1.imshow(image1, origin='lower', interpolation='nearest')
+        ax2.imshow(image2, origin='lower', interpolation='nearest')
+    """
+
+    prng = check_random_state(random_state)
+    return prng.poisson(image)
 
 
 def make_gaussian_sources(image_shape, source_table, oversample=1):
@@ -125,7 +185,7 @@ def make_gaussian_sources(image_shape, source_table, oversample=1):
 
     See Also
     --------
-    make_random_gaussians, make_noise_image
+    make_random_gaussians, make_noise_image, apply_poisson_noise
 
     Examples
     --------
@@ -252,7 +312,7 @@ def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
 
     See Also
     --------
-    make_gaussian_sources, make_noise_image
+    make_gaussian_sources, make_noise_image, apply_poisson_noise
 
     Examples
     --------
