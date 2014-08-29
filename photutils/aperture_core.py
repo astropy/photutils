@@ -10,16 +10,24 @@ import warnings
 import astropy.units as u
 from astropy.io import fits
 from astropy.table import Table
+from astropy.wcs import WCS
 from astropy.coordinates import SkyCoord
 from astropy.extern import six
 from astropy.utils.misc import InheritDocstrings
 from astropy.utils.exceptions import AstropyUserWarning
 from .aperture_funcs import do_circular_photometry, do_elliptical_photometry, \
                             do_annulus_photometry
+from .utils import skycoord_to_pixel, skycoord_to_pixel_scale_angle, assert_angle_or_pixel, assert_angle
 
 __all__ = ["Aperture",
-           "CircularAperture", "CircularAnnulus",
-           "EllipticalAperture", "EllipticalAnnulus",
+           "SkyCircularAperture",
+           "CircularAperture",
+           "SkyCircularAnnulus",
+           "CircularAnnulus",
+           "SkyEllipticalAperture",
+           "EllipticalAperture",
+           "SkyEllipticalAnnulus",
+           "EllipticalAnnulus",
            "RectangularAperture",
            "aperture_photometry"]
 
@@ -46,7 +54,21 @@ class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
 @six.add_metaclass(_ABCMetaAndInheritDocstrings)
 class Aperture(object):
     """
-    Abstract base class for an arbitrary 2-d aperture.
+    Abstract base class for all apertures.
+    """
+
+
+@six.add_metaclass(_ABCMetaAndInheritDocstrings)
+class SkyAperture(Aperture):
+    """
+    Abstract base class for 2-d apertures defined in celestial coordinates.
+    """
+
+
+@six.add_metaclass(_ABCMetaAndInheritDocstrings)
+class PixelAperture(Aperture):
+    """
+    Abstract base class for 2-d apertures defined in pixel coordinates.
 
     Derived classes should contain whatever internal data is needed to
     define the aperture, and provide methods `do_photometry` and `extent`
@@ -183,17 +205,59 @@ class Aperture(object):
                 'phot_extent': [x_pmin, x_pmax, y_pmin, y_pmax]}
 
 
-class CircularAperture(Aperture):
+class SkyCircularAperture(SkyAperture):
     """
-    Circular aperture(s).
+    Circular aperture(s), defined in sky coordinates.
 
     Parameters
     ----------
-    positions : tuple, or list, or array
-        Center coordinates of the apertures as list or array of (x, y)
-        pixelcoordinates.
+    positions : `~astropy.coordinates.SkyCoord`
+        Celestial coordinates of the aperture center(s). This can be either
+        scalar coordinates or an array of coordinates.
+    r : `~astropy.units.Quantity`
+        The radius of the aperture(s), either in angular or pixel units.
+    """
+
+    def __init__(self, positions, r):
+
+        if isinstance(positions, SkyCoord):
+            self.positions = positions
+        else:
+            raise TypeError("positions should be a SkyCoord instance")
+
+        assert_angle_or_pixel('r', r)
+        self.r = r
+
+    def to_pixel(self, wcs):
+        """
+        Return a CircularAperture instance in pixel coordinates.
+        """
+
+        if self.r.unit.physical_type == 'angle':
+            x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
+            # TODO: no need to use the mean once we support arrays of aperture values
+            r = (np.mean(scale) * self.r).to(u.pixel).value
+        else:  # pixel
+            x, y = skycoord_to_pixel(self.positions, wcs)
+            r = self.r.value
+
+        pixel_positions = np.array([x, y]).transpose()
+
+        return CircularAperture(pixel_positions, r)
+
+
+class CircularAperture(PixelAperture):
+    """
+    Circular aperture(s), defined in pixel coordinates.
+
+    Parameters
+    ----------
+    positions : tuple, list, array, or `~astropy.units.Quantity`
+        Pixel coordinates of the aperture center(s), either as a single
+        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` Numpy
+        array, or an ``Nx2`` `~astropy.units.Quantity` in units of pixels.
     r : float
-        The radius of the aperture.
+        The radius of the aperture(s), in pixels.
 
     Raises
     ------
@@ -202,6 +266,7 @@ class CircularAperture(Aperture):
     """
 
     def __init__(self, positions, r):
+
         try:
             self.r = float(r)
         except TypeError:
@@ -211,16 +276,18 @@ class CircularAperture(Aperture):
             raise ValueError('r must be non-negative')
 
         if isinstance(positions, u.Quantity):
-            positions = positions.value
-        if isinstance(positions, (list, tuple, np.ndarray)):
-            self.positions = np.atleast_2d(positions)
-        else:
-            raise TypeError("List or array of (x,y) pixel coordinates is "
-                            "expected got '{0}'.".format(positions))
+            if positions.unit is u.pixel:
+                positions = positions.value
+            else:
+                raise u.UnitsError("positions should be in pixel units")
 
-        if self.positions.ndim > 2:
-            raise ValueError('{0}-d position array not supported. Only 2-d '
-                             'arrays supported.'.format(self.positions.ndim))
+        self.positions = np.asarray(positions)
+
+        if self.positions.ndim == 1 and len(self.positions) == 2:
+            self.positions = np.atleast_2d(positions)
+        elif self.positions.ndim != 2 or self.positions.shape[1] != 2:
+            raise TypeError("Expected (x, y) tuple, a list of (x, y) "
+                            "tuples, or an Nx2 array, got {0}".format(positions))
 
     def extent(self):
         extents = []
@@ -239,13 +306,21 @@ class CircularAperture(Aperture):
         """
         return math.pi * self.r ** 2
 
-    def plot(self, ax=None, fill=False, **kwargs):
+    def plot(self, ax=None, fill=False, source_id=None, **kwargs):
+
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
+
         kwargs['fill'] = fill
+
         if ax is None:
             ax = plt.gca()
-        for position in self.positions:
+        if source_id is None:
+            positions = self.positions
+        else:
+            positions = self.positions[np.atleast_1d(source_id)]
+
+        for position in positions:
             patch = mpatches.Circle(position, self.r, **kwargs)
             ax.add_patch(patch)
 
@@ -265,15 +340,66 @@ class CircularAperture(Aperture):
         return flux
 
 
-class CircularAnnulus(Aperture):
+class SkyCircularAnnulus(SkyAperture):
     """
-    Circular annulus aperture.
+    Circular annulus aperture(s), defined in sky coordinates.
 
     Parameters
     ----------
-    positions : tuple, or list, or array
-        Center coordinates of the apertures as list or array of (x, y)
-        pixelcoordinates.
+
+    positions : `~astropy.coordinates.SkyCoord`
+        Celestial coordinates of the aperture center(s). This can be either
+        scalar coordinates or an array of coordinates.
+    r : `~astropy.units.Quantity`
+        The radius of the aperture(s), either in angular or pixel units.
+    """
+
+    def __init__(self, positions, r_in, r_out):
+
+        if isinstance(positions, SkyCoord):
+            self.positions = positions
+        else:
+            raise TypeError("positions should be a SkyCoord instance")
+
+        assert_angle_or_pixel('r_in', r_in)
+        assert_angle_or_pixel('r_out', r_out)
+
+        if r_in.unit.physical_type != r_out.unit.physical_type:
+            raise ValueError("r_in and r_out should either both be angles or in pixels")
+
+        self.r_in = r_in
+        self.r_out = r_out
+
+    def to_pixel(self, wcs):
+        """
+        Return a CircularAnnulus instance in pixel coordinates.
+        """
+
+        if self.r_in.unit.physical_type == 'angle':
+            x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
+            # TODO: no need to use the mean once we support arrays of aperture values
+            r_in = (np.mean(scale) * self.r_in).to(u.pixel).value
+            r_out = (np.mean(scale) * self.r_out).to(u.pixel).value
+        else:  # pixel
+            x, y = skycoord_to_pixel(self.positions, wcs)
+            r_in = self.r_in.value
+            r_out = self.r_out.value
+
+        pixel_positions = np.array([x, y]).transpose()
+
+        return CircularAnnulus(pixel_positions, r_in, r_out)
+
+
+class CircularAnnulus(PixelAperture):
+    """
+    Circular annulus aperture(s), defined in pixel coordinates.
+
+    Parameters
+    ----------
+    positions : tuple, list, array, or `~astropy.units.Quantity`
+        Pixel coordinates of the aperture center(s), either as a single
+        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` Numpy
+        array, or an ``Nx2`` `~astropy.units.Quantity` in units of pixels.
     r_in : float
         The inner radius of the annulus.
     r_out : float
@@ -351,14 +477,24 @@ class CircularAnnulus(Aperture):
 
         return flux
 
-    def plot(self, ax=None, fill=False, **kwargs):
+    def plot(self, ax=None, fill=False, source_id=None, **kwargs):
+
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
+
         kwargs['fill'] = fill
+
         if ax is None:
             ax = plt.gca()
+
+        if source_id is None:
+            positions = self.positions
+        else:
+            positions = self.positions[np.atleast_1d(source_id)]
+
         resolution = 20
-        for position in self.positions:
+
+        for position in positions:
             patch_inner = mpatches.CirclePolygon(position, self.r_in,
                                                  resolution=resolution)
             patch_outer = mpatches.CirclePolygon(position, self.r_out,
@@ -368,15 +504,74 @@ class CircularAnnulus(Aperture):
             ax.add_patch(patch)
 
 
-class EllipticalAperture(Aperture):
+class SkyEllipticalAperture(SkyAperture):
     """
-    An elliptical aperture.
+    Elliptical aperture(s), defined in sky coordinates.
 
     Parameters
     ----------
-    positions : tuple, or list, or array
-        Center coordinates of the apertures as list or array of (x, y)
-        pixelcoordinates.
+    positions : `~astropy.coordinates.SkyCoord`
+        Celestial coordinates of the aperture center(s). This can be either
+        scalar coordinates or an array of coordinates.
+    a : `~astropy.units.Quantity`
+        The semimajor axis, either in angular or pixel units.
+    b : `~astropy.units.Quantity`
+        The semiminor axis, either in angular or pixel units.
+    theta : `~astropy.units.Quantity`
+        The position angle of the semimajor axis (counterclockwise), either
+        in angular or pixel units.
+    """
+
+    def __init__(self, positions, a, b, theta):
+
+        if isinstance(positions, SkyCoord):
+            self.positions = positions
+        else:
+            raise TypeError("positions should be a SkyCoord instance")
+
+        assert_angle_or_pixel('a', a)
+        assert_angle_or_pixel('b', b)
+        assert_angle('theta', theta)
+
+        if a.unit.physical_type != b.unit.physical_type:
+            raise ValueError("a and b should either both be angles or in pixels")
+
+        self.a = a
+        self.b = b
+        self.theta = theta
+
+    def to_pixel(self, wcs):
+        """
+        Return a EllipticalAperture instance in pixel coordinates.
+        """
+
+        x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
+
+        # TODO: no need to use the mean once we support arrays of aperture values
+        if self.a.unit.physical_type == 'angle':
+            a = (np.mean(scale) * self.a).to(u.pixel).value
+            b = (np.mean(scale) * self.b).to(u.pixel).value
+        else:  # pixel
+            a = self.a.value
+            b = self.b.value
+
+        theta = (angle + self.theta).to(u.radian).value
+
+        pixel_positions = np.array([x, y]).transpose()
+
+        return EllipticalAperture(pixel_positions, a, b, theta)
+
+
+class EllipticalAperture(PixelAperture):
+    """
+    Elliptical aperture(s), defined in pixel coordinates.
+
+    Parameters
+    ----------
+    positions : tuple, list, array, or `~astropy.units.Quantity`
+        Pixel coordinates of the aperture center(s), either as a single
+        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` Numpy
+        array, or an ``Nx2`` `~astropy.units.Quantity` in units of pixels.
     a : float
         The semimajor axis.
     b : float
@@ -454,28 +649,106 @@ class EllipticalAperture(Aperture):
                                         subpixels=subpixels)
         return flux
 
-    def plot(self, ax=None, fill=False, **kwargs):
+    def plot(self, ax=None, fill=False, source_id=None, **kwargs):
+
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
+
         kwargs['fill'] = fill
+
         if ax is None:
             ax = plt.gca()
+
+        if source_id is None:
+            positions = self.positions
+        else:
+            positions = self.positions[np.atleast_1d(source_id)]
+
         theta_deg = self.theta * 180. / np.pi
-        for position in self.positions:
+        for position in positions:
             patch = mpatches.Ellipse(position, self.a, self.b, theta_deg,
                                      **kwargs)
             ax.add_patch(patch)
 
 
-class EllipticalAnnulus(Aperture):
+class SkyEllipticalAnnulus(SkyAperture):
     """
-    An elliptical annulus aperture.
+    Elliptical annulus aperture(s), defined in sky coordinates.
 
     Parameters
     ----------
-    positions : tuple, or list, or array
-        Center coordinates of the apertures as list or array of (x, y)
-        pixelcoordinates.
+    positions : `~astropy.coordinates.SkyCoord`
+        Celestial coordinates of the aperture center(s). This can be either
+        scalar coordinates or an array of coordinates.
+    a_in : `~astropy.units.Quantity`
+        The inner semimajor axis, either in angular or pixel units.
+    a_out : `~astropy.units.Quantity`
+        The outer semimajor axis, either in angular or pixel units.
+    b_out : `~astropy.units.Quantity`
+        The outer semiminor axis, either in angular or pixel units. The inner
+        semiminor axis is determined by scaling by a_in/a_out.
+    theta : `~astropy.units.Quantity`
+        The position angle of the semimajor axis (counterclockwise), either
+        in angular or pixel units.
+    """
+
+    def __init__(self, positions, a_in, a_out, b_out, theta):
+
+        if isinstance(positions, SkyCoord):
+            self.positions = positions
+        else:
+            raise TypeError("positions should be a SkyCoord instance")
+
+        assert_angle_or_pixel('a_in', a_in)
+        assert_angle_or_pixel('a_out', a_out)
+        assert_angle_or_pixel('b_out', b_out)
+        assert_angle('theta', theta)
+
+        if a_in.unit.physical_type != a_out.unit.physical_type:
+            raise ValueError("a_in and a_out should either both be angles or in pixels")
+
+        if a_out.unit.physical_type != b_out.unit.physical_type:
+            raise ValueError("a_out and b_out should either both be angles or in pixels")
+
+        self.a_in = a_in
+        self.a_out = a_out
+        self.b_out = b_out
+        self.theta = theta
+
+    def to_pixel(self, wcs):
+        """
+        Return a EllipticalAnnulus instance in pixel coordinates.
+        """
+
+        x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
+
+        # TODO: no need to use the mean once we support arrays of aperture values
+        if self.a_in.unit.physical_type == 'angle':
+            a_in = (np.mean(scale) * self.a_in).to(u.pixel).value
+            a_out = (np.mean(scale) * self.a_out).to(u.pixel).value
+            b_out = (np.mean(scale) * self.b_out).to(u.pixel).value
+        else:
+            a_in = self.a_in.value
+            a_out = self.a_out.value
+            b_out = self.b_out.value
+
+        theta = (angle + self.theta).to(u.radian).value
+
+        pixel_positions = np.array([x, y]).transpose()
+
+        return EllipticalAnnulus(pixel_positions, a_in, a_out, b_out, theta)
+
+
+class EllipticalAnnulus(PixelAperture):
+    """
+    Elliptical annulus aperture(s), defined in pixel coordinates.
+
+    Parameters
+    ----------
+    positions : tuple, list, array, or `~astropy.units.Quantity`
+        Pixel coordinates of the aperture center(s), either as a single
+        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` Numpy
+        array, or an ``Nx2`` `~astropy.units.Quantity` in units of pixels.
     a_in : float
         The inner semimajor axis.
     a_out : float
@@ -549,14 +822,23 @@ class EllipticalAnnulus(Aperture):
         """
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
-    def plot(self, ax=None, fill=False, **kwargs):
+    def plot(self, ax=None, fill=False, source_id=None, **kwargs):
+
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
+
         kwargs['fill'] = fill
+
         if ax is None:
             ax = plt.gca()
+
+        if source_id is None:
+            positions = self.positions
+        else:
+            positions = self.positions[np.atleast_1d(source_id)]
+
         theta_deg = self.theta * 180. / np.pi
-        for position in self.positions:
+        for position in positions:
             patch_inner = mpatches.Ellipse(position, self.a_in, self.b_in,
                                            theta_deg, **kwargs)
             patch_outer = mpatches.Ellipse(position, self.a_out, self.b_out,
@@ -583,7 +865,7 @@ class EllipticalAnnulus(Aperture):
         return flux
 
 
-class RectangularAperture(Aperture):
+class RectangularAperture(PixelAperture):
     """
     A rectangular aperture.
 
@@ -652,19 +934,28 @@ class RectangularAperture(Aperture):
         """
         return self.w * self.h
 
-    def plot(self, ax=None, fill=False, **kwargs):
+    def plot(self, ax=None, fill=False, source_id=None, **kwargs):
+
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
+
         kwargs['fill'] = fill
+
         if ax is None:
             ax = plt.gca()
+
+        if source_id is None:
+            positions = self.positions
+        else:
+            positions = self.positions[np.atleast_1d(source_id)]
+
         hw = self.w / 2.
         hh = self.h / 2.
         sint = math.sin(self.theta)
         cost = math.cos(self.theta)
         dx = (hh * sint) - (hw * cost)
         dy = -(hh * cost) - (hw * sint)
-        positions = self.positions + np.array([dx, dy])
+        positions = positions + np.array([dx, dy])
         theta_deg = self.theta * 180. / np.pi
         for position in positions:
             patch = mpatches.Rectangle(position, self.w, self.h, theta_deg,
@@ -673,6 +964,11 @@ class RectangularAperture(Aperture):
 
     def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
                       method='subpixel', subpixels=5):
+
+        if method == 'exact':
+            warnings.warn("'exact' method is not implemented, defaults to "
+                          "'subpixel' instead", AstropyUserWarning)
+            method = 'subpixel'
 
         extents = super(RectangularAperture, self).get_phot_extents(data)
 
@@ -799,9 +1095,9 @@ class RectangularAperture(Aperture):
             return (flux, np.sqrt(fluxvar))
 
 
-def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
+def aperture_photometry(data, apertures, unit=None, wcs=None,
                         error=None, gain=None, mask=None, method='exact',
-                        subpixels=5, pixelcoord=True, pixelwise_error=True,
+                        subpixels=5, pixelwise_error=True,
                         mask_method='skip'):
     """
     Sum flux within an aperture at the given position(s).
@@ -812,30 +1108,16 @@ def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
         The 2-d array on which to perform photometry. Units are used during
         the photometry, either provided along with the data array, or stored
         in the header keyword ``'BUNIT'``.
-    positions : list, tuple, nd.array or `~astropy.coordinates.SkyCoord`
-        Positions of the aperture centers, either in pixel or sky
-        coordinates. If positions is `~astropy.coordinates.SkyCoord` or
-        ``pixelcoord`` is `False` a wcs transformation is also needed to
-        convert the input positions to pixel positions. If ``positions`` are
-        sky positions but not an `~astropy.coordinates.SkyCoord` object, it
-        need to be in the same celestial frame as the wcs transformation.
-    apertures : tuple
-        First element of the tuple is the mode, the currently supported ones
-        are: ``'circular'``, ``'elliptical'``, ``'circular_annulus'``,
-        ``'elliptical_annulus'``, ``'rectangular'``. The remaining (1 to 4)
-        elements are the parameters for the given mode. Check the
-        documentation of the relevant ``Aperture`` classes for more
-        information.
+    apertures : `~photutils.Aperture` instance
+        The apertures to use for the photometry.
     unit : `~astropy.units.UnitBase` instance, str
         An object that represents the unit associated with ``data``.  Must
         be an `~astropy.units.UnitBase` object or a string parseable by the
         :mod:`~astropy.units` package. An error is raised if ``data``
         already has a different unit.
     wcs : `~astropy.wcs.WCS`, optional
-        Use this as the wcs transformation when either ``pixelcoord`` is
-        `False` or ``positions`` is `~astropy.coordinates.SkyCoord`. It
-        overrides any wcs transformation passed along with ``data`` either
-        in the header or in an attribute.
+        Use this as the wcs transformation. It overrides any wcs transformation
+        passed along with ``data`` either in the header or in an attribute.
     error : float or array_like, optional
         Error in each pixel, interpreted as Gaussian 1-sigma uncertainty.
     gain : float or array_like, optional
@@ -869,11 +1151,6 @@ def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
         For the ``'subpixel'`` method, resample pixels by this factor (in
         each dimension). That is, each pixel is divided into
         ``subpixels ** 2`` subpixels.
-    pixelcoord : bool, optional
-        If `True` (default), assume ``positions`` are pixel positions. If
-        `False`, assume the input positions are sky coordinates and uses the
-        wcs transformation (provided either via ``wcs`` or along with
-        ``data``) to convert them to pixel positions.
     pixelwise_error : bool, optional
         For error and/or gain arrays. If `True`, assume error and/or gain
         vary significantly within an aperture: sum contribution from each
@@ -906,14 +1183,6 @@ def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
 
         The metadata of the table stores the version numbers of both astropy
         and photutils, as well as the calling arguments.
-    aux_dict : dict
-        Auxilary dictionary storing all the auxilary information
-        available. The element are the following:
-
-        * ``'apertures'``
-            The `~photutils.Aperture` object containing the apertures to use
-            during the photometry.
-
     """
     dataunit = None
     datamask = None
@@ -943,9 +1212,9 @@ def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
                 warnings.warn("Input data is a HDUList object, photometry is "
                               "only run for the {0}. HDU."
                               .format(i), AstropyUserWarning)
-                return aperture_photometry(data[i], positions, apertures, unit,
+                return aperture_photometry(data[i], apertures, unit,
                                            wcs, error, gain, mask, method,
-                                           subpixels, pixelcoord,
+                                           subpixels,
                                            pixelwise_error, mask_method)
 
     # this is basically for NDData inputs and alike
@@ -1056,65 +1325,17 @@ def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
             raise ValueError('subpixels: an integer greater than 0 is '
                              'required')
 
-    if not pixelcoord or isinstance(positions, SkyCoord):
+    ap = apertures
 
-        from astropy.wcs import wcs
-
-        try:
-            from astropy.wcs.utils import wcs_to_celestial_frame
-        except ImportError:  # Astropy < 1.0
-            from .extern.wcs_utils import wcs_to_celestial_frame
-
+    if isinstance(apertures, SkyAperture):
+        positions = ap.positions
         if wcs_transformation is None:
-            wcs_transformation = wcs.WCS(header)
-
-        # TODO this should be simplified once wcs_world2pix() supports
-        # SkyCoord objects as input
-        if isinstance(positions, SkyCoord):
-            # Check which frame the wcs uses
-            framename = wcs_to_celestial_frame(wcs_transformation).name
-            frame = getattr(positions, framename)
-            component_names = list(frame.representation_component_names.keys())[0:2]
-            if len(positions.shape) > 0:
-                positions_repr = u.Quantity(zip(getattr(frame,
-                                                        component_names[0]).deg,
-                                                getattr(frame,
-                                                        component_names[1]).deg),
-                                            unit=u.deg)
-            else:
-                positions_repr = (u.Quantity((getattr(frame,
-                                                      component_names[0]).deg,
-                                              getattr(frame,
-                                                      component_names[1]).deg),
-                                             unit=u.deg), )
-        elif not isinstance(positions, u.Quantity):
-            # TODO figure out the unit of the input positions for this case
-            # TODO revise this once wcs_world2pix() accepts more input formats
-            if len(positions) > 1 and not isinstance(positions, tuple):
-                positions_repr = u.Quantity(positions, copy=False)
-            else:
-                positions_repr = (u.Quantity(positions, copy=False), )
-        pixelpositions = u.Quantity(wcs_transformation.wcs_world2pix
-                                    (positions_repr, 0), unit=u.pixel,
-                                    copy=False)
+            wcs_transformation = WCS(header)
+        ap = ap.to_pixel(wcs_transformation)
+        pixelpositions = ap.positions
     else:
-        positions = u.Quantity(positions, unit=u.pixel, copy=False)
-        pixelpositions = positions
-
-    if apertures[0] == 'circular':
-        ap = CircularAperture(pixelpositions.value, apertures[1])
-    elif apertures[0] == 'circular_annulus':
-        ap = CircularAnnulus(pixelpositions.value, *apertures[1:3])
-    elif apertures[0] == 'elliptical':
-        ap = EllipticalAperture(pixelpositions.value, *apertures[1:4])
-    elif apertures[0] == 'elliptical_annulus':
-        ap = EllipticalAnnulus(pixelpositions.value, *apertures[1:5])
-    elif apertures[0] == 'rectangular':
-        if method == 'exact':
-            warnings.warn("'exact' method is not implemented, defaults to "
-                          "'subpixel' instead", AstropyUserWarning)
-            method = 'subpixel'
-        ap = RectangularAperture(pixelpositions.value, *apertures[1:4])
+        positions = ap.positions * u.pixel
+        pixelpositions = ap.positions * u.pixel
 
     # Prepare version return data
     from astropy import __version__
@@ -1143,14 +1364,13 @@ def aperture_photometry(data, positions, apertures, unit=None, wcs=None,
 
     coord_col_names = ('pixel_center', 'input_center')
 
-    return (Table(data=(photometry_result + coord_columns),
-                  names=(phot_col_names + coord_col_names),
-                  meta={'name': 'Aperture photometry results',
-                        'version': 'astropy: {0}, photutils: {1}'
-                        .format(astropy_version, photutils_version),
-                        'calling_args': ('method={0}, subpixels={1}, '
-                                         'error={2}, gain={3}, '
-                                         'pixelwise_error={4}')
-                        .format(method, subpixels, error is not None,
-                                gain is not None, pixelwise_error)}),
-            {'apertures': ap})
+    return Table(data=(photometry_result + coord_columns),
+                 names=(phot_col_names + coord_col_names),
+                 meta={'name': 'Aperture photometry results',
+                       'version': 'astropy: {0}, photutils: {1}'
+                       .format(astropy_version, photutils_version),
+                       'calling_args': ('method={0}, subpixels={1}, '
+                                        'error={2}, gain={3}, '
+                                        'pixelwise_error={4}')
+                       .format(method, subpixels, error is not None,
+                               gain is not None, pixelwise_error)})
