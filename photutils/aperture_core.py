@@ -25,7 +25,8 @@ __all__ = ['Aperture', 'SkyAperture', 'PixelAperture',
            'SkyCircularAnnulus', 'CircularAnnulus',
            'SkyEllipticalAperture', 'EllipticalAperture',
            'SkyEllipticalAnnulus', 'EllipticalAnnulus',
-           'RectangularAperture', 'aperture_photometry']
+           'RectangularAperture', 'RectangularAnnulus',
+           'aperture_photometry']
 
 
 def _make_annulus_path(patch_inner, patch_outer):
@@ -959,6 +960,145 @@ class RectangularAperture(PixelAperture):
                                          pixelwise_error=pixelwise_error,
                                          method=method,
                                          subpixels=subpixels)
+        return flux
+
+
+class RectangularAnnulus(PixelAperture):
+    """
+    Rectangular annulus aperture(s), defined in pixel coordinates.
+
+    Parameters
+    ----------
+    positions : tuple, list, array, or `~astropy.units.Quantity`
+        Pixel coordinates of the aperture center(s), either as a single
+        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` Numpy
+        array, or an ``Nx2`` `~astropy.units.Quantity` in units of pixels.
+    w_in : float
+        The inner full width of the aperture.
+    w_out : float
+        The outer full width of the aperture.
+    h_out : float
+        The outer full height of the aperture. (The inner full height is
+        determined by scaling by w_in/w_out.)
+    theta : float
+        The position angle of the width side in radians.
+        (counterclockwise).
+
+    Raises
+    ------
+    ValueError : `~.exceptions.ValueError`
+        If inner width (``w_in``) is greater than outer width (``w_out``).
+    ValueError : `~.exceptions.ValueError`
+        If either the inner width (``w_in``) or the outer height (``h_out``)
+        is negative.
+    """
+
+    def __init__(self, positions, w_in, w_out, h_out, theta):
+        try:
+            self.w_in = float(w_in)
+            self.w_out = float(w_out)
+            self.h_out = float(h_out)
+            self.theta = float(theta)
+        except TypeError:
+            raise TypeError("'w_in' and 'w_out' and 'h_out' and 'theta' must "
+                            "be numeric, received {0} and {1} and {2} and {3}."
+                            .format((type(w_in), type(w_out),
+                                     type(h_out), type(theta))))
+
+        if not (w_out > w_in):
+            raise ValueError("'a_out' must be greater than 'a_in'")
+        if w_in < 0 or h_out < 0:
+            raise ValueError("'a_in' and 'b_out' must be non-negative")
+
+        self.h_in = w_in * h_out / w_out
+
+        if isinstance(positions, u.Quantity):
+            positions = positions.value
+        if isinstance(positions, (list, tuple, np.ndarray)):
+            self.positions = np.atleast_2d(positions)
+        else:
+            raise TypeError("List or array of (x,y) pixel coordinates is "
+                            "expected got '{0}'.".format(positions))
+
+        if self.positions.ndim > 2:
+            raise ValueError('{0}-d position array not supported. Only 2-d '
+                             'arrays supported.'.format(self.positions.ndim))
+
+    def extent(self):
+        r = max(self.w_out, self.h_out) * (2 ** -0.5)
+        extents = []
+        centers = []
+        for x, y in self.positions:
+            extents.append((int(x - r + 0.5), int(x + r + 1.5),
+                            int(y - r + 0.5), int(y + r + 1.5)))
+            centers.append((x, x, y, y))
+
+        self._centers = np.array(centers)
+        return np.array(extents)
+
+    def area(self):
+        """
+        Returns
+        -------
+        area : float
+            Area of aperture.
+        """
+        return self.w_out * self.h_out - self.w_in * self.h_in
+
+    def plot(self, ax=None, fill=False, source_id=None, **kwargs):
+
+        import matplotlib.pyplot as plt
+        import matplotlib.patches as mpatches
+
+        kwargs['fill'] = fill
+
+        if ax is None:
+            ax = plt.gca()
+
+        if source_id is None:
+            positions = self.positions
+        else:
+            positions = self.positions[np.atleast_1d(source_id)]
+
+        sint = math.sin(self.theta)
+        cost = math.cos(self.theta)
+        theta_deg = self.theta * 180. / np.pi
+
+        hw_inner = self.w_in / 2.
+        hh_inner = self.h_in / 2.
+        dx_inner = (hh_inner * sint) - (hw_inner * cost)
+        dy_inner = -(hh_inner * cost) - (hw_inner * sint)
+        positions_inner = positions + np.array([dx_inner, dy_inner])
+        hw_outer = self.w_out / 2.
+        hh_outer = self.h_out / 2.
+        dx_outer = (hh_outer * sint) - (hw_outer * cost)
+        dy_outer = -(hh_outer * cost) - (hw_outer * sint)
+        positions_outer = positions + np.array([dx_outer, dy_outer])
+
+        for i, position_inner in enumerate(positions_inner):
+            patch_inner = mpatches.Rectangle(position_inner, self.w, self.h,
+                                             theta_deg, **kwargs)
+            patch_outer = mpatches.Rectangle(positions_outer[i], self.w,
+                                             self.h, theta_deg, **kwargs)
+            path = _make_annulus_path(patch_inner, patch_outer)
+            patch = mpatches.PathPatch(path, **kwargs)
+            ax.add_patch(patch)
+
+    def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
+                      method='subpixel', subpixels=5):
+        extents = super(RectangularAnnulus, self).get_phot_extents(data)
+
+        if method not in ('center', 'subpixel', 'exact'):
+            raise ValueError('{0} method not supported for aperture class '
+                             '{1}'.format(method, self.__class__.__name__))
+
+        flux = do_annulus_photometry(data, self.positions, 'rectangular',
+                                     extents,
+                                     (self.a_in, self.b_in, self.theta),
+                                     (self.a_out, self.b_out, self.theta),
+                                     error=error, gain=gain,
+                                     pixelwise_error=pixelwise_error,
+                                     method=method, subpixels=subpixels)
         return flux
 
 

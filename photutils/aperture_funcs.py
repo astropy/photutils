@@ -363,6 +363,37 @@ def do_annulus_photometry(data, positions, mode, extents,
                                                              subpixels=subpixels)
             fluxvar = np.maximum((fluxerr_o ** 2 - fluxerr_i ** 2), 0)
 
+    elif mode == 'rectangular':
+        if error is None:
+            flux_inner = do_rectangular_photometry(data, positions, extents,
+                                                   *inner_params, error=error,
+                                                   pixelwise_error=pixelwise_error,
+                                                   method=method, gain=gain,
+                                                   subpixels=subpixels)
+            flux_outer = do_rectangular_photometry(data, positions, extents,
+                                                   *outer_params, error=error,
+                                                   pixelwise_error=pixelwise_error,
+                                                   method=method, gain=gain,
+                                                   subpixels=subpixels)
+        else:
+            flux_inner, fluxerr_i = do_rectangular_photometry(data, positions,
+                                                              extents,
+                                                              *inner_params,
+                                                              error=error,
+                                                              gain=gain,
+                                                              pixelwise_error=pixelwise_error,
+                                                              method=method,
+                                                              subpixels=subpixels)
+            flux_outer, fluxerr_o = do_rectangular_photometry(data, positions,
+                                                              extents,
+                                                              *outer_params,
+                                                              error=error,
+                                                              gain=gain,
+                                                              pixelwise_error=pixelwise_error,
+                                                              method=method,
+                                                              subpixels=subpixels)
+            fluxvar = max((fluxerr_o ** 2 - fluxerr_i ** 2), 0)
+
     else:
         raise ValueError('{0} mode is not supported for annular photometry'
                          '{1}'.format(mode))
