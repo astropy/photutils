@@ -78,6 +78,8 @@ def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
         raise ValueError('"mean" must be input')
     prng = check_random_state(random_state)
     if type == 'gaussian':
+        if stddev is None:
+            raise ValueError('"stddev" must be input for Gaussian noise')
         image = prng.normal(loc=mean, scale=stddev, size=image_shape)
     elif type == 'poisson':
         image = prng.poisson(lam=mean, size=image_shape)
