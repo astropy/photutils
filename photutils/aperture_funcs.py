@@ -190,10 +190,6 @@ def do_rectangular_photometry(data, positions, extents, w, h, theta,
 
     flux = u.Quantity(np.zeros(len(positions), dtype=np.float), unit=data.unit)
 
-    # Check for invalid aperture
-    if w == 0 or h == 0:
-        return (flux, )
-
     if error is not None:
         fluxvar = u.Quantity(np.zeros(len(positions), dtype=np.float),
                              unit=error.unit ** 2)
