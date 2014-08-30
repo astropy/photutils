@@ -1006,9 +1006,9 @@ class RectangularAnnulus(PixelAperture):
                                      type(h_out), type(theta))))
 
         if not (w_out > w_in):
-            raise ValueError("'a_out' must be greater than 'a_in'")
+            raise ValueError("'w_out' must be greater than 'w_in'")
         if w_in < 0 or h_out < 0:
-            raise ValueError("'a_in' and 'b_out' must be non-negative")
+            raise ValueError("'w_in' and 'h_out' must be non-negative")
 
         self.h_in = w_in * h_out / w_out
 
@@ -1088,14 +1088,19 @@ class RectangularAnnulus(PixelAperture):
                       method='subpixel', subpixels=5):
         extents = super(RectangularAnnulus, self).get_phot_extents(data)
 
-        if method not in ('center', 'subpixel', 'exact'):
+        if method == 'exact':
+            warnings.warn("'exact' method is not implemented, defaults to "
+                          "'subpixel' instead", AstropyUserWarning)
+            method = 'subpixel'
+
+        elif method not in ('center', 'subpixel'):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
         flux = do_annulus_photometry(data, self.positions, 'rectangular',
                                      extents,
-                                     (self.a_in, self.b_in, self.theta),
-                                     (self.a_out, self.b_out, self.theta),
+                                     (self.w_in, self.h_in, self.theta),
+                                     (self.w_out, self.h_out, self.theta),
                                      error=error, gain=gain,
                                      pixelwise_error=pixelwise_error,
                                      method=method, subpixels=subpixels)

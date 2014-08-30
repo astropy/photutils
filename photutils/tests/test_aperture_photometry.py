@@ -23,8 +23,9 @@ APERTURE_CL = [CircularAperture,
                RectangularAnnulus]
 
 
-TEST_APERTURES = list(zip(APERTURE_CL, ((3.,), (3., 5.), (3., 5., 1.),
-                                        (3., 5., 4., 1.), (5, 8, np.pi / 4))))
+TEST_APERTURES = list(zip(APERTURE_CL, ((3.,), (3., 5.),
+                                        (3., 5., 1.), (3., 5., 4., 1.),
+                                        (5, 8, np.pi / 4), (8, 12, 8, np.pi / 8))))
 
 @pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
 def test_outside_array(aperture_class, params):
@@ -377,11 +378,11 @@ class TestRectangularAnnulus(BaseTestAperturePhotometry):
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=np.float)
         position = (20., 20.)
-        h_out = 5.
+        h_out = 8.
         w_in = 8.
-        w_out = 11.
+        w_out = 12.
         h_in = w_in * h_out / w_out
-        theta = np.pi / 4.
+        theta = np.pi / 8.
         self.aperture = RectangularAnnulus(position, w_in, w_out, h_out, theta)
         self.area = h_out * w_out - h_in * w_in
         self.true_flux = self.area
