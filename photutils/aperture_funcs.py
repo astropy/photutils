@@ -326,7 +326,6 @@ def do_annulus_photometry(data, positions, mode, extents,
                                                            pixelwise_error=pixelwise_error,
                                                            method=method,
                                                            subpixels=subpixels)
-            fluxvar = np.maximum((fluxerr_o ** 2 - fluxerr_i ** 2), 0)
 
     elif mode == 'elliptical':
         if error is None:
@@ -357,7 +356,6 @@ def do_annulus_photometry(data, positions, mode, extents,
                                                              pixelwise_error=pixelwise_error,
                                                              method=method,
                                                              subpixels=subpixels)
-            fluxvar = np.maximum((fluxerr_o ** 2 - fluxerr_i ** 2), 0)
 
     elif mode == 'rectangular':
         if error is None:
@@ -388,15 +386,15 @@ def do_annulus_photometry(data, positions, mode, extents,
                                                               pixelwise_error=pixelwise_error,
                                                               method=method,
                                                               subpixels=subpixels)
-            fluxvar = max((fluxerr_o ** 2 - fluxerr_i ** 2), 0)
 
     else:
         raise ValueError('{0} mode is not supported for annular photometry'
-                         '{1}'.format(mode))
+                         .format(mode))
 
     if error is None:
         flux = flux_outer[0] - flux_inner[0]
         return (flux, )
     else:
         flux = flux_outer - flux_inner
+        fluxvar = np.maximum((fluxerr_o ** 2 - fluxerr_i ** 2), 0)
         return (flux, np.sqrt(fluxvar))
