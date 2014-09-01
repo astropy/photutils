@@ -436,10 +436,8 @@ All `~photutils.Aperture` subclasses must implement only two methods,
 a third method, ``area()``.
 
 * ``extent()``: Returns the maximum extent of the aperture, (x_min, x_max,
-  y_min, y_max). This may be out of the data area, and thus may be
-  different, than the ``extent`` parameter of the ``encloses()`` method. It
-  is used to determine the portion of the data array to subsample (if
-  necessary).
+  y_min, y_max). Note that this may be out of the data area. It is used to
+  determine the portion of the data array to subsample (if necessary).
 * ``area()``: If convenient to calculate, this returns the area of the
   aperture.  This speeds computation in certain situations (such as a
   scalar error).
