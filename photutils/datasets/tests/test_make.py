@@ -5,7 +5,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 from astropy.table import Table
-from .. import (make_noise_image, apply_poisson_noise, make_gaussian_sources,
+from .. import (make_noise_image, make_poisson_noise, make_gaussian_sources,
                 make_random_gaussians)
 
 
@@ -50,20 +50,20 @@ def test_make_noise_image_nostddev():
         make_noise_image(shape, 'gaussian', mean=2.)
 
 
-def test_apply_poisson_noise():
+def test_make_poisson_noise():
     shape = (100, 100)
     data = np.ones(shape)
-    result = apply_poisson_noise(data)
+    result = make_poisson_noise(data)
     assert result.shape == shape
     assert_allclose(result.mean(), 1., atol=1.)
 
 
-def test_apply_poisson_noise_negative():
+def test_make_poisson_noise_negative():
     """Test if negative image values raises ValueError."""
     with pytest.raises(ValueError):
         shape = (100, 100)
         data = np.zeros(shape) - 1.
-        apply_poisson_noise(data)
+        make_poisson_noise(data)
 
 
 def test_make_gaussian_sources():
