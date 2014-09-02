@@ -19,17 +19,12 @@ from .aperture_funcs import do_circular_photometry, do_elliptical_photometry, \
                             do_annulus_photometry
 from .wcsutils import skycoord_to_pixel, skycoord_to_pixel_scale_angle, assert_angle_or_pixel, assert_angle
 
-__all__ = ["Aperture",
-           "SkyCircularAperture",
-           "CircularAperture",
-           "SkyCircularAnnulus",
-           "CircularAnnulus",
-           "SkyEllipticalAperture",
-           "EllipticalAperture",
-           "SkyEllipticalAnnulus",
-           "EllipticalAnnulus",
-           "RectangularAperture",
-           "aperture_photometry"]
+__all__ = ['Aperture', 'SkyAperture', 'PixelAperture',
+           'SkyCircularAperture', 'CircularAperture',
+           'SkyCircularAnnulus', 'CircularAnnulus',
+           'SkyEllipticalAperture', 'EllipticalAperture',
+           'SkyEllipticalAnnulus', 'EllipticalAnnulus',
+           'RectangularAperture', 'aperture_photometry']
 
 
 def _make_annulus_path(patch_inner, patch_outer):
@@ -80,8 +75,8 @@ class PixelAperture(Aperture):
         """
         Extent of apertures. In the case when part of an aperture's extent
         falls out of the actual data region, the
-        `~photutils.Aperture.get_phot_extents` method redefines the extent
-        which has data coverage.
+        `~photutils.PixelAperture.get_phot_extents` method redefines the
+        extent which has data coverage.
 
         Returns
         -------
