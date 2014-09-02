@@ -75,8 +75,8 @@ class PixelAperture(Aperture):
         """
         Extent of apertures. In the case when part of an aperture's extent
         falls out of the actual data region, the
-        `~photutils.Aperture.get_phot_extents` method redefines the extent
-        which has data coverage.
+        `~photutils.PixelAperture.get_phot_extents` method redefines the
+        extent which has data coverage.
 
         Returns
         -------
