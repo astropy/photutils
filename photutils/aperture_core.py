@@ -204,6 +204,16 @@ class PixelAperture(Aperture):
                 'pixel_extent': [x_min, x_max, y_min, y_max],
                 'phot_extent': [x_pmin, x_pmax, y_pmin, y_pmax]}
 
+    def area():
+        """
+        Area of aperture.
+
+        Returns
+        -------
+        area : float
+            Area of aperture.
+        """
+
 
 class SkyCircularAperture(SkyAperture):
     """
@@ -298,12 +308,6 @@ class CircularAperture(PixelAperture):
         return np.array(extents)
 
     def area(self):
-        """
-        Returns
-        -------
-        area : float
-            Area of aperture.
-        """
         return math.pi * self.r ** 2
 
     def plot(self, ax=None, fill=False, source_id=None, **kwargs):
@@ -452,12 +456,6 @@ class CircularAnnulus(PixelAperture):
         return np.array(extents)
 
     def area(self):
-        """
-        Returns
-        -------
-        area : float
-            Area of aperture.
-        """
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
     def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
@@ -625,12 +623,6 @@ class EllipticalAperture(PixelAperture):
         return np.array(extents)
 
     def area(self):
-        """
-        Returns
-        -------
-        area : float
-            Area of aperture.
-        """
         return math.pi * self.a * self.b
 
     def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
@@ -814,12 +806,6 @@ class EllipticalAnnulus(PixelAperture):
         return np.array(extents)
 
     def area(self):
-        """
-        Returns
-        -------
-        area : float
-            Area of aperture.
-        """
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
     def plot(self, ax=None, fill=False, source_id=None, **kwargs):
@@ -926,12 +912,6 @@ class RectangularAperture(PixelAperture):
         return np.array(extents)
 
     def area(self):
-        """
-        Returns
-        -------
-        area : float
-            Area of aperture.
-        """
         return self.w * self.h
 
     def plot(self, ax=None, fill=False, source_id=None, **kwargs):
