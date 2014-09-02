@@ -19,17 +19,12 @@ from .aperture_funcs import do_circular_photometry, do_elliptical_photometry, \
                             do_annulus_photometry
 from .wcsutils import skycoord_to_pixel, skycoord_to_pixel_scale_angle, assert_angle_or_pixel, assert_angle
 
-__all__ = ["Aperture",
-           "SkyCircularAperture",
-           "CircularAperture",
-           "SkyCircularAnnulus",
-           "CircularAnnulus",
-           "SkyEllipticalAperture",
-           "EllipticalAperture",
-           "SkyEllipticalAnnulus",
-           "EllipticalAnnulus",
-           "RectangularAperture",
-           "aperture_photometry"]
+__all__ = ['Aperture', 'SkyAperture', 'PixelAperture',
+           'SkyCircularAperture', 'CircularAperture',
+           'SkyCircularAnnulus', 'CircularAnnulus',
+           'SkyEllipticalAperture', 'EllipticalAperture',
+           'SkyEllipticalAnnulus', 'EllipticalAnnulus',
+           'RectangularAperture', 'aperture_photometry']
 
 
 def _make_annulus_path(patch_inner, patch_outer):
@@ -204,6 +199,7 @@ class PixelAperture(Aperture):
                 'pixel_extent': [x_min, x_max, y_min, y_max],
                 'phot_extent': [x_pmin, x_pmax, y_pmin, y_pmax]}
 
+    @abc.abstractmethod
     def area():
         """
         Area of aperture.
