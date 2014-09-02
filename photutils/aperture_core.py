@@ -199,7 +199,6 @@ class PixelAperture(Aperture):
                 'pixel_extent': [x_min, x_max, y_min, y_max],
                 'phot_extent': [x_pmin, x_pmax, y_pmin, y_pmax]}
 
-    @abc.abstractmethod
     def area():
         """
         Area of aperture.
