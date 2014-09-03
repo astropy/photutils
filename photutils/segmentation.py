@@ -17,36 +17,60 @@ class SegmentProperties(object):
         self._segment_image = segment_image
         self.label = label
         self._slice = slice
-        self._image_mask = mask
+        self._mask = mask
         self._cache_active = True
 
     def __getitem__(self, key):
         return getattr(self, key, None)
 
     @_cached_property
-    def _segment_mask(self):
+    def _in_segment(self):
+        """
+        _in_segment is True only for pixels in the labeled object segment.
+        """
         return self._segment_image[self._slice] == self.label
 
     @_cached_property
-    def _mask(self):
-        if self._image_mask is None:
-            return self._segment_mask
+    def _local_mask(self):
+        """
+        _local_mask is True for regions outside of the labeled object
+        segment or where the input mask is True.
+        """
+        if self._mask is None:
+            return ~self._in_segment
         else:
-            return self._segment_mask * self._image_mask
+            return np.logical_or(~self._in_segment, self._mask[self._slice])
 
     @_cached_property
-    def _masked_cutout_image_double(self):
-        return self.masked_cutout_image.astype(np.double)
+    def cutout_image(self):
+        return self._image[self._slice]
+
+    @_cached_property
+    def isolated_cutout_image(self):
+        return np.where(self._in_segment, self.cutout_image, np.nan)
+
+    @_cached_property
+    def cutout_image_maskedarray(self):
+        return np.ma.masked_array(self.cutout_image, mask=self._local_mask)
+
+    @_cached_property
+    def _cutout_image_maskzeroed(self):
+        return self.cutout_image * ~self._local_mask
+
+    @_cached_property
+    def _cutout_image_maskzeroed_double(self):
+        return self._cutout_image_maskzeroed.astype(np.double)
 
     @_cached_property
     def moments(self):
-        return skimage.measure.moments(self._masked_cutout_image_double, 3)
+        return skimage.measure.moments(
+            self._cutout_image_maskzeroed_double, 3)
 
     @_cached_property
     def moments_central(self):
         ycentroid, xcentroid = self.local_centroid
         return skimage.measure.moments_central(
-            self._masked_cutout_image_double, ycentroid, xcentroid, 3)
+            self._cutout_image_maskzeroed_double, ycentroid, xcentroid, 3)
 
     @_cached_property
     def id(self):
@@ -99,19 +123,19 @@ class SegmentProperties(object):
 
     @_cached_property
     def min_value(self):
-        return np.min(self.cutout_image[self._mask])
+        return np.min(self.cutout_image[~self._local_mask])
 
     @_cached_property
     def max_value(self):
-        return np.max(self.cutout_image[self._mask])
+        return np.max(self.cutout_image[~self._local_mask])
 
     @_cached_property
     def minval_local_pos(self):
-        return np.argwhere(self.cutout_image[self._mask] == self.min_value)[0]
+        return np.argwhere(self.cutout_image_maskedarray == self.min_value)[0]
 
     @_cached_property
     def maxval_local_pos(self):
-        return np.argwhere(self.cutout_image[self._mask] == self.max_value)[0]
+        return np.argwhere(self.cutout_image_maskedarray == self.max_value)[0]
 
     @_cached_property
     def minval_pos(self):
@@ -149,7 +173,7 @@ class SegmentProperties(object):
 
     @_cached_property
     def perimeter(self):
-        return skimage.measure.perimeter(self._segment_mask, 4)
+        return skimage.measure.perimeter(self._in_segment, 4)
 
     @_cached_property
     def inertia_tensor(self):
@@ -192,14 +216,6 @@ class SegmentProperties(object):
     def orientation(self):
         a, b, b, c = self.covariance.flat
         return -0.5 * np.arctan2(2. * b, (a - c))
-
-    @_cached_property
-    def cutout_image(self):
-        return self._image[self._slice]
-
-    @_cached_property
-    def masked_cutout_image(self):
-        return self.cutout_image * self._segment_mask
 
     @_cached_property
     def coords(self):
@@ -390,7 +406,9 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
         # objslice is None for missing label numbers
         if objslice is None or label not in label_ids:
             continue
-        objprops = SegmentProperties(data, segment_image, label, objslice)
+        # input mask here only if 'exclude'
+        objprops = SegmentProperties(data, segment_image, label, objslice,
+                                     mask=mask)
         objpropslist.append(objprops)
 
     if not output_table:
