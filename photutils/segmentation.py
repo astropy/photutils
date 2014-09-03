@@ -68,7 +68,7 @@ class SegmentProperties(object):
 
     @_cached_property
     def values(self):
-        """ Non-masked values in the object segment. """
+        """Non-masked values in the object segment."""
         return self.cutout_image[~self._local_mask]
 
     @_cached_property
@@ -225,6 +225,40 @@ class SegmentProperties(object):
     def orientation(self):
         a, b, b, c = self.covariance.flat
         return 0.5 * np.arctan2(2. * b, (a - c))
+
+    @_cached_property
+    def se_x2(self):
+        """SExtractor's X2 property."""
+        return self.covariance[0, 0]
+
+    @_cached_property
+    def se_y2(self):
+        """SExtractor's Y2 property."""
+        return self.covariance[1, 1]
+
+    @_cached_property
+    def se_xy(self):
+        """SExtractor's XY property."""
+        return self.covariance[0, 1]
+
+    @_cached_property
+    def se_cxx(self):
+        """SExtractor's CXX property."""
+        return ((np.cos(self.orientation) / self.semimajor_axis_length)**2 +
+                (np.sin(self.orientation) / self.semiminor_axis_length)**2)
+
+    @_cached_property
+    def se_cyy(self):
+        """SExtractor's CYY property."""
+        return ((np.sin(self.orientation) / self.semimajor_axis_length)**2 +
+                (np.cos(self.orientation) / self.semiminor_axis_length)**2)
+
+    @_cached_property
+    def se_cxy(self):
+        """SExtractor's CXY property."""
+        return (2. * np.cos(self.orientation) * np.sin(self.orientation) *
+                ((1./self.semimajor_axis_length**2) -
+                 (1./self.semiminor_axis_length**2)))
 
 
 def segment_properties(data, segment_image, mask=None, mask_method='exclude',
