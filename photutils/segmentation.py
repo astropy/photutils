@@ -12,39 +12,52 @@ __all__ = ['SegmentProperties', 'segment_props', 'segment_photometry']
 
 class SegmentProperties(object):
     def __init__(self, image, segment_image, label, slice):
+        self._image = image
+        self._segment_image = segment_image
         self.label = label
         self._slice = slice
-        self._label_image = segment_image
-        self._intensity_image = image
         self._cache_active = True
 
     image = _RegionProperties.image
     intensity_image = _RegionProperties.intensity_image
     _image_double = _RegionProperties._image_double
     coords = _RegionProperties.coords
-    local_centroid = _RegionProperties.local_centroid
-    moments = _RegionProperties.moments
-    moments_central = _RegionProperties.moments_central
-    inertia_tensor = _RegionProperties.inertia_tensor
-    inertia_tensor_eigvals = _RegionProperties.inertia_tensor_eigvals
 
-    centroid = _RegionProperties.centroid
-    bbox = _RegionProperties.bbox
     min_value = _RegionProperties.min_intensity
     max_value = _RegionProperties.max_intensity
-    area = _RegionProperties.area
     perimeter = _RegionProperties.perimeter
-    major_axis_length = _RegionProperties.major_axis_length
-    minor_axis_length = _RegionProperties.minor_axis_length
-    eccentricity = _RegionProperties.eccentricity
-    orientation = _RegionProperties.orientation
+
 
     def __getitem__(self, key):
         return getattr(self, key, None)
 
     @_cached_property
+    def moments(self):
+        return moments(self._image_double, 3)
+
+    @_cached_property
+    def moments_central(self):
+        ycentroid, xcentroid = self.local_centroid
+        return moments_central(self._image_double, ycentroid, xcentroid, 3)
+
+    @_cached_property
     def id(self):
         return self.label
+
+    @_cached_property
+    def local_centroid(self):
+        # TODO: allow alternative centroid methods
+        """Centroid coordinates in the bounding box region."""
+        m = self.moments
+        ycentroid = m[0, 1] / m[0, 0]
+        xcentroid = m[1, 0] / m[0, 0]
+        return ycentroid, xcentroid
+
+    @_cached_property
+    def centroid(self):
+        """Centroid coordinates in the input image."""
+        ycen, xcen = self.local_centroid
+        return ycen + self._slice[0].start, xcen + self._slice[1].start
 
     @_cached_property
     def xcentroid(self):
@@ -77,32 +90,60 @@ class SegmentProperties(object):
         return self.bbox[2]
 
     @_cached_property
+    def min_value(self):
+        return np.min(self._masked_cutout_image)
+
+    @_cached_property
+    def max_value(self):
+        return np.max(self._masked_cutout_image)
+
+    @_cached_property
+    def minval_local_pos(self):
+        return np.argwhere(self.masked_cutout_image == self.min_value)[0]
+
+    @_cached_property
+    def maxval_local_pos(self):
+        return np.argwhere(self.masked_cutout_image == self.max_value)[0]
+
+    @_cached_property
     def minval_pos(self):
-        return np.argwhere(self.cutout_image == self.min_value)[0]
+        return self.minval_local_pos + self._slice[1].start
 
     @_cached_property
     def maxval_pos(self):
-        return np.argwhere(self.cutout_image == self.max_value)[0]
+        return self.maxval_local_pos + self._slice[0].start
 
     @_cached_property
     def minval_xpos(self):
-        return self.minval_pos[1] + self._slice[1].start
+        return self.minval_pos[1]
 
     @_cached_property
     def minval_ypos(self):
-        return self.minval_pos[0] + self._slice[0].start
+        return self.minval_pos[0]
 
     @_cached_property
     def maxval_xpos(self):
-        return self.maxval_pos[1] + self._slice[1].start
+        return self.maxval_pos[1]
 
     @_cached_property
     def maxval_ypos(self):
-        return self.maxval_pos[0] + self._slice[0].start
+        return self.maxval_pos[0]
+
+    @_cached_property
+    def area(self):
+        return self.moments[0, 0]
 
     @_cached_property
     def equivalent_radius(self):
         return np.sqrt(self.area / np.pi)
+
+    @_cached_property
+    def inertia_tensor(self):
+        mu = self.moments_central
+        a = mu[2, 0]
+        b = -mu[1, 1]
+        c = mu[0, 2]
+        return np.array([[a, b], [b, c]])
 
     @_cached_property
     def covariance(self):
@@ -111,12 +152,42 @@ class SegmentProperties(object):
         return np.array([[m[2, 0], m[1, 1]], [m[1, 1], m[0, 2]]])
 
     @_cached_property
+    def covariance_eigvals(self):
+        #a, b, b, c = self.covariance.flat
+        #l1 = (a + c) / 2 + sqrt(4 * b ** 2 + (a - c) ** 2) / 2
+        #l2 = (a + c) / 2 - sqrt(4 * b ** 2 + (a - c) ** 2) / 2
+        eigvals = np.linalg.eigvals(self.covariance)
+        return np.max(eigvals), np.min(eigvals)
+
+    @_cached_property
+    def semimajor_axis_length(self):
+        l1, _ = self.covariance_eigvals
+        return 2. * np.sqrt(l1)
+
+    @_cached_property
+    def semiminor_axis_length(self):
+        _, l2 = self.covariance_eigvals
+        return 2. * np.sqrt(l2)
+
+    @_cached_property
+    def eccentricity(self):
+        l1, l2 = self.covariance_eigvals
+        if l1 == 0:
+            return 0.
+        return np.sqrt(1. - (l2 / l1))
+
+    @_cached_property
+    def orientation(self):
+        a, b, b, c = self.covariance.flat
+        return -0.5 * np.arctan2(2. * b, (a - c))
+
+    @_cached_property
     def cutout_image(self):
-        return self._intensity_image[self._slice]
+        return self._image[self._slice]
 
     @_cached_property
     def masked_cutout_image(self):
-        return self._intensity_image[self._slice] * self.image
+        return self.cutout_image * self._mask
 
 
     # TODO:  allow alternate centroid methods via input centroid_func:
