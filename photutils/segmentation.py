@@ -4,19 +4,20 @@ from __future__ import (absolute_import, division, print_function,
 import copy
 import numpy as np
 from astropy.table import Table, Column
+import skimage
+from skimage.measure._regionprops import _cached_property
 
 
-__all__ = ['SegmentProperties', 'segment_props', 'segment_photometry']
+__all__ = ['SegmentProperties', 'segment_properties', 'segment_photometry']
 
 
 class SegmentProperties(object):
-    def __init__(self, image, segment_image, label, slice):
-        import skimage
-        from skimage.measure._regionprops import _cached_property
+    def __init__(self, image, segment_image, label, slice, mask=None):
         self._image = image
         self._segment_image = segment_image
         self.label = label
         self._slice = slice
+        self._image_mask = mask
         self._cache_active = True
 
     def __getitem__(self, key):
@@ -25,6 +26,13 @@ class SegmentProperties(object):
     @_cached_property
     def _segment_mask(self):
         return self._segment_image[self._slice] == self.label
+
+    @_cached_property
+    def _mask(self):
+        if self._image_mask is None:
+            return self._segment_mask
+        else:
+            return self._segment_mask * self._image_mask
 
     @_cached_property
     def _masked_cutout_image_double(self):
@@ -91,19 +99,19 @@ class SegmentProperties(object):
 
     @_cached_property
     def min_value(self):
-        return np.min(self._masked_cutout_image)
+        return np.min(self.cutout_image[self._mask])
 
     @_cached_property
     def max_value(self):
-        return np.max(self._masked_cutout_image)
+        return np.max(self.cutout_image[self._mask])
 
     @_cached_property
     def minval_local_pos(self):
-        return np.argwhere(self.masked_cutout_image == self.min_value)[0]
+        return np.argwhere(self.cutout_image[self._mask] == self.min_value)[0]
 
     @_cached_property
     def maxval_local_pos(self):
-        return np.argwhere(self.masked_cutout_image == self.max_value)[0]
+        return np.argwhere(self.cutout_image[self._mask] == self.max_value)[0]
 
     @_cached_property
     def minval_pos(self):
@@ -200,8 +208,8 @@ class SegmentProperties(object):
                           xx + self._slice[1].start)).T
 
 
-def segment_props(data, segment_image, mask=None, mask_method='exclude',
-                  background=None, labels=None, output_table=False):
+def segment_properties(data, segment_image, mask=None, mask_method='exclude',
+                       background=None, labels=None, output_table=False):
     """
 
 
@@ -299,11 +307,11 @@ def segment_props(data, segment_image, mask=None, mask_method='exclude',
         The perimeter of the source segment, approximated using a line
         through the centers of the border pixels using a 4-connectivity.
 
-    **major_axis_length** : float
+    **semimajor_axis_length** : float
         The length of the major axis of the ellipse that has the same
         second-order central moments as the region.
 
-    **minor_axis_length** : float
+    **semiminor_axis_length** : float
         The length of the minor axis of the ellipse that has the same
         second-order central moments as the region.
 
@@ -392,8 +400,8 @@ def segment_props(data, segment_image, mask=None, mask_method='exclude',
         columns = ['id', 'xcentroid', 'ycentroid', 'xmin', 'xmax', 'ymin',
                    'ymax', 'min_value', 'max_value', 'minval_xpos',
                    'minval_ypos', 'maxval_xpos', 'maxval_ypos', 'area',
-                   'equivalent_radius', 'perimeter', 'major_axis_length',
-                   'minor_axis_length', 'eccentricity', 'orientation']
+                   'equivalent_radius', 'perimeter', 'semimajor_axis_length',
+                   'semiminor_axis_length', 'eccentricity', 'orientation']
         for column in columns:
             values = [getattr(props, column) for props in objpropslist]
             props_table[column] = Column(values)
@@ -494,7 +502,7 @@ def segment_photometry(data, segment_image, error=None, gain=None,
 
     See Also
     --------
-    detect_sources, segment_props
+    detect_sources, segment_properties
     """
 
     from scipy import ndimage
