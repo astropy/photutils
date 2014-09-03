@@ -4,7 +4,6 @@ from __future__ import (absolute_import, division, print_function,
 import copy
 import numpy as np
 from astropy.table import Table, Column
-from skimage.measure._regionprops import _cached_property, _RegionProperties
 
 
 __all__ = ['SegmentProperties', 'segment_props', 'segment_photometry']
@@ -12,33 +11,34 @@ __all__ = ['SegmentProperties', 'segment_props', 'segment_photometry']
 
 class SegmentProperties(object):
     def __init__(self, image, segment_image, label, slice):
+        import skimage
+        from skimage.measure._regionprops import _cached_property
         self._image = image
         self._segment_image = segment_image
         self.label = label
         self._slice = slice
         self._cache_active = True
 
-    image = _RegionProperties.image
-    intensity_image = _RegionProperties.intensity_image
-    _image_double = _RegionProperties._image_double
-    coords = _RegionProperties.coords
-
-    min_value = _RegionProperties.min_intensity
-    max_value = _RegionProperties.max_intensity
-    perimeter = _RegionProperties.perimeter
-
-
     def __getitem__(self, key):
         return getattr(self, key, None)
 
     @_cached_property
+    def _segment_mask(self):
+        return self._segment_image[self._slice] == self.label
+
+    @_cached_property
+    def _masked_cutout_image_double(self):
+        return self.masked_cutout_image.astype(np.double)
+
+    @_cached_property
     def moments(self):
-        return moments(self._image_double, 3)
+        return skimage.measure.moments(self._masked_cutout_image_double, 3)
 
     @_cached_property
     def moments_central(self):
         ycentroid, xcentroid = self.local_centroid
-        return moments_central(self._image_double, ycentroid, xcentroid, 3)
+        return skimage.measure.moments_central(
+            self._masked_cutout_image_double, ycentroid, xcentroid, 3)
 
     @_cached_property
     def id(self):
@@ -107,11 +107,13 @@ class SegmentProperties(object):
 
     @_cached_property
     def minval_pos(self):
-        return self.minval_local_pos + self._slice[1].start
+        yp, xp = self.minval_local_pos
+        return yp + self._slice[0].start, xp + self._slice[1].start
 
     @_cached_property
     def maxval_pos(self):
-        return self.maxval_local_pos + self._slice[0].start
+        yp, xp = self.maxval_local_pos
+        return yp + self._slice[0].start, xp + self._slice[1].start
 
     @_cached_property
     def minval_xpos(self):
@@ -138,6 +140,10 @@ class SegmentProperties(object):
         return np.sqrt(self.area / np.pi)
 
     @_cached_property
+    def perimeter(self):
+        return skimage.measure.perimeter(self._segment_mask, 4)
+
+    @_cached_property
     def inertia_tensor(self):
         mu = self.moments_central
         a = mu[2, 0]
@@ -161,13 +167,11 @@ class SegmentProperties(object):
 
     @_cached_property
     def semimajor_axis_length(self):
-        l1, _ = self.covariance_eigvals
-        return 2. * np.sqrt(l1)
+        return 2. * np.sqrt(self.covariance_eigvals[0])
 
     @_cached_property
     def semiminor_axis_length(self):
-        _, l2 = self.covariance_eigvals
-        return 2. * np.sqrt(l2)
+        return 2. * np.sqrt(self.covariance_eigvals[1])
 
     @_cached_property
     def eccentricity(self):
@@ -187,17 +191,13 @@ class SegmentProperties(object):
 
     @_cached_property
     def masked_cutout_image(self):
-        return self.cutout_image * self._mask
+        return self.cutout_image * self._segment_mask
 
-
-    # TODO:  allow alternate centroid methods via input centroid_func:
-    # npix = ndimage.labeled_comprehension(image, segment_image, label_ids,
-    #                                      centroid_func, np.float32, np.nan)
-    #centroids = ndimage.center_of_mass(image, segment_image, objids)
-    #ycen, xcen = np.transpose(centroids)
-    #npix = ndimage.labeled_comprehension(image, segment_image, objids, len,
-    #                                     np.float32, np.nan)
-    #radii = np.sqrt(npix / np.pi)
+    @_cached_property
+    def coords(self):
+        yy, xx = np.nonzero(self.image)
+        return np.vstack((yy + self._slice[0].start,
+                          xx + self._slice[1].start)).T
 
 
 def segment_props(data, segment_image, mask=None, mask_method='exclude',
