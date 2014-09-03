@@ -206,11 +206,13 @@ class SegmentProperties(object):
 
     @_cached_property
     def semimajor_axis_length(self):
-        return 2. * np.sqrt(self.covariance_eigvals[0])
+        # this matches SExtractor's A parameter
+        return np.sqrt(self.covariance_eigvals[0])
 
     @_cached_property
     def semiminor_axis_length(self):
-        return 2. * np.sqrt(self.covariance_eigvals[1])
+        # this matches SExtractor's B parameter
+        return np.sqrt(self.covariance_eigvals[1])
 
     @_cached_property
     def eccentricity(self):
