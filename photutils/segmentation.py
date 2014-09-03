@@ -62,6 +62,16 @@ class SegmentProperties(object):
         return self._cutout_image_maskzeroed.astype(np.double)
 
     @_cached_property
+    def coords(self):
+        yy, xx = np.nonzero(self._cutout_image_maskzeroed)
+        return (yy + self._slice[0].start, xx + self._slice[1].start)
+
+    @_cached_property
+    def values(self):
+        """ Non-masked values in the object segment. """
+        return self.cutout_image[~self._local_mask]
+
+    @_cached_property
     def moments(self):
         return skimage.measure.moments(
             self._cutout_image_maskzeroed_double, 3)
@@ -123,11 +133,11 @@ class SegmentProperties(object):
 
     @_cached_property
     def min_value(self):
-        return np.min(self.cutout_image[~self._local_mask])
+        return np.min(self.values)
 
     @_cached_property
     def max_value(self):
-        return np.max(self.cutout_image[~self._local_mask])
+        return np.max(self.values)
 
     @_cached_property
     def minval_local_pos(self):
@@ -165,7 +175,7 @@ class SegmentProperties(object):
 
     @_cached_property
     def area(self):
-        return self.moments[0, 0]
+        return len(self.values)
 
     @_cached_property
     def equivalent_radius(self):
@@ -191,9 +201,6 @@ class SegmentProperties(object):
 
     @_cached_property
     def covariance_eigvals(self):
-        #a, b, b, c = self.covariance.flat
-        #l1 = (a + c) / 2 + sqrt(4 * b ** 2 + (a - c) ** 2) / 2
-        #l2 = (a + c) / 2 - sqrt(4 * b ** 2 + (a - c) ** 2) / 2
         eigvals = np.linalg.eigvals(self.covariance)
         return np.max(eigvals), np.min(eigvals)
 
@@ -215,13 +222,7 @@ class SegmentProperties(object):
     @_cached_property
     def orientation(self):
         a, b, b, c = self.covariance.flat
-        return -0.5 * np.arctan2(2. * b, (a - c))
-
-    @_cached_property
-    def coords(self):
-        yy, xx = np.nonzero(self.image)
-        return np.vstack((yy + self._slice[0].start,
-                          xx + self._slice[1].start)).T
+        return 0.5 * np.arctan2(2. * b, (a - c))
 
 
 def segment_properties(data, segment_image, mask=None, mask_method='exclude',
