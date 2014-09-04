@@ -12,12 +12,14 @@ __all__ = ['SegmentProperties', 'segment_properties', 'segment_photometry']
 
 
 class SegmentProperties(object):
-    def __init__(self, image, segment_image, label, slice, mask=None):
+    def __init__(self, image, segment_image, label, slice, mask=None,
+                 background=None):
         self._image = image
         self._segment_image = segment_image
         self.label = label
         self._slice = slice
         self._mask = mask
+        self._background = background
         self._cache_active = True
 
     def __getitem__(self, key):
@@ -225,6 +227,24 @@ class SegmentProperties(object):
     def orientation(self):
         a, b, b, c = self.covariance.flat
         return 0.5 * np.arctan2(2. * b, (a - c))
+
+    @_cached_property
+    def background_centroid(self):
+        """Background value at the centroid position."""
+        if self._background is None:
+            return 0.
+        else:
+            return self._background[self.ycentroid, self.xcentroid]
+
+    @_cached_property
+    def se_elongation(self):
+        """SExtractor's elongation property."""
+        return self.semimajor_axis_length / self.semiminor_axis_length
+
+    @_cached_property
+    def se_ellipticity(self):
+        """SExtractor's ellipticity property."""
+        return 1.0 - (self.semiminor_axis_length / self.semimajor_axis_length)
 
     @_cached_property
     def se_x2(self):
@@ -436,6 +456,9 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
     else:
         label_ids = np.atleast_1d(labels)
 
+    if background is not None:
+        data = _subtract_background(data, background)
+
     objslices = ndimage.find_objects(segment_image)
     objpropslist = []
     for i, objslice in enumerate(objslices):
@@ -445,7 +468,7 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
             continue
         # input mask here only if 'exclude'
         objprops = SegmentProperties(data, segment_image, label, objslice,
-                                     mask=mask)
+                                     mask=mask, background=background)
         objpropslist.append(objprops)
 
     if not output_table:
@@ -649,3 +672,15 @@ def segment_photometry(data, segment_image, error=None, gain=None,
         phot_table['background_sum'] = background_sum
         phot_table['background_mean'] = background_mean
     return phot_table
+
+
+def _subtract_background(data, background):
+    if np.isscalar(background):
+        bkgrd_image = np.zeros_like(data) + background
+    else:
+        if background.shape != data.shape:
+            raise ValueError('If input background is 2D, then it must '
+                             'have the same shape as the input data.')
+        bkgrd_image = background
+    data = copy.deepcopy(data)
+    return data - bkgrd_image
