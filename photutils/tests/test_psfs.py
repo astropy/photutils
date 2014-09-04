@@ -12,7 +12,7 @@ except ImportError:
 
 
 widths = [0.001, 0.01, 0.1, 1]
-sigmas = [0.5, 1., 2.,10., 12.34]
+sigmas = [0.5, 1., 2., 10., 12.34]
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -28,7 +28,7 @@ def test_subpixel_gauss_psf(width):
 
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize(('sigma'), sigmas)
-def test_gaussian_PSF_integral():
+def test_gaussian_PSF_integral(sigma):
     """
     Test if Gaussian PSF integrates to unity on larger scales.
     """
