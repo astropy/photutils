@@ -8,7 +8,8 @@ import glob
 import argparse
 from collections import OrderedDict
 import numpy as np
-import photutils
+from photutils import (aperture_photometry, CircularAperture, CircularAnnulus,
+                       EllipticalAperture, EllipticalAnnulus)
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("-l", "--label", dest="label", default=None,
@@ -133,10 +134,10 @@ c[name]['multiap']  = False
 c[name]['multipos'] = True
 
 f = {}
-f['circ'] = 'circular'
-f['circ_ann'] = 'circular_annulus'
-f['elli'] = 'elliptical'
-f['elli_ann'] = 'elliptical_annulus'
+f['circ'] = CircularAperture
+f['circ_ann'] = CircularAnnulus
+f['elli'] = EllipticalAperture
+f['elli_ann'] = EllipticalAnnulus
 
 
 # Select subset of defined tests and functions to run, to save time.
@@ -159,7 +160,8 @@ if not args.show:
     print("=" * 79)
     from astropy import __version__
     print("astropy version:", __version__)
-    print("photutils version:", photutils.__version__)
+    from photutils import __version__
+    print("photutils version:", __version__)
     print("numpy version:", np.__version__)
     print("=" * 79)
 
@@ -171,7 +173,6 @@ if not args.show:
             results[name][t] = OrderedDict()
 
         # Initialize data
-        # x, y = c[name]['pos']
         data = np.ones(c[name]['dims'])
 
         # Print header for this benchmark
@@ -196,27 +197,25 @@ if not args.show:
                     # Check whether it is single or multiple apertures
                     if not c[name]['multiap']:
                         if subpixels == 'exact':
-                            photutils.aperture_photometry(data, c[name]['pos'],
-                                                          ((f[t],) + c[name][t]),
-                                                          method='exact')
+                            aperture_photometry(data, f[t](c[name]['pos'],
+                                                           *c[name][t]),
+                                                method='exact')
                         else:
-                            photutils.aperture_photometry(data, c[name]['pos'],
-                                                          ((f[t],) + c[name][t]),
-                                                          method='subpixel',
-                                                          subpixels=subpixels)
+                            aperture_photometry(data, f[t](c[name]['pos'],
+                                                           *c[name][t]),
+                                                method='subpixel',
+                                                subpixels=subpixels)
 
                     else:
                         if subpixels == 'exact':
                             for index in range(len(c[name][t][0])):
-                                photutils.aperture_photometry(data, c[name]['pos'],
-                                                              (f[t], c[name][t][0][index]),
-                                                              method='exact')
+                                aperture_photometry(data, f[t](c[name]['pos'], *c[name][t][0][index]),
+                                                    method='exact')
                         else:
                             for index in range(len(c[name][t][0])):
-                                photutils.aperture_photometry(data, c[name]['pos'],
-                                                              (f[t], c[name][t][0][index]),
-                                                              method='subpixel',
-                                                              subpixels=subpixels)
+                                aperture_photometry(data, f[t](c[name]['pos'], *c[name][t][0][index]),
+                                                    method='subpixel',
+                                                    subpixels=subpixels)
 
                 time2 = time.time()
                 time_sec = (time2 - time1) / c[name]['iter']
