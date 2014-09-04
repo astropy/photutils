@@ -330,7 +330,10 @@ def psf_photometry(data, positions, psf, mask=None, mode='sequential',
             * 'simultaneous'
                 Fit PSF/PRF simultaneous to all given positions.
             * 'sequential' (default)
-                Fit PSF/PRF one after another to the given positions .
+                Fit PSF/PRF one after another to the given positions.
+    tune_coordinates : boolean
+        If ``True`` the peak position of the PSF will be fit, if ``False``,
+        it is frozen to the input value.
 
     Examples
     --------
@@ -348,6 +351,9 @@ def psf_photometry(data, positions, psf, mask=None, mode='sequential',
     if tune_coordinates:
         psf.fixed['x_0'] = False
         psf.fixed['y_0'] = False
+    else:
+        psf.fixed['x_0'] = True
+        psf.fixed['y_0'] = True
 
     # Actual photometry
     result = np.array([])
