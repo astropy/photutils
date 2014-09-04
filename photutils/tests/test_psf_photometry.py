@@ -21,7 +21,7 @@ psf_size = 11
 gaussian_width = 1.
 image_size = 101
 
-# Position and fluxes of tes sources
+# Position and fluxes of test sources
 positions = [(50, 50), (23, 83), (12, 80), (86, 84)]
 fluxes = [np.pi * 10, 3.654, 20., 80 / np.sqrt(3)]
 

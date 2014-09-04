@@ -12,13 +12,14 @@ except ImportError:
 
 
 widths = [0.001, 0.01, 0.1, 1]
+sigmas = [0.5, 1., 2., 10., 12.34]
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize(('width'), widths)
 def test_subpixel_gauss_psf(width):
     """
-    Test subpixel accuracy of Gaussian PSF by checking the sum o pixels.
+    Test subpixel accuracy of Gaussian PSF by checking the sum of pixels.
     """
     gauss_psf = GaussianPSF(width)
     y, x = np.mgrid[-10:11, -10:11]
@@ -26,10 +27,11 @@ def test_subpixel_gauss_psf(width):
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-def test_gaussian_PSF_integral():
+@pytest.mark.parametrize(('sigma'), sigmas)
+def test_gaussian_PSF_integral(sigma):
     """
     Test if Gaussian PSF integrates to unity on larger scales.
     """
-    psf = GaussianPSF(10)
+    psf = GaussianPSF(sigma=sigma)
     y, x = np.mgrid[-100:101, -100:101]
     assert_allclose(psf(y, x).sum(), 1)
