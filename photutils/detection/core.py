@@ -10,7 +10,7 @@ __all__ = ['detect_sources', 'find_peaks']
 def detect_sources(data, npixels, snr_threshold=5.0, threshold=None,
                    filter_fwhm=None, background=None, error=None,
                    mask=None, mask_val=None, sigclip_sigma=3.0,
-                   sigclip_iters=None):
+                   sigclip_iters=None, connectivity=8):
     """
     Detect sources above a specified signal-to-noise ratio or threshold
     value in an image and return a segmentation image.
@@ -91,6 +91,13 @@ def detect_sources(data, npixels, snr_threshold=5.0, threshold=None,
        iteration clips nothing) when calculating the image background
        statistics.
 
+    connectivity : int, optional
+        The type of pixel connectivity used in determining how pixels
+        are grouped into a detected source.  The options are 4 or 8
+        (default).  4-connected pixels touch along their edges.
+        8-connected pixels touch along their edges or corners.  For
+        reference, SExtractor uses 8-connected pixels.
+
     Returns
     -------
     segment_image :  `numpy.ndarray`
@@ -140,7 +147,10 @@ def detect_sources(data, npixels, snr_threshold=5.0, threshold=None,
         threshold_image = np.broadcast_arrays(threshold, data)[0]
 
     image = (image >= threshold_image)
-    selem = ndimage.generate_binary_structure(2, 1)
+    if connectivity == 4:
+        selem = ndimage.generate_binary_structure(2, 1)
+    elif connectivity == 8:
+        selem = ndimage.generate_binary_structure(2, 2)   # matches SExtractor
     objlabels, nobj = ndimage.label(image, structure=selem)
     objslices = ndimage.find_objects(objlabels)
 
