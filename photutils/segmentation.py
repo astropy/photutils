@@ -696,90 +696,47 @@ def segment_photometry(data, segment_image, error=None, gain=None,
     else:
         label_ids = np.atleast_1d(labels)
 
-    data_iscopy = False
     if background is not None:
-        if np.isscalar(background):
-            bkgrd_image = np.zeros_like(data) + background
-        else:
-            if background.shape != data.shape:
-                raise ValueError('If input background is 2D, then it must '
-                                 'have the same shape as the input data.')
-            bkgrd_image = background
-        data = copy.deepcopy(data)
-        data_iscopy = True
-        data -= bkgrd_image
+        data, background = _subtract_background(data, background)
 
     if error is not None:
         if data.shape != error.shape:
             raise ValueError('data and error must have the same shape')
         variance = error**2
+    else:
+        variance = None
 
     if mask is not None:
-        if data.shape != mask.shape:
-            raise ValueError('data and mask must have the same shape')
-        if not data_iscopy:
-            data = copy.deepcopy(data)
+        data, variance, background = _apply_mask(
+            data, mask, mask_method, variance=variance, background=background)
 
-        mask_idx = mask.nonzero()
-        if mask_method == 'exclude':
-            # masked pixels will not contribute to sums
-            data[mask_idx] = 0.0
-            if background is not None:
-                bkgrd_image[mask_idx] = 0.0
-            if error is not None:
-                variance[mask_idx] = 0.0
-        elif mask_method == 'interpolate':
-            for j, i in zip(*mask_idx):
-                y0, y1 = max(j - 1, 0), min(j + 2, data.shape[0])
-                x0, x1 = max(i - 1, 0), min(i + 2, data.shape[1])
-                goodpix = ~mask[y0:y1, x0:x1]
-                data[j, i] = np.mean(data[y0:y1, x0:x1][goodpix])
-                if background is not None:
-                    bkgrd_image[j, i] = np.mean(
-                        bkgrd_image[y0:y1, x0:x1][goodpix])
-                if error is not None:
-                    variance[j, i] = np.sqrt(np.mean(
-                        variance[y0:y1, x0:x1][goodpix]))
-        else:
-            raise ValueError(
-                'mask_method "{0}" is not valid'.format(mask_method))
-
-    segment_sum = ndimage.measurements.sum(data, labels=segment_image,
-                                           index=label_ids)
+    segment_sum = ndimage.measurements.sum(
+        data, labels=segment_image, index=label_ids)
     columns = [label_ids, segment_sum]
     names = ('id', 'segment_sum')
     phot_table = Table(columns, names=names)
 
     if error is not None:
         if gain is not None:
-            if np.isscalar(gain):
-                gain = np.broadcast_arrays(gain, data)[0]
-            gain = np.asarray(gain)
-            if gain.shape != data.shape:
-                raise ValueError('If input gain is 2D, then it must have '
-                                 'the same shape as the input data.')
-            if np.any(gain <= 0):
-                raise ValueError('gain must be positive everywhere')
-            variance += data / gain
-        segment_sum_var = ndimage.measurements.sum(variance,
-                                                   labels=segment_image,
-                                                   index=label_ids)
+            variance = _apply_gain(data, variance, gain)
+        segment_sum_var = ndimage.measurements.sum(
+            variance, labels=segment_image, index=label_ids)
         segment_sum_err = np.sqrt(segment_sum_var)
         phot_table['segment_sum_err'] = segment_sum_err
 
     if background is not None:
-        background_sum = ndimage.measurements.sum(bkgrd_image,
-                                                  labels=segment_image,
-                                                  index=label_ids)
-        background_mean = ndimage.measurements.mean(bkgrd_image,
-                                                    labels=segment_image,
-                                                    index=label_ids)
+        background_sum = ndimage.measurements.sum(
+            background, labels=segment_image, index=label_ids)
+        background_mean = ndimage.measurements.mean(
+            background, labels=segment_image, index=label_ids)
         phot_table['background_sum'] = background_sum
         phot_table['background_mean'] = background_mean
+
     return phot_table
 
 
 def _subtract_background(data, background):
+    """Subtract background from data."""
     if np.isscalar(background):
         bkgrd_image = np.zeros_like(data) + background
     else:
@@ -787,5 +744,48 @@ def _subtract_background(data, background):
             raise ValueError('If input background is 2D, then it must '
                              'have the same shape as the input data.')
         bkgrd_image = background
-    data = copy.deepcopy(data)
-    return data - bkgrd_image
+    return (data - bkgrd_image), bkgrd_image
+
+
+def _apply_mask(data, mask, mask_method, variance=None, background=None):
+    """Apply mask to data, variance, and background images."""
+    if data.shape != mask.shape:
+        raise ValueError('data and mask must have the same shape')
+
+    mask_idx = mask.nonzero()
+    if mask_method == 'exclude':
+        # masked pixels will not contribute to sums
+        data[mask_idx] = 0.0
+        if background is not None:
+            bkgrd_image[mask_idx] = 0.0
+        if variance is not None:
+            variance[mask_idx] = 0.0
+    elif mask_method == 'interpolate':
+        for j, i in zip(*mask_idx):
+            y0, y1 = max(j - 1, 0), min(j + 2, data.shape[0])
+            x0, x1 = max(i - 1, 0), min(i + 2, data.shape[1])
+            goodpix = ~mask[y0:y1, x0:x1]
+            data[j, i] = np.mean(data[y0:y1, x0:x1][goodpix])
+            if background is not None:
+                background[j, i] = np.mean(
+                    background[y0:y1, x0:x1][goodpix])
+            if variance is not None:
+                variance[j, i] = np.sqrt(np.mean(
+                    variance[y0:y1, x0:x1][goodpix]))
+    else:
+        raise ValueError(
+            'mask_method "{0}" is not valid'.format(mask_method))
+    return data, variance, background
+
+
+def _apply_gain(data, variance, gain):
+    """Apply gain to variance images."""
+    if np.isscalar(gain):
+        gain = np.broadcast_arrays(gain, data)[0]
+    gain = np.asarray(gain)
+    if gain.shape != data.shape:
+        raise ValueError('If input gain is 2D, then it must have '
+                         'the same shape as the input data.')
+    if np.any(gain <= 0):
+        raise ValueError('gain must be positive everywhere')
+    return (variance + (data / gain))
