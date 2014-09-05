@@ -1,7 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-import copy
 import numpy as np
 from astropy.table import Table, Column
 import skimage
@@ -673,43 +672,35 @@ def segment_photometry(data, segment_image, error=None, gain=None,
 
     Examples
     --------
-    >>> from numpy import np
+    >>> import numpy as np
     >>> from photutils import segment_photometry
-    >>> image = np.arange(9.).reshape(3, 3)
+    >>> image = np.arange(16.).reshape(4, 4)
     >>> error = np.sqrt(image)
-    >>> segm_image = np.array([[1, 1, 0],
-    ...                        [1, 0, 0],
-    ...                        [0, 0, 2]])
+    >>> segm_image = np.array([[1, 1, 0, 0],
+    ...                        [1, 0, 0, 2],
+    ...                        [0, 0, 2, 2],
+    ...                        [0, 2, 2, 0]])
     >>> t = segment_photometry(image, segm_image, error=error)
     >>> print(t)
      id segment_sum segment_sum_err
     --- ----------- ---------------
-      1         4.0             2.0
-      2         8.0   2.82842712475
+      1         5.0    2.2360679775
+      2        55.0    7.4161984871
     """
 
     from scipy import ndimage
+
     if segment_image.shape != data.shape:
         raise ValueError('segment_image and data must have the same shape')
+
+    data, variance, background = _condition_data(
+        data, error=error, gain=gain, mask=mask, mask_method=mask_method,
+        background=background)
+
     if labels is None:
         label_ids = np.unique(segment_image[segment_image > 0])
     else:
         label_ids = np.atleast_1d(labels)
-
-    if background is not None:
-        data, background = _subtract_background(data, background)
-
-    if error is not None:
-        if data.shape != error.shape:
-            raise ValueError('data and error must have the same shape')
-        variance = error**2
-    else:
-        variance = None
-
-    if mask is not None:
-        data, variance, background = _apply_mask(
-            data, mask, mask_method, variance=variance, background=background)
-
     segment_sum = ndimage.measurements.sum(
         data, labels=segment_image, index=label_ids)
     columns = [label_ids, segment_sum]
@@ -717,8 +708,6 @@ def segment_photometry(data, segment_image, error=None, gain=None,
     phot_table = Table(columns, names=names)
 
     if error is not None:
-        if gain is not None:
-            variance = _apply_gain(data, variance, gain)
         segment_sum_var = ndimage.measurements.sum(
             variance, labels=segment_image, index=label_ids)
         segment_sum_err = np.sqrt(segment_sum_var)
@@ -733,6 +722,29 @@ def segment_photometry(data, segment_image, error=None, gain=None,
         phot_table['background_mean'] = background_mean
 
     return phot_table
+
+
+def _condition_data(data, error=None, gain=None, mask=None,
+                    mask_method='exclude', background=None):
+    """Condition the data, error, and background inputs."""
+
+    if background is not None:
+        data, background = _subtract_background(data, background)
+
+    if error is not None:
+        if data.shape != error.shape:
+            raise ValueError('data and error must have the same shape')
+        variance = error**2
+        if gain is not None:
+            variance = _apply_gain(data, variance, gain)
+    else:
+        variance = None
+
+    if mask is not None:
+        data, variance, background = _apply_mask(
+            data, mask, mask_method, variance=variance, background=background)
+
+    return data, variance, background
 
 
 def _subtract_background(data, background):
@@ -757,7 +769,7 @@ def _apply_mask(data, mask, mask_method, variance=None, background=None):
         # masked pixels will not contribute to sums
         data[mask_idx] = 0.0
         if background is not None:
-            bkgrd_image[mask_idx] = 0.0
+            background[mask_idx] = 0.0
         if variance is not None:
             variance[mask_idx] = 0.0
     elif mask_method == 'interpolate':
