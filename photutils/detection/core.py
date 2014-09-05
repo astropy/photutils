@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from ..extern.imageutils import sigmaclip_stats
 
+
 __all__ = ['detect_sources', 'find_peaks']
 
 
@@ -15,11 +16,11 @@ def detect_sources(data, npixels, snr_threshold=5.0, threshold=None,
     Detect sources above a specified signal-to-noise ratio or threshold
     value in an image and return a segmentation image.
 
-    This routine does not deblend overlapping sources.
+    This function does not deblend overlapping sources.
 
     Parameters
     ----------
-    data : array_like or `~astropy.nddata.NDData`
+    data : array_like
         The 2D array of the image.
 
     npixels : int
@@ -31,22 +32,13 @@ def detect_sources(data, npixels, snr_threshold=5.0, threshold=None,
         The signal-to-noise ratio per pixel above the ``background`` for
         which to consider a pixel as possibly being part of a source.
         Detected sources must have ``npixels`` connected pixels that are
-        greater than the threshold level.
-
-        zzzz
-        The ``background`` and
-        background rms noise
-        level can either be input as an ``error`` image that does not
-        include the Poisson error of the sources or it can be estimated
-        using sigma-clipped statistics.   The later option can be
-        controlled using the ``sigclip_sigma`` and ``sigclip_iters``
-        keywords.  ``snr_threshold`` is ignored if ``threshold`` is
-        input.  The default is 5.0.
+        greater than the threshold level.  ``snr_threshold`` is ignored
+        if ``threshold`` is input.  The default is 5.0.
 
     threshold : float, optional
         The image value to be used as the detection threshold.  Detected
         sources must have ``npixels`` connected pixels that are greater
-        than the threshold level.  If ``threshold`` is input, then
+        than the threshold value.  If ``threshold`` is input, then
         ``snr_threshold`` is ignored.
 
     filter_fwhm : float, optional
@@ -60,21 +52,30 @@ def detect_sources(data, npixels, snr_threshold=5.0, threshold=None,
         The background level of the input ``data``.  ``background`` may
         either be a scalar value or a 2D image with the same shape as
         the input ``data``.  If the input ``data`` has been
-        background-subtracted, then set ``background`` to `None` (which
-        is the default).
+        background-subtracted, then set ``background`` to ``0.0``.  If
+        `None`, then the background will be estimated using
+        sigma-clipped statistics (see the ``mask``, ``mask_val``,
+        ``sigclip_sigma`` and ``sigclip_iters`` parameters).  If
+        ``background`` and ``error`` are input, then ``mask``,
+        ``mask_val``, ``sigclip_sigma``, and ``sigclip_iters`` are
+        ignored.
 
     error : array_like, optional
         The 2D array of the 1-sigma Gaussian errors of the input
         ``data``.  ``error`` should include all sources of "background"
         error but *exclude* the Poission error of the sources.  If
-        ``error`` is input, then ``mask``, ``mask_val``,
-        ``sigclip_sigma``, and ``sigclip_iters`` are ignored.
+        `None`, then the background rms error will be estimated using
+        sigma-clipped statistics (see the ``mask``, ``mask_val``,
+        ``sigclip_sigma`` and ``sigclip_iters`` parameters).  If
+        ``background`` and ``error`` are input, then ``mask``,
+        ``mask_val``, ``sigclip_sigma``, and ``sigclip_iters`` are
+        ignored.
 
     mask : array_like, bool, optional
         A boolean mask with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is
-        masked.  Masked pixels are ignored when computing the image
-        background statistics.
+        value indicates the corresponding element of ``data`` is masked.
+        Masked pixels are ignored when computing the image background
+        statistics.
 
     mask_val : float, optional
         An image data value (e.g., ``0.0``) that is ignored when
@@ -101,9 +102,9 @@ def detect_sources(data, npixels, snr_threshold=5.0, threshold=None,
     Returns
     -------
     segment_image :  `numpy.ndarray`
-        A 2D segmentation image of positive integers that are labels for
-        detected sources.  A value of zero is reserved for the
-        background.
+        A 2D segmentation image, with the same shape as ``data``, where
+        sources are marked by different positive integer values.  A
+        value of zero is reserved for the background.
     """
 
     from scipy import ndimage
@@ -182,7 +183,7 @@ def find_peaks(data, snr_threshold, min_distance=5, exclude_border=True,
 
     Parameters
     ----------
-    data : array_like or `~astropy.nddata.NDData`
+    data : array_like
         The 2D array of the image.
 
     snr_threshold : float
@@ -205,7 +206,7 @@ def find_peaks(data, snr_threshold, min_distance=5, exclude_border=True,
     indices : bool
         If `True`, the output will be an array representing peak
         coordinates.  If `False`, the output will be a boolean array
-        shaped as ``image.shape`` with peaks present at `True` elements.
+        shaped as ``data.shape`` with peaks present at `True` elements.
 
     num_peaks : int
         Maximum number of peaks. When the number of peaks exceeds
@@ -214,7 +215,7 @@ def find_peaks(data, snr_threshold, min_distance=5, exclude_border=True,
 
     footprint : ndarray of bools, optional
         If provided, ``footprint == 1`` represents the local region
-        within which to search for peaks at every point in ``image``.
+        within which to search for peaks at every point in ``data``.
         Overrides ``min_distance``, except for border exclusion if
         ``exclude_border=True``.
 
@@ -224,16 +225,15 @@ def find_peaks(data, snr_threshold, min_distance=5, exclude_border=True,
         background.
 
     mask : array_like, bool, optional
-        A boolean mask with the same shape as ``image``, where a `True`
-        value indicates the corresponding element of ``image`` is
+        A boolean mask with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is
         invalid.  Masked pixels are ignored when computing the image
-        background statistics.  If ``mask`` is input it will override
-        ``data.mask`` for `~astropy.nddata.NDData` inputs.
+        background statistics.
 
     mask_val : float, optional
         An image data value (e.g., ``0.0``) that is ignored when
         computing the image background statistics.  ``mask_val`` will be
-        ignored if ``image_mask`` is input.
+        ignored if ``mask`` is input.
 
     sig : float, optional
         The number of standard deviations to use as the clipping limit
@@ -251,7 +251,7 @@ def find_peaks(data, snr_threshold, min_distance=5, exclude_border=True,
 
         * If ``indices = True`` : (row, column, ...) coordinates of
           peaks.
-        * If ``indices = False`` : Boolean array shaped like ``image``,
+        * If ``indices = False`` : Boolean array shaped like ``data``,
           with peaks represented by True values.
 
     Notes
