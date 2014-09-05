@@ -294,7 +294,8 @@ class _SegmentProperties(object):
 def segment_properties(data, segment_image, mask=None, mask_method='exclude',
                        background=None, labels=None, return_table=False):
     """
-    Calculate morphological properties of source segments.
+    Calculate morphological properties of sources defined by a labeled
+    segmentation image.
 
     Parameters
     ----------
@@ -338,8 +339,8 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
         default).
 
     return_table : bool, optional
-        If `True` then return an astropy `astropy.table.Table`,
-        otherwise return a list of property objects.
+        If `True` then return an `astropy.table.Table`, otherwise return
+        a list of property objects.
 
     Returns
     -------
@@ -502,10 +503,35 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
     **se_x2**, **se_xy**, **se_y2** : float
         SExtractor's ``X2_IMAGE``, ``XY_IMAGE``, and ``Y2_IMAGE``
         parameters, in units of :math:`\mathrm{pixel}^{2}`, which
-        correspond to elements of the ``covariance`` matrix.
+        correspond to the elements of the ``covariance`` matrix.
 
     **values**: `numpy.ndarray`
         The pixel values within the source segment.
+
+    Examples
+    --------
+    >>> from numpy import np
+    >>> from photutils import segment_properties
+    >>> image = np.arange(9.).reshape(3, 3)
+    >>> segm_image = np.array([[0, 1, 0],
+    ...                        [1, 1, 0],
+    ...                        [0, 0, 0]])
+    >>> props = segment_properties(image, segm_image)
+    >>> props[0].centroid
+    (0.875, 0.625)
+    >>> props[0].area
+    3
+    >>> props[0].max_value
+    4.0
+
+    Use ``return_table = True`` to return the properties as a
+    `~astropy.table.Table`:
+
+    >>> t = segment_properties(image, segm_image, return_table=True)
+    >>> print(t)
+     id xcentroid ycentroid ...  eccentricity    orientation
+    --- --------- --------- ... -------------- ---------------
+      1     0.625     0.875 ... 0.790569415042 -0.321750554397
     """
 
     from scipy import ndimage
