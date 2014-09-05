@@ -669,28 +669,46 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
 
     Examples
     --------
-    >>> from numpy import np
+    >>> import numpy as np
     >>> from photutils import segment_properties
-    >>> image = np.arange(9.).reshape(3, 3)
-    >>> segm_image = np.array([[0, 1, 0],
-    ...                        [1, 1, 0],
-    ...                        [0, 0, 0]])
+    >>> image = np.arange(16.).reshape(4, 4)
+    >>> segm_image = np.array([[1, 1, 0, 0],
+    ...                        [1, 0, 0, 2],
+    ...                        [0, 0, 2, 2],
+    ...                        [0, 2, 2, 0]])
     >>> props = segment_properties(image, segm_image)
+
+    Print some properties of the first object (labeled with ``1`` in the
+    segmentation image):
+
+    >>> props[0].id    # id corresponds to label number
+    1
     >>> props[0].centroid
-    (0.875, 0.625)
+    (0.80000000000000004, 0.20000000000000001)
     >>> props[0].area
     3
     >>> props[0].max_value
     4.0
+
+    Print some properties of the second object (labelel with ``2`` in
+    the segmentation image):
+
+    >>> props[1].id    # id corresponds to label number
+    2
+    >>> props[1].centroid
+    (2.3636363636363633, 2.0909090909090908)
+    >>> props[1].area
+    5
 
     Use ``return_table = True`` to return the properties as a
     `~astropy.table.Table`:
 
     >>> t = segment_properties(image, segm_image, return_table=True)
     >>> print(t)
-     id xcentroid ycentroid ...  eccentricity    orientation
-    --- --------- --------- ... -------------- ---------------
-      1     0.625     0.875 ... 0.790569415042 -0.321750554397
+     id   xcentroid     ycentroid   ...  eccentricity    orientation
+    --- ------------- ------------- ... -------------- ---------------
+      1           0.2           0.8 ...            1.0 -0.785398163397
+      2 2.09090909091 2.36363636364 ... 0.930987270026 -0.741759306923
     >>> t[0]['max_value']
     4.0
     """
