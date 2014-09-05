@@ -532,6 +532,8 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
      id xcentroid ycentroid ...  eccentricity    orientation
     --- --------- --------- ... -------------- ---------------
       1     0.625     0.875 ... 0.790569415042 -0.321750554397
+    >>> t[0]['max_value']
+    4.0
     """
 
     from scipy import ndimage
@@ -577,8 +579,8 @@ def segment_photometry(data, segment_image, error=None, gain=None,
                        mask=None, mask_method='exclude', background=None,
                        labels=None):
     """
-    Perform photometry of sources whose extents are defined by a labeled
-    segmentation image.
+    Perform photometry of sources defined by a labeled segmentation
+    image.
 
     When the segmentation image is defined using a thresholded flux
     level (e.g., see `detect_sources`), this is equivalent to performing
@@ -592,9 +594,9 @@ def segment_photometry(data, segment_image, error=None, gain=None,
         The 2D array on which to perform photometry.
 
     segment_image : array_like
-        A 2D segmentation image where sources are marked by different
-        positive integer values.  A value of zero is reserved for the
-        background.
+        A 2D segmentation image, with the same shape as ``data``, where
+        sources are marked by different positive integer values.  A
+        value of zero is reserved for the background.
 
     error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``image``.  If
@@ -618,10 +620,10 @@ def segment_photometry(data, segment_image, error=None, gain=None,
         be the exposure time.
 
     mask : array_like, bool, optional
-        A boolean mask with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``image`` is masked
-        when computing the photometry.  Use the ``mask_method`` keyword
-        to select the method used to treat masked pixels.
+        A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``image`` is
+        masked.  Use the ``mask_method`` keyword to select the method
+        used to treat masked pixels.
 
     mask_method : {'exclude', 'interpolate'}, optional
         Method used to treat masked pixels.  The currently supported
@@ -639,13 +641,13 @@ def segment_photometry(data, segment_image, error=None, gain=None,
         The background level of the input ``data``.  ``background`` may
         either be a scalar value or a 2D image with the same shape as
         the input ``data``.  If the input ``data`` has been
-        background-subtracted, then set ``background`` to `None` (which
-        is the default).
+        background-subtracted, then set ``background`` to `None` (the
+        default).
 
     labels : int, sequence of ints or None
         Subset of ``segment_image`` labels for which to perform the
         photometry.  If `None`, then photometry will be performed for
-        all source segments.
+        all source segments (the default).
 
     Returns
     -------
@@ -654,10 +656,10 @@ def segment_photometry(data, segment_image, error=None, gain=None,
         the following columns:
 
         * ``'id'``: The source identification number corresponding to
-          the object label in the ``segment_image``.
-        * ``'segment_sum'``: The sum of image values within the source
-          segment.
-        * ``'segment_sum_err'``: The corresponding uncertainty in
+          the object label in ``segment_image``.
+        * ``'segment_sum'``: The sum of the image values within the
+          source segment.
+        * ``'segment_sum_err'``: The corresponding uncertainty of
           ``'segment_sum'`` values.  Returned only if ``error`` is
           input.
         * ``'background_sum'``: The sum of background values within the
@@ -668,6 +670,22 @@ def segment_photometry(data, segment_image, error=None, gain=None,
     See Also
     --------
     detect_sources, segment_properties
+
+    Examples
+    --------
+    >>> from numpy import np
+    >>> from photutils import segment_photometry
+    >>> image = np.arange(9.).reshape(3, 3)
+    >>> error = np.sqrt(image)
+    >>> segm_image = np.array([[1, 1, 0],
+    ...                        [1, 0, 0],
+    ...                        [0, 0, 2]])
+    >>> t = segment_photometry(image, segm_image, error=error)
+    >>> print(t)
+     id segment_sum segment_sum_err
+    --- ----------- ---------------
+      1         4.0             2.0
+      2         8.0   2.82842712475
     """
 
     from scipy import ndimage
