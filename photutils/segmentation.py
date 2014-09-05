@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+import copy
 import numpy as np
 from astropy.table import Table, Column
 import skimage
@@ -24,9 +25,9 @@ class SegmentProperties(object):
             The 2D array from which to calculate the source properties.
 
         segment_image : array_like
-            A 2D segmentation image, with the same shape as ``data``, where
-            sources are marked by different positive integer values.  A
-            value of zero is reserved for the background.
+            A 2D segmentation image, with the same shape as ``data``,
+            where sources are marked by different positive integer
+            values.  A value of zero is reserved for the background.
 
         label : int
             The label number of a source segment in ``segment_image``
@@ -39,9 +40,9 @@ class SegmentProperties(object):
 
         mask : array_like, bool, optional
             A boolean mask, with the same shape as ``data``, where a
-            `True` value indicates the corresponding element of
-            ``image`` is masked.  Use the ``mask_method`` keyword to
-            select the method used to treat masked pixels.
+            `True` value indicates the corresponding element of ``data``
+            is masked.  Use the ``mask_method`` keyword to select the
+            method used to treat masked pixels.
 
         mask_method : {'exclude', 'interpolate'}, optional
             Method used to treat masked pixels.  The currently supported
@@ -73,11 +74,11 @@ class SegmentProperties(object):
         elif label < 0:
             raise ValueError('label must be a positive integer')
 
-        data, variance, background = _condition_data(
+        self._inputimage = data
+        image, variance, background = _condition_data(
             data, error=None, gain=None, mask=mask, mask_method=mask_method,
             background=background)
-
-        self._image = data
+        self._image = image
         self._segment_image = segment_image
         self.label = label
         if labelslice is not None:
@@ -91,7 +92,7 @@ class SegmentProperties(object):
         if mask_method == 'interpolate':
             # interpolated masked pixels are used like unmasked pixels,
             # so no further masking is needed
-            self._mask = np.zeros_like(data, dtype=np.bool)
+            self._mask = np.zeros_like(image, dtype=np.bool)
         else:
             # excluded masked pixels still need the mask
             self._mask = mask
@@ -124,7 +125,7 @@ class SegmentProperties(object):
         """
         A 2D cutout image of the source segment.
         """
-        return self._image[self._slice]
+        return self._inputimage[self._slice]
 
     @_cached_property
     def isolated_cutout_image(self):
@@ -551,9 +552,9 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
 
     mask : array_like, bool, optional
         A boolean mask, with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``image`` is
-        masked.  Use the ``mask_method`` keyword to select the method
-        used to treat masked pixels.
+        value indicates the corresponding element of ``data`` is masked.
+        Use the ``mask_method`` keyword to select the method used to
+        treat masked pixels.
 
     mask_method : {'exclude', 'interpolate'}, optional
         Method used to treat masked pixels.  The currently supported
@@ -774,13 +775,13 @@ def segment_photometry(data, segment_image, error=None, gain=None,
         value of zero is reserved for the background.
 
     error : array_like, optional
-        The 2D array of the 1-sigma errors of the input ``image``.  If
+        The 2D array of the 1-sigma errors of the input ``data``.  If
         ``gain`` is input, then ``error`` should include all sources of
         "background" error but *exclude* the Poission error of the
         sources.  If ``gain`` is `None`, then the ``error_image`` is
         assumed to include *all* sources of error, including the
         Poission error of the sources.  ``error`` must have the same
-        shape as ``image``.
+        shape as ``data``.
 
     gain : float or array-like, optional
         Ratio of counts (e.g., electrons or photons) to the units of
@@ -796,9 +797,9 @@ def segment_photometry(data, segment_image, error=None, gain=None,
 
     mask : array_like, bool, optional
         A boolean mask, with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``image`` is
-        masked.  Use the ``mask_method`` keyword to select the method
-        used to treat masked pixels.
+        value indicates the corresponding element of ``data`` is masked.
+        Use the ``mask_method`` keyword to select the method used to
+        treat masked pixels.
 
     mask_method : {'exclude', 'interpolate'}, optional
         Method used to treat masked pixels.  The currently supported
@@ -940,6 +941,7 @@ def _apply_mask(data, mask, mask_method, variance=None, background=None):
     if data.shape != mask.shape:
         raise ValueError('data and mask must have the same shape')
 
+    data = copy.deepcopy(data)    # do not modify input data
     mask_idx = mask.nonzero()
     if mask_method == 'exclude':
         # masked pixels will not contribute to sums
