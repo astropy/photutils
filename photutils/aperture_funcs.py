@@ -69,11 +69,13 @@ def do_circular_photometry(data, positions, extents, radius,
                                             gain[y_min[i]:y_max[i],
                                                  x_min[i]:x_max[i]])
                         # Make sure variance is > 0
-                        fluxvar[i] = max(np.sum(subvariance * fraction), 0)
+                        fluxvar[i] = np.maximum(
+                            np.sum(subvariance * fraction), 0)
                     else:
                         local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
                                             int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                        fluxvar[i] = max(local_error ** 2 * np.sum(fraction), 0)
+                        fluxvar[i] = np.maximum(
+                            local_error ** 2 * np.sum(fraction), 0)
                         if gain is not None:
                             local_gain = gain[int((y_min[i] + y_max[i]) / 2 + 0.5),
                                               int((x_min[i] + x_max[i]) / 2 + 0.5)]
@@ -111,11 +113,13 @@ def do_circular_photometry(data, positions, extents, radius,
                                             gain[y_min[i]:y_max[i],
                                                  x_min[i]:x_max[i]])
                         # Make sure variance is > 0
-                        fluxvar[i] = max(np.sum(subvariance * fraction), 0)
+                        fluxvar[i] = np.maximum(
+                            np.sum(subvariance * fraction), 0)
                     else:
                         local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
                                             int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                        fluxvar[i] = max(local_error ** 2 * np.sum(fraction), 0)
+                        fluxvar[i] = np.maximum(
+                            local_error ** 2 * np.sum(fraction), 0)
                         if gain is not None:
                             local_gain = gain[int((y_min[i] + y_max[i]) / 2 + 0.5),
                                               int((x_min[i] + x_max[i]) / 2 + 0.5)]
@@ -150,11 +154,13 @@ def do_circular_photometry(data, positions, extents, radius,
                                             gain[y_min[i]:y_max[i],
                                                  x_min[i]:x_max[i]])
                         # Make sure variance is > 0
-                        fluxvar[i] = max(np.sum(subvariance * fraction), 0)
+                        fluxvar[i] = np.maximum(
+                            np.sum(subvariance * fraction), 0)
                     else:
                         local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
                                             int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                        fluxvar[i] = max(local_error ** 2 * np.sum(fraction), 0)
+                        fluxvar[i] = np.maximum(
+                            local_error ** 2 * np.sum(fraction), 0)
                         if gain is not None:
                             local_gain = gain[int((y_min[i] + y_max[i]) / 2 + 0.5),
                                               int((x_min[i] + x_max[i]) / 2 + 0.5)]
@@ -228,11 +234,13 @@ def do_elliptical_photometry(data, positions, extents, a, b, theta,
                                                 gain[y_min[i]:y_max[i],
                                                      x_min[i]:x_max[i]])
                             # Make sure variance is > 0
-                            fluxvar[i] = max(np.sum(subvariance * in_aper), 0)
+                            fluxvar[i] = np.maximum(
+                                np.sum(subvariance * in_aper), 0)
                         else:
                             local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
                                                 int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                            fluxvar[i] = max(local_error ** 2 * np.sum(in_aper), 0)
+                            fluxvar[i] = np.maximum(
+                                local_error ** 2 * np.sum(in_aper), 0)
                             if gain is not None:
                                 local_gain = gain[int((y_min[i] + y_max[i]) / 2 + 0.5),
                                                   int((x_min[i] + x_max[i]) / 2 + 0.5)]
@@ -258,11 +266,13 @@ def do_elliptical_photometry(data, positions, extents, a, b, theta,
                                                 gain[y_min[i]:y_max[i],
                                                      x_min[i]:x_max[i]])
                             # Make sure variance is > 0
-                            fluxvar[i] = max(np.sum(subvariance * fraction), 0)
+                            fluxvar[i] = np.maximum(
+                                np.sum(subvariance * fraction), 0)
                         else:
                             local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
                                                 int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                            fluxvar[i] = max(local_error ** 2 * np.sum(fraction), 0)
+                            fluxvar[i] = np.maximum(
+                                local_error ** 2 * np.sum(fraction), 0)
                             if gain is not None:
                                 local_gain = gain[int((y_min[i] + y_max[i]) / 2 + 0.5),
                                                   int((x_min[i] + x_max[i]) / 2 + 0.5)]
@@ -296,11 +306,13 @@ def do_elliptical_photometry(data, positions, extents, a, b, theta,
                                             gain[y_min[i]:y_max[i],
                                                  x_min[i]:x_max[i]])
                         # Make sure variance is > 0
-                        fluxvar[i] = max(np.sum(subvariance * fraction), 0)
+                        fluxvar[i] = np.maximum(
+                            np.sum(subvariance * fraction), 0)
                     else:
                         local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
                                             int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                        fluxvar[i] = max(local_error ** 2 * np.sum(fraction), 0)
+                        fluxvar[i] = np.maximum(
+                            local_error ** 2 * np.sum(fraction), 0)
                         if gain is not None:
                             local_gain = gain[int((y_min[i] + y_max[i]) / 2 + 0.5),
                                               int((x_min[i] + x_max[i]) / 2 + 0.5)]
@@ -346,7 +358,7 @@ def do_annulus_photometry(data, positions, mode, extents,
                                                            pixelwise_error=pixelwise_error,
                                                            method=method,
                                                            subpixels=subpixels)
-            fluxvar = max((fluxerr_o ** 2 - fluxerr_i ** 2), 0)
+            fluxvar = np.maximum((fluxerr_o ** 2 - fluxerr_i ** 2), 0)
 
     elif mode == 'elliptical':
         if error is None:
@@ -377,7 +389,7 @@ def do_annulus_photometry(data, positions, mode, extents,
                                                              pixelwise_error=pixelwise_error,
                                                              method=method,
                                                              subpixels=subpixels)
-            fluxvar = max((fluxerr_o ** 2 - fluxerr_i ** 2), 0)
+            fluxvar = np.maximum((fluxerr_o ** 2 - fluxerr_i ** 2), 0)
 
     else:
         raise ValueError('{0} mode is not supported for annular photometry'
