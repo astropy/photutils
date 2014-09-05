@@ -105,6 +105,46 @@ def detect_sources(data, npixels, snr_threshold=5.0, threshold=None,
         A 2D segmentation image, with the same shape as ``data``, where
         sources are marked by different positive integer values.  A
         value of zero is reserved for the background.
+
+    See Also
+    --------
+    segment_photometry, segment_properties
+
+    Examples
+    --------
+
+    .. plot::
+        :include-source:
+
+        # make a table of Gaussian sources
+        from astropy.table import Table
+        table = Table()
+        table['amplitude'] = [50, 70, 150, 210]
+        table['x_mean'] = [160, 25, 150, 90]
+        table['y_mean'] = [70, 40, 25, 60]
+        table['x_stddev'] = [15.2, 5.1, 3., 8.1]
+        table['y_stddev'] = [2.6, 2.5, 3., 4.7]
+        table['theta'] = np.array([145., 20., 0., 60.]) * np.pi / 180.
+
+        # make an image of the sources with Gaussian noise
+        from photutils.datasets import make_gaussian_sources
+        from photutils.datasets import make_noise_image
+        shape = (100, 200)
+        sources = make_gaussian_sources(shape, table)
+        noise = make_noise_image(shape, type='gaussian', mean=0.,
+                                 stddev=5., random_state=12345)
+        image = sources + noise
+
+        # detect the sources
+        from photutils import detect_sources
+        segm_image = detect_sources(image, npixels=5, snr_threshold=3.,
+                                    filter_fwhm=3.)
+
+        # plot the image and the segmentation image
+        import matplotlib.pyplot as plt
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
+        ax1.imshow(image, origin='lower', interpolation='nearest')
+        ax2.imshow(segm_image, origin='lower', interpolation='nearest')
     """
 
     from scipy import ndimage
