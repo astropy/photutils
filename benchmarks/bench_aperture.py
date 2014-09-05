@@ -63,6 +63,20 @@ c[name]['elli_ann'] = (2., 5., 4., 0.5)
 c[name]['iter']     = 1000
 c[name]['multiap']  = False
 c[name]['multipos'] = False
+c[name]['error'] = False
+
+name = "Small data with error, single small aperture"
+c[name] = {}
+c[name]['dims']     = (20, 20)
+c[name]['pos']      = (10., 10.)
+c[name]['circ']     = (5.,)
+c[name]['circ_ann'] = (5., 6.)
+c[name]['elli']     = (5., 2., 0.5)
+c[name]['elli_ann'] = (2., 5., 4., 0.5)
+c[name]['iter']     = 1000
+c[name]['multiap']  = False
+c[name]['multipos'] = False
+c[name]['error'] = True
 
 name = "Big data, single small aperture"
 c[name] = {}
@@ -75,6 +89,20 @@ c[name]['elli_ann'] = (2., 5., 4., 0.5)
 c[name]['iter']     = 1000
 c[name]['multiap']  = False
 c[name]['multipos'] = False
+c[name]['error'] = False
+
+name = "Big data with error, single small aperture"
+c[name] = {}
+c[name]['dims']     = (1000, 1000)
+c[name]['pos']      = (500., 500.)
+c[name]['circ']     = (5.,)
+c[name]['circ_ann'] = (5., 6.)
+c[name]['elli']     = (5., 2., 0.5)
+c[name]['elli_ann'] = (2., 5., 4., 0.5)
+c[name]['iter']     = 1000
+c[name]['multiap']  = False
+c[name]['multipos'] = False
+c[name]['error'] = True
 
 name = "Big data, single big aperture"
 c[name] = {}
@@ -87,6 +115,20 @@ c[name]['elli_ann'] = (20., 50., 40., 0.5)
 c[name]['iter']     = 10
 c[name]['multiap']  = False
 c[name]['multipos'] = False
+c[name]['error'] = False
+
+name = "Big data with error, single big aperture"
+c[name] = {}
+c[name]['dims']     = (1000, 1000)
+c[name]['pos']      = (500., 500.)
+c[name]['circ']     = (50.,)
+c[name]['circ_ann'] = (50., 60.)
+c[name]['elli']     = (50., 20., 0.5)
+c[name]['elli_ann'] = (20., 50., 40., 0.5)
+c[name]['iter']     = 10
+c[name]['multiap']  = False
+c[name]['multipos'] = False
+c[name]['error'] = True
 
 name = "Small data, multiple small apertures"
 c[name] = {}
@@ -99,6 +141,20 @@ c[name]['elli_ann'] = (2., 5., 4., 0.5)
 c[name]['iter']     = 1
 c[name]['multiap']  = False
 c[name]['multipos'] = True
+c[name]['error'] = False
+
+name = "Small data with error, multiple small apertures"
+c[name] = {}
+c[name]['dims']     = (20, 20)
+c[name]['pos']      = (zip(np.random.uniform(5., 15., 1000), np.random.uniform(5., 15., 1000)))
+c[name]['circ']     = (5.,)
+c[name]['circ_ann'] = (5., 6.)
+c[name]['elli']     = (5., 2., 0.5)
+c[name]['elli_ann'] = (2., 5., 4., 0.5)
+c[name]['iter']     = 1
+c[name]['multiap']  = False
+c[name]['multipos'] = True
+c[name]['error'] = True
 
 name = "Big data, multiple small apertures"
 c[name] = {}
@@ -111,6 +167,20 @@ c[name]['elli_ann'] = (2., 5., 4., 0.5)
 c[name]['iter']     = 1
 c[name]['multiap']  = False
 c[name]['multipos'] = True
+c[name]['error'] = False
+
+name = "Big data with error, multiple small apertures"
+c[name] = {}
+c[name]['dims']     = (1000, 1000)
+c[name]['pos']      = (zip(np.random.uniform(250., 750., 1000), np.random.uniform(250., 750., 1000)))
+c[name]['circ']     = (5.,)
+c[name]['circ_ann'] = (5., 6.)
+c[name]['elli']     = (5., 2., 0.5)
+c[name]['elli_ann'] = (2., 5., 4., 0.5)
+c[name]['iter']     = 1
+c[name]['multiap']  = False
+c[name]['multipos'] = True
+c[name]['error'] = True
 
 name = "Big data, multiple small apertures, multiple per object"
 c[name] = {}
@@ -120,6 +190,17 @@ c[name]['circ']     = (np.linspace(1., 10., 10).reshape((10, 1)),)
 c[name]['iter']     = 1
 c[name]['multiap']  = True
 c[name]['multipos'] = True
+c[name]['error'] = False
+
+name = "Big data with error, multiple small apertures, multiple per object"
+c[name] = {}
+c[name]['dims']     = (1000, 1000)
+c[name]['pos']      = (zip(np.random.uniform(250., 750., 1000), np.random.uniform(250., 750., 1000)))
+c[name]['circ']     = (np.linspace(1., 10., 10).reshape((10, 1)),)
+c[name]['iter']     = 1
+c[name]['multiap']  = True
+c[name]['multipos'] = True
+c[name]['error'] = True
 
 name = "Big data, multiple big apertures"
 c[name] = {}
@@ -132,6 +213,21 @@ c[name]['elli_ann'] = (20., 50., 40., 0.5)
 c[name]['iter']     = 1
 c[name]['multiap']  = False
 c[name]['multipos'] = True
+c[name]['error'] = False
+
+name = "Big data with error, multiple big apertures"
+c[name] = {}
+c[name]['dims']     = (1000, 1000)
+c[name]['pos']      = (zip(np.random.uniform(250., 750., 100), np.random.uniform(250., 750., 100)))
+c[name]['circ']     = (50.,)
+c[name]['circ_ann'] = (50., 60.)
+c[name]['elli']     = (50., 20., 0.5)
+c[name]['elli_ann'] = (20., 50., 40., 0.5)
+c[name]['iter']     = 1
+c[name]['multiap']  = False
+c[name]['multipos'] = True
+c[name]['error'] = True
+
 
 f = {}
 f['circ'] = CircularAperture
@@ -143,11 +239,17 @@ f['elli_ann'] = EllipticalAnnulus
 # Select subset of defined tests and functions to run, to save time.
 names_to_run = ["Small data, single small aperture",
                 "Big data, single small aperture",
+                "Big data with error, single small aperture",
                 "Big data, single big aperture",
+                "Big data with error, single big aperture",
                 "Small data, multiple small apertures",
+                "Small data with error, multiple small apertures",
                 "Big data, multiple small apertures",
+                "Big data with error, multiple small apertures",
                 "Big data, multiple big apertures",
-                "Big data, multiple small apertures, multiple per object"]
+                "Big data with error, multiple big apertures",
+                "Big data, multiple small apertures, multiple per object",
+                "Big data with error, multiple small apertures, multiple per object"]
 
 functions_to_run = ['circ']
 
@@ -175,6 +277,11 @@ if not args.show:
         # Initialize data
         data = np.ones(c[name]['dims'])
 
+        if c[name]['error'] is True:
+            error = np.ones(c[name]['dims'])
+        else:
+            error = None
+
         # Print header for this benchmark
         print("=" * 79)
         print(name, "  (milliseconds)")
@@ -199,22 +306,23 @@ if not args.show:
                         if subpixels == 'exact':
                             aperture_photometry(data, f[t](c[name]['pos'],
                                                            *c[name][t]),
-                                                method='exact')
+                                                method='exact', error=error)
                         else:
                             aperture_photometry(data, f[t](c[name]['pos'],
                                                            *c[name][t]),
-                                                method='subpixel',
+                                                method='subpixel', error=error,
                                                 subpixels=subpixels)
 
                     else:
                         if subpixels == 'exact':
                             for index in range(len(c[name][t][0])):
                                 aperture_photometry(data, f[t](c[name]['pos'], *c[name][t][0][index]),
-                                                    method='exact')
+                                                    method='exact', error=error)
                         else:
                             for index in range(len(c[name][t][0])):
                                 aperture_photometry(data, f[t](c[name]['pos'], *c[name][t][0][index]),
                                                     method='subpixel',
+                                                    error=error,
                                                     subpixels=subpixels)
 
                 time2 = time.time()
