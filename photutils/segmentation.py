@@ -8,10 +8,12 @@ import skimage
 from skimage.measure._regionprops import _cached_property
 
 
-__all__ = ['SegmentProperties', 'segment_properties', 'segment_photometry']
+__all__ = ['segment_properties', 'segment_photometry']
 
 
-class SegmentProperties(object):
+class _SegmentProperties(object):
+    """Class to calculate morphological properties of source segments."""
+
     def __init__(self, image, segment_image, label, slice, mask=None,
                  background=None):
         self._image = image
@@ -28,7 +30,7 @@ class SegmentProperties(object):
     @_cached_property
     def _in_segment(self):
         """
-        _in_segment is True only for pixels in the labeled object segment.
+        _in_segment is True for pixels in the labeled object segment.
         """
         return self._segment_image[self._slice] == self.label
 
@@ -65,6 +67,7 @@ class SegmentProperties(object):
 
     @_cached_property
     def coords(self):
+        """(y, x) coordinates of pixels in the object segment."""
         yy, xx = np.nonzero(self._cutout_image_maskzeroed)
         return (yy + self._slice[0].start, xx + self._slice[1].start)
 
@@ -75,23 +78,29 @@ class SegmentProperties(object):
 
     @_cached_property
     def moments(self):
+        """Image moments up to third order."""
         return skimage.measure.moments(
             self._cutout_image_maskzeroed_double, 3)
 
     @_cached_property
     def moments_central(self):
+        """Central moments up to third order."""
         ycentroid, xcentroid = self.local_centroid
         return skimage.measure.moments_central(
             self._cutout_image_maskzeroed_double, ycentroid, xcentroid, 3)
 
     @_cached_property
     def id(self):
+        """Unique identification number."""
         return self.label
 
     @_cached_property
     def local_centroid(self):
-        # TODO: allow alternative centroid methods
-        """Centroid coordinates in the bounding box region."""
+        """
+        Centroid (y, x) coordinates, relative to the segment bounding
+        box region.
+        """
+        # TODO: allow alternative centroid methods?
         m = self.moments
         ycentroid = m[0, 1] / m[0, 0]
         xcentroid = m[1, 0] / m[0, 0]
@@ -99,7 +108,7 @@ class SegmentProperties(object):
 
     @_cached_property
     def centroid(self):
-        """Centroid coordinates in the input image."""
+        """Centroid (y, x) coordinates, relative to the input image."""
         ycen, xcen = self.local_centroid
         return ycen + self._slice[0].start, xcen + self._slice[1].start
 
@@ -113,6 +122,7 @@ class SegmentProperties(object):
 
     @_cached_property
     def bbox(self):
+        """(ymin, xmin, ymax, xmax) of the region containing the segment."""
         # (stop - 1) to return the max pixel location, not the slice index
         return (self._slice[0].start, self._slice[1].start,
                 self._slice[0].stop - 1, self._slice[1].stop - 1)
@@ -232,7 +242,7 @@ class SegmentProperties(object):
     def background_centroid(self):
         """Background value at the centroid position."""
         if self._background is None:
-            return 0.
+            return None
         else:
             return self._background[self.ycentroid, self.xcentroid]
 
@@ -282,9 +292,9 @@ class SegmentProperties(object):
 
 
 def segment_properties(data, segment_image, mask=None, mask_method='exclude',
-                       background=None, labels=None, output_table=False):
+                       background=None, labels=None, return_table=False):
     """
-
+    Calculate morphological properties of source segments.
 
     Parameters
     ----------
@@ -292,12 +302,12 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
         The 2D array on which to perform photometry.
 
     segment_image : array_like
-        A 2D segmentation image where sources are marked by different
-        positive integer values.  A value of zero is reserved for the
-        background.
+        A 2D segmentation image, with the same shape as ``data``, where
+        sources are marked by different positive integer values.  A
+        value of zero is reserved for the background.
 
     mask : array_like, bool, optional
-        A boolean mask with the same shape as ``data``, where a `True`
+        A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``image`` is
         masked.  Use the ``mask_method`` keyword to select the method
         used to treat masked pixels.
@@ -306,47 +316,52 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
         Method used to treat masked pixels.  The currently supported
         methods are:
 
-        'exclude'
+        'exclude':
             Exclude masked pixels from all calculations.  This is the
             default.
 
-        'interpolate'
+        'interpolate':
             The value of masked pixels are replaced by the mean value of
-            the neighboring non-masked pixels.
+            the 8-connected neighboring non-masked pixels.
 
     background : float or array_like, optional
         The background level of the input ``data``.  ``background`` may
         either be a scalar value or a 2D image with the same shape as
         the input ``data``.  If the input ``data`` has been
-        background-subtracted, then set ``background`` to `None` (which
-        is the default).
+        background-subtracted, then set ``background`` to `None` (the
+        default).
 
-    labels : int, sequence of ints or None
-        Subset of ``segment_image`` labels for which to perform the
-        photometry.  If `None`, then photometry will be performed for
-        all source segments.
+    labels : int or list of ints
+        Subset of ``segment_image`` labels for which to calculate
+        morphological properties.  If `None`, then morphological
+        properties will be calculated for all source segments (the
+        default).
 
-    output_table : bool, optional
+    return_table : bool, optional
         If `True` then return an astropy `astropy.table.Table`,
-        otherwise return a list of `SegmentProperties`.
+        otherwise return a list of property objects.
 
     Returns
     -------
-    output : `astropy.table.Table` or list of `SegmentProperties`.
+    output : `astropy.table.Table` or list of property objects
 
-        * If ``output_table = True``: `astropy.table.Table`
-              A table of the photometry of the segmented sources
+        * If ``return_table = True``: `astropy.table.Table`
+              A table of the properties of the segmented sources
               containing the columns listed below.
 
-        * If ``output_table = False``: list
-              A list of `SegmentProperties`, one for each source
-              segment.
+        * If ``return_table = False``: list
+              A list of property objects, one for each source segment.
+              The properties can be accessed using the attributes listed
+              below.
+
+    See Also
+    --------
+    detect_sources, segment_photometry
 
     Notes
     -----
     The following properties can be accessed either as columns in an
-    `astropy.table.Table` or as attributes or keys of
-    `SegmentProperties`:
+    `astropy.table.Table` or as attributes or keys of property objects:
 
     **id** : int
         The source identification number corresponding to the object
@@ -370,7 +385,7 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
         The ``x`` and ``y`` coordinates of the maximum pixel value.
 
     **area** : float
-        The number pixels in the source segment.
+        The area of the source segment in units of pixels**2.
 
     **equivalent_radius** : float
         The radius of a circle with the same ``area`` as the source
@@ -381,12 +396,12 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
         through the centers of the border pixels using a 4-connectivity.
 
     **semimajor_axis_length** : float
-        The length of the major axis of the ellipse that has the same
-        second-order central moments as the region.
+        The length of the semimajor axis of the ellipse that has the
+        same second-order central moments as the region.
 
     **semiminor_axis_length** : float
-        The length of the minor axis of the ellipse that has the same
-        second-order central moments as the region.
+        The length of the semiminor axis of the ellipse that has the
+        same second-order central moments as the region.
 
     **eccentricity** : float
         The eccentricity of the ellipse that has the same second-order
@@ -394,31 +409,68 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
         of the distance along the semimajor axis at which the focus
         lies.
 
+        .. math:: e = \\sqrt{1 - \\frac{b^2}{a^2}}
+
+        where :math:`a` and :math:`b` are the lengths of the semimajor
+        and semiminor axes, respectively.
+
     **orientation** : float
-        The angle in radians between the `x` axis and the major axis of
-        the ellipse that has the same second-order moments as the source
-        segment.  The angle increases in the counter-clockwise
+        The angle in radians between the ``x`` axis and the major axis
+        of the ellipse that has the same second-order moments as the
+        source segment.  The angle increases in the counter-clockwise
         direction.
 
-    The following properties can be accessed only as attributes or keys
-    of `SegmentProperties`:
+    **The following properties can be accessed only as attributes or
+    keys of property objects, returned when** ``return_table = False``
 
-    **centroid** : 2-tuple
-        The image ``(y, x)`` coordinates of the centroid.
-
-    **local_centroid** : 2-tuple
-        The ``cutout_image`` ``(y, x)`` coordinates of the centroid.
-
-    **minval_pos**, **maxval_pos** : 2-tuple
-        The image coordinates ``(y, x)`` of the minimum and maximum
-        pixel values.
+    **background_centroid** : float
+        The value of the background at the source centroid.
 
     **bbox** : 4-tuple
         The bounding box ``(ymin, xmin, ymax, xmax)`` of the source
         segment.
 
+    **centroid** : 2-tuple
+        The image ``(y, x)`` coordinates of the centroid.
+
     **coords** : (N, 2) `numpy.ndarray`
         The ``(y, x)`` pixel coordinate list of the source segment.
+
+    **covariance** : (2, 2) `numpy.ndarray`
+        The covariance matrix of the ellipse that has the same
+        second-order moments as the source segment.
+
+    **covariance_eigvals** : 2-tuple
+        The two eigenvalues of the covariance matrix in decreasing order.
+
+    **cutout_image** : `numpy.ndarray`
+        A 2D cutout image based on the bounding box (``bbox``) of the
+        source segment.
+
+    **cutout_image_maskedarray** : `numpy.ma.MaskedArray`
+        A 2D cutout image of the source segment where pixels outside of
+        the segment are masked.
+
+    **inertia_tensor** : (2, 2) `numpy.ndarray`
+        Inertia tensor of the source segment for the rotation around its
+        mass.
+
+    **isolated_cutout_image** : `numpy.ndarray`
+        A 2D cutout image based on the bounding box (``bbox``) of the
+        source segment.  Pixels outside of the source segment have a
+        value of ``numpy.nan``.
+
+    **local_centroid** : 2-tuple
+        The ``(y, x)`` coordinates, relative to the ``cutout_image``, of
+        the centroid.
+
+    **minval_local_pos**, **maxval_local_pos** : 2-tuple
+        The ``(y, x)`` coordinates, relative to the ``cutout_image``, of
+        the minimum and maximum pixel values.
+
+    **minval_pos**, **maxval_pos** : 2-tuple
+        The image coordinates ``(y, x)`` of the minimum and maximum
+        pixel values.
 
     **moments** : (3, 3) `numpy.ndarray`
         Spatial moments up to 3rd order of the source segment.
@@ -427,24 +479,33 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
         Central moments (translation invariant) of the source segment
         up to 3rd order.
 
-    **covariance** : (2, 2) `numpy.ndarray`
-        The covariance matrix of the ellipse that has the same
-        second-order moments as the source segment.
+    **se_cxx**, **se_cxy**, **se_cyy** : float
+        SExtractor's ``CXX``, ``CXY``, and ``CYY`` ellipse parameters in
+        units of :math:`\mathrm{pixel}^{-2}`.
 
-    **inertia_tensor** : (2, 2) `numpy.ndarray`
-        Inertia tensor of the segment for the rotation around its mass.
+    **se_ellipticity** : float
+        SExtractor's ellipticity parameter.
 
-    **inertia_tensor_eigvals** : tuple
-        The two eigenvalues of the inertia tensor in decreasing order.
+        .. math:: \mathrm{ellipticity} = 1 - \\frac{b}{a}
 
-    **cutout_image** : `numpy.ndarray`
-        A 2D cutout image based on the bounding box (``bbox``) of the
-        source segment.
+        where :math:`a` and :math:`b` are the lengths of the semimajor
+        and semiminor axes, respectively.
 
-    **masked_cutout_image** : `numpy.ndarray`
-        A 2D cutout image based on the bounding box (``bbox``) of the
-        source segment, but including *only* the segmented pixels of the
-        object.
+    **se_elongation** : float
+        SExtractor's elongation parameter.
+
+        .. math:: \mathrm{elongation} = \\frac{a}{b}
+
+        where :math:`a` and :math:`b` are the lengths of the semimajor
+        and semiminor axes, respectively.
+
+    **se_x2**, **se_xy**, **se_y2** : float
+        SExtractor's ``X2_IMAGE``, ``XY_IMAGE``, and ``Y2_IMAGE``
+        parameters, in units of :math:`\mathrm{pixel}^{2}`, which
+        correspond to elements of the ``covariance`` matrix.
+
+    **values**: `numpy.ndarray`
+        The pixel values within the source segment.
     """
 
     from scipy import ndimage
@@ -462,16 +523,16 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
     objslices = ndimage.find_objects(segment_image)
     objpropslist = []
     for i, objslice in enumerate(objslices):
-        label = i + 1     # true even if some label numbers are mising
+        label = i + 1    # consecutive even if some label numbers are missing
         # objslice is None for missing label numbers
         if objslice is None or label not in label_ids:
             continue
         # input mask here only if 'exclude'
-        objprops = SegmentProperties(data, segment_image, label, objslice,
-                                     mask=mask, background=background)
+        objprops = _SegmentProperties(data, segment_image, label, objslice,
+                                      mask=mask, background=background)
         objpropslist.append(objprops)
 
-    if not output_table:
+    if not return_table:
         return objpropslist
     else:
         props_table = Table()
