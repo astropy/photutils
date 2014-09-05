@@ -7,19 +7,54 @@ import skimage
 from skimage.measure._regionprops import _cached_property
 
 
-__all__ = ['segment_properties', 'segment_photometry']
+__all__ = ['SegmentProperties', 'segment_properties', 'segment_photometry']
 
 
-class _SegmentProperties(object):
+class SegmentProperties(object):
     """Class to calculate morphological properties of source segments."""
 
-    def __init__(self, image, segment_image, label, slice, mask=None,
-                 background=None):
-        self._image = image
+    def __init__(self, data, segment_image, label, labelslice=None,
+                 mask=None, mask_method='exclude', background=None):
+        """
+        Construct a `SegmentProperties` object.
+
+        Parameters
+        ----------
+        data :
+        """
+
+        from scipy import ndimage
+
+        if segment_image.shape != data.shape:
+            raise ValueError('segment_image and data must have the same shape')
+
+        if label == 0:
+            raise ValueError('label "0" is reserved for the background')
+        elif label < 0:
+            raise ValueError('label must be a positive integer')
+
+        data, variance, background = _condition_data(
+            data, error=None, gain=None, mask=mask, mask_method=mask_method,
+            background=background)
+
+        self._image = data
         self._segment_image = segment_image
         self.label = label
-        self._slice = slice
-        self._mask = mask
+        if labelslice is not None:
+            self._slice = labelslice
+        else:
+            labelslices = ndimage.find_objects(segment_image)
+            self._slice = labelslices[label - 1]
+            if self._slice is None:
+                raise ValueError('label "{0}" is not in the input '
+                                 'segment_image'.format(label))
+        if mask_method == 'interpolate':
+            # interpolated masked pixels are used like unmasked pixels,
+            # so no further masking is needed
+            self._mask = np.zeros_like(data, dtype=np.bool)
+        else:
+            # excluded masked pixels still need the mask
+            self._mask = mask
         self._background = background
         self._cache_active = True
 
@@ -299,7 +334,7 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
     Parameters
     ----------
     data : array_like
-        The 2D array on which to perform photometry.
+        The 2D array from which to calculate the source properties.
 
     segment_image : array_like
         A 2D segmentation image, with the same shape as ``data``, where
@@ -339,20 +374,20 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
 
     return_table : bool, optional
         If `True` then return an `astropy.table.Table`, otherwise return
-        a list of property objects.
+        a list of `SegmentProperties` objects.
 
     Returns
     -------
-    output : `astropy.table.Table` or list of property objects
+    output : `astropy.table.Table` or list of `SegmentProperties` objects
 
         * If ``return_table = True``: `astropy.table.Table`
               A table of the properties of the segmented sources
               containing the columns listed below.
 
         * If ``return_table = False``: list
-              A list of property objects, one for each source segment.
-              The properties can be accessed using the attributes listed
-              below.
+              A list of `SegmentProperty` objects, one for each source
+              segment.  The properties can be accessed using the
+              attributes listed below.
 
     See Also
     --------
@@ -536,6 +571,7 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
     """
 
     from scipy import ndimage
+
     if segment_image.shape != data.shape:
         raise ValueError('segment_image and data must have the same shape')
 
@@ -544,23 +580,20 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
     else:
         label_ids = np.atleast_1d(labels)
 
-    if background is not None:
-        data = _subtract_background(data, background)
-
-    objslices = ndimage.find_objects(segment_image)
-    objpropslist = []
-    for i, objslice in enumerate(objslices):
+    labelslices = ndimage.find_objects(segment_image)
+    segm_propslist = []
+    for i, labelslice in enumerate(labelslices):
         label = i + 1    # consecutive even if some label numbers are missing
-        # objslice is None for missing label numbers
-        if objslice is None or label not in label_ids:
+        # labelslice is None for missing label numbers
+        if labelslice is None or label not in label_ids:
             continue
-        # input mask here only if 'exclude'
-        objprops = _SegmentProperties(data, segment_image, label, objslice,
-                                      mask=mask, background=background)
-        objpropslist.append(objprops)
+        segm_props = SegmentProperties(data, segment_image, label,
+                                       labelslice=labelslice, mask=mask,
+                                       background=background)
+        segm_propslist.append(segm_props)
 
     if not return_table:
-        return objpropslist
+        return segm_propslist
     else:
         props_table = Table()
         columns = ['id', 'xcentroid', 'ycentroid', 'xmin', 'xmax', 'ymin',
@@ -569,7 +602,7 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
                    'equivalent_radius', 'perimeter', 'semimajor_axis_length',
                    'semiminor_axis_length', 'eccentricity', 'orientation']
         for column in columns:
-            values = [getattr(props, column) for props in objpropslist]
+            values = [getattr(props, column) for props in segm_propslist]
             props_table[column] = Column(values)
         return props_table
 
@@ -628,13 +661,13 @@ def segment_photometry(data, segment_image, error=None, gain=None,
         Method used to treat masked pixels.  The currently supported
         methods are:
 
-        'exclude'
+        'exclude':
             Exclude masked pixels from all calculations.  This is the
             default.
 
-        'interpolate'
+        'interpolate':
             The value of masked pixels are replaced by the mean value of
-            the neighboring non-masked pixels.
+            the 8-connected neighboring non-masked pixels.
 
     background : float or array_like, optional
         The background level of the input ``data``.  ``background`` may
