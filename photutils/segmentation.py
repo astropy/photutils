@@ -8,6 +8,8 @@ from .extern.cached_property import _cached_property
 
 
 __all__ = ['SegmentProperties', 'segment_properties', 'segment_photometry']
+__doctest_requires__ = {('segment_properties', 'segment_photometry'):
+                        ['scipy'], 'segment_properties': ['skimage']}
 
 
 class SegmentProperties(object):
