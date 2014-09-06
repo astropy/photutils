@@ -4,8 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import copy
 import numpy as np
 from astropy.table import Table, Column
-import skimage
-from skimage.measure._regionprops import _cached_property
+from .extern.cached_property import _cached_property
 
 
 __all__ = ['SegmentProperties', 'segment_properties', 'segment_photometry']
@@ -155,7 +154,7 @@ class SegmentProperties(object):
     @_cached_property
     def _cutout_image_maskzeroed_double(self):
         """
-        Double-precision version of ``_cutout_image_maskedzeroed``.
+        Double-precision version of ``_cutout_image_maskzeroed``.
         Required for scikit-image's Cython moment functions.
         """
         return self._cutout_image_maskzeroed.astype(np.double)
@@ -169,12 +168,7 @@ class SegmentProperties(object):
         "Excluded" masked pixels are not included, but interpolated
         masked pixels are included.
         """
-        # TODO
-        # TODO
-        # TODO
-        # TODO
-        # TODO:  use masked array in case good pixel is zero
-        yy, xx = np.nonzero(self._cutout_image_maskzeroed)
+        yy, xx = np.nonzero(self.cutout_image_maskedarray)
         return (yy + self._slice[0].start, xx + self._slice[1].start)
 
     @_cached_property
@@ -190,8 +184,8 @@ class SegmentProperties(object):
     @_cached_property
     def moments(self):
         """Spatial moments up to 3rd order of the source segment."""
-        return skimage.measure.moments(
-            self._cutout_image_maskzeroed_double, 3)
+        from skimage.measure import moments
+        return moments(self._cutout_image_maskzeroed_double, 3)
 
     @_cached_property
     def moments_central(self):
@@ -199,9 +193,10 @@ class SegmentProperties(object):
         Central moments (translation invariant) of the source segment up
         to 3rd order.
         """
+        from skimage.measure import moments_central
         ycentroid, xcentroid = self.local_centroid
-        return skimage.measure.moments_central(
-            self._cutout_image_maskzeroed_double, ycentroid, xcentroid, 3)
+        return moments_central(self._cutout_image_maskzeroed_double,
+                               ycentroid, xcentroid, 3)
 
     @_cached_property
     def id(self):
@@ -365,7 +360,8 @@ class SegmentProperties(object):
         The perimeter of the source segment, approximated using a line
         through the centers of the border pixels using a 4-connectivity.
         """
-        return skimage.measure.perimeter(self._in_segment, 4)
+        from skimage.measure import perimeter
+        return perimeter(self._in_segment, 4)
 
     @_cached_property
     def inertia_tensor(self):
