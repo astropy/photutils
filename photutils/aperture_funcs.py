@@ -13,8 +13,38 @@ from astropy.utils.exceptions import AstropyUserWarning
 __all__ = []
 
 
+def find_fluxvar(data, fraction, error, flux, gain, imin, imax, jmin, jmax, pixelwise_error):
+
+    if pixelwise_error:
+
+        subvariance = error[jmin:jmax,
+                            imin:imax] ** 2
+
+        if gain is not None:
+            subvariance += (data[jmin:jmax, imin:imax] /
+                            gain[jmin:jmax, imin:imax])
+
+        # Make sure variance is > 0
+        fluxvar = np.maximum(np.sum(subvariance * fraction), 0)
+
+    else:
+
+        local_error = error[int((jmin + jmax) / 2 + 0.5),
+                            int((imin + imax) / 2 + 0.5)]
+
+        fluxvar = np.maximum(local_error ** 2 * np.sum(fraction), 0)
+
+        if gain is not None:
+            local_gain = gain[int((jmin + jmax) / 2 + 0.5),
+                              int((imin + imax) / 2 + 0.5)]
+            fluxvar += flux / local_gain
+
+    return fluxvar
+
+
 def do_circular_photometry(data, positions, extents, radius,
-                           error, gain, pixelwise_error, method, subpixels):
+                           error, gain, pixelwise_error, method, subpixels, reduce='sum'):
+
 
     ood_filter = extents['ood_filter']
     extent = extents['pixel_extent']
@@ -39,132 +69,51 @@ def do_circular_photometry(data, positions, extents, radius,
     x_min, x_max, y_min, y_max = extent
     x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
 
-    if method == 'center':
-        for i in range(len(flux)):
-            x_size = ((x_pmax[i] - x_pmin[i]) /
-                      data[:, x_min[i]:x_max[i]].shape[1])
-            y_size = ((y_pmax[i] - y_pmin[i]) /
-                      data[y_min[i]:y_max[i], :].shape[0])
+    from .geometry import circular_overlap_grid
 
-            x_centers = np.arange(x_pmin[i] + x_size / 2.,
-                                  x_pmax[i], x_size)
-            y_centers = np.arange(y_pmin[i] + y_size / 2.,
-                                  y_pmax[i], y_size)
-            xx, yy = np.meshgrid(x_centers, y_centers)
-            if not np.isnan(flux[i]):
-                if error is None:
-                    flux[i] = np.sum(data[y_min[i]:y_max[i],
-                                          x_min[i]:x_max[i]] *
-                                     (xx * xx + yy * yy < radius * radius))
-                else:
-                    fraction = (xx * xx + yy * yy < radius * radius)
-                    flux[i] = np.sum(data[y_min[i]:y_max[i],
-                                          x_min[i]:x_max[i]] * fraction)
-                    if pixelwise_error:
-                        subvariance = error[y_min[i]:y_max[i],
-                                            x_min[i]:x_max[i]] ** 2
-                        if gain is not None:
-                            subvariance += (data[y_min[i]:y_max[i],
-                                                 x_min[i]:x_max[i]] /
-                                            gain[y_min[i]:y_max[i],
-                                                 x_min[i]:x_max[i]])
-                        # Make sure variance is > 0
-                        fluxvar[i] = np.maximum(
-                            np.sum(subvariance * fraction), 0)
-                    else:
-                        local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                            int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                        fluxvar[i] = np.maximum(
-                            local_error ** 2 * np.sum(fraction), 0)
-                        if gain is not None:
-                            local_gain = gain[int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                              int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                            fluxvar[i] += flux[i] / local_gain
+    for i in range(len(flux)):
 
-    elif method == 'subpixel':
-        from .geometry import circular_overlap_grid
-        for i in range(len(flux)):
-            if not np.isnan(flux[i]):
-                if error is None:
-                    flux[i] = np.sum(data[y_min[i]:y_max[i],
-                                          x_min[i]:x_max[i]] *
-                                     circular_overlap_grid(x_pmin[i], x_pmax[i],
-                                                           y_pmin[i], y_pmax[i],
-                                                           x_max[i] - x_min[i],
-                                                           y_max[i] - y_min[i],
-                                                           radius, 0,
-                                                           subpixels))
+        if not np.isnan(flux[i]):
 
-                else:
-                    fraction = circular_overlap_grid(x_pmin[i], x_pmax[i],
-                                                     y_pmin[i], y_pmax[i],
-                                                     x_max[i] - x_min[i],
-                                                     y_max[i] - y_min[i],
-                                                     radius, 0, subpixels)
-                    flux[i] = np.sum(data[y_min[i]:y_max[i],
-                                          x_min[i]:x_max[i]] * fraction)
+            if method == 'center':
 
-                    if pixelwise_error:
-                        subvariance = error[y_min[i]:y_max[i],
-                                            x_min[i]:x_max[i]] ** 2
-                        if gain is not None:
-                            subvariance += (data[y_min[i]:y_max[i],
-                                                 x_min[i]:x_max[i]] /
-                                            gain[y_min[i]:y_max[i],
-                                                 x_min[i]:x_max[i]])
-                        # Make sure variance is > 0
-                        fluxvar[i] = np.maximum(
-                            np.sum(subvariance * fraction), 0)
-                    else:
-                        local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                            int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                        fluxvar[i] = np.maximum(
-                            local_error ** 2 * np.sum(fraction), 0)
-                        if gain is not None:
-                            local_gain = gain[int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                              int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                            fluxvar[i] += flux[i] / local_gain
+                x_size = ((x_pmax[i] - x_pmin[i]) /
+                          data[:, x_min[i]:x_max[i]].shape[1])
+                y_size = ((y_pmax[i] - y_pmin[i]) /
+                          data[y_min[i]:y_max[i], :].shape[0])
 
-    elif method == 'exact':
-        from .geometry import circular_overlap_grid
-        for i in range(len(flux)):
-            if not np.isnan(flux[i]):
-                if error is None:
-                    flux[i] = np.sum(data[y_min[i]:y_max[i], x_min[i]:x_max[i]] *
-                                     circular_overlap_grid(x_pmin[i], x_pmax[i],
-                                                           y_pmin[i], y_pmax[i],
-                                                           x_max[i] - x_min[i],
-                                                           y_max[i] - y_min[i],
-                                                           radius, 1, 1))
-                else:
-                    fraction = circular_overlap_grid(x_pmin[i], x_pmax[i],
-                                                     y_pmin[i], y_pmax[i],
-                                                     x_max[i] - x_min[i],
-                                                     y_max[i] - y_min[i],
-                                                     radius, 1, 1)
-                    flux[i] = np.sum(data[y_min[i]:y_max[i],
-                                          x_min[i]:x_max[i]] * fraction)
+                x_centers = np.arange(x_pmin[i] + x_size / 2.,
+                                      x_pmax[i], x_size)
+                y_centers = np.arange(y_pmin[i] + y_size / 2.,
+                                      y_pmax[i], y_size)
+                xx, yy = np.meshgrid(x_centers, y_centers)
 
-                    if pixelwise_error:
-                        subvariance = error[y_min[i]:y_max[i],
-                                            x_min[i]:x_max[i]] ** 2
-                        if gain is not None:
-                            subvariance += (data[y_min[i]:y_max[i],
-                                                 x_min[i]:x_max[i]] /
-                                            gain[y_min[i]:y_max[i],
-                                                 x_min[i]:x_max[i]])
-                        # Make sure variance is > 0
-                        fluxvar[i] = np.maximum(
-                            np.sum(subvariance * fraction), 0)
-                    else:
-                        local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                            int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                        fluxvar[i] = np.maximum(
-                            local_error ** 2 * np.sum(fraction), 0)
-                        if gain is not None:
-                            local_gain = gain[int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                              int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                            fluxvar[i] += flux[i] / local_gain
+                fraction = (xx * xx + yy * yy < radius * radius)
+
+            elif method == 'subpixel':
+
+                fraction = circular_overlap_grid(x_pmin[i], x_pmax[i],
+                                                 y_pmin[i], y_pmax[i],
+                                                 x_max[i] - x_min[i],
+                                                 y_max[i] - y_min[i],
+                                                 radius, 0, subpixels)
+
+            elif method == 'exact':
+
+                fraction = circular_overlap_grid(x_pmin[i], x_pmax[i],
+                                                 y_pmin[i], y_pmax[i],
+                                                 x_max[i] - x_min[i],
+                                                 y_max[i] - y_min[i],
+                                                 radius, 1, 1)
+
+            flux[i] = np.sum(data[y_min[i]:y_max[i],
+                                  x_min[i]:x_max[i]] * fraction)
+
+            if error is not None:
+
+                fluxvar[i] = find_fluxvar(data, fraction, error, flux[i], gain,
+                                          x_min[i], x_max[i], y_min[i], y_max[i],
+                                          pixelwise_error)
 
     if error is None:
         return (flux, )
@@ -198,125 +147,57 @@ def do_elliptical_photometry(data, positions, extents, a, b, theta,
     x_min, x_max, y_min, y_max = extent
     x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
 
-    if method == 'center' or method == 'subpixel':
-        if method == 'center': subpixels = 1
-        if method == 'subpixel': from .extern.imageutils import downsample
+    if method == 'center':
+        method = 'subpixel'
+        subpixels = 1
 
-        for i in range(len(flux)):
-            x_size = ((x_pmax[i] - x_pmin[i]) /
-                      (data[:, x_min[i]:x_max[i]].shape[1] * subpixels))
-            y_size = ((y_pmax[i] - y_pmin[i]) /
-                      (data[y_min[i]:y_max[i], :].shape[0] * subpixels))
+    from .geometry import elliptical_overlap_grid
 
-            x_centers = np.arange(x_pmin[i] + x_size / 2.,
-                                  x_pmax[i], x_size)
-            y_centers = np.arange(y_pmin[i] + y_size / 2.,
-                                  y_pmax[i], y_size)
-            xx, yy = np.meshgrid(x_centers, y_centers)
-            numerator1 = (xx * math.cos(theta) + yy * math.sin(theta))
-            numerator2 = (yy * math.cos(theta) - xx * math.sin(theta))
+    for i in range(len(flux)):
 
-            in_aper = ((((numerator1 / a) ** 2 +
-                         (numerator2 / b) ** 2) < 1.).astype(float)
-                       / subpixels ** 2)
+        if not np.isnan(flux[i]):
 
-            if method == 'center':
-                if not np.isnan(flux[i]):
-                    flux[i] = np.sum(data[y_min[i]:y_max[i],
-                                          x_min[i]:x_max[i]] * in_aper)
-                    if error is not None:
-                        if pixelwise_error:
-                            subvariance = error[y_min[i]:y_max[i],
-                                                x_min[i]:x_max[i]] ** 2
-                            if gain is not None:
-                                subvariance += (data[y_min[i]:y_max[i],
-                                                     x_min[i]:x_max[i]] /
-                                                gain[y_min[i]:y_max[i],
-                                                     x_min[i]:x_max[i]])
-                            # Make sure variance is > 0
-                            fluxvar[i] = np.maximum(
-                                np.sum(subvariance * in_aper), 0)
-                        else:
-                            local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                                int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                            fluxvar[i] = np.maximum(
-                                local_error ** 2 * np.sum(in_aper), 0)
-                            if gain is not None:
-                                local_gain = gain[int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                                  int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                                fluxvar[i] += flux[i] / local_gain
+            if method == 'subpixel':
 
-            else:
-                if not np.isnan(flux[i]):
-                    if error is None:
-                        flux[i] = np.sum(data[y_min[i]:y_max[i],
-                                              x_min[i]:x_max[i]] *
-                                         downsample(in_aper, subpixels))
-                    else:
-                        fraction = downsample(in_aper, subpixels)
-                        flux[i] = np.sum(data[y_min[i]:y_max[i],
-                                              x_min[i]:x_max[i]] * fraction)
+                for i in range(len(flux)):
+                    x_size = ((x_pmax[i] - x_pmin[i]) /
+                              (data[:, x_min[i]:x_max[i]].shape[1] * subpixels))
+                    y_size = ((y_pmax[i] - y_pmin[i]) /
+                              (data[y_min[i]:y_max[i], :].shape[0] * subpixels))
 
-                        if pixelwise_error:
-                            subvariance = error[y_min[i]:y_max[i],
-                                                x_min[i]:x_max[i]] ** 2
-                            if gain is not None:
-                                subvariance += (data[y_min[i]:y_max[i],
-                                                     x_min[i]:x_max[i]] /
-                                                gain[y_min[i]:y_max[i],
-                                                     x_min[i]:x_max[i]])
-                            # Make sure variance is > 0
-                            fluxvar[i] = np.maximum(
-                                np.sum(subvariance * fraction), 0)
-                        else:
-                            local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                                int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                            fluxvar[i] = np.maximum(
-                                local_error ** 2 * np.sum(fraction), 0)
-                            if gain is not None:
-                                local_gain = gain[int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                                  int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                                fluxvar[i] += flux[i] / local_gain
+                    x_centers = np.arange(x_pmin[i] + x_size / 2.,
+                                          x_pmax[i], x_size)
+                    y_centers = np.arange(y_pmin[i] + y_size / 2.,
+                                          y_pmax[i], y_size)
+                    xx, yy = np.meshgrid(x_centers, y_centers)
+                    numerator1 = (xx * math.cos(theta) + yy * math.sin(theta))
+                    numerator2 = (yy * math.cos(theta) - xx * math.sin(theta))
 
-    elif method == 'exact':
-        from .geometry import elliptical_overlap_grid
-        for i in range(len(flux)):
-            x_edges = np.linspace(x_pmin[i], x_pmax[i],
-                                  data[:, x_min[i]:x_max[i]].shape[1] + 1)
-            y_edges = np.linspace(y_pmin[i], y_pmax[i],
-                                  data[y_min[i]:y_max[i], :].shape[0] + 1)
-            if flux[i] is not np.nan:
-                if error is None:
-                    flux[i] = np.sum(data[y_min[i]:y_max[i],
-                                          x_min[i]:x_max[i]] *
-                                     elliptical_overlap_grid(x_edges, y_edges,
-                                                             a, b, theta))
-                else:
-                    fraction = elliptical_overlap_grid(x_edges, y_edges,
-                                                       a, b, theta)
-                    flux[i] = np.sum(data[y_min[i]:y_max[i],
-                                          x_min[i]:x_max[i]] * fraction)
+                    fraction = ((((numerator1 / a) ** 2 +
+                                  (numerator2 / b) ** 2) < 1.).astype(float)
+                                / subpixels ** 2)
 
-                    if pixelwise_error:
-                        subvariance = error[y_min[i]:y_max[i],
-                                            x_min[i]:x_max[i]] ** 2
-                        if gain is not None:
-                            subvariance += (data[y_min[i]:y_max[i],
-                                                 x_min[i]:x_max[i]] /
-                                            gain[y_min[i]:y_max[i],
-                                                 x_min[i]:x_max[i]])
-                        # Make sure variance is > 0
-                        fluxvar[i] = np.maximum(
-                            np.sum(subvariance * fraction), 0)
-                    else:
-                        local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                            int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                        fluxvar[i] = np.maximum(
-                            local_error ** 2 * np.sum(fraction), 0)
-                        if gain is not None:
-                            local_gain = gain[int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                              int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                            fluxvar[i] += flux[i] / local_gain
+                    if subpixels > 1:
+                        from .extern.imageutils import downsample
+                        fraction = downsample(fraction, subpixels)
+
+            elif method == 'exact':
+
+                x_edges = np.linspace(x_pmin[i], x_pmax[i],
+                                      data[:, x_min[i]:x_max[i]].shape[1] + 1)
+                y_edges = np.linspace(y_pmin[i], y_pmax[i],
+                                      data[y_min[i]:y_max[i], :].shape[0] + 1)
+
+                fraction = elliptical_overlap_grid(x_edges, y_edges,
+                                                   a, b, theta)
+
+            flux[i] = np.sum(data[y_min[i]:y_max[i],
+                                  x_min[i]:x_max[i]] * fraction)
+
+            if error is not None:
+                fluxvar[i] = find_fluxvar(data, fraction, error, flux[i], gain,
+                                          x_min[i], x_max[i], y_min[i], y_max[i],
+                                          pixelwise_error)
 
     if error is None:
         return (flux, )
@@ -401,4 +282,3 @@ def do_annulus_photometry(data, positions, mode, extents,
     else:
         flux = flux_outer - flux_inner
         return (flux, np.sqrt(fluxvar))
-
