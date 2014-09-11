@@ -69,28 +69,17 @@ def do_circular_photometry(data, positions, extents, radius,
     x_min, x_max, y_min, y_max = extent
     x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
 
+    if method == 'center':
+        method = 'subpixel'
+        subpixels = 1
+
     from .geometry import circular_overlap_grid
 
     for i in range(len(flux)):
 
         if not np.isnan(flux[i]):
 
-            if method == 'center':
-
-                x_size = ((x_pmax[i] - x_pmin[i]) /
-                          data[:, x_min[i]:x_max[i]].shape[1])
-                y_size = ((y_pmax[i] - y_pmin[i]) /
-                          data[y_min[i]:y_max[i], :].shape[0])
-
-                x_centers = np.arange(x_pmin[i] + x_size / 2.,
-                                      x_pmax[i], x_size)
-                y_centers = np.arange(y_pmin[i] + y_size / 2.,
-                                      y_pmax[i], y_size)
-                xx, yy = np.meshgrid(x_centers, y_centers)
-
-                fraction = (xx * xx + yy * yy < radius * radius)
-
-            elif method == 'subpixel':
+            if method == 'subpixel':
 
                 fraction = circular_overlap_grid(x_pmin[i], x_pmax[i],
                                                  y_pmin[i], y_pmax[i],
