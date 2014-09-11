@@ -2,7 +2,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
-import imageutils
+from ..extern import imageutils
 from astropy import log
 
 __all__ = ['lacosmic']
