@@ -2,7 +2,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
-from imageutils import img_stats
+from ..extern.imageutils import sigmaclip_stats
 
 __all__ = ['detect_sources', 'find_peaks']
 
@@ -71,9 +71,9 @@ def detect_sources(data, snr_threshold, npixels, filter_fwhm=None,
     """
 
     from scipy import ndimage
-    bkgrd, median, bkgrd_rms = img_stats(data, image_mask=mask,
-                                         mask_val=mask_val, sig=sig,
-                                         iters=iters)
+    bkgrd, median, bkgrd_rms = sigmaclip_stats(data, image_mask=mask,
+                                               mask_val=mask_val, sigma=sig,
+                                               iters=iters)
     assert npixels > 0, 'npixels must be a positive integer'
     assert int(npixels) == npixels, 'npixels must be a positive integer'
 
@@ -201,8 +201,8 @@ def find_peaks(data, snr_threshold, min_distance=5, exclude_border=True,
     """
     from skimage.feature import peak_local_max
 
-    bkgrd, median, bkgrd_rms = img_stats(data, image_mask=mask,
-                                         mask_val=mask_val, sig=sig,
+    bkgrd, median, bkgrd_rms = sigmaclip_stats(data, image_mask=mask,
+                                         mask_val=mask_val, sigma=sig,
                                          iters=iters)
     level = bkgrd + (bkgrd_rms * snr_threshold)
     return peak_local_max(data, min_distance=min_distance,

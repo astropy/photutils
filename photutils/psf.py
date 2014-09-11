@@ -9,8 +9,8 @@ from astropy.modeling.parameters import Parameter
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling import Fittable2DModel
-from imageutils import (extract_array_2d, subpixel_indices, add_array_2d,
-                        mask_to_mirrored_num)
+from .extern.imageutils import (extract_array_2d, subpixel_indices, add_array_2d,
+                                mask_to_mirrored_num)
 
 
 __all__ = ['DiscretePRF', 'create_prf', 'psf_photometry',

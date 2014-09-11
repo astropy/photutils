@@ -200,7 +200,7 @@ def do_elliptical_photometry(data, positions, extents, a, b, theta,
 
     if method == 'center' or method == 'subpixel':
         if method == 'center': subpixels = 1
-        if method == 'subpixel': from imageutils import downsample
+        if method == 'subpixel': from .extern.imageutils import downsample
 
         for i in range(len(flux)):
             x_size = ((x_pmax[i] - x_pmin[i]) /
