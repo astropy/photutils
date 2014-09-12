@@ -123,8 +123,6 @@ def elliptical_overlap_single_subpixel(double x0, double y0,
     cdef double cos_theta = cos(theta)
     cdef double sin_theta = sin(theta)
 
-
-
     dx = (x1 - x0) / subpixels
     dy = (y1 - y0) / subpixels
     
