@@ -73,20 +73,6 @@ class PixelAperture(Aperture):
     """
 
     @abc.abstractmethod
-    def extent(self):
-        """
-        Extent of apertures. In the case when part of an aperture's extent
-        falls out of the actual data region, the
-        `~photutils.PixelAperture.get_phot_extents` method redefines the
-        extent which has data coverage.
-
-        Returns
-        -------
-        x_min, x_max, y_min, y_max : lists of floats
-            Extent of the apertures.
-        """
-
-    @abc.abstractmethod
     def plot(self, ax=None, fill=False, **kwargs):
         """
         Plot the aperture(s) on a matplotlib Axes instance.
@@ -143,63 +129,6 @@ class PixelAperture(Aperture):
             Corresponting uncertainity in the ``flux`` values. Returned only
             if input ``error`` is not `None`.
         """
-
-    def get_phot_extents(self, data):
-        """
-        Get the photometry extents and check if the apertures is fully out
-        of data.
-
-        Parameters
-        ----------
-        data : array_like
-            The 2-d array on which to perform photometry.
-
-        Returns
-        -------
-        extents : dict
-            The ``extents`` dictionary contains 3 elements:
-
-            * ``'ood_filter'``
-                A boolean array with `True` elements where the aperture is
-                falling out of the data region.
-            * ``'pixel_extent'``
-                x_min, x_max, y_min, y_max : Refined extent of apertures with
-                data coverage.
-            * ``'phot_extent'``
-                x_pmin, x_pmax, y_pmin, y_pmax: Extent centered to the 0, 0
-                positions as required by the `~photutils.geometry` functions.
-        """
-
-        extents = self.extent()
-
-        # Check if an aperture is fully out of data
-        ood_filter = np.logical_or(extents[:, 0] >= data.shape[1],
-                                   extents[:, 1] <= 0)
-        np.logical_or(ood_filter, extents[:, 2] >= data.shape[0],
-                      out=ood_filter)
-        np.logical_or(ood_filter, extents[:, 3] <= 0, out=ood_filter)
-
-        # TODO check whether it makes sense to have negative pixel
-        # coordinate, one could imagine a stackes image where the reference
-        # was a bit offset from some of the images? Or in those cases just
-        # give Skycoord to the Aperture and it should deal with the
-        # conversion for the actual case?
-        x_min = np.maximum(extents[:, 0], 0)
-        x_max = np.minimum(extents[:, 1], data.shape[1])
-        y_min = np.maximum(extents[:, 2], 0)
-        y_max = np.minimum(extents[:, 3], data.shape[0])
-
-        x_pmin = x_min - self.positions[:, 0] - 0.5
-        x_pmax = x_max - self.positions[:, 0] - 0.5
-        y_pmin = y_min - self.positions[:, 1] - 0.5
-        y_pmax = y_max - self.positions[:, 1] - 0.5
-
-        # TODO: check whether any pixel is nan in data[y_min[i]:y_max[i],
-        # x_min[i]:x_max[i])), if yes return something valid rather than nan
-
-        return {'ood_filter': ood_filter,
-                'pixel_extent': [x_min, x_max, y_min, y_max],
-                'phot_extent': [x_pmin, x_pmax, y_pmin, y_pmax]}
 
     def area():
         """
@@ -296,14 +225,6 @@ class CircularAperture(PixelAperture):
             raise TypeError("Expected (x, y) tuple, a list of (x, y) "
                             "tuples, or an Nx2 array, got {0}".format(positions))
 
-    def extent(self):
-        extents = []
-        for x, y in self.positions:
-            extents.append((int(x - self.r + 0.5), int(x + self.r + 1.5),
-                            int(y - self.r + 0.5), int(y + self.r + 1.5)))
-
-        return np.array(extents)
-
     def area(self):
         return math.pi * self.r ** 2
 
@@ -327,13 +248,12 @@ class CircularAperture(PixelAperture):
 
     def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
                       method='exact', subpixels=5):
-        extents = super(CircularAperture, self).get_phot_extents(data)
 
         if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
-        flux = do_circular_photometry(data, self.positions, extents,
+        flux = do_circular_photometry(data, self.positions,
                                       self.r, error=error, gain=gain,
                                       pixelwise_error=pixelwise_error,
                                       method=method,
@@ -439,31 +359,17 @@ class CircularAnnulus(PixelAperture):
             raise ValueError('{0}-d position array not supported. Only 2-d '
                              'arrays supported.'.format(self.positions.ndim))
 
-    def extent(self):
-        extents = []
-        centers = []
-        for x, y in self.positions:
-            extents.append((int(x - self.r_out + 0.5),
-                            int(x + self.r_out + 1.5),
-                            int(y - self.r_out + 0.5),
-                            int(y + self.r_out + 1.5)))
-            centers.append((x, x, y, y))
-
-        self._centers = np.array(centers)
-        return np.array(extents)
-
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
     def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
                       method='exact', subpixels=5):
-        extents = super(CircularAnnulus, self).get_phot_extents(data)
 
         if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
-        flux = do_circular_photometry(data, self.positions, extents,
+        flux = do_circular_photometry(data, self.positions,
                                       self.r_out, error=error, gain=gain,
                                       pixelwise_error=pixelwise_error,
                                       method=method,
@@ -607,30 +513,17 @@ class EllipticalAperture(PixelAperture):
             raise ValueError('{0}-d position array not supported. Only 2-d '
                              'arrays supported.'.format(self.positions.ndim))
 
-    def extent(self):
-        r = max(self.a, self.b)
-        extents = []
-        centers = []
-        for x, y in self.positions:
-            extents.append((int(x - r + 0.5), int(x + r + 1.5),
-                            int(y - r + 0.5), int(y + r + 1.5)))
-            centers.append((x, x, y, y))
-
-        self._centers = np.array(centers)
-        return np.array(extents)
-
     def area(self):
         return math.pi * self.a * self.b
 
     def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
                       method='exact', subpixels=5):
-        extents = super(EllipticalAperture, self).get_phot_extents(data)
 
         if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
-        flux = do_elliptical_photometry(data, self.positions, extents,
+        flux = do_elliptical_photometry(data, self.positions,
                                         self.a, self.b, self.theta,
                                         error=error, gain=gain,
                                         pixelwise_error=pixelwise_error,
@@ -790,18 +683,6 @@ class EllipticalAnnulus(PixelAperture):
             raise ValueError('{0}-d position array not supported. Only 2-d '
                              'arrays supported.'.format(self.positions.ndim))
 
-    def extent(self):
-        r = max(self.a_out, self.b_out)
-        extents = []
-        centers = []
-        for x, y in self.positions:
-            extents.append((int(x - r + 0.5), int(x + r + 1.5),
-                            int(y - r + 0.5), int(y + r + 1.5)))
-            centers.append((x, x, y, y))
-
-        self._centers = np.array(centers)
-        return np.array(extents)
-
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
@@ -832,13 +713,12 @@ class EllipticalAnnulus(PixelAperture):
 
     def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
                       method='exact', subpixels=5):
-        extents = super(EllipticalAnnulus, self).get_phot_extents(data)
 
         if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
-        flux = do_elliptical_photometry(data, self.positions, extents,
+        flux = do_elliptical_photometry(data, self.positions,
                                         self.a_out, self.b_out, self.theta,
                                         error=error, gain=gain,
                                         pixelwise_error=pixelwise_error,
@@ -896,19 +776,6 @@ class RectangularAperture(PixelAperture):
             raise ValueError('{0}-d position array not supported. Only 2-d '
                              'arrays supported.'.format(self.positions.ndim))
 
-    def extent(self):
-        r = max(self.h, self.w) * (2 ** -0.5)
-        # this is an overestimate by up to sqrt(2) unless theta = 45 deg
-        extents = []
-        centers = []
-        for x, y in self.positions:
-            extents.append((int(x - r + 0.5), int(x + r + 1.5),
-                            int(y - r + 0.5), int(y + r + 1.5)))
-            centers.append((x, x, y, y))
-
-        self._centers = np.array(centers)
-        return np.array(extents)
-
     def area(self):
         return self.w * self.h
 
@@ -943,8 +810,6 @@ class RectangularAperture(PixelAperture):
     def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
                       method='subpixel', subpixels=5):
 
-        extents = super(RectangularAperture, self).get_phot_extents(data)
-
         if method == 'exact':
             warnings.warn("'exact' method is not implemented, defaults to "
                           "'subpixel' method and subpixels=32 instead",
@@ -956,7 +821,7 @@ class RectangularAperture(PixelAperture):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
-        flux = do_rectangular_photometry(data, self.positions, extents,
+        flux = do_rectangular_photometry(data, self.positions,
                                          self.w, self.h, self.theta,
                                          error=error, gain=gain,
                                          pixelwise_error=pixelwise_error,
@@ -1026,18 +891,6 @@ class RectangularAnnulus(PixelAperture):
             raise ValueError('{0}-d position array not supported. Only 2-d '
                              'arrays supported.'.format(self.positions.ndim))
 
-    def extent(self):
-        r = max(self.w_out, self.h_out) * (2 ** -0.5)
-        extents = []
-        centers = []
-        for x, y in self.positions:
-            extents.append((int(x - r + 0.5), int(x + r + 1.5),
-                            int(y - r + 0.5), int(y + r + 1.5)))
-            centers.append((x, x, y, y))
-
-        self._centers = np.array(centers)
-        return np.array(extents)
-
     def area(self):
         """
         Returns
@@ -1088,7 +941,6 @@ class RectangularAnnulus(PixelAperture):
 
     def do_photometry(self, data, error=None, gain=None, pixelwise_error=True,
                       method='subpixel', subpixels=5):
-        extents = super(RectangularAnnulus, self).get_phot_extents(data)
 
         if method == 'exact':
             warnings.warn("'exact' method is not implemented, defaults to "
@@ -1099,7 +951,7 @@ class RectangularAnnulus(PixelAperture):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
-        flux = do_rectangular_photometry(data, self.positions, extents,
+        flux = do_rectangular_photometry(data, self.positions,
                                          self.w_out, self.h_out, self.theta,
                                          error=error, gain=gain,
                                          pixelwise_error=pixelwise_error,
