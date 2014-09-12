@@ -19,29 +19,7 @@ cdef extern from "math.h":
 DTYPE = np.float64
 ctypedef np.float64_t DTYPE_t
 
-def distance(double x1, double y1, double x2, double y2):
-    return sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
-
-
-def area_arc(double x1, double y1, double x2, double y2, double R):
-    """Area of a circle arc with radius R between points (x1, y1) and (x2, y2).
-
-    References
-    ----------
-    http://mathworld.wolfram.com/CircularSegment.html
-    """
-
-    cdef double a, theta
-    a = distance(x1, y1, x2, y2)
-    theta = 2. * asin(0.5 * a / R)
-    return 0.5 * R * R * (theta - sin(theta))
-
-
-def area_triangle(double x1, double y1, double x2, double y2, double x3,
-                  double y3):
-    """Area of a triangle defined by three vertices.
-    """
-    return 0.5 * abs(x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
+from .core import area_arc, area_triangle
 
 
 def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
@@ -59,9 +37,9 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     Parameters
     ----------
     xmin, xmax, ymin, ymax : float
-        Extent of the area in x and y direction.
+        Extent of the grid in x and y direction.
     nx, ny : int
-        Dimension of array.
+        Dimension of grid.
     R : float
         Radius of the circle.
     use_exact : 0 or 1
@@ -78,59 +56,66 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     """
 
     cdef unsigned int i, j
-    cdef double x, y, dx, dy, d, pixrad, xlim0, xlim1, ylim0, ylim1
+    cdef double x, y, dx, dy, d, pixel_radius
+    cdef double bxmin, bxmax, bymin, bymax
+    cdef double pxmin, pxcen, pxmax, pymin, pycen, pymax
 
-    # Output array
+    # Define output array
     cdef np.ndarray[DTYPE_t, ndim=2] frac = np.zeros([ny, nx], dtype=DTYPE)
 
-    # Width of each element in x and y
+    # Find the width of each element in x and y
     dx = (xmax - xmin) / nx
     dy = (ymax - ymin) / ny
 
-    # Define these here to speed computation below
-    pixrad = 0.5 * sqrt(dx * dx + dy * dy)  # Radius of a single pixel
-    xlim0 = -R - 0.5 * dx                   # Extent of circle + half pixel
-    xlim1 = R + 0.5 * dx                    # ...
-    ylim0 = -R - 0.5 * dy                   # ...
-    ylim1 = R + 0.5 * dy                    # ...
+    # Find the radius of a single pixel
+    pixel_radius = 0.5 * sqrt(dx * dx + dy * dy)
+
+    # Define bounding box
+    bxmin = -R - 0.5 * dx
+    bxmax = +R + 0.5 * dx
+    bymin = -R - 0.5 * dy
+    bymax = +R + 0.5 * dy
 
     for i in range(nx):
-        x = xmin + (i + 0.5) * dx  # x coordinate of pixel center
-        if x > xlim0 and x < xlim1:
+        pxmin = xmin + i * dx  # lower end of pixel
+        pxcen = pxmin + dx * 0.5
+        pxmax = pxmin + dx  # upper end of pixel
+        if pxmax > bxmin and pxmin < bxmax:
             for j in range(ny):
-                y = ymin + (j + 0.5) * dy  # y coordinate of pixel center
-                if y > ylim0 and y < ylim1:
+                pymin = ymin + j * dy
+                pycen = pymin + dy * 0.5
+                pymax = pymin + dy
+                if pymax > bymin and pymin < bymax:
 
                     # Distance from circle center to pixel center.
-                    d = sqrt(x * x + y * y)
+                    d = sqrt(pxcen * pxcen + pycen * pycen)
 
                     # If pixel center is "well within" circle, count full pixel.
-                    if d < R - pixrad:
+                    if d < R - pixel_radius:
                         frac[j, i] = 1.
 
                     # If pixel center is "close" to circle border, find overlap.
-                    elif d < R + pixrad:
+                    elif d < R + pixel_radius:
 
-                        # Either do exact calculation...
+                        # Either do exact calculation or use subpixel samping:
                         if use_exact:
-                            frac[j, i] = overlap_single_exact(x - 0.5 * dx, \
-                                y - 0.5 * dy, x + 0.5 * dx, y + 0.5 * dy, R) \
-                                / (dx * dy)
-
-                        # or use subpixel samping.
+                            frac[j, i] = circular_overlap_single_exact(pxmin, pymin,
+                                                                       pxmax, pymax,
+                                                                       R) / (dx * dy)
                         else:
-                            frac[j, i] = overlap_single_subpixel(x - 0.5 * dx, \
-                                y - 0.5 * dy, x + 0.5 * dx, y + 0.5 * dy, R,
-                                subpixels)
+                            frac[j, i] = circular_overlap_single_subpixel(pxmin, pymin,
+                                                                          pxmax, pymax,
+                                                                          R, subpixels)
 
-                        # Otherwise, it is fully outside circle.
-                        # No action needed.
+                    # Otherwise, it is fully outside circle.
+                    # No action needed.
 
     return frac
 
 
-def overlap_single_subpixel(double x0, double y0, double x1, double y1,
-                            double R, int subpixels):
+def circular_overlap_single_subpixel(double x0, double y0,
+                                     double x1, double y1,
+                                     double R, int subpixels):
     """Return the fraction of overlap between a circle and a single pixel
     with given extent, using a sub-pixel sampling method."""
 
@@ -154,8 +139,9 @@ def overlap_single_subpixel(double x0, double y0, double x1, double y1,
     return frac / (subpixels * subpixels)
 
 
-def overlap_single_exact(double xmin, double ymin, double xmax, double ymax,
-                         double r):
+def circular_overlap_single_exact(double xmin, double ymin,
+                                  double xmax, double ymax,
+                                  double r):
     '''
     Area of overlap of a rectangle and a circle
     '''
@@ -165,28 +151,28 @@ def overlap_single_exact(double xmin, double ymin, double xmax, double ymax,
         elif 0. >= ymax:
             return circular_overlap_core(-ymax, xmin, -ymin, xmax, r)
         else:
-            return overlap_single_exact(xmin, ymin, xmax, 0., r) \
-                 + overlap_single_exact(xmin, 0., xmax, ymax, r)
+            return circular_overlap_single_exact(xmin, ymin, xmax, 0., r) \
+                 + circular_overlap_single_exact(xmin, 0., xmax, ymax, r)
     elif 0. >= xmax:
         if 0. <= ymin:
             return circular_overlap_core(-xmax, ymin, -xmin, ymax, r)
         elif 0. >= ymax:
             return circular_overlap_core(-xmax, -ymax, -xmin, -ymin, r)
         else:
-            return overlap_single_exact(xmin, ymin, xmax, 0., r) \
-                 + overlap_single_exact(xmin, 0., xmax, ymax, r)
+            return circular_overlap_single_exact(xmin, ymin, xmax, 0., r) \
+                 + circular_overlap_single_exact(xmin, 0., xmax, ymax, r)
     else:
         if 0. <= ymin:
-            return overlap_single_exact(xmin, ymin, 0., ymax, r) \
-                 + overlap_single_exact(0., ymin, xmax, ymax, r)
+            return circular_overlap_single_exact(xmin, ymin, 0., ymax, r) \
+                 + circular_overlap_single_exact(0., ymin, xmax, ymax, r)
         if 0. >= ymax:
-            return overlap_single_exact(xmin, ymin, 0., ymax, r) \
-                 + overlap_single_exact(0., ymin, xmax, ymax, r)
+            return circular_overlap_single_exact(xmin, ymin, 0., ymax, r) \
+                 + circular_overlap_single_exact(0., ymin, xmax, ymax, r)
         else:
-            return overlap_single_exact(xmin, ymin, 0., 0., r) \
-                 + overlap_single_exact(0., ymin, xmax, 0., r) \
-                 + overlap_single_exact(xmin, 0., 0., ymax, r) \
-                 + overlap_single_exact(0., 0., xmax, ymax, r)
+            return circular_overlap_single_exact(xmin, ymin, 0., 0., r) \
+                 + circular_overlap_single_exact(0., ymin, xmax, 0., r) \
+                 + circular_overlap_single_exact(xmin, 0., 0., ymax, r) \
+                 + circular_overlap_single_exact(0., 0., xmax, ymax, r)
 
 
 def circular_overlap_core(double xmin, double ymin, double xmax, double ymax,

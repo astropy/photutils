@@ -148,37 +148,19 @@ def do_elliptical_photometry(data, positions, extents, a, b, theta,
 
             if method == 'subpixel':
 
-                for i in range(len(flux)):
-                    x_size = ((x_pmax[i] - x_pmin[i]) /
-                              (data[:, x_min[i]:x_max[i]].shape[1] * subpixels))
-                    y_size = ((y_pmax[i] - y_pmin[i]) /
-                              (data[y_min[i]:y_max[i], :].shape[0] * subpixels))
-
-                    x_centers = np.arange(x_pmin[i] + x_size / 2.,
-                                          x_pmax[i], x_size)
-                    y_centers = np.arange(y_pmin[i] + y_size / 2.,
-                                          y_pmax[i], y_size)
-                    xx, yy = np.meshgrid(x_centers, y_centers)
-                    numerator1 = (xx * math.cos(theta) + yy * math.sin(theta))
-                    numerator2 = (yy * math.cos(theta) - xx * math.sin(theta))
-
-                    fraction = ((((numerator1 / a) ** 2 +
-                                  (numerator2 / b) ** 2) < 1.).astype(float)
-                                / subpixels ** 2)
-
-                    if subpixels > 1:
-                        from .extern.imageutils import downsample
-                        fraction = downsample(fraction, subpixels)
+                fraction = elliptical_overlap_grid(x_pmin[i], x_pmax[i],
+                                                   y_pmin[i], y_pmax[i],
+                                                   x_max[i] - x_min[i],
+                                                   y_max[i] - y_min[i],
+                                                   a, b, theta, 0, subpixels)
 
             elif method == 'exact':
 
-                x_edges = np.linspace(x_pmin[i], x_pmax[i],
-                                      data[:, x_min[i]:x_max[i]].shape[1] + 1)
-                y_edges = np.linspace(y_pmin[i], y_pmax[i],
-                                      data[y_min[i]:y_max[i], :].shape[0] + 1)
-
-                fraction = elliptical_overlap_grid(x_edges, y_edges,
-                                                   a, b, theta)
+                fraction = elliptical_overlap_grid(x_pmin[i], x_pmax[i],
+                                                   y_pmin[i], y_pmax[i],
+                                                   x_max[i] - x_min[i],
+                                                   y_max[i] - y_min[i],
+                                                   a, b, theta, 1, 1)
 
             flux[i] = np.sum(data[y_min[i]:y_max[i],
                                   x_min[i]:x_max[i]] * fraction)
