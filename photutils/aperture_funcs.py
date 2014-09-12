@@ -70,7 +70,12 @@ def do_circular_photometry(data, positions, extents, radius,
     x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
 
     if method == 'center':
-        method = 'subpixel'
+        use_exact = 0
+        subpixels = 1
+    elif method == 'subpixel':
+        use_exact = 0
+    else:
+        use_exact = 1
         subpixels = 1
 
     from .geometry import circular_overlap_grid
@@ -79,21 +84,11 @@ def do_circular_photometry(data, positions, extents, radius,
 
         if not np.isnan(flux[i]):
 
-            if method == 'subpixel':
-
-                fraction = circular_overlap_grid(x_pmin[i], x_pmax[i],
-                                                 y_pmin[i], y_pmax[i],
-                                                 x_max[i] - x_min[i],
-                                                 y_max[i] - y_min[i],
-                                                 radius, 0, subpixels)
-
-            elif method == 'exact':
-
-                fraction = circular_overlap_grid(x_pmin[i], x_pmax[i],
-                                                 y_pmin[i], y_pmax[i],
-                                                 x_max[i] - x_min[i],
-                                                 y_max[i] - y_min[i],
-                                                 radius, 1, 1)
+            fraction = circular_overlap_grid(x_pmin[i], x_pmax[i],
+                                             y_pmin[i], y_pmax[i],
+                                             x_max[i] - x_min[i],
+                                             y_max[i] - y_min[i],
+                                             radius, use_exact, subpixels)
 
             flux[i] = np.sum(data[y_min[i]:y_max[i],
                                   x_min[i]:x_max[i]] * fraction)
@@ -137,7 +132,12 @@ def do_elliptical_photometry(data, positions, extents, a, b, theta,
     x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
 
     if method == 'center':
-        method = 'subpixel'
+        use_exact = 0
+        subpixels = 1
+    elif method == 'subpixel':
+        use_exact = 0
+    else:
+        use_exact = 1
         subpixels = 1
 
     from .geometry import elliptical_overlap_grid
@@ -146,21 +146,11 @@ def do_elliptical_photometry(data, positions, extents, a, b, theta,
 
         if not np.isnan(flux[i]):
 
-            if method == 'subpixel':
-
-                fraction = elliptical_overlap_grid(x_pmin[i], x_pmax[i],
-                                                   y_pmin[i], y_pmax[i],
-                                                   x_max[i] - x_min[i],
-                                                   y_max[i] - y_min[i],
-                                                   a, b, theta, 0, subpixels)
-
-            elif method == 'exact':
-
-                fraction = elliptical_overlap_grid(x_pmin[i], x_pmax[i],
-                                                   y_pmin[i], y_pmax[i],
-                                                   x_max[i] - x_min[i],
-                                                   y_max[i] - y_min[i],
-                                                   a, b, theta, 1, 1)
+            fraction = elliptical_overlap_grid(x_pmin[i], x_pmax[i],
+                                               y_pmin[i], y_pmax[i],
+                                               x_max[i] - x_min[i],
+                                               y_max[i] - y_min[i],
+                                               a, b, theta, use_exact, subpixels)
 
             flux[i] = np.sum(data[y_min[i]:y_max[i],
                                   x_min[i]:x_max[i]] * fraction)
