@@ -947,8 +947,10 @@ class RectangularAperture(PixelAperture):
 
         if method == 'exact':
             warnings.warn("'exact' method is not implemented, defaults to "
-                          "'subpixel' instead", AstropyUserWarning)
+                          "'subpixel' method and subpixels=32 instead",
+                          AstropyUserWarning)
             method = 'subpixel'
+            subpixels = 32
 
         elif method not in ('center', 'subpixel'):
             raise ValueError('{0} method not supported for aperture class '
