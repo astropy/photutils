@@ -182,7 +182,8 @@ def do_elliptical_photometry(data, positions, extents, a, b, theta,
 
 
 def do_rectangular_photometry(data, positions, extents, w, h, theta,
-                              error, gain, pixelwise_error, method, subpixels):
+                              error, gain, pixelwise_error, method, subpixels,
+                              reduce='sum'):
 
     ood_filter = extents['ood_filter']
     extent = extents['pixel_extent']
@@ -208,83 +209,44 @@ def do_rectangular_photometry(data, positions, extents, w, h, theta,
     x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
 
     if method in ('center', 'subpixel'):
-        if method == 'center': subpixels = 1
-        if method == 'subpixel': from imageutils import downsample
+        if method == 'center':
+            method = 'subpixel'
+            subpixels = 1
+
+        from .extern.imageutils import downsample
 
         for i in range(len(flux)):
-            x_size = ((x_pmax[i] - x_pmin[i]) /
-                      (data[:, x_min[i]:x_max[i]].shape[1] * subpixels))
-            y_size = ((y_pmax[i] - y_pmin[i]) /
-                      (data[y_min[i]:y_max[i], :].shape[0] * subpixels))
+            if not np.isnan(flux[i]):
+                x_size = ((x_pmax[i] - x_pmin[i]) /
+                          (data[:, x_min[i]:x_max[i]].shape[1] * subpixels))
+                y_size = ((y_pmax[i] - y_pmin[i]) /
+                          (data[y_min[i]:y_max[i], :].shape[0] * subpixels))
 
-            x_centers = np.arange(x_pmin[i] + x_size / 2.,
-                                  x_pmax[i], x_size)
-            y_centers = np.arange(y_pmin[i] + y_size / 2.,
-                                  y_pmax[i], y_size)
+                x_centers = np.arange(x_pmin[i] + x_size / 2.,
+                                      x_pmax[i], x_size)
+                y_centers = np.arange(y_pmin[i] + y_size / 2.,
+                                      y_pmax[i], y_size)
 
-            xx, yy = np.meshgrid(x_centers, y_centers)
+                xx, yy = np.meshgrid(x_centers, y_centers)
 
-            newx = (xx * math.cos(theta) + yy * math.sin(theta))
-            newy = (yy * math.cos(theta) - xx * math.sin(theta))
+                newx = (xx * math.cos(theta) + yy * math.sin(theta))
+                newy = (yy * math.cos(theta) - xx * math.sin(theta))
 
-            halfw = w / 2
-            halfh = h / 2
-            in_aper = (((-halfw < newx) & (newx < halfw) &
-                        (-halfh < newy) & (newy < halfh)).astype(float)
-                       / subpixels ** 2)
+                halfw = w / 2
+                halfh = h / 2
+                in_aper = (((-halfw < newx) & (newx < halfw) &
+                            (-halfh < newy) & (newy < halfh)).astype(float)
+                           / subpixels ** 2)
 
-            if method == 'center':
-                if not np.isnan(flux[i]):
-                    flux[i] = np.sum(data[y_min[i]:y_max[i],
-                                          x_min[i]:x_max[i]] * in_aper)
-                    if error is not None:
-                        if pixelwise_error:
-                            subvariance = error[y_min[i]:y_max[i],
-                                                x_min[i]:x_max[i]] ** 2
-                            if gain is not None:
-                                subvariance += (data[y_min[i]:y_max[i],
-                                                     x_min[i]:x_max[i]] /
-                                                gain[y_min[i]:y_max[i],
-                                                     x_min[i]:x_max[i]])
-                            # Make sure variance is > 0
-                            fluxvar[i] = max(np.sum(subvariance * in_aper), 0)
-                        else:
-                            local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                                int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                            fluxvar[i] = max(local_error ** 2 * np.sum(in_aper), 0)
-                            if gain is not None:
-                                local_gain = gain[int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                                  int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                                fluxvar[i] += flux[i] / local_gain
-            else:
-                if not np.isnan(flux[i]):
-                    if error is None:
-                        flux[i] = np.sum(data[y_min[i]:y_max[i],
-                                              x_min[i]:x_max[i]] *
-                                         downsample(in_aper, subpixels))
-                    else:
-                        fraction = downsample(in_aper, subpixels)
-                        flux[i] = np.sum(data[y_min[i]:y_max[i],
-                                              x_min[i]:x_max[i]] * fraction)
-
-                        if pixelwise_error:
-                            subvariance = error[y_min[i]:y_max[i],
-                                                x_min[i]:x_max[i]] ** 2
-                            if gain is not None:
-                                subvariance += (data[y_min[i]:y_max[i],
-                                                     x_min[i]:x_max[i]] /
-                                                gain[y_min[i]:y_max[i],
-                                                     x_min[i]:x_max[i]])
-                            # Make sure variance is > 0
-                            fluxvar[i] = max(np.sum(subvariance * fraction), 0)
-                        else:
-                            local_error = error[int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                                int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                            fluxvar[i] = max(local_error ** 2 * np.sum(fraction), 0)
-                            if gain is not None:
-                                local_gain = gain[int((y_min[i] + y_max[i]) / 2 + 0.5),
-                                                  int((x_min[i] + x_max[i]) / 2 + 0.5)]
-                                fluxvar[i] += flux[i] / local_gain
+                fraction = downsample(in_aper, subpixels)
+                flux[i] = np.sum(data[y_min[i]:y_max[i],
+                                      x_min[i]:x_max[i]] * fraction)
+                if error is not None:
+                    fluxvar[i] = find_fluxvar(data, fraction, error,
+                                              flux[i], gain,
+                                              x_min[i], x_max[i],
+                                              y_min[i], y_max[i],
+                                              pixelwise_error)
 
     if error is None:
         return (flux, )
