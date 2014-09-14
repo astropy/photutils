@@ -181,9 +181,37 @@ def do_elliptical_photometry(data, positions, extents, a, b, theta,
         return (flux, np.sqrt(fluxvar))
 
 
+def rectangular_overlap(x_pmin, x_pmax, y_pmin, y_pmax, nx, ny,
+                        w, h, theta, subpixels):
+    from .extern.imageutils import downsample
+
+    x_size = ((x_pmax - x_pmin) /
+              (nx * subpixels))
+    y_size = ((y_pmax - y_pmin) /
+              (ny * subpixels))
+
+    x_centers = np.arange(x_pmin + x_size / 2.,
+                          x_pmax, x_size)
+    y_centers = np.arange(y_pmin + y_size / 2.,
+                          y_pmax, y_size)
+
+    xx, yy = np.meshgrid(x_centers, y_centers)
+
+    newx = (xx * math.cos(theta) + yy * math.sin(theta))
+    newy = (yy * math.cos(theta) - xx * math.sin(theta))
+
+    halfw = w / 2
+    halfh = h / 2
+    in_aper = (((-halfw < newx) & (newx < halfw) &
+                (-halfh < newy) & (newy < halfh)).astype(float)
+               / subpixels ** 2)
+
+    return downsample(in_aper, subpixels)
+
+
 def do_rectangular_photometry(data, positions, extents, w, h, theta,
                               error, gain, pixelwise_error, method, subpixels,
-                              reduce='sum'):
+                              reduce='sum', w_in=None):
 
     ood_filter = extents['ood_filter']
     extent = extents['pixel_extent']
@@ -213,32 +241,23 @@ def do_rectangular_photometry(data, positions, extents, w, h, theta,
             method = 'subpixel'
             subpixels = 1
 
-        from .extern.imageutils import downsample
-
         for i in range(len(flux)):
             if not np.isnan(flux[i]):
-                x_size = ((x_pmax[i] - x_pmin[i]) /
-                          (data[:, x_min[i]:x_max[i]].shape[1] * subpixels))
-                y_size = ((y_pmax[i] - y_pmin[i]) /
-                          (data[y_min[i]:y_max[i], :].shape[0] * subpixels))
 
-                x_centers = np.arange(x_pmin[i] + x_size / 2.,
-                                      x_pmax[i], x_size)
-                y_centers = np.arange(y_pmin[i] + y_size / 2.,
-                                      y_pmax[i], y_size)
+                fraction = rectangular_overlap(x_pmin[i], x_pmax[i],
+                                               y_pmin[i], y_pmax[i],
+                                               x_max[i] - x_min[i],
+                                               y_max[i] - y_min[i],
+                                               w, h, theta, subpixels)
+                if w_in is not None:
+                    h_in = w_in * h / w
+                    fraction -= rectangular_overlap(x_pmin[i], x_pmax[i],
+                                                    y_pmin[i], y_pmax[i],
+                                                    x_max[i] - x_min[i],
+                                                    y_max[i] - y_min[i],
+                                                    w_in, h_in, theta,
+                                                    subpixels)
 
-                xx, yy = np.meshgrid(x_centers, y_centers)
-
-                newx = (xx * math.cos(theta) + yy * math.sin(theta))
-                newy = (yy * math.cos(theta) - xx * math.sin(theta))
-
-                halfw = w / 2
-                halfh = h / 2
-                in_aper = (((-halfw < newx) & (newx < halfw) &
-                            (-halfh < newy) & (newy < halfh)).astype(float)
-                           / subpixels ** 2)
-
-                fraction = downsample(in_aper, subpixels)
                 flux[i] = np.sum(data[y_min[i]:y_max[i],
                                       x_min[i]:x_max[i]] * fraction)
                 if error is not None:
@@ -251,112 +270,4 @@ def do_rectangular_photometry(data, positions, extents, w, h, theta,
     if error is None:
         return (flux, )
     else:
-        return (flux, np.sqrt(fluxvar))
-
-
-def do_annulus_photometry(data, positions, mode, extents,
-                          inner_params, outer_params,
-                          error=None, gain=None, pixelwise_error=True,
-                          method='exact', subpixels=5):
-
-    if mode == 'circular':
-        if error is None:
-            flux_outer = do_circular_photometry(data, positions, extents,
-                                                *outer_params, error=error,
-                                                pixelwise_error=pixelwise_error,
-                                                method=method, gain=gain,
-                                                subpixels=subpixels)
-            flux_inner = do_circular_photometry(data, positions, extents,
-                                                *inner_params, error=error,
-                                                pixelwise_error=pixelwise_error,
-                                                method=method, gain=gain,
-                                                subpixels=subpixels)
-        else:
-            flux_outer, fluxerr_o = do_circular_photometry(data, positions,
-                                                           extents,
-                                                           *outer_params,
-                                                           error=error,
-                                                           gain=gain,
-                                                           pixelwise_error=pixelwise_error,
-                                                           method=method,
-                                                           subpixels=subpixels)
-            flux_inner, fluxerr_i = do_circular_photometry(data, positions,
-                                                           extents,
-                                                           *inner_params,
-                                                           error=error,
-                                                           gain=gain,
-                                                           pixelwise_error=pixelwise_error,
-                                                           method=method,
-                                                           subpixels=subpixels)
-
-    elif mode == 'elliptical':
-        if error is None:
-            flux_inner = do_elliptical_photometry(data, positions, extents,
-                                                  *inner_params, error=error,
-                                                  pixelwise_error=pixelwise_error,
-                                                  method=method, gain=gain,
-                                                  subpixels=subpixels)
-            flux_outer = do_elliptical_photometry(data, positions, extents,
-                                                  *outer_params, error=error,
-                                                  pixelwise_error=pixelwise_error,
-                                                  method=method, gain=gain,
-                                                  subpixels=subpixels)
-        else:
-            flux_inner, fluxerr_i = do_elliptical_photometry(data, positions,
-                                                             extents,
-                                                             *inner_params,
-                                                             error=error,
-                                                             gain=gain,
-                                                             pixelwise_error=pixelwise_error,
-                                                             method=method,
-                                                             subpixels=subpixels)
-            flux_outer, fluxerr_o = do_elliptical_photometry(data, positions,
-                                                             extents,
-                                                             *outer_params,
-                                                             error=error,
-                                                             gain=gain,
-                                                             pixelwise_error=pixelwise_error,
-                                                             method=method,
-                                                             subpixels=subpixels)
-
-    elif mode == 'rectangular':
-        if error is None:
-            flux_inner = do_rectangular_photometry(data, positions, extents,
-                                                   *inner_params, error=error,
-                                                   pixelwise_error=pixelwise_error,
-                                                   method=method, gain=gain,
-                                                   subpixels=subpixels)
-            flux_outer = do_rectangular_photometry(data, positions, extents,
-                                                   *outer_params, error=error,
-                                                   pixelwise_error=pixelwise_error,
-                                                   method=method, gain=gain,
-                                                   subpixels=subpixels)
-        else:
-            flux_inner, fluxerr_i = do_rectangular_photometry(data, positions,
-                                                              extents,
-                                                              *inner_params,
-                                                              error=error,
-                                                              gain=gain,
-                                                              pixelwise_error=pixelwise_error,
-                                                              method=method,
-                                                              subpixels=subpixels)
-            flux_outer, fluxerr_o = do_rectangular_photometry(data, positions,
-                                                              extents,
-                                                              *outer_params,
-                                                              error=error,
-                                                              gain=gain,
-                                                              pixelwise_error=pixelwise_error,
-                                                              method=method,
-                                                              subpixels=subpixels)
-
-    else:
-        raise ValueError('{0} mode is not supported for annular photometry'
-                         .format(mode))
-
-    if error is None:
-        flux = flux_outer[0] - flux_inner[0]
-        return (flux, )
-    else:
-        flux = flux_outer - flux_inner
-        fluxvar = np.maximum((fluxerr_o ** 2 - fluxerr_i ** 2), 0)
         return (flux, np.sqrt(fluxvar))

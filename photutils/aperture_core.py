@@ -1097,13 +1097,13 @@ class RectangularAnnulus(PixelAperture):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
-        flux = do_annulus_photometry(data, self.positions, 'rectangular',
-                                     extents,
-                                     (self.w_in, self.h_in, self.theta),
-                                     (self.w_out, self.h_out, self.theta),
-                                     error=error, gain=gain,
-                                     pixelwise_error=pixelwise_error,
-                                     method=method, subpixels=subpixels)
+        flux = do_rectangular_photometry(data, self.positions, extents,
+                                         self.w_out, self.h_out, self.theta,
+                                         error=error, gain=gain,
+                                         pixelwise_error=pixelwise_error,
+                                         method=method, subpixels=subpixels,
+                                         w_in=self.w_in)
+
         return flux
 
 
