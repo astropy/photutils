@@ -223,8 +223,8 @@ subtraction is left up to the user or calling function.
     >>> print phot_table['residual_aperture_sum']   # doctest: +FLOAT_CMP
     residual_aperture_sum
     ---------------------
-        2.48689957516e-14
-        2.48689957516e-14
+        -1.7763568394e-14
+        -1.7763568394e-14
 
   (In this case, the result differs from 0 due to inclusion or exclusion of
   subpixels in the apertures.)

@@ -15,8 +15,7 @@ from astropy.coordinates import SkyCoord
 from astropy.extern import six
 from astropy.utils.misc import InheritDocstrings
 from astropy.utils.exceptions import AstropyUserWarning
-from .aperture_funcs import do_circular_photometry, do_elliptical_photometry, \
-                            do_annulus_photometry
+from .aperture_funcs import do_circular_photometry, do_elliptical_photometry
 from .wcsutils import skycoord_to_pixel, skycoord_to_pixel_scale_angle, assert_angle_or_pixel, assert_angle
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture',
@@ -461,12 +460,12 @@ class CircularAnnulus(PixelAperture):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
-        flux = do_annulus_photometry(data, self.positions, 'circular', extents,
-                                     (self.r_in, ), (self.r_out, ),
-                                     error=error, gain=gain,
-                                     pixelwise_error=pixelwise_error,
-                                     method=method,
-                                     subpixels=subpixels)
+        flux = do_circular_photometry(data, self.positions, extents,
+                                      self.r_out, error=error, gain=gain,
+                                      pixelwise_error=pixelwise_error,
+                                      method=method,
+                                      subpixels=subpixels,
+                                      r_in=self.r_in)
 
         return flux
 
@@ -836,13 +835,14 @@ class EllipticalAnnulus(PixelAperture):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
-        flux = do_annulus_photometry(data, self.positions, 'elliptical',
-                                     extents,
-                                     (self.a_in, self.b_in, self.theta),
-                                     (self.a_out, self.b_out, self.theta),
-                                     error=error, gain=gain,
-                                     pixelwise_error=pixelwise_error,
-                                     method=method, subpixels=subpixels)
+        flux = do_elliptical_photometry(data, self.positions, extents,
+                                        self.a_out, self.b_out, self.theta,
+                                        error=error, gain=gain,
+                                        pixelwise_error=pixelwise_error,
+                                        method=method,
+                                        subpixels=subpixels,
+                                        a_in=self.a_in)
+
         return flux
 
 
