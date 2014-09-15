@@ -955,11 +955,9 @@ def _apply_mask(data, mask, mask_method, variance=None, background=None):
             goodpix = ~mask[y0:y1, x0:x1]
             data[j, i] = np.mean(data[y0:y1, x0:x1][goodpix])
             if background is not None:
-                background[j, i] = np.mean(
-                    background[y0:y1, x0:x1][goodpix])
+                background[j, i] = np.mean(background[y0:y1, x0:x1][goodpix])
             if variance is not None:
-                variance[j, i] = np.sqrt(np.mean(
-                    variance[y0:y1, x0:x1][goodpix]))
+                variance[j, i] = np.mean(variance[y0:y1, x0:x1][goodpix])
     else:
         raise ValueError(
             'mask_method "{0}" is not valid'.format(mask_method))
