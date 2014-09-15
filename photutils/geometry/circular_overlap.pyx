@@ -16,10 +16,14 @@ cdef extern from "math.h":
     double sin(double x)
     double sqrt(double x)
 
+
 DTYPE = np.float64
 ctypedef np.float64_t DTYPE_t
 
-from .core import area_arc, area_triangle
+# NOTE: Here we need to make sure we use cimport to import the C functions from
+# core (since these were defined with cdef). This also requires the core.pxd
+# file to exist with the function signatures.
+from .core cimport area_arc, area_triangle
 
 
 def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
@@ -113,7 +117,13 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     return frac
 
 
-def circular_overlap_single_subpixel(double x0, double y0,
+# NOTE: The following two functions use cdef because they are not intended to be
+# called from the Python code. Using def makes them callable from outside, but
+# also slower. In any case, these aren't useful to call from outside because
+# they only operate on a single pixel.
+
+
+cdef circular_overlap_single_subpixel(double x0, double y0,
                                      double x1, double y1,
                                      double R, int subpixels):
     """Return the fraction of overlap between a circle and a single pixel
@@ -139,7 +149,7 @@ def circular_overlap_single_subpixel(double x0, double y0,
     return frac / (subpixels * subpixels)
 
 
-def circular_overlap_single_exact(double xmin, double ymin,
+cdef circular_overlap_single_exact(double xmin, double ymin,
                                   double xmax, double ymax,
                                   double r):
     '''

@@ -14,6 +14,7 @@ cdef extern from "math.h":
     double sin(double x)
     double cos(double x)
     double sqrt(double x)
+    double fabs(double x)
 
 from cpython cimport bool
 
@@ -22,8 +23,13 @@ ctypedef np.float64_t DTYPE_t
 
 cimport cython
 
+# NOTE: The following two functions use cdef because they are not intended to be
+# called from the Python code. Using def makes them callable from outside, but
+# also slower. Some functions currently return multiple values, and for those we
+# still use 'def' for now.
 
-def distance(double x1, double y1, double x2, double y2):
+
+cdef double distance(double x1, double y1, double x2, double y2):
     """
     Distance between two points in two dimensions
     
@@ -43,7 +49,7 @@ def distance(double x1, double y1, double x2, double y2):
     return sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
 
-def area_arc(double x1, double y1, double x2, double y2, double R):
+cdef double area_arc(double x1, double y1, double x2, double y2, double R):
     """
     Area of a circle arc with radius R between points (x1, y1) and (x2, y2).
 
@@ -58,7 +64,7 @@ def area_arc(double x1, double y1, double x2, double y2, double R):
     return 0.5 * R * R * (theta - sin(theta))
 
 
-def area_triangle(double x1, double y1, double x2, double y2, double x3,
+cdef double area_triangle(double x1, double y1, double x2, double y2, double x3,
                   double y3):
     """
     Area of a triangle defined by three vertices.
@@ -66,7 +72,7 @@ def area_triangle(double x1, double y1, double x2, double y2, double x3,
     return 0.5 * abs(x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
 
 
-def area_arc_unit(double x1, double y1, double x2, double y2):
+cdef double area_arc_unit(double x1, double y1, double x2, double y2):
     """
     Area of a circle arc with radius R between points (x1, y1) and (x2, y2)
 
@@ -80,7 +86,7 @@ def area_arc_unit(double x1, double y1, double x2, double y2):
     return 0.5 * (theta - sin(theta))
 
 
-def in_triangle(double x, double y, double x1, double y1, double x2, double y2, double x3, double y3):
+cdef double in_triangle(double x, double y, double x1, double y1, double x2, double y2, double x3, double y3):
     """
     Check if a point (x,y) is inside a triangle
     """
@@ -98,16 +104,16 @@ def circle_line(double x1, double y1, double x2, double y2):
 
     cdef double a, b, delta, dx, dy
     cdef double xi1, yi1, xi2, yi2
+    cdef double tolerance = 1.e-10
 
     dx = x2 - x1
     dy = y2 - y1
 
-
-    if abs(dx) < 1.e-10 and abs(dy) < 1.e-10:
+    if fabs(dx) < tolerance and fabs(dy) < tolerance:
 
         return 2., 2., 2., 2.
 
-    if abs(dx) > abs(dy):
+    if fabs(dx) > fabs(dy):
 
         # Find the slope and intercept of the line
         a = dy / dx

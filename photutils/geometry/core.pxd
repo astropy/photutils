@@ -1,0 +1,5 @@
+cdef double distance(double x1, double y1, double x2, double y2)
+cdef double area_arc(double x1, double y1, double x2, double y2, double R)
+cdef double area_triangle(double x1, double y1, double x2, double y2, double x3, double y3)
+cdef double area_arc_unit(double x1, double y1, double x2, double y2)
+cdef double in_triangle(double x, double y, double x1, double y1, double x2, double y2, double x3, double y3)
