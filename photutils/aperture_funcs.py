@@ -70,7 +70,12 @@ def do_circular_photometry(data, positions, extents, radius,
     x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
 
     if method == 'center':
-        method = 'subpixel'
+        use_exact = 0
+        subpixels = 1
+    elif method == 'subpixel':
+        use_exact = 0
+    else:
+        use_exact = 1
         subpixels = 1
 
     from .geometry import circular_overlap_grid
@@ -79,21 +84,11 @@ def do_circular_photometry(data, positions, extents, radius,
 
         if not np.isnan(flux[i]):
 
-            if method == 'subpixel':
-
-                fraction = circular_overlap_grid(x_pmin[i], x_pmax[i],
-                                                 y_pmin[i], y_pmax[i],
-                                                 x_max[i] - x_min[i],
-                                                 y_max[i] - y_min[i],
-                                                 radius, 0, subpixels)
-
-            elif method == 'exact':
-
-                fraction = circular_overlap_grid(x_pmin[i], x_pmax[i],
-                                                 y_pmin[i], y_pmax[i],
-                                                 x_max[i] - x_min[i],
-                                                 y_max[i] - y_min[i],
-                                                 radius, 1, 1)
+            fraction = circular_overlap_grid(x_pmin[i], x_pmax[i],
+                                             y_pmin[i], y_pmax[i],
+                                             x_max[i] - x_min[i],
+                                             y_max[i] - y_min[i],
+                                             radius, use_exact, subpixels)
 
             flux[i] = np.sum(data[y_min[i]:y_max[i],
                                   x_min[i]:x_max[i]] * fraction)
@@ -137,7 +132,12 @@ def do_elliptical_photometry(data, positions, extents, a, b, theta,
     x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
 
     if method == 'center':
-        method = 'subpixel'
+        use_exact = 0
+        subpixels = 1
+    elif method == 'subpixel':
+        use_exact = 0
+    else:
+        use_exact = 1
         subpixels = 1
 
     from .geometry import elliptical_overlap_grid
@@ -146,39 +146,11 @@ def do_elliptical_photometry(data, positions, extents, a, b, theta,
 
         if not np.isnan(flux[i]):
 
-            if method == 'subpixel':
-
-                for i in range(len(flux)):
-                    x_size = ((x_pmax[i] - x_pmin[i]) /
-                              (data[:, x_min[i]:x_max[i]].shape[1] * subpixels))
-                    y_size = ((y_pmax[i] - y_pmin[i]) /
-                              (data[y_min[i]:y_max[i], :].shape[0] * subpixels))
-
-                    x_centers = np.arange(x_pmin[i] + x_size / 2.,
-                                          x_pmax[i], x_size)
-                    y_centers = np.arange(y_pmin[i] + y_size / 2.,
-                                          y_pmax[i], y_size)
-                    xx, yy = np.meshgrid(x_centers, y_centers)
-                    numerator1 = (xx * math.cos(theta) + yy * math.sin(theta))
-                    numerator2 = (yy * math.cos(theta) - xx * math.sin(theta))
-
-                    fraction = ((((numerator1 / a) ** 2 +
-                                  (numerator2 / b) ** 2) < 1.).astype(float)
-                                / subpixels ** 2)
-
-                    if subpixels > 1:
-                        from .extern.imageutils import downsample
-                        fraction = downsample(fraction, subpixels)
-
-            elif method == 'exact':
-
-                x_edges = np.linspace(x_pmin[i], x_pmax[i],
-                                      data[:, x_min[i]:x_max[i]].shape[1] + 1)
-                y_edges = np.linspace(y_pmin[i], y_pmax[i],
-                                      data[y_min[i]:y_max[i], :].shape[0] + 1)
-
-                fraction = elliptical_overlap_grid(x_edges, y_edges,
-                                                   a, b, theta)
+            fraction = elliptical_overlap_grid(x_pmin[i], x_pmax[i],
+                                               y_pmin[i], y_pmax[i],
+                                               x_max[i] - x_min[i],
+                                               y_max[i] - y_min[i],
+                                               a, b, theta, use_exact, subpixels)
 
             flux[i] = np.sum(data[y_min[i]:y_max[i],
                                   x_min[i]:x_max[i]] * fraction)
