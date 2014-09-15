@@ -179,3 +179,95 @@ def do_elliptical_photometry(data, positions, extents, a, b, theta,
         return (flux, )
     else:
         return (flux, np.sqrt(fluxvar))
+
+
+def rectangular_overlap(x_pmin, x_pmax, y_pmin, y_pmax, nx, ny,
+                        w, h, theta, subpixels):
+    from .extern.imageutils import downsample
+
+    x_size = ((x_pmax - x_pmin) /
+              (nx * subpixels))
+    y_size = ((y_pmax - y_pmin) /
+              (ny * subpixels))
+
+    x_centers = np.arange(x_pmin + x_size / 2.,
+                          x_pmax, x_size)
+    y_centers = np.arange(y_pmin + y_size / 2.,
+                          y_pmax, y_size)
+
+    xx, yy = np.meshgrid(x_centers, y_centers)
+
+    newx = (xx * math.cos(theta) + yy * math.sin(theta))
+    newy = (yy * math.cos(theta) - xx * math.sin(theta))
+
+    halfw = w / 2
+    halfh = h / 2
+    in_aper = (((-halfw < newx) & (newx < halfw) &
+                (-halfh < newy) & (newy < halfh)).astype(float)
+               / subpixels ** 2)
+
+    return downsample(in_aper, subpixels)
+
+
+def do_rectangular_photometry(data, positions, extents, w, h, theta,
+                              error, gain, pixelwise_error, method, subpixels,
+                              reduce='sum', w_in=None):
+
+    ood_filter = extents['ood_filter']
+    extent = extents['pixel_extent']
+    phot_extent = extents['phot_extent']
+
+    flux = u.Quantity(np.zeros(len(positions), dtype=np.float), unit=data.unit)
+
+    if error is not None:
+        fluxvar = u.Quantity(np.zeros(len(positions), dtype=np.float),
+                             unit=error.unit ** 2)
+
+    # TODO: flag these objects
+    if np.sum(ood_filter):
+        flux[ood_filter] = np.nan
+        warnings.warn("The aperture at position {0} does not have any "
+                      "overlap with the data"
+                      .format(positions[ood_filter]),
+                      AstropyUserWarning)
+        if np.sum(ood_filter) == len(positions):
+            return (flux, )
+
+    x_min, x_max, y_min, y_max = extent
+    x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
+
+    if method in ('center', 'subpixel'):
+        if method == 'center':
+            method = 'subpixel'
+            subpixels = 1
+
+        for i in range(len(flux)):
+            if not np.isnan(flux[i]):
+
+                fraction = rectangular_overlap(x_pmin[i], x_pmax[i],
+                                               y_pmin[i], y_pmax[i],
+                                               x_max[i] - x_min[i],
+                                               y_max[i] - y_min[i],
+                                               w, h, theta, subpixels)
+                if w_in is not None:
+                    h_in = w_in * h / w
+                    fraction -= rectangular_overlap(x_pmin[i], x_pmax[i],
+                                                    y_pmin[i], y_pmax[i],
+                                                    x_max[i] - x_min[i],
+                                                    y_max[i] - y_min[i],
+                                                    w_in, h_in, theta,
+                                                    subpixels)
+
+                flux[i] = np.sum(data[y_min[i]:y_max[i],
+                                      x_min[i]:x_max[i]] * fraction)
+                if error is not None:
+                    fluxvar[i] = find_fluxvar(data, fraction, error,
+                                              flux[i], gain,
+                                              x_min[i], x_max[i],
+                                              y_min[i], y_max[i],
+                                              pixelwise_error)
+
+    if error is None:
+        return (flux, )
+    else:
+        return (flux, np.sqrt(fluxvar))
