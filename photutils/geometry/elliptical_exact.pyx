@@ -27,8 +27,10 @@ ctypedef np.float64_t DTYPE_t
 
 cimport cython
 
-from .core import distance, area_triangle, overlap_area_triangle_unit_circle
-
+# NOTE: Here we need to make sure we use cimport to import the C functions from
+# core (since these were defined with cdef). This also requires the core.pxd
+# file to exist with the function signatures.
+from .core cimport distance, area_triangle, overlap_area_triangle_unit_circle
 
 def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                             int nx, int ny, double rx, double ry, double theta,
@@ -71,6 +73,7 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     cdef double x, y, dx, dy
     cdef double bxmin, bxmax, bymin, bymax
     cdef double pxmin, pxmax, pymin, pymax
+    cdef double norm
 
     # Define output array
     cdef np.ndarray[DTYPE_t, ndim=2] frac = np.zeros([ny, nx], dtype=DTYPE)
@@ -78,6 +81,8 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     # Find the width of each element in x and y
     dx = (xmax - xmin) / nx
     dy = (ymax - ymin) / ny
+
+    norm = 1. / (dx * dy)
 
     # For now we use a bounding circle and then use that to find a bounding box
     # but of course this is inefficient and could be done better.
@@ -100,17 +105,22 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                 pymax = pymin + dy
                 if pymax > bymin and pymin < bymax:
                     if use_exact:
-                        frac[j, i] = elliptical_overlap_single_exact(pxmin, pymin, pxmax, pymax, rx, ry, theta) / (dx * dy)
+                        frac[j, i] = elliptical_overlap_single_exact(pxmin, pymin, pxmax, pymax, rx, ry, theta) * norm
                     else:
-                        frac[j, i] = elliptical_overlap_single_subpixel(pxmin, pymin, pxmax, pymax, rx, ry, theta, subpixels) / (dx * dy) 
-
+                        frac[j, i] = elliptical_overlap_single_subpixel(pxmin, pymin, pxmax, pymax, rx, ry, theta, subpixels) * norm
     return frac
 
 
-def elliptical_overlap_single_subpixel(double x0, double y0,
-                                       double x1, double y1,
-                                       double rx, double ry,
-                                       double theta, int subpixels):
+# NOTE: The following two functions use cdef because they are not intended to be
+# called from the Python code. Using def makes them callable from outside, but
+# also slower. In any case, these aren't useful to call from outside because
+# they only operate on a single pixel.
+
+
+cdef double elliptical_overlap_single_subpixel(double x0, double y0,
+                                               double x1, double y1,
+                                               double rx, double ry,
+                                               double theta, int subpixels):
     """
     Return the fraction of overlap between a ellipse and a single pixel with
     given extent, using a sub-pixel sampling method.
@@ -119,15 +129,17 @@ def elliptical_overlap_single_subpixel(double x0, double y0,
     cdef unsigned int i, j
     cdef double x, y
     cdef double frac = 0.  # Accumulator.
-    cdef double rx_sq, ry_sq
+    cdef double inv_rx_sq, inv_ry_sq
     cdef double cos_theta = cos(theta)
     cdef double sin_theta = sin(theta)
+    cdef double dx, dy
+    cdef double x_tr, y_tr
 
     dx = (x1 - x0) / subpixels
     dy = (y1 - y0) / subpixels
     
-    rx_sq = rx * rx
-    ry_sq = ry * ry
+    inv_rx_sq = 1. / (rx * rx)
+    inv_ry_sq = 1. / (ry * ry)
     
     x = x0 - 0.5 * dx
     for i in range(subpixels):
@@ -140,16 +152,16 @@ def elliptical_overlap_single_subpixel(double x0, double y0,
             x_tr = y * sin_theta + x * cos_theta
             y_tr = y * cos_theta - x * sin_theta
 
-            if x_tr * x_tr / rx_sq + y_tr * y_tr / ry_sq < 1:
+            if x_tr * x_tr * inv_rx_sq + y_tr * y_tr * inv_ry_sq < 1.:
                 frac += 1.
 
     return frac / (subpixels * subpixels)
 
 
-def elliptical_overlap_single_exact(double xmin, double ymin,
-                                    double xmax, double ymax,
-                                    double rx, double ry,
-                                    double theta):
+cdef double elliptical_overlap_single_exact(double xmin, double ymin,
+                                            double xmax, double ymax,
+                                            double rx, double ry,
+                                            double theta):
     """
     Given a rectangle defined by (xmin, ymin, xmax, ymax) and an ellipse
     with major and minor axes rx and ry respectively, position angle theta,

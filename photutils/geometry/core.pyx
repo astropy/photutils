@@ -14,6 +14,7 @@ cdef extern from "math.h":
     double sin(double x)
     double cos(double x)
     double sqrt(double x)
+    double fabs(double x)
 
 from cpython cimport bool
 
@@ -23,27 +24,44 @@ ctypedef np.float64_t DTYPE_t
 cimport cython
 
 
-def distance(double x1, double y1, double x2, double y2):
+ctypedef struct point:
+    double x
+    double y
+
+
+ctypedef struct intersections:
+    point p1
+    point p2
+
+
+
+# NOTE: The following two functions use cdef because they are not intended to be
+# called from the Python code. Using def makes them callable from outside, but
+# also slower. Some functions currently return multiple values, and for those we
+# still use 'def' for now.
+
+
+cdef double distance(double x1, double y1, double x2, double y2):
     """
     Distance between two points in two dimensions
-    
+
     Parameters
     ----------
     x1, y1 : float
         The coordinates of the first point
     x2, y2 : float
         The coordinates of the second point
-        
+
     Returns
     -------
     d : float
         The Euclidean distance between the two points
     """
-    
+
     return sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
 
-def area_arc(double x1, double y1, double x2, double y2, double R):
+cdef double area_arc(double x1, double y1, double x2, double y2, double R):
     """
     Area of a circle arc with radius R between points (x1, y1) and (x2, y2).
 
@@ -58,7 +76,7 @@ def area_arc(double x1, double y1, double x2, double y2, double R):
     return 0.5 * R * R * (theta - sin(theta))
 
 
-def area_triangle(double x1, double y1, double x2, double y2, double x3,
+cdef double area_triangle(double x1, double y1, double x2, double y2, double x3,
                   double y3):
     """
     Area of a triangle defined by three vertices.
@@ -66,7 +84,7 @@ def area_triangle(double x1, double y1, double x2, double y2, double x3,
     return 0.5 * abs(x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
 
 
-def area_arc_unit(double x1, double y1, double x2, double y2):
+cdef double area_arc_unit(double x1, double y1, double x2, double y2):
     """
     Area of a circle arc with radius R between points (x1, y1) and (x2, y2)
 
@@ -80,7 +98,7 @@ def area_arc_unit(double x1, double y1, double x2, double y2):
     return 0.5 * (theta - sin(theta))
 
 
-def in_triangle(double x, double y, double x1, double y1, double x2, double y2, double x3, double y3):
+cdef double in_triangle(double x, double y, double x1, double y1, double x2, double y2, double x3, double y3):
     """
     Check if a point (x,y) is inside a triangle
     """
@@ -93,21 +111,24 @@ def in_triangle(double x, double y, double x1, double y1, double x2, double y2, 
     return c % 2 == 1
 
 
-def circle_line(double x1, double y1, double x2, double y2):
+cdef intersections circle_line(double x1, double y1, double x2, double y2):
     """Intersection of a line defined by two points with a unit circle"""
 
     cdef double a, b, delta, dx, dy
-    cdef double xi1, yi1, xi2, yi2
+    cdef double tolerance = 1.e-10
+    cdef intersections inter
 
     dx = x2 - x1
     dy = y2 - y1
 
+    if fabs(dx) < tolerance and fabs(dy) < tolerance:
 
-    if abs(dx) < 1.e-10 and abs(dy) < 1.e-10:
+        inter.p1.x = 2.
+        inter.p1.y = 2.
+        inter.p2.x = 2.
+        inter.p2.y = 2.
 
-        return 2., 2., 2., 2.
-
-    if abs(dx) > abs(dy):
+    elif fabs(dx) > fabs(dy):
 
         # Find the slope and intercept of the line
         a = dy / dx
@@ -117,14 +138,20 @@ def circle_line(double x1, double y1, double x2, double y2):
         delta = 1. + a * a - b * b
 
         if delta > 0.:  # solutions exist
+
             delta = sqrt(delta)
-            xi1 = (- a * b - delta) / (1. + a * a)
-            yi1 = a * xi1 + b
-            xi2 = (- a * b + delta) / (1. + a * a)
-            yi2 = a * xi2 + b
-            return xi1, yi1, xi2, yi2
+
+            inter.p1.x = (- a * b - delta) / (1. + a * a)
+            inter.p1.y = a * inter.p1.x + b
+            inter.p2.x = (- a * b + delta) / (1. + a * a)
+            inter.p2.y = a * inter.p2.x + b
+
         else:  # no solution, return values > 1
-            return 2., 2., 2., 2.
+
+            inter.p1.x = 2.
+            inter.p1.y = 2.
+            inter.p2.x = 2.
+            inter.p2.y = 2.
 
     else:
 
@@ -136,67 +163,89 @@ def circle_line(double x1, double y1, double x2, double y2):
         delta = 1. + a * a - b * b
 
         if delta > 0.:  # solutions exist
+
             delta = sqrt(delta)
-            yi1 = (- a * b - delta) / (1. + a * a)
-            xi1 = a * yi1 + b
-            yi2 = (- a * b + delta) / (1. + a * a)
-            xi2 = a * yi2 + b
-            return xi1, yi1, xi2, yi2
+
+            inter.p1.y = (- a * b - delta) / (1. + a * a)
+            inter.p1.x = a * inter.p1.y + b
+            inter.p2.y = (- a * b + delta) / (1. + a * a)
+            inter.p2.x = a * inter.p2.y + b
+
         else:  # no solution, return values > 1
-            return 2., 2., 2., 2.
+
+            inter.p1.x = 2.
+            inter.p1.y = 2.
+            inter.p2.x = 2.
+            inter.p2.y = 2.
+
+    return inter
 
 
-def circle_segment_single2(double x1, double y1, double x2, double y2):
+cdef point circle_segment_single2(double x1, double y1, double x2, double y2):
     """
     The intersection of a line with the unit circle. The intersection the
     closest to (x2, y2) is chosen.
     """
 
-    cdef double xi1, yi1, xi2, yi2
     cdef double dx1, dy1, dx2, dy2
+    cdef intersections inter
+    cdef point pt1, pt2, pt
 
-    xi1, yi1, xi2, yi2 = circle_line(x1, y1, x2, y2)
+    inter = circle_line(x1, y1, x2, y2)
+
+    pt1 = inter.p1
+    pt2 = inter.p2
 
     # Can be optimized, but just checking for correctness right now
-    dx1 = abs(xi1 - x2)
-    dy1 = abs(yi1 - y2)
-    dx2 = abs(xi2 - x2)
-    dy2 = abs(yi2 - y2)
+    dx1 = fabs(pt1.x - x2)
+    dy1 = fabs(pt1.y - y2)
+    dx2 = fabs(pt2.x - x2)
+    dy2 = fabs(pt2.y - y2)
 
     if dx1 > dy1:  # compare based on x-axis
         if dx1 > dx2:
-            return xi2, yi2
+            pt = pt2
         else:
-            return xi1, yi1
+            pt = pt1
     else:
         if dy1 > dy2:
-            return xi2, yi2
+            pt = pt2
         else:
-            return xi1, yi1
+            pt = pt1
+     
+    return pt
 
 
-def circle_segment(double x1, double y1, double x2, double y2):
+cdef intersections circle_segment(double x1, double y1, double x2, double y2):
     """
     Intersection(s) of a segment with the unit circle. Discard any
     solution not on the segment.
     """
 
-    cdef double xi1, yi1, xi2, yi2
+    cdef intersections inter, inter_new
+    cdef point pt1, pt2
 
-    xi1, yi1, xi2, yi2 = circle_line(x1, y1, x2, y2)
+    inter = circle_line(x1, y1, x2, y2)
 
-    if (xi1 > x1 and xi1 > x2) or (xi1 < x1 and xi1 < x2) or (yi1 > y1 and yi1 > y2) or (yi1 < y1 and yi1 < y2):
-        xi1, yi1 = 2., 2.
-    if (xi2 > x1 and xi2 > x2) or (xi2 < x1 and xi2 < x2) or (yi2 > y1 and yi2 > y2) or (yi2 < y1 and yi2 < y2):
-        xi2, yi2 = 2., 2.
+    pt1 = inter.p1
+    pt2 = inter.p2
 
-    if xi1 > 1. and xi2 < 2.:
-        return xi1, yi1, xi2, yi2
+    if (pt1.x > x1 and pt1.x > x2) or (pt1.x < x1 and pt1.x < x2) or (pt1.y > y1 and pt1.y > y2) or (pt1.y < y1 and pt1.y < y2):
+        pt1.x, pt1.y = 2., 2.
+    if (pt2.x > x1 and pt2.x > x2) or (pt2.x < x1 and pt2.x < x2) or (pt2.y > y1 and pt2.y > y2) or (pt2.y < y1 and pt2.y < y2):
+        pt2.x, pt2.y = 2., 2.
+
+    if pt1.x > 1. and pt2.x < 2.:
+        inter_new.p1 = pt1
+        inter_new.p2 = pt2
     else:
-        return xi2, yi2, xi1, yi1
+        inter_new.p1 = pt2
+        inter_new.p2 = pt1
+
+    return inter_new
 
 
-def overlap_area_triangle_unit_circle(double x1, double y1, double x2, double y2, double x3, double y3):
+cdef double overlap_area_triangle_unit_circle(double x1, double y1, double x2, double y2, double x3, double y3):
     """
     Given a triangle defined by three points (x1, y1), (x2, y2), and
     (x3, y3), find the area of overlap with the unit circle.
@@ -204,12 +253,10 @@ def overlap_area_triangle_unit_circle(double x1, double y1, double x2, double y2
 
     cdef double d1, d2, d3
     cdef bool in1, in2, in3
-    cdef double xc1, yc1
-    cdef double xc2, yc2
-    cdef double xc3, yc3
-    cdef double xc4, yc4
     cdef double area
     cdef double PI = np.pi
+    cdef intersections inter
+    cdef point pt1, pt2, pt3, pt4, pt5, pt6, pt_tmp
 
     # Find distance of all vertices to circle center
     d1 = x1 * x1 + y1 * y1
@@ -242,9 +289,9 @@ def overlap_area_triangle_unit_circle(double x1, double y1, double x2, double y2
     in3 = d3 < 1
 
     # Determine which vertices are on the circle
-    on1 = abs(d1 - 1) < 1.e-10
-    on2 = abs(d2 - 1) < 1.e-10
-    on3 = abs(d3 - 1) < 1.e-10
+    on1 = fabs(d1 - 1) < 1.e-10
+    on2 = fabs(d2 - 1) < 1.e-10
+    on3 = fabs(d3 - 1) < 1.e-10
 
     if on3 or in3:  # triangle is completely in circle
 
@@ -258,56 +305,64 @@ def overlap_area_triangle_unit_circle(double x1, double y1, double x2, double y2
         intersect23 = not on2 or x2 * (x3 - x2) + y2 * (y3 - y2) < 0.
 
         if intersect13 and intersect23:
-            xc1, yc1 = circle_segment_single2(x1, y1, x3, y3)
-            xc2, yc2 = circle_segment_single2(x2, y2, x3, y3)
-            area = area_triangle(x1, y1, x2, y2, xc1, yc1) \
-                 + area_triangle(x2, y2, xc1, yc1, xc2, yc2) \
-                 + area_arc_unit(xc1, yc1, xc2, yc2)
+            pt1 = circle_segment_single2(x1, y1, x3, y3)
+            pt2 = circle_segment_single2(x2, y2, x3, y3)
+            area = area_triangle(x1, y1, x2, y2, pt1.x, pt1.y) \
+                 + area_triangle(x2, y2, pt1.x, pt1.y, pt2.x, pt2.y) \
+                 + area_arc_unit(pt1.x, pt1.y, pt2.x, pt2.y)
         elif intersect13:
-            xc1, yc1 = circle_segment_single2(x1, y1, x3, y3)
-            area = area_triangle(x1, y1, x2, y2, xc1, yc1) \
-                 + area_arc_unit(x2, y2, xc1, yc1)
+            pt1 = circle_segment_single2(x1, y1, x3, y3)
+            area = area_triangle(x1, y1, x2, y2, pt1.x, pt1.y) \
+                 + area_arc_unit(x2, y2, pt1.x, pt1.y)
         elif intersect23:
-            xc2, yc2 = circle_segment_single2(x2, y2, x3, y3)
-            area = area_triangle(x1, y1, x2, y2, xc2, yc2) \
-                 + area_arc_unit(x1, y1, xc2, yc2)
+            pt2 = circle_segment_single2(x2, y2, x3, y3)
+            area = area_triangle(x1, y1, x2, y2, pt2.x, pt2.y) \
+                 + area_arc_unit(x1, y1, pt2.x, pt2.y)
         else:
             area = area_arc_unit(x1, y1, x2, y2)
 
     elif in1:
         # Check for intersections of far side with circle
-        xc1, yc1, xc2, yc2 = circle_segment(x2, y2, x3, y3)
-        xc3, yc3 = circle_segment_single2(x1, y1, x2, y2)
-        xc4, yc4 = circle_segment_single2(x1, y1, x3, y3)
-        if xc1 > 1.:  # indicates no intersection
-            if in_triangle(0, 0, x1, y1, x2, y2, x3, y3) and not in_triangle(0, 0, x1, y1, xc3, yc3, xc4, yc4):
-                area = area_triangle(x1, y1, xc3, yc3, xc4, yc4) \
-                     + (PI - area_arc_unit(xc3, yc3, xc4, yc4))
+        inter = circle_segment(x2, y2, x3, y3)
+        pt1 = inter.p1
+        pt2 = inter.p2
+        pt3 = circle_segment_single2(x1, y1, x2, y2)
+        pt4 = circle_segment_single2(x1, y1, x3, y3)
+        if pt1.x > 1.:  # indicates no intersection
+            if in_triangle(0, 0, x1, y1, x2, y2, x3, y3) and not in_triangle(0, 0, x1, y1, pt3.x, pt3.y, pt4.x, pt4.y):
+                area = area_triangle(x1, y1, pt3.x, pt3.y, pt4.x, pt4.y) \
+                     + (PI - area_arc_unit(pt3.x, pt3.y, pt4.x, pt4.y))
             else:
-                area = area_triangle(x1, y1, xc3, yc3, xc4, yc4) \
-                     + area_arc_unit(xc3, yc3, xc4, yc4)
+                area = area_triangle(x1, y1, pt3.x, pt3.y, pt4.x, pt4.y) \
+                     + area_arc_unit(pt3.x, pt3.y, pt4.x, pt4.y)
         else:
-            if abs(xc2 - x2) < abs(xc1 - x2):
-                xc1, yc1, xc2, yc2 = xc2, yc2, xc1, yc1
-            area = area_triangle(x1, y1, xc3, yc3, xc1, yc1) \
-                 + area_triangle(x1, y1, xc1, yc1, xc2, yc2) \
-                 + area_triangle(x1, y1, xc2, yc2, xc4, yc4) \
-                 + area_arc_unit(xc1, yc1, xc3, yc3) \
-                 + area_arc_unit(xc2, yc2, xc4, yc4)
+            if fabs(pt2.x - x2) < fabs(pt1.x - x2):
+                pt1, pt2 = pt2, pt1
+            area = area_triangle(x1, y1, pt3.x, pt3.y, pt1.x, pt1.y) \
+                 + area_triangle(x1, y1, pt1.x, pt1.y, pt2.x, pt2.y) \
+                 + area_triangle(x1, y1, pt2.x, pt2.y, pt4.x, pt4.y) \
+                 + area_arc_unit(pt1.x, pt1.y, pt3.x, pt3.y) \
+                 + area_arc_unit(pt2.x, pt2.y, pt4.x, pt4.y)
     else:
-        xc1, yc1, xc2, yc2 = circle_segment(x1, y1, x2, y2)
-        xc3, yc3, xc4, yc4 = circle_segment(x2, y2, x3, y3)
-        xc5, yc5, xc6, yc6 = circle_segment(x3, y3, x1, y1)
-        if xc1 <= 1.:
-            xp, yp = 0.5 * (xc1 + xc2), 0.5 * (yc1 + yc2)
+        inter = circle_segment(x1, y1, x2, y2)
+        pt1 = inter.p1
+        pt2 = inter.p2
+        inter = circle_segment(x2, y2, x3, y3)
+        pt3 = inter.p1
+        pt4 = inter.p2
+        inter = circle_segment(x3, y3, x1, y1)
+        pt5 = inter.p1
+        pt6 = inter.p2
+        if pt1.x <= 1.:
+            xp, yp = 0.5 * (pt1.x + pt2.x), 0.5 * (pt1.y + pt2.y)
             area = overlap_area_triangle_unit_circle(x1, y1, x3, y3, xp, yp) \
                  + overlap_area_triangle_unit_circle(x2, y2, x3, y3, xp, yp)
-        elif xc3 <= 1.:
-            xp, yp = 0.5 * (xc3 + xc4), 0.5 * (yc3 + yc4)
+        elif pt3.x <= 1.:
+            xp, yp = 0.5 * (pt3.x + pt4.x), 0.5 * (pt3.y + pt4.y)
             area = overlap_area_triangle_unit_circle(x3, y3, x1, y1, xp, yp) \
                  + overlap_area_triangle_unit_circle(x2, y2, x1, y1, xp, yp)
-        elif xc5 <= 1.:
-            xp, yp = 0.5 * (xc5 + xc6), 0.5 * (yc5 + yc6)
+        elif pt5.x <= 1.:
+            xp, yp = 0.5 * (pt5.x + pt6.x), 0.5 * (pt5.y + pt6.y)
             area = overlap_area_triangle_unit_circle(x1, y1, x2, y2, xp, yp) \
                  + overlap_area_triangle_unit_circle(x3, y3, x2, y2, xp, yp)
         else:  # no intersections
