@@ -36,32 +36,31 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                             int nx, int ny, double rx, double ry, double theta,
                             int use_exact, int subpixels):
     """
-    elliptical_overlap_grid(x, y, dx, dy, theta)
+    elliptical_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, rx, ry,
+                             use_exact, subpixels)
 
-    Area of overlap between an ellipse and a pixelgrid.
-    Given a grid with walls set by x, y, find the fraction of overlap in
-    each with an ellipse with major and minor axes dx and dy
-    respectively, position angle theta, and centered at the origin.
-    The ellipse is centered on the 0,0 position.
+    Area of overlap between an ellipse and a pixel grid. The ellipse is
+    centered on the origin.
 
     Parameters
     ----------
     xmin, xmax, ymin, ymax : float
-        Extent of the grid in x and y direction.
+        Extent of the grid in the x and y direction.
     nx, ny : int
-        Dimension of grid.
+        Grid dimensions.
     rx : float
-        The semimajor axis.
+        The semimajor axis of the ellipse.
     ry : float
-        The semiminor axis.
+        The semiminor axis of the ellipse.
     theta : float
-        The position angle of the semimajor axis in radians (counterclockwise)
+        The position angle of the semimajor axis in radians (counterclockwise).
     use_exact : 0 or 1
-        If ``1`` calculates exact overlap, if ``0`` uses ``subpixel`` number
-        of subpixels to calculate the overlap.
+        If set to 1, calculates the exact overlap, while if set to 0, uses a
+        subpixel sampling method with ``subpixel`` subpixels in each direction.
     subpixels : int
-        Each pixel resampled by this factor in each dimension, thus each
-        pixel is devided into ``subpixels ** 2`` subpixels.
+        If ``use_exact`` is 0, each pixel is resampled by this factor in each
+        dimension. Thus, each pixel is devided into ``subpixels ** 2``
+        subpixels.
 
     Returns
     -------

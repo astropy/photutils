@@ -29,31 +29,31 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                             int nx, int ny, double width, double height, double theta,
                             int use_exact, int subpixels):
     """
-    rectangular_overlap_grid(x, y, dx, dy, theta)
+    rectangular_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, width, height,
+                             use_exact, subpixels)
 
-    Area of overlap between an rectangle and a pixel grid. Given a grid, find
-    the fraction of overlap in each with a rectangle with dimensions ``width``
-    and ``height``, position angle ``theta``. The rectangle is centered on the
-    origin.
+    Area of overlap between a rectangle and a pixel grid. The rectangle is
+    centered on the origin.
 
     Parameters
     ----------
     xmin, xmax, ymin, ymax : float
-        Extent of the grid in x and y direction.
+        Extent of the grid in the x and y direction.
     nx, ny : int
-        Dimension of grid.
+        Grid dimensions.
     width : float
         The width of the rectangle
     height : float
         The height of the rectangle
     theta : float
-        The position angle of the rectangle in radians (counterclockwise)
+        The position angle of the rectangle in radians (counterclockwise).
     use_exact : 0 or 1
-        If ``1`` calculates exact overlap, if ``0`` uses ``subpixel`` number
-        of subpixels to calculate the overlap.
+        If set to 1, calculates the exact overlap, while if set to 0, uses a
+        subpixel sampling method with ``subpixel`` subpixels in each direction.
     subpixels : int
-        Each pixel resampled by this factor in each dimension, thus each
-        pixel is devided into ``subpixels ** 2`` subpixels.
+        If ``use_exact`` is 0, each pixel is resampled by this factor in each
+        dimension. Thus, each pixel is devided into ``subpixels ** 2``
+        subpixels.
 
     Returns
     -------
