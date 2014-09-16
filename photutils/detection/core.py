@@ -164,7 +164,7 @@ def detect_sources(data, npixels, snr_threshold=5.0, threshold=None,
     if threshold is None:
         if background is None or error is None:
             bkgrd, median, bkgrd_rms = sigmaclip_stats(
-                data, image_mask=mask, mask_val=mask_val, sig=sigclip_sigma,
+                data, image_mask=mask, mask_val=mask_val, sigma=sigclip_sigma,
                 iters=sigclip_iters)
             bkgrd_image = np.broadcast_arrays(bkgrd, data)[0]
             rms_image = np.broadcast_arrays(bkgrd_rms, data)[0]
