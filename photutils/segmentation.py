@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import copy
 import numpy as np
 from astropy.table import Table, Column
-from .extern.cached_property import _cached_property
+from astropy.utils import lazyproperty
 
 
 __all__ = ['SegmentProperties', 'segment_properties', 'segment_photometry']
@@ -103,14 +103,14 @@ class SegmentProperties(object):
     def __getitem__(self, key):
         return getattr(self, key, None)
 
-    @_cached_property
+    @lazyproperty
     def _in_segment(self):
         """
         _in_segment is `True` for pixels in the labeled source segment.
         """
         return self._segment_image[self._slice] == self.label
 
-    @_cached_property
+    @lazyproperty
     def _local_mask(self):
         """
         _local_mask is `True` for regions outside of the labeled source
@@ -121,14 +121,14 @@ class SegmentProperties(object):
         else:
             return np.logical_or(~self._in_segment, self._mask[self._slice])
 
-    @_cached_property
+    @lazyproperty
     def cutout_image(self):
         """
         A 2D cutout image of the source segment.
         """
         return self._inputimage[self._slice]
 
-    @_cached_property
+    @lazyproperty
     def isolated_cutout_image(self):
         """
         A 2D cutout image of the source segment where pixels outside of
@@ -136,7 +136,7 @@ class SegmentProperties(object):
         """
         return np.where(self._in_segment, self.cutout_image, np.nan)
 
-    @_cached_property
+    @lazyproperty
     def cutout_image_maskedarray(self):
         """
         A 2D cutout image as a masked array, where the mask is `True`
@@ -145,7 +145,7 @@ class SegmentProperties(object):
         """
         return np.ma.masked_array(self.cutout_image, mask=self._local_mask)
 
-    @_cached_property
+    @lazyproperty
     def _cutout_image_maskzeroed(self):
         """
         A 2D cutout image where pixels outside of the source segment and
@@ -153,7 +153,7 @@ class SegmentProperties(object):
         """
         return self.cutout_image * ~self._local_mask
 
-    @_cached_property
+    @lazyproperty
     def _cutout_image_maskzeroed_double(self):
         """
         Double-precision version of ``_cutout_image_maskzeroed``.
@@ -161,7 +161,7 @@ class SegmentProperties(object):
         """
         return self._cutout_image_maskzeroed.astype(np.double)
 
-    @_cached_property
+    @lazyproperty
     def coords(self):
         """
         A list of the ``(y, x)`` pixel coordinates of the source
@@ -173,7 +173,7 @@ class SegmentProperties(object):
         yy, xx = np.nonzero(self.cutout_image_maskedarray)
         return (yy + self._slice[0].start, xx + self._slice[1].start)
 
-    @_cached_property
+    @lazyproperty
     def values(self):
         """
         A list of the pixel values within the source segment.
@@ -183,13 +183,13 @@ class SegmentProperties(object):
         """
         return self.cutout_image[~self._local_mask]
 
-    @_cached_property
+    @lazyproperty
     def moments(self):
         """Spatial moments up to 3rd order of the source segment."""
         from skimage.measure import moments
         return moments(self._cutout_image_maskzeroed_double, 3)
 
-    @_cached_property
+    @lazyproperty
     def moments_central(self):
         """
         Central moments (translation invariant) of the source segment up
@@ -200,7 +200,7 @@ class SegmentProperties(object):
         return moments_central(self._cutout_image_maskzeroed_double,
                                ycentroid, xcentroid, 3)
 
-    @_cached_property
+    @lazyproperty
     def id(self):
         """
         The source identification number corresponding to the object
@@ -208,7 +208,7 @@ class SegmentProperties(object):
         """
         return self.label
 
-    @_cached_property
+    @lazyproperty
     def local_centroid(self):
         """
         The ``(y, x)`` coordinate, relative to the `cutout_image`, of
@@ -220,7 +220,7 @@ class SegmentProperties(object):
         xcentroid = m[1, 0] / m[0, 0]
         return ycentroid, xcentroid
 
-    @_cached_property
+    @lazyproperty
     def centroid(self):
         """
         The ``(y, x)`` coordinate of the centroid within the source
@@ -229,21 +229,21 @@ class SegmentProperties(object):
         ycen, xcen = self.local_centroid
         return ycen + self._slice[0].start, xcen + self._slice[1].start
 
-    @_cached_property
+    @lazyproperty
     def xcentroid(self):
         """
         The ``x`` coordinate of the centroid within the source segment.
         """
         return self.centroid[1]
 
-    @_cached_property
+    @lazyproperty
     def ycentroid(self):
         """
         The ``y`` coordinate of the centroid within the source segment.
         """
         return self.centroid[0]
 
-    @_cached_property
+    @lazyproperty
     def bbox(self):
         """
         The bounding box ``(ymin, xmin, ymax, xmax)`` of the region
@@ -253,7 +253,7 @@ class SegmentProperties(object):
         return (self._slice[0].start, self._slice[1].start,
                 self._slice[0].stop - 1, self._slice[1].stop - 1)
 
-    @_cached_property
+    @lazyproperty
     def xmin(self):
         """
         The left ``x`` pixel location of the bounding box of the source
@@ -261,7 +261,7 @@ class SegmentProperties(object):
         """
         return self.bbox[1]
 
-    @_cached_property
+    @lazyproperty
     def xmax(self):
         """
         The right ``x`` pixel location of the bounding box of the source
@@ -269,7 +269,7 @@ class SegmentProperties(object):
         """
         return self.bbox[3]
 
-    @_cached_property
+    @lazyproperty
     def ymin(self):
         """
         The bottom ``y`` pixel location of the bounding box of the
@@ -277,7 +277,7 @@ class SegmentProperties(object):
         """
         return self.bbox[0]
 
-    @_cached_property
+    @lazyproperty
     def ymax(self):
         """
         The top ``y`` pixel location of the bounding box of the
@@ -285,17 +285,17 @@ class SegmentProperties(object):
         """
         return self.bbox[2]
 
-    @_cached_property
+    @lazyproperty
     def min_value(self):
         """The minimum pixel value within the source segment."""
         return np.min(self.values)
 
-    @_cached_property
+    @lazyproperty
     def max_value(self):
         """The maximum pixel value within the source segment."""
         return np.max(self.values)
 
-    @_cached_property
+    @lazyproperty
     def minval_local_pos(self):
         """
         The ``(y, x)`` coordinate, relative to the `cutout_image`, of
@@ -303,7 +303,7 @@ class SegmentProperties(object):
         """
         return np.argwhere(self.cutout_image_maskedarray == self.min_value)[0]
 
-    @_cached_property
+    @lazyproperty
     def maxval_local_pos(self):
         """
         The ``(y, x)`` coordinate, relative to the `cutout_image`, of
@@ -311,44 +311,44 @@ class SegmentProperties(object):
         """
         return np.argwhere(self.cutout_image_maskedarray == self.max_value)[0]
 
-    @_cached_property
+    @lazyproperty
     def minval_pos(self):
         """The ``(y, x)`` coordinate of the minimum pixel value."""
         yp, xp = self.minval_local_pos
         return yp + self._slice[0].start, xp + self._slice[1].start
 
-    @_cached_property
+    @lazyproperty
     def maxval_pos(self):
         """The ``(y, x)`` coordinate of the maximum pixel value."""
         yp, xp = self.maxval_local_pos
         return yp + self._slice[0].start, xp + self._slice[1].start
 
-    @_cached_property
+    @lazyproperty
     def minval_xpos(self):
         """The ``x`` coordinate of the minimum pixel value."""
         return self.minval_pos[1]
 
-    @_cached_property
+    @lazyproperty
     def minval_ypos(self):
         """The ``y`` coordinate of the minimum pixel value."""
         return self.minval_pos[0]
 
-    @_cached_property
+    @lazyproperty
     def maxval_xpos(self):
         """The ``x`` coordinate of the maximum pixel value."""
         return self.maxval_pos[1]
 
-    @_cached_property
+    @lazyproperty
     def maxval_ypos(self):
         """The ``y`` coordinate of the maximum pixel value."""
         return self.maxval_pos[0]
 
-    @_cached_property
+    @lazyproperty
     def area(self):
         """The area of the source segment in units of pixels**2."""
         return len(self.values)
 
-    @_cached_property
+    @lazyproperty
     def equivalent_radius(self):
         """
         The radius of a circle with the same `area` as the source
@@ -356,7 +356,7 @@ class SegmentProperties(object):
         """
         return np.sqrt(self.area / np.pi)
 
-    @_cached_property
+    @lazyproperty
     def perimeter(self):
         """
         The perimeter of the source segment, approximated using a line
@@ -365,7 +365,7 @@ class SegmentProperties(object):
         from skimage.measure import perimeter
         return perimeter(self._in_segment, 4)
 
-    @_cached_property
+    @lazyproperty
     def inertia_tensor(self):
         """
         Inertia tensor of the source segment for the rotation around its
@@ -377,7 +377,7 @@ class SegmentProperties(object):
         c = mu[0, 2]
         return np.array([[a, b], [b, c]])
 
-    @_cached_property
+    @lazyproperty
     def covariance(self):
         """
         The covariance matrix of the ellipse that has the same
@@ -387,7 +387,7 @@ class SegmentProperties(object):
         m = mu / mu[0, 0]
         return np.array([[m[2, 0], m[1, 1]], [m[1, 1], m[0, 2]]])
 
-    @_cached_property
+    @lazyproperty
     def covariance_eigvals(self):
         """
         The two eigenvalues of the `covariance` matrix in decreasing
@@ -396,7 +396,7 @@ class SegmentProperties(object):
         eigvals = np.linalg.eigvals(self.covariance)
         return np.max(eigvals), np.min(eigvals)
 
-    @_cached_property
+    @lazyproperty
     def semimajor_axis_length(self):
         """
         The length of the semimajor axis of the ellipse that has the
@@ -405,7 +405,7 @@ class SegmentProperties(object):
         # this matches SExtractor's A parameter
         return np.sqrt(self.covariance_eigvals[0])
 
-    @_cached_property
+    @lazyproperty
     def semiminor_axis_length(self):
         """
         The length of the semiminor axis of the ellipse that has the
@@ -414,7 +414,7 @@ class SegmentProperties(object):
         # this matches SExtractor's B parameter
         return np.sqrt(self.covariance_eigvals[1])
 
-    @_cached_property
+    @lazyproperty
     def eccentricity(self):
         """
         The eccentricity of the ellipse that has the same second-order
@@ -433,7 +433,7 @@ class SegmentProperties(object):
             return 0.
         return np.sqrt(1. - (l2 / l1))
 
-    @_cached_property
+    @lazyproperty
     def orientation(self):
         """
         The angle in radians between the ``x`` axis and the major axis
@@ -444,7 +444,7 @@ class SegmentProperties(object):
         a, b, b, c = self.covariance.flat
         return 0.5 * np.arctan2(2. * b, (a - c))
 
-    @_cached_property
+    @lazyproperty
     def background_centroid(self):
         """
         The value of the background at the position of the source
@@ -455,7 +455,7 @@ class SegmentProperties(object):
         else:
             return self._background[self.ycentroid, self.xcentroid]
 
-    @_cached_property
+    @lazyproperty
     def se_elongation(self):
         """
         SExtractor's elongation parameter.
@@ -467,7 +467,7 @@ class SegmentProperties(object):
         """
         return self.semimajor_axis_length / self.semiminor_axis_length
 
-    @_cached_property
+    @lazyproperty
     def se_ellipticity(self):
         """
         SExtractor's ellipticity parameter.
@@ -479,7 +479,7 @@ class SegmentProperties(object):
         """
         return 1.0 - (self.semiminor_axis_length / self.semimajor_axis_length)
 
-    @_cached_property
+    @lazyproperty
     def se_x2(self):
         """
         SExtractor's X2 parameter, in units of pixel**2, which
@@ -488,7 +488,7 @@ class SegmentProperties(object):
         """
         return self.covariance[0, 0]
 
-    @_cached_property
+    @lazyproperty
     def se_y2(self):
         """
         SExtractor's Y2 parameter, in units of pixel**2, which
@@ -497,7 +497,7 @@ class SegmentProperties(object):
         """
         return self.covariance[1, 1]
 
-    @_cached_property
+    @lazyproperty
     def se_xy(self):
         """
         SExtractor's XY parameter, in units of pixel**2, which
@@ -506,7 +506,7 @@ class SegmentProperties(object):
         """
         return self.covariance[0, 1]
 
-    @_cached_property
+    @lazyproperty
     def se_cxx(self):
         """
         SExtractor's CXX ellipse parameter in units of pixel**(-2).
@@ -514,7 +514,7 @@ class SegmentProperties(object):
         return ((np.cos(self.orientation) / self.semimajor_axis_length)**2 +
                 (np.sin(self.orientation) / self.semiminor_axis_length)**2)
 
-    @_cached_property
+    @lazyproperty
     def se_cyy(self):
         """
         SExtractor's CYY ellipse parameter in units of pixel**(-2).
@@ -522,7 +522,7 @@ class SegmentProperties(object):
         return ((np.sin(self.orientation) / self.semimajor_axis_length)**2 +
                 (np.cos(self.orientation) / self.semiminor_axis_length)**2)
 
-    @_cached_property
+    @lazyproperty
     def se_cxy(self):
         """
         SExtractor's CXY ellipse parameter in units of pixel**(-2).
