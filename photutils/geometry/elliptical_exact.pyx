@@ -30,8 +30,7 @@ cimport cython
 # NOTE: Here we need to make sure we use cimport to import the C functions from
 # core (since these were defined with cdef). This also requires the core.pxd
 # file to exist with the function signatures.
-from .core cimport distance, area_triangle
-from .core import overlap_area_triangle_unit_circle
+from .core cimport distance, area_triangle, overlap_area_triangle_unit_circle
 
 def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                             int nx, int ny, double rx, double ry, double theta,
