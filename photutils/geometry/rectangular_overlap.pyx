@@ -22,8 +22,6 @@ ctypedef np.float64_t DTYPE_t
 
 cimport cython
 
-from .core import distance, area_triangle, overlap_area_triangle_unit_circle
-
 
 def rectangular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                             int nx, int ny, double width, double height, double theta,
