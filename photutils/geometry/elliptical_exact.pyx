@@ -117,10 +117,10 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
 # they only operate on a single pixel.
 
 
-cdef elliptical_overlap_single_subpixel(double x0, double y0,
-                                       double x1, double y1,
-                                       double rx, double ry,
-                                       double theta, int subpixels):
+cdef double elliptical_overlap_single_subpixel(double x0, double y0,
+                                               double x1, double y1,
+                                               double rx, double ry,
+                                               double theta, int subpixels):
     """
     Return the fraction of overlap between a ellipse and a single pixel with
     given extent, using a sub-pixel sampling method.
@@ -158,10 +158,10 @@ cdef elliptical_overlap_single_subpixel(double x0, double y0,
     return frac / (subpixels * subpixels)
 
 
-cdef elliptical_overlap_single_exact(double xmin, double ymin,
-                                    double xmax, double ymax,
-                                    double rx, double ry,
-                                    double theta):
+cdef double elliptical_overlap_single_exact(double xmin, double ymin,
+                                            double xmax, double ymax,
+                                            double rx, double ry,
+                                            double theta):
     """
     Given a rectangle defined by (xmin, ymin, xmax, ymax) and an ellipse
     with major and minor axes rx and ry respectively, position angle theta,
