@@ -187,7 +187,6 @@ cdef point circle_segment_single2(double x1, double y1, double x2, double y2):
     closest to (x2, y2) is chosen.
     """
 
-    cdef double xi1, yi1, xi2, yi2
     cdef double dx1, dy1, dx2, dy2
     cdef intersections inter
     cdef point pt1, pt2, pt
