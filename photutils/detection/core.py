@@ -149,8 +149,9 @@ def detect_sources(data, npixels, snr_threshold=5.0, threshold=None,
 
     from scipy import ndimage
     bkgrd, median, bkgrd_rms = sigmaclip_stats(data, image_mask=mask,
-                                               mask_val=mask_val, sigma=sig,
-                                               iters=iters)
+                                               mask_val=mask_val,
+                                               sigma=sigclip_sigma,
+                                               iters=sigclip_iters)
     if (npixels <= 0) or (int(npixels) != npixels):
         raise ValueError('npixels must be a positive integer, got '
                          '"{0}"'.format(npixels))
@@ -162,7 +163,7 @@ def detect_sources(data, npixels, snr_threshold=5.0, threshold=None,
 
     if threshold is None:
         if background is None or error is None:
-            bkgrd, median, bkgrd_rms = img_stats(
+            bkgrd, median, bkgrd_rms = sigmaclip_stats(
                 data, image_mask=mask, mask_val=mask_val, sig=sigclip_sigma,
                 iters=sigclip_iters)
             bkgrd_image = np.broadcast_arrays(bkgrd, data)[0]
