@@ -23,6 +23,14 @@ ctypedef np.float64_t DTYPE_t
 
 cimport cython
 
+ctypedef struct intersections:
+
+   double xi1
+   double yi1
+   double xi2
+   double yi2
+
+
 # NOTE: The following two functions use cdef because they are not intended to be
 # called from the Python code. Using def makes them callable from outside, but
 # also slower. Some functions currently return multiple values, and for those we
@@ -32,20 +40,20 @@ cimport cython
 cdef double distance(double x1, double y1, double x2, double y2):
     """
     Distance between two points in two dimensions
-    
+
     Parameters
     ----------
     x1, y1 : float
         The coordinates of the first point
     x2, y2 : float
         The coordinates of the second point
-        
+
     Returns
     -------
     d : float
         The Euclidean distance between the two points
     """
-    
+
     return sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
 
@@ -99,21 +107,24 @@ cdef double in_triangle(double x, double y, double x1, double y1, double x2, dou
     return c % 2 == 1
 
 
-def circle_line(double x1, double y1, double x2, double y2):
+cdef circle_line(double x1, double y1, double x2, double y2):
     """Intersection of a line defined by two points with a unit circle"""
 
     cdef double a, b, delta, dx, dy
-    cdef double xi1, yi1, xi2, yi2
     cdef double tolerance = 1.e-10
+    cdef intersections inter
 
     dx = x2 - x1
     dy = y2 - y1
 
     if fabs(dx) < tolerance and fabs(dy) < tolerance:
 
-        return 2., 2., 2., 2.
+        inter.xi1 = 2.
+        inter.yi1 = 2.
+        inter.xi2 = 2.
+        inter.yi2 = 2.
 
-    if fabs(dx) > fabs(dy):
+    elif fabs(dx) > fabs(dy):
 
         # Find the slope and intercept of the line
         a = dy / dx
@@ -123,14 +134,20 @@ def circle_line(double x1, double y1, double x2, double y2):
         delta = 1. + a * a - b * b
 
         if delta > 0.:  # solutions exist
+
             delta = sqrt(delta)
-            xi1 = (- a * b - delta) / (1. + a * a)
-            yi1 = a * xi1 + b
-            xi2 = (- a * b + delta) / (1. + a * a)
-            yi2 = a * xi2 + b
-            return xi1, yi1, xi2, yi2
+
+            inter.xi1 = (- a * b - delta) / (1. + a * a)
+            inter.yi1 = a * inter.xi1 + b
+            inter.xi2 = (- a * b + delta) / (1. + a * a)
+            inter.yi2 = a * inter.xi2 + b
+
         else:  # no solution, return values > 1
-            return 2., 2., 2., 2.
+
+            inter.xi1 = 2.
+            inter.yi1 = 2.
+            inter.xi2 = 2.
+            inter.yi2 = 2.
 
     else:
 
@@ -142,15 +159,22 @@ def circle_line(double x1, double y1, double x2, double y2):
         delta = 1. + a * a - b * b
 
         if delta > 0.:  # solutions exist
-            delta = sqrt(delta)
-            yi1 = (- a * b - delta) / (1. + a * a)
-            xi1 = a * yi1 + b
-            yi2 = (- a * b + delta) / (1. + a * a)
-            xi2 = a * yi2 + b
-            return xi1, yi1, xi2, yi2
-        else:  # no solution, return values > 1
-            return 2., 2., 2., 2.
 
+            delta = sqrt(delta)
+
+            inter.yi1 = (- a * b - delta) / (1. + a * a)
+            inter.xi1 = a * inter.yi1 + b
+            inter.yi2 = (- a * b + delta) / (1. + a * a)
+            inter.xi2 = a * inter.yi2 + b
+
+        else:  # no solution, return values > 1
+
+            inter.xi1 = 2.
+            inter.yi1 = 2.
+            inter.xi2 = 2.
+            inter.yi2 = 2.
+
+    return inter
 
 def circle_segment_single2(double x1, double y1, double x2, double y2):
     """
@@ -160,14 +184,20 @@ def circle_segment_single2(double x1, double y1, double x2, double y2):
 
     cdef double xi1, yi1, xi2, yi2
     cdef double dx1, dy1, dx2, dy2
+    cdef intersections inter
 
-    xi1, yi1, xi2, yi2 = circle_line(x1, y1, x2, y2)
+    inter = circle_line(x1, y1, x2, y2)
+
+    xi1 = inter.xi1
+    yi1 = inter.yi1
+    xi2 = inter.xi2
+    yi2 = inter.yi2
 
     # Can be optimized, but just checking for correctness right now
-    dx1 = abs(xi1 - x2)
-    dy1 = abs(yi1 - y2)
-    dx2 = abs(xi2 - x2)
-    dy2 = abs(yi2 - y2)
+    dx1 = fabs(xi1 - x2)
+    dy1 = fabs(yi1 - y2)
+    dx2 = fabs(xi2 - x2)
+    dy2 = fabs(yi2 - y2)
 
     if dx1 > dy1:  # compare based on x-axis
         if dx1 > dx2:
@@ -188,8 +218,14 @@ def circle_segment(double x1, double y1, double x2, double y2):
     """
 
     cdef double xi1, yi1, xi2, yi2
+    cdef intersections inter
 
-    xi1, yi1, xi2, yi2 = circle_line(x1, y1, x2, y2)
+    inter = circle_line(x1, y1, x2, y2)
+
+    xi1 = inter.xi1
+    yi1 = inter.yi1
+    xi2 = inter.xi2
+    yi2 = inter.yi2
 
     if (xi1 > x1 and xi1 > x2) or (xi1 < x1 and xi1 < x2) or (yi1 > y1 and yi1 > y2) or (yi1 < y1 and yi1 < y2):
         xi1, yi1 = 2., 2.
