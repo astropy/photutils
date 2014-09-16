@@ -29,6 +29,32 @@ __all__ = ['Aperture', 'SkyAperture', 'PixelAperture',
            'aperture_photometry']
 
 
+def _sanitize_pixel_positions(positions):
+
+    if isinstance(positions, u.Quantity):
+        if positions.unit is u.pixel:
+            positions = positions.value
+        else:
+            raise u.UnitsError("positions should be in pixel units")
+
+    if isinstance(positions, u.Quantity):
+        positions = positions.value
+    elif isinstance(positions, (list, tuple, np.ndarray)):
+        positions = np.atleast_2d(positions)
+    elif isinstance(positions, zip):
+        # This is needed for zip to work seamlessly in Python 3
+        positions = np.atleast_2d(list(positions))
+    else:
+        raise TypeError("List or array of (x,y) pixel coordinates is "
+                        "expected got '{0}'.".format(positions))
+
+    if positions.ndim > 2:
+        raise ValueError('{0}-d position array not supported. Only 2-d '
+                         'arrays supported.'.format(positions.ndim))
+
+    return positions
+
+
 def _make_annulus_path(patch_inner, patch_outer):
     import matplotlib.path as mpath
     verts_inner = patch_inner.get_verts()
@@ -211,19 +237,7 @@ class CircularAperture(PixelAperture):
         if r < 0:
             raise ValueError('r must be non-negative')
 
-        if isinstance(positions, u.Quantity):
-            if positions.unit is u.pixel:
-                positions = positions.value
-            else:
-                raise u.UnitsError("positions should be in pixel units")
-
-        self.positions = np.asarray(positions)
-
-        if self.positions.ndim == 1 and len(self.positions) == 2:
-            self.positions = np.atleast_2d(positions)
-        elif self.positions.ndim != 2 or self.positions.shape[1] != 2:
-            raise TypeError("Expected (x, y) tuple, a list of (x, y) "
-                            "tuples, or an Nx2 array, got {0}".format(positions))
+        self.positions = _sanitize_pixel_positions(positions)
 
     def area(self):
         return math.pi * self.r ** 2
@@ -347,17 +361,7 @@ class CircularAnnulus(PixelAperture):
         if r_in < 0:
             raise ValueError('r_in must be non-negative')
 
-        if isinstance(positions, u.Quantity):
-            positions = positions.value
-        if isinstance(positions, (list, tuple, np.ndarray)):
-            self.positions = np.atleast_2d(positions)
-        else:
-            raise TypeError("List or array of (x,y) pixel coordinates is "
-                            "expected got '{0}'.".format(positions))
-
-        if self.positions.ndim > 2:
-            raise ValueError('{0}-d position array not supported. Only 2-d '
-                             'arrays supported.'.format(self.positions.ndim))
+        self.positions = _sanitize_pixel_positions(positions)
 
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
@@ -501,17 +505,7 @@ class EllipticalAperture(PixelAperture):
         if a < 0 or b < 0:
             raise ValueError("'a' and 'b' must be non-negative.")
 
-        if isinstance(positions, u.Quantity):
-            positions = positions.value
-        if isinstance(positions, (list, tuple, np.ndarray)):
-            self.positions = np.atleast_2d(positions)
-        else:
-            raise TypeError("List or array of (x,y) pixel coordinates is "
-                            "expected got '{0}'.".format(positions))
-
-        if self.positions.ndim > 2:
-            raise ValueError('{0}-d position array not supported. Only 2-d '
-                             'arrays supported.'.format(self.positions.ndim))
+        self.positions = _sanitize_pixel_positions(positions)
 
     def area(self):
         return math.pi * self.a * self.b
@@ -671,17 +665,7 @@ class EllipticalAnnulus(PixelAperture):
 
         self.b_in = a_in * b_out / a_out
 
-        if isinstance(positions, u.Quantity):
-            positions = positions.value
-        if isinstance(positions, (list, tuple, np.ndarray)):
-            self.positions = np.atleast_2d(positions)
-        else:
-            raise TypeError("List or array of (x,y) pixel coordinates is "
-                            "expected got '{0}'.".format(positions))
-
-        if self.positions.ndim > 2:
-            raise ValueError('{0}-d position array not supported. Only 2-d '
-                             'arrays supported.'.format(self.positions.ndim))
+        self.positions = _sanitize_pixel_positions(positions)
 
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
@@ -764,17 +748,7 @@ class RectangularAperture(PixelAperture):
         if w < 0 or h < 0:
             raise ValueError("'w' and 'h' must be nonnegative.")
 
-        if isinstance(positions, u.Quantity):
-            positions = positions.value
-        if isinstance(positions, (list, tuple, np.ndarray)):
-            self.positions = np.atleast_2d(positions)
-        else:
-            raise TypeError("List or array of (x,y) pixel coordinates is "
-                            "expected got '{0}'.".format(positions))
-
-        if self.positions.ndim > 2:
-            raise ValueError('{0}-d position array not supported. Only 2-d '
-                             'arrays supported.'.format(self.positions.ndim))
+        self.positions = _sanitize_pixel_positions(positions)
 
     def area(self):
         return self.w * self.h
@@ -879,17 +853,7 @@ class RectangularAnnulus(PixelAperture):
 
         self.h_in = w_in * h_out / w_out
 
-        if isinstance(positions, u.Quantity):
-            positions = positions.value
-        if isinstance(positions, (list, tuple, np.ndarray)):
-            self.positions = np.atleast_2d(positions)
-        else:
-            raise TypeError("List or array of (x,y) pixel coordinates is "
-                            "expected got '{0}'.".format(positions))
-
-        if self.positions.ndim > 2:
-            raise ValueError('{0}-d position array not supported. Only 2-d '
-                             'arrays supported.'.format(self.positions.ndim))
+        self.positions = _sanitize_pixel_positions(positions)
 
     def area(self):
         """
