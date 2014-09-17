@@ -146,20 +146,14 @@ class SegmentProperties(object):
         return np.ma.masked_array(self.cutout_image, mask=self._local_mask)
 
     @lazyproperty
-    def _cutout_image_maskzeroed(self):
-        """
-        A 2D cutout image where pixels outside of the source segment and
-        "excluded" masked pixels are set to zero.
-        """
-        return self.cutout_image * ~self._local_mask
-
-    @lazyproperty
     def _cutout_image_maskzeroed_double(self):
         """
-        Double-precision version of ``_cutout_image_maskzeroed``.
-        Required for scikit-image's Cython moment functions.
+        A 2D cutout image where pixels outside of the source segment and
+        "excluded" masked pixels are set to zero.  The cutout image is
+        double precision, which is required for scikit-image's Cython
+        moment functions.
         """
-        return self._cutout_image_maskzeroed.astype(np.double)
+        return (self.cutout_image * ~self._local_mask).astype(np.float64)
 
     @lazyproperty
     def coords(self):
