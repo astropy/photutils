@@ -18,12 +18,10 @@ class SegmentProperties(object):
     segments.
     """
 
-    def __init__(self, data, segment_image, label, labelslice=None,
+    def __init__(self, data, segment_image, label, label_slice=None,
                  error=None, gain=None, mask=None, mask_method='exclude',
                  background=None):
         """
-        Construct a `SegmentProperties` object.
-
         Parameters
         ----------
         data : array_like
@@ -39,10 +37,10 @@ class SegmentProperties(object):
             The label number of a source segment in ``segment_image``
             for which to calculate properties.
 
-        labelslice : 2-tuple of slice objects, optional
+        label_slice : 2-tuple of slice objects, optional
             A ``(y_slice, x_slice)`` tuple of slice objects defining the
             minimal box enclosing the source segment.  If `None` (the
-            default), then ``labelslice`` will be calculated.
+            default), then ``label_slice`` will be calculated.
 
         error : array_like, optional
             The 2D array of the 1-sigma errors of the input ``data``.
@@ -113,11 +111,11 @@ class SegmentProperties(object):
         self._background = background
 
         self.label = label
-        if labelslice is not None:
-            self._slice = labelslice
+        if label_slice is not None:
+            self._slice = label_slice
         else:
-            labelslices = ndimage.find_objects(segment_image)
-            self._slice = labelslices[label - 1]
+            label_slices = ndimage.find_objects(segment_image)
+            self._slice = label_slices[label - 1]
             if self._slice is None:
                 raise ValueError('label "{0}" is not in the input '
                                  'segment_image'.format(label))
@@ -603,11 +601,10 @@ class SegmentProperties(object):
 
 
 def segment_properties(data, segment_image, error=None, gain=None, mask=None,
-                       mask_method='exclude', background=None, labels=None,
-                       return_table=False):
+                       mask_method='exclude', background=None, labels=None):
     """
-    Calculate morphological properties of sources defined by a labeled
-    segmentation image.
+    Calculate photometry and morphological properties of sources defined
+    by a labeled segmentation image.
 
     Parameters
     ----------
@@ -618,6 +615,27 @@ def segment_properties(data, segment_image, error=None, gain=None, mask=None,
         A 2D segmentation image, with the same shape as ``data``, where
         sources are marked by different positive integer values.  A
         value of zero is reserved for the background.
+
+    error : array_like, optional
+        The 2D array of the 1-sigma errors of the input ``data``.  If
+        ``gain`` is input, then ``error`` should include all sources of
+        "background" error but *exclude* the Poission error of the
+        sources.  If ``gain`` is `None`, then the ``error_image`` is
+        assumed to include *all* sources of error, including the
+        Poission error of the sources.  ``error`` must have the same
+        shape as ``data``.
+
+    gain : float or array-like, optional
+        Ratio of counts (e.g., electrons or photons) to the units of
+        ``data`` used to calculate the Poisson error of the sources.  If
+        ``gain`` is input, then ``error`` should include all sources of
+        "background" error but *exclude* the Poission error of the
+        sources.  If ``gain`` is `None`, then the ``error`` is assumed
+        to include *all* sources of error, including the Poission error
+        of the sources.  For example, if your input ``data`` is in units
+        of ADU, then ``gain`` should represent electrons/ADU.  If your
+        input ``data`` is in units of electrons/s then ``gain`` should
+        be the exposure time.
 
     mask : array_like, bool, optional
         A boolean mask, with the same shape as ``data``, where a `True`
@@ -645,97 +663,19 @@ def segment_properties(data, segment_image, error=None, gain=None, mask=None,
         default).
 
     labels : int or list of ints
-        Subset of ``segment_image`` labels for which to calculate
-        morphological properties.  If `None`, then morphological
-        properties will be calculated for all source segments (the
-        default).
-
-    return_table : bool, optional
-        If `True` then return an `astropy.table.Table`, otherwise return
-        a list of `SegmentProperties` objects.
+        Subset of ``segment_image`` labels for which to calculate the
+        properties.  If `None`, then the properties will be calculated
+        for all source segments (the default).
 
     Returns
     -------
-    output : `astropy.table.Table` or list of `SegmentProperties` objects
-
-        * If ``return_table = True``: `astropy.table.Table`
-              A table of the properties of the segmented sources
-              containing the columns listed below.
-
-        * If ``return_table = False``: list
-              A list of `SegmentProperties` objects, one for each source
-              segment.  The properties can be accessed using the
-              attributes listed below.
+    output : list of `SegmentProperties` objects
+        A list of `SegmentProperties` objects, one for each source
+        segment.  The properties can be accessed as attributes or keys.
 
     See Also
     --------
-    detect_sources, segment_photometry
-
-    Notes
-    -----
-    The following properties can be accessed either as columns in an
-    `astropy.table.Table` or as attributes or keys of property objects:
-
-    **id** : int
-        The source identification number corresponding to the object
-        label in the ``segment_image``.
-
-    **xcentroid**, **ycentroid** : float
-        The ``x`` and ``y`` coordinates of the centroid within the
-        source segment.
-
-    **xmin**, **xmax**, **ymin**, **ymax** : float
-        The pixel locations defining the bounding box of the source
-        segment.
-
-    **min_value**, **max_value** : float
-        The minimum and maximum pixel values within the source segment.
-
-    **minval_xpos**, **minval_ypos** : float
-        The ``x`` and ``y`` coordinates of the minimum pixel value.
-
-    **maxval_xpos**, **maxval_ypos** : float
-        The ``x`` and ``y`` coordinates of the maximum pixel value.
-
-    **area** : float
-        The area of the source segment in units of pixels**2.
-
-    **equivalent_radius** : float
-        The radius of a circle with the same ``area`` as the source
-        segment.
-
-    **perimeter** : float
-        The perimeter of the source segment, approximated using a line
-        through the centers of the border pixels using a 4-connectivity.
-
-    **semimajor_axis_length** : float
-        The length of the semimajor axis of the ellipse that has the
-        same second-order central moments as the region.
-
-    **semiminor_axis_length** : float
-        The length of the semiminor axis of the ellipse that has the
-        same second-order central moments as the region.
-
-    **eccentricity** : float
-        The eccentricity of the ellipse that has the same second-order
-        moments as the source segment.  The eccentricity is the fraction
-        of the distance along the semimajor axis at which the focus
-        lies.
-
-        .. math:: e = \\sqrt{1 - \\frac{b^2}{a^2}}
-
-        where :math:`a` and :math:`b` are the lengths of the semimajor
-        and semiminor axes, respectively.
-
-    **orientation** : float
-        The angle in radians between the ``x`` axis and the major axis
-        of the ellipse that has the same second-order moments as the
-        source segment.  The angle increases in the counter-clockwise
-        direction.
-
-    See `SegmentProperties` for the additional properties that can be
-    accessed as attributes or keys, returned when ``return_table =
-    False``.
+    detect_sources
 
     Examples
     --------
@@ -751,36 +691,28 @@ def segment_properties(data, segment_image, error=None, gain=None, mask=None,
     Print some properties of the first object (labeled with ``1`` in the
     segmentation image):
 
-    >>> props[0].id    # id corresponds to label number
+    >>> props[0].id    # id corresponds to segment label number
     1
-    >>> props[0].centroid
+    >>> props[0].centroid    # doctest: +FLOAT_CMP
     (0.80000000000000004, 0.20000000000000001)
-    >>> props[0].area
+    >>> props[0].segment_sum    # doctest: +FLOAT_CMP
+    5.0
+    >>> props[0].area    # doctest: +FLOAT_CMP
     3
-    >>> props[0].max_value
+    >>> props[0].max_value    # doctest: +FLOAT_CMP
     4.0
 
-    Print some properties of the second object (labelel with ``2`` in
+    Print some properties of the second object (labeled with ``2`` in
     the segmentation image):
 
-    >>> props[1].id    # id corresponds to label number
+    >>> props[1].id    # id corresponds to segment label number
     2
-    >>> props[1].centroid
+    >>> props[1].centroid    # doctest: +FLOAT_CMP
     (2.3636363636363633, 2.0909090909090908)
-    >>> props[1].area
-    5
-
-    Use ``return_table = True`` to return the properties as a
-    `~astropy.table.Table`:
-
-    >>> t = segment_properties(image, segm_image, return_table=True)
-    >>> print(t)
-     id   xcentroid     ycentroid   ...  eccentricity    orientation
-    --- ------------- ------------- ... -------------- ---------------
-      1           0.2           0.8 ...            1.0 -0.785398163397
-      2 2.09090909091 2.36363636364 ... 0.930987270026 -0.741759306923
-    >>> t[0]['max_value']
-    4.0
+    >>> props[1].perimeter    # doctest: +FLOAT_CMP
+    5.4142135623730949
+    >>> props[1].orientation    # doctest: +FLOAT_CMP
+    -0.74175930692271763
     """
 
     from scipy import ndimage
@@ -793,35 +725,19 @@ def segment_properties(data, segment_image, error=None, gain=None, mask=None,
     else:
         label_ids = np.atleast_1d(labels)
 
-    labelslices = ndimage.find_objects(segment_image)
+    label_slices = ndimage.find_objects(segment_image)
     segm_propslist = []
-    for i, labelslice in enumerate(labelslices):
+    for i, label_slice in enumerate(label_slices):
         label = i + 1    # consecutive even if some label numbers are missing
-        # labelslice is None for missing label numbers
-        if labelslice is None or label not in label_ids:
+        # label_slice is None for missing label numbers
+        if label_slice is None or label not in label_ids:
             continue
-        segm_props = SegmentProperties(data, segment_image, label,
-                                       labelslice=labelslice, error=error,
-                                       gain=gain, mask=mask,
-                                       background=background)
+        segm_props = SegmentProperties(
+            data, segment_image, label, label_slice=label_slice, error=error,
+            gain=gain, mask=mask, mask_method=mask_method,
+            background=background)
         segm_propslist.append(segm_props)
-
-    if not return_table:
-        return segm_propslist
-    else:
-        props_table = Table()
-        columns = ['id', 'xcentroid', 'ycentroid', 'segment_sum',
-                   'segment_sum_err', 'background_sum', 'background_mean',
-                   'background_centroid',
-                   'xmin', 'xmax', 'ymin', 'ymax', 'min_value', 'max_value',
-                   'minval_xpos', 'minval_ypos', 'maxval_xpos', 'maxval_ypos',
-                   'area', 'equivalent_radius', 'perimeter',
-                   'semimajor_axis_length', 'semiminor_axis_length',
-                   'eccentricity', 'orientation']
-        for column in columns:
-            values = [getattr(props, column) for props in segm_propslist]
-            props_table[column] = Column(values)
-        return props_table
+    return segm_propslist
 
 
 def _prepare_data(data, error=None, gain=None, mask=None,
