@@ -250,34 +250,6 @@ def do_elliptical_photometry(data, positions, a, b, theta,
         return (flux, np.sqrt(fluxvar))
 
 
-def rectangular_overlap(x_pmin, x_pmax, y_pmin, y_pmax, nx, ny,
-                        w, h, theta, subpixels):
-    from .extern.imageutils import downsample
-
-    x_size = ((x_pmax - x_pmin) /
-              (nx * subpixels))
-    y_size = ((y_pmax - y_pmin) /
-              (ny * subpixels))
-
-    x_centers = np.arange(x_pmin + x_size / 2.,
-                          x_pmax, x_size)
-    y_centers = np.arange(y_pmin + y_size / 2.,
-                          y_pmax, y_size)
-
-    xx, yy = np.meshgrid(x_centers, y_centers)
-
-    newx = (xx * math.cos(theta) + yy * math.sin(theta))
-    newy = (yy * math.cos(theta) - xx * math.sin(theta))
-
-    halfw = w / 2
-    halfh = h / 2
-    in_aper = (((-halfw < newx) & (newx < halfw) &
-                (-halfh < newy) & (newy < halfh)).astype(float)
-               / subpixels ** 2)
-
-    return downsample(in_aper, subpixels)
-
-
 def do_rectangular_photometry(data, positions, w, h, theta,
                               error, gain, pixelwise_error, method, subpixels,
                               reduce='sum', w_in=None):
@@ -318,22 +290,24 @@ def do_rectangular_photometry(data, positions, w, h, theta,
             method = 'subpixel'
             subpixels = 1
 
+        from .geometry import rectangular_overlap_grid
+
         for i in range(len(flux)):
             if not np.isnan(flux[i]):
 
-                fraction = rectangular_overlap(x_pmin[i], x_pmax[i],
-                                               y_pmin[i], y_pmax[i],
-                                               x_max[i] - x_min[i],
-                                               y_max[i] - y_min[i],
-                                               w, h, theta, subpixels)
-                if w_in is not None:
-                    h_in = w_in * h / w
-                    fraction -= rectangular_overlap(x_pmin[i], x_pmax[i],
+                fraction = rectangular_overlap_grid(x_pmin[i], x_pmax[i],
                                                     y_pmin[i], y_pmax[i],
                                                     x_max[i] - x_min[i],
                                                     y_max[i] - y_min[i],
-                                                    w_in, h_in, theta,
-                                                    subpixels)
+                                                    w, h, theta, 0, subpixels)
+                if w_in is not None:
+                    h_in = w_in * h / w
+                    fraction -= rectangular_overlap_grid(x_pmin[i], x_pmax[i],
+                                                         y_pmin[i], y_pmax[i],
+                                                         x_max[i] - x_min[i],
+                                                         y_max[i] - y_min[i],
+                                                         w_in, h_in, theta,
+                                                         0, subpixels)
 
                 flux[i] = np.sum(data[y_min[i]:y_max[i],
                                       x_min[i]:x_max[i]] * fraction)

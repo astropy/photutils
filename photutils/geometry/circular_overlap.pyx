@@ -30,22 +30,20 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                           int nx, int ny, double R, int use_exact,
                           int subpixels):
     """
-    circular_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, R, use_exact,
-                          subpixels)
+    circular_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, R,
+                             use_exact, subpixels)
 
-    Area of overlap between a circle and pixelgrid.
-    For a circle of radius R, find the area of overlap in each element on
-    a given grid of pixels, using either an exact overlap method, or by
-    subsampling a pixel. The circle is centered on 0,0 position.
+    Area of overlap between a circle and a pixel grid. The circle is centered
+    on the origin.
 
     Parameters
     ----------
     xmin, xmax, ymin, ymax : float
-        Extent of the grid in x and y direction.
+        Extent of the grid in the x and y direction.
     nx, ny : int
-        Dimension of grid.
+        Grid dimensions.
     R : float
-        Radius of the circle.
+        The radius of the circle.
     use_exact : 0 or 1
         If ``1`` calculates exact overlap, if ``0`` uses ``subpixel`` number
         of subpixels to calculate the overlap.
