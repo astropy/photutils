@@ -94,8 +94,8 @@ class PixelAperture(Aperture):
     Abstract base class for 2-d apertures defined in pixel coordinates.
 
     Derived classes should contain whatever internal data is needed to
-    define the aperture, and provide methods `do_photometry` and `extent`
-    (and optionally, ``area``).
+    define the aperture, and provide the method `do_photometry` (and
+    optionally, ``area``).
     """
 
     @abc.abstractmethod
