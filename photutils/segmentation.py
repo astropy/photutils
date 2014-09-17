@@ -13,17 +13,22 @@ __doctest_requires__ = {('segment_properties', 'segment_photometry'):
 
 
 class SegmentProperties(object):
-    """Class to calculate morphological properties of source segments."""
+    """
+    Class to calculate photometry and morphological properties of source
+    segments.
+    """
 
     def __init__(self, data, segment_image, label, labelslice=None,
-                 mask=None, mask_method='exclude', background=None):
+                 error=None, gain=None, mask=None, mask_method='exclude',
+                 background=None):
         """
         Construct a `SegmentProperties` object.
 
         Parameters
         ----------
         data : array_like
-            The 2D array from which to calculate the source properties.
+            The 2D array from which to calculate the source photometry
+            and properties.
 
         segment_image : array_like
             A 2D segmentation image, with the same shape as ``data``,
@@ -32,12 +37,34 @@ class SegmentProperties(object):
 
         label : int
             The label number of a source segment in ``segment_image``
-            for which to calculate morphological properties.
+            for which to calculate properties.
 
         labelslice : 2-tuple of slice objects, optional
             A ``(y_slice, x_slice)`` tuple of slice objects defining the
             minimal box enclosing the source segment.  If `None` (the
             default), then ``labelslice`` will be calculated.
+
+        error : array_like, optional
+            The 2D array of the 1-sigma errors of the input ``data``.
+            If ``gain`` is input, then ``error`` should include all
+            sources of "background" error but *exclude* the Poission
+            error of the sources.  If ``gain`` is `None`, then the
+            ``error_image`` is assumed to include *all* sources of
+            error, including the Poission error of the sources.
+            ``error`` must have the same shape as ``data``.
+
+        gain : float or array-like, optional
+            Ratio of counts (e.g., electrons or photons) to the units of
+            ``data`` used to calculate the Poisson error of the sources.
+            If ``gain`` is input, then ``error`` should include all
+            sources of "background" error but *exclude* the Poission
+            error of the sources.  If ``gain`` is `None`, then the
+            ``error`` is assumed to include *all* sources of error,
+            including the Poission error of the sources.  For example,
+            if your input ``data`` is in units of ADU, then ``gain``
+            should represent electrons/ADU.  If your input ``data`` is
+            in units of electrons/s then ``gain`` should be the exposure
+            time.
 
         mask : array_like, bool, optional
             A boolean mask, with the same shape as ``data``, where a
@@ -68,7 +95,8 @@ class SegmentProperties(object):
         from scipy import ndimage
 
         if segment_image.shape != data.shape:
-            raise ValueError('segment_image and data must have the same shape')
+            raise ValueError('segment_image and data must have the same '
+                             'shape')
 
         if label == 0:
             raise ValueError('label "0" is reserved for the background')
@@ -76,11 +104,14 @@ class SegmentProperties(object):
             raise ValueError('label must be a positive integer')
 
         self._inputimage = data
+        self._segment_image = segment_image
         image, variance, background = _prepare_data(
-            data, error=None, gain=None, mask=mask, mask_method=mask_method,
+            data, error=error, gain=gain, mask=mask, mask_method=mask_method,
             background=background)
         self._image = image
-        self._segment_image = segment_image
+        self._variance = variance
+        self._background = background
+
         self.label = label
         if labelslice is not None:
             self._slice = labelslice
@@ -97,7 +128,6 @@ class SegmentProperties(object):
         else:
             # excluded masked pixels still need the mask
             self._mask = mask
-        self._background = background
         self._cache_active = True
 
     def __getitem__(self, key):
@@ -122,38 +152,48 @@ class SegmentProperties(object):
             return np.logical_or(~self._in_segment, self._mask[self._slice])
 
     @lazyproperty
-    def cutout_image(self):
+    def data_cutout(self):
         """
-        A 2D cutout image of the source segment.
+        A 2D cutout from the data of the source segment.
         """
         return self._inputimage[self._slice]
 
     @lazyproperty
-    def isolated_cutout_image(self):
+    def data_cutout_ma(self):
         """
-        A 2D cutout image of the source segment where pixels outside of
-        the source segment have a value of ``numpy.nan``.
-        """
-        return np.where(self._in_segment, self.cutout_image, np.nan)
-
-    @lazyproperty
-    def cutout_image_maskedarray(self):
-        """
-        A 2D cutout image as a masked array, where the mask is `True`
+        A 2D masked array cutout from the data, where the mask is `True`
         for pixels outside of the source segment and "excluded" masked
         pixels.
         """
-        return np.ma.masked_array(self.cutout_image, mask=self._local_mask)
+        return np.ma.masked_array(self.data_cutout, mask=self._local_mask)
 
     @lazyproperty
-    def _cutout_image_maskzeroed_double(self):
+    def _data_cutout_maskzeroed_double(self):
         """
-        A 2D cutout image where pixels outside of the source segment and
-        "excluded" masked pixels are set to zero.  The cutout image is
-        double precision, which is required for scikit-image's Cython
-        moment functions.
+        A 2D cutout from the data where pixels outside of the source
+        segment and "excluded" masked pixels are set to zero.  The
+        cutout image is double precision, which is required for
+        scikit-image's Cython moment functions.
         """
-        return (self.cutout_image * ~self._local_mask).astype(np.float64)
+        return (self.data_cutout * ~self._local_mask).astype(np.float64)
+
+    @lazyproperty
+    def _variance_cutout_ma(self):
+        """
+        A 2D cutout from the variance image where pixels outside of the
+        source segment and "excluded" masked pixels are set to zero.
+        """
+        return np.ma.masked_array(self._variance[self._slice],
+                                  mask=self._local_mask)
+
+    @lazyproperty
+    def _background_cutout_ma(self):
+        """
+        A 2D cutout from the background image where pixels outside of the
+        source segment and "excluded" masked pixels are set to zero.
+        """
+        return np.ma.masked_array(self._background[self._slice],
+                                  mask=self._local_mask)
 
     @lazyproperty
     def coords(self):
@@ -164,7 +204,7 @@ class SegmentProperties(object):
         "Excluded" masked pixels are not included, but interpolated
         masked pixels are included.
         """
-        yy, xx = np.nonzero(self.cutout_image_maskedarray)
+        yy, xx = np.nonzero(self.data_cutout_ma)
         return (yy + self._slice[0].start, xx + self._slice[1].start)
 
     @lazyproperty
@@ -175,13 +215,13 @@ class SegmentProperties(object):
         Values of "excluded" masked pixels are not included, but
         interpolated masked pixels are included.
         """
-        return self.cutout_image[~self._local_mask]
+        return self.data_cutout[~self._local_mask]
 
     @lazyproperty
     def moments(self):
         """Spatial moments up to 3rd order of the source segment."""
         from skimage.measure import moments
-        return moments(self._cutout_image_maskzeroed_double, 3)
+        return moments(self._data_cutout_maskzeroed_double, 3)
 
     @lazyproperty
     def moments_central(self):
@@ -191,7 +231,7 @@ class SegmentProperties(object):
         """
         from skimage.measure import moments_central
         ycentroid, xcentroid = self.local_centroid
-        return moments_central(self._cutout_image_maskzeroed_double,
+        return moments_central(self._data_cutout_maskzeroed_double,
                                ycentroid, xcentroid, 3)
 
     @lazyproperty
@@ -205,7 +245,7 @@ class SegmentProperties(object):
     @lazyproperty
     def local_centroid(self):
         """
-        The ``(y, x)`` coordinate, relative to the `cutout_image`, of
+        The ``(y, x)`` coordinate, relative to the `data_cutout`, of
         the centroid within the source segment.
         """
         # TODO: allow alternative centroid methods?
@@ -292,18 +332,18 @@ class SegmentProperties(object):
     @lazyproperty
     def minval_local_pos(self):
         """
-        The ``(y, x)`` coordinate, relative to the `cutout_image`, of
+        The ``(y, x)`` coordinate, relative to the `data_cutout`, of
         the minimum pixel value.
         """
-        return np.argwhere(self.cutout_image_maskedarray == self.min_value)[0]
+        return np.argwhere(self.data_cutout_ma == self.min_value)[0]
 
     @lazyproperty
     def maxval_local_pos(self):
         """
-        The ``(y, x)`` coordinate, relative to the `cutout_image`, of
+        The ``(y, x)`` coordinate, relative to the `data_cutout`, of
         the maximum pixel value.
         """
-        return np.argwhere(self.cutout_image_maskedarray == self.max_value)[0]
+        return np.argwhere(self.data_cutout_ma == self.max_value)[0]
 
     @lazyproperty
     def minval_pos(self):
@@ -439,17 +479,6 @@ class SegmentProperties(object):
         return 0.5 * np.arctan2(2. * b, (a - c))
 
     @lazyproperty
-    def background_centroid(self):
-        """
-        The value of the background at the position of the source
-        centroid.
-        """
-        if self._background is None:
-            return None
-        else:
-            return self._background[self.ycentroid, self.xcentroid]
-
-    @lazyproperty
     def se_elongation(self):
         """
         SExtractor's elongation parameter.
@@ -525,9 +554,57 @@ class SegmentProperties(object):
                 ((1./self.semimajor_axis_length**2) -
                  (1./self.semiminor_axis_length**2)))
 
+    @lazyproperty
+    def segment_sum(self):
+        """
+        The sum of the background-subtracted data values within the source
+        segment.
+        """
+        return np.sum(np.ma.masked_array(self._image[self._slice],
+                                         mask=self._local_mask))
 
-def segment_properties(data, segment_image, mask=None, mask_method='exclude',
-                       background=None, labels=None, return_table=False):
+    @lazyproperty
+    def segment_sum_err(self):
+        """
+        The uncertainty of ``segment_sum``, propagated from the input
+        ``error`` array.
+        """
+        if self._variance is not None:
+            return np.sqrt(np.sum(self._variance_cutout_ma))
+        else:
+            return None
+
+    @lazyproperty
+    def background_sum(self):
+        """The sum of ``background`` values within the source segment."""
+        if self._background is not None:
+            return np.sum(self._background_cutout_ma)
+        else:
+            return None
+
+    @lazyproperty
+    def background_mean(self):
+        """The mean of ``background`` values within the source segment."""
+        if self._background is not None:
+            return np.mean(self._background_cutout_ma)
+        else:
+            return None
+
+    @lazyproperty
+    def background_centroid(self):
+        """
+        The value of the ``background`` at the position of the source
+        centroid.
+        """
+        if self._background is None:
+            return None
+        else:
+            return self._background[self.ycentroid, self.xcentroid]
+
+
+def segment_properties(data, segment_image, error=None, gain=None, mask=None,
+                       mask_method='exclude', background=None, labels=None,
+                       return_table=False):
     """
     Calculate morphological properties of sources defined by a labeled
     segmentation image.
@@ -724,7 +801,8 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
         if labelslice is None or label not in label_ids:
             continue
         segm_props = SegmentProperties(data, segment_image, label,
-                                       labelslice=labelslice, mask=mask,
+                                       labelslice=labelslice, error=error,
+                                       gain=gain, mask=mask,
                                        background=background)
         segm_propslist.append(segm_props)
 
@@ -732,11 +810,14 @@ def segment_properties(data, segment_image, mask=None, mask_method='exclude',
         return segm_propslist
     else:
         props_table = Table()
-        columns = ['id', 'xcentroid', 'ycentroid', 'xmin', 'xmax', 'ymin',
-                   'ymax', 'min_value', 'max_value', 'minval_xpos',
-                   'minval_ypos', 'maxval_xpos', 'maxval_ypos', 'area',
-                   'equivalent_radius', 'perimeter', 'semimajor_axis_length',
-                   'semiminor_axis_length', 'eccentricity', 'orientation']
+        columns = ['id', 'xcentroid', 'ycentroid', 'segment_sum',
+                   'segment_sum_err', 'background_sum', 'background_mean',
+                   'background_centroid',
+                   'xmin', 'xmax', 'ymin', 'ymax', 'min_value', 'max_value',
+                   'minval_xpos', 'minval_ypos', 'maxval_xpos', 'maxval_ypos',
+                   'area', 'equivalent_radius', 'perimeter',
+                   'semimajor_axis_length', 'semiminor_axis_length',
+                   'eccentricity', 'orientation']
         for column in columns:
             values = [getattr(props, column) for props in segm_propslist]
             props_table[column] = Column(values)
