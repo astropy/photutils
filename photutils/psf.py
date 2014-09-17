@@ -17,6 +17,12 @@ __all__ = ['DiscretePRF', 'create_prf', 'psf_photometry',
            'GaussianPSF', 'subtract_psf']
 
 
+# disable deprecation warning about model 'eval', remove when
+# astropy 1.0 is released
+from astropy.utils.exceptions import AstropyDeprecationWarning
+warnings.filterwarnings('ignore', category=AstropyDeprecationWarning)
+
+
 class DiscretePRF(Fittable2DModel):
     """
     A discrete PRF model.
