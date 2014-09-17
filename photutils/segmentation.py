@@ -7,9 +7,9 @@ from astropy.table import Table, Column
 from astropy.utils import lazyproperty
 
 
-__all__ = ['SegmentProperties', 'segment_properties', 'segment_photometry']
-__doctest_requires__ = {('segment_properties', 'segment_photometry'):
-                        ['scipy'], 'segment_properties': ['skimage']}
+__all__ = ['SegmentProperties', 'segment_properties']
+__doctest_requires__ = {'segment_properties': ['scipy'],
+                        'segment_properties': ['skimage']}
 
 
 class SegmentProperties(object):
@@ -824,159 +824,9 @@ def segment_properties(data, segment_image, error=None, gain=None, mask=None,
         return props_table
 
 
-def segment_photometry(data, segment_image, error=None, gain=None,
-                       mask=None, mask_method='exclude', background=None,
-                       labels=None):
-    """
-    Perform photometry of sources defined by a labeled segmentation
-    image.
-
-    When the segmentation image is defined using a thresholded flux
-    level (e.g., see `detect_sources`), this is equivalent to performing
-    isophotal photometry in `SExtractor`_.
-
-    .. _SExtractor : http://www.astromatic.net/software/sextractor
-
-    Parameters
-    ----------
-    data : array_like
-        The 2D array on which to perform photometry.
-
-    segment_image : array_like
-        A 2D segmentation image, with the same shape as ``data``, where
-        sources are marked by different positive integer values.  A
-        value of zero is reserved for the background.
-
-    error : array_like, optional
-        The 2D array of the 1-sigma errors of the input ``data``.  If
-        ``gain`` is input, then ``error`` should include all sources of
-        "background" error but *exclude* the Poission error of the
-        sources.  If ``gain`` is `None`, then the ``error_image`` is
-        assumed to include *all* sources of error, including the
-        Poission error of the sources.  ``error`` must have the same
-        shape as ``data``.
-
-    gain : float or array-like, optional
-        Ratio of counts (e.g., electrons or photons) to the units of
-        ``data`` used to calculate the Poisson error of the sources.  If
-        ``gain`` is input, then ``error`` should include all sources of
-        "background" error but *exclude* the Poission error of the
-        sources.  If ``gain`` is `None`, then the ``error`` is assumed
-        to include *all* sources of error, including the Poission error
-        of the sources.  For example, if your input ``data`` is in units
-        of ADU, then ``gain`` should represent electrons/ADU.  If your
-        input ``data`` is in units of electrons/s then ``gain`` should
-        be the exposure time.
-
-    mask : array_like, bool, optional
-        A boolean mask, with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is masked.
-        Use the ``mask_method`` keyword to select the method used to
-        treat masked pixels.
-
-    mask_method : {'exclude', 'interpolate'}, optional
-        Method used to treat masked pixels.  The currently supported
-        methods are:
-
-        'exclude':
-            Exclude masked pixels from all calculations.  This is the
-            default.
-
-        'interpolate':
-            The value of masked pixels are replaced by the mean value of
-            the 8-connected neighboring non-masked pixels.
-
-    background : float or array_like, optional
-        The background level of the input ``data``.  ``background`` may
-        either be a scalar value or a 2D image with the same shape as
-        the input ``data``.  If the input ``data`` has been
-        background-subtracted, then set ``background`` to `None` (the
-        default).
-
-    labels : int, sequence of ints or None
-        Subset of ``segment_image`` labels for which to perform the
-        photometry.  If `None`, then photometry will be performed for
-        all source segments (the default).
-
-    Returns
-    -------
-    table : `astropy.table.Table`
-        A table of the photometry of the segmented sources containing
-        the following columns:
-
-        * ``'id'``: The source identification number corresponding to
-          the object label in ``segment_image``.
-        * ``'segment_sum'``: The sum of the image values within the
-          source segment.
-        * ``'segment_sum_err'``: The corresponding uncertainty of
-          ``'segment_sum'`` values.  Returned only if ``error`` is
-          input.
-        * ``'background_sum'``: The sum of background values within the
-          source segment.  Returned only if ``background`` is input.
-        * ``'background_mean'``: The mean of background values within
-          the source segment.  Returned only if ``background`` is input.
-
-    See Also
-    --------
-    detect_sources, segment_properties
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from photutils import segment_photometry
-    >>> image = np.arange(16.).reshape(4, 4)
-    >>> error = np.sqrt(image)
-    >>> segm_image = np.array([[1, 1, 0, 0],
-    ...                        [1, 0, 0, 2],
-    ...                        [0, 0, 2, 2],
-    ...                        [0, 2, 2, 0]])
-    >>> t = segment_photometry(image, segm_image, error=error)
-    >>> print(t)
-     id segment_sum segment_sum_err
-    --- ----------- ---------------
-      1         5.0    2.2360679775
-      2        55.0    7.4161984871
-    """
-
-    from scipy import ndimage
-
-    if segment_image.shape != data.shape:
-        raise ValueError('segment_image and data must have the same shape')
-
-    data, variance, background = _prepare_data(
-        data, error=error, gain=gain, mask=mask, mask_method=mask_method,
-        background=background)
-
-    if labels is None:
-        label_ids = np.unique(segment_image[segment_image > 0])
-    else:
-        label_ids = np.atleast_1d(labels)
-    segment_sum = ndimage.measurements.sum(
-        data, labels=segment_image, index=label_ids)
-    columns = [label_ids, segment_sum]
-    names = ('id', 'segment_sum')
-    phot_table = Table(columns, names=names)
-
-    if error is not None:
-        segment_sum_var = ndimage.measurements.sum(
-            variance, labels=segment_image, index=label_ids)
-        segment_sum_err = np.sqrt(segment_sum_var)
-        phot_table['segment_sum_err'] = segment_sum_err
-
-    if background is not None:
-        background_sum = ndimage.measurements.sum(
-            background, labels=segment_image, index=label_ids)
-        background_mean = ndimage.measurements.mean(
-            background, labels=segment_image, index=label_ids)
-        phot_table['background_sum'] = background_sum
-        phot_table['background_mean'] = background_mean
-
-    return phot_table
-
-
 def _prepare_data(data, error=None, gain=None, mask=None,
-                    mask_method='exclude', background=None):
-    """Prepare the data, error, and background inputs."""
+                  mask_method='exclude', background=None):
+    """Prepare the data, variance, and background arrays."""
 
     if background is not None:
         data, background = _subtract_background(data, background)
@@ -998,7 +848,7 @@ def _prepare_data(data, error=None, gain=None, mask=None,
 
 
 def _subtract_background(data, background):
-    """Subtract background from data."""
+    """Subtract background from data and return 2D background image."""
     if np.isscalar(background):
         bkgrd_image = np.zeros_like(data) + background
     else:
@@ -1009,6 +859,19 @@ def _subtract_background(data, background):
     return (data - bkgrd_image), bkgrd_image
 
 
+def _apply_gain(data, variance, gain):
+    """Apply gain to variance images."""
+    if np.isscalar(gain):
+        gain = np.broadcast_arrays(gain, data)[0]
+    gain = np.asarray(gain)
+    if gain.shape != data.shape:
+        raise ValueError('If input gain is 2D, then it must have '
+                         'the same shape as the input data.')
+    if np.any(gain <= 0):
+        raise ValueError('gain must be positive everywhere')
+    return (variance + (data / gain))
+
+
 def _apply_mask(data, mask, mask_method, variance=None, background=None):
     """Apply mask to data, variance, and background images."""
     if data.shape != mask.shape:
@@ -1017,7 +880,7 @@ def _apply_mask(data, mask, mask_method, variance=None, background=None):
     data = copy.deepcopy(data)    # do not modify input data
     mask_idx = mask.nonzero()
     if mask_method == 'exclude':
-        # masked pixels will not contribute to sums
+        # excluded masked pixels will not contribute to sums
         data[mask_idx] = 0.0
         if background is not None:
             background[mask_idx] = 0.0
@@ -1037,16 +900,3 @@ def _apply_mask(data, mask, mask_method, variance=None, background=None):
         raise ValueError(
             'mask_method "{0}" is not valid'.format(mask_method))
     return data, variance, background
-
-
-def _apply_gain(data, variance, gain):
-    """Apply gain to variance images."""
-    if np.isscalar(gain):
-        gain = np.broadcast_arrays(gain, data)[0]
-    gain = np.asarray(gain)
-    if gain.shape != data.shape:
-        raise ValueError('If input gain is 2D, then it must have '
-                         'the same shape as the input data.')
-    if np.any(gain <= 0):
-        raise ValueError('gain must be positive everywhere')
-    return (variance + (data / gain))
