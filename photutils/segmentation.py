@@ -76,7 +76,7 @@ class SegmentProperties(object):
             raise ValueError('label must be a positive integer')
 
         self._inputimage = data
-        image, variance, background = _condition_data(
+        image, variance, background = _prepare_data(
             data, error=None, gain=None, mask=mask, mask_method=mask_method,
             background=background)
         self._image = image
@@ -862,7 +862,7 @@ def segment_photometry(data, segment_image, error=None, gain=None,
     if segment_image.shape != data.shape:
         raise ValueError('segment_image and data must have the same shape')
 
-    data, variance, background = _condition_data(
+    data, variance, background = _prepare_data(
         data, error=error, gain=gain, mask=mask, mask_method=mask_method,
         background=background)
 
@@ -893,9 +893,9 @@ def segment_photometry(data, segment_image, error=None, gain=None,
     return phot_table
 
 
-def _condition_data(data, error=None, gain=None, mask=None,
+def _prepare_data(data, error=None, gain=None, mask=None,
                     mask_method='exclude', background=None):
-    """Condition the data, error, and background inputs."""
+    """Prepare the data, error, and background inputs."""
 
     if background is not None:
         data, background = _subtract_background(data, background)
