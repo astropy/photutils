@@ -3,8 +3,9 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import copy
 import numpy as np
-from astropy.table import Table, Column
+from astropy.table import Table
 from astropy.utils import lazyproperty
+import astropy.units as u
 
 
 __all__ = ['SegmentProperties', 'segment_properties', 'properties_table']
@@ -203,7 +204,8 @@ class SegmentProperties(object):
         masked pixels are included.
         """
         yy, xx = np.nonzero(self.data_cutout_ma)
-        return (yy + self._slice[0].start, xx + self._slice[1].start)
+        coords = (yy + self._slice[0].start, xx + self._slice[1].start)
+        return coords * u.pix
 
     @lazyproperty
     def values(self):
@@ -228,7 +230,7 @@ class SegmentProperties(object):
         to 3rd order.
         """
         from skimage.measure import moments_central
-        ycentroid, xcentroid = self.local_centroid
+        ycentroid, xcentroid = self.local_centroid.value
         return moments_central(self._data_cutout_maskzeroed_double,
                                ycentroid, xcentroid, 3)
 
@@ -250,7 +252,7 @@ class SegmentProperties(object):
         m = self.moments
         ycentroid = m[0, 1] / m[0, 0]
         xcentroid = m[1, 0] / m[0, 0]
-        return ycentroid, xcentroid
+        return (ycentroid, xcentroid) * u.pix
 
     @lazyproperty
     def centroid(self):
@@ -258,8 +260,9 @@ class SegmentProperties(object):
         The ``(y, x)`` coordinate of the centroid within the source
         segment.
         """
-        ycen, xcen = self.local_centroid
-        return ycen + self._slice[0].start, xcen + self._slice[1].start
+        ycen, xcen = self.local_centroid.value
+        return (ycen + self._slice[0].start,
+                xcen + self._slice[1].start) * u.pix
 
     @lazyproperty
     def xcentroid(self):
@@ -283,7 +286,7 @@ class SegmentProperties(object):
         """
         # (stop - 1) to return the max pixel location, not the slice index
         return (self._slice[0].start, self._slice[1].start,
-                self._slice[0].stop - 1, self._slice[1].stop - 1)
+                self._slice[0].stop - 1, self._slice[1].stop - 1) * u.pix
 
     @lazyproperty
     def xmin(self):
@@ -333,7 +336,7 @@ class SegmentProperties(object):
         The ``(y, x)`` coordinate, relative to the `data_cutout`, of
         the minimum pixel value.
         """
-        return np.argwhere(self.data_cutout_ma == self.min_value)[0]
+        return np.argwhere(self.data_cutout_ma == self.min_value)[0] * u.pix
 
     @lazyproperty
     def maxval_local_pos(self):
@@ -341,19 +344,19 @@ class SegmentProperties(object):
         The ``(y, x)`` coordinate, relative to the `data_cutout`, of
         the maximum pixel value.
         """
-        return np.argwhere(self.data_cutout_ma == self.max_value)[0]
+        return np.argwhere(self.data_cutout_ma == self.max_value)[0] * u.pix
 
     @lazyproperty
     def minval_pos(self):
         """The ``(y, x)`` coordinate of the minimum pixel value."""
-        yp, xp = self.minval_local_pos
-        return yp + self._slice[0].start, xp + self._slice[1].start
+        yp, xp = self.minval_local_pos.value
+        return (yp + self._slice[0].start, xp + self._slice[1].start) * u.pix
 
     @lazyproperty
     def maxval_pos(self):
         """The ``(y, x)`` coordinate of the maximum pixel value."""
-        yp, xp = self.maxval_local_pos
-        return yp + self._slice[0].start, xp + self._slice[1].start
+        yp, xp = self.maxval_local_pos.value
+        return (yp + self._slice[0].start, xp + self._slice[1].start) * u.pix
 
     @lazyproperty
     def minval_xpos(self):
@@ -378,7 +381,7 @@ class SegmentProperties(object):
     @lazyproperty
     def area(self):
         """The area of the source segment in units of pixels**2."""
-        return len(self.values)
+        return len(self.values) * u.pix**2
 
     @lazyproperty
     def equivalent_radius(self):
@@ -395,7 +398,7 @@ class SegmentProperties(object):
         through the centers of the border pixels using a 4-connectivity.
         """
         from skimage.measure import perimeter
-        return perimeter(self._in_segment, 4)
+        return perimeter(self._in_segment, 4) * u.pix
 
     @lazyproperty
     def inertia_tensor(self):
@@ -407,7 +410,7 @@ class SegmentProperties(object):
         a = mu[2, 0]
         b = -mu[1, 1]
         c = mu[0, 2]
-        return np.array([[a, b], [b, c]])
+        return np.array([[a, b], [b, c]]) * u.pix**2
 
     @lazyproperty
     def covariance(self):
@@ -417,7 +420,7 @@ class SegmentProperties(object):
         """
         mu = self.moments_central
         m = mu / mu[0, 0]
-        return np.array([[m[2, 0], m[1, 1]], [m[1, 1], m[0, 2]]])
+        return np.array([[m[2, 0], m[1, 1]], [m[1, 1], m[0, 2]]]) * u.pix**2
 
     @lazyproperty
     def covariance_eigvals(self):
@@ -426,7 +429,7 @@ class SegmentProperties(object):
         order.
         """
         eigvals = np.linalg.eigvals(self.covariance)
-        return np.max(eigvals), np.min(eigvals)
+        return (np.max(eigvals), np.min(eigvals)) * u.pix**2
 
     @lazyproperty
     def semimajor_axis_length(self):
@@ -549,8 +552,8 @@ class SegmentProperties(object):
         SExtractor's CXY ellipse parameter in units of pixel**(-2).
         """
         return (2. * np.cos(self.orientation) * np.sin(self.orientation) *
-                ((1./self.semimajor_axis_length**2) -
-                 (1./self.semiminor_axis_length**2)))
+                ((1. / self.semimajor_axis_length**2) -
+                 (1. / self.semiminor_axis_length**2)))
 
     @lazyproperty
     def segment_sum(self):
@@ -597,7 +600,8 @@ class SegmentProperties(object):
         if self._background is None:
             return None
         else:
-            return self._background[self.ycentroid, self.xcentroid]
+            return self._background[self.ycentroid.value,
+                                    self.xcentroid.value]
 
 
 def segment_properties(data, segment_image, error=None, gain=None, mask=None,
@@ -691,28 +695,28 @@ def segment_properties(data, segment_image, error=None, gain=None, mask=None,
     Print some properties of the first object (labeled with ``1`` in the
     segmentation image):
 
-    >>> props[0].id    # id corresponds to segment label number
+    >>> print(props[0].id)    # id corresponds to segment label number
     1
-    >>> props[0].centroid    # doctest: +FLOAT_CMP
-    (0.80000000000000004, 0.20000000000000001)
-    >>> props[0].segment_sum    # doctest: +FLOAT_CMP
+    >>> print(props[0].centroid)    # doctest: +FLOAT_CMP
+    [ 0.8  0.2] pix
+    >>> print(props[0].segment_sum)    # doctest: +FLOAT_CMP
     5.0
-    >>> props[0].area    # doctest: +FLOAT_CMP
-    3
-    >>> props[0].max_value    # doctest: +FLOAT_CMP
+    >>> print(props[0].area)    # doctest: +FLOAT_CMP
+    3.0 pix2
+    >>> print(props[0].max_value)    # doctest: +FLOAT_CMP
     4.0
 
     Print some properties of the second object (labeled with ``2`` in
     the segmentation image):
 
-    >>> props[1].id    # id corresponds to segment label number
+    >>> print(props[1].id)    # id corresponds to segment label number
     2
-    >>> props[1].centroid    # doctest: +FLOAT_CMP
-    (2.3636363636363633, 2.0909090909090908)
-    >>> props[1].perimeter    # doctest: +FLOAT_CMP
-    5.4142135623730949
-    >>> props[1].orientation    # doctest: +FLOAT_CMP
-    -0.74175930692271763
+    >>> print(props[1].centroid)    # doctest: +FLOAT_CMP
+    [ 2.36363636  2.09090909] pix
+    >>> print(props[1].perimeter)    # doctest: +FLOAT_CMP
+    5.41421356237 pix
+    >>> print(props[1].orientation)    # doctest: +FLOAT_CMP
+    -0.741759306923 rad
     """
 
     from scipy import ndimage
@@ -791,6 +795,7 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
     >>> t = properties_table(segm_props, columns=columns)
     >>> print(t)
      id   xcentroid     ycentroid   segment_sum
+             pix           pix
     --- ------------- ------------- -----------
       1           0.2           0.8         5.0
       2 2.09090909091 2.36363636364        55.0
@@ -821,7 +826,10 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
     segment_props = np.atleast_1d(segment_props)
     for column in table_columns:
         values = [getattr(props, column) for props in segment_props]
-        props_table[column] = Column(values)
+        if isinstance(values[0], u.Quantity):
+            # turn list of Quantities into Quantities array
+            values = u.Quantity(values)
+        props_table[column] = values
     return props_table
 
 
@@ -850,7 +858,18 @@ def _prepare_data(data, error=None, gain=None, mask=None,
 
 def _subtract_background(data, background):
     """Subtract background from data and return 2D background image."""
-    if np.isscalar(background):
+
+    if isinstance(background, u.Quantity):
+        if isinstance(data, u.Quantity):
+            if background.unit != data.unit:
+                raise ValueError('background unit "{0}" does not match '
+                                 'data unit "{1}"'.format(background.unit,
+                                                          data.unit))
+        isscalar_background = background.isscalar
+    else:
+        isscalar_background = np.isscalar(background)
+
+    if isscalar_background:
         bkgrd_image = np.zeros_like(data) + background
     else:
         if background.shape != data.shape:
