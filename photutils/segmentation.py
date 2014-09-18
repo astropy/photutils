@@ -7,7 +7,7 @@ from astropy.table import Table, Column
 from astropy.utils import lazyproperty
 
 
-__all__ = ['SegmentProperties', 'segment_properties']
+__all__ = ['SegmentProperties', 'segment_properties', 'properties_table']
 __doctest_requires__ = {'segment_properties': ['scipy'],
                         'segment_properties': ['skimage']}
 
@@ -675,7 +675,7 @@ def segment_properties(data, segment_image, error=None, gain=None, mask=None,
 
     See Also
     --------
-    detect_sources
+    detect_sources, properties_table
 
     Examples
     --------
@@ -738,6 +738,91 @@ def segment_properties(data, segment_image, error=None, gain=None, mask=None,
             background=background)
         segm_propslist.append(segm_props)
     return segm_propslist
+
+
+def properties_table(segment_props, columns=None, exclude_columns=None):
+    """
+    Construct an `astropy.table.Table` of properties from a list of
+    `SegmentProperties` objects.
+
+    If ``columns`` or ``exclude_columns`` are not input, then the
+    `~astropy.table.Table` will include all scalar-valued properties.
+    Multi-dimensional properties, e.g.
+    `~photutils.SegmentProperties.data_cutout`, can be included in the
+    ``columns`` input.
+
+    Parameters
+    ----------
+    segment_props : `SegmentProperties` or list of `SegmentProperties`
+        A `SegmentProperties` object or list of `SegmentProperties`
+        objects, one for each source segment.
+
+    columns : str or list of str, optional
+        Names of columns, in order, to include in the output
+        `~astropy.table.Table`.  The allowed column names are any of the
+        attributes of `SegmentProperties`.
+
+    exclude_columns : str or list of str, optional
+        Names of columns to exclude from the default properties list in
+        the output `~astropy.table.Table`.  The default properties are
+        those with scalar values.
+
+    Returns
+    -------
+    table : `astropy.table.Table`
+        A table of properties of the segmented sources, one row per
+        source segment.
+
+    See Also
+    --------
+    detect_sources, segment_properties
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from photutils import segment_properties, properties_table
+    >>> image = np.arange(16.).reshape(4, 4)
+    >>> segm_image = np.array([[1, 1, 0, 0],
+    ...                        [1, 0, 0, 2],
+    ...                        [0, 0, 2, 2],
+    ...                        [0, 2, 2, 0]])
+    >>> segm_props = segment_properties(image, segm_image)
+    >>> columns = ['id', 'xcentroid', 'ycentroid', 'segment_sum']
+    >>> t = properties_table(segm_props, columns=columns)
+    >>> print(t)
+     id   xcentroid     ycentroid   segment_sum
+    --- ------------- ------------- -----------
+      1           0.2           0.8         5.0
+      2 2.09090909091 2.36363636364        55.0
+    """
+
+    props_table = Table()
+    # all scalar-valued properties
+    columns_all = ['id', 'xcentroid', 'ycentroid', 'segment_sum',
+                   'segment_sum_err', 'background_sum', 'background_mean',
+                   'background_centroid', 'xmin', 'xmax', 'ymin', 'ymax',
+                   'min_value', 'max_value', 'minval_xpos', 'minval_ypos',
+                   'maxval_xpos', 'maxval_ypos', 'area', 'equivalent_radius',
+                   'perimeter', 'semimajor_axis_length',
+                   'semiminor_axis_length', 'eccentricity', 'orientation',
+                   'se_ellipticity', 'se_elongation', 'se_x2', 'se_xy',
+                   'se_y2', 'se_cxx', 'se_cxy', 'se_cyy']
+
+    table_columns = None
+    if exclude_columns is not None:
+        table_columns = [s for s in columns_all if s not in exclude_columns]
+
+    if columns is not None:
+        table_columns = np.atleast_1d(columns)
+
+    if table_columns is None:
+        table_columns = columns_all
+
+    segment_props = np.atleast_1d(segment_props)
+    for column in table_columns:
+        values = [getattr(props, column) for props in segment_props]
+        props_table[column] = Column(values)
+    return props_table
 
 
 def _prepare_data(data, error=None, gain=None, mask=None,
