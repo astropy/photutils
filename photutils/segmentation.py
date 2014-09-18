@@ -165,7 +165,10 @@ class SegmentProperties(object):
         for pixels outside of the source segment and "excluded" masked
         pixels.
         """
-        return np.ma.masked_array(self.data_cutout, mask=self._local_mask)
+        # NOTE: remove Quantity here because plotting a masked_Quantity
+        # is problematic
+        return np.ma.masked_array(np.array(self.data_cutout),
+                                  mask=self._local_mask)
 
     @lazyproperty
     def _data_cutout_maskzeroed_double(self):
@@ -337,7 +340,9 @@ class SegmentProperties(object):
         The ``(y, x)`` coordinate, relative to the `data_cutout`, of
         the minimum pixel value.
         """
-        return np.argwhere(self.data_cutout_ma == self.min_value)[0] * u.pix
+        # data_cutout_ma is never a Quantity
+        return (np.argwhere(self.data_cutout_ma ==
+                            np.array(self.min_value))[0] * u.pix)
 
     @lazyproperty
     def maxval_local_pos(self):
@@ -345,18 +350,20 @@ class SegmentProperties(object):
         The ``(y, x)`` coordinate, relative to the `data_cutout`, of
         the maximum pixel value.
         """
-        return np.argwhere(self.data_cutout_ma == self.max_value)[0] * u.pix
+        # data_cutout_ma is never a Quantity
+        return (np.argwhere(self.data_cutout_ma ==
+                            np.array(self.max_value))[0] * u.pix)
 
     @lazyproperty
     def minval_pos(self):
         """The ``(y, x)`` coordinate of the minimum pixel value."""
-        yp, xp = self.minval_local_pos.value
+        yp, xp = np.array(self.minval_local_pos)
         return (yp + self._slice[0].start, xp + self._slice[1].start) * u.pix
 
     @lazyproperty
     def maxval_pos(self):
         """The ``(y, x)`` coordinate of the maximum pixel value."""
-        yp, xp = self.maxval_local_pos.value
+        yp, xp = np.array(self.maxval_local_pos)
         return (yp + self._slice[0].start, xp + self._slice[1].start) * u.pix
 
     @lazyproperty
@@ -593,7 +600,7 @@ class SegmentProperties(object):
             return None
 
     @lazyproperty
-    def background_centroid(self):
+    def background_atcentroid(self):
         """
         The value of the ``background`` at the position of the source
         centroid.
@@ -806,7 +813,7 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
     # all scalar-valued properties
     columns_all = ['id', 'xcentroid', 'ycentroid', 'segment_sum',
                    'segment_sum_err', 'background_sum', 'background_mean',
-                   'background_centroid', 'xmin', 'xmax', 'ymin', 'ymax',
+                   'background_atcentroid', 'xmin', 'xmax', 'ymin', 'ymax',
                    'min_value', 'max_value', 'minval_xpos', 'minval_ypos',
                    'maxval_xpos', 'maxval_ypos', 'area', 'equivalent_radius',
                    'perimeter', 'semimajor_axis_length',
