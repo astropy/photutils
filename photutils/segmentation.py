@@ -9,8 +9,9 @@ import astropy.units as u
 
 
 __all__ = ['SegmentProperties', 'segment_properties', 'properties_table']
-__doctest_requires__ = {'segment_properties': ['scipy'],
-                        'segment_properties': ['skimage']}
+__doctest_requires__ = {('segment_properties', 'properties_table'): ['scipy'],
+                        ('segment_properties', 'properties_table'):
+                        ['skimage']}
 
 
 class SegmentProperties(object):
