@@ -423,8 +423,8 @@ class SegmentProperties(object):
     @lazyproperty
     def covariance(self):
         """
-        The covariance matrix of the ellipse that has the same
-        second-order moments as the source segment.
+        The covariance matrix of the 2D Gaussian function that has the
+        same second-order moments as the source segment.
         """
         mu = self.moments_central
         m = mu / mu[0, 0]
@@ -440,19 +440,21 @@ class SegmentProperties(object):
         return (np.max(eigvals), np.min(eigvals)) * u.pix**2
 
     @lazyproperty
-    def semimajor_axis_length(self):
+    def semimajor_axis_sigma(self):
         """
-        The length of the semimajor axis of the ellipse that has the
-        same second-order central moments as the region.
+        The 1-sigma standard deviation along the semimajor axis of the
+        2D Gaussian function that has the same second-order central
+        moments as the region.
         """
         # this matches SExtractor's A parameter
         return np.sqrt(self.covariance_eigvals[0])
 
     @lazyproperty
-    def semiminor_axis_length(self):
+    def semiminor_axis_sigma(self):
         """
-        The length of the semiminor axis of the ellipse that has the
-        same second-order central moments as the region.
+        The 1-sigma standard deviation along the semiminor axis of the
+        2D Gaussian function that has the same second-order central
+        moments as the region.
         """
         # this matches SExtractor's B parameter
         return np.sqrt(self.covariance_eigvals[1])
@@ -460,8 +462,8 @@ class SegmentProperties(object):
     @lazyproperty
     def eccentricity(self):
         """
-        The eccentricity of the ellipse that has the same second-order
-        moments as the source segment.
+        The eccentricity of the 2D Gaussian function that has the same
+        second-order moments as the source segment.
 
         The eccentricity is the fraction of the distance along the
         semimajor axis at which the focus lies.
@@ -480,9 +482,9 @@ class SegmentProperties(object):
     def orientation(self):
         """
         The angle in radians between the ``x`` axis and the major axis
-        of the ellipse that has the same second-order moments as the
-        source segment.  The angle increases in the counter-clockwise
-        direction.
+        of the 2D Gaussian function that has the same second-order
+        moments as the source segment.  The angle increases in the
+        counter-clockwise direction.
         """
         a, b, b, c = self.covariance.flat
         return 0.5 * np.arctan2(2. * b, (a - c))
@@ -497,7 +499,7 @@ class SegmentProperties(object):
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
         """
-        return self.semimajor_axis_length / self.semiminor_axis_length
+        return self.semimajor_axis_sigma / self.semiminor_axis_sigma
 
     @lazyproperty
     def se_ellipticity(self):
@@ -509,7 +511,7 @@ class SegmentProperties(object):
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
         """
-        return 1.0 - (self.semiminor_axis_length / self.semimajor_axis_length)
+        return 1.0 - (self.semiminor_axis_sigma / self.semimajor_axis_sigma)
 
     @lazyproperty
     def se_x2(self):
@@ -543,16 +545,16 @@ class SegmentProperties(object):
         """
         SExtractor's CXX ellipse parameter in units of pixel**(-2).
         """
-        return ((np.cos(self.orientation) / self.semimajor_axis_length)**2 +
-                (np.sin(self.orientation) / self.semiminor_axis_length)**2)
+        return ((np.cos(self.orientation) / self.semimajor_axis_sigma)**2 +
+                (np.sin(self.orientation) / self.semiminor_axis_sigma)**2)
 
     @lazyproperty
     def se_cyy(self):
         """
         SExtractor's CYY ellipse parameter in units of pixel**(-2).
         """
-        return ((np.sin(self.orientation) / self.semimajor_axis_length)**2 +
-                (np.cos(self.orientation) / self.semiminor_axis_length)**2)
+        return ((np.sin(self.orientation) / self.semimajor_axis_sigma)**2 +
+                (np.cos(self.orientation) / self.semiminor_axis_sigma)**2)
 
     @lazyproperty
     def se_cxy(self):
@@ -560,8 +562,8 @@ class SegmentProperties(object):
         SExtractor's CXY ellipse parameter in units of pixel**(-2).
         """
         return (2. * np.cos(self.orientation) * np.sin(self.orientation) *
-                ((1. / self.semimajor_axis_length**2) -
-                 (1. / self.semiminor_axis_length**2)))
+                ((1. / self.semimajor_axis_sigma**2) -
+                 (1. / self.semiminor_axis_sigma**2)))
 
     @lazyproperty
     def segment_sum(self):
@@ -816,8 +818,8 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
                    'background_atcentroid', 'xmin', 'xmax', 'ymin', 'ymax',
                    'min_value', 'max_value', 'minval_xpos', 'minval_ypos',
                    'maxval_xpos', 'maxval_ypos', 'area', 'equivalent_radius',
-                   'perimeter', 'semimajor_axis_length',
-                   'semiminor_axis_length', 'eccentricity', 'orientation',
+                   'perimeter', 'semimajor_axis_sigma',
+                   'semiminor_axis_sigma', 'eccentricity', 'orientation',
                    'se_ellipticity', 'se_elongation', 'se_x2', 'se_xy',
                    'se_y2', 'se_cxx', 'se_cxy', 'se_cyy']
 
