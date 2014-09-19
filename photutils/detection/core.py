@@ -5,71 +5,39 @@ import numpy as np
 from ..extern.imageutils import sigmaclip_stats
 
 
-__all__ = ['detect_sources', 'find_peaks']
+__all__ = ['detect_threshold', 'detect_sources', 'find_peaks']
 
 
-def detect_sources(data, npixels, snr_threshold=5.0, threshold=None,
-                   filter_fwhm=None, background=None, error=None,
-                   mask=None, mask_val=None, sigclip_sigma=3.0,
-                   sigclip_iters=None, connectivity=8):
+def detect_threshold(data, snr, background=None, error=None, mask=None,
+                     mask_val=None, sigclip_sigma=3.0, sigclip_iters=None):
     """
-    Detect sources above a specified signal-to-noise ratio or threshold
-    value in an image and return a segmentation image.
-
-    This function does not deblend overlapping sources.
+    Calculate a pixel-wise threshold image to be used to detect sources.
 
     Parameters
     ----------
     data : array_like
         The 2D array of the image.
 
-    npixels : int
-        The number of connected pixels, each greater than the threshold
-        defined by either ``snr_threshold`` or ``threshold``, that an
-        object must have to be detected.  Must be a positive integer.
-
-    snr_threshold : float
+    snr : float
         The signal-to-noise ratio per pixel above the ``background`` for
         which to consider a pixel as possibly being part of a source.
-        Detected sources must have ``npixels`` connected pixels that are
-        greater than the threshold level.  ``snr_threshold`` is ignored
-        if ``threshold`` is input.  The default is 5.0.
-
-    threshold : float, optional
-        The image value to be used as the detection threshold.  Detected
-        sources must have ``npixels`` connected pixels that are greater
-        than the threshold value.  If ``threshold`` is input, then
-        ``snr_threshold`` is ignored.
-
-    filter_fwhm : float, optional
-        The FWHM of a circular 2D Gaussian filter that is applied to the
-        input image before it is thresholded.  Filtering the image will
-        maximize detectability of objects with a FWHM similar to
-        ``filter_fwhm``.  Set to `None` (the default) to turn off image
-        filtering.
 
     background : float or array_like, optional
-        The background level of the input ``data``.  ``background`` may
-        either be a scalar value or a 2D image with the same shape as
-        the input ``data``.  If the input ``data`` has been
+        The background value(s) of the input ``data``.  ``background``
+        may either be a scalar value or a 2D image with the same shape
+        as the input ``data``.  If the input ``data`` has been
         background-subtracted, then set ``background`` to ``0.0``.  If
-        `None`, then the background will be estimated using
-        sigma-clipped statistics (see the ``mask``, ``mask_val``,
-        ``sigclip_sigma`` and ``sigclip_iters`` parameters).  If
-        ``background`` and ``error`` are input, then ``mask``,
-        ``mask_val``, ``sigclip_sigma``, and ``sigclip_iters`` are
-        ignored.
+        `None`, then a scalar background value will be estimated using
+        sigma-clipped statistics.
 
-    error : array_like, optional
-        The 2D array of the 1-sigma Gaussian errors of the input
-        ``data``.  ``error`` should include all sources of "background"
-        error but *exclude* the Poission error of the sources.  If
-        `None`, then the background rms error will be estimated using
-        sigma-clipped statistics (see the ``mask``, ``mask_val``,
-        ``sigclip_sigma`` and ``sigclip_iters`` parameters).  If
-        ``background`` and ``error`` are input, then ``mask``,
-        ``mask_val``, ``sigclip_sigma``, and ``sigclip_iters`` are
-        ignored.
+    error : float or array_like, optional
+        The Gaussian 1-sigma standard deviation of the background noise
+        in ``data``.  ``error`` should include all sources of
+        "background" error, but *exclude* the Poisson error of the
+        sources.  If ``error`` is a 2D image, then it should represent
+        the 1-sigma background error in each pixel of ``data``.  If
+        `None`, then a scalar background rms value will be estimated
+        using sigma-clipped statistics.
 
     mask : array_like, bool, optional
         A boolean mask with the same shape as ``data``, where a `True`
@@ -92,7 +60,91 @@ def detect_sources(data, npixels, snr_threshold=5.0, threshold=None,
        iteration clips nothing) when calculating the image background
        statistics.
 
-    connectivity : int, optional
+    Returns
+    -------
+    threshold : 2D `numpy.ndarray`
+        A 2D image with the same shape as ``data`` containing the
+        pixel-wise threshold values.
+
+    See Also
+    --------
+    detect_sources
+
+    Notes
+    -----
+    The ``mask``, ``mask_val``, ``sigclip_sigma``, and ``sigclip_iters``
+    inputs are used only if it is necessary to estimate ``background``
+    or ``error`` using sigma-clipped background statistics.  If
+    ``background`` and ``error`` are both input, then ``mask``,
+    ``mask_val``, ``sigclip_sigma``, and ``sigclip_iters`` are ignored.
+    """
+
+    if background is None or error is None:
+        data_mean, data_median, data_std = sigmaclip_stats(
+            data, image_mask=mask, mask_val=mask_val, sigma=sigclip_sigma,
+            iters=sigclip_iters)
+        bkgrd_image = np.broadcast_arrays(data_mean, data)[0]
+        bkgrdrms_image = np.broadcast_arrays(data_std, data)[0]
+
+    if background is None:
+        background = bkgrd_image
+    else:
+        if np.isscalar(background):
+            background = np.broadcast_arrays(background, data)[0]
+        else:
+            if background.shape != data.shape:
+                raise ValueError('If input background is 2D, then it '
+                                 'must have the same shape as the input '
+                                 'data.')
+
+    if error is None:
+        error = bkgrdrms_image
+    else:
+        if np.isscalar(error):
+           error = np.broadcast_arrays(error, data)[0]
+        else:
+            if error.shape != data.shape:
+                raise ValueError('If input error is 2D, then it '
+                                 'must have the same shape as the input '
+                                 'data.')
+
+    return background + (error * snr)
+
+
+def detect_sources(data, threshold, npixels, filter_fwhm=None, connectivity=8):
+    """
+    Detect sources above a specified threshold value in an image and
+    return a segmentation image.
+
+    Detected sources must have ``npixels`` connected pixels that are
+    each greater than the ``threshold`` value.
+
+    This function does not deblend overlapping sources.
+
+    Parameters
+    ----------
+    data : array_like
+        The 2D array of the image.
+
+    threshold : float or array-like
+        The data value or pixel-wise data values to be used for the
+        detection threshold.  A 2D ``threshold`` must have the same
+        shape as ``data``.  See `detect_threshold` for one way to create
+        a ``threshold`` image.
+
+    npixels : int
+        The number of connected pixels, each greater than ``threshold``,
+        that an object must have to be detected.  ``npixels`` must be a
+        positive integer.
+
+    filter_fwhm : float, optional
+        The FWHM of a circular 2D Gaussian filter that is applied to the
+        input image before it is thresholded.  Filtering the image will
+        maximize detectability of objects with a FWHM similar to
+        ``filter_fwhm``.  Set to `None` (the default) to turn off image
+        filtering.
+
+    connectivity : {4, 8}, optional
         The type of pixel connectivity used in determining how pixels
         are grouped into a detected source.  The options are 4 or 8
         (default).  4-connected pixels touch along their edges.
@@ -108,7 +160,7 @@ def detect_sources(data, npixels, snr_threshold=5.0, threshold=None,
 
     See Also
     --------
-    segment_photometry, segment_properties
+    detect_threshold, segment_properties
 
     Examples
     --------
@@ -136,10 +188,10 @@ def detect_sources(data, npixels, snr_threshold=5.0, threshold=None,
         image = sources + noise
 
         # detect the sources
-        from photutils import detect_sources
-        segm_image = detect_sources(image, npixels=5, snr_threshold=3.,
+        from photutils import detect_threshold, detect_sources
+        threshold = detect_threshold(image, snr=3)
+        segm_image = detect_sources(image, threshold, npixels=5,
                                     filter_fwhm=3.)
-
         # plot the image and the segmentation image
         import matplotlib.pyplot as plt
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
@@ -148,10 +200,7 @@ def detect_sources(data, npixels, snr_threshold=5.0, threshold=None,
     """
 
     from scipy import ndimage
-    bkgrd, median, bkgrd_rms = sigmaclip_stats(data, image_mask=mask,
-                                               mask_val=mask_val,
-                                               sigma=sigclip_sigma,
-                                               iters=sigclip_iters)
+
     if (npixels <= 0) or (int(npixels) != npixels):
         raise ValueError('npixels must be a positive integer, got '
                          '"{0}"'.format(npixels))
@@ -161,38 +210,11 @@ def detect_sources(data, npixels, snr_threshold=5.0, threshold=None,
     else:
         image = data
 
-    if threshold is None:
-        if background is None or error is None:
-            bkgrd, median, bkgrd_rms = sigmaclip_stats(
-                data, image_mask=mask, mask_val=mask_val, sigma=sigclip_sigma,
-                iters=sigclip_iters)
-            bkgrd_image = np.broadcast_arrays(bkgrd, data)[0]
-            rms_image = np.broadcast_arrays(bkgrd_rms, data)[0]
-
-        if background is not None:
-            if np.isscalar(background):
-                bkgrd_image = np.broadcast_arrays(background, data)[0]
-            else:
-                if background.shape != data.shape:
-                    raise ValueError('If input background is 2D, then it '
-                                     'must have the same shape as the input '
-                                     'data.')
-                bkgrd_image = background
-
-        if error is not None:
-            if data.shape != error.shape:
-                raise ValueError('error and data must have the same shape')
-            rms_image = error
-
-        threshold_image = bkgrd_image + (rms_image * snr_threshold)
-    else:
-        threshold_image = np.broadcast_arrays(threshold, data)[0]
-
-    image = (image >= threshold_image)
+    image = (image >= threshold)
     if connectivity == 4:
         selem = ndimage.generate_binary_structure(2, 1)
-    elif connectivity == 8:
-        selem = ndimage.generate_binary_structure(2, 2)   # matches SExtractor
+    elif connectivity == 8:    # e.g., SExtractor
+        selem = ndimage.generate_binary_structure(2, 2)
     objlabels, nobj = ndimage.label(image, structure=selem)
     objslices = ndimage.find_objects(objlabels)
 
@@ -306,9 +328,8 @@ def find_peaks(data, snr_threshold, min_distance=5, exclude_border=True,
     """
     from skimage.feature import peak_local_max
 
-    bkgrd, median, bkgrd_rms = sigmaclip_stats(data, image_mask=mask,
-                                         mask_val=mask_val, sigma=sig,
-                                         iters=iters)
+    bkgrd, median, bkgrd_rms = sigmaclip_stats(
+        data, image_mask=mask, mask_val=mask_val, sigma=sig, iters=iters)
     level = bkgrd + (bkgrd_rms * snr_threshold)
     return peak_local_max(data, min_distance=min_distance,
                           threshold_abs=level, threshold_rel=0.0,

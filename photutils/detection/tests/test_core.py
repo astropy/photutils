@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 from astropy.tests.helper import pytest
 import numpy as np
 from numpy.testing import assert_array_equal
-from ..core import detect_sources, find_peaks
+from ..core import detect_threshold, detect_sources, find_peaks
 
 try:
     import scipy
@@ -33,47 +33,54 @@ PEAKREF2 = np.array([]).reshape(0, 2)
 class TestDetectSources(object):
     def test_detection(self):
         """Test basic detection."""
-        segm = detect_sources(DATA, 2, snr_threshold=0.1)
+        threshold = detect_threshold(DATA, snr=0.1)
+        segm = detect_sources(DATA, threshold, npixels=2)
         assert_array_equal(segm, REF2)
 
     def test_small_sources(self):
         """Test detection where sources are smaller than npixels size."""
-        segm = detect_sources(DATA, 5, snr_threshold=0.1)
+        threshold = detect_threshold(DATA, snr=0.1)
+        segm = detect_sources(DATA, threshold, npixels=5)
         assert_array_equal(segm, REF1)
 
     def test_zerothresh(self):
         """Test detection with zero snr_threshold."""
-        segm = detect_sources(DATA, 2, snr_threshold=0.0)
+        threshold = detect_threshold(DATA, snr=0.0)
+        segm = detect_sources(DATA, threshold, npixels=2)
         assert_array_equal(segm, REF2)
 
     def test_zerodet(self):
         """Test detection with large snr_threshold giving no detections."""
-        segm = detect_sources(DATA, 2, snr_threshold=10.0)
+        threshold = detect_threshold(DATA, snr=10.0)
+        segm = detect_sources(DATA, threshold, npixels=2)
         assert_array_equal(segm, REF1)
 
     def test_filter1(self):
         """Test detection with filter_fwhm."""
-        segm = detect_sources(DATA, 2, snr_threshold=0.1, filter_fwhm=1.)
+        threshold = detect_threshold(DATA, snr=0.1)
+        segm = detect_sources(DATA, threshold, npixels=2, filter_fwhm=1.)
         assert_array_equal(segm, REF2)
 
     def test_filter2(self):
         """Test detection for small filter_fwhm."""
-        segm = detect_sources(DATA, 1, snr_threshold=1, filter_fwhm=0.5)
+        threshold = detect_threshold(DATA, snr=1.0)
+        segm = detect_sources(DATA, threshold, npixels=1, filter_fwhm=0.5)
         assert_array_equal(segm, REF3)
 
     def test_npix1_error(self):
         """Test if AssertionError raises if npixel is non-integer."""
         with pytest.raises(ValueError):
-            detect_sources(DATA, 0.1, snr_threshold=1)
+            detect_sources(DATA, threshold=1, npixels=0.1)
 
     def test_npix2_error(self):
         """Test if AssertionError raises if npixel is negative."""
         with pytest.raises(ValueError):
-            detect_sources(DATA, -1, snr_threshold=1)
+            detect_sources(DATA, threshold=1, npixels=-1)
 
     def test_mask_val(self):
         """Test detection with mask_val."""
-        segm = detect_sources(DATA, 1, snr_threshold=0.1, mask_val=0.0)
+        threshold = detect_threshold(DATA, snr=0.1, mask_val=0.0)
+        segm = detect_sources(DATA, threshold, npixels=1)
         assert_array_equal(segm, REF3)
 
     def test_image_mask(self):
@@ -83,15 +90,17 @@ class TestDetectSources(object):
         """
 
         mask = REF3.astype(np.bool)
-        segm = detect_sources(DATA, 1, snr_threshold=0.1, mask=mask,
-                              sigclip_sigma=10, sigclip_iters=1)
+        threshold = detect_threshold(DATA, snr=0.1, mask=mask,
+                                     sigclip_sigma=10, sigclip_iters=1)
+        segm = detect_sources(DATA, threshold, npixels=1)
         assert_array_equal(segm, REF2)
 
     def test_image_mask_override(self):
         """Test that image_mask overrides mask_val."""
         mask = REF3.astype(np.bool)
-        segm = detect_sources(DATA, 1, snr_threshold=0.1, mask_val=0.0,
-                              mask=mask, sigclip_sigma=10, sigclip_iters=1)
+        threshold = detect_threshold(DATA, snr=0.1, mask_val=0.0, mask=mask,
+                                     sigclip_sigma=10, sigclip_iters=1)
+        segm = detect_sources(DATA, threshold, npixels=1)
         assert_array_equal(segm, REF2)
 
 
