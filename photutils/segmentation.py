@@ -45,26 +45,21 @@ class SegmentProperties(object):
             default), then ``label_slice`` will be calculated.
 
         error : array_like, optional
-            The 2D array of the 1-sigma errors of the input ``data``.
-            If ``gain`` is input, then ``error`` should include all
-            sources of "background" error but *exclude* the Poission
-            error of the sources.  If ``gain`` is `None`, then the
-            ``error_image`` is assumed to include *all* sources of
+            The pixel-wise Gaussian 1-sigma errors of the input
+            ``data``.  If ``gain`` is input, then ``error`` should
+            include all sources of "background" error but *exclude* the
+            Poission error of the sources.  If ``gain`` is `None`, then
+            the ``error_image`` is assumed to include *all* sources of
             error, including the Poission error of the sources.
-            ``error`` must have the same shape as ``data``.
+            ``error`` must have the same shape as ``data``.  See the
+            Notes section below for details on the error propagation.
 
         gain : float or array-like, optional
             Ratio of counts (e.g., electrons or photons) to the units of
             ``data`` used to calculate the Poisson error of the sources.
-            If ``gain`` is input, then ``error`` should include all
-            sources of "background" error but *exclude* the Poission
-            error of the sources.  If ``gain`` is `None`, then the
-            ``error`` is assumed to include *all* sources of error,
-            including the Poission error of the sources.  For example,
-            if your input ``data`` is in units of ADU, then ``gain``
-            should represent electrons/ADU.  If your input ``data`` is
-            in units of electrons/s then ``gain`` should be the exposure
-            time.
+            If ``gain`` is `None`, then the ``error`` is assumed to
+            include *all* sources of error.  See the Notes section below
+            for details on the error propagation.
 
         mask : array_like, bool, optional
             A boolean mask, with the same shape as ``data``, where a
@@ -90,6 +85,47 @@ class SegmentProperties(object):
             shape as the input ``data``.  If the input ``data`` has been
             background-subtracted, then set ``background`` to `None`
             (the default).
+
+        Notes
+        -----
+        If ``gain`` is input, then ``error`` should include all sources
+        of "background" error but *exclude* the Poission error of the
+        sources.  The pixel-wise total error image,
+        :math:`\sigma_{\mathrm{tot}}` is then:
+
+        .. math:: \\sigma_{\\mathrm{tot}} = \\sqrt{\\sigma_{\\mathrm{b}}^2 +
+                      \\frac{I}{g}}
+
+        where :math:`\sigma_b`, :math:`I`, and :math:`g` are the
+        background ``error`` image, ``data`` image, and ``gain``,
+        respectively.
+
+        If ``gain`` is `None`, then ``error`` is assumed to include
+        *all* sources of error, including the Poission error of the
+        sources, i.e. :math:`\sigma_{\mathrm{tot}} = \mathrm{error}`.
+
+        For example, if your input ``data`` are in units of ADU, then
+        ``gain`` should represent electrons/ADU.  If your input ``data``
+        are in units of electrons/s then ``gain`` should be the exposure
+        time.
+
+        ``segment_sum_err`` is simply the quadrature sum of the
+        pixel-wise total errors over the pixels within the source
+        segment:
+
+        .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
+                  \\sigma_{\\mathrm{tot}, i}^2}
+
+        where :math:`\Delta F` is ``segment_sum_err`` and :math:`S` are
+        the pixels in the source segment.
+
+        Custom errors for source segments can be calculated using the
+        `~photutils.SegmentProperties.variance_cutout_ma` and
+        `~photutils.SegmentProperties.background_cutout_ma` properties,
+        which are 2D `~numpy.ma.MaskedArray` cutout versions of the
+        input ``variance`` and ``background``.  The mask consists of
+        both pixels outside of the source segment and "excluded" masked
+        pixels.
         """
 
         from scipy import ndimage
@@ -165,10 +201,7 @@ class SegmentProperties(object):
         for pixels outside of the source segment and "excluded" masked
         pixels.
         """
-        # NOTE: remove Quantity here because plotting a masked_Quantity
-        # is problematic
-        return np.ma.masked_array(np.array(self.data_cutout),
-                                  mask=self._local_mask)
+        return np.ma.masked_array(self.data_cutout, mask=self._local_mask)
 
     @lazyproperty
     def _data_cutout_maskzeroed_double(self):
@@ -181,22 +214,28 @@ class SegmentProperties(object):
         return (self.data_cutout * ~self._local_mask).astype(np.float64)
 
     @lazyproperty
-    def _variance_cutout_ma(self):
+    def variance_cutout_ma(self):
         """
         A 2D cutout from the variance image where pixels outside of the
         source segment and "excluded" masked pixels are set to zero.
         """
-        return np.ma.masked_array(self._variance[self._slice],
-                                  mask=self._local_mask)
+        if self._variance is not None:
+            return np.ma.masked_array(self._variance[self._slice],
+                                      mask=self._local_mask)
+        else:
+            return None
 
     @lazyproperty
-    def _background_cutout_ma(self):
+    def background_cutout_ma(self):
         """
         A 2D cutout from the background image where pixels outside of the
         source segment and "excluded" masked pixels are set to zero.
         """
-        return np.ma.masked_array(self._background[self._slice],
-                                  mask=self._local_mask)
+        if self._background is not None:
+            return np.ma.masked_array(self._background[self._slice],
+                                      mask=self._local_mask)
+        else:
+            return None
 
     @lazyproperty
     def coords(self):
@@ -209,7 +248,7 @@ class SegmentProperties(object):
         """
         yy, xx = np.nonzero(self.data_cutout_ma)
         coords = (yy + self._slice[0].start, xx + self._slice[1].start)
-        return coords * u.pix
+        return coords
 
     @lazyproperty
     def values(self):
@@ -340,9 +379,7 @@ class SegmentProperties(object):
         The ``(y, x)`` coordinate, relative to the `data_cutout`, of
         the minimum pixel value.
         """
-        # data_cutout_ma is never a Quantity
-        return (np.argwhere(self.data_cutout_ma ==
-                            np.array(self.min_value))[0] * u.pix)
+        return np.argwhere(self.data_cutout_ma == self.min_value)[0] * u.pix
 
     @lazyproperty
     def maxval_local_pos(self):
@@ -350,9 +387,7 @@ class SegmentProperties(object):
         The ``(y, x)`` coordinate, relative to the `data_cutout`, of
         the maximum pixel value.
         """
-        # data_cutout_ma is never a Quantity
-        return (np.argwhere(self.data_cutout_ma ==
-                            np.array(self.max_value))[0] * u.pix)
+        return np.argwhere(self.data_cutout_ma == self.max_value)[0] * u.pix
 
     @lazyproperty
     def minval_pos(self):
@@ -570,6 +605,12 @@ class SegmentProperties(object):
         """
         The sum of the background-subtracted data values within the source
         segment.
+
+        .. math:: F = \\sum_{i \\in S} (I_i - B_i)
+
+        where :math:`F` is ``segment_sum``, :math:`I_i` is the ``data``,
+        :math:`B_i` is the ``background``, and :math:`S` are the pixels
+        in the source segment.
         """
         return np.sum(np.ma.masked_array(self._image[self._slice],
                                          mask=self._local_mask))
@@ -579,9 +620,19 @@ class SegmentProperties(object):
         """
         The uncertainty of ``segment_sum``, propagated from the input
         ``error`` array.
+
+        ``segment_sum_err`` is the quadrature sum of the total errors
+        over the pixels within the source segment:
+
+        .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
+                  \\sigma_{\\mathrm{tot}, i}^2}
+
+        where :math:`\Delta F` is ``segment_sum_err``,
+        :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise total
+        errors, and :math:`S` are the pixels in the source segment.
         """
         if self._variance is not None:
-            return np.sqrt(np.sum(self._variance_cutout_ma))
+            return np.sqrt(np.sum(self.variance_cutout_ma))
         else:
             return None
 
@@ -589,7 +640,7 @@ class SegmentProperties(object):
     def background_sum(self):
         """The sum of ``background`` values within the source segment."""
         if self._background is not None:
-            return np.sum(self._background_cutout_ma)
+            return np.sum(self.background_cutout_ma)
         else:
             return None
 
@@ -597,7 +648,7 @@ class SegmentProperties(object):
     def background_mean(self):
         """The mean of ``background`` values within the source segment."""
         if self._background is not None:
-            return np.mean(self._background_cutout_ma)
+            return np.mean(self.background_cutout_ma)
         else:
             return None
 
@@ -867,20 +918,31 @@ def _prepare_data(data, error=None, gain=None, mask=None,
 
 
 def _subtract_background(data, background):
-    """Subtract background from data and return 2D background image."""
+    """
+    Subtract background from data and return 2D background image.
+
+    Notes
+    -----
+    If ``data`` is Quantity, but ``background`` is not, then
+    ``background`` is assumed to have the same units as ``data``.
+    """
 
     if isinstance(background, u.Quantity):
         if isinstance(data, u.Quantity):
             if background.unit != data.unit:
-                raise ValueError('background unit "{0}" does not match '
-                                 'data unit "{1}"'.format(background.unit,
-                                                          data.unit))
+                raise u.UnitsError(
+                    'background unit "{0}" does not match data unit '
+                    '"{1}"'.format(background.unit, data.unit))
+        else:
+            raise u.UnitsError('background has units of "{0}", but the '
+                               'input image is not a Quantity'
+                               .format(background.unit))
         isscalar_background = background.isscalar
     else:
         isscalar_background = np.isscalar(background)
 
     if isscalar_background:
-        bkgrd_image = np.zeros_like(data) + background
+        bkgrd_image = np.ones_like(data) * background
     else:
         if background.shape != data.shape:
             raise ValueError('If input background is 2D, then it must '
