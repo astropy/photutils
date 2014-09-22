@@ -84,14 +84,14 @@ class SegmentProperties(object):
             may either be a scalar value or a 2D image with the same
             shape as the input ``data``.  If the input ``data`` has been
             background-subtracted, then set ``background`` to `None`
-            (the default).
+            (the default) or ``0.``.
 
         Notes
         -----
         If ``gain`` is input, then ``error`` should include all sources
         of "background" error but *exclude* the Poission error of the
-        sources.  The pixel-wise total error image,
-        :math:`\sigma_{\mathrm{tot}}` is then:
+        sources.  The total error image, :math:`\sigma_{\mathrm{tot}}`
+        is then:
 
         .. math:: \\sigma_{\\mathrm{tot}} = \\sqrt{\\sigma_{\\mathrm{b}}^2 +
                       \\frac{I}{g}}
@@ -109,22 +109,23 @@ class SegmentProperties(object):
         are in units of electrons/s then ``gain`` should be the exposure
         time.
 
-        ``segment_sum_err`` is simply the quadrature sum of the
-        pixel-wise total errors over the pixels within the source
-        segment:
+        `~photutils.SegmentProperties.segment_sum_err` is simply the
+        quadrature sum of the pixel-wise total errors over the pixels
+        within the source segment:
 
         .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
                   \\sigma_{\\mathrm{tot}, i}^2}
 
-        where :math:`\Delta F` is ``segment_sum_err`` and :math:`S` are
+        where :math:`\Delta F` is
+        `~photutils.SegmentProperties.segment_sum_err` and :math:`S` are
         the pixels in the source segment.
 
         Custom errors for source segments can be calculated using the
-        `~photutils.SegmentProperties.variance_cutout_ma` and
+        `~photutils.SegmentProperties.error_cutout_ma` and
         `~photutils.SegmentProperties.background_cutout_ma` properties,
         which are 2D `~numpy.ma.MaskedArray` cutout versions of the
-        input ``variance`` and ``background``.  The mask consists of
-        both pixels outside of the source segment and "excluded" masked
+        input ``error`` and ``background``.  The mask is `True` for both
+        pixels outside of the source segment and "excluded" masked
         pixels.
         """
 
@@ -141,11 +142,11 @@ class SegmentProperties(object):
 
         self._inputimage = data
         self._segment_image = segment_image
-        image, variance, background = _prepare_data(
+        image, error, background = _prepare_data(
             data, error=error, gain=gain, mask=mask, mask_method=mask_method,
             background=background)
         self._image = image
-        self._variance = variance
+        self._error = error
         self._background = background
 
         self.label = label
@@ -197,16 +198,16 @@ class SegmentProperties(object):
     @lazyproperty
     def data_cutout_ma(self):
         """
-        A 2D masked array cutout from the data, where the mask is `True`
-        for pixels outside of the source segment and "excluded" masked
-        pixels.
+        A 2D `~numpy.ma.MaskedArray` cutout from the data, where the
+        mask is `True` for both pixels outside of the source segment and
+        "excluded" masked pixels.
         """
         return np.ma.masked_array(self.data_cutout, mask=self._local_mask)
 
     @lazyproperty
     def _data_cutout_maskzeroed_double(self):
         """
-        A 2D cutout from the data where pixels outside of the source
+        A 2D cutout from the data, where pixels outside of the source
         segment and "excluded" masked pixels are set to zero.  The
         cutout image is double precision, which is required for
         scikit-image's Cython moment functions.
@@ -214,13 +215,15 @@ class SegmentProperties(object):
         return (self.data_cutout * ~self._local_mask).astype(np.float64)
 
     @lazyproperty
-    def variance_cutout_ma(self):
+    def error_cutout_ma(self):
         """
-        A 2D cutout from the variance image where pixels outside of the
-        source segment and "excluded" masked pixels are set to zero.
+        A 2D `~numpy.ma.MaskedArray` cutout from the input ``error``
+        image, where the mask is `True` for both pixels outside of the
+        source segment and "excluded" masked pixels.  If ``error`` is
+        `None`, then ``error_cutout_ma`` is also `None`.
         """
-        if self._variance is not None:
-            return np.ma.masked_array(self._variance[self._slice],
+        if self._error is not None:
+            return np.ma.masked_array(self._error[self._slice],
                                       mask=self._local_mask)
         else:
             return None
@@ -228,8 +231,11 @@ class SegmentProperties(object):
     @lazyproperty
     def background_cutout_ma(self):
         """
-        A 2D cutout from the background image where pixels outside of the
-        source segment and "excluded" masked pixels are set to zero.
+        A 2D `~numpy.ma.MaskedArray` cutout from the input
+        ``background``, where the mask is `True` for both pixels outside
+        of the source segment and "excluded" masked pixels.  If
+        ``background`` is `None`, then ``background_cutout_ma`` is also
+        `None`.
         """
         if self._background is not None:
             return np.ma.masked_array(self._background[self._slice],
@@ -324,8 +330,8 @@ class SegmentProperties(object):
     @lazyproperty
     def bbox(self):
         """
-        The bounding box ``(ymin, xmin, ymax, xmax)`` of the region
-        containing the source segment.
+        The bounding box ``(ymin, xmin, ymax, xmax)`` of the minimal
+        rectangular region containing the source segment.
         """
         # (stop - 1) to return the max pixel location, not the slice index
         return (self._slice[0].start, self._slice[1].start,
@@ -334,32 +340,32 @@ class SegmentProperties(object):
     @lazyproperty
     def xmin(self):
         """
-        The left ``x`` pixel location of the bounding box of the source
-        segment.
+        The left ``x`` pixel location of the minimal bounding box
+        (`~photutils.SegmentProperties.bbox`) of the source segment.
         """
         return self.bbox[1]
 
     @lazyproperty
     def xmax(self):
         """
-        The right ``x`` pixel location of the bounding box of the source
-        segment.
+        The right ``x`` pixel location of the minimal bounding box
+        (`~photutils.SegmentProperties.bbox`) of the source segment.
         """
         return self.bbox[3]
 
     @lazyproperty
     def ymin(self):
         """
-        The bottom ``y`` pixel location of the bounding box of the
-        source segment.
+        The bottom ``y`` pixel location of the minimal bounding box
+        (`~photutils.SegmentProperties.bbox`) of the source segment.
         """
         return self.bbox[0]
 
     @lazyproperty
     def ymax(self):
         """
-        The top ``y`` pixel location of the bounding box of the
-        source segment.
+        The top ``y`` pixel location of the minimal bounding box
+        (`~photutils.SegmentProperties.bbox`) of the source segment.
         """
         return self.bbox[2]
 
@@ -479,7 +485,7 @@ class SegmentProperties(object):
         """
         The 1-sigma standard deviation along the semimajor axis of the
         2D Gaussian function that has the same second-order central
-        moments as the region.
+        moments as the source segment.
         """
         # this matches SExtractor's A parameter
         return np.sqrt(self.covariance_eigvals[0])
@@ -489,7 +495,7 @@ class SegmentProperties(object):
         """
         The 1-sigma standard deviation along the semiminor axis of the
         2D Gaussian function that has the same second-order central
-        moments as the region.
+        moments as the source segment.
         """
         # this matches SExtractor's B parameter
         return np.sqrt(self.covariance_eigvals[1])
@@ -525,7 +531,7 @@ class SegmentProperties(object):
         return 0.5 * np.arctan2(2. * b, (a - c))
 
     @lazyproperty
-    def se_elongation(self):
+    def elongation(self):
         """
         SExtractor's elongation parameter.
 
@@ -537,7 +543,7 @@ class SegmentProperties(object):
         return self.semimajor_axis_sigma / self.semiminor_axis_sigma
 
     @lazyproperty
-    def se_ellipticity(self):
+    def ellipticity(self):
         """
         SExtractor's ellipticity parameter.
 
@@ -618,8 +624,8 @@ class SegmentProperties(object):
     @lazyproperty
     def segment_sum_err(self):
         """
-        The uncertainty of ``segment_sum``, propagated from the input
-        ``error`` array.
+        The uncertainty of `~photutils.SegmentProperties.segment_sum`,
+        propagated from the input ``error`` array.
 
         ``segment_sum_err`` is the quadrature sum of the total errors
         over the pixels within the source segment:
@@ -631,8 +637,12 @@ class SegmentProperties(object):
         :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise total
         errors, and :math:`S` are the pixels in the source segment.
         """
-        if self._variance is not None:
-            return np.sqrt(np.sum(self.variance_cutout_ma))
+        if self._error is not None:
+            # power doesn't work here, see astropy #2968
+            # return np.sqrt(np.sum(self.error_cutout_ma**2))
+            return np.sqrt(np.sum(
+                np.ma.masked_array(self.error_cutout_ma.data**2,
+                                   mask=self.error_cutout_ma.mask)))
         else:
             return None
 
@@ -871,7 +881,7 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
                    'maxval_xpos', 'maxval_ypos', 'area', 'equivalent_radius',
                    'perimeter', 'semimajor_axis_sigma',
                    'semiminor_axis_sigma', 'eccentricity', 'orientation',
-                   'se_ellipticity', 'se_elongation', 'se_x2', 'se_xy',
+                   'ellipticity', 'elongation', 'se_x2', 'se_xy',
                    'se_y2', 'se_cxx', 'se_cxy', 'se_cyy']
 
     table_columns = None
@@ -896,7 +906,7 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
 
 def _prepare_data(data, error=None, gain=None, mask=None,
                   mask_method='exclude', background=None):
-    """Prepare the data, variance, and background arrays."""
+    """Prepare the data, error, and background arrays."""
 
     if background is not None:
         data, background = _subtract_background(data, background)
@@ -914,7 +924,9 @@ def _prepare_data(data, error=None, gain=None, mask=None,
         data, variance, background = _apply_mask(
             data, mask, mask_method, variance=variance, background=background)
 
-    return data, variance, background
+    if error is not None:
+        error = np.sqrt(variance)
+    return data, error, background
 
 
 def _subtract_background(data, background):
