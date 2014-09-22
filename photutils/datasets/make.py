@@ -13,7 +13,8 @@ import astropy.units as u
 
 
 __all__ = ['make_noise_image', 'make_poisson_noise', 'make_gaussian_sources',
-           'make_random_gaussians']
+           'make_random_gaussians', 'make_4gaussians_image',
+           'make_100gaussians_image']
 
 
 def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
@@ -234,7 +235,7 @@ def make_gaussian_sources(image_shape, source_table, oversample=1, unit=None):
         from photutils.datasets import make_noise_image
         shape = (100, 200)
         image1 = make_gaussian_sources(shape, table)
-        image2 = image1 + make_noise_image(shape, type='gaussian', mean=0.,
+        image2 = image1 + make_noise_image(shape, type='gaussian', mean=5.,
                                            stddev=5.)
         image3 = image1 + make_noise_image(shape, type='poisson', mean=5.)
 
@@ -365,7 +366,7 @@ def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
         from photutils.datasets import make_noise_image
         shape = (300, 500)
         image1 = make_gaussian_sources(shape, table)
-        image2 = image1 + make_noise_image(shape, type='gaussian', mean=0.,
+        image2 = image1 + make_noise_image(shape, type='gaussian', mean=5.,
                                            stddev=2.)
         image3 = image1 + make_noise_image(shape, type='poisson', mean=5.)
 
@@ -392,3 +393,81 @@ def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
                                        n_sources)
     sources['theta'] = prng.uniform(0, 2.*np.pi, n_sources)
     return sources
+
+
+def make_4gaussians_image():
+    """
+    Make an example image containing four 2D Gaussians plus
+    Gaussian noise.
+
+    Returns
+    -------
+    image : `numpy.ndarray`
+        Image containing Gaussian sources.
+
+    See Also
+    --------
+    make_100gaussians_image
+
+    Examples
+    --------
+    .. plot::
+        :include-source:
+
+        from photutils import datasets
+        image = datasets.make_4gaussians_image()
+        plt.imshow(image, origin='lower', cmap='gray')
+    """
+
+    table = Table()
+    table['amplitude'] = [50, 70, 150, 210]
+    table['x_mean'] = [160, 25, 150, 90]
+    table['y_mean'] = [70, 40, 25, 60]
+    table['x_stddev'] = [15.2, 5.1, 3., 8.1]
+    table['y_stddev'] = [2.6, 2.5, 3., 4.7]
+    table['theta'] = np.array([145., 20., 0., 60.]) * np.pi / 180.
+    shape = (100, 200)
+    sources = make_gaussian_sources(shape, table)
+    noise = make_noise_image(shape, type='gaussian', mean=5.,
+                             stddev=5., random_state=12345)
+    return (sources + noise)
+
+
+def make_100gaussians_image():
+    """
+    Make an example image containing 100 2D Gaussians plus Gaussian
+    noise.
+
+    Returns
+    -------
+    image : `numpy.ndarray`
+        Image containing Gaussian sources.
+
+    See Also
+    --------
+    make_4gaussians_image
+
+    Examples
+    --------
+    .. plot::
+        :include-source:
+
+        from photutils import datasets
+        image = datasets.make_100gaussians_image()
+        plt.imshow(image, origin='lower', cmap='gray')
+    """
+
+    n_sources = 100
+    flux_range = [500, 1000]
+    xmean_range = [0, 500]
+    ymean_range = [0, 300]
+    xstddev_range = [1, 5]
+    ystddev_range = [1, 5]
+    table = make_random_gaussians(n_sources, flux_range, xmean_range,
+                                  ymean_range, xstddev_range,
+                                  ystddev_range, random_state=12345)
+    shape = (300, 500)
+    image1 = make_gaussian_sources(shape, table)
+    image2 = image1 + make_noise_image(shape, type='gaussian', mean=5.,
+                                       stddev=2., random_state=12345)
+    return image2
