@@ -86,7 +86,7 @@ def load_spitzer_catalog():
     -------
     catalog : `~astropy.table.Table`
         The catalog of sources
-        
+
     Examples
     --------
     .. plot::
