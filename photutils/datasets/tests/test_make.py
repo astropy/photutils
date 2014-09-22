@@ -6,7 +6,8 @@ from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 from astropy.table import Table
 from .. import (make_noise_image, make_poisson_noise, make_gaussian_sources,
-                make_random_gaussians)
+                make_random_gaussians, make_4gaussians_image,
+                make_100gaussians_image)
 
 
 TABLE = Table()
@@ -111,3 +112,19 @@ def test_make_random_gaussians_amplitude():
     table = make_random_gaussians(n_sources, bounds, bounds, bounds, bounds,
                                   bounds, amplitude_range=bounds)
     assert len(table) == n_sources
+
+
+def test_make_4gaussians_image():
+    shape = (100, 200)
+    data_sum = 176219.18059091491
+    image = make_4gaussians_image()
+    assert image.shape == shape
+    assert_allclose(image.sum(), data_sum, rtol=1.e-6)
+
+
+def test_make_100gaussians_image():
+    shape = (300, 500)
+    data_sum = 826182.24501251709
+    image = make_100gaussians_image()
+    assert image.shape == shape
+    assert_allclose(image.sum(), data_sum, rtol=1.e-6)

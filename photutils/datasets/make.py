@@ -407,7 +407,7 @@ def make_4gaussians_image():
 
     See Also
     --------
-    make_random_gaussians_image
+    make_100gaussians_image
 
     Examples
     --------
@@ -435,8 +435,8 @@ def make_4gaussians_image():
 
 def make_100gaussians_image():
     """
-    Make an example image containing 100 randomly-generated 2D Gaussians
-    plus Gaussian noise.
+    Make an example image containing 100 2D Gaussians plus Gaussian
+    noise.
 
     Returns
     -------
@@ -453,7 +453,7 @@ def make_100gaussians_image():
         :include-source:
 
         from photutils import datasets
-        image = datasets.make_random_gaussians_image()
+        image = datasets.make_100gaussians_image()
         plt.imshow(image, origin='lower', cmap='gray')
     """
 
