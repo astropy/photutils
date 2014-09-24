@@ -72,6 +72,11 @@ def get_phot_extents(data, positions, extents):
 
 def find_fluxvar(data, fraction, error, flux, gain, imin, imax, jmin, jmax, pixelwise_error):
 
+    if isinstance(error, u.Quantity):
+        zero_variance = 0 * error.unit**2
+    else:
+        zero_variance = 0
+
     if pixelwise_error:
 
         subvariance = error[jmin:jmax,
@@ -82,14 +87,15 @@ def find_fluxvar(data, fraction, error, flux, gain, imin, imax, jmin, jmax, pixe
                             gain[jmin:jmax, imin:imax])
 
         # Make sure variance is > 0
-        fluxvar = np.maximum(np.sum(subvariance * fraction), 0)
+        fluxvar = np.maximum(np.sum(subvariance * fraction), zero_variance)
 
     else:
 
         local_error = error[int((jmin + jmax) / 2 + 0.5),
                             int((imin + imax) / 2 + 0.5)]
 
-        fluxvar = np.maximum(local_error ** 2 * np.sum(fraction), 0)
+        fluxvar = np.maximum(local_error ** 2 * np.sum(fraction),
+                             zero_variance)
 
         if gain is not None:
             local_gain = gain[int((jmin + jmax) / 2 + 0.5),

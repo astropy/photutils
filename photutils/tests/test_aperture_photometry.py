@@ -521,3 +521,20 @@ def test_basic_circular_aperture_photometry_unit():
     assert_allclose(table2['aperture_sum'], true_flux)
     assert table1['aperture_sum'].unit == unit
     assert table2['aperture_sum'].unit == data2.unit == unit
+
+
+def test_aperture_photometry_with_error_units():
+    """Test aperture_photometry when error has units (see #176)."""
+    data1 = np.ones((40, 40), dtype=np.float)
+    data2 = u.Quantity(data1, unit=u.adu)
+    error = u.Quantity(data1, unit=u.adu)
+    radius = 3
+    true_flux = np.pi * radius * radius
+    unit = u.adu
+    position = (20, 20)
+    table1 = aperture_photometry(data2, CircularAperture(position, radius),
+                                 error=error)
+    assert_allclose(table1['aperture_sum'], true_flux)
+    assert_allclose(table1['aperture_sum_err'], np.sqrt(true_flux))
+    assert table1['aperture_sum'].unit == unit
+    assert table1['aperture_sum_err'].unit == unit
