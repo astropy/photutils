@@ -6,6 +6,7 @@ import numpy as np
 from astropy.table import Table
 from astropy.utils import lazyproperty
 import astropy.units as u
+from astropy.utils.misc import isiterable
 
 
 __all__ = ['SegmentProperties', 'segment_properties', 'properties_table']
@@ -26,7 +27,7 @@ class SegmentProperties(object):
         """
         Parameters
         ----------
-        data : array_like
+        data : array_like or `~astropy.units.Quantity`
             The 2D array from which to calculate the source photometry
             and properties.
 
@@ -44,24 +45,24 @@ class SegmentProperties(object):
             minimal box enclosing the source segment.  If `None` (the
             default), then ``label_slice`` will be calculated.
 
-        error : array_like, optional
+        error : array_like or `~astropy.units.Quantity`, optional
             The pixel-wise Gaussian 1-sigma errors of the input
             ``data``.  If ``gain`` is input, then ``error`` should
             include all sources of "background" error but *exclude* the
-            Poission error of the sources.  If ``gain`` is `None`, then
+            Poisson error of the sources.  If ``gain`` is `None`, then
             the ``error_image`` is assumed to include *all* sources of
-            error, including the Poission error of the sources.
+            error, including the Poisson error of the sources.
             ``error`` must have the same shape as ``data``.  See the
             Notes section below for details on the error propagation.
 
-        gain : float or array-like, optional
+        gain : float, array-like, or `~astropy.units.Quantity`, optional
             Ratio of counts (e.g., electrons or photons) to the units of
             ``data`` used to calculate the Poisson error of the sources.
             If ``gain`` is `None`, then the ``error`` is assumed to
             include *all* sources of error.  See the Notes section below
             for details on the error propagation.
 
-        mask : array_like, bool, optional
+        mask : array_like (bool), optional
             A boolean mask, with the same shape as ``data``, where a
             `True` value indicates the corresponding element of ``data``
             is masked.  Use the ``mask_method`` keyword to select the
@@ -79,7 +80,7 @@ class SegmentProperties(object):
                 The value of masked pixels are replaced by the mean
                 value of the 8-connected neighboring non-masked pixels.
 
-        background : float or array_like, optional
+        background : float, array_like, or `~astropy.units.Quantity`, optional
             The background level of the input ``data``.  ``background``
             may either be a scalar value or a 2D image with the same
             shape as the input ``data``.  If the input ``data`` has been
@@ -89,7 +90,7 @@ class SegmentProperties(object):
         Notes
         -----
         If ``gain`` is input, then ``error`` should include all sources
-        of "background" error but *exclude* the Poission error of the
+        of "background" error but *exclude* the Poisson error of the
         sources.  The total error image, :math:`\sigma_{\mathrm{tot}}`
         is then:
 
@@ -101,7 +102,7 @@ class SegmentProperties(object):
         respectively.
 
         If ``gain`` is `None`, then ``error`` is assumed to include
-        *all* sources of error, including the Poission error of the
+        *all* sources of error, including the Poisson error of the
         sources, i.e. :math:`\sigma_{\mathrm{tot}} = \mathrm{error}`.
 
         For example, if your input ``data`` are in units of ADU, then
@@ -683,7 +684,7 @@ def segment_properties(data, segment_image, error=None, gain=None, mask=None,
 
     Parameters
     ----------
-    data : array_like
+    data : array_like or `~astropy.units.Quantity`
         The 2D array from which to calculate the source properties.
 
     segment_image : array_like
@@ -691,28 +692,28 @@ def segment_properties(data, segment_image, error=None, gain=None, mask=None,
         sources are marked by different positive integer values.  A
         value of zero is reserved for the background.
 
-    error : array_like, optional
+    error : array_like or `~astropy.units.Quantity`, optional
         The 2D array of the 1-sigma errors of the input ``data``.  If
         ``gain`` is input, then ``error`` should include all sources of
-        "background" error but *exclude* the Poission error of the
+        "background" error but *exclude* the Poisson error of the
         sources.  If ``gain`` is `None`, then the ``error_image`` is
-        assumed to include *all* sources of error, including the
-        Poission error of the sources.  ``error`` must have the same
-        shape as ``data``.
+        assumed to include *all* sources of error, including the Poisson
+        error of the sources.  ``error`` must have the same shape as
+        ``data``.
 
-    gain : float or array-like, optional
+    gain : float, array-like, or `~astropy.units.Quantity`, optional
         Ratio of counts (e.g., electrons or photons) to the units of
         ``data`` used to calculate the Poisson error of the sources.  If
         ``gain`` is input, then ``error`` should include all sources of
-        "background" error but *exclude* the Poission error of the
+        "background" error but *exclude* the Poisson error of the
         sources.  If ``gain`` is `None`, then the ``error`` is assumed
-        to include *all* sources of error, including the Poission error
+        to include *all* sources of error, including the Poisson error
         of the sources.  For example, if your input ``data`` is in units
         of ADU, then ``gain`` should represent electrons/ADU.  If your
         input ``data`` is in units of electrons/s then ``gain`` should
         be the exposure time.
 
-    mask : array_like, bool, optional
+    mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
         Use the ``mask_method`` keyword to select the method used to
@@ -730,7 +731,7 @@ def segment_properties(data, segment_image, error=None, gain=None, mask=None,
             The value of masked pixels are replaced by the mean value of
             the 8-connected neighboring non-masked pixels.
 
-    background : float or array_like, optional
+    background : float, array-like, or `~astropy.units.Quantity`, optional
         The background level of the input ``data``.  ``background`` may
         either be a scalar value or a 2D image with the same shape as
         the input ``data``.  If the input ``data`` has been
@@ -844,7 +845,7 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
 
     Returns
     -------
-    table : `astropy.table.Table`
+    table : `~astropy.table.Table`
         A table of properties of the segmented sources, one row per
         source segment.
 
@@ -898,82 +899,124 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
     for column in table_columns:
         values = [getattr(props, column) for props in segment_props]
         if isinstance(values[0], u.Quantity):
-            # turn list of Quantities into Quantities array
+            # turn list of Quantities into a Quantity array
             values = u.Quantity(values)
         props_table[column] = values
     return props_table
 
 
+def _check_units(inputs):
+    """Check for consistent units on data, error, and background."""
+    has_unit = [hasattr(x, 'unit') for x in inputs]
+    if any(has_unit) and not all(has_unit):
+        raise ValueError('If any of data, error, or background has units, '
+                         'then they all must all have units.')
+    if all(has_unit):
+        if any([inputs[0].unit != getattr(x, 'unit') for x in inputs[1:]]):
+            raise u.UnitsError(
+                'data, error, and background units do not match.')
+
+
 def _prepare_data(data, error=None, gain=None, mask=None,
                   mask_method='exclude', background=None):
-    """Prepare the data, error, and background arrays."""
+    """
+    Prepare the data, error, and background arrays.
 
-    if background is not None:
-        data, background = _subtract_background(data, background)
+    Notes
+    -----
+    ``data``, ``error``, and ``background`` must all have the same units
+    if they are `~astropy.units.Quantity`\s.
+
+    If ``gain`` is a `~astropy.units.Quantity`, then it must have units
+    such that ``gain * data`` is in units of counts (e.g. counts,
+    electrons, or photons).
+    """
+
+    inputs = [data, error, background]
+    _check_units(inputs)
 
     if error is not None:
         if data.shape != error.shape:
             raise ValueError('data and error must have the same shape')
         variance = error**2
         if gain is not None:
-            variance = _apply_gain(data, variance, gain)
+            # data here should include the background
+            variance = _calculate_total_variance(data, variance, gain)
     else:
         variance = None
 
+    # subtract background after calculating total variance, but
+    # before applying mask
+    if background is not None:
+        data, background = _subtract_background(data, background)
+
     if mask is not None:
+        # _apply_mask needs 2D background
         data, variance, background = _apply_mask(
             data, mask, mask_method, variance=variance, background=background)
 
     if error is not None:
         error = np.sqrt(variance)
+
     return data, error, background
 
 
 def _subtract_background(data, background):
     """
-    Subtract background from data and return 2D background image.
-
-    Notes
-    -----
-    If ``data`` is Quantity, but ``background`` is not, then
-    ``background`` is assumed to have the same units as ``data``.
+    Subtract background from data and return a 2D background image.
     """
-
-    if isinstance(background, u.Quantity):
-        if isinstance(data, u.Quantity):
-            if background.unit != data.unit:
-                raise u.UnitsError(
-                    'background unit "{0}" does not match data unit '
-                    '"{1}"'.format(background.unit, data.unit))
-        else:
-            raise u.UnitsError('background has units of "{0}", but the '
-                               'input image is not a Quantity'
-                               .format(background.unit))
-        isscalar_background = background.isscalar
-    else:
-        isscalar_background = np.isscalar(background)
-
-    if isscalar_background:
-        bkgrd_image = np.ones_like(data) * background
+    if not isiterable(background):
+        # NOTE: np.broadcast_arrays() never returns a Quantity
+        # background = np.broadcast_arrays(background, data)[0]
+        background = np.zeros(data.shape) + background
     else:
         if background.shape != data.shape:
             raise ValueError('If input background is 2D, then it must '
                              'have the same shape as the input data.')
-        bkgrd_image = background
-    return (data - bkgrd_image), bkgrd_image
+    return (data - background), background
 
 
-def _apply_gain(data, variance, gain):
-    """Apply gain to variance images."""
-    if np.isscalar(gain):
-        gain = np.broadcast_arrays(gain, data)[0]
-    gain = np.asarray(gain)
-    if gain.shape != data.shape:
-        raise ValueError('If input gain is 2D, then it must have '
-                         'the same shape as the input data.')
+def _calculate_total_variance(data, variance, gain):
+    """
+    Calculate the total variance, including Poisson noise of sources.
+
+    Notes
+    -----
+    ``data`` here should not be background-subtracted.  ``data`` should
+    include all detected counts, including the background, to properly
+    calculate the Poisson errors.  ``data`` is converted to counts using
+    the gain.
+    """
+
+    has_unit = [hasattr(x, 'unit') for x in [data, gain]]
+    if any(has_unit) and not all(has_unit):
+        raise ValueError('If either data or gain has units, then they '
+                         'both must have units.')
+    if all(has_unit):
+        count_units = [u.ct, u.electron, u.photon]
+        datagain_unit = (data * gain).unit
+        if datagain_unit not in count_units:
+            raise u.UnitsError('(data * gain) has units of "{0}", but it '
+                               'must have count units (u.ct, u.electron, '
+                               'or u.photon).'.format(datagain_unit))
+
+    if not isiterable(gain):
+        # NOTE: np.broadcast_arrays() never returns a Quantity
+        # gain = np.broadcast_arrays(gain, data)[0]
+        gain = np.zeros(data.shape) + gain
+    else:
+        if gain.shape != data.shape:
+            raise ValueError('If input gain is 2D, then it must have '
+                             'the same shape as the input data.')
     if np.any(gain <= 0):
         raise ValueError('gain must be positive everywhere')
-    return (variance + (data / gain))
+
+    if all(has_unit):
+        variance_total = np.maximum(
+            variance + ((data * data.unit) / gain.value), 0. * variance.unit)
+    else:
+        variance_total = np.maximum(variance + (data / gain), 0)
+    return variance_total
 
 
 def _apply_mask(data, mask, mask_method, variance=None, background=None):
@@ -981,7 +1024,7 @@ def _apply_mask(data, mask, mask_method, variance=None, background=None):
     if data.shape != mask.shape:
         raise ValueError('data and mask must have the same shape')
 
-    data = copy.deepcopy(data)    # do not modify input data
+    data = copy.deepcopy(data)    # ensure input data is not modified
     mask_idx = mask.nonzero()
     if mask_method == 'exclude':
         # excluded masked pixels will not contribute to sums
