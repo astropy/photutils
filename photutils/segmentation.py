@@ -22,8 +22,8 @@ class SegmentProperties(object):
     """
 
     def __init__(self, data, segment_image, label, label_slice=None,
-                 error=None, gain=None, mask=None, mask_method='exclude',
-                 background=None):
+                 error=None, effective_gain=None, mask=None,
+                 mask_method='exclude', background=None):
         """
         Parameters
         ----------
@@ -47,20 +47,21 @@ class SegmentProperties(object):
 
         error : array_like or `~astropy.units.Quantity`, optional
             The pixel-wise Gaussian 1-sigma errors of the input
-            ``data``.  If ``gain`` is input, then ``error`` should
-            include all sources of "background" error but *exclude* the
-            Poisson error of the sources.  If ``gain`` is `None`, then
-            the ``error_image`` is assumed to include *all* sources of
-            error, including the Poisson error of the sources.
-            ``error`` must have the same shape as ``data``.  See the
-            Notes section below for details on the error propagation.
+            ``data``.  If ``effective_gain`` is input, then ``error``
+            should include all sources of "background" error but
+            *exclude* the Poisson error of the sources.  If
+            ``effective_gain`` is `None`, then the ``error_image`` is
+            assumed to include *all* sources of error, including the
+            Poisson error of the sources.  ``error`` must have the same
+            shape as ``data``.  See the Notes section below for details
+            on the error propagation.
 
-        gain : float, array-like, or `~astropy.units.Quantity`, optional
+        effective_gain : float, array-like, or `~astropy.units.Quantity`, optional
             Ratio of counts (e.g., electrons or photons) to the units of
             ``data`` used to calculate the Poisson error of the sources.
-            If ``gain`` is `None`, then the ``error`` is assumed to
-            include *all* sources of error.  See the Notes section below
-            for details on the error propagation.
+            If ``effective_gain`` is `None`, then the ``error`` is
+            assumed to include *all* sources of error.  See the Notes
+            section below for details on the error propagation.
 
         mask : array_like (bool), optional
             A boolean mask, with the same shape as ``data``, where a
@@ -89,26 +90,27 @@ class SegmentProperties(object):
 
         Notes
         -----
-        If ``gain`` is input, then ``error`` should include all sources
-        of "background" error but *exclude* the Poisson error of the
-        sources.  The total error image, :math:`\sigma_{\mathrm{tot}}`
-        is then:
+        If ``effective_gain`` is input, then ``error`` should include
+        all sources of "background" error but *exclude* the Poisson
+        error of the sources.  The total error image,
+        :math:`\sigma_{\mathrm{tot}}` is then:
 
         .. math:: \\sigma_{\\mathrm{tot}} = \\sqrt{\\sigma_{\\mathrm{b}}^2 +
                       \\frac{I}{g}}
 
         where :math:`\sigma_b`, :math:`I`, and :math:`g` are the
-        background ``error`` image, ``data`` image, and ``gain``,
-        respectively.
+        background ``error`` image, ``data`` image, and
+        ``effective_gain``, respectively.
 
-        If ``gain`` is `None`, then ``error`` is assumed to include
-        *all* sources of error, including the Poisson error of the
-        sources, i.e. :math:`\sigma_{\mathrm{tot}} = \mathrm{error}`.
+        If ``effective_gain`` is `None`, then ``error`` is assumed to
+        include *all* sources of error, including the Poisson error of
+        the sources, i.e. :math:`\sigma_{\mathrm{tot}} =
+        \mathrm{error}`.
 
         For example, if your input ``data`` are in units of ADU, then
-        ``gain`` should represent electrons/ADU.  If your input ``data``
-        are in units of electrons/s then ``gain`` should be the exposure
-        time.
+        ``effective_gain`` should represent electrons/ADU.  If your
+        input ``data`` are in units of electrons/s then
+        ``effective_gain`` should be the exposure time.
 
         `~photutils.SegmentProperties.segment_sum_err` is simply the
         quadrature sum of the pixel-wise total errors over the pixels
@@ -144,8 +146,8 @@ class SegmentProperties(object):
         self._inputimage = data
         self._segment_image = segment_image
         image, error, background = _prepare_data(
-            data, error=error, gain=gain, mask=mask, mask_method=mask_method,
-            background=background)
+            data, error=error, effective_gain=effective_gain, mask=mask,
+            mask_method=mask_method, background=background)
         self._image = image
         self._error = error
         self._background = background
@@ -676,8 +678,9 @@ class SegmentProperties(object):
                                     self.xcentroid.value]
 
 
-def segment_properties(data, segment_image, error=None, gain=None, mask=None,
-                       mask_method='exclude', background=None, labels=None):
+def segment_properties(data, segment_image, error=None, effective_gain=None,
+                       mask=None, mask_method='exclude', background=None,
+                       labels=None):
     """
     Calculate photometry and morphological properties of sources defined
     by a labeled segmentation image.
@@ -685,7 +688,8 @@ def segment_properties(data, segment_image, error=None, gain=None, mask=None,
     Parameters
     ----------
     data : array_like or `~astropy.units.Quantity`
-        The 2D array from which to calculate the source properties.
+        The 2D array from which to calculate the source photometry and
+        properties.
 
     segment_image : array_like
         A 2D segmentation image, with the same shape as ``data``, where
@@ -693,25 +697,21 @@ def segment_properties(data, segment_image, error=None, gain=None, mask=None,
         value of zero is reserved for the background.
 
     error : array_like or `~astropy.units.Quantity`, optional
-        The 2D array of the 1-sigma errors of the input ``data``.  If
-        ``gain`` is input, then ``error`` should include all sources of
-        "background" error but *exclude* the Poisson error of the
-        sources.  If ``gain`` is `None`, then the ``error_image`` is
-        assumed to include *all* sources of error, including the Poisson
-        error of the sources.  ``error`` must have the same shape as
-        ``data``.
+        The pixel-wise Gaussian 1-sigma errors of the input ``data``.
+        If ``effective_gain`` is input, then ``error`` should include
+        all sources of "background" error but *exclude* the Poisson
+        error of the sources.  If ``effective_gain`` is `None`, then the
+        ``error_image`` is assumed to include *all* sources of error,
+        including the Poisson error of the sources.  ``error`` must have
+        the same shape as ``data``.  See the Notes section below for
+        details on the error propagation.
 
-    gain : float, array-like, or `~astropy.units.Quantity`, optional
+    effective_gain : float, array-like, or `~astropy.units.Quantity`, optional
         Ratio of counts (e.g., electrons or photons) to the units of
         ``data`` used to calculate the Poisson error of the sources.  If
-        ``gain`` is input, then ``error`` should include all sources of
-        "background" error but *exclude* the Poisson error of the
-        sources.  If ``gain`` is `None`, then the ``error`` is assumed
-        to include *all* sources of error, including the Poisson error
-        of the sources.  For example, if your input ``data`` is in units
-        of ADU, then ``gain`` should represent electrons/ADU.  If your
-        input ``data`` is in units of electrons/s then ``gain`` should
-        be the exposure time.
+        ``effective_gain`` is `None`, then the ``error`` is assumed to
+        include *all* sources of error.  See the Notes section below for
+        details on the error propagation.
 
     mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
@@ -748,6 +748,29 @@ def segment_properties(data, segment_image, error=None, gain=None, mask=None,
     output : list of `SegmentProperties` objects
         A list of `SegmentProperties` objects, one for each source
         segment.  The properties can be accessed as attributes or keys.
+
+    Notes
+    -----
+    If ``effective_gain`` is input, then ``error`` should include all
+    sources of "background" error but *exclude* the Poisson error of the
+    sources.  The total error image, :math:`\sigma_{\mathrm{tot}}` is
+    then:
+
+    .. math:: \\sigma_{\\mathrm{tot}} = \\sqrt{\\sigma_{\\mathrm{b}}^2 +
+                  \\frac{I}{g}}
+
+    where :math:`\sigma_b`, :math:`I`, and :math:`g` are the background
+    ``error`` image, ``data`` image, and ``effective_gain``,
+    respectively.
+
+    If ``effective_gain`` is `None`, then ``error`` is assumed to
+    include *all* sources of error, including the Poisson error of the
+    sources, i.e. :math:`\sigma_{\mathrm{tot}} = \mathrm{error}`.
+
+    For example, if your input ``data`` are in units of ADU, then
+    ``effective_gain`` should represent electrons/ADU.  If your input
+    ``data`` are in units of electrons/s then ``effective_gain`` should
+    be the exposure time.
 
     See Also
     --------
@@ -810,7 +833,7 @@ def segment_properties(data, segment_image, error=None, gain=None, mask=None,
             continue
         segm_props = SegmentProperties(
             data, segment_image, label, label_slice=label_slice, error=error,
-            gain=gain, mask=mask, mask_method=mask_method,
+            effective_gain=effective_gain, mask=mask, mask_method=mask_method,
             background=background)
         segm_propslist.append(segm_props)
     return segm_propslist
@@ -917,7 +940,7 @@ def _check_units(inputs):
                 'data, error, and background units do not match.')
 
 
-def _prepare_data(data, error=None, gain=None, mask=None,
+def _prepare_data(data, error=None, effective_gain=None, mask=None,
                   mask_method='exclude', background=None):
     """
     Prepare the data, error, and background arrays.
@@ -927,9 +950,9 @@ def _prepare_data(data, error=None, gain=None, mask=None,
     ``data``, ``error``, and ``background`` must all have the same units
     if they are `~astropy.units.Quantity`\s.
 
-    If ``gain`` is a `~astropy.units.Quantity`, then it must have units
-    such that ``gain * data`` is in units of counts (e.g. counts,
-    electrons, or photons).
+    If ``effective_gain`` is a `~astropy.units.Quantity`, then it must
+    have units such that ``effective_gain * data`` is in units of counts
+    (e.g. counts, electrons, or photons).
     """
 
     inputs = [data, error, background]
@@ -939,9 +962,10 @@ def _prepare_data(data, error=None, gain=None, mask=None,
         if data.shape != error.shape:
             raise ValueError('data and error must have the same shape')
         variance = error**2
-        if gain is not None:
+        if effective_gain is not None:
             # data here should include the background
-            variance = _calculate_total_variance(data, variance, gain)
+            variance = _calculate_total_variance(data, variance,
+                                                 effective_gain)
     else:
         variance = None
 
@@ -976,7 +1000,7 @@ def _subtract_background(data, background):
     return (data - background), background
 
 
-def _calculate_total_variance(data, variance, gain):
+def _calculate_total_variance(data, variance, effective_gain):
     """
     Calculate the total variance, including Poisson noise of sources.
 
@@ -985,37 +1009,38 @@ def _calculate_total_variance(data, variance, gain):
     ``data`` here should not be background-subtracted.  ``data`` should
     include all detected counts, including the background, to properly
     calculate the Poisson errors.  ``data`` is converted to counts using
-    the gain.
+    the ``effective_gain``.
     """
 
-    has_unit = [hasattr(x, 'unit') for x in [data, gain]]
+    has_unit = [hasattr(x, 'unit') for x in [data, effective_gain]]
     if any(has_unit) and not all(has_unit):
-        raise ValueError('If either data or gain has units, then they '
-                         'both must have units.')
+        raise ValueError('If either data or effective_gain has units, then '
+                         'they both must have units.')
     if all(has_unit):
-        count_units = [u.ct, u.electron, u.photon]
-        datagain_unit = (data * gain).unit
+        count_units = [u.electron, u.photon]
+        datagain_unit = (data * effective_gain).unit
         if datagain_unit not in count_units:
-            raise u.UnitsError('(data * gain) has units of "{0}", but it '
-                               'must have count units (u.ct, u.electron, '
+            raise u.UnitsError('(data * effective_gain) has units of "{0}", '
+                               'but it must have count units (u.electron '
                                'or u.photon).'.format(datagain_unit))
 
-    if not isiterable(gain):
+    if not isiterable(effective_gain):
         # NOTE: np.broadcast_arrays() never returns a Quantity
-        # gain = np.broadcast_arrays(gain, data)[0]
-        gain = np.zeros(data.shape) + gain
+        # effective_gain = np.broadcast_arrays(effective_gain, data)[0]
+        effective_gain = np.zeros(data.shape) + effective_gain
     else:
-        if gain.shape != data.shape:
-            raise ValueError('If input gain is 2D, then it must have '
-                             'the same shape as the input data.')
-    if np.any(gain <= 0):
-        raise ValueError('gain must be positive everywhere')
+        if effective_gain.shape != data.shape:
+            raise ValueError('If input effective_gain is 2D, then it must '
+                             'have the same shape as the input data.')
+    if np.any(effective_gain <= 0):
+        raise ValueError('effective_gain must be positive everywhere')
 
     if all(has_unit):
         variance_total = np.maximum(
-            variance + ((data * data.unit) / gain.value), 0. * variance.unit)
+            variance + ((data * data.unit) / effective_gain.value),
+            0. * variance.unit)
     else:
-        variance_total = np.maximum(variance + (data / gain), 0)
+        variance_total = np.maximum(variance + (data / effective_gain), 0)
     return variance_total
 
 
