@@ -896,6 +896,9 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
       2 2.09090909091 2.36363636364        55.0
     """
 
+    if len(segment_props) == 0:
+        raise ValueError('segment_props is an empty list')
+
     props_table = Table()
     # all scalar-valued properties
     columns_all = ['id', 'xcentroid', 'ycentroid', 'segment_sum',
