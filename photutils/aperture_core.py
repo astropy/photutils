@@ -138,8 +138,26 @@ class PixelAperture(Aperture):
             pixel. If `False`, assume error and gain do not vary significantly
             within an aperture.
         method : str, optional
-            Method to threat masked pixels. For the currently supported methods
-            see the documentation of `aperture_photometry`.
+            Method to use for determining overlap between the aperture
+            and pixels.  Options include ['center', 'subpixel',
+            'exact'], but not all options are available for all types of
+            apertures. More precise methods will generally be slower.
+
+            * ``'center'``
+                A pixel is considered to be entirely in or out of the
+                aperture depending on whether its center is in or out of
+                the aperture.
+
+            * ``'subpixel'``
+                A pixel is divided into subpixels and the center of each
+                subpixel is tested (as above). With ``subpixels`` set to
+                1, this method is equivalent to 'center'. Note that for
+                subpixel sampling, the input array is only resampled
+                once for each object.
+
+            * ``'exact'`` (default)
+                The exact overlap between the aperture and each pixel is
+                calculated.
         subpixels : int, optional
             For the ``'subpixel'`` method, resample pixels by this factor (in
             each dimension). That is, each pixel is divided into
