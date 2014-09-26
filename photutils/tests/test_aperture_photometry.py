@@ -145,8 +145,11 @@ class BaseTestAperturePhotometry(object):
         gain = np.ones(self.data.shape, dtype=np.float)
         if not hasattr(self, 'mask'):
             mask = None
+            true_error = np.sqrt(self.area + self.true_flux)
         else:
             mask = self.mask
+            # 1 masked pixel
+            true_error = np.sqrt(self.area - 1 + self.true_flux)
 
         table1 = aperture_photometry(self.data,
                                      self.aperture, method='center',
@@ -165,7 +168,6 @@ class BaseTestAperturePhotometry(object):
                             atol=0.1)
         assert np.all(table1['aperture_sum'] < table3['aperture_sum'])
 
-        true_error = np.sqrt(self.area + self.true_flux)
         if not isinstance(self.aperture, (RectangularAperture, RectangularAnnulus)):
             assert_allclose(table3['aperture_sum_err'], true_error)
             assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
@@ -178,8 +180,11 @@ class BaseTestAperturePhotometry(object):
         error = np.ones(self.data.shape, dtype=np.float)
         if not hasattr(self, 'mask'):
             mask = None
+            true_error = np.sqrt(self.area)
         else:
             mask = self.mask
+            # 1 masked pixel
+            true_error = np.sqrt(self.area - 1)
 
         table1 = aperture_photometry(self.data,
                                      self.aperture, method='center',
@@ -198,7 +203,6 @@ class BaseTestAperturePhotometry(object):
                             atol=0.1)
         assert np.all(table1['aperture_sum'] < table3['aperture_sum'])
 
-        true_error = np.sqrt(self.area)
         if not isinstance(self.aperture, (RectangularAperture, RectangularAnnulus)):
             assert_allclose(table3['aperture_sum_err'], true_error)
             assert_allclose(table2['aperture_sum_err'], table3['aperture_sum_err'],
@@ -211,8 +215,11 @@ class BaseTestAperturePhotometry(object):
         gain = np.ones(self.data.shape, dtype=np.float)
         if not hasattr(self, 'mask'):
             mask = None
+            true_error = np.sqrt(self.area + self.true_flux)
         else:
             mask = self.mask
+            # 1 masked pixel
+            true_error = np.sqrt(self.area - 1 + self.true_flux)
 
         table1 = aperture_photometry(self.data,
                                      self.aperture, method='center',
@@ -231,7 +238,6 @@ class BaseTestAperturePhotometry(object):
                             atol=0.1)
         assert np.all(table1['aperture_sum'] < table3['aperture_sum'])
 
-        true_error = np.sqrt(self.area + self.true_flux)
         if not isinstance(self.aperture, (RectangularAperture, RectangularAnnulus)):
             assert_allclose(table3['aperture_sum_err'], true_error)
             assert_allclose(table2['aperture_sum_err'], table3['aperture_sum_err'],

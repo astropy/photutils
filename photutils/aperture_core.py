@@ -1088,7 +1088,7 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
         raise ValueError('{0}-d array not supported. '
                          'Only 2-d arrays supported.'.format(data.ndim))
 
-    # Deal with the mask if it exist
+    # Deal with the mask if it exists
     if mask is not None or datamask is not None:
         if mask is None:
             mask = datamask
@@ -1107,7 +1107,7 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
             if datamask is not None:
                 mask *= datamask
 
-        data *= ~mask    # masked values are replace with zeros, so they
+        data *= ~mask    # masked values are replaced with zeros, so they
                          # do not contribute to the aperture sums
 
     # Check whether we really need to calculate pixelwise errors, even if
@@ -1132,6 +1132,11 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
         if error.shape != data.shape:
             raise ValueError('shapes of error array and data array must'
                              ' match')
+
+        # mask the error array, if necessary
+        if mask is not None:
+            error *= ~mask    # masked values are replaced with zeros, so
+                              # they do not contribute to the sums
 
     # Check gain shape.
     if gain is not None:
