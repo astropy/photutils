@@ -9,7 +9,6 @@ from astropy.table import Table
 from astropy.utils.misc import isiterable
 from ..segmentation import (SegmentProperties, segment_properties,
                             properties_table)
-from ..detection.core import detect_sources
 try:
     import scipy
     HAS_SCIPY = True
