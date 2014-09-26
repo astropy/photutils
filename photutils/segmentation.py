@@ -1,7 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-import copy
 import numpy as np
 from astropy.table import Table
 from astropy.utils import lazyproperty
@@ -22,8 +21,7 @@ class SegmentProperties(object):
     """
 
     def __init__(self, data, segment_image, label, label_slice=None,
-                 error=None, effective_gain=None, mask=None,
-                 mask_method='exclude', background=None):
+                 error=None, effective_gain=None, mask=None, background=None):
         """
         Parameters
         ----------
@@ -66,20 +64,8 @@ class SegmentProperties(object):
         mask : array_like (bool), optional
             A boolean mask, with the same shape as ``data``, where a
             `True` value indicates the corresponding element of ``data``
-            is masked.  Use the ``mask_method`` keyword to select the
-            method used to treat masked pixels.
-
-        mask_method : {'exclude', 'interpolate'}, optional
-            Method used to treat masked pixels.  The currently supported
-            methods are:
-
-            'exclude':
-                Exclude masked pixels from all calculations.  This is
-                the default.
-
-            'interpolate':
-                The value of masked pixels are replaced by the mean
-                value of the 8-connected neighboring non-masked pixels.
+            is masked.  Masked data are excluded/ignored from all
+            calculations.
 
         background : float, array_like, or `~astropy.units.Quantity`, optional
             The background level of the input ``data``.  ``background``
@@ -113,23 +99,22 @@ class SegmentProperties(object):
         ``effective_gain`` should be the exposure time.
 
         `~photutils.SegmentProperties.segment_sum_err` is simply the
-        quadrature sum of the pixel-wise total errors over the pixels
-        within the source segment:
+        quadrature sum of the pixel-wise total errors over the
+        non-masked pixels within the source segment:
 
         .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
                   \\sigma_{\\mathrm{tot}, i}^2}
 
         where :math:`\Delta F` is
         `~photutils.SegmentProperties.segment_sum_err` and :math:`S` are
-        the pixels in the source segment.
+        the non-masked pixels in the source segment.
 
         Custom errors for source segments can be calculated using the
         `~photutils.SegmentProperties.error_cutout_ma` and
         `~photutils.SegmentProperties.background_cutout_ma` properties,
         which are 2D `~numpy.ma.MaskedArray` cutout versions of the
         input ``error`` and ``background``.  The mask is `True` for both
-        pixels outside of the source segment and "excluded" masked
-        pixels.
+        pixels outside of the source segment and masked pixels.
         """
 
         from scipy import ndimage
@@ -137,6 +122,9 @@ class SegmentProperties(object):
         if segment_image.shape != data.shape:
             raise ValueError('segment_image and data must have the same '
                              'shape')
+        if mask is not None:
+            if mask.shape != data.shape:
+                raise ValueError('mask and data must have the same shape')
 
         if label == 0:
             raise ValueError('label "0" is reserved for the background')
@@ -146,11 +134,12 @@ class SegmentProperties(object):
         self._inputimage = data
         self._segment_image = segment_image
         image, error, background = _prepare_data(
-            data, error=error, effective_gain=effective_gain, mask=mask,
-            mask_method=mask_method, background=background)
-        self._image = image
-        self._error = error
-        self._background = background
+            data, error=error, effective_gain=effective_gain,
+            background=background)
+        self._image = image    # background subtracted
+        self._error = error    # total error
+        self._background = background    # 2D error array
+        self._mask = mask
 
         self.label = label
         if label_slice is not None:
@@ -161,14 +150,6 @@ class SegmentProperties(object):
             if self._slice is None:
                 raise ValueError('label "{0}" is not in the input '
                                  'segment_image'.format(label))
-        if mask_method == 'interpolate':
-            # interpolated masked pixels are used like unmasked pixels,
-            # so no further masking is needed
-            self._mask = np.zeros_like(image, dtype=np.bool)
-        else:
-            # excluded masked pixels still need the mask
-            self._mask = mask
-        self._cache_active = True
 
     def __getitem__(self, key):
         return getattr(self, key, None)
@@ -184,7 +165,7 @@ class SegmentProperties(object):
     def _local_mask(self):
         """
         _local_mask is `True` for regions outside of the labeled source
-        segment or where the input mask ("excluded" mask) is `True`.
+        segment or where the input mask is `True`.
         """
         if self._mask is None:
             return ~self._in_segment
@@ -203,7 +184,7 @@ class SegmentProperties(object):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the data, where the
         mask is `True` for both pixels outside of the source segment and
-        "excluded" masked pixels.
+        masked pixels.
         """
         return np.ma.masked_array(self.data_cutout, mask=self._local_mask)
 
@@ -211,9 +192,9 @@ class SegmentProperties(object):
     def _data_cutout_maskzeroed_double(self):
         """
         A 2D cutout from the data, where pixels outside of the source
-        segment and "excluded" masked pixels are set to zero.  The
-        cutout image is double precision, which is required for
-        scikit-image's Cython moment functions.
+        segment and masked pixels are set to zero.  The cutout image is
+        double precision, which is required for scikit-image's Cython
+        moment functions.
         """
         return (self.data_cutout * ~self._local_mask).astype(np.float64)
 
@@ -222,8 +203,8 @@ class SegmentProperties(object):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the input ``error``
         image, where the mask is `True` for both pixels outside of the
-        source segment and "excluded" masked pixels.  If ``error`` is
-        `None`, then ``error_cutout_ma`` is also `None`.
+        source segment and masked pixels.  If ``error`` is `None`, then
+        ``error_cutout_ma`` is also `None`.
         """
         if self._error is not None:
             return np.ma.masked_array(self._error[self._slice],
@@ -236,9 +217,8 @@ class SegmentProperties(object):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the input
         ``background``, where the mask is `True` for both pixels outside
-        of the source segment and "excluded" masked pixels.  If
-        ``background`` is `None`, then ``background_cutout_ma`` is also
-        `None`.
+        of the source segment and masked pixels.  If ``background`` is
+        `None`, then ``background_cutout_ma`` is also `None`.
         """
         if self._background is not None:
             return np.ma.masked_array(self._background[self._slice],
@@ -250,10 +230,7 @@ class SegmentProperties(object):
     def coords(self):
         """
         A list of the ``(y, x)`` pixel coordinates of the source
-        segment.
-
-        "Excluded" masked pixels are not included, but interpolated
-        masked pixels are included.
+        segment.  Masked pixels are not included.
         """
         yy, xx = np.nonzero(self.data_cutout_ma)
         coords = (yy + self._slice[0].start, xx + self._slice[1].start)
@@ -262,10 +239,8 @@ class SegmentProperties(object):
     @lazyproperty
     def values(self):
         """
-        A list of the pixel values within the source segment.
-
-        Values of "excluded" masked pixels are not included, but
-        interpolated masked pixels are included.
+        A list of the pixel values within the source segment.  Masked
+        pixels are not included.
         """
         return self.data_cutout[~self._local_mask]
 
@@ -612,14 +587,14 @@ class SegmentProperties(object):
     @lazyproperty
     def segment_sum(self):
         """
-        The sum of the background-subtracted data values within the source
-        segment.
+        The sum of the non-masked background-subtracted data values
+        within the source segment.
 
         .. math:: F = \\sum_{i \\in S} (I_i - B_i)
 
         where :math:`F` is ``segment_sum``, :math:`I_i` is the ``data``,
-        :math:`B_i` is the ``background``, and :math:`S` are the pixels
-        in the source segment.
+        :math:`B_i` is the ``background``, and :math:`S` are the
+        non-masked pixels in the source segment.
         """
         return np.sum(np.ma.masked_array(self._image[self._slice],
                                          mask=self._local_mask))
@@ -631,14 +606,15 @@ class SegmentProperties(object):
         propagated from the input ``error`` array.
 
         ``segment_sum_err`` is the quadrature sum of the total errors
-        over the pixels within the source segment:
+        over the non-masked pixels within the source segment:
 
         .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
                   \\sigma_{\\mathrm{tot}, i}^2}
 
         where :math:`\Delta F` is ``segment_sum_err``,
         :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise total
-        errors, and :math:`S` are the pixels in the source segment.
+        errors, and :math:`S` are the non-masked pixels in the source
+        segment.
         """
         if self._error is not None:
             # power doesn't work here, see astropy #2968
@@ -679,8 +655,7 @@ class SegmentProperties(object):
 
 
 def segment_properties(data, segment_image, error=None, effective_gain=None,
-                       mask=None, mask_method='exclude', background=None,
-                       labels=None):
+                       mask=None, background=None, labels=None):
     """
     Calculate photometry and morphological properties of sources defined
     by a labeled segmentation image.
@@ -716,20 +691,7 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
     mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
-        Use the ``mask_method`` keyword to select the method used to
-        treat masked pixels.
-
-    mask_method : {'exclude', 'interpolate'}, optional
-        Method used to treat masked pixels.  The currently supported
-        methods are:
-
-        'exclude':
-            Exclude masked pixels from all calculations.  This is the
-            default.
-
-        'interpolate':
-            The value of masked pixels are replaced by the mean value of
-            the 8-connected neighboring non-masked pixels.
+        Masked data are excluded/ignored from all calculations.
 
     background : float, array-like, or `~astropy.units.Quantity`, optional
         The background level of the input ``data``.  ``background`` may
@@ -833,8 +795,7 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
             continue
         segm_props = SegmentProperties(
             data, segment_image, label, label_slice=label_slice, error=error,
-            effective_gain=effective_gain, mask=mask, mask_method=mask_method,
-            background=background)
+            effective_gain=effective_gain, mask=mask, background=background)
         segm_propslist.append(segm_props)
     return segm_propslist
 
@@ -931,22 +892,20 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
     return props_table
 
 
-def _check_units(inputs):
-    """Check for consistent units on data, error, and background."""
-    has_unit = [hasattr(x, 'unit') for x in inputs]
-    if any(has_unit) and not all(has_unit):
-        raise ValueError('If any of data, error, or background has units, '
-                         'then they all must all have units.')
-    if all(has_unit):
-        if any([inputs[0].unit != getattr(x, 'unit') for x in inputs[1:]]):
-            raise u.UnitsError(
-                'data, error, and background units do not match.')
-
-
-def _prepare_data(data, error=None, effective_gain=None, mask=None,
-                  mask_method='exclude', background=None):
+def _prepare_data(data, error=None, effective_gain=None, background=None):
     """
     Prepare the data, error, and background arrays.
+
+    If any of ``data``, ``error``, and ``background`` have units, then
+    they all are checked that they have units and the units are the
+    same.
+
+    If ``effective_gain`` is input, then the total error array including
+    source Poisson noise is calculated.
+
+    If ``background`` is input, it is subtracted from ``data``.
+    ``background`` is always returned as a 2D array with the same shape
+    as ``data``.
 
     Notes
     -----
@@ -964,55 +923,63 @@ def _prepare_data(data, error=None, effective_gain=None, mask=None,
     if error is not None:
         if data.shape != error.shape:
             raise ValueError('data and error must have the same shape')
-        variance = error**2
         if effective_gain is not None:
             # data here should include the background
-            variance = _calculate_total_variance(data, variance,
-                                                 effective_gain)
-    else:
-        variance = None
+            error = calculate_total_error(data, error, effective_gain)
 
-    # subtract background after calculating total variance, but
-    # before applying mask
+    # subtract background after calculating total variance
     if background is not None:
-        data, background = _subtract_background(data, background)
-
-    if mask is not None:
-        # _apply_mask needs 2D background
-        data, variance, background = _apply_mask(
-            data, mask, mask_method, variance=variance, background=background)
-
-    if error is not None:
-        error = np.sqrt(variance)
+        data, background = subtract_background(data, background)
 
     return data, error, background
 
 
-def _subtract_background(data, background):
-    """
-    Subtract background from data and return a 2D background image.
-    """
-    if not isiterable(background):
-        # NOTE: np.broadcast_arrays() never returns a Quantity
-        # background = np.broadcast_arrays(background, data)[0]
-        background = np.zeros(data.shape) + background
-    else:
-        if background.shape != data.shape:
-            raise ValueError('If input background is 2D, then it must '
-                             'have the same shape as the input data.')
-    return (data - background), background
+def _check_units(inputs):
+    """Check for consistent units on data, error, and background."""
+    has_unit = [hasattr(x, 'unit') for x in inputs]
+    if any(has_unit) and not all(has_unit):
+        raise ValueError('If any of data, error, or background has units, '
+                         'then they all must all have units.')
+    if all(has_unit):
+        if any([inputs[0].unit != getattr(x, 'unit') for x in inputs[1:]]):
+            raise u.UnitsError(
+                'data, error, and background units do not match.')
 
 
-def _calculate_total_variance(data, variance, effective_gain):
+def calculate_total_error(data, error, effective_gain):
     """
-    Calculate the total variance, including Poisson noise of sources.
+    Calculate a total error array, combining a background error array
+    with the Poisson noise of sources.
+
+    Parameters
+    ----------
+    data : array_like or `~astropy.units.Quantity`
+        The 2D array data array.
+
+    error : array_like or `~astropy.units.Quantity`
+        The pixel-wise Gaussian 1-sigma background errors of the input
+        ``data``.  ``error`` should include all sources of "background"
+        error but *exclude* the Poisson error of the sources.  ``error``
+        must have the same shape as ``data``.
+
+    effective_gain : float, array-like, or `~astropy.units.Quantity`
+        Ratio of counts (e.g., electrons or photons) to the units of
+        ``data`` used to calculate the Poisson error of the sources.
 
     Notes
     -----
+    The total error array, :math:`\sigma_{\mathrm{tot}}` is:
+
+    .. math:: \\sigma_{\\mathrm{tot}} = \\sqrt{\\sigma_{\\mathrm{b}}^2 +
+                  \\frac{I}{g}}
+
+    where :math:`\sigma_b`, :math:`I`, and :math:`g` are the background
+    ``error`` image, ``data`` image, and ``effective_gain``,
+    respectively.
+
     ``data`` here should not be background-subtracted.  ``data`` should
-    include all detected counts, including the background, to properly
-    calculate the Poisson errors.  ``data`` is converted to counts using
-    the ``effective_gain``.
+    include all detected counts (electrons or photons), including the
+    background, to properly calculate the Poisson errors of sources.
     """
 
     has_unit = [hasattr(x, 'unit') for x in [data, effective_gain]]
@@ -1040,38 +1007,101 @@ def _calculate_total_variance(data, variance, effective_gain):
 
     if all(has_unit):
         variance_total = np.maximum(
-            variance + ((data * data.unit) / effective_gain.value),
-            0. * variance.unit)
+            error**2 + ((data * data.unit) / effective_gain.value),
+            0. * error.unit**2)
     else:
-        variance_total = np.maximum(variance + (data / effective_gain), 0)
-    return variance_total
+        variance_total = np.maximum(error**2 + (data / effective_gain), 0)
+    return np.sqrt(variance_total)
 
 
-def _apply_mask(data, mask, mask_method, variance=None, background=None):
-    """Apply mask to data, variance, and background images."""
+def subtract_background(data, background):
+    """
+    Subtract background from data and generate a pixel-wise 2D
+    background image.
+
+    Parameters
+    ----------
+    data : array_like or `~astropy.units.Quantity`
+        The 2D data array from which to subtract ``background``.
+
+    background : float, array_like, or `~astropy.units.Quantity`
+        The background level of the input ``data``.  ``background`` may
+        either be a scalar value or a 2D image with the same shape as
+        the input ``data``.
+
+    Returns
+    -------
+    data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
+        The background subtracted data.
+
+    background : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
+        The pixel-wise background array.
+    """
+
+    if not isiterable(background):
+        # NOTE: np.broadcast_arrays() never returns a Quantity
+        # background = np.broadcast_arrays(background, data)[0]
+        background = np.zeros(data.shape) + background
+    else:
+        if background.shape != data.shape:
+            raise ValueError('If input background is 2D, then it must '
+                             'have the same shape as the input data.')
+    return (data - background), background
+
+
+def interpolate_masked_data(data, mask, error=None, background=None):
+    """
+    Interpolate over masked pixels in data and optional error or
+    background images.
+
+    Parameters
+    ----------
+    data : array_like or `~astropy.units.Quantity`
+        The 2D data array.
+
+    mask : array_like (bool)
+        A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+
+    error : array_like or `~astropy.units.Quantity`, optional
+        The pixel-wise Gaussian 1-sigma errors of the input ``data``.
+        ``error`` must have the same shape as ``data``.
+
+    background : array_like, or `~astropy.units.Quantity`, optional
+        The pixel-wise background level of the input ``data``.
+        ``background`` must have the same shape as ``data``.
+
+    Returns
+    -------
+    data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
+        Input ``data`` with interpolated masked pixels.
+
+    error : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
+        Input ``error`` with interpolated masked pixels.  `None` if
+        input ``error`` is not input.
+
+    background : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
+        Input ``background`` with interpolated masked pixels.  `None` if
+        input ``background`` is not input.
+    """
+
     if data.shape != mask.shape:
         raise ValueError('data and mask must have the same shape')
 
-    data = copy.deepcopy(data)    # ensure input data is not modified
+    import copy
+    data_out = copy.deepcopy(data)    # do not alter input data
     mask_idx = mask.nonzero()
-    if mask_method == 'exclude':
-        # excluded masked pixels will not contribute to sums
-        data[mask_idx] = 0.0
+    for j, i in zip(*mask_idx):
+        y0, y1 = max(j - 1, 0), min(j + 2, data.shape[0])
+        x0, x1 = max(i - 1, 0), min(i + 2, data.shape[1])
+        goodpix = ~mask[y0:y1, x0:x1]
+        data_out[j, i] = np.mean(data[y0:y1, x0:x1][goodpix])
         if background is not None:
-            background[mask_idx] = 0.0
-        if variance is not None:
-            variance[mask_idx] = 0.0
-    elif mask_method == 'interpolate':
-        for j, i in zip(*mask_idx):
-            y0, y1 = max(j - 1, 0), min(j + 2, data.shape[0])
-            x0, x1 = max(i - 1, 0), min(i + 2, data.shape[1])
-            goodpix = ~mask[y0:y1, x0:x1]
-            data[j, i] = np.mean(data[y0:y1, x0:x1][goodpix])
-            if background is not None:
-                background[j, i] = np.mean(background[y0:y1, x0:x1][goodpix])
-            if variance is not None:
-                variance[j, i] = np.mean(variance[y0:y1, x0:x1][goodpix])
-    else:
-        raise ValueError(
-            'mask_method "{0}" is not valid'.format(mask_method))
-    return data, variance, background
+            background_out = copy.deepcopy(background)
+            background_out[j, i] = np.mean(background[y0:y1, x0:x1][goodpix])
+        if error is not None:
+            error_out = copy.deepcopy(error)
+            error_out[j, i] = np.sqrt(
+                np.mean(error[y0:y1, x0:x1][goodpix]**2))
+
+    return data_out, error_out, background_out
