@@ -37,6 +37,12 @@ class TestDetectThreshold(object):
         ref = 0.4 * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
+    def test_snr_zero(self):
+        """Test snr=0."""
+        threshold = detect_threshold(DATA, snr=0.0)
+        ref = (1. / 3.) * np.ones((3, 3))
+        assert_allclose(threshold, ref)
+
     def test_background(self):
         threshold = detect_threshold(DATA, snr=1.0, background=1)
         ref = (5. / 3.) * np.ones((3, 3))
@@ -82,59 +88,78 @@ class TestDetectThreshold(object):
         ref = 12. * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
+    def test_mask_val(self):
+        """Test detection with mask_val."""
+        threshold = detect_threshold(DATA, snr=1.0, mask_val=0.0)
+        ref = 2. * np.ones((3, 3))
+        assert_array_equal(threshold, ref)
 
+    def test_image_mask(self):
+        """
+        Test detection with image_mask.
+        sig=10 and iters=1 to prevent sigma clipping after applying the mask.
+        """
 
+        mask = REF3.astype(np.bool)
+        threshold = detect_threshold(DATA, snr=1., error=0, mask=mask,
+                                     sigclip_sigma=10, sigclip_iters=1)
+        ref = (1. / 8.) * np.ones((3, 3))
+        assert_array_equal(threshold, ref)
+
+    def test_image_mask_override(self):
+        """Test that image_mask overrides mask_val."""
+        mask = REF3.astype(np.bool)
+        threshold = detect_threshold(DATA, snr=0.1, error=0, mask_val=0.0,
+                                     mask=mask, sigclip_sigma=10,
+                                     sigclip_iters=1)
+        ref = (1. / 8.) * np.ones((3, 3))
+        assert_array_equal(threshold, ref)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestDetectSources(object):
     def test_detection(self):
         """Test basic detection."""
-        threshold = detect_threshold(DATA, snr=0.1)
-        segm = detect_sources(DATA, threshold, npixels=2)
+        segm = detect_sources(DATA, threshold=1., npixels=2)
         assert_array_equal(segm, REF2)
 
     def test_small_sources(self):
         """Test detection where sources are smaller than npixels size."""
-        threshold = detect_threshold(DATA, snr=0.1)
-        segm = detect_sources(DATA, threshold, npixels=5)
+        segm = detect_sources(DATA, threshold=1., npixels=5)
         assert_array_equal(segm, REF1)
 
     def test_zerothresh(self):
-        """Test detection with zero snr_threshold."""
-        threshold = detect_threshold(DATA, snr=0.0)
-        segm = detect_sources(DATA, threshold, npixels=2)
-        assert_array_equal(segm, REF2)
+        """Test detection with zero threshold."""
+        segm = detect_sources(DATA, threshold=0., npixels=2)
+        ref = np.ones((3, 3))
+        assert_array_equal(segm, ref)
 
     def test_zerodet(self):
         """Test detection with large snr_threshold giving no detections."""
-        threshold = detect_threshold(DATA, snr=10.0)
-        segm = detect_sources(DATA, threshold, npixels=2)
+        segm = detect_sources(DATA, threshold=7, npixels=2)
         assert_array_equal(segm, REF1)
 
     def test_8connectivity(self):
         """Test detection with connectivity=8."""
         data = np.eye(3)
-        segm = detect_sources(data, 1, npixels=1, connectivity=8)
+        segm = detect_sources(data, threshold=1, npixels=1, connectivity=8)
         assert_array_equal(segm, data)
 
     def test_4connectivity(self):
         """Test detection with connectivity=4."""
         data = np.eye(3)
-        ref = np.diagflat([1, 2, 3])
-        segm = detect_sources(data, 1, npixels=1, connectivity=4)
+        ref = np.diag([1, 2, 3])
+        segm = detect_sources(data, threshold=1, npixels=1, connectivity=4)
         assert_array_equal(segm, ref)
 
     def test_filter1(self):
         """Test detection with filter_fwhm."""
-        threshold = detect_threshold(DATA, snr=0.1)
-        segm = detect_sources(DATA, threshold, npixels=2, filter_fwhm=1.)
+        segm = detect_sources(DATA, threshold=1., npixels=2, filter_fwhm=1.)
         assert_array_equal(segm, REF1)
 
     def test_filter2(self):
         """Test detection for small filter_fwhm."""
-        threshold = detect_threshold(DATA, snr=1.0)
-        segm = detect_sources(DATA, threshold, npixels=1, filter_fwhm=0.5)
+        segm = detect_sources(DATA, threshold=1., npixels=1, filter_fwhm=0.5)
         assert_array_equal(segm, REF3)
 
     def test_filter_kernel(self):
@@ -145,42 +170,15 @@ class TestDetectSources(object):
                               filter_kernel=kernel)
         assert_array_equal(segm, kernel)
 
-    def test_npix1_error(self):
+    def test_npixels_nonint(self):
         """Test if AssertionError raises if npixel is non-integer."""
         with pytest.raises(ValueError):
             detect_sources(DATA, threshold=1, npixels=0.1)
 
-    def test_npix2_error(self):
+    def test_npixels_negative(self):
         """Test if AssertionError raises if npixel is negative."""
         with pytest.raises(ValueError):
             detect_sources(DATA, threshold=1, npixels=-1)
-
-    def test_mask_val(self):
-        """Test detection with mask_val."""
-        threshold = detect_threshold(DATA, snr=0.1, mask_val=0.0)
-        segm = detect_sources(DATA, threshold, npixels=1)
-        assert_array_equal(segm, REF3)
-
-    def test_image_mask(self):
-        """
-        Test detection with image_mask.
-        sig=10 and iters=1 to prevent sigma clipping after applying the mask.
-        """
-
-        mask = REF3.astype(np.bool)
-        threshold = detect_threshold(DATA, snr=0.1, mask=mask,
-                                     sigclip_sigma=10, sigclip_iters=1)
-        segm = detect_sources(DATA, threshold, npixels=1)
-        assert_array_equal(segm, REF2)
-
-    def test_image_mask_override(self):
-        """Test that image_mask overrides mask_val."""
-        mask = REF3.astype(np.bool)
-        threshold = detect_threshold(DATA, snr=0.1, mask_val=0.0, mask=mask,
-                                     sigclip_sigma=10, sigclip_iters=1)
-        segm = detect_sources(DATA, threshold, npixels=1)
-        assert_array_equal(segm, REF2)
-
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
