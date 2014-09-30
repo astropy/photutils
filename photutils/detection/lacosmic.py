@@ -5,6 +5,7 @@ import numpy as np
 from ..extern import imageutils
 from astropy import log
 
+
 __all__ = ['lacosmic']
 
 
@@ -170,7 +171,7 @@ def lacosmic(data, contrast, cr_threshold, neighbor_threshold,
                 clean_data -= background
             return clean_data, final_crmask
         clean_data = _clean_masked_pixels(clean_data, final_crmask, size=5,
-                                           exclude_mask=mask)
+                                          exclude_mask=mask)
 
     if background is not None:
         clean_data -= background

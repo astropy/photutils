@@ -12,6 +12,7 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
+
 IMG = np.random.RandomState(1234567890).randn(5, 5) * 0.5
 x, y = [0, 3, 4, 2, 1], [0, 2, 1, 4, 2]
 CR = np.zeros(IMG.shape)

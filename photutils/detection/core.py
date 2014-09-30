@@ -101,7 +101,7 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
         error = bkgrdrms_image
     else:
         if np.isscalar(error):
-           error = np.broadcast_arrays(error, data)[0]
+            error = np.broadcast_arrays(error, data)[0]
         else:
             if error.shape != data.shape:
                 raise ValueError('If input error is 2D, then it '
