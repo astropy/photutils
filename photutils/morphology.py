@@ -83,7 +83,7 @@ def centroid_com(data, mask=None):
     return xcen, ycen
 
 
-def gaussian1d_moments(data):
+def gaussian1d_moments(data, mask=None):
     """
     Estimate the 1D Gaussian parameters from the moments of 1D data.
     This function can be useful for providing initial parameter values
@@ -94,12 +94,19 @@ def gaussian1d_moments(data):
     data : array_like
         The 1D array of the image.
 
+    mask : array_like (bool), optional
+        A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+
     Returns
     -------
     amplitude, mean, stddev : float
         The estimated parameters of a 1D Gaussian.
     """
 
+    if mask is not None:
+        data = data.copy()
+        data[mask] = 0.
     x = np.arange(data.size)
     xc = np.sum(x * data) / np.sum(data)
     stddev = np.sqrt(abs(np.sum(data * (x - xc)**2) / np.sum(data)))
