@@ -114,7 +114,7 @@ def gaussian1d_moments(data, mask=None):
     return amplitude, xc, stddev
 
 
-def centroid_1dg(data, uncertainty=None, mask=None):
+def centroid_1dg(data, error=None, mask=None):
     """
     Calculate the centroid of a 2D array by fitting 1D Gaussians to the
     marginal x and y distributions of the image.
@@ -124,44 +124,46 @@ def centroid_1dg(data, uncertainty=None, mask=None):
     data : array_like or `~astropy.nddata.NDData`
         The 2D array of the image.
 
-    uncertainty : array_like, optional
-        The 2D array of the 1-sigma errors of the input ``data``.  If
-        ``uncertainty`` is input it will override ``data.uncertainty``
-        for `~astropy.nddata.NDData` inputs.
+    error : array_like, optional
+        The 2D array of the 1-sigma errors of the input ``data``.
 
-    mask : array_like, bool, optional
-        (Not yet implemented).
-        A boolean mask with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is
-        invalid.  If ``mask`` is input it will override ``data.mask``
-        for `~astropy.nddata.NDData` inputs.
+    mask : array_like (bool), optional
+        A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
 
     Returns
     -------
-    xcen, ycen : tuple of floats
+    xcen, ycen : float
         (x, y) coordinates of the centroid.
     """
 
-    data_x = data.sum(axis=0)
-    data_y = data.sum(axis=1)
-    if uncertainty is None:
-        weights_x = None
-        weights_y = None
+    if error is not None:
+        marginal_error = np.array(
+            [np.sqrt(np.sum(error**2, axis=i)) for i in [0, 1]])
+        marginal_weights = 1.0 / marginal_error
     else:
-        image_err_x = np.sqrt(np.sum(uncertainty**2, axis=0))
-        image_err_y = np.sqrt(np.sum(uncertainty**2, axis=1))
-        weights_x = 1.0 / image_err_x
-        weights_y = 1.0 / image_err_y
+        marginal_weights = [None, None]
 
-    marginal_data = [data_x, data_y]
-    marginal_weights = [weights_x, weights_y]
+    if mask is not None:
+        marginal_mask = [mask.sum(axis=i).astype(np.bool) for i in [0, 1]]
+        if error is None:
+            marginal_weights = np.array(
+                [np.ones(data.shape[1]), np.ones(data.shape[0])])
+        for i in [0, 1]:
+            # down-weight masked pixels
+            marginal_weights[i][marginal_mask[i]] = 1.e-10
+    else:
+        marginal_mask = [None, None]
+
     centroid = []
-    for (data, weights) in zip(marginal_data, marginal_weights):
-        params_init = gaussian1d_moments(data)
+    marginal_data = [data.sum(axis=i) for i in [0, 1]]
+    inputs = zip(marginal_data, marginal_weights, marginal_mask)
+    for (mdata, mweights, mmask) in inputs:
+        params_init = gaussian1d_moments(mdata, mask=mmask)
         g_init = models.Gaussian1D(*params_init)
         fitter = LevMarLSQFitter()
-        x = np.arange(data.size)
-        g_fit = fitter(g_init, x, data, weights=weights)
+        x = np.arange(mdata.size)
+        g_fit = fitter(g_init, x, mdata, weights=mweights)
         centroid.append(g_fit.mean.value)
     return centroid
 
