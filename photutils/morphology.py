@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from astropy.modeling import models
 from astropy.modeling.fitting import LevMarLSQFitter
+from .segmentation import SegmentProperties
 
 
 __all__ = ['centroid_com', 'gaussian1d_moments', 'centroid_1dg',
@@ -121,7 +122,7 @@ def centroid_1dg(data, error=None, mask=None):
 
     Parameters
     ----------
-    data : array_like or `~astropy.nddata.NDData`
+    data : array_like
         The 2D array of the image.
 
     error : array_like, optional
@@ -168,71 +169,72 @@ def centroid_1dg(data, error=None, mask=None):
     return centroid
 
 
-def centroid_2dg(data, uncertainty=None, mask=None):
+def centroid_2dg(data, error=None, mask=None):
     """
     Calculate the centroid of a 2D array by fitting a 2D Gaussian to the
     image.
 
     Parameters
     ----------
-    data : array_like or `~astropy.nddata.NDData`
+    data : array_like
         The 2D array of the image.
 
-    uncertainty : array_like, optional
+    error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
 
-    mask : array_like, bool, optional
-        (Not yet implemented).
-        A boolean mask with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is
-        invalid.  If ``mask`` is input it will override ``data.mask``
-        for `~astropy.nddata.NDData` inputs.
+    mask : array_like (bool), optional
+        A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
 
     Returns
     -------
-    centroid : tuple
+    xcen, ycen : float
         (x, y) coordinates of the centroid.
     """
 
-    gfit = fit_2dgaussian(data, uncertainty=uncertainty, mask=mask)
+    gfit = fit_2dgaussian(data, error=error, mask=mask)
     return gfit.x_mean.value, gfit.y_mean.value
 
 
-def fit_2dgaussian(data, uncertainty=None, mask=None):
+def fit_2dgaussian(data, error=None, mask=None):
     """
     Fit a 2D Gaussian to a 2D image.
 
     Parameters
     ----------
-    data : array_like or `~astropy.nddata.NDData`
+    data : array_like
         The 2D array of the image.
 
-    uncertainty : array_like, optional
+    error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
 
-    mask : array_like, bool, optional
-        (Not yet implemented).
-        A boolean mask with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is
-        invalid.  If ``mask`` is input it will override ``data.mask``
-        for `~astropy.nddata.NDData` inputs.
+    mask : array_like (bool), optional
+        A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
 
     Returns
     -------
-    centroid : tuple
-        (x, y) coordinates of the centroid.
+    result : `~astropy.modeling.models.Gaussian2D` instance
+        The best-fitting Gaussian 2D model.
     """
 
-    if uncertainty is None:
-        weights = None
+    if error is not None:
+        weights = 1.0 / error
     else:
-        weights = 1.0 / uncertainty
-    init_param = shape_params(data, mask=mask)
+        weights = None
+
+    if mask is not None:
+        if weights is None:
+            weights = np.ones_like(data)
+        # down-weight masked pixels
+        weights[mask] = 1.e-10
+
+    props = data_properties(data, mask=mask)
     init_amplitude = np.ptp(data)
-    g_init = models.Gaussian2D(init_amplitude, init_param['xcen'],
-                               init_param['ycen'], init_param['major_axis'],
-                               init_param['minor_axis'],
-                               theta=init_param['angle'])
+    g_init = models.Gaussian2D(
+        init_amplitude, props.xcentroid.value, props.ycentroid.value,
+        props.semimajor_axis_sigma.value, props.semiminor_axis_sigma.value,
+        props.orientation.value)
     fitter = LevMarLSQFitter()
     y, x = np.indices(data.shape)
     gfit = fitter(g_init, x, y, data, weights=weights)
@@ -264,27 +266,10 @@ def data_properties(data, mask=None, background=None):
 
     Returns
     -------
+    result : `SegmentProperties` instance
+        A `SegmentProperties` object.
     """
 
-    segment_image = np.ones(data.shape)
-    return SegmentProperties(data, segment_image, 1, mask=mask,
+    segment_image = np.ones(data.shape, dtype=np.int)
+    return SegmentProperties(data, segment_image, label=1, mask=mask,
                              background=background)
-
-
-def _moments_to_2DGaussian(amplitude, x_mean, y_mean, mu):
-    """
-    mu:  normalized second-order central moments matrix [units of pixels**2]
-    mu = moments_central(image, ycen, xcen, 2) / m[0, 0]
-    """
-
-    cov_matrix = np.array([[mu[2, 0], mu[1, 1]], [mu[1, 1], mu[0, 2]]])
-    return models.Gaussian2D(amplitude, x_mean, y_mean, cov_matrix=cov_matrix)
-
-
-def _moments_to_2DGaussian2(amplitude, x_mean, y_mean, Ixx, Ixy, Iyy):
-    """
-    Ixx, Ixy, Iyy:  second-order central moments [units of pixels**2]
-    """
-
-    cov_matrix = np.array([[Ixx, Ixy], [Ixy, Iyy]])
-    return models.Gaussian2D(amplitude, x_mean, y_mean, cov_matrix=cov_matrix)
