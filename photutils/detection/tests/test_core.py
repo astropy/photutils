@@ -59,13 +59,21 @@ class TestDetectSources(object):
         """Test detection with filter_fwhm."""
         threshold = detect_threshold(DATA, snr=0.1)
         segm = detect_sources(DATA, threshold, npixels=2, filter_fwhm=1.)
-        assert_array_equal(segm, REF2)
+        assert_array_equal(segm, REF1)
 
     def test_filter2(self):
         """Test detection for small filter_fwhm."""
         threshold = detect_threshold(DATA, snr=1.0)
         segm = detect_sources(DATA, threshold, npixels=1, filter_fwhm=0.5)
         assert_array_equal(segm, REF3)
+
+    def test_filter_kernel(self):
+        """Test detection for small filter_fwhm."""
+        kernel = np.ones((3, 3))
+        threshold = 1.5
+        segm = detect_sources(DATA, threshold, npixels=1,
+                              filter_kernel=kernel)
+        assert_array_equal(segm, kernel)
 
     def test_npix1_error(self):
         """Test if AssertionError raises if npixel is non-integer."""
