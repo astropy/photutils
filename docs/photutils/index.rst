@@ -158,6 +158,8 @@ Using `photutils`
     detection.rst
     morphology.rst
     geometry.rst
+    utils.rst
+
 
 .. toctree::
   :maxdepth: 1

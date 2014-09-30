@@ -302,13 +302,10 @@ pixel.
 Pixel Masking
 -------------
 
-If an image mask is specified via the ``mask`` keyword, masked pixels
-can either be ignored (``mask_method='skip'``, which is the default)
-or interpolated (``mask_method='interpolation'``).  Interpolated
-pixels are replaced by the mean value of the neighboring non-masked
-pixels.  Some examples are below.
+If an image mask is specified via the ``mask`` keyword.  Masked pixels
+are ignored/excluded.  Some examples are below.
 
-Without a mask image::
+Without a ``mask`` image::
 
   >>> data = np.ones((5, 5))
   >>> aperture = CircularAperture((2, 2), 2.)
@@ -321,23 +318,13 @@ Without a mask image::
   -------------
   111.566370614
 
-With the mask image and the default ``mask_method``
-(``mask_method='skip'``)::
+With a ``mask`` image::
 
   >>> t2 = aperture_photometry(data, aperture, mask=mask)
   >>> print t2['aperture_sum']
    aperture_sum
   -------------
   11.5663706144
-
-With the mask image and ``mask_method='interpolation'``::
-
-  >>> t3 = aperture_photometry(data, aperture, mask=mask,
-  ...                          mask_method='interpolation')
-  >>> print t3['aperture_sum']
-   aperture_sum
-  -------------
-  12.5663706144
 
 
 Photometry using sky coordinates

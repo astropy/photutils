@@ -138,8 +138,26 @@ class PixelAperture(Aperture):
             pixel. If `False`, assume error and gain do not vary significantly
             within an aperture.
         method : str, optional
-            Method to threat masked pixels. For the currently supported methods
-            see the documentation of `aperture_photometry`.
+            Method to use for determining overlap between the aperture
+            and pixels.  Options include ['center', 'subpixel',
+            'exact'], but not all options are available for all types of
+            apertures. More precise methods will generally be slower.
+
+            * ``'center'``
+                A pixel is considered to be entirely in or out of the
+                aperture depending on whether its center is in or out of
+                the aperture.
+
+            * ``'subpixel'``
+                A pixel is divided into subpixels and the center of each
+                subpixel is tested (as above). With ``subpixels`` set to
+                1, this method is equivalent to 'center'. Note that for
+                subpixel sampling, the input array is only resampled
+                once for each object.
+
+            * ``'exact'`` (default)
+                The exact overlap between the aperture and each pixel is
+                calculated.
         subpixels : int, optional
             For the ``'subpixel'`` method, resample pixels by this factor (in
             each dimension). That is, each pixel is divided into
@@ -927,8 +945,7 @@ class RectangularAnnulus(PixelAperture):
 
 def aperture_photometry(data, apertures, unit=None, wcs=None,
                         error=None, gain=None, mask=None, method='exact',
-                        subpixels=5, pixelwise_error=True,
-                        mask_method='skip'):
+                        subpixels=5, pixelwise_error=True):
     """
     Sum flux within an aperture at the given position(s).
 
@@ -958,7 +975,7 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
         is assumed to be the "background error" only (not accounting for
         Poisson error in the flux in the apertures).
     mask : array_like (bool), optional
-        Mask to apply to the data.
+        Mask to apply to the data.  Masked pixels are excluded/ignored.
     method : str, optional
         Method to use for determining overlap between the aperture and pixels.
         Options include ['center', 'subpixel', 'exact'], but not all options
@@ -988,14 +1005,6 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
         within an aperture. Use the single value of error and/or gain at
         the center of each aperture as the value for the entire aperture.
         Default is `True`.
-    mask_method : str, optional
-        Method to treat masked pixels. Currently supported methods:
-
-        * ``'skip'``
-            Leave out the masked pixels from all calculations.
-        * ``'interpolation'``
-            The value of the masked pixels are replaced by the mean value of
-            the neighbouring non-masked pixels.
 
     Returns
     -------
@@ -1044,8 +1053,7 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
                               .format(i), AstropyUserWarning)
                 return aperture_photometry(data[i], apertures, unit,
                                            wcs, error, gain, mask, method,
-                                           subpixels,
-                                           pixelwise_error, mask_method)
+                                           subpixels, pixelwise_error)
 
     # this is basically for NDData inputs and alike
     elif hasattr(data, 'data') and not isinstance(data, np.ndarray):
@@ -1080,7 +1088,7 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
         raise ValueError('{0}-d array not supported. '
                          'Only 2-d arrays supported.'.format(data.ndim))
 
-    # Deal with the mask if it exist
+    # Deal with the mask if it exists
     if mask is not None or datamask is not None:
         if mask is None:
             mask = datamask
@@ -1099,14 +1107,8 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
             if datamask is not None:
                 mask *= datamask
 
-        if mask_method == 'skip':
-            data *= ~mask
-
-        if mask_method == 'interpolation':
-            for i, j in zip(*np.nonzero(mask)):
-                y0, y1 = max(i - 1, 0), min(i + 2, data.shape[0])
-                x0, x1 = max(j - 1, 0), min(j + 2, data.shape[1])
-                data[i, j] = np.mean(data[y0:y1, x0:x1][~mask[y0:y1, x0:x1]])
+        data *= ~mask    # masked values are replaced with zeros, so they
+                         # do not contribute to the aperture sums
 
     # Check whether we really need to calculate pixelwise errors, even if
     # requested. (If neither error nor gain is an array, we don't need to.)
@@ -1130,6 +1132,11 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
         if error.shape != data.shape:
             raise ValueError('shapes of error array and data array must'
                              ' match')
+
+        # mask the error array, if necessary
+        if mask is not None:
+            error *= ~mask    # masked values are replaced with zeros, so
+                              # they do not contribute to the sums
 
     # Check gain shape.
     if gain is not None:
