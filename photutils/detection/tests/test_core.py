@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from astropy.tests.helper import pytest
 import numpy as np
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_allclose
 from ..core import detect_threshold, detect_sources, find_peaks
 
 try:
@@ -27,6 +27,63 @@ REF3 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
 PEAKDATA = np.array([[1, 0, 0], [0, 0, 0], [0, 0, 1]]).astype(np.float)
 PEAKREF1 = np.array([[0, 0], [2, 2]])
 PEAKREF2 = np.array([]).reshape(0, 2)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+class TestDetectThreshold(object):
+    def test_snr(self):
+        """Test basic snr."""
+        threshold = detect_threshold(DATA, snr=0.1)
+        ref = 0.4 * np.ones((3, 3))
+        assert_allclose(threshold, ref)
+
+    def test_background(self):
+        threshold = detect_threshold(DATA, snr=1.0, background=1)
+        ref = (5. / 3.) * np.ones((3, 3))
+        assert_allclose(threshold, ref)
+
+    def test_background_image(self):
+        background = np.ones((3, 3))
+        threshold = detect_threshold(DATA, snr=1.0, background=background)
+        ref = (5. / 3.) * np.ones((3, 3))
+        assert_allclose(threshold, ref)
+
+    def test_background_badshape(self):
+        wrong_shape = np.zeros((2, 2))
+        with pytest.raises(ValueError):
+            detect_threshold(DATA, snr=2., background=wrong_shape)
+
+    def test_error(self):
+        threshold = detect_threshold(DATA, snr=1.0, error=1)
+        ref = (4. / 3.) * np.ones((3, 3))
+        assert_allclose(threshold, ref)
+
+    def test_error_image(self):
+        error = np.ones((3, 3))
+        threshold = detect_threshold(DATA, snr=1.0, error=error)
+        ref = (4. / 3.) * np.ones((3, 3))
+        assert_allclose(threshold, ref)
+
+    def test_error_badshape(self):
+        wrong_shape = np.zeros((2, 2))
+        with pytest.raises(ValueError):
+            detect_threshold(DATA, snr=2., error=wrong_shape)
+
+    def test_background_error(self):
+        threshold = detect_threshold(DATA, snr=2.0, background=10., error=1.)
+        ref = 12. * np.ones((3, 3))
+        assert_allclose(threshold, ref)
+
+    def test_background_error_images(self):
+        background = np.ones((3, 3)) * 10.
+        error = np.ones((3, 3))
+        threshold = detect_threshold(DATA, snr=2.0, background=background,
+                                     error=error)
+        ref = 12. * np.ones((3, 3))
+        assert_allclose(threshold, ref)
+
+
+
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -54,6 +111,19 @@ class TestDetectSources(object):
         threshold = detect_threshold(DATA, snr=10.0)
         segm = detect_sources(DATA, threshold, npixels=2)
         assert_array_equal(segm, REF1)
+
+    def test_8connectivity(self):
+        """Test detection with connectivity=8."""
+        data = np.eye(3)
+        segm = detect_sources(data, 1, npixels=1, connectivity=8)
+        assert_array_equal(segm, data)
+
+    def test_4connectivity(self):
+        """Test detection with connectivity=4."""
+        data = np.eye(3)
+        ref = np.diagflat([1, 2, 3])
+        segm = detect_sources(data, 1, npixels=1, connectivity=4)
+        assert_array_equal(segm, ref)
 
     def test_filter1(self):
         """Test detection with filter_fwhm."""
@@ -110,6 +180,7 @@ class TestDetectSources(object):
                                      sigclip_sigma=10, sigclip_iters=1)
         segm = detect_sources(DATA, threshold, npixels=1)
         assert_array_equal(segm, REF2)
+
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
