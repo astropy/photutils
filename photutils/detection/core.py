@@ -111,13 +111,15 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
     return background + (error * snr)
 
 
-def detect_sources(data, threshold, npixels, filter_fwhm=None, connectivity=8):
+def detect_sources(data, threshold, npixels, filter_fwhm=None,
+                   filter_kernel=None, connectivity=8):
     """
     Detect sources above a specified threshold value in an image and
     return a segmentation image.
 
     Detected sources must have ``npixels`` connected pixels that are
-    each greater than the ``threshold`` value.
+    each greater than the ``threshold`` value.  If the filtering option
+    is used, then the ``threshold`` is applied to the filtered image.
 
     This function does not deblend overlapping sources.
 
@@ -141,8 +143,12 @@ def detect_sources(data, threshold, npixels, filter_fwhm=None, connectivity=8):
         The FWHM of a circular 2D Gaussian filter that is applied to the
         input image before it is thresholded.  Filtering the image will
         maximize detectability of objects with a FWHM similar to
-        ``filter_fwhm``.  Set to `None` (the default) to turn off image
-        filtering.
+        ``filter_fwhm``.  ``filter_fwhm`` is ignored if
+        ``filter_kernel`` is input.
+
+    filter_kernel : array-like (2D), optional
+        The 2D array of the kernel used to filter the image before
+        thresholding.  ``filter_kernel`` overrides ``filter_fwhm``.
 
     connectivity : {4, 8}, optional
         The type of pixel connectivity used in determining how pixels
@@ -205,10 +211,17 @@ def detect_sources(data, threshold, npixels, filter_fwhm=None, connectivity=8):
         raise ValueError('npixels must be a positive integer, got '
                          '"{0}"'.format(npixels))
 
-    if filter_fwhm is not None:
-        image = ndimage.gaussian_filter(data, filter_fwhm)
+    conv_mode = 'constant'    # SExtractor mode
+    conv_val = 0.0
+    if filter_kernel is not None:
+        image = ndimage.convolve(data, filter_kernel, mode=conv_mode,
+                                 cval=conv_val)
     else:
-        image = data
+        if filter_fwhm is not None:
+            image = ndimage.gaussian_filter(data, filter_fwhm, mode=conv_mode,
+                                            cval=conv_val)
+        else:
+            image = data
 
     image = (image >= threshold)
     if connectivity == 4:
