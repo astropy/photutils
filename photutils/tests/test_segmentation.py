@@ -15,6 +15,11 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
+try:
+    import skimage
+    HAS_SKIMAGE = True
+except ImportError:
+    HAS_SKIMAGE = False
 
 XCEN = 51.
 YCEN = 52.7
@@ -32,6 +37,7 @@ EFFGAIN_VALS = [None, 2., 1.e10, 2.]
 BACKGRD_VALS = [None, None, None, 5.]
 
 
+@pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSegmentProperties(object):
     def test_segment_shape(self):
@@ -51,6 +57,7 @@ class TestSegmentProperties(object):
             SegmentProperties(IMAGE, segm, label=2, label_slice=None)
 
 
+@pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSegmentPropertiesFunctionInputs(object):
     def test_segment_shape(self):
@@ -88,6 +95,7 @@ class TestSegmentPropertiesFunctionInputs(object):
         assert len(props) == 0
 
 
+@pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSegmentPropertiesFunction(object):
     def test_properties(self):
@@ -196,6 +204,7 @@ class TestSegmentPropertiesFunction(object):
         assert props[0].eccentricity == 0
 
 
+@pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestPropertiesTable(object):
     def test_properties_table(self):
