@@ -156,6 +156,7 @@ Using `photutils`
     psf.rst
     datasets.rst
     detection.rst
+    segmentation.rst
     morphology.rst
     geometry.rst
     utils.rst
