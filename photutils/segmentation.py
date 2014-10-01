@@ -154,6 +154,36 @@ class SegmentProperties(object):
     def __getitem__(self, key):
         return getattr(self, key, None)
 
+    def to_table(self, columns=None, exclude_columns=None):
+        """
+        Return a `~astropy.table.Table` of properties.
+
+        If ``columns`` or ``exclude_columns`` are not input, then the
+        `~astropy.table.Table` will include all scalar-valued
+        properties.  Multi-dimensional properties, e.g.
+        `~photutils.SegmentProperties.data_cutout`, can be included in
+        the ``columns`` input.
+
+        Parameters
+        ----------
+        columns : str or list of str, optional
+            Names of columns, in order, to include in the output
+            `~astropy.table.Table`.  The allowed column names are any of
+            the attributes of `SegmentProperties`.
+
+        exclude_columns : str or list of str, optional
+            Names of columns to exclude from the default properties list
+            in the output `~astropy.table.Table`.  The default
+            properties are those with scalar values.
+
+        Returns
+        -------
+        table : `~astropy.table.Table`
+            A single-row table of properties of the segmented source.
+        """
+        return properties_table(self, columns=columns,
+                                exclude_columns=exclude_columns)
+
     @lazyproperty
     def _in_segment(self):
         """

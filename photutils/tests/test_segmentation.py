@@ -56,6 +56,15 @@ class TestSegmentProperties(object):
         with pytest.raises(ValueError):
             SegmentProperties(IMAGE, segm, label=2, label_slice=None)
 
+    def test_to_table(self):
+        props = SegmentProperties(IMAGE, SEGM, label=1)
+        t1 = props.to_table()
+        t2 = properties_table(props)
+        assert isinstance(t1, Table)
+        assert isinstance(t2, Table)
+        assert len(t1) == 1
+        assert t1 == t2
+
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
