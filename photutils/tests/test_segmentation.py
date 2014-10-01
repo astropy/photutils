@@ -253,3 +253,7 @@ class TestPropertiesTable(object):
         props = segment_properties(IMAGE, SEGM, labels=-1)
         with pytest.raises(ValueError):
             properties_table(props)
+
+    def test_properties_table_empty_list(self):
+        with pytest.raises(ValueError):
+            properties_table([])
