@@ -20,6 +20,10 @@ YCS = [26.2]
 XSTDDEVS = [3.2, 4.0]
 YSTDDEVS = [5.7, 4.1]
 THETAS = np.array([30., 45.]) * np.pi / 180.
+DATA = np.zeros((3, 3))
+DATA[0:2, 1] = 1.
+DATA[1, 0:2] = 1.
+DATA[1, 1] = 2.
 
 
 @pytest.mark.parametrize(
@@ -55,19 +59,15 @@ def test_centroids_witherror(xc_ref, yc_ref, x_stddev, y_stddev, theta):
     assert_allclose([xc_ref, yc_ref], [xc3, yc3], rtol=0, atol=1.e-3)
 
 
-@pytest.mark.parametrize(
-    ('xc_ref', 'yc_ref', 'x_stddev', 'y_stddev', 'theta'),
-    list(itertools.product(XCS, YCS, XSTDDEVS, YSTDDEVS, THETAS)))
 @pytest.mark.skipif('not HAS_SKIMAGE')
-def test_centroids_withmask(xc_ref, yc_ref, x_stddev, y_stddev, theta):
-    model = models.Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=x_stddev,
-                              y_stddev=y_stddev, theta=theta)
-    y, x = np.mgrid[0:50, 0:50]
-    data = model(x, y)
+def test_centroids_withmask():
+    data = np.zeros((5, 5))
+    data[2, 2] = 1.
+    data[0, 0] = 1.
     mask = np.zeros_like(data, dtype=bool)
-    data[18, 16] = 50.
-    mask[18, 16] = True
+    mask[0, 0] = True
     xc, yc = centroid_com(data, mask=mask)
+    xc_ref, yc_ref = 2, 2
     assert_allclose([xc_ref, yc_ref], [xc, yc], rtol=0, atol=1.e-3)
     xc2, yc2 = centroid_1dg(data, mask=mask)
     assert_allclose([xc_ref, yc_ref], [xc2, yc2], rtol=0, atol=1.e-3)
