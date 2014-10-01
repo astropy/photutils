@@ -46,7 +46,7 @@ def _convert_image(data, mask=None):
         else:
             copy = True
         image = np.asarray(data).astype(np.float, copy=copy)
-    except TypeError:
+    except TypeError:    # pragma: no cover
         image = np.asarray(data).astype(np.float)    # for numpy <= 1.6
     if mask is not None:
         mask = np.asarray(mask)
@@ -152,7 +152,7 @@ def centroid_1dg(data, error=None, mask=None):
                 [np.ones(data.shape[1]), np.ones(data.shape[0])])
         for i in [0, 1]:
             # down-weight masked pixels
-            marginal_weights[i][marginal_mask[i]] = 1.e-10
+            marginal_weights[i][marginal_mask[i]] = 1.e-20
     else:
         marginal_mask = [None, None]
 
@@ -227,7 +227,7 @@ def fit_2dgaussian(data, error=None, mask=None):
         if weights is None:
             weights = np.ones_like(data)
         # down-weight masked pixels
-        weights[mask] = 1.e-10
+        weights[mask] = 1.e-20
 
     props = data_properties(data, mask=mask)
     init_amplitude = np.ptp(data)

@@ -6,7 +6,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import itertools
 from ..morphology import (centroid_com, centroid_1dg, centroid_2dg,
-                          gaussian1d_moments, shape_params)
+                          gaussian1d_moments, data_properties)
 from astropy.modeling import models
 try:
     import skimage
@@ -61,17 +61,17 @@ def test_centroid_com_mask_shape():
         centroid_com(np.zeros((4, 4)), mask=mask)
 
 
-@pytest.mark.skipif('not HAS_SKIMAGE')
-def test_shape_params_mask():
-    data = np.ones((2, 2)).astype(np.float)
-    mask = [[False, False], [True, True]]
-    params = shape_params(data, mask=None)
-    params_mask = shape_params(data, mask=mask)
-    result = [params['xcen'], params['ycen'], params['eccen']]
-    result_mask = [params_mask['xcen'], params_mask['ycen'],
-                   params_mask['eccen']]
-    assert_allclose([0.5, 0.5, 0.0], result, rtol=0, atol=1.e-6)
-    assert_allclose([0.5, 0.0, 1.0], result_mask, rtol=0, atol=1.e-6)
+#@pytest.mark.skipif('not HAS_SKIMAGE')
+#def test_shape_params_mask():
+#    data = np.ones((2, 2)).astype(np.float)
+#    mask = [[False, False], [True, True]]
+#    params = shape_params(data, mask=None)
+#    params_mask = shape_params(data, mask=mask)
+#    result = [params['xcen'], params['ycen'], params['eccen']]
+#    result_mask = [params_mask['xcen'], params_mask['ycen'],
+#                   params_mask['eccen']]
+#    assert_allclose([0.5, 0.5, 0.0], result, rtol=0, atol=1.e-6)
+#    assert_allclose([0.5, 0.0, 1.0], result_mask, rtol=0, atol=1.e-6)
 
 
 def test_gaussian1d_moments():
