@@ -191,6 +191,19 @@ class TestSegmentPropertiesFunction(object):
                                   error_value)**2)
         assert_allclose(props[0].segment_sum_err, true_error)
 
+    def test_mask(self):
+        data = np.zeros((3, 3))
+        data[0, 1] = 1.
+        data[1, 1] = 1.
+        mask = np.zeros_like(data, dtype=np.bool)
+        mask[0, 1] = True
+        segm = data.astype(np.int)
+        props = segment_properties(data, segm, mask=mask)
+        assert_allclose(props[0].xcentroid, 1)
+        assert_allclose(props[0].ycentroid, 1)
+        assert_allclose(props[0].segment_sum, 1)
+        assert_allclose(props[0].area, 1)
+
     def test_effective_gain_negative(self, effective_gain=-1):
         error = np.ones_like(IMAGE) * 2.
         with pytest.raises(ValueError):
