@@ -42,7 +42,7 @@ def get_path(filename, location='local'):
     """
     if location == 'local':
         path = get_pkg_data_filename('data/' + filename)
-    elif location == 'remote':
+    elif location == 'remote':    # pragma: no cover
         url = 'https://github.com/astropy/photutils-datasets/blob/master/data/{0}?raw=true'.format(filename)
         path = download_file(url, cache=True)
     else:
@@ -51,7 +51,7 @@ def get_path(filename, location='local'):
     return path
 
 
-def load_spitzer_image():
+def load_spitzer_image():    # pragma: no cover
     """
     Load 4.5 micron Spitzer image.
 
@@ -75,7 +75,7 @@ def load_spitzer_image():
     return hdu
 
 
-def load_spitzer_catalog():
+def load_spitzer_catalog():    # pragma: no cover
     """
     Load 4.5 micron Spitzer catalog.
 
@@ -127,7 +127,7 @@ def load_fermi_image():
     return hdu
 
 
-def load_star_image():
+def load_star_image():    # pragma: no cover
     """Load an optical image with stars.
 
     Returns
