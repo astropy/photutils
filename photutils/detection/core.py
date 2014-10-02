@@ -62,7 +62,7 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
 
     Returns
     -------
-    threshold : 2D `numpy.ndarray`
+    threshold : 2D `~numpy.ndarray`
         A 2D image with the same shape as ``data`` containing the
         pixel-wise threshold values.
 
@@ -159,7 +159,7 @@ def detect_sources(data, threshold, npixels, filter_fwhm=None,
 
     Returns
     -------
-    segment_image :  `numpy.ndarray`
+    segment_image : `~numpy.ndarray` (int)
         A 2D segmentation image, with the same shape as ``data``, where
         sources are marked by different positive integer values.  A
         value of zero is reserved for the background.
@@ -238,7 +238,7 @@ def detect_sources(data, threshold, npixels, filter_fwhm=None,
         if obj_npix < npixels:
             objlabels[objslice] = 0
 
-    # relabel (labeled indices must be consecutive)
+    # relabel to make sequential label indices
     objlabels, nobj = ndimage.label(objlabels, structure=selem)
     return objlabels
 

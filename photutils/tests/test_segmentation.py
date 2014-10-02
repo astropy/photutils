@@ -8,7 +8,8 @@ from astropy.modeling import models
 from astropy.table import Table
 from astropy.utils.misc import isiterable
 from ..segmentation import (SegmentProperties, segment_properties,
-                            properties_table)
+                            properties_table, relabel_sequential,
+                            remove_segments, remove_border_segments)
 try:
     import scipy
     HAS_SCIPY = True
@@ -266,3 +267,38 @@ class TestPropertiesTable(object):
     def test_properties_table_empty_list(self):
         with pytest.raises(ValueError):
             properties_table([])
+
+
+@pytest.mark.parametrize('start_label', [1, 5])
+def test_relabel_sequential(start_label):
+    segm = np.zeros((3, 3))
+    segm[1, 1] = 1
+    segm_out = relabel_sequential(segm, start_label=start_label)
+    assert_allclose(segm_out, segm*start_label)
+
+
+@pytest.mark.parametrize('start_label', [0, -1])
+def test_relabel_sequential_start_invalid(start_label):
+    segm = np.ones((2, 2))
+    with pytest.raises(ValueError):
+        relabel_sequential(segm, start_label=start_label)
+
+
+def test_remove_segments():
+    segm = [[2, 0], [0, 3]]
+    segm_ref = [[2, 0], [0, 0]]
+    segm_new = remove_segments(segm, labels=3)
+    assert_allclose(segm_new, segm_ref)
+
+
+def test_remove_segments_relabel():
+    segm = [[2, 0], [0, 3]]
+    segm_ref = [[1, 0], [0, 0]]
+    segm_new = remove_segments(segm, labels=3, relabel=True)
+    assert_allclose(segm_new, segm_ref)
+
+
+def test_remove_border_segments():
+    segm = np.ones((5, 5))
+    with pytest.raises(ValueError):
+        remove_border_segments(segm, border_width=3)
