@@ -5,6 +5,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 from astropy.table import Table
+import astropy.units as u
 from .. import (make_noise_image, make_poisson_noise, make_gaussian_sources,
                 make_random_gaussians, make_4gaussians_image,
                 make_100gaussians_image)
@@ -51,6 +52,15 @@ def test_make_noise_image_nostddev():
         make_noise_image(shape, 'gaussian', mean=2.)
 
 
+def test_make_noise_image_unit():
+    shape = (100, 100)
+    unit = u.electron / u.s
+    image = make_noise_image(shape, 'gaussian', mean=0., stddev=2., unit=unit)
+    assert image.shape == shape
+    assert image.unit == unit
+    assert_allclose(image.mean(), 0., atol=1.)
+
+
 def test_make_poisson_noise():
     shape = (100, 100)
     data = np.ones(shape)
@@ -65,6 +75,16 @@ def test_make_poisson_noise_negative():
         shape = (100, 100)
         data = np.zeros(shape) - 1.
         make_poisson_noise(data)
+
+
+def test_make_poisson_noise_unit():
+    shape = (100, 100)
+    unit = u.electron / u.s
+    data = np.ones(shape) * unit
+    result = make_poisson_noise(data)
+    assert result.shape == shape
+    assert result.unit == unit
+    assert_allclose(result.mean(), 1., atol=1.)
 
 
 def test_make_gaussian_sources():
@@ -96,6 +116,15 @@ def test_make_gaussian_sources_parameters():
         table.remove_column('flux')
         shape = (100, 100)
         make_gaussian_sources(shape, table)
+
+
+def test_make_gaussian_sources_unit():
+    shape = (100, 100)
+    unit = u.electron / u.s
+    image = make_gaussian_sources(shape, TABLE, unit=unit)
+    assert image.shape == shape
+    assert image.unit == unit
+    assert_allclose(image.sum(), TABLE['flux'].sum())
 
 
 def test_make_random_gaussians():
