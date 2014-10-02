@@ -2,7 +2,12 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from astropy.tests.helper import pytest, remote_data
-from .. import load
+from .. import load, get_path
+
+
+def test_get_path():
+    with pytest.raises(ValueError):
+        get_path('filename', location='invalid')
 
 
 def test_load_fermi_image():
