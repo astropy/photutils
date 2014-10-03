@@ -10,20 +10,21 @@ Source Detection and Segmentation
 Introduction
 ------------
 
-The ``photutils`` package provides methods to detect sources in an
-astronomical image above a specified signal-to-noise threshold similar
-to that used by SExtractor.  It also provides methods to detect stars
-in astronomical images using two methods:
+The `photutils` package provides methods to detect sources in an
+astronomical image above a specified threshold similar to that used by
+SExtractor.  It also provides two functions to detect stars in
+astronomical images:
 
-* `DAOFIND <http://iraf.net/irafhelp.php?val=daofind&help=Help+Page>`_ algorithm
-* IRAF's `starfind <http://iraf.net/irafhelp.php?val=starfind&help=Help+Page>`_ algorithm
+* :func:`~photutils.daofind`, based on the `DAOFIND <http://iraf.net/irafhelp.php?val=daofind&help=Help+Page>`_ algorithm
+
+* :func:`~photutils.irafstarfind`, based on IRAF's `starfind <http://iraf.net/irafhelp.php?val=starfind&help=Help+Page>`_ algorithm
 
 
 Getting Started
 ---------------
 
 Create an image with a single 2D circular Gaussian source to represent
-a star and find it in the image using ``daofind``:
+a star and find it in the image using :func:`~photutils.daofind`:
 
 .. doctest-requires:: scipy, skimage
 

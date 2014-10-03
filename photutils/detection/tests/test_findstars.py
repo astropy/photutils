@@ -162,8 +162,8 @@ class TestDAOFind(SetupData):
         self._setup()
         threshold = 5.0
         tbl = daofind(self.img, threshold, fwhm, sigma_radius=sigma_radius)
-        datafn = 'daofind_test_fwhm%04.1f_thresh%04.1f_sigrad%04.1f.txt' % \
-            (fwhm, threshold, sigma_radius)
+        datafn = ('daofind_test_fwhm{0:04.1f}_thresh{1:04.1f}_'
+                  'sigrad{2:04.1f}.txt'.format(fwhm, threshold, sigma_radius))
         datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
         t = Table.read(datafn, format='ascii')
         assert_allclose(np.array(tbl).astype(np.float),
@@ -176,8 +176,8 @@ class TestDAOFind(SetupData):
         fwhm = 3.0
         sigma_radius = 1.5
         tbl = daofind(self.img, threshold, fwhm, sigma_radius=sigma_radius)
-        datafn = 'daofind_test_fwhm%04.1f_thresh%04.1f_sigrad%04.1f.txt' % \
-            (fwhm, threshold, sigma_radius)
+        datafn = ('daofind_test_fwhm{0:04.1f}_thresh{1:04.1f}_'
+                  'sigrad{2:04.1f}.txt'.format(fwhm, threshold, sigma_radius))
         datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
         t = Table.read(datafn, format='ascii')
         assert_allclose(np.array(tbl).astype(np.float),
@@ -194,8 +194,8 @@ class TestIRAFStarFind(SetupData):
         threshold = 5.0
         tbl = irafstarfind(self.img, threshold, fwhm,
                            sigma_radius=sigma_radius)
-        datafn = 'irafstarfind_test_fwhm{0:04.1f}_thresh{1:04.1f}_sigrad{2:04.1f}.txt'\
-            .format(fwhm, threshold, sigma_radius)
+        datafn = ('irafstarfind_test_fwhm{0:04.1f}_thresh{1:04.1f}_'
+                  'sigrad{2:04.1f}.txt'.format(fwhm, threshold, sigma_radius))
         datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
         t = Table.read(datafn, format='ascii')
         assert_allclose(np.array(tbl).astype(np.float),
@@ -208,8 +208,8 @@ class TestIRAFStarFind(SetupData):
         sigma_radius = 1.5
         tbl = irafstarfind(self.img, threshold, fwhm,
                            sigma_radius=sigma_radius)
-        datafn = 'irafstarfind_test_fwhm{0:04.1f}_thresh{1:04.1f}_sigrad{2:04.1f}.txt'\
-            .format(fwhm, threshold, sigma_radius)
+        datafn = ('irafstarfind_test_fwhm{0:04.1f}_thresh{1:04.1f}_'
+                  'sigrad{2:04.1f}.txt'.format(fwhm, threshold, sigma_radius))
         datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
         t = Table.read(datafn, format='ascii')
         assert_allclose(np.array(tbl).astype(np.float),

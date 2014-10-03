@@ -11,7 +11,7 @@ Examples
 --------
 
 Create an image with a single 2D circular Gaussian source to represent
-a star and find it in the image using ``daofind``:
+a star and find it in the image using :func:`~photutils.daofind`:
 
 .. doctest-requires:: scipy, skimage
 
@@ -26,7 +26,7 @@ a star and find it in the image using ``daofind``:
       1 50.0 50.0 0.440818817057        0.0        0.0 25.0 0.0 100.0 62.4702758896 -4.48918355985
 
 
-Search the same image, but using ``irafstarfind``:
+Search the same image, but using :func:`~photutils.irafstarfind`:
 
 .. doctest-requires:: scipy, skimage
 
