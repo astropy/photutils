@@ -1,1 +1,0 @@
-xcen ycen fwhm sharp round pa npix sky peak flux mag

@@ -1,1 +1,0 @@
-id xcen ycen sharp round1 round2 npix sky peak flux mag
