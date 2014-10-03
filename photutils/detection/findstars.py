@@ -16,10 +16,9 @@ FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
 
 
 class _ImgCutout(object):
+    """Class to hold image cutouts."""
     def __init__(self, data, convdata, x0, y0):
         """
-        Class to hold image cutouts.
-
         Parameters
         ----------
         data : array_like
@@ -558,8 +557,8 @@ def _irafstarfind_moments(imgcutout, kernel, sky):
 
     Returns
     -------
-    table : `~astropy.table.Table`
-        A table of the object parameters.
+    result : dict
+        A dictionary of the object parameters.
     """
 
     from skimage.measure import moments, moments_central
@@ -567,6 +566,8 @@ def _irafstarfind_moments(imgcutout, kernel, sky):
     result = defaultdict(list)
     img = np.array(imgcutout.data * kernel.mask) - sky
     img = np.where(img > 0, img, 0)    # starfind discards negative pixels
+    if np.count_nonzero(img) <= 1:
+        return {}
     m = moments(img, 1)
     result['xcen'] = m[1, 0] / m[0, 0]
     result['ycen'] = m[0, 1] / m[0, 0]
@@ -652,7 +653,11 @@ def _daofind_properties(imgcutouts, threshold, kernel, sky=0.0):
         result['peak'].append(objpeak - sky)
         flux = (convpeak / threshold) - (sky * obj.size)
         result['flux'].append(flux)
-        result['mag'].append(-2.5 * np.log10(flux))
+        if flux <= 0:
+            mag = np.nan
+        else:
+            mag = -2.5 * np.log10(flux)
+        result['mag'].append(mag)
 
     names = ['xcen', 'ycen', 'sharpness', 'roundness1', 'roundness2', 'npix',
              'sky', 'peak', 'flux', 'mag']
