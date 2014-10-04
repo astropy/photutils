@@ -6,6 +6,8 @@ import os.path as op
 import itertools
 import numpy as np
 from astropy.table import Table
+import warnings
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 from ..findstars import daofind, irafstarfind
 from photutils.datasets import make_100gaussians_image
@@ -26,6 +28,7 @@ except ImportError:
 DATA = make_100gaussians_image()
 THRESHOLDS = [8.0, 10.0]
 FWHMS = [1.0, 1.5, 2.0]
+warnings.simplefilter('always', AstropyUserWarning)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -41,6 +44,28 @@ class TestDAOFind(object):
         assert_allclose(np.array(t).astype(np.float),
                         np.array(t_ref).astype(np.float))
 
+    def test_daofind_nosources(self):
+        data = np.ones((3, 3))
+        t = daofind(data, threshold=10, fwhm=1)
+        assert len(t) == 0
+
+    def test_daofind_sharpness(self):
+        """Sources found, but none pass the sharpness criteria."""
+        t = daofind(DATA, threshold=50, fwhm=1.0, sharplo=1.)
+        assert len(t) == 0
+
+    def test_daofind_roundness(self):
+        """Sources found, but none pass the roundness criteria."""
+        t = daofind(DATA, threshold=50, fwhm=1.0, roundlo=1.)
+        assert len(t) == 0
+
+    def test_daofind_flux_negative(self):
+        """Test handling of negative flux (here created by large sky)."""
+        data = np.ones((5, 5))
+        data[2, 2] = 10.
+        t = daofind(data, threshold=0.1, fwhm=1.0, sky=10)
+        assert not np.isfinite(t['mag'])
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.skipif('not HAS_SKIMAGE')
@@ -55,3 +80,22 @@ class TestIRAFStarFind(object):
         t_ref = Table.read(datafn, format='ascii')
         assert_allclose(np.array(t).astype(np.float),
                         np.array(t_ref).astype(np.float))
+
+    def test_irafstarfind_nosources(self):
+        data = np.ones((3, 3))
+        t = irafstarfind(data, threshold=10, fwhm=1)
+        assert len(t) == 0
+
+    def test_irafstarfind_sharpness(self):
+        """Sources found, but none pass the sharpness criteria."""
+        t = irafstarfind(DATA, threshold=50, fwhm=1.0, sharplo=2.)
+        assert len(t) == 0
+
+    def test_irafstarfind_roundness(self):
+        """Sources found, but none pass the roundness criteria."""
+        t = irafstarfind(DATA, threshold=50, fwhm=1.0, roundlo=1.)
+        assert len(t) == 0
+
+    def test_irafstarfind_sky(self):
+        t = irafstarfind(DATA, threshold=5.0, fwhm=2.0, sky=10.)
+        assert len(t) == 69

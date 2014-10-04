@@ -6,12 +6,12 @@ import warnings
 import math
 import numpy as np
 from astropy.table import Column, Table
+from astropy.utils.exceptions import AstropyUserWarning
 
 
 __all__ = ['daofind', 'irafstarfind']
 
 
-warnings.simplefilter('always', UserWarning)
 FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
 
 
@@ -288,7 +288,7 @@ def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
     objs = _findobjs(data, threshold, daofind_kernel.kern)
     tbl = _daofind_properties(objs, threshold, daofind_kernel, sky)
     if len(objs) == 0:
-        warnings.warn('No sources were found.', UserWarning)
+        warnings.warn('No sources were found.', AstropyUserWarning)
         return tbl     # empty table
     table_mask = ((tbl['sharpness'] > sharplo) &
                   (tbl['sharpness'] < sharphi) &
@@ -301,7 +301,7 @@ def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
     tbl.add_column(idcol, 0)
     if len(tbl) == 0:
         warnings.warn('Sources were found, but none pass the sharpness and '
-                      'roundness criteria.', UserWarning)
+                      'roundness criteria.', AstropyUserWarning)
     return tbl
 
 
@@ -411,7 +411,7 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, sharplo=0.5,
     objs = _findobjs(data, threshold, starfind_kernel.kern)
     tbl = _irafstarfind_properties(objs, starfind_kernel, sky)
     if len(objs) == 0:
-        warnings.warn('No sources were found.', UserWarning)
+        warnings.warn('No sources were found.', AstropyUserWarning)
         return tbl     # empty table
     table_mask = ((tbl['sharpness'] > sharplo) &
                   (tbl['sharpness'] < sharphi) &
@@ -422,7 +422,7 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, sharplo=0.5,
     tbl.add_column(idcol, 0)
     if len(tbl) == 0:
         warnings.warn('Sources were found, but none pass the sharpness and '
-                      'roundness criteria.', UserWarning)
+                      'roundness criteria.', AstropyUserWarning)
     return tbl
 
 
