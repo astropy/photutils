@@ -170,7 +170,8 @@ class _FindObjKernel(object):
 
 
 def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
-            sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0, sky=0.0):
+            sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0, sky=0.0,
+            exclude_border=False):
     """
     Detect stars in an image using the DAOFIND algorithm.
 
@@ -251,6 +252,11 @@ def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
         ``mag`` values.  The default is 0.0, which should be used to
         replicate the results from `DAOFIND`_.
 
+    exclude_border : bool, optional
+        Set to `True` to exclude sources found within half the size of
+        the convolution kernel from the image borders.  The default is
+        `False`, which is the mode used by `DAOFIND`_.
+
     Returns
     -------
     table : `~astropy.table.Table`
@@ -273,6 +279,10 @@ def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
           ``-2.5 * log10(flux)``.  The derivation matches that of
           `DAOFIND`_ if ``sky`` is 0.0.
 
+    See Also
+    --------
+    irafstarfind
+
     Notes
     -----
     For the convolution step, this routine sets pixels beyond the image
@@ -283,15 +293,12 @@ def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
     ----------
     .. [1] http://iraf.net/irafhelp.php?val=daofind&help=Help+Page
     .. [2] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
-
-    See Also
-    --------
-    irafstarfind
     """
 
     daofind_kernel = _FindObjKernel(fwhm, ratio, theta, sigma_radius)
     threshold *= daofind_kernel.relerr
-    objs = _findobjs(data, threshold, daofind_kernel.kern)
+    objs = _findobjs(data, threshold, daofind_kernel.kern,
+                     exclude_border=exclude_border)
     tbl = _daofind_properties(objs, threshold, daofind_kernel, sky)
     if len(objs) == 0:
         warnings.warn('No sources were found.', AstropyUserWarning)
@@ -312,7 +319,8 @@ def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
 
 
 def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, sharplo=0.5,
-                 sharphi=2.0, roundlo=0.0, roundhi=0.2, sky=None):
+                 sharphi=2.0, roundlo=0.0, roundhi=0.2, sky=None,
+                 exclude_border=False):
     """
     Detect stars in an image using IRAF's "starfind" algorithm.
 
@@ -360,6 +368,11 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, sharplo=0.5,
         and ``mag`` values.  The default is ``None``, which means the
         sky value will be estimated using the `starfind`_ method.
 
+    exclude_border : bool, optional
+        Set to `True` to exclude sources found within half the size of
+        the convolution kernel from the image borders.  The default is
+        `False`, which is the mode used by `starfind`_.
+
     Returns
     -------
     table : `~astropy.table.Table`
@@ -386,6 +399,10 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, sharplo=0.5,
           ``-2.5 * log10(flux)``.  The derivation matches that of
           `starfind`_ if ``sky`` is ``None``.
 
+    See Also
+    --------
+    daofind
+
     Notes
     -----
     For the convolution step, this routine sets pixels beyond the image
@@ -410,15 +427,12 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, sharplo=0.5,
     ----------
     .. [1] http://iraf.net/irafhelp.php?val=starfind&help=Help+Page
     .. [2] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
-
-    See Also
-    --------
-    daofind
     """
 
     starfind_kernel = _FindObjKernel(fwhm, ratio=1.0, theta=0.0,
                                      sigma_radius=sigma_radius)
-    objs = _findobjs(data, threshold, starfind_kernel.kern)
+    objs = _findobjs(data, threshold, starfind_kernel.kern,
+                     exclude_border=exclude_border)
     tbl = _irafstarfind_properties(objs, starfind_kernel, sky)
     if len(objs) == 0:
         warnings.warn('No sources were found.', AstropyUserWarning)
@@ -436,7 +450,7 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, sharplo=0.5,
     return tbl
 
 
-def _findobjs(data, threshold, kernel):
+def _findobjs(data, threshold, kernel, exclude_border=False):
     """
     Find sources in an image by convolving the image with the input
     kernel and selecting connected pixels above a given threshold.
@@ -456,6 +470,11 @@ def _findobjs(data, threshold, kernel):
         The 2D array of the kernel.  This kernel should be normalized to
         zero sum.
 
+    exclude_border : bool, optional
+        Set to `True` to exclude sources found within half the size of
+        the convolution kernel from the image borders.  The default is
+        `False`, which is the mode used by `DAOFIND`_ and `starfind`_.
+
     Returns
     -------
     objects : list of `_ImgCutout`
@@ -471,6 +490,16 @@ def _findobjs(data, threshold, kernel):
     #                                   fill_value=0.0)
     x_kernradius = kernel.shape[1] // 2
     y_kernradius = kernel.shape[0] // 2
+
+    if not exclude_border:
+        # create a larger image padded by zeros
+        ysize  = data.shape[0] + (2. * y_kernradius)
+        xsize  = data.shape[1] + (2. * x_kernradius)
+        data_padded = np.zeros((ysize, xsize))
+        data_padded[y_kernradius:y_kernradius + data.shape[0],
+                    x_kernradius:x_kernradius + data.shape[1]] = data
+        data = data_padded
+
     convolved_data = ndimage.convolve(data, kernel, mode='constant', cval=0.0)
     selem = ndimage.generate_binary_structure(2, 2)
     object_labels, nobjects = ndimage.label(convolved_data > threshold,
@@ -495,11 +524,15 @@ def _findobjs(data, threshold, kernel):
         y0 = ypeak - y_kernradius
         y1 = ypeak + y_kernradius + 1
         if x0 < 0 or x1 > data.shape[1]:
-            continue
+            continue    # pragma: no cover (isolated continue is never tested)
         if y0 < 0 or y1 > data.shape[0]:
-            continue
+            continue    # pragma: no cover (isolated continue is never tested)
         object_data = data[y0:y1, x0:x1]
         object_convolved_data = convolved_data[y0:y1, x0:x1].copy()
+        if not exclude_border:
+            # correct for image padding
+            x0 -= x_kernradius
+            y0 -= y_kernradius
         imgcutout = _ImgCutout(object_data, object_convolved_data, x0, y0)
         objects.append(imgcutout)
     return objects

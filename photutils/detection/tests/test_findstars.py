@@ -44,6 +44,16 @@ class TestDAOFind(object):
         assert_allclose(np.array(t).astype(np.float),
                         np.array(t_ref).astype(np.float))
 
+    def test_daofind_include_border(self):
+        t = daofind(DATA, threshold=10, fwhm=2, sigma_radius=1.5,
+                    exclude_border=False)
+        assert len(t) == 20
+
+    def test_daofind_exclude_border(self):
+        t = daofind(DATA, threshold=10, fwhm=2, sigma_radius=1.5,
+                    exclude_border=True)
+        assert len(t) == 19
+
     def test_daofind_nosources(self):
         data = np.ones((3, 3))
         t = daofind(data, threshold=10, fwhm=1)
