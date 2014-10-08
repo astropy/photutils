@@ -273,6 +273,12 @@ def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
           ``-2.5 * log10(flux)``.  The derivation matches that of
           `DAOFIND`_ if ``sky`` is 0.0.
 
+    Notes
+    -----
+    For the convolution step, this routine sets pixels beyond the image
+    borders to 0.0.  The equivalent parameters in `DAOFIND`_ are
+    ``boundary='constant'`` and ``constant=0.0``.
+
     References
     ----------
     .. [1] http://iraf.net/irafhelp.php?val=daofind&help=Help+Page
@@ -382,6 +388,10 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, sharplo=0.5,
 
     Notes
     -----
+    For the convolution step, this routine sets pixels beyond the image
+    borders to 0.0.  The equivalent parameters in `starfind`_ are
+    ``boundary='constant'`` and ``constant=0.0``.
+
     IRAF's `starfind`_ uses ``hwhmpsf`` and ``fradius`` as input
     parameters.  The equivalent input values for ``irafstarfind`` are:
 
