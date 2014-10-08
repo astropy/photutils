@@ -264,7 +264,7 @@ def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
         A table of found objects with the following parameters:
 
         * ``id``: unique object identification number.
-        * ``xcen, ycen``: object centroid.
+        * ``xcentroid, ycentroid``: object centroid.
         * ``sharpness``: object sharpness.
         * ``roundness1``: object roundness based on symmetry.
         * ``roundness2``: object roundness based on marginal Gaussian
@@ -380,7 +380,7 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, sharplo=0.5,
         A table of found objects with the following parameters:
 
         * ``id``: unique object identification number.
-        * ``xcen, ycen``: object centroid (zero-based origin).
+        * ``xcentroid, ycentroid``: object centroid (zero-based origin).
         * ``fwhm``: estimate of object FWHM from image moments.
         * ``sharpness``: object sharpness calculated from image moments.
         * ``roundness``: object ellipticity calculated from image moments.
@@ -493,8 +493,8 @@ def _findobjs(data, threshold, kernel, exclude_border=False):
 
     if not exclude_border:
         # create a larger image padded by zeros
-        ysize  = data.shape[0] + (2. * y_kernradius)
-        xsize  = data.shape[1] + (2. * x_kernradius)
+        ysize = data.shape[0] + (2. * y_kernradius)
+        xsize = data.shape[1] + (2. * x_kernradius)
         data_padded = np.zeros((ysize, xsize))
         data_padded[y_kernradius:y_kernradius + data.shape[0],
                     x_kernradius:x_kernradius + data.shape[1]] = data
@@ -585,8 +585,8 @@ def _irafstarfind_properties(imgcutouts, kernel, sky=None):
         objvals = _irafstarfind_moments(imgcutout, kernel, meansky)
         for key, val in objvals.items():
             result[key].append(val)
-    names = ['xcen', 'ycen', 'fwhm', 'sharpness', 'roundness', 'pa', 'npix',
-             'sky', 'peak', 'flux', 'mag']
+    names = ['xcentroid', 'ycentroid', 'fwhm', 'sharpness', 'roundness',
+             'pa', 'npix', 'sky', 'peak', 'flux', 'mag']
     if len(result) == 0:
         for name in names:
             result[name] = []
@@ -626,15 +626,16 @@ def _irafstarfind_moments(imgcutout, kernel, sky):
     if np.count_nonzero(img) <= 1:
         return {}
     m = moments(img, 1)
-    result['xcen'] = m[1, 0] / m[0, 0]
-    result['ycen'] = m[0, 1] / m[0, 0]
+    result['xcentroid'] = m[1, 0] / m[0, 0]
+    result['ycentroid'] = m[0, 1] / m[0, 0]
     result['npix'] = float(np.count_nonzero(img))   # float for easier testing
     result['sky'] = sky
     result['peak'] = np.max(img)
     flux = img.sum()
     result['flux'] = flux
     result['mag'] = -2.5 * np.log10(flux)
-    mu = moments_central(img, result['ycen'], result['xcen'], 2) / m[0, 0]
+    mu = moments_central(
+        img, result['ycentroid'], result['xcentroid'], 2) / m[0, 0]
     musum = mu[2, 0] + mu[0, 2]
     mudiff = mu[2, 0] - mu[0, 2]
     result['fwhm'] = 2.0 * np.sqrt(np.log(2.0) * musum)
@@ -644,8 +645,8 @@ def _irafstarfind_moments(imgcutout, kernel, sky):
     if pa < 0.0:
         pa += 180.0
     result['pa'] = pa
-    result['xcen'] += imgcutout.x0
-    result['ycen'] += imgcutout.y0
+    result['xcentroid'] += imgcutout.x0
+    result['ycentroid'] += imgcutout.y0
     return result
 
 
@@ -702,8 +703,8 @@ def _daofind_properties(imgcutouts, threshold, kernel, sky=0.0):
 
         dx, dy, g_roundness = _daofind_centroid_roundness(obj, kernel)
         yc, xc = imgcutout.center
-        result['xcen'].append(xc + dx)
-        result['ycen'].append(yc + dy)
+        result['xcentroid'].append(xc + dx)
+        result['ycentroid'].append(yc + dy)
         result['roundness2'].append(g_roundness)
         result['sky'].append(sky)      # DAOFIND uses sky=0
         result['npix'].append(float(obj.size))
@@ -716,8 +717,8 @@ def _daofind_properties(imgcutouts, threshold, kernel, sky=0.0):
             mag = -2.5 * np.log10(flux)
         result['mag'].append(mag)
 
-    names = ['xcen', 'ycen', 'sharpness', 'roundness1', 'roundness2', 'npix',
-             'sky', 'peak', 'flux', 'mag']
+    names = ['xcentroid', 'ycentroid', 'sharpness', 'roundness1', 'roundness2',
+             'npix', 'sky', 'peak', 'flux', 'mag']
     if len(result) == 0:
         for name in names:
             result[name] = []

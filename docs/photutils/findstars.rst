@@ -21,9 +21,9 @@ a star and find it in the image using :func:`~photutils.daofind`:
     >>> img = 100.0 * np.exp(-(x**2/5.0 + y**2/5.0))
     >>> tbl = photutils.daofind(img, threshold=1.0, fwhm=3.0)
     >>> tbl.pprint(max_width=-1)
-     id xcen ycen   sharpness    roundness1 roundness2 npix sky  peak      flux          mag
-    --- ---- ---- -------------- ---------- ---------- ---- --- ----- ------------- --------------
-      1 50.0 50.0 0.440818817057        0.0        0.0 25.0 0.0 100.0 62.4702758896 -4.48918355985
+     id xcentroid ycentroid   sharpness    roundness1 roundness2 npix sky  peak      flux          mag
+     --- --------- --------- -------------- ---------- ---------- ---- --- ----- ------------- --------------
+       1      50.0      50.0 0.440818817057        0.0        0.0 25.0 0.0 100.0 62.4702758896 -4.48918355985
 
 
 Search the same image, but using :func:`~photutils.irafstarfind`:
@@ -32,9 +32,9 @@ Search the same image, but using :func:`~photutils.irafstarfind`:
 
     >>> tbl2 = photutils.irafstarfind(img, threshold=1.0, fwhm=3.0)
     >>> tbl2.pprint(max_width=-1)
-     id xcen ycen      fwhm       sharpness        roundness           pa      npix      sky           peak          flux          mag
-    --- ---- ---- ------------- -------------- ----------------- ------------- ---- ------------- ------------- ------------- --------------
-      1 50.0 50.0 2.04509092195 0.681696973984 7.36564629863e-17 178.865861588 13.0 31.2551800113 68.7448199887 469.034565146 -6.67801212224
+     id xcentroid ycentroid      fwhm       sharpness        roundness           pa      npix      sky           peak          flux          mag
+     --- --------- --------- ------------- -------------- ----------------- ------------- ---- ------------- ------------- ------------- --------------
+       1      50.0      50.0 2.04509092195 0.681696973984 7.36564629863e-17 178.865861588 13.0 31.2551800113 68.7448199887 469.034565146 -6.67801212224
 
 
 Create an image with three 2D circular Gaussian source to represent
@@ -60,7 +60,8 @@ of the found sources:
 
     >>> import matplotlib.pyplot as plt
     >>> plt.imshow(img, cmap=plt.cm.Greys)
-    >>> plt.scatter(tbl['xcen'], tbl['ycen'], s=800, color='cyan', facecolor='none')
+    >>> plt.scatter(tbl['xcentroid'], tbl['ycentroid'], s=800, color='cyan',
+    ...             facecolor='none')
     >>> plt.show()
 
 
@@ -77,8 +78,8 @@ of the found sources:
     fig = plt.imshow(img, vmax=200.0, origin='lower',
         extent=(0, 100, 0, 100))
     fig.set_cmap('hot')
-    plt.scatter(tbl['xcen'], tbl['ycen'], s=800, color='cyan',
-        facecolor='none')
+    plt.scatter(tbl['xcentroid'], tbl['ycentroid'], s=800, color='cyan',
+                facecolor='none')
     plt.axis('off')
     plt.show()
 
@@ -91,7 +92,7 @@ Finally, filter the catalog to include only sources with a peak flux > 200
     >>> newtbl = tbl[tbl['peak'] > 200]
     >>> newtbl.show_in_browser(jsviewer=True)   # doctest: +SKIP
     >>> newtbl.pprint(max_width=-1)
-     id      xcen          ycen       sharpness       roundness1       roundness2    npix sky      peak          flux          mag
+     id   xcentroid     ycentroid     sharpness       roundness1       roundness2    npix sky      peak          flux          mag
     --- ------------- ------------- -------------- ---------------- ---------------- ---- --- ------------- ------------- --------------
       1 30.7757703041 25.3263301704 0.477860513808 -0.0683222486336  0.0704298851828 25.0 0.0 477.163620787 371.207549568 -6.42404200065
       3 65.2042829915 75.8989787037 0.456567416754 -0.0385405609864 -0.0120707450026 25.0 0.0 246.894450123  173.36836323 -5.59742462258
