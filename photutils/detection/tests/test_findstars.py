@@ -97,5 +97,9 @@ class TestIRAFStarFind(object):
         assert len(t) == 0
 
     def test_irafstarfind_sky(self):
-        t = irafstarfind(DATA, threshold=5.0, fwhm=2.0, sky=10.)
-        assert len(t) == 69
+        t = irafstarfind(DATA, threshold=25.0, fwhm=2.0, sky=10.)
+        assert len(t) == 4
+
+    def test_irafstarfind_largesky(self):
+        t = irafstarfind(DATA, threshold=25.0, fwhm=2.0, sky=100.)
+        assert len(t) == 0

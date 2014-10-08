@@ -437,7 +437,10 @@ def _findobjs(data, threshold, kernel):
         The 2D array of the image.
 
     threshold : float
-        The absolute image value above which to select sources.
+        The absolute image value above which to select sources.  Note
+        that this threshold is not the same threshold input to
+        ``daofind`` or ``irafstarfind``.  It should be multiplied by the
+        kernel relerr.
 
     kernel : array_like
         The 2D array of the kernel.  This kernel should be normalized to
@@ -456,34 +459,38 @@ def _findobjs(data, threshold, kernel):
     # https://github.com/astropy/astropy/issues/1647
     # convimg = astropy.nddata.convolve(data, kernel, boundary='fill',
     #                                   fill_value=0.0)
-    xkrad = kernel.shape[1] // 2
-    ykrad = kernel.shape[0] // 2
-    convdata = ndimage.convolve(data, kernel, mode='constant', cval=0.0)
-    shape = ndimage.generate_binary_structure(2, 2)
-    objlabels, nobj = ndimage.label(convdata > threshold, structure=shape)
+    x_kernradius = kernel.shape[1] // 2
+    y_kernradius = kernel.shape[0] // 2
+    convolved_data = ndimage.convolve(data, kernel, mode='constant', cval=0.0)
+    selem = ndimage.generate_binary_structure(2, 2)
+    object_labels, nobjects = ndimage.label(convolved_data > threshold,
+                                            structure=selem)
     objects = []
-    if nobj == 0:
+    if nobjects == 0:
         return objects
-    objslices = ndimage.find_objects(objlabels)
-    for objslice in objslices:
-        # extract the object from the unconvolved image, centered on
-        # the brightest pixel in the thresholded segment and with the
-        # same size of the kernel
-        tobj = data[objslice]
-        yimax, ximax = np.unravel_index(tobj.argmax(), tobj.shape)
-        ximax += objslice[1].start
-        yimax += objslice[0].start
-        xi0 = ximax - xkrad
-        xi1 = ximax + xkrad + 1
-        yi0 = yimax - ykrad
-        yi1 = yimax + ykrad + 1
-        if xi0 < 0 or xi1 > data.shape[1]:
+    object_slices = ndimage.find_objects(object_labels)
+    for object_slice in object_slices:
+        # find object peak in the *convolved* data
+        # thresholded_object is not the same size as the kernel
+        thresholded_object = convolved_data[object_slice]
+        ypeak, xpeak = np.unravel_index(thresholded_object.argmax(),
+                                        thresholded_object.shape)
+        xpeak += object_slice[1].start
+        ypeak += object_slice[0].start
+
+        # now extract the object from the data, centered on the peak
+        # pixel in the convolved image, with the same size as the kernel
+        x0 = xpeak - x_kernradius
+        x1 = xpeak + x_kernradius + 1
+        y0 = ypeak - y_kernradius
+        y1 = ypeak + y_kernradius + 1
+        if x0 < 0 or x1 > data.shape[1]:
             continue
-        if yi0 < 0 or yi1 > data.shape[0]:
+        if y0 < 0 or y1 > data.shape[0]:
             continue
-        obj = data[yi0:yi1, xi0:xi1]
-        convobj = convdata[yi0:yi1, xi0:xi1].copy()
-        imgcutout = _ImgCutout(obj, convobj, xi0, yi0)
+        object_data = data[y0:y1, x0:x1]
+        object_convolved_data = convolved_data[y0:y1, x0:x1].copy()
+        imgcutout = _ImgCutout(object_data, object_convolved_data, x0, y0)
         objects.append(imgcutout)
     return objects
 
