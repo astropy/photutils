@@ -501,6 +501,13 @@ def _findobjs(data, threshold, kernel, exclude_border=False):
         data = data_padded
 
     convolved_data = ndimage.convolve(data, kernel, mode='constant', cval=0.0)
+    if not exclude_border:
+        # keep border=0 in convolved data
+        convolved_data[:y_kernradius, :] = 0.
+        convolved_data[-y_kernradius:, :] = 0.
+        convolved_data[:, :x_kernradius] = 0.
+        convolved_data[:, -x_kernradius:] = 0.
+
     selem = ndimage.generate_binary_structure(2, 2)
     object_labels, nobjects = ndimage.label(convolved_data > threshold,
                                             structure=selem)
