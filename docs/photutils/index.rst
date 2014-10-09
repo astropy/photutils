@@ -4,12 +4,12 @@ Source detection and photometry (`photutils`)
 Introduction
 ------------
 
-The `photutils` package is destined to implement functions for
+The `photutils` package contains functions for
 
-* detecting sources on astronomical images
-* estimating morphological parameters of those sources
-  (e.g., centroid and shape parameters)
-* performing photometry (both aperture and PSF)
+* detecting sources in astronomical images
+* estimating morphological parameters of those sources (e.g., centroid
+  and shape parameters)
+* performing aperture and PSF photometry
 
 The code and the documentation are available at the following links:
 
@@ -24,25 +24,53 @@ Dependencies
 * `numpy <http://www.numpy.org/>`__
 * `astropy <http://www.astropy.org/>`__
 * `imageutils <https://imageutils.readthedocs.org/en/latest/imageutils/index.html>`__
-  (planned to be included in the Astropy core as ``astropy.image`` before the 1.0 release)
+  (planned to be included in the Astropy core as ``astropy.image``
+  before the astropy 1.0 release)
 
-You will also need `Cython <http://cython.org/>`__ installed to build
-from source, unless you are installing a numbered release. (The
-released packages have the necessary C files packaged with them, and
-hence do not require Cython.)
+You will also need `Cython`_ installed to build `photutils` from
+source, unless you are installing a numbered release.  The released
+packages have the necessary C files packaged with them, and hence do
+not require `Cython`_.
 
-Some functionality is only available if the following optional dependencies are installed:
+.. _Cython: http://cython.org
+
+Some functionality is available only if the following optional
+dependencies are installed:
 
 * `scipy <http://www.scipy.org/>`__
 * `scikit-image <http://scikit-image.org/>`__
 * `matplotlib <http://matplotlib.org/>`__
 
-Datasets bundled with photutils
--------------------------------
+.. _coordinate-conventions:
 
-In this documentation, we use example datasets by calling functions such as
-:func:`~photutils.datasets.load_star_image`. This function returns an Astropy
-:class:`~astropy.io.fits.ImageHDU` object, and is equivalent to doing:
+Coordinate Conventions in `photutils`
+-------------------------------------
+
+In `photutils`, pixel coordinates are zero-indexed, meaning that ``(x,
+y) = (0, 0)`` corresponds to the center of the lowest, leftmost array
+element.  This means that the value of ``data[0, 0]`` is taken as the
+value over the range ``-0.5 < x <= 0.5``, ``-0.5 < y <= 0.5``.  Note
+that this differs from the SourceExtractor_, IRAF_, and FITS
+conventions, in which the center of the lowest, leftmost array element
+is ``(1, 1)``.
+
+The ``x`` (column) coordinate corresponds to the second (fast) array
+index and the ``y`` (row) coordinate corresponds to the first (slow)
+index. ``data[y, x]`` gives the value at coordinates (x, y).  Along
+with zero-indexing, this means that an array is defined over the
+coordinate range ``-0.5 < x <= data.shape[1] - 0.5``, ``-0.5 < y <=
+data.shape[0] - 0.5``.
+
+.. _SourceExtractor: http://www.astromatic.net/software/sextractor
+.. _IRAF: http://iraf.noao.edu/
+
+Bundled Datasets
+----------------
+
+In this documentation, we use example datasets provided by calling
+functions such as :func:`~photutils.datasets.load_star_image`. This
+function returns an Astropy :class:`~astropy.io.fits.ImageHDU` object,
+and is equivalent to doing:
 
 .. doctest-skip::
 
@@ -54,9 +82,10 @@ where the ``[0]`` accesses the first HDU in the FITS file.
 Getting Started
 ---------------
 
-Given a data array, the following example uses `photutils` to find sources
-and perform aperture photometry on them. We start off by selecting a subset
-of the data and subtracting the median in order to get rid of the background:
+The following example uses `photutils` to find sources in an
+astronomical image and perform aperture photometry on them. We start
+by selecting a subset of the data and subtracting a rough estimate of
+the background, calculated from the image median:
 
   >>> import numpy as np
   >>> from photutils import datasets
@@ -64,9 +93,11 @@ of the data and subtracting the median in order to get rid of the background:
   >>> image = hdu.data[500:700, 500:700]   # doctest: +REMOTE_DATA
   >>> image -= np.median(image)   # doctest: +REMOTE_DATA
 
-In the remainder of the example, we assume that the data is
-background-subtracted. `photutils` supports different source detection
-algorithms, and this example uses `~photutils.daofind`. The parameters of the
+In the remainder of this example, we assume that the data is
+background-subtracted.
+
+`photutils` supports different source detection algorithms. For this
+example, we use :func:`~photutils.daofind`. The parameters of the
 detected sources are returned as an Astropy `~astropy.table.Table`:
 
   >>> from photutils import daofind
@@ -88,10 +119,10 @@ detected sources are returned as an Astropy `~astropy.table.Table`:
   107 116.449998422  195.059233325 ... 3299.0 2.88258147736  -1.14945397913
   108 18.9580860645  196.342065132 ... 3854.0 2.38772046688 -0.944958705225
 
-Given the list of source locations, we now compute the sum of the pixel
-values in identical circular apertures. The
-:func:`~photutils.aperture_photometry` function returns an Astropy
-`~astropy.table.Table` with the results of the photometry:
+Given the list of source locations, we now compute the sum of the
+pixel values in identical circular apertures with a radius of 4
+pixels. The :func:`~photutils.aperture_photometry` function returns an
+Astropy `~astropy.table.Table` with the results of the photometry:
 
   >>> from photutils import aperture_photometry, CircularAperture
   >>> positions = zip(sources['xcentroid'], sources['ycentroid'])   # doctest: +REMOTE_DATA
@@ -117,7 +148,9 @@ values in identical circular apertures. The
   31232.9117818  116.449998422 .. 195.059233325  116.449998422 .. 195.059233325
   162076.262752  18.9580860645 .. 196.342065132  18.9580860645 .. 196.342065132
 
-The sum of the pixels is given in the column ``aperture_sum``. We can now plot the image and the apertures:
+The sum of the pixel values within the apertures are given in the
+column ``aperture_sum``. We now plot the image and the defined
+apertures:
 
 .. doctest-skip::
 
@@ -155,11 +188,11 @@ Using `photutils`
 
     aperture.rst
     psf.rst
-    datasets.rst
     detection.rst
     segmentation.rst
     morphology.rst
     geometry.rst
+    datasets.rst
     utils.rst
 
 
@@ -170,30 +203,9 @@ Using `photutils`
 
 
 .. note::
-   We also have a series of IPython notebooks that demonstrate how to use photutils.
-   You can view them online `here <http://nbviewer.ipython.org/github/astropy/photutils-datasets/tree/master/notebooks/>`__
-   or download them `here <https://github.com/astropy/photutils-datasets>`__ if you'd like to execute them on your machine.
-   Contributions welcome!
-
-
-.. _coordinate-conventions:
-
-Coordinate Conventions in `photutils`
--------------------------------------
-
-In this module the coordinates are zero-indexed, meaning that ``(x, y)
-= (0., 0.)`` corresponds to the center of the lower-left array
-element.  For example, the value of ``data[0, 0]`` is taken as the
-value over the range ``-0.5 < x <= 0.5``, ``-0.5 < y <= 0.5``. Note
-that this differs from the SourceExtractor_ convention, in which the
-center of the lower-left array element is ``(1, 1)``.
-
-The ``x`` coordinate corresponds to the second (fast) array index and
-the ``y`` coordinate corresponds to the first (slow) index. So
-``data[y, x]`` gives the value at coordinates (x, y). Along with the
-zero-indexing, this means that the array is defined over the
-coordinate range ``-0.5 < x <= data.shape[1] - 0.5``,
-``-0.5 < y <= data.shape[0] - 0.5``.
-
-
-.. _SourceExtractor: http://www.astromatic.net/software/sextractor
+    We also have a series of IPython notebooks that demonstrate how to
+    use `photutils`.  You can view them online `here
+    <http://nbviewer.ipython.org/github/astropy/photutils-datasets/tree/master/notebooks/>`__
+    or download them `here
+    <https://github.com/astropy/photutils-datasets>`__ if you'd like
+    to execute them on your machine.  Contributions welcome!
