@@ -835,7 +835,7 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
 
 def properties_table(segment_props, columns=None, exclude_columns=None):
     """
-    Construct an `astropy.table.Table` of properties from a list of
+    Construct an `~astropy.table.Table` of properties from a list of
     `SegmentProperties` objects.
 
     If ``columns`` or ``exclude_columns`` are not input, then the
