@@ -56,7 +56,7 @@ is ``(1, 1)``.
 
 The ``x`` (column) coordinate corresponds to the second (fast) array
 index and the ``y`` (row) coordinate corresponds to the first (slow)
-index. ``data[y, x]`` gives the value at coordinates (x, y).  Along
+index.  ``data[y, x]`` gives the value at coordinates (x, y).  Along
 with zero-indexing, this means that an array is defined over the
 coordinate range ``-0.5 < x <= data.shape[1] - 0.5``, ``-0.5 < y <=
 data.shape[0] - 0.5``.
@@ -68,7 +68,7 @@ Bundled Datasets
 ----------------
 
 In this documentation, we use example datasets provided by calling
-functions such as :func:`~photutils.datasets.load_star_image`. This
+functions such as :func:`~photutils.datasets.load_star_image`.  This
 function returns an Astropy :class:`~astropy.io.fits.ImageHDU` object,
 and is equivalent to doing:
 
@@ -83,7 +83,7 @@ Getting Started
 ---------------
 
 The following example uses `photutils` to find sources in an
-astronomical image and perform aperture photometry on them. We start
+astronomical image and perform aperture photometry on them.  We start
 by selecting a subset of the data and subtracting a rough estimate of
 the background, calculated from the image median:
 
@@ -96,8 +96,8 @@ the background, calculated from the image median:
 In the remainder of this example, we assume that the data is
 background-subtracted.
 
-`photutils` supports different source detection algorithms. For this
-example, we use :func:`~photutils.daofind`. The parameters of the
+`photutils` supports different source detection algorithms.  For this
+example, we use :func:`~photutils.daofind`.  The parameters of the
 detected sources are returned as an Astropy `~astropy.table.Table`:
 
   >>> from photutils import daofind
@@ -121,8 +121,8 @@ detected sources are returned as an Astropy `~astropy.table.Table`:
 
 Given the list of source locations, we now compute the sum of the
 pixel values in identical circular apertures with a radius of 4
-pixels. The :func:`~photutils.aperture_photometry` function returns an
-Astropy `~astropy.table.Table` with the results of the photometry:
+pixels.  The :func:`~photutils.aperture_photometry` function returns
+an Astropy `~astropy.table.Table` with the results of the photometry:
 
   >>> from photutils import aperture_photometry, CircularAperture
   >>> positions = zip(sources['xcentroid'], sources['ycentroid'])   # doctest: +REMOTE_DATA
@@ -149,7 +149,7 @@ Astropy `~astropy.table.Table` with the results of the photometry:
   162076.262752  18.9580860645 .. 196.342065132  18.9580860645 .. 196.342065132
 
 The sum of the pixel values within the apertures are given in the
-column ``aperture_sum``. We now plot the image and the defined
+column ``aperture_sum``.  We now plot the image and the defined
 apertures:
 
 .. doctest-skip::
@@ -208,4 +208,4 @@ Using `photutils`
     <http://nbviewer.ipython.org/github/astropy/photutils-datasets/tree/master/notebooks/>`__
     or download them `here
     <https://github.com/astropy/photutils-datasets>`__ if you'd like
-    to execute them on your machine.  Contributions welcome!
+    to execute them on your machine.  Contributions are welcome!
