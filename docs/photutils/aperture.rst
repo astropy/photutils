@@ -88,15 +88,16 @@ with the data and the apertures:
     >>> data = np.ones((100, 100))
     >>> phot_table = aperture_photometry(data, apertures)
     >>> print phot_table
-     aperture_sum pixel_center [2] input_center [2]
-                      pix              pix
-    ------------- ---------------- ----------------
-    28.2743338823     30.0 .. 30.0     30.0 .. 30.0
-    28.2743338823     40.0 .. 40.0     40.0 .. 40.0
+     aperture_sum xcenter_pixel ycenter_pixel xcenter_input ycenter_input
+                       pix           pix           pix           pix
+    ------------- ------------- ------------- ------------- -------------
+    28.2743338823          30.0          30.0          30.0          30.0
+    28.2743338823          40.0          40.0          40.0          40.0
 
 This function returns the results of the photometry in an Astropy
-`~astropy.table.Table`.  In this example, the table has three columns,
-named ``'aperture_sum'``, ``'pixel_center'``, ``'input_center'``.
+`~astropy.table.Table`.  In this example, the table has five columns,
+named ``'aperture_sum'``, ``'xcenter_pixel'``, ``'ycenter_pixel'``,
+``'xcenter_input''``, and ``'ycenter_input'``.
 
 Since all the data values are 1.0, the aperture sums are equal to the
 area of a circle with a radius of 3:
@@ -270,11 +271,11 @@ pixel's value and saved it in the array ``data_error``:
   >>> data_error = 0.1 * data  # (100 x 100 array)
   >>> phot_table = aperture_photometry(data, apertures, error=data_error)
   >>> print phot_table   # doctest: +FLOAT_CMP
-   aperture_sum aperture_sum_err pixel_center [2] input_center [2]
-                                      pix              pix
-  ------------- ---------------- ---------------- ----------------
-  28.2743338823   0.531736155272     30.0 .. 30.0     30.0 .. 30.0
-  28.2743338823   0.531736155272     40.0 .. 40.0     40.0 .. 40.0
+   aperture_sum aperture_sum_err xcenter_pixel ... xcenter_input ycenter_input
+                                      pix      ...      pix           pix
+  ------------- ---------------- ------------- ... ------------- -------------
+  28.2743338823   0.531736155272          30.0 ...          30.0          30.0
+  28.2743338823   0.531736155272          40.0 ...          40.0          40.0
 
 ``'aperture_sum_err'`` values are given by
 
