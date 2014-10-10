@@ -1173,10 +1173,28 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
         if wcs_transformation is None:
             wcs_transformation = WCS(header)
         ap = ap.to_pixel(wcs_transformation)
-        pixelpositions = ap.positions
+        pixelpositions = ap.positions * u.pixel
+
+        pixpos = np.transpose(pixelpositions)
+        # check whether single or multiple positions
+        if len(pixelpositions) > 1 and pixelpositions[0].size >= 2:
+            coord_columns = (pixpos[0], pixpos[1], positions)
+        else:
+            coord_columns = ((pixpos[0],), (pixpos[1],), (positions,))
+        coord_col_names = ('xcenter_pixel', 'ycenter_pixel', 'center_input')
     else:
         positions = ap.positions * u.pixel
         pixelpositions = ap.positions * u.pixel
+
+        pixpos = np.transpose(pixelpositions)
+        pos = np.transpose(positions)
+        # check whether single or multiple positions
+        if len(pixelpositions) > 1 and pixelpositions[0].size >= 2:
+            coord_columns = (pixpos[0], pixpos[1], pos[0], pos[1])
+        else:
+            coord_columns = ((pixpos[0],), (pixpos[1],), (pos[0],), (pos[1],))
+        coord_col_names = ('xcenter_pixel', 'ycenter_pixel', 'xcenter_input',
+                           'ycenter_input')
 
     # Prepare version return data
     from astropy import __version__
@@ -1193,18 +1211,6 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
         phot_col_names = ('aperture_sum', )
     else:
         phot_col_names = ('aperture_sum', 'aperture_sum_err')
-
-    # Note: if wcs_transformation is None, '(x/y)center_pix' will be the same
-    # as '(x/y)center_input'
-    pixpos = np.transpose(pixelpositions)
-    pos = np.transpose(positions)
-    # check whether single or multiple positions
-    if len(pixelpositions) > 1 and pixelpositions[0].size >= 2:
-        coord_columns = (pixpos[0], pixpos[1], pos[0], pos[1])
-    else:
-        coord_columns = ((pixpos[0],), (pixpos[1],), (pos[0],), (pos[1],))
-    coord_col_names = ('xcenter_pixel', 'ycenter_pixel', 'xcenter_input',
-                       'ycenter_input')
 
     return Table(data=(photometry_result + coord_columns),
                  names=(phot_col_names + coord_col_names),
