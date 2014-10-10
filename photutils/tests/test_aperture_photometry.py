@@ -372,7 +372,10 @@ class BaseTestDifferentData(object):
         assert_allclose(table['aperture_sum'], self.true_flux)
         assert table['aperture_sum'].unit, self.fluxunit
 
-        assert np.all(table['input_center'] == self.position)
+        assert np.all(table['xcenter_input'] ==
+                      np.transpose(self.position)[0])
+        assert np.all(table['ycenter_input'] ==
+                      np.transpose(self.position)[1])
 
 
 class TestInputPrimaryHDU(BaseTestDifferentData):
