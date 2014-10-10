@@ -6,6 +6,7 @@ from __future__ import (absolute_import, division, print_function,
 import math
 import abc
 import numpy as np
+import copy
 import warnings
 import astropy.units as u
 from astropy.io import fits
@@ -1107,14 +1108,15 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
             if datamask is not None:
                 mask *= datamask
 
-        data *= ~mask    # masked values are replaced with zeros, so they
-                         # do not contribute to the aperture sums
+        # masked values are replaced with zeros, so they do not contribute
+        # to the aperture sums
+        data = copy.deepcopy(data)    # do not modify input data
+        data *= ~mask
 
     # Check whether we really need to calculate pixelwise errors, even if
     # requested. (If neither error nor gain is an array, we don't need to.)
-    if ((error is None) or
-        (np.isscalar(error) and gain is None) or
-        (np.isscalar(error) and np.isscalar(gain))):
+    if ((error is None) or (np.isscalar(error) and gain is None) or
+            (np.isscalar(error) and np.isscalar(gain))):
         pixelwise_error = False
 
     # Check error shape.
@@ -1134,9 +1136,11 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
                              ' match')
 
         # mask the error array, if necessary
+        # masked values are replaced with zeros, so they do not contribute
+        # to the sums
         if mask is not None:
-            error *= ~mask    # masked values are replaced with zeros, so
-                              # they do not contribute to the sums
+            error = copy.deepcopy(error)    # do not modify input data
+            error *= ~mask
 
     # Check gain shape.
     if gain is not None:

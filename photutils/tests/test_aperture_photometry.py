@@ -7,7 +7,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import pytest
 import numpy as np
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_array_equal
 import astropy.units as u
 from astropy.io import fits
 from astropy.nddata import NDData
@@ -483,3 +483,24 @@ def test_aperture_photometry_with_error_units():
     assert_allclose(table1['aperture_sum_err'], np.sqrt(true_flux))
     assert table1['aperture_sum'].unit == unit
     assert table1['aperture_sum_err'].unit == unit
+
+
+def test_aperture_photometry_inputs_with_mask():
+    """
+    Test that aperture_photometry does not modify the input
+    data or error array when a mask is input.
+    """
+    data = np.ones((5, 5))
+    aperture = CircularAperture((2, 2), 2.)
+    mask = np.zeros_like(data, dtype=bool)
+    data[2, 2] = 100.   # bad pixel
+    mask[2, 2] = True
+    error = np.sqrt(data)
+    data_in = data.copy()
+    error_in = error.copy()
+    t1 = aperture_photometry(data, aperture, error=error, mask=mask)
+    assert_array_equal(data, data_in)
+    assert_array_equal(error, error_in)
+    assert_allclose(t1['aperture_sum'][0], 11.5663706144)
+    t2 = aperture_photometry(data, aperture)
+    assert_allclose(t2['aperture_sum'][0], 111.566370614)
