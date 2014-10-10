@@ -10,6 +10,8 @@ import copy
 __all__ = ['extract_array_2d', 'add_array_2d', 'subpixel_indices',
            'mask_to_mirrored_num']
 
+__doctest_skip__ = ['*']
+
 
 def _get_slices(large_array_shape, small_array_shape, position):
     """
