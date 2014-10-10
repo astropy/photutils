@@ -1016,10 +1016,10 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
         * ``'aperture_sum_err'``: Corresponding uncertainty in
           ``'aperture_sum'`` values.  Returned only if input ``error`` is not
           `None`.
-        * ``'pixel_center'``: pixel coordinate pairs of the center of the
-          apertures. Unit is pixel.
-        * ``'input_center'``: input coordinate pairs as they were given in the
-          ``positions`` parameter.
+        * ``'xcenter_pix'``, ``'ycenter_pix'``: x and y pixel coordinates of
+          the center of the apertures. Unit is pixel.
+        * ``'xcenter_input'``, ``'ycenter_input'``: input x and y coordinates
+          as they were given in the input ``positions`` parameter.
 
         The metadata of the table stores the version numbers of both astropy
         and photutils, as well as the calling arguments.
@@ -1194,16 +1194,17 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
     else:
         phot_col_names = ('aperture_sum', 'aperture_sum_err')
 
-    # Note: if wcs_transformation is None, 'pixel_center' will be the same
-    # as 'input_center'
-
+    # Note: if wcs_transformation is None, '(x/y)center_pix' will be the same
+    # as '(x/y)center_input'
+    pixpos = np.transpose(pixelpositions)
+    pos = np.transpose(positions)
     # check whether single or multiple positions
     if len(pixelpositions) > 1 and pixelpositions[0].size >= 2:
-        coord_columns = (pixelpositions, positions)
+        coord_columns = (pixpos[0], pixpos[1], pos[0], pos[1])
     else:
-        coord_columns = ((pixelpositions,), (positions,))
-
-    coord_col_names = ('pixel_center', 'input_center')
+        coord_columns = ((pixpos[0],), (pixpos[1],), (pos[0],), (pos[1],))
+    coord_col_names = ('xcenter_pixel', 'ycenter_pixel', 'xcenter_input',
+                       'ycenter_input')
 
     return Table(data=(photometry_result + coord_columns),
                  names=(phot_col_names + coord_col_names),
