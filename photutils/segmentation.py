@@ -81,8 +81,8 @@ class SegmentProperties(object):
 
         wcs : `~astropy.wcs.WCS`
             The WCS transformation to use.  If `None`, then
-            ``icrs_centroid``, ``ra_centroid``, and ``dec_centroid``
-            will be `None`.
+            `icrs_centroid`, `ra_centroid`, and `dec_centroid` will be
+            `None`.
 
         Notes
         -----
@@ -350,7 +350,7 @@ class SegmentProperties(object):
     def icrs_centroid(self):
         """
         The ICRS coordinates of the centroid within the source segment,
-        returned as a `~astropy.coordinated.SkyCoord` object.
+        returned as a `~astropy.coordinates.SkyCoord` object.
         """
         if self._wcs is not None:
             return pixel_to_skycoord(self.xcentroid.value,
@@ -779,7 +779,7 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
     wcs : `~astropy.wcs.WCS`
         The WCS transformation to use.  If `None`, then the
         ``ra_centroid`` and ``dec_centroid`` columns will contain
-        `None`s.
+        `None`\s.
 
     labels : int or list of ints
         Subset of ``segment_image`` labels for which to calculate the
