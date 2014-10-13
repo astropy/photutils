@@ -7,6 +7,7 @@ from astropy.tests.helper import pytest
 from astropy.modeling import models
 from astropy.table import Table
 from astropy.utils.misc import isiterable
+import astropy.wcs as WCS
 from ..segmentation import (SegmentProperties, segment_properties,
                             properties_table, relabel_sequential,
                             remove_segments, remove_border_segments)
@@ -56,6 +57,24 @@ class TestSegmentProperties(object):
         segm[0:2, 0:2] = 3   # skip label 2
         with pytest.raises(ValueError):
             SegmentProperties(IMAGE, segm, label=2, label_slice=None)
+
+    def test_wcs(self):
+        mywcs = WCS.WCS(naxis=2)
+        rho = np.pi / 3.
+        scale = 0.1 / 3600.
+        mywcs.wcs.cd = [[scale*np.cos(rho), -scale*np.sin(rho)],
+                    [scale*np.sin(rho), scale*np.cos(rho)]]
+        mywcs.wcs.ctype = ['RA---TAN','DEC--TAN']
+        props = SegmentProperties(IMAGE, SEGM, wcs=mywcs, label=1)
+        assert props.icrs_centroid is not None
+        assert props.ra_centroid is not None
+        assert props.dec_centroid is not None
+
+    def test_nowcs(self):
+        props = SegmentProperties(IMAGE, SEGM, wcs=None, label=1)
+        assert props.icrs_centroid is None
+        assert props.ra_centroid is None
+        assert props.dec_centroid is None
 
     def test_to_table(self):
         props = SegmentProperties(IMAGE, SEGM, label=1)
@@ -267,6 +286,19 @@ class TestPropertiesTable(object):
     def test_properties_table_empty_list(self):
         with pytest.raises(ValueError):
             properties_table([])
+
+    def test_properties_table_wcs(self):
+        mywcs = WCS.WCS(naxis=2)
+        rho = np.pi / 3.
+        scale = 0.1 / 3600.
+        mywcs.wcs.cd = [[scale*np.cos(rho), -scale*np.sin(rho)],
+                    [scale*np.sin(rho), scale*np.cos(rho)]]
+        mywcs.wcs.ctype = ['RA---TAN','DEC--TAN']
+
+        props = segment_properties(IMAGE, SEGM, wcs=mywcs)
+        t = properties_table(props)
+        assert t[0]['ra_centroid'] is not None
+        assert t[0]['dec_centroid'] is not None
 
 
 @pytest.mark.parametrize('start_label', [1, 5])
