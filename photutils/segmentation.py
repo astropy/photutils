@@ -2,9 +2,10 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
-from astropy.table import Table
+from astropy.table import Table, Column
 from astropy.utils import lazyproperty
 import astropy.units as u
+from astropy.wcs.utils import pixel_to_skycoord
 from .utils.prepare_data import _prepare_data
 
 
@@ -24,7 +25,8 @@ class SegmentProperties(object):
     """
 
     def __init__(self, data, segment_image, label, label_slice=None,
-                 error=None, effective_gain=None, mask=None, background=None):
+                 error=None, effective_gain=None, mask=None, background=None,
+                 wcs=None):
         """
         Parameters
         ----------
@@ -76,6 +78,11 @@ class SegmentProperties(object):
             shape as the input ``data``.  If the input ``data`` has been
             background-subtracted, then set ``background`` to `None`
             (the default) or ``0.``.
+
+        wcs : `~astropy.wcs.WCS`
+            The WCS transformation to use.  If `None`, then
+            ``icrs_centroid``, ``ra_centroid``, and ``dec_centroid``
+            will be `None`.
 
         Notes
         -----
@@ -143,6 +150,7 @@ class SegmentProperties(object):
         self._error = error    # total error
         self._background = background    # 2D error array
         self._mask = mask
+        self._wcs = wcs
 
         self.label = label
         if label_slice is not None:
@@ -337,6 +345,41 @@ class SegmentProperties(object):
         The ``y`` coordinate of the centroid within the source segment.
         """
         return self.centroid[0]
+
+    @lazyproperty
+    def icrs_centroid(self):
+        """
+        The ICRS coordinates of the centroid within the source segment,
+        returned as a `~astropy.coordinated.SkyCoord` object.
+        """
+        if self._wcs is not None:
+            return pixel_to_skycoord(self.xcentroid.value,
+                                     self.ycentroid.value,
+                                     self._wcs, origin=1).icrs
+        else:
+            return None
+
+    @lazyproperty
+    def ra_centroid(self):
+        """
+        The ICRS Right Ascension coordinate (in degrees) of the centroid
+        within the source segment.
+        """
+        if self._wcs is not None:
+            return self.icrs_centroid.ra.degree * u.deg
+        else:
+            return None
+
+    @lazyproperty
+    def dec_centroid(self):
+        """
+        The ICRS Declination coordinate (in degrees) of the centroid
+        within the source segment.
+        """
+        if self._wcs is not None:
+            return self.icrs_centroid.dec.degree * u.deg
+        else:
+            return None
 
     @lazyproperty
     def bbox(self):
@@ -688,7 +731,7 @@ class SegmentProperties(object):
 
 
 def segment_properties(data, segment_image, error=None, effective_gain=None,
-                       mask=None, background=None, labels=None):
+                       mask=None, background=None, wcs=None, labels=None):
     """
     Calculate photometry and morphological properties of sources defined
     by a labeled segmentation image.
@@ -732,6 +775,11 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
         the input ``data``.  If the input ``data`` has been
         background-subtracted, then set ``background`` to `None` (the
         default).
+
+    wcs : `~astropy.wcs.WCS`
+        The WCS transformation to use.  If `None`, then the
+        ``ra_centroid`` and ``dec_centroid`` columns will contain
+        `None`s.
 
     labels : int or list of ints
         Subset of ``segment_image`` labels for which to calculate the
@@ -828,7 +876,8 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
             continue
         segm_props = SegmentProperties(
             data, segment_image, label, label_slice=label_slice, error=error,
-            effective_gain=effective_gain, mask=mask, background=background)
+            effective_gain=effective_gain, mask=mask, background=background,
+            wcs=wcs)
         segm_propslist.append(segm_props)
     return segm_propslist
 
@@ -892,10 +941,12 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
 
     if isinstance(segment_props, list) and len(segment_props) == 0:
         raise ValueError('segment_props is an empty list')
+    segment_props = np.atleast_1d(segment_props)
 
     props_table = Table()
     # all scalar-valued properties
-    columns_all = ['id', 'xcentroid', 'ycentroid', 'segment_sum',
+    columns_all = ['id', 'xcentroid', 'ycentroid', 'ra_centroid',
+                   'dec_centroid', 'segment_sum',
                    'segment_sum_err', 'background_sum', 'background_mean',
                    'background_atcentroid', 'xmin', 'xmax', 'ymin', 'ymax',
                    'min_value', 'max_value', 'minval_xpos', 'minval_ypos',
@@ -915,13 +966,35 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
     if table_columns is None:
         table_columns = columns_all
 
-    segment_props = np.atleast_1d(segment_props)
+    # it's *much* faster to calculate world coordinates using the
+    # complete list of (x, y) instead of from the individual (x, y).
+    # The assumption here is that the wcs is the same for each
+    # element of segment_props.
+    if 'ra_centroid' in table_columns or 'dec_centroid' in table_columns:
+        xcentroid = [props.xcentroid.value for props in segment_props]
+        ycentroid = [props.ycentroid.value for props in segment_props]
+        if segment_props[0]._wcs is not None:
+            skycoord = pixel_to_skycoord(xcentroid, ycentroid,
+                segment_props[0]._wcs,
+                origin=1).icrs
+            ra = skycoord.ra.degree * u.deg
+            dec = skycoord.dec.degree * u.deg
+        else:
+            nprops = len(segment_props)
+            ra, dec = [None] * nprops, [None] * nprops
+
     for column in table_columns:
-        values = [getattr(props, column) for props in segment_props]
-        if isinstance(values[0], u.Quantity):
-            # turn list of Quantities into a Quantity array
-            values = u.Quantity(values)
-        props_table[column] = values
+        if column == 'ra_centroid':
+            props_table[column] = ra
+        elif column == 'dec_centroid':
+            props_table[column] = dec
+        else:
+            values = [getattr(props, column) for props in segment_props]
+            if isinstance(values[0], u.Quantity):
+                # turn list of Quantities into a Quantity array
+                values = u.Quantity(values)
+            props_table[column] = values
+
     return props_table
 
 
