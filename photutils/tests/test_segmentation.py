@@ -67,14 +67,14 @@ class TestSegmentProperties(object):
         mywcs.wcs.ctype = ['RA---TAN','DEC--TAN']
         props = SegmentProperties(IMAGE, SEGM, wcs=mywcs, label=1)
         assert props.icrs_centroid is not None
-        assert props.ra_centroid is not None
-        assert props.dec_centroid is not None
+        assert props.ra_icrs_centroid is not None
+        assert props.dec_icrs_centroid is not None
 
     def test_nowcs(self):
         props = SegmentProperties(IMAGE, SEGM, wcs=None, label=1)
         assert props.icrs_centroid is None
-        assert props.ra_centroid is None
-        assert props.dec_centroid is None
+        assert props.ra_icrs_centroid is None
+        assert props.dec_icrs_centroid is None
 
     def test_to_table(self):
         props = SegmentProperties(IMAGE, SEGM, label=1)
@@ -297,8 +297,8 @@ class TestPropertiesTable(object):
 
         props = segment_properties(IMAGE, SEGM, wcs=mywcs)
         t = properties_table(props)
-        assert t[0]['ra_centroid'] is not None
-        assert t[0]['dec_centroid'] is not None
+        assert t[0]['ra_icrs_centroid'] is not None
+        assert t[0]['dec_icrs_centroid'] is not None
 
 
 @pytest.mark.parametrize('start_label', [1, 5])

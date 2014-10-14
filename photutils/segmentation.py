@@ -2,7 +2,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
-from astropy.table import Table, Column
+from astropy.table import Table
 from astropy.utils import lazyproperty
 import astropy.units as u
 from astropy.wcs.utils import pixel_to_skycoord
@@ -81,8 +81,8 @@ class SegmentProperties(object):
 
         wcs : `~astropy.wcs.WCS`
             The WCS transformation to use.  If `None`, then
-            `icrs_centroid`, `ra_centroid`, and `dec_centroid` will be
-            `None`.
+            `icrs_centroid`, `ra_icrs_centroid`, and `dec_icrs_centroid`
+            will be `None`.
 
         Notes
         -----
@@ -360,7 +360,7 @@ class SegmentProperties(object):
             return None
 
     @lazyproperty
-    def ra_centroid(self):
+    def ra_icrs_centroid(self):
         """
         The ICRS Right Ascension coordinate (in degrees) of the centroid
         within the source segment.
@@ -371,7 +371,7 @@ class SegmentProperties(object):
             return None
 
     @lazyproperty
-    def dec_centroid(self):
+    def dec_icrs_centroid(self):
         """
         The ICRS Declination coordinate (in degrees) of the centroid
         within the source segment.
@@ -778,8 +778,8 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
 
     wcs : `~astropy.wcs.WCS`
         The WCS transformation to use.  If `None`, then the
-        ``ra_centroid`` and ``dec_centroid`` columns will contain
-        `None`\s.
+        ``ra_icrs_centroid`` and ``dec_icrs_centroid`` columns will
+        contain `None`\s.
 
     labels : int or list of ints
         Subset of ``segment_image`` labels for which to calculate the
@@ -945,8 +945,8 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
 
     props_table = Table()
     # all scalar-valued properties
-    columns_all = ['id', 'xcentroid', 'ycentroid', 'ra_centroid',
-                   'dec_centroid', 'segment_sum',
+    columns_all = ['id', 'xcentroid', 'ycentroid', 'ra_icrs_centroid',
+                   'dec_icrs_centroid', 'segment_sum',
                    'segment_sum_err', 'background_sum', 'background_mean',
                    'background_atcentroid', 'xmin', 'xmax', 'ymin', 'ymax',
                    'min_value', 'max_value', 'minval_xpos', 'minval_ypos',
@@ -970,13 +970,13 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
     # complete list of (x, y) instead of from the individual (x, y).
     # The assumption here is that the wcs is the same for each
     # element of segment_props.
-    if 'ra_centroid' in table_columns or 'dec_centroid' in table_columns:
+    if ('ra_icrs_centroid' in table_columns or
+            'dec_icrs_centroid' in table_columns):
         xcentroid = [props.xcentroid.value for props in segment_props]
         ycentroid = [props.ycentroid.value for props in segment_props]
         if segment_props[0]._wcs is not None:
-            skycoord = pixel_to_skycoord(xcentroid, ycentroid,
-                segment_props[0]._wcs,
-                origin=1).icrs
+            skycoord = pixel_to_skycoord(
+                xcentroid, ycentroid, segment_props[0]._wcs, origin=1).icrs
             ra = skycoord.ra.degree * u.deg
             dec = skycoord.dec.degree * u.deg
         else:
@@ -984,9 +984,9 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
             ra, dec = [None] * nprops, [None] * nprops
 
     for column in table_columns:
-        if column == 'ra_centroid':
+        if column == 'ra_icrs_centroid':
             props_table[column] = ra
-        elif column == 'dec_centroid':
+        elif column == 'dec_icrs_centroid':
             props_table[column] = dec
         else:
             values = [getattr(props, column) for props in segment_props]
