@@ -50,7 +50,7 @@ In `photutils`, pixel coordinates are zero-indexed, meaning that ``(x,
 y) = (0, 0)`` corresponds to the center of the lowest, leftmost array
 element.  This means that the value of ``data[0, 0]`` is taken as the
 value over the range ``-0.5 < x <= 0.5``, ``-0.5 < y <= 0.5``.  Note
-that this differs from the SourceExtractor_, IRAF_, and FITS
+that this differs from the SourceExtractor_, IRAF_, FITS, and ds9_
 conventions, in which the center of the lowest, leftmost array element
 is ``(1, 1)``.
 
@@ -63,6 +63,7 @@ data.shape[0] - 0.5``.
 
 .. _SourceExtractor: http://www.astromatic.net/software/sextractor
 .. _IRAF: http://iraf.noao.edu/
+.. _ds9: http://ds9.si.edu/
 
 Bundled Datasets
 ----------------
