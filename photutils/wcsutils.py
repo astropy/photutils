@@ -156,7 +156,11 @@ def pixel_to_skycoord(xp, yp, wcs, origin=0, mode='all'):
         The celestial coordinates
     """
 
-    if wcs.has_distortion and wcs.naxis != 2:
+    # temporary workaround
+    has_distortion = any(getattr(wcs, dist_attr) is not None
+                         for dist_attr in ['cpdis1', 'cpdis2', 'det2im1', 'det2im2', 'sip'])
+
+    if has_distortion and wcs.naxis != 2:
         raise ValueError("Can only handle WCS with distortions for 2-dimensional WCS")
 
     # Keep only the celestial part of the axes, also re-orders lon/lat
