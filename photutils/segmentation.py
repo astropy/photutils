@@ -5,7 +5,7 @@ import numpy as np
 from astropy.table import Table
 from astropy.utils import lazyproperty
 import astropy.units as u
-from astropy.wcs.utils import pixel_to_skycoord
+from .wcsutils import pixel_to_skycoord
 from .utils.prepare_data import _prepare_data
 
 

@@ -2,7 +2,8 @@ import numpy as np
 
 from astropy import units as u
 from astropy.wcs import WCSSUB_CELESTIAL
-from astropy.coordinates import UnitSphericalRepresentation
+from astropy.coordinates import SkyCoord, UnitSphericalRepresentation
+
 
 def skycoord_to_pixel(coords, wcs):
     """
@@ -131,3 +132,66 @@ def assert_angle(name, q):
             raise ValueError("{0} should have angular units".format(name))
     else:
         raise TypeError("{0} should be a Quantity instance".format(name))
+
+
+def pixel_to_skycoord(xp, yp, wcs, origin=0, mode='all'):
+    """
+    Convert a set of pixel coordinates into a SkyCoord coordinate.
+
+    Parameters
+    ----------
+    xp, yp : float or `numpy.ndarray`
+        The coordinates to convert.
+    wcs : `~astropy.wcs.WCS`
+        The WCS transformation to use.
+    origin : int
+        Whether to return 0 or 1-based pixel coordinates.
+    mode : 'all' or 'wcs'
+        Whether to do the transformation including distortions (``'all'``) or
+        only including only the core WCS transformation (``'wcs'``).
+
+    Returns
+    -------
+    coords : `~astropy.coordinates.SkyCoord`
+        The celestial coordinates
+    """
+
+    if wcs.has_distortion and wcs.naxis != 2:
+        raise ValueError("Can only handle WCS with distortions for 2-dimensional WCS")
+
+    # Keep only the celestial part of the axes, also re-orders lon/lat
+    wcs = wcs.sub([WCSSUB_CELESTIAL])
+
+    if wcs.naxis != 2:
+        raise ValueError("WCS should contain celestial component")
+
+    # TODO: remove local wcs_to_celestial_frame once Astropy 1.0 is out
+    try:
+        from astropy.wcs.utils import wcs_to_celestial_frame
+    except ImportError:  # Astropy < 1.0
+        from .extern.wcs_utils import wcs_to_celestial_frame
+
+    # Check which frame the WCS uses
+    frame = wcs_to_celestial_frame(wcs)
+
+    # Check what unit the WCS gives
+    lon_unit = u.Unit(wcs.wcs.cunit[0])
+    lat_unit = u.Unit(wcs.wcs.cunit[1])
+
+    # Convert pixel coordinates to celestial coordinates
+    if mode == 'all':
+        lon, lat = wcs.all_pix2world(xp, yp, origin)
+    elif mode == 'wcs':
+        lon, lat = wcs.wcs_pix2world(xp, yp, origin)
+    else:
+        raise ValueError("mode should be either 'all' or 'wcs'")
+
+    # Add units to longitude/latitude
+    lon = lon * lon_unit
+    lat = lat * lat_unit
+
+    # Create SkyCoord object
+    data = UnitSphericalRepresentation(lon=lon, lat=lat)
+    coords = SkyCoord(frame.realize_frame(data))
+
+    return coords
