@@ -26,7 +26,7 @@ class SegmentProperties(object):
 
     def __init__(self, data, segment_image, label, label_slice=None,
                  error=None, effective_gain=None, mask=None, background=None,
-                 wcs=None):
+                 wcs=None, data_prepared=False):
         """
         Parameters
         ----------
@@ -83,6 +83,15 @@ class SegmentProperties(object):
             The WCS transformation to use.  If `None`, then
             `icrs_centroid`, `ra_icrs_centroid`, and `dec_icrs_centroid`
             will be `None`.
+
+        data_prepared : bool, optional
+            If `True`, then the input ``data`` is assumed to have
+            already been background-subtracted, ``error` is assumed to
+            represent the total (background and source) error
+            (``effective_gain`` will be ignored), and ``background`` is
+            assumed to be a 2D image.  This dramatically improves speed
+            if you are calculating the properties of many segments from
+            the same data.
 
         Notes
         -----
@@ -143,10 +152,11 @@ class SegmentProperties(object):
 
         self._inputimage = data
         self._segment_image = segment_image
-        image, error, background = _prepare_data(
-            data, error=error, effective_gain=effective_gain,
-            background=background)
-        self._image = image    # background subtracted
+        if not data_prepared:
+            data, error, background = _prepare_data(
+                data, error=error, effective_gain=effective_gain,
+                background=background)
+        self._image = data    # background subtracted
         self._error = error    # total error
         self._background = background    # 2D error array
         self._mask = mask
@@ -867,6 +877,13 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
     else:
         label_ids = np.atleast_1d(labels)
 
+    # prepare the input data once, instead of repeating this for each
+    # segment
+    data, error, background = _prepare_data(
+        data, error=error, effective_gain=effective_gain,
+        background=background)
+    data_prepared = True
+
     label_slices = ndimage.find_objects(segment_image)
     segm_propslist = []
     for i, label_slice in enumerate(label_slices):
@@ -877,7 +894,7 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
         segm_props = SegmentProperties(
             data, segment_image, label, label_slice=label_slice, error=error,
             effective_gain=effective_gain, mask=mask, background=background,
-            wcs=wcs)
+            wcs=wcs, data_prepared=data_prepared)
         segm_propslist.append(segm_props)
     return segm_propslist
 
