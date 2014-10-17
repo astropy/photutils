@@ -493,8 +493,8 @@ def _findobjs(data, threshold, kernel, exclude_border=False):
 
     if not exclude_border:
         # create a larger image padded by zeros
-        ysize = data.shape[0] + (2. * y_kernradius)
-        xsize = data.shape[1] + (2. * x_kernradius)
+        ysize = int(data.shape[0] + (2. * y_kernradius))
+        xsize = int(data.shape[1] + (2. * x_kernradius))
         data_padded = np.zeros((ysize, xsize))
         data_padded[y_kernradius:y_kernradius + data.shape[0],
                     x_kernradius:x_kernradius + data.shape[1]] = data

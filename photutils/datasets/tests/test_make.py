@@ -105,7 +105,7 @@ def test_make_gaussian_sources_amplitude():
 
 def test_make_gaussian_sources_oversample():
     shape = (100, 100)
-    image = make_gaussian_sources(shape, TABLE, oversample=10.)
+    image = make_gaussian_sources(shape, TABLE, oversample=10)
     assert image.shape == shape
     assert_allclose(image.sum(), TABLE['flux'].sum())
 

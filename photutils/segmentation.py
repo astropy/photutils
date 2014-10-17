@@ -726,8 +726,8 @@ class SegmentProperties(object):
         if self._background is None:
             return None
         else:
-            return self._background[self.ycentroid.value,
-                                    self.xcentroid.value]
+            return self._background[int(self.ycentroid.value),
+                                    int(self.xcentroid.value)]
 
 
 def segment_properties(data, segment_image, error=None, effective_gain=None,
