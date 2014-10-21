@@ -36,7 +36,7 @@ SEGM = (IMAGE >= THRESHOLD).astype(np.int)
 
 ERR_VALS = [2., 2., 2., 2.]
 EFFGAIN_VALS = [None, 2., 1.e10, 2.]
-BACKGRD_VALS = [None, None, None, 5.]
+BACKGRD_VALS = [None, None, None, 0.]
 
 
 @pytest.mark.skipif('not HAS_SKIMAGE')

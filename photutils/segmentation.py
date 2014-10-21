@@ -95,6 +95,12 @@ class SegmentProperties(object):
 
         Notes
         -----
+        If there are negative data values within the source segment,
+        then the morphological parameters based on image moments will be
+        unreliable.  This could occur, for example, if the
+        ``background`` is set incorrectly.  Segment photometry is
+        unaffected by negative data pixels.
+
         If ``effective_gain`` is input, then ``error`` should include
         all sources of "background" error but *exclude* the Poisson
         error of the sources.  The total error image,
@@ -150,14 +156,13 @@ class SegmentProperties(object):
         elif label < 0:
             raise ValueError('label must be a positive integer')
 
-        self._inputimage = data
         self._segment_image = segment_image
         if not data_prepared:
             data, error, background = _prepare_data(
                 data, error=error, effective_gain=effective_gain,
                 background=background)
-        self._image = data    # background subtracted
-        self._error = error    # total error
+        self._data = data       # background subtracted
+        self._error = error     # total error
         self._background = background    # 2D error array
         self._mask = mask
         self._wcs = wcs
@@ -226,27 +231,30 @@ class SegmentProperties(object):
     @lazyproperty
     def data_cutout(self):
         """
-        A 2D cutout from the data of the source segment.
+        A 2D cutout from the (background-subtracted) data of the source
+        segment.
         """
-        return self._inputimage[self._slice]
+        return self._data[self._slice]
 
     @lazyproperty
     def data_cutout_ma(self):
         """
-        A 2D `~numpy.ma.MaskedArray` cutout from the data, where the
-        mask is `True` for both pixels outside of the source segment and
-        masked pixels.
+        A 2D `~numpy.ma.MaskedArray` cutout from the
+        (background-subtracted) data, where the mask is `True` for both
+        pixels outside of the source segment and masked pixels.
         """
         return np.ma.masked_array(self.data_cutout, mask=self._local_mask)
 
     @lazyproperty
     def _data_cutout_maskzeroed_double(self):
         """
-        A 2D cutout from the data, where pixels outside of the source
-        segment and masked pixels are set to zero.  The cutout image is
-        double precision, which is required for scikit-image's Cython
-        moment functions.
+        A 2D cutout from the (background-subtracted) data, where pixels
+        outside of the source segment and masked pixels are set to zero.
+        The cutout image is double precision, which is required for
+        scikit-image's Cython moment functions.
         """
+        # NOTE: negative data values (e.g. at large radii) can result in
+        # image moments that give negative variances(!)
         return (self.data_cutout * ~self._local_mask).astype(np.float64)
 
     @lazyproperty
@@ -542,6 +550,8 @@ class SegmentProperties(object):
         order.
         """
         eigvals = np.linalg.eigvals(self.covariance)
+        if np.any(eigvals < 0):    # negative variance
+            return (np.nan, np.nan) * u.pix**2
         return (np.max(eigvals), np.min(eigvals)) * u.pix**2
 
     @lazyproperty
@@ -592,6 +602,8 @@ class SegmentProperties(object):
         counter-clockwise direction.
         """
         a, b, b, c = self.covariance.flat
+        if a < 0 or c < 0:    # negative variance
+            return np.nan
         return 0.5 * np.arctan2(2. * b, (a - c))
 
     @lazyproperty
@@ -682,7 +694,7 @@ class SegmentProperties(object):
         :math:`B_i` is the ``background``, and :math:`S` are the
         non-masked pixels in the source segment.
         """
-        return np.sum(np.ma.masked_array(self._image[self._slice],
+        return np.sum(np.ma.masked_array(self._data[self._slice],
                                          mask=self._local_mask))
 
     @lazyproperty
