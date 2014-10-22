@@ -223,7 +223,7 @@ def detect_sources(data, threshold, npixels, filter_fwhm=None,
         else:
             image = data
 
-    image = (image >= threshold)
+    image = (image > threshold)
     if connectivity == 4:
         selem = ndimage.generate_binary_structure(2, 1)
     elif connectivity == 8:    # e.g., SExtractor

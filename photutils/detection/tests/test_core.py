@@ -120,19 +120,18 @@ class TestDetectThreshold(object):
 class TestDetectSources(object):
     def test_detection(self):
         """Test basic detection."""
-        segm = detect_sources(DATA, threshold=1., npixels=2)
+        segm = detect_sources(DATA, threshold=0.9, npixels=2)
         assert_array_equal(segm, REF2)
 
     def test_small_sources(self):
         """Test detection where sources are smaller than npixels size."""
-        segm = detect_sources(DATA, threshold=1., npixels=5)
+        segm = detect_sources(DATA, threshold=0.9, npixels=5)
         assert_array_equal(segm, REF1)
 
     def test_zerothresh(self):
         """Test detection with zero threshold."""
         segm = detect_sources(DATA, threshold=0., npixels=2)
-        ref = np.ones((3, 3))
-        assert_array_equal(segm, ref)
+        assert_array_equal(segm, REF2)
 
     def test_zerodet(self):
         """Test detection with large snr_threshold giving no detections."""
@@ -142,14 +141,14 @@ class TestDetectSources(object):
     def test_8connectivity(self):
         """Test detection with connectivity=8."""
         data = np.eye(3)
-        segm = detect_sources(data, threshold=1, npixels=1, connectivity=8)
+        segm = detect_sources(data, threshold=0.9, npixels=1, connectivity=8)
         assert_array_equal(segm, data)
 
     def test_4connectivity(self):
         """Test detection with connectivity=4."""
         data = np.eye(3)
         ref = np.diag([1, 2, 3])
-        segm = detect_sources(data, threshold=1, npixels=1, connectivity=4)
+        segm = detect_sources(data, threshold=0.9, npixels=1, connectivity=4)
         assert_array_equal(segm, ref)
 
     def test_filter1(self):
