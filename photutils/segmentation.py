@@ -681,52 +681,89 @@ class SegmentProperties(object):
         return 1.0 - (self.semiminor_axis_sigma / self.semimajor_axis_sigma)
 
     @lazyproperty
-    def se_x2(self):
+    def covar_sigx2(self):
         """
-        `SExtractor`_'s X2 parameter, in units of pixel**2, which
-        corresponds to the ``(0, 0)`` element of the `covariance`
-        matrix.
+        The ``(0, 0)`` element of the `covariance` matrix, representing
+        :math:`\sigma_x^2`, in units of pixel**2.
+
+        Note that this is the same as `SExtractor`_'s X2 parameter.
         """
         return self.covariance[0, 0]
 
     @lazyproperty
-    def se_y2(self):
+    def covar_sigy2(self):
         """
-        `SExtractor`_'s Y2 parameter, in units of pixel**2, which
-        corresponds to the ``(1, 1)`` element of the `covariance`
-        matrix.
+        The ``(1, 1)`` element of the `covariance` matrix, representing
+        :math:`\sigma_y^2`, in units of pixel**2.
+
+        Note that this is the same as `SExtractor`_'s Y2 parameter.
         """
         return self.covariance[1, 1]
 
     @lazyproperty
-    def se_xy(self):
+    def covar_sigxy(self):
         """
-        `SExtractor`_'s XY parameter, in units of pixel**2, which
-        corresponds to the ``(0, 1)`` element of the `covariance`
-        matrix.
+        The ``(0, 1)`` and ``(1, 0)`` element of the `covariance`
+        matrix, representing :math:`\sigma_x \sigma_y`, in units of
+        pixel**2.
+
+        Note that this is the same as `SExtractor`_'s XY parameter.
         """
         return self.covariance[0, 1]
 
     @lazyproperty
-    def se_cxx(self):
+    def cxx(self):
         """
         `SExtractor`_'s CXX ellipse parameter in units of pixel**(-2).
+
+        The ellipse is defined as
+
+            .. math::
+                cxx (x - \\bar{x})^2 + cxy (x - \\bar{x}) (y - \\bar{y}) +
+                cyy (y - \\bar{y})^2 = R^2
+
+        where :math:`R` is a parameter which scales the ellipse (in
+        units of the axes lengths).  `SExtractor`_ reports that the
+        isophotal limit of a source is well represented by :math:`R
+        \\approx 3`.
         """
         return ((np.cos(self.orientation) / self.semimajor_axis_sigma)**2 +
                 (np.sin(self.orientation) / self.semiminor_axis_sigma)**2)
 
     @lazyproperty
-    def se_cyy(self):
+    def cyy(self):
         """
         `SExtractor`_'s CYY ellipse parameter in units of pixel**(-2).
+
+        The ellipse is defined as
+
+            .. math::
+                cxx (x - \\bar{x})^2 + cxy (x - \\bar{x}) (y - \\bar{y}) +
+                cyy (y - \\bar{y})^2 = R^2
+
+        where :math:`R` is a parameter which scales the ellipse (in
+        units of the axes lengths).  `SExtractor`_ reports that the
+        isophotal limit of a source is well represented by :math:`R
+        \\approx 3`.
         """
         return ((np.sin(self.orientation) / self.semimajor_axis_sigma)**2 +
                 (np.cos(self.orientation) / self.semiminor_axis_sigma)**2)
 
     @lazyproperty
-    def se_cxy(self):
+    def cxy(self):
         """
         `SExtractor`_'s CXY ellipse parameter in units of pixel**(-2).
+
+        The ellipse is defined as
+
+            .. math::
+                cxx (x - \\bar{x})^2 + cxy (x - \\bar{x}) (y - \\bar{y}) +
+                cyy (y - \\bar{y})^2 = R^2
+
+        where :math:`R` is a parameter which scales the ellipse (in
+        units of the axes lengths).  `SExtractor`_ reports that the
+        isophotal limit of a source is well represented by :math:`R
+        \\approx 3`.
         """
         return (2. * np.cos(self.orientation) * np.sin(self.orientation) *
                 ((1. / self.semimajor_axis_sigma**2) -
@@ -1065,8 +1102,8 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
                    'maxval_xpos', 'maxval_ypos', 'area', 'equivalent_radius',
                    'perimeter', 'semimajor_axis_sigma',
                    'semiminor_axis_sigma', 'eccentricity', 'orientation',
-                   'ellipticity', 'elongation', 'se_x2', 'se_xy',
-                   'se_y2', 'se_cxx', 'se_cxy', 'se_cyy']
+                   'ellipticity', 'elongation', 'covar_sigx2',
+                   'covar_sigxy', 'covar_sigy2', 'cxx', 'cxy', 'cyy']
 
     table_columns = None
     if exclude_columns is not None:

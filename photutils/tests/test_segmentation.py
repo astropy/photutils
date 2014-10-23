@@ -146,8 +146,8 @@ class TestSegmentPropertiesFunction(object):
                       'eccentricity', 'ellipticity', 'elongation',
                       'equivalent_radius', 'max_value', 'maxval_xpos',
                       'maxval_ypos', 'min_value', 'minval_xpos',
-                      'minval_ypos', 'perimeter', 'se_cxx', 'se_cxy',
-                      'se_cyy', 'se_x2', 'se_xy', 'se_y2', 'xmax',
+                      'minval_ypos', 'perimeter', 'cxx', 'cxy', 'cyy',
+                      'covar_sigx2', 'covar_sigxy', 'covar_sigy2', 'xmax',
                       'xmin', 'ymax', 'ymin']
         for propname in properties:
             assert not isiterable(getattr(props[0], propname))
@@ -224,7 +224,7 @@ class TestSegmentPropertiesFunction(object):
         props = segment_properties(IMAGE, SEGM, background=background)
         proplist = ['semimajor_axis_sigma', 'semiminor_axis_sigma',
                     'eccentricity', 'orientation', 'ellipticity',
-                    'elongation', 'se_cxx', 'se_cxy', 'se_cyy']
+                    'elongation', 'cxx', 'cxy', 'cyy']
         assert_allclose(props[0].xcentroid, XCEN, rtol=1.e-2)
         assert_allclose(props[0].ycentroid, YCEN, rtol=1.e-2)
         for prop in proplist:
