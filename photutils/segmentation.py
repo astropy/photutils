@@ -126,11 +126,19 @@ class SegmentProperties(object):
         :math:`\sigma_{\mathrm{tot}}` is then:
 
         .. math:: \\sigma_{\\mathrm{tot}} = \\sqrt{\\sigma_{\\mathrm{b}}^2 +
-                      \\frac{I}{g}}
+                      \\frac{(I - B)}{g}}
 
-        where :math:`\sigma_b`, :math:`I`, and :math:`g` are the
-        background ``error`` image, ``data`` image, and
-        ``effective_gain``, respectively.
+        where :math:`\sigma_b`, :math:`I`, :math:`B`, and :math:`g` are
+        the background ``error`` image, ``data`` image, ``background``
+        image, and ``effective_gain``, respectively.
+
+        Pixels where :math:`(I_i - B_i)` is negative do not contribute
+        additional Poisson noise to the total error, i.e.
+        :math:`\sigma_{\mathrm{tot}, i} = \sigma_{\mathrm{b}, i}`.  Note
+        that this is different from `SExtractor`_, which sums the total
+        variance in the segment, including pixels where :math:`(I_i -
+        B_i)` is negative.  In such cases, `SExtractor`_ underestimates
+        the total errors.
 
         If ``effective_gain`` is `None`, then ``error`` is assumed to
         include *all* sources of error, including the Poisson error of
@@ -140,7 +148,8 @@ class SegmentProperties(object):
         For example, if your input ``data`` are in units of ADU, then
         ``effective_gain`` should represent electrons/ADU.  If your
         input ``data`` are in units of electrons/s then
-        ``effective_gain`` should be the exposure time.
+        ``effective_gain`` should be the exposure time or an exposure
+        time map (e.g., for mosaics with non-uniform exposure times).
 
         `~photutils.SegmentProperties.segment_sum_err` is simply the
         quadrature sum of the pixel-wise total errors over the
@@ -934,11 +943,19 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
     then:
 
     .. math:: \\sigma_{\\mathrm{tot}} = \\sqrt{\\sigma_{\\mathrm{b}}^2 +
-                  \\frac{I}{g}}
+                  \\frac{(I - B)}{g}}
 
-    where :math:`\sigma_b`, :math:`I`, and :math:`g` are the background
-    ``error`` image, ``data`` image, and ``effective_gain``,
-    respectively.
+    where :math:`\sigma_b`, :math:`I`, :math:`B`, and :math:`g` are the
+    background ``error`` image, ``data`` image, ``background`` image,
+    and ``effective_gain``, respectively.
+
+    Pixels where :math:`(I_i - B_i)` is negative do not contribute
+    additional Poisson noise to the total error, i.e.
+    :math:`\sigma_{\mathrm{tot}, i} = \sigma_{\mathrm{b}, i}`.  Note
+    that this is different from `SExtractor`_, which sums the total
+    variance in the segment, including pixels where :math:`(I_i - B_i)`
+    is negative.  In such cases, `SExtractor`_ underestimates the total
+    errors.
 
     If ``effective_gain`` is `None`, then ``error`` is assumed to
     include *all* sources of error, including the Poisson error of the
@@ -947,7 +964,8 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
     For example, if your input ``data`` are in units of ADU, then
     ``effective_gain`` should represent electrons/ADU.  If your input
     ``data`` are in units of electrons/s then ``effective_gain`` should
-    be the exposure time.
+    be the exposure time or an exposure time map (e.g., for mosaics with
+    non-uniform exposure times).
 
     .. _SExtractor: http://www.astromatic.net/software/sextractor
 

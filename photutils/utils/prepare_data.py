@@ -21,7 +21,7 @@ def calculate_total_error(data, error, effective_gain):
     Parameters
     ----------
     data : array_like or `~astropy.units.Quantity`
-        The 2D array data array.
+        The 2D array (background-subtracted) data array.
 
     error : array_like or `~astropy.units.Quantity`
         The pixel-wise Gaussian 1-sigma background errors of the input
@@ -41,12 +41,10 @@ def calculate_total_error(data, error, effective_gain):
                   \\frac{I}{g}}
 
     where :math:`\sigma_b`, :math:`I`, and :math:`g` are the background
-    ``error`` image, ``data`` image, and ``effective_gain``,
-    respectively.
+    ``error`` image, (background-subtracted) ``data`` image, and
+    ``effective_gain``, respectively.
 
-    ``data`` here should not be background-subtracted.  ``data`` should
-    include all detected counts (electrons or photons), including the
-    background, to properly calculate the Poisson errors of sources.
+    ``data`` here should be background-subtracted to match SExtractor.
     """
 
     has_unit = [hasattr(x, 'unit') for x in [data, effective_gain]]
@@ -70,14 +68,16 @@ def calculate_total_error(data, error, effective_gain):
             raise ValueError('If input effective_gain is 2D, then it must '
                              'have the same shape as the input data.')
     if np.any(effective_gain <= 0):
-        raise ValueError('effective_gain must be positive everywhere')
+        raise ValueError('effective_gain must be strictly positive '
+                         'everywhere')
 
     if all(has_unit):
-        variance_total = np.maximum(
-            error**2 + ((data * data.unit) / effective_gain.value),
-            0. * error.unit**2)
+        source_variance = np.maximum((data * data.unit) /
+                                     effective_gain.value, 0. * error.unit**2)
+        variance_total = error**2 + source_variance
     else:
-        variance_total = np.maximum(error**2 + (data / effective_gain), 0)
+        source_variance = np.maximum(data / effective_gain, 0)
+        variance_total = error**2 + source_variance
     return np.sqrt(variance_total)
 
 
@@ -234,15 +234,15 @@ def _prepare_data(data, error=None, effective_gain=None, background=None):
     inputs = [data, error, background]
     _check_units(inputs)
 
+    # SExtractor subtracts background before calculating total variance
+    if background is not None:
+        data, background = subtract_background(data, background)
+
     if error is not None:
         if data.shape != error.shape:
             raise ValueError('data and error must have the same shape')
         if effective_gain is not None:
             # data here should include the background
             error = calculate_total_error(data, error, effective_gain)
-
-    # subtract background after calculating total variance
-    if background is not None:
-        data, background = subtract_background(data, background)
 
     return data, error, background
