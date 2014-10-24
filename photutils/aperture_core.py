@@ -1014,12 +1014,13 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
 
         * ``'aperture_sum'``: Sum of the values within the aperture.
         * ``'aperture_sum_err'``: Corresponding uncertainty in
-          ``'aperture_sum'`` values.  Returned only if input ``error`` is not
-          `None`.
-        * ``'xcenter_pix'``, ``'ycenter_pix'``: x and y pixel coordinates of
-          the center of the apertures. Unit is pixel.
-        * ``'xcenter_input'``, ``'ycenter_input'``: input x and y coordinates
-          as they were given in the input ``positions`` parameter.
+          ``'aperture_sum'`` values.  Returned only if input ``error``
+          is not `None`.
+        * ``'xcenter'``, ``'ycenter'``: x and y pixel coordinates of the
+          center of the apertures. Unit is pixel.
+        * ``'xcenter_input'``, ``'ycenter_input'``: input x and y
+          coordinates as they were given in the input ``positions``
+          parameter.
 
         The metadata of the table stores the version numbers of both astropy
         and photutils, as well as the calling arguments.
@@ -1181,20 +1182,16 @@ def aperture_photometry(data, apertures, unit=None, wcs=None,
             coord_columns = (pixpos[0], pixpos[1], positions)
         else:
             coord_columns = ((pixpos[0],), (pixpos[1],), (positions,))
-        coord_col_names = ('xcenter_pixel', 'ycenter_pixel', 'center_input')
+        coord_col_names = ('xcenter', 'ycenter', 'center_input')
     else:
-        positions = ap.positions * u.pixel
         pixelpositions = ap.positions * u.pixel
-
         pixpos = np.transpose(pixelpositions)
-        pos = np.transpose(positions)
         # check whether single or multiple positions
         if len(pixelpositions) > 1 and pixelpositions[0].size >= 2:
-            coord_columns = (pixpos[0], pixpos[1], pos[0], pos[1])
+            coord_columns = (pixpos[0], pixpos[1])
         else:
-            coord_columns = ((pixpos[0],), (pixpos[1],), (pos[0],), (pos[1],))
-        coord_col_names = ('xcenter_pixel', 'ycenter_pixel', 'xcenter_input',
-                           'ycenter_input')
+            coord_columns = ((pixpos[0],), (pixpos[1],))
+        coord_col_names = ('xcenter', 'ycenter')
 
     # Prepare version return data
     from astropy import __version__

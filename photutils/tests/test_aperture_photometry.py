@@ -372,9 +372,9 @@ class BaseTestDifferentData(object):
         assert_allclose(table['aperture_sum'], self.true_flux)
         assert table['aperture_sum'].unit, self.fluxunit
 
-        assert np.all(table['xcenter_input'] ==
+        assert np.all(table['xcenter'] ==
                       np.transpose(self.position)[0])
-        assert np.all(table['ycenter_input'] ==
+        assert np.all(table['ycenter'] ==
                       np.transpose(self.position)[1])
 
 
