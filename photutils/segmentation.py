@@ -218,9 +218,43 @@ class SegmentProperties(object):
     def __getitem__(self, key):
         return getattr(self, key, None)
 
+    def make_cutout(self, data, masked_array=False):
+        """
+        Create a (masked) cutout array from the input ``data`` using the
+        minimal bounding box of the source segment.
+
+        Parameters
+        ----------
+        data : array-like (2D)
+            The data array from which to create the masked cutout array.
+
+        masked_array : bool, optional
+            If `True` then a `~numpy.ma.MaskedArray` will be created
+            where the mask is `True` for both pixels outside of the
+            source segment and any masked pixels.  If `False`, then a
+            `~numpy.ndarray` will be generated.
+
+        Returns
+        -------
+        result : `~numpy.ndarray` or `~numpy.ma.MaskedArray` (2D)
+            The 2D cutout array or masked array.
+        """
+
+        if data is not None:
+            data = np.asarray(data)
+            if data.ndim != 2:
+                raise ValueError('data must be a 2D array')
+            if masked_array:
+                return np.ma.masked_array(data[self._slice],
+                                          mask=self._local_mask)
+            else:
+                return data[self._slice]
+        else:
+            return None
+
     def to_table(self, columns=None, exclude_columns=None):
         """
-        Return a `~astropy.table.Table` of properties.
+        Create a `~astropy.table.Table` of properties.
 
         If ``columns`` or ``exclude_columns`` are not input, then the
         `~astropy.table.Table` will include all scalar-valued
@@ -272,7 +306,7 @@ class SegmentProperties(object):
         A 2D cutout from the (background-subtracted) data of the source
         segment.
         """
-        return self._data[self._slice]
+        return self.make_cutout(self._data, masked_array=False)
 
     @lazyproperty
     def data_cutout_ma(self):
@@ -281,7 +315,7 @@ class SegmentProperties(object):
         (background-subtracted) data, where the mask is `True` for both
         pixels outside of the source segment and masked pixels.
         """
-        return np.ma.masked_array(self.data_cutout, mask=self._local_mask)
+        return self.make_cutout(self._data, masked_array=True)
 
     @lazyproperty
     def _data_cutout_maskzeroed_double(self):
@@ -293,7 +327,7 @@ class SegmentProperties(object):
         """
         # NOTE: negative data values (e.g. at large radii) can result in
         # image moments that give negative variances(!)
-        return (self._filtered_data[self._slice] *
+        return (self.make_cutout(self._filtered_data, masked_array=False) *
                 ~self._local_mask).astype(np.float64)
 
     @lazyproperty
@@ -304,11 +338,7 @@ class SegmentProperties(object):
         source segment and masked pixels.  If ``error`` is `None`, then
         ``error_cutout_ma`` is also `None`.
         """
-        if self._error is not None:
-            return np.ma.masked_array(self._error[self._slice],
-                                      mask=self._local_mask)
-        else:
-            return None
+        return self.make_cutout(self._error, masked_array=True)
 
     @lazyproperty
     def background_cutout_ma(self):
@@ -318,11 +348,7 @@ class SegmentProperties(object):
         of the source segment and masked pixels.  If ``background`` is
         `None`, then ``background_cutout_ma`` is also `None`.
         """
-        if self._background is not None:
-            return np.ma.masked_array(self._background[self._slice],
-                                      mask=self._local_mask)
-        else:
-            return None
+        return self.make_cutout(self._background, masked_array=True)
 
     @lazyproperty
     def coords(self):
