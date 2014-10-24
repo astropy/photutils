@@ -114,12 +114,15 @@ class SegmentProperties(object):
         ``filtered_data`` is `None`, then the unfiltered ``data`` will
         be used for the source centroid and morphological parameters.
 
-        If there are negative data values within the source segment,
-        then the morphological parameters based on image moments will be
-        unreliable.  This could occur, for example, if the segmentation
-        image was defined from a different image (e.g., different
-        bandpass) or if ``background`` is set incorrectly (e.g., too
-        high).  Segment photometry is unaffected by negative values.
+        If there are negative (background-subtracted) data values within
+        the source segment, then the morphological parameters based on
+        image moments will be unreliable.  This could occur, for
+        example, if the segmentation image was defined from a different
+        image (e.g., different bandpass) or if ``background`` is set
+        incorrectly (e.g., too high).  `segment_sum` is not adversely
+        affected by negative (background-subtracted) data values.
+        `segment_sum_err` is adversely affected only if
+        ``effective_gain`` is used (see below).
 
         If ``effective_gain`` is input, then ``error`` should include
         all sources of "background" error but *exclude* the Poisson
@@ -931,12 +934,15 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
     then the unfiltered ``data`` will be used for the source centroid
     and morphological parameters.
 
-    If there are negative data values within the source segment, then
-    the morphological parameters based on image moments will be
-    unreliable.  This could occur, for example, if the segmentation
-    image was defined from a different image (e.g., different bandpass)
-    or if ``background`` is set incorrectly (e.g., too high).  Segment
-    photometry is unaffected by negative values.
+    If there are negative (background-subtracted) data values within the
+    source segment, then the morphological parameters based on image
+    moments will be unreliable.  This could occur, for example, if the
+    segmentation image was defined from a different image (e.g.,
+    different bandpass) or if ``background`` is set incorrectly (e.g.,
+    too high).  `~photutils.SegmentProperties.segment_sum` is not
+    adversely affected by negative (background-subtracted) data values.
+    `~photutils.SegmentProperties.segment_sum_err` is adversely affected
+    only if ``effective_gain`` is used (see below).
 
     If ``effective_gain`` is input, then ``error`` should include all
     sources of "background" error but *exclude* the Poisson error of the
@@ -967,6 +973,17 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
     ``data`` are in units of electrons/s then ``effective_gain`` should
     be the exposure time or an exposure time map (e.g., for mosaics with
     non-uniform exposure times).
+
+    `~photutils.SegmentProperties.segment_sum_err` is simply the
+    quadrature sum of the pixel-wise total errors over the non-masked
+    pixels within the source segment:
+
+    .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
+              \\sigma_{\\mathrm{tot}, i}^2}
+
+    where :math:`\Delta F` is
+    `~photutils.SegmentProperties.segment_sum_err` and :math:`S` are the
+    non-masked pixels in the source segment.
 
     .. _SExtractor: http://www.astromatic.net/software/sextractor
 
