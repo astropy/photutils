@@ -169,6 +169,22 @@ class TestDetectSources(object):
         with pytest.raises(ValueError):
             detect_sources(DATA, threshold=1, npixels=-1)
 
+    def test_filtering(self):
+        from astropy.convolution import Gaussian2DKernel
+        FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+        filter_kernel = Gaussian2DKernel(2.*FWHM2SIGMA, x_size=3, y_size=3)
+        segm = detect_sources(DATA, 0.1, npixels=1,
+                              filter_kernel=filter_kernel.array)
+        assert_array_equal(segm, np.ones((3, 3)))
+
+    def test_filtering_kernel(self):
+        from astropy.convolution import Gaussian2DKernel
+        FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+        filter_kernel = Gaussian2DKernel(2.*FWHM2SIGMA, x_size=3, y_size=3)
+        segm = detect_sources(DATA, 0.1, npixels=1,
+                              filter_kernel=filter_kernel)
+        assert_array_equal(segm, np.ones((3, 3)))
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.skipif('not HAS_SKIMAGE')
