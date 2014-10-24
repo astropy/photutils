@@ -164,3 +164,5 @@ if eval(setup_cfg.get('edit_on_github')):
     edit_on_github_doc_root = "docs"
 
 autodoc_docstring_signature = True
+
+nitpicky = True
