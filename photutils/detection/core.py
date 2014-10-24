@@ -2,6 +2,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
+from astropy.convolution import Kernel2D
 from ..extern.imageutils import sigmaclip_stats
 
 
@@ -111,8 +112,8 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
     return background + (error * snr)
 
 
-def detect_sources(data, threshold, npixels, filter_fwhm=None,
-                   filter_kernel=None, connectivity=8):
+def detect_sources(data, threshold, npixels, filter_kernel=None,
+                   connectivity=8):
     """
     Detect sources above a specified threshold value in an image and
     return a segmentation image.
@@ -139,16 +140,11 @@ def detect_sources(data, threshold, npixels, filter_fwhm=None,
         that an object must have to be detected.  ``npixels`` must be a
         positive integer.
 
-    filter_fwhm : float, optional
-        The FWHM of a circular 2D Gaussian filter that is applied to the
-        input image before it is thresholded.  Filtering the image will
-        maximize detectability of objects with a FWHM similar to
-        ``filter_fwhm``.  ``filter_fwhm`` is ignored if
-        ``filter_kernel`` is input.
-
-    filter_kernel : array-like (2D), optional
+    filter_kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
         The 2D array of the kernel used to filter the image before
-        thresholding.  ``filter_kernel`` overrides ``filter_fwhm``.
+        thresholding.  Filtering the image will smooth the noise and
+        maximize detectability of objects with a shape similar to the
+        kernel.
 
     connectivity : {4, 8}, optional
         The type of pixel connectivity used in determining how pixels
@@ -196,8 +192,12 @@ def detect_sources(data, threshold, npixels, filter_fwhm=None,
         # detect the sources
         from photutils import detect_threshold, detect_sources
         threshold = detect_threshold(image, snr=3)
+        from astropy.convolution import Gaussian2DKernel
+        sigma = 3.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))   # FWHM = 3
+        filter_kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
         segm_image = detect_sources(image, threshold, npixels=5,
-                                    filter_fwhm=3.)
+                                    filter_kernel=filter_kernel)
+
         # plot the image and the segmentation image
         import matplotlib.pyplot as plt
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
@@ -214,14 +214,14 @@ def detect_sources(data, threshold, npixels, filter_fwhm=None,
     conv_mode = 'constant'    # SExtractor mode
     conv_val = 0.0
     if filter_kernel is not None:
-        image = ndimage.convolve(data, filter_kernel, mode=conv_mode,
-                                 cval=conv_val)
-    else:
-        if filter_fwhm is not None:
-            image = ndimage.gaussian_filter(data, filter_fwhm, mode=conv_mode,
-                                            cval=conv_val)
+        if isinstance(filter_kernel, Kernel2D):
+            image = ndimage.convolve(data, filter_kernel.array, mode=conv_mode,
+                                     cval=conv_val)
         else:
-            image = data
+            image = ndimage.convolve(data, filter_kernel, mode=conv_mode,
+                                     cval=conv_val)
+    else:
+        image = data
 
     image = (image > threshold)
     if connectivity == 4:

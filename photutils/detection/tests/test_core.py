@@ -151,18 +151,8 @@ class TestDetectSources(object):
         segm = detect_sources(data, threshold=0.9, npixels=1, connectivity=4)
         assert_array_equal(segm, ref)
 
-    def test_filter1(self):
-        """Test detection with filter_fwhm."""
-        segm = detect_sources(DATA, threshold=1., npixels=2, filter_fwhm=1.)
-        assert_array_equal(segm, REF1)
-
-    def test_filter2(self):
-        """Test detection for small filter_fwhm."""
-        segm = detect_sources(DATA, threshold=1., npixels=1, filter_fwhm=0.5)
-        assert_array_equal(segm, REF3)
-
     def test_filter_kernel(self):
-        """Test detection for small filter_fwhm."""
+        """Test detection with filter_kernel."""
         kernel = np.ones((3, 3))
         threshold = 1.5
         segm = detect_sources(DATA, threshold, npixels=1,
