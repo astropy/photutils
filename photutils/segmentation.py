@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from astropy.table import Table
 from astropy.utils import lazyproperty
+from astropy.convolution import Kernel2D
 import astropy.units as u
 from .wcsutils import pixel_to_skycoord
 from .utils.prepare_data import _prepare_data
@@ -895,7 +896,7 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
         background-subtracted, then set ``background`` to `None` (the
         default).
 
-    filter_kernel : array-like (2D), optional
+    filter_kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
         The 2D array of the kernel used to filter the data prior to
         calculating the source centroid and morphological parameters.
         The kernel should be the same one used in defining the source
@@ -1029,8 +1030,13 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
 
     # filter the data once, instead of repeating for each segment
     if filter_kernel is not None:
-        filtered_data = ndimage.convolve(data, filter_kernel,
-                                         mode='constant', cval=0.0)
+        conv_mode, conv_val = 'constant', 0.0
+        if isinstance(filter_kernel, Kernel2D):
+            filtered_data = ndimage.convolve(data, filter_kernel.array,
+                                             mode=conv_mode, cval=conv_val)
+        else:
+            filtered_data = ndimage.convolve(data, filter_kernel,
+                                             mode=conv_mode, cval=conv_val)
     else:
         filtered_data = None
 
