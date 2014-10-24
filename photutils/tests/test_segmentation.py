@@ -255,6 +255,41 @@ class TestSegmentPropertiesFunction(object):
         props = segment_properties(IMAGE, segm)
         assert props[0].eccentricity == 0
 
+    def test_filtering(self):
+        from astropy.convolution import Gaussian2DKernel
+        FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+        filter_kernel = Gaussian2DKernel(2.*FWHM2SIGMA, x_size=3, y_size=3)
+        error = np.sqrt(IMAGE)
+        props1 = segment_properties(IMAGE, SEGM, error=error)
+        props2 = segment_properties(IMAGE, SEGM, error=error,
+                                    filter_kernel=filter_kernel.array)
+        p1, p2 = props1[0], props2[0]
+        keys = ['segment_sum', 'segment_sum_err']
+        for key in keys:
+            assert p1[key] == p2[key]
+        keys = ['semimajor_axis_sigma', 'semiminor_axis_sigma']
+        for key in keys:
+            assert p1[key] != p2[key]
+
+    def test_filtering_kernel(self):
+        data = np.zeros((3, 3))
+        data[1, 1] = 1.
+        segm = data.astype(np.int)
+        from astropy.convolution import Gaussian2DKernel
+        FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+        filter_kernel = Gaussian2DKernel(2.*FWHM2SIGMA, x_size=3, y_size=3)
+        error = np.sqrt(IMAGE)
+        props1 = segment_properties(IMAGE, SEGM, error=error)
+        props2 = segment_properties(IMAGE, SEGM, error=error,
+                                    filter_kernel=filter_kernel)
+        p1, p2 = props1[0], props2[0]
+        keys = ['segment_sum', 'segment_sum_err']
+        for key in keys:
+            assert p1[key] == p2[key]
+        keys = ['semimajor_axis_sigma', 'semiminor_axis_sigma']
+        for key in keys:
+            assert p1[key] != p2[key]
+
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
