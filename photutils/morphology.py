@@ -214,7 +214,7 @@ def fit_2dgaussian(data, error=None, mask=None):
 
     Returns
     -------
-    result : `~astropy.modeling.models.Gaussian2D` instance
+    result : `~astropy.modeling.functional_models.Gaussian2D` instance
         The best-fitting Gaussian 2D model.
     """
 
@@ -266,8 +266,8 @@ def data_properties(data, mask=None, background=None):
 
     Returns
     -------
-    result : `SegmentProperties` instance
-        A `SegmentProperties` object.
+    result : `photutils.segmentation.SegmentProperties` instance
+        A `photutils.segmentation.SegmentProperties` object.
     """
 
     segment_image = np.ones(data.shape, dtype=np.int)

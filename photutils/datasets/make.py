@@ -45,7 +45,7 @@ def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
 
     unit : `~astropy.units.UnitBase` instance, str
         An object that represents the unit desired for the output image.
-        Must be an `~astrpy.units.UnitBase` object or a string parseable
+        Must be an `~astropy.units.UnitBase` object or a string parseable
         by the `~astropy.units` package.
 
     random_state : int or `~numpy.random.RandomState`, optional
@@ -201,7 +201,7 @@ def make_gaussian_sources(image_shape, source_table, oversample=1, unit=None):
 
     unit : `~astropy.units.UnitBase` instance, str
         An object that represents the unit desired for the output image.
-        Must be an `~astrpy.units.UnitBase` object or a string parseable by
+        Must be an `~astropy.units.UnitBase` object or a string parseable by
         the `~astropy.units` package.
 
     Returns

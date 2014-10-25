@@ -162,7 +162,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
 
     See Also
     --------
-    detect_threshold, segment_properties
+    detect_threshold, :class:`photutils.segmentation.segment_properties`
 
     Examples
     --------
