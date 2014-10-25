@@ -839,7 +839,7 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
 
     See Also
     --------
-    detect_sources, properties_table
+    :class:`photutils.detection.core.detect_sources`, properties_table
 
     Examples
     --------
@@ -946,7 +946,7 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
 
     See Also
     --------
-    detect_sources, segment_properties
+    :class:`photutils.detection.core.detect_sources`, segment_properties
 
     Examples
     --------
