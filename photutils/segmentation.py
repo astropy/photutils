@@ -12,7 +12,7 @@ from .utils.prepare_data import _prepare_data
 
 __all__ = ['SegmentProperties', 'segment_properties', 'properties_table',
            'relabel_sequential', 'relabel_segments', 'remove_segments',
-           'remove_border_segments']
+           'remove_border_segments', 'remove_masked_segments']
 
 __doctest_requires__ = {('segment_properties', 'properties_table'): ['scipy'],
                         ('segment_properties', 'properties_table'):
@@ -1403,8 +1403,70 @@ def remove_border_segments(segment_image, border_width, partial_overlap=True,
     border[-border_width:, :] = True
     border[:, :border_width] = True
     border[:, -border_width:] = True
-    labels = np.unique(segment_image[border])
+    return remove_masked_segments(segment_image, border,
+                                  partial_overlap=partial_overlap,
+                                  relabel=relabel)
+
+
+def remove_masked_segments(segment_image, mask, partial_overlap=True,
+                           relabel=False):
+    """
+    Remove labeled segments located within a masked region.
+
+    Parameters
+    ----------
+    segment_image : array_like (int)
+        A 2D segmentation image where sources are marked by different
+        positive integer values.  A value of zero is reserved for the
+        background.
+
+    mask : array_like (bool), optional
+        A boolean mask, with the same shape as ``segment_image``, where
+        a `True` value indicates masked pixels.
+
+    partial_overlap : bool, optional
+        If this is set to `True` (the default), a segment that partially
+        extends into the border region will also be removed.  Segments
+        that are completely within the border region are always removed.
+
+    relabel : bool
+        If `True`, the the segmentation image will be relabeled such
+        that the labels are in sequential order.
+
+    Returns
+    -------
+    result : `~numpy.ndarray` (int)
+        The relabeled segmentation image.
+
+    Examples
+    --------
+    >>> from photutils.segmentation import remove_masked_segments
+    >>> segment_image = [[1, 1, 0, 4, 4],
+    ...                  [0, 0, 0, 0, 4],
+    ...                  [0, 0, 3, 0, 0],
+    ...                  [2, 2, 0, 0, 5],
+    ...                  [2, 2, 0, 5, 5]]
+    >>> mask = np.zeros_like(segment_image, dtype=np.bool)
+    >>> mask[0, :] = True
+    >>> remove_masked_segments(segment_image, mask)
+    array([[0, 0, 0, 0, 0],
+           [0, 0, 0, 0, 0],
+           [0, 0, 3, 0, 0],
+           [2, 2, 0, 0, 5],
+           [2, 2, 0, 5, 5]])
+    >>> remove_masked_segments(segment_image, mask, partial_overlap=False)
+    array([[0, 0, 0, 4, 4],
+           [0, 0, 0, 0, 4],
+           [0, 0, 3, 0, 0],
+           [2, 2, 0, 0, 5],
+           [2, 2, 0, 5, 5]])
+    """
+
+    segment_image = np.array(segment_image).astype(np.int)
+    if segment_image.shape != mask.shape:
+        raise ValueError('segment_image and mask must have the same shape')
+    labels = np.unique(segment_image[mask])
     if not partial_overlap:
-        inside_labels = np.unique(segment_image[~border])
+        inside_labels = np.unique(segment_image[~mask])
         labels = [i for i in labels if i not in inside_labels]
     return remove_segments(segment_image, labels, relabel=relabel)

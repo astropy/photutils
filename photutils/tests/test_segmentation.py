@@ -10,7 +10,8 @@ from astropy.utils.misc import isiterable
 import astropy.wcs as WCS
 from ..segmentation import (SegmentProperties, segment_properties,
                             properties_table, relabel_sequential,
-                            remove_segments, remove_border_segments)
+                            remove_segments, remove_border_segments,
+                            remove_masked_segments)
 try:
     import scipy
     HAS_SCIPY = True
@@ -379,3 +380,28 @@ def test_remove_border_segments():
     segm = np.ones((5, 5))
     with pytest.raises(ValueError):
         remove_border_segments(segm, border_width=3)
+
+
+def test_remove_masked_segments():
+    segm = np.array([[1, 2, 2], [0, 0, 2], [0, 3, 3]])
+    segm_ref = np.array([[0, 0, 0], [0, 0, 0], [0, 3, 3]])
+    mask = np.zeros((3, 3), dtype=np.bool)
+    mask[0, :] = True
+    segm_new = remove_masked_segments(segm, mask)
+    assert_allclose(segm_new, segm_ref)
+
+
+def test_remove_masked_segments_partial_overlap():
+    segm = np.array([[1, 2, 2], [0, 0, 2], [0, 3, 3]])
+    segm_ref = np.array([[0, 2, 2], [0, 0, 2], [0, 3, 3]])
+    mask = np.zeros((3, 3), dtype=np.bool)
+    mask[0, :] = True
+    segm_new = remove_masked_segments(segm, mask, partial_overlap=False)
+    assert_allclose(segm_new, segm_ref)
+
+
+def test_remove_masked_segments_input_shapes():
+    segm = np.ones((5, 5))
+    mask = np.zeros((3, 3), dtype=np.bool)
+    with pytest.raises(ValueError):
+        remove_masked_segments(segm, mask)
