@@ -227,6 +227,8 @@ class SegmentProperties(object):
         ----------
         data : array-like (2D)
             The data array from which to create the masked cutout array.
+            ``data`` must have the same shape as the data input into
+            `SegmentProperties`.
 
         masked_array : bool, optional
             If `True` then a `~numpy.ma.MaskedArray` will be created
@@ -242,8 +244,9 @@ class SegmentProperties(object):
 
         if data is not None:
             data = np.asarray(data)
-            if data.ndim != 2:
-                raise ValueError('data must be a 2D array')
+            if data.shape != self._data.shape:
+                raise ValueError('data must have the same shape as the '
+                                 'segment image input to SegmentProperties')
             if masked_array:
                 return np.ma.masked_array(data[self._slice],
                                           mask=self._local_mask)

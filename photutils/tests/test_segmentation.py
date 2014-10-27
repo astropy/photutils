@@ -191,6 +191,12 @@ class TestSegmentPropertiesFunction(object):
         for shape in shapes:
             assert shape == true_shape
 
+    def test_make_cutout(self):
+        props = segment_properties(IMAGE, SEGM)
+        data = np.ones((2, 2))
+        with pytest.raises(ValueError):
+            props[0].make_cutout(data)
+
     @pytest.mark.parametrize(('error_value', 'effective_gain', 'background'),
                              zip(ERR_VALS, EFFGAIN_VALS, BACKGRD_VALS))
     def test_segmentation_inputs(self, error_value, effective_gain,
