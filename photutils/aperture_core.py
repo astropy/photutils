@@ -42,12 +42,18 @@ def _sanitize_pixel_positions(positions):
         positions = positions.value
     elif isinstance(positions, (list, tuple, np.ndarray)):
         positions = np.atleast_2d(positions)
+        if positions.shape[1] != 2:
+            if positions.shape[0] == 2:
+                positions = np.transpose(positions)
+            else:
+                raise TypeError("List or array of (x, y) pixel coordinates "
+                                "is expected got '{0}'.".format(positions))
     elif isinstance(positions, zip):
         # This is needed for zip to work seamlessly in Python 3
         positions = np.atleast_2d(list(positions))
     else:
-        raise TypeError("List or array of (x,y) pixel coordinates is "
-                        "expected got '{0}'.".format(positions))
+        raise TypeError("List or array of (x, y) pixel coordinates "
+                        "is expected got '{0}'.".format(positions))
 
     if positions.ndim > 2:
         raise ValueError('{0}-d position array not supported. Only 2-d '
@@ -235,8 +241,11 @@ class CircularAperture(PixelAperture):
     ----------
     positions : tuple, list, array, or `~astropy.units.Quantity`
         Pixel coordinates of the aperture center(s), either as a single
-        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` Numpy
-        array, or an ``Nx2`` `~astropy.units.Quantity` in units of pixels.
+        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` or
+        ``2xN`` `~numpy.ndarray`, or an ``Nx2`` or ``2xN``
+        `~astropy.units.Quantity` in units of pixels.  A ``2x2``
+        `~numpy.ndarray` or `~astropy.units.Quantity` is interpreted as
+        ``Nx2``, i.e. two rows of (x, y) coordinates.
     r : float
         The radius of the aperture(s), in pixels.
 
@@ -352,8 +361,11 @@ class CircularAnnulus(PixelAperture):
     ----------
     positions : tuple, list, array, or `~astropy.units.Quantity`
         Pixel coordinates of the aperture center(s), either as a single
-        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` Numpy
-        array, or an ``Nx2`` `~astropy.units.Quantity` in units of pixels.
+        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` or
+        ``2xN`` `~numpy.ndarray`, or an ``Nx2`` or ``2xN``
+        `~astropy.units.Quantity` in units of pixels.  A ``2x2``
+        `~numpy.ndarray` or `~astropy.units.Quantity` is interpreted as
+        ``Nx2``, i.e. two rows of (x, y) coordinates.
     r_in : float
         The inner radius of the annulus.
     r_out : float
@@ -494,8 +506,11 @@ class EllipticalAperture(PixelAperture):
     ----------
     positions : tuple, list, array, or `~astropy.units.Quantity`
         Pixel coordinates of the aperture center(s), either as a single
-        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` Numpy
-        array, or an ``Nx2`` `~astropy.units.Quantity` in units of pixels.
+        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` or
+        ``2xN`` `~numpy.ndarray`, or an ``Nx2`` or ``2xN``
+        `~astropy.units.Quantity` in units of pixels.  A ``2x2``
+        `~numpy.ndarray` or `~astropy.units.Quantity` is interpreted as
+        ``Nx2``, i.e. two rows of (x, y) coordinates.
     a : float
         The semimajor axis.
     b : float
@@ -642,8 +657,11 @@ class EllipticalAnnulus(PixelAperture):
     ----------
     positions : tuple, list, array, or `~astropy.units.Quantity`
         Pixel coordinates of the aperture center(s), either as a single
-        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` Numpy
-        array, or an ``Nx2`` `~astropy.units.Quantity` in units of pixels.
+        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` or
+        ``2xN`` `~numpy.ndarray`, or an ``Nx2`` or ``2xN``
+        `~astropy.units.Quantity` in units of pixels.  A ``2x2``
+        `~numpy.ndarray` or `~astropy.units.Quantity` is interpreted as
+        ``Nx2``, i.e. two rows of (x, y) coordinates.
     a_in : float
         The inner semimajor axis.
     a_out : float
@@ -739,8 +757,12 @@ class RectangularAperture(PixelAperture):
     Parameters
     ----------
     positions : tuple, or list, or array
-        Center coordinates of the apertures as list or array of (x, y)
-        pixelcoordinates.
+        Pixel coordinates of the aperture center(s), either as a single
+        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` or
+        ``2xN`` `~numpy.ndarray`, or an ``Nx2`` or ``2xN``
+        `~astropy.units.Quantity` in units of pixels.  A ``2x2``
+        `~numpy.ndarray` or `~astropy.units.Quantity` is interpreted as
+        ``Nx2``, i.e. two rows of (x, y) coordinates.
     w : float
         The full width of the aperture (at theta = 0, this is the "x" axis).
     h : float
@@ -831,8 +853,11 @@ class RectangularAnnulus(PixelAperture):
     ----------
     positions : tuple, list, array, or `~astropy.units.Quantity`
         Pixel coordinates of the aperture center(s), either as a single
-        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` Numpy
-        array, or an ``Nx2`` `~astropy.units.Quantity` in units of pixels.
+        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` or
+        ``2xN`` `~numpy.ndarray`, or an ``Nx2`` or ``2xN``
+        `~astropy.units.Quantity` in units of pixels.  A ``2x2``
+        `~numpy.ndarray` or `~astropy.units.Quantity` is interpreted as
+        ``Nx2``, i.e. two rows of (x, y) coordinates.
     w_in : float
         The inner full width of the aperture.
     w_out : float
