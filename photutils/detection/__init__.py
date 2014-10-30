@@ -6,4 +6,3 @@ an astronomical image.
 
 from .core import *
 from .findstars import *
-from .lacosmic import *
