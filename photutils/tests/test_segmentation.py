@@ -100,7 +100,7 @@ class TestSegmentPropertiesFunctionInputs(object):
         with pytest.raises(ValueError):
             segment_properties(IMAGE, SEGM, error=wrong_shape)
 
-    def test_gain_shape(self):
+    def test_effective_gain_shape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
             segment_properties(IMAGE, SEGM, error=IMAGE,
