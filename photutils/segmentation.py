@@ -1231,6 +1231,7 @@ def relabel_sequential(segment_image, start_label=1):
 
     start_label : int
         The starting label number, which should be strictly positive.
+        The default is 1.
 
     Returns
     -------
@@ -1315,17 +1316,17 @@ def remove_segments(segment_image, labels, relabel=False):
         background.
 
     labels : int, array-like (1D, int)
-        The label numbers(s) of the segments to remove.  Labels of zero
+        The label number(s) of the segments to remove.  Labels of zero
         and those not in ``segment_image`` will be ignored.
 
     relabel : bool
         If `True`, the the segmentation image will be relabeled such
-        that the labels are in sequential order.
+        that the labels are in sequential order starting from 1.
 
     Returns
     -------
     result : `~numpy.ndarray` (int)
-        The relabeled segmentation image.
+        The modified segmentation image.
 
     Examples
     --------
@@ -1367,12 +1368,12 @@ def remove_border_segments(segment_image, border_width, partial_overlap=True,
 
     relabel : bool
         If `True`, the the segmentation image will be relabeled such
-        that the labels are in sequential order.
+        that the labels are in sequential order starting from 1.
 
     Returns
     -------
     result : `~numpy.ndarray` (int)
-        The relabeled segmentation image.
+        The modified segmentation image.
 
     Examples
     --------
@@ -1434,12 +1435,12 @@ def remove_masked_segments(segment_image, mask, partial_overlap=True,
 
     relabel : bool
         If `True`, the the segmentation image will be relabeled such
-        that the labels are in sequential order.
+        that the labels are in sequential order starting from 1.
 
     Returns
     -------
     result : `~numpy.ndarray` (int)
-        The relabeled segmentation image.
+        The modified segmentation image.
 
     Examples
     --------
