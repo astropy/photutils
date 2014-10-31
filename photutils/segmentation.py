@@ -356,9 +356,9 @@ class SegmentProperties(object):
     @lazyproperty
     def coords(self):
         """
-        A tuple of `~numpy.ndarrays` containing the `y` (first array)
-        and `x` (second array) pixels coordinates of the source segment.
-        Masked pixels are not included.
+        A tuple of `~numpy.ndarray`\s containing the ``y`` (first array)
+        and ``x`` (second array) pixels coordinates of the source
+        segment.  Masked pixels are not included.
         """
         yy, xx = np.nonzero(self.data_cutout_ma)
         coords = (yy + self._slice[0].start, xx + self._slice[1].start)
