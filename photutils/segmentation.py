@@ -356,8 +356,9 @@ class SegmentProperties(object):
     @lazyproperty
     def coords(self):
         """
-        A list of the ``(y, x)`` pixel coordinates of the source
-        segment.  Masked pixels are not included.
+        A tuple of `~numpy.ndarrays` containing the `y` (first array)
+        and `x` (second array) pixels coordinates of the source segment.
+        Masked pixels are not included.
         """
         yy, xx = np.nonzero(self.data_cutout_ma)
         coords = (yy + self._slice[0].start, xx + self._slice[1].start)
@@ -366,8 +367,8 @@ class SegmentProperties(object):
     @lazyproperty
     def values(self):
         """
-        A list of the (background-subtracted) pixel values within the
-        source segment.  Masked pixels are not included.
+        An `~numpy.ndarray` of the (background-subtracted) pixel values
+        within the source segment.  Masked pixels are not included.
         """
         return self.data_cutout[~self._local_mask]
 
@@ -1148,6 +1149,11 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
     >>> import numpy as np
     >>> from photutils import segment_properties, properties_table
     >>> image = np.arange(16.).reshape(4, 4)
+    >>> print(image)
+    [[  0.   1.   2.   3.]
+     [  4.   5.   6.   7.]
+     [  8.   9.  10.  11.]
+     [ 12.  13.  14.  15.]]
     >>> segm_image = np.array([[1, 1, 0, 0],
     ...                        [1, 0, 0, 2],
     ...                        [0, 0, 2, 2],
