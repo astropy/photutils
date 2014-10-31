@@ -243,109 +243,83 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
     return objlabels
 
 
-def find_peaks(data, snr_threshold, min_distance=5, exclude_border=True,
-               indices=True, num_peaks=np.inf, footprint=None, labels=None,
-               mask=None, mask_val=None, sig=3.0, iters=None):
+def find_peaks(data, threshold, min_separation=2, exclude_border=True,
+               segment_image=None, npeaks=np.inf, footprint=None):
     """
-    Find peaks in an image above above a specified signal-to-noise ratio
-    threshold and return them as coordinates or a boolean array.
+    Find local peaks in an image that are above above a specified
+    threshold value.
 
-    Peaks are the local maxima in a region of ``2 * min_distance + 1``
-    (i.e. peaks are separated by at least ``min_distance``).
+    Peaks are the local maxima above the ``threshold`` in a region of
+    ``(2 * min_separation) + 1`` (i.e., peaks are separated by at least
+    ``min_separation`` pixels).
 
-    NOTE: If peaks are flat (i.e. multiple adjacent pixels have
-    identical intensities), the coordinates of all such pixels are
-    returned.
+    If peaks are flat (i.e., multiple adjacent pixels have identical
+    intensities), then the coordinates of all such pixels are returned,
+    even if they are not separated by at least ``min_separation``.
 
     Parameters
     ----------
     data : array_like
         The 2D array of the image.
 
-    snr_threshold : float
-        The signal-to-noise ratio threshold above which to detect
-        sources.  The background rms noise level is computed using
-        sigma-clipped statistics, which can be controlled via the
-        ``sig`` and ``iters`` keywords.
+    threshold : float or array-like
+        The data value or pixel-wise data values to be used for the
+        detection threshold.  A 2D ``threshold`` must have the same
+        shape as ``data``.  See `detect_threshold` for one way to create
+        a ``threshold`` image.
 
-    min_distance : int
-        Minimum number of pixels separating peaks in a region of ``2 *
-        min_distance + 1`` (i.e. peaks are separated by at least
-        ``min_distance``). If ``exclude_border`` is `True`, this value
-        also excludes a border ``min_distance`` from the image boundary.
-        To find the maximum number of peaks, use ``min_distance=1``.
+    min_separation : int, optional
+        Minimum number of pixels separating peaks (i.e., peaks are
+        separated by at least ``min_separation`` pixels).  To find the
+        maximum number of peaks, use ``min_separation=1``.
 
-    exclude_border : bool
-        If `True`, ``min_distance`` excludes peaks from the border of
-        the image as well as from each other.
+    exclude_border : bool, optional
+        If `True`, exclude peaks within ``min_separation`` from the
+        border of the image as well as from each other.
 
-    indices : bool
-        If `True`, the output will be an array representing peak
-        coordinates.  If `False`, the output will be a boolean array
-        shaped as ``data.shape`` with peaks present at `True` elements.
+    segment_image : `~numpy.ndarray` (int), optional
+        If provided, then search for peaks located only within the
+        labeled regions of a 2D segmentation image, where sources are
+        marked by different positive integer values.  In the
+        segmentation image a value of zero is reserved for the
+        background.  ``segment_image`` must have the same shape as
+        ``data``.
 
-    num_peaks : int
-        Maximum number of peaks. When the number of peaks exceeds
-        ``num_peaks``, return ``num_peaks`` peaks based on highest peak
-        intensity.
+    npeaks : int, optional
+        The maximum number of peaks to return.  When the number of
+        detected peaks exceeds ``npeaks``, the peaks with the highest
+        peak intensities will be returned.
 
-    footprint : ndarray of bools, optional
-        If provided, ``footprint == 1`` represents the local region
-        within which to search for peaks at every point in ``data``.
-        Overrides ``min_distance``, except for border exclusion if
-        ``exclude_border=True``.
-
-    labels : ndarray of ints, optional
-        If provided, each unique region ``labels == value`` represents a
-        unique region to search for peaks.  Zero is reserved for
-        background.
-
-    mask : array_like, bool, optional
-        A boolean mask with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is
-        invalid.  Masked pixels are ignored when computing the image
-        background statistics.
-
-    mask_val : float, optional
-        An image data value (e.g., ``0.0``) that is ignored when
-        computing the image background statistics.  ``mask_val`` will be
-        ignored if ``mask`` is input.
-
-    sig : float, optional
-        The number of standard deviations to use as the clipping limit
-        when calculating the image background statistics.
-
-    iters : float, optional
-       The number of iterations to perform clipping, or `None` to clip
-       until convergence is achieved (i.e. continue until the last
-       iteration clips nothing) when calculating the image background
-       statistics.
+    footprint : `~numpy.ndarray` of bools, optional
+        A boolean array where `True` values describe the local footprint
+        region within which to search for peaks at every point in
+        ``data``.  Overrides ``min_separation``, except for border
+        exclusion when ``exclude_border=True``.
 
     Returns
     -------
-    output : ndarray or ndarray of bools
-
-        * If ``indices = True`` : (row, column, ...) coordinates of
-          peaks.
-        * If ``indices = False`` : Boolean array shaped like ``data``,
-          with peaks represented by True values.
-
-    Notes
-    -----
-    The peak local maximum function returns the coordinates of local
-    peaks (maxima) in a image. A maximum filter is used for finding
-    local maxima.  This operation dilates the original image. After
-    comparison between dilated and original image, peak_local_max
-    function returns the coordinates of peaks where dilated image =
-    original.
+    output : `~numpy.ndarray`
+        An ``Nx2`` array where the rows contain the ``(y, x)`` pixel
+        coordinates of the local peaks.
     """
-    from skimage.feature import peak_local_max
 
-    bkgrd, median, bkgrd_rms = sigmaclip_stats(
-        data, image_mask=mask, mask_val=mask_val, sigma=sig, iters=iters)
-    level = bkgrd + (bkgrd_rms * snr_threshold)
-    return peak_local_max(data, min_distance=min_distance,
-                          threshold_abs=level, threshold_rel=0.0,
-                          exclude_border=exclude_border, indices=indices,
-                          num_peaks=num_peaks, footprint=footprint,
-                          labels=labels)
+    if min_separation != int(min_separation):
+        raise ValueError('min_separation must be an integer value')
+    if segment_image is not None:
+        if segment_image.shape != data.shape:
+            raise ValueError('segment_image and data must have the same '
+                             'shape')
+
+    from skimage.feature import peak_local_max
+    coords = peak_local_max(data, min_distance=min_separation,
+                            threshold_abs=threshold, threshold_rel=0.0,
+                            exclude_border=exclude_border, indices=True,
+                            num_peaks=npeaks, footprint=footprint,
+                            labels=segment_image)
+    if coords.shape[0] <= npeaks:
+        return coords
+    else:
+        # NOTE: num_peaks is ignored by peak_local_max() if labels are input
+        peak_values = data[coords[:, 0], coords[:, 1]]
+        idx_maxsort = np.argsort(peak_values)[::-1]
+        return coords[idx_maxsort][:npeaks]
