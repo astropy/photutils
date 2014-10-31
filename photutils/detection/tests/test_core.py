@@ -191,15 +191,40 @@ class TestDetectSources(object):
 class TestFindPeaks(object):
     def test_find_peaks(self):
         """Test basic peak detection."""
-        segm = find_peaks(PEAKDATA, 0., min_distance=1, exclude_border=False)
-        assert_array_equal(segm, PEAKREF1)
+        coords = find_peaks(PEAKDATA, 0.1, min_separation=1,
+                            exclude_border=False)
+        assert_array_equal(coords, PEAKREF1)
+
+    def test_segment_image(self):
+        segm = PEAKDATA.copy()
+        coords = find_peaks(PEAKDATA, 0.1, min_separation=1,
+                            exclude_border=False, segment_image=segm)
+        assert_array_equal(coords, PEAKREF1)
+
+    def test_segment_image_npeaks(self):
+        segm = PEAKDATA.copy()
+        coords = find_peaks(PEAKDATA, 0.1, min_separation=1,
+                            exclude_border=False, segment_image=segm,
+                            npeaks=1)
+        assert_array_equal(coords, np.array([PEAKREF1[1]]))
+
+    def test_segment_image_shape(self):
+        segm = np.zeros((2, 2))
+        with pytest.raises(ValueError):
+            find_peaks(PEAKDATA, 0.1, segment_image=segm)
 
     def test_exclude_border(self):
         """Test exclude_border."""
-        segm = find_peaks(PEAKDATA, 0., min_distance=1, exclude_border=True)
-        assert_array_equal(segm, PEAKREF2)
+        coords = find_peaks(PEAKDATA, 0.1, min_separation=1,
+                            exclude_border=True)
+        assert_array_equal(coords, PEAKREF2)
 
     def test_zerodet(self):
-        """Test with large snr_threshold giving no sources."""
-        segm = find_peaks(PEAKDATA, 0., min_distance=1, exclude_border=True)
-        assert_array_equal(segm, PEAKREF2)
+        """Test with large threshold giving no sources."""
+        coords = find_peaks(PEAKDATA, 5., min_separation=1,
+                            exclude_border=True)
+        assert_array_equal(coords, PEAKREF2)
+
+    def test_min_separation_int(self):
+        with pytest.raises(ValueError):
+            find_peaks(PEAKDATA, 0.1, min_separation=0.5)
