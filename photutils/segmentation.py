@@ -1429,8 +1429,8 @@ def remove_masked_segments(segment_image, mask, partial_overlap=True,
 
     partial_overlap : bool, optional
         If this is set to `True` (the default), a segment that partially
-        extends into the border region will also be removed.  Segments
-        that are completely within the border region are always removed.
+        extends into a masked region will also be removed.  Segments
+        that are completely within a masked region are always removed.
 
     relabel : bool
         If `True`, the the segmentation image will be relabeled such
