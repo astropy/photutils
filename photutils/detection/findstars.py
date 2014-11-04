@@ -7,6 +7,7 @@ import math
 import numpy as np
 from astropy.table import Column, Table
 from astropy.utils.exceptions import AstropyUserWarning
+from .core import find_peaks
 
 
 __all__ = ['daofind', 'irafstarfind']
@@ -297,7 +298,7 @@ def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
 
     daofind_kernel = _FindObjKernel(fwhm, ratio, theta, sigma_radius)
     threshold *= daofind_kernel.relerr
-    objs = _findobjs(data, threshold, daofind_kernel.kern,
+    objs = _findobjs(data, threshold, daofind_kernel,
                      exclude_border=exclude_border)
     tbl = _daofind_properties(objs, threshold, daofind_kernel, sky)
     if len(objs) == 0:
@@ -431,7 +432,7 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, sharplo=0.5,
 
     starfind_kernel = _FindObjKernel(fwhm, ratio=1.0, theta=0.0,
                                      sigma_radius=sigma_radius)
-    objs = _findobjs(data, threshold, starfind_kernel.kern,
+    objs = _findobjs(data, threshold, starfind_kernel,
                      exclude_border=exclude_border)
     tbl = _irafstarfind_properties(objs, starfind_kernel, sky)
     if len(objs) == 0:
@@ -450,7 +451,8 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, sharplo=0.5,
     return tbl
 
 
-def _findobjs(data, threshold, kernel, exclude_border=False):
+def _findobjs(data, threshold, kernel, min_separation=None,
+              exclude_border=False, local_peaks=True):
     """
     Find sources in an image by convolving the image with the input
     kernel and selecting connected pixels above a given threshold.
@@ -466,14 +468,19 @@ def _findobjs(data, threshold, kernel, exclude_border=False):
         ``daofind`` or ``irafstarfind``.  It should be multiplied by the
         kernel relerr.
 
-    kernel : array_like
-        The 2D array of the kernel.  This kernel should be normalized to
-        zero sum.
+    kernel : `_FindObjKernel`
+        The convolution kernel.  The dimensions should match those of
+        the cutouts.  The kernel should be normalized to zero sum.
 
     exclude_border : bool, optional
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders.  The default is
         `False`, which is the mode used by `DAOFIND`_ and `starfind`_.
+
+    local_peaks : bool, optional
+        Set to `True` to exactly match the `DAOFIND`_ method of finding
+        local peaks.  If `False`, then only one peak per thresholded
+        segment will be used.
 
     Returns
     -------
@@ -488,8 +495,8 @@ def _findobjs(data, threshold, kernel, exclude_border=False):
     # https://github.com/astropy/astropy/issues/1647
     # convimg = astropy.nddata.convolve(data, kernel, boundary='fill',
     #                                   fill_value=0.0)
-    x_kernradius = kernel.shape[1] // 2
-    y_kernradius = kernel.shape[0] // 2
+    x_kernradius = kernel.kern.shape[1] // 2
+    y_kernradius = kernel.kern.shape[0] // 2
 
     if not exclude_border:
         # create a larger image padded by zeros
@@ -500,7 +507,8 @@ def _findobjs(data, threshold, kernel, exclude_border=False):
                     x_kernradius:x_kernradius + data.shape[1]] = data
         data = data_padded
 
-    convolved_data = ndimage.convolve(data, kernel, mode='constant', cval=0.0)
+    convolved_data = ndimage.convolve(data, kernel.kern, mode='constant',
+                                      cval=0.0)
     if not exclude_border:
         # keep border=0 in convolved data
         convolved_data[:y_kernradius, :] = 0.
@@ -514,16 +522,32 @@ def _findobjs(data, threshold, kernel, exclude_border=False):
     objects = []
     if nobjects == 0:
         return objects
-    object_slices = ndimage.find_objects(object_labels)
-    for object_slice in object_slices:
-        # find object peak in the *convolved* data
-        # thresholded_object is not the same size as the kernel
-        thresholded_object = convolved_data[object_slice]
-        ypeak, xpeak = np.unravel_index(thresholded_object.argmax(),
-                                        thresholded_object.shape)
-        xpeak += object_slice[1].start
-        ypeak += object_slice[0].start
 
+    # find object peak in the *convolved* data
+    if local_peaks:
+        # this is the DAOFIND procedure
+        if min_separation is None:
+            min_separation = min(x_kernradius, y_kernradius)
+            min_separation = 1
+        footprint = kernel.mask.astype(np.bool)
+        # NOTE:  same result with or without segment_image?
+        coords = find_peaks(convolved_data, threshold,
+                            min_separation=min_separation,
+                            exclude_border=exclude_border,
+                            footprint=footprint)
+    else:
+        object_slices = ndimage.find_objects(object_labels)
+        coords = []
+        for object_slice in object_slices:
+            # thresholded_object is not the same size as the kernel
+            thresholded_object = convolved_data[object_slice]
+            ypeak, xpeak = np.unravel_index(thresholded_object.argmax(),
+                                            thresholded_object.shape)
+            xpeak += object_slice[1].start
+            ypeak += object_slice[0].start
+            coords.append((ypeak, xpeak))
+
+    for (ypeak, xpeak) in coords:
         # now extract the object from the data, centered on the peak
         # pixel in the convolved image, with the same size as the kernel
         x0 = xpeak - x_kernradius
@@ -805,21 +829,24 @@ def _daofind_centroidfit(obj, kernel, axis):
     # and equal to one at the edge
     nyk, nxk = kernel.shape
     ykrad, xkrad = kernel.center
-    ywt, xwt = np.mgrid[0:nyk, 0:nxk]
-    xwt = xkrad - abs(xwt - xkrad) + 1.0
-    ywt = ykrad - abs(ywt - ykrad) + 1.0
+    ywtd, xwtd = np.mgrid[0:nyk, 0:nxk]
+    xwt = xkrad - abs(xwtd - xkrad) + 1.0
+    ywt = ykrad - abs(ywtd - ykrad) + 1.0
     if axis == 0:
         wt = xwt[0]
         wts = ywt
         ksize = nxk
         kernel_sigma = kernel.xsigma
+        krad = ksize // 2
+        sumdx_vec = krad - np.arange(ksize)
     elif axis == 1:
         wt = ywt.T[0]
         wts = xwt
         ksize = nyk
         kernel_sigma = kernel.ysigma
+        krad = ksize // 2
+        sumdx_vec = np.arange(ksize) - krad
     n = wt.sum()
-    krad = ksize // 2
 
     sg = (kernel.gkernel * wts).sum(axis)
     sumg = (wt * sg).sum()
@@ -833,9 +860,20 @@ def _daofind_centroidfit(obj, kernel, axis):
     sumd = (wt * sd).sum()
     sumgd = (wt * sg * sd).sum()
     sddgdx = (wt * sd * dgdx).sum()
+    sumdx = (wt * sd * sumdx_vec).sum()
     # linear least-squares fit (data = sky + hx*gkernel) to find amplitudes
     denom = (n*sumg2 - sumg**2)
     hx = (n*sumgd - sumg*sumd) / denom
     # sky = (sumg2*sumd - sumg*sumgd) / denom
     dx = (sgdgdx - (sddgdx - sdgdx*sumd)) / (hx * sdgdx2 / kernel_sigma**2)
+
+    hsize = (ksize / 2.)
+    if abs(dx) > hsize:
+        dx = 0
+        if sumd == 0:
+            dx = 0.0
+        else:
+            dx = float(sumdx / sumd)
+            if abs(dx) > hsize:
+                dx = 0.0
     return dx, hx
