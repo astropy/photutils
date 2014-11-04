@@ -2,10 +2,13 @@
 source = {packagename}
 
 omit =
+    photutils/*__init__*
     photutils/_astropy_init.py
-    photutils/cython_version.py
-    photutils/version.py
-    */tests/*
+    photutils/conftest*
+    photutils/cython_version*
+    photutils/*setup*
+    photutils/*tests/*
+    photutils/version*
 
 [report]
 exclude_lines =
