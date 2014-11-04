@@ -271,7 +271,8 @@ def find_peaks(data, threshold, min_separation=2, exclude_border=True,
     min_separation : int, optional
         Minimum number of pixels separating peaks (i.e., peaks are
         separated by at least ``min_separation`` pixels).  To find the
-        maximum number of peaks, use ``min_separation=1``.
+        maximum number of peaks, use ``min_separation=1``.  If
+        ``min_separation`` is not an integer, then it will be truncated.
 
     exclude_border : bool, optional
         If `True`, exclude peaks within ``min_separation`` from the
@@ -303,15 +304,13 @@ def find_peaks(data, threshold, min_separation=2, exclude_border=True,
         coordinates of the local peaks.
     """
 
-    if min_separation != int(min_separation):
-        raise ValueError('min_separation must be an integer value')
     if segment_image is not None:
         if segment_image.shape != data.shape:
             raise ValueError('segment_image and data must have the same '
                              'shape')
 
     from skimage.feature import peak_local_max
-    coords = peak_local_max(data, min_distance=min_separation,
+    coords = peak_local_max(data, min_distance=int(min_separation),
                             threshold_abs=threshold, threshold_rel=0.0,
                             exclude_border=exclude_border, indices=True,
                             num_peaks=npeaks, footprint=footprint,

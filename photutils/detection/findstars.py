@@ -16,160 +16,6 @@ __all__ = ['daofind', 'irafstarfind']
 FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
 
 
-class _ImgCutout(object):
-    """Class to hold image cutouts."""
-    def __init__(self, data, convdata, x0, y0):
-        """
-        Parameters
-        ----------
-        data : array_like
-            The cutout 2D image from the input unconvolved 2D image.
-
-        convdata : array_like
-            The cutout 2D image from the convolved 2D image.
-
-        x0, y0 : float
-            Image coordinates of the lower left pixel of the cutout region.
-            The pixel origin is (0, 0).
-        """
-
-        self.data = data
-        self.convdata = convdata
-        self.x0 = x0
-        self.y0 = y0
-
-    @property
-    def radius(self):
-        return [size // 2 for size in self.data.shape]
-
-    @property
-    def center(self):
-        yr, xr = self.radius
-        return yr + self.y0, xr + self.x0
-
-
-class _FindObjKernel(object):
-    """
-    Calculate a 2D Gaussian density enhancement kernel.  This kernel has
-    negative wings and sums to zero.  It is used by both `daofind` and
-    `irafstarfind`.
-
-    Parameters
-    ----------
-    fwhm : float
-        The full-width half-maximum (FWHM) of the major axis of the
-        Gaussian kernel in units of pixels.
-
-    ratio : float, optional
-        The ratio of the minor to major axis standard deviations of the
-        Gaussian kernel.  ``ratio`` must be strictly positive and less
-        than or equal to 1.0.  The default is 1.0 (i.e., a circular
-        Gaussian kernel).
-
-    theta : float, optional
-        The position angle (in degrees) of the major axis of the
-        Gaussian kernel measured counter-clockwise from the positive x
-        axis.
-
-    sigma_radius : float, optional
-        The truncation radius of the Gaussian kernel in units of sigma
-        (standard deviation) [``1 sigma = FWHM /
-        2.0*sqrt(2.0*log(2.0))``].  The default is 1.5.
-
-    Notes
-    -----
-    The object attributes include the dimensions of the elliptical
-    kernel and the coefficients of a 2D elliptical Gaussian function
-    expressed as:
-
-        ``f(x,y) = A * exp(-g(x,y))``
-
-        where
-
-        ``g(x,y) = a*(x-x0)**2 + 2*b*(x-x0)*(y-y0) + c*(y-y0)**2``
-
-    References
-    ----------
-    .. [1] http://en.wikipedia.org/wiki/Gaussian_function
-    """
-
-    def __init__(self, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5):
-        assert fwhm > 0, 'FWHM must be positive'
-        assert ((ratio > 0) & (ratio <= 1)), \
-            'ratio must be positive and less than 1'
-        assert sigma_radius > 0, 'sigma_radius must be positive'
-        self.fwhm = fwhm
-        self.sigma_radius = sigma_radius
-        self.ratio = ratio
-        self.theta = theta
-        self.theta_radians = np.deg2rad(self.theta)
-        self.xsigma = self.fwhm * FWHM2SIGMA
-        self.ysigma = self.xsigma * self.ratio
-        self.a = None
-        self.b = None
-        self.c = None
-        self.f = None
-        self.nx = None
-        self.ny = None
-        self.xc = None
-        self.yc = None
-        self.circrad = None
-        self.ellrad = None
-        self.gkernel = None
-        self.mask = None
-        self.npts = None
-        self.kern = None
-        self.relerr = None
-        self.set_gausspars()
-        self.mk_kern()
-
-    @property
-    def shape(self):
-        return self.kern.shape
-
-    @property
-    def center(self):
-        """Index of the kernel center."""
-        return [size // 2 for size in self.kern.shape]
-
-    def set_gausspars(self):
-        xsigma2 = self.xsigma**2
-        ysigma2 = self.ysigma**2
-        cost = np.cos(self.theta_radians)
-        sint = np.sin(self.theta_radians)
-        self.a = (cost**2 / (2.0 * xsigma2)) + (sint**2 / (2.0 * ysigma2))
-        self.b = 0.5 * cost * sint * (1.0/xsigma2 - 1.0/ysigma2)    # CCW
-        self.c = (sint**2 / (2.0 * xsigma2)) + (cost**2 / (2.0 * ysigma2))
-        # find the extent of an ellipse with radius = sigma_radius*sigma;
-        # solve for the horizontal and vertical tangents of an ellipse
-        # defined by g(x,y) = f
-        self.f = self.sigma_radius**2 / 2.0
-        denom = self.a*self.c - self.b**2
-        self.nx = 2 * int(max(2, math.sqrt(self.c*self.f / denom))) + 1
-        self.ny = 2 * int(max(2, math.sqrt(self.a*self.f / denom))) + 1
-        return
-
-    def mk_kern(self):
-        yy, xx = np.mgrid[0:self.ny, 0:self.nx]
-        self.xc = self.nx // 2
-        self.yc = self.ny // 2
-        self.circrad = np.sqrt((xx-self.xc)**2 + (yy-self.yc)**2)
-        self.ellrad = (self.a*(xx-self.xc)**2 +
-                       2.0*self.b*(xx-self.xc)*(yy-self.yc) +
-                       self.c*(yy-self.yc)**2)
-        self.gkernel = np.exp(-self.ellrad)
-        self.mask = np.where((self.ellrad <= self.f) |
-                             (self.circrad <= 2.0), 1, 0).astype(np.int16)
-        self.npts = self.mask.sum()
-        self.kern = self.gkernel * self.mask
-        # normalize the kernel to zero sum (denom = variance * npts)
-        denom = ((self.kern**2).sum() - (self.kern.sum()**2 / self.npts))
-        self.relerr = 1.0 / np.sqrt(denom)
-        self.kern = (((self.kern - (self.kern.sum() / self.npts)) / denom) *
-                     self.mask)
-        return
-
-
 def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
             sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0, sky=0.0,
             exclude_border=False):
@@ -319,9 +165,9 @@ def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
     return tbl
 
 
-def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, sharplo=0.5,
-                 sharphi=2.0, roundlo=0.0, roundhi=0.2, sky=None,
-                 exclude_border=False):
+def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
+                 sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2,
+                 sky=None, exclude_border=False):
     """
     Detect stars in an image using IRAF's "starfind" algorithm.
 
@@ -344,6 +190,10 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, sharplo=0.5,
     fwhm : float
         The full-width half-maximum (FWHM) of the 2D circular Gaussian
         kernel in units of pixels.
+
+    minsep_fwhm : float, optional
+        The minimum separation for detected objects in units of
+        ``fwhm``.
 
     sigma_radius : float, optional
         The truncation radius of the Gaussian kernel in units of sigma
@@ -410,11 +260,13 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, sharplo=0.5,
     borders to 0.0.  The equivalent parameters in `starfind`_ are
     ``boundary='constant'`` and ``constant=0.0``.
 
-    IRAF's `starfind`_ uses ``hwhmpsf`` and ``fradius`` as input
-    parameters.  The equivalent input values for ``irafstarfind`` are:
+    IRAF's `starfind`_ uses ``hwhmpsf``, ``fradius``, and ``sepmin`` as
+    input parameters.  The equivalent input values for ``irafstarfind``
+    are:
 
     * ``fwhm = hwhmpsf * 2``
     * ``sigma_radius = fradius * sqrt(2.0*log(2.0))``
+    * ``minsep_fwhm = 0.5 * sepmin``
 
     The main differences between ``daofind`` and ``irafstarfind`` are:
 
@@ -432,7 +284,9 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, sharplo=0.5,
 
     starfind_kernel = _FindObjKernel(fwhm, ratio=1.0, theta=0.0,
                                      sigma_radius=sigma_radius)
+    min_separation = max(2, int((fwhm * minsep_fwhm) + 0.5))
     objs = _findobjs(data, threshold, starfind_kernel,
+                     min_separation=min_separation,
                      exclude_border=exclude_border)
     tbl = _irafstarfind_properties(objs, starfind_kernel, sky)
     if len(objs) == 0:
@@ -523,16 +377,15 @@ def _findobjs(data, threshold, kernel, min_separation=None,
     if nobjects == 0:
         return objects
 
-    # find object peak in the *convolved* data
+    # find object peaks in the convolved data
     if local_peaks:
-        # this is the DAOFIND procedure
-        if min_separation is None:
-            min_separation = min(x_kernradius, y_kernradius)
-            min_separation = 1
-        footprint = kernel.mask.astype(np.bool)
-        # NOTE:  same result with or without segment_image?
+        # footprint overrides min_separation in find_peaks
+        if min_separation is None:   # daofind
+            footprint = kernel.mask.astype(np.bool)
+        else:
+            from skimage.morphology import disk
+            footprint = disk(min_separation)
         coords = find_peaks(convolved_data, threshold,
-                            min_separation=min_separation,
                             exclude_border=exclude_border,
                             footprint=footprint)
     else:
@@ -645,7 +498,7 @@ def _irafstarfind_moments(imgcutout, kernel, sky):
     from skimage.measure import moments, moments_central
 
     result = defaultdict(list)
-    img = np.array(imgcutout.data * kernel.mask) - sky
+    img = np.array((imgcutout.data - sky) * kernel.mask)
     img = np.where(img > 0, img, 0)    # starfind discards negative pixels
     if np.count_nonzero(img) <= 1:
         return {}
@@ -877,3 +730,157 @@ def _daofind_centroidfit(obj, kernel, axis):
             if abs(dx) > hsize:
                 dx = 0.0
     return dx, hx
+
+
+class _ImgCutout(object):
+    """Class to hold image cutouts."""
+    def __init__(self, data, convdata, x0, y0):
+        """
+        Parameters
+        ----------
+        data : array_like
+            The cutout 2D image from the input unconvolved 2D image.
+
+        convdata : array_like
+            The cutout 2D image from the convolved 2D image.
+
+        x0, y0 : float
+            Image coordinates of the lower left pixel of the cutout region.
+            The pixel origin is (0, 0).
+        """
+
+        self.data = data
+        self.convdata = convdata
+        self.x0 = x0
+        self.y0 = y0
+
+    @property
+    def radius(self):
+        return [size // 2 for size in self.data.shape]
+
+    @property
+    def center(self):
+        yr, xr = self.radius
+        return yr + self.y0, xr + self.x0
+
+
+class _FindObjKernel(object):
+    """
+    Calculate a 2D Gaussian density enhancement kernel.  This kernel has
+    negative wings and sums to zero.  It is used by both `daofind` and
+    `irafstarfind`.
+
+    Parameters
+    ----------
+    fwhm : float
+        The full-width half-maximum (FWHM) of the major axis of the
+        Gaussian kernel in units of pixels.
+
+    ratio : float, optional
+        The ratio of the minor to major axis standard deviations of the
+        Gaussian kernel.  ``ratio`` must be strictly positive and less
+        than or equal to 1.0.  The default is 1.0 (i.e., a circular
+        Gaussian kernel).
+
+    theta : float, optional
+        The position angle (in degrees) of the major axis of the
+        Gaussian kernel measured counter-clockwise from the positive x
+        axis.
+
+    sigma_radius : float, optional
+        The truncation radius of the Gaussian kernel in units of sigma
+        (standard deviation) [``1 sigma = FWHM /
+        2.0*sqrt(2.0*log(2.0))``].  The default is 1.5.
+
+    Notes
+    -----
+    The object attributes include the dimensions of the elliptical
+    kernel and the coefficients of a 2D elliptical Gaussian function
+    expressed as:
+
+        ``f(x,y) = A * exp(-g(x,y))``
+
+        where
+
+        ``g(x,y) = a*(x-x0)**2 + 2*b*(x-x0)*(y-y0) + c*(y-y0)**2``
+
+    References
+    ----------
+    .. [1] http://en.wikipedia.org/wiki/Gaussian_function
+    """
+
+    def __init__(self, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5):
+        assert fwhm > 0, 'FWHM must be positive'
+        assert ((ratio > 0) & (ratio <= 1)), \
+            'ratio must be positive and less than 1'
+        assert sigma_radius > 0, 'sigma_radius must be positive'
+        self.fwhm = fwhm
+        self.sigma_radius = sigma_radius
+        self.ratio = ratio
+        self.theta = theta
+        self.theta_radians = np.deg2rad(self.theta)
+        self.xsigma = self.fwhm * FWHM2SIGMA
+        self.ysigma = self.xsigma * self.ratio
+        self.a = None
+        self.b = None
+        self.c = None
+        self.f = None
+        self.nx = None
+        self.ny = None
+        self.xc = None
+        self.yc = None
+        self.circrad = None
+        self.ellrad = None
+        self.gkernel = None
+        self.mask = None
+        self.npts = None
+        self.kern = None
+        self.relerr = None
+        self.set_gausspars()
+        self.mk_kern()
+
+    @property
+    def shape(self):
+        return self.kern.shape
+
+    @property
+    def center(self):
+        """Index of the kernel center."""
+        return [size // 2 for size in self.kern.shape]
+
+    def set_gausspars(self):
+        xsigma2 = self.xsigma**2
+        ysigma2 = self.ysigma**2
+        cost = np.cos(self.theta_radians)
+        sint = np.sin(self.theta_radians)
+        self.a = (cost**2 / (2.0 * xsigma2)) + (sint**2 / (2.0 * ysigma2))
+        self.b = 0.5 * cost * sint * (1.0/xsigma2 - 1.0/ysigma2)    # CCW
+        self.c = (sint**2 / (2.0 * xsigma2)) + (cost**2 / (2.0 * ysigma2))
+        # find the extent of an ellipse with radius = sigma_radius*sigma;
+        # solve for the horizontal and vertical tangents of an ellipse
+        # defined by g(x,y) = f
+        self.f = self.sigma_radius**2 / 2.0
+        denom = self.a*self.c - self.b**2
+        self.nx = 2 * int(max(2, math.sqrt(self.c*self.f / denom))) + 1
+        self.ny = 2 * int(max(2, math.sqrt(self.a*self.f / denom))) + 1
+        return
+
+    def mk_kern(self):
+        yy, xx = np.mgrid[0:self.ny, 0:self.nx]
+        self.xc = self.nx // 2
+        self.yc = self.ny // 2
+        self.circrad = np.sqrt((xx-self.xc)**2 + (yy-self.yc)**2)
+        self.ellrad = (self.a*(xx-self.xc)**2 +
+                       2.0*self.b*(xx-self.xc)*(yy-self.yc) +
+                       self.c*(yy-self.yc)**2)
+        self.gkernel = np.exp(-self.ellrad)
+        self.mask = np.where((self.ellrad <= self.f) |
+                             (self.circrad <= 2.0), 1, 0).astype(np.int16)
+        self.npts = self.mask.sum()
+        self.kern = self.gkernel * self.mask
+        # normalize the kernel to zero sum (denom = variance * npts)
+        denom = ((self.kern**2).sum() - (self.kern.sum()**2 / self.npts))
+        self.relerr = 1.0 / np.sqrt(denom)
+        self.kern = (((self.kern - (self.kern.sum() / self.npts)) / denom) *
+                     self.mask)
+        return

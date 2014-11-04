@@ -226,5 +226,6 @@ class TestFindPeaks(object):
         assert_array_equal(coords, PEAKREF2)
 
     def test_min_separation_int(self):
-        with pytest.raises(ValueError):
-            find_peaks(PEAKDATA, 0.1, min_separation=0.5)
+        coords1 = find_peaks(PEAKDATA, 0.1, min_separation=2)
+        coords2 = find_peaks(PEAKDATA, 0.1, min_separation=2.5)
+        assert_array_equal(coords1, coords2)
