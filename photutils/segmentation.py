@@ -403,7 +403,6 @@ class SegmentProperties(object):
         The ``(y, x)`` coordinate, relative to the `data_cutout`, of
         the centroid within the source segment.
         """
-        # TODO: allow alternative centroid methods?
         m = self.moments
         ycentroid = m[0, 1] / m[0, 0]
         xcentroid = m[1, 0] / m[0, 0]
@@ -634,7 +633,28 @@ class SegmentProperties(object):
         """
         mu = self.moments_central
         m = mu / mu[0, 0]
-        return np.array([[m[2, 0], m[1, 1]], [m[1, 1], m[0, 2]]]) * u.pix**2
+        covariance = self._check_covariance(
+            np.array([[m[2, 0], m[1, 1]], [m[1, 1], m[0, 2]]]))
+        return covariance * u.pix**2
+
+    @staticmethod
+    def _check_covariance(covariance):
+        """
+        Check and modify the covariance matrix in the case of
+        "infinitely" thin detections.  This follows SExtractor's
+        prescription.
+        """
+        p = 1. / 12
+        val = (covariance[0, 0] * covariance[1, 1]) - covariance[0, 1]**2
+        if val >= p**2:
+            return covariance
+        else:
+            covar = np.copy(covariance)
+            while val < p**2:
+                covar[0, 0] += p
+                covar[1, 1] += p
+                val = (covar[0, 0] * covar[1, 1]) - covar[0, 1]**2
+            return covar
 
     @lazyproperty
     def covariance_eigvals(self):
@@ -696,7 +716,7 @@ class SegmentProperties(object):
         """
         a, b, b, c = self.covariance.flat
         if a < 0 or c < 0:    # negative variance
-            return np.nan
+            return np.nan * u.rad
         return 0.5 * np.arctan2(2. * b, (a - c))
 
     @lazyproperty
