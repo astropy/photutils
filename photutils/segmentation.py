@@ -155,6 +155,13 @@ class SegmentProperties(object):
         ``effective_gain`` should be the exposure time or an exposure
         time map (e.g., for mosaics with non-uniform exposure times).
 
+        ``effective_gain`` can be a 2D gain image with the same shape as
+        the ``data``.  This is useful with mosaic images that have
+        variable depths (i.e., exposure times) across the field.  For
+        example, one should use an exposure-time map as the
+        ``effective_gain`` for a variable depth mosaic image in
+        count-rate units.
+
         `~photutils.SegmentProperties.segment_sum_err` is simply the
         quadrature sum of the pixel-wise total errors over the
         non-masked pixels within the source segment:
@@ -1023,6 +1030,12 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
     ``data`` are in units of electrons/s then ``effective_gain`` should
     be the exposure time or an exposure time map (e.g., for mosaics with
     non-uniform exposure times).
+
+    ``effective_gain`` can be a 2D gain image with the same shape as the
+    ``data``.  This is useful with mosaic images that have variable
+    depths (i.e., exposure times) across the field.  For example, one
+    should use an exposure-time map as the ``effective_gain`` for a
+    variable depth mosaic image in count-rate units.
 
     `~photutils.SegmentProperties.segment_sum_err` is simply the
     quadrature sum of the pixel-wise total errors over the non-masked
