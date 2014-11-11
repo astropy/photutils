@@ -3,7 +3,6 @@ language: python
 python:
     - 2.6
     - 2.7
-    - 3.2
     - 3.3
     - 3.4
     # This is just for "egg_info".  All other builds are explicitly given in the matrix
@@ -111,5 +110,4 @@ script:
    - python setup.py $SETUP_CMD
 
 after_success:
-    # Uncomment line below if coveralls.io is set up for this package.
     - if [[ $SETUP_CMD == 'test --coverage' ]]; then coveralls --rcfile='photutils/tests/coveragerc'; fi
