@@ -28,13 +28,16 @@ class Background(object):
         self.sigclip_iters = sigclip_iters
         self.yextra = data.shape[0] % box_shape[0]
         self.xextra = data.shape[1] % box_shape[1]
+        self.data_shape_orig = data.shape
         if (self.yextra > 0) or (self.xextra > 0):
+            self.padded = True
             self.data = self._pad_data(data, mask)
         else:
+            self.padded = False
             self.data = np.ma.masked_array(data, mask=mask)
         self._sigclip_data()
 
-    def _pad_data(self, data, mask):
+    def _pad_data(self, data, mask=None):
         """
         Pad the ``data`` and ``mask`` on the right and top with zeros if
         necessary to have a integer number of background meshes of size
@@ -45,14 +48,14 @@ class Background(object):
             ypad = self.box_shape[0] - self.yextra
         if self.xextra > 0:
             xpad = self.box_shape[1] - self.xextra
-        pad_width = ([0, ypad], [0, xpad])
-        padded_data = np.pad(data, pad_width, mode='constant',
+        pad_width = ((0, ypad), (0, xpad))
+        mode = str('constant')
+        padded_data = np.pad(data, pad_width, mode=mode,
                              constant_values=[np.nan])
-        if self.mask is not None:
-            padded_mask = np.pad(mask, pad_width, mode='constant',
-                                 constant_values=[False])
-        else:
-            padded_mask = None
+        padded_mask = np.isnan(padded_data)
+        if mask is not None:
+            padded_mask = np.pad(np.logical_or(mask, padded_mask), pad_width,
+                                 mode=mode, constant_values=[False])
         return np.ma.masked_array(padded_data, mask=padded_mask)
 
     def _sigclip_data(self):
@@ -92,13 +95,13 @@ class Background(object):
         y = np.arange(ny)
         print(x, y, bbox)
 
-        #xx = np.linspace(x.min(), x.max(), self.data.shape[1])
-        #yy = np.linspace(y.min(), y.max(), self.data.shape[0])
+        # xx = np.linspace(x.min(), x.max(), self.data.shape[1])
+        # yy = np.linspace(y.min(), y.max(), self.data.shape[0])
         xx = np.linspace(x.min() - 0.5, x.max() + 0.5, self.data.shape[1])
         yy = np.linspace(y.min() - 0.5, y.max() + 0.5, self.data.shape[0])
-        #xx = np.linspace(bbox[2], bbox[3], self.data.shape[1])
-        #yy = np.linspace(bbox[0], bbox[1], self.data.shape[0])
-        #return RectBivariateSpline(y, x, mesh, kx=3, ky=3, s=0,
+        # xx = np.linspace(bbox[2], bbox[3], self.data.shape[1])
+        # yy = np.linspace(bbox[0], bbox[1], self.data.shape[0])
+        # return RectBivariateSpline(y, x, mesh, kx=3, ky=3, s=0,
         #                           bbox=bbox)(yy, xx)
         return RectBivariateSpline(y, x, mesh, kx=3, ky=3, s=0)(yy, xx)
 
@@ -114,12 +117,12 @@ class Background(object):
     def _resize_meshes4(self, mesh):
         from scipy.ndimage import map_coordinates
 
-        #sry = np.linspace(-0.48, 5.5-0.02, 300.)
-        #srx = np.linspace(-0.48, 9.5-0.02, 500.)
-        #sry = np.linspace(0, 6., 300.)
-        #srx = np.linspace(0, 10., 500.)
-        #sry = np.linspace(0.5, 5.0, 300.)
-        #srx = np.linspace(0.5, 9.0, 500.)
+        # sry = np.linspace(-0.48, 5.5-0.02, 300.)
+        # srx = np.linspace(-0.48, 9.5-0.02, 500.)
+        # sry = np.linspace(0, 6., 300.)
+        # srx = np.linspace(0, 10., 500.)
+        # sry = np.linspace(0.5, 5.0, 300.)
+        # srx = np.linspace(0.5, 9.0, 500.)
 
         m1 = 0.  # minus_one
         halfx = -0.5 + (mesh.shape[1] / self.data.shape[1])
@@ -130,7 +133,7 @@ class Background(object):
         srx = (x_zoom * np.arange(self.data.shape[1])) + halfx
         yy, xx = np.meshgrid(sry, srx)
         coords = np.array([yy.T, xx.T])
-        #return map_coordinates(mesh, coords, mode='reflect')
+        # return map_coordinates(mesh, coords, mode='reflect')
         return map_coordinates(mesh, coords)
 
     @lazyproperty
@@ -163,8 +166,16 @@ class Background(object):
 
     @lazyproperty
     def background(self):
-        return self._resize_meshes(self.background_mesh)
+        if self.padded:
+            y0 = self.data_shape_orig[0]
+            x0 = self.data_shape_orig[1]
+            return self._resize_meshes(self.background_mesh)[0:y0, 0:x0]
+        else:
+            return self._resize_meshes(self.background_mesh)
 
     @lazyproperty
     def background_rms(self):
-        return self._resize_meshes(self.background_rms_mesh)
+        if self.padded:
+            return self._resize_meshes(self.background_rms_mesh)[0:y0, 0:x0]
+        else:
+            return self._resize_meshes(self.background_rms_mesh)
