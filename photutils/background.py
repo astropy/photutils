@@ -143,8 +143,12 @@ class Background(object):
         elif self.method == 'median':
             bkg_mesh = np.ma.median(self.data_sigclip, axis=2)
         elif self.method == 'sextractor':
-            bkg_mesh = (2.5 * np.ma.median(self.data_sigclip, axis=2) -
-                        1.5 * np.ma.mean(self.data_sigclip, axis=2))
+            box_mean = np.ma.mean(self.data_sigclip, axis=2)
+            box_median = np.ma.median(self.data_sigclip, axis=2)
+            box_std = np.ma.std(self.data_sigclip, axis=2)
+            condition = (np.abs(box_mean - box_median) / box_std) < 0.3
+            bkg_est = (2.5 * box_median) - (1.5 * box_mean)
+            bkg_mesh = np.where(condition, bkg_est, box_median)
         elif self.method == 'mode_estimate':
             bkg_mesh = (3. * np.ma.median(self.data_sigclip, axis=2) -
                         2. * np.ma.mean(self.data_sigclip, axis=2))
