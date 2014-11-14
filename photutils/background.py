@@ -189,3 +189,17 @@ class Background(object):
         if self.mask is not None:
             bkgrms[self.mask] = 0.
         return bkgrms
+
+    @lazyproperty
+    def background_median(self):
+        if self.mask is not None:
+            return np.median(self.background[~self.mask])
+        else:
+            return np.median(self.background)
+
+    @lazyproperty
+    def background_rms_median(self):
+        if self.mask is not None:
+            return np.median(self.background_rms[~self.mask])
+        else:
+            return np.median(self.background_rms)
