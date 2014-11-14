@@ -23,6 +23,7 @@ class Background(object):
                 raise ValueError('mask shape must match data shape')
         self.box_shape = box_shape
         self.filter_shape = filter_shape
+        self.mask = mask
         self.method = method
         self.sigclip_sigma = sigclip_sigma
         self.sigclip_iters = sigclip_iters
@@ -54,8 +55,9 @@ class Background(object):
                              constant_values=[np.nan])
         padded_mask = np.isnan(padded_data)
         if mask is not None:
-            padded_mask = np.pad(np.logical_or(mask, padded_mask), pad_width,
-                                 mode=mode, constant_values=[False])
+            mask_pad = np.pad(mask, pad_width, mode=mode,
+                              constant_values=[False])
+            padded_mask = np.logical_or(padded_mask, mask_pad)
         return np.ma.masked_array(padded_data, mask=padded_mask)
 
     def _sigclip_data(self):
@@ -80,7 +82,7 @@ class Background(object):
         only pixels inside the image at the borders.
         """
         from scipy.ndimage import generic_filter
-        return generic_filter(mesh, np.nanmedian, size=self.filter_size,
+        return generic_filter(mesh, np.nanmedian, size=self.filter_shape,
                               mode='constant', cval=np.nan)
 
     def _resize_meshes(self, mesh):
@@ -156,30 +158,34 @@ class Background(object):
             raise ValueError('method "{0}" is not '
                              'defined'.format(self.method))
         if self.filter_shape != (1, 1):
-            return self._filter_meshes(self, bkg_mesh)
-        else:
-            return bkg_mesh
+            bkg_mesh = self._filter_meshes(bkg_mesh)
+        return bkg_mesh
 
     @lazyproperty
     def background_rms_mesh(self):
         bkgrms_mesh = np.ma.std(self.data_sigclip, axis=2)
         if self.filter_shape != (1, 1):
-            return self._filter_meshes(self, bkgrms_mesh)
-        else:
-            return bkgrms_mesh
+            bkgrms_mesh = self._filter_meshes(bkgrms_mesh)
+        return bkgrms_mesh
 
     @lazyproperty
     def background(self):
+        bkg = self._resize_meshes(self.background_mesh)
         if self.padded:
             y0 = self.data_shape_orig[0]
             x0 = self.data_shape_orig[1]
-            return self._resize_meshes(self.background_mesh)[0:y0, 0:x0]
-        else:
-            return self._resize_meshes(self.background_mesh)
+            bkg = bkg[0:y0, 0:x0]
+        if self.mask is not None:
+            bkg[self.mask] = 0.
+        return bkg
 
     @lazyproperty
     def background_rms(self):
+        bkgrms = self._resize_meshes(self.background_rms_mesh)
         if self.padded:
-            return self._resize_meshes(self.background_rms_mesh)[0:y0, 0:x0]
-        else:
-            return self._resize_meshes(self.background_rms_mesh)
+            y0 = self.data_shape_orig[0]
+            x0 = self.data_shape_orig[1]
+            bkgrms = bkgrms[0:y0, 0:x0]
+        if self.mask is not None:
+            bkgrms[self.mask] = 0.
+        return bkgrms
