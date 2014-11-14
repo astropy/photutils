@@ -92,51 +92,11 @@ class Background(object):
         """
         from scipy.interpolate import RectBivariateSpline
         ny, nx = mesh.shape
-        bbox = [-0.5, ny + 0.5, -0.5, nx + 0.5]
         x = np.arange(nx)
         y = np.arange(ny)
-        print(x, y, bbox)
-
-        # xx = np.linspace(x.min(), x.max(), self.data.shape[1])
-        # yy = np.linspace(y.min(), y.max(), self.data.shape[0])
         xx = np.linspace(x.min() - 0.5, x.max() + 0.5, self.data.shape[1])
         yy = np.linspace(y.min() - 0.5, y.max() + 0.5, self.data.shape[0])
-        # xx = np.linspace(bbox[2], bbox[3], self.data.shape[1])
-        # yy = np.linspace(bbox[0], bbox[1], self.data.shape[0])
-        # return RectBivariateSpline(y, x, mesh, kx=3, ky=3, s=0,
-        #                           bbox=bbox)(yy, xx)
         return RectBivariateSpline(y, x, mesh, kx=3, ky=3, s=0)(yy, xx)
-
-    def _resize_meshes2(self, mesh):
-        from scipy.misc import imresize
-        return imresize(mesh, self.data.shape, interp='bicubic', mode='F')
-
-    def _resize_meshes3(self, mesh):
-        from scipy.ndimage.interpolation import zoom
-        zoom_factor = self.box_shape
-        return zoom(mesh, zoom_factor, order=3)
-
-    def _resize_meshes4(self, mesh):
-        from scipy.ndimage import map_coordinates
-
-        # sry = np.linspace(-0.48, 5.5-0.02, 300.)
-        # srx = np.linspace(-0.48, 9.5-0.02, 500.)
-        # sry = np.linspace(0, 6., 300.)
-        # srx = np.linspace(0, 10., 500.)
-        # sry = np.linspace(0.5, 5.0, 300.)
-        # srx = np.linspace(0.5, 9.0, 500.)
-
-        m1 = 0.  # minus_one
-        halfx = -0.5 + (mesh.shape[1] / self.data.shape[1])
-        halfy = -0.5 + (mesh.shape[0] / self.data.shape[0])
-        y_zoom = (mesh.shape[0] - m1) / (self.data.shape[0] - m1)
-        x_zoom = (mesh.shape[1] - m1) / (self.data.shape[1] - m1)
-        sry = (y_zoom * np.arange(self.data.shape[0])) + halfy
-        srx = (x_zoom * np.arange(self.data.shape[1])) + halfx
-        yy, xx = np.meshgrid(sry, srx)
-        coords = np.array([yy.T, xx.T])
-        # return map_coordinates(mesh, coords, mode='reflect')
-        return map_coordinates(mesh, coords)
 
     @lazyproperty
     def background_mesh(self):
