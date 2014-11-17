@@ -26,8 +26,9 @@ class Background(object):
     mesh is estimated by the sigma-clipped standard deviation.
     """
 
-    def __init__(self, data, box_shape, filter_shape=(3, 3), mask=None,
-                 method='sextractor', sigclip_sigma=3., sigclip_iters=None):
+    def __init__(self, data, box_shape, filter_shape=(3, 3),
+                 filter_threshold=None, mask=None, method='sextractor',
+                 sigclip_sigma=3., sigclip_iters=None):
         """
         Parameters
         ----------
@@ -45,6 +46,12 @@ class Background(object):
             The ``(ny, nx)`` shape of the median filter to apply to the
             background meshes.  A filter shape of ``(1, 1)`` means no
             filtering.
+
+        filter_threshold : int, optional
+            The threshold value for used for selective median filtering
+            of the background meshes.  If not `None`, then the median
+            filter will be applied to only the background meshes with
+            values larger than ``filter_threshold``.
 
         mask : array_like (bool), optional
             A boolean mask, with the same shape as ``data``, where a
@@ -90,6 +97,7 @@ class Background(object):
                 raise ValueError('mask shape must match data shape')
         self.box_shape = box_shape
         self.filter_shape = filter_shape
+        self.filter_threshold = filter_threshold
         self.mask = mask
         self.method = method
         self.sigclip_sigma = sigclip_sigma
@@ -149,8 +157,18 @@ class Background(object):
         only pixels inside the image at the borders.
         """
         from scipy.ndimage import generic_filter
-        return generic_filter(mesh, np.nanmedian, size=self.filter_shape,
-                              mode='constant', cval=np.nan)
+        if self.filter_threshold is None:
+            return generic_filter(mesh, np.nanmedian, size=self.filter_shape,
+                                  mode='constant', cval=np.nan)
+        else:
+            mesh_out = np.copy(mesh)
+            for i, j in zip(*np.nonzero(mesh > self.filter_threshold)):
+                yfs, xfs = self.filter_shape
+                hyfs, hxfs = yfs // 2, xfs //2
+                y0, y1 = max(i - hyfs, 0), min(i - hyfs + yfs, mesh.shape[0])
+                x0, x1 = max(j - hxfs, 0), min(j - hxfs + xfs, mesh.shape[1])
+                mesh_out[i, j] = np.median(mesh[y0:y1, x0:x1])
+            return mesh_out
 
     def _resize_meshes(self, mesh):
         """
