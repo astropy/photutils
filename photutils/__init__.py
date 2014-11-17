@@ -11,10 +11,10 @@ from ._astropy_init import *
 # ----------------------------------------------------------------------------
 
 if not _ASTROPY_SETUP_:
-
     from .aperture_core import *
     from .aperture_funcs import *
-    from .psf import *
+    from .background import *
     from .detection.core import *
-    from .segmentation import *
     from .detection.findstars import *
+    from .segmentation import *
+    from .psf import *

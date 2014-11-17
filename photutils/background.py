@@ -13,11 +13,78 @@ __doctest_requires__ = {('Background'): ['scipy']}
 
 
 class Background(object):
-    def __init__(self, data, box_shape, filter_shape, mask=None,
+    """
+    Class to estimate a 2D background and background rms noise map.
+
+    The background is estimated using sigma-clipped statistics in each
+    mesh of a grid that covers the input ``data`` to create a
+    low-resolution background map.  The final background map is the
+    bicubic spline interpolation of the low-resolution map.
+
+    The exact method used to estimate the background in each mesh can be
+    controlled via the ``method`` parameter.  The background rms in each
+    mesh is estimated by the sigma-clipped standard deviation.
+    """
+
+    def __init__(self, data, box_shape, filter_shape=(3, 3), mask=None,
                  method='sextractor', sigclip_sigma=3., sigclip_iters=None):
         """
-        filter_shape == (1, 1) -> no filtering
+        Parameters
+        ----------
+        data : array_like
+            The 2D array from which to estimate the background and/or
+            background rms.
+
+        box_shape : 2-tuple of int
+            The ``(ny, nx)`` shape of the boxes in which to estimate the
+            background.  For best results, the box shape should be
+            chosen such than the ``data`` are covered by an integer
+            number of boxes in both dimensions.
+
+        filter_shape : 2-tuple of int, optional
+            The ``(ny, nx)`` shape of the median filter to apply to the
+            background meshes.  A filter shape of ``(1, 1)`` means no
+            filtering.
+
+        mask : array_like (bool), optional
+            A boolean mask, with the same shape as ``data``, where a
+            `True` value indicates the corresponding element of ``data``
+            is masked.  Masked data are excluded from all calculations.
+
+        method : {'mean', 'median', 'sextractor', 'mode_estimate'}, optional
+            The method use to estimate the background in the meshes.
+            For all methods, the statistics are calculated from the
+            sigma-clipped ``data`` values in each mesh.
+
+            * 'mean':  The mean.
+            * 'median':  The median.
+            * 'sextractor':  The method used by `SExtractor`_.  The
+              background in each mesh is a mode estimator: ``(2.5 *
+              median) - (1.5 * mean)``.  If ``(mean - median) / std >
+              0.3`` then then median is used instead.  Despite what the
+              `SExtractor`_ User's Manual says, this is the method
+              it *always* uses.
+            * 'mode_estimate':  An alternative mode estimator:
+              ``(3 * median) - (2 * mean)``.
+
+        sigclip_sigma : float, optional
+            The number of standard deviations to use as the clipping limit
+            when calculating the image background statistics.
+
+        sigclip_iters : int, optional
+           The number of iterations to perform sigma clipping, or `None` to
+           clip until convergence is achieved (i.e., continue until the last
+           iteration clips nothing) when calculating the image background
+           statistics.
+
+        Notes
+        -----
+        Limiting ``sigclip_iters`` will speed up the calculations,
+        especially for large images, at the cost of some precision.
+
+        .. _SExtractor: http://www.astromatic.net/software/sextractor
         """
+
         if mask is not None:
             if mask.shape != data.shape:
                 raise ValueError('mask shape must match data shape')
@@ -100,6 +167,13 @@ class Background(object):
 
     @lazyproperty
     def background_mesh(self):
+        """
+        A 2D `~numpy.ndarray` containing the background estimate in each
+        of the meshes of size ``box_shape``.
+
+        This is equivalent to the low-resolution "MINIBACKGROUND"
+        background map in `SExtractor`_.
+        """
         if self.method == 'mean':
             bkg_mesh = np.ma.mean(self.data_sigclip, axis=2)
         elif self.method == 'median':
@@ -123,6 +197,13 @@ class Background(object):
 
     @lazyproperty
     def background_rms_mesh(self):
+        """
+        A 2D `~numpy.ndarray` containing the background rms estimate in
+        each of the meshes of size ``box_shape``.
+
+        This is equivalent to the low-resolution "MINIBACK_RMS"
+        background rms map in `SExtractor`_.
+        """
         bkgrms_mesh = np.ma.std(self.data_sigclip, axis=2)
         if self.filter_shape != (1, 1):
             bkgrms_mesh = self._filter_meshes(bkgrms_mesh)
@@ -130,6 +211,12 @@ class Background(object):
 
     @lazyproperty
     def background(self):
+        """
+        A 2D `~numpy.ndarray` containing the background estimate.
+
+        This is equivalent to the low-resolution "BACKGROUND" background
+        map in `SExtractor`_.
+        """
         bkg = self._resize_meshes(self.background_mesh)
         if self.padded:
             y0 = self.data_shape_orig[0]
@@ -141,6 +228,12 @@ class Background(object):
 
     @lazyproperty
     def background_rms(self):
+        """
+        A 2D `~numpy.ndarray` containing the background rms estimate.
+
+        This is equivalent to the low-resolution "BACKGROUND_RMS"
+        background rms map in `SExtractor`_.
+        """
         bkgrms = self._resize_meshes(self.background_rms_mesh)
         if self.padded:
             y0 = self.data_shape_orig[0]
@@ -152,14 +245,20 @@ class Background(object):
 
     @lazyproperty
     def background_median(self):
-        if self.mask is not None:
-            return np.median(self.background[~self.mask])
-        else:
-            return np.median(self.background)
+        """
+        The median value of all the background meshes.
+
+        This is equivalent to the value `SExtractor`_ prints to stdout
+        (i.e., "(M+D) Background: <value>").
+        """
+        return np.median(self.background_mesh)
 
     @lazyproperty
     def background_rms_median(self):
-        if self.mask is not None:
-            return np.median(self.background_rms[~self.mask])
-        else:
-            return np.median(self.background_rms)
+        """
+        The median value of all the background rms meshes.
+
+        This is equivalent to the value `SExtractor`_ prints to stdout
+        (i.e., "(M+D) RMS: <value>").
+        """
+        return np.median(self.background_rms_mesh)
