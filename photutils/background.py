@@ -14,7 +14,8 @@ __doctest_requires__ = {('Background'): ['scipy']}
 
 class Background(object):
     """
-    Class to estimate a 2D background and background rms noise map.
+    Class to estimate a 2D background and background rms noise in an
+    image.
 
     The background is estimated using sigma-clipped statistics in each
     mesh of a grid that covers the input ``data`` to create a
@@ -22,36 +23,36 @@ class Background(object):
     bicubic spline interpolation of the low-resolution map.
 
     The exact method used to estimate the background in each mesh can be
-    controlled via the ``method`` parameter.  The background rms in each
-    mesh is estimated by the sigma-clipped standard deviation.
+    set with the ``method`` parameter.  The background rms in each mesh
+    is estimated by the sigma-clipped standard deviation.
     """
 
     def __init__(self, data, box_shape, filter_shape=(3, 3),
                  filter_threshold=None, mask=None, method='sextractor',
-                 sigclip_sigma=3., sigclip_iters=None):
+                 backfunc=None, sigclip_sigma=3., sigclip_iters=None):
         """
         Parameters
         ----------
         data : array_like
             The 2D array from which to estimate the background and/or
-            background rms.
+            background rms map.
 
         box_shape : 2-tuple of int
             The ``(ny, nx)`` shape of the boxes in which to estimate the
             background.  For best results, the box shape should be
-            chosen such than the ``data`` are covered by an integer
+            chosen such that the ``data`` are covered by an integer
             number of boxes in both dimensions.
 
         filter_shape : 2-tuple of int, optional
             The ``(ny, nx)`` shape of the median filter to apply to the
-            background meshes.  A filter shape of ``(1, 1)`` means no
-            filtering.
+            low-resolution background map.  A filter shape of ``(1, 1)``
+            means no filtering.
 
         filter_threshold : int, optional
             The threshold value for used for selective median filtering
-            of the background meshes.  If not `None`, then the median
-            filter will be applied to only the background meshes with
-            values larger than ``filter_threshold``.
+            of the low-resolution background map.  If not `None`, then
+            the median filter will be applied to only the background
+            meshes with values larger than ``filter_threshold``.
 
         mask : array_like (bool), optional
             A boolean mask, with the same shape as ``data``, where a
@@ -63,16 +64,27 @@ class Background(object):
             For all methods, the statistics are calculated from the
             sigma-clipped ``data`` values in each mesh.
 
-            * 'mean':  The mean.
-            * 'median':  The median.
+            * 'mean':  Mean.
+            * 'median':  Median.
             * 'sextractor':  The method used by `SExtractor`_.  The
               background in each mesh is a mode estimator: ``(2.5 *
               median) - (1.5 * mean)``.  If ``(mean - median) / std >
-              0.3`` then then median is used instead.  Despite what the
-              `SExtractor`_ User's Manual says, this is the method
-              it *always* uses.
+              0.3`` then the median is used instead.  Despite what the
+              `SExtractor`_ User's Manual says, this is the method it
+              *always* uses.
             * 'mode_estimate':  An alternative mode estimator:
               ``(3 * median) - (2 * mean)``.
+            * 'custom': Use this method in combination with the
+              ``backfunc`` parameter to specific a custom function to
+              calculate the background in each mesh.
+
+        backfunc : callable
+            The function to compute the background in each mesh.  Must
+            be a callable that takes in a 3D `~numpy.ma.MaskedArray` of
+            size ``MxNxZ``, where the ``Z`` axis (axis=2) contains the
+            pixels in each background mesh, and outputs a 2D
+            `~numpy.ndarray` low-resolution background map of size
+            ``MxN``.  ``backfunc`` is used only if ``method='custom'``.
 
         sigclip_sigma : float, optional
             The number of standard deviations to use as the clipping limit
@@ -100,6 +112,7 @@ class Background(object):
         self.filter_threshold = filter_threshold
         self.mask = mask
         self.method = method
+        self.backfunc = backfunc
         self.sigclip_sigma = sigclip_sigma
         self.sigclip_iters = sigclip_iters
         self.yextra = data.shape[0] % box_shape[0]
@@ -191,8 +204,8 @@ class Background(object):
         A 2D `~numpy.ndarray` containing the background estimate in each
         of the meshes of size ``box_shape``.
 
-        This is equivalent to the low-resolution "MINIBACKGROUND"
-        background map in `SExtractor`_.
+        This low-resolution background map is equivalent to the
+        low-resolution "MINIBACKGROUND" background map in `SExtractor`_.
         """
         if self.method == 'mean':
             bkg_mesh = np.ma.mean(self.data_sigclip, axis=2)
@@ -208,10 +221,22 @@ class Background(object):
         elif self.method == 'mode_estimate':
             bkg_mesh = (3. * np.ma.median(self.data_sigclip, axis=2) -
                         2. * np.ma.mean(self.data_sigclip, axis=2))
+        elif self.method == 'custom':
+            bkg_mesh = self.backfunc(self.data_sigclip)
+            if not isinstance(bkg_mesh, np.ndarray):   # np.ma will pass
+                raise ValueError('"backfunc" must return a numpy.ndarray.')
+            if isinstance(bkg_mesh, np.ma.MaskedArray):
+                raise ValueError('"backfunc" must return a numpy.ndarray.')
+            if bkg_mesh.shape != (self.data_sigclip.shape[0],
+                                  self.data_sigclip.shape[1]):
+                raise ValueError('The shape of the array returned by '
+                                 '"backfunc" is not correct.')
         else:
             raise ValueError('method "{0}" is not '
                              'defined'.format(self.method))
-        bkg_mesh = np.ma.filled(bkg_mesh, fill_value=np.ma.median(bkg_mesh))
+        if self.method != 'custom':
+            bkg_mesh = np.ma.filled(bkg_mesh,
+                                    fill_value=np.ma.median(bkg_mesh))
         if self.filter_shape != (1, 1):
             bkg_mesh = self._filter_meshes(bkg_mesh)
         return bkg_mesh
@@ -222,8 +247,9 @@ class Background(object):
         A 2D `~numpy.ndarray` containing the background rms estimate in
         each of the meshes of size ``box_shape``.
 
-        This is equivalent to the low-resolution "MINIBACK_RMS"
-        background rms map in `SExtractor`_.
+        This low-resolution background rms map is equivalent to the
+        low-resolution "MINIBACK_RMS" background rms map in
+        `SExtractor`_.
         """
         bkgrms_mesh = np.ma.std(self.data_sigclip, axis=2)
         bkgrms_mesh = np.ma.filled(bkgrms_mesh,
