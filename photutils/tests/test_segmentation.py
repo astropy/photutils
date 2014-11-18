@@ -64,8 +64,8 @@ class TestSegmentProperties(object):
         rho = np.pi / 3.
         scale = 0.1 / 3600.
         mywcs.wcs.cd = [[scale*np.cos(rho), -scale*np.sin(rho)],
-                    [scale*np.sin(rho), scale*np.cos(rho)]]
-        mywcs.wcs.ctype = ['RA---TAN','DEC--TAN']
+                        [scale*np.sin(rho), scale*np.cos(rho)]]
+        mywcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
         props = SegmentProperties(IMAGE, SEGM, wcs=mywcs, label=1)
         assert props.icrs_centroid is not None
         assert props.ra_icrs_centroid is not None
@@ -344,8 +344,8 @@ class TestPropertiesTable(object):
         rho = np.pi / 3.
         scale = 0.1 / 3600.
         mywcs.wcs.cd = [[scale*np.cos(rho), -scale*np.sin(rho)],
-                    [scale*np.sin(rho), scale*np.cos(rho)]]
-        mywcs.wcs.ctype = ['RA---TAN','DEC--TAN']
+                        [scale*np.sin(rho), scale*np.cos(rho)]]
+        mywcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
 
         props = segment_properties(IMAGE, SEGM, wcs=mywcs)
         t = properties_table(props)
