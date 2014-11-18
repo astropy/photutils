@@ -104,14 +104,14 @@ class Background(object):
         self.sigclip_iters = sigclip_iters
         self.yextra = data.shape[0] % box_shape[0]
         self.xextra = data.shape[1] % box_shape[1]
-        self.data_shape_orig = data.shape
+        self.data_shape = data.shape
         if (self.yextra > 0) or (self.xextra > 0):
             self.padded = True
-            self.data = self._pad_data(data, mask)
+            data_ma = self._pad_data(data, mask)
         else:
             self.padded = False
-            self.data = np.ma.masked_array(data, mask=mask)
-        self._sigclip_data()
+            data_ma = np.ma.masked_array(data, mask=mask)
+        self._sigclip_data(data_ma)
 
     def _pad_data(self, data, mask=None):
         """
@@ -135,21 +135,23 @@ class Background(object):
             padded_mask = np.logical_or(padded_mask, mask_pad)
         return np.ma.masked_array(padded_data, mask=padded_mask)
 
-    def _sigclip_data(self):
+    def _sigclip_data(self, data_ma):
         """
         Perform sigma clipping on the data in regions of size
         ``box_shape``.
         """
-        ny, nx = self.data.shape
+        ny, nx = data_ma.shape
         ny_box, nx_box = self.box_shape
         y_nbins = ny / ny_box     # always integer because data were padded
         x_nbins = nx / nx_box     # always integer because data were padded
-        data_rebin = np.ma.swapaxes(self.data.reshape(
+        data_rebin = np.ma.swapaxes(data_ma.reshape(
             y_nbins, ny_box, x_nbins, nx_box), 1, 2).reshape(y_nbins, x_nbins,
                                                              ny_box * nx_box)
+        del data_ma
         self.data_sigclip = sigma_clip(
             data_rebin, sig=self.sigclip_sigma, axis=2,
             iters=self.sigclip_iters, cenfunc=np.ma.median, varfunc=np.ma.var)
+        del data_rebin
 
     def _filter_meshes(self, mesh):
         """
@@ -179,8 +181,8 @@ class Background(object):
         ny, nx = mesh.shape
         x = np.arange(nx)
         y = np.arange(ny)
-        xx = np.linspace(x.min() - 0.5, x.max() + 0.5, self.data.shape[1])
-        yy = np.linspace(y.min() - 0.5, y.max() + 0.5, self.data.shape[0])
+        xx = np.linspace(x.min() - 0.5, x.max() + 0.5, self.data_shape[1])
+        yy = np.linspace(y.min() - 0.5, y.max() + 0.5, self.data_shape[0])
         return RectBivariateSpline(y, x, mesh, kx=3, ky=3, s=0)(yy, xx)
 
     @lazyproperty
@@ -240,8 +242,7 @@ class Background(object):
         """
         bkg = self._resize_meshes(self.background_mesh)
         if self.padded:
-            y0 = self.data_shape_orig[0]
-            x0 = self.data_shape_orig[1]
+            y0, x0 = self.data_shape
             bkg = bkg[0:y0, 0:x0]
         if self.mask is not None:
             bkg[self.mask] = 0.
@@ -257,8 +258,7 @@ class Background(object):
         """
         bkgrms = self._resize_meshes(self.background_rms_mesh)
         if self.padded:
-            y0 = self.data_shape_orig[0]
-            x0 = self.data_shape_orig[1]
+            y0, x0 = self.data_shape
             bkgrms = bkgrms[0:y0, 0:x0]
         if self.mask is not None:
             bkgrms[self.mask] = 0.
