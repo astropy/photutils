@@ -98,6 +98,16 @@ class Background(object):
 
         Notes
         -----
+        Bicubic interpolation of the low-resolution background map will
+        be used along a particular dimension only if there are more than
+        3 meshes along that dimension.  If there are 3 or fewer meshes
+        along a particular dimension in the low-resolution background
+        map, then a bivariate spline of order ``size - 1`` will be used
+        along that dimension.  If there is only 1 background mesh
+        element (i.e., ``box_shape`` is the same size as the ``data``),
+        then the background map will simply be a constant image with the
+        value in the background mesh.
+
         Limiting ``sigclip_iters`` will speed up the calculations,
         especially for large images, at the cost of some precision.
 
@@ -111,7 +121,8 @@ class Background(object):
                          'custom']
         if method not in valid_methods:
             raise ValueError('method "{0}" is not valid'.format(method))
-        self.box_shape = box_shape
+        self.box_shape = (min(box_shape[0], data.shape[0]),
+                          min(box_shape[1], data.shape[1]))
         self.filter_shape = filter_shape
         self.filter_threshold = filter_threshold
         self.mask = mask
@@ -194,7 +205,7 @@ class Background(object):
         Resize the background meshes to the original data size using
         bicubic interpolation.
         """
-        if np.min(mesh) == np.max(mesh):    # constant image
+        if np.min(mesh) == np.max(mesh):    # constant image (or only 1 mesh)
             return np.zeros(self.data_shape) + np.min(mesh)
         else:
             from scipy.interpolate import RectBivariateSpline
@@ -203,7 +214,8 @@ class Background(object):
             y = np.arange(ny)
             xx = np.linspace(x.min() - 0.5, x.max() + 0.5, self.data_shape[1])
             yy = np.linspace(y.min() - 0.5, y.max() + 0.5, self.data_shape[0])
-            return RectBivariateSpline(y, x, mesh, kx=3, ky=3, s=0)(yy, xx)
+            ky, kx = min(nx - 1, 3), min(ny - 1, 3)   # axes reversed
+            return RectBivariateSpline(y, x, mesh, kx=kx, ky=ky, s=0)(yy, xx)
 
     @lazyproperty
     def background_mesh(self):
