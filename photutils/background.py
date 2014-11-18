@@ -107,6 +107,10 @@ class Background(object):
         if mask is not None:
             if mask.shape != data.shape:
                 raise ValueError('mask shape must match data shape')
+        valid_methods = ['mean', 'median', 'sextractor', 'mode_estimate',
+                         'custom']
+        if method not in valid_methods:
+            raise ValueError('method "{0}" is not valid'.format(method))
         self.box_shape = box_shape
         self.filter_shape = filter_shape
         self.filter_threshold = filter_threshold
@@ -155,8 +159,8 @@ class Background(object):
         """
         ny, nx = data_ma.shape
         ny_box, nx_box = self.box_shape
-        y_nbins = ny / ny_box     # always integer because data were padded
-        x_nbins = nx / nx_box     # always integer because data were padded
+        y_nbins = int(ny / ny_box)   # always integer because data were padded
+        x_nbins = int(nx / nx_box)   # always integer because data were padded
         data_rebin = np.ma.swapaxes(data_ma.reshape(
             y_nbins, ny_box, x_nbins, nx_box), 1, 2).reshape(y_nbins, x_nbins,
                                                              ny_box * nx_box)
@@ -190,13 +194,16 @@ class Background(object):
         Resize the background meshes to the original data size using
         bicubic interpolation.
         """
-        from scipy.interpolate import RectBivariateSpline
-        ny, nx = mesh.shape
-        x = np.arange(nx)
-        y = np.arange(ny)
-        xx = np.linspace(x.min() - 0.5, x.max() + 0.5, self.data_shape[1])
-        yy = np.linspace(y.min() - 0.5, y.max() + 0.5, self.data_shape[0])
-        return RectBivariateSpline(y, x, mesh, kx=3, ky=3, s=0)(yy, xx)
+        if np.min(mesh) == np.max(mesh):    # constant image
+            return np.zeros(self.data_shape) + np.min(mesh)
+        else:
+            from scipy.interpolate import RectBivariateSpline
+            ny, nx = mesh.shape
+            x = np.arange(nx)
+            y = np.arange(ny)
+            xx = np.linspace(x.min() - 0.5, x.max() + 0.5, self.data_shape[1])
+            yy = np.linspace(y.min() - 0.5, y.max() + 0.5, self.data_shape[0])
+            return RectBivariateSpline(y, x, mesh, kx=3, ky=3, s=0)(yy, xx)
 
     @lazyproperty
     def background_mesh(self):
@@ -232,9 +239,6 @@ class Background(object):
                                   self.data_sigclip.shape[1]):
                 raise ValueError('The shape of the array returned by '
                                  '"backfunc" is not correct.')
-        else:
-            raise ValueError('method "{0}" is not '
-                             'defined'.format(self.method))
         if self.method != 'custom':
             bkg_mesh = np.ma.filled(bkg_mesh,
                                     fill_value=np.ma.median(bkg_mesh))
