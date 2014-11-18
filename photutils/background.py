@@ -164,7 +164,7 @@ class Background(object):
             mesh_out = np.copy(mesh)
             for i, j in zip(*np.nonzero(mesh > self.filter_threshold)):
                 yfs, xfs = self.filter_shape
-                hyfs, hxfs = yfs // 2, xfs //2
+                hyfs, hxfs = yfs // 2, xfs // 2
                 y0, y1 = max(i - hyfs, 0), min(i - hyfs + yfs, mesh.shape[0])
                 x0, x1 = max(j - hxfs, 0), min(j - hxfs + xfs, mesh.shape[1])
                 mesh_out[i, j] = np.median(mesh[y0:y1, x0:x1])
@@ -202,13 +202,14 @@ class Background(object):
             box_std = np.ma.std(self.data_sigclip, axis=2)
             condition = (np.abs(box_mean - box_median) / box_std) < 0.3
             bkg_est = (2.5 * box_median) - (1.5 * box_mean)
-            bkg_mesh = np.where(condition, bkg_est, box_median)
+            bkg_mesh = np.ma.where(condition, bkg_est, box_median)
         elif self.method == 'mode_estimate':
             bkg_mesh = (3. * np.ma.median(self.data_sigclip, axis=2) -
                         2. * np.ma.mean(self.data_sigclip, axis=2))
         else:
             raise ValueError('method "{0}" is not '
                              'defined'.format(self.method))
+        bkg_mesh = np.ma.filled(bkg_mesh, fill_value=np.ma.median(bkg_mesh))
         if self.filter_shape != (1, 1):
             bkg_mesh = self._filter_meshes(bkg_mesh)
         return bkg_mesh
@@ -223,6 +224,8 @@ class Background(object):
         background rms map in `SExtractor`_.
         """
         bkgrms_mesh = np.ma.std(self.data_sigclip, axis=2)
+        bkgrms_mesh = np.ma.filled(bkgrms_mesh,
+                                   fill_value=np.ma.median(bkgrms_mesh))
         if self.filter_shape != (1, 1):
             bkgrms_mesh = self._filter_meshes(bkgrms_mesh)
         return bkgrms_mesh
