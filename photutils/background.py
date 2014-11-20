@@ -29,7 +29,7 @@ class Background(object):
 
     def __init__(self, data, box_shape, filter_shape=(3, 3),
                  filter_threshold=None, mask=None, method='sextractor',
-                 backfunc=None, sigclip_sigma=3., sigclip_iters=None):
+                 backfunc=None, sigclip_sigma=3., sigclip_iters=10):
         """
         Parameters
         ----------
@@ -94,7 +94,7 @@ class Background(object):
            The number of iterations to perform sigma clipping, or `None` to
            clip until convergence is achieved (i.e., continue until the last
            iteration clips nothing) when calculating the image background
-           statistics.
+           statistics.  The default is 10.
 
         Notes
         -----
