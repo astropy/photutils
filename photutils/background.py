@@ -183,9 +183,16 @@ class Background(object):
         only pixels inside the image at the borders.
         """
         from scipy.ndimage import generic_filter
+        try:
+            nanmedian_func = np.nanmedian    # numpy >= 1.9
+        except AttributeError:
+            from scipy.stats import nanmedian
+            nanmedian_func = nanmedian
+
         if self.filter_threshold is None:
-            return generic_filter(mesh, np.nanmedian, size=self.filter_shape,
-                                  mode='constant', cval=np.nan)
+            return generic_filter(mesh, nanmedian_func,
+                                  size=self.filter_shape, mode='constant',
+                                  cval=np.nan)
         else:
             mesh_out = np.copy(mesh)
             for i, j in zip(*np.nonzero(mesh > self.filter_threshold)):
