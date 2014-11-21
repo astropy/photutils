@@ -374,7 +374,7 @@ class SegmentProperties(object):
     @lazyproperty
     def values(self):
         """
-        An `~numpy.ndarray` of the (background-subtracted) pixel values
+        A `~numpy.ndarray` of the (background-subtracted) pixel values
         within the source segment.  Masked pixels are not included.
         """
         return self.data_cutout[~self._local_mask]
@@ -1142,7 +1142,7 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
 
 def properties_table(segment_props, columns=None, exclude_columns=None):
     """
-    Construct an `~astropy.table.Table` of properties from a list of
+    Construct a `~astropy.table.Table` of properties from a list of
     `SegmentProperties` objects.
 
     If ``columns`` or ``exclude_columns`` are not input, then the
@@ -1308,8 +1308,8 @@ def relabel_sequential(segment_image, start_label=1):
 
 def relabel_segments(segment_image, labels, new_label):
     """
-    Relabel labels in a segmentation image. ``labels`` will be relabeled
-    to ``new_label``.
+    Relabel the labels in a segmentation image. ``labels`` will be
+    relabeled to ``new_label``.
 
     Parameters
     ----------
