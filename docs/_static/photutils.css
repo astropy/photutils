@@ -1,6 +1,10 @@
 
 @import url("bootstrap-astropy.css");
 
+div.topbar a.brand {
+  background: transparent url("photutils_logo-32x32.png") no-repeat 8px 3px;
+}
+
 #logotext1 {
   color: #e8f2fc;
 }

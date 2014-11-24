@@ -125,7 +125,8 @@ html_theme_options = {
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-#html_favicon = ''
+from os.path import join
+html_favicon = join('_static', 'favicon.ico')
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
@@ -138,6 +139,9 @@ html_title = '{0} v{1}'.format(project, release)
 # Output file base name for HTML help builder.
 htmlhelp_basename = project + 'doc'
 
+# Static files to copy after template files
+html_static_path = ['_static']
+html_style = 'photutils.css'
 
 # -- Options for LaTeX output --------------------------------------------------
 
