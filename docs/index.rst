@@ -11,6 +11,3 @@ documentation for this package is here:
   :maxdepth: 2
 
   photutils/index.rst
-
-.. note:: Do not edit this page - instead, place all documentation for the
-          affiliated package inside ``photutils/``
