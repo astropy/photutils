@@ -1,3 +1,6 @@
+
+.. image:: _static/photutils_banner-475x120.png
+
 Documentation
 =============
 
