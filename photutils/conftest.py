@@ -11,5 +11,7 @@ enable_deprecations_as_exceptions()
 # Add scikit-image to test header information
 try:
     PYTEST_HEADER_MODULES['scikit-image'] = 'skimage'
+    del PYTEST_HEADER_MODULES['h5py']
+
 except NameError:  # astropy < 1.0
     pass
