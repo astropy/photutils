@@ -1,5 +1,5 @@
-Source Detection and Segmentation
-=================================
+Source Detection and Extraction
+===============================
 
 .. warning::
     `scikit-image`_ is required for some functionality.
@@ -18,6 +18,13 @@ astronomical images:
 * :func:`~photutils.daofind`, based on the `DAOFIND <http://iraf.net/irafhelp.php?val=daofind&help=Help+Page>`_ algorithm
 
 * :func:`~photutils.irafstarfind`, based on IRAF's `starfind <http://iraf.net/irafhelp.php?val=starfind&help=Help+Page>`_ algorithm
+
+
+Source Extraction
+-----------------
+Source extraction refers to the detection of sources in an
+astronomical images.  It also known as image segmentation or image
+labeling in other python packages.
 
 
 Getting Started
