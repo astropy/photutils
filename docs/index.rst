@@ -34,9 +34,23 @@ User Documentation
 ==================
 
 .. toctree::
+    :maxdepth: 1
+
+    photutils/aperture.rst
+    photutils/psf.rst
+    photutils/background.rst
+    photutils/detection.rst
+    photutils/segmentation.rst
+    photutils/morphology.rst
+    photutils/geometry.rst
+    photutils/datasets.rst
+    photutils/utils.rst
+
+
+.. toctree::
   :maxdepth: 1
 
-  photutils/index.rst
+  high-level_API.rst
 
 
 Reporting Issues
