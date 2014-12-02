@@ -11,8 +11,6 @@ Photutils
 *********
 
 .. image:: _static/photutils_banner-475x120.png
-    :width: 475px
-    :height: 120px
 
 
 Photutils at a glance
