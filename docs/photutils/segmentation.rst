@@ -1,11 +1,6 @@
 Segmentation Photometry and Properties
 ======================================
 
-.. warning::
-    `scikit-image`_ is required for some functionality.
-
-.. _scikit-image: http://scikit-image.org/
-
 
 `photutils.segmentation` provides functions to calculate photometry
 and morphological properties of sources from a segmentation map.  If

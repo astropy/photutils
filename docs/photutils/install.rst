@@ -20,19 +20,26 @@ photutils from source, unless you are installing a numbered release
 Some functionality is available only if the following optional
 dependencies are installed:
 
-* `Scipy <http://www.scipy.org/>`_: To power a variety of features
-  including background estimation, source detection, source
-  segmentation properties, and fitting.
+* `Scipy`_: To power a variety of features including background
+  estimation, source detection, source segmentation properties, and
+  fitting.
 
-* `scikit-image <http://scikit-image.org/>`_:  To power a variety of
-  features including source detection and source morphological
-  properties.
+* `scikit-image`_:  To power a variety of features including source
+  detection and source morphological properties.
 
 * `matplotlib <http://matplotlib.org/>`_:  For plotting functions.
 
-However, note that these packages need to be installed only if those
-particular features are needed.  Photutils will import even if these
-dependencies are not installed.
+.. warning::
+
+    While photutils will import even if these dependencies are not
+    installed, the functionality will be severely limited.  It is very
+    strongly recommended that you install `Scipy`_ and `scikit-image`_
+    to use photutils.  Both are easy installed via `pip`_ or `conda`_.
+
+.. _Scipy: http://www.scipy.org/
+.. _scikit-image: http://scikit-image.org/
+.. _pip: https://pip.pypa.io/en/latest/
+.. _conda: http://conda.pydata.org/docs/
 
 
 Installing Photutils using pip
@@ -72,8 +79,6 @@ To install the current photutils **development** version using
 
     Do **not** install photutils or other third-party packages using
     ``sudo`` unless you are fully aware of the risks.
-
-.. _pip: https://pip.pypa.io/en/latest/
 
 
 .. _sourceinstall:

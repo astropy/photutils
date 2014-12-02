@@ -1,11 +1,6 @@
 Source Morphological Properties
 ===============================
 
-.. warning::
-    `scikit-image`_ is required for some functionality.
-
-.. _scikit-image: http://scikit-image.org/
-
 
 `photutils.morphology` provides functions to estimate morphological
 properties and the centroid of a source.  The

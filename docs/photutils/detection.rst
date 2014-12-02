@@ -1,11 +1,6 @@
 Source Detection and Extraction
 ===============================
 
-.. warning::
-    `scikit-image`_ is required for some functionality.
-
-.. _scikit-image: http://scikit-image.org/
-
 
 Introduction
 ------------
