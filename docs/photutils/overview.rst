@@ -55,8 +55,8 @@ to doing:
 
 .. doctest-skip::
 
-  >>> from astropy.io import fits
-  >>> hdu = fits.open('dataset.fits')[0]
+    >>> from astropy.io import fits
+    >>> hdu = fits.open('dataset.fits')[0]
 
 where the ``[0]`` accesses the first HDU in the FITS file.
 

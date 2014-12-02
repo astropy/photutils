@@ -25,7 +25,7 @@ transformation.
 Users can also create their own custom apertures (see
 :ref:`custom-apertures`).
 
-  .. _creating-aperture-objects:
+.. _creating-aperture-objects:
 
 Creating Aperture Objects
 -------------------------
@@ -36,11 +36,11 @@ list of positions) and parameters that define its size and possibly,
 orientation (e.g., an elliptical aperture).
 
 We start with an example of creating a circular aperture in pixel
-coordinates using the :class:`~photutils.CircularAperture` class:
+coordinates using the :class:`~photutils.CircularAperture` class::
 
-  >>> from photutils import CircularAperture
-  >>> positions = [(30., 30.), (40., 40.)]
-  >>> apertures = CircularAperture(positions, r=3.)
+    >>> from photutils import CircularAperture
+    >>> positions = [(30., 30.), (40., 40.)]
+    >>> apertures = CircularAperture(positions, r=3.)
 
 The positions should be either a single tuple of ``(x, y)``, a list of
 ``(x, y)`` tuples, or an array with shape ``Nx2``, where ``N`` is the
@@ -52,14 +52,14 @@ Creating an aperture object in celestial coordinates is similar.  One
 first uses the :class:`~astropy.coordinates.SkyCoord` class to define
 celestial coordinates and then the
 :class:`~photutils.SkyCircularAperture` class to define the aperture
-object:
+object::
 
-  >>> from astropy import units as u
-  >>> from astropy.coordinates import SkyCoord
-  >>> from photutils import SkyCircularAperture
-  >>> positions = SkyCoord(l=[1.2, 2.3] * u.deg, b=[0.1, 0.2] * u.deg,
-  ...                      frame='galactic')
-  >>> apertures = SkyCircularAperture(positions, r=4. * u.arcsec)
+    >>> from astropy import units as u
+    >>> from astropy.coordinates import SkyCoord
+    >>> from photutils import SkyCircularAperture
+    >>> positions = SkyCoord(l=[1.2, 2.3] * u.deg, b=[0.1, 0.2] * u.deg,
+    ...                      frame='galactic')
+    >>> apertures = SkyCircularAperture(positions, r=4. * u.arcsec)
 
 .. note::
     At this time, apertures are not defined completely in celestial
@@ -81,7 +81,7 @@ We start by defining the apertures as described above:
     >>> apertures = CircularAperture(positions, r=3.)
 
 and then we call the :func:`~photutils.aperture_photometry` function
-with the data and the apertures:
+with the data and the apertures::
 
     >>> import numpy as np
     >>> from photutils import aperture_photometry
@@ -99,7 +99,7 @@ This function returns the results of the photometry in an Astropy
 named ``'aperture_sum'``, ``'xcenter'``, and ``'ycenter'``.
 
 Since all the data values are 1.0, the aperture sums are equal to the
-area of a circle with a radius of 3:
+area of a circle with a radius of 3::
 
     >>> print np.pi * 3. ** 2
     28.2743338823
@@ -118,7 +118,7 @@ pixels are divided into a number of subpixels, which are in or out of
 the aperture based on their centers.
 
 This example uses the ``'subpixel'`` method where pixels are resampled
-by a factor of 5 in each dimension:
+by a factor of 5 in each dimension::
 
     >>> phot_table = aperture_photometry(data, apertures,
     ...                                  method='subpixel', subpixels=5)
@@ -149,60 +149,60 @@ at each position, one may loop over different aperture size and
 orientation parameters.
 
 Suppose that we wish to use three circular apertures, with radii of 3,
-4, and 5 pixels, on each source:
+4, and 5 pixels, on each source::
 
-  >>> radii = [3., 4., 5.]
-  >>> flux = []
-  >>> for radius in radii:
-  ...     flux.append(aperture_photometry(data, CircularAperture(positions, radius)))
+    >>> radii = [3., 4., 5.]
+    >>> flux = []
+    >>> for radius in radii:
+    ...     flux.append(aperture_photometry(data, CircularAperture(positions, radius)))
 
 We now have three separate tables containing the photometry results,
 one for each aperture.  One may use `~astropy.table.hstack` to stack
-them into one `~astropy.table.Table`:
+them into one `~astropy.table.Table`::
 
-  >>> from astropy.table import hstack
-  >>> phot_table = hstack(flux)
-  >>> print phot_table['aperture_sum_1', 'aperture_sum_2', 'aperture_sum_3']    # doctest: +FLOAT_CMP
-  aperture_sum_1 aperture_sum_2 aperture_sum_3
-  <BLANKLINE>
-  -------------- -------------- --------------
-   28.2743338823  50.2654824574  78.5398163397
-   28.2743338823  50.2654824574  78.5398163397
+    >>> from astropy.table import hstack
+    >>> phot_table = hstack(flux)
+    >>> print phot_table['aperture_sum_1', 'aperture_sum_2', 'aperture_sum_3']    # doctest: +FLOAT_CMP
+    aperture_sum_1 aperture_sum_2 aperture_sum_3
+    <BLANKLINE>
+    -------------- -------------- --------------
+     28.2743338823  50.2654824574  78.5398163397
+     28.2743338823  50.2654824574  78.5398163397
 
 Other apertures have multiple parameters specifying the aperture size
 and orientation.  For example, for elliptical apertures, one must
-specify ``a``, ``b``, and ``theta``:
+specify ``a``, ``b``, and ``theta``::
 
-  >>> from photutils import EllipticalAperture
-  >>> a = 5.
-  >>> b = 3.
-  >>> theta = np.pi / 4.
-  >>> apertures = EllipticalAperture(positions, a, b, theta)
-  >>> phot_table = aperture_photometry(data, apertures)
-  >>> print phot_table['aperture_sum']   # doctest: +FLOAT_CMP
-  aperture_sum
-  <BLANKLINE>
-  -------------
-  47.1238898038
-  47.1238898038
+    >>> from photutils import EllipticalAperture
+    >>> a = 5.
+    >>> b = 3.
+    >>> theta = np.pi / 4.
+    >>> apertures = EllipticalAperture(positions, a, b, theta)
+    >>> phot_table = aperture_photometry(data, apertures)
+    >>> print phot_table['aperture_sum']   # doctest: +FLOAT_CMP
+    aperture_sum
+    <BLANKLINE>
+    -------------
+    47.1238898038
+    47.1238898038
 
-Again, for multiple apertures one should loop over them:
+Again, for multiple apertures one should loop over them::
 
- >>> a = [5., 6., 7., 8.]
- >>> b = [3., 4., 5., 6.]
- >>> theta = np.pi / 4.
- >>> flux = []
- >>> for index in range(len(a)):
- ...     flux.append(aperture_photometry(
- ...         data, EllipticalAperture(positions, a[index], b[index], theta)))
- >>> phot_table = hstack(flux)
- >>> print phot_table['aperture_sum_1', 'aperture_sum_2',
- ...                  'aperture_sum_3', 'aperture_sum_4']   # doctest: +FLOAT_CMP
- aperture_sum_1 aperture_sum_2 aperture_sum_3 aperture_sum_4
- <BLANKLINE>
- -------------- -------------- -------------- --------------
-  47.1238898038  75.3982236862  109.955742876  150.796447372
-  47.1238898038  75.3982236862  109.955742876  150.796447372
+    >>> a = [5., 6., 7., 8.]
+    >>> b = [3., 4., 5., 6.]
+    >>> theta = np.pi / 4.
+    >>> flux = []
+    >>> for index in range(len(a)):
+    ...     flux.append(aperture_photometry(
+    ...         data, EllipticalAperture(positions, a[index], b[index], theta)))
+    >>> phot_table = hstack(flux)
+    >>> print phot_table['aperture_sum_1', 'aperture_sum_2',
+    ...                  'aperture_sum_3', 'aperture_sum_4']   # doctest: +FLOAT_CMP
+    aperture_sum_1 aperture_sum_2 aperture_sum_3 aperture_sum_4
+    <BLANKLINE>
+    -------------- -------------- -------------- --------------
+     47.1238898038  75.3982236862  109.955742876  150.796447372
+     47.1238898038  75.3982236862  109.955742876  150.796447372
 
 Background Subtraction
 ----------------------
@@ -214,7 +214,7 @@ Global Background Subtraction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If ``bkg`` is an array representing the background level of the data
-(determined in an external function), simply do:
+(determined in an external function), simply do::
 
     >>> phot_table = aperture_photometry(data - bkg, apertures)  # doctest: +SKIP
 
@@ -224,13 +224,13 @@ Local Background Subtraction
 Suppose we want to perform the photometry in a circular aperture with
 a radius of 3 pixels and estimate the local background level around
 each source with a circular annulus of inner radius 6 pixels and outer
-radius 8 pixels.  We start by defining the apertures:
+radius 8 pixels.  We start by defining the apertures::
 
     >>> from photutils import CircularAnnulus
     >>> apertures = CircularAperture(positions, r=3)
     >>> annulus_apertures = CircularAnnulus(positions, r_in=6., r_out=8.)
 
-We then compute the apertures sums and combine the two tables:
+We then compute the apertures sums and combine the two tables::
 
     >>> rawflux_table = aperture_photometry(data, apertures)
     >>> bkgflux_table = aperture_photometry(data, annulus_apertures)
@@ -239,7 +239,7 @@ We then compute the apertures sums and combine the two tables:
 To calculate the mean local background, we need to divide the circular
 annulus aperture sums by the area of the circular annulus.  The
 background sum within the circular aperture is then the mean local
-background times the circular aperture area:
+background times the circular aperture area::
 
     >>> aperture_area = np.pi * 3 ** 2
     >>> annulus_area = np.pi * (8 ** 2 - 6 ** 2)
@@ -265,16 +265,16 @@ If and only if the ``error`` keyword is input to
 with ``'aperture_sum'``.
 
 For example, suppose we have previously calculated the error on each
-pixel's value and saved it in the array ``data_error``:
+pixel's value and saved it in the array ``data_error``::
 
-  >>> data_error = 0.1 * data  # (100 x 100 array)
-  >>> phot_table = aperture_photometry(data, apertures, error=data_error)
-  >>> print phot_table   # doctest: +FLOAT_CMP
-     aperture_sum aperture_sum_err xcenter ycenter
-                                     pix     pix
-    ------------- ---------------- ------- -------
-    28.2743338823   0.531736155272    30.0    30.0
-    28.2743338823   0.531736155272    40.0    40.0
+    >>> data_error = 0.1 * data  # (100 x 100 array)
+    >>> phot_table = aperture_photometry(data, apertures, error=data_error)
+    >>> print phot_table   # doctest: +FLOAT_CMP
+       aperture_sum aperture_sum_err xcenter ycenter
+                                       pix     pix
+      ------------- ---------------- ------- -------
+      28.2743338823   0.531736155272    30.0    30.0
+      28.2743338823   0.531736155272    40.0    40.0
 
 ``'aperture_sum_err'`` values are given by
 
@@ -292,18 +292,18 @@ pixels.  In such a case, we wish to explicitly include Poisson noise
 from the sources.  Specifying the ``effective_gain`` keyword does
 this.  For example, suppose we have a function ``background()`` that
 calculates the position-dependent background level and variance of our
-data:
+data::
 
-  >>> effective_gain = 1.5
-  >>> sky_level, sky_sigma = background(data)  # function returns two arrays   # doctest: +SKIP
-  >>> phot_table = aperture_photometry(data - sky_level, positions, apertures,
-  ...                                  error=sky_sigma,
-  ...                                  effective_gain=effective_gain)   # doctest: +SKIP
+    >>> effective_gain = 1.5
+    >>> sky_level, sky_sigma = background(data)  # function returns two arrays   # doctest: +SKIP
+    >>> phot_table = aperture_photometry(data - sky_level, positions, apertures,
+    ...                                  error=sky_sigma,
+    ...                                  effective_gain=effective_gain)   # doctest: +SKIP
 
 In this case, and indeed whenever ``effective_gain`` is not `None`, then
 ``'aperture_sum_err'`` is given by
 
-  .. math:: \Delta F = \sqrt{\sum_{i \in A} (\sigma_i^2 + f_i / g_i)}
+.. math:: \Delta F = \sqrt{\sum_{i \in A} (\sigma_i^2 + f_i / g_i)}
 
 where :math:`f_i` is the value of the data (``data - sky_level`` in
 this case) at each pixel and :math:`g_i` is the value of the
@@ -331,26 +331,26 @@ Pixel Masking
 -------------
 
 Pixels can be ignored/excluded (e.g., bad pixels) from the aperture
-photometry by providing an image mask via the ``mask`` keyword:
+photometry by providing an image mask via the ``mask`` keyword::
 
-  >>> data = np.ones((5, 5))
-  >>> aperture = CircularAperture((2, 2), 2.)
-  >>> mask = np.zeros_like(data, dtype=bool)
-  >>> data[2, 2] = 100.   # bad pixel
-  >>> mask[2, 2] = True
-  >>> t1 = aperture_photometry(data, aperture, mask=mask)
-  >>> print t1['aperture_sum']
-   aperture_sum
-  -------------
-  11.5663706144
+    >>> data = np.ones((5, 5))
+    >>> aperture = CircularAperture((2, 2), 2.)
+    >>> mask = np.zeros_like(data, dtype=bool)
+    >>> data[2, 2] = 100.   # bad pixel
+    >>> mask[2, 2] = True
+    >>> t1 = aperture_photometry(data, aperture, mask=mask)
+    >>> print t1['aperture_sum']
+     aperture_sum
+    -------------
+    11.5663706144
 
-The result is much different if a ``mask`` image is not provided:
+The result is much different if a ``mask`` image is not provided::
 
-  >>> t2 = aperture_photometry(data, aperture)
-  >>> print t2['aperture_sum']
-   aperture_sum
-  -------------
-  111.566370614
+    >>> t2 = aperture_photometry(data, aperture)
+    >>> print t2['aperture_sum']
+     aperture_sum
+    -------------
+    111.566370614
 
 Aperture Photometry Using Sky Coordinates
 -----------------------------------------
@@ -362,20 +362,20 @@ requires defining a 'sky' aperture using a
 example of photometry on real data in celestial coordinates.
 
 We start by loading a Spitzer 4.5 micron image of a region of the
-Galactic plane:
+Galactic plane::
 
->>> from photutils import datasets
->>> hdu = datasets.load_spitzer_image()   # doctest: +REMOTE_DATA
->>> catalog = datasets.load_spitzer_catalog()   # doctest: +REMOTE_DATA
+    >>> from photutils import datasets
+    >>> hdu = datasets.load_spitzer_image()   # doctest: +REMOTE_DATA
+    >>> catalog = datasets.load_spitzer_catalog()   # doctest: +REMOTE_DATA
 
 The catalog contains (among other things) the Galactic coordinates of
 the sources in the image as well as the PSF-fitted fluxes from the
 official Spitzer data reduction.  We define the apertures positions
-based on the existing catalog positions:
+based on the existing catalog positions::
 
->>> positions = SkyCoord(catalog['l'], catalog['b'], frame='galactic')   # doctest: +REMOTE_DATA
->>> apertures = SkyCircularAperture(positions, r=4.8 * u.arcsec)   # doctest: +REMOTE_DATA
->>> phot_table = aperture_photometry(hdu, apertures)    # doctest: +REMOTE_DATA
+    >>> positions = SkyCoord(catalog['l'], catalog['b'], frame='galactic')   # doctest: +REMOTE_DATA
+    >>> apertures = SkyCircularAperture(positions, r=4.8 * u.arcsec)   # doctest: +REMOTE_DATA
+    >>> phot_table = aperture_photometry(hdu, apertures)    # doctest: +REMOTE_DATA
 
 The ``hdu`` object is a FITS HDU that contains, in addition to the
 data, a header describing the WCS of the image (including the
@@ -390,20 +390,20 @@ while the data are in units of MJy/sr, so we have to do the conversion
 before comparing the results.  The image data has a pixel scale of 1.2
 arcsec / pixel.
 
->>> import astropy.units as u
->>> factor = (1.2 * u.arcsec) ** 2 / u.pixel
->>> fluxes_catalog = catalog['f4_5']   # doctest: +REMOTE_DATA
->>> converted_aperture_sum = (phot_table['aperture_sum'] *
-...                           factor).to(u.mJy / u.pixel)   # doctest: +REMOTE_DATA
+    >>> import astropy.units as u
+    >>> factor = (1.2 * u.arcsec) ** 2 / u.pixel
+    >>> fluxes_catalog = catalog['f4_5']   # doctest: +REMOTE_DATA
+    >>> converted_aperture_sum = (phot_table['aperture_sum'] *
+    ...                           factor).to(u.mJy / u.pixel)   # doctest: +REMOTE_DATA
 
 Finally, we can plot the comparison:
 
 .. doctest-skip::
 
-  >>> import matplotlib.pylab as plt
-  >>> plt.scatter(fluxes_catalog, converted_aperture_sum.value)
-  >>> plt.xlabel('Spitzer catalog fluxes ')
-  >>> plt.ylabel('Aperture photometry fluxes')
+    >>> import matplotlib.pylab as plt
+    >>> plt.scatter(fluxes_catalog, converted_aperture_sum.value)
+    >>> plt.xlabel('Spitzer catalog fluxes ')
+    >>> plt.ylabel('Aperture photometry fluxes')
 
 .. plot::
 
@@ -439,7 +439,7 @@ aperture with a radius of 4.8 arcsec.  The Spitzer catalog fluxes were
 computed using PSF photometry.  Therefore, differences are expected
 between the two measurements.
 
-  .. _custom-apertures:
+.. _custom-apertures:
 
 Defining Your Own Custom Apertures
 ----------------------------------

@@ -177,10 +177,12 @@ Testing an installed Photutils
 ==============================
 
 The easiest way to test your installed version of photutils is running
-correctly is to use the :func:`photutils.test()` function::
+correctly is to use the :func:`photutils.test()` function:
 
-    import photutils
-    photutils.test()
+.. doctest-skip::
+
+    >>> import photutils
+    >>> photutils.test()
 
 The tests should run and print out any failures, which you can report
 at the `Photutils issue tracker
