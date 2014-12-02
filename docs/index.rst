@@ -30,6 +30,13 @@ reports, comments, and help with development are very welcome.
   photutils/getting_started.rst
 
 
+.. note::
+
+  photutils is still under development and has not seen widespread use
+  yet.  We will change its API if we find that something can be
+  improved.
+
+
 User Documentation
 ==================
 
