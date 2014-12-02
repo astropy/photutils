@@ -1,10 +1,11 @@
 
+.. the "raw" directive below is used to hide the title in favor of
+   just the logo being visible
 .. raw:: html
 
-  <style media="screen" type="text/css">
-    h1 {display:none;}
-    th {display:none;}
-  </style>
+    <style media="screen" type="text/css">
+      h1 {display:none;}
+    </style>
 
 *********
 Photutils
@@ -23,18 +24,17 @@ sources.  It is an open source (BSD licensed) Python package.  Bug
 reports, comments, and help with development are very welcome.
 
 .. toctree::
-  :maxdepth: 2
+    :maxdepth: 2
 
-  photutils/install.rst
-  photutils/overview.rst
-  photutils/getting_started.rst
-
+    photutils/install.rst
+    photutils/overview.rst
+    photutils/getting_started.rst
 
 .. note::
 
-  photutils is still under development and has not seen widespread use
-  yet.  We will change its API if we find that something can be
-  improved.
+    photutils is still under development and has not seen widespread
+    use yet.  We will change its API if we find that something can be
+    improved.
 
 
 User Documentation
@@ -52,12 +52,7 @@ User Documentation
     photutils/geometry.rst
     photutils/datasets.rst
     photutils/utils.rst
-
-
-.. toctree::
-  :maxdepth: 1
-
-  high-level_API.rst
+    photutils/high-level_API.rst
 
 
 Reporting Issues
@@ -96,10 +91,10 @@ Photutils follows the same workflow and coding guidelines as
 contributing fixes, code, or documentation (no git or GitHub
 experience necessary):
 
-  * `How to make a code contribution <http://astropy.readthedocs.org/en/stable/development/workflow/development_workflow.html>`_
+* `How to make a code contribution <http://astropy.readthedocs.org/en/stable/development/workflow/development_workflow.html>`_
 
-  * `Coding Guidelines <http://docs.astropy.org/en/latest/development/codeguide.html>`_
+* `Coding Guidelines <http://docs.astropy.org/en/latest/development/codeguide.html>`_
 
-  * `Try the development version <http://astropy.readthedocs.org/en/stable/development/workflow/get_devel_version.html>`_
+* `Try the development version <http://astropy.readthedocs.org/en/stable/development/workflow/get_devel_version.html>`_
 
-  * `Developer Documentation <http://docs.astropy.org/en/latest/#developer-documentation>`_
+* `Developer Documentation <http://docs.astropy.org/en/latest/#developer-documentation>`_
