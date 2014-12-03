@@ -315,8 +315,6 @@ class Background(object):
         if self.padded:
             y0, x0 = self.data_shape
             bkg = bkg[0:y0, 0:x0]
-        if self.mask is not None:
-            bkg[self.mask] = 0.
         return bkg
 
     @lazyproperty
@@ -331,8 +329,6 @@ class Background(object):
         if self.padded:
             y0, x0 = self.data_shape
             bkgrms = bkgrms[0:y0, 0:x0]
-        if self.mask is not None:
-            bkgrms[self.mask] = 0.
         return bkgrms
 
     @lazyproperty

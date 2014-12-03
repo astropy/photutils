@@ -71,12 +71,12 @@ class TestBackground(object):
 
     @pytest.mark.parametrize('box_shape', ([(25, 25), (22, 22)]))
     def test_background_mask(self, box_shape):
+        data = np.copy(DATA)
+        data[25:50, 25:50] = 100.
         mask = np.zeros_like(DATA, dtype=np.bool)
-        mask[0:50, :] = True
-        b = Background(DATA, box_shape, (1, 1), mask=mask)
-        maskdata = np.copy(DATA)
-        maskdata[0:50, :] = 0.0
-        assert_allclose(b.background, maskdata)
+        mask[25:50, 25:50] = True
+        b = Background(data, box_shape, (1, 1), mask=mask)
+        assert_allclose(b.background, DATA)
         assert_allclose(b.background_rms, BKG_RMS)
 
     def test_filter_threshold(self):
