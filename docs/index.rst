@@ -43,10 +43,10 @@ User Documentation
 .. toctree::
     :maxdepth: 1
 
-    photutils/aperture.rst
-    photutils/psf.rst
     photutils/background.rst
     photutils/detection.rst
+    photutils/aperture.rst
+    photutils/psf.rst
     photutils/segmentation.rst
     photutils/morphology.rst
     photutils/geometry.rst
