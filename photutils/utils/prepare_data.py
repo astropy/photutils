@@ -60,8 +60,6 @@ def calculate_total_error(data, error, effective_gain):
                                'or u.photon).'.format(datagain_unit))
 
     if not isiterable(effective_gain):
-        # NOTE: np.broadcast_arrays() never returns a Quantity
-        # effective_gain = np.broadcast_arrays(effective_gain, data)[0]
         effective_gain = np.zeros(data.shape) + effective_gain
     else:
         if effective_gain.shape != data.shape:
@@ -106,8 +104,6 @@ def subtract_background(data, background):
     """
 
     if not isiterable(background):
-        # NOTE: np.broadcast_arrays() never returns a Quantity
-        # background = np.broadcast_arrays(background, data)[0]
         background = np.zeros(data.shape) + background
     else:
         if background.shape != data.shape:

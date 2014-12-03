@@ -84,14 +84,14 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
         data_mean, data_median, data_std = sigmaclip_stats(
             data, mask=mask, mask_val=mask_val, sigma=sigclip_sigma,
             iters=sigclip_iters)
-        bkgrd_image = np.broadcast_arrays(data_mean, data)[0]
-        bkgrdrms_image = np.broadcast_arrays(data_std, data)[0]
+        bkgrd_image = np.zeros_like(data) + data_mean
+        bkgrdrms_image = np.zeros_like(data) + data_std
 
     if background is None:
         background = bkgrd_image
     else:
         if np.isscalar(background):
-            background = np.broadcast_arrays(background, data)[0]
+            background = np.zeros_like(data) + background
         else:
             if background.shape != data.shape:
                 raise ValueError('If input background is 2D, then it '
@@ -102,7 +102,7 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
         error = bkgrdrms_image
     else:
         if np.isscalar(error):
-            error = np.broadcast_arrays(error, data)[0]
+            error = np.zeros_like(data) + error
         else:
             if error.shape != data.shape:
                 raise ValueError('If input error is 2D, then it '
