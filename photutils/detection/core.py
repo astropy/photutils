@@ -82,7 +82,7 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
 
     if background is None or error is None:
         data_mean, data_median, data_std = sigmaclip_stats(
-            data, image_mask=mask, mask_val=mask_val, sigma=sigclip_sigma,
+            data, mask=mask, mask_val=mask_val, sigma=sigclip_sigma,
             iters=sigclip_iters)
         bkgrd_image = np.broadcast_arrays(data_mean, data)[0]
         bkgrdrms_image = np.broadcast_arrays(data_std, data)[0]
