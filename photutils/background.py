@@ -82,8 +82,8 @@ class Background(object):
             The function to compute the background in each mesh.  Must
             be a callable that takes in a 3D `~numpy.ma.MaskedArray` of
             size ``MxNxZ``, where the ``Z`` axis (axis=2) contains the
-            pixels in each background mesh, and outputs a 2D
-            `~numpy.ndarray` low-resolution background map of size
+            sigma-clipped pixels in each background mesh, and outputs a
+            2D `~numpy.ndarray` low-resolution background map of size
             ``MxN``.  ``backfunc`` is used only if ``method='custom'``.
 
         sigclip_sigma : float, optional
@@ -143,6 +143,7 @@ class Background(object):
         Pad a data array on the right and top.  Used only for numpy 1.6,
         where np.pad is not available.
         """
+
         ny, nx = data.shape
         shape = (ny + ypad, nx + xpad)
         padded_data = np.ones(shape) * value
@@ -193,6 +194,7 @@ class Background(object):
         Perform sigma clipping on the data in regions of size
         ``box_shape``.
         """
+
         ny, nx = data_ma.shape
         ny_box, nx_box = self.box_shape
         y_nbins = int(ny / ny_box)   # always integer because data were padded
@@ -206,11 +208,12 @@ class Background(object):
             iters=self.sigclip_iters, cenfunc=np.ma.median, varfunc=np.ma.var)
         del data_rebin
 
-    def _filter_meshes(self, mesh):
+    def _filter_meshes(self, data_lores):
         """
-        Apply a 2d median filter to the background meshes, including
-        only pixels inside the image at the borders.
+        Apply a 2d median filter to the low-resolution background map,
+        including only pixels inside the image at the borders.
         """
+
         from scipy.ndimage import generic_filter
         try:
             nanmedian_func = np.nanmedian    # numpy >= 1.9
@@ -219,34 +222,38 @@ class Background(object):
             nanmedian_func = nanmedian
 
         if self.filter_threshold is None:
-            return generic_filter(mesh, nanmedian_func,
+            return generic_filter(data_lores, nanmedian_func,
                                   size=self.filter_shape, mode='constant',
                                   cval=np.nan)
         else:
-            mesh_out = np.copy(mesh)
-            for i, j in zip(*np.nonzero(mesh > self.filter_threshold)):
+            data_out = np.copy(data_lores)
+            for i, j in zip(*np.nonzero(data_lores > self.filter_threshold)):
                 yfs, xfs = self.filter_shape
                 hyfs, hxfs = yfs // 2, xfs // 2
-                y0, y1 = max(i - hyfs, 0), min(i - hyfs + yfs, mesh.shape[0])
-                x0, x1 = max(j - hxfs, 0), min(j - hxfs + xfs, mesh.shape[1])
-                mesh_out[i, j] = np.median(mesh[y0:y1, x0:x1])
-            return mesh_out
+                y0, y1 = max(i - hyfs, 0), min(i - hyfs + yfs,
+                                               data_lores.shape[0])
+                x0, x1 = max(j - hxfs, 0), min(j - hxfs + xfs,
+                                               data_lores.shape[1])
+                data_out[i, j] = np.median(data_lores[y0:y1, x0:x1])
+            return data_out
 
-    def _resize_meshes(self, mesh):
+    def _resize_meshes(self, data_lores):
         """
-        Resize the background meshes to the original data size using
-        bicubic interpolation.
+        Resize the low-resolution background meshes to the original data
+        size using bicubic interpolation.
         """
-        if np.min(mesh) == np.max(mesh):    # constant image (or only 1 mesh)
-            return np.zeros(self.data_shape) + np.min(mesh)
+
+        if np.min(data_lores) == np.max(data_lores):
+            # constant image (or only 1 mesh)
+            return np.zeros(self.data_shape) + np.min(data_lores)
         else:
             from scipy.ndimage import zoom
-            zoom_factor = (int(self.data_ma_shape[0] / mesh.shape[0]),
-                           int(self.data_ma_shape[1] / mesh.shape[1]))
-            return zoom(mesh, zoom_factor, order=3, mode='reflect')
+            zoom_factor = (int(self.data_ma_shape[0] / data_lores.shape[0]),
+                           int(self.data_ma_shape[1] / data_lores.shape[1]))
+            return zoom(data_lores, zoom_factor, order=3, mode='reflect')
 
     @lazyproperty
-    def background_mesh(self):
+    def background_lores(self):
         """
         A 2D `~numpy.ndarray` containing the background estimate in each
         of the meshes of size ``box_shape``.
@@ -254,40 +261,41 @@ class Background(object):
         This low-resolution background map is equivalent to the
         low-resolution "MINIBACKGROUND" background map in `SExtractor`_.
         """
+
         if self.method == 'mean':
-            bkg_mesh = np.ma.mean(self.data_sigclip, axis=2)
+            bkg_lores = np.ma.mean(self.data_sigclip, axis=2)
         elif self.method == 'median':
-            bkg_mesh = np.ma.median(self.data_sigclip, axis=2)
+            bkg_lores = np.ma.median(self.data_sigclip, axis=2)
         elif self.method == 'sextractor':
             box_mean = np.ma.mean(self.data_sigclip, axis=2)
             box_median = np.ma.median(self.data_sigclip, axis=2)
             box_std = np.ma.std(self.data_sigclip, axis=2)
             condition = (np.abs(box_mean - box_median) / box_std) < 0.3
             bkg_est = (2.5 * box_median) - (1.5 * box_mean)
-            bkg_mesh = np.ma.where(condition, bkg_est, box_median)
-            bkg_mesh = np.ma.where(box_std == 0, box_mean, bkg_mesh)
+            bkg_lores = np.ma.where(condition, bkg_est, box_median)
+            bkg_lores = np.ma.where(box_std == 0, box_mean, bkg_lores)
         elif self.method == 'mode_estimate':
-            bkg_mesh = (3. * np.ma.median(self.data_sigclip, axis=2) -
+            bkg_lores = (3. * np.ma.median(self.data_sigclip, axis=2) -
                         2. * np.ma.mean(self.data_sigclip, axis=2))
         elif self.method == 'custom':
-            bkg_mesh = self.backfunc(self.data_sigclip)
-            if not isinstance(bkg_mesh, np.ndarray):   # np.ma will pass
+            bkg_lores = self.backfunc(self.data_sigclip)
+            if not isinstance(bkg_lores, np.ndarray):   # np.ma will pass
                 raise ValueError('"backfunc" must return a numpy.ndarray.')
-            if isinstance(bkg_mesh, np.ma.MaskedArray):
+            if isinstance(bkg_lores, np.ma.MaskedArray):
                 raise ValueError('"backfunc" must return a numpy.ndarray.')
-            if bkg_mesh.shape != (self.data_sigclip.shape[0],
+            if bkg_lores.shape != (self.data_sigclip.shape[0],
                                   self.data_sigclip.shape[1]):
                 raise ValueError('The shape of the array returned by '
                                  '"backfunc" is not correct.')
         if self.method != 'custom':
-            bkg_mesh = np.ma.filled(bkg_mesh,
-                                    fill_value=np.ma.median(bkg_mesh))
+            bkg_lores = np.ma.filled(bkg_lores,
+                                    fill_value=np.ma.median(bkg_lores))
         if self.filter_shape != (1, 1):
-            bkg_mesh = self._filter_meshes(bkg_mesh)
-        return bkg_mesh
+            bkg_lores = self._filter_meshes(bkg_lores)
+        return bkg_lores
 
     @lazyproperty
-    def background_rms_mesh(self):
+    def background_rms_lores(self):
         """
         A 2D `~numpy.ndarray` containing the background rms estimate in
         each of the meshes of size ``box_shape``.
@@ -296,12 +304,13 @@ class Background(object):
         low-resolution "MINIBACK_RMS" background rms map in
         `SExtractor`_.
         """
-        bkgrms_mesh = np.ma.std(self.data_sigclip, axis=2)
-        bkgrms_mesh = np.ma.filled(bkgrms_mesh,
-                                   fill_value=np.ma.median(bkgrms_mesh))
+
+        bkgrms_lores = np.ma.std(self.data_sigclip, axis=2)
+        bkgrms_lores = np.ma.filled(bkgrms_lores,
+                                   fill_value=np.ma.median(bkgrms_lores))
         if self.filter_shape != (1, 1):
-            bkgrms_mesh = self._filter_meshes(bkgrms_mesh)
-        return bkgrms_mesh
+            bkgrms_lores = self._filter_meshes(bkgrms_lores)
+        return bkgrms_lores
 
     @lazyproperty
     def background(self):
@@ -311,7 +320,8 @@ class Background(object):
         This is equivalent to the low-resolution "BACKGROUND" background
         map in `SExtractor`_.
         """
-        bkg = self._resize_meshes(self.background_mesh)
+
+        bkg = self._resize_meshes(self.background_lores)
         if self.padded:
             y0, x0 = self.data_shape
             bkg = bkg[0:y0, 0:x0]
@@ -325,7 +335,8 @@ class Background(object):
         This is equivalent to the low-resolution "BACKGROUND_RMS"
         background rms map in `SExtractor`_.
         """
-        bkgrms = self._resize_meshes(self.background_rms_mesh)
+
+        bkgrms = self._resize_meshes(self.background_rms_lores)
         if self.padded:
             y0, x0 = self.data_shape
             bkgrms = bkgrms[0:y0, 0:x0]
@@ -334,19 +345,21 @@ class Background(object):
     @lazyproperty
     def background_median(self):
         """
-        The median value of all the background meshes.
+        The median value of the low-resolution background map.
 
         This is equivalent to the value `SExtractor`_ prints to stdout
         (i.e., "(M+D) Background: <value>").
         """
-        return np.median(self.background_mesh)
+
+        return np.median(self.background_lores)
 
     @lazyproperty
     def background_rms_median(self):
         """
-        The median value of all the background rms meshes.
+        The median value of the low-resolution background rms map.
 
         This is equivalent to the value `SExtractor`_ prints to stdout
         (i.e., "(M+D) RMS: <value>").
         """
-        return np.median(self.background_rms_mesh)
+
+        return np.median(self.background_rms_lores)
