@@ -29,7 +29,8 @@ class Background(object):
 
     def __init__(self, data, box_shape, filter_shape=(3, 3),
                  filter_threshold=None, mask=None, method='sextractor',
-                 backfunc=None, sigclip_sigma=3., sigclip_iters=10):
+                 backfunc=None, interp_order=3, sigclip_sigma=3.,
+                 sigclip_iters=10):
         """
         Parameters
         ----------
@@ -86,6 +87,12 @@ class Background(object):
             2D `~numpy.ndarray` low-resolution background map of size
             ``MxN``.  ``backfunc`` is used only if ``method='custom'``.
 
+        interp_order : int, optional
+            The order of the spline interpolation used to resize the
+            low-resolution background and background rms maps.  The
+            value must be an integer in the range 0-5.  The default is 3
+            (bicubic interpolation).
+
         sigclip_sigma : float, optional
             The number of standard deviations to use as the clipping limit
             when calculating the image background statistics.
@@ -123,6 +130,7 @@ class Background(object):
         self.mask = mask
         self.method = method
         self.backfunc = backfunc
+        self.interp_order = interp_order
         self.sigclip_sigma = sigclip_sigma
         self.sigclip_iters = sigclip_iters
         self.yextra = data.shape[0] % box_shape[0]
@@ -250,7 +258,8 @@ class Background(object):
             from scipy.ndimage import zoom
             zoom_factor = (int(self.data_ma_shape[0] / data_lores.shape[0]),
                            int(self.data_ma_shape[1] / data_lores.shape[1]))
-            return zoom(data_lores, zoom_factor, order=3, mode='reflect')
+            return zoom(data_lores, zoom_factor, order=self.interp_order,
+                        mode='reflect')
 
     @lazyproperty
     def background_lores(self):
