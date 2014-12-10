@@ -22,12 +22,13 @@ def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
     """
     Detect stars in an image using the DAOFIND algorithm.
 
-    `DAOFIND`_ searches images for local density maxima that have a peak
-    amplitude greater than ``threshold`` (approximately; ``threshold``
-    is applied to a convolved image) and have a size and shape similar
-    to the defined 2D Gaussian kernel.  The Gaussian kernel is defined
-    by the ``fwhm``, ``ratio``, ``theta``, and ``sigma_radius`` input
-    parameters.
+    `DAOFIND`_ (`Stetson 1987; PASP 99, 191
+    <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_) searches
+    images for local density maxima that have a peak amplitude greater
+    than ``threshold`` (approximately; ``threshold`` is applied to a
+    convolved image) and have a size and shape similar to the defined 2D
+    Gaussian kernel.  The Gaussian kernel is defined by the ``fwhm``,
+    ``ratio``, ``theta``, and ``sigma_radius`` input parameters.
 
     .. _DAOFIND: http://iraf.net/irafhelp.php?val=daofind&help=Help+Page
 
@@ -138,8 +139,10 @@ def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
 
     References
     ----------
-    .. [1] http://iraf.net/irafhelp.php?val=daofind&help=Help+Page
-    .. [2] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
+
+    .. [1] Stetson, P. 1987; PASP 99, 191 (http://adsabs.harvard.edu/abs/1987PASP...99..191S)
+    .. [2] http://iraf.net/irafhelp.php?val=daofind&help=Help+Page
+    .. [3] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
     """
 
     daofind_kernel = _FindObjKernel(fwhm, ratio, theta, sigma_radius)
