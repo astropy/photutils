@@ -6,7 +6,7 @@ Aperture Photometry
 Introduction
 ------------
 
-In `photutils`, the :func:`~photutils.aperture_photometry` function is
+In photutils, the :func:`~photutils.aperture_photometry` function is
 the main tool to perform aperture photometry on an astronomical image
 for a given set of apertures.  The aperture shapes that are currently
 provided are:
@@ -213,8 +213,9 @@ background-subtracted.
 Global Background Subtraction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If ``bkg`` is an array representing the background level of the data
-(determined in an external function), simply do::
+If ``bkg`` is an array representing the background of the data
+(determined by `~photutils.background.Background` or an external
+function), simply do::
 
     >>> phot_table = aperture_photometry(data - bkg, apertures)  # doctest: +SKIP
 
