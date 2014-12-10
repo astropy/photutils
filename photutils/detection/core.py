@@ -262,11 +262,8 @@ def find_peaks(data, threshold, min_separation=2, exclude_border=True,
     data : array_like
         The 2D array of the image.
 
-    threshold : float or array-like
-        The data value or pixel-wise data values to be used for the
-        detection threshold.  A 2D ``threshold`` must have the same
-        shape as ``data``.  See `detect_threshold` for one way to create
-        a ``threshold`` image.
+    threshold : float
+        The data value to be used for the detection threshold.
 
     min_separation : int, optional
         Minimum number of pixels separating peaks (i.e., peaks are
