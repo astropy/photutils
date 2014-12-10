@@ -7,6 +7,12 @@ PSF Photometry
     `~numpy.ndarray` objects for the ``data`` parameters, but they may
     be changed to accept `astropy.nddata` objects.
 
+For a demonstration of current PSF photometry capabilities please see
+this `IPython notebook
+<http://nbviewer.ipython.org/github/astropy/photutils-datasets/blob/master/notebooks/PSFPhotometrySpitzer.ipynb>`_,
+which can also be downloaded from `photutils-datasets
+<https://github.com/astropy/photutils-datasets>`_.
+
 
 Reference/API
 -------------
