@@ -38,7 +38,7 @@ class SegmentProperties(object):
 
         segment_image : array_like (int)
             A 2D segmentation image, with the same shape as ``data``,
-            where sources are marked by different positive integer
+            where sources are labeled by different positive integer
             values.  A value of zero is reserved for the background.
 
         label : int
@@ -937,7 +937,7 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
 
     segment_image : array_like (int)
         A 2D segmentation image, with the same shape as ``data``, where
-        sources are marked by different positive integer values.  A
+        sources are labeled by different positive integer values.  A
         value of zero is reserved for the background.
 
     error : array_like or `~astropy.units.Quantity`, optional
@@ -1284,7 +1284,7 @@ def relabel_sequential(segment_image, start_label=1):
     Parameters
     ----------
     segment_image : array_like (int)
-        A 2D segmentation image where sources are marked by different
+        A 2D segmentation image where sources are labeled by different
         positive integer values.  A value of zero is reserved for the
         background.
 
@@ -1329,7 +1329,7 @@ def relabel_segments(segment_image, labels, new_label):
     Parameters
     ----------
     segment_image : array_like (int)
-        A 2D segmentation image where sources are marked by different
+        A 2D segmentation image where sources are labeled by different
         positive integer values.  A value of zero is reserved for the
         background.
 
@@ -1370,7 +1370,7 @@ def remove_segments(segment_image, labels, relabel=False):
     Parameters
     ----------
     segment_image : array_like (int)
-        A 2D segmentation image where sources are marked by different
+        A 2D segmentation image where sources are labeled by different
         positive integer values.  A value of zero is reserved for the
         background.
 
@@ -1413,7 +1413,7 @@ def remove_border_segments(segment_image, border_width, partial_overlap=True,
     Parameters
     ----------
     segment_image : array_like (int)
-        A 2D segmentation image where sources are marked by different
+        A 2D segmentation image where sources are labeled by different
         positive integer values.  A value of zero is reserved for the
         background.
 
@@ -1479,7 +1479,7 @@ def remove_masked_segments(segment_image, mask, partial_overlap=True,
     Parameters
     ----------
     segment_image : array_like (int)
-        A 2D segmentation image where sources are marked by different
+        A 2D segmentation image where sources are labeled by different
         positive integer values.  A value of zero is reserved for the
         background.
 
