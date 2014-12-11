@@ -102,6 +102,8 @@ Let's plot the image and mark the location of detected sources::
     apertures.plot(color='blue', lw=1.5, alpha=0.5)
 
 
+.. _source_extraction:
+
 Source Extraction Using Image Segmentation
 ------------------------------------------
 
@@ -111,7 +113,7 @@ every pixel in an image such that pixels with the same label are part
 of the same source.  The segmentation procedure implemented in
 photutils is called the threshold method, where detected sources must
 have a minimum number of connected pixels that are each greater than a
-specified threhold value in an image.  The threshold is usually
+specified threshold value in an image.  The threshold is usually
 defined at some multiple of the background standard deviation (sigma)
 above the background.  The image can also be filtered before
 thresholding to smooth the noise and maximize the detectability of
@@ -194,6 +196,11 @@ image showing the detected sources::
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     ax2.imshow(segm, origin='lower', cmap='jet')
 
+
+When the segmentation image is generated using image thresholding
+(e.g., using `~photutils.detect_sources`), the source segments
+effectively represent the isophotal footprint of each source.
+
 Note that overlapping sources are detected as single sources.
 Separating those sources requires a deblending procedure, such as a
 multi-thresholding technique used by `SExtractor
@@ -202,9 +209,9 @@ yet provide a tool to deblend overlapping sources, but it will likely
 incorporate elements of `sep`_, which uses the SExtractor deblending
 algorithm.  In the meantime, `sep`_ can be used to deblend sources.
 
-To calculate photometry and morphological properties of sources from a
-segmentation map, please see `Segmentation Photometry and Properties
-<segmentation.html>`_.
+To calculate the centroids, photometry, and morphological properties
+of sources from a segmentation map, please see `Segmentation
+Photometry and Properties <segmentation.html>`_.
 
 
 Local Peak Detection

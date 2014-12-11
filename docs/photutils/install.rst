@@ -42,7 +42,7 @@ dependencies are installed:
 .. _conda: http://conda.pydata.org/docs/
 
 
-Installing Photutils using pip
+Installing Photutils Using pip
 ==============================
 
 To install the latest photutils **stable** version with `pip`_, simply
@@ -83,7 +83,7 @@ To install the current photutils **development** version using
 
 .. _sourceinstall:
 
-Installing Photutils from source
+Installing Photutils from Source
 ================================
 
 Prerequisites
@@ -119,16 +119,16 @@ not require Cython.)
     Apple developer account).
 
 
-Obtaining the source package
+Obtaining the Source Package
 ----------------------------
 
-Stable version
+Stable Version
 ^^^^^^^^^^^^^^
 
 The latest stable source package for photutils can be `downloaded here
 <https://pypi.python.org/pypi/photutils>`_.
 
-Development version
+Development Version
 ^^^^^^^^^^^^^^^^^^^
 
 The latest development version of photutils can be cloned from github
@@ -160,7 +160,7 @@ To install photutils (from the root of the source tree)::
 
 .. _sourcebuildtest:
 
-Testing a source code build of Photutils
+Testing a Source-Code Build of Photutils
 ----------------------------------------
 
 The easiest way to test that your photutils built correctly (without
@@ -173,7 +173,7 @@ See the Astropy documentation for alternative methods of
 :ref:`running-tests`.
 
 
-Testing an installed Photutils
+Testing an Installed Photutils
 ==============================
 
 The easiest way to test your installed version of photutils is running

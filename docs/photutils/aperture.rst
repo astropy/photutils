@@ -256,6 +256,9 @@ background times the circular aperture area::
 The result here should be zero because all of the data values are 1.0
 (the small difference from 0.0 is due to numerical precision).
 
+
+.. _error_estimation:
+
 Error Estimation
 ----------------
 

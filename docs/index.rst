@@ -14,7 +14,7 @@ Photutils
 .. image:: _static/photutils_banner-475x120.png
 
 
-Photutils at a glance
+Photutils at a Glance
 =====================
 
 **Photutils** is an in-development `affiliated package

@@ -92,8 +92,8 @@ larger than the true value of 2::
     2.1443728009
 
 
-Sigma-Clipped Statisics
-^^^^^^^^^^^^^^^^^^^^^^^
+Sigma-Clipped Statistics
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 The most widely used technique to remove the sources from the image
 statistics is called sigma clipping.  Briefly, pixels that are above
@@ -277,7 +277,7 @@ setting ``method='custom'`` and inputing a custom function to the
 and outputs a 2D `~numpy.ndarray` low-resolution background map of
 size ``MxN``.
 
-We demonstate this capability using a custom function that is simply
+We demonstrate this capability using a custom function that is simply
 the median of the sigma-clipped data in each mesh (this is the same
 calculation used by ``method='median'``).  We start by defining the
 custom function::
