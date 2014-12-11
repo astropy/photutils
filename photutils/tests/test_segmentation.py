@@ -228,7 +228,7 @@ class TestSegmentPropertiesFunction(object):
         assert_allclose(props[0].segment_sum_err, true_error)
 
     def test_negative_data(self, background=5):
-        props = segment_properties(IMAGE, SEGM, background=background)
+        props = segment_properties(IMAGE - background, SEGM)
         proplist = ['semimajor_axis_sigma', 'semiminor_axis_sigma',
                     'eccentricity', 'orientation', 'ellipticity',
                     'elongation', 'cxx', 'cxy', 'cyy']

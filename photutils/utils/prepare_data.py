@@ -9,8 +9,7 @@ import warnings
 from astropy.utils.exceptions import AstropyUserWarning
 
 
-__all__ = ['calculate_total_error', 'subtract_background',
-           'interpolate_masked_data']
+__all__ = ['calculate_total_error', 'interpolate_masked_data']
 
 
 def calculate_total_error(data, error, effective_gain):
@@ -77,39 +76,6 @@ def calculate_total_error(data, error, effective_gain):
         source_variance = np.maximum(data / effective_gain, 0)
         variance_total = error**2 + source_variance
     return np.sqrt(variance_total)
-
-
-def subtract_background(data, background):
-    """
-    Subtract background from data and generate a 2D pixel-wise
-    background image.
-
-    Parameters
-    ----------
-    data : array_like or `~astropy.units.Quantity`
-        The 2D data array from which to subtract ``background``.
-
-    background : float, array_like, or `~astropy.units.Quantity`
-        The background level of the input ``data``.  ``background`` may
-        either be a scalar value or a 2D image with the same shape as
-        the input ``data``.
-
-    Returns
-    -------
-    data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
-        The background subtracted data.
-
-    background : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
-        The pixel-wise background array.
-    """
-
-    if not isiterable(background):
-        background = np.zeros(data.shape) + background
-    else:
-        if background.shape != data.shape:
-            raise ValueError('If input background is 2D, then it must '
-                             'have the same shape as the input data.')
-    return (data - background), background
 
 
 def interpolate_masked_data(data, mask, error=None, background=None):
@@ -213,9 +179,9 @@ def _prepare_data(data, error=None, effective_gain=None, background=None):
     If ``effective_gain`` is input, then the total error array including
     source Poisson noise is calculated.
 
-    If ``background`` is input, it is subtracted from ``data``.
-    ``background`` is always returned as a 2D array with the same shape
-    as ``data``.
+    If ``background`` is input, then it is returned as a 2D array with
+    the same shape as ``data`` (if necessary).  It is *not* subtracted
+    from the input ``data``.
 
     Notes
     -----
@@ -230,15 +196,19 @@ def _prepare_data(data, error=None, effective_gain=None, background=None):
     inputs = [data, error, background]
     _check_units(inputs)
 
-    # SExtractor subtracts background before calculating total variance
+    # generate a 2D background array, if necessary
     if background is not None:
-        data, background = subtract_background(data, background)
+        if not isiterable(background):
+            background = np.zeros(data.shape) + background
+        else:
+            if background.shape != data.shape:
+                raise ValueError('If input background is 2D, then it must '
+                                 'have the same shape as the input data.')
 
     if error is not None:
         if data.shape != error.shape:
             raise ValueError('data and error must have the same shape')
         if effective_gain is not None:
-            # data here should include the background
             error = calculate_total_error(data, error, effective_gain)
 
     return data, error, background

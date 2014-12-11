@@ -986,9 +986,10 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     Parameters
     ----------
     data : array_like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
-        The 2-d array on which to perform photometry. Units are used during
-        the photometry, either provided along with the data array, or stored
-        in the header keyword ``'BUNIT'``.
+        The 2-d array on which to perform photometry. ``data`` should be
+        background-subtracted.  Units are used during the photometry,
+        either provided along with the data array, or stored in the
+        header keyword ``'BUNIT'``.
     apertures : `~photutils.Aperture` instance
         The apertures to use for the photometry.
     unit : `~astropy.units.UnitBase` instance, str

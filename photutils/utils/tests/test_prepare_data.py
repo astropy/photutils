@@ -4,8 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
-from .. import (calculate_total_error, subtract_background,
-                interpolate_masked_data)
+from .. import calculate_total_error, interpolate_masked_data
 
 SHAPE = (5, 5)
 DATAVAL = 2.
@@ -44,22 +43,6 @@ class TestCalculateTotalError(object):
         error_tot = calculate_total_error(DATA, error=ERROR,
                                           effective_gain=EFFGAIN)
         assert_allclose(error_tot, np.sqrt(2.) * ERROR)
-
-
-class TestSubtractBackground(object):
-    def test_background_shape(self):
-        with pytest.raises(ValueError):
-            subtract_background(DATA, WRONG_SHAPE)
-
-    def test_background_scalar(self):
-        data, background = subtract_background(DATA, 1.)
-        assert_allclose(data, DATA - 1.)
-        assert_allclose(background, BACKGROUND)
-
-    def test_background_array(self):
-        data, background = subtract_background(DATA, BACKGROUND)
-        assert_allclose(data, DATA - 1.)
-        assert_allclose(background, BACKGROUND)
 
 
 class TestInterpolateMaskedData(object):

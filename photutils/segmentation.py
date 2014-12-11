@@ -34,6 +34,7 @@ class SegmentProperties(object):
         data : array_like or `~astropy.units.Quantity`
             The 2D array from which to calculate the source photometry
             and properties (only if ``filtered_data`` is not input).
+            ``data`` should be background-subtracted.
 
         segment_image : array_like (int)
             A 2D segmentation image, with the same shape as ``data``,
@@ -73,11 +74,14 @@ class SegmentProperties(object):
             is masked.  Masked data are excluded from all calculations.
 
         background : float, array_like, or `~astropy.units.Quantity`, optional
-            The background level of the input ``data``.  ``background``
-            may either be a scalar value or a 2D image with the same
-            shape as the input ``data``.  If the input ``data`` has been
-            background-subtracted, then set ``background`` to `None`
-            (the default) or ``0.``.
+            The background level that was previously present in the
+            input ``data``.  ``background`` may either be a scalar value
+            or a 2D image with the same shape as the input ``data``.
+            Inputting the ``background`` merely allows for its
+            properties to be measured within each source segment.  The
+            input ``background`` does *not* get subtracted from the
+            input ``data``, which should already be
+            background-subtracted.
 
         wcs : `~astropy.wcs.WCS`
             The WCS transformation to use.  If `None`, then
@@ -96,13 +100,11 @@ class SegmentProperties(object):
             image.
 
         data_prepared : bool, optional
-            If `True`, then the input ``data`` is assumed to have
-            already been background-subtracted, ``error`` is assumed to
-            represent the total (background and source) error
-            (``effective_gain`` will be ignored), and ``background`` is
-            assumed to be a 2D image.  This dramatically improves speed
-            if you are calculating the properties of many segments from
-            the same data.
+            If `True`, then ``error`` is assumed to represent the total
+            (background and source) error (``effective_gain`` will be
+            ignored) and ``background`` is assumed to be a 2D image.
+            This dramatically improves speed if you are calculating the
+            properties of many segments from the same data.
 
         Notes
         -----
@@ -118,8 +120,8 @@ class SegmentProperties(object):
         the source segment, then the morphological parameters based on
         image moments will be unreliable.  This could occur, for
         example, if the segmentation image was defined from a different
-        image (e.g., different bandpass) or if ``background`` is set
-        incorrectly (e.g., too high).  `segment_sum` is not adversely
+        image (e.g., different bandpass) or if the subtracted background
+        was incorrectly too high.  `segment_sum` is not adversely
         affected by negative (background-subtracted) data values.
         `segment_sum_err` is adversely affected only if
         ``effective_gain`` is used (see below).
@@ -132,8 +134,8 @@ class SegmentProperties(object):
         .. math:: \\sigma_{\\mathrm{tot}} = \\sqrt{\\sigma_{\\mathrm{b}}^2 +
                       \\frac{(I - B)}{g}}
 
-        where :math:`\sigma_b`, :math:`I`, :math:`B`, and :math:`g` are
-        the background ``error`` image, ``data`` image, ``background``
+        where :math:`\sigma_b`, :math:`(I - B)`, and :math:`g` are the
+        background ``error`` image, the background-subtracted ``data``
         image, and ``effective_gain``, respectively.
 
         Pixels where :math:`(I_i - B_i)` is negative do not contribute
@@ -202,13 +204,14 @@ class SegmentProperties(object):
             data, error, background = _prepare_data(
                 data, error=error, effective_gain=effective_gain,
                 background=background)
-        self._data = data       # background subtracted
+
+        self._data = data    # background subtracted
         if filtered_data is None:
             self._filtered_data = data    # background subtracted
         else:
             self._filtered_data = filtered_data    # bkgrd sub, then filtered
-        self._error = error     # total error
-        self._background = background    # 2D error array
+        self._error = error    # total error from _prepare_data
+        self._background = background    # 2D error array from _prepare_data
         self._mask = mask
         self._wcs = wcs
 
@@ -847,8 +850,8 @@ class SegmentProperties(object):
 
         .. math:: F = \\sum_{i \\in S} (I_i - B_i)
 
-        where :math:`F` is ``segment_sum``, :math:`I_i` is the ``data``,
-        :math:`B_i` is the ``background``, and :math:`S` are the
+        where :math:`F` is ``segment_sum``, :math:`(I_i - B_i)` is the
+        background-subtracted input ``data``, and :math:`S` are the
         non-masked pixels in the source segment.
         """
         return np.sum(np.ma.masked_array(self._data[self._slice],
@@ -920,7 +923,7 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
     ----------
     data : array_like or `~astropy.units.Quantity`
         The 2D array from which to calculate the source photometry and
-        properties.
+        properties.  ``data`` should be background-subtracted.
 
     segment_image : array_like (int)
         A 2D segmentation image, with the same shape as ``data``, where
@@ -949,12 +952,14 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
         value indicates the corresponding element of ``data`` is masked.
         Masked data are excluded from all calculations.
 
-    background : float, array-like, or `~astropy.units.Quantity`, optional
-        The background level of the input ``data``.  ``background`` may
-        either be a scalar value or a 2D image with the same shape as
-        the input ``data``.  If the input ``data`` has been
-        background-subtracted, then set ``background`` to `None` (the
-        default).
+    background : float, array_like, or `~astropy.units.Quantity`, optional
+        The background level that was previously present in the input
+        ``data``.  ``background`` may either be a scalar value or a 2D
+        image with the same shape as the input ``data``.  Inputting the
+        ``background`` merely allows for its properties to be measured
+        within each source segment.  The input ``background`` does *not*
+        get subtracted from the input ``data``, which should already be
+        background-subtracted.
 
     filter_kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
         The 2D array of the kernel used to filter the data prior to
@@ -1009,9 +1014,9 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
     .. math:: \\sigma_{\\mathrm{tot}} = \\sqrt{\\sigma_{\\mathrm{b}}^2 +
                   \\frac{(I - B)}{g}}
 
-    where :math:`\sigma_b`, :math:`I`, :math:`B`, and :math:`g` are the
-    background ``error`` image, ``data`` image, ``background`` image,
-    and ``effective_gain``, respectively.
+    where :math:`\sigma_b`, :math:`(I - B)`, and :math:`g` are the
+    background ``error`` image, the background-subtracted ``data``
+    image, and ``effective_gain``, respectively.
 
     Pixels where :math:`(I_i - B_i)` is negative do not contribute
     additional Poisson noise to the total error, i.e.
