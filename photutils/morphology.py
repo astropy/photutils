@@ -1,4 +1,8 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Functions for centroiding sources and measuring their morphological
+properties.
+"""
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
@@ -166,7 +170,7 @@ def centroid_1dg(data, error=None, mask=None):
         x = np.arange(mdata.size)
         g_fit = fitter(g_init, x, mdata, weights=mweights)
         centroid.append(g_fit.mean.value)
-    return centroid
+    return tuple(centroid)
 
 
 def centroid_2dg(data, error=None, mask=None):
