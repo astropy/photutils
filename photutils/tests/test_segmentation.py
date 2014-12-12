@@ -227,13 +227,11 @@ class TestSegmentPropertiesFunction(object):
                                   error_value)**2)
         assert_allclose(props[0].segment_sum_err, true_error)
 
-    def test_negative_data(self, background=5):
-        props = segment_properties(IMAGE - background, SEGM)
-        proplist = ['semimajor_axis_sigma', 'semiminor_axis_sigma',
-                    'eccentricity', 'orientation', 'ellipticity',
-                    'elongation', 'cxx', 'cxy', 'cyy']
-        assert_allclose(props[0].xcentroid, XCEN, rtol=1.e-2)
-        assert_allclose(props[0].ycentroid, YCEN, rtol=1.e-2)
+    def test_data_allzero(self):
+        props = segment_properties(IMAGE*0., SEGM)
+        proplist = ['xcentroid', 'ycentroid', 'semimajor_axis_sigma',
+                    'semiminor_axis_sigma', 'eccentricity', 'orientation',
+                    'ellipticity', 'elongation', 'cxx', 'cxy', 'cyy']
         for prop in proplist:
             assert np.isnan(getattr(props[0], prop))
 

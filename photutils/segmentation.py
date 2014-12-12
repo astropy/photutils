@@ -116,15 +116,14 @@ class SegmentProperties(object):
         ``filtered_data`` is `None`, then the unfiltered ``data`` will
         be used for the source centroid and morphological parameters.
 
-        If there are negative (background-subtracted) data values within
-        the source segment, then the morphological parameters based on
-        image moments will be unreliable.  This could occur, for
-        example, if the segmentation image was defined from a different
-        image (e.g., different bandpass) or if the subtracted background
-        was incorrectly too high.  `segment_sum` is not adversely
-        affected by negative (background-subtracted) data values.
-        `segment_sum_err` is adversely affected only if
-        ``effective_gain`` is used (see below).
+        Negative (background-subtracted) data values within the source
+        segment are set to zero when measuring morphological properties
+        based on image moments.  This could occur, for example, if the
+        segmentation image was defined from a different image (e.g.,
+        different bandpass) or if the subtracted background was
+        incorrectly too high.  `segment_sum` is not affected by negative
+        (background-subtracted) data values.  `segment_sum_err` is
+        affected only if ``effective_gain`` is used (see below).
 
         If ``effective_gain`` is input, then ``error`` should include
         all sources of "background" error but *exclude* the Poisson
@@ -335,13 +334,15 @@ class SegmentProperties(object):
         """
         A 2D cutout from the (background-subtracted, filtered) data,
         where pixels outside of the source segment and masked pixels are
-        set to zero.  The cutout image is double precision, which is
-        required for scikit-image's Cython moment functions.
+        set to zero.  Negative data values are also set to zero because
+        negative pixels (especially at large radii) can result in image
+        moments that result in negative variances.  The cutout image is
+        double precision, which is required for scikit-image's Cython
+        moment functions.
         """
-        # NOTE: negative data values (e.g. at large radii) can result in
-        # image moments that give negative variances(!)
-        return (self.make_cutout(self._filtered_data, masked_array=False) *
-                ~self._local_mask).astype(np.float64)
+        cutout = self.make_cutout(self._filtered_data, masked_array=False)
+        cutout = np.where(cutout > 0, cutout, 0.)    # negative pixels -> 0
+        return (cutout * ~self._local_mask).astype(np.float64)
 
     @lazyproperty
     def error_cutout_ma(self):
@@ -414,9 +415,12 @@ class SegmentProperties(object):
         the centroid within the source segment.
         """
         m = self.moments
-        ycentroid = m[0, 1] / m[0, 0]
-        xcentroid = m[1, 0] / m[0, 0]
-        return (ycentroid, xcentroid) * u.pix
+        if m[0, 0] != 0:
+            ycentroid = m[0, 1] / m[0, 0]
+            xcentroid = m[1, 0] / m[0, 0]
+            return (ycentroid, xcentroid) * u.pix
+        else:
+            return (np.nan, np.nan) * u.pix
 
     @lazyproperty
     def centroid(self):
@@ -642,10 +646,13 @@ class SegmentProperties(object):
         same second-order moments as the source segment.
         """
         mu = self.moments_central
-        m = mu / mu[0, 0]
-        covariance = self._check_covariance(
-            np.array([[m[2, 0], m[1, 1]], [m[1, 1], m[0, 2]]]))
-        return covariance * u.pix**2
+        if mu[0, 0] != 0:
+            m = mu / mu[0, 0]
+            covariance = self._check_covariance(
+                np.array([[m[2, 0], m[1, 1]], [m[1, 1], m[0, 2]]]))
+            return covariance * u.pix**2
+        else:
+            return np.empty((2, 2)) * np.nan * u.pix**2
 
     @staticmethod
     def _check_covariance(covariance):
@@ -672,10 +679,13 @@ class SegmentProperties(object):
         The two eigenvalues of the `covariance` matrix in decreasing
         order.
         """
-        eigvals = np.linalg.eigvals(self.covariance)
-        if np.any(eigvals < 0):    # negative variance
+        if not np.isnan(np.sum(self.covariance)):
+            eigvals = np.linalg.eigvals(self.covariance)
+            if np.any(eigvals < 0):    # negative variance
+                return (np.nan, np.nan) * u.pix**2
+            return (np.max(eigvals), np.min(eigvals)) * u.pix**2
+        else:
             return (np.nan, np.nan) * u.pix**2
-        return (np.max(eigvals), np.min(eigvals)) * u.pix**2
 
     @lazyproperty
     def semimajor_axis_sigma(self):
@@ -996,15 +1006,15 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
     then the unfiltered ``data`` will be used for the source centroid
     and morphological parameters.
 
-    If there are negative (background-subtracted) data values within the
-    source segment, then the morphological parameters based on image
-    moments will be unreliable.  This could occur, for example, if the
+    Negative (background-subtracted) data values within the source
+    segment are set to zero when measuring morphological properties
+    based on image moments.  This could occur, for example, if the
     segmentation image was defined from a different image (e.g.,
-    different bandpass) or if ``background`` is set incorrectly (e.g.,
-    too high).  `~photutils.SegmentProperties.segment_sum` is not
-    adversely affected by negative (background-subtracted) data values.
-    `~photutils.SegmentProperties.segment_sum_err` is adversely affected
-    only if ``effective_gain`` is used (see below).
+    different bandpass) or if the subtracted background was incorrectly
+    too high.  `~photutils.SegmentProperties.segment_sum` is not
+    affected by negative (background-subtracted) data values.
+    `~photutils.SegmentProperties.segment_sum_err` is affected only if
+    ``effective_gain`` is used (see below).
 
     If ``effective_gain`` is input, then ``error`` should include all
     sources of "background" error but *exclude* the Poisson error of the
