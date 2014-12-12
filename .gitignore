@@ -42,6 +42,8 @@ distribute-*.tar.gz
 .project
 .pydevproject
 .settings
+.idea
+
 
 # Mac OSX
 .DS_Store

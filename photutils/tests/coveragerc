@@ -9,6 +9,7 @@ omit =
     photutils/*setup*
     photutils/*tests/*
     photutils/version*
+    photutils/extern/*
 
 [report]
 exclude_lines =
