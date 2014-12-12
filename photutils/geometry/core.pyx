@@ -336,7 +336,7 @@ cdef double overlap_area_triangle_unit_circle(double x1, double y1, double x2, d
                 area = area_triangle(x1, y1, pt3.x, pt3.y, pt4.x, pt4.y) \
                      + area_arc_unit(pt3.x, pt3.y, pt4.x, pt4.y)
         else:
-            if fabs(pt2.x - x2) < fabs(pt1.x - x2):
+            if (pt2.x - x2)**2 + (pt2.y - y2)**2 < (pt1.x - x2)**2 + (pt1.y - y2)**2:
                 pt1, pt2 = pt2, pt1
             area = area_triangle(x1, y1, pt3.x, pt3.y, pt1.x, pt1.y) \
                  + area_triangle(x1, y1, pt1.x, pt1.y, pt2.x, pt2.y) \

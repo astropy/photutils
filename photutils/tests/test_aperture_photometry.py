@@ -511,3 +511,22 @@ def test_aperture_photometry_inputs_with_mask():
     assert_allclose(t1['aperture_sum'][0], 11.5663706144)
     t2 = aperture_photometry(data, aperture)
     assert_allclose(t2['aperture_sum'][0], 111.566370614)
+
+
+def test_ellipse_exact_grid():
+    """
+    Test elliptical exact aperture photometry on a grid of pixel positions.
+
+    This is a regression test for the bug discovered in this issue:
+    https://github.com/astropy/photutils/issues/198
+    """
+    data = np.ones((10, 10))
+    x = 3.469906
+    y = 3.923861394
+    r = 3.
+
+    aperture = EllipticalAperture((x, y), r, r, 0.)
+    t = aperture_photometry(data, aperture, method='exact')
+    actual = t['aperture_sum'][0]
+    expected = np.pi * r ** 2
+    assert_allclose(actual, expected)
