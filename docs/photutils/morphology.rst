@@ -5,7 +5,7 @@ Centroiding a Source
 --------------------
 
 `photutils.morphology` provides several functions to calculate the
-centroid of a single source.  They centroid methods are:
+centroid of a single source.  The centroid methods are:
 
 * :func:`~photutils.morphology.centroid_com`: Calculates the object
   center of mass from 2D image moments.
@@ -23,7 +23,10 @@ fits.
 
 Let's extract a single object from a synthetic dataset and find its
 centroid with each of these methods.  For this simple example we will
-not subtract the background from the data::
+not subtract the background from the data (but in practice, one should
+subtract the background):
+
+.. doctest-requires:: skimage
 
     >>> from photutils.datasets import make_4gaussians_image
     >>> from photutils.morphology import (centroid_com, centroid_1dg,
@@ -31,18 +34,20 @@ not subtract the background from the data::
 
     >>> data = make_4gaussians_image()[43:79, 76:104]
     >>> x1, y1 = centroid_com(data)
-    >>> print(x1, y1)
+    >>> print(x1, y1)    # doctest: +FLOAT_CMP
     (13.93157998341213, 17.051234441067088)
 
     >>> x2, y2 = centroid_1dg(data)
-    >>> print(x2, y2)
+    >>> print(x2, y2)    # doctest: +FLOAT_CMP
     (14.035151484100131, 16.967749965238156)
 
     >>> x3, y3 = centroid_2dg(data)
-    >>> print(x2, y3)
+    >>> print(x3, y3)    # doctest: +FLOAT_CMP
     (14.001611728763866, 16.997270194115686)
 
-Now let's plot the results::
+Now let's plot the results:
+
+.. doctest-skip::
 
     >>> import matplotlib.pyplot as plt
     >>> plt.imshow(data, origin='lower', cmap='Greys_r')
@@ -88,12 +93,14 @@ added in the future.
 If you have a segmentation image, the
 :func:`~photutils.segmentation.segment_properties` function can be
 used to calculate the properties for all (or a specified subset) of
-the segmented sources.  Please see `photutils.segmentation` for more
-details.
+the segmented sources.  Please see `Source Photometry and Properties
+from Image Segmentation <segmentation.html>`_ for more details.
 
 As an example, let's calculate the properties of the source defined
 above.  For this example, we will subtract the background using simple
-sigma-clipped statistics::
+sigma-clipped statistics:
+
+.. doctest-requires:: scipy, skimage
 
     >>> from photutils.morphology import data_properties
     >>> from photutils.extern.imageutils.stats import sigmaclip_stats
@@ -111,7 +118,9 @@ sigma-clipped statistics::
       1 14.0192015504 16.9885140744 ...         3.7763953673 1.05053207277
 
 Now let's use the measured morphological properties to define an
-approximate isophotal ellipse for the source::
+approximate isophotal ellipse for the source:
+
+.. doctest-skip::
 
     >>> from photutils import properties_table, EllipticalAperture
     >>> position = (props.xcentroid.value, props.ycentroid.value)

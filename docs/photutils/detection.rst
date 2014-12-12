@@ -45,10 +45,10 @@ background noise using sigma-clipped statistics::
 
     >>> from photutils import datasets
     >>> from photutils.extern.imageutils.stats import sigmaclip_stats
-    >>> hdu = datasets.load_star_image()
-    >>> data = hdu.data[0:400, 0:400
-    >>> mean, median, std = sigmaclip_stats(data, sigma=3.0)
-    >>> print(mean, median, std)
+    >>> hdu = datasets.load_star_image()    # doctest: +REMOTE_DATA
+    >>> data = hdu.data[0:400, 0:400    # doctest: +REMOTE_DATA
+    >>> mean, median, std = sigmaclip_stats(data, sigma=3.0)    # doctest: +REMOTE_DATA
+    >>> print(mean, median, std)    # doctest: +REMOTE_DATA
     3649.0 3649.0 203.811360598
 
 Now we will subtract the background and use :func:`~photutils.daofind`
@@ -58,8 +58,8 @@ have peaks approximately 5-sigma above the background:
 .. doctest-requires:: scipy, skimage
 
     >>> from photutils import daofind
-    >>> sources = daofind(data - median, fwhm=3.0, threshold=5.*std)
-    >>> print(sources)
+    >>> sources = daofind(data - median, fwhm=3.0, threshold=5.*std)    # doctest: +REMOTE_DATA
+    >>> print(sources)    # doctest: +REMOTE_DATA
      id   xcentroid     ycentroid   ...  peak       flux           mag
     --- ------------- ------------- ... ------ ------------- ----------------
       1 144.247567164 6.37979042704 ... 6903.0 5.71451872131   -1.89244914961
@@ -74,7 +74,9 @@ have peaks approximately 5-sigma above the background:
     284 315.689448343  398.70251891 ... 6485.0 5.56746265532   -1.86414328153
     285 360.437243037 398.698539555 ... 8079.0 5.27758085314   -1.80608723868
 
-Let's plot the image and mark the location of detected sources::
+Let's plot the image and mark the location of detected sources:
+
+.. doctest-skip::
 
     >>> from photutils import CircularAperture
     >>> from photutils.extern.imageutils.normalization import *
@@ -122,7 +124,9 @@ objects with a shape similar to the filter kernel.
 In photutils, source extraction is performed using the
 :func:`~photutils.detection.core.detect_sources` function.  The
 :func:`~photutils.detection.core.detect_threshold` tool is a
-convenience function to generate a 2D detection threshold image.
+convenience function to generate a 2D detection threshold image using
+simple sigma-clipped statistics to estimate the background and
+background rms.
 
 For this example, let's detect sources in a synthetic image provided
 by the `datasets <datasets.html>`_ module::
@@ -146,7 +150,7 @@ and background-only error image (e.g., from your data reduction or by
 using `~photutils.background.Background`).  In that case, a 3-sigma
 threshold image is simply::
 
-    >>> threshold = bkg + (3.0 * bkg_rms)
+    >>> threshold = bkg + (3.0 * bkg_rms)    # doctest: +SKIP
 
 Note that if the threshold includes the background level (as above),
 then the image input into `~photutils.detection.core.detect_sources`
@@ -158,10 +162,13 @@ Because the threshold returned by
 `~photutils.detection.core.detect_threshold` includes the background,
 we do not subtract the background from the data here.  We will also
 input a 2D circular Gaussian kernel with a FWHM of 2 pixels to filter
-the image prior to thresholding::
+the image prior to thresholding:
+
+.. doctest-requires:: scipy
 
     >>> from astropy.convolution import Gaussian2DKernel
     >>> from photutils import detect_sources
+    >>> import numpy as np
     >>> sigma = 2.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))   # FWHM = 2 pix
     >>> kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     >>> segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
@@ -170,7 +177,9 @@ The result is a 2D segmentation image (or sometimes called a "labeled"
 image) with the same shape as the data, where sources are labeled by
 different positive integer values.  A value of zero is always reserved
 for the background.  Let's plot both the image and the segmentation
-image showing the detected sources::
+image showing the detected sources:
+
+.. doctest-skip::
 
     >>> from photutils.extern.imageutils.normalization import *
     >>> import matplotlib.pylab as plt
@@ -221,6 +230,8 @@ Photutils also includes a :func:`~photutils.detection.core.find_peaks`
 function to find local peaks in an image that are above a specified
 threshold value.  Peaks are the local maxima above a specified
 threshold that separated by a a specified minimum number of pixels.
+The return pixel coordinates are always integer (i.e., no centroiding
+is performed, only the peak pixel is identified).
 `~photutils.detection.core.find_peaks` also supports a number of
 options, including searching for peaks only within a segmentation
 image or a specified footprint.  Please see the
@@ -228,6 +239,8 @@ image or a specified footprint.  Please see the
 
 As simple example, let's find the local peaks in an image that are 10
 sigma above the background and a separated by a least 2 pixels::
+
+.. doctest-requires:: skimage
 
     >>> from photutils.datasets import make_100gaussians_image
     >>> from photutils import find_peaks
@@ -237,7 +250,9 @@ sigma above the background and a separated by a least 2 pixels::
     >>> threshold = median + (10.0 * std)
     >>> peaks = find_peaks(data, threshold, min_separation=2)
 
-And let's plot the location of the detected peaks in the image::
+And let's plot the location of the detected peaks in the image:
+
+.. doctest-skip::
 
     >>> from photutils import CircularAperture
     >>> from photutils.extern.imageutils.normalization import *

@@ -14,7 +14,7 @@ for estimating photometric errors.
 Unfortunately, accurate background and background noise estimation is
 a difficult task.  Further, because astronomical images can cover a
 wide variety of scenes, there is not a single background estimation
-method that will always be applicable.  photutils provides some tools
+method that will always be applicable.  Photutils provides some tools
 for estimating the background and background noise in your data, but
 ultimately you have the flexibility of determining the background most
 appropriate for your data.
@@ -120,7 +120,9 @@ estimating the background and background rms requires an iterative
 procedure.  We start by using the sigma-clipped statistics as the
 first estimate of the background and noise levels for the source
 detection.  Here we use a aggressive 2-sigma detection threshold to
-maximize the source detections::
+maximize the source detections:
+
+.. doctest-requires:: scipy
 
     >>> from astropy.convolution import Gaussian2DKernel
     >>> from photutils.detection import detect_sources
@@ -133,7 +135,9 @@ maximize the source detections::
 
 To ensure that we are completely masking the extended regions of
 detected sources, we can dilate the source mask (NOTE: this requires
-`scipy`_)::
+`scipy`_):
+
+.. doctest-requires:: scipy
 
     >>> from scipy.ndimage import binary_dilation
     >>> selem = np.ones((5, 5))    # dilate using a 5x5 box
@@ -198,23 +202,25 @@ image::
     >>> y, x = np.mgrid[:ny, :nx]
     >>> gradient =  x * y / 2000.
     >>> data2 = data + gradient
-    >>> plt.imshow(data2, origin='lower', cmap='Greys_r')
+    >>> plt.imshow(data2, origin='lower', cmap='Greys_r')    # doctest: +SKIP
 
 .. plot::
 
-    >>> from photutils.datasets import make_100gaussians_image
-    >>> import matplotlib.pylab as plt
-    >>> data = make_100gaussians_image()
-    >>> ny, nx = data.shape
-    >>> y, x = np.mgrid[:ny, :nx]
-    >>> gradient =  x * y / 2000.
-    >>> data2 = data + gradient
-    >>> plt.imshow(data2, origin='lower', cmap='Greys_r')
+    from photutils.datasets import make_100gaussians_image
+    import matplotlib.pylab as plt
+    data = make_100gaussians_image()
+    ny, nx = data.shape
+    y, x = np.mgrid[:ny, :nx]
+    gradient =  x * y / 2000.
+    data2 = data + gradient
+    plt.imshow(data2, origin='lower', cmap='Greys_r')
 
 We start by creating a `~photutils.background.Background` object using
 a box shape of 50x50, a 3x3 median filter, and the "median" background
 method, which estimates the background using the sigma-clipped median
-in each box::
+in each box:
+
+.. doctest-requires:: scipy
 
     >>> from photutils.background import Background
     >>> bkg = Background(data2, (50, 50), filter_shape=(3, 3), method='median')
@@ -225,29 +231,33 @@ low-resolution versions of these maps are the ``background_lores`` and
 ``background_rms_lores`` attributes, respectively.   The global median
 value of the low-resolution background and background rms maps is
 provided with the ``background_median`` and ``background_rms_median``
-attributes, respectively::
+attributes, respectively:
+
+.. doctest-requires:: scipy
 
     >>> print bkg.background_median
     19.2448529312
     >>> print bkg.background_rms_median
     3.09090781196
 
-Let's plot the background map::
+Let's plot the background map:
+
+.. doctest-skip::
 
     >>> plt.imshow(bkg.background, origin='lower', cmap='Greys_r')
 
 .. plot::
 
-    >>> from photutils.datasets import make_100gaussians_image
-    >>> from photutils.background import Background
-    >>> import matplotlib.pylab as plt
-    >>> data = make_100gaussians_image()
-    >>> ny, nx = data.shape
-    >>> y, x = np.mgrid[:ny, :nx]
-    >>> gradient =  x * y / 2000.
-    >>> data2 = data + gradient
-    >>> bkg = Background(data2, (50, 50), filter_shape=(3, 3), method='median')
-    >>> plt.imshow(bkg.background, origin='lower', cmap='Greys_r')
+    from photutils.datasets import make_100gaussians_image
+    from photutils.background import Background
+    import matplotlib.pylab as plt
+    data = make_100gaussians_image()
+    ny, nx = data.shape
+    y, x = np.mgrid[:ny, :nx]
+    gradient =  x * y / 2000.
+    data2 = data + gradient
+    bkg = Background(data2, (50, 50), filter_shape=(3, 3), method='median')
+    plt.imshow(bkg.background, origin='lower', cmap='Greys_r')
 
 
 .. _background_methods:
@@ -287,7 +297,9 @@ custom function::
     ...    return np.ma.filled(z, np.ma.median(z))
 
 Now we can pass the function to the `~photutils.background.Background`
-class::
+class:
+
+.. doctest-requires:: scipy
 
     >>> bkg = Background(data, (50, 50), filter_shape=(3, 3),
     ...                  method='custom', backfunc=myback)
@@ -303,39 +315,41 @@ estimate the background with an iterative procedure.
 
 Additionally, input masks are often necessary if your data array
 includes regions without data coverage (e.g., from a rotated image or
-an image from a mosaic).  Otherwise, the data values in the regions
+an image from a mosaic).  Otherwise the data values in the regions
 without coverage (e.g., usually zeros) will adversely contribute to
 the background statistics.
 
 Let's create such an image (this requires `scipy`_) and plot it:
 
-.. doctest-skip::
+.. doctest-requires:: scipy
 
     >>> from scipy.ndimage.interpolation import rotate
     >>> data3 = rotate(data2, -45.)
-    >>> norm = ImageNormalize(stretch=SqrtStretch())
-    >>> plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm)
+    >>> norm = ImageNormalize(stretch=SqrtStretch())    # doctest: +SKIP
+    >>> plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm)    # doctest: +SKIP
 
 .. plot::
 
-    >>> from photutils.datasets import make_100gaussians_image
-    >>> from scipy.ndimage.interpolation import rotate
-    >>> from photutils.extern.imageutils.normalization import *
-    >>> import matplotlib.pylab as plt
-    >>> data = make_100gaussians_image()
-    >>> ny, nx = data.shape
-    >>> y, x = np.mgrid[:ny, :nx]
-    >>> gradient =  x * y / 2000.
-    >>> data2 = data + gradient
-    >>> data3 = rotate(data2, -45.)
-    >>> norm = ImageNormalize(stretch=SqrtStretch())
-    >>> plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm)
+    from photutils.datasets import make_100gaussians_image
+    from scipy.ndimage.interpolation import rotate
+    from photutils.extern.imageutils.normalization import *
+    import matplotlib.pylab as plt
+    data = make_100gaussians_image()
+    ny, nx = data.shape
+    y, x = np.mgrid[:ny, :nx]
+    gradient =  x * y / 2000.
+    data2 = data + gradient
+    data3 = rotate(data2, -45.)
+    norm = ImageNormalize(stretch=SqrtStretch())
+    plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm)
 
 Now we create a coverage mask and input it into
 `~photutils.background.Background` to exclude the regions where we
 have no data.  For real data, one can usually create a coverage mask
 from a weight or rms image.  For this example we also use a smaller
-box size to help capture the strong gradient in the background::
+box size to help capture the strong gradient in the background:
+
+.. doctest-requires:: scipy
 
     >>> mask = (data3 == 0)
     >>> bkg3 = Background(data3, (25, 25), filter_shape=(3, 3), mask=mask)
@@ -343,54 +357,58 @@ box size to help capture the strong gradient in the background::
 Masks are never applied to the returned background map because the
 input ``mask`` can represent either a coverage mask or a source mask,
 or a combination of both.  We need to manually apply the coverage mask
-to the returned background map::
+to the returned background map:
+
+.. doctest-requires:: scipy
 
     >>> back3 = bkg3.background * mask
-    >>> norm = ImageNormalize(stretch=SqrtStretch())
-    >>> plt.imshow(back3, origin='lower', cmap='Greys_r', norm=norm)
+    >>> norm = ImageNormalize(stretch=SqrtStretch())    # doctest: +SKIP
+    >>> plt.imshow(back3, origin='lower', cmap='Greys_r', norm=norm)    # doctest: +SKIP
 
 .. plot::
 
-    >>> from photutils.datasets import make_100gaussians_image
-    >>> from photutils.background import Background
-    >>> from scipy.ndimage.interpolation import rotate
-    >>> from photutils.extern.imageutils.normalization import *
-    >>> import matplotlib.pylab as plt
-    >>> data = make_100gaussians_image()
-    >>> ny, nx = data.shape
-    >>> y, x = np.mgrid[:ny, :nx]
-    >>> gradient =  x * y / 2000.
-    >>> data2 = data + gradient
-    >>> data3 = rotate(data2, -45.)
-    >>> mask = (data3 == 0)
-    >>> bkg3 = Background(data3, (25, 25), filter_shape=(3, 3), mask=mask)
-    >>> back3 = bkg3.background * ~mask
-    >>> norm = ImageNormalize(stretch=SqrtStretch())
-    >>> plt.imshow(back3, origin='lower', cmap='Greys_r', norm=norm)
+    from photutils.datasets import make_100gaussians_image
+    from photutils.background import Background
+    from scipy.ndimage.interpolation import rotate
+    from photutils.extern.imageutils.normalization import *
+    import matplotlib.pylab as plt
+    data = make_100gaussians_image()
+    ny, nx = data.shape
+    y, x = np.mgrid[:ny, :nx]
+    gradient =  x * y / 2000.
+    data2 = data + gradient
+    data3 = rotate(data2, -45.)
+    mask = (data3 == 0)
+    bkg3 = Background(data3, (25, 25), filter_shape=(3, 3), mask=mask)
+    back3 = bkg3.background * ~mask
+    norm = ImageNormalize(stretch=SqrtStretch())
+    plt.imshow(back3, origin='lower', cmap='Greys_r', norm=norm)
 
-Finally, let's subtract the background from the image and plot it::
+Finally, let's subtract the background from the image and plot it:
+
+.. doctest-skip::
 
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> plt.imshow(data3 - back3, origin='lower', cmap='Greys_r', norm=norm)
 
 .. plot::
 
-    >>> from photutils.datasets import make_100gaussians_image
-    >>> from photutils.background import Background
-    >>> from scipy.ndimage.interpolation import rotate
-    >>> import matplotlib.pylab as plt
-    >>> from photutils.extern.imageutils.normalization import *
-    >>> data = make_100gaussians_image()
-    >>> ny, nx = data.shape
-    >>> y, x = np.mgrid[:ny, :nx]
-    >>> gradient =  x * y / 2000.
-    >>> data2 = data + gradient
-    >>> data3 = rotate(data2, -45.)
-    >>> mask = (data3 == 0)
-    >>> bkg3 = Background(data3, (25, 25), filter_shape=(3, 3), mask=mask)
-    >>> back3 = bkg3.background * ~mask
-    >>> norm = ImageNormalize(stretch=SqrtStretch())
-    >>> plt.imshow(data3 - back3, origin='lower', cmap='Greys_r', norm=norm)
+    from photutils.datasets import make_100gaussians_image
+    from photutils.background import Background
+    from scipy.ndimage.interpolation import rotate
+    import matplotlib.pylab as plt
+    from photutils.extern.imageutils.normalization import *
+    data = make_100gaussians_image()
+    ny, nx = data.shape
+    y, x = np.mgrid[:ny, :nx]
+    gradient =  x * y / 2000.
+    data2 = data + gradient
+    data3 = rotate(data2, -45.)
+    mask = (data3 == 0)
+    bkg3 = Background(data3, (25, 25), filter_shape=(3, 3), mask=mask)
+    back3 = bkg3.background * ~mask
+    norm = ImageNormalize(stretch=SqrtStretch())
+    plt.imshow(data3 - back3, origin='lower', cmap='Greys_r', norm=norm)
 
 While there are some residuals around the image edges (due to the
 bicubic spline interpolation), the overall result is respectable,

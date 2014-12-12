@@ -32,12 +32,14 @@ each segmented source (or a specified subset of sources).  An Astropy
 properties that are calculated for each source.  Even more properties
 are likely to be added in the future.
 
-Let's detect sources and measure their properties from a synthetic
+Let's detect sources and measure their properties in a synthetic
 image.  For this example, we will use the
 `~photutils.background.Background` class to produce a background and
 background noise image.  We define a 2D detection threshold image
 using the background and background rms maps.  We set the threshold at
-3 sigma above the background::
+3 sigma above the background:
+
+.. doctest-requires:: scipy
 
     >>> from photutils.datasets import make_100gaussians_image
     >>> from photutils import Background, detect_threshold, detect_sources
@@ -49,17 +51,22 @@ using the background and background rms maps.  We set the threshold at
 Now we find sources that have 5 connected pixels that are each greater
 than the corresponding pixel-wise threshold image defined above.
 Because the threshold includes the background, we do not subtract the
-background from the data here.  We will also input a 2D circular
-Gaussian kernel with a FWHM of 2 pixels to filter the image prior to
-thresholding::
+background from the data here.  We also input a 2D circular Gaussian
+kernel with a FWHM of 2 pixels to filter the image prior to
+thresholding:
 
+.. doctest-requires:: scipy, skimage
+
+    >>> import numpy as np
     >>> sigma = 2.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))   # FWHM = 2 pix
     >>> kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     >>> segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
 
 Now let's measure the properties of the detected sources defined in
 the segmentation image with the minimum number of inputs to
-`~photutils.segmentation.segment_properties`::
+`~photutils.segmentation.segment_properties`:
+
+.. doctest-requires:: scipy, skimage
 
     >>> from photutils import segment_properties, properties_table
     >>> props = segment_properties(data, segm)
@@ -81,22 +88,25 @@ the segmentation image with the minimum number of inputs to
      81 434.091385011  288.922811107 ...  -0.258098406023 0.454297620264
 
 Let's use the measured source morphological properties to define
-approximate isophotal ellipses for each object::
+approximate isophotal ellipses for each object:
+
+.. doctest-requires:: scipy, skimage
 
     >>> from photutils import segment_properties, properties_table
     >>> props = segment_properties(data, segm)
-    >>> tbl = properties_table(props)
     >>> from photutils import EllipticalAperture
     >>> r = 3.    # approximate isophotal extent
     >>> apertures = []
     >>> for prop in props:
-    >>>     position = (prop.xcentroid.value, prop.ycentroid.value)
-    >>>     a = prop.semimajor_axis_sigma.value * r
-    >>>     b = prop.semiminor_axis_sigma.value * r
-    >>>     theta = prop.orientation.value
-    >>>     apertures.append(EllipticalAperture(position, a, b, theta=theta))
+    ...     position = (prop.xcentroid.value, prop.ycentroid.value)
+    ...     a = prop.semimajor_axis_sigma.value * r
+    ...     b = prop.semiminor_axis_sigma.value * r
+    ...     theta = prop.orientation.value
+    ...     apertures.append(EllipticalAperture(position, a, b, theta=theta))
 
-Now let's plot the results::
+Now let's plot the results:
+
+.. doctest-skip::
 
     >>> from photutils.extern.imageutils.normalization import *
     >>> import matplotlib.pylab as plt
@@ -105,8 +115,8 @@ Now let's plot the results::
     >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     >>> ax2.imshow(segm, origin='lower', cmap='jet')
     >>> for aperture in apertures:
-    >>>     aperture.plot(color='blue', lw=1.5, alpha=0.5, ax=ax1)
-    >>>     aperture.plot(color='white', lw=1.5, alpha=1.0, ax=ax2)
+    ...     aperture.plot(color='blue', lw=1.5, alpha=0.5, ax=ax1)
+    ...     aperture.plot(color='white', lw=1.5, alpha=1.0, ax=ax2)
 
 .. plot::
 
@@ -121,7 +131,6 @@ Now let's plot the results::
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
     props = segment_properties(data, segm)
-    tbl = properties_table(props)
     from photutils import EllipticalAperture
     apertures = []
     for prop in props:
@@ -140,9 +149,10 @@ Now let's plot the results::
         aperture.plot(color='blue', lw=1.5, alpha=0.5, ax=ax1)
         aperture.plot(color='white', lw=1.5, alpha=1.0, ax=ax2)
 
-
 We can also specify a specific subset of sources, defined by their labels in
-the segmentation image::
+the segmentation image:
+
+.. doctest-requires:: scipy, skimage
 
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> props = segment_properties(data, segm, labels=labels)
@@ -162,7 +172,9 @@ By default, `~photutils.segmentation.properties_table` will include
 all scalar-valued properties from
 `~photutils.segmentation.SegmentProperties`, but a subset of
 properties can also be specified (or excluded) in the
-`~astropy.table.Table`::
+`~astropy.table.Table`:
+
+.. doctest-requires:: scipy, skimage
 
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> props = segment_properties(data, segm, labels=labels)
@@ -192,7 +204,9 @@ Like `~photutils.aperture_photometry`, the ``data`` array that is
 input to `~photutils.segmentation.segment_properties` should be
 background subtracted.  If you input the ``background`` keyword to
 `~photutils.segmentation.segment_properties`, it will calculate
-background properties with each source segment::
+background properties with each source segment:
+
+.. doctest-requires:: scipy, skimage
 
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> props = segment_properties(data, segm, labels=labels,
@@ -232,24 +246,27 @@ for a variable depth mosaic image in count-rate units.
 
 Let's assume our synthetic data is in units of electrons per second.
 In that case, the ``effective_gain`` should be the exposure time (here
-we set to 500 seconds)::
+we set it to 500 seconds):
+
+.. doctest-requires:: scipy, skimage
 
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> props = segment_properties(data, segm, labels=labels,
     ...                            error=bkg.background_rms,
     ...                            effective_gain=500.)
-    >>> columns = ['id', 'background_atcentroid', 'background_mean',
-    ...            'background_sum']
+    >>> columns = ['id', 'xcentroid', 'ycentroid', 'segment_sum',
+    ...            'segment_sum_err']
     >>> tbl = properties_table(props, columns=columns)
     >>> print(tbl)
-     id  segment_sum  segment_sum_err
-    --- ------------- ---------------
-      1 431.609320002    10.002808709
-      5  153.84610582   7.11241135922
-     20 279.649184518   8.96285703949
-     50 501.805452349   11.9863586395
-     75 639.459662985   12.9166164989
-     80 589.761745573   11.5907931505
+     id   xcentroid     ycentroid     segment_sum  segment_sum_err
+             pix           pix
+    --- ------------- -------------- ------------- ---------------
+      1 234.983156946 0.985867670057 431.609320002    10.002808709
+      5 258.031283251  11.9649001764  153.84610582   7.11241135922
+     20 454.388594497  68.5821197941 279.649184518   8.96285703949
+     50  479.91617242  187.114386765 501.805452349   11.9863586395
+     75 98.0189554022  254.149269803 639.459662985   12.9166164989
+     80  434.09234827  280.841150924 589.761745573   11.5907931505
 
 `~photutils.SegmentProperties.segment_sum` and
 `~photutils.SegmentProperties.segment_sum_err` are the instrumental
@@ -269,10 +286,10 @@ Filtering
 ^^^^^^^^^
 
 `SExtractor`_'s centroid and morphological parameters are always
-calculated from a filtered "detection" image.  The downside of the
-filtering is to make the sources appear more circular than they actual
-are.  If you wish to reproduce `SExtractor`_ results, then use the
-``filter_kernel`` input to
+calculated from a filtered "detection" image.  The usual downside of
+the filtering is the sources will be made more circular than they
+actually are.  If you wish to reproduce `SExtractor`_ results, then
+use the ``filter_kernel`` input to
 `~photutils.segmentation.segment_properties` to filter the ``data``
 prior to centroid and morphological measurements.   The kernel should
 be the same one used to define the source segments in

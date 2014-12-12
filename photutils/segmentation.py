@@ -109,10 +109,10 @@ class SegmentProperties(object):
         Notes
         -----
         `SExtractor`_'s centroid and morphological parameters are always
-        calculated from the filtered "detection" image.  The downside of
-        the filtering is to make the sources appear more circular than
-        they actual are.  If you wish to reproduce `SExtractor`_
-        results, then use the ``filtered_data`` input.  If
+        calculated from the filtered "detection" image.  The usual
+        downside of the filtering is the sources will be made more
+        circular than they actually are.  If you wish to reproduce
+        `SExtractor`_ results, then use the ``filtered_data`` input.  If
         ``filtered_data`` is `None`, then the unfiltered ``data`` will
         be used for the source centroid and morphological parameters.
 
@@ -999,9 +999,9 @@ def segment_properties(data, segment_image, error=None, effective_gain=None,
     Notes
     -----
     `SExtractor`_'s centroid and morphological parameters are always
-    calculated from the filtered "detection" image.  The downside of the
-    filtering is to make the sources appear more circular than they
-    actual are.  If you wish to reproduce `SExtractor`_ results, then
+    calculated from the filtered "detection" image.  The usual downside
+    of the filtering is the sources will be made more circular than they
+    actually are.  If you wish to reproduce `SExtractor`_ results, then
     use the ``filtered_data`` input.  If ``filtered_data`` is `None`,
     then the unfiltered ``data`` will be used for the source centroid
     and morphological parameters.
