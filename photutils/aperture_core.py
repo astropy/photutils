@@ -38,9 +38,6 @@ def _sanitize_pixel_positions(positions):
             positions = positions.value
         else:
             raise u.UnitsError("positions should be in pixel units")
-
-    if isinstance(positions, u.Quantity):
-        positions = positions.value
     elif isinstance(positions, (list, tuple, np.ndarray)):
         positions = np.atleast_2d(positions)
         if positions.shape[1] != 2:
@@ -496,7 +493,7 @@ class SkyEllipticalAperture(SkyAperture):
             a = self.a.value
             b = self.b.value
 
-        theta = (angle + self.theta).to(u.radian).value
+        theta = (np.mean(angle) + self.theta).to(u.radian).value
 
         pixel_positions = np.array([x, y]).transpose()
 
@@ -648,7 +645,7 @@ class SkyEllipticalAnnulus(SkyAperture):
             a_out = self.a_out.value
             b_out = self.b_out.value
 
-        theta = (angle + self.theta).to(u.radian).value
+        theta = (np.mean(angle) + self.theta).to(u.radian).value
 
         pixel_positions = np.array([x, y]).transpose()
 
@@ -819,7 +816,7 @@ class SkyRectangularAperture(SkyAperture):
 
 class RectangularAperture(PixelAperture):
     """
-    A rectangular aperture, defined in pixel coordinates.
+    Rectangular aperture(s), defined in pixel coordinates.
 
     Parameters
     ----------
