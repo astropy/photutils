@@ -24,22 +24,26 @@ fits.
 Let's extract a single object from a synthetic dataset and find its
 centroid with each of these methods.  For this simple example we will
 not subtract the background from the data (but in practice, one should
-subtract the background):
-
-.. doctest-requires:: skimage
+subtract the background)::
 
     >>> from photutils.datasets import make_4gaussians_image
     >>> from photutils.morphology import (centroid_com, centroid_1dg,
     ...                                   centroid_2dg)
-
     >>> data = make_4gaussians_image()[43:79, 76:104]
+
+.. doctest-requires:: skimage
+
     >>> x1, y1 = centroid_com(data)
     >>> print(x1, y1)    # doctest: +FLOAT_CMP
     (13.93157998341213, 17.051234441067088)
 
+.. doctest-requires:: scipy
+
     >>> x2, y2 = centroid_1dg(data)
     >>> print(x2, y2)    # doctest: +FLOAT_CMP
     (14.035151484100131, 16.967749965238156)
+
+.. doctest-requires:: scipy
 
     >>> x3, y3 = centroid_2dg(data)
     >>> print(x3, y3)    # doctest: +FLOAT_CMP
