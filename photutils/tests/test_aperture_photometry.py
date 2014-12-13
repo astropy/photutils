@@ -32,7 +32,9 @@ APERTURE_CL = [CircularAperture,
 
 TEST_APERTURES = list(zip(APERTURE_CL, ((3.,), (3., 5.),
                                         (3., 5., 1.), (3., 5., 4., 1.),
-                                        (5, 8, np.pi / 4), (8, 12, 8, np.pi / 8))))
+                                        (5, 8, np.pi / 4),
+                                        (8, 12, 8, np.pi / 8))))
+
 
 @pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
 def test_outside_array(aperture_class, params):
@@ -48,13 +50,15 @@ def test_inside_array_simple(aperture_class, params):
     data = np.ones((40, 40), dtype=np.float)
     aperture = aperture_class((20., 20.), *params)
     table1 = aperture_photometry(data, aperture, method='center', subpixels=10)
-    table2 = aperture_photometry(data, aperture, method='subpixel', subpixels=10)
+    table2 = aperture_photometry(data, aperture, method='subpixel',
+                                 subpixels=10)
     table3 = aperture_photometry(data, aperture, method='exact', subpixels=10)
     true_flux = aperture.area()
 
     if not isinstance(aperture, (RectangularAperture, RectangularAnnulus)):
         assert_allclose(table3['aperture_sum'], true_flux)
-        assert_allclose(table2['aperture_sum'], table3['aperture_sum'], atol=0.1)
+        assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
+                        atol=0.1)
     assert table1['aperture_sum'] < table3['aperture_sum']
 
 
@@ -446,26 +450,77 @@ def test_wcs_based_photometry():
     pathcat = get_path('spitzer_example_catalog.xml', location='remote')
     pathhdu = get_path('spitzer_example_image.fits', location='remote')
     hdu = fits.open(pathhdu)
+    scale = hdu[0].header['PIXSCAL1']
+
     catalog = Table.read(pathcat)
     fluxes_catalog = catalog['f4_5']
+
     pos_skycoord = SkyCoord(catalog['l'], catalog['b'], frame='galactic')
     pos_skycoord_s = SkyCoord(catalog['l'][0] * catalog['l'].unit,
                               catalog['b'][0] * catalog['b'].unit,
                               frame='galactic')
 
-    photometry_skycoord = aperture_photometry(
+    photometry_skycoord_circ = aperture_photometry(
         hdu, SkyCircularAperture(pos_skycoord, 4 * u.arcsec))
-    photometry_skycoord_s = aperture_photometry(
+    photometry_skycoord_circ_3 = aperture_photometry(
+        hdu, SkyCircularAperture(pos_skycoord, 3 * u.arcsec))
+    photometry_skycoord_circ_s = aperture_photometry(
         hdu, SkyCircularAperture(pos_skycoord_s, 4 * u.arcsec))
 
-    assert_allclose(photometry_skycoord['aperture_sum'][0],
-                    photometry_skycoord_s['aperture_sum'])
+    assert_allclose(photometry_skycoord_circ['aperture_sum'][0],
+                    photometry_skycoord_circ_s['aperture_sum'])
 
-    photometry_skycoord_pix = aperture_photometry(
-        hdu, SkyCircularAperture(pos_skycoord, 4 / 1.2 * u.pixel))
+    photometry_skycoord_circ_ann = aperture_photometry(
+        hdu, SkyCircularAnnulus(pos_skycoord, 3 * u.arcsec, 4 * u.arcsec))
 
-    assert_allclose(photometry_skycoord['aperture_sum'],
-                    photometry_skycoord_pix['aperture_sum'])
+    assert_allclose(photometry_skycoord_circ_ann['aperture_sum'],
+                    photometry_skycoord_circ['aperture_sum']
+                    - photometry_skycoord_circ_3['aperture_sum'])
+
+    photometry_skycoord_ell = aperture_photometry(
+        hdu, SkyEllipticalAperture(pos_skycoord,
+                                   4 * u.arcsec, 4.0001 * u.arcsec, 0 * u.deg))
+    photometry_skycoord_ell_3 = aperture_photometry(
+        hdu, SkyEllipticalAperture(pos_skycoord,
+                                   3 * u.arcsec, 3.0001 * u.arcsec, 0 * u.deg))
+    photometry_skycoord_ell_s = aperture_photometry(
+        hdu, SkyEllipticalAperture(pos_skycoord_s,
+                                   4 * u.arcsec, 4.0001 * u.arcsec, 0 * u.deg))
+    photometry_skycoord_ell_ann = aperture_photometry(
+        hdu, SkyEllipticalAnnulus(pos_skycoord, 3 * u.arcsec, 4 * u.arcsec,
+                                  4.0001 * u.arcsec, 0 * u.deg))
+
+    assert_allclose(photometry_skycoord_ell['aperture_sum'][0],
+                    photometry_skycoord_ell_s['aperture_sum'])
+
+    assert_allclose(photometry_skycoord_ell['aperture_sum'],
+                    photometry_skycoord_circ['aperture_sum'], rtol=5e-3)
+
+    assert_allclose(photometry_skycoord_ell_ann['aperture_sum'],
+                    photometry_skycoord_ell['aperture_sum']
+                    - photometry_skycoord_ell_3['aperture_sum'], rtol=1e-4)
+
+    photometry_skycoord_circ_pix = aperture_photometry(
+        hdu, SkyCircularAperture(pos_skycoord, 4. / scale * u.pixel))
+    photometry_skycoord_circ_ann_pix = aperture_photometry(
+        hdu, SkyCircularAnnulus(pos_skycoord,
+                                3. / scale * u.pixel, 4. / scale * u.pixel))
+    photometry_skycoord_ell_pix = aperture_photometry(
+        hdu, SkyEllipticalAperture(pos_skycoord, 4. / scale * u.pixel,
+                                   4.0001 / scale * u.pixel, 0 * u.deg))
+    photometry_skycoord_ell_ann_pix = aperture_photometry(
+        hdu, SkyEllipticalAnnulus(pos_skycoord,
+                                  3. / scale * u.pixel, 4. / scale * u.pixel,
+                                  4.0001 / scale * u.pixel, 0 * u.deg))
+
+    assert_allclose(photometry_skycoord_circ['aperture_sum'],
+                    photometry_skycoord_circ_pix['aperture_sum'])
+    assert_allclose(photometry_skycoord_ell['aperture_sum'],
+                    photometry_skycoord_ell_pix['aperture_sum'])
+    assert_allclose(photometry_skycoord_circ_ann['aperture_sum'],
+                    photometry_skycoord_circ_ann_pix['aperture_sum'])
+    assert_allclose(photometry_skycoord_ell_ann['aperture_sum'],
+                    photometry_skycoord_ell_ann_pix['aperture_sum'], rtol=1e-5)
 
     photometry_skycoord_rec = aperture_photometry(
         hdu, SkyRectangularAperture(pos_skycoord,
