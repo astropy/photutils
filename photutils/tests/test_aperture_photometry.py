@@ -51,6 +51,16 @@ def test_inside_array_simple(aperture_class, params):
     assert table1['aperture_sum'] < table3['aperture_sum']
 
 
+@pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
+def test_aperture_plots(aperture_class, params):
+    # This test should run without any errors, and there is no return value
+
+    # TODO for 0.2: check the content of the plot
+
+    aperture = aperture_class((20., 20.), *params)
+    aperture.plot()
+
+
 class BaseTestAperturePhotometry(object):
 
     def test_scalar_error_no_effective_gain(self):
