@@ -946,10 +946,12 @@ class RectangularAnnulus(PixelAperture):
         positions_outer = positions + np.array([dx_outer, dy_outer])
 
         for i, position_inner in enumerate(positions_inner):
-            patch_inner = mpatches.Rectangle(position_inner, self.w, self.h,
+            patch_inner = mpatches.Rectangle(position_inner,
+                                             self.w_in, self.h_in,
                                              theta_deg, **kwargs)
-            patch_outer = mpatches.Rectangle(positions_outer[i], self.w,
-                                             self.h, theta_deg, **kwargs)
+            patch_outer = mpatches.Rectangle(positions_outer[i],
+                                             self.w_out, self.h_out,
+                                             theta_deg, **kwargs)
             path = _make_annulus_path(patch_inner, patch_outer)
             patch = mpatches.PathPatch(path, **kwargs)
             ax.add_patch(patch)
