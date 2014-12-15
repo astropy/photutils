@@ -168,8 +168,8 @@ image prior to thresholding:
 
     >>> from astropy.convolution import Gaussian2DKernel
     >>> from photutils import detect_sources
-    >>> import numpy as np
-    >>> sigma = 2.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))   # FWHM = 2 pix
+    >>> from photutils.extern.stats import fwhm_to_sigma
+    >>> sigma = fwhm_to_sigma(2.0)
     >>> kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     >>> segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
 
@@ -192,12 +192,13 @@ image showing the detected sources:
 
     from photutils.datasets import make_100gaussians_image
     from photutils import detect_threshold, detect_sources
+    from photutils.extern.stats import fwhm_to_sigma
     from astropy.convolution import Gaussian2DKernel
     from photutils.extern.imageutils.normalization import *
     import matplotlib.pylab as plt
     data = make_100gaussians_image()
     threshold = detect_threshold(data, snr=3.)
-    sigma = 2.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))   # FWHM = 3
+    sigma = fwhm_to_sigma(2.0)
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
     norm = ImageNormalize(stretch=SqrtStretch())
