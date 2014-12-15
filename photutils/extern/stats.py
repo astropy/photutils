@@ -5,7 +5,7 @@ import numpy as np
 from astropy.stats import median_absolute_deviation as mad
 
 
-__all__ = ['mad_std', 'fwhm2sigma']
+__all__ = ['mad_std', 'fwhm_to_sigma', 'sigma_to_fwhm']
 
 
 def mad_std(data):
@@ -47,26 +47,51 @@ def mad_std(data):
     return mad(data) / norm.ppf(0.75)
 
 
-def fwhm2sigma(fwhm):
+def fwhm_to_sigma(fwhm):
     """
-    Convert a Gaussian full-width at half-maximum (FWHM) to the 1-sigma
-    standard deviation.
+    Convert Gaussian full-width at half-maximum(s) (FWHM) to the 1-sigma
+    standard deviation(s).
 
     Parameters
     ----------
-    fwhm : float
-        The Gaussian FWHM.
+    fwhm : float, array-like
+        The Gaussian FWHM(s).
 
     Returns
     -------
-    sigma : float
-        The Gaussian 1-sigma standard deviation.
+    sigma : float, array-like
+        The Gaussian 1-sigma standard deviation(s).
 
     Examples
     --------
-    >>> from photutils.extern.stats import fwhm2sigma
-    >>> print(fwhm2sigma(3.0))    # doctest: +FLOAT_CMP
-    1.2739827004320285
+    >>> from photutils.extern.stats import fwhm_to_sigma
+    >>> print(fwhm_to_sigma(3.0))    # doctest: +FLOAT_CMP
+    1.27398270043
     """
 
-    return fwhm / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+    return np.array(fwhm) / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+
+
+def sigma_to_fwhm(sigma):
+    """
+    Convert Gaussian 1-sigma standard deviation(s) to full-width at
+    half-maximum(s) (FWHM).
+
+    Parameters
+    ----------
+    sigma : float, array-like
+        The Gaussian 1-sigma standard deviation(s).
+
+    Returns
+    -------
+    fwhm : float, array-like
+        The Gaussian FWHM(s).
+
+    Examples
+    --------
+    >>> from photutils.extern.stats import sigma_to_fwhm
+    >>> print(sigma_to_fwhm(3.0))    # doctest: +FLOAT_CMP
+    7.06446013509
+    """
+
+    return np.array(sigma) * (2.0 * np.sqrt(2.0 * np.log(2.0)))
