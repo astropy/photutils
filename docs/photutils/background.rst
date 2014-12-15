@@ -75,9 +75,9 @@ background level of 5::
 
     >>> import numpy as np
     >>> from astropy.stats import biweight_location
-    >>> print np.median(data)
+    >>> print(np.median(data))
     5.2255295184
-    >>> print biweight_location(data)
+    >>> print(biweight_location(data))
     5.1867597555
 
 Similarly, using the biweight midvariance and median absolute
@@ -86,9 +86,9 @@ larger than the true value of 2::
 
     >>> from astropy.stats import biweight_midvariance
     >>> from astropy.stats import median_absolute_deviation as mad
-    >>> print biweight_midvariance(data)
+    >>> print(biweight_midvariance(data))
     2.22011175104
-    >>> print 1.4826 * mad(data)
+    >>> print(1.4826 * mad(data))
     2.1443728009
 
 
@@ -105,7 +105,7 @@ levels::
 
     >>> from photutils.extern.imageutils.stats import sigmaclip_stats
     >>> mean, median, std = sigmaclip_stats(data, sigma=3.0)
-    >>> print median, median, std
+    >>> print(median, median, std)
     5.15557244947 5.15557244947 2.09393539966
 
 
@@ -130,7 +130,7 @@ maximize the source detections:
     >>> segm_img = detect_sources(data, threshold, npixels=5)
     >>> mask = segm_img.astype(np.bool)    # turn segm_img into a mask
     >>> mean, median, std = sigmaclip_stats(data, sigma=3.0, mask=mask)
-    >>> print mean, median, std
+    >>> print(mean, median, std)
     5.12349231659 5.11792609168 2.00503461917
 
 To ensure that we are completely masking the extended regions of
@@ -143,7 +143,7 @@ detected sources, we can dilate the source mask (NOTE: this requires
     >>> selem = np.ones((5, 5))    # dilate using a 5x5 box
     >>> mask2 = binary_dilation(mask, selem)
     >>> mean, median, std = sigmaclip_stats(data, sigma=3.0, mask=mask2)
-    >>> print mean, median, std
+    >>> print(mean, median, std)
     5.02603895921 5.02341384438 1.97423026273
 
 Of course, the source detection and masking procedure can be iterated
@@ -235,9 +235,9 @@ attributes, respectively:
 
 .. doctest-requires:: scipy
 
-    >>> print bkg.background_median
+    >>> print(bkg.background_median)
     19.2448529312
-    >>> print bkg.background_rms_median
+    >>> print(bkg.background_rms_median)
     3.09090781196
 
 Let's plot the background map:

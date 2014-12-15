@@ -87,7 +87,7 @@ with the data and the apertures::
     >>> from photutils import aperture_photometry
     >>> data = np.ones((100, 100))
     >>> phot_table = aperture_photometry(data, apertures)
-    >>> print phot_table
+    >>> print(phot_table)
      aperture_sum xcenter ycenter
                     pix     pix
     ------------- ------- -------
@@ -101,7 +101,7 @@ named ``'aperture_sum'``, ``'xcenter'``, and ``'ycenter'``.
 Since all the data values are 1.0, the aperture sums are equal to the
 area of a circle with a radius of 3::
 
-    >>> print np.pi * 3. ** 2
+    >>> print(np.pi * 3. ** 2)
     28.2743338823
 
 Aperture and Pixel Overlap
@@ -122,7 +122,7 @@ by a factor of 5 in each dimension::
 
     >>> phot_table = aperture_photometry(data, apertures,
     ...                                  method='subpixel', subpixels=5)
-    >>> print phot_table['aperture_sum']
+    >>> print(phot_table['aperture_sum'])
     aperture_sum
     <BLANKLINE>
     ------------
@@ -162,7 +162,7 @@ them into one `~astropy.table.Table`::
 
     >>> from astropy.table import hstack
     >>> phot_table = hstack(flux)
-    >>> print phot_table['aperture_sum_1', 'aperture_sum_2', 'aperture_sum_3']    # doctest: +FLOAT_CMP
+    >>> print(phot_table['aperture_sum_1', 'aperture_sum_2', 'aperture_sum_3'])    # doctest: +FLOAT_CMP
     aperture_sum_1 aperture_sum_2 aperture_sum_3
     <BLANKLINE>
     -------------- -------------- --------------
@@ -179,7 +179,7 @@ specify ``a``, ``b``, and ``theta``::
     >>> theta = np.pi / 4.
     >>> apertures = EllipticalAperture(positions, a, b, theta)
     >>> phot_table = aperture_photometry(data, apertures)
-    >>> print phot_table['aperture_sum']   # doctest: +FLOAT_CMP
+    >>> print(phot_table['aperture_sum'])    # doctest: +FLOAT_CMP
     aperture_sum
     <BLANKLINE>
     -------------
@@ -196,8 +196,8 @@ Again, for multiple apertures one should loop over them::
     ...     flux.append(aperture_photometry(
     ...         data, EllipticalAperture(positions, a[index], b[index], theta)))
     >>> phot_table = hstack(flux)
-    >>> print phot_table['aperture_sum_1', 'aperture_sum_2',
-    ...                  'aperture_sum_3', 'aperture_sum_4']   # doctest: +FLOAT_CMP
+    >>> print(phot_table['aperture_sum_1', 'aperture_sum_2',
+    ...                  'aperture_sum_3', 'aperture_sum_4'])    # doctest: +FLOAT_CMP
     aperture_sum_1 aperture_sum_2 aperture_sum_3 aperture_sum_4
     <BLANKLINE>
     -------------- -------------- -------------- --------------
@@ -247,7 +247,7 @@ background times the circular aperture area::
     >>> bkg_sum = phot_table['aperture_sum_bkg'] * aperture_area / annulus_area
     >>> final_sum = phot_table['aperture_sum_raw'] - bkg_sum
     >>> phot_table['residual_aperture_sum'] = final_sum
-    >>> print phot_table['residual_aperture_sum']   # doctest: +FLOAT_CMP
+    >>> print(phot_table['residual_aperture_sum'])    # doctest: +FLOAT_CMP
     residual_aperture_sum
     ---------------------
         -3.5527136788e-15
@@ -273,7 +273,7 @@ pixel's value and saved it in the array ``data_error``::
 
     >>> data_error = 0.1 * data  # (100 x 100 array)
     >>> phot_table = aperture_photometry(data, apertures, error=data_error)
-    >>> print phot_table   # doctest: +FLOAT_CMP
+    >>> print(phot_table)    # doctest: +FLOAT_CMP
        aperture_sum aperture_sum_err xcenter ycenter
                                        pix     pix
       ------------- ---------------- ------- -------
@@ -343,7 +343,7 @@ photometry by providing an image mask via the ``mask`` keyword::
     >>> data[2, 2] = 100.   # bad pixel
     >>> mask[2, 2] = True
     >>> t1 = aperture_photometry(data, aperture, mask=mask)
-    >>> print t1['aperture_sum']
+    >>> print(t1['aperture_sum'])
      aperture_sum
     -------------
     11.5663706144
@@ -351,7 +351,7 @@ photometry by providing an image mask via the ``mask`` keyword::
 The result is much different if a ``mask`` image is not provided::
 
     >>> t2 = aperture_photometry(data, aperture)
-    >>> print t2['aperture_sum']
+    >>> print(t2['aperture_sum'])
      aperture_sum
     -------------
     111.566370614
