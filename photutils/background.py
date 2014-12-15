@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from astropy.stats import sigma_clip
 from astropy.utils import lazyproperty
+import warnings
 
 
 __all__ = ['Background']
@@ -211,9 +212,12 @@ class Background(object):
             y_nbins, ny_box, x_nbins, nx_box), 1, 2).reshape(y_nbins, x_nbins,
                                                              ny_box * nx_box)
         del data_ma
-        self.data_sigclip = sigma_clip(
-            data_rebin, sig=self.sigclip_sigma, axis=2,
-            iters=self.sigclip_iters, cenfunc=np.ma.median, varfunc=np.ma.var)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            self.data_sigclip = sigma_clip(
+                data_rebin, sig=self.sigclip_sigma, axis=2,
+                iters=self.sigclip_iters, cenfunc=np.ma.median,
+                varfunc=np.ma.var)
         del data_rebin
 
     def _filter_meshes(self, data_lores):
