@@ -222,7 +222,6 @@ class SkyCircularAperture(SkyAperture):
 
         if self.r.unit.physical_type == 'angle':
             x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
-            # TODO: no need to use the mean once we support arrays of aperture values
             r = (np.mean(scale) * self.r).to(u.pixel).value
         else:  # pixel
             x, y = skycoord_to_pixel(self.positions, wcs)
@@ -341,7 +340,7 @@ class SkyCircularAnnulus(SkyAperture):
 
         if self.r_in.unit.physical_type == 'angle':
             x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
-            # TODO: no need to use the mean once we support arrays of aperture values
+
             r_in = (np.mean(scale) * self.r_in).to(u.pixel).value
             r_out = (np.mean(scale) * self.r_out).to(u.pixel).value
         else:  # pixel
@@ -485,7 +484,6 @@ class SkyEllipticalAperture(SkyAperture):
 
         x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
 
-        # TODO: no need to use the mean once we support arrays of aperture values
         if self.a.unit.physical_type == 'angle':
             a = (np.mean(scale) * self.a).to(u.pixel).value
             b = (np.mean(scale) * self.b).to(u.pixel).value
@@ -635,7 +633,6 @@ class SkyEllipticalAnnulus(SkyAperture):
 
         x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
 
-        # TODO: no need to use the mean once we support arrays of aperture values
         if self.a_in.unit.physical_type == 'angle':
             a_in = (np.mean(scale) * self.a_in).to(u.pixel).value
             a_out = (np.mean(scale) * self.a_out).to(u.pixel).value
