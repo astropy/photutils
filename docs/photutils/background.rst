@@ -361,7 +361,7 @@ to the returned background map:
 
 .. doctest-requires:: scipy
 
-    >>> back3 = bkg3.background * mask
+    >>> back3 = bkg3.background * ~mask
     >>> norm = ImageNormalize(stretch=SqrtStretch())    # doctest: +SKIP
     >>> plt.imshow(back3, origin='lower', cmap='Greys_r', norm=norm)    # doctest: +SKIP
 
