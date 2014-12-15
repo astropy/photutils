@@ -105,8 +105,8 @@ levels::
 
     >>> from photutils.extern.imageutils.stats import sigmaclip_stats
     >>> mean, median, std = sigmaclip_stats(data, sigma=3.0)
-    >>> print(median, median, std)
-    5.15557244947 5.15557244947 2.09393539966
+    >>> print(median, median, std)    # doctest: +FLOAT_CMP
+    (5.15557244947, 5.15557244947, 2.09393539966)
 
 
 Masking Sources
@@ -130,8 +130,8 @@ maximize the source detections:
     >>> segm_img = detect_sources(data, threshold, npixels=5)
     >>> mask = segm_img.astype(np.bool)    # turn segm_img into a mask
     >>> mean, median, std = sigmaclip_stats(data, sigma=3.0, mask=mask)
-    >>> print(mean, median, std)
-    5.12349231659 5.11792609168 2.00503461917
+    >>> print(mean, median, std)    # doctest: +FLOAT_CMP
+    (5.12349231659, 5.11792609168, 2.00503461917)
 
 To ensure that we are completely masking the extended regions of
 detected sources, we can dilate the source mask (NOTE: this requires
@@ -143,8 +143,8 @@ detected sources, we can dilate the source mask (NOTE: this requires
     >>> selem = np.ones((5, 5))    # dilate using a 5x5 box
     >>> mask2 = binary_dilation(mask, selem)
     >>> mean, median, std = sigmaclip_stats(data, sigma=3.0, mask=mask2)
-    >>> print(mean, median, std)
-    5.02603895921 5.02341384438 1.97423026273
+    >>> print(mean, median, std)    # doctest: +FLOAT_CMP
+    (5.02603895921, 5.02341384438, 1.97423026273)
 
 Of course, the source detection and masking procedure can be iterated
 further.  Even with one iteration we are within ~%1 of the true
