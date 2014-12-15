@@ -79,7 +79,7 @@ Let's plot the image and mark the location of detected sources:
 .. doctest-skip::
 
     >>> from photutils import CircularAperture
-    >>> from photutils.extern.imageutils.normalization import *
+    >>> from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
     >>> import matplotlib.pylab as plt
     >>> positions = (sources['xcentroid'], sources['ycentroid'])
     >>> apertures = CircularAperture(positions, r=4.)
@@ -91,7 +91,7 @@ Let's plot the image and mark the location of detected sources:
 
     from photutils.extern.imageutils.stats import sigmaclip_stats
     from photutils import datasets, daofind, CircularAperture
-    from photutils.extern.imageutils.normalization import *
+    from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
     import matplotlib.pylab as plt
     hdu = datasets.load_star_image()
     data = hdu.data[0:400, 0:400]
@@ -181,7 +181,7 @@ image showing the detected sources:
 
 .. doctest-skip::
 
-    >>> from photutils.extern.imageutils.normalization import *
+    >>> from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
     >>> import matplotlib.pylab as plt
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
@@ -194,7 +194,7 @@ image showing the detected sources:
     from photutils import detect_threshold, detect_sources
     from photutils.extern.stats import fwhm_to_sigma
     from astropy.convolution import Gaussian2DKernel
-    from photutils.extern.imageutils.normalization import *
+    from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
     import matplotlib.pylab as plt
     data = make_100gaussians_image()
     threshold = detect_threshold(data, snr=3.)
@@ -256,7 +256,7 @@ And let's plot the location of the detected peaks in the image:
 .. doctest-skip::
 
     >>> from photutils import CircularAperture
-    >>> from photutils.extern.imageutils.normalization import *
+    >>> from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
     >>> import matplotlib.pylab as plt
     >>> apertures = CircularAperture(np.fliplr(peaks), r=4.)
     >>> norm = ImageNormalize(stretch=SqrtStretch())
@@ -274,7 +274,7 @@ And let's plot the location of the detected peaks in the image:
     peaks = find_peaks(data, threshold, min_separation=2)
 
     from photutils import CircularAperture
-    from photutils.extern.imageutils.normalization import *
+    from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
     import matplotlib.pylab as plt
     apertures = CircularAperture(np.fliplr(peaks), r=4.)
     norm = ImageNormalize(stretch=SqrtStretch())
