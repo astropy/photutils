@@ -85,10 +85,10 @@ deviation to estimate the background noise level give values that are
 larger than the true value of 2::
 
     >>> from astropy.stats import biweight_midvariance
-    >>> from astropy.stats import median_absolute_deviation as mad
+    >>> from photutils.extern.stats import mad_std
     >>> print(biweight_midvariance(data))
     2.22011175104
-    >>> print(1.4826 * mad(data))
+    >>> print(mad_std(data))
     2.1443728009
 
 

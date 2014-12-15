@@ -26,7 +26,8 @@ parameters of the detected sources are returned as an Astropy
 
     >>> from photutils import daofind
     >>> from astropy.stats import median_absolute_deviation as mad
-    >>> bkg_sigma = 1.48 * mad(image)    # doctest: +REMOTE_DATA
+    >>> from photutils.extern.stats import mad_std
+    >>> bkg_sigma = mad_std(image)    # doctest: +REMOTE_DATA
     >>> sources = daofind(image, fwhm=4., threshold=3.*bkg_sigma)    # doctest: +REMOTE_DATA
     >>> print(sources)    # doctest: +REMOTE_DATA
      id   xcentroid     ycentroid    ...  peak       flux           mag
@@ -85,10 +86,11 @@ apertures:
     import matplotlib.pylab as plt
     from astropy.stats import median_absolute_deviation as mad
     from photutils import datasets, daofind, aperture_photometry, CircularAperture
+    from photutils.extern.stats import mad_std
     hdu = datasets.load_star_image()
     image = hdu.data[500:700, 500:700]
     image -= np.median(image)
-    bkg_sigma = 1.48 * mad(image)
+    bkg_sigma = mad_std(image)
     sources = daofind(image, fwhm=4., threshold=3.*bkg_sigma)
     positions = (sources['xcentroid'], sources['ycentroid'])
     apertures = CircularAperture(positions, r=4.)
