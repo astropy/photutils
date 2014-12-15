@@ -1,10 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+import numpy as np
 from astropy.stats import median_absolute_deviation as mad
 
 
-__all__ = ['mad_std']
+__all__ = ['mad_std', 'fwhm2sigma']
 
 
 def mad_std(data):
@@ -43,3 +44,28 @@ def mad_std(data):
 
     from scipy.stats import norm
     return mad(data) / norm.ppf(0.75)
+
+
+def fwhm2sigma(fwhm):
+    """
+    Convert a Gaussian full-width at half-maximum (FWHM) to the 1-sigma
+    standard deviation.
+
+    Parameters
+    ----------
+    fwhm : float
+        The Gaussian FWHM.
+
+    Returns
+    -------
+    sigma : float
+        The Gaussian 1-sigma standard deviation.
+
+    Examples
+    --------
+    >>> from photutils.utils import fwhm2sigma
+    >>> print(fwhm2sigma(3.0))    # doctest: +FLOAT_CMP
+    1.2739827004320285
+    """
+
+    return fwhm / (2.0 * np.sqrt(2.0 * np.log(2.0)))
