@@ -513,7 +513,12 @@ def test_aperture_photometry_inputs_with_mask():
     assert_allclose(t2['aperture_sum'][0], 111.566370614)
 
 
-def test_ellipse_exact_grid():
+
+TEST_ELLIPSE_EXACT_APERTURES = [(3.469906, 3.923861394, 3.),
+                                (0.3834415188257778, 0.3834415188257778, 0.3)]
+
+@pytest.mark.parametrize('x,y,r', TEST_ELLIPSE_EXACT_APERTURES)
+def test_ellipse_exact_grid(x, y, r):
     """
     Test elliptical exact aperture photometry on a grid of pixel positions.
 
@@ -521,12 +526,9 @@ def test_ellipse_exact_grid():
     https://github.com/astropy/photutils/issues/198
     """
     data = np.ones((10, 10))
-    x = 3.469906
-    y = 3.923861394
-    r = 3.
 
     aperture = EllipticalAperture((x, y), r, r, 0.)
     t = aperture_photometry(data, aperture, method='exact')
-    actual = t['aperture_sum'][0]
-    expected = np.pi * r ** 2
-    assert_allclose(actual, expected)
+    actual= t['aperture_sum'][0] / (np.pi * r ** 2)
+    assert_allclose(actual, 1)
+

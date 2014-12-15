@@ -98,7 +98,7 @@ cdef double area_arc_unit(double x1, double y1, double x2, double y2):
     return 0.5 * (theta - sin(theta))
 
 
-cdef double in_triangle(double x, double y, double x1, double y1, double x2, double y2, double x3, double y3):
+cdef int in_triangle(double x, double y, double x1, double y1, double x2, double y2, double x3, double y3):
     """
     Check if a point (x,y) is inside a triangle
     """
@@ -329,7 +329,10 @@ cdef double overlap_area_triangle_unit_circle(double x1, double y1, double x2, d
         pt3 = circle_segment_single2(x1, y1, x2, y2)
         pt4 = circle_segment_single2(x1, y1, x3, y3)
         if pt1.x > 1.:  # indicates no intersection
-            if in_triangle(0, 0, x1, y1, x2, y2, x3, y3) and not in_triangle(0, 0, x1, y1, pt3.x, pt3.y, pt4.x, pt4.y):
+            # Code taken from `sep.h`.
+            # TODO: use `sep` and get rid of this Cython code.
+            if (((0.-pt3.y) * (pt4.x-pt3.x) > (pt4.y-pt3.y) * (0.-pt3.x)) !=
+                ((y1-pt3.y) * (pt4.x-pt3.x) > (pt4.y-pt3.y) * (x1-pt3.x))):
                 area = area_triangle(x1, y1, pt3.x, pt3.y, pt4.x, pt4.y) \
                      + (PI - area_arc_unit(pt3.x, pt3.y, pt4.x, pt4.y))
             else:
