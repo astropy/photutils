@@ -82,9 +82,16 @@ before_install:
 
 install:
 
+    # Certificate checking is not working with Python 2.7.9 (due to PEP 476)
+    # This is a temp workaround ... see https://github.com/astropy/photutils/issues/202
+    - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then export TRAVIS_PYTHON_VERSION=2.7.8; fi
+
     # CONDA
     - conda create --yes -n test -c astropy-ci-extras python=$TRAVIS_PYTHON_VERSION
     - source activate test
+
+    # TODO: remove when issue #202 workaround is removed (see line above)
+    - export CONDA_INSTALL="conda install -c astropy-ci-extras --yes python=$TRAVIS_PYTHON_VERSION numpy=$NUMPY_VERSION"
 
     # CORE DEPENDENCIES
     - if [[ $SETUP_CMD != egg_info ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION pytest pip Cython; fi
