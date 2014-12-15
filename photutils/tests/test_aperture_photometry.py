@@ -15,6 +15,13 @@ from astropy.tests.helper import remote_data
 
 from ..aperture_core import *
 
+try:
+    import matplotlib
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
+
+
 APERTURE_CL = [CircularAperture,
                CircularAnnulus,
                EllipticalAperture,
@@ -49,6 +56,17 @@ def test_inside_array_simple(aperture_class, params):
         assert_allclose(table3['aperture_sum'], true_flux)
         assert_allclose(table2['aperture_sum'], table3['aperture_sum'], atol=0.1)
     assert table1['aperture_sum'] < table3['aperture_sum']
+
+
+@pytest.mark.skipif('not HAS_MATPLOTLIB')
+@pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
+def test_aperture_plots(aperture_class, params):
+    # This test should run without any errors, and there is no return value
+
+    # TODO for 0.2: check the content of the plot
+
+    aperture = aperture_class((20., 20.), *params)
+    aperture.plot()
 
 
 class BaseTestAperturePhotometry(object):
