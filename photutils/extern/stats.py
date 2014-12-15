@@ -35,7 +35,8 @@ def mad_std(data):
 
     Examples
     --------
-    >>> from photutils.utils import check_random_state, mad_std
+    >>> from photutils.utils import check_random_state
+    >>> from photutils.extern.stats import mad_std
     >>> prng = check_random_state(12345)
     >>> data = prng.normal(5, 2, size=(100, 100))
     >>> print(mad_std(data))    # doctest: +FLOAT_CMP
@@ -63,7 +64,7 @@ def fwhm2sigma(fwhm):
 
     Examples
     --------
-    >>> from photutils.utils import fwhm2sigma
+    >>> from photutils.extern.stats import fwhm2sigma
     >>> print(fwhm2sigma(3.0))    # doctest: +FLOAT_CMP
     1.2739827004320285
     """

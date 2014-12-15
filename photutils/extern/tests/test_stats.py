@@ -2,7 +2,8 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
-from .. import mad_std, fwhm2sigma, check_random_state
+from photutils.utils import check_random_state
+from ..stats import mad_std, fwhm2sigma
 from numpy.testing import assert_allclose
 
 
