@@ -56,7 +56,7 @@ Let's plot the image:
 
 .. doctest-skip::
 
-    >>> from photutils.extern.imageutils.normalization import *
+    >>> from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
     >>> import matplotlib.pylab as plt
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> plt.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
@@ -64,7 +64,7 @@ Let's plot the image:
 .. plot::
 
     from photutils.datasets import make_100gaussians_image
-    from photutils.extern.imageutils.normalization import *
+    from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
     import matplotlib.pylab as plt
     data = make_100gaussians_image()
     norm = ImageNormalize(stretch=SqrtStretch())
@@ -292,7 +292,7 @@ the median of the sigma-clipped data in each mesh (this is the same
 calculation used by ``method='median'``).  We start by defining the
 custom function::
 
-    >>> def myback(data):
+    >>> def backfunc(data):
     ...    z = np.ma.median(data, axis=2)
     ...    return np.ma.filled(z, np.ma.median(z))
 
@@ -302,7 +302,7 @@ class:
 .. doctest-requires:: scipy
 
     >>> bkg = Background(data, (50, 50), filter_shape=(3, 3),
-    ...                  method='custom', backfunc=myback)
+    ...                  method='custom', backfunc=backfunc)
     >>> back = bkg.background
 
 
@@ -323,7 +323,7 @@ Let's create such an image (this requires `scipy`_) and plot it:
 
 .. doctest-requires:: scipy
 
-    >>> from scipy.ndimage.interpolation import rotate
+    >>> from scipy.ndimage import rotate
     >>> data3 = rotate(data2, -45.)
     >>> norm = ImageNormalize(stretch=SqrtStretch())    # doctest: +SKIP
     >>> plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm)    # doctest: +SKIP
@@ -332,7 +332,7 @@ Let's create such an image (this requires `scipy`_) and plot it:
 
     from photutils.datasets import make_100gaussians_image
     from scipy.ndimage.interpolation import rotate
-    from photutils.extern.imageutils.normalization import *
+    from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
     import matplotlib.pylab as plt
     data = make_100gaussians_image()
     ny, nx = data.shape
@@ -370,7 +370,7 @@ to the returned background map:
     from photutils.datasets import make_100gaussians_image
     from photutils.background import Background
     from scipy.ndimage.interpolation import rotate
-    from photutils.extern.imageutils.normalization import *
+    from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
     import matplotlib.pylab as plt
     data = make_100gaussians_image()
     ny, nx = data.shape
@@ -397,7 +397,7 @@ Finally, let's subtract the background from the image and plot it:
     from photutils.background import Background
     from scipy.ndimage.interpolation import rotate
     import matplotlib.pylab as plt
-    from photutils.extern.imageutils.normalization import *
+    from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]

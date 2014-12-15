@@ -46,7 +46,7 @@ background noise using sigma-clipped statistics::
     >>> from photutils import datasets
     >>> from photutils.extern.imageutils.stats import sigmaclip_stats
     >>> hdu = datasets.load_star_image()    # doctest: +REMOTE_DATA
-    >>> data = hdu.data[0:400, 0:400    # doctest: +REMOTE_DATA
+    >>> data = hdu.data[0:400, 0:400]    # doctest: +REMOTE_DATA
     >>> mean, median, std = sigmaclip_stats(data, sigma=3.0)    # doctest: +REMOTE_DATA
     >>> print(mean, median, std)    # doctest: +REMOTE_DATA
     3649.0 3649.0 203.811360598
@@ -122,11 +122,11 @@ thresholding to smooth the noise and maximize the detectability of
 objects with a shape similar to the filter kernel.
 
 In photutils, source extraction is performed using the
-:func:`~photutils.detection.core.detect_sources` function.  The
-:func:`~photutils.detection.core.detect_threshold` tool is a
-convenience function to generate a 2D detection threshold image using
-simple sigma-clipped statistics to estimate the background and
-background rms.
+:func:`~photutils.detection.detect_sources` function.  The
+:func:`~photutils.detection.detect_threshold` tool is a convenience
+function to generate a 2D detection threshold image using simple
+sigma-clipped statistics to estimate the background and background
+rms.
 
 For this example, let's detect sources in a synthetic image provided
 by the `datasets <datasets.html>`_ module::
@@ -134,13 +134,13 @@ by the `datasets <datasets.html>`_ module::
     >>> from photutils.datasets import make_100gaussians_image
     >>> data = make_100gaussians_image()
 
-We will use `~photutils.detection.core.detect_threshold` to produce a
-detection threshold image.
-`~photutils.detection.core.detect_threshold` will estimate the
-background and background rms using sigma-clipped statistics if they
-are not input.  The threshold level is calculated using the ``snr``
-input as the sigma level above the background.  Here we generate a
-simple pixel-wise threshold at 3 sigma above the background::
+We will use `~photutils.detection.detect_threshold` to produce a
+detection threshold image.  `~photutils.detection.detect_threshold`
+will estimate the background and background rms using sigma-clipped
+statistics if they are not input.  The threshold level is calculated
+using the ``snr`` input as the sigma level above the background.  Here
+we generate a simple pixel-wise threshold at 3 sigma above the
+background::
 
     >>> from photutils import detect_threshold
     >>> threshold = detect_threshold(data, snr=3.)
@@ -153,16 +153,16 @@ threshold image is simply::
     >>> threshold = bkg + (3.0 * bkg_rms)    # doctest: +SKIP
 
 Note that if the threshold includes the background level (as above),
-then the image input into `~photutils.detection.core.detect_sources`
-should *not* be background subtracted.
+then the image input into `~photutils.detection.detect_sources` should
+*not* be background subtracted.
 
 Let's find sources that have 5 connected pixels that are each greater
 than the corresponding pixel-wise ``threshold`` level defined above.
 Because the threshold returned by
-`~photutils.detection.core.detect_threshold` includes the background,
-we do not subtract the background from the data here.  We will also
-input a 2D circular Gaussian kernel with a FWHM of 2 pixels to filter
-the image prior to thresholding:
+`~photutils.detection.detect_threshold` includes the background, we do
+not subtract the background from the data here.  We will also input a
+2D circular Gaussian kernel with a FWHM of 2 pixels to filter the
+image prior to thresholding:
 
 .. doctest-requires:: scipy
 
@@ -226,19 +226,19 @@ Photometry and Properties <segmentation.html>`_.
 Local Peak Detection
 --------------------
 
-Photutils also includes a :func:`~photutils.detection.core.find_peaks`
+Photutils also includes a :func:`~photutils.detection.find_peaks`
 function to find local peaks in an image that are above a specified
 threshold value.  Peaks are the local maxima above a specified
 threshold that separated by a a specified minimum number of pixels.
 The return pixel coordinates are always integer (i.e., no centroiding
 is performed, only the peak pixel is identified).
-`~photutils.detection.core.find_peaks` also supports a number of
-options, including searching for peaks only within a segmentation
-image or a specified footprint.  Please see the
-`~photutils.detection.core.find_peaks` documentation for more options.
+`~photutils.detection.find_peaks` also supports a number of options,
+including searching for peaks only within a segmentation image or a
+specified footprint.  Please see the `~photutils.detection.find_peaks`
+documentation for more options.
 
 As simple example, let's find the local peaks in an image that are 10
-sigma above the background and a separated by a least 2 pixels::
+sigma above the background and a separated by a least 2 pixels:
 
 .. doctest-requires:: skimage
 
@@ -284,10 +284,7 @@ And let's plot the location of the detected peaks in the image:
 Reference/API
 -------------
 
-.. automodapi:: photutils.detection.findstars
-    :no-heading:
-
-.. automodapi:: photutils.detection.core
+.. automodapi:: photutils.detection
     :no-heading:
 
 
