@@ -43,8 +43,8 @@ def mad_std(data):
     2.02327646594
     """
 
-    from scipy.stats import norm
-    return mad(data) / norm.ppf(0.75)
+    # NOTE: 1. / scipy.stats.norm.ppf(0.75) = 1.482602218505602
+    return mad(data) * 1.482602218505602
 
 
 def gaussian_fwhm_to_sigma(fwhm):
