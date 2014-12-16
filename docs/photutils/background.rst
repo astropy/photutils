@@ -88,7 +88,7 @@ larger than the true value of 2::
     >>> from photutils.extern.stats import mad_std
     >>> print(biweight_midvariance(data))
     2.22011175104
-    >>> print(mad_std(data))
+    >>> print(mad_std(data))    # doctest: +FLOAT_CMP
     2.1443728009
 
 
