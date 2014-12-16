@@ -1,5 +1,5 @@
-photutils Reference/API
-=======================
+Reference/API
+=============
 
 .. automodapi:: photutils
     :no-heading:

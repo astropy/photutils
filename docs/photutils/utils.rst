@@ -1,10 +1,10 @@
-Utility functions
+Utility Functions
 =================
 
 Introduction
 ------------
 
-The ``photutils.utils`` package contains general-purpose utility
+The `photutils.utils` package contains general-purpose utility
 functions.
 
 

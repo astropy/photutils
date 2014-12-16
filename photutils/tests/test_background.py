@@ -16,10 +16,10 @@ except ImportError:
 
 DATA = np.ones((100, 100))
 BKG_RMS = np.zeros((100, 100))
-BKG_LORES = np.ones((4, 4))
-BKG_RMS_LORES = np.zeros((4, 4))
-PADBKG_LORES = np.ones((5, 5))
-PADBKG_RMS_LORES = np.zeros((5, 5))
+BKG_LOW_RES = np.ones((4, 4))
+BKG_RMS_LOW_RES = np.zeros((4, 4))
+PADBKG_LOW_RES = np.ones((5, 5))
+PADBKG_RMS_LOW_RES = np.zeros((5, 5))
 FILTER_SHAPES = [(1, 1), (3, 3)]
 METHODS = ['mean', 'median', 'sextractor', 'mode_estimate']
 
@@ -46,18 +46,18 @@ class TestBackground(object):
         b = Background(DATA, (25, 25), filter_shape, method=method)
         assert_allclose(b.background, DATA)
         assert_allclose(b.background_rms, BKG_RMS)
-        assert_allclose(b.background_lores, BKG_LORES)
-        assert_allclose(b.background_rms_lores, BKG_RMS_LORES)
+        assert_allclose(b.background_low_res, BKG_LOW_RES)
+        assert_allclose(b.background_rms_low_res, BKG_RMS_LOW_RES)
         assert b.background_median == 1.0
         assert b.background_rms_median == 0.0
 
     def test_background_nonconstant(self):
         data = np.copy(DATA)
         data[25:50, 50:75] = 10.
-        bkg_lores = np.copy(BKG_LORES)
-        bkg_lores[1, 2] = 10.
+        bkg_low_res = np.copy(BKG_LOW_RES)
+        bkg_low_res[1, 2] = 10.
         b = Background(data, (25, 25), (1, 1), method='mean')
-        assert_allclose(b.background_lores, bkg_lores)
+        assert_allclose(b.background_low_res, bkg_low_res)
         assert b.background.shape == data.shape
 
     @pytest.mark.parametrize(('filter_shape', 'method'),
@@ -66,8 +66,8 @@ class TestBackground(object):
         b = Background(DATA, (22, 22), filter_shape, method=method)
         assert_allclose(b.background, DATA)
         assert_allclose(b.background_rms, BKG_RMS)
-        assert_allclose(b.background_lores, PADBKG_LORES)
-        assert_allclose(b.background_rms_lores, PADBKG_RMS_LORES)
+        assert_allclose(b.background_low_res, PADBKG_LOW_RES)
+        assert_allclose(b.background_rms_low_res, PADBKG_RMS_LOW_RES)
 
     @pytest.mark.parametrize('box_shape', ([(25, 25), (22, 22)]))
     def test_background_mask(self, box_shape):
@@ -85,25 +85,25 @@ class TestBackground(object):
         data[25:50, 50:75] = 10.
         b = Background(data, (25, 25), (3, 3), filter_threshold=1.)
         assert_allclose(b.background, DATA)
-        assert_allclose(b.background_lores, BKG_LORES)
+        assert_allclose(b.background_low_res, BKG_LOW_RES)
 
     def test_filter_threshold_high(self):
         """No filtering because filter_threshold is too large."""
         data = np.copy(DATA)
         data[25:50, 50:75] = 10.
-        ref_data = np.copy(BKG_LORES)
+        ref_data = np.copy(BKG_LOW_RES)
         ref_data[1, 2] = 10.
         b = Background(data, (25, 25), (3, 3), filter_threshold=100.)
-        assert_allclose(b.background_lores, ref_data)
+        assert_allclose(b.background_low_res, ref_data)
 
     def test_filter_threshold_nofilter(self):
         """No filtering because filter_shape is (1, 1)."""
         data = np.copy(DATA)
         data[25:50, 50:75] = 10.
-        ref_data = np.copy(BKG_LORES)
+        ref_data = np.copy(BKG_LOW_RES)
         ref_data[1, 2] = 10.
         b = Background(data, (25, 25), (1, 1), filter_threshold=1.)
-        assert_allclose(b.background_lores, ref_data)
+        assert_allclose(b.background_low_res, ref_data)
 
     def test_custom_method(self):
         b0 = Background(DATA, (25, 25), (3, 3), method='mean')
@@ -118,7 +118,7 @@ class TestBackground(object):
         with pytest.raises(ValueError):
             b = Background(DATA, (25, 25), (3, 3), method='custom',
                            backfunc=backfunc)
-            b.background_lores
+            b.background_low_res
 
     def test_custom_return_masked_array(self):
         def backfunc(data):
@@ -126,7 +126,7 @@ class TestBackground(object):
         with pytest.raises(ValueError):
             b = Background(DATA, (25, 25), (3, 3), method='custom',
                            backfunc=backfunc)
-            b.background_lores
+            b.background_low_res
 
     def test_custom_return_badshape(self):
         def backfunc(data):
@@ -134,4 +134,4 @@ class TestBackground(object):
         with pytest.raises(ValueError):
             b = Background(DATA, (25, 25), (3, 3), method='custom',
                            backfunc=backfunc)
-            b.background_lores
+            b.background_low_res

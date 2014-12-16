@@ -397,8 +397,10 @@ def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
 
 def make_4gaussians_image():
     """
-    Make an example image containing four 2D Gaussians plus
-    Gaussian noise.
+    Make an example image containing four 2D Gaussians plus Gaussian
+    noise.
+
+    The background has a mean and standard deviation of 5.
 
     Returns
     -------
@@ -437,6 +439,8 @@ def make_100gaussians_image():
     """
     Make an example image containing 100 2D Gaussians plus Gaussian
     noise.
+
+    The background has a mean of 5 and a standard deviation of 2.
 
     Returns
     -------

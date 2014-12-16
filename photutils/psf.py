@@ -1,5 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-"""Functions for performing PSF fitting photometry on 2-D arrays."""
+"""Functions for performing PSF fitting photometry on 2D arrays."""
 
 from __future__ import division
 import warnings

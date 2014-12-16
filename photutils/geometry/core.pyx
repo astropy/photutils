@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
-# The functions here are core geomet
+# The functions here are the core geometry functions
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
@@ -34,7 +34,6 @@ ctypedef struct intersections:
     point p2
 
 
-
 # NOTE: The following two functions use cdef because they are not intended to be
 # called from the Python code. Using def makes them callable from outside, but
 # also slower. Some functions currently return multiple values, and for those we
@@ -43,7 +42,7 @@ ctypedef struct intersections:
 
 cdef double distance(double x1, double y1, double x2, double y2):
     """
-    Distance between two points in two dimensions
+    Distance between two points in two dimensions.
 
     Parameters
     ----------
@@ -212,7 +211,7 @@ cdef point circle_segment_single2(double x1, double y1, double x2, double y2):
             pt = pt2
         else:
             pt = pt1
-     
+
     return pt
 
 
