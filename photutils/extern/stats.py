@@ -26,7 +26,7 @@ def mad_std(data):
     Parameters
     ----------
     data : array-like
-        2D data array
+        Data array or object that can be converted to an array.
 
     Returns
     -------
@@ -69,7 +69,7 @@ def gaussian_fwhm_to_sigma(fwhm):
     1.27398270043
     """
 
-    return np.array(fwhm) / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+    return fwhm / (2.0 * np.sqrt(2.0 * np.log(2.0)))
 
 
 def gaussian_sigma_to_fwhm(sigma):
@@ -94,4 +94,4 @@ def gaussian_sigma_to_fwhm(sigma):
     7.06446013509
     """
 
-    return np.array(sigma) * (2.0 * np.sqrt(2.0 * np.log(2.0)))
+    return sigma * (2.0 * np.sqrt(2.0 * np.log(2.0)))
