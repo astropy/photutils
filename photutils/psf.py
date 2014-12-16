@@ -490,13 +490,13 @@ def create_prf(data, positions, size, fluxes=None, mask=None, mode='mean',
                     # Replace NaN values by mirrored value, with respect
                     # to the prf's center
                     if fix_nan:
-                        prf_nan = np.isnan(extracted_prf)
+                        prf_nan = extracted_prf.mask
                         if prf_nan.any():
-                            if prf_nan.sum() > 3 or prf_nan[size / 2, size / 2]:
+                            if prf_nan.sum() > 3 or prf_nan[size // 2, size // 2]:
                                 continue
                             else:
                                 extracted_prf = mask_to_mirrored_num(
-                                    extracted_prf, prf_nan)
+                                    extracted_prf, prf_nan, (size // 2, size // 2))
                     # Normalize and add extracted PRF to data cube
                     if fluxes is None:
                         extracted_prf_norm = np.ma.copy(extracted_prf) / np.ma.sum(extracted_prf)

@@ -66,7 +66,7 @@ def test_create_prf_nan():
     image_nan = image.copy()
     image_nan[52, 52] = np.nan
     image_nan[52, 48] = np.nan
-    prf = create_prf(image_nan, positions, psf_size, subsampling=1)
+    prf = create_prf(image_nan, positions, psf_size, subsampling=1, fix_nan=True)
     assert not np.isnan(prf._prf_array[0, 0]).any()
 
 
