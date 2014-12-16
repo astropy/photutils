@@ -57,8 +57,8 @@ thresholding:
 
 .. doctest-requires:: scipy, skimage
 
-    >>> from photutils.extern.stats import fwhm_to_sigma
-    >>> sigma = fwhm_to_sigma(2.0)
+    >>> from photutils.extern.stats import gaussian_fwhm_to_sigma
+    >>> sigma = gaussian_fwhm_to_sigma(2.0)
     >>> kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     >>> segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
 
@@ -123,12 +123,12 @@ Now let's plot the results:
     from photutils.datasets import make_100gaussians_image
     from photutils import Background, detect_threshold, detect_sources
     from photutils import segment_properties, properties_table
-    from photutils.extern.stats import fwhm_to_sigma
+    from photutils.extern.stats import gaussian_fwhm_to_sigma
     from astropy.convolution import Gaussian2DKernel
     data = make_100gaussians_image()
     bkg = Background(data, (50, 50), filter_shape=(3, 3), method='median')
     threshold = bkg.background + (3. * bkg.background_rms)
-    sigma = fwhm_to_sigma(2.0)
+    sigma = gaussian_fwhm_to_sigma(2.0)
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
     props = segment_properties(data, segm)

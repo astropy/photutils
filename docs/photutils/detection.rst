@@ -168,8 +168,8 @@ image prior to thresholding:
 
     >>> from astropy.convolution import Gaussian2DKernel
     >>> from photutils import detect_sources
-    >>> from photutils.extern.stats import fwhm_to_sigma
-    >>> sigma = fwhm_to_sigma(2.0)
+    >>> from photutils.extern.stats import gaussian_fwhm_to_sigma
+    >>> sigma = gaussian_fwhm_to_sigma(2.0)
     >>> kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     >>> segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
 
@@ -192,13 +192,13 @@ image showing the detected sources:
 
     from photutils.datasets import make_100gaussians_image
     from photutils import detect_threshold, detect_sources
-    from photutils.extern.stats import fwhm_to_sigma
+    from photutils.extern.stats import gaussian_fwhm_to_sigma
     from astropy.convolution import Gaussian2DKernel
     from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
     import matplotlib.pylab as plt
     data = make_100gaussians_image()
     threshold = detect_threshold(data, snr=3.)
-    sigma = fwhm_to_sigma(2.0)
+    sigma = gaussian_fwhm_to_sigma(2.0)
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
     norm = ImageNormalize(stretch=SqrtStretch())
@@ -255,13 +255,14 @@ And let's plot the location of the detected peaks in the image:
 
 .. doctest-skip::
 
-    >>> from photutils import CircularAperture
     >>> from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
     >>> import matplotlib.pylab as plt
-    >>> apertures = CircularAperture(np.fliplr(peaks), r=4.)
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm)
-    >>> apertures.plot(color='blue', lw=1.5, alpha=0.5)
+    >>> plt.plot(peaks.T[1], peaks.T[0], ls='none', color='cyan', marker='+',
+    ...          ms=10, lw=1.5)
+    >>> plt.xlim(0, data.shape[1]-1)
+    >>> plt.ylim(0, data.shape[0]-1)
 
 .. plot::
 
@@ -273,13 +274,14 @@ And let's plot the location of the detected peaks in the image:
     threshold = median + (10.0 * std)
     peaks = find_peaks(data, threshold, min_separation=2)
 
-    from photutils import CircularAperture
     from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
     import matplotlib.pylab as plt
-    apertures = CircularAperture(np.fliplr(peaks), r=4.)
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm)
-    apertures.plot(color='blue', lw=1.5, alpha=0.5)
+    plt.plot(peaks.T[1], peaks.T[0], ls='none', color='cyan', marker='+',
+             ms=10, lw=1.5)
+    plt.xlim(0, data.shape[1]-1)
+    plt.ylim(0, data.shape[0]-1)
 
 
 Reference/API
