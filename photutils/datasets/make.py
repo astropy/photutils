@@ -395,16 +395,24 @@ def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
     return sources
 
 
-def make_4gaussians_image():
+def make_4gaussians_image(hdu=False, wcs=False):
     """
     Make an example image containing four 2D Gaussians plus Gaussian
     noise.
 
     The background has a mean and standard deviation of 5.
 
+    Parameters
+    ----------
+    hdu : bool
+        If `True` returns ``image`` as a hdu object. Default is `False`.
+    wcs : bool
+        If `True` returns wcs data along the image in a hdu object. Default
+        is `False`.
+
     Returns
     -------
-    image : `numpy.ndarray`
+    image : `numpy.ndarray` or `astropy.io.fits.ImageHDU`
         Image containing Gaussian sources.
 
     See Also
@@ -432,7 +440,26 @@ def make_4gaussians_image():
     sources = make_gaussian_sources(shape, table)
     noise = make_noise_image(shape, type='gaussian', mean=5.,
                              stddev=5., random_state=12345)
-    return (sources + noise)
+
+    if wcs and not hdu:
+        raise ValueError("wcs header only works with hdu output, use keyword "
+                         "'hdu=True'")
+
+    if hdu is True:
+        from astropy.io import fits
+        if wcs:
+            from astropy.wcs import WCS
+            header = WCS({'CTYPE1': 'RA---TAN',
+                          'CTYPE2': 'DEC--TAN',
+                          'CRPIX1': int(shape[1] / 2),
+                          'CRPIX2': int(shape[0] / 2)}, ).to_header()
+        else:
+            header = None
+        data = fits.ImageHDU(sources + noise, header=header)
+    else:
+        data = (sources + noise)
+
+    return data
 
 
 def make_100gaussians_image():
