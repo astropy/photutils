@@ -18,8 +18,8 @@ from astropy.utils.misc import InheritDocstrings
 from astropy.utils.exceptions import AstropyUserWarning
 from .aperture_funcs import (do_circular_photometry, do_elliptical_photometry,
                              do_rectangular_photometry)
-from .wcsutils import (skycoord_to_pixel, skycoord_to_pixel_scale_angle,
-                       assert_angle_or_pixel, assert_angle)
+from .extern.wcs_utils import skycoord_to_pixel
+from .utils.wcs_helpers import skycoord_to_pixel_scale_angle, assert_angle_or_pixel, assert_angle
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture',
            'SkyCircularAperture', 'CircularAperture',
