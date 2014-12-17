@@ -92,22 +92,23 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                     # Distance from circle center to pixel center.
                     d = sqrt(pxcen * pxcen + pycen * pycen)
 
-                    # If pixel center is "well within" circle, count full pixel.
+                    # If pixel center is "well within" circle, count full
+                    # pixel.
                     if d < R - pixel_radius:
                         frac[j, i] = 1.
 
-                    # If pixel center is "close" to circle border, find overlap.
+                    # If pixel center is "close" to circle border, find
+                    # overlap.
                     elif d < R + pixel_radius:
 
-                        # Either do exact calculation or use subpixel samping:
+                        # Either do exact calculation or use subpixel
+                        # sampling:
                         if use_exact:
-                            frac[j, i] = circular_overlap_single_exact(pxmin, pymin,
-                                                                       pxmax, pymax,
-                                                                       R) / (dx * dy)
+                            frac[j, i] = circular_overlap_single_exact(
+                                pxmin, pymin, pxmax, pymax, R) / (dx * dy)
                         else:
-                            frac[j, i] = circular_overlap_single_subpixel(pxmin, pymin,
-                                                                          pxmax, pymax,
-                                                                          R, subpixels)
+                            frac[j, i] = circular_overlap_single_subpixel(
+                                pxmin, pymin, pxmax, pymax, R, subpixels)
 
                     # Otherwise, it is fully outside circle.
                     # No action needed.
@@ -115,10 +116,10 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     return frac
 
 
-# NOTE: The following two functions use cdef because they are not intended to be
-# called from the Python code. Using def makes them callable from outside, but
-# also slower. In any case, these aren't useful to call from outside because
-# they only operate on a single pixel.
+# NOTE: The following two functions use cdef because they are not
+# intended to be called from the Python code. Using def makes them
+# callable from outside, but also slower. In any case, these aren't useful
+# to call from outside because they only operate on a single pixel.
 
 
 cdef double circular_overlap_single_subpixel(double x0, double y0,
@@ -160,7 +161,7 @@ cdef double circular_overlap_single_exact(double xmin, double ymin,
             return circular_overlap_core(-ymax, xmin, -ymin, xmax, r)
         else:
             return circular_overlap_single_exact(xmin, ymin, xmax, 0., r) \
-                 + circular_overlap_single_exact(xmin, 0., xmax, ymax, r)
+                + circular_overlap_single_exact(xmin, 0., xmax, ymax, r)
     elif 0. >= xmax:
         if 0. <= ymin:
             return circular_overlap_core(-xmax, ymin, -xmin, ymax, r)
@@ -168,19 +169,19 @@ cdef double circular_overlap_single_exact(double xmin, double ymin,
             return circular_overlap_core(-xmax, -ymax, -xmin, -ymin, r)
         else:
             return circular_overlap_single_exact(xmin, ymin, xmax, 0., r) \
-                 + circular_overlap_single_exact(xmin, 0., xmax, ymax, r)
+                + circular_overlap_single_exact(xmin, 0., xmax, ymax, r)
     else:
         if 0. <= ymin:
             return circular_overlap_single_exact(xmin, ymin, 0., ymax, r) \
-                 + circular_overlap_single_exact(0., ymin, xmax, ymax, r)
+                + circular_overlap_single_exact(0., ymin, xmax, ymax, r)
         if 0. >= ymax:
             return circular_overlap_single_exact(xmin, ymin, 0., ymax, r) \
-                 + circular_overlap_single_exact(0., ymin, xmax, ymax, r)
+                + circular_overlap_single_exact(0., ymin, xmax, ymax, r)
         else:
             return circular_overlap_single_exact(xmin, ymin, 0., 0., r) \
-                 + circular_overlap_single_exact(0., ymin, xmax, 0., r) \
-                 + circular_overlap_single_exact(xmin, 0., 0., ymax, r) \
-                 + circular_overlap_single_exact(0., 0., xmax, ymax, r)
+                + circular_overlap_single_exact(0., ymin, xmax, 0., r) \
+                + circular_overlap_single_exact(xmin, 0., 0., ymax, r) \
+                + circular_overlap_single_exact(0., 0., xmax, ymax, r)
 
 
 def circular_overlap_core(double xmin, double ymin, double xmax, double ymax,
@@ -202,18 +203,25 @@ def circular_overlap_core(double xmin, double ymin, double xmax, double ymax,
         if d1 < R and d2 < R:
             x1, y1 = sqrt(R * R - ymax * ymax), ymax
             x2, y2 = xmax, sqrt(R * R - xmax * xmax)
-            area = (xmax - xmin) * (ymax - ymin) - area_triangle(x1, y1, x2, y2, xmax, ymax) + area_arc(x1, y1, x2, y2, R)
+            area = ((xmax - xmin) * (ymax - ymin) -
+                    area_triangle(x1, y1, x2, y2, xmax, ymax) +
+                    area_arc(x1, y1, x2, y2, R))
         elif d1 < R:
             x1, y1 = xmin, sqrt(R * R - xmin * xmin)
             x2, y2 = xmax, sqrt(R * R - xmax * xmax)
-            area = area_arc(x1, y1, x2, y2, R) + area_triangle(x1, y1, x1, ymin, xmax, ymin) + area_triangle(x1, y1, x2, ymin, x2, y2)
+            area = (area_arc(x1, y1, x2, y2, R) +
+                    area_triangle(x1, y1, x1, ymin, xmax, ymin) +
+                    area_triangle(x1, y1, x2, ymin, x2, y2))
         elif d2 < R:
             x1, y1 = sqrt(R * R - ymin * ymin), ymin
             x2, y2 = sqrt(R * R - ymax * ymax), ymax
-            area = area_arc(x1, y1, x2, y2, R) + area_triangle(x1, y1, xmin, y1, xmin, ymax) + area_triangle(x1, y1, xmin, y2, x2, y2)
+            area = (area_arc(x1, y1, x2, y2, R) +
+                    area_triangle(x1, y1, xmin, y1, xmin, ymax) +
+                    area_triangle(x1, y1, xmin, y2, x2, y2))
         else:
             x1, y1 = sqrt(R * R - ymin * ymin), ymin
             x2, y2 = xmin, sqrt(R * R - xmin * xmin)
-            area = area_arc(x1, y1, x2, y2, R) + area_triangle(x1, y1, x2, y2, xmin, ymin)
+            area = (area_arc(x1, y1, x2, y2, R) +
+                    area_triangle(x1, y1, x2, y2, xmin, ymin))
 
     return area
