@@ -30,8 +30,8 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import, division, print_function, unicode_literals
-
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 import numpy as np
 import warnings
 from astropy import units as u
@@ -207,7 +207,7 @@ def celestial_pixel_scale(inwcs, allow_nonsquare=False):
                       "projection class {0}".format(cwcs.wcs.ctype[0][-3:]),
                       AstropyUserWarning)
     scale = (pixel_scale_matrix(cwcs)**2).sum(axis=0)**0.5
-    if not np.allclose(scale[0],scale[1]):
+    if not np.allclose(scale[0], scale[1]):
         if allow_nonsquare:
             warnings.warn("Pixels are not square, using an average pixel scale")
             return np.mean(scale)*u.deg
@@ -417,4 +417,3 @@ def pixel_scale_matrix(inwcs):
     pc = np.matrix(cwcs.get_pc())
     pccd = np.array(cdelt * pc)
     return pccd
-
