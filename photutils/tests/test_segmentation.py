@@ -279,7 +279,6 @@ class TestSegmentPropertiesFunction(object):
     def test_filtering_kernel(self):
         data = np.zeros((3, 3))
         data[1, 1] = 1.
-        segm = data.astype(np.int)
         from astropy.convolution import Gaussian2DKernel
         FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
         filter_kernel = Gaussian2DKernel(2.*FWHM2SIGMA, x_size=3, y_size=3)
