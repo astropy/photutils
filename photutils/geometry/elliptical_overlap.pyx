@@ -32,6 +32,7 @@ cimport cython
 # file to exist with the function signatures.
 from .core cimport distance, area_triangle, overlap_area_triangle_unit_circle
 
+
 def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                             int nx, int ny, double rx, double ry, double theta,
                             int use_exact, int subpixels):
@@ -104,16 +105,19 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                 pymax = pymin + dy
                 if pymax > bymin and pymin < bymax:
                     if use_exact:
-                        frac[j, i] = elliptical_overlap_single_exact(pxmin, pymin, pxmax, pymax, rx, ry, theta) * norm
+                        frac[j, i] = elliptical_overlap_single_exact(
+                            pxmin, pymin, pxmax, pymax, rx, ry, theta) * norm
                     else:
-                        frac[j, i] = elliptical_overlap_single_subpixel(pxmin, pymin, pxmax, pymax, rx, ry, theta, subpixels) * norm
+                        frac[j, i] = elliptical_overlap_single_subpixel(
+                            pxmin, pymin, pxmax, pymax, rx, ry, theta,
+                            subpixels) * norm
     return frac
 
 
-# NOTE: The following two functions use cdef because they are not intended to be
-# called from the Python code. Using def makes them callable from outside, but
-# also slower. In any case, these aren't useful to call from outside because
-# they only operate on a single pixel.
+# NOTE: The following two functions use cdef because they are not
+# intended to be called from the Python code. Using def makes them
+# callable from outside, but also slower. In any case, these aren't useful
+# to call from outside because they only operate on a single pixel.
 
 
 cdef double elliptical_overlap_single_subpixel(double x0, double y0,
@@ -136,17 +140,17 @@ cdef double elliptical_overlap_single_subpixel(double x0, double y0,
 
     dx = (x1 - x0) / subpixels
     dy = (y1 - y0) / subpixels
-    
+
     inv_rx_sq = 1. / (rx * rx)
     inv_ry_sq = 1. / (ry * ry)
-    
+
     x = x0 - 0.5 * dx
     for i in range(subpixels):
         x += dx
         y = y0 - 0.5 * dy
         for j in range(subpixels):
             y += dy
-            
+
             # Transform into frame of rotated ellipse
             x_tr = y * sin_theta + x * cos_theta
             y_tr = y * cos_theta - x * sin_theta
@@ -174,14 +178,18 @@ cdef double elliptical_overlap_single_exact(double xmin, double ymin,
     # Find scale by which the areas will be shrunk
     scale = rx * ry
 
-    # Reproject rectangle to frame of reference in which ellipse is a unit circle
-    x1, y1 = (xmin * cos_m_theta - ymin * sin_m_theta) / rx, (xmin * sin_m_theta + ymin * cos_m_theta) / ry
-    x2, y2 = (xmax * cos_m_theta - ymin * sin_m_theta) / rx, (xmax * sin_m_theta + ymin * cos_m_theta) / ry
-    x3, y3 = (xmax * cos_m_theta - ymax * sin_m_theta) / rx, (xmax * sin_m_theta + ymax * cos_m_theta) / ry
-    x4, y4 = (xmin * cos_m_theta - ymax * sin_m_theta) / rx, (xmin * sin_m_theta + ymax * cos_m_theta) / ry
+    # Reproject rectangle to frame of reference in which ellipse is a
+    # unit circle
+    x1, y1 = ((xmin * cos_m_theta - ymin * sin_m_theta) / rx,
+              (xmin * sin_m_theta + ymin * cos_m_theta) / ry)
+    x2, y2 = ((xmax * cos_m_theta - ymin * sin_m_theta) / rx,
+              (xmax * sin_m_theta + ymin * cos_m_theta) / ry)
+    x3, y3 = ((xmax * cos_m_theta - ymax * sin_m_theta) / rx,
+              (xmax * sin_m_theta + ymax * cos_m_theta) / ry)
+    x4, y4 = ((xmin * cos_m_theta - ymax * sin_m_theta) / rx,
+              (xmin * sin_m_theta + ymax * cos_m_theta) / ry)
 
-    # Divide resulting quadrilateral into two triangles and find intersection with unit circle
-    return (overlap_area_triangle_unit_circle(x1, y1, x2, y2, x3, y3) \
-          + overlap_area_triangle_unit_circle(x1, y1, x4, y4, x3, y3)) \
-          * scale
-
+    # Divide resulting quadrilateral into two triangles and find
+    # intersection with unit circle
+    return (overlap_area_triangle_unit_circle(x1, y1, x2, y2, x3, y3) +
+            overlap_area_triangle_unit_circle(x1, y1, x4, y4, x3, y3)) * scale
