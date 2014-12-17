@@ -1,15 +1,12 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
 """Functions for performing aperture photometry on 2-D arrays."""
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-
-import math
-
 import numpy as np
 import warnings
 import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
+
 
 __all__ = []
 
@@ -99,8 +96,8 @@ def find_fluxvar(data, fraction, error, flux, effective_gain, imin, imax,
                              zero_variance)
 
         if effective_gain is not None:
-            local_effective_gain = effective_gain[int((jmin + jmax) / 2 + 0.5),
-                              int((imin + imax) / 2 + 0.5)]
+            local_effective_gain = effective_gain[
+                int((jmin + jmax) / 2 + 0.5), int((imin + imax) / 2 + 0.5)]
             fluxvar += flux / local_effective_gain
 
     return fluxvar
@@ -111,12 +108,13 @@ def do_circular_photometry(data, positions, radius, error, effective_gain,
 
     extents = np.zeros((len(positions), 4), dtype=int)
 
-    extents[:,0] = positions[:,0] - radius + 0.5
-    extents[:,1] = positions[:,0] + radius + 1.5
-    extents[:,2] = positions[:,1] - radius + 0.5
-    extents[:,3] = positions[:,1] + radius + 1.5
+    extents[:, 0] = positions[:, 0] - radius + 0.5
+    extents[:, 1] = positions[:, 0] + radius + 1.5
+    extents[:, 2] = positions[:, 1] - radius + 0.5
+    extents[:, 3] = positions[:, 1] + radius + 1.5
 
-    ood_filter, extent, phot_extent = get_phot_extents(data, positions, extents)
+    ood_filter, extent, phot_extent = get_phot_extents(data, positions,
+                                                       extents)
 
     flux = u.Quantity(np.zeros(len(positions), dtype=np.float), unit=data.unit)
 
@@ -189,12 +187,13 @@ def do_elliptical_photometry(data, positions, a, b, theta, error,
     # TODO: we can be more efficient in terms of bounding box
     radius = max(a, b)
 
-    extents[:,0] = positions[:,0] - radius + 0.5
-    extents[:,1] = positions[:,0] + radius + 1.5
-    extents[:,2] = positions[:,1] - radius + 0.5
-    extents[:,3] = positions[:,1] + radius + 1.5
+    extents[:, 0] = positions[:, 0] - radius + 0.5
+    extents[:, 1] = positions[:, 0] + radius + 1.5
+    extents[:, 2] = positions[:, 1] - radius + 0.5
+    extents[:, 3] = positions[:, 1] + radius + 1.5
 
-    ood_filter, extent, phot_extent = get_phot_extents(data, positions, extents)
+    ood_filter, extent, phot_extent = get_phot_extents(data, positions,
+                                                       extents)
 
     flux = u.Quantity(np.zeros(len(positions), dtype=np.float), unit=data.unit)
 
@@ -234,7 +233,8 @@ def do_elliptical_photometry(data, positions, a, b, theta, error,
                                                y_pmin[i], y_pmax[i],
                                                x_max[i] - x_min[i],
                                                y_max[i] - y_min[i],
-                                               a, b, theta, use_exact, subpixels)
+                                               a, b, theta, use_exact,
+                                               subpixels)
 
             if a_in is not None:
                 b_in = a_in * b / a
@@ -242,7 +242,8 @@ def do_elliptical_photometry(data, positions, a, b, theta, error,
                                                     y_pmin[i], y_pmax[i],
                                                     x_max[i] - x_min[i],
                                                     y_max[i] - y_min[i],
-                                                    a_in, b_in, theta, use_exact, subpixels)
+                                                    a_in, b_in, theta,
+                                                    use_exact, subpixels)
 
             flux[i] = np.sum(data[y_min[i]:y_max[i],
                                   x_min[i]:x_max[i]] * fraction)
@@ -267,12 +268,13 @@ def do_rectangular_photometry(data, positions, w, h, theta, error,
     # TODO: this is an overestimate by up to sqrt(2) unless theta = 45 deg
     radius = max(h, w) * (2 ** -0.5)
 
-    extents[:,0] = positions[:,0] - radius + 0.5
-    extents[:,1] = positions[:,0] + radius + 1.5
-    extents[:,2] = positions[:,1] - radius + 0.5
-    extents[:,3] = positions[:,1] + radius + 1.5
+    extents[:, 0] = positions[:, 0] - radius + 0.5
+    extents[:, 1] = positions[:, 0] + radius + 1.5
+    extents[:, 2] = positions[:, 1] - radius + 0.5
+    extents[:, 3] = positions[:, 1] + radius + 1.5
 
-    ood_filter, extent, phot_extent = get_phot_extents(data, positions, extents)
+    ood_filter, extent, phot_extent = get_phot_extents(data, positions,
+                                                       extents)
 
     flux = u.Quantity(np.zeros(len(positions), dtype=np.float), unit=data.unit)
 
