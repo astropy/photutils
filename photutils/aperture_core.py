@@ -1356,7 +1356,7 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
         if len(pixelpositions) > 1 and pixelpositions[0].size >= 2:
             coord_columns = (pixpos[0], pixpos[1], positions)
         else:
-            coord_columns = ((pixpos[0],), (pixpos[1],), (positions,))
+            coord_columns = (pixpos[0], pixpos[1], (positions, ))
         coord_col_names = ('xcenter', 'ycenter', 'center_input')
     else:
         pixelpositions = ap.positions * u.pixel
