@@ -43,7 +43,8 @@ def get_path(filename, location='local'):
     if location == 'local':
         path = get_pkg_data_filename('data/' + filename)
     elif location == 'remote':    # pragma: no cover
-        url = 'https://github.com/astropy/photutils-datasets/blob/master/data/{0}?raw=true'.format(filename)
+        url = ('https://github.com/astropy/photutils-datasets/blob/master/'
+               'data/{0}?raw=true'.format(filename))
         path = download_file(url, cache=True)
     else:
         raise ValueError('Invalid location: {0}'.format(location))
