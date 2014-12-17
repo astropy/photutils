@@ -9,8 +9,8 @@ from astropy.modeling.parameters import Parameter
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling import Fittable2DModel
-from .extern.imageutils import (extract_array_2d, subpixel_indices, add_array_2d,
-                                mask_to_mirrored_num)
+from .extern.imageutils import (extract_array_2d, subpixel_indices,
+                                add_array_2d, mask_to_mirrored_num)
 
 
 __all__ = ['DiscretePRF', 'create_prf', 'psf_photometry',
@@ -171,13 +171,15 @@ class DiscretePRF(Fittable2DModel):
 
         # Fit only if PSF is completely contained in the image and no NaN
         # values are present
-        if sub_array_data.shape == self.shape and not np.isnan(sub_array_data).any():
+        if (sub_array_data.shape == self.shape and
+                not np.isnan(sub_array_data).any()):
             y = extract_array_2d(indices[0], self.shape,
                                  (self.x_0.value, self.y_0.value))
             x = extract_array_2d(indices[1], self.shape,
                                  (self.x_0.value, self.y_0.value))
-            # TODO: It should be discussed whether this is  the right place to fix
-            # the warning. Maybe it should be handled better in astropy.modeling.fitting
+            # TODO: It should be discussed whether this is the right
+            # place to fix the warning.  Maybe it should be handled better
+            # in astropy.modeling.fitting
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", AstropyUserWarning)
                 m = self.fitter(self, x, y, sub_array_data)
@@ -226,7 +228,8 @@ class GaussianPSF(Fittable2DModel):
                 {\\sqrt{2} \\sigma} \\right)
                 \\right]
 
-    Where ``erf`` denotes the error function and ``F`` to total integrated flux..
+    Where ``erf`` denotes the error function and ``F`` to total
+    integrated flux..
     """
     flux = Parameter('flux')
     x_0 = Parameter('x_0')
@@ -257,10 +260,11 @@ class GaussianPSF(Fittable2DModel):
         """
         Model function Gaussian PSF model.
         """
-        return flux / 4 * ((self._erf((x - x_0 + 0.5) / (np.sqrt(2) * sigma))
-                            - self._erf((x - x_0 - 0.5) / (np.sqrt(2) * sigma)))
-                          * (self._erf((y - y_0 + 0.5) / (np.sqrt(2) * sigma))
-                             - self._erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma))))
+        return (flux / 4 *
+                ((self._erf((x - x_0 + 0.5) / (np.sqrt(2) * sigma)) -
+                  self._erf((x - x_0 - 0.5) / (np.sqrt(2) * sigma))) *
+                 (self._erf((y - y_0 + 0.5) / (np.sqrt(2) * sigma)) -
+                  self._erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma)))))
 
     def fit(self, data, indices):
         """
@@ -299,7 +303,8 @@ class GaussianPSF(Fittable2DModel):
 
         # Fit only if PSF is completely contained in the image and no NaN
         # values are present
-        if sub_array_data.shape == self.shape and not np.isnan(sub_array_data).any():
+        if (sub_array_data.shape == self.shape and
+                not np.isnan(sub_array_data).any()):
             y = extract_array_2d(indices[0], self.shape, position)
             x = extract_array_2d(indices[1], self.shape, position)
             m = self.fitter(self, x, y, sub_array_data)
@@ -486,27 +491,33 @@ def create_prf(data, positions, size, fluxes=None, mask=None, mode='mean',
                                                  position)
                 # Check shape to exclude incomplete PRFs at the boundaries
                 # of the image
-                if extracted_prf.shape == (size, size) and np.ma.sum(extracted_prf) != 0:
+                if (extracted_prf.shape == (size, size) and
+                        np.ma.sum(extracted_prf) != 0):
                     # Replace NaN values by mirrored value, with respect
                     # to the prf's center
                     if fix_nan:
                         prf_nan = extracted_prf.mask
                         if prf_nan.any():
-                            if prf_nan.sum() > 3 or prf_nan[size // 2, size // 2]:
+                            if (prf_nan.sum() > 3 or
+                                    prf_nan[size // 2, size // 2]):
                                 continue
                             else:
                                 extracted_prf = mask_to_mirrored_num(
-                                    extracted_prf, prf_nan, (size // 2, size // 2))
+                                    extracted_prf, prf_nan,
+                                    (size // 2, size // 2))
                     # Normalize and add extracted PRF to data cube
                     if fluxes is None:
-                        extracted_prf_norm = np.ma.copy(extracted_prf) / np.ma.sum(extracted_prf)
+                        extracted_prf_norm = (np.ma.copy(extracted_prf) /
+                                              np.ma.sum(extracted_prf))
                     else:
                         fluxes_sub_prfs = fluxes[sub_prf_indices]
-                        extracted_prf_norm = np.ma.copy(extracted_prf) / fluxes_sub_prfs[k]
+                        extracted_prf_norm = (np.ma.copy(extracted_prf) /
+                                              fluxes_sub_prfs[k])
                     extracted_sub_prfs.append(extracted_prf_norm)
                 else:
                     continue
-            prf_model[i, j] = np.ma.getdata(combine(np.ma.dstack(extracted_sub_prfs), axis=2))
+            prf_model[i, j] = np.ma.getdata(
+                combine(np.ma.dstack(extracted_sub_prfs), axis=2))
     return DiscretePRF(prf_model, subsampling=subsampling)
 
 
