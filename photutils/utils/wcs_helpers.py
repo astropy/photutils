@@ -67,13 +67,15 @@ def skycoord_to_pixel_scale_angle(coords, wcs):
 
 def assert_angle_or_pixel(name, q):
     """
-    Check that ``q`` is either an angular or a pixel :class:`~astropy.units.Quantity`.
+    Check that ``q`` is either an angular or a pixel
+    :class:`~astropy.units.Quantity`.
     """
     if isinstance(q, u.Quantity):
         if q.unit.physical_type == 'angle' or q.unit is u.pixel:
             pass
         else:
-            raise ValueError("{0} should have angular or pixel units".format(name))
+            raise ValueError("{0} should have angular or pixel "
+                             "units".format(name))
     else:
         raise TypeError("{0} should be a Quantity instance".format(name))
 
@@ -89,4 +91,3 @@ def assert_angle(name, q):
             raise ValueError("{0} should have angular units".format(name))
     else:
         raise TypeError("{0} should be a Quantity instance".format(name))
-

@@ -26,7 +26,8 @@ def check_random_state(seed):
 
     Notes
     -----
-    This routine is from scikit-learn.  See http://scikit-learn.org/stable/developers/utilities.html#validation-tools.
+    This routine is from scikit-learn.  See
+    http://scikit-learn.org/stable/developers/utilities.html#validation-tools.
     """
 
     if seed is None or seed is np.random:
