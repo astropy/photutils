@@ -58,7 +58,7 @@ thresholding:
 .. doctest-requires:: scipy, skimage
 
     >>> from photutils.extern.stats import gaussian_fwhm_to_sigma
-    >>> sigma = gaussian_fwhm_to_sigma(2.0)
+    >>> sigma = 2.0 * gaussian_fwhm_to_sigma    # FWHM = 2.
     >>> kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     >>> segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
 
@@ -128,7 +128,7 @@ Now let's plot the results:
     data = make_100gaussians_image()
     bkg = Background(data, (50, 50), filter_shape=(3, 3), method='median')
     threshold = bkg.background + (3. * bkg.background_rms)
-    sigma = gaussian_fwhm_to_sigma(2.0)
+    sigma = 2.0 * gaussian_fwhm_to_sigma    # FWHM = 2.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
     props = segment_properties(data, segm)
