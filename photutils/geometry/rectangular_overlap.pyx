@@ -23,9 +23,10 @@ ctypedef np.float64_t DTYPE_t
 cimport cython
 
 
-def rectangular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
-                            int nx, int ny, double width, double height, double theta,
-                            int use_exact, int subpixels):
+def rectangular_overlap_grid(double xmin, double xmax, double ymin,
+                             double ymax, int nx, int ny, double width,
+                             double height, double theta, int use_exact,
+                             int subpixels):
     """
     rectangular_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, width, height,
                              use_exact, subpixels)
@@ -67,7 +68,8 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     cdef np.ndarray[DTYPE_t, ndim=2] frac = np.zeros([ny, nx], dtype=DTYPE)
 
     if use_exact == 1:
-        raise NotImplementedError("Exact mode has not been implemented for rectangular apertures")
+        raise NotImplementedError("Exact mode has not been implemented for "
+                                  "rectangular apertures")
 
     # Find the width of each element in x and y
     dx = (xmax - xmin) / nx
@@ -82,7 +84,9 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         for j in range(ny):
             pymin = ymin + j * dy
             pymax = pymin + dy
-            frac[j, i] = rectangular_overlap_single_subpixel(pxmin, pymin, pxmax, pymax, width, height, theta, subpixels) / (dx * dy)
+            frac[j, i] = rectangular_overlap_single_subpixel(
+                pxmin, pymin, pxmax, pymax, width, height, theta,
+                subpixels) / (dx * dy)
 
     return frac
 
@@ -105,17 +109,17 @@ cdef double rectangular_overlap_single_subpixel(double x0, double y0,
 
     half_width = width / 2.
     half_height = height / 2.
-    
+
     dx = (x1 - x0) / subpixels
     dy = (y1 - y0) / subpixels
-    
+
     x = x0 - 0.5 * dx
     for i in range(subpixels):
         x += dx
         y = y0 - 0.5 * dy
         for j in range(subpixels):
             y += dy
-            
+
             # Transform into frame of rotated rectangle
             x_tr = y * sin_theta + x * cos_theta
             y_tr = y * cos_theta - x * sin_theta
@@ -124,4 +128,3 @@ cdef double rectangular_overlap_single_subpixel(double x0, double y0,
                 frac += 1.
 
     return frac / (subpixels * subpixels)
-
