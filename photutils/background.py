@@ -2,6 +2,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
+from numpy.lib.index_tricks import index_exp
 from astropy.stats import sigma_clip
 from astropy.utils import lazyproperty
 import warnings
@@ -137,6 +138,7 @@ class Background(object):
         self.yextra = data.shape[0] % box_shape[0]
         self.xextra = data.shape[1] % box_shape[1]
         self.data_shape = data.shape
+        self.data_region = index_exp[0:data.shape[0], 0:data.shape[1]]
         if (self.yextra > 0) or (self.xextra > 0):
             self.padded = True
             data_ma = self._pad_data(data, mask)
@@ -336,8 +338,7 @@ class Background(object):
 
         bkg = self._resize_meshes(self.background_low_res)
         if self.padded:
-            y0, x0 = self.data_shape
-            bkg = bkg[0:y0, 0:x0]
+            bkg = bkg[self.data_region]
         return bkg
 
     @lazyproperty
@@ -351,8 +352,7 @@ class Background(object):
 
         bkgrms = self._resize_meshes(self.background_rms_low_res)
         if self.padded:
-            y0, x0 = self.data_shape
-            bkgrms = bkgrms[0:y0, 0:x0]
+            bkgrms = bkgrms[self.data_region]
         return bkgrms
 
     @lazyproperty
