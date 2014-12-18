@@ -10,12 +10,11 @@ import numpy as np
 from astropy.table import Column, Table
 from astropy.utils.exceptions import AstropyUserWarning
 from .core import find_peaks
+from ..extern.stats import gaussian_fwhm_to_sigma
 
 
 __all__ = ['daofind', 'irafstarfind']
 
-
-FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
 
 
 def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
@@ -824,7 +823,7 @@ class _FindObjKernel(object):
         self.ratio = ratio
         self.theta = theta
         self.theta_radians = np.deg2rad(self.theta)
-        self.xsigma = self.fwhm * FWHM2SIGMA
+        self.xsigma = self.fwhm * gaussian_fwhm_to_sigma
         self.ysigma = self.xsigma * self.ratio
         self.a = None
         self.b = None
