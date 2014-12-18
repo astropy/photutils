@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
-from .. import calculate_total_error, interpolate_masked_data
+from .. import calculate_total_error
 
 SHAPE = (5, 5)
 DATAVAL = 2.
@@ -43,45 +43,3 @@ class TestCalculateTotalError(object):
         error_tot = calculate_total_error(DATA, error=ERROR,
                                           effective_gain=EFFGAIN)
         assert_allclose(error_tot, np.sqrt(2.) * ERROR)
-
-
-class TestInterpolateMaskedData(object):
-    def test_mask_shape(self):
-        with pytest.raises(ValueError):
-            interpolate_masked_data(DATA, WRONG_SHAPE)
-
-    def test_error_shape(self):
-        with pytest.raises(ValueError):
-            interpolate_masked_data(DATA, MASK, error=WRONG_SHAPE)
-
-    def test_background_shape(self):
-        with pytest.raises(ValueError):
-            interpolate_masked_data(DATA, MASK, background=WRONG_SHAPE)
-
-    def test_interpolation(self):
-        data2 = DATA.copy()
-        data2[2, 2] = 100.
-        error2 = ERROR.copy()
-        error2[2, 2] = 100.
-        background2 = BACKGROUND.copy()
-        background2[2, 2] = 100.
-        data, error, background = interpolate_masked_data(
-            data2, MASK, error=error2, background=background2)
-        assert_allclose(data, DATA)
-        assert_allclose(error, ERROR)
-        assert_allclose(background, BACKGROUND)
-
-    def test_interpolation_larger_mask(self):
-        data2 = DATA.copy()
-        data2[2, 2] = 100.
-        error2 = ERROR.copy()
-        error2[2, 2] = 100.
-        background2 = BACKGROUND.copy()
-        background2[2, 2] = 100.
-        mask2 = MASK.copy()
-        mask2[1:4, 1:4] = True
-        data, error, background = interpolate_masked_data(
-            data2, MASK, error=error2, background=background2)
-        assert_allclose(data, DATA)
-        assert_allclose(error, ERROR)
-        assert_allclose(background, BACKGROUND)
