@@ -453,16 +453,34 @@ def test_wcs_based_photometry():
                               catalog['b'][0] * catalog['b'].unit,
                               frame='galactic')
 
-    photometry_skycoord = aperture_photometry(hdu, SkyCircularAperture(pos_skycoord, 4 * u.arcsec))
-    photometry_skycoord_s = aperture_photometry(hdu, SkyCircularAperture(pos_skycoord_s, 4 * u.arcsec))
+    photometry_skycoord = aperture_photometry(
+        hdu, SkyCircularAperture(pos_skycoord, 4 * u.arcsec))
+    photometry_skycoord_s = aperture_photometry(
+        hdu, SkyCircularAperture(pos_skycoord_s, 4 * u.arcsec))
 
     assert_allclose(photometry_skycoord['aperture_sum'][0],
                     photometry_skycoord_s['aperture_sum'])
 
-    photometry_skycoord_pix = aperture_photometry(hdu, SkyCircularAperture(pos_skycoord, 4 / 1.2 * u.pixel))
+    photometry_skycoord_pix = aperture_photometry(
+        hdu, SkyCircularAperture(pos_skycoord, 4 / 1.2 * u.pixel))
 
     assert_allclose(photometry_skycoord['aperture_sum'],
                     photometry_skycoord_pix['aperture_sum'])
+
+    photometry_skycoord_rec = aperture_photometry(
+        hdu, SkyRectangularAperture(pos_skycoord,
+                                    8 * u.arcsec, 8 * u.arcsec,
+                                    0 * u.deg))
+    photometry_skycoord_rec_s = aperture_photometry(
+        hdu, SkyRectangularAperture(pos_skycoord_s,
+                                    8 * u.arcsec, 8 * u.arcsec,
+                                    0 * u.deg))
+
+    assert_allclose(photometry_skycoord_rec['aperture_sum'][0],
+                    photometry_skycoord_rec_s['aperture_sum'])
+
+    assert np.all(photometry_skycoord_rec['aperture_sum'] >
+                  photometry_skycoord['aperture_sum'])
 
     # TODO compare with fluxes_catalog
 

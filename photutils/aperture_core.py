@@ -27,6 +27,7 @@ __all__ = ['Aperture', 'SkyAperture', 'PixelAperture',
            'SkyEllipticalAperture', 'EllipticalAperture',
            'SkyEllipticalAnnulus', 'EllipticalAnnulus',
            'RectangularAperture', 'RectangularAnnulus',
+           'SkyRectangularAperture', 'SkyRectangularAnnulus',
            'aperture_photometry']
 
 
@@ -756,6 +757,66 @@ class EllipticalAnnulus(PixelAperture):
         return flux
 
 
+class SkyRectangularAperture(SkyAperture):
+    """
+    Rectangular aperture(s), defined in sky coordinates.
+
+    Parameters
+    ----------
+    positions : `~astropy.coordinates.SkyCoord`
+        Celestial coordinates of the aperture center(s). This can be either
+        scalar coordinates or an array of coordinates.
+    w : `~astropy.units.Quantity`
+        The full width of the aperture(s) (at theta = 0, this is the "x" axis),
+        either in angular or pixel units.
+    h :  `~astropy.units.Quantity`
+        The full height of the aperture(s) (at theta = 0, this is the "y"
+        axis), either in angular or pixel units.
+    theta : `~astropy.units.Quantity`
+        The position angle of the width side in radians
+        (counterclockwise).
+    """
+
+    def __init__(self, positions, w, h, theta):
+
+        if isinstance(positions, SkyCoord):
+            self.positions = positions
+        else:
+            raise TypeError("positions should be a SkyCoord instance")
+
+        assert_angle_or_pixel('w', w)
+        assert_angle_or_pixel('h', h)
+        assert_angle('theta', theta)
+
+        if w.unit.physical_type != h.unit.physical_type:
+            raise ValueError("'w' and 'h' should either both be angles or "
+                             "in pixels")
+
+        self.w = w
+        self.h = h
+        self.theta = theta
+
+    def to_pixel(self, wcs):
+        """
+        Return a RectangularAperture instance in pixel coordinates.
+        """
+        x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
+
+        # TODO: no need to use the mean once we support arrays of aperture values
+        if self.w.unit.physical_type == 'angle':
+            w = (np.mean(scale) * self.w).to(u.pixel).value
+            h = (np.mean(scale) * self.h).to(u.pixel).value
+        else:  # pixel
+            w = self.w.value
+            h = self.h.value
+
+        theta = (np.mean(angle) + self.theta).to(u.radian).value
+
+        pixel_positions = np.array([x, y]).transpose()
+
+        return RectangularAperture(pixel_positions, w, h, theta)
+
+
 class RectangularAperture(PixelAperture):
     """
     A rectangular aperture, defined in pixel coordinates.
@@ -850,6 +911,78 @@ class RectangularAperture(PixelAperture):
                                          method=method,
                                          subpixels=subpixels)
         return flux
+
+
+class SkyRectangularAnnulus(SkyAperture):
+    """
+    Rectangular annulus aperture(s), defined in sky coordinates.
+
+    Parameters
+    ----------
+    positions : `~astropy.coordinates.SkyCoord`
+        Celestial coordinates of the aperture center(s). This can be either
+        scalar coordinates or an array of coordinates.
+    w_in : `~astropy.units.Quantity`
+        The inner full width of the aperture(s), either in angular or pixel
+        units.
+    w_out : `~astropy.units.Quantity`
+        The outer full width of the aperture(s), either in angular or pixel
+        units.
+    h_out : `~astropy.units.Quantity`
+        The outer full height of the aperture(s), either in angular or pixel
+        units. (The inner full height is determined by scaling by
+        w_in/w_out.)
+    theta : `~astropy.units.Quantity`
+        The position angle of the semimajor axis (counterclockwise), either
+        in angular or pixel units.
+    """
+
+    def __init__(self, positions, w_in, w_out, h_out, theta):
+
+        if isinstance(positions, SkyCoord):
+            self.positions = positions
+        else:
+            raise TypeError("positions should be a SkyCoord instance")
+        assert_angle_or_pixel('w_in', w_in)
+        assert_angle_or_pixel('w_out', w_out)
+        assert_angle_or_pixel('h_out', h_out)
+        assert_angle('theta', theta)
+
+        if w_in.unit.physical_type != w_out.unit.physical_type:
+            raise ValueError("w_in and w_out should either both be angles or "
+                             "in pixels")
+
+        if w_out.unit.physical_type != h_out.unit.physical_type:
+            raise ValueError("w_out and h_out should either both be angles or "
+                             "in pixels")
+
+        self.w_in = w_in
+        self.w_out = w_out
+        self.h_out = h_out
+        self.theta = theta
+
+    def to_pixel(self, wcs):
+        """
+        Return a EllipticalAnnulus instance in pixel coordinates.
+        """
+
+        x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
+
+        # TODO: no need to use the mean once we support arrays of aperture values
+        if self.w_in.unit.physical_type == 'angle':
+            w_in = (np.mean(scale) * self.w_in).to(u.pixel).value
+            w_out = (np.mean(scale) * self.w_out).to(u.pixel).value
+            h_out = (np.mean(scale) * self.h_out).to(u.pixel).value
+        else:
+            w_in = self.w_in.value
+            w_out = self.w_out.value
+            h_out = self.h_out.value
+
+        theta = (np.mean(angle) + self.theta).to(u.radian).value
+
+        pixel_positions = np.array([x, y]).transpose()
+
+        return RectangularAnnulus(pixel_positions, w_in, w_out, h_out, theta)
 
 
 class RectangularAnnulus(PixelAperture):
