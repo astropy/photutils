@@ -442,8 +442,7 @@ class TestInputNDData(BaseTestDifferentData):
 
 
 @remote_data
-def test_wcs_based_photometry():
-    from astropy.table import Table
+def test_wcs_based_photometry_to_catalogue():
     from astropy.coordinates import SkyCoord
     from ..datasets import get_path
 
@@ -460,37 +459,56 @@ def test_wcs_based_photometry():
                               catalog['b'][0] * catalog['b'].unit,
                               frame='galactic')
 
-    photometry_skycoord_circ = aperture_photometry(
-        hdu, SkyCircularAperture(pos_skycoord, 4 * u.arcsec))
-    photometry_skycoord_circ_3 = aperture_photometry(
-        hdu, SkyCircularAperture(pos_skycoord, 3 * u.arcsec))
-    photometry_skycoord_circ_s = aperture_photometry(
-        hdu, SkyCircularAperture(pos_skycoord_s, 4 * u.arcsec))
+    # TODO compare with fluxes_catalog
 
-    assert_allclose(photometry_skycoord_circ['aperture_sum'][0],
+
+def test_wcs_based_photometry():
+    from astropy.wcs import WCS
+    from ..datasets import make_4gaussians_image
+    from ..extern.wcs_utils import pixel_to_skycoord
+
+    hdu = make_4gaussians_image(hdu=True, wcs=True)
+    wcs = WCS(header=hdu.header)
+
+    # hard wired positions in make_4gaussian_image
+    pos_orig_pixel = u.Quantity(([160., 25., 150., 90.],
+                                 [70., 40., 25., 60.]), unit=u.pixel)
+
+    pos_skycoord = pixel_to_skycoord(pos_orig_pixel[0], pos_orig_pixel[1], wcs)
+
+    pos_skycoord_s = pos_skycoord[2]
+
+    photometry_skycoord_circ = aperture_photometry(
+        hdu, SkyCircularAperture(pos_skycoord, 3 * u.deg))
+    photometry_skycoord_circ_2 = aperture_photometry(
+        hdu, SkyCircularAperture(pos_skycoord, 2 * u.deg))
+    photometry_skycoord_circ_s = aperture_photometry(
+        hdu, SkyCircularAperture(pos_skycoord_s, 3 * u.deg))
+
+    assert_allclose(photometry_skycoord_circ['aperture_sum'][2],
                     photometry_skycoord_circ_s['aperture_sum'])
 
     photometry_skycoord_circ_ann = aperture_photometry(
-        hdu, SkyCircularAnnulus(pos_skycoord, 3 * u.arcsec, 4 * u.arcsec))
+        hdu, SkyCircularAnnulus(pos_skycoord, 2 * u.adeg, 3 * u.deg))
 
     assert_allclose(photometry_skycoord_circ_ann['aperture_sum'],
                     photometry_skycoord_circ['aperture_sum']
-                    - photometry_skycoord_circ_3['aperture_sum'])
+                    - photometry_skycoord_circ_2['aperture_sum'])
 
     photometry_skycoord_ell = aperture_photometry(
         hdu, SkyEllipticalAperture(pos_skycoord,
-                                   4 * u.arcsec, 4.0001 * u.arcsec, 0 * u.deg))
-    photometry_skycoord_ell_3 = aperture_photometry(
+                                   3 * u.deg, 3.0001 * u.deg, 45 * u.deg))
+    photometry_skycoord_ell_2 = aperture_photometry(
         hdu, SkyEllipticalAperture(pos_skycoord,
-                                   3 * u.arcsec, 3.0001 * u.arcsec, 0 * u.deg))
+                                   2 * u.deg, 2.0001 * u.deg, 45 * u.deg))
     photometry_skycoord_ell_s = aperture_photometry(
         hdu, SkyEllipticalAperture(pos_skycoord_s,
-                                   4 * u.arcsec, 4.0001 * u.arcsec, 0 * u.deg))
+                                   3 * u.deg, 3.0001 * u.deg, 45 * u.deg))
     photometry_skycoord_ell_ann = aperture_photometry(
-        hdu, SkyEllipticalAnnulus(pos_skycoord, 3 * u.arcsec, 4 * u.arcsec,
-                                  4.0001 * u.arcsec, 0 * u.deg))
+        hdu, SkyEllipticalAnnulus(pos_skycoord, 2 * u.deg, 3 * u.deg,
+                                  3.0001 * u.deg, 45 * u.deg))
 
-    assert_allclose(photometry_skycoord_ell['aperture_sum'][0],
+    assert_allclose(photometry_skycoord_ell['aperture_sum'][2],
                     photometry_skycoord_ell_s['aperture_sum'])
 
     assert_allclose(photometry_skycoord_ell['aperture_sum'],
@@ -498,29 +516,7 @@ def test_wcs_based_photometry():
 
     assert_allclose(photometry_skycoord_ell_ann['aperture_sum'],
                     photometry_skycoord_ell['aperture_sum']
-                    - photometry_skycoord_ell_3['aperture_sum'], rtol=1e-4)
-
-    photometry_skycoord_circ_pix = aperture_photometry(
-        hdu, SkyCircularAperture(pos_skycoord, 4. / scale * u.pixel))
-    photometry_skycoord_circ_ann_pix = aperture_photometry(
-        hdu, SkyCircularAnnulus(pos_skycoord,
-                                3. / scale * u.pixel, 4. / scale * u.pixel))
-    photometry_skycoord_ell_pix = aperture_photometry(
-        hdu, SkyEllipticalAperture(pos_skycoord, 4. / scale * u.pixel,
-                                   4.0001 / scale * u.pixel, 0 * u.deg))
-    photometry_skycoord_ell_ann_pix = aperture_photometry(
-        hdu, SkyEllipticalAnnulus(pos_skycoord,
-                                  3. / scale * u.pixel, 4. / scale * u.pixel,
-                                  4.0001 / scale * u.pixel, 0 * u.deg))
-
-    assert_allclose(photometry_skycoord_circ['aperture_sum'],
-                    photometry_skycoord_circ_pix['aperture_sum'])
-    assert_allclose(photometry_skycoord_ell['aperture_sum'],
-                    photometry_skycoord_ell_pix['aperture_sum'])
-    assert_allclose(photometry_skycoord_circ_ann['aperture_sum'],
-                    photometry_skycoord_circ_ann_pix['aperture_sum'])
-    assert_allclose(photometry_skycoord_ell_ann['aperture_sum'],
-                    photometry_skycoord_ell_ann_pix['aperture_sum'], rtol=1e-5)
+                    - photometry_skycoord_ell_2['aperture_sum'], rtol=1e-4)
 
     photometry_skycoord_rec = aperture_photometry(
         hdu, SkyRectangularAperture(pos_skycoord,
@@ -536,8 +532,6 @@ def test_wcs_based_photometry():
 
     assert np.all(photometry_skycoord_rec['aperture_sum'] >
                   photometry_skycoord['aperture_sum'])
-
-    # TODO compare with fluxes_catalog
 
 
 def test_basic_circular_aperture_photometry_unit():
