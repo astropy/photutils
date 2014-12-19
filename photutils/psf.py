@@ -9,10 +9,9 @@ from astropy.modeling.parameters import Parameter
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling import Fittable2DModel
-from .extern.imageutils import (extract_array_2d, subpixel_indices,
-                                add_array_2d)
-from .utils import mask_to_mirrored_num
+from astropy.nddata.utils import extract_array, add_array, subpixel_indices
 
+from imageutils import mask_to_mirrored_num
 
 __all__ = ['DiscretePRF', 'create_prf', 'psf_photometry',
            'GaussianPSF', 'subtract_psf']
@@ -123,11 +122,11 @@ class DiscretePRF(Fittable2DModel):
             y position of the center of the PRF.
         """
         # Convert x and y to index arrays
-        x = (x - int(x_0 + 0.5)).astype('int') + self.shape[1] // 2
-        y = (y - int(y_0 + 0.5)).astype('int') + self.shape[0] // 2
+        x = (x - x_0 + 0.5 + self.shape[1] // 2).astype('int')
+        y = (y - y_0 + 0.5 + self.shape[0] // 2).astype('int')
 
         # Get subpixel indices
-        x_sub, y_sub = subpixel_indices((x_0, y_0), self.subsampling)
+        y_sub, x_sub = subpixel_indices((y_0, x_0), self.subsampling)
 
         # Out of boundary masks
         x_bound = np.logical_or(x < 0, x >= self.shape[1])
@@ -137,7 +136,7 @@ class DiscretePRF(Fittable2DModel):
         # Set out of boundary indices to zero
         x[x_bound] = 0
         y[y_bound] = 0
-        result = amplitude * self._prf_array[y_sub, x_sub][y, x]
+        result = amplitude * self._prf_array[int(y_sub), int(x_sub)][y, x]
 
         # Set out of boundary values to zero
         result[out_of_bounds] = 0
@@ -167,17 +166,17 @@ class DiscretePRF(Fittable2DModel):
             returned by np.indices(data.shape)
         """
         # Extract sub array of the data of the size of the PRF grid
-        sub_array_data = extract_array_2d(data, self.shape,
-                                          (self.x_0.value, self.y_0.value))
+        sub_array_data = extract_array(data, self.shape,
+                                       (self.y_0.value, self.x_0.value))
 
         # Fit only if PSF is completely contained in the image and no NaN
         # values are present
         if (sub_array_data.shape == self.shape and
                 not np.isnan(sub_array_data).any()):
-            y = extract_array_2d(indices[0], self.shape,
-                                 (self.x_0.value, self.y_0.value))
-            x = extract_array_2d(indices[1], self.shape,
-                                 (self.x_0.value, self.y_0.value))
+            y = extract_array(indices[0], self.shape,
+                              (self.y_0.value, self.x_0.value))
+            x = extract_array(indices[1], self.shape,
+                              (self.y_0.value, self.x_0.value))
             # TODO: It should be discussed whether this is the right
             # place to fix the warning.  Maybe it should be handled better
             # in astropy.modeling.fitting
@@ -297,17 +296,17 @@ class GaussianPSF(Fittable2DModel):
             contained in the image or if NaN values are present.
         """
         # Set position
-        position = (self.x_0.value, self.y_0.value)
+        position = (self.y_0.value, self.x_0.value)
 
         # Extract sub array with data of interest
-        sub_array_data = extract_array_2d(data, self.shape, position)
+        sub_array_data = extract_array(data, self.shape, position)
 
         # Fit only if PSF is completely contained in the image and no NaN
         # values are present
         if (sub_array_data.shape == self.shape and
                 not np.isnan(sub_array_data).any()):
-            y = extract_array_2d(indices[0], self.shape, position)
-            x = extract_array_2d(indices[1], self.shape, position)
+            y = extract_array(indices[0], self.shape, position)
+            x = extract_array(indices[1], self.shape, position)
             m = self.fitter(self, x, y, sub_array_data)
             return m.amplitude.value
         else:
@@ -374,7 +373,7 @@ def psf_photometry(data, positions, psf, mask=None, mode='sequential',
     if mode == 'simultaneous':
         raise NotImplementedError('Simultaneous mode not implemented')
     elif mode == 'sequential':
-        for i, position in enumerate(positions):
+        for position in positions:
                 psf.x_0, psf.y_0 = position
                 flux = psf.fit(data, indices)
                 result = np.append(result, flux)
@@ -479,7 +478,7 @@ def create_prf(data, positions, size, fluxes=None, mask=None, mode='mean',
     data_internal = np.ma.array(data=data, mask=mask)
     prf_model = np.ndarray(shape=(subsampling, subsampling, size, size))
     positions_subpixel_indices = np.array([subpixel_indices(_, subsampling)
-                                           for _ in positions])
+                                           for _ in positions], dtype=np.int)
 
     for i in range(subsampling):
         for j in range(subsampling):
@@ -488,8 +487,9 @@ def create_prf(data, positions, size, fluxes=None, mask=None, mode='mean',
                                      axis=1)
             positions_sub_prfs = positions[sub_prf_indices]
             for k, position in enumerate(positions_sub_prfs):
-                extracted_prf = extract_array_2d(data_internal, (size, size),
-                                                 position)
+                x, y = position
+                extracted_prf = extract_array(data_internal, (size, size),
+                                              (y, x))
                 # Check shape to exclude incomplete PRFs at the boundaries
                 # of the image
                 if (extracted_prf.shape == (size, size) and
@@ -546,11 +546,11 @@ def subtract_psf(data, psf, positions, fluxes, mask=None):
     data_ = data.copy()
     # Loop over position
     for i, position in enumerate(positions):
-        y = extract_array_2d(indices[0], psf.shape, position)
-        x = extract_array_2d(indices[1], psf.shape, position)
+        x_0, y_0 = position
+        y = extract_array(indices[0], psf.shape, (y_0, x_0))
+        x = extract_array(indices[1], psf.shape, (y_0, x_0))
         psf.amplitude.value = fluxes[i]
-        psf.x_0.value = position[0]
-        psf.y_0.value = position[1]
+        psf.x_0.value, psf.y_0.value = x_0, y_0
         psf_image = psf(x, y)
-        data_ = add_array_2d(data_, -psf_image, position)
+        data_ = add_array(data_, -psf_image, (y_0, x_0))
     return data_
