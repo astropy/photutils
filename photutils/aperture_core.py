@@ -313,8 +313,12 @@ class SkyCircularAnnulus(SkyAperture):
     positions : `~astropy.coordinates.SkyCoord`
         Celestial coordinates of the aperture center(s). This can be either
         scalar coordinates or an array of coordinates.
-    r : `~astropy.units.Quantity`
-        The radius of the aperture(s), either in angular or pixel units.
+
+    r_in : `~astropy.units.Quantity`
+        The inner radius of the annulus, either in angular or pixel units.
+
+    r_out : `~astropy.units.Quantity`
+        The outer radius of the annulus, either in angular or pixel units.
     """
 
     def __init__(self, positions, r_in, r_out):
