@@ -64,11 +64,11 @@ object::
 .. note::
     At this time, apertures are not defined completely in celestial
     coordinates.  They simply use celestial coordinates to define the
-    central position, and the remaining parameters are converted to
-    pixels using the pixel scale of the image.  Projection distortions
-    are not taken into account.  If the apertures were defined
-    completely in celestial coordinates, their shapes would not be
-    preserved when converting to pixel coordinates.
+    central position, and the remaining parameters are converted to pixels
+    using the pixel scale of the image at the central position.  Projection
+    distortions are not taken into account.  If the apertures were defined
+    completely in celestial coordinates, their shapes would not be preserved
+    when converting to pixel coordinates.
 
 Performing Aperture Photometry
 ------------------------------
