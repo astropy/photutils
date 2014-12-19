@@ -120,7 +120,7 @@ def mask_to_mirrored_num(image, mask_image, center_position, bbox=None):
     Examples
     --------
     >>> import numpy as np
-    >>> from imageutils import mask_to_mirrored_num
+    >>> from photutils.utils import mask_to_mirrored_num
     >>> image = np.arange(16).reshape(4, 4)
     >>> mask = np.zeros_like(image, dtype=bool)
     >>> mask[0, 0] = True
