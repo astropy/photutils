@@ -489,7 +489,12 @@ def test_wcs_based_photometry():
                     photometry_skycoord_circ_s['aperture_sum'])
 
     photometry_skycoord_circ_ann = aperture_photometry(
-        hdu, SkyCircularAnnulus(pos_skycoord, 2 * u.adeg, 3 * u.deg))
+        hdu, SkyCircularAnnulus(pos_skycoord, 2 * u.deg, 3 * u.deg))
+    photometry_skycoord_circ_ann_s = aperture_photometry(
+        hdu, SkyCircularAnnulus(pos_skycoord_s, 2 * u.deg, 3 * u.deg))
+
+    assert_allclose(photometry_skycoord_circ_ann['aperture_sum'][2],
+                    photometry_skycoord_circ_ann_s['aperture_sum'])
 
     assert_allclose(photometry_skycoord_circ_ann['aperture_sum'],
                     photometry_skycoord_circ['aperture_sum']
@@ -507,9 +512,15 @@ def test_wcs_based_photometry():
     photometry_skycoord_ell_ann = aperture_photometry(
         hdu, SkyEllipticalAnnulus(pos_skycoord, 2 * u.deg, 3 * u.deg,
                                   3.0001 * u.deg, 45 * u.deg))
+    photometry_skycoord_ell_ann_s = aperture_photometry(
+        hdu, SkyEllipticalAnnulus(pos_skycoord_s, 2 * u.deg, 3 * u.deg,
+                                  3.0001 * u.deg, 45 * u.deg))
 
     assert_allclose(photometry_skycoord_ell['aperture_sum'][2],
                     photometry_skycoord_ell_s['aperture_sum'])
+
+    assert_allclose(photometry_skycoord_ell_ann['aperture_sum'][2],
+                    photometry_skycoord_ell_ann_s['aperture_sum'])
 
     assert_allclose(photometry_skycoord_ell['aperture_sum'],
                     photometry_skycoord_circ['aperture_sum'], rtol=5e-3)
@@ -520,18 +531,18 @@ def test_wcs_based_photometry():
 
     photometry_skycoord_rec = aperture_photometry(
         hdu, SkyRectangularAperture(pos_skycoord,
-                                    8 * u.arcsec, 8 * u.arcsec,
+                                    6 * u.deg, 6 * u.deg,
                                     0 * u.deg))
     photometry_skycoord_rec_s = aperture_photometry(
         hdu, SkyRectangularAperture(pos_skycoord_s,
-                                    8 * u.arcsec, 8 * u.arcsec,
+                                    6 * u.deg, 6 * u.deg,
                                     0 * u.deg))
 
-    assert_allclose(photometry_skycoord_rec['aperture_sum'][0],
+    assert_allclose(photometry_skycoord_rec['aperture_sum'][2],
                     photometry_skycoord_rec_s['aperture_sum'])
 
     assert np.all(photometry_skycoord_rec['aperture_sum'] >
-                  photometry_skycoord['aperture_sum'])
+                  photometry_skycoord_circ['aperture_sum'])
 
 
 def test_basic_circular_aperture_photometry_unit():
