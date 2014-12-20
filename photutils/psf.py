@@ -201,7 +201,7 @@ class GaussianPSF(Fittable2DModel):
     ----------
     sigma : float
         Width of the Gaussian PSF.
-    flux : float (default 1)
+    amplitude : float (default 1)
         Total flux integrated over the entire PSF.
     x_0 : float (default 0)
         Position of the peak in x direction.
@@ -232,14 +232,14 @@ class GaussianPSF(Fittable2DModel):
     Where ``erf`` denotes the error function and ``F`` to total
     integrated flux..
     """
-    flux = Parameter('flux')
+    amplitude = Parameter('amplitude')
     x_0 = Parameter('x_0')
     y_0 = Parameter('y_0')
     sigma = Parameter('sigma')
 
     _erf = None
 
-    def __init__(self, sigma, flux=1, x_0=0, y_0=0):
+    def __init__(self, sigma, amplitude=1, x_0=0, y_0=0):
         if self._erf is None:
             from scipy.special import erf
             self.__class__._erf = erf
@@ -247,7 +247,7 @@ class GaussianPSF(Fittable2DModel):
         constraints = {'fixed': {'x_0': True, 'y_0': True, 'sigma': True}}
         super(GaussianPSF, self).__init__(n_models=1, sigma=sigma,
                                           x_0=x_0, y_0=y_0,
-                                          flux=flux, **constraints)
+                                          amplitude=amplitude, **constraints)
 
         # Default size is 8 * sigma
         self.shape = (int(8 * sigma) + 1, int(8 * sigma) + 1)
@@ -257,11 +257,11 @@ class GaussianPSF(Fittable2DModel):
         self.x_0.fixed = True
         self.y_0.fixed = True
 
-    def eval(self, x, y, flux, x_0, y_0, sigma):
+    def eval(self, x, y, amplitude, x_0, y_0, sigma):
         """
         Model function Gaussian PSF model.
         """
-        return (flux / 4 *
+        return (amplitude / 4 *
                 ((self._erf((x - x_0 + 0.5) / (np.sqrt(2) * sigma)) -
                   self._erf((x - x_0 - 0.5) / (np.sqrt(2) * sigma))) *
                  (self._erf((y - y_0 + 0.5) / (np.sqrt(2) * sigma)) -
@@ -309,7 +309,7 @@ class GaussianPSF(Fittable2DModel):
             y = extract_array_2d(indices[0], self.shape, position)
             x = extract_array_2d(indices[1], self.shape, position)
             m = self.fitter(self, x, y, sub_array_data)
-            return m.flux.value
+            return m.amplitude.value
         else:
             return 0
 
@@ -543,11 +543,14 @@ def subtract_psf(data, psf, positions, fluxes, mask=None):
     """
     # Set up indices
     indices = np.indices(data.shape)
-
+    data_ = data.copy()
     # Loop over position
     for i, position in enumerate(positions):
         y = extract_array_2d(indices[0], psf.shape, position)
         x = extract_array_2d(indices[1], psf.shape, position)
-        psf_image = psf.eval(x, y, fluxes[i], position[0], position[1])
-        data = add_array_2d(data, -psf_image, position)
-    return data
+        psf.amplitude.value = fluxes[i]
+        psf.x_0.value = position[0]
+        psf.y_0.value = position[1]
+        psf_image = psf(x, y)
+        data_ = add_array_2d(data_, -psf_image, position)
+    return data_
