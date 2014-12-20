@@ -8,7 +8,8 @@ from astropy.tests.helper import pytest
 from astropy.modeling.models import Gaussian2D
 from astropy.convolution.utils import discretize_model
 
-from ..psf import create_prf, DiscretePRF, psf_photometry, GaussianPSF, subtract_psf
+from ..psf import (create_prf, DiscretePRF, psf_photometry, GaussianPSF,
+                   subtract_psf)
 
 try:
     from scipy import optimize
@@ -147,7 +148,8 @@ def test_psf_photometry_gaussian():
     """
     prf = GaussianPSF(GAUSSIAN_WIDTH)
     f = psf_photometry(image, POSITIONS, prf)
-    assert_allclose(f, FLUXES, rtol=1E-3)
+    fluxes = [4.60833518, 0.53599746, 2.93375729, 6.77522225]
+    assert_allclose(f, fluxes, rtol=1E-3)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
