@@ -444,6 +444,7 @@ class TestInputNDData(BaseTestDifferentData):
 @remote_data
 def test_wcs_based_photometry_to_catalogue():
     from astropy.coordinates import SkyCoord
+    from astropy.table import Table
     from ..datasets import get_path
 
     pathcat = get_path('spitzer_example_catalog.xml', location='remote')
@@ -455,11 +456,27 @@ def test_wcs_based_photometry_to_catalogue():
     fluxes_catalog = catalog['f4_5']
 
     pos_skycoord = SkyCoord(catalog['l'], catalog['b'], frame='galactic')
-    pos_skycoord_s = SkyCoord(catalog['l'][0] * catalog['l'].unit,
-                              catalog['b'][0] * catalog['b'].unit,
-                              frame='galactic')
 
-    # TODO compare with fluxes_catalog
+    photometry_skycoord = aperture_photometry(
+        hdu, SkyCircularAperture(pos_skycoord, 4 * u.arcsec))
+
+    photometry_skycoord_pix = aperture_photometry(
+        hdu, SkyCircularAperture(pos_skycoord, 4. / scale * u.pixel))
+
+    assert_allclose(photometry_skycoord['aperture_sum'],
+                    photometry_skycoord_pix['aperture_sum'])
+
+    # Photometric unit conversion is needed to match the catalogue
+    factor = (1.2 * u.arcsec) ** 2 / u.pixel
+    converted_aperture_sum = (photometry_skycoord['aperture_sum'] *
+                              factor).to(u.mJy / u.pixel)
+
+    # There shouldn't be large outliers, but some differences is OK, as
+    # fluxes_catalog is based on PSF photometry, etc.
+    assert_allclose(converted_aperture_sum.value, fluxes_catalog, rtol=1e0)
+
+    assert(np.mean(np.fabs(((fluxes_catalog - converted_aperture_sum.value) /
+                            fluxes_catalog))) < 0.1)
 
 
 def test_wcs_based_photometry():
