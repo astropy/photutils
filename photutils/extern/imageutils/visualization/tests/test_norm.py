@@ -1,14 +1,27 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+
 import numpy as np
 from numpy import ma
-from astropy.tests.helper import pytest
+
 from numpy.testing import assert_allclose
-from ..stretch import SqrtStretch
+
 try:
     import matplotlib
-    from ..normalize import ImageNormalize
     HAS_MATPLOTLIB = True
-except ImportError:
+except:
     HAS_MATPLOTLIB = False
+
+from ..mpl_normalize import ImageNormalize
+
+from astropy.tests.helper import pytest
+from ..stretch import SqrtStretch
+
+
+@pytest.mark.skipif('HAS_MATPLOTLIB')
+def test_error_message():
+    with pytest.raises(ImportError) as exc:
+        ImageNormalize()
+    assert exc.value.args[0] == "matplotlib is required in order to use this class"
 
 
 @pytest.mark.skipif('not HAS_MATPLOTLIB')

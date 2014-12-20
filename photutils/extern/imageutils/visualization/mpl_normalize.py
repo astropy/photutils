@@ -7,8 +7,12 @@ from __future__ import division, print_function
 import numpy as np
 from numpy import ma
 
-from matplotlib.colors import Normalize
-
+try:
+    from matplotlib.colors import Normalize
+except ImportError:
+    class Normalize(object):
+        def __init__(self, *args, **kwargs):
+            raise ImportError("matplotlib is required in order to use this class")
 
 __all__ = ['ImageNormalize']
 
@@ -21,7 +25,7 @@ class ImageNormalize(Normalize):
     ----------
     vmin, vmax : float
         The minimum and maximum levels to show for the data
-    stretch : :class:`~imageutils.scaling.stretch.BaseStretch` instance
+    stretch : :class:`~astropy.visualization.BaseStretch` instance
         The stretch to use for the normalization
     clip : bool, optional
         Whether to clip the output values to the [0:1] range
@@ -34,7 +38,7 @@ class ImageNormalize(Normalize):
         self.vmin = vmin
         self.vmax = vmax
         self.stretch = stretch
-        self.inverse_stretch = stretch.inverted()
+        self.inverse_stretch = stretch.inverse
 
     def __call__(self, values, clip=None):
 

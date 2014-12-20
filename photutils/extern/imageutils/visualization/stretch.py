@@ -1,3 +1,5 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+
 """
 Classes that deal with stretching, i.e. mapping a range of [0:1] values onto
 another set of [0:1] values with a transformation
@@ -12,9 +14,9 @@ from astropy.utils.misc import InheritDocstrings
 
 from .transform import BaseTransform
 
-__all__ = ["LinearStretch", "SqrtStretch", "PowerStretch", "PowerDistStretch",
-           "SquaredStretch", "LogStretch", "AsinhStretch", "SinhStretch",
-           "HistEqStretch", "ContrastBiasStretch"]
+__all__ = ["BaseStretch", "LinearStretch", "SqrtStretch", "PowerStretch",
+           "PowerDistStretch", "SquaredStretch", "LogStretch", "AsinhStretch",
+           "SinhStretch", "HistEqStretch", "ContrastBiasStretch"]
 
 
 def logn(n, x, out=None):
@@ -44,6 +46,11 @@ def _prepare(values, out=None, clip=True):
 
 @six.add_metaclass(InheritDocstrings)
 class BaseStretch(BaseTransform):
+    """
+    Base class for the stretch classes, which, when called with an array of
+    values in the range [0:1], return an transformed array of values, also in
+    the range [0:1].
+    """
 
     def __call__(self, values, out=None, clip=True):
         """
@@ -67,10 +74,12 @@ class BaseStretch(BaseTransform):
             The transformed values.
         """
 
-    def inverted(self):
+    @property
+    def inverse(self):
         """
         Return a stretch that performs the inverse operation.
         """
+
 
 class LinearStretch(BaseStretch):
     """
@@ -86,7 +95,8 @@ class LinearStretch(BaseStretch):
 
         return _prepare(values, out=out, clip=clip)
 
-    def inverted(self):
+    @property
+    def inverse(self):
         return LinearStretch()
 
 
@@ -108,13 +118,14 @@ class SqrtStretch(BaseStretch):
 
         return values
 
-    def inverted(self):
+    @property
+    def inverse(self):
         return PowerStretch(2)
 
 
 class PowerStretch(BaseStretch):
     r"""
-    A power-law stretch.
+    A power stretch.
 
     The stretch is given by:
 
@@ -134,7 +145,8 @@ class PowerStretch(BaseStretch):
 
         return values
 
-    def inverted(self):
+    @property
+    def inverse(self):
         return PowerStretch(1. / self.power)
 
 
@@ -164,13 +176,14 @@ class PowerDistStretch(BaseStretch):
 
         return values
 
-    def inverted(self):
+    @property
+    def inverse(self):
         return InvertedPowerDistStretch(a=self.exp)
 
 
 class InvertedPowerDistStretch(BaseStretch):
     """
-    Inverse transformation for `~imageutils.scaling.PowerDistStretch`.
+    Inverse transformation for `~astropy.image.scaling.PowerDistStretch`.
     """
 
     def __init__(self, a=1000.0):
@@ -189,7 +202,8 @@ class InvertedPowerDistStretch(BaseStretch):
 
         return values
 
-    def inverted(self):
+    @property
+    def inverse(self):
         return PowerDistStretch(a=self.exp)
 
 
@@ -206,7 +220,8 @@ class SquaredStretch(PowerStretch):
     def __init__(self):
         super(SquaredStretch, self).__init__(2)
 
-    def inverted(self):
+    @property
+    def inverse(self):
         return SqrtStretch()
 
 
@@ -235,13 +250,14 @@ class LogStretch(BaseStretch):
 
         return values
 
-    def inverted(self):
+    @property
+    def inverse(self):
         return InvertedLogStretch(self.exp)
 
 
 class InvertedLogStretch(BaseStretch):
     """
-    Inverse transformation for `~imageutils.scaling.LogStretch`.
+    Inverse transformation for `~astropy.image.scaling.LogStretch`.
     """
 
     def __init__(self, a):
@@ -259,7 +275,8 @@ class InvertedLogStretch(BaseStretch):
 
         return values
 
-    def inverted(self):
+    @property
+    def inverse(self):
         return LogStretch(self.exp)
 
 
@@ -287,8 +304,9 @@ class AsinhStretch(BaseStretch):
 
         return values
 
-    def inverted(self):
-        return SinhStretch(a=1./np.arcsinh(1. / self.a))
+    @property
+    def inverse(self):
+        return SinhStretch(a=1. / np.arcsinh(1. / self.a))
 
 
 class SinhStretch(BaseStretch):
@@ -301,7 +319,7 @@ class SinhStretch(BaseStretch):
         y = \frac{{\rm sinh}(x / a)}{{\rm sinh}(1 / a)}
     """
 
-    def __init__(self, a=1./3.):
+    def __init__(self, a=1. / 3.):
         super(SinhStretch, self).__init__()
         self.a = a
 
@@ -315,8 +333,9 @@ class SinhStretch(BaseStretch):
 
         return values
 
-    def inverted(self):
-        return AsinhStretch(a=1./np.sinh(1. / self.a))
+    @property
+    def inverse(self):
+        return AsinhStretch(a=1. / np.sinh(1. / self.a))
 
 
 class HistEqStretch(BaseStretch):
@@ -351,13 +370,14 @@ class HistEqStretch(BaseStretch):
 
         return values
 
-    def inverted(self):
+    @property
+    def inverse(self):
         return InvertedHistEqStretch(self.data, values=self.values)
 
 
 class InvertedHistEqStretch(BaseStretch):
     """
-    Inverse transformation for `~imageutils.scaling.HistEqStretch`.
+    Inverse transformation for `~astropy.image.scaling.HistEqStretch`.
     """
 
     def __init__(self, data, values=None):
@@ -375,7 +395,8 @@ class InvertedHistEqStretch(BaseStretch):
 
         return values
 
-    def inverted(self):
+    @property
+    def inverse(self):
         return HistEqStretch(self.data, values=self.values)
 
 
@@ -411,7 +432,8 @@ class ContrastBiasStretch(BaseStretch):
 
         return values
 
-    def inverted(self):
+    @property
+    def inverse(self):
         return InvertedContrastBiasStretch(self.contrast, self.bias)
 
 
@@ -441,5 +463,6 @@ class InvertedContrastBiasStretch(BaseStretch):
 
         return values
 
-    def inverted(self):
+    @property
+    def inverse(self):
         return ContrastBiasStretch(self.contrast, self.bias)

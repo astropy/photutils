@@ -87,14 +87,13 @@ def test_discrete_prf_fit():
     Check if fitting of discrete PSF model works.
     """
     prf = DiscretePRF(test_psf, subsampling=1)
-    prf.x_0 = PSF_SIZE // 2
-    prf.y_0 = PSF_SIZE // 2
+    prf.x_0 = 50
+    prf.y_0 = 50
 
     # test_psf is normalized to unity
-    data = 10 * test_psf
-    indices = np.indices(data.shape)
-    flux = prf.fit(data, indices)
-    assert_allclose(flux, 10, rtol=1E-5)
+    indices = np.indices(image.shape)
+    flux = prf.fit(image, indices)
+    assert_allclose(flux, FLUXES[0], rtol=1E-5)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

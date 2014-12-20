@@ -56,7 +56,8 @@ Let's plot the image:
 
 .. doctest-skip::
 
-    >>> from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
+    >>> from photutils.extern.imageutils.visualization import SqrtStretch
+    >>> from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
     >>> import matplotlib.pylab as plt
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> plt.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
@@ -64,7 +65,8 @@ Let's plot the image:
 .. plot::
 
     from photutils.datasets import make_100gaussians_image
-    from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
+    from photutils.extern.imageutils.visualization import SqrtStretch
+    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pylab as plt
     data = make_100gaussians_image()
     norm = ImageNormalize(stretch=SqrtStretch())
@@ -103,8 +105,8 @@ a number of iterations or until convergence is reached.  This method
 provides a better estimate of the background and background noise
 levels::
 
-    >>> from photutils.extern.imageutils.stats import sigmaclip_stats
-    >>> mean, median, std = sigmaclip_stats(data, sigma=3.0)
+    >>> from photutils.extern.imageutils.stats import sigma_clipped_stats
+    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     >>> print(median, median, std)    # doctest: +FLOAT_CMP
     (5.15557244947, 5.15557244947, 2.09393539966)
 
@@ -129,7 +131,7 @@ maximize the source detections:
     >>> threshold = median + (std * 2.)
     >>> segm_img = detect_sources(data, threshold, npixels=5)
     >>> mask = segm_img.astype(np.bool)    # turn segm_img into a mask
-    >>> mean, median, std = sigmaclip_stats(data, sigma=3.0, mask=mask)
+    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, mask=mask)
     >>> print(mean, median, std)    # doctest: +FLOAT_CMP
     (5.12349231659, 5.11792609168, 2.00503461917)
 
@@ -142,7 +144,7 @@ detected sources, we can dilate the source mask (NOTE: this requires
     >>> from scipy.ndimage import binary_dilation
     >>> selem = np.ones((5, 5))    # dilate using a 5x5 box
     >>> mask2 = binary_dilation(mask, selem)
-    >>> mean, median, std = sigmaclip_stats(data, sigma=3.0, mask=mask2)
+    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, mask=mask2)
     >>> print(mean, median, std)    # doctest: +FLOAT_CMP
     (5.02603895921, 5.02341384438, 1.97423026273)
 
@@ -332,7 +334,8 @@ Let's create such an image (this requires `scipy`_) and plot it:
 
     from photutils.datasets import make_100gaussians_image
     from scipy.ndimage.interpolation import rotate
-    from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
+    from photutils.extern.imageutils.visualization import SqrtStretch
+    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pylab as plt
     data = make_100gaussians_image()
     ny, nx = data.shape
@@ -370,7 +373,8 @@ to the returned background map:
     from photutils.datasets import make_100gaussians_image
     from photutils.background import Background
     from scipy.ndimage.interpolation import rotate
-    from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
+    from photutils.extern.imageutils.visualization import SqrtStretch
+    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pylab as plt
     data = make_100gaussians_image()
     ny, nx = data.shape
@@ -397,7 +401,8 @@ Finally, let's subtract the background from the image and plot it:
     from photutils.background import Background
     from scipy.ndimage.interpolation import rotate
     import matplotlib.pylab as plt
-    from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
+    from photutils.extern.imageutils.visualization import SqrtStretch
+    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]

@@ -3,9 +3,6 @@
 Image processing utilities for Astropy.
 """
 
+from .nddata import *
 from .stats import *
-from .array_utils import *
-from .sampling import *
-
-__all__ = ['sigmaclip_stats', 'downsample', 'upsample',
-           'extract_array_2d', 'add_array_2d', 'subpixel_indices']
+from .visualization import *
