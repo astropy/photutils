@@ -8,6 +8,7 @@ import abc
 import numpy as np
 import copy
 import warnings
+from distutils import version
 import astropy.units as u
 from astropy.io import fits
 from astropy.table import Table
@@ -18,9 +19,17 @@ from astropy.utils.misc import InheritDocstrings
 from astropy.utils.exceptions import AstropyUserWarning
 from .aperture_funcs import (do_circular_photometry, do_elliptical_photometry,
                              do_rectangular_photometry)
-from .extern.wcs_utils import skycoord_to_pixel
 from .utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
                                 assert_angle_or_pixel)
+
+from astropy import __version__ as astropy_version
+if version.LooseVersion(astropy_version) > version.LooseVersion('1.0'):
+    from astropy.wcs.utils import skycoord_to_pixel
+    skycoord_to_pixel_mode = 'all'
+else:
+    from .extern.wcs_utils import skycoord_to_pixel
+    skycoord_to_pixel_mode = 'wcs'
+
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture',
            'SkyCircularAperture', 'CircularAperture',
@@ -221,7 +230,8 @@ class SkyCircularAperture(SkyAperture):
         Return a CircularAperture instance in pixel coordinates.
         """
 
-        x, y = skycoord_to_pixel(self.positions, wcs)
+        x, y = skycoord_to_pixel(self.positions, wcs,
+                                 mode=skycoord_to_pixel_mode)
 
         if self.r.unit.physical_type == 'angle':
             central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
@@ -348,7 +358,8 @@ class SkyCircularAnnulus(SkyAperture):
         Return a CircularAnnulus instance in pixel coordinates.
         """
 
-        x, y = skycoord_to_pixel(self.positions, wcs)
+        x, y = skycoord_to_pixel(self.positions, wcs,
+                                 mode=skycoord_to_pixel_mode)
         if self.r_in.unit.physical_type == 'angle':
             central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
                                    unit=wcs.wcs.cunit)
@@ -495,7 +506,8 @@ class SkyEllipticalAperture(SkyAperture):
         Return a EllipticalAperture instance in pixel coordinates.
         """
 
-        x, y = skycoord_to_pixel(self.positions, wcs)
+        x, y = skycoord_to_pixel(self.positions, wcs,
+                                 mode=skycoord_to_pixel_mode)
         central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
                                unit=wcs.wcs.cunit)
         xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
@@ -647,7 +659,8 @@ class SkyEllipticalAnnulus(SkyAperture):
         Return a EllipticalAnnulus instance in pixel coordinates.
         """
 
-        x, y = skycoord_to_pixel(self.positions, wcs)
+        x, y = skycoord_to_pixel(self.positions, wcs,
+                                 mode=skycoord_to_pixel_mode)
         central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
                                unit=wcs.wcs.cunit)
         xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
@@ -814,7 +827,8 @@ class SkyRectangularAperture(SkyAperture):
         Return a RectangularAperture instance in pixel coordinates.
         """
 
-        x, y = skycoord_to_pixel(self.positions, wcs)
+        x, y = skycoord_to_pixel(self.positions, wcs,
+                                 mode=skycoord_to_pixel_mode)
         central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
                                unit=wcs.wcs.cunit)
         xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
@@ -982,7 +996,8 @@ class SkyRectangularAnnulus(SkyAperture):
         Return a EllipticalAnnulus instance in pixel coordinates.
         """
 
-        x, y = skycoord_to_pixel(self.positions, wcs)
+        x, y = skycoord_to_pixel(self.positions, wcs,
+                                 mode=skycoord_to_pixel_mode)
         central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
                                unit=wcs.wcs.cunit)
         xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
