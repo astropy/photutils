@@ -73,6 +73,22 @@ def test_aperture_plots(aperture_class, params):
     aperture.plot()
 
 
+def test_aperture_pixel_positions():
+    pos1 = (10, 20)
+    pos2 = u.Quantity((10, 20), unit=u.pixel)
+    pos3 = ((10, 20, 30), (10, 20, 30))
+    pos3_pairs = ((10, 10), (20, 20), (30, 30))
+
+    r = 3
+    ap1 = CircularAperture(pos1, r)
+    ap2 = CircularAperture(pos2, r)
+    ap3 = CircularAperture(pos3, r)
+
+    assert np.allclose(pos1, ap1.positions)
+    assert np.allclose(pos2, ap2.positions)
+    assert np.allclose(pos3_pairs, ap3.positions)
+
+
 class BaseTestAperturePhotometry(object):
 
     def test_scalar_error_no_effective_gain(self):
@@ -95,14 +111,16 @@ class BaseTestAperturePhotometry(object):
                                      self.aperture, method='exact',
                                      mask=mask, error=error)
 
-        if not isinstance(self.aperture, (RectangularAperture, RectangularAnnulus)):
+        if not isinstance(self.aperture, (RectangularAperture,
+                                          RectangularAnnulus)):
             assert_allclose(table3['aperture_sum'], self.true_flux)
             assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
                             atol=0.1)
         assert np.all(table1['aperture_sum'] < table3['aperture_sum'])
 
         true_error = np.sqrt(self.area)
-        if not isinstance(self.aperture, (RectangularAperture, RectangularAnnulus)):
+        if not isinstance(self.aperture, (RectangularAperture,
+                                          RectangularAnnulus)):
             assert_allclose(table3['aperture_sum_err'], true_error)
             assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
                             atol=0.1)
@@ -223,16 +241,18 @@ class BaseTestAperturePhotometry(object):
                                      self.aperture, method='exact',
                                      mask=mask, error=error)
 
-        if not isinstance(self.aperture, (RectangularAperture, RectangularAnnulus)):
+        if not isinstance(self.aperture, (RectangularAperture,
+                                          RectangularAnnulus)):
             assert_allclose(table3['aperture_sum'], self.true_flux)
             assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
                             atol=0.1)
         assert np.all(table1['aperture_sum'] < table3['aperture_sum'])
 
-        if not isinstance(self.aperture, (RectangularAperture, RectangularAnnulus)):
+        if not isinstance(self.aperture, (RectangularAperture,
+                                          RectangularAnnulus)):
             assert_allclose(table3['aperture_sum_err'], true_error)
-            assert_allclose(table2['aperture_sum_err'], table3['aperture_sum_err'],
-                            atol=0.1)
+            assert_allclose(table2['aperture_sum_err'],
+                            table3['aperture_sum_err'], atol=0.1)
         assert np.all(table1['aperture_sum_err'] < table3['aperture_sum_err'])
 
     def test_array_error_array_effective_gain(self):
