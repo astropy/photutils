@@ -3,15 +3,15 @@
 
 from __future__ import division
 import warnings
-
 import numpy as np
 from astropy.modeling.parameters import Parameter
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling import Fittable2DModel
-from astropy.nddata.utils import extract_array, add_array, subpixel_indices
+from .extern.imageutils.nddata.utils import (extract_array, add_array,
+                                             subpixel_indices)
+from .utils import mask_to_mirrored_num
 
-from imageutils import mask_to_mirrored_num
 
 __all__ = ['DiscretePRF', 'create_prf', 'psf_photometry',
            'GaussianPSF', 'subtract_psf']
