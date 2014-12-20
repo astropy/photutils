@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from ...tests.helper import pytest
+from astropy.tests.helper import pytest
 
 from ..stretch import (LinearStretch, SqrtStretch, PowerStretch,
                        PowerDistStretch, SquaredStretch, LogStretch,

@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from ....tests.helper import pytest
-from ....io import fits
+from astropy.tests.helper import pytest
+from astropy.io import fits
 
 try:
     import matplotlib

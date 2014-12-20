@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from ...tests.helper import pytest
+from astropy.tests.helper import pytest
 
 from ..interval import (ManualInterval, MinMaxInterval, PercentileInterval,
                         AsymmetricPercentileInterval)

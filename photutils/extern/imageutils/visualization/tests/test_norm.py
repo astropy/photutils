@@ -13,7 +13,7 @@ except:
 
 from ..mpl_normalize import ImageNormalize
 
-from ...tests.helper import pytest
+from astropy.tests.helper import pytest
 from ..stretch import SqrtStretch
 
 

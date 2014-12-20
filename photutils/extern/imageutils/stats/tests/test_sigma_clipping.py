@@ -15,10 +15,10 @@ except ImportError:
 else:
     HAS_SCIPY = True
 
-from ...tests.helper import pytest
+from astropy.tests.helper import pytest
 
 from ..sigma_clipping import sigma_clip, sigma_clipped_stats
-from ...utils.misc import NumpyRNGContext
+from astropy.utils.misc import NumpyRNGContext
 
 
 def test_sigma_clip():

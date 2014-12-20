@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from numpy.testing import assert_allclose
 
-from ...tests.helper import pytest
+from astropy.tests.helper import pytest
 from ..utils import extract_array, add_array, subpixel_indices
 
 test_positions = [(10.52, 3.12), (5.62, 12.97), (31.33, 31.77),
