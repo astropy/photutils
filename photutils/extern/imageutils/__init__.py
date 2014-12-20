@@ -3,6 +3,6 @@
 Image processing utilities for Astropy.
 """
 
-from nddata import *
-from stats import *
-from visualization import *
+from .nddata import *
+from .stats import *
+from .visualization import *
