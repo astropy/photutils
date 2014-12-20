@@ -224,7 +224,8 @@ class SkyCircularAperture(SkyAperture):
         x, y = skycoord_to_pixel(self.positions, wcs)
 
         if self.r.unit.physical_type == 'angle':
-            central_pos = SkyCoord([wcs.wcs.crval], unit=wcs.wcs.cunit)
+            central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
+                                   unit=wcs.wcs.cunit)
             xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos,
                                                                  wcs)
             r = (scale * self.r).to(u.pixel).value
@@ -349,7 +350,8 @@ class SkyCircularAnnulus(SkyAperture):
 
         x, y = skycoord_to_pixel(self.positions, wcs)
         if self.r_in.unit.physical_type == 'angle':
-            central_pos = SkyCoord([wcs.wcs.crval], unit=wcs.wcs.cunit)
+            central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
+                                   unit=wcs.wcs.cunit)
             xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos,
                                                                  wcs)
             r_in = (scale * self.r_in).to(u.pixel).value
@@ -494,7 +496,8 @@ class SkyEllipticalAperture(SkyAperture):
         """
 
         x, y = skycoord_to_pixel(self.positions, wcs)
-        central_pos = SkyCoord([wcs.wcs.crval], unit=wcs.wcs.cunit)
+        central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
+                               unit=wcs.wcs.cunit)
         xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
 
         if self.a.unit.physical_type == 'angle':
@@ -645,7 +648,8 @@ class SkyEllipticalAnnulus(SkyAperture):
         """
 
         x, y = skycoord_to_pixel(self.positions, wcs)
-        central_pos = SkyCoord([wcs.wcs.crval], unit=wcs.wcs.cunit)
+        central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
+                               unit=wcs.wcs.cunit)
         xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
 
         if self.a_in.unit.physical_type == 'angle':
@@ -811,7 +815,8 @@ class SkyRectangularAperture(SkyAperture):
         """
 
         x, y = skycoord_to_pixel(self.positions, wcs)
-        central_pos = SkyCoord([wcs.wcs.crval], unit=wcs.wcs.cunit)
+        central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
+                               unit=wcs.wcs.cunit)
         xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
 
         if self.w.unit.physical_type == 'angle':
@@ -978,7 +983,8 @@ class SkyRectangularAnnulus(SkyAperture):
         """
 
         x, y = skycoord_to_pixel(self.positions, wcs)
-        central_pos = SkyCoord([wcs.wcs.crval], unit=wcs.wcs.cunit)
+        central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
+                               unit=wcs.wcs.cunit)
         xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
 
         if self.w_in.unit.physical_type == 'angle':
