@@ -453,7 +453,6 @@ def test_wcs_based_photometry_to_catalogue():
     scale = hdu[0].header['PIXSCAL1']
 
     catalog = Table.read(pathcat)
-    fluxes_catalog = catalog['f4_5']
 
     pos_skycoord = SkyCoord(catalog['l'], catalog['b'], frame='galactic')
 
@@ -471,9 +470,11 @@ def test_wcs_based_photometry_to_catalogue():
     converted_aperture_sum = (photometry_skycoord['aperture_sum'] *
                               factor).to(u.mJy / u.pixel)
 
+    fluxes_catalog = catalog['f4_5'].filled()
+
     # There shouldn't be large outliers, but some differences is OK, as
     # fluxes_catalog is based on PSF photometry, etc.
-    assert_allclose(converted_aperture_sum.value, fluxes_catalog, rtol=1e0)
+    assert_allclose(fluxes_catalog, converted_aperture_sum.value, rtol=1e0)
 
     assert(np.mean(np.fabs(((fluxes_catalog - converted_aperture_sum.value) /
                             fluxes_catalog))) < 0.1)
