@@ -56,7 +56,8 @@ Let's plot the image:
 
 .. doctest-skip::
 
-    >>> from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
+    >>> from photutils.extern.imageutils.visualization import SqrtStretch
+    >>> from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
     >>> import matplotlib.pylab as plt
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> plt.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
@@ -64,7 +65,8 @@ Let's plot the image:
 .. plot::
 
     from photutils.datasets import make_100gaussians_image
-    from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
+    from photutils.extern.imageutils.visualization import SqrtStretch
+    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pylab as plt
     data = make_100gaussians_image()
     norm = ImageNormalize(stretch=SqrtStretch())
@@ -332,7 +334,8 @@ Let's create such an image (this requires `scipy`_) and plot it:
 
     from photutils.datasets import make_100gaussians_image
     from scipy.ndimage.interpolation import rotate
-    from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
+    from photutils.extern.imageutils.visualization import SqrtStretch
+    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pylab as plt
     data = make_100gaussians_image()
     ny, nx = data.shape
@@ -370,7 +373,8 @@ to the returned background map:
     from photutils.datasets import make_100gaussians_image
     from photutils.background import Background
     from scipy.ndimage.interpolation import rotate
-    from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
+    from photutils.extern.imageutils.visualization import SqrtStretch
+    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pylab as plt
     data = make_100gaussians_image()
     ny, nx = data.shape
@@ -397,7 +401,8 @@ Finally, let's subtract the background from the image and plot it:
     from photutils.background import Background
     from scipy.ndimage.interpolation import rotate
     import matplotlib.pylab as plt
-    from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
+    from photutils.extern.imageutils.visualization import SqrtStretch
+    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
