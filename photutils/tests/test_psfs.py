@@ -19,19 +19,20 @@ sigmas = [0.5, 1., 2., 10., 12.34]
 @pytest.mark.parametrize(('width'), widths)
 def test_subpixel_gauss_psf(width):
     """
-    Test subpixel accuracy of Gaussian PSF by checking the sum of pixels.
+    Test subpixel accuracy of Gaussian PSF by checking the peak
+    amplitude.
     """
     gauss_psf = GaussianPSF(width)
     y, x = np.mgrid[-10:11, -10:11]
-    assert_allclose(gauss_psf(x, y).sum(), 1)
+    assert_allclose(gauss_psf(x, y).max(), 1)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize(('sigma'), sigmas)
 def test_gaussian_PSF_integral(sigma):
     """
-    Test if Gaussian PSF integrates to unity on larger scales.
+    Test if Gaussian PSF peak matches amplitude.
     """
     psf = GaussianPSF(sigma=sigma)
     y, x = np.mgrid[-100:101, -100:101]
-    assert_allclose(psf(y, x).sum(), 1)
+    assert_allclose(psf(y, x).max(), 1)

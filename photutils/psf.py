@@ -202,7 +202,7 @@ class GaussianPSF(Fittable2DModel):
     sigma : float
         Width of the Gaussian PSF.
     amplitude : float (default 1)
-        Total flux integrated over the entire PSF.
+        The peak amplitude of the PSF.
     x_0 : float (default 0)
         Position of the peak in x direction.
     y_0 : float (default 0)
@@ -215,7 +215,7 @@ class GaussianPSF(Fittable2DModel):
         .. math::
 
             f(x, y) =
-                \\frac{F}{4}
+                \\frac{A}{0.02538010595464}
                 \\left[
                 \\textnormal{erf} \\left(\\frac{x - x_0 + 0.5}
                 {\\sqrt{2} \\sigma} \\right) -
@@ -229,9 +229,9 @@ class GaussianPSF(Fittable2DModel):
                 {\\sqrt{2} \\sigma} \\right)
                 \\right]
 
-    Where ``erf`` denotes the error function and ``F`` to total
-    integrated flux..
+    Where ``erf`` denotes the error function and ``A`` is the amplitude.
     """
+
     amplitude = Parameter('amplitude')
     x_0 = Parameter('x_0')
     y_0 = Parameter('y_0')
@@ -261,11 +261,12 @@ class GaussianPSF(Fittable2DModel):
         """
         Model function Gaussian PSF model.
         """
-        return (amplitude / 4 *
-                ((self._erf((x - x_0 + 0.5) / (np.sqrt(2) * sigma)) -
-                  self._erf((x - x_0 - 0.5) / (np.sqrt(2) * sigma))) *
-                 (self._erf((y - y_0 + 0.5) / (np.sqrt(2) * sigma)) -
-                  self._erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma)))))
+        psf = (1.0 *
+               ((self._erf((x - x_0 + 0.5) / (np.sqrt(2) * sigma)) -
+                 self._erf((x - x_0 - 0.5) / (np.sqrt(2) * sigma))) *
+                (self._erf((y - y_0 + 0.5) / (np.sqrt(2) * sigma)) -
+                 self._erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma)))))
+        return amplitude * psf / psf.max()
 
     def fit(self, data, indices):
         """
