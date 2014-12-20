@@ -1,3 +1,5 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+
 """
 Classes that deal with computing intervals from arrays of values based on
 various criteria.
@@ -5,16 +7,26 @@ various criteria.
 
 from __future__ import division, print_function
 
+import abc
 import numpy as np
-
-from astropy.extern import six
 
 from .transform import BaseTransform
 
-__all__ = ['ManualInterval', 'MinMaxInterval', 'PercentileInterval', 'AsymmetricPercentileInterval']
+__all__ = ['BaseInterval', 'ManualInterval', 'MinMaxInterval',
+           'PercentileInterval', 'AsymmetricPercentileInterval']
 
 
 class BaseInterval(BaseTransform):
+    """
+    Base class for the interval classes, which, when called with an array of
+    values, return an interval computed following different algorithms.
+    """
+
+    @abc.abstractmethod
+    def get_limits(self, values):
+        """
+        Return the minimum and maximum value in the interval based on the values provided.
+        """
 
     def __call__(self, values, clip=True, out=None):
 
@@ -27,7 +39,8 @@ class BaseInterval(BaseTransform):
                 raise TypeError("Can only do in-place scaling for floating-point arrays")
             values = np.subtract(values, float(vmin), out=out)
 
-        np.true_divide(values, vmax - vmin, out=values)
+        if (vmax - vmin) != 0:
+            np.true_divide(values, vmax - vmin, out=values)
 
         if clip:
             np.clip(values, 0., 1., out=values)

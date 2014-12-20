@@ -1,10 +1,17 @@
-from .interval import *
-from .stretch import *
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+
+import numpy as np
+
+from .interval import (PercentileInterval, AsymmetricPercentileInterval,
+                       ManualInterval, MinMaxInterval)
+
+from .stretch import (LinearStretch, SqrtStretch, PowerStretch, LogStretch,
+                      AsinhStretch)
 
 
-def scale_image(image, scale='linear', power=1.0, noise_level=None,
-                min_cut=None, max_cut=None, min_percent=None,
-                max_percent=None, percent=None, clip=True):
+def scale_image(image, scale='linear', power=1.0, asinh_a=0.1, min_cut=None,
+                max_cut=None, min_percent=None, max_percent=None,
+                percent=None, clip=True):
     """
     Perform scaling/stretching of an image between minimum and maximum
     cut levels.
@@ -12,14 +19,21 @@ def scale_image(image, scale='linear', power=1.0, noise_level=None,
     Parameters
     ----------
     image : array_like
-        The 2D array of the image.
+        The array of values
 
     scale : {{'linear', 'sqrt', 'power', log', 'asinh'}}
         The scaling/stretch function to apply to the image.  The default
         is 'linear'.
 
     power : float, optional
-        The power index for the image scaling.  The default is 1.0.
+        The power index for ``scale='power'`` image scaling.  The
+        default is 1.0.
+
+    asinh_a : float, optional
+        For ``scale='asinh'`` image scaling, the value where the asinh
+        curve transitions from linear to logarithmic behavior, expressed
+        as a fraction of the normalized image.  Must be in the range
+        between 0 and 1.
 
     min_cut : float, optional
         The pixel value of the minimum cut level.  Data values less than
@@ -57,7 +71,7 @@ def scale_image(image, scale='linear', power=1.0, noise_level=None,
     Returns
     -------
     image : ndarray
-        The 2D array of the scaled/stretched image with a minimum of 0.0
+        The array of the scaled/stretched image with a minimum of 0.0
         and a maximum of 1.0.
     """
 
@@ -80,6 +94,8 @@ def scale_image(image, scale='linear', power=1.0, noise_level=None,
         stretch = PowerStretch(power)
     elif scale == 'log':
         stretch = LogStretch()
+    elif scale == 'asinh':
+        stretch = AsinhStretch(asinh_a)
     else:
         raise ValueError('Unknown scale: {0}'.format(scale))
 
