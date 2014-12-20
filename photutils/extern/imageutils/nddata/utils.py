@@ -85,7 +85,7 @@ def extract_array(array_large, shape, position):
     a small array of shape 3x5:
 
     >>> import numpy as np
-    >>> from astropy.nddata.utils import extract_array
+    >>> from photutils.extern.imageutils.nddata.utils import extract_array
     >>> large_array = np.arange(110).reshape((11, 10))
     >>> large_array[4:9, 4:9] = np.ones((5, 5))
     >>> extract_array(large_array, (3, 5), (7, 7))
@@ -132,7 +132,7 @@ def add_array(array_large, array_small, position):
     array of ones with a shape of 3x3:
 
     >>> import numpy as np
-    >>> from astropy.nddata.utils import add_array
+    >>> from photutils.extern.imageutils.nddata.utils import add_array
     >>> large_array = np.zeros((5, 5))
     >>> small_array = np.ones((3, 3))
     >>> add_array(large_array, small_array, (1, 2))
@@ -179,7 +179,7 @@ def subpixel_indices(position, subsampling):
 
     If no subsampling is used, then the subpixel indices returned are always 0:
 
-    >>> from astropy.nddata.utils import subpixel_indices
+    >>> from photutils.extern.imageutils.nddata.utils import subpixel_indices
     >>> subpixel_indices([1.2, 3.4, 5.6],1)
     array([ 0.,  0.,  0.])
 
