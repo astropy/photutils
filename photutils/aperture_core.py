@@ -644,10 +644,12 @@ class SkyEllipticalAnnulus(SkyAperture):
         assert_angle('theta', theta)
 
         if a_in.unit.physical_type != a_out.unit.physical_type:
-            raise ValueError("a_in and a_out should either both be angles or in pixels")
+            raise ValueError("a_in and a_out should either both be angles "
+                             "or in pixels")
 
         if a_out.unit.physical_type != b_out.unit.physical_type:
-            raise ValueError("a_out and b_out should either both be angles or in pixels")
+            raise ValueError("a_out and b_out should either both be angles "
+                             "or in pixels")
 
         self.a_in = a_in
         self.a_out = a_out
