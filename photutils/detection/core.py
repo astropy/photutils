@@ -5,7 +5,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
 from astropy.convolution import Kernel2D
-from ..extern.imageutils import sigmaclip_stats
+from ..extern.imageutils.stats import sigma_clipped_stats
 
 
 __all__ = ['detect_threshold', 'detect_sources', 'find_peaks']
@@ -83,7 +83,7 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
     """
 
     if background is None or error is None:
-        data_mean, data_median, data_std = sigmaclip_stats(
+        data_mean, data_median, data_std = sigma_clipped_stats(
             data, mask=mask, mask_val=mask_val, sigma=sigclip_sigma,
             iters=sigclip_iters)
         bkgrd_image = np.zeros_like(data) + data_mean
