@@ -137,9 +137,9 @@ sigma-clipped statistics:
 .. doctest-requires:: scipy, skimage
 
     >>> from photutils.morphology import data_properties
-    >>> from photutils.extern.imageutils.stats import sigmaclip_stats
+    >>> from photutils.extern.imageutils.stats import sigma_clipped_stats
     >>> from photutils import properties_table
-    >>> mean, median, std = sigmaclip_stats(data, sigma=3.0)
+    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     >>> data -= median    # subtract background
     >>> props = data_properties(data)
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'semimajor_axis_sigma',

@@ -44,10 +44,10 @@ select a subset of the image.  We will estimate the background and
 background noise using sigma-clipped statistics::
 
     >>> from photutils import datasets
-    >>> from photutils.extern.imageutils.stats import sigmaclip_stats
+    >>> from photutils.extern.imageutils.stats import sigma_clipped_stats
     >>> hdu = datasets.load_star_image()    # doctest: +REMOTE_DATA
     >>> data = hdu.data[0:400, 0:400]    # doctest: +REMOTE_DATA
-    >>> mean, median, std = sigmaclip_stats(data, sigma=3.0)    # doctest: +REMOTE_DATA
+    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)    # doctest: +REMOTE_DATA
     >>> print(mean, median, std)    # doctest: +REMOTE_DATA
     3649.0 3649.0 203.811360598
 
@@ -89,13 +89,13 @@ Let's plot the image and mark the location of detected sources:
 
 .. plot::
 
-    from photutils.extern.imageutils.stats import sigmaclip_stats
+    from photutils.extern.imageutils.stats import sigma_clipped_stats
     from photutils import datasets, daofind, CircularAperture
     from photutils.extern.imageutils.normalization import SqrtStretch, ImageNormalize
     import matplotlib.pylab as plt
     hdu = datasets.load_star_image()
     data = hdu.data[0:400, 0:400]
-    mean, median, std = sigmaclip_stats(data, sigma=3.0)
+    mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     sources = daofind(data - median, fwhm=3.0, threshold=5.*std)
     positions = (sources['xcentroid'], sources['ycentroid'])
     apertures = CircularAperture(positions, r=4.)
@@ -245,9 +245,9 @@ sigma above the background and a separated by a least 2 pixels:
 
     >>> from photutils.datasets import make_100gaussians_image
     >>> from photutils import find_peaks
-    >>> from photutils.extern.imageutils.stats import sigmaclip_stats
+    >>> from photutils.extern.imageutils.stats import sigma_clipped_stats
     >>> data = make_100gaussians_image()
-    >>> mean, median, std = sigmaclip_stats(data, sigma=3.0)
+    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     >>> threshold = median + (10.0 * std)
     >>> peaks = find_peaks(data, threshold, min_separation=2)
 
@@ -268,9 +268,9 @@ And let's plot the location of the detected peaks in the image:
 
     from photutils.datasets import make_100gaussians_image
     from photutils import find_peaks
-    from photutils.extern.imageutils.stats import sigmaclip_stats
+    from photutils.extern.imageutils.stats import sigma_clipped_stats
     data = make_100gaussians_image()
-    mean, median, std = sigmaclip_stats(data, sigma=3.0)
+    mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     threshold = median + (10.0 * std)
     peaks = find_peaks(data, threshold, min_separation=2)
 
