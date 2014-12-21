@@ -90,6 +90,9 @@ def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
         image = prng.normal(loc=mean, scale=stddev, size=image_shape)
     elif type == 'poisson':
         image = prng.poisson(lam=mean, size=image_shape)
+    else:
+        raise ValueError('Invalid type: {0}. Use one of '
+                         '{"gaussian", "poisson"}.'.format(type))
 
     if unit is not None:
         image = u.Quantity(image, unit=unit)
