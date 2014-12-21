@@ -4,10 +4,17 @@
 # astropy.wcs or photutils.extern.wcs_utils
 
 import numpy as np
+from distutils import version
 from astropy import units as u
 from astropy.coordinates import UnitSphericalRepresentation
 
-from ..extern.wcs_utils import skycoord_to_pixel
+from astropy import __version__ as astropy_version
+if version.LooseVersion(astropy_version) > version.LooseVersion('1.0'):
+    from astropy.wcs.utils import skycoord_to_pixel
+    skycoord_to_pixel_mode = 'all'
+else:
+    from ..extern.wcs_utils import skycoord_to_pixel
+    skycoord_to_pixel_mode = 'wcs'
 
 
 def skycoord_to_pixel_scale_angle(coords, wcs):
@@ -33,7 +40,7 @@ def skycoord_to_pixel_scale_angle(coords, wcs):
     """
 
     # Convert to pixel coordinates
-    x, y = skycoord_to_pixel(coords, wcs)
+    x, y = skycoord_to_pixel(coords, wcs, mode=skycoord_to_pixel_mode)
 
     # We take a point directly 'above' (in latitude) the position requested
     # and convert it to pixel coordinates, then we use that to figure out the
@@ -50,7 +57,8 @@ def skycoord_to_pixel_scale_angle(coords, wcs):
     coords_offset = coords.realize_frame(r_new)
 
     # Find pixel coordinates of offset coordinates
-    x_offset, y_offset = skycoord_to_pixel(coords_offset, wcs)
+    x_offset, y_offset = skycoord_to_pixel(coords_offset, wcs,
+                                           mode=skycoord_to_pixel_mode)
 
     # Find vector
     dx = x_offset - x

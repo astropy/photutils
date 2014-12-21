@@ -8,6 +8,7 @@ import abc
 import numpy as np
 import copy
 import warnings
+from distutils import version
 import astropy.units as u
 from astropy.io import fits
 from astropy.table import Table
@@ -18,8 +19,17 @@ from astropy.utils.misc import InheritDocstrings
 from astropy.utils.exceptions import AstropyUserWarning
 from .aperture_funcs import (do_circular_photometry, do_elliptical_photometry,
                              do_rectangular_photometry)
-from .extern.wcs_utils import skycoord_to_pixel
-from .utils.wcs_helpers import skycoord_to_pixel_scale_angle, assert_angle_or_pixel, assert_angle
+from .utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
+                                assert_angle_or_pixel)
+
+from astropy import __version__ as astropy_version
+if version.LooseVersion(astropy_version) > version.LooseVersion('1.0'):
+    from astropy.wcs.utils import skycoord_to_pixel
+    skycoord_to_pixel_mode = 'all'
+else:
+    from .extern.wcs_utils import skycoord_to_pixel
+    skycoord_to_pixel_mode = 'wcs'
+
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture',
            'SkyCircularAperture', 'CircularAperture',
@@ -38,9 +48,6 @@ def _sanitize_pixel_positions(positions):
             positions = positions.value
         else:
             raise u.UnitsError("positions should be in pixel units")
-
-    if isinstance(positions, u.Quantity):
-        positions = positions.value
     elif isinstance(positions, (list, tuple, np.ndarray)):
         positions = np.atleast_2d(positions)
         if positions.shape[1] != 2:
@@ -223,12 +230,16 @@ class SkyCircularAperture(SkyAperture):
         Return a CircularAperture instance in pixel coordinates.
         """
 
+        x, y = skycoord_to_pixel(self.positions, wcs,
+                                 mode=skycoord_to_pixel_mode)
+
         if self.r.unit.physical_type == 'angle':
-            x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
-            # TODO: no need to use the mean once we support arrays of aperture values
-            r = (np.mean(scale) * self.r).to(u.pixel).value
+            central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
+                                   unit=wcs.wcs.cunit)
+            xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos,
+                                                                 wcs)
+            r = (scale * self.r).to(u.pixel).value
         else:  # pixel
-            x, y = skycoord_to_pixel(self.positions, wcs)
             r = self.r.value
 
         pixel_positions = np.array([x, y]).transpose()
@@ -317,8 +328,12 @@ class SkyCircularAnnulus(SkyAperture):
     positions : `~astropy.coordinates.SkyCoord`
         Celestial coordinates of the aperture center(s). This can be either
         scalar coordinates or an array of coordinates.
-    r : `~astropy.units.Quantity`
-        The radius of the aperture(s), either in angular or pixel units.
+
+    r_in : `~astropy.units.Quantity`
+        The inner radius of the annulus, either in angular or pixel units.
+
+    r_out : `~astropy.units.Quantity`
+        The outer radius of the annulus, either in angular or pixel units.
     """
 
     def __init__(self, positions, r_in, r_out):
@@ -332,7 +347,8 @@ class SkyCircularAnnulus(SkyAperture):
         assert_angle_or_pixel('r_out', r_out)
 
         if r_in.unit.physical_type != r_out.unit.physical_type:
-            raise ValueError("r_in and r_out should either both be angles or in pixels")
+            raise ValueError("r_in and r_out should either both be angles "
+                             "or in pixels")
 
         self.r_in = r_in
         self.r_out = r_out
@@ -342,13 +358,16 @@ class SkyCircularAnnulus(SkyAperture):
         Return a CircularAnnulus instance in pixel coordinates.
         """
 
+        x, y = skycoord_to_pixel(self.positions, wcs,
+                                 mode=skycoord_to_pixel_mode)
         if self.r_in.unit.physical_type == 'angle':
-            x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
-            # TODO: no need to use the mean once we support arrays of aperture values
-            r_in = (np.mean(scale) * self.r_in).to(u.pixel).value
-            r_out = (np.mean(scale) * self.r_out).to(u.pixel).value
+            central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
+                                   unit=wcs.wcs.cunit)
+            xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos,
+                                                                 wcs)
+            r_in = (scale * self.r_in).to(u.pixel).value
+            r_out = (scale * self.r_out).to(u.pixel).value
         else:  # pixel
-            x, y = skycoord_to_pixel(self.positions, wcs)
             r_in = self.r_in.value
             r_out = self.r_out.value
 
@@ -475,7 +494,8 @@ class SkyEllipticalAperture(SkyAperture):
         assert_angle('theta', theta)
 
         if a.unit.physical_type != b.unit.physical_type:
-            raise ValueError("a and b should either both be angles or in pixels")
+            raise ValueError("a and b should either both be angles "
+                             "or in pixels")
 
         self.a = a
         self.b = b
@@ -486,12 +506,15 @@ class SkyEllipticalAperture(SkyAperture):
         Return a EllipticalAperture instance in pixel coordinates.
         """
 
-        x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
+        x, y = skycoord_to_pixel(self.positions, wcs,
+                                 mode=skycoord_to_pixel_mode)
+        central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
+                               unit=wcs.wcs.cunit)
+        xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
 
-        # TODO: no need to use the mean once we support arrays of aperture values
         if self.a.unit.physical_type == 'angle':
-            a = (np.mean(scale) * self.a).to(u.pixel).value
-            b = (np.mean(scale) * self.b).to(u.pixel).value
+            a = (scale * self.a).to(u.pixel).value
+            b = (scale * self.b).to(u.pixel).value
         else:  # pixel
             a = self.a.value
             b = self.b.value
@@ -621,10 +644,12 @@ class SkyEllipticalAnnulus(SkyAperture):
         assert_angle('theta', theta)
 
         if a_in.unit.physical_type != a_out.unit.physical_type:
-            raise ValueError("a_in and a_out should either both be angles or in pixels")
+            raise ValueError("a_in and a_out should either both be angles "
+                             "or in pixels")
 
         if a_out.unit.physical_type != b_out.unit.physical_type:
-            raise ValueError("a_out and b_out should either both be angles or in pixels")
+            raise ValueError("a_out and b_out should either both be angles "
+                             "or in pixels")
 
         self.a_in = a_in
         self.a_out = a_out
@@ -636,13 +661,16 @@ class SkyEllipticalAnnulus(SkyAperture):
         Return a EllipticalAnnulus instance in pixel coordinates.
         """
 
-        x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
+        x, y = skycoord_to_pixel(self.positions, wcs,
+                                 mode=skycoord_to_pixel_mode)
+        central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
+                               unit=wcs.wcs.cunit)
+        xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
 
-        # TODO: no need to use the mean once we support arrays of aperture values
         if self.a_in.unit.physical_type == 'angle':
-            a_in = (np.mean(scale) * self.a_in).to(u.pixel).value
-            a_out = (np.mean(scale) * self.a_out).to(u.pixel).value
-            b_out = (np.mean(scale) * self.b_out).to(u.pixel).value
+            a_in = (scale * self.a_in).to(u.pixel).value
+            a_out = (scale * self.a_out).to(u.pixel).value
+            b_out = (scale * self.b_out).to(u.pixel).value
         else:
             a_in = self.a_in.value
             a_out = self.a_out.value
@@ -800,17 +828,21 @@ class SkyRectangularAperture(SkyAperture):
         """
         Return a RectangularAperture instance in pixel coordinates.
         """
-        x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
 
-        # TODO: no need to use the mean once we support arrays of aperture values
+        x, y = skycoord_to_pixel(self.positions, wcs,
+                                 mode=skycoord_to_pixel_mode)
+        central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
+                               unit=wcs.wcs.cunit)
+        xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
+
         if self.w.unit.physical_type == 'angle':
-            w = (np.mean(scale) * self.w).to(u.pixel).value
-            h = (np.mean(scale) * self.h).to(u.pixel).value
+            w = (scale * self.w).to(u.pixel).value
+            h = (scale * self.h).to(u.pixel).value
         else:  # pixel
             w = self.w.value
             h = self.h.value
 
-        theta = (np.mean(angle) + self.theta).to(u.radian).value
+        theta = (angle + self.theta).to(u.radian).value
 
         pixel_positions = np.array([x, y]).transpose()
 
@@ -819,7 +851,7 @@ class SkyRectangularAperture(SkyAperture):
 
 class RectangularAperture(PixelAperture):
     """
-    A rectangular aperture, defined in pixel coordinates.
+    Rectangular aperture(s), defined in pixel coordinates.
 
     Parameters
     ----------
@@ -966,19 +998,22 @@ class SkyRectangularAnnulus(SkyAperture):
         Return a EllipticalAnnulus instance in pixel coordinates.
         """
 
-        x, y, scale, angle = skycoord_to_pixel_scale_angle(self.positions, wcs)
+        x, y = skycoord_to_pixel(self.positions, wcs,
+                                 mode=skycoord_to_pixel_mode)
+        central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
+                               unit=wcs.wcs.cunit)
+        xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
 
-        # TODO: no need to use the mean once we support arrays of aperture values
         if self.w_in.unit.physical_type == 'angle':
-            w_in = (np.mean(scale) * self.w_in).to(u.pixel).value
-            w_out = (np.mean(scale) * self.w_out).to(u.pixel).value
-            h_out = (np.mean(scale) * self.h_out).to(u.pixel).value
+            w_in = (scale * self.w_in).to(u.pixel).value
+            w_out = (scale * self.w_out).to(u.pixel).value
+            h_out = (scale * self.h_out).to(u.pixel).value
         else:
             w_in = self.w_in.value
             w_out = self.w_out.value
             h_out = self.h_out.value
 
-        theta = (np.mean(angle) + self.theta).to(u.radian).value
+        theta = (angle + self.theta).to(u.radian).value
 
         pixel_positions = np.array([x, y]).transpose()
 

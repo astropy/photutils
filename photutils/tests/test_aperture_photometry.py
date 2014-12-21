@@ -32,7 +32,9 @@ APERTURE_CL = [CircularAperture,
 
 TEST_APERTURES = list(zip(APERTURE_CL, ((3.,), (3., 5.),
                                         (3., 5., 1.), (3., 5., 4., 1.),
-                                        (5, 8, np.pi / 4), (8, 12, 8, np.pi / 8))))
+                                        (5, 8, np.pi / 4),
+                                        (8, 12, 8, np.pi / 8))))
+
 
 @pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
 def test_outside_array(aperture_class, params):
@@ -48,13 +50,15 @@ def test_inside_array_simple(aperture_class, params):
     data = np.ones((40, 40), dtype=np.float)
     aperture = aperture_class((20., 20.), *params)
     table1 = aperture_photometry(data, aperture, method='center', subpixels=10)
-    table2 = aperture_photometry(data, aperture, method='subpixel', subpixels=10)
+    table2 = aperture_photometry(data, aperture, method='subpixel',
+                                 subpixels=10)
     table3 = aperture_photometry(data, aperture, method='exact', subpixels=10)
     true_flux = aperture.area()
 
     if not isinstance(aperture, (RectangularAperture, RectangularAnnulus)):
         assert_allclose(table3['aperture_sum'], true_flux)
-        assert_allclose(table2['aperture_sum'], table3['aperture_sum'], atol=0.1)
+        assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
+                        atol=0.1)
     assert table1['aperture_sum'] < table3['aperture_sum']
 
 
@@ -67,6 +71,22 @@ def test_aperture_plots(aperture_class, params):
 
     aperture = aperture_class((20., 20.), *params)
     aperture.plot()
+
+
+def test_aperture_pixel_positions():
+    pos1 = (10, 20)
+    pos2 = u.Quantity((10, 20), unit=u.pixel)
+    pos3 = ((10, 20, 30), (10, 20, 30))
+    pos3_pairs = ((10, 10), (20, 20), (30, 30))
+
+    r = 3
+    ap1 = CircularAperture(pos1, r)
+    ap2 = CircularAperture(pos2, r)
+    ap3 = CircularAperture(pos3, r)
+
+    assert np.allclose(pos1, ap1.positions)
+    assert np.allclose(pos2, ap2.positions)
+    assert np.allclose(pos3_pairs, ap3.positions)
 
 
 class BaseTestAperturePhotometry(object):
@@ -91,14 +111,16 @@ class BaseTestAperturePhotometry(object):
                                      self.aperture, method='exact',
                                      mask=mask, error=error)
 
-        if not isinstance(self.aperture, (RectangularAperture, RectangularAnnulus)):
+        if not isinstance(self.aperture, (RectangularAperture,
+                                          RectangularAnnulus)):
             assert_allclose(table3['aperture_sum'], self.true_flux)
             assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
                             atol=0.1)
         assert np.all(table1['aperture_sum'] < table3['aperture_sum'])
 
         true_error = np.sqrt(self.area)
-        if not isinstance(self.aperture, (RectangularAperture, RectangularAnnulus)):
+        if not isinstance(self.aperture, (RectangularAperture,
+                                          RectangularAnnulus)):
             assert_allclose(table3['aperture_sum_err'], true_error)
             assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
                             atol=0.1)
@@ -219,16 +241,18 @@ class BaseTestAperturePhotometry(object):
                                      self.aperture, method='exact',
                                      mask=mask, error=error)
 
-        if not isinstance(self.aperture, (RectangularAperture, RectangularAnnulus)):
+        if not isinstance(self.aperture, (RectangularAperture,
+                                          RectangularAnnulus)):
             assert_allclose(table3['aperture_sum'], self.true_flux)
             assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
                             atol=0.1)
         assert np.all(table1['aperture_sum'] < table3['aperture_sum'])
 
-        if not isinstance(self.aperture, (RectangularAperture, RectangularAnnulus)):
+        if not isinstance(self.aperture, (RectangularAperture,
+                                          RectangularAnnulus)):
             assert_allclose(table3['aperture_sum_err'], true_error)
-            assert_allclose(table2['aperture_sum_err'], table3['aperture_sum_err'],
-                            atol=0.1)
+            assert_allclose(table2['aperture_sum_err'],
+                            table3['aperture_sum_err'], atol=0.1)
         assert np.all(table1['aperture_sum_err'] < table3['aperture_sum_err'])
 
     def test_array_error_array_effective_gain(self):
@@ -438,51 +462,147 @@ class TestInputNDData(BaseTestDifferentData):
 
 
 @remote_data
-def test_wcs_based_photometry():
-    from astropy.table import Table
+def test_wcs_based_photometry_to_catalogue():
     from astropy.coordinates import SkyCoord
+    from astropy.table import Table
     from ..datasets import get_path
 
     pathcat = get_path('spitzer_example_catalog.xml', location='remote')
     pathhdu = get_path('spitzer_example_image.fits', location='remote')
     hdu = fits.open(pathhdu)
+    scale = hdu[0].header['PIXSCAL1']
+
     catalog = Table.read(pathcat)
-    fluxes_catalog = catalog['f4_5']
+
     pos_skycoord = SkyCoord(catalog['l'], catalog['b'], frame='galactic')
-    pos_skycoord_s = SkyCoord(catalog['l'][0] * catalog['l'].unit,
-                              catalog['b'][0] * catalog['b'].unit,
-                              frame='galactic')
 
     photometry_skycoord = aperture_photometry(
         hdu, SkyCircularAperture(pos_skycoord, 4 * u.arcsec))
-    photometry_skycoord_s = aperture_photometry(
-        hdu, SkyCircularAperture(pos_skycoord_s, 4 * u.arcsec))
-
-    assert_allclose(photometry_skycoord['aperture_sum'][0],
-                    photometry_skycoord_s['aperture_sum'])
 
     photometry_skycoord_pix = aperture_photometry(
-        hdu, SkyCircularAperture(pos_skycoord, 4 / 1.2 * u.pixel))
+        hdu, SkyCircularAperture(pos_skycoord, 4. / scale * u.pixel))
 
     assert_allclose(photometry_skycoord['aperture_sum'],
                     photometry_skycoord_pix['aperture_sum'])
 
+    # Photometric unit conversion is needed to match the catalogue
+    factor = (1.2 * u.arcsec) ** 2 / u.pixel
+    converted_aperture_sum = (photometry_skycoord['aperture_sum'] *
+                              factor).to(u.mJy / u.pixel)
+
+    fluxes_catalog = catalog['f4_5'].filled()
+
+    # There shouldn't be large outliers, but some differences is OK, as
+    # fluxes_catalog is based on PSF photometry, etc.
+    assert_allclose(fluxes_catalog, converted_aperture_sum.value, rtol=1e0)
+
+    assert(np.mean(np.fabs(((fluxes_catalog - converted_aperture_sum.value) /
+                            fluxes_catalog))) < 0.1)
+
+
+def test_wcs_based_photometry():
+    from astropy.wcs import WCS
+    from ..datasets import make_4gaussians_image
+    from ..extern.wcs_utils import pixel_to_skycoord
+
+    hdu = make_4gaussians_image(hdu=True, wcs=True)
+    wcs = WCS(header=hdu.header)
+
+    # hard wired positions in make_4gaussian_image
+    pos_orig_pixel = u.Quantity(([160., 25., 150., 90.],
+                                 [70., 40., 25., 60.]), unit=u.pixel)
+
+    pos_skycoord = pixel_to_skycoord(pos_orig_pixel[0], pos_orig_pixel[1], wcs)
+
+    pos_skycoord_s = pos_skycoord[2]
+
+    photometry_skycoord_circ = aperture_photometry(
+        hdu, SkyCircularAperture(pos_skycoord, 3 * u.deg))
+    photometry_skycoord_circ_2 = aperture_photometry(
+        hdu, SkyCircularAperture(pos_skycoord, 2 * u.deg))
+    photometry_skycoord_circ_s = aperture_photometry(
+        hdu, SkyCircularAperture(pos_skycoord_s, 3 * u.deg))
+
+    assert_allclose(photometry_skycoord_circ['aperture_sum'][2],
+                    photometry_skycoord_circ_s['aperture_sum'])
+
+    photometry_skycoord_circ_ann = aperture_photometry(
+        hdu, SkyCircularAnnulus(pos_skycoord, 2 * u.deg, 3 * u.deg))
+    photometry_skycoord_circ_ann_s = aperture_photometry(
+        hdu, SkyCircularAnnulus(pos_skycoord_s, 2 * u.deg, 3 * u.deg))
+
+    assert_allclose(photometry_skycoord_circ_ann['aperture_sum'][2],
+                    photometry_skycoord_circ_ann_s['aperture_sum'])
+
+    assert_allclose(photometry_skycoord_circ_ann['aperture_sum'],
+                    photometry_skycoord_circ['aperture_sum']
+                    - photometry_skycoord_circ_2['aperture_sum'])
+
+    photometry_skycoord_ell = aperture_photometry(
+        hdu, SkyEllipticalAperture(pos_skycoord,
+                                   3 * u.deg, 3.0001 * u.deg, 45 * u.deg))
+    photometry_skycoord_ell_2 = aperture_photometry(
+        hdu, SkyEllipticalAperture(pos_skycoord,
+                                   2 * u.deg, 2.0001 * u.deg, 45 * u.deg))
+    photometry_skycoord_ell_s = aperture_photometry(
+        hdu, SkyEllipticalAperture(pos_skycoord_s,
+                                   3 * u.deg, 3.0001 * u.deg, 45 * u.deg))
+    photometry_skycoord_ell_ann = aperture_photometry(
+        hdu, SkyEllipticalAnnulus(pos_skycoord, 2 * u.deg, 3 * u.deg,
+                                  3.0001 * u.deg, 45 * u.deg))
+    photometry_skycoord_ell_ann_s = aperture_photometry(
+        hdu, SkyEllipticalAnnulus(pos_skycoord_s, 2 * u.deg, 3 * u.deg,
+                                  3.0001 * u.deg, 45 * u.deg))
+
+    assert_allclose(photometry_skycoord_ell['aperture_sum'][2],
+                    photometry_skycoord_ell_s['aperture_sum'])
+
+    assert_allclose(photometry_skycoord_ell_ann['aperture_sum'][2],
+                    photometry_skycoord_ell_ann_s['aperture_sum'])
+
+    assert_allclose(photometry_skycoord_ell['aperture_sum'],
+                    photometry_skycoord_circ['aperture_sum'], rtol=5e-3)
+
+    assert_allclose(photometry_skycoord_ell_ann['aperture_sum'],
+                    photometry_skycoord_ell['aperture_sum']
+                    - photometry_skycoord_ell_2['aperture_sum'], rtol=1e-4)
+
     photometry_skycoord_rec = aperture_photometry(
         hdu, SkyRectangularAperture(pos_skycoord,
-                                    8 * u.arcsec, 8 * u.arcsec,
-                                    0 * u.deg))
+                                    6 * u.deg, 6 * u.deg,
+                                    0 * u.deg),
+        method='subpixel', subpixels=20)
+    photometry_skycoord_rec_4 = aperture_photometry(
+        hdu, SkyRectangularAperture(pos_skycoord,
+                                    4 * u.deg, 4 * u.deg,
+                                    0 * u.deg),
+        method='subpixel', subpixels=20)
     photometry_skycoord_rec_s = aperture_photometry(
         hdu, SkyRectangularAperture(pos_skycoord_s,
-                                    8 * u.arcsec, 8 * u.arcsec,
-                                    0 * u.deg))
+                                    6 * u.deg, 6 * u.deg,
+                                    0 * u.deg),
+        method='subpixel', subpixels=20)
+    photometry_skycoord_rec_ann = aperture_photometry(
+        hdu, SkyRectangularAnnulus(pos_skycoord, 4 * u.deg, 6 * u.deg,
+                                   6 * u.deg, 0 * u.deg),
+        method='subpixel', subpixels=20)
+    photometry_skycoord_rec_ann_s = aperture_photometry(
+        hdu, SkyRectangularAnnulus(pos_skycoord_s, 4 * u.deg, 6 * u.deg,
+                                   6 * u.deg, 0 * u.deg),
+        method='subpixel', subpixels=20)
 
-    assert_allclose(photometry_skycoord_rec['aperture_sum'][0],
+    assert_allclose(photometry_skycoord_rec['aperture_sum'][2],
                     photometry_skycoord_rec_s['aperture_sum'])
 
     assert np.all(photometry_skycoord_rec['aperture_sum'] >
-                  photometry_skycoord['aperture_sum'])
+                  photometry_skycoord_circ['aperture_sum'])
 
-    # TODO compare with fluxes_catalog
+    assert_allclose(photometry_skycoord_rec_ann['aperture_sum'][2],
+                    photometry_skycoord_rec_ann_s['aperture_sum'])
+
+    assert_allclose(photometry_skycoord_rec_ann['aperture_sum'],
+                    photometry_skycoord_rec['aperture_sum']
+                    - photometry_skycoord_rec_4['aperture_sum'], rtol=1e-4)
 
 
 def test_basic_circular_aperture_photometry_unit():
