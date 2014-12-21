@@ -49,7 +49,7 @@ background noise using sigma-clipped statistics::
     >>> data = hdu.data[0:400, 0:400]    # doctest: +REMOTE_DATA
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)    # doctest: +REMOTE_DATA
     >>> print(mean, median, std)    # doctest: +REMOTE_DATA
-    3649.0 3649.0 203.811360598
+    (3667.4515318501185, 3649.0, 203.81136059770844)
 
 Now we will subtract the background and use :func:`~photutils.daofind`
 to find the stars in the image that have FWHMs of around 3 pixels and
