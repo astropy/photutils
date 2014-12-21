@@ -60,9 +60,9 @@ cdef double distance(double x1, double y1, double x2, double y2):
     return sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
 
-cdef double area_arc(double x1, double y1, double x2, double y2, double R):
+cdef double area_arc(double x1, double y1, double x2, double y2, double r):
     """
-    Area of a circle arc with radius R between points (x1, y1) and (x2, y2).
+    Area of a circle arc with radius r between points (x1, y1) and (x2, y2).
 
     References
     ----------
@@ -71,8 +71,8 @@ cdef double area_arc(double x1, double y1, double x2, double y2, double R):
 
     cdef double a, theta
     a = distance(x1, y1, x2, y2)
-    theta = 2. * asin(0.5 * a / R)
-    return 0.5 * R * R * (theta - sin(theta))
+    theta = 2. * asin(0.5 * a / r)
+    return 0.5 * r * r * (theta - sin(theta))
 
 
 cdef double area_triangle(double x1, double y1, double x2, double y2, double x3,
