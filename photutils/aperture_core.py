@@ -193,7 +193,8 @@ class PixelAperture(Aperture):
             if input ``error`` is not `None`.
         """
 
-    def area():
+    @abc.abstractmethod
+    def area(self):
         """
         Area of aperture.
 
