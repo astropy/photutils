@@ -98,12 +98,3 @@ apertures:
     brightest_source_id = phot_table['aperture_sum'].argmax()
     plt.imshow(image, cmap='gray_r', origin='lower')
     apertures.plot(color='blue', lw=1.5, alpha=0.5)
-
-
-.. note::
-    We also have a series of IPython notebooks that demonstrate how to
-    use photutils.  You can view them `online
-    <http://nbviewer.ipython.org/github/astropy/photutils-datasets/tree/master/notebooks/>`_
-    or `download <https://github.com/astropy/photutils-datasets>`_
-    them if you'd like to execute them on your machine.  Contributions
-    are welcome!
