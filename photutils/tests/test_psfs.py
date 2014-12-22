@@ -16,7 +16,7 @@ sigmas = [0.5, 1., 2., 10., 12.34]
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-@pytest.mark.parametrize(('width'), widths)
+@pytest.mark.parametrize('width', widths)
 def test_subpixel_gauss_psf(width):
     """
     Test subpixel accuracy of Gaussian PSF by checking the peak
@@ -28,8 +28,8 @@ def test_subpixel_gauss_psf(width):
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-@pytest.mark.parametrize(('sigma'), sigmas)
-def test_gaussian_PSF_integral(sigma):
+@pytest.mark.parametrize('sigma', sigmas)
+def test_gaussian_psf_integral(sigma):
     """
     Test if Gaussian PSF peak matches amplitude.
     """

@@ -230,6 +230,9 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         selem = ndimage.generate_binary_structure(2, 1)
     elif connectivity == 8:    # e.g., SExtractor
         selem = ndimage.generate_binary_structure(2, 2)
+    else:
+        raise ValueError('Invalid selem={0}. Options: {4, 8}'.format(connectivity))
+
     objlabels, nobj = ndimage.label(image, structure=selem)
     objslices = ndimage.find_objects(objlabels)
 

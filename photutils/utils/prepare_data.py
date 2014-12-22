@@ -17,7 +17,7 @@ def calculate_total_error(data, error, effective_gain):
     Parameters
     ----------
     data : array_like or `~astropy.units.Quantity`
-        The 2D array (background-subtracted) data array.
+        The (background-subtracted) data array.
 
     error : array_like or `~astropy.units.Quantity`
         The pixel-wise Gaussian 1-sigma background errors of the input
@@ -28,6 +28,11 @@ def calculate_total_error(data, error, effective_gain):
     effective_gain : float, array-like, or `~astropy.units.Quantity`
         Ratio of counts (e.g., electrons or photons) to the units of
         ``data`` used to calculate the Poisson error of the sources.
+
+    Returns
+    -------
+    total_error : `~numpy.ndarray` or `~astropy.units.Quantity`
+        Total error.
 
     Notes
     -----
@@ -72,6 +77,7 @@ def calculate_total_error(data, error, effective_gain):
     else:
         source_variance = np.maximum(data / effective_gain, 0)
         variance_total = error**2 + source_variance
+
     return np.sqrt(variance_total)
 
 

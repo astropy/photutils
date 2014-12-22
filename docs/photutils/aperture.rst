@@ -348,7 +348,7 @@ photometry by providing an image mask via the ``mask`` keyword::
     -------------
     11.5663706144
 
-The result is much different if a ``mask`` image is not provided::
+The result is very different if a ``mask`` image is not provided::
 
     >>> t2 = aperture_photometry(data, aperture)
     >>> print(t2['aperture_sum'])

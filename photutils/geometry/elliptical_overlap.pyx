@@ -88,13 +88,13 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     # but of course this is inefficient and could be done better.
 
     # Find bounding circle radius
-    R = max(rx, ry)
+    r = max(rx, ry)
 
     # Define bounding box
-    bxmin = -R - 0.5 * dx
-    bxmax = +R + 0.5 * dx
-    bymin = -R - 0.5 * dy
-    bymax = +R + 0.5 * dy
+    bxmin = -r - 0.5 * dx
+    bxmax = +r + 0.5 * dx
+    bymin = -r - 0.5 * dy
+    bymax = +r + 0.5 * dy
 
     for i in range(nx):
         pxmin = xmin + i * dx  # lower end of pixel

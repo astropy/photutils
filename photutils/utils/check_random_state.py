@@ -24,6 +24,11 @@ def check_random_state(seed):
         ``seed``.  If ``seed`` is already a `~numpy.random.RandomState`,
         return it.  Otherwise raise ``ValueError``.
 
+    Returns
+    -------
+    random_state : `numpy.random.RandomState`
+        RandomState object.
+
     Notes
     -----
     This routine is from scikit-learn.  See
