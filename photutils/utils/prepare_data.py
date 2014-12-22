@@ -48,6 +48,9 @@ def calculate_total_error(data, error, effective_gain):
     ``data`` here should be background-subtracted to match SExtractor.
     """
 
+    data = np.asanyarray(data)
+    error = np.asanyarray(error)
+
     has_unit = [hasattr(x, 'unit') for x in [data, effective_gain]]
     if any(has_unit) and not all(has_unit):
         raise ValueError('If either data or effective_gain has units, then '
@@ -63,6 +66,7 @@ def calculate_total_error(data, error, effective_gain):
     if not isiterable(effective_gain):
         effective_gain = np.zeros(data.shape) + effective_gain
     else:
+        effective_gain = np.asanyarray(effective_gain)
         if effective_gain.shape != data.shape:
             raise ValueError('If input effective_gain is 2D, then it must '
                              'have the same shape as the input data.')
