@@ -13,7 +13,7 @@ photometry tools.
 .. image:: http://img.shields.io/badge/benchmarked%20by-asv-green.svg?style=flat
   :target: http://astropy.org/photutils-benchmarks/
 
-* .. image:: http://img.shields.io/pypi/v/photutils.svg?text=version
+.. image:: http://img.shields.io/pypi/v/photutils.svg?text=version
   :target: https://pypi.python.org/pypi/photutils/
   :alt: Latest release
 
