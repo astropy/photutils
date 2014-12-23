@@ -34,7 +34,8 @@ dependencies are installed:
     While photutils will import even if these dependencies are not
     installed, the functionality will be severely limited.  It is very
     strongly recommended that you install `Scipy`_ and `scikit-image`_
-    to use photutils.  Both are easy installed via `pip`_ or `conda`_.
+    to use photutils.  Both are easily installed via `pip`_ or
+    `conda`_.
 
 .. _Scipy: http://www.scipy.org/
 .. _scikit-image: http://scikit-image.org/
