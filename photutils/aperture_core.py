@@ -31,6 +31,9 @@ else:
     from .extern.wcs_utils import skycoord_to_pixel
     skycoord_to_pixel_mode = 'wcs'
 
+    def support_nddata(_func):
+        return _func
+
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture',
            'SkyCircularAperture', 'CircularAperture',
