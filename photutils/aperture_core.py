@@ -96,14 +96,12 @@ class Aperture(object):
     """
 
 
-@six.add_metaclass(_ABCMetaAndInheritDocstrings)
 class SkyAperture(Aperture):
     """
     Abstract base class for 2-d apertures defined in celestial coordinates.
     """
 
 
-@six.add_metaclass(_ABCMetaAndInheritDocstrings)
 class PixelAperture(Aperture):
     """
     Abstract base class for 2-d apertures defined in pixel coordinates.
