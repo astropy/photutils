@@ -314,7 +314,7 @@ class GaussianPSF(Fittable2DModel):
             return 0
 
 
-def psf_photometry(data, positions, psf, mask=None, mode='sequential',
+def psf_photometry(data, positions, psf, mode='sequential',
                    tune_coordinates=False):
     """
     Perform PSF/PRF photometry on the data.
@@ -335,8 +335,6 @@ def psf_photometry(data, positions, psf, mask=None, mode='sequential',
         where to fit the PSF/PRF.
     psf : `photutils.psf.DiscretePRF` or `photutils.psf.GaussianPSF`
         PSF/PRF model to fit to the data.
-    mask : ndarray, optional
-        Mask to be applied to the data.
     mode : {'sequential', 'simultaneous'}
         One of the following modes to do PSF/PRF photometry:
             * 'simultaneous'
@@ -523,7 +521,7 @@ def create_prf(data, positions, size, fluxes=None, mask=None, mode='mean',
     return DiscretePRF(prf_model, subsampling=subsampling)
 
 
-def subtract_psf(data, psf, positions, fluxes, mask=None):
+def subtract_psf(data, psf, positions, fluxes):
     """
     Removes PSF/PRF at the given positions.
 
