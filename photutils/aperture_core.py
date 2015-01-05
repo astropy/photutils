@@ -25,10 +25,14 @@ from .utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
 from astropy import __version__ as astropy_version
 if version.LooseVersion(astropy_version) > version.LooseVersion('1.0'):
     from astropy.wcs.utils import skycoord_to_pixel
+    from astropy.nddata import support_nddata
     skycoord_to_pixel_mode = 'all'
 else:
     from .extern.wcs_utils import skycoord_to_pixel
     skycoord_to_pixel_mode = 'wcs'
+
+    def support_nddata(_func):
+        return _func
 
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture',
@@ -1145,6 +1149,7 @@ class RectangularAnnulus(PixelAperture):
         return flux
 
 
+@support_nddata
 def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
                         effective_gain=None, mask=None, method='exact',
                         subpixels=5, pixelwise_error=True):
@@ -1229,7 +1234,14 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
 
         The metadata of the table stores the version numbers of both astropy
         and photutils, as well as the calling arguments.
+
+    Notes
+    -----
+    This function is decorated with `~astropy.nddata.support_nddata` and
+    thus supports `~astropy.nddata.NDData` objects as input for Astropy
+    version >=1.0.
     """
+
     dataunit = None
     datamask = None
     wcs_transformation = wcs
