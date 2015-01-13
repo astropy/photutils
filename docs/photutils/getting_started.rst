@@ -24,6 +24,8 @@ estimated using the median absolution deviation of the image.  The
 parameters of the detected sources are returned as an Astropy
 `~astropy.table.Table`:
 
+.. doctest-requires:: scipy, skimage
+
     >>> from photutils import daofind
     >>> from astropy.stats import median_absolute_deviation as mad
     >>> from photutils.extern.stats import mad_std
@@ -49,6 +51,8 @@ we now compute the sum of the pixel values in circular apertures with
 a radius of 4 pixels.  The :func:`~photutils.aperture_photometry`
 function returns an Astropy `~astropy.table.Table` with the results of
 the photometry:
+
+.. doctest-requires:: scipy, skimage
 
     >>> from photutils import aperture_photometry, CircularAperture
     >>> positions = (sources['xcentroid'], sources['ycentroid'])    # doctest: +REMOTE_DATA

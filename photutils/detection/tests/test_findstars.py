@@ -32,6 +32,7 @@ warnings.simplefilter('always', AstropyUserWarning)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SKIMAGE')
 class TestDAOFind(object):
     @pytest.mark.parametrize(('threshold', 'fwhm'),
                              list(itertools.product(THRESHOLDS, FWHMS)))
