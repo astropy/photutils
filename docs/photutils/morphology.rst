@@ -43,7 +43,7 @@ subtract the background)::
     >>> print(x2, y2)    # doctest: +FLOAT_CMP
     (14.035151484100131, 16.967749965238156)
 
-.. doctest-requires:: scipy
+.. doctest-requires:: scipy, skimage
 
     >>> x3, y3 = centroid_2dg(data)
     >>> print(x3, y3)    # doctest: +FLOAT_CMP
