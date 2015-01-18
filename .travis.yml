@@ -32,8 +32,10 @@ matrix:
         # may run for a long time
         - python: 2.7
           env: ASTROPY_VERSION=development SETUP_CMD='build_sphinx -w'
+        # TODO: update astropy-helpers ans add `-w` option once this has been released
+        # https://github.com/astropy/astropy-helpers/pull/123
         - python: 3.4
-          env: ASTROPY_VERSION=development SETUP_CMD='build_sphinx -w'
+          env: ASTROPY_VERSION=development SETUP_CMD='build_sphinx'
 
         # Try Astropy development version
         - python: 3.3
