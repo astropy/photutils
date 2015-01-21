@@ -1,20 +1,38 @@
-photutils
+Photutils
 =========
 
-This package provides an `AstroPy`_ affiliated package for image
-photometry tools.
+.. image:: http://img.shields.io/pypi/v/photutils.svg?text=version
+    :target: https://pypi.python.org/pypi/photutils/
+    :alt: Latest release
+
+.. image:: https://readthedocs.org/projects/photutils/badge/?version=stable
+    :target: http://photutils.readthedocs.org/en/stable/
+    :alt: Stable Documentation Status
+
+.. image:: https://readthedocs.org/projects/photutils/badge/?version=latest
+    :target: http://photutils.readthedocs.org/en/latest/
+    :alt: Latest Documentation Status
+
+Photutils is an `AstroPy`_ affiliated package to provide tools for
+detecting and peforming photometry of astronomical sources.
 
 .. image:: https://travis-ci.org/astropy/photutils.png?branch=master
-  :target: https://travis-ci.org/astropy/photutils
+    :target: https://travis-ci.org/astropy/photutils
 
 .. image:: https://coveralls.io/repos/astropy/photutils/badge.png
-  :target: https://coveralls.io/r/astropy/photutils
+    :target: https://coveralls.io/r/astropy/photutils
+
+.. image:: https://ci.appveyor.com/api/projects/status/by27a71echj18b4f/branch/master?svg=true
+    :target: https://ci.appveyor.com/project/Astropy/photutils/branch/master
 
 .. image:: http://img.shields.io/badge/benchmarked%20by-asv-green.svg?style=flat
-  :target: http://astropy.org/photutils-benchmarks/
+    :target: http://astropy.org/photutils-benchmarks/
 
-.. image:: http://img.shields.io/pypi/v/photutils.svg?text=version
-  :target: https://pypi.python.org/pypi/photutils/
-  :alt: Latest release
+
+License
+-------
+
+Photutils is licensed under a 3-clause BSD style license (see the
+``licenses/LICENSE.rst`` file).
 
 .. _AstroPy: http://www.astropy.org/
