@@ -231,20 +231,23 @@ radius 8 pixels.  We start by defining the apertures::
     >>> apertures = CircularAperture(positions, r=3)
     >>> annulus_apertures = CircularAnnulus(positions, r_in=6., r_out=8.)
 
-We then compute the apertures sums and combine the two tables::
+We then compute the aperture sum in both apertures and combine the two
+tables::
 
     >>> rawflux_table = aperture_photometry(data, apertures)
     >>> bkgflux_table = aperture_photometry(data, annulus_apertures)
     >>> phot_table = hstack([rawflux_table, bkgflux_table], table_names=['raw', 'bkg'])
 
-To calculate the mean local background, we need to divide the circular
-annulus aperture sums by the area of the circular annulus.  The
-background sum within the circular aperture is then the mean local
+To calculate the mean local background within the circular annulus
+aperture, we need to divide its sum by its area, which can be
+calculated using the :meth:`~photutils.CircularAnnulus.area` method::
+
+    >>> bkg_mean = phot_table['aperture_sum_bkg'] / annulus_apertures.area
+
+The background sum within the circular aperture is then the mean local
 background times the circular aperture area::
 
-    >>> aperture_area = np.pi * 3 ** 2
-    >>> annulus_area = np.pi * (8 ** 2 - 6 ** 2)
-    >>> bkg_sum = phot_table['aperture_sum_bkg'] * aperture_area / annulus_area
+    >>> bkg_sum = bkg_mean * apertures.area
     >>> final_sum = phot_table['aperture_sum_raw'] - bkg_sum
     >>> phot_table['residual_aperture_sum'] = final_sum
     >>> print(phot_table['residual_aperture_sum'])    # doctest: +FLOAT_CMP
