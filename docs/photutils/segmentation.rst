@@ -66,7 +66,7 @@ Now let's measure the properties of the detected sources defined in
 the segmentation image with the minimum number of inputs to
 `~photutils.segmentation.segment_properties`:
 
-.. doctest-requires:: scipy, skimage
+.. doctest-skip::
 
     >>> from photutils import segment_properties, properties_table
     >>> props = segment_properties(data, segm)
