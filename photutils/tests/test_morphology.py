@@ -8,6 +8,7 @@ import itertools
 from ..morphology import (centroid_com, centroid_1dg, centroid_2dg,
                           gaussian1d_moments, data_properties)
 from astropy.modeling import models
+from astropy.convolution.kernels import Gaussian2DKernel
 try:
     import skimage
     HAS_SKIMAGE = True
@@ -61,18 +62,18 @@ def test_centroids_witherror(xc_ref, yc_ref, x_stddev, y_stddev, theta):
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 def test_centroids_withmask():
-    data = np.zeros((5, 5))
-    data[2, 2] = 1.
-    data[0, 0] = 1.
+    size = 9
+    xc_ref, yc_ref = (size - 1) / 2, (size - 1) / 2
+    data = Gaussian2DKernel(1., x_size=size, y_size=size).array
     mask = np.zeros_like(data, dtype=bool)
+    data[0, 0] = 1.
     mask[0, 0] = True
     xc, yc = centroid_com(data, mask=mask)
-    xc_ref, yc_ref = 2, 2
-    assert_allclose([xc_ref, yc_ref], [xc, yc], rtol=0, atol=1.e-3)
+    assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
     xc2, yc2 = centroid_1dg(data, mask=mask)
-    assert_allclose([xc_ref, yc_ref], [xc2, yc2], rtol=0, atol=1.e-3)
+    assert_allclose([xc2, yc2], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
     xc3, yc3 = centroid_2dg(data, mask=mask)
-    assert_allclose([xc_ref, yc_ref], [xc3, yc3], rtol=0, atol=1.e-3)
+    assert_allclose([xc3, yc3], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
 
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
