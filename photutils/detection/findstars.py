@@ -16,7 +16,6 @@ from ..extern.stats import gaussian_fwhm_to_sigma
 __all__ = ['daofind', 'irafstarfind']
 
 
-
 def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
             sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0, sky=0.0,
             exclude_border=False):
@@ -389,9 +388,9 @@ def _findobjs(data, threshold, kernel, min_separation=None,
         else:
             from skimage.morphology import disk
             footprint = disk(min_separation)
-        coords = find_peaks(convolved_data, threshold,
-                            exclude_border=exclude_border,
-                            footprint=footprint)
+        tbl = find_peaks(convolved_data, threshold,
+                         exclude_border=exclude_border, footprint=footprint)
+        coords = np.transpose([tbl['y_peak'], tbl['x_peak']])
     else:
         object_slices = ndimage.find_objects(object_labels)
         coords = []
