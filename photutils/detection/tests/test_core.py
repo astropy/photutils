@@ -191,22 +191,25 @@ class TestDetectSources(object):
 class TestFindPeaks(object):
     def test_find_peaks(self):
         """Test basic peak detection."""
-        coords = find_peaks(PEAKDATA, 0.1, min_separation=1,
-                            exclude_border=False)
-        assert_array_equal(coords, PEAKREF1)
+        tbl = find_peaks(PEAKDATA, 0.1, min_separation=1,
+                         exclude_border=False)
+        assert_array_equal(tbl['x_peak'], PEAKREF1[:, 1])
+        assert_array_equal(tbl['y_peak'], PEAKREF1[:, 0])
+        assert_array_equal(tbl['peak_value'], [1., 1.])
 
     def test_segment_image(self):
         segm = PEAKDATA.copy()
-        coords = find_peaks(PEAKDATA, 0.1, min_separation=1,
-                            exclude_border=False, segment_image=segm)
-        assert_array_equal(coords, PEAKREF1)
+        tbl = find_peaks(PEAKDATA, 0.1, min_separation=1,
+                         exclude_border=False, segment_image=segm)
+        assert_array_equal(tbl['x_peak'], PEAKREF1[:, 1])
+        assert_array_equal(tbl['y_peak'], PEAKREF1[:, 0])
 
     def test_segment_image_npeaks(self):
         segm = PEAKDATA.copy()
-        coords = find_peaks(PEAKDATA, 0.1, min_separation=1,
-                            exclude_border=False, segment_image=segm,
-                            npeaks=1)
-        assert_array_equal(coords, np.array([PEAKREF1[1]]))
+        tbl = find_peaks(PEAKDATA, 0.1, min_separation=1,
+                         exclude_border=False, segment_image=segm, npeaks=1)
+        assert_array_equal(tbl['x_peak'], PEAKREF1[1, 1])
+        assert_array_equal(tbl['y_peak'], PEAKREF1[1, 0])
 
     def test_segment_image_shape(self):
         segm = np.zeros((2, 2))
@@ -215,17 +218,15 @@ class TestFindPeaks(object):
 
     def test_exclude_border(self):
         """Test exclude_border."""
-        coords = find_peaks(PEAKDATA, 0.1, min_separation=1,
-                            exclude_border=True)
-        assert_array_equal(coords, PEAKREF2)
+        tbl = find_peaks(PEAKDATA, 0.1, min_separation=1, exclude_border=True)
+        assert_array_equal(len(tbl), 0)
 
     def test_zerodet(self):
         """Test with large threshold giving no sources."""
-        coords = find_peaks(PEAKDATA, 5., min_separation=1,
-                            exclude_border=True)
-        assert_array_equal(coords, PEAKREF2)
+        tbl = find_peaks(PEAKDATA, 5., min_separation=1, exclude_border=True)
+        assert_array_equal(len(tbl), 0)
 
     def test_min_separation_int(self):
-        coords1 = find_peaks(PEAKDATA, 0.1, min_separation=2)
-        coords2 = find_peaks(PEAKDATA, 0.1, min_separation=2.5)
-        assert_array_equal(coords1, coords2)
+        tbl1 = find_peaks(PEAKDATA, 0.1, min_separation=2.)
+        tbl2 = find_peaks(PEAKDATA, 0.1, min_separation=2.5)
+        assert_array_equal(tbl1, tbl2)
