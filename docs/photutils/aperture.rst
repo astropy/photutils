@@ -240,7 +240,7 @@ tables::
 
 To calculate the mean local background within the circular annulus
 aperture, we need to divide its sum by its area, which can be
-calculated using the :meth:`~photutils.CircularAnnulus.area` method::
+calculated using the `~photutils.CircularAnnulus.area` property::
 
     >>> bkg_mean = phot_table['aperture_sum_bkg'] / annulus_apertures.area
 
@@ -461,22 +461,21 @@ simply requires the definition of a new `~photutils.Aperture`
 subclass.
 
 All `~photutils.Aperture` subclasses must implement only two methods,
-``do_photometry(data)`` and ``plot()``.  They can optionally
-implement a third method, ``area()``.
+``do_photometry(data)`` and ``plot()``, and an ``area``
+`lazyproperty`_.
 
 * ``do_photometry(data)``: A method to sum the pixel values within the
   defined aperture.
 * ``plot()``: A method to plot the aperture on a `matplotlib`_ Axes
   instance.
-* ``area()``: If convenient to calculate, this returns the area of the
-  aperture.  This speeds computation in certain situations (such as a
-  scalar error).
+* ``area()``: A `lazyproperty`_ to return the area of the aperture.
 
 Note that all x and y coordinates here refer to the fast and slow
 (second and first) axis of the data array respectively.  See
 :ref:`coordinate-conventions`.
 
 .. _matplotlib: http://matplotlib.org
+.. _lazyproperty: http://astropy.readthedocs.org/en/stable/api/astropy.utils.misc.lazyproperty.html?highlight=lazyproperty
 
 See Also
 --------
