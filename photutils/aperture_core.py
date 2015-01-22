@@ -15,6 +15,7 @@ from astropy.table import Table
 from astropy.wcs import WCS
 from astropy.coordinates import SkyCoord
 from astropy.extern import six
+from astropy.utils import lazyproperty
 from astropy.utils.misc import InheritDocstrings
 from astropy.utils.exceptions import AstropyUserWarning
 from .aperture_funcs import (do_circular_photometry, do_elliptical_photometry,
@@ -284,6 +285,7 @@ class CircularAperture(PixelAperture):
 
         self.positions = _sanitize_pixel_positions(positions)
 
+    @lazyproperty
     def area(self):
         return math.pi * self.r ** 2
 
@@ -420,6 +422,7 @@ class CircularAnnulus(PixelAperture):
 
         self.positions = _sanitize_pixel_positions(positions)
 
+    @lazyproperty
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
@@ -572,6 +575,7 @@ class EllipticalAperture(PixelAperture):
 
         self.positions = _sanitize_pixel_positions(positions)
 
+    @lazyproperty
     def area(self):
         return math.pi * self.a * self.b
 
@@ -741,6 +745,7 @@ class EllipticalAnnulus(PixelAperture):
 
         self.positions = _sanitize_pixel_positions(positions)
 
+    @lazyproperty
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
@@ -893,6 +898,7 @@ class RectangularAperture(PixelAperture):
 
         self.positions = _sanitize_pixel_positions(positions)
 
+    @lazyproperty
     def area(self):
         return self.w * self.h
 
@@ -1077,6 +1083,7 @@ class RectangularAnnulus(PixelAperture):
 
         self.positions = _sanitize_pixel_positions(positions)
 
+    @lazyproperty
     def area(self):
         """
         Returns
