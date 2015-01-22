@@ -488,3 +488,10 @@ See Also
 .. _SourceExtractor: http://www.astromatic.net/software/sextractor
 .. _SourceExtractor Manual [PDF]: https://www.astromatic.net/pubsvn/software/sextractor/trunk/doc/sextractor.pdf
 .. _IRAF's APPHOT specification [PDF]: http://iraf.net/irafdocs/apspec.pdf
+
+
+Reference/API
+-------------
+
+.. automodapi:: photutils.aperture_core
+    :no-heading:
