@@ -253,7 +253,20 @@ sigma above the background and a separated by a least 2 pixels:
     >>> data = make_100gaussians_image()
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     >>> threshold = median + (10.0 * std)
-    >>> peaks = find_peaks(data, threshold, min_separation=2)
+    >>> tbl = find_peaks(data, threshold, min_separation=2)
+    >>> print(tbl[:10])    # print only the first 10 peaks
+    x_peak y_peak   peak_value
+    ------ ------ -------------
+       289     22 35.8532759965
+       442     31 30.2399941373
+        89     59 41.2190469279
+         7     70 33.2880647048
+       258     75 26.5624808518
+       463     80 28.7588206692
+       182     93 38.0885687202
+       227    104  29.291381982
+        71    112 35.0913969385
+       206    114 29.7546446436
 
 And let's plot the location of the detected peaks in the image:
 
@@ -264,8 +277,8 @@ And let's plot the location of the detected peaks in the image:
     >>> import matplotlib.pylab as plt
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm)
-    >>> plt.plot(peaks.T[1], peaks.T[0], ls='none', color='cyan', marker='+',
-    ...          ms=10, lw=1.5)
+    >>> plt.plot(tbl['x_peak'], tbl['y_peak'], ls='none', color='cyan',
+    ...          marker='+', ms=10, lw=1.5)
     >>> plt.xlim(0, data.shape[1]-1)
     >>> plt.ylim(0, data.shape[0]-1)
 
@@ -277,15 +290,15 @@ And let's plot the location of the detected peaks in the image:
     data = make_100gaussians_image()
     mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     threshold = median + (10.0 * std)
-    peaks = find_peaks(data, threshold, min_separation=2)
+    tbl = find_peaks(data, threshold, min_separation=2)
 
     from photutils.extern.imageutils.visualization import SqrtStretch
     from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pylab as plt
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm)
-    plt.plot(peaks.T[1], peaks.T[0], ls='none', color='cyan', marker='+',
-             ms=10, lw=1.5)
+    plt.plot(tbl['x_peak'], tbl['y_peak'], ls='none', color='cyan',
+             marker='+', ms=10, lw=1.5)
     plt.xlim(0, data.shape[1]-1)
     plt.ylim(0, data.shape[0]-1)
 

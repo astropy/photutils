@@ -4,6 +4,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
+from astropy.table import Table
 from astropy.convolution import Kernel2D
 from ..extern.imageutils.stats import sigma_clipped_stats
 
@@ -301,9 +302,9 @@ def find_peaks(data, threshold, min_separation=2, exclude_border=True,
 
     Returns
     -------
-    output : `~numpy.ndarray`
-        An ``Nx2`` array where the rows contain the ``(y, x)`` pixel
-        coordinates of the local peaks.
+    output : `~astropy.table.Table`
+        A table containing the x and y pixel location of the peaks and
+        their values.
     """
 
     if segment_image is not None:
@@ -317,10 +318,15 @@ def find_peaks(data, threshold, min_separation=2, exclude_border=True,
                             exclude_border=exclude_border, indices=True,
                             num_peaks=npeaks, footprint=footprint,
                             labels=segment_image)
-    if coords.shape[0] <= npeaks:
-        return coords
-    else:
+    y_peaks, x_peaks = coords[:, 0], coords[:, 1]
+    peak_values = data[y_peaks, x_peaks]
+
+    if coords.shape[0] > npeaks:
         # NOTE: num_peaks is ignored by peak_local_max() if labels are input
-        peak_values = data[coords[:, 0], coords[:, 1]]
-        idx_maxsort = np.argsort(peak_values)[::-1]
-        return coords[idx_maxsort][:npeaks]
+        idx = np.argsort(peak_values)[::-1][:npeaks]
+        x_peaks = x_peaks[idx]
+        y_peaks = y_peaks[idx]
+        peak_values = peak_values[idx]
+
+    return Table((x_peaks, y_peaks, peak_values),
+                 names=('x_peak', 'y_peak', 'peak_value'))
