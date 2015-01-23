@@ -242,12 +242,12 @@ To calculate the mean local background within the circular annulus
 aperture, we need to divide its sum by its area, which can be
 calculated using the :meth:`~photutils.CircularAnnulus.area` method::
 
-    >>> bkg_mean = phot_table['aperture_sum_bkg'] / annulus_apertures.area
+    >>> bkg_mean = phot_table['aperture_sum_bkg'] / annulus_apertures.area()
 
 The background sum within the circular aperture is then the mean local
 background times the circular aperture area::
 
-    >>> bkg_sum = bkg_mean * apertures.area
+    >>> bkg_sum = bkg_mean * apertures.area()
     >>> final_sum = phot_table['aperture_sum_raw'] - bkg_sum
     >>> phot_table['residual_aperture_sum'] = final_sum
     >>> print(phot_table['residual_aperture_sum'])    # doctest: +FLOAT_CMP
