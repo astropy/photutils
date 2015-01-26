@@ -454,26 +454,23 @@ Defining Your Own Custom Apertures
 The photometry function :func:`~photutils.aperture_photometry` can
 perform aperture photometry in arbitrary apertures.  This function
 accepts `Aperture`-derived objects, such as
-`~photutils.CircularAperture` (the wrappers handle creation of the
-`~photutils.Aperture` objects or arrays thereof).  This makes it
-simple to extend functionality: a new type of aperture photometry
-simply requires the definition of a new `~photutils.Aperture`
-subclass.
+`~photutils.CircularAperture`.  This makes it simple to extend
+functionality: a new type of aperture photometry simply requires the
+definition of a new `~photutils.Aperture` subclass.
 
-All `~photutils.Aperture` subclasses must implement only two methods,
-``do_photometry(data)`` and ``plot()``.  They can optionally
-implement a third method, ``area()``.
+All `~photutils.PixelAperture` subclasses must implement three
+methods, ``do_photometry(data)``, ``area()``, and ``plot()``.
+`~photutils.SkyAperture` subclasses must implement only
+``do_photometry(data)`` and ``plot()``.
 
 * ``do_photometry(data)``: A method to sum the pixel values within the
   defined aperture.
+* ``area()``: A method to return the area (pixels**2) of the aperture.
 * ``plot()``: A method to plot the aperture on a `matplotlib`_ Axes
   instance.
-* ``area()``: If convenient to calculate, this returns the area of the
-  aperture.  This speeds computation in certain situations (such as a
-  scalar error).
 
-Note that all x and y coordinates here refer to the fast and slow
-(second and first) axis of the data array respectively.  See
+Note that all x and y coordinates refer to the fast and slow (second
+and first) axis of the data array respectively.  See
 :ref:`coordinate-conventions`.
 
 .. _matplotlib: http://matplotlib.org
