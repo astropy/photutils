@@ -250,19 +250,23 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
     return objlabels
 
 
-def find_peaks(data, threshold, min_separation=2, exclude_border=True,
-               segment_image=None, npeaks=np.inf, footprint=None):
+def find_peaks(data, threshold, box_size=3, footprint=None,
+               border_width=None, npeaks=np.inf):
     """
     Find local peaks in an image that are above above a specified
     threshold value.
 
-    Peaks are the local maxima above the ``threshold`` in a region of
-    ``(2 * min_separation) + 1`` (i.e., peaks are separated by at least
-    ``min_separation`` pixels).
+    Peaks are the maxima above the ``threshold`` within a local region.
+    The regions are defined by either the ``box_size`` or ``footprint``
+    parameters.  ``box_size`` defines the local region around each pixel
+    as a square box.  ``footprint`` is a boolean array where `True`
+    values specify the region shape.
 
-    If peaks are flat (i.e., multiple adjacent pixels have identical
-    intensities), then the coordinates of all such pixels are returned,
-    even if they are not separated by at least ``min_separation``.
+    If mulitple pixels within a local region have identical intensities,
+    then the coordinates of all such pixels are returned.  Otherwise,
+    there will be only one peak pixel per local region.  Thus, the
+    defined region effectively imposes a minimum separation between
+    peaks (unless there are identical peaks within the region).
 
     Parameters
     ----------
@@ -272,34 +276,24 @@ def find_peaks(data, threshold, min_separation=2, exclude_border=True,
     threshold : float
         The data value to be used for the detection threshold.
 
-    min_separation : int, optional
-        Minimum number of pixels separating peaks (i.e., peaks are
-        separated by at least ``min_separation`` pixels).  To find the
-        maximum number of peaks, use ``min_separation=1``.  If
-        ``min_separation`` is not an integer, then it will be truncated.
+    box_size : int, optional
+        The square box size (pixel) of the local region to search for
+        peaks at every point in ``data``.
 
-    exclude_border : bool, optional
-        If `True`, exclude peaks within ``min_separation`` from the
-        border of the image as well as from each other.
+    footprint : `~numpy.ndarray` of bools, optional
+        A boolean array where `True` values describe the local footprint
+        region within which to search for peaks at every point in
+        ``data``.  ``footprint`` overrides ``box_size`` when defining
+        the local region around each pixel.
 
-    segment_image : `~numpy.ndarray` (int), optional
-        If provided, then search for peaks located only within the
-        labeled regions of a 2D segmentation image, where sources are
-        marked by different positive integer values.  In the
-        segmentation image a value of zero is reserved for the
-        background.  ``segment_image`` must have the same shape as
+    border_width : bool, optional
+        The width in pixels to exclude around the border of the
         ``data``.
 
     npeaks : int, optional
         The maximum number of peaks to return.  When the number of
         detected peaks exceeds ``npeaks``, the peaks with the highest
         peak intensities will be returned.
-
-    footprint : `~numpy.ndarray` of bools, optional
-        A boolean array where `True` values describe the local footprint
-        region within which to search for peaks at every point in
-        ``data``.  Overrides ``min_separation``, except for border
-        exclusion when ``exclude_border=True``.
 
     Returns
     -------
@@ -308,22 +302,32 @@ def find_peaks(data, threshold, min_separation=2, exclude_border=True,
         their values.
     """
 
-    if segment_image is not None:
-        if segment_image.shape != data.shape:
-            raise ValueError('segment_image and data must have the same '
-                             'shape')
+    from scipy import ndimage
 
-    from skimage.feature import peak_local_max
-    coords = peak_local_max(data, min_distance=int(min_separation),
-                            threshold_abs=threshold, threshold_rel=0.0,
-                            exclude_border=exclude_border, indices=True,
-                            num_peaks=npeaks, footprint=footprint,
-                            labels=segment_image)
-    y_peaks, x_peaks = coords[:, 0], coords[:, 1]
+    if np.all(data == data.flat[0]):
+        return []
+
+    data = data.copy()
+    if footprint is not None:
+        data_max = ndimage.maximum_filter(data, footprint=footprint,
+                                          mode='constant', cval=0.0)
+    else:
+        data_max = ndimage.maximum_filter(data, size=box_size,
+                                          mode='constant', cval=0.0)
+
+    data *= (data == data_max)    # consider where max filtered data == data
+
+    if border_width is not None:
+        for i in range(data.ndim):
+            data = data.swapaxes(0, i)
+            data[:border_width] = 0.
+            data[-border_width:] = 0.
+            data = data.swapaxes(0, i)
+
+    y_peaks, x_peaks = (data > threshold).nonzero()
     peak_values = data[y_peaks, x_peaks]
 
-    if coords.shape[0] > npeaks:
-        # NOTE: num_peaks is ignored by peak_local_max() if labels are input
+    if len(x_peaks) > npeaks:
         idx = np.argsort(peak_values)[::-1][:npeaks]
         x_peaks = x_peaks[idx]
         y_peaks = y_peaks[idx]
