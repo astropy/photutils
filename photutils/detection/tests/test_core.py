@@ -160,14 +160,19 @@ class TestDetectSources(object):
         assert_array_equal(segm, kernel)
 
     def test_npixels_nonint(self):
-        """Test if AssertionError raises if npixel is non-integer."""
+        """Test if error raises if npixel is non-integer."""
         with pytest.raises(ValueError):
             detect_sources(DATA, threshold=1, npixels=0.1)
 
     def test_npixels_negative(self):
-        """Test if AssertionError raises if npixel is negative."""
+        """Test if error raises if npixel is negative."""
         with pytest.raises(ValueError):
             detect_sources(DATA, threshold=1, npixels=-1)
+
+    def test_connectivity_invalid(self):
+        """Test if error raises if connectivity is invalid."""
+        with pytest.raises(ValueError):
+            detect_sources(DATA, threshold=1, npixels=1, connectivity=10)
 
     def test_filtering(self):
         from astropy.convolution import Gaussian2DKernel
