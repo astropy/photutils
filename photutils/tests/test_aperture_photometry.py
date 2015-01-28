@@ -359,7 +359,7 @@ class TestEllipticalAnnulus(BaseTestAperturePhotometry):
         position = (20., 20.)
         a_in = 5.
         a_out = 8.
-        b_out = 6.
+        b_out = 5.
         theta = -np.pi / 4.
         self.aperture = EllipticalAnnulus(position, a_in, a_out, b_out, theta)
         self.area = np.pi * (a_out * b_out) - np.pi * (a_in * b_out * a_in / a_out)
