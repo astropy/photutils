@@ -4,8 +4,10 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
-from astropy.table import Table
+from astropy.table import Column, Table
 from astropy.convolution import Kernel2D
+import astropy.units as u
+from astropy.wcs.utils import pixel_to_skycoord
 from astropy.stats import sigma_clipped_stats
 from ..morphology import fit_2dgaussian
 
@@ -252,7 +254,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
 
 
 def find_peaks(data, threshold, box_size=3, footprint=None,
-               border_width=None, npeaks=np.inf, subpixel=False):
+               border_width=None, npeaks=np.inf, subpixel=False, wcs=None):
     """
     Find local peaks in an image that are above above a specified
     threshold value.
@@ -307,6 +309,12 @@ def find_peaks(data, threshold, box_size=3, footprint=None,
         ``footprint`` will be taken centered on each peak and fit with a
         2D Gaussian.  In this case, the fitted local centroid and peak
         amplitude will also be returned in the output table.
+
+    wcs : `~astropy.wcs.WCS`
+        The WCS transformation to use to convert from pixel coordinates
+        to ICRS world coordinates.  If `None`, then the world
+        coordinates will not be returned in the output
+        `~astropy.table.Table`.
 
     Returns
     -------
@@ -378,4 +386,25 @@ def find_peaks(data, threshold, box_size=3, footprint=None,
         columns = (x_peaks, y_peaks, peak_values)
         names = ('x_peak', 'y_peak', 'peak_value')
 
-    return Table(columns, names=names)
+    table = Table(columns, names=names)
+
+    if wcs is not None:
+        icrs_coords_peak = pixel_to_skycoord(x_peaks, y_peaks, wcs,
+                                             origin=1).icrs
+        icrs_ra_peak = icrs_coords_peak.ra.degree * u.deg
+        icrs_dec_peak = icrs_coords_peak.dec.degree * u.deg
+        table.add_column(Column(icrs_ra_peak, name='icrs_ra_peak'), index=2)
+        table.add_column(Column(icrs_dec_peak, name='icrs_dec_peak'), index=3)
+
+        if subpixel:
+            icrs_coords_centroid = pixel_to_skycoord(x_centroid, y_centroid,
+                                                     wcs, origin=1).icrs
+            icrs_ra_centroid = icrs_coords_centroid.ra.degree * u.deg
+            icrs_dec_centroid = icrs_coords_centroid.dec.degree * u.deg
+            idx = table.colnames.index('y_centroid')
+            table.add_column(Column(icrs_ra_centroid,
+                                    name='icrs_ra_centroid'), index=idx+1)
+            table.add_column(Column(icrs_dec_centroid,
+                                    name='icrs_dec_centroid'), index=idx+2)
+
+    return table
