@@ -253,7 +253,7 @@ sigma above the background and a separated by a least 2 pixels:
     >>> data = make_100gaussians_image()
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     >>> threshold = median + (10.0 * std)
-    >>> tbl = find_peaks(data, threshold, min_separation=2)
+    >>> tbl = find_peaks(data, threshold, box_size=5)
     >>> print(tbl[:10])    # print only the first 10 peaks
     x_peak y_peak   peak_value
     ------ ------ -------------
@@ -290,7 +290,7 @@ And let's plot the location of the detected peaks in the image:
     data = make_100gaussians_image()
     mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     threshold = median + (10.0 * std)
-    tbl = find_peaks(data, threshold, min_separation=2)
+    tbl = find_peaks(data, threshold, box_size=5)
 
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
