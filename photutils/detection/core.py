@@ -269,9 +269,11 @@ def find_peaks(data, threshold, box_size=3, footprint=None,
     defined region effectively imposes a minimum separation between
     peaks (unless there are identical peaks within the region).
 
-    When using subpixel precision (``subpixel=True``), a cutout of the
-    specified ``box_size`` or ``footprint`` will be taken centered on
-    each peak and its centroid will be returned using a 2D Gaussian fit.
+    When using subpixel precision (``subpixel=True``), then a cutout of
+    the specified ``box_size`` or ``footprint`` will be taken centered
+    on each peak and fit with a 2D Gaussian.  In this case, the fitted
+    local centroid and peak amplitude will also be returned in the
+    output table.
 
     Parameters
     ----------
@@ -301,13 +303,17 @@ def find_peaks(data, threshold, box_size=3, footprint=None,
         peak intensities will be returned.
 
     subpixel : bool, optional
-        TODO
+        If `True`, then a cutout of the specified ``box_size`` or
+        ``footprint`` will be taken centered on each peak and fit with a
+        2D Gaussian.  In this case, the fitted local centroid and peak
+        amplitude will also be returned in the output table.
 
     Returns
     -------
     output : `~astropy.table.Table`
         A table containing the x and y pixel location of the peaks and
-        their values.
+        their values.  If ``subpixel=True``, then the table will also
+        contain the local centroid and fitted peak value.
     """
 
     from scipy import ndimage
@@ -344,14 +350,21 @@ def find_peaks(data, threshold, box_size=3, footprint=None,
     if subpixel:
         x_centroid, y_centroid = [], []
         fit_peak_value = []
+        if footprint is None:
+            ysize, xsize = box_size, box_size
+            mask = None
+        else:
+            ysize, xsize = footprint.shape
+            mask = (footprint == False)
+
+        hysize, hxsize = (ysize - 1) // 2, (xsize - 1) // 2
         for (y_peak, x_peak) in zip(y_peaks, x_peaks):
-            hbox_size = (box_size - 1) // 2
-            x0 = max(x_peak - hbox_size, 0)
-            x1 = min(x0 + box_size, data.shape[1])
-            y0 = max(y_peak - hbox_size, 0)
-            y1 = min(y0 + box_size, data.shape[1])
+            x0 = max(x_peak - hxsize, 0)
+            x1 = min(x0 + xsize, data.shape[1])
+            y0 = max(y_peak - hysize, 0)
+            y1 = min(y0 + ysize, data.shape[1])
             region = data[y0:y1, x0:x1]
-            gaussian_fit = fit_2dgaussian(region, mask=None)
+            gaussian_fit = fit_2dgaussian(region, mask=mask)
             fit_peak_value.append(gaussian_fit.amplitude.value)
             x_centroid.append(x0 + gaussian_fit.x_mean.value)
             y_centroid.append(y0 + gaussian_fit.y_mean.value)
