@@ -7,6 +7,7 @@ import numpy as np
 from astropy.table import Table
 from astropy.convolution import Kernel2D
 from astropy.stats import sigma_clipped_stats
+from ..morphology import fit_2dgaussian
 
 
 __all__ = ['detect_threshold', 'detect_sources', 'find_peaks']
@@ -251,7 +252,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
 
 
 def find_peaks(data, threshold, box_size=3, footprint=None,
-               border_width=None, npeaks=np.inf):
+               border_width=None, npeaks=np.inf, subpixel=False):
     """
     Find local peaks in an image that are above above a specified
     threshold value.
@@ -267,6 +268,10 @@ def find_peaks(data, threshold, box_size=3, footprint=None,
     there will be only one peak pixel per local region.  Thus, the
     defined region effectively imposes a minimum separation between
     peaks (unless there are identical peaks within the region).
+
+    When using subpixel precision (``subpixel=True``), a cutout of the
+    specified ``box_size`` or ``footprint`` will be taken centered on
+    each peak and its centroid will be returned using a 2D Gaussian fit.
 
     Parameters
     ----------
@@ -295,6 +300,9 @@ def find_peaks(data, threshold, box_size=3, footprint=None,
         detected peaks exceeds ``npeaks``, the peaks with the highest
         peak intensities will be returned.
 
+    subpixel : bool, optional
+        TODO
+
     Returns
     -------
     output : `~astropy.table.Table`
@@ -307,7 +315,6 @@ def find_peaks(data, threshold, box_size=3, footprint=None,
     if np.all(data == data.flat[0]):
         return []
 
-    data = data.copy()
     if footprint is not None:
         data_max = ndimage.maximum_filter(data, footprint=footprint,
                                           mode='constant', cval=0.0)
@@ -315,17 +322,18 @@ def find_peaks(data, threshold, box_size=3, footprint=None,
         data_max = ndimage.maximum_filter(data, size=box_size,
                                           mode='constant', cval=0.0)
 
-    data *= (data == data_max)    # consider where max filtered data == data
+    peak_data = data.copy()
+    peak_data *= (data == data_max)
 
     if border_width is not None:
-        for i in range(data.ndim):
-            data = data.swapaxes(0, i)
-            data[:border_width] = 0.
-            data[-border_width:] = 0.
-            data = data.swapaxes(0, i)
+        for i in range(peak_data.ndim):
+            peak_data = peak_data.swapaxes(0, i)
+            peak_data[:border_width] = 0.
+            peak_data[-border_width:] = 0.
+            peak_data = peak_data.swapaxes(0, i)
 
-    y_peaks, x_peaks = (data > threshold).nonzero()
-    peak_values = data[y_peaks, x_peaks]
+    y_peaks, x_peaks = (peak_data > threshold).nonzero()
+    peak_values = peak_data[y_peaks, x_peaks]
 
     if len(x_peaks) > npeaks:
         idx = np.argsort(peak_values)[::-1][:npeaks]
@@ -333,5 +341,27 @@ def find_peaks(data, threshold, box_size=3, footprint=None,
         y_peaks = y_peaks[idx]
         peak_values = peak_values[idx]
 
-    return Table((x_peaks, y_peaks, peak_values),
-                 names=('x_peak', 'y_peak', 'peak_value'))
+    if subpixel:
+        x_centroid, y_centroid = [], []
+        fit_peak_value = []
+        for (y_peak, x_peak) in zip(y_peaks, x_peaks):
+            hbox_size = (box_size - 1) // 2
+            x0 = max(x_peak - hbox_size, 0)
+            x1 = min(x0 + box_size, data.shape[1])
+            y0 = max(y_peak - hbox_size, 0)
+            y1 = min(y0 + box_size, data.shape[1])
+            region = data[y0:y1, x0:x1]
+            gaussian_fit = fit_2dgaussian(region, mask=None)
+            fit_peak_value.append(gaussian_fit.amplitude.value)
+            x_centroid.append(x0 + gaussian_fit.x_mean.value)
+            y_centroid.append(y0 + gaussian_fit.y_mean.value)
+
+        columns = (x_peaks, y_peaks, peak_values, x_centroid, y_centroid,
+                   fit_peak_value)
+        names = ('x_peak', 'y_peak', 'peak_value', 'x_centroid', 'y_centroid',
+                 'fit_peak_value')
+    else:
+        columns = (x_peaks, y_peaks, peak_values)
+        names = ('x_peak', 'y_peak', 'peak_value')
+
+    return Table(columns, names=names)
