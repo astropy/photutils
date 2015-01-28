@@ -328,18 +328,19 @@ def find_peaks(data, threshold, box_size=3, footprint=None,
         data_max = ndimage.maximum_filter(data, size=box_size,
                                           mode='constant', cval=0.0)
 
-    peak_data = data.copy()
-    peak_data *= (data == data_max)
+    peak_data = (data == data_max)   # good pixels, where max-filter data
+                                     # != data
 
     if border_width is not None:
         for i in range(peak_data.ndim):
             peak_data = peak_data.swapaxes(0, i)
-            peak_data[:border_width] = 0.
-            peak_data[-border_width:] = 0.
+            peak_data[:border_width] = False
+            peak_data[-border_width:] = False
             peak_data = peak_data.swapaxes(0, i)
 
-    y_peaks, x_peaks = (peak_data > threshold).nonzero()
-    peak_values = peak_data[y_peaks, x_peaks]
+    peak_data *= (data > threshold)
+    y_peaks, x_peaks = peak_data.nonzero()
+    peak_values = data[y_peaks, x_peaks]
 
     if len(x_peaks) > npeaks:
         idx = np.argsort(peak_values)[::-1][:npeaks]
