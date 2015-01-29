@@ -203,27 +203,32 @@ def make_gaussian_sources(image_shape, source_table, oversample=1, unit=None,
         over an oversampled grid.  The pixels will be oversampled by the
         ``oversample`` factor.
 
-    unit : `~astropy.units.UnitBase` instance, str
+    unit : `~astropy.units.UnitBase` instance, str, optional
         An object that represents the unit desired for the output image.
-        Must be an `~astropy.units.UnitBase` object or a string parseable by
-        the `~astropy.units` package.
+        Must be an `~astropy.units.UnitBase` object or a string
+        parseable by the `~astropy.units` package.
 
-    hdu : bool
-        If `True` returns ``image`` as a hdu object. Default is `False`.
+    hdu : bool, optional
+        If `True` returns ``image`` as an `~astropy.io.fits.ImageHDU`
+        object.  To include WCS information in the header, use the
+        ``wcs`` and ``wcsheader`` inputs.  Otherwise the header will be
+        minimal.  Default is `False`.
 
-    wcs : bool
-        If `True` returns wcs data along the image in a hdu object. Default
-        is `False`.
+    wcs : bool, optional
+        If `True` and ``hdu=True``, then a simple WCS will be included
+        in the returned `~astropy.io.fits.ImageHDU` header.  Default is
+        `False`.
 
-    wcsheader : dict or `None`
-        If ``wcs`` is `True`, this dictionary is pass to `~astropy.wcs.WCS`
-        to generate the fits header. If `None` and ``wcs`` is `True`, a
-        minimalist header is generated.
+    wcsheader : dict or `None`, optional
+        If ``hdu`` and ``wcs`` are `True`, this dictionary is passed to
+        `~astropy.wcs.WCS` to generate the returned
+        `~astropy.io.fits.ImageHDU` header.
 
     Returns
     -------
     image : `~numpy.ndarray` or `~astropy.units.Quantity` or `~astropy.io.fits.ImageHDU`
-        Image containing 2D Gaussian sources.
+        Image or `~astropy.io.fits.ImageHDU` containing 2D Gaussian
+        sources.
 
     See Also
     --------
@@ -441,17 +446,27 @@ def make_4gaussians_image(hdu=False, wcs=False, wcsheader=None):
 
     Parameters
     ----------
-    hdu : bool
-        If `True` returns ``image`` as a hdu object. Default is `False`.
+    hdu : bool, optional
+        If `True` returns ``image`` as an `~astropy.io.fits.ImageHDU`
+        object.  To include WCS information in the header, use the
+        ``wcs`` and ``wcsheader`` inputs.  Otherwise the header will be
+        minimal.  Default is `False`.
 
-    wcs : bool
-        If `True` returns wcs data along the image in a hdu object. Default
-        is `False`.
+    wcs : bool, optional
+        If `True` and ``hdu=True``, then a simple WCS will be included
+        in the returned `~astropy.io.fits.ImageHDU` header.  Default is
+        `False`.
+
+    wcsheader : dict or `None`, optional
+        If ``hdu`` and ``wcs`` are `True`, this dictionary is passed to
+        `~astropy.wcs.WCS` to generate the returned
+        `~astropy.io.fits.ImageHDU` header.
 
     Returns
     -------
-    image : `numpy.ndarray` or `astropy.io.fits.ImageHDU`
-        Image containing Gaussian sources.
+    image : `~numpy.ndarray` or `~astropy.io.fits.ImageHDU`
+        Image or `~astropy.io.fits.ImageHDU` containing Gaussian
+        sources.
 
     See Also
     --------
@@ -498,7 +513,7 @@ def make_100gaussians_image():
 
     Returns
     -------
-    image : `numpy.ndarray`
+    image : `~numpy.ndarray`
         Image containing Gaussian sources.
 
     See Also
