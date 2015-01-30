@@ -79,8 +79,8 @@ Let's plot the image and mark the location of detected sources:
 .. doctest-skip::
 
     >>> from photutils import CircularAperture
-    >>> from photutils.extern.imageutils.visualization import SqrtStretch
-    >>> from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
+    >>> from astropy.visualization import SqrtStretch
+    >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> import matplotlib.pylab as plt
     >>> positions = (sources['xcentroid'], sources['ycentroid'])
     >>> apertures = CircularAperture(positions, r=4.)
@@ -92,8 +92,8 @@ Let's plot the image and mark the location of detected sources:
 
     from photutils.extern.imageutils.stats import sigma_clipped_stats
     from photutils import datasets, daofind, CircularAperture
-    from photutils.extern.imageutils.visualization import SqrtStretch
-    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pylab as plt
     hdu = datasets.load_star_image()
     data = hdu.data[0:400, 0:400]
@@ -183,8 +183,8 @@ image showing the detected sources:
 
 .. doctest-skip::
 
-    >>> from photutils.extern.imageutils.visualization import SqrtStretch
-    >>> from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
+    >>> from astropy.visualization import SqrtStretch
+    >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> import matplotlib.pylab as plt
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
@@ -197,8 +197,8 @@ image showing the detected sources:
     from photutils import detect_threshold, detect_sources
     from photutils.extern.stats import gaussian_fwhm_to_sigma
     from astropy.convolution import Gaussian2DKernel
-    from photutils.extern.imageutils.visualization import SqrtStretch
-    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pylab as plt
     data = make_100gaussians_image()
     threshold = detect_threshold(data, snr=3.)
@@ -272,8 +272,8 @@ And let's plot the location of the detected peaks in the image:
 
 .. doctest-skip::
 
-    >>> from photutils.extern.imageutils.visualization import SqrtStretch
-    >>> from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
+    >>> from astropy.visualization import SqrtStretch
+    >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> import matplotlib.pylab as plt
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm)
@@ -292,8 +292,8 @@ And let's plot the location of the detected peaks in the image:
     threshold = median + (10.0 * std)
     tbl = find_peaks(data, threshold, min_separation=2)
 
-    from photutils.extern.imageutils.visualization import SqrtStretch
-    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pylab as plt
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm)

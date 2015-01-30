@@ -108,8 +108,8 @@ Now let's plot the results:
 
 .. doctest-skip::
 
-    >>> from photutils.extern.imageutils.visualization import SqrtStretch
-    >>> from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
+    >>> from astropy.visualization import SqrtStretch
+    >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> import matplotlib.pylab as plt
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
@@ -141,8 +141,8 @@ Now let's plot the results:
         b = prop.semiminor_axis_sigma.value * 3.
         theta = prop.orientation.value
         apertures.append(EllipticalAperture(position, a, b, theta=theta))
-    from photutils.extern.imageutils.visualization import SqrtStretch
-    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pylab as plt
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
