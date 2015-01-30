@@ -106,14 +106,13 @@ class TestDetectThreshold(object):
         ref = (1. / 8.) * np.ones((3, 3))
         assert_array_equal(threshold, ref)
 
-    @pytest.mark.xfail
     def test_image_mask_override(self):
         """Test that image_mask overrides mask_val."""
         mask = REF3.astype(np.bool)
         threshold = detect_threshold(DATA, snr=0.1, error=0, mask_val=0.0,
                                      mask=mask, sigclip_sigma=10,
                                      sigclip_iters=1)
-        ref = (1. / 8.) * np.ones((3, 3))
+        ref = np.ones((3, 3))
         assert_array_equal(threshold, ref)
 
 
