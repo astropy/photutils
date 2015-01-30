@@ -1231,8 +1231,7 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     Notes
     -----
     This function is decorated with `~astropy.nddata.support_nddata` and
-    thus supports `~astropy.nddata.NDData` objects as input for Astropy
-    version >=1.0.
+    thus supports `~astropy.nddata.NDData` objects as input.
     """
 
     dataunit = None
