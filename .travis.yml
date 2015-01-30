@@ -105,7 +105,11 @@ install:
 
     # ASTROPY
     - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == development ]]; then $PIP_INSTALL git+http://github.com/astropy/astropy.git#egg=astropy; fi
-    - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == stable ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION astropy; fi
+    # TODO: Change back to installing astropy via conda once 1.0 is availabl in conda:
+    # https://github.com/astropy/photutils/issues/246#issuecomment-72016716
+    # - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == stable ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION astropy; fi
+    - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == stable ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION; fi
+    - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == stable ]]; then $PIP_INSTALL --pre astropy; fi
 
     # OPTIONAL DEPENDENCIES
     # Here you can add any dependencies your package may have. You can use
