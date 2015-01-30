@@ -9,8 +9,8 @@ import math
 import numpy as np
 from astropy.table import Column, Table
 from astropy.utils.exceptions import AstropyUserWarning
+from astropy.stats import gaussian_fwhm_to_sigma
 from .core import find_peaks
-from ..extern.stats import gaussian_fwhm_to_sigma
 
 
 __all__ = ['daofind', 'irafstarfind']

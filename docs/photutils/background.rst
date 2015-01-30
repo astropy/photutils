@@ -86,8 +86,7 @@ Similarly, using the biweight midvariance and median absolute
 deviation to estimate the background noise level give values that are
 larger than the true value of 2::
 
-    >>> from astropy.stats import biweight_midvariance
-    >>> from photutils.extern.stats import mad_std
+    >>> from astropy.stats import biweight_midvariance, mad_std
     >>> print(biweight_midvariance(data))
     2.22011175104
     >>> print(mad_std(data))    # doctest: +FLOAT_CMP
