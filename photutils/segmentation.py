@@ -6,7 +6,7 @@ from astropy.table import Table
 from astropy.utils import lazyproperty
 from astropy.convolution import Kernel2D
 import astropy.units as u
-from .extern.wcs_utils import pixel_to_skycoord
+from astropy.wcs.utils import pixel_to_skycoord
 from .utils.prepare_data import _prepare_data
 
 

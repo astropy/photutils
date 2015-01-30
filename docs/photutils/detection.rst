@@ -193,13 +193,13 @@ image showing the detected sources:
 
 .. plot::
 
-    from photutils.datasets import make_100gaussians_image
-    from photutils import detect_threshold, detect_sources
-    from photutils.extern.stats import gaussian_fwhm_to_sigma
+    import matplotlib.pylab as plt
+    from astropy.stats import gaussian_fwhm_to_sigma
     from astropy.convolution import Gaussian2DKernel
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
-    import matplotlib.pylab as plt
+    from photutils.datasets import make_100gaussians_image
+    from photutils import detect_threshold, detect_sources
     data = make_100gaussians_image()
     threshold = detect_threshold(data, snr=3.)
     sigma = 2.0 * gaussian_fwhm_to_sigma    # FWHM = 2.

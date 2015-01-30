@@ -502,8 +502,8 @@ def test_wcs_based_photometry_to_catalogue():
 
 def test_wcs_based_photometry():
     from astropy.wcs import WCS
+    from astropy.wcs.utils import pixel_to_skycoord
     from ..datasets import make_4gaussians_image
-    from ..extern.wcs_utils import pixel_to_skycoord
 
     hdu = make_4gaussians_image(hdu=True, wcs=True)
     wcs = WCS(header=hdu.header)

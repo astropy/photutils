@@ -8,7 +8,6 @@ import abc
 import numpy as np
 import copy
 import warnings
-from distutils import version
 import astropy.units as u
 from astropy.io import fits
 from astropy.table import Table
@@ -17,22 +16,15 @@ from astropy.coordinates import SkyCoord
 from astropy.extern import six
 from astropy.utils.misc import InheritDocstrings
 from astropy.utils.exceptions import AstropyUserWarning
+from astropy.wcs.utils import skycoord_to_pixel
+from astropy.nddata import support_nddata
 from .aperture_funcs import (do_circular_photometry, do_elliptical_photometry,
                              do_rectangular_photometry)
 from .utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
                                 assert_angle_or_pixel)
 
-from astropy import __version__ as astropy_version
-if version.LooseVersion(astropy_version) > version.LooseVersion('1.0'):
-    from astropy.wcs.utils import skycoord_to_pixel
-    from astropy.nddata import support_nddata
-    skycoord_to_pixel_mode = 'all'
-else:
-    from .extern.wcs_utils import skycoord_to_pixel
-    skycoord_to_pixel_mode = 'wcs'
 
-    def support_nddata(_func):
-        return _func
+skycoord_to_pixel_mode = 'all'
 
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture',

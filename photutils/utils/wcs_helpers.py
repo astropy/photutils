@@ -1,20 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
-# These are functions specific to photutils that do not already exist in
-# astropy.wcs or photutils.extern.wcs_utils
-
 import numpy as np
-from distutils import version
 from astropy import units as u
 from astropy.coordinates import UnitSphericalRepresentation
+from astropy.wcs.utils import skycoord_to_pixel
 
-from astropy import __version__ as astropy_version
-if version.LooseVersion(astropy_version) > version.LooseVersion('1.0'):
-    from astropy.wcs.utils import skycoord_to_pixel
-    skycoord_to_pixel_mode = 'all'
-else:
-    from ..extern.wcs_utils import skycoord_to_pixel
-    skycoord_to_pixel_mode = 'wcs'
+skycoord_to_pixel_mode = 'all'
 
 
 def skycoord_to_pixel_scale_angle(coords, wcs):
