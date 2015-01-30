@@ -44,7 +44,7 @@ select a subset of the image.  We will estimate the background and
 background noise using sigma-clipped statistics::
 
     >>> from photutils import datasets
-    >>> from photutils.extern.imageutils.stats import sigma_clipped_stats
+    >>> from astropy.stats import sigma_clipped_stats
     >>> hdu = datasets.load_star_image()    # doctest: +REMOTE_DATA
     >>> data = hdu.data[0:400, 0:400]    # doctest: +REMOTE_DATA
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)    # doctest: +REMOTE_DATA
@@ -90,7 +90,7 @@ Let's plot the image and mark the location of detected sources:
 
 .. plot::
 
-    from photutils.extern.imageutils.stats import sigma_clipped_stats
+    from astropy.stats import sigma_clipped_stats
     from photutils import datasets, daofind, CircularAperture
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
@@ -169,8 +169,8 @@ image prior to thresholding:
 .. doctest-requires:: scipy
 
     >>> from astropy.convolution import Gaussian2DKernel
+    >>> from astropy.stats import gaussian_fwhm_to_sigma
     >>> from photutils import detect_sources
-    >>> from photutils.extern.stats import gaussian_fwhm_to_sigma
     >>> sigma = 2.0 * gaussian_fwhm_to_sigma    # FWHM = 2.
     >>> kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     >>> segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
@@ -247,9 +247,9 @@ sigma above the background and a separated by a least 2 pixels:
 
 .. doctest-requires:: skimage
 
+    >>> from astropy.stats import sigma_clipped_stats
     >>> from photutils.datasets import make_100gaussians_image
     >>> from photutils import find_peaks
-    >>> from photutils.extern.imageutils.stats import sigma_clipped_stats
     >>> data = make_100gaussians_image()
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     >>> threshold = median + (10.0 * std)
@@ -284,9 +284,9 @@ And let's plot the location of the detected peaks in the image:
 
 .. plot::
 
+    from astropy.stats import sigma_clipped_stats
     from photutils.datasets import make_100gaussians_image
     from photutils import find_peaks
-    from photutils.extern.imageutils.stats import sigma_clipped_stats
     data = make_100gaussians_image()
     mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     threshold = median + (10.0 * std)

@@ -104,7 +104,7 @@ a number of iterations or until convergence is reached.  This method
 provides a better estimate of the background and background noise
 levels::
 
-    >>> from photutils.extern.imageutils.stats import sigma_clipped_stats
+    >>> from astropy.stats import sigma_clipped_stats
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     >>> print(mean, median, std)    # doctest: +FLOAT_CMP
     (5.19888175541, 5.15557244947, 2.09393539966)

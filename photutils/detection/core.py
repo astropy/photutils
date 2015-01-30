@@ -6,7 +6,7 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from astropy.table import Table
 from astropy.convolution import Kernel2D
-from ..extern.imageutils.stats import sigma_clipped_stats
+from astropy.stats import sigma_clipped_stats
 
 
 __all__ = ['detect_threshold', 'detect_sources', 'find_peaks']
