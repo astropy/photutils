@@ -38,9 +38,8 @@ install:
     - "python --version"
 
     # Install specified version of numpy and dependencies
-    # TODO:  use conda again when astropy 1.0 is available there
     - "conda install -q --yes numpy=%NUMPY_VERSION% pytest Cython scipy jinja2 scikit-image matplotlib"
-    - "pip install --pre astropy==%ASTROPY_VERSION%"
+    - "conda install -q --yes -c astrofrog astropy=%ASTROPY_VERSION%"
 
 # Not a .NET project, we build SunPy in the install step instead
 build: false
