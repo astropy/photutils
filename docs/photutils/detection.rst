@@ -44,7 +44,7 @@ select a subset of the image.  We will estimate the background and
 background noise using sigma-clipped statistics::
 
     >>> from photutils import datasets
-    >>> from photutils.extern.imageutils.stats import sigma_clipped_stats
+    >>> from astropy.stats import sigma_clipped_stats
     >>> hdu = datasets.load_star_image()    # doctest: +REMOTE_DATA
     >>> data = hdu.data[0:400, 0:400]    # doctest: +REMOTE_DATA
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)    # doctest: +REMOTE_DATA
@@ -79,8 +79,8 @@ Let's plot the image and mark the location of detected sources:
 .. doctest-skip::
 
     >>> from photutils import CircularAperture
-    >>> from photutils.extern.imageutils.visualization import SqrtStretch
-    >>> from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
+    >>> from astropy.visualization import SqrtStretch
+    >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> import matplotlib.pylab as plt
     >>> positions = (sources['xcentroid'], sources['ycentroid'])
     >>> apertures = CircularAperture(positions, r=4.)
@@ -90,10 +90,10 @@ Let's plot the image and mark the location of detected sources:
 
 .. plot::
 
-    from photutils.extern.imageutils.stats import sigma_clipped_stats
+    from astropy.stats import sigma_clipped_stats
     from photutils import datasets, daofind, CircularAperture
-    from photutils.extern.imageutils.visualization import SqrtStretch
-    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pylab as plt
     hdu = datasets.load_star_image()
     data = hdu.data[0:400, 0:400]
@@ -169,8 +169,8 @@ image prior to thresholding:
 .. doctest-requires:: scipy
 
     >>> from astropy.convolution import Gaussian2DKernel
+    >>> from astropy.stats import gaussian_fwhm_to_sigma
     >>> from photutils import detect_sources
-    >>> from photutils.extern.stats import gaussian_fwhm_to_sigma
     >>> sigma = 2.0 * gaussian_fwhm_to_sigma    # FWHM = 2.
     >>> kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     >>> segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
@@ -183,8 +183,8 @@ image showing the detected sources:
 
 .. doctest-skip::
 
-    >>> from photutils.extern.imageutils.visualization import SqrtStretch
-    >>> from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
+    >>> from astropy.visualization import SqrtStretch
+    >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> import matplotlib.pylab as plt
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
@@ -193,13 +193,13 @@ image showing the detected sources:
 
 .. plot::
 
+    import matplotlib.pylab as plt
+    from astropy.stats import gaussian_fwhm_to_sigma
+    from astropy.convolution import Gaussian2DKernel
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import make_100gaussians_image
     from photutils import detect_threshold, detect_sources
-    from photutils.extern.stats import gaussian_fwhm_to_sigma
-    from astropy.convolution import Gaussian2DKernel
-    from photutils.extern.imageutils.visualization import SqrtStretch
-    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
-    import matplotlib.pylab as plt
     data = make_100gaussians_image()
     threshold = detect_threshold(data, snr=3.)
     sigma = 2.0 * gaussian_fwhm_to_sigma    # FWHM = 2.
@@ -247,9 +247,9 @@ sigma above the background and a separated by a least 2 pixels:
 
 .. doctest-requires:: skimage
 
+    >>> from astropy.stats import sigma_clipped_stats
     >>> from photutils.datasets import make_100gaussians_image
     >>> from photutils import find_peaks
-    >>> from photutils.extern.imageutils.stats import sigma_clipped_stats
     >>> data = make_100gaussians_image()
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     >>> threshold = median + (10.0 * std)
@@ -272,8 +272,8 @@ And let's plot the location of the detected peaks in the image:
 
 .. doctest-skip::
 
-    >>> from photutils.extern.imageutils.visualization import SqrtStretch
-    >>> from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
+    >>> from astropy.visualization import SqrtStretch
+    >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> import matplotlib.pylab as plt
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm)
@@ -284,16 +284,16 @@ And let's plot the location of the detected peaks in the image:
 
 .. plot::
 
+    from astropy.stats import sigma_clipped_stats
     from photutils.datasets import make_100gaussians_image
     from photutils import find_peaks
-    from photutils.extern.imageutils.stats import sigma_clipped_stats
     data = make_100gaussians_image()
     mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     threshold = median + (10.0 * std)
     tbl = find_peaks(data, threshold, min_separation=2)
 
-    from photutils.extern.imageutils.visualization import SqrtStretch
-    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pylab as plt
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm)

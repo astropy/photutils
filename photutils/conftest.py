@@ -9,9 +9,6 @@ from astropy.tests.pytest_plugins import *
 enable_deprecations_as_exceptions()
 
 # Add scikit-image to test header information
-try:
-    PYTEST_HEADER_MODULES['scikit-image'] = 'skimage'
-    PYTEST_HEADER_MODULES['astropy'] = 'astropy'
-    del PYTEST_HEADER_MODULES['h5py']
-except NameError:  # astropy < 1.0
-    pass
+PYTEST_HEADER_MODULES['scikit-image'] = 'skimage'
+PYTEST_HEADER_MODULES['astropy'] = 'astropy'
+del PYTEST_HEADER_MODULES['h5py']

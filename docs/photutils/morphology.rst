@@ -136,8 +136,8 @@ sigma-clipped statistics:
 
 .. doctest-requires:: scipy, skimage
 
+    >>> from astropy.stats import sigma_clipped_stats
     >>> from photutils.morphology import data_properties
-    >>> from photutils.extern.imageutils.stats import sigma_clipped_stats
     >>> from photutils import properties_table
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     >>> data -= median    # subtract background

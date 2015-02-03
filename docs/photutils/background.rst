@@ -56,8 +56,8 @@ Let's plot the image:
 
 .. doctest-skip::
 
-    >>> from photutils.extern.imageutils.visualization import SqrtStretch
-    >>> from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
+    >>> from astropy.visualization import SqrtStretch
+    >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> import matplotlib.pylab as plt
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> plt.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
@@ -65,8 +65,8 @@ Let's plot the image:
 .. plot::
 
     from photutils.datasets import make_100gaussians_image
-    from photutils.extern.imageutils.visualization import SqrtStretch
-    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pylab as plt
     data = make_100gaussians_image()
     norm = ImageNormalize(stretch=SqrtStretch())
@@ -86,8 +86,7 @@ Similarly, using the biweight midvariance and median absolute
 deviation to estimate the background noise level give values that are
 larger than the true value of 2::
 
-    >>> from astropy.stats import biweight_midvariance
-    >>> from photutils.extern.stats import mad_std
+    >>> from astropy.stats import biweight_midvariance, mad_std
     >>> print(biweight_midvariance(data))
     2.22011175104
     >>> print(mad_std(data))    # doctest: +FLOAT_CMP
@@ -105,7 +104,7 @@ a number of iterations or until convergence is reached.  This method
 provides a better estimate of the background and background noise
 levels::
 
-    >>> from photutils.extern.imageutils.stats import sigma_clipped_stats
+    >>> from astropy.stats import sigma_clipped_stats
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     >>> print(mean, median, std)    # doctest: +FLOAT_CMP
     (5.19888175541, 5.15557244947, 2.09393539966)
@@ -334,8 +333,8 @@ Let's create such an image (this requires `scipy`_) and plot it:
 
     from photutils.datasets import make_100gaussians_image
     from scipy.ndimage.interpolation import rotate
-    from photutils.extern.imageutils.visualization import SqrtStretch
-    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pylab as plt
     data = make_100gaussians_image()
     ny, nx = data.shape
@@ -373,8 +372,8 @@ to the returned background map:
     from photutils.datasets import make_100gaussians_image
     from photutils.background import Background
     from scipy.ndimage.interpolation import rotate
-    from photutils.extern.imageutils.visualization import SqrtStretch
-    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pylab as plt
     data = make_100gaussians_image()
     ny, nx = data.shape
@@ -401,8 +400,8 @@ Finally, let's subtract the background from the image and plot it:
     from photutils.background import Background
     from scipy.ndimage.interpolation import rotate
     import matplotlib.pylab as plt
-    from photutils.extern.imageutils.visualization import SqrtStretch
-    from photutils.extern.imageutils.visualization.mpl_normalize import ImageNormalize
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
