@@ -66,7 +66,7 @@ Now let's measure the properties of the detected sources defined in
 the segmentation image with the minimum number of inputs to
 `~photutils.segmentation.segment_properties`:
 
-.. doctest-skip::
+.. doctest-requires:: scipy, skimage
 
     >>> from photutils import segment_properties, properties_table
     >>> props = segment_properties(data, segm)
@@ -86,6 +86,7 @@ the segmentation image with the minimum number of inputs to
      79  139.78439077  275.134937222 ...   0.239005017209 0.385709864349
      80  434.09234827  280.841150924 ...   -1.45089455818 0.815770166696
      81 434.091385011  288.922811107 ...  -0.258098406023 0.454297620264
+    Length = 81 rows
 
 Let's use the measured source morphological properties to define
 approximate isophotal ellipses for each object:
