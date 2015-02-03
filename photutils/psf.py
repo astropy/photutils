@@ -93,7 +93,7 @@ class DiscretePRF(Fittable2DModel):
         """
         return self._prf_array.shape[-2:]
 
-    def eval(self, x, y, amplitude, x_0, y_0):
+    def evaluate(self, x, y, amplitude, x_0, y_0):
         """
         Discrete PRF model evaluation.
 
@@ -249,7 +249,7 @@ class GaussianPSF(Fittable2DModel):
         self.x_0.fixed = True
         self.y_0.fixed = True
 
-    def eval(self, x, y, amplitude, x_0, y_0, sigma):
+    def evaluate(self, x, y, amplitude, x_0, y_0, sigma):
         """
         Model function Gaussian PSF model.
         """
