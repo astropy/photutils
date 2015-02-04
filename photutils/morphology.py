@@ -53,7 +53,7 @@ def _convert_image(data, mask=None):
     except TypeError:    # pragma: no cover
         image = np.asarray(data).astype(np.float)    # for numpy <= 1.6
     if mask is not None:
-        mask = np.asarray(mask)
+        mask = np.asanyarray(mask)
         if data.shape != mask.shape:
             raise ValueError('data and mask must have the same shape')
         image[mask] = 0.0
@@ -110,6 +110,7 @@ def gaussian1d_moments(data, mask=None):
     """
 
     if mask is not None:
+        mask = np.asanyarray(mask)
         data = data.copy()
         data[mask] = 0.
     x = np.arange(data.size)
@@ -150,6 +151,7 @@ def centroid_1dg(data, error=None, mask=None):
         marginal_weights = [None, None]
 
     if mask is not None:
+        mask = np.asanyarray(mask)
         marginal_mask = [mask.sum(axis=i).astype(np.bool) for i in [0, 1]]
         if error is None:
             marginal_weights = np.array(
@@ -228,6 +230,7 @@ def fit_2dgaussian(data, error=None, mask=None):
         weights = None
 
     if mask is not None:
+        mask = np.asanyarray(mask)
         if weights is None:
             weights = np.ones_like(data)
         # down-weight masked pixels
