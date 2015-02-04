@@ -9,6 +9,7 @@ from astropy.convolution import Kernel2D
 import astropy.units as u
 from astropy.wcs.utils import pixel_to_skycoord
 from astropy.stats import sigma_clipped_stats
+from astropy.nddata.utils import overlap_slices
 from ..morphology import fit_2dgaussian
 
 
@@ -253,7 +254,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
     return objlabels
 
 
-def find_peaks(data, threshold, box_size=3, footprint=None,
+def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
                border_width=None, npeaks=np.inf, subpixel=False, wcs=None):
     """
     Find local peaks in an image that are above above a specified
@@ -294,6 +295,10 @@ def find_peaks(data, threshold, box_size=3, footprint=None,
         region within which to search for peaks at every point in
         ``data``.  ``footprint`` overrides ``box_size`` when defining
         the local region around each pixel.
+
+    mask : array_like, bool, optional
+        A boolean mask with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
 
     border_width : bool, optional
         The width in pixels to exclude around the border of the
@@ -336,18 +341,23 @@ def find_peaks(data, threshold, box_size=3, footprint=None,
         data_max = ndimage.maximum_filter(data, size=box_size,
                                           mode='constant', cval=0.0)
 
-    peak_data = (data == data_max)   # good pixels, where max-filter data
-                                     # != data
+    peak_goodmask = (data == data_max)    # good pixels are True
+
+    if mask is not None:
+        mask = np.asanyarray(mask)
+        if data.shape != mask.shape:
+            raise ValueError('data and mask must have the same shape')
+        peak_goodmask = np.logical_and(peak_goodmask, ~mask)
 
     if border_width is not None:
-        for i in range(peak_data.ndim):
-            peak_data = peak_data.swapaxes(0, i)
-            peak_data[:border_width] = False
-            peak_data[-border_width:] = False
-            peak_data = peak_data.swapaxes(0, i)
+        for i in range(peak_goodmask.ndim):
+            peak_goodmask = peak_goodmask.swapaxes(0, i)
+            peak_goodmask[:border_width] = False
+            peak_goodmask[-border_width:] = False
+            peak_goodmask = peak_goodmask.swapaxes(0, i)
 
-    peak_data *= (data > threshold)
-    y_peaks, x_peaks = peak_data.nonzero()
+    peak_goodmask = np.logical_and(peak_goodmask, (data > threshold))
+    y_peaks, x_peaks = peak_goodmask.nonzero()
     peak_values = data[y_peaks, x_peaks]
 
     if len(x_peaks) > npeaks:
@@ -360,23 +370,28 @@ def find_peaks(data, threshold, box_size=3, footprint=None,
         x_centroid, y_centroid = [], []
         fit_peak_value = []
         if footprint is None:
-            ysize, xsize = box_size, box_size
-            mask = None
+            cutout_shape = (box_size, box_size)
+            footprint_mask = np.zeros(cutout_shape, dtype=np.bool)
         else:
-            ysize, xsize = footprint.shape
-            mask = (footprint == False)
+            cutout_shape = footprint.shape
+            footprint_mask = (footprint == False)
 
-        hysize, hxsize = (ysize - 1) // 2, (xsize - 1) // 2
         for (y_peak, x_peak) in zip(y_peaks, x_peaks):
-            x0 = max(x_peak - hxsize, 0)
-            x1 = min(x0 + xsize, data.shape[1])
-            y0 = max(y_peak - hysize, 0)
-            y1 = min(y0 + ysize, data.shape[1])
-            region = data[y0:y1, x0:x1]
-            gaussian_fit = fit_2dgaussian(region, mask=mask)
+            slices_large, slices_small = overlap_slices(
+                data.shape, cutout_shape, (x_peak, y_peak))
+            region = data[slices_large]
+            if mask is not None:
+                region_mask = mask[slices_large]
+            else:
+                region_mask = np.zeros_like(region, dtype=np.bool)
+            footprint_mask = footprint_mask[slices_small]  # trim if necessary
+            region_mask = np.logical_or(region_mask, footprint_mask)
+            gaussian_fit = fit_2dgaussian(region, mask=region_mask)
             fit_peak_value.append(gaussian_fit.amplitude.value)
-            x_centroid.append(x0 + gaussian_fit.x_mean.value)
-            y_centroid.append(y0 + gaussian_fit.y_mean.value)
+            x_centroid.append(slices_large[1].start +
+                              gaussian_fit.x_mean.value)
+            y_centroid.append(slices_large[0].start +
+                              gaussian_fit.y_mean.value)
 
         columns = (x_peaks, y_peaks, peak_values, x_centroid, y_centroid,
                    fit_peak_value)
