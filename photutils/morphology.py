@@ -116,7 +116,7 @@ def gaussian1d_moments(data, mask=None):
     x = np.arange(data.size)
     xc = np.sum(x * data) / np.sum(data)
     stddev = np.sqrt(abs(np.sum(data * (x - xc)**2) / np.sum(data)))
-    amplitude = np.ptp(data)
+    amplitude = np.nanmax(data)
     return amplitude, xc, stddev
 
 
@@ -237,7 +237,7 @@ def fit_2dgaussian(data, error=None, mask=None):
         weights[mask] = 1.e-20
 
     props = data_properties(data, mask=mask)
-    init_amplitude = np.ptp(data)
+    init_amplitude = np.nanmax(data)
     g_init = models.Gaussian2D(
         init_amplitude, props.xcentroid.value, props.ycentroid.value,
         props.semimajor_axis_sigma.value, props.semiminor_axis_sigma.value,
