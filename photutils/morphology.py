@@ -11,8 +11,9 @@ from astropy.modeling.fitting import LevMarLSQFitter
 from .segmentation import SegmentProperties
 
 
-__all__ = ['centroid_com', 'gaussian1d_moments', 'centroid_1dg',
-           'centroid_2dg', 'fit_2dgaussian', 'data_properties']
+__all__ = ['centroid_com', 'gaussian1d_moments', 'marginalize_data2d',
+           'centroid_1dg', 'centroid_2dg', 'fit_2dgaussian',
+           'data_properties']
 
 
 def _convert_image(data, mask=None):
@@ -121,15 +122,43 @@ def gaussian1d_moments(data, mask=None):
     return amplitude, xc, stddev
 
 
+def marginalize_data2d(data, error=None, mask=None):
+    """
+    Generate the marginal x and y distributions from a 2D distribution.
+    """
+
+    if error is not None:
+        marginal_error = np.array(
+            [np.sqrt(np.sum(error**2, axis=i)) for i in [0, 1]])
+    else:
+        marginal_error = [None, None]
+
+    if mask is not None:
+        mask = np.asanyarray(mask)
+        marginal_mask = [mask.sum(axis=i).astype(np.bool) for i in [0, 1]]
+        if error is None:
+            marginal_error = np.array(
+                [np.zeros(data.shape[1]), np.zeros(data.shape[0])])
+        for i in [0, 1]:
+            # give masked pixels a huge error
+            marginal_error[i][marginal_mask[i]] = 1.e+30
+    else:
+        marginal_mask = [None, None]
+
+    marginal_data = [data.sum(axis=i) for i in [0, 1]]
+
+    return marginal_data, marginal_error, marginal_mask
+
+
 def centroid_1dg(data, error=None, mask=None):
     """
     Calculate the centroid of a 2D array by fitting 1D Gaussians to the
-    marginal x and y distributions of the image.
+    marginal x and y distributions of the array.
 
     Parameters
     ----------
     data : array_like
-        The 2D array of the image.
+        The 2D data array.
 
     error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
@@ -144,34 +173,20 @@ def centroid_1dg(data, error=None, mask=None):
         (x, y) coordinates of the centroid.
     """
 
-    if error is not None:
-        marginal_error = np.array(
-            [np.sqrt(np.sum(error**2, axis=i)) for i in [0, 1]])
-        marginal_weights = 1.0 / marginal_error
-    else:
-        marginal_weights = [None, None]
+    mdata, merror, mmask = marginalize_data2d(data, error=error, mask=mask)
 
-    if mask is not None:
-        mask = np.asanyarray(mask)
-        marginal_mask = [mask.sum(axis=i).astype(np.bool) for i in [0, 1]]
-        if error is None:
-            marginal_weights = np.array(
-                [np.ones(data.shape[1]), np.ones(data.shape[0])])
-        for i in [0, 1]:
-            # down-weight masked pixels
-            marginal_weights[i][marginal_mask[i]] = 1.e-20
+    if merror[0] is None:
+        mweights = [None, None]
     else:
-        marginal_mask = [None, None]
+        mweights = [(1.0 / merror[i]) for i in [0, 1]]
 
     centroid = []
-    marginal_data = [data.sum(axis=i) for i in [0, 1]]
-    inputs = zip(marginal_data, marginal_weights, marginal_mask)
-    for (mdata, mweights, mmask) in inputs:
-        params_init = gaussian1d_moments(mdata, mask=mmask)
+    for (mdata_i, mweights_i, mmask_i) in zip(mdata, mweights, mmask):
+        params_init = gaussian1d_moments(mdata_i, mask=mmask_i)
         g_init = models.Gaussian1D(*params_init)
         fitter = LevMarLSQFitter()
-        x = np.arange(mdata.size)
-        g_fit = fitter(g_init, x, mdata, weights=mweights)
+        x = np.arange(mdata_i.size)
+        g_fit = fitter(g_init, x, mdata_i, weights=mweights_i)
         centroid.append(g_fit.mean.value)
     return tuple(centroid)
 
