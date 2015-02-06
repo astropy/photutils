@@ -6,7 +6,7 @@ properties.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
-from astropy.modeling import models
+from astropy.modeling.models import Gaussian1D, Gaussian2D, Const2D
 from astropy.modeling.fitting import LevMarLSQFitter
 from .segmentation import SegmentProperties
 
@@ -16,7 +16,7 @@ __all__ = ['centroid_com', 'gaussian1d_moments', 'marginalize_data2d',
            'data_properties', 'GaussianConst2D']
 
 
-class GaussianConst2D(Gaussian2D + Const2D):
+class GaussianConst2D(Const2D + Gaussian2D):
     """A 2D Gaussian plus a constant."""
 
 
@@ -120,10 +120,10 @@ def gaussian1d_moments(data, mask=None):
         data = data.copy()
         data[mask] = 0.
     x = np.arange(data.size)
-    xc = np.sum(x * data) / np.sum(data)
-    stddev = np.sqrt(abs(np.sum(data * (x - xc)**2) / np.sum(data)))
+    x_mean = np.sum(x * data) / np.sum(data)
+    x_stddev = np.sqrt(abs(np.sum(data * (x - x_mean)**2) / np.sum(data)))
     amplitude = np.nanmax(data) - np.nanmin(data)
-    return amplitude, xc, stddev
+    return amplitude, x_mean, x_stddev
 
 
 def marginalize_data2d(data, error=None, mask=None):
@@ -187,7 +187,7 @@ def centroid_1dg(data, error=None, mask=None):
     centroid = []
     for (mdata_i, mweights_i, mmask_i) in zip(mdata, mweights, mmask):
         params_init = gaussian1d_moments(mdata_i, mask=mmask_i)
-        g_init = models.Gaussian1D(*params_init)
+        g_init = Gaussian1D(*params_init)
         fitter = LevMarLSQFitter()
         x = np.arange(mdata_i.size)
         g_fit = fitter(g_init, x, mdata_i, weights=mweights_i)
@@ -254,38 +254,37 @@ def fit_2dgaussian(data, error=None, mask=None):
         if weights is None:
             weights = np.ones_like(data)
         # down-weight masked pixels
-        weights[mask] = 1.e-20
+        weights[mask] = 1.e-30
 
-    # if data are negative then subtract the minimum to make data
-    # positive.  `data_properties` will return np.nan if the data are
-    # negative.
-    shift = 0.
-    if np.max(data) < 0:
-        shift = np.min(data)
-        data = np.copy(data) - shift
-
+    # Subtract the minimum of the data as a crude background estimate.
+    # This will also make the data values positive, preventing issues with
+    # the moment estimation in data_properties (moments from negative data
+    # values can yield undefined Gaussian parameters, e.g. x/y_stddev).
+    shift = np.min(data)
+    data = np.copy(data) - shift
     props = data_properties(data, mask=mask)
     init_values = np.array([props.xcentroid.value, props.ycentroid.value,
                             props.semimajor_axis_sigma.value,
                             props.semiminor_axis_sigma.value,
                             props.orientation.value])
-    # very crude estimates if init_values are still nan
-    if np.any(~np.isfinite(init_values)):
-        init_values[0:2] = data.shape[1] / 2., data.shape[0] / 2.
-        init_values[2:4] = data.shape[1] / 2., data.shape[0] / 2.
-        init_values[4] = 0.
 
+    # if any init_values are np.nan, then estimate the initial parameters
+    # using the marginal distributions
+    if np.any(~np.isfinite(init_values)):
+        mdata, merror, mmask = marginalize_data2d(data - shift, error=error,
+                                                  mask=mask)
+        x_ampl, x_mean, x_stddev = gaussian1d_moments(mdata[0], mask=mmask[0])
+        y_ampl, y_mean, y_stddev = gaussian1d_moments(mdata[1], mask=mmask[1])
+        init_values = np.array([x_mean, y_mean, x_stddev, y_stddev, 0.])
+
+    init_const = 0.    # subtracted data minimum above
     init_amplitude = np.nanmax(data) - np.nanmin(data)
-    g_init = (models.Gaussian2D(init_amplitude, *init_values) +
-              models.Const2D(np.min(data)))
-    print(g_init)
+    g_init = GaussianConst2D(init_const, init_amplitude, *init_values)
     fitter = LevMarLSQFitter()
     y, x = np.indices(data.shape)
     gfit = fitter(g_init, x, y, data, weights=weights)
-    gfit.amplitude_1 = gfit.amplitude_1 + shift
+    gfit.amplitude_0 = gfit.amplitude_0 + shift
     return gfit
-
-
 
 
 def data_properties(data, mask=None, background=None):
