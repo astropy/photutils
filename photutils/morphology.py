@@ -90,16 +90,17 @@ def centroid_com(data, mask=None):
 
 def gaussian1d_moments(data, mask=None):
     """
-    Estimate the 1D Gaussian parameters from the moments of 1D data.
+    Estimate 1D Gaussian parameters from the moments of 1D data.
+
     This function can be useful for providing initial parameter values
     when fitting a 1D Gaussian to the ``data``.
 
     Parameters
     ----------
-    data : array_like
-        The 1D array of the image.
+    data : array_like (1D)
+        The 1D array.
 
-    mask : array_like (bool), optional
+    mask : array_like (1D bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
 
@@ -116,7 +117,7 @@ def gaussian1d_moments(data, mask=None):
     x = np.arange(data.size)
     xc = np.sum(x * data) / np.sum(data)
     stddev = np.sqrt(abs(np.sum(data * (x - xc)**2) / np.sum(data)))
-    amplitude = np.nanmax(data)
+    amplitude = np.nanmax(data) - np.nanmin(data)
     return amplitude, xc, stddev
 
 
@@ -204,7 +205,7 @@ def centroid_2dg(data, error=None, mask=None):
 
 def fit_2dgaussian(data, error=None, mask=None):
     """
-    Fit a 2D Gaussian to a 2D image.
+    Fit a 2D Gaussian plus a constant to a 2D image.
 
     Parameters
     ----------
@@ -236,15 +237,33 @@ def fit_2dgaussian(data, error=None, mask=None):
         # down-weight masked pixels
         weights[mask] = 1.e-20
 
+    # if data are negative then subtract the minimum to make data
+    # positive.  `data_properties` will return np.nan if the data are
+    # negative.
+    shift = 0.
+    if np.max(data) < 0:
+        shift = np.min(data)
+        data = np.copy(data) - shift
+
     props = data_properties(data, mask=mask)
-    init_amplitude = np.nanmax(data)
-    g_init = models.Gaussian2D(
-        init_amplitude, props.xcentroid.value, props.ycentroid.value,
-        props.semimajor_axis_sigma.value, props.semiminor_axis_sigma.value,
-        props.orientation.value)
+    init_values = np.array([props.xcentroid.value, props.ycentroid.value,
+                            props.semimajor_axis_sigma.value,
+                            props.semiminor_axis_sigma.value,
+                            props.orientation.value])
+    # very crude estimates if init_values are still nan
+    if np.any(~np.isfinite(init_values)):
+        init_values[0:2] = data.shape[1] / 2., data.shape[0] / 2.
+        init_values[2:4] = data.shape[1] / 2., data.shape[0] / 2.
+        init_values[4] = 0.
+
+    init_amplitude = np.nanmax(data) - np.nanmin(data)
+    g_init = (models.Gaussian2D(init_amplitude, *init_values) +
+              models.Const2D(np.min(data)))
+    print(g_init)
     fitter = LevMarLSQFitter()
     y, x = np.indices(data.shape)
     gfit = fitter(g_init, x, y, data, weights=weights)
+    gfit.amplitude_1 = gfit.amplitude_1 + shift
     return gfit
 
 
