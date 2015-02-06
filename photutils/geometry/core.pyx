@@ -252,6 +252,7 @@ cdef double overlap_area_triangle_unit_circle(double x1, double y1, double x2, d
 
     cdef double d1, d2, d3
     cdef bool in1, in2, in3
+    cdef bool on1, on2, on3
     cdef double area
     cdef double PI = np.pi
     cdef intersections inter
@@ -320,6 +321,9 @@ cdef double overlap_area_triangle_unit_circle(double x1, double y1, double x2, d
         else:
             area = area_arc_unit(x1, y1, x2, y2)
 
+    elif on1:
+        # The triangle is outside the circle
+        area = 0.0
     elif in1:
         # Check for intersections of far side with circle
         inter = circle_segment(x2, y2, x3, y3)

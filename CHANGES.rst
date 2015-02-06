@@ -31,3 +31,12 @@ Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - Bundled copy of astropy-helpers upgraded to v1.0. [#251]
+
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.geometry``
+
+  - ``overlap_area_triangle_unit_circle`` handles correctly a corner case
+    in some i386 systems where the area of the aperture was not computed
+    correctly. [#242]
