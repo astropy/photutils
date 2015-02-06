@@ -13,7 +13,11 @@ from .segmentation import SegmentProperties
 
 __all__ = ['centroid_com', 'gaussian1d_moments', 'marginalize_data2d',
            'centroid_1dg', 'centroid_2dg', 'fit_2dgaussian',
-           'data_properties']
+           'data_properties', 'GaussianConst2D']
+
+
+class GaussianConst2D(Gaussian2D + Const2D):
+    """A 2D Gaussian plus a constant."""
 
 
 def _convert_image(data, mask=None):
@@ -193,13 +197,13 @@ def centroid_1dg(data, error=None, mask=None):
 
 def centroid_2dg(data, error=None, mask=None):
     """
-    Calculate the centroid of a 2D array by fitting a 2D Gaussian to the
-    image.
+    Calculate the centroid of a 2D array by fitting a 2D Gaussian (plus
+    a constant) to the array.
 
     Parameters
     ----------
     data : array_like
-        The 2D array of the image.
+        The 2D data array.
 
     error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
@@ -280,6 +284,8 @@ def fit_2dgaussian(data, error=None, mask=None):
     gfit = fitter(g_init, x, y, data, weights=weights)
     gfit.amplitude_1 = gfit.amplitude_1 + shift
     return gfit
+
+
 
 
 def data_properties(data, mask=None, background=None):
