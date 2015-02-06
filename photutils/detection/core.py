@@ -266,7 +266,7 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     as a square box.  ``footprint`` is a boolean array where `True`
     values specify the region shape.
 
-    If mulitple pixels within a local region have identical intensities,
+    If multiple pixels within a local region have identical intensities,
     then the coordinates of all such pixels are returned.  Otherwise,
     there will be only one peak pixel per local region.  Thus, the
     defined region effectively imposes a minimum separation between
