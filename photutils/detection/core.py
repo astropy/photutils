@@ -386,13 +386,12 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
                 region_mask = np.zeros_like(region, dtype=np.bool)
             footprint_mask = footprint_mask[slices_small]  # trim if necessary
             region_mask = np.logical_or(region_mask, footprint_mask)
-            bkg = np.nanmin(region)
-            gaussian_fit = fit_2dgaussian(region - bkg, mask=region_mask)
-            fit_peak_value.append(gaussian_fit.amplitude.value + bkg)
+            gaussian_fit = fit_2dgaussian(region, mask=region_mask)
+            fit_peak_value.append(gaussian_fit.amplitude_1.value)
             x_centroid.append(slices_large[1].start +
-                              gaussian_fit.x_mean.value)
+                              gaussian_fit.x_mean_1.value)
             y_centroid.append(slices_large[0].start +
-                              gaussian_fit.y_mean.value)
+                              gaussian_fit.y_mean_1.value)
 
         columns = (x_peaks, y_peaks, peak_values, x_centroid, y_centroid,
                    fit_peak_value)
