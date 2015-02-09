@@ -5,6 +5,7 @@ properties.
 """
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+import collections
 import numpy as np
 from astropy.modeling.models import Gaussian1D, Gaussian2D, Const1D, Const2D
 from astropy.modeling.fitting import LevMarLSQFitter
@@ -12,9 +13,10 @@ from astropy.nddata.utils import overlap_slices
 from .segmentation import SegmentProperties
 
 
-__all__ = ['centroid_com', 'gaussian1d_moments', 'marginalize_data2d',
-           'centroid_1dg', 'centroid_2dg', 'fit_2dgaussian',
-           'data_properties', 'GaussianConst2D']
+__all__ = ['GaussianConst1D', 'GaussianConst2D', 'centroid_com',
+           'gaussian1d_moments', 'marginalize_data2d', 'centroid_1dg',
+           'centroid_2dg', 'fit_2dgaussian', 'data_properties',
+           'cutout_footprint']
 
 
 class GaussianConst1D(Const1D + Gaussian1D):
@@ -68,39 +70,6 @@ def _convert_image(data, mask=None):
             raise ValueError('data and mask must have the same shape')
         image[mask] = 0.0
     return image
-
-
-def centroid_footprint(data, (x, y), box_size=3, footprint=None, mask=None,
-                       error=None):
-    """
-    Centroid around given position
-    """
-    if footprint is None:
-        cutout_shape = (box_size, box_size)
-        footprint_mask = np.zeros(cutout_shape, dtype=np.bool)
-    else:
-        cutout_shape = footprint.shape
-        footprint_mask = (footprint is False)
-
-    slices_large, slices_small = overlap_slices(
-        data.shape, cutout_shape, (x, y))
-    region = data[slices_large]
-    if mask is not None:
-        region_mask = mask[slices_large]
-    else:
-        region_mask = np.zeros_like(region, dtype=np.bool)
-    if error is not None:
-        region_error = error[slices_large]
-    else:
-        region_error = None
-    footprint_mask = footprint_mask[slices_small]    # trim if necessary
-    region_mask = np.logical_or(region_mask, footprint_mask)
-    gaussian_fit = fit_2dgaussian(region, mask=region_mask,
-                                  error=region_error)
-    x_centroid = slices_large[1].start + gaussian_fit.x_mean_1.value
-    y_centroid = slices_large[0].start + gaussian_fit.y_mean_1.value
-
-    return x_centroid, y_centroid, gaussian_fit.amplitude_1.value
 
 
 def centroid_com(data, mask=None):
@@ -310,7 +279,7 @@ def fit_2dgaussian(data, error=None, mask=None):
     # if any init_values are np.nan, then estimate the initial parameters
     # using the marginal distributions
     if np.any(~np.isfinite(init_values)):
-        mdata, merror, mmask = marginalize_data2d(data - shift, error=error,
+        mdata, merror, mmask = marginalize_data2d(data, error=error,
                                                   mask=mask)
         x_ampl, x_mean, x_stddev = gaussian1d_moments(mdata[0], mask=mmask[0])
         y_ampl, y_mean, y_stddev = gaussian1d_moments(mdata[1], mask=mmask[1])
@@ -358,3 +327,79 @@ def data_properties(data, mask=None, background=None):
     segment_image = np.ones(data.shape, dtype=np.int)
     return SegmentProperties(data, segment_image, label=1, mask=mask,
                              background=background)
+
+
+def cutout_footprint(data, position, box_size=3, footprint=None, mask=None,
+                     error=None):
+    """
+    Cut out a region from data (and optional mask and error) centered at
+    specified (x, y) position.
+
+    The size of the region is specified via the ``box_size`` or
+    ``footprint`` keywords.  The output mask for the cutout region
+    represents the combination of the input mask and footprint mask.
+
+    Parameters
+    ----------
+    data : array_like
+        The 2D array of the image.
+
+    position : 2 tuple
+        The ``(x, y)`` pixel coordinate of the center of the region.
+
+    box_size : scalar or tuple, optional
+        The size of the region to cutout from ``data``.  If ``box_size``
+        is a scalar, then the region shape will be ``(box_size,
+        box_size)``.  Either ``box_size`` or ``footprint`` must be
+        defined.  If they are both defined, then ``footprint`` overrides
+        ``box_size``.
+
+    footprint : `~numpy.ndarray` of bools, optional
+        A boolean array where `True` values describe the local footprint
+        region.  ``box_size=(n, m)`` is equivalent to
+        ``footprint=np.ones((n, m))``.  Either ``box_size`` or
+        ``footprint`` must be defined.  If they are both defined, then
+        ``footprint`` overrides ``box_size``.
+
+    mask : array_like, bool, optional
+        A boolean mask with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+
+    error : array_like, optional
+        The 2D array of the 1-sigma errors of the input ``data``.
+    """
+
+    if len(position) != 2:
+        raise ValueError('position must have a length of 2')
+
+    if footprint is None:
+        if box_size is None:
+            raise ValueError('box_size or footprint must be defined.')
+        if not isinstance(box_size, collections.Iterable):
+            shape = (box_size, box_size)
+        else:
+            if len(box_size) != 2:
+                raise ValueError('box_size must have a length of 2')
+            shape = box_size
+        footprint = np.ones(shape, dtype=bool)
+    else:
+        footprint = np.asanyarray(footprint, dtype=bool)
+
+    slices_large, slices_small = overlap_slices(data.shape, footprint.shape,
+                                                position)
+    region_data = data[slices_large]
+
+    if error is not None:
+        region_error = error[slices_large]
+    else:
+        region_error = None
+
+    if mask is not None:
+        region_mask = mask[slices_large]
+    else:
+        region_mask = np.zeros_like(region_data, dtype=bool)
+    footprint_mask = ~footprint
+    footprint_mask = footprint_mask[slices_small]    # trim if necessary
+    region_mask = np.logical_or(region_mask, footprint_mask)
+
+    return region_data, region_mask, region_error, slices_large

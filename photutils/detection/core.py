@@ -7,7 +7,7 @@ import numpy as np
 from astropy.table import Column, Table
 from astropy.convolution import Kernel2D
 from astropy.stats import sigma_clipped_stats
-from ..morphology import centroid_footprint
+from ..morphology import cutout_footprint, fit_2dgaussian
 from ..utils.wcs_helpers import pixel_to_icrs_coords
 
 
@@ -273,9 +273,9 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
 
     When using subpixel precision (``subpixel=True``), then a cutout of
     the specified ``box_size`` or ``footprint`` will be taken centered
-    on each peak and fit with a 2D Gaussian.  In this case, the fitted
-    local centroid and peak amplitude will also be returned in the
-    output table.
+    on each peak and fit with a 2D Gaussian (plus a constant).  In this
+    case, the fitted local centroid and peak amplitude will also be
+    returned in the output table.
 
     Parameters
     ----------
@@ -285,15 +285,20 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     threshold : float
         The data value to be used for the detection threshold.
 
-    box_size : int, optional
-        The square box size (pixel) of the local region to search for
-        peaks at every point in ``data``.
+    box_size : scalar or tuple, optional
+        The size of the local region to search for peaks at every point
+        in ``data``.  If ``box_size`` is a scalar, then the region shape
+        will be ``(box_size, box_size)``.  Either ``box_size`` or
+        ``footprint`` must be defined.  If they are both defined, then
+        ``footprint`` overrides ``box_size``.
 
     footprint : `~numpy.ndarray` of bools, optional
         A boolean array where `True` values describe the local footprint
         region within which to search for peaks at every point in
-        ``data``.  ``footprint`` overrides ``box_size`` when defining
-        the local region around each pixel.
+        ``data``.  ``box_size=(n, m)`` is equivalent to
+        ``footprint=np.ones((n, m))``.  Either ``box_size`` or
+        ``footprint`` must be defined.  If they are both defined, then
+        ``footprint`` overrides ``box_size``.
 
     mask : array_like, bool, optional
         A boolean mask with the same shape as ``data``, where a `True`
@@ -311,8 +316,9 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     subpixel : bool, optional
         If `True`, then a cutout of the specified ``box_size`` or
         ``footprint`` will be taken centered on each peak and fit with a
-        2D Gaussian.  In this case, the fitted local centroid and peak
-        amplitude will also be returned in the output table.
+        2D Gaussian (plus a constant).  In this case, the fitted local
+        centroid and peak amplitude will also be returned in the output
+        table.
 
     error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
@@ -374,12 +380,18 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         x_centroid, y_centroid = [], []
         fit_peak_values = []
         for (y_peak, x_peak) in zip(y_peaks, x_peaks):
-            xcen, ycen, peakval = centroid_footprint(
-                data, (x_peak, y_peak), box_size=box_size,
-                footprint=footprint, mask=mask, error=error)
-            x_centroid.append(xcen)
-            y_centroid.append(ycen)
-            fit_peak_values.append(peakval)
+            region = cutout_footprint(data, (x_peak, y_peak),
+                                      box_size=box_size, footprint=footprint,
+                                      mask=mask, error=error)
+            gaussian_fit = fit_2dgaussian(region[0], mask=region[1],
+                                          error=region[2])
+            x_cen = region[3][1].start + gaussian_fit.x_mean_1.value
+            y_cen = region[3][0].start + gaussian_fit.y_mean_1.value
+            fit_peak_value = (gaussian_fit.amplitude_0.value +
+                              gaussian_fit.amplitude_1.value)
+            x_centroid.append(x_cen)
+            y_centroid.append(y_cen)
+            fit_peak_values.append(fit_peak_value)
 
         columns = (x_peaks, y_peaks, peak_values, x_centroid, y_centroid,
                    fit_peak_values)
