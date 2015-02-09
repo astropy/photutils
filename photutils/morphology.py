@@ -6,7 +6,7 @@ properties.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
-from astropy.modeling.models import Gaussian1D, Gaussian2D, Const2D
+from astropy.modeling.models import Gaussian1D, Gaussian2D, Const1D, Const2D
 from astropy.modeling.fitting import LevMarLSQFitter
 from .segmentation import SegmentProperties
 
@@ -14,6 +14,10 @@ from .segmentation import SegmentProperties
 __all__ = ['centroid_com', 'gaussian1d_moments', 'marginalize_data2d',
            'centroid_1dg', 'centroid_2dg', 'fit_2dgaussian',
            'data_properties', 'GaussianConst2D']
+
+
+class GaussianConst1D(Const1D + Gaussian1D):
+    """A 1D Gaussian plus a constant."""
 
 
 class GaussianConst2D(Const2D + Gaussian2D):
