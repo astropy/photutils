@@ -188,14 +188,15 @@ def centroid_1dg(data, error=None, mask=None):
     else:
         mweights = [(1.0 / merror[i]) for i in [0, 1]]
 
+    const_init = np.min(data)
     centroid = []
     for (mdata_i, mweights_i, mmask_i) in zip(mdata, mweights, mmask):
         params_init = gaussian1d_moments(mdata_i, mask=mmask_i)
-        g_init = Gaussian1D(*params_init)
+        g_init = GaussianConst1D(const_init, *params_init)
         fitter = LevMarLSQFitter()
         x = np.arange(mdata_i.size)
         g_fit = fitter(g_init, x, mdata_i, weights=mweights_i)
-        centroid.append(g_fit.mean.value)
+        centroid.append(g_fit.mean_1.value)
     return tuple(centroid)
 
 
