@@ -253,7 +253,8 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
 
 
 def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
-               border_width=None, npeaks=np.inf, subpixel=False, wcs=None):
+               border_width=None, npeaks=np.inf, subpixel=False, error=None,
+               wcs=None):
     """
     Find local peaks in an image that are above above a specified
     threshold value.
@@ -313,6 +314,11 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         2D Gaussian.  In this case, the fitted local centroid and peak
         amplitude will also be returned in the output table.
 
+    error : array_like, optional
+        The 2D array of the 1-sigma errors of the input ``data``.
+        ``error`` is used only to weight the 2D Gaussian fit performed
+        when ``subpixel=True``.
+
     wcs : `~astropy.wcs.WCS`
         The WCS transformation to use to convert from pixel coordinates
         to ICRS world coordinates.  If `None`, then the world
@@ -369,7 +375,8 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         fit_peak_values = []
         for (y_peak, x_peak) in zip(y_peaks, x_peaks):
             xcen, ycen, peakval = centroid_footprint(
-                data, (x_peak, y_peak), box_size, footprint, mask)
+                data, (x_peak, y_peak), box_size=box_size,
+                footprint=footprint, mask=mask, error=error)
             x_centroid.append(xcen)
             y_centroid.append(ycen)
             fit_peak_values.append(peakval)

@@ -70,7 +70,8 @@ def _convert_image(data, mask=None):
     return image
 
 
-def centroid_footprint(data, (x, y), box_size=3, footprint=None, mask=None):
+def centroid_footprint(data, (x, y), box_size=3, footprint=None, mask=None,
+                       error=None):
     """
     Centroid around given position
     """
@@ -88,9 +89,14 @@ def centroid_footprint(data, (x, y), box_size=3, footprint=None, mask=None):
         region_mask = mask[slices_large]
     else:
         region_mask = np.zeros_like(region, dtype=np.bool)
+    if error is not None:
+        region_error = error[slices_large]
+    else:
+        region_error = None
     footprint_mask = footprint_mask[slices_small]    # trim if necessary
     region_mask = np.logical_or(region_mask, footprint_mask)
-    gaussian_fit = fit_2dgaussian(region, mask=region_mask)
+    gaussian_fit = fit_2dgaussian(region, mask=region_mask,
+                                  error=region_error)
     x_centroid = slices_large[1].start + gaussian_fit.x_mean_1.value
     y_centroid = slices_large[0].start + gaussian_fit.y_mean_1.value
 
