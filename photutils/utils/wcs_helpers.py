@@ -3,7 +3,7 @@
 import numpy as np
 from astropy import units as u
 from astropy.coordinates import UnitSphericalRepresentation
-from astropy.wcs.utils import skycoord_to_pixel
+from astropy.wcs.utils import skycoord_to_pixel, pixel_to_skycoord
 
 skycoord_to_pixel_mode = 'all'
 
@@ -90,3 +90,39 @@ def assert_angle(name, q):
             raise ValueError("{0} should have angular units".format(name))
     else:
         raise TypeError("{0} should be a Quantity instance".format(name))
+
+
+def pixel_to_icrs_coords(x, y, wcs):
+    """
+    Convert pixel coordinates to ICRS Right Ascension and Declination.
+
+    This is merely a convenience function to extract RA and Dec. from a
+    `~astropy.coordinates.SkyCoord` instance so they can be put in
+    separate columns in a `~astropy.table.Table`.
+
+    Parameters
+    ----------
+    x : float or array-like
+        The x pixel coordinate.
+
+    y : float or array-like
+        The y pixel coordinate.
+
+    wcs : `~astropy.wcs.WCS`
+        The WCS transformation to use to convert from pixel coordinates
+        to ICRS world coordinates.
+        `~astropy.table.Table`.
+
+    Returns
+    -------
+    ra : `~astropy.units.Quantity`
+        The ICRS Right Ascension in degrees.
+
+    dec : `~astropy.units.Quantity`
+        The ICRS Right Ascension in degrees.
+    """
+
+    icrs_coords = pixel_to_skycoord(x, y, wcs, origin=1).icrs
+    icrs_ra = icrs_coords.ra.degree * u.deg
+    icrs_dec = icrs_coords.dec.degree * u.deg
+    return icrs_ra, icrs_dec

@@ -6,10 +6,9 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from astropy.table import Column, Table
 from astropy.convolution import Kernel2D
-import astropy.units as u
-from astropy.wcs.utils import pixel_to_skycoord
 from astropy.stats import sigma_clipped_stats
 from ..morphology import centroid_footprint
+from ..utils.wcs_helpers import pixel_to_icrs_coords
 
 
 __all__ = ['detect_threshold', 'detect_sources', 'find_peaks']
@@ -235,7 +234,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
     elif connectivity == 8:    # e.g., SExtractor
         selem = ndimage.generate_binary_structure(2, 2)
     else:
-        raise ValueError('Invalid selem={0}.  '
+        raise ValueError('Invalid connectivity={0}.  '
                          'Options are 4 or 8'.format(connectivity))
 
     objlabels, nobj = ndimage.label(image, structure=selem)
@@ -386,18 +385,14 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     table = Table(columns, names=names)
 
     if wcs is not None:
-        icrs_coords_peak = pixel_to_skycoord(x_peaks, y_peaks, wcs,
-                                             origin=1).icrs
-        icrs_ra_peak = icrs_coords_peak.ra.degree * u.deg
-        icrs_dec_peak = icrs_coords_peak.dec.degree * u.deg
+        icrs_ra_peak, icrs_dec_peak = pixel_to_icrs_coords(x_peaks, y_peaks,
+                                                           wcs)
         table.add_column(Column(icrs_ra_peak, name='icrs_ra_peak'), index=2)
         table.add_column(Column(icrs_dec_peak, name='icrs_dec_peak'), index=3)
 
         if subpixel:
-            icrs_coords_centroid = pixel_to_skycoord(x_centroid, y_centroid,
-                                                     wcs, origin=1).icrs
-            icrs_ra_centroid = icrs_coords_centroid.ra.degree * u.deg
-            icrs_dec_centroid = icrs_coords_centroid.dec.degree * u.deg
+            icrs_ra_centroid, icrs_dec_centroid = pixel_to_icrs_coords(
+                x_centroid, y_centroid, wcs)
             idx = table.colnames.index('y_centroid')
             table.add_column(Column(icrs_ra_centroid,
                                     name='icrs_ra_centroid'), index=idx+1)

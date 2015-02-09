@@ -8,6 +8,7 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from astropy.modeling.models import Gaussian1D, Gaussian2D, Const1D, Const2D
 from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.nddata.utils import overlap_slices
 from .segmentation import SegmentProperties
 
 
@@ -78,7 +79,7 @@ def centroid_footprint(data, (x, y), box_size=3, footprint=None, mask=None):
         footprint_mask = np.zeros(cutout_shape, dtype=np.bool)
     else:
         cutout_shape = footprint.shape
-        footprint_mask = (footprint == False)
+        footprint_mask = (footprint is False)
 
     slices_large, slices_small = overlap_slices(
         data.shape, cutout_shape, (x, y))
