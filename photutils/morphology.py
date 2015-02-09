@@ -223,7 +223,7 @@ def centroid_2dg(data, error=None, mask=None):
     """
 
     gfit = fit_2dgaussian(data, error=error, mask=mask)
-    return gfit.x_mean.value, gfit.y_mean.value
+    return gfit.x_mean_1.value, gfit.y_mean_1.value
 
 
 def fit_2dgaussian(data, error=None, mask=None):
