@@ -6,13 +6,22 @@ properties.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
-from astropy.modeling import models
+from astropy.modeling.models import Gaussian1D, Gaussian2D, Const1D, Const2D
 from astropy.modeling.fitting import LevMarLSQFitter
 from .segmentation import SegmentProperties
 
 
-__all__ = ['centroid_com', 'gaussian1d_moments', 'centroid_1dg',
-           'centroid_2dg', 'fit_2dgaussian', 'data_properties']
+__all__ = ['centroid_com', 'gaussian1d_moments', 'marginalize_data2d',
+           'centroid_1dg', 'centroid_2dg', 'fit_2dgaussian',
+           'data_properties', 'GaussianConst2D']
+
+
+class GaussianConst1D(Const1D + Gaussian1D):
+    """A 1D Gaussian plus a constant."""
+
+
+class GaussianConst2D(Const2D + Gaussian2D):
+    """A 2D Gaussian plus a constant."""
 
 
 def _convert_image(data, mask=None):
@@ -90,16 +99,17 @@ def centroid_com(data, mask=None):
 
 def gaussian1d_moments(data, mask=None):
     """
-    Estimate the 1D Gaussian parameters from the moments of 1D data.
+    Estimate 1D Gaussian parameters from the moments of 1D data.
+
     This function can be useful for providing initial parameter values
     when fitting a 1D Gaussian to the ``data``.
 
     Parameters
     ----------
-    data : array_like
-        The 1D array of the image.
+    data : array_like (1D)
+        The 1D array.
 
-    mask : array_like (bool), optional
+    mask : array_like (1D bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
 
@@ -114,21 +124,49 @@ def gaussian1d_moments(data, mask=None):
         data = data.copy()
         data[mask] = 0.
     x = np.arange(data.size)
-    xc = np.sum(x * data) / np.sum(data)
-    stddev = np.sqrt(abs(np.sum(data * (x - xc)**2) / np.sum(data)))
-    amplitude = np.nanmax(data)
-    return amplitude, xc, stddev
+    x_mean = np.sum(x * data) / np.sum(data)
+    x_stddev = np.sqrt(abs(np.sum(data * (x - x_mean)**2) / np.sum(data)))
+    amplitude = np.nanmax(data) - np.nanmin(data)
+    return amplitude, x_mean, x_stddev
+
+
+def marginalize_data2d(data, error=None, mask=None):
+    """
+    Generate the marginal x and y distributions from a 2D distribution.
+    """
+
+    if error is not None:
+        marginal_error = np.array(
+            [np.sqrt(np.sum(error**2, axis=i)) for i in [0, 1]])
+    else:
+        marginal_error = [None, None]
+
+    if mask is not None:
+        mask = np.asanyarray(mask)
+        marginal_mask = [mask.sum(axis=i).astype(np.bool) for i in [0, 1]]
+        if error is None:
+            marginal_error = np.array(
+                [np.zeros(data.shape[1]), np.zeros(data.shape[0])])
+        for i in [0, 1]:
+            # give masked pixels a huge error
+            marginal_error[i][marginal_mask[i]] = 1.e+30
+    else:
+        marginal_mask = [None, None]
+
+    marginal_data = [data.sum(axis=i) for i in [0, 1]]
+
+    return marginal_data, marginal_error, marginal_mask
 
 
 def centroid_1dg(data, error=None, mask=None):
     """
     Calculate the centroid of a 2D array by fitting 1D Gaussians to the
-    marginal x and y distributions of the image.
+    marginal x and y distributions of the array.
 
     Parameters
     ----------
     data : array_like
-        The 2D array of the image.
+        The 2D data array.
 
     error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
@@ -143,47 +181,34 @@ def centroid_1dg(data, error=None, mask=None):
         (x, y) coordinates of the centroid.
     """
 
-    if error is not None:
-        marginal_error = np.array(
-            [np.sqrt(np.sum(error**2, axis=i)) for i in [0, 1]])
-        marginal_weights = 1.0 / marginal_error
-    else:
-        marginal_weights = [None, None]
+    mdata, merror, mmask = marginalize_data2d(data, error=error, mask=mask)
 
-    if mask is not None:
-        mask = np.asanyarray(mask)
-        marginal_mask = [mask.sum(axis=i).astype(np.bool) for i in [0, 1]]
-        if error is None:
-            marginal_weights = np.array(
-                [np.ones(data.shape[1]), np.ones(data.shape[0])])
-        for i in [0, 1]:
-            # down-weight masked pixels
-            marginal_weights[i][marginal_mask[i]] = 1.e-20
+    if merror[0] is None:
+        mweights = [None, None]
     else:
-        marginal_mask = [None, None]
+        mweights = [(1.0 / merror[i]) for i in [0, 1]]
 
+    const_init = np.min(data)
     centroid = []
-    marginal_data = [data.sum(axis=i) for i in [0, 1]]
-    inputs = zip(marginal_data, marginal_weights, marginal_mask)
-    for (mdata, mweights, mmask) in inputs:
-        params_init = gaussian1d_moments(mdata, mask=mmask)
-        g_init = models.Gaussian1D(*params_init)
+    for (mdata_i, mweights_i, mmask_i) in zip(mdata, mweights, mmask):
+        params_init = gaussian1d_moments(mdata_i, mask=mmask_i)
+        g_init = GaussianConst1D(const_init, *params_init)
         fitter = LevMarLSQFitter()
-        x = np.arange(mdata.size)
-        g_fit = fitter(g_init, x, mdata, weights=mweights)
-        centroid.append(g_fit.mean.value)
+        x = np.arange(mdata_i.size)
+        g_fit = fitter(g_init, x, mdata_i, weights=mweights_i)
+        centroid.append(g_fit.mean_1.value)
     return tuple(centroid)
 
 
 def centroid_2dg(data, error=None, mask=None):
     """
-    Calculate the centroid of a 2D array by fitting a 2D Gaussian to the
-    image.
+    Calculate the centroid of a 2D array by fitting a 2D Gaussian (plus
+    a constant) to the array.
 
     Parameters
     ----------
     data : array_like
-        The 2D array of the image.
+        The 2D data array.
 
     error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
@@ -199,12 +224,12 @@ def centroid_2dg(data, error=None, mask=None):
     """
 
     gfit = fit_2dgaussian(data, error=error, mask=mask)
-    return gfit.x_mean.value, gfit.y_mean.value
+    return gfit.x_mean_1.value, gfit.y_mean_1.value
 
 
 def fit_2dgaussian(data, error=None, mask=None):
     """
-    Fit a 2D Gaussian to a 2D image.
+    Fit a 2D Gaussian plus a constant to a 2D image.
 
     Parameters
     ----------
@@ -234,17 +259,36 @@ def fit_2dgaussian(data, error=None, mask=None):
         if weights is None:
             weights = np.ones_like(data)
         # down-weight masked pixels
-        weights[mask] = 1.e-20
+        weights[mask] = 1.e-30
 
+    # Subtract the minimum of the data as a crude background estimate.
+    # This will also make the data values positive, preventing issues with
+    # the moment estimation in data_properties (moments from negative data
+    # values can yield undefined Gaussian parameters, e.g. x/y_stddev).
+    shift = np.min(data)
+    data = np.copy(data) - shift
     props = data_properties(data, mask=mask)
-    init_amplitude = np.nanmax(data)
-    g_init = models.Gaussian2D(
-        init_amplitude, props.xcentroid.value, props.ycentroid.value,
-        props.semimajor_axis_sigma.value, props.semiminor_axis_sigma.value,
-        props.orientation.value)
+    init_values = np.array([props.xcentroid.value, props.ycentroid.value,
+                            props.semimajor_axis_sigma.value,
+                            props.semiminor_axis_sigma.value,
+                            props.orientation.value])
+
+    # if any init_values are np.nan, then estimate the initial parameters
+    # using the marginal distributions
+    if np.any(~np.isfinite(init_values)):
+        mdata, merror, mmask = marginalize_data2d(data - shift, error=error,
+                                                  mask=mask)
+        x_ampl, x_mean, x_stddev = gaussian1d_moments(mdata[0], mask=mmask[0])
+        y_ampl, y_mean, y_stddev = gaussian1d_moments(mdata[1], mask=mmask[1])
+        init_values = np.array([x_mean, y_mean, x_stddev, y_stddev, 0.])
+
+    init_const = 0.    # subtracted data minimum above
+    init_amplitude = np.nanmax(data) - np.nanmin(data)
+    g_init = GaussianConst2D(init_const, init_amplitude, *init_values)
     fitter = LevMarLSQFitter()
     y, x = np.indices(data.shape)
     gfit = fitter(g_init, x, y, data, weights=weights)
+    gfit.amplitude_0 = gfit.amplitude_0 + shift
     return gfit
 
 
