@@ -9,8 +9,7 @@ from astropy.convolution import Kernel2D
 import astropy.units as u
 from astropy.wcs.utils import pixel_to_skycoord
 from astropy.stats import sigma_clipped_stats
-from astropy.nddata.utils import overlap_slices
-from ..morphology import fit_2dgaussian
+from ..morphology import centroid_footprint
 
 
 __all__ = ['detect_threshold', 'detect_sources', 'find_peaks']
@@ -368,33 +367,16 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
 
     if subpixel:
         x_centroid, y_centroid = [], []
-        fit_peak_value = []
-        if footprint is None:
-            cutout_shape = (box_size, box_size)
-            footprint_mask = np.zeros(cutout_shape, dtype=np.bool)
-        else:
-            cutout_shape = footprint.shape
-            footprint_mask = (footprint == False)
-
+        fit_peak_values = []
         for (y_peak, x_peak) in zip(y_peaks, x_peaks):
-            slices_large, slices_small = overlap_slices(
-                data.shape, cutout_shape, (x_peak, y_peak))
-            region = data[slices_large]
-            if mask is not None:
-                region_mask = mask[slices_large]
-            else:
-                region_mask = np.zeros_like(region, dtype=np.bool)
-            footprint_mask = footprint_mask[slices_small]  # trim if necessary
-            region_mask = np.logical_or(region_mask, footprint_mask)
-            gaussian_fit = fit_2dgaussian(region, mask=region_mask)
-            fit_peak_value.append(gaussian_fit.amplitude_1.value)
-            x_centroid.append(slices_large[1].start +
-                              gaussian_fit.x_mean_1.value)
-            y_centroid.append(slices_large[0].start +
-                              gaussian_fit.y_mean_1.value)
+            xcen, ycen, peakval = centroid_footprint(
+                data, (x_peak, y_peak), box_size, footprint, mask)
+            x_centroid.append(xcen)
+            y_centroid.append(ycen)
+            fit_peak_values.append(peakval)
 
         columns = (x_peaks, y_peaks, peak_values, x_centroid, y_centroid,
-                   fit_peak_value)
+                   fit_peak_values)
         names = ('x_peak', 'y_peak', 'peak_value', 'x_centroid', 'y_centroid',
                  'fit_peak_value')
     else:

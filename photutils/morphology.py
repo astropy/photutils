@@ -69,6 +69,33 @@ def _convert_image(data, mask=None):
     return image
 
 
+def centroid_footprint(data, (x, y), box_size=3, footprint=None, mask=None):
+    """
+    Centroid around given position
+    """
+    if footprint is None:
+        cutout_shape = (box_size, box_size)
+        footprint_mask = np.zeros(cutout_shape, dtype=np.bool)
+    else:
+        cutout_shape = footprint.shape
+        footprint_mask = (footprint == False)
+
+    slices_large, slices_small = overlap_slices(
+        data.shape, cutout_shape, (x, y))
+    region = data[slices_large]
+    if mask is not None:
+        region_mask = mask[slices_large]
+    else:
+        region_mask = np.zeros_like(region, dtype=np.bool)
+    footprint_mask = footprint_mask[slices_small]    # trim if necessary
+    region_mask = np.logical_or(region_mask, footprint_mask)
+    gaussian_fit = fit_2dgaussian(region, mask=region_mask)
+    x_centroid = slices_large[1].start + gaussian_fit.x_mean_1.value
+    y_centroid = slices_large[0].start + gaussian_fit.y_mean_1.value
+
+    return x_centroid, y_centroid, gaussian_fit.amplitude_1.value
+
+
 def centroid_com(data, mask=None):
     """
     Calculate the centroid of a 2D array as its center of mass
