@@ -136,7 +136,30 @@ def gaussian1d_moments(data, mask=None):
 
 def marginalize_data2d(data, error=None, mask=None):
     """
-    Generate the marginal x and y distributions from a 2D distribution.
+    Generate the marginal x and y distributions from a 2D data array.
+
+    Parameters
+    ----------
+    data : array_like
+        The 2D data array.
+
+    error : array_like, optional
+        The 2D array of the 1-sigma errors of the input ``data``.
+
+    mask : array_like (bool), optional
+        A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+
+    Returns
+    -------
+    marginal_data : list of `~numpy.ndarray`
+        The marginal y and x distributions of the input ``data``.
+
+    marginal_error : list of `~numpy.ndarray`
+        The marginal y and x distributions of the input ``error``.
+
+    marginal_mask : list of `~numpy.ndarray` (bool)
+        The marginal y and x distributions of the input ``mask``.
     """
 
     if error is not None:
@@ -249,7 +272,7 @@ def fit_2dgaussian(data, error=None, mask=None):
 
     Returns
     -------
-    result : `~astropy.modeling.functional_models.Gaussian2D` instance
+    result : `GaussianConst2D` instance
         The best-fitting Gaussian 2D model.
     """
 
@@ -317,8 +340,8 @@ def data_properties(data, mask=None, background=None):
 
     Returns
     -------
-    result : `photutils.segmentation.SegmentProperties` instance
-        A `photutils.segmentation.SegmentProperties` object.
+    result : `~photutils.segmentation.SegmentProperties` instance
+        A `~photutils.segmentation.SegmentProperties` object.
     """
 
     segment_image = np.ones(data.shape, dtype=np.int)
@@ -364,6 +387,21 @@ def cutout_footprint(data, position, box_size=3, footprint=None, mask=None,
 
     error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
+
+    Returns
+    -------
+    region_data : `~numpy.ndarray`
+        The ``data`` cutout.
+
+    region_mask : `~numpy.ndarray`
+        The ``mask`` cutout.
+
+    region_error : `~numpy.ndarray`
+        The ``error`` cutout.
+
+    slices : tuple of slices
+        Slices in each dimension of the ``data`` array used to define
+        the cutout region.
     """
 
     if len(position) != 2:
