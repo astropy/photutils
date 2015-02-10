@@ -207,6 +207,16 @@ class TestFindPeaks(object):
         assert_array_equal(tbl['y_peak'], PEAKREF1[:, 0])
         assert_array_equal(tbl['peak_value'], [1., 1.])
 
+    def test_mask(self):
+        """Test with mask."""
+        mask = np.zeros_like(PEAKDATA, dtype=bool)
+        mask[0, 0] = True
+        tbl = find_peaks(PEAKDATA, 0.1, box_size=3, mask=mask)
+        assert len(tbl) == 1
+        assert_array_equal(tbl['x_peak'], PEAKREF1[1, 0])
+        assert_array_equal(tbl['y_peak'], PEAKREF1[1, 1])
+        assert_array_equal(tbl['peak_value'], 1.0)
+
     def test_npeaks(self):
         """Test npeaks."""
         tbl = find_peaks(PEAKDATA, 0.1, box_size=3, npeaks=1)
@@ -233,3 +243,11 @@ class TestFindPeaks(object):
         tbl1 = find_peaks(PEAKDATA, 0.1, box_size=5.)
         tbl2 = find_peaks(PEAKDATA, 0.1, box_size=5.5)
         assert_array_equal(tbl1, tbl2)
+
+    def test_wcs(self):
+        """Test with WCS."""
+        from photutils.datasets import make_4gaussians_image
+        from astropy.wcs import WCS
+        hdu = make_4gaussians_image(hdu=True, wcs=True)
+        wcs = WCS(hdu.header)
+        tbl = find_peaks(hdu.data, 100, wcs=wcs)

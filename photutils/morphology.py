@@ -381,7 +381,7 @@ def cutout_footprint(data, position, box_size=3, footprint=None, mask=None,
         footprint = np.asanyarray(footprint, dtype=bool)
 
     slices_large, slices_small = overlap_slices(data.shape, footprint.shape,
-                                                position)
+                                                position[::-1])
     region_data = data[slices_large]
 
     if error is not None:
