@@ -280,15 +280,6 @@ def fit_2dgaussian(data, error=None, mask=None):
                             props.semiminor_axis_sigma.value,
                             props.orientation.value])
 
-    # if any init_values are np.nan, then estimate the initial parameters
-    # using the marginal distributions
-    if np.any(~np.isfinite(init_values)):
-        mdata, merror, mmask = marginalize_data2d(data, error=error,
-                                                  mask=mask)
-        x_ampl, x_mean, x_stddev = gaussian1d_moments(mdata[0], mask=mmask[0])
-        y_ampl, y_mean, y_stddev = gaussian1d_moments(mdata[1], mask=mmask[1])
-        init_values = np.array([x_mean, y_mean, x_stddev, y_stddev, 0.])
-
     init_const = 0.    # subtracted data minimum above
     init_amplitude = np.nanmax(data) - np.nanmin(data)
     g_init = GaussianConst2D(init_const, init_amplitude, *init_values)
