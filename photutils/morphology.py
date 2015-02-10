@@ -11,6 +11,7 @@ from astropy.modeling.models import Gaussian1D, Gaussian2D, Const1D, Const2D
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import overlap_slices
 from .segmentation import SegmentProperties
+import warnings
 
 
 __all__ = ['GaussianConst1D', 'GaussianConst2D', 'centroid_com',
@@ -252,10 +253,9 @@ def fit_2dgaussian(data, error=None, mask=None):
         The best-fitting Gaussian 2D model.
     """
 
-    # data must have a least 7 values to fit a 2D Gaussian plus a constant
     if data.size < 7:
-        print('boo')
-        print(len(data))
+        warnings.warn('data array must have a least 7 values to fit a 2D '
+                      'Gaussian plus a constant')
         return None
 
     if error is not None:
