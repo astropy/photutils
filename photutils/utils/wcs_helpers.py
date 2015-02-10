@@ -119,7 +119,7 @@ def pixel_to_icrs_coords(x, y, wcs):
         The ICRS Right Ascension in degrees.
 
     dec : `~astropy.units.Quantity`
-        The ICRS Right Ascension in degrees.
+        The ICRS Declination in degrees.
     """
 
     icrs_coords = pixel_to_skycoord(x, y, wcs, origin=1).icrs

@@ -274,8 +274,9 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     When using subpixel precision (``subpixel=True``), then a cutout of
     the specified ``box_size`` or ``footprint`` will be taken centered
     on each peak and fit with a 2D Gaussian (plus a constant).  In this
-    case, the fitted local centroid and peak amplitude will also be
-    returned in the output table.
+    case, the fitted local centroid and peak value (the Gaussian
+    amplitude plus the background constant) will also be returned in the
+    output table.
 
     Parameters
     ----------
@@ -317,8 +318,8 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         If `True`, then a cutout of the specified ``box_size`` or
         ``footprint`` will be taken centered on each peak and fit with a
         2D Gaussian (plus a constant).  In this case, the fitted local
-        centroid and peak amplitude will also be returned in the output
-        table.
+        centroid and peak value (the Gaussian amplitude plus the
+        background constant) will also be returned in the output table.
 
     error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
