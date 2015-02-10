@@ -252,6 +252,10 @@ def fit_2dgaussian(data, error=None, mask=None):
         The best-fitting Gaussian 2D model.
     """
 
+    # data must have a least 7 values to fit a 2D Gaussian plus a constant
+    if len(data) < 7:
+        return None
+
     if error is not None:
         weights = 1.0 / error
     else:

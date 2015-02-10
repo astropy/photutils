@@ -385,10 +385,13 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
                                       mask=mask, error=error)
             gaussian_fit = fit_2dgaussian(region[0], mask=region[1],
                                           error=region[2])
-            x_cen = region[3][1].start + gaussian_fit.x_mean_1.value
-            y_cen = region[3][0].start + gaussian_fit.y_mean_1.value
-            fit_peak_value = (gaussian_fit.amplitude_0.value +
-                              gaussian_fit.amplitude_1.value)
+            if gaussian_fit is None:
+                x_cen, y_cen, fit_peak_value = np.nan, np.nan, np.nan
+            else:
+                x_cen = region[3][1].start + gaussian_fit.x_mean_1.value
+                y_cen = region[3][0].start + gaussian_fit.y_mean_1.value
+                fit_peak_value = (gaussian_fit.amplitude_0.value +
+                                  gaussian_fit.amplitude_1.value)
             x_centroid.append(x_cen)
             y_centroid.append(y_cen)
             fit_peak_values.append(fit_peak_value)
