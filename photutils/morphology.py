@@ -253,7 +253,9 @@ def fit_2dgaussian(data, error=None, mask=None):
     """
 
     # data must have a least 7 values to fit a 2D Gaussian plus a constant
-    if len(data) < 7:
+    if data.size < 7:
+        print('boo')
+        print(len(data))
         return None
 
     if error is not None:

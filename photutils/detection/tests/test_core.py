@@ -207,6 +207,13 @@ class TestFindPeaks(object):
         assert_array_equal(tbl['y_peak'], PEAKREF1[:, 0])
         assert_array_equal(tbl['peak_value'], [1., 1.])
 
+    def test_subpixel_regionsize(self):
+        """Test that data cutout has at least 6 values."""
+        tbl = find_peaks(PEAKDATA, 0.1, box_size=2, subpixel=True)
+        assert np.all(np.isnan(tbl['x_centroid']))
+        assert np.all(np.isnan(tbl['y_centroid']))
+        assert np.all(np.isnan(tbl['fit_peak_value']))
+
     def test_mask(self):
         """Test with mask."""
         mask = np.zeros_like(PEAKDATA, dtype=bool)
@@ -216,6 +223,11 @@ class TestFindPeaks(object):
         assert_array_equal(tbl['x_peak'], PEAKREF1[1, 0])
         assert_array_equal(tbl['y_peak'], PEAKREF1[1, 1])
         assert_array_equal(tbl['peak_value'], 1.0)
+
+    def test_maskshape(self):
+        """Test if make shape doesn't match data shape."""
+        with pytest.raises(ValueError):
+            find_peaks(PEAKDATA, 0.1, mask=np.ones((5, 5)))
 
     def test_npeaks(self):
         """Test npeaks."""
@@ -250,4 +262,8 @@ class TestFindPeaks(object):
         from astropy.wcs import WCS
         hdu = make_4gaussians_image(hdu=True, wcs=True)
         wcs = WCS(hdu.header)
-        tbl = find_peaks(hdu.data, 100, wcs=wcs)
+        tbl = find_peaks(hdu.data, 100, wcs=wcs, subpixel=True)
+        cols = ['icrs_ra_peak', 'icrs_dec_peak', 'icrs_ra_centroid',
+                'icrs_dec_centroid']
+        for col in cols:
+            assert col in tbl.colnames
