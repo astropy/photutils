@@ -381,16 +381,15 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         x_centroid, y_centroid = [], []
         fit_peak_values = []
         for (y_peak, x_peak) in zip(y_peaks, x_peaks):
-            region = cutout_footprint(data, (x_peak, y_peak),
-                                      box_size=box_size, footprint=footprint,
-                                      mask=mask, error=error)
-            gaussian_fit = fit_2dgaussian(region[0], mask=region[1],
-                                          error=region[2])
+            rdata, rmask, rerror, slc = cutout_footprint(
+                data, (x_peak, y_peak), box_size=box_size,
+                footprint=footprint, mask=mask, error=error)
+            gaussian_fit = fit_2dgaussian(rdata, mask=rmask, error=rerror)
             if gaussian_fit is None:
                 x_cen, y_cen, fit_peak_value = np.nan, np.nan, np.nan
             else:
-                x_cen = region[3][1].start + gaussian_fit.x_mean_1.value
-                y_cen = region[3][0].start + gaussian_fit.y_mean_1.value
+                x_cen = slc[1].start + gaussian_fit.x_mean_1.value
+                y_cen = slc[0].start + gaussian_fit.y_mean_1.value
                 fit_peak_value = (gaussian_fit.amplitude_0.value +
                                   gaussian_fit.amplitude_1.value)
             x_centroid.append(x_cen)
