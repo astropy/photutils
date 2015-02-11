@@ -40,6 +40,7 @@ except ImportError:
 
 # Load all of the global Astropy configuration
 from astropy_helpers.sphinx.conf import *
+from astropy.extern import six
 
 # Get configuration information from setup.cfg
 from distutils import config
@@ -176,3 +177,11 @@ if eval(setup_cfg.get('edit_on_github')):
 autodoc_docstring_signature = True
 
 nitpicky = True
+nitpick_ignore = []
+
+for line in open('nitpick-exceptions'):
+    if line.strip() == "" or line.startswith("#"):
+        continue
+    dtype, target = line.split(None, 1)
+    target = target.strip()
+    nitpick_ignore.append((dtype, six.u(target)))
