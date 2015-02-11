@@ -14,19 +14,44 @@ from .segmentation import SegmentProperties
 import warnings
 
 
-__all__ = ['GaussianConst1D', 'GaussianConst2D', 'centroid_com',
-           'gaussian1d_moments', 'marginalize_data2d', 'centroid_1dg',
-           'centroid_2dg', 'fit_2dgaussian', 'data_properties',
-           'cutout_footprint']
+__all__ = ['GaussianConst2D', 'centroid_com', 'gaussian1d_moments',
+           'marginalize_data2d', 'centroid_1dg', 'centroid_2dg',
+           'fit_2dgaussian', 'data_properties', 'cutout_footprint']
 
 
-class GaussianConst1D(Const1D + Gaussian1D):
-    """A 1D Gaussian plus a constant."""
+class _GaussianConst1D(Const1D + Gaussian1D):
+    """A 1D Gaussian plus a constant model."""
 
 
 class GaussianConst2D(Const2D + Gaussian2D):
-    """A 2D Gaussian plus a constant."""
+    """
+    A 2D Gaussian plus a constant model.
 
+    Parameters
+    ----------
+    amplitude_0 : float
+        Value of the constant.
+    amplitude_1 : float
+        Amplitude of the Gaussian.
+    x_mean_1 : float
+        Mean of the Gaussian in x.
+    y_mean_1 : float
+        Mean of the Gaussian in y.
+    x_stddev_1 : float
+        Standard deviation of the Gaussian in x.
+        ``x_stddev`` and ``y_stddev`` must be specified unless a covariance
+        matrix (``cov_matrix``) is input.
+    y_stddev_1 : float
+        Standard deviation of the Gaussian in y.
+        ``x_stddev`` and ``y_stddev`` must be specified unless a covariance
+        matrix (``cov_matrix``) is input.
+    theta_1 : float, optional
+        Rotation angle in radians. The rotation angle increases
+        counterclockwise.
+    cov_matrix_1 : ndarray, optional
+        A 2x2 covariance matrix. If specified, overrides the ``x_stddev``,
+        ``y_stddev``, and ``theta`` specification.
+    """
 
 def _convert_image(data, mask=None):
     """
@@ -219,7 +244,7 @@ def centroid_1dg(data, error=None, mask=None):
     centroid = []
     for (mdata_i, mweights_i, mmask_i) in zip(mdata, mweights, mmask):
         params_init = gaussian1d_moments(mdata_i, mask=mmask_i)
-        g_init = GaussianConst1D(const_init, *params_init)
+        g_init = _GaussianConst1D(const_init, *params_init)
         fitter = LevMarLSQFitter()
         x = np.arange(mdata_i.size)
         g_fit = fitter(g_init, x, mdata_i, weights=mweights_i)
@@ -272,7 +297,7 @@ def fit_2dgaussian(data, error=None, mask=None):
 
     Returns
     -------
-    result : `GaussianConst2D` instance
+    result : A `GaussianConst2D` model instance.
         The best-fitting Gaussian 2D model.
     """
 
