@@ -18,7 +18,8 @@ New Features
 
 - ``photutils.morphology``
 
-  - Added new ``GaussianConst1D`` and ``GaussianConst2D`` models [#244].
+  - Added new ``GaussianConst2D`` (2D Gaussian plus a constant) model
+    [#244].
 
   - Added new ``marginalize_data2d`` function [#244].
 
