@@ -388,8 +388,7 @@ def _findobjs(data, threshold, kernel, min_separation=None,
         else:
             from skimage.morphology import disk
             footprint = disk(min_separation)
-        tbl = find_peaks(convolved_data, threshold,
-                         exclude_border=exclude_border, footprint=footprint)
+        tbl = find_peaks(convolved_data, threshold, footprint=footprint)
         coords = np.transpose([tbl['y_peak'], tbl['x_peak']])
     else:
         object_slices = ndimage.find_objects(object_labels)

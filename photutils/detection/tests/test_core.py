@@ -26,7 +26,6 @@ REF3 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
 
 PEAKDATA = np.array([[1, 0, 0], [0, 0, 0], [0, 0, 1]]).astype(np.float)
 PEAKREF1 = np.array([[0, 0], [2, 2]])
-PEAKREF2 = np.array([]).reshape(0, 2)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -194,44 +193,77 @@ class TestDetectSources(object):
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.skipif('not HAS_SKIMAGE')
 class TestFindPeaks(object):
-    def test_find_peaks(self):
-        """Test basic peak detection."""
-        tbl = find_peaks(PEAKDATA, 0.1, min_separation=1,
-                         exclude_border=False)
+    def test_box_size(self):
+        """Test with box_size."""
+        tbl = find_peaks(PEAKDATA, 0.1, box_size=3)
         assert_array_equal(tbl['x_peak'], PEAKREF1[:, 1])
         assert_array_equal(tbl['y_peak'], PEAKREF1[:, 0])
         assert_array_equal(tbl['peak_value'], [1., 1.])
 
-    def test_segment_image(self):
-        segm = PEAKDATA.copy()
-        tbl = find_peaks(PEAKDATA, 0.1, min_separation=1,
-                         exclude_border=False, segment_image=segm)
+    def test_footprint(self):
+        """Test with footprint."""
+        tbl = find_peaks(PEAKDATA, 0.1, footprint=np.ones((3, 3)))
         assert_array_equal(tbl['x_peak'], PEAKREF1[:, 1])
         assert_array_equal(tbl['y_peak'], PEAKREF1[:, 0])
+        assert_array_equal(tbl['peak_value'], [1., 1.])
 
-    def test_segment_image_npeaks(self):
-        segm = PEAKDATA.copy()
-        tbl = find_peaks(PEAKDATA, 0.1, min_separation=1,
-                         exclude_border=False, segment_image=segm, npeaks=1)
+    def test_subpixel_regionsize(self):
+        """Test that data cutout has at least 6 values."""
+        tbl = find_peaks(PEAKDATA, 0.1, box_size=2, subpixel=True)
+        assert np.all(np.isnan(tbl['x_centroid']))
+        assert np.all(np.isnan(tbl['y_centroid']))
+        assert np.all(np.isnan(tbl['fit_peak_value']))
+
+    def test_mask(self):
+        """Test with mask."""
+        mask = np.zeros_like(PEAKDATA, dtype=bool)
+        mask[0, 0] = True
+        tbl = find_peaks(PEAKDATA, 0.1, box_size=3, mask=mask)
+        assert len(tbl) == 1
+        assert_array_equal(tbl['x_peak'], PEAKREF1[1, 0])
+        assert_array_equal(tbl['y_peak'], PEAKREF1[1, 1])
+        assert_array_equal(tbl['peak_value'], 1.0)
+
+    def test_maskshape(self):
+        """Test if make shape doesn't match data shape."""
+        with pytest.raises(ValueError):
+            find_peaks(PEAKDATA, 0.1, mask=np.ones((5, 5)))
+
+    def test_npeaks(self):
+        """Test npeaks."""
+        tbl = find_peaks(PEAKDATA, 0.1, box_size=3, npeaks=1)
         assert_array_equal(tbl['x_peak'], PEAKREF1[1, 1])
         assert_array_equal(tbl['y_peak'], PEAKREF1[1, 0])
 
-    def test_segment_image_shape(self):
-        segm = np.zeros((2, 2))
-        with pytest.raises(ValueError):
-            find_peaks(PEAKDATA, 0.1, segment_image=segm)
-
-    def test_exclude_border(self):
-        """Test exclude_border."""
-        tbl = find_peaks(PEAKDATA, 0.1, min_separation=1, exclude_border=True)
+    def test_border_width(self):
+        """Test border exclusion."""
+        tbl = find_peaks(PEAKDATA, 0.1, box_size=3, border_width=3)
         assert_array_equal(len(tbl), 0)
 
     def test_zerodet(self):
         """Test with large threshold giving no sources."""
-        tbl = find_peaks(PEAKDATA, 5., min_separation=1, exclude_border=True)
+        tbl = find_peaks(PEAKDATA, 5., box_size=3, border_width=3)
         assert_array_equal(len(tbl), 0)
 
-    def test_min_separation_int(self):
-        tbl1 = find_peaks(PEAKDATA, 0.1, min_separation=2.)
-        tbl2 = find_peaks(PEAKDATA, 0.1, min_separation=2.5)
+    def test_constant_data(self):
+        """Test constant data."""
+        tbl = find_peaks(np.ones((5, 5)), 0.1, box_size=3.)
+        assert_array_equal(len(tbl), 0)
+
+    def test_box_size_int(self):
+        """Test non-integer box_size."""
+        tbl1 = find_peaks(PEAKDATA, 0.1, box_size=5.)
+        tbl2 = find_peaks(PEAKDATA, 0.1, box_size=5.5)
         assert_array_equal(tbl1, tbl2)
+
+    def test_wcs(self):
+        """Test with WCS."""
+        from photutils.datasets import make_4gaussians_image
+        from astropy.wcs import WCS
+        hdu = make_4gaussians_image(hdu=True, wcs=True)
+        wcs = WCS(hdu.header)
+        tbl = find_peaks(hdu.data, 100, wcs=wcs, subpixel=True)
+        cols = ['icrs_ra_peak', 'icrs_dec_peak', 'icrs_ra_centroid',
+                'icrs_dec_centroid']
+        for col in cols:
+            assert col in tbl.colnames

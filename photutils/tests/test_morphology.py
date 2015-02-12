@@ -6,9 +6,9 @@ import numpy as np
 from numpy.testing import assert_allclose
 import itertools
 from ..morphology import (centroid_com, centroid_1dg, centroid_2dg,
-                          gaussian1d_moments, data_properties)
-from astropy.modeling import models
-from astropy.convolution.kernels import Gaussian2DKernel
+                          gaussian1d_moments, data_properties,
+                          fit_2dgaussian, cutout_footprint)
+from astropy.modeling.models import Gaussian1D, Gaussian2D
 try:
     import skimage
     HAS_SKIMAGE = True
@@ -32,8 +32,8 @@ DATA[1, 1] = 2.
     list(itertools.product(XCS, YCS, XSTDDEVS, YSTDDEVS, THETAS)))
 @pytest.mark.skipif('not HAS_SKIMAGE')
 def test_centroids(xc_ref, yc_ref, x_stddev, y_stddev, theta):
-    model = models.Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=x_stddev,
-                              y_stddev=y_stddev, theta=theta)
+    model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=x_stddev,
+                       y_stddev=y_stddev, theta=theta)
     y, x = np.mgrid[0:50, 0:50]
     data = model(x, y)
     xc, yc = centroid_com(data)
@@ -49,8 +49,8 @@ def test_centroids(xc_ref, yc_ref, x_stddev, y_stddev, theta):
     list(itertools.product(XCS, YCS, XSTDDEVS, YSTDDEVS, THETAS)))
 @pytest.mark.skipif('not HAS_SKIMAGE')
 def test_centroids_witherror(xc_ref, yc_ref, x_stddev, y_stddev, theta):
-    model = models.Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=x_stddev,
-                              y_stddev=y_stddev, theta=theta)
+    model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=x_stddev,
+                       y_stddev=y_stddev, theta=theta)
     y, x = np.mgrid[0:50, 0:50]
     data = model(x, y)
     error = np.sqrt(data)
@@ -62,9 +62,10 @@ def test_centroids_witherror(xc_ref, yc_ref, x_stddev, y_stddev, theta):
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 def test_centroids_withmask():
-    size = 9
-    xc_ref, yc_ref = (size - 1) / 2, (size - 1) / 2
-    data = Gaussian2DKernel(1., x_size=size, y_size=size).array
+    xc_ref, yc_ref = 24.7, 25.2
+    model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
+    y, x = np.mgrid[0:50, 0:50]
+    data = model(x, y)
     mask = np.zeros_like(data, dtype=bool)
     data[0, 0] = 1.
     mask[0, 0] = True
@@ -113,8 +114,57 @@ def test_data_properties():
 
 def test_gaussian1d_moments():
     x = np.arange(100)
-    ref = (75, 50, 5)
-    g = models.Gaussian1D(*ref)
+    desired = (75, 50, 5)
+    g = Gaussian1D(*desired)
     data = g(x)
     result = gaussian1d_moments(data)
-    assert_allclose(ref, result, rtol=0, atol=1.e-6)
+    assert_allclose(result, desired, rtol=0, atol=1.e-6)
+
+
+def test_fit2dgaussian_dof():
+    data = np.ones((2, 2))
+    result = fit_2dgaussian(data)
+    assert result is None
+
+
+class TestCutoutFootprint(object):
+    def test_dataonly(self):
+        data = np.ones((5, 5))
+        position = (2, 2)
+        result1 = cutout_footprint(data, position, 3)
+        result2 = cutout_footprint(data, position, footprint=np.ones((3, 3)))
+        assert_allclose(result1[:-2], result2[:-2])
+        assert result1[-2] is None
+        assert result2[-2] is None
+        assert result1[-1] == result2[-1]
+
+    def test_mask_error(self):
+        data = error = np.ones((5, 5))
+        mask = np.zeros_like(data, dtype=bool)
+        position = (2, 2)
+        box_size1 = 3
+        box_size2 = (3, 3)
+        footprint = np.ones((3, 3))
+        result1 = cutout_footprint(data, position, box_size1, mask=mask,
+                                   error=error)
+        result2 = cutout_footprint(data, position, box_size2, mask=mask,
+                                   error=error)
+        result3 = cutout_footprint(data, position, box_size1,
+                                   footprint=footprint, mask=mask,
+                                   error=error)
+        assert_allclose(result1[:-1], result2[:-1])
+        assert_allclose(result1[:-1], result3[:-1])
+        assert result1[-1] == result2[-1]
+
+    def test_position_len(self):
+        with pytest.raises(ValueError):
+            cutout_footprint(np.ones((3, 3)), [1])
+
+    def test_nofootprint(self):
+        with pytest.raises(ValueError):
+            cutout_footprint(np.ones((3, 3)), (1, 1), box_size=None,
+                             footprint=None)
+
+    def test_wrongboxsize(self):
+        with pytest.raises(ValueError):
+            cutout_footprint(np.ones((3, 3)), (1, 1), box_size=(1, 2, 3))
