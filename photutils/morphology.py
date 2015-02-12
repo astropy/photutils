@@ -195,17 +195,11 @@ def marginalize_data2d(data, error=None, mask=None):
 
     if mask is not None:
         mask = np.asanyarray(mask)
-        marginal_mask = [mask.sum(axis=i).astype(np.bool) for i in [0, 1]]
-        if error is None:
-            marginal_error = np.array(
-                [np.zeros(data.shape[1]), np.zeros(data.shape[0])])
-        for i in [0, 1]:
-            # give masked pixels a huge error
-            marginal_error[i][marginal_mask[i]] = 1.e+30
+        marginal_mask = [np.sum(mask, axis=i).astype(np.bool) for i in [0, 1]]
     else:
         marginal_mask = [None, None]
 
-    marginal_data = [data.sum(axis=i) for i in [0, 1]]
+    marginal_data = [np.sum(data, axis=i) for i in [0, 1]]
 
     return marginal_data, marginal_error, marginal_mask
 
@@ -235,10 +229,17 @@ def centroid_1dg(data, error=None, mask=None):
 
     mdata, merror, mmask = marginalize_data2d(data, error=error, mask=mask)
 
-    if merror[0] is None:
+    if merror[0] is None and mmask[0] is None:
         mweights = [None, None]
     else:
-        mweights = [(1.0 / merror[i]) for i in [0, 1]]
+        if merror[0] is not None:
+            mweights = [(1.0 / merror[i].clip(min=1.e-30)) for i in [0, 1]]
+        else:
+            mweights = np.array([np.ones(data.shape[1]),
+                                 np.ones(data.shape[0])])
+        # down-weight masked pixels
+        for i in [0, 1]:
+            mweights[i][mmask[i]] = 1.e-20
 
     const_init = np.min(data)
     centroid = []
