@@ -8,8 +8,7 @@ import itertools
 from ..morphology import (centroid_com, centroid_1dg, centroid_2dg,
                           gaussian1d_moments, data_properties,
                           fit_2dgaussian, cutout_footprint)
-from astropy.modeling import models
-from astropy.convolution.kernels import Gaussian2DKernel
+from astropy.modeling.models import Gaussian1D, Gaussian2D
 try:
     import skimage
     HAS_SKIMAGE = True
@@ -33,8 +32,8 @@ DATA[1, 1] = 2.
     list(itertools.product(XCS, YCS, XSTDDEVS, YSTDDEVS, THETAS)))
 @pytest.mark.skipif('not HAS_SKIMAGE')
 def test_centroids(xc_ref, yc_ref, x_stddev, y_stddev, theta):
-    model = models.Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=x_stddev,
-                              y_stddev=y_stddev, theta=theta)
+    model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=x_stddev,
+                       y_stddev=y_stddev, theta=theta)
     y, x = np.mgrid[0:50, 0:50]
     data = model(x, y)
     xc, yc = centroid_com(data)
@@ -50,8 +49,8 @@ def test_centroids(xc_ref, yc_ref, x_stddev, y_stddev, theta):
     list(itertools.product(XCS, YCS, XSTDDEVS, YSTDDEVS, THETAS)))
 @pytest.mark.skipif('not HAS_SKIMAGE')
 def test_centroids_witherror(xc_ref, yc_ref, x_stddev, y_stddev, theta):
-    model = models.Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=x_stddev,
-                              y_stddev=y_stddev, theta=theta)
+    model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=x_stddev,
+                       y_stddev=y_stddev, theta=theta)
     y, x = np.mgrid[0:50, 0:50]
     data = model(x, y)
     error = np.sqrt(data)
@@ -63,9 +62,10 @@ def test_centroids_witherror(xc_ref, yc_ref, x_stddev, y_stddev, theta):
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 def test_centroids_withmask():
-    size = 9
-    xc_ref, yc_ref = (size - 1) / 2, (size - 1) / 2
-    data = Gaussian2DKernel(1., x_size=size, y_size=size).array
+    xc_ref, yc_ref = 24.7, 25.2
+    model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
+    y, x = np.mgrid[0:50, 0:50]
+    data = model(x, y)
     mask = np.zeros_like(data, dtype=bool)
     data[0, 0] = 1.
     mask[0, 0] = True
@@ -115,7 +115,7 @@ def test_data_properties():
 def test_gaussian1d_moments():
     x = np.arange(100)
     desired = (75, 50, 5)
-    g = models.Gaussian1D(*desired)
+    g = Gaussian1D(*desired)
     data = g(x)
     result = gaussian1d_moments(data)
     assert_allclose(result, desired, rtol=0, atol=1.e-6)
