@@ -41,13 +41,13 @@ subtract the background)::
 
     >>> x2, y2 = centroid_1dg(data)
     >>> print(x2, y2)    # doctest: +FLOAT_CMP
-    (14.035151484100131, 16.967749965238156)
+    (14.040352707371396, 16.962306463644801)
 
 .. doctest-requires:: scipy, skimage
 
     >>> x3, y3 = centroid_2dg(data)
     >>> print(x3, y3)    # doctest: +FLOAT_CMP
-    (14.001611728763866, 16.997270194115686)
+    (14.002212073733611, 16.996134592982017)
 
 Now let's plot the results.  Because the centroids are all very
 similar, we also include an inset plot zoomed in near the centroid:

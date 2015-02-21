@@ -257,16 +257,16 @@ sigma above the background and a separated by a least 2 pixels:
     >>> print(tbl[:10])    # print only the first 10 peaks
     x_peak y_peak   peak_value
     ------ ------ -------------
+       233      0 27.4778521972
+       236      1  27.339519624
        289     22 35.8532759965
        442     31 30.2399941373
+         1     40 35.5482863002
         89     59 41.2190469279
          7     70 33.2880647048
        258     75 26.5624808518
        463     80 28.7588206692
        182     93 38.0885687202
-       227    104  29.291381982
-        71    112 35.0913969385
-       206    114 29.7546446436
 
 And let's plot the location of the detected peaks in the image:
 
