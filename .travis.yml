@@ -32,10 +32,8 @@ matrix:
         # may run for a long time
         - python: 2.7
           env: ASTROPY_VERSION=development SETUP_CMD='build_sphinx -w'
-        # TODO: update astropy-helpers ans add `-w` option once this has been released
-        # https://github.com/astropy/astropy-helpers/pull/123
         - python: 3.4
-          env: ASTROPY_VERSION=development SETUP_CMD='build_sphinx'
+          env: ASTROPY_VERSION=development SETUP_CMD='build_sphinx -w'
 
         # Try Astropy development version
         - python: 3.3
@@ -88,16 +86,9 @@ before_install:
 
 install:
 
-    # Certificate checking is not working with Python 2.7.9 (due to PEP 476)
-    # This is a temp workaround ... see https://github.com/astropy/photutils/issues/202
-    - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then export TRAVIS_PYTHON_VERSION=2.7.8; fi
-
     # CONDA
     - conda create --yes -n test -c astropy-ci-extras python=$TRAVIS_PYTHON_VERSION
     - source activate test
-
-    # TODO: remove when issue #202 workaround is removed (see line above)
-    - export CONDA_INSTALL="conda install -c astropy-ci-extras --yes python=$TRAVIS_PYTHON_VERSION numpy=$NUMPY_VERSION"
 
     # CORE DEPENDENCIES
     - if [[ $SETUP_CMD != egg_info ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION pytest pip Cython jinja2; fi
@@ -105,11 +96,7 @@ install:
 
     # ASTROPY
     - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == development ]]; then $PIP_INSTALL git+http://github.com/astropy/astropy.git#egg=astropy; fi
-    # TODO: Change back to installing astropy via conda once 1.0 is availabl in conda:
-    # https://github.com/astropy/photutils/issues/246#issuecomment-72016716
-    # - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == stable ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION astropy; fi
-    - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == stable ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION; fi
-    - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == stable ]]; then $PIP_INSTALL --pre astropy; fi
+    - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == stable ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION astropy; fi
 
     # OPTIONAL DEPENDENCIES
     # Here you can add any dependencies your package may have. You can use
