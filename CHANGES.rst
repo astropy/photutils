@@ -4,6 +4,7 @@
 General
 ^^^^^^^
 
+- photutils now requires AstroPy v1.0 or later.
 
 New Features
 ^^^^^^^^^^^^
@@ -24,3 +25,9 @@ New Features
   - Added new ``marginalize_data2d`` function [#244].
 
   - Added new ``cutout_footprint`` function [#244].
+
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Bundled copy of astropy-helpers upgraded to v1.0. [#251]
