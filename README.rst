@@ -13,6 +13,10 @@ Photutils
     :target: http://photutils.readthedocs.org/en/latest/
     :alt: Latest Documentation Status
 
+.. image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
+    :target: http://www.astropy.org/
+
+
 Photutils is an `AstroPy`_ affiliated package to provide tools for
 detecting and peforming photometry of astronomical sources.
 
