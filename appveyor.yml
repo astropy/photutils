@@ -13,11 +13,11 @@ environment:
 
   matrix:
       - PYTHON_VERSION: "2.6"
-        ASTROPY_VERSION: "1.0rc1"
+        ASTROPY_VERSION: "1.0"
         NUMPY_VERSION: "1.9.1"
 
       - PYTHON_VERSION: "2.7"
-        ASTROPY_VERSION: "1.0rc1"
+        ASTROPY_VERSION: "1.0"
         NUMPY_VERSION: "1.9.1"
 
 platform:
@@ -39,7 +39,7 @@ install:
 
     # Install specified version of numpy and dependencies
     - "conda install -q --yes numpy=%NUMPY_VERSION% pytest Cython scipy jinja2 scikit-image matplotlib"
-    - "conda install -q --yes -c astrofrog astropy=%ASTROPY_VERSION%"
+    - "conda install -q --yes -c astropy-ci-extras astropy=%ASTROPY_VERSION%"
 
 # Not a .NET project, we build SunPy in the install step instead
 build: false
