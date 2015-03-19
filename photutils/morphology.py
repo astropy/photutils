@@ -352,17 +352,18 @@ def data_properties(data, mask=None, background=None):
         The 2D array of the image.
 
     mask : array_like (bool), optional
-        A boolean mask, with the same shape as ``data``, where a
-        `True` value indicates the corresponding element of ``data``
-        is masked.  Masked data are excluded/ignored from all
-        calculations.
+        A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Masked data are excluded from all calculations.
 
     background : float, array_like, or `~astropy.units.Quantity`, optional
-        The background level of the input ``data``.  ``background``
-        may either be a scalar value or a 2D image with the same
-        shape as the input ``data``.  If the input ``data`` has been
-        background-subtracted, then set ``background`` to `None`
-        (the default) or ``0.``.
+        The background level that was previously present in the input
+        ``data``.  ``background`` may either be a scalar value or a 2D
+        image with the same shape as the input ``data``.  Inputting the
+        ``background`` merely allows for its properties to be measured
+        within each source segment.  The input ``background`` does *not*
+        get subtracted from the input ``data``, which should already be
+        background-subtracted.
 
     Returns
     -------
