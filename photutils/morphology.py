@@ -114,16 +114,16 @@ def centroid_com(data, mask=None):
 
     Returns
     -------
-    xcen, ycen : float
-        (x, y) coordinates of the centroid.
+    ycen, xcen : float
+        (y, x) coordinates of the centroid.
     """
 
     from skimage.measure import moments
     data = _convert_image(data, mask=mask)
     m = moments(data, 1)
-    xcen = m[1, 0] / m[0, 0]
     ycen = m[0, 1] / m[0, 0]
-    return xcen, ycen
+    xcen = m[1, 0] / m[0, 0]
+    return ycen, xcen
 
 
 def gaussian1d_moments(data, mask=None):
