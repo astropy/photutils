@@ -223,8 +223,8 @@ def centroid_1dg(data, error=None, mask=None):
 
     Returns
     -------
-    xcen, ycen : float
-        (x, y) coordinates of the centroid.
+    ycen, xcen : float
+        (y, x) coordinates of the centroid.
     """
 
     mdata, merror, mmask = marginalize_data2d(data, error=error, mask=mask)
@@ -272,12 +272,12 @@ def centroid_2dg(data, error=None, mask=None):
 
     Returns
     -------
-    xcen, ycen : float
-        (x, y) coordinates of the centroid.
+    ycen, xcen : float
+        (y, x) coordinates of the centroid.
     """
 
     gfit = fit_2dgaussian(data, error=error, mask=mask)
-    return gfit.x_mean_1.value, gfit.y_mean_1.value
+    return gfit.y_mean_1.value, gfit.x_mean_1.value
 
 
 def fit_2dgaussian(data, error=None, mask=None):
