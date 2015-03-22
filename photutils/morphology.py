@@ -189,17 +189,17 @@ def marginalize_data2d(data, error=None, mask=None):
 
     if error is not None:
         marginal_error = np.array(
-            [np.sqrt(np.sum(error**2, axis=i)) for i in [0, 1]])
+            [np.sqrt(np.sum(error**2, axis=i)) for i in [1, 0]])
     else:
         marginal_error = [None, None]
 
     if mask is not None:
         mask = np.asanyarray(mask)
-        marginal_mask = [np.sum(mask, axis=i).astype(np.bool) for i in [0, 1]]
+        marginal_mask = [np.sum(mask, axis=i).astype(np.bool) for i in [1, 0]]
     else:
         marginal_mask = [None, None]
 
-    marginal_data = [np.sum(data, axis=i) for i in [0, 1]]
+    marginal_data = [np.sum(data, axis=i) for i in [1, 0]]
 
     return marginal_data, marginal_error, marginal_mask
 
