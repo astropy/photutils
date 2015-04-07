@@ -12,6 +12,7 @@ from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import overlap_slices
 from .segmentation import SegmentProperties
 import warnings
+from astropy.utils.exceptions import AstropyUserWarning
 
 
 __all__ = ['GaussianConst2D', 'centroid_com', 'gaussian1d_moments',
@@ -304,7 +305,7 @@ def fit_2dgaussian(data, error=None, mask=None):
 
     if data.size < 7:
         warnings.warn('data array must have a least 7 values to fit a 2D '
-                      'Gaussian plus a constant')
+                      'Gaussian plus a constant', AstropyUserWarning)
         return None
 
     if error is not None:
