@@ -174,6 +174,8 @@ if eval(setup_cfg.get('edit_on_github')):
     edit_on_github_source_root = ""
     edit_on_github_doc_root = "docs"
 
+github_issues_url = 'https://github.com/astropy/photutils/issues/'
+
 autodoc_docstring_signature = True
 
 nitpicky = True

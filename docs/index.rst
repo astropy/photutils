@@ -29,6 +29,7 @@ reports, comments, and help with development are very welcome.
     photutils/install.rst
     photutils/overview.rst
     photutils/getting_started.rst
+    changelog
 
 .. note::
 
