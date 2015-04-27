@@ -60,7 +60,7 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         subpixel sampling method with ``subpixel`` subpixels in each direction.
     subpixels : int
         If ``use_exact`` is 0, each pixel is resampled by this factor in each
-        dimension. Thus, each pixel is devided into ``subpixels ** 2``
+        dimension. Thus, each pixel is divided into ``subpixels ** 2``
         subpixels.
 
     Returns

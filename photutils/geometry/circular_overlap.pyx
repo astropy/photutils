@@ -49,7 +49,7 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         of subpixels to calculate the overlap.
     subpixels : int
         Each pixel resampled by this factor in each dimension, thus each
-        pixel is devided into ``subpixels ** 2`` subpixels.
+        pixel is divided into ``subpixels ** 2`` subpixels.
 
     Returns
     -------
