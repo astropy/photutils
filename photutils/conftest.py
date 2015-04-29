@@ -5,7 +5,7 @@
 import os
 from astropy.tests.pytest_plugins import *
 
-# This is to figure out the photutil version, rather than using Astropy's
+# This is to figure out photutils version, rather than using Astropy's
 from . import version
 
 try:
