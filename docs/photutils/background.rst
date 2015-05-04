@@ -228,11 +228,11 @@ in each box:
 
 The 2D background map and background rms maps are retrieved using the
 ``background`` and ``background_rms`` attributes, respectively.  The
-low-resolution versions of these maps are the ``background_lores`` and
-``background_rms_lores`` attributes, respectively.   The global median
-value of the low-resolution background and background rms maps is
-provided with the ``background_median`` and ``background_rms_median``
-attributes, respectively:
+low-resolution versions of these maps are the ``background_low_res``
+and ``background_rms_low_res`` attributes, respectively.   The global
+median value of the low-resolution background and background rms maps
+is provided with the ``background_median`` and
+``background_rms_median`` attributes, respectively:
 
 .. doctest-requires:: scipy
 
