@@ -303,7 +303,7 @@ data::
 
     >>> effective_gain = 1.5
     >>> sky_level, sky_sigma = background(data)  # function returns two arrays   # doctest: +SKIP
-    >>> phot_table = aperture_photometry(data - sky_level, positions, apertures,
+    >>> phot_table = aperture_photometry(data - sky_level, apertures,
     ...                                  error=sky_sigma,
     ...                                  effective_gain=effective_gain)   # doctest: +SKIP
 
