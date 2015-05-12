@@ -115,16 +115,16 @@ def centroid_com(data, mask=None):
 
     Returns
     -------
-    xcen, ycen : float
-        (x, y) coordinates of the centroid.
+    ycen, xcen : float
+        (y, x) coordinates of the centroid.
     """
 
     from skimage.measure import moments
     data = _convert_image(data, mask=mask)
     m = moments(data, 1)
-    xcen = m[1, 0] / m[0, 0]
     ycen = m[0, 1] / m[0, 0]
-    return xcen, ycen
+    xcen = m[1, 0] / m[0, 0]
+    return ycen, xcen
 
 
 def gaussian1d_moments(data, mask=None):
@@ -190,17 +190,17 @@ def marginalize_data2d(data, error=None, mask=None):
 
     if error is not None:
         marginal_error = np.array(
-            [np.sqrt(np.sum(error**2, axis=i)) for i in [0, 1]])
+            [np.sqrt(np.sum(error**2, axis=i)) for i in [1, 0]])
     else:
         marginal_error = [None, None]
 
     if mask is not None:
         mask = np.asanyarray(mask)
-        marginal_mask = [np.sum(mask, axis=i).astype(np.bool) for i in [0, 1]]
+        marginal_mask = [np.sum(mask, axis=i).astype(np.bool) for i in [1, 0]]
     else:
         marginal_mask = [None, None]
 
-    marginal_data = [np.sum(data, axis=i) for i in [0, 1]]
+    marginal_data = [np.sum(data, axis=i) for i in [1, 0]]
 
     return marginal_data, marginal_error, marginal_mask
 
@@ -224,8 +224,8 @@ def centroid_1dg(data, error=None, mask=None):
 
     Returns
     -------
-    xcen, ycen : float
-        (x, y) coordinates of the centroid.
+    ycen, xcen : float
+        (y, x) coordinates of the centroid.
     """
 
     mdata, merror, mmask = marginalize_data2d(data, error=error, mask=mask)
@@ -273,12 +273,12 @@ def centroid_2dg(data, error=None, mask=None):
 
     Returns
     -------
-    xcen, ycen : float
-        (x, y) coordinates of the centroid.
+    ycen, xcen : float
+        (y, x) coordinates of the centroid.
     """
 
     gfit = fit_2dgaussian(data, error=error, mask=mask)
-    return gfit.x_mean_1.value, gfit.y_mean_1.value
+    return gfit.y_mean_1.value, gfit.x_mean_1.value
 
 
 def fit_2dgaussian(data, error=None, mask=None):

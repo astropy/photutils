@@ -36,11 +36,11 @@ def test_centroids(xc_ref, yc_ref, x_stddev, y_stddev, theta):
                        y_stddev=y_stddev, theta=theta)
     y, x = np.mgrid[0:50, 0:50]
     data = model(x, y)
-    xc, yc = centroid_com(data)
+    yc, xc = centroid_com(data)
     assert_allclose([xc_ref, yc_ref], [xc, yc], rtol=0, atol=1.e-3)
-    xc2, yc2 = centroid_1dg(data)
+    yc2, xc2 = centroid_1dg(data)
     assert_allclose([xc_ref, yc_ref], [xc2, yc2], rtol=0, atol=1.e-3)
-    xc3, yc3 = centroid_2dg(data)
+    yc3, xc3 = centroid_2dg(data)
     assert_allclose([xc_ref, yc_ref], [xc3, yc3], rtol=0, atol=1.e-3)
 
 
@@ -54,9 +54,9 @@ def test_centroids_witherror(xc_ref, yc_ref, x_stddev, y_stddev, theta):
     y, x = np.mgrid[0:50, 0:50]
     data = model(x, y)
     error = np.sqrt(data)
-    xc2, yc2 = centroid_1dg(data, error=error)
+    yc2, xc2 = centroid_1dg(data, error=error)
     assert_allclose([xc_ref, yc_ref], [xc2, yc2], rtol=0, atol=1.e-3)
-    xc3, yc3 = centroid_2dg(data, error=error)
+    yc3, xc3 = centroid_2dg(data, error=error)
     assert_allclose([xc_ref, yc_ref], [xc3, yc3], rtol=0, atol=1.e-3)
 
 
@@ -69,11 +69,11 @@ def test_centroids_withmask():
     mask = np.zeros_like(data, dtype=bool)
     data[0, 0] = 1.
     mask[0, 0] = True
-    xc, yc = centroid_com(data, mask=mask)
+    yc, xc = centroid_com(data, mask=mask)
     assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
-    xc2, yc2 = centroid_1dg(data, mask=mask)
+    yc2, xc2 = centroid_1dg(data, mask=mask)
     assert_allclose([xc2, yc2], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
-    xc3, yc3 = centroid_2dg(data, mask=mask)
+    yc3, xc3 = centroid_2dg(data, mask=mask)
     assert_allclose([xc3, yc3], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
 
 
@@ -85,7 +85,7 @@ def test_centroids_mask():
     centroid = centroid_com(data, mask=None)
     centroid_mask = centroid_com(data, mask=mask)
     assert_allclose([0.5, 0.5], centroid, rtol=0, atol=1.e-6)
-    assert_allclose([0.5, 0.0], centroid_mask, rtol=0, atol=1.e-6)
+    assert_allclose([0.0, 0.5], centroid_mask, rtol=0, atol=1.e-6)
 
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
