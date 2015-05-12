@@ -179,13 +179,13 @@ def marginalize_data2d(data, error=None, mask=None):
     Returns
     -------
     marginal_data : list of `~numpy.ndarray`
-        The marginal y and x distributions of the input ``data``.
+        The marginal x and y distributions of the input ``data``.
 
     marginal_error : list of `~numpy.ndarray`
-        The marginal y and x distributions of the input ``error``.
+        The marginal x and y distributions of the input ``error``.
 
     marginal_mask : list of `~numpy.ndarray` (bool)
-        The marginal y and x distributions of the input ``mask``.
+        The marginal x and y distributions of the input ``mask``.
     """
 
     if error is not None:
