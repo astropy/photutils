@@ -278,16 +278,18 @@ class BaseTestAperturePhotometry(object):
                                      mask=mask, error=error,
                                      effective_gain=effective_gain)
 
-        if not isinstance(self.aperture, (RectangularAperture, RectangularAnnulus)):
+        if not isinstance(self.aperture, (RectangularAperture,
+                                          RectangularAnnulus)):
             assert_allclose(table3['aperture_sum'], self.true_flux)
             assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
                             atol=0.1)
         assert np.all(table1['aperture_sum'] < table3['aperture_sum'])
 
-        if not isinstance(self.aperture, (RectangularAperture, RectangularAnnulus)):
+        if not isinstance(self.aperture, (RectangularAperture,
+                                          RectangularAnnulus)):
             assert_allclose(table3['aperture_sum_err'], true_error)
-            assert_allclose(table2['aperture_sum_err'], table3['aperture_sum_err'],
-                            atol=0.1)
+            assert_allclose(table2['aperture_sum_err'],
+                            table3['aperture_sum_err'], atol=0.1)
         assert np.all(table1['aperture_sum_err'] < table3['aperture_sum_err'])
 
 
@@ -362,7 +364,8 @@ class TestEllipticalAnnulus(BaseTestAperturePhotometry):
         b_out = 5.
         theta = -np.pi / 4.
         self.aperture = EllipticalAnnulus(position, a_in, a_out, b_out, theta)
-        self.area = np.pi * (a_out * b_out) - np.pi * (a_in * b_out * a_in / a_out)
+        self.area = (np.pi * (a_out * b_out) -
+                     np.pi * (a_in * b_out * a_in / a_out))
         self.true_flux = self.area
 
 
@@ -535,8 +538,8 @@ def test_wcs_based_photometry():
                     photometry_skycoord_circ_ann_s['aperture_sum'])
 
     assert_allclose(photometry_skycoord_circ_ann['aperture_sum'],
-                    photometry_skycoord_circ['aperture_sum']
-                    - photometry_skycoord_circ_2['aperture_sum'])
+                    photometry_skycoord_circ['aperture_sum'] -
+                    photometry_skycoord_circ_2['aperture_sum'])
 
     photometry_skycoord_ell = aperture_photometry(
         hdu, SkyEllipticalAperture(pos_skycoord,
@@ -564,8 +567,8 @@ def test_wcs_based_photometry():
                     photometry_skycoord_circ['aperture_sum'], rtol=5e-3)
 
     assert_allclose(photometry_skycoord_ell_ann['aperture_sum'],
-                    photometry_skycoord_ell['aperture_sum']
-                    - photometry_skycoord_ell_2['aperture_sum'], rtol=1e-4)
+                    photometry_skycoord_ell['aperture_sum'] -
+                    photometry_skycoord_ell_2['aperture_sum'], rtol=1e-4)
 
     photometry_skycoord_rec = aperture_photometry(
         hdu, SkyRectangularAperture(pos_skycoord,
@@ -601,8 +604,8 @@ def test_wcs_based_photometry():
                     photometry_skycoord_rec_ann_s['aperture_sum'])
 
     assert_allclose(photometry_skycoord_rec_ann['aperture_sum'],
-                    photometry_skycoord_rec['aperture_sum']
-                    - photometry_skycoord_rec_4['aperture_sum'], rtol=1e-4)
+                    photometry_skycoord_rec['aperture_sum'] -
+                    photometry_skycoord_rec_4['aperture_sum'], rtol=1e-4)
 
 
 def test_basic_circular_aperture_photometry_unit():
@@ -621,7 +624,8 @@ def test_basic_circular_aperture_photometry_unit():
     table2 = aperture_photometry(data2, CircularAperture(position, radius),
                                  unit=unit)
     with pytest.raises(u.UnitsError) as err:
-        aperture_photometry(data3, CircularAperture(position, radius), unit=unit)
+        aperture_photometry(data3, CircularAperture(position, radius),
+                            unit=unit)
     assert ("UnitsError: Unit of input data (Jy) and unit given by unit "
             "argument (adu) are not identical." in str(err))
 
@@ -669,9 +673,9 @@ def test_aperture_photometry_inputs_with_mask():
     assert_allclose(t2['aperture_sum'][0], 111.566370614)
 
 
-
 TEST_ELLIPSE_EXACT_APERTURES = [(3.469906, 3.923861394, 3.),
                                 (0.3834415188257778, 0.3834415188257778, 0.3)]
+
 
 @pytest.mark.parametrize('x,y,r', TEST_ELLIPSE_EXACT_APERTURES)
 def test_ellipse_exact_grid(x, y, r):
@@ -685,7 +689,7 @@ def test_ellipse_exact_grid(x, y, r):
 
     aperture = EllipticalAperture((x, y), r, r, 0.)
     t = aperture_photometry(data, aperture, method='exact')
-    actual= t['aperture_sum'][0] / (np.pi * r ** 2)
+    actual = t['aperture_sum'][0] / (np.pi * r ** 2)
     assert_allclose(actual, 1)
 
 
