@@ -1316,7 +1316,8 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
                                  'must match')
 
             if datamask is not None:
-                mask *= datamask
+                # combine the masks
+                mask = np.logical_or(mask, datamask)
 
         # masked values are replaced with zeros, so they do not contribute
         # to the aperture sums
