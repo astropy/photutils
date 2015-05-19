@@ -1307,7 +1307,7 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
         # masked values are replaced with zeros, so they do not contribute
         # to the aperture sums
         data = copy.deepcopy(data)    # do not modify input data
-        data *= ~mask
+        data[mask] = 0
 
     # Check whether we really need to calculate pixelwise errors, even if
     # requested.  If neither error nor effective_gain is an array, then it's
@@ -1337,7 +1337,7 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
         # to the sums
         if mask is not None:
             error = copy.deepcopy(error)    # do not modify input data
-            error *= ~mask
+            error[mask] = 0.
 
     # Check effective_gain shape.
     if effective_gain is not None:
