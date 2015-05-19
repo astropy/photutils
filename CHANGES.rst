@@ -9,6 +9,11 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.aperture_photometry``
+
+  - Fixed an issue where ``np.nan`` or ``np.inf`` were not properly
+    masked. [#267]
+
 - ``photutils.detection``
 
   - ``find_peaks`` now returns an Astropy Table containing the (x, y)
