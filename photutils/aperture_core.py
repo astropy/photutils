@@ -1278,9 +1278,6 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     else:
         data = u.Quantity(data, unit=unit, copy=False)
 
-    if datamask is None:
-        data.mask = datamask
-
     # Check input array type and dimension.
     if np.iscomplexobj(data):
         raise TypeError('Complex type not supported')
