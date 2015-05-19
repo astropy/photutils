@@ -688,3 +688,16 @@ def test_ellipse_exact_grid(x, y, r):
     actual= t['aperture_sum'][0] / (np.pi * r ** 2)
     assert_allclose(actual, 1)
 
+
+@pytest.mark.parametrize('value', [np.nan, np.inf])
+def test_nan_inf_mask(value):
+    """Test that nans and infs are properly masked [267]."""
+    data = np.ones((9, 9))
+    mask = np.zeros_like(data, dtype=bool)
+    data[4, 4] = value
+    mask[4, 4] = True
+    radius = 2.
+    aper = CircularAperture((4, 4), radius)
+    tbl = aperture_photometry(data, aper, mask=mask)
+    desired = (np.pi * radius**2) - 1
+    assert_allclose(tbl['aperture_sum'], desired)
