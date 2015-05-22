@@ -1245,22 +1245,11 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
         if 'BUNIT' in header:
             dataunit = header['BUNIT']
 
-        # TODO check how a mask can be stored in the header, it seems like
-        # full pixel masks are not supported by the FITS standard, look for
-        # real life examples (e.g. header value stores the fits number of
-        # fits extension where the pixelmask is stored?)
-        if 'MASK' in header:
-            datamask = header.mask
-
     elif isinstance(data, fits.HDUList):
-        # TODO: do it in a 2d array, and thus get the light curves as a
-        # side-product? Although it's not usual to store time series as
-        # HDUList
-
         for i in range(len(data)):
             if data[i].data is not None:
                 warnings.warn("Input data is a HDUList object, photometry is "
-                              "only run for the {0}. HDU."
+                              "run only for the {0} HDU."
                               .format(i), AstropyUserWarning)
                 return aperture_photometry(data[i], apertures, unit, wcs,
                                            error, effective_gain, mask,
@@ -1289,9 +1278,6 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     else:
         data = u.Quantity(data, unit=unit, copy=False)
 
-    if datamask is None:
-        data.mask = datamask
-
     # Check input array type and dimension.
     if np.iscomplexobj(data):
         raise TypeError('Complex type not supported')
@@ -1307,21 +1293,18 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
             mask = np.asarray(mask)
             if np.iscomplexobj(mask):
                 raise TypeError('Complex type not supported')
-            if mask.ndim != 2:
-                raise ValueError('{0}-d array not supported. '
-                                 'Only 2-d arrays supported.'
-                                 .format(mask.ndim))
             if mask.shape != data.shape:
                 raise ValueError('Shapes of mask array and data array '
                                  'must match')
 
             if datamask is not None:
-                mask *= datamask
+                # combine the masks
+                mask = np.logical_or(mask, datamask)
 
         # masked values are replaced with zeros, so they do not contribute
         # to the aperture sums
         data = copy.deepcopy(data)    # do not modify input data
-        data *= ~mask
+        data[mask] = 0
 
     # Check whether we really need to calculate pixelwise errors, even if
     # requested.  If neither error nor effective_gain is an array, then it's
@@ -1351,7 +1334,7 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
         # to the sums
         if mask is not None:
             error = copy.deepcopy(error)    # do not modify input data
-            error *= ~mask
+            error[mask] = 0.
 
     # Check effective_gain shape.
     if effective_gain is not None:
