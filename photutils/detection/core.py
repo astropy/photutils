@@ -10,12 +10,16 @@ from astropy.stats import sigma_clipped_stats
 from ..morphology import cutout_footprint, fit_2dgaussian
 from ..utils.wcs_helpers import pixel_to_icrs_coords
 
+import astropy
+ASTROPY_LT_1P1 = [int(x) for x in astropy.__version__.split('.')[:2]] < [1, 1]
+
 
 __all__ = ['detect_threshold', 'detect_sources', 'find_peaks']
 
 
+
 def detect_threshold(data, snr, background=None, error=None, mask=None,
-                     mask_val=None, sigclip_sigma=3.0, sigclip_iters=None):
+                     mask_value=None, sigclip_sigma=3.0, sigclip_iters=None):
     """
     Calculate a pixel-wise threshold image to be used to detect sources.
 
@@ -51,10 +55,10 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
         Masked pixels are ignored when computing the image background
         statistics.
 
-    mask_val : float, optional
+    mask_value : float, optional
         An image data value (e.g., ``0.0``) that is ignored when
-        computing the image background statistics.  ``mask_val`` will be
-        ignored if ``mask`` is input.
+        computing the image background statistics.  ``mask_value`` will
+        be ignored if ``mask`` is input.
 
     sigclip_sigma : float, optional
         The number of standard deviations to use as the clipping limit
@@ -78,17 +82,24 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
 
     Notes
     -----
-    The ``mask``, ``mask_val``, ``sigclip_sigma``, and ``sigclip_iters``
-    inputs are used only if it is necessary to estimate ``background``
-    or ``error`` using sigma-clipped background statistics.  If
-    ``background`` and ``error`` are both input, then ``mask``,
-    ``mask_val``, ``sigclip_sigma``, and ``sigclip_iters`` are ignored.
+    The ``mask``, ``mask_value``, ``sigclip_sigma``, and
+    ``sigclip_iters`` inputs are used only if it is necessary to
+    estimate ``background`` or ``error`` using sigma-clipped background
+    statistics.  If ``background`` and ``error`` are both input, then
+    ``mask``, ``mask_value``, ``sigclip_sigma``, and ``sigclip_iters``
+    are ignored.
     """
 
     if background is None or error is None:
-        data_mean, data_median, data_std = sigma_clipped_stats(
-            data, mask=mask, mask_val=mask_val, sigma=sigclip_sigma,
-            iters=sigclip_iters)
+        # TODO: remove when astropy 1.1 is released
+        if ASTROPY_LT_1P1:
+            data_mean, data_median, data_std = sigma_clipped_stats(
+                data, mask=mask, mask_val=mask_value, sigma=sigclip_sigma,
+                iters=sigclip_iters)
+        else:
+            data_mean, data_median, data_std = sigma_clipped_stats(
+                data, mask=mask, mask_value=mask_value, sigma=sigclip_sigma,
+                iters=sigclip_iters)
         bkgrd_image = np.zeros_like(data) + data_mean
         bkgrdrms_image = np.zeros_like(data) + data_std
 

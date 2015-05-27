@@ -7,9 +7,11 @@ from astropy.stats import sigma_clip
 from astropy.utils import lazyproperty
 import warnings
 
+import astropy
+ASTROPY_LT_1P1 = [int(x) for x in astropy.__version__.split('.')[:2]] < [1, 1]
+
 
 __all__ = ['Background']
-
 
 __doctest_requires__ = {('Background'): ['scipy']}
 
@@ -215,10 +217,16 @@ class Background(object):
         del data_ma
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            self.data_sigclip = sigma_clip(
-                data_rebin, sig=self.sigclip_sigma, axis=2,
-                iters=self.sigclip_iters, cenfunc=np.ma.median,
-                varfunc=np.ma.var)
+            if ASTROPY_LT_1P1:
+                self.data_sigclip = sigma_clip(
+                    data_rebin, sig=self.sigclip_sigma, axis=2,
+                    iters=self.sigclip_iters, cenfunc=np.ma.median,
+                    varfunc=np.ma.var)
+            else:
+                self.data_sigclip = sigma_clip(
+                    data_rebin, sigma=self.sigclip_sigma, axis=2,
+                    iters=self.sigclip_iters, cenfunc=np.ma.median,
+                    stdfunc=np.std)
         del data_rebin
 
     def _filter_meshes(self, data_low_res):

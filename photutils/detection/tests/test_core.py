@@ -6,6 +6,7 @@ import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 from ..core import detect_threshold, detect_sources, find_peaks
 
+
 try:
     import scipy
     HAS_SCIPY = True
@@ -87,9 +88,9 @@ class TestDetectThreshold(object):
         ref = 12. * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
-    def test_mask_val(self):
-        """Test detection with mask_val."""
-        threshold = detect_threshold(DATA, snr=1.0, mask_val=0.0)
+    def test_mask_value(self):
+        """Test detection with mask_value."""
+        threshold = detect_threshold(DATA, snr=1.0, mask_value=0.0)
         ref = 2. * np.ones((3, 3))
         assert_array_equal(threshold, ref)
 
@@ -106,9 +107,9 @@ class TestDetectThreshold(object):
         assert_array_equal(threshold, ref)
 
     def test_image_mask_override(self):
-        """Test that image_mask overrides mask_val."""
+        """Test that image_mask overrides mask_value."""
         mask = REF3.astype(np.bool)
-        threshold = detect_threshold(DATA, snr=0.1, error=0, mask_val=0.0,
+        threshold = detect_threshold(DATA, snr=0.1, error=0, mask_value=0.0,
                                      mask=mask, sigclip_sigma=10,
                                      sigclip_iters=1)
         ref = np.ones((3, 3))
