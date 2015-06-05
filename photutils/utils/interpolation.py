@@ -15,7 +15,8 @@ def interpolate_masked_data(data, mask, error=None, background=None):
     background images.
 
     The value of masked pixels are replaced by the mean value of the
-    8-connected neighboring non-masked pixels.
+    8-connected neighboring non-masked pixels.  This function is intended
+    for single, isolated masked pixels (e.g. hot/warm pixels).
 
     Parameters
     ----------
