@@ -1265,17 +1265,41 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
         dataunit = data.unit
 
     if unit is not None and dataunit is not None:
-        if unit != dataunit:
-            raise u.UnitsError('Unit of input data ({0}) and unit given by '
-                               'unit argument ({1}) are not identical.'.
-                               format(dataunit, unit))
-        data = u.Quantity(data, unit=dataunit, copy=False)
+        try:
+            dataunit = u.Unit(dataunit)
+            unit = u.Unit(unit)
+            if unit != dataunit:
+                warnings.warn('Unit of input data ({0}) and unit given by '
+                              'unit argument ({1}) are not identical.'
+                              .format(dataunit, unit))
+        except ValueError:
+            dataunit = u.Unit(dataunit, parse_strict='silent')
+            unit = u.Unit(unit, parse_strict='warn')
+
+        if not isinstance(unit, u.UnrecognizedUnit):
+            data = u.Quantity(data, unit=unit, copy=False)
+        else:
+            if not isinstance(dataunit, u.UnrecognizedUnit):
+                data = u.Quantity(data, unit=dataunit, copy=False)
+            else:
+                warnings.warn('Neither the unit of the input data ({0}), nor '
+                              'the unit given by the unit argument ({1}) is '
+                              'parseable as a valid unit'
+                              .format(dataunit, unit))
+
     elif unit is None:
         if dataunit is not None:
+            try:
+                dataunit = u.Unit(dataunit)
+            except ValueError:
+                dataunit = u.Unit(dataunit, parse_strict='silent')
+                warnings.warn('The unit of the input data ({0}) is not '
+                              'parseable as a valid unit'.format(dataunit))
             data = u.Quantity(data, unit=dataunit, copy=False)
         else:
             data = u.Quantity(data, copy=False)
     else:
+        unit = u.Unit(unit, parse_strict='warn')
         data = u.Quantity(data, unit=unit, copy=False)
 
     # Check input array type and dimension.
