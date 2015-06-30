@@ -1161,7 +1161,9 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     unit : `~astropy.units.UnitBase` instance, str
         An object that represents the unit associated with ``data``.  Must
         be an `~astropy.units.UnitBase` object or a string parseable by the
-        :mod:`~astropy.units` package. An error is raised if ``data``
+        :mod:`~astropy.units` package. It overrides the ``data`` unit from
+        the ``'BUNIT'`` header keyword and issues a warning if
+        different. However an error is raised if ``data`` as an array
         already has a different unit.
     wcs : `~astropy.wcs.WCS`, optional
         Use this as the wcs transformation. It overrides any wcs transformation
