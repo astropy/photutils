@@ -416,7 +416,7 @@ class BaseTestDifferentData(object):
 
         aperture = CircularAperture(self.position, self.radius)
         table = aperture_photometry(self.data, aperture,
-                                    method='exact')
+                                    method='exact', unit='adu')
 
         assert_allclose(table['aperture_sum'], self.true_flux)
         assert table['aperture_sum'].unit, self.fluxunit
@@ -451,6 +451,18 @@ class TestInputHDUList(BaseTestDifferentData):
         self.position = (20, 20)
         # It should stop at the first extension
         self.true_flux = np.pi * self.radius * self.radius
+
+
+class TestInputHDUDifferentBUNIT(BaseTestDifferentData):
+
+    def setup_class(self):
+        data = np.ones((40, 40), dtype=np.float)
+        self.data = fits.ImageHDU(data=data)
+        self.data.header['BUNIT'] = 'Jy'
+        self.radius = 3
+        self.position = (20, 20)
+        self.true_flux = np.pi * self.radius * self.radius
+        self.fluxunit = u.adu
 
 
 class TestInputNDData(BaseTestDifferentData):
