@@ -1161,7 +1161,9 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     unit : `~astropy.units.UnitBase` instance, str
         An object that represents the unit associated with ``data``.  Must
         be an `~astropy.units.UnitBase` object or a string parseable by the
-        :mod:`~astropy.units` package. An error is raised if ``data``
+        :mod:`~astropy.units` package. It overrides the ``data`` unit from
+        the ``'BUNIT'`` header keyword and issues a warning if
+        different. However an error is raised if ``data`` as an array
         already has a different unit.
     wcs : `~astropy.wcs.WCS`, optional
         Use this as the wcs transformation. It overrides any wcs transformation
@@ -1265,17 +1267,33 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
         dataunit = data.unit
 
     if unit is not None and dataunit is not None:
-        if unit != dataunit:
-            raise u.UnitsError('Unit of input data ({0}) and unit given by '
-                               'unit argument ({1}) are not identical.'.
-                               format(dataunit, unit))
-        data = u.Quantity(data, unit=dataunit, copy=False)
+        dataunit = u.Unit(dataunit, parse_strict='warn')
+        unit = u.Unit(unit, parse_strict='warn')
+
+        if not isinstance(unit, u.UnrecognizedUnit):
+            data = u.Quantity(data, unit=unit, copy=False)
+            if not isinstance(dataunit, u.UnrecognizedUnit):
+                if unit != dataunit:
+                    warnings.warn('Unit of input data ({0}) and unit given by '
+                                  'unit argument ({1}) are not identical.'
+                                  .format(dataunit, unit))
+        else:
+            if not isinstance(dataunit, u.UnrecognizedUnit):
+                data = u.Quantity(data, unit=dataunit, copy=False)
+            else:
+                warnings.warn('Neither the unit of the input data ({0}), nor '
+                              'the unit given by the unit argument ({1}) is '
+                              'parseable as a valid unit'
+                              .format(dataunit, unit))
+
     elif unit is None:
         if dataunit is not None:
+            dataunit = u.Unit(dataunit, parse_strict='warn')
             data = u.Quantity(data, unit=dataunit, copy=False)
         else:
             data = u.Quantity(data, copy=False)
     else:
+        unit = u.Unit(unit, parse_strict='warn')
         data = u.Quantity(data, unit=unit, copy=False)
 
     # Check input array type and dimension.
