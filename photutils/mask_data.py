@@ -13,8 +13,33 @@ __all__ = []
 
 
 
-def get_cutouts(data, circular_aperture, error,
-                           pixelwise_error, method, subpixels):
+def get_cutouts(data, circular_aperture, use_exact = 0, subpixels = 5):
+    '''
+    Create a square cutout of each aperture and an associated mask which denotes the
+    aperture with 1 for inside, 0 for outside, and a fraction for the edges.
+
+	Parameters:
+	-----------
+	data : Image array
+	circular_aperture: photutils aperture object
+	use_exact : (default = 0) refers to the keyword in .geometry.circular_overlap_grid.
+			If use_exact = 1, a hard boundary containing only the pixels fully contained
+			within the aperture. if use_exact = 0, calculates the fractional pixel
+			contained within the pixel
+	subpixels : (default = 5) if use_exact = 0 this is used to determine the fraction of
+			the pixel contained within the aperture.
+
+	Returns:
+	-----------
+	img_mask_list : a list with one tuple for each object position in the circular_aperture
+		array. Each tuple contains a 2D array with the cutout of the image which contains
+		the complete aperture and a 2D array with a boolean mask which is True inside the
+		aperture, False outside the aperture, and gives a fraction inside the aperture for
+		edge pixels.
+
+
+
+    '''
 
 	positions = circular_aperture.positions
 	radius = circular_aperture.radius
@@ -65,6 +90,11 @@ def get_cutouts(data, circular_aperture, error,
 
 def get_fractional_overlap_mask(indiv_absolute_extent, indiv_centered_extent, overlap,
 								radius, use_exact, subpixels):
+	'''
+	given a set of coordinates, calculate the masked array for the cutout. Returns an
+	empty array if there is no overlap between the data and the aperture.
+	'''
+
 
     from .geometry import circular_overlap_grid
 
@@ -84,6 +114,10 @@ def get_fractional_overlap_mask(indiv_absolute_extent, indiv_centered_extent, ov
 
 
 def cutout_image(data, absolute_extent, overlap):
+	'''
+	Given a set of coordinates, return a cutout corresponding to the square containing
+	the circular aperture at a given position
+	'''
 	if overlap:
 		x_min, x_max, y_min, y_max = indiv_absolute_extent
 		return data[y_min:y_max+1, x_min:x_max+1]
