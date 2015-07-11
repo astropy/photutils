@@ -13,9 +13,11 @@ __all__ = []
 
 
 
-def get_cutouts(data, positions, radius, error,
+def get_cutouts(data, circular_aperture, error,
                            pixelwise_error, method, subpixels):
 
+	positions = circular_aperture.positions
+	radius = circular_aperture.radius
     extents = np.zeros((len(positions), 4), dtype=int)
 
     extents[:, 0] = positions[:, 0] - radius + 0.5
@@ -48,8 +50,16 @@ def get_cutouts(data, positions, radius, error,
         use_exact = 1
         subpixels = 1
 
-    fractional_overlap_mask = get_fractinoal_overlap_mask(absolute_extent, centered_extent,
-    														~no_overlap, use_exact, subpixels)
+	#Compute cutout for each object in image
+	img_mask_list = []
+	for indiv_obj in range(len(no_overlap)):
+    	fractional_overlap_mask = get_fractinoal_overlap_mask(absolute_extent[i],
+    															centered_extent[i],
+    															~no_overlap[i], use_exact,
+    															subpixels)
+    	img_stamp = cutout_image(absolute_extent)
+    	img_mask_list.append((img_stamp, fractional_overlap_mask))
+    return img_mask_list
 
 def get_fractional_overlap_mask(absolute_extent, centered_extent, overlap_arr, use_exact,
 								subpixels):
@@ -67,3 +77,6 @@ def get_fractional_overlap_mask(absolute_extent, centered_extent, overlap_arr, u
                                              radius, use_exact, subpixels)
 
     return fraction
+
+def cutout_image(absolute_extent):
+	pass
