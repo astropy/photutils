@@ -86,7 +86,7 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
             pymax = pymin + dy
             frac[j, i] = rectangular_overlap_single_subpixel(
                 pxmin, pymin, pxmax, pymax, width, height, theta,
-                subpixels) / (dx * dy)
+                subpixels)
 
     return frac
 
