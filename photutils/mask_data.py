@@ -53,29 +53,33 @@ def get_cutouts(data, circular_aperture, error,
 	#Compute cutout for each object in image
 	img_mask_list = []
 	for indiv_obj in range(len(no_overlap)):
+
     	fractional_overlap_mask = get_fractinoal_overlap_mask(absolute_extent[i],
     															centered_extent[i],
-    															~no_overlap[i], use_exact,
+    															~no_overlap[i],
+    															radius, use_exact,
     															subpixels)
     	img_stamp = cutout_image(absolute_extent)
     	img_mask_list.append((img_stamp, fractional_overlap_mask))
     return img_mask_list
 
-def get_fractional_overlap_mask(absolute_extent, centered_extent, overlap_arr, use_exact,
-								subpixels):
-    x_min, x_max, y_min, y_max = absolute_extent
-    x_pmin, x_pmax, y_pmin, y_pmax = centered_extent
+def get_fractional_overlap_mask(indiv_absolute_extent, indiv_centered_extent, overlap,
+								radius, use_exact, subpixels):
+
     from .geometry import circular_overlap_grid
 
-    for i, overlap in enumerate(overlap_arr):
+	x_min, x_max, y_min, y_max = indiv_absolute_extent
+    x_pmin, x_pmax, y_pmin, y_pmax = indiv_centered_extent
 
-        if overlap:
-            fraction = circular_overlap_grid(x_pmin[i], x_pmax[i],
-                                             y_pmin[i], y_pmax[i],
-                                             x_max[i] - x_min[i],
-                                             y_max[i] - y_min[i],
+    if overlap:
+        fraction = circular_overlap_grid(x_pmin, x_pmax,
+                                             y_pmin, y_pmax,
+                                             x_max - x_min,
+                                             y_max - y_min,
                                              radius, use_exact, subpixels)
-
+	else:
+		#Should this raise a warning or have we already done this once and that is enough?
+		fraction = np.array([])
     return fraction
 
 def cutout_image(absolute_extent):
