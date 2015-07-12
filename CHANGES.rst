@@ -40,3 +40,9 @@ Bug Fixes
   - ``overlap_area_triangle_unit_circle`` handles correctly a corner case
     in some i386 systems where the area of the aperture was not computed
     correctly. [#242]
+
+  - ``rectangular_overlap_grid`` and ``elliptical_overlap_grid`` fixes to
+    normalization of subsampled pixels. [#265]
+
+  - ``overlap_area_triangle_unit_circle`` handles correctly the case where
+    a line segment intersects at a triangle vertex. [#277]
