@@ -54,7 +54,6 @@ def get_cutouts(data, circular_aperture, use_exact = 0, subpixels = 5):
 
     no_overlap, absolute_extent, centered_extent = get_phot_extents(data, positions,
                                                        extents)
-
     #Check that some of the apertures overlap the data
     if np.sum(no_overlap):
         warnings.warn("The aperture at position {0} does not have any "
@@ -64,26 +63,18 @@ def get_cutouts(data, circular_aperture, use_exact = 0, subpixels = 5):
         if np.sum(no_overlap) == len(positions):
             return [(np.array([]), np.array([]))]
 
-
-    if method == 'center':
-        use_exact = 0
-        subpixels = 1
-    elif method == 'subpixel':
-        use_exact = 0
-    else:
-        use_exact = 1
-        subpixels = 1
-
     #Compute cutout for each object in image
     img_mask_list = []
+    absolute_extent = reformat_extents(absolute_extent)
+    centered_extent = reformat_extents(centered_extent)
     for indiv_obj in range(len(no_overlap)):
 
-        fractional_overlap_mask = get_fractinoal_overlap_mask(absolute_extent[i],
-                                                                centered_extent[i],
-                                                                ~no_overlap[i],
+        fractional_overlap_mask = get_fractional_overlap_mask(absolute_extent[indiv_obj],
+                                                                centered_extent[indiv_obj],
+                                                                ~no_overlap[indiv_obj],
                                                                 radius, use_exact,
                                                                 subpixels)
-        img_stamp = cutout_image(data, absolute_extent[i], ~no_overlap[i])
+        img_stamp = cutout_image(data, absolute_extent[indiv_obj], ~no_overlap[indiv_obj])
         img_mask_list.append((img_stamp, fractional_overlap_mask))
     return img_mask_list
 
@@ -111,8 +102,18 @@ def get_fractional_overlap_mask(indiv_absolute_extent, indiv_centered_extent, ov
         return np.array([])
 
 
+def reformat_extents(extents):
+	'''
+	Extents are returned as a list of xmin, list of xmax, list of ymin, list of ymax, I
+	would like to group them by object as (xmin, xmax, ymin, ymax) for each object.
+	'''
+	obj_group_extents = []
+	for xmin, xmax, ymin, ymax in zip(extents[0], extents[1], extents[2], extents[3]):
+		obj_group_extents.append((xmin, xmax, ymin, ymax))
+	return obj_group_extents
 
-def cutout_image(data, absolute_extent, overlap):
+
+def cutout_image(data, indiv_absolute_extent, overlap):
     '''
     Given a set of coordinates, return a cutout corresponding to the square containing
     the circular aperture at a given position
