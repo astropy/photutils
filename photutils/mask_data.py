@@ -120,6 +120,6 @@ def cutout_image(data, indiv_absolute_extent, overlap):
     '''
     if overlap:
         x_min, x_max, y_min, y_max = indiv_absolute_extent
-        return data[y_min:y_max+1, x_min:x_max+1]
+        return data[y_min:y_max, x_min:x_max]
     else:
         return np.array([])
