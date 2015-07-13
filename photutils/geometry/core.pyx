@@ -121,7 +121,6 @@ cdef intersections circle_line(double x1, double y1, double x2, double y2):
     dy = y2 - y1
 
     if fabs(dx) < tolerance and fabs(dy) < tolerance:
-
         inter.p1.x = 2.
         inter.p1.y = 2.
         inter.p2.x = 2.
@@ -135,7 +134,6 @@ cdef intersections circle_line(double x1, double y1, double x2, double y2):
 
         # Find the determinant of the quadratic equation
         delta = 1. + a * a - b * b
-
         if delta > 0.:  # solutions exist
 
             delta = sqrt(delta)
@@ -146,7 +144,6 @@ cdef intersections circle_line(double x1, double y1, double x2, double y2):
             inter.p2.y = a * inter.p2.x + b
 
         else:  # no solution, return values > 1
-
             inter.p1.x = 2.
             inter.p1.y = 2.
             inter.p2.x = 2.
@@ -171,7 +168,6 @@ cdef intersections circle_line(double x1, double y1, double x2, double y2):
             inter.p2.x = a * inter.p2.y + b
 
         else:  # no solution, return values > 1
-
             inter.p1.x = 2.
             inter.p1.y = 2.
             inter.p2.x = 2.
@@ -252,6 +248,7 @@ cdef double overlap_area_triangle_unit_circle(double x1, double y1, double x2, d
 
     cdef double d1, d2, d3
     cdef bool in1, in2, in3
+    cdef bool on1, on2, on3
     cdef double area
     cdef double PI = np.pi
     cdef intersections inter
@@ -297,13 +294,11 @@ cdef double overlap_area_triangle_unit_circle(double x1, double y1, double x2, d
         area = area_triangle(x1, y1, x2, y2, x3, y3)
 
     elif in2 or on2:
-
         # If vertex 1 or 2 are on the edge of the circle, then we use the dot
         # product to vertex 3 to determine whether an intersection takes place.
         intersect13 = not on1 or x1 * (x3 - x1) + y1 * (y3 - y1) < 0.
         intersect23 = not on2 or x2 * (x3 - x2) + y2 * (y3 - y2) < 0.
-
-        if intersect13 and intersect23:
+        if intersect13 and intersect23 and not on2:
             pt1 = circle_segment_single2(x1, y1, x3, y3)
             pt2 = circle_segment_single2(x2, y2, x3, y3)
             area = area_triangle(x1, y1, x2, y2, pt1.x, pt1.y) \
@@ -320,6 +315,9 @@ cdef double overlap_area_triangle_unit_circle(double x1, double y1, double x2, d
         else:
             area = area_arc_unit(x1, y1, x2, y2)
 
+    elif on1:
+        # The triangle is outside the circle
+        area = 0.0
     elif in1:
         # Check for intersections of far side with circle
         inter = circle_segment(x2, y2, x3, y3)
