@@ -73,6 +73,7 @@ have peaks approximately 5-sigma above the background:
     283  299.80943822 398.027911813 ... 8890.0 6.13258007484   -1.96910806905
     284 315.689448343  398.70251891 ... 6485.0 5.56746265532   -1.86414328153
     285 360.437243037 398.698539555 ... 8079.0 5.27758085314   -1.80608723868
+    Length = 285 rows
 
 Let's plot the image and mark the location of detected sources:
 
