@@ -27,7 +27,6 @@ parameters of the detected sources are returned as an Astropy
 .. doctest-requires:: scipy, skimage
 
     >>> from photutils import daofind
-    >>> from astropy.stats import median_absolute_deviation as mad
     >>> from astropy.stats import mad_std
     >>> bkg_sigma = mad_std(image)    # doctest: +REMOTE_DATA
     >>> sources = daofind(image, fwhm=4., threshold=3.*bkg_sigma)    # doctest: +REMOTE_DATA
@@ -90,7 +89,6 @@ apertures:
 
     import numpy as np
     import matplotlib.pylab as plt
-    from astropy.stats import median_absolute_deviation as mad
     from astropy.stats import mad_std
     from photutils import datasets, daofind, aperture_photometry, CircularAperture
     hdu = datasets.load_star_image()
