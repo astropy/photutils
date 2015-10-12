@@ -3,9 +3,10 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
 from numpy.testing import assert_allclose
-from astropy.tests.helper import pytest
+from astropy.tests.helper import pytest, assert_quantity_allclose
 from astropy.modeling import models
 from astropy.table import Table
+import astropy.units as u
 from astropy.utils.misc import isiterable
 import astropy.wcs as WCS
 from ..segmentation import (SegmentProperties, segment_properties,
@@ -131,17 +132,22 @@ class TestSegmentPropertiesFunction(object):
     def test_properties(self):
         props = segment_properties(IMAGE, SEGM)
         assert props[0].id == 1
-        assert_allclose(props[0].xcentroid, XCEN, rtol=1.e-2)
-        assert_allclose(props[0].ycentroid, YCEN, rtol=1.e-2)
+        assert_quantity_allclose(props[0].xcentroid, XCEN*u.pix,
+                                 rtol=1.e-2)
+        assert_quantity_allclose(props[0].ycentroid, YCEN*u.pix,
+                                 rtol=1.e-2)
         assert_allclose(props[0].segment_sum, IMAGE[IMAGE >= THRESHOLD].sum())
-        assert_allclose(props[0].semimajor_axis_sigma, MAJOR_SIG, rtol=1.e-2)
-        assert_allclose(props[0].semiminor_axis_sigma, MINOR_SIG, rtol=1.e-2)
-        assert_allclose(props[0].orientation, THETA, rtol=1.e-3)
-        assert_allclose(props[0].bbox, [35, 25, 70, 77])
-        assert_allclose(props[0].area, 1058.0)
-        assert_allclose(len(props[0].values), props[0].area)
+        assert_quantity_allclose(props[0].semimajor_axis_sigma,
+                                 MAJOR_SIG*u.pix, rtol=1.e-2)
+        assert_quantity_allclose(props[0].semiminor_axis_sigma,
+                                 MINOR_SIG*u.pix, rtol=1.e-2)
+        assert_quantity_allclose(props[0].orientation, THETA*u.rad,
+                                 rtol=1.e-3)
+        assert_allclose(props[0].bbox.value, [35, 25, 70, 77])
+        assert_quantity_allclose(props[0].area, 1058.0*u.pix**2)
+        assert_allclose(len(props[0].values), props[0].area.value)
         assert_allclose(len(props[0].coords), 2)
-        assert_allclose(len(props[0].coords[0]), props[0].area)
+        assert_allclose(len(props[0].coords[0]), props[0].area.value)
 
         properties = ['background_atcentroid', 'background_mean',
                       'eccentricity', 'ellipticity', 'elongation',
@@ -205,13 +211,16 @@ class TestSegmentPropertiesFunction(object):
         props = segment_properties(IMAGE, SEGM, error=error,
                                    effective_gain=effective_gain,
                                    background=background)
-        assert_allclose(props[0].xcentroid, XCEN, rtol=1.e-2)
-        assert_allclose(props[0].ycentroid, YCEN, rtol=1.e-2)
-        assert_allclose(props[0].semimajor_axis_sigma, MAJOR_SIG, rtol=1.e-2)
-        assert_allclose(props[0].semiminor_axis_sigma, MINOR_SIG, rtol=1.e-2)
-        assert_allclose(props[0].orientation, THETA, rtol=1.e-3)
-        assert_allclose(props[0].bbox, [35, 25, 70, 77])
-        assert_allclose(props[0].area, 1058.0)
+        assert_quantity_allclose(props[0].xcentroid, XCEN*u.pix, rtol=1.e-2)
+        assert_quantity_allclose(props[0].ycentroid, YCEN*u.pix, rtol=1.e-2)
+        assert_quantity_allclose(props[0].semimajor_axis_sigma,
+                                 MAJOR_SIG*u.pix, rtol=1.e-2)
+        assert_quantity_allclose(props[0].semiminor_axis_sigma,
+                                 MINOR_SIG*u.pix, rtol=1.e-2)
+        assert_quantity_allclose(props[0].orientation, THETA*u.rad,
+                                 rtol=1.e-3)
+        assert_allclose(props[0].bbox.value, [35, 25, 70, 77])
+        assert_allclose(props[0].area.value, 1058.0)
         if background is None:
             background_sum = 0.
         else:
@@ -219,7 +228,7 @@ class TestSegmentPropertiesFunction(object):
         true_sum = IMAGE[IMAGE >= THRESHOLD].sum() - background_sum
         assert_allclose(props[0].segment_sum, true_sum)
         if effective_gain is None:
-            true_error = np.sqrt(props[0].area) * error_value
+            true_error = np.sqrt(props[0].area.value) * error_value
         else:
             true_error = np.sqrt(((props[0].segment_sum + background_sum) /
                                   effective_gain) +
@@ -243,10 +252,10 @@ class TestSegmentPropertiesFunction(object):
         mask[0, 1] = True
         segm = data.astype(np.int)
         props = segment_properties(data, segm, mask=mask)
-        assert_allclose(props[0].xcentroid, 1)
-        assert_allclose(props[0].ycentroid, 1)
+        assert_allclose(props[0].xcentroid.value, 1)
+        assert_allclose(props[0].ycentroid.value, 1)
         assert_allclose(props[0].segment_sum, 1)
-        assert_allclose(props[0].area, 1)
+        assert_allclose(props[0].area.value, 1)
 
     def test_effective_gain_negative(self, effective_gain=-1):
         error = np.ones_like(IMAGE) * 2.
