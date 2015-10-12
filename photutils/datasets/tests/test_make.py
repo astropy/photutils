@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
 from numpy.testing import assert_allclose
-from astropy.tests.helper import pytest
+from astropy.tests.helper import pytest, assert_quantity_allclose
 from astropy.table import Table
 import astropy.units as u
 from .. import (make_noise_image, make_poisson_noise, make_gaussian_sources,
@@ -58,7 +58,7 @@ def test_make_noise_image_unit():
     image = make_noise_image(shape, 'gaussian', mean=0., stddev=2., unit=unit)
     assert image.shape == shape
     assert image.unit == unit
-    assert_allclose(image.mean(), 0., atol=1.)
+    assert_quantity_allclose(image.mean(), 0.*unit, atol=1.*unit)
 
 
 def test_make_poisson_noise():
@@ -84,7 +84,7 @@ def test_make_poisson_noise_unit():
     result = make_poisson_noise(data)
     assert result.shape == shape
     assert result.unit == unit
-    assert_allclose(result.mean(), 1., atol=1.)
+    assert_quantity_allclose(result.mean(), 1.*unit, atol=1.*unit)
 
 
 def test_make_gaussian_sources():
@@ -124,7 +124,7 @@ def test_make_gaussian_sources_unit():
     image = make_gaussian_sources(shape, TABLE, unit=unit)
     assert image.shape == shape
     assert image.unit == unit
-    assert_allclose(image.sum(), TABLE['flux'].sum())
+    assert_quantity_allclose(image.sum(), TABLE['flux'].sum()*unit)
 
 
 def test_make_random_gaussians():
