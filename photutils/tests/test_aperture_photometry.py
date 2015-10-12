@@ -85,8 +85,8 @@ def test_aperture_pixel_positions():
     ap2 = CircularAperture(pos2, r)
     ap3 = CircularAperture(pos3, r)
 
-    assert_allclose([pos1], ap1.positions)
-    assert_allclose(pos2.value, ap2.positions)
+    assert_allclose(np.atleast_2d(pos1), ap1.positions)
+    assert_allclose(np.atleast_2d(pos2.value), ap2.positions)
     assert_allclose(pos3_pairs, ap3.positions)
 
 
