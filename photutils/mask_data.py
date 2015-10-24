@@ -27,20 +27,20 @@ def get_cutouts(data, circular_aperture, use_exact=0, subpixels=5):
     circular_aperture: photutils aperture object
 
     use_exact : (default = 0)
-    		refers to the keyword in .geometry.circular_overlap_grid.
+            refers to the keyword in .geometry.circular_overlap_grid.
             If use_exact = 1, a hard boundary containing only the pixels fully contained
             within the aperture. if use_exact = 0, calculates the fractional pixel
             contained within the pixel
 
     subpixels : (default = 5)
-    		if use_exact = 0 this is used to determine the fraction of
+            if use_exact = 0 this is used to determine the fraction of
             the pixel contained within the aperture.
 
     Returns:
     -----------
 
     img_mask_list : list
-    	a list with one tuple for each object position in the circular_aperture
+        a list with one tuple for each object position in the circular_aperture
         array. Each tuple contains a 2D array with the cutout of the image which contains
         the complete aperture and a 2D array with a boolean mask which is True inside the
         aperture, False outside the aperture, and gives a fraction inside the aperture for
@@ -111,14 +111,14 @@ def get_fractional_overlap_mask(indiv_absolute_extent, indiv_centered_extent, ov
 
 
 def reformat_extents(extents):
-	'''
-	Extents are returned as a list of xmin, list of xmax, list of ymin, list of ymax, I
-	would like to group them by object as (xmin, xmax, ymin, ymax) for each object.
-	'''
-	obj_group_extents = []
-	for xmin, xmax, ymin, ymax in zip(extents[0], extents[1], extents[2], extents[3]):
-		obj_group_extents.append((xmin, xmax, ymin, ymax))
-	return obj_group_extents
+    '''
+    Extents are returned as a list of xmin, list of xmax, list of ymin, list of ymax, I
+    would like to group them by object as (xmin, xmax, ymin, ymax) for each object.
+    '''
+    obj_group_extents = []
+    for xmin, xmax, ymin, ymax in zip(extents[0], extents[1], extents[2], extents[3]):
+        obj_group_extents.append((xmin, xmax, ymin, ymax))
+    return obj_group_extents
 
 
 def cutout_image(data, indiv_absolute_extent, overlap):
