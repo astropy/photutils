@@ -11,8 +11,9 @@ background, calculated using the image median:
     >>> import numpy as np
     >>> from photutils import datasets
     >>> hdu = datasets.load_star_image()    # doctest: +REMOTE_DATA
+    Downloading ...
     >>> image = hdu.data[500:700, 500:700]    # doctest: +REMOTE_DATA
-    >>> image -= np.median(image)    # doctest: +REMOTE_DATA
+    >>> image = image.astype(float) - np.median(image)    # doctest: +REMOTE_DATA
 
 In the remainder of this example, we assume that the data is
 background-subtracted.
@@ -27,7 +28,6 @@ parameters of the detected sources are returned as an Astropy
 .. doctest-requires:: scipy, skimage
 
     >>> from photutils import daofind
-    >>> from astropy.stats import median_absolute_deviation as mad
     >>> from astropy.stats import mad_std
     >>> bkg_sigma = mad_std(image)    # doctest: +REMOTE_DATA
     >>> sources = daofind(image, fwhm=4., threshold=3.*bkg_sigma)    # doctest: +REMOTE_DATA
@@ -45,6 +45,7 @@ parameters of the detected sources are returned as an Astropy
     150 116.449998422  195.059233325 ... 3299.0 2.87752205766   -1.1475466535
     151 18.9580860645  196.342065132 ... 3854.0 2.38352961224 -0.943051379595
     152 111.525751196  195.731917995 ... 8109.0  7.9278607401  -2.24789003194
+    Length = 152 rows
 
 Using the list of source locations (``xcentroid`` and ``ycentroid``),
 we now compute the sum of the pixel values in circular apertures with
@@ -73,6 +74,7 @@ the photometry:
       31232.9117818 116.449998422  195.059233325
       162076.262752 18.9580860645  196.342065132
       82795.7145661 111.525751196  195.731917995
+      Length = 152 rows
 
 The sum of the pixel values within the apertures are given in the
 column ``aperture_sum``.  We now plot the image and the defined
@@ -88,7 +90,6 @@ apertures:
 
     import numpy as np
     import matplotlib.pylab as plt
-    from astropy.stats import median_absolute_deviation as mad
     from astropy.stats import mad_std
     from photutils import datasets, daofind, aperture_photometry, CircularAperture
     hdu = datasets.load_star_image()

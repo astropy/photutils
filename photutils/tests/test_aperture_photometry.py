@@ -8,6 +8,7 @@ from __future__ import (absolute_import, division, print_function,
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal
+from astropy.tests.helper import assert_quantity_allclose
 import astropy.units as u
 from astropy.io import fits
 from astropy.nddata import NDData
@@ -84,9 +85,9 @@ def test_aperture_pixel_positions():
     ap2 = CircularAperture(pos2, r)
     ap3 = CircularAperture(pos3, r)
 
-    assert np.allclose(pos1, ap1.positions)
-    assert np.allclose(pos2, ap2.positions)
-    assert np.allclose(pos3_pairs, ap3.positions)
+    assert_allclose(np.atleast_2d(pos1), ap1.positions)
+    assert_allclose(np.atleast_2d(pos2.value), ap2.positions)
+    assert_allclose(pos3_pairs, ap3.positions)
 
 
 class BaseTestAperturePhotometry(object):

@@ -110,7 +110,7 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                     else:
                         frac[j, i] = elliptical_overlap_single_subpixel(
                             pxmin, pymin, pxmax, pymax, rx, ry, theta,
-                            subpixels) * norm
+                            subpixels)
     return frac
 
 

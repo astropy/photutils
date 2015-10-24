@@ -105,9 +105,9 @@ provides a better estimate of the background and background noise
 levels::
 
     >>> from astropy.stats import sigma_clipped_stats
-    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
+    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, iters=5)
     >>> print(mean, median, std)    # doctest: +FLOAT_CMP
-    (5.19888175541, 5.15557244947, 2.09393539966)
+    (5.1991386516217908, 5.1555874333582912, 2.0942752121329691)
 
 
 Masking Sources

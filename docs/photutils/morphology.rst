@@ -139,7 +139,7 @@ sigma-clipped statistics:
     >>> from astropy.stats import sigma_clipped_stats
     >>> from photutils.morphology import data_properties
     >>> from photutils import properties_table
-    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
+    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, iters=5)
     >>> data -= median    # subtract background
     >>> props = data_properties(data)
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'semimajor_axis_sigma',
@@ -149,7 +149,7 @@ sigma-clipped statistics:
      id   xcentroid     ycentroid   ... semiminor_axis_sigma  orientation
              pix           pix      ...         pix               rad
     --- ------------- ------------- ... -------------------- -------------
-      1 14.0192015504 16.9885140744 ...         3.7763953673 1.05053207277
+      1 14.0225090502 16.9901801466 ...        3.69777618702 1.04943689372
 
 Now let's use the measured morphological properties to define an
 approximate isophotal ellipse for the source:

@@ -1,5 +1,17 @@
 language: python
 
+# Setting sudo to false opts in to Travis-CI container-based builds.
+sudo: false
+
+# The apt packages below are needed for sphinx builds, which can no longer
+# be installed with sudo apt-get.
+addons:
+    apt:
+        packages:
+            - graphviz
+            - texlive-latex-extra
+            - dvipng
+
 python:
     - 2.6
     - 2.7
@@ -74,12 +86,6 @@ before_install:
     - export PATH=/home/travis/miniconda/bin:$PATH
     - conda update --yes conda
 
-    # UPDATE APT-GET LISTINGS
-    - sudo apt-get update
-
-    # DOCUMENTATION DEPENDENCIES
-    - if [[ $SETUP_CMD == build_sphinx* ]]; then sudo apt-get install graphviz texlive-latex-extra dvipng; fi
-
     # Make sure that interactive matplotlib backends work
     - export DISPLAY=:99.0
     - sh -e /etc/init.d/xvfb start
@@ -96,14 +102,14 @@ install:
 
     # ASTROPY
     - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == development ]]; then $PIP_INSTALL git+http://github.com/astropy/astropy.git#egg=astropy; fi
-    - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == stable ]]; then $PIP_INSTALL numpy==$NUMPY_VERSION astropy; fi
+    - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == stable ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION astropy; fi
 
     # OPTIONAL DEPENDENCIES
     # Here you can add any dependencies your package may have. You can use
     # conda for packages available through conda, or pip for any other
     # packages. You should leave the `numpy=$NUMPY_VERSION` in the `conda`
     # install since this ensures Numpy does not get automatically upgraded.
-    - if [[ $SETUP_CMD != egg_info ]] && $INSTALL_OPTIONAL; then $CONDA_INSTALL numpy=$NUMPY_VERSION scipy scikit-image; fi
+    - if [[ $SETUP_CMD != egg_info ]] && $INSTALL_OPTIONAL; then $CONDA_INSTALL numpy=$NUMPY_VERSION scipy scikit-image matplotlib; fi
     # - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL ...; fi
 
     # DOCUMENTATION DEPENDENCIES

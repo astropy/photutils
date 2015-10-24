@@ -41,7 +41,7 @@ def _sanitize_pixel_positions(positions):
 
     if isinstance(positions, u.Quantity):
         if positions.unit is u.pixel:
-            positions = positions.value
+            positions = np.atleast_2d(positions.value)
         else:
             raise u.UnitsError("positions should be in pixel units")
     elif isinstance(positions, (list, tuple, np.ndarray)):
