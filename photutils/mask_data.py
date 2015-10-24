@@ -7,31 +7,40 @@ import numpy as np
 import warnings
 import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
+from .aperture_funcs import get_phot_extents
 
 
 __all__ = ['get_cutouts']
 
 
 
-def get_cutouts(data, circular_aperture, use_exact = 0, subpixels = 5):
+def get_cutouts(data, circular_aperture, use_exact=0, subpixels=5):
     '''
     Create a square cutout of each aperture and an associated mask which denotes the
     aperture with 1 for inside, 0 for outside, and a fraction for the edges.
 
     Parameters:
     -----------
+
     data : Image array
+
     circular_aperture: photutils aperture object
-    use_exact : (default = 0) refers to the keyword in .geometry.circular_overlap_grid.
+
+    use_exact : (default = 0)
+    		refers to the keyword in .geometry.circular_overlap_grid.
             If use_exact = 1, a hard boundary containing only the pixels fully contained
             within the aperture. if use_exact = 0, calculates the fractional pixel
             contained within the pixel
-    subpixels : (default = 5) if use_exact = 0 this is used to determine the fraction of
+
+    subpixels : (default = 5)
+    		if use_exact = 0 this is used to determine the fraction of
             the pixel contained within the aperture.
 
     Returns:
     -----------
-    img_mask_list : a list with one tuple for each object position in the circular_aperture
+
+    img_mask_list : list
+    	a list with one tuple for each object position in the circular_aperture
         array. Each tuple contains a 2D array with the cutout of the image which contains
         the complete aperture and a 2D array with a boolean mask which is True inside the
         aperture, False outside the aperture, and gives a fraction inside the aperture for
@@ -50,7 +59,6 @@ def get_cutouts(data, circular_aperture, use_exact = 0, subpixels = 5):
     extents[:, 2] = positions[:, 1] - radius + 0.5
     extents[:, 3] = positions[:, 1] + radius + 1.5
 
-    from .aperture_funcs import get_phot_extents
 
     no_overlap, absolute_extent, centered_extent = get_phot_extents(data, positions,
                                                        extents)
