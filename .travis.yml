@@ -25,7 +25,7 @@ env:
         # to repeat them for all configurations.
         - NUMPY_VERSION=1.9
         - ASTROPY_VERSION=stable
-        - CONDA_INSTALL='conda install -c astropy-ci-extras --yes'
+        - CONDA_INSTALL='conda install'
         - PIP_INSTALL='pip install'
         - INSTALL_OPTIONAL=true
         - OPTIONAL_DEPENDENCIES='scipy scikit-image matplotlib'
