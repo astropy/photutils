@@ -27,10 +27,9 @@ env:
         - ASTROPY_VERSION=stable
         - CONDA_INSTALL='conda install'
         - PIP_INSTALL='pip install'
-        - CONDA_ADDITIONAL_DEPENDENCIES='Cython'
-        - PIP_ADDITIONAL_DEPENDENCIES='pytest-xdist'
-        - CONDA_OPTIONAL_DEPENDENCIES='scipy scikit-image matplotlib'
-        - PIP_OPTIONAL_DEPENDENCIES=''
+        - CONDA_DEPENDENCIES='Cython'
+        - PIP_DEPENDENCIES='pytest-xdist'
+        - CONDA_OPTIONAL='scipy scikit-image matplotlib'
 
     matrix:
         - SETUP_CMD='egg_info'
@@ -67,9 +66,9 @@ matrix:
 
         # Try with optional dependencies disabled
         - python: 2.7
-          env: SETUP_CMD='test' CONDA_DEPENDENCIES=$CONDA_ADDITIONAL_DEPENDENCIES
+          env: SETUP_CMD='test' CONDA_DEPENDENCIES+=$CONDA_OPTIONAL
         - python: 3.4
-          env: SETUP_CMD='test' CONDA_DEPENDENCIES=$CONDA_ADDITIONAL_DEPENDENCIES
+          env: SETUP_CMD='test' CONDA_DEPENDENCIES+=$CONDA_OPTIONAL
 
         # Try older numpy versions
         - python: 2.7
