@@ -27,8 +27,9 @@ env:
         - ASTROPY_VERSION=stable
         - CONDA_INSTALL='conda install'
         - PIP_INSTALL='pip install'
-        - INSTALL_OPTIONAL=true
-        - OPTIONAL_DEPENDENCIES='scipy scikit-image matplotlib'
+        - CONDA_ADDITIONAL_DEPENDENCIES='Cython'
+        - PIP_ADDITIONAL_DEPENDENCIES='pytest-xdist'
+        - CONDA_OPTIONAL_DEPENDENCIES='scipy scikit-image matplotlib'
     matrix:
         - SETUP_CMD='egg_info'
 
@@ -88,14 +89,8 @@ before_install:
 install:
 
     # CORE DEPENDENCIES
-    - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL pytest-xdist; fi
 
-    # OPTIONAL DEPENDENCIES
-    # Here you can add any dependencies your package may have.
-    # Python packages listed in $OPTIONAL_PACKAGES and are available through
-    # conda are already installed.
-    # Any other package can be installed with pip, etc here:
-    # - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL ...; fi
+    # OPTIONAL_DEPENDENCIES
 
 script:
    - python setup.py $SETUP_CMD
