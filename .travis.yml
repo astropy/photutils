@@ -66,7 +66,7 @@ matrix:
 
         # Try with optional dependencies disabled
         - python: 2.7
-          env: SETUP_CMD='test' CONDA_DEPENDENCIES+=$CONDA_OPTIONAL
+          env: SETUP_CMD='test' CONDA_DEPENDENCIES="$CONDA_DEPENDENCIES $CONDA_OPTIONAL"
         - python: 3.4
           env: SETUP_CMD='test' CONDA_DEPENDENCIES+=$CONDA_OPTIONAL
 
