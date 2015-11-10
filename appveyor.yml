@@ -24,24 +24,11 @@ platform:
     -x64
 
 install:
-    # Install miniconda using a powershell script.
-    - "powershell ./.install-miniconda.ps1"
+    - "git clone git://github.com/astropy/ci-helpers.git"
+    - "powershell ci-helpers/appveyor/install-miniconda.ps1"
     - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
 
-    # Install the build and runtime dependencies of the project.
-    - "conda update --yes conda"
-    # Create a conda environment using the astropy bonus packages
-    - "conda create -q --yes -n test -c astropy-ci-extras python=%PYTHON_VERSION%"
-    - "activate test"
-
-    # Check that we have the expected version of Python
-    - "python --version"
-
-    # Install specified version of numpy and dependencies
-    - "conda install -q --yes numpy=%NUMPY_VERSION% pytest Cython scipy jinja2 scikit-image matplotlib"
-    - "conda install -q --yes -c astropy-ci-extras astropy=%ASTROPY_VERSION%"
-
-# Not a .NET project, we build SunPy in the install step instead
+# Not a .NET project, we build photutils in the install step instead
 build: false
 
 test_script:
