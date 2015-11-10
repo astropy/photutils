@@ -87,12 +87,6 @@ before_install:
     - export DISPLAY=:99.0
     - sh -e /etc/init.d/xvfb start
 
-install:
-
-    # CORE DEPENDENCIES
-
-    # OPTIONAL_DEPENDENCIES
-
 script:
    - python setup.py $SETUP_CMD
 
