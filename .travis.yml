@@ -17,7 +17,6 @@ python:
     - 2.7
     - 3.3
     - 3.4
-    # This is just for "egg_info".  All other builds are explicitly given in the matrix
 env:
     global:
         # The following versions are the 'default' for tests, unless
@@ -25,13 +24,16 @@ env:
         # to repeat them for all configurations.
         - NUMPY_VERSION=1.9
         - ASTROPY_VERSION=stable
-        - CONDA_INSTALL='conda install'
-        - PIP_INSTALL='pip install'
         - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib'
         - PIP_DEPENDENCIES='pytest-xdist'
 
     matrix:
+
+        # Make sure that egg_info works without dependencies
         - SETUP_CMD='egg_info' CONDA_DEPENDENCIES=''
+
+        # Try all python versions with the latest numpy
+        - SETUP_CMD='test'
 
 matrix:
     include:
@@ -52,16 +54,6 @@ matrix:
         # Try Astropy development version
         - python: 3.3
           env: ASTROPY_VERSION=development SETUP_CMD='test'
-
-        # Try all python versions with the latest numpy
-        - python: 2.6
-          env: SETUP_CMD='test'
-        - python: 2.7
-          env: SETUP_CMD='test'
-        - python: 3.3
-          env: SETUP_CMD='test'
-        - python: 3.4
-          env: SETUP_CMD='test'
 
         # Try with optional dependencies disabled
         - python: 2.7
