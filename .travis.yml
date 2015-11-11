@@ -27,12 +27,11 @@ env:
         - ASTROPY_VERSION=stable
         - CONDA_INSTALL='conda install'
         - PIP_INSTALL='pip install'
-        - CONDA_DEPENDENCIES='Cython'
+        - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib'
         - PIP_DEPENDENCIES='pytest-xdist'
-        - CONDA_OPTIONAL='scipy scikit-image matplotlib'
 
     matrix:
-        - SETUP_CMD='egg_info'
+        - SETUP_CMD='egg_info' CONDA_DEPENDENCIES=''
 
 matrix:
     include:
@@ -42,51 +41,44 @@ matrix:
         # coverage testing in affiliated packages.
         - python: 2.7
           env: ASTROPY_VERSION=development SETUP_CMD='test --coverage'
-               CONDA_DEPENDENCIES="$CONDA_DEPENDENCIES $CONDA_OPTIONAL"
 
         # Check for sphinx doc build warnings - we do this first because it
         # may run for a long time
         - python: 2.7
           env: ASTROPY_VERSION=development SETUP_CMD='build_sphinx -w'
-               CONDA_DEPENDENCIES="$CONDA_DEPENDENCIES $CONDA_OPTIONAL"
         - python: 3.4
           env: ASTROPY_VERSION=development SETUP_CMD='build_sphinx -w'
-               CONDA_DEPENDENCIES="$CONDA_DEPENDENCIES $CONDA_OPTIONAL"
 
         # Try Astropy development version
         - python: 3.3
           env: ASTROPY_VERSION=development SETUP_CMD='test'
-               CONDA_DEPENDENCIES="$CONDA_DEPENDENCIES $CONDA_OPTIONAL"
 
         # Try all python versions with the latest numpy
         - python: 2.6
           env: SETUP_CMD='test'
-               CONDA_DEPENDENCIES="$CONDA_DEPENDENCIES $CONDA_OPTIONAL"
         - python: 2.7
           env: SETUP_CMD='test'
-               CONDA_DEPENDENCIES="$CONDA_DEPENDENCIES $CONDA_OPTIONAL"
         - python: 3.3
-          env: SETUP_CMD='test'
-               CONDA_DEPENDENCIES="$CONDA_DEPENDENCIES $CONDA_OPTIONAL"
-        - python: 3.4
-          env: SETUP_CMD='test'
-               CONDA_DEPENDENCIES="$CONDA_DEPENDENCIES $CONDA_OPTIONAL"
-        # Try with optional dependencies disabled
-        - python: 2.7
           env: SETUP_CMD='test'
         - python: 3.4
           env: SETUP_CMD='test'
 
+        # Try with optional dependencies disabled
+        - python: 2.7
+          env: SETUP_CMD='test'
+               CONDA_DEPENDENCIES='Cython'
+
+        - python: 3.4
+          env: SETUP_CMD='test'
+               CONDA_DEPENDENCIES='Cython'
+
         # Try older numpy versions
         - python: 2.7
           env: NUMPY_VERSION=1.8 SETUP_CMD='test'
-               CONDA_DEPENDENCIES="$CONDA_DEPENDENCIES $CONDA_OPTIONAL"
         - python: 2.7
           env: NUMPY_VERSION=1.7 SETUP_CMD='test'
-               CONDA_DEPENDENCIES="$CONDA_DEPENDENCIES $CONDA_OPTIONAL"
         - python: 2.7
           env: NUMPY_VERSION=1.6 SETUP_CMD='test'
-               CONDA_DEPENDENCIES="$CONDA_DEPENDENCIES $CONDA_OPTIONAL"
 
 before_install:
 
