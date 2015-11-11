@@ -6,11 +6,11 @@ environment:
   global:
       PYTHON: "C:\\conda"
       MINICONDA_VERSION: "3.5.5"
-      CMD_IN_ENV: "cmd /E:ON /V:ON /C .\\.appveyor_windows_sdk.cmd"
+      CMD_IN_ENV: "cmd /E:ON /V:ON /C .\\ci-helpers\\appveyor\\windows_sdk.cmd"
       PYTHON_ARCH: "64" # needs to be set for CMD_IN_ENV to succeed. If a mix
                         # of 32 bit and 64 bit builds are needed, move this
                         # to the matrix section.
-      CONDA_ADDITIONAL_DEPENDENCIES: "Cython scipy jinja2 scikit-image matplotlib"
+      CONDA_DEPENDENCIES: "Cython scipy jinja2 scikit-image matplotlib"
 
   matrix:
       - PYTHON_VERSION: "2.6"
