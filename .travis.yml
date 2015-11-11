@@ -59,7 +59,6 @@ matrix:
         - python: 2.7
           env: SETUP_CMD='test'
                CONDA_DEPENDENCIES='Cython'
-
         - python: 3.4
           env: SETUP_CMD='test'
                CONDA_DEPENDENCIES='Cython'
