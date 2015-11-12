@@ -17,6 +17,45 @@ ASTROPY_LT_1P1 = [int(x) for x in astropy.__version__.split('.')[:2]] < [1, 1]
 __all__ = ['detect_threshold', 'detect_sources', 'find_peaks']
 
 
+def _convolve_data(data, filter_kernel, mode='constant', fill_value=0.0):
+    """
+    Convolve a 2D image with a 2D kernel.
+
+    The kernel may either be a 2D `~numpy.ndarray` or a
+    `~astropy.convolution.Kernel2D` object.
+
+    Parameters
+    ----------
+    data : array_like
+        The 2D array of the image.
+
+    filter_kernel : array-like (2D) or `~astropy.convolution.Kernel2D`
+        The 2D kernel used to filter the input ``data``. Filtering the
+        ``data`` will smooth the noise and maximize detectability of
+        objects with a shape similar to the kernel.
+
+    mode : {'constant', 'reflect', 'nearest', 'mirror', 'wrap'}, optional
+        The ``mode`` determines how the array borders are handled.  For
+        the ``'constant'`` mode, values outside the array borders are
+        set to ``fill_value``.  The default is ``'constant'``.
+
+    fill_value : scalar, optional
+        Value to fill data values beyond the array borders if ``mode``
+        is ``'constant'``.  The default is ``0.0``.
+    """
+
+    from scipy import ndimage
+
+    if filter_kernel is not None:
+        if isinstance(filter_kernel, Kernel2D):
+            filter_array = filter_kernel.array
+        else:
+            filter_array = filter_kernel
+        return ndimage.convolve(data, filter_array, mode=mode,
+                                cval=fill_value)
+    else:
+        return data
+
 
 def detect_threshold(data, snr, background=None, error=None, mask=None,
                      mask_value=None, sigclip_sigma=3.0, sigclip_iters=None):
@@ -227,22 +266,11 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         raise ValueError('npixels must be a positive integer, got '
                          '"{0}"'.format(npixels))
 
-    conv_mode = 'constant'    # SExtractor mode
-    conv_val = 0.0
-    if filter_kernel is not None:
-        if isinstance(filter_kernel, Kernel2D):
-            image = ndimage.convolve(data, filter_kernel.array, mode=conv_mode,
-                                     cval=conv_val)
-        else:
-            image = ndimage.convolve(data, filter_kernel, mode=conv_mode,
-                                     cval=conv_val)
-    else:
-        image = data
-
-    image = (image > threshold)
+    image = (_convolve_data(data, filter_kernel, mode='constant',
+                            fill_value=0.0) > threshold)
     if connectivity == 4:
         selem = ndimage.generate_binary_structure(2, 1)
-    elif connectivity == 8:    # e.g., SExtractor
+    elif connectivity == 8:
         selem = ndimage.generate_binary_structure(2, 2)
     else:
         raise ValueError('Invalid connectivity={0}.  '
