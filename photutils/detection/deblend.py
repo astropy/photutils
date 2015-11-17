@@ -32,6 +32,12 @@ def deblend_source(data, segm, label, threshold, filter_kernel=None,
     source = data[mask]
     source_min = np.min(source)
     source_max = np.max(source)
+    if source_min == source_max:
+        return segm     # no deblending
+    if source_min < 0:
+        warning.warn('Source "{0}" contains negative values, setting '
+                     'deblending mode="linear"'.format(label))
+        mode = 'linear'
     source_sum = float(np.sum(source))
 
     steps = np.arange(1., nlevels+1)
