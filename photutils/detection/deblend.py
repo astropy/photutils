@@ -29,17 +29,20 @@ def deblend_source(data, segm, label, threshold, filter_kernel=None,
     from skimage.morphology import watershed
 
     mask = (segm == label)
-    source = data * mask
+    source = data[mask]
+    source_min = np.min(source)
     source_max = np.max(source)
     source_sum = float(np.sum(source))
 
     steps = np.arange(1., nlevels+1)
     if mode == 'exponential':
-        thresholds = threshold * ((source_max / threshold) **
-                                  (steps / (nlevels + 1)))
+        if source_min == 0:
+            source_min = source_max * 0.01
+        thresholds = source_min * ((source_max / source_min) **
+                                   (steps / (nlevels + 1)))
     elif mode == 'linear':
-        thresholds = threshold + ((source_max - threshold) /
-                                  (nlevels + 1)) * steps
+        thresholds = source_min + ((source_max - source_min) /
+                                   (nlevels + 1)) * steps
     else:
         raise ValueError('"{0}" is an invalid mode; mode must be '
                          '"exponential" or "linear"')
@@ -51,7 +54,7 @@ def deblend_source(data, segm, label, threshold, filter_kernel=None,
     segm_tree = []
     all_segm = []
     for level in thresholds[::-1]:
-        segm_tmp = detect_sources(data, level, npixels=1,
+        segm_tmp = detect_sources(source, level, npixels=1,
                                   connectivity=connectivity)
         all_segm.append(segm_tmp)
         npeaks = np.max(segm_tmp)
