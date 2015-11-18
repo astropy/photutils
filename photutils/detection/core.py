@@ -3,10 +3,12 @@
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+import warnings
 import numpy as np
 from astropy.table import Column, Table
 from astropy.convolution import Kernel2D
 from astropy.stats import sigma_clipped_stats
+from astropy.utils.exceptions import AstropyUserWarning
 from ..morphology import cutout_footprint, fit_2dgaussian
 from ..utils.wcs_helpers import pixel_to_icrs_coords
 
@@ -51,6 +53,11 @@ def _convolve_data(data, filter_kernel, mode='constant', fill_value=0.0):
             filter_array = filter_kernel.array
         else:
             filter_array = filter_kernel
+
+        if np.sum(filter_array) != 1:
+            warnings.warn('The filter kernel is not normalized.',
+                          AstropyUserWarning)
+
         return ndimage.convolve(data, filter_array, mode=mode,
                                 cval=fill_value)
     else:
