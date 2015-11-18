@@ -12,7 +12,7 @@ from ..segmentation import remove_segments
 __all__ = ['deblend_source']
 
 
-def deblend_source(data, segm, label, threshold, filter_kernel=None,
+def deblend_source(data, segm, label, threshold, npixels, filter_kernel=None,
                    nlevels=32, contrast=0.001, mode='exponential',
                    connectivity=8):
     """
@@ -29,16 +29,17 @@ def deblend_source(data, segm, label, threshold, filter_kernel=None,
     from skimage.morphology import watershed
 
     mask = (segm == label)
-    source = data[mask]
-    source_min = np.min(source)
-    source_max = np.max(source)
+    source = data * mask
+    source_values = data[mask]
+    source_min = np.min(source_values)
+    source_max = np.max(source_values)
     if source_min == source_max:
         return segm     # no deblending
     if source_min < 0:
         warning.warn('Source "{0}" contains negative values, setting '
                      'deblending mode="linear"'.format(label))
         mode = 'linear'
-    source_sum = float(np.sum(source))
+    source_sum = float(np.sum(source_values))
 
     steps = np.arange(1., nlevels+1)
     if mode == 'exponential':
@@ -60,7 +61,7 @@ def deblend_source(data, segm, label, threshold, filter_kernel=None,
     segm_tree = []
     all_segm = []
     for level in thresholds[::-1]:
-        segm_tmp = detect_sources(source, level, npixels=1,
+        segm_tmp = detect_sources(source, level, npixels=npixels,
                                   connectivity=connectivity)
         all_segm.append(segm_tmp)
         npeaks = np.max(segm_tmp)
