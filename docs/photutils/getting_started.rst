@@ -94,7 +94,7 @@ apertures:
     from photutils import datasets, daofind, aperture_photometry, CircularAperture
     hdu = datasets.load_star_image()
     image = hdu.data[500:700, 500:700]
-    image -= np.median(image)
+    image = image.astype(float) - np.median(image)
     bkg_sigma = mad_std(image)
     sources = daofind(image, fwhm=4., threshold=3.*bkg_sigma)
     positions = (sources['xcentroid'], sources['ycentroid'])
