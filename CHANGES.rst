@@ -5,6 +5,7 @@ General
 ^^^^^^^
 
 - photutils now requires AstroPy v1.0 or later.
+- photutils now requires python 2.7 or 3.3 or later.
 
 New Features
 ^^^^^^^^^^^^
@@ -31,18 +32,6 @@ New Features
 
   - Added new ``cutout_footprint`` function [#244].
 
-
-Other Changes and Additions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-- Update astropy-helpers to v1.0.2 [#260]
-
-0.1 (December 22, 2014)
------------------------
-
-photutils 0.1 was released on December 22, 2014.
-It requires Astropy version 0.4 or later.
-
 Bug Fixes
 ^^^^^^^^^
 
@@ -57,3 +46,16 @@ Bug Fixes
 
   - ``overlap_area_triangle_unit_circle`` handles correctly the case where
     a line segment intersects at a triangle vertex. [#277]
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Update astropy-helpers to v1.0.5 [#286]
+
+
+0.1 (December 22, 2014)
+-----------------------
+
+photutils 0.1 was released on December 22, 2014.
+It requires Astropy version 0.4 or later.
+
