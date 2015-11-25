@@ -11,8 +11,9 @@ from .utils.prepare_data import _prepare_data
 
 
 __all__ = ['SegmentProperties', 'segment_properties', 'properties_table',
-           'relabel_sequential', 'relabel_segments', 'remove_segments',
-           'remove_border_segments', 'remove_masked_segments']
+           'check_label', 'relabel_sequential', 'relabel_segments',
+           'remove_segments', 'remove_border_segments',
+           'remove_masked_segments']
 
 __doctest_requires__ = {('segment_properties', 'properties_table'): ['scipy'],
                         ('segment_properties', 'properties_table'):
@@ -193,10 +194,7 @@ class SegmentProperties(object):
             if mask.shape != data.shape:
                 raise ValueError('mask and data must have the same shape')
 
-        if label == 0:
-            raise ValueError('label "0" is reserved for the background')
-        elif label < 0:
-            raise ValueError('label must be a positive integer')
+        check_label(label, segment_image)
 
         self._segment_image = segment_image
         if not data_prepared:
@@ -222,7 +220,7 @@ class SegmentProperties(object):
             self._slice = label_slices[label - 1]
             if self._slice is None:
                 raise ValueError('label "{0}" is not in the input '
-                                 'segment_image'.format(label))
+                                 'segmentation image'.format(label))
 
     def __getitem__(self, key):
         return getattr(self, key, None)
@@ -1274,6 +1272,36 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
             props_table[column] = values
 
     return props_table
+
+
+def check_label(label, segment_image):
+    """
+    Check for a valid segmentation label number.
+
+    Parameters
+    ----------
+    label : int
+        The segmentation label number to check.
+
+    segment_image : array_like (int)
+        A 2D segmentation image where sources are labeled by different
+        positive integer values.  A value of zero is reserved for the
+        background.
+
+    Raises
+    ------
+    ValueError
+        If the input ``label`` is invalid.
+    """
+
+    if label == 0:
+        raise ValueError('label "0" is reserved for the background')
+    if label < 0:
+        raise ValueError('label must be a positive integer, got '
+                         '"{0}"'.format(label))
+    if label not in segment_image:
+        raise ValueError('label "{0}" is not in the input segmentation '
+                         'image'.format(label))
 
 
 def relabel_sequential(segment_image, start_label=1):
