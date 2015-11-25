@@ -45,11 +45,10 @@ def random_cmap(ncolors, bkgrd_color='black', random_state=None):
     hsv = np.transpose(np.array([h, s, v]))
     rgb = colors.hsv_to_rgb(hsv)
 
-    if background_color is not None:
-        if background_color not in colors.cnames:
+    if bkgrd_color is not None:
+        if bkgrd_color not in colors.cnames:
             raise ValueError('"{0}" is not a valid background color '
-                             'name'.format(background_color))
-        rgb[0] = colors.hex2color(colors.cnames[background_color])
+                             'name'.format(bkgrd_color))
+        rgb[0] = colors.hex2color(colors.cnames[bkgrd_color])
 
-    return colors.LinearSegmentedColormap.from_list('random_cmap', rgb,
-                                                    N=ncolors)
+    return colors.ListedColormap(rgb)
