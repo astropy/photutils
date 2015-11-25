@@ -10,7 +10,7 @@ import astropy.units as u
 from astropy.utils.misc import isiterable
 import astropy.wcs as WCS
 from ..segmentation import (SegmentProperties, segment_properties,
-                            properties_table, relabel_sequential,
+                            properties_table, check_label, relabel_sequential,
                             remove_segments, remove_border_segments,
                             remove_masked_segments)
 try:
@@ -357,6 +357,23 @@ class TestPropertiesTable(object):
         t = properties_table(props)
         assert t[0]['ra_icrs_centroid'] is not None
         assert t[0]['dec_icrs_centroid'] is not None
+
+
+class TestCheckLabel(object):
+    def setup_class(self):
+        self.segment_image = np.array([[1, 1, 3], [0, 0, 3], [0, 0, 4]])
+
+    def test_zero_label(self):
+        with pytest.raises(ValueError):
+            check_label(0, self.segment_image)
+
+    def test_negative_label(self):
+        with pytest.raises(ValueError):
+            check_label(-1, self.segment_image)
+
+    def test_invalid_label(self):
+        with pytest.raises(ValueError):
+            check_label(2, self.segment_image)
 
 
 @pytest.mark.parametrize('start_label', [1, 5])
