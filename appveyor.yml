@@ -23,7 +23,7 @@ environment:
 
       - PYTHON_VERSION: "3.5"
         ASTROPY_VERSION: "1.0"
-        NUMPY_VERSION: "1.10"
+        NUMPY_VERSION: "1.9"
 
 platform:
     -x64
