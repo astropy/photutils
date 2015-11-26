@@ -12,8 +12,8 @@ background, calculated using the image median:
     >>> from photutils import datasets
     >>> hdu = datasets.load_star_image()    # doctest: +REMOTE_DATA
     Downloading ...
-    >>> image = hdu.data[500:700, 500:700]    # doctest: +REMOTE_DATA
-    >>> image = image.astype(float) - np.median(image)    # doctest: +REMOTE_DATA
+    >>> image = hdu.data[500:700, 500:700].astype(float)    # doctest: +REMOTE_DATA
+    >>> image -= np.median(image)    # doctest: +REMOTE_DATA
 
 In the remainder of this example, we assume that the data is
 background-subtracted.
@@ -93,7 +93,7 @@ apertures:
     from astropy.stats import mad_std
     from photutils import datasets, daofind, aperture_photometry, CircularAperture
     hdu = datasets.load_star_image()
-    image = hdu.data[500:700, 500:700]
+    image = hdu.data[500:700, 500:700].astype(float)
     image -= np.median(image)
     bkg_sigma = mad_std(image)
     sources = daofind(image, fwhm=4., threshold=3.*bkg_sigma)

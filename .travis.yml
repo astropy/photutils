@@ -13,16 +13,16 @@ addons:
             - dvipng
 
 python:
-    - 2.6
     - 2.7
-    - 3.3
     - 3.4
+    - 3.5
+
 env:
     global:
         # The following versions are the 'default' for tests, unless
         # overidden underneath. They are defined here in order to save having
         # to repeat them for all configurations.
-        - NUMPY_VERSION=1.9
+        - NUMPY_VERSION=1.10
         - ASTROPY_VERSION=stable
         - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib'
         - PIP_DEPENDENCIES=''
@@ -51,19 +51,30 @@ matrix:
         - python: 3.4
           env: ASTROPY_VERSION=development SETUP_CMD='build_sphinx -w'
 
-        # Try Astropy development version
+        # Python 3.3 doesn't have numpy 1.10 in conda, revoke this commit once
+        # it's available in the astropy-ci-extras channel
         - python: 3.3
+          env: SETUP_CMD='egg_info'
+        - python: 3.3
+          env: SETUP_CMD='test' NUMPY_VERSION=1.9
+
+        # Try Astropy development version
+        - python: 2.7
+          env: ASTROPY_VERSION=development SETUP_CMD='test'
+        - python: 3.5
           env: ASTROPY_VERSION=development SETUP_CMD='test'
 
         # Try with optional dependencies disabled
         - python: 2.7
           env: SETUP_CMD='test'
                CONDA_DEPENDENCIES='Cython'
-        - python: 3.4
+        - python: 3.5
           env: SETUP_CMD='test'
                CONDA_DEPENDENCIES='Cython'
 
         # Try older numpy versions
+        - python: 2.7
+          env: NUMPY_VERSION=1.9 SETUP_CMD='test'
         - python: 2.7
           env: NUMPY_VERSION=1.8 SETUP_CMD='test'
         - python: 2.7
@@ -71,7 +82,7 @@ matrix:
         - python: 2.7
           env: NUMPY_VERSION=1.6 SETUP_CMD='test'
 
-before_install:
+install:
 
     - git clone git://github.com/astropy/ci-helpers.git
     - source ci-helpers/travis/setup_conda_$TRAVIS_OS_NAME.sh
