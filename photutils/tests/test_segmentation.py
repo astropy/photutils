@@ -395,6 +395,17 @@ def test_outline_segments():
     assert_allclose(segm_outlines, segm_ref)
 
 
+def test_outline_segments_masked_background():
+    segm = np.zeros((5, 5)).astype(int)
+    segm[1:4, 1:4] = 2
+    segm_ref = np.copy(segm)
+    segm_ref[2, 2] = 0
+    segm_outlines = outline_segments(segm, mask_background=True)
+    assert isinstance(segm_outlines, np.ma.MaskedArray)
+    assert np.ma.count(segm_outlines) == 8
+    assert np.ma.count_masked(segm_outlines) == 17
+
+
 @pytest.mark.parametrize('start_label', [1, 5])
 def test_relabel_sequential(start_label):
     segm = np.zeros((3, 3))

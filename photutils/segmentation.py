@@ -1364,7 +1364,7 @@ def segment_nlabels(segment_image):
     return len(segment_labels(segment_image))
 
 
-def outline_segments(segment_image):
+def outline_segments(segment_image, mask_background=False):
     """
     Outline the labeled segments in a segmentation image.
 
@@ -1379,13 +1379,20 @@ def outline_segments(segment_image):
         positive integer values.  A value of zero is reserved for the
         background.
 
+    mask_background : bool, optional
+        Set to `True` to mask the background pixels (where
+        ``segment_image`` is zero) in the returned image.  This is
+        useful for overplotting the segment outlines on an image.  The
+        default is `False`.
+
     Returns
     -------
-    boundaries : 2D `~numpy.ndarray`
+    boundaries : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
         An image with the same shape of ``segment_image`` containing
         only the outlines of the labeled segments.  The pixel values in
         the outlines correspond to the labels in the input
-        ``segment_image``.
+        ``segment_image``.  If ``mask_background`` is `True`, then a
+        `~numpy.ma.MaskedArray` is returned.
 
     Examples
     --------
@@ -1404,7 +1411,10 @@ def outline_segments(segment_image):
     """
 
     from skimage.segmentation import find_boundaries
-    return segment_image * find_boundaries(segment_image, mode='inner')
+    outlines = segment_image * find_boundaries(segment_image, mode='inner')
+    if mask_background:
+        outlines = np.ma.masked_where(outlines == 0, outlines)
+    return outlines
 
 
 def relabel_sequential(segment_image, start_label=1):
