@@ -387,7 +387,7 @@ class TestLabels(object):
 
 
 def test_outline_segments():
-    segm = np.zeros((5, 5))
+    segm = np.zeros((5, 5)).astype(int)
     segm[1:4, 1:4] = 2
     segm_ref = np.copy(segm)
     segm_ref[2, 2] = 0

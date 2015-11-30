@@ -1386,6 +1386,21 @@ def outline_segments(segment_image):
         only the outlines of the labeled segments.  The pixel values in
         the outlines correspond to the labels in the input
         ``segment_image``.
+
+    Examples
+    --------
+    >>> from photutils import outline_segments
+    >>> segm = np.array([[0, 0, 0, 0, 0],
+    ...                  [0, 2, 2, 2, 0],
+    ...                  [0, 2, 2, 2, 0],
+    ...                  [0, 2, 2, 2, 0],
+    ...                  [0, 0, 0, 0, 0]])
+    >>> outline_segments(segm)
+    array([[0, 0, 0, 0, 0],
+           [0, 2, 2, 2, 0],
+           [0, 2, 0, 2, 0],
+           [0, 2, 2, 2, 0],
+           [0, 0, 0, 0, 0]])
     """
 
     from skimage.segmentation import find_boundaries
