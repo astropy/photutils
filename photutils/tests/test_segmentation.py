@@ -12,8 +12,8 @@ import astropy.wcs as WCS
 from ..segmentation import (SegmentProperties, segment_properties,
                             properties_table, check_label, segment_labels,
                             segment_nlabels, relabel_sequential,
-                            remove_segments, remove_border_segments,
-                            remove_masked_segments)
+                            keep_segments, remove_segments,
+                            remove_border_segments, remove_masked_segments)
 try:
     import scipy
     HAS_SCIPY = True
@@ -398,6 +398,20 @@ def test_relabel_sequential_start_invalid(start_label):
     segm = np.ones((2, 2))
     with pytest.raises(ValueError):
         relabel_sequential(segm, start_label=start_label)
+
+
+def test_keep_segments():
+    segm = [[2, 0], [0, 3]]
+    segm_ref = [[2, 0], [0, 0]]
+    segm_new = keep_segments(segm, labels=2)
+    assert_allclose(segm_new, segm_ref)
+
+
+def test_keep_segments_relabel():
+    segm = [[2, 0], [0, 3]]
+    segm_ref = [[1, 0], [0, 0]]
+    segm_new = keep_segments(segm, labels=2, relabel=True)
+    assert_allclose(segm_new, segm_ref)
 
 
 def test_remove_segments():
