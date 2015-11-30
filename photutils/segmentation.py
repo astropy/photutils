@@ -11,8 +11,8 @@ from .utils.prepare_data import _prepare_data
 
 
 __all__ = ['SegmentProperties', 'segment_properties', 'properties_table',
-           'check_label', 'relabel_sequential', 'relabel_segments',
-           'remove_segments', 'remove_border_segments',
+           'check_label', 'segment_labels', 'relabel_sequential',
+           'relabel_segments', 'remove_segments', 'remove_border_segments',
            'remove_masked_segments']
 
 __doctest_requires__ = {('segment_properties', 'properties_table'): ['scipy'],
@@ -1302,6 +1302,27 @@ def check_label(label, segment_image):
     if label not in segment_image:
         raise ValueError('label "{0}" is not in the input segmentation '
                          'image'.format(label))
+
+
+def segment_labels(segment_image):
+    """
+    Return the sorted labels, excluding 0 (background), in a
+    segmentation image.
+
+    Parameters
+    ----------
+    segment_image : array_like (int)
+        A 2D segmentation image where sources are labeled by different
+        positive integer values.  A value of zero is reserved for the
+        background.
+
+    Returns
+    -------
+    result : `~numpy.ndarray`
+        An array of label numbers.
+    """
+
+    return np.unique(segment_image[segment_image != 0])
 
 
 def relabel_sequential(segment_image, start_label=1):

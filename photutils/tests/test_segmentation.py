@@ -10,7 +10,8 @@ import astropy.units as u
 from astropy.utils.misc import isiterable
 import astropy.wcs as WCS
 from ..segmentation import (SegmentProperties, segment_properties,
-                            properties_table, check_label, relabel_sequential,
+                            properties_table, check_label, segment_labels,
+                            relabel_sequential,
                             remove_segments, remove_border_segments,
                             remove_masked_segments)
 try:
@@ -359,7 +360,7 @@ class TestPropertiesTable(object):
         assert t[0]['dec_icrs_centroid'] is not None
 
 
-class TestCheckLabel(object):
+class TestLabels(object):
     def setup_class(self):
         self.segment_image = np.array([[1, 1, 3], [0, 0, 3], [0, 0, 4]])
 
@@ -374,6 +375,10 @@ class TestCheckLabel(object):
     def test_invalid_label(self):
         with pytest.raises(ValueError):
             check_label(2, self.segment_image)
+
+    def test_segment_labels(self):
+        labels = segment_labels(self.segment_image)
+        assert_allclose(labels, [1, 3, 4])
 
 
 @pytest.mark.parametrize('start_label', [1, 5])
