@@ -161,10 +161,12 @@ class TestDetectSources(object):
     def test_basic_filter_kernel(self):
         """Test detection with filter_kernel."""
         kernel = np.ones((3, 3)) / 9.
-        threshold = 1.5
+        threshold = 0.3
+        expected = np.ones((3, 3))
+        expected[2] = 0
         segm = detect_sources(DATA, threshold, npixels=1,
                               filter_kernel=kernel)
-        assert_array_equal(segm, kernel * 9.)
+        assert_array_equal(segm, expected)
 
     def test_npixels_nonint(self):
         """Test if error raises if npixel is non-integer."""
