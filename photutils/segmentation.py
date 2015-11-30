@@ -12,8 +12,8 @@ from .utils.prepare_data import _prepare_data
 
 __all__ = ['SegmentProperties', 'segment_properties', 'properties_table',
            'check_label', 'segment_labels', 'segment_nlabels',
-           'relabel_sequential', 'relabel_segments', 'keep_segments',
-           'remove_segments', 'remove_border_segments',
+           'outline_segments', 'relabel_sequential', 'relabel_segments',
+           'keep_segments', 'remove_segments', 'remove_border_segments',
            'remove_masked_segments']
 
 __doctest_requires__ = {('segment_properties', 'properties_table'): ['scipy'],
@@ -1362,6 +1362,34 @@ def segment_nlabels(segment_image):
     """
 
     return len(segment_labels(segment_image))
+
+
+def outline_segments(segment_image):
+    """
+    Outline the labeled segments in a segmentation image.
+
+    The "outlines" represent the pixels *just inside* the segments,
+    leaving the background pixels unmodified.  This corresponds to the
+    ``mode='inner'`` in `skimage.segmentation.find_boundaries`.
+
+    Parameters
+    ----------
+    segment_image : array_like (int)
+        A 2D segmentation image where sources are labeled by different
+        positive integer values.  A value of zero is reserved for the
+        background.
+
+    Returns
+    -------
+    boundaries : 2D `~numpy.ndarray`
+        An image with the same shape of ``segment_image`` containing
+        only the outlines of the labeled segments.  The pixel values in
+        the outlines correspond to the labels in the input
+        ``segment_image``.
+    """
+
+    from skimage.segmentation import find_boundaries
+    return segment_image * find_boundaries(segment_image, mode='inner')
 
 
 def relabel_sequential(segment_image, start_label=1):
