@@ -8,7 +8,7 @@ from .check_random_state import check_random_state
 __all__ = ['random_cmap']
 
 
-def random_cmap(ncolors, bkgrd_color='black', random_state=None):
+def random_cmap(ncolors=256, bkgrd_color='black', random_state=None):
     """
     Generate a matplotlib colormap consisting of random (muted) colors.
 
@@ -16,9 +16,10 @@ def random_cmap(ncolors, bkgrd_color='black', random_state=None):
 
     Parameters
     ----------
-    ncolors : int
+    ncolors : int, optional
         The number of colors in the colormap.  For use with segmentation
-        images, ``ncolors`` should be set to the number of labels.
+        images, ``ncolors`` should be set to the number of labels.  The
+        default is 256.
 
     bkgrd_color : str, optional
         The name of the background (first) color in the colormap.  Valid
