@@ -11,7 +11,7 @@ from astropy.utils.misc import isiterable
 import astropy.wcs as WCS
 from ..segmentation import (SegmentProperties, segment_properties,
                             properties_table, check_label, segment_labels,
-                            relabel_sequential,
+                            segment_nlabels, relabel_sequential,
                             remove_segments, remove_border_segments,
                             remove_masked_segments)
 try:
@@ -379,6 +379,10 @@ class TestLabels(object):
     def test_segment_labels(self):
         labels = segment_labels(self.segment_image)
         assert_allclose(labels, [1, 3, 4])
+
+    def test_segment_nlabels(self):
+        nlabels = segment_nlabels(self.segment_image)
+        assert_allclose(nlabels, 3)
 
 
 @pytest.mark.parametrize('start_label', [1, 5])
