@@ -1321,6 +1321,7 @@ def segment_labels(segment_image):
         An array of label numbers.
     """
 
+    segment_image = np.array(segment_image).astype(np.int)
     return np.unique(segment_image[segment_image != 0])
 
 
@@ -1380,8 +1381,8 @@ def relabel_sequential(segment_image, start_label=1):
     if start_label <= 0:
         raise ValueError('start_label must be >= 0.')
     segment_image = np.array(segment_image).astype(np.int)
-    label_max = int(np.max(segment_image))
-    labels = np.unique(segment_image[segment_image.nonzero()])
+    labels = segment_labels(segment_image)
+    label_max = np.max(labels)
     if (label_max == len(labels)) and (labels[0] == start_label):
         return segment_image
     forward_map = np.zeros(label_max + 1, dtype=np.int)
@@ -1596,8 +1597,8 @@ def remove_masked_segments(segment_image, mask, partial_overlap=True,
     segment_image = np.array(segment_image).astype(np.int)
     if segment_image.shape != mask.shape:
         raise ValueError('segment_image and mask must have the same shape')
-    labels = np.unique(segment_image[mask])
+    labels = segment_labels(segment_image[mask])
     if not partial_overlap:
-        inside_labels = np.unique(segment_image[~mask])
+        inside_labels = segment_labels(segment_image[~mask])
         labels = [i for i in labels if i not in inside_labels]
     return remove_segments(segment_image, labels, relabel=relabel)
