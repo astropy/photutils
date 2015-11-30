@@ -1319,6 +1319,15 @@ def segment_labels(segment_image):
     -------
     result : `~numpy.ndarray`
         An array of label numbers.
+
+    Examples
+    --------
+    >>> from photutils import segment_labels
+    >>> segment_image = [[1, 1, 0],
+    ...                  [1, 0, 3],
+    ...                  [0, 3, 3]]
+    >>> segment_labels(segment_image)
+    array([1, 3])
     """
 
     segment_image = np.array(segment_image).astype(np.int)
@@ -1340,6 +1349,15 @@ def segment_nlabels(segment_image):
     -------
     result : int
         The number of non-zero labels.
+
+    Examples
+    --------
+    >>> from photutils import segment_nlabels
+    >>> segment_image = [[1, 1, 0],
+    ...                  [1, 0, 3],
+    ...                  [0, 3, 3]]
+    >>> segment_nlabels(segment_image)
+    2
     """
 
     return len(segment_labels(segment_image))
@@ -1368,7 +1386,7 @@ def relabel_sequential(segment_image, start_label=1):
 
     Examples
     --------
-    >>> from photutils.segmentation import relabel_sequential
+    >>> from photutils import relabel_sequential
     >>> segment_image = [[1, 1, 0],
     ...                  [1, 0, 3],
     ...                  [0, 3, 3]]
@@ -1415,7 +1433,7 @@ def relabel_segments(segment_image, labels, new_label):
 
     Examples
     --------
-    >>> from photutils.segmentation import relabel_segments
+    >>> from photutils import relabel_segments
     >>> segment_image = [[1, 1, 0],
     ...                  [0, 0, 3],
     ...                  [2, 0, 3]]
@@ -1458,7 +1476,7 @@ def remove_segments(segment_image, labels, relabel=False):
 
     Examples
     --------
-    >>> from photutils.segmentation import remove_segments
+    >>> from photutils import remove_segments
     >>> segment_image = [[1, 1, 0],
     ...                  [0, 0, 3],
     ...                  [2, 0, 3]]
@@ -1505,7 +1523,7 @@ def remove_border_segments(segment_image, border_width, partial_overlap=True,
 
     Examples
     --------
-    >>> from photutils.segmentation import remove_border_segments
+    >>> from photutils import remove_border_segments
     >>> segment_image = [[1, 1, 0, 4, 4],
     ...                  [0, 0, 0, 0, 0],
     ...                  [0, 0, 3, 0, 5],
@@ -1572,7 +1590,7 @@ def remove_masked_segments(segment_image, mask, partial_overlap=True,
 
     Examples
     --------
-    >>> from photutils.segmentation import remove_masked_segments
+    >>> from photutils import remove_masked_segments
     >>> segment_image = [[1, 1, 0, 4, 4],
     ...                  [0, 0, 0, 0, 4],
     ...                  [0, 0, 3, 0, 0],
