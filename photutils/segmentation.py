@@ -12,8 +12,9 @@ from .utils.prepare_data import _prepare_data
 
 __all__ = ['SegmentProperties', 'segment_properties', 'properties_table',
            'check_label', 'segment_labels', 'segment_nlabels',
-           'relabel_sequential', 'relabel_segments', 'remove_segments',
-           'remove_border_segments', 'remove_masked_segments']
+           'relabel_sequential', 'relabel_segments', 'keep_segments',
+           'remove_segments', 'remove_border_segments',
+           'remove_masked_segments']
 
 __doctest_requires__ = {('segment_properties', 'properties_table'): ['scipy'],
                         ('segment_properties', 'properties_table'):
@@ -1448,6 +1449,51 @@ def relabel_segments(segment_image, labels, new_label):
     for label in labels:
         segment_image[np.where(segment_image == label)] = new_label
     return segment_image
+
+
+def keep_segments(segment_image, labels, relabel=False):
+    """
+    Keep only the specified labeled segments in a segmentation image.
+
+    Parameters
+    ----------
+    segment_image : array_like (int)
+        A 2D segmentation image where sources are labeled by different
+        positive integer values.  A value of zero is reserved for the
+        background.
+
+    labels : int, array-like (1D, int)
+        The label number(s) of the segments to keep.  Labels of zero
+        and those not in ``segment_image`` will be ignored.
+
+    relabel : bool
+        If `True`, the the segmentation image will be relabeled such
+        that the labels are in sequential order starting from 1.
+
+    Returns
+    -------
+    result : `~numpy.ndarray` (int)
+        The modified segmentation image.
+
+    Examples
+    --------
+    >>> from photutils import keep_segments
+    >>> segment_image = [[1, 1, 0],
+    ...                  [0, 0, 3],
+    ...                  [2, 0, 3]]
+    >>> keep_segments(segment_image, labels=3)
+    array([[0, 0, 0],
+           [0, 0, 3],
+           [0, 0, 3]])
+    >>> keep_segments(segment_image, labels=[1, 3])
+    array([[1, 1, 0],
+           [0, 0, 3],
+           [0, 0, 3]])
+    """
+
+    labels = np.atleast_1d(labels)
+    remove_labels = list(set(segment_labels(segment_image)) - set(labels))
+    return remove_segments(segment_image, remove_labels, relabel=relabel)
 
 
 def remove_segments(segment_image, labels, relabel=False):
