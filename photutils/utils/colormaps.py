@@ -8,7 +8,7 @@ from .check_random_state import check_random_state
 __all__ = ['random_cmap']
 
 
-def random_cmap(ncolors=256, bkgrd_color='black', random_state=None):
+def random_cmap(ncolors=256, background_color='black', random_state=None):
     """
     Generate a matplotlib colormap consisting of random (muted) colors.
 
@@ -21,7 +21,7 @@ def random_cmap(ncolors=256, bkgrd_color='black', random_state=None):
         images, ``ncolors`` should be set to the number of labels.  The
         default is 256.
 
-    bkgrd_color : str, optional
+    background_color : str, optional
         The name of the background (first) color in the colormap.  Valid
         colors names are defined by ``matplotlib.colors.cnames``.  The
         default is ``'black'``.
@@ -46,10 +46,10 @@ def random_cmap(ncolors=256, bkgrd_color='black', random_state=None):
     hsv = np.transpose(np.array([h, s, v]))
     rgb = colors.hsv_to_rgb(hsv)
 
-    if bkgrd_color is not None:
-        if bkgrd_color not in colors.cnames:
+    if background_color is not None:
+        if background_color not in colors.cnames:
             raise ValueError('"{0}" is not a valid background color '
-                             'name'.format(bkgrd_color))
-        rgb[0] = colors.hex2color(colors.cnames[bkgrd_color])
+                             'name'.format(background_color))
+        rgb[0] = colors.hex2color(colors.cnames[background_color])
 
     return colors.ListedColormap(rgb)
