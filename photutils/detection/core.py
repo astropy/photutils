@@ -54,7 +54,7 @@ def _convolve_data(data, filter_kernel, mode='constant', fill_value=0.0):
         else:
             filter_array = filter_kernel
 
-        if np.sum(filter_array) != 1:
+        if not np.allclose(np.sum(filter_array), 1.0):
             warnings.warn('The filter kernel is not normalized.',
                           AstropyUserWarning)
 
