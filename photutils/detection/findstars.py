@@ -10,7 +10,7 @@ import numpy as np
 from astropy.table import Column, Table
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.stats import gaussian_fwhm_to_sigma
-from .core import find_peaks
+from .core import _convolve_data, find_peaks
 
 
 __all__ = ['daofind', 'irafstarfind']
@@ -348,10 +348,6 @@ def _findobjs(data, threshold, kernel, min_separation=None,
 
     from scipy import ndimage
 
-    # TODO: astropy's convolve fails with zero-sum kernels (use scipy for now)
-    # https://github.com/astropy/astropy/issues/1647
-    # convimg = astropy.nddata.convolve(data, kernel, boundary='fill',
-    #                                   fill_value=0.0)
     x_kernradius = kernel.kern.shape[1] // 2
     y_kernradius = kernel.kern.shape[0] // 2
 
@@ -364,8 +360,9 @@ def _findobjs(data, threshold, kernel, min_separation=None,
                     x_kernradius:x_kernradius + data.shape[1]] = data
         data = data_padded
 
-    convolved_data = ndimage.convolve(data, kernel.kern, mode='constant',
-                                      cval=0.0)
+    convolved_data = _convolve_data(data, kernel.kern, mode='constant',
+                                    fill_value=0.0, check_normalization=False)
+
     if not exclude_border:
         # keep border=0 in convolved data
         convolved_data[:y_kernradius, :] = 0.

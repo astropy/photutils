@@ -198,7 +198,7 @@ class TestDetectSources(object):
             detect_sources(DATA, 0.1, npixels=1,
                            filter_kernel=self.filter_kernel*10.)
             assert warning_lines[0].category == AstropyUserWarning
-            assert ('The filter kernel is not normalized.'
+            assert ('The kernel is not normalized.'
                     in str(warning_lines[0].message))
 
 

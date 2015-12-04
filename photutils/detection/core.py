@@ -19,7 +19,8 @@ ASTROPY_LT_1P1 = [int(x) for x in astropy.__version__.split('.')[:2]] < [1, 1]
 __all__ = ['detect_threshold', 'detect_sources', 'find_peaks']
 
 
-def _convolve_data(data, filter_kernel, mode='constant', fill_value=0.0):
+def _convolve_data(data, kernel, mode='constant', fill_value=0.0,
+                   check_normalization=False):
     """
     Convolve a 2D image with a 2D kernel.
 
@@ -31,7 +32,7 @@ def _convolve_data(data, filter_kernel, mode='constant', fill_value=0.0):
     data : array_like
         The 2D array of the image.
 
-    filter_kernel : array-like (2D) or `~astropy.convolution.Kernel2D`
+    kernel : array-like (2D) or `~astropy.convolution.Kernel2D`
         The 2D kernel used to filter the input ``data``. Filtering the
         ``data`` will smooth the noise and maximize detectability of
         objects with a shape similar to the kernel.
@@ -44,21 +45,28 @@ def _convolve_data(data, filter_kernel, mode='constant', fill_value=0.0):
     fill_value : scalar, optional
         Value to fill data values beyond the array borders if ``mode``
         is ``'constant'``.  The default is ``0.0``.
+
+    check_normalization : bool, optional
+        If `True` then a warning will be issued if the kernel is not
+        normalized to 1.
     """
 
     from scipy import ndimage
 
-    if filter_kernel is not None:
-        if isinstance(filter_kernel, Kernel2D):
-            filter_array = filter_kernel.array
+    if kernel is not None:
+        if isinstance(kernel, Kernel2D):
+            kernel_array = kernel.array
         else:
-            filter_array = filter_kernel
+            kernel_array = kernel
 
-        if not np.allclose(np.sum(filter_array), 1.0):
-            warnings.warn('The filter kernel is not normalized.',
-                          AstropyUserWarning)
+        if check_normalization:
+            if not np.allclose(np.sum(kernel_array), 1.0):
+                warnings.warn('The kernel is not normalized.',
+                              AstropyUserWarning)
 
-        return ndimage.convolve(data, filter_array, mode=mode,
+        # NOTE:  astropy.convolution.convolve fails with zero-sum
+        # kernels (used in findstars) (cf. astropy #1647)
+        return ndimage.convolve(data, kernel_array, mode=mode,
                                 cval=fill_value)
     else:
         return data
@@ -273,8 +281,10 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         raise ValueError('npixels must be a positive integer, got '
                          '"{0}"'.format(npixels))
 
-    image = (_convolve_data(data, filter_kernel, mode='constant',
-                            fill_value=0.0) > threshold)
+    image = (_convolve_data(
+        data, filter_kernel, mode='constant', fill_value=0.0,
+        check_normalization=True) > threshold)
+
     if connectivity == 4:
         selem = ndimage.generate_binary_structure(2, 1)
     elif connectivity == 8:
