@@ -106,7 +106,7 @@ levels::
 
     >>> from astropy.stats import sigma_clipped_stats
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, iters=5)
-    >>> print(mean, median, std)    # doctest: +FLOAT_CMP
+    >>> print((mean, median, std))    # doctest: +FLOAT_CMP
     (5.1991386516217908, 5.1555874333582912, 2.0942752121329691)
 
 
@@ -131,7 +131,7 @@ maximize the source detections:
     >>> segm_img = detect_sources(data, threshold, npixels=5)
     >>> mask = segm_img.astype(np.bool)    # turn segm_img into a mask
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, mask=mask)
-    >>> print(mean, median, std)    # doctest: +FLOAT_CMP
+    >>> print((mean, median, std))    # doctest: +FLOAT_CMP
     (5.12349231659, 5.11792609168, 2.00503461917)
 
 To ensure that we are completely masking the extended regions of
@@ -144,7 +144,7 @@ detected sources, we can dilate the source mask (NOTE: this requires
     >>> selem = np.ones((5, 5))    # dilate using a 5x5 box
     >>> mask2 = binary_dilation(mask, selem)
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, mask=mask2)
-    >>> print(mean, median, std)    # doctest: +FLOAT_CMP
+    >>> print((mean, median, std))    # doctest: +FLOAT_CMP
     (5.02603895921, 5.02341384438, 1.97423026273)
 
 Of course, the source detection and masking procedure can be iterated
