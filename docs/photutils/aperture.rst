@@ -101,7 +101,7 @@ named ``'aperture_sum'``, ``'xcenter'``, and ``'ycenter'``.
 Since all the data values are 1.0, the aperture sums are equal to the
 area of a circle with a radius of 3::
 
-    >>> print(np.pi * 3. ** 2)
+    >>> print(np.pi * 3. ** 2)    # doctest: +FLOAT_CMP
     28.2743338823
 
 Aperture and Pixel Overlap
