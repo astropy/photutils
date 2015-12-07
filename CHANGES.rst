@@ -32,6 +32,11 @@ New Features
 
   - Added new ``cutout_footprint`` function [#244].
 
+- ``photutils.utils``
+
+  - Added new ``random_cmap`` function to generate a colormap comprised
+    of random colors [#299].
+
 Bug Fixes
 ^^^^^^^^^
 
