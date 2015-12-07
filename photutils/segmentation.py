@@ -73,7 +73,7 @@ class SegmentationImage(object):
     @staticmethod
     def _labels(data):
         """
-        Return the sorted non-zero labels.
+        Return sorted non-zero labels.
 
         Parameters
         ----------
@@ -96,11 +96,14 @@ class SegmentationImage(object):
         Examples
         --------
         >>> from photutils import SegmentationImage
-        >>> segm = SegmentationImage([[1, 1, 0],
-        ...                           [1, 0, 3],
-        ...                           [0, 3, 3]])
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
         >>> segm._labels(segm.data)
-        array([1, 3])
+        array([1, 3, 4, 5, 7])
         """
 
         return np.unique(data[data != 0])
@@ -148,17 +151,19 @@ class SegmentationImage(object):
         Examples
         --------
         >>> from photutils import SegmentationImage
-        >>> segm = SegmentationImage([[0, 0, 0, 0, 0],
-        ...                           [0, 2, 2, 2, 0],
-        ...                           [0, 2, 2, 2, 0],
-        ...                           [0, 2, 2, 2, 0],
-        ...                           [0, 0, 0, 0, 0]])
+        >>> segm = SegmentationImage([[0, 0, 0, 0, 0, 0],
+        ...                           [0, 2, 2, 2, 2, 0],
+        ...                           [0, 2, 2, 2, 2, 0],
+        ...                           [0, 2, 2, 2, 2, 0],
+        ...                           [0, 2, 2, 2, 2, 0],
+        ...                           [0, 0, 0, 0, 0, 0]])
         >>> segm.outline_segments()
-        array([[0, 0, 0, 0, 0],
-               [0, 2, 2, 2, 0],
-               [0, 2, 0, 2, 0],
-               [0, 2, 2, 2, 0],
-               [0, 0, 0, 0, 0]])
+        array([[0, 0, 0, 0, 0, 0],
+               [0, 2, 2, 2, 2, 0],
+               [0, 2, 0, 0, 2, 0],
+               [0, 2, 0, 0, 2, 0],
+               [0, 2, 2, 2, 2, 0],
+               [0, 0, 0, 0, 0, 0]])
         """
 
         from skimage.segmentation import find_boundaries
@@ -185,14 +190,20 @@ class SegmentationImage(object):
         Examples
         --------
         >>> from photutils import SegmentationImage
-        >>> segm = SegmentationImage([[1, 1, 0],
-        ...                           [1, 0, 3],
-        ...                           [2, 3, 3]])
-        >>> segm.relabel(labels=[1, 3], new_label=5)
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.relabel(labels=[1, 7], new_label=2)
         >>> segm.data
-        array([[5, 5, 0],
-               [0, 0, 5],
-               [2, 0, 5]])
+        array([[2, 2, 0, 0, 4, 4],
+               [0, 0, 0, 0, 0, 4],
+               [0, 0, 3, 3, 0, 0],
+               [2, 0, 0, 0, 0, 5],
+               [2, 2, 0, 5, 5, 5],
+               [2, 2, 0, 0, 5, 5]])
         """
 
         labels = np.atleast_1d(labels)
@@ -213,14 +224,20 @@ class SegmentationImage(object):
         Examples
         --------
         >>> from photutils import SegmentationImage
-        >>> segm = SegmentationImage([[1, 1, 0],
-        ...                           [1, 0, 3],
-        ...                           [0, 3, 3]])
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
         >>> segm.relabel_sequential()
         >>> segm.data
-        array([[1, 1, 0],
-               [1, 0, 2],
-               [0, 2, 2]])
+        array([[1, 1, 0, 0, 3, 3],
+               [0, 0, 0, 0, 0, 3],
+               [0, 0, 2, 2, 0, 0],
+               [5, 0, 0, 0, 0, 4],
+               [5, 5, 0, 4, 4, 4],
+               [5, 5, 0, 0, 4, 4]])
         """
 
         if start_label <= 0:
@@ -250,24 +267,39 @@ class SegmentationImage(object):
         Examples
         --------
         >>> from photutils import SegmentationImage
-        >>> segm = SegmentationImage([[1, 1, 0],
-        ...                           [1, 0, 3],
-        ...                           [2, 3, 3]])
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
         >>> segm.keep_labels(labels=3)
         >>> segm.data
-        array([[0, 0, 0],
-               [0, 0, 3],
-               [0, 0, 3]])
+        array([[0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0],
+               [0, 0, 3, 3, 0, 0],
+               [0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0]])
 
-        >>> segm.keep_labels(labels=[1, 3])
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.keep_labels(labels=[5, 3])
         >>> segm.data
-        array([[1, 1, 0],
-               [0, 0, 3],
-               [0, 0, 3]])
+        array([[0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0],
+               [0, 0, 3, 3, 0, 0],
+               [0, 0, 0, 0, 0, 5],
+               [0, 0, 0, 5, 5, 5],
+               [0, 0, 0, 0, 5, 5]])
         """
 
         labels = np.atleast_1d(labels)
-        labels_tmp = list(set(self.data.labels) - set(labels))
+        labels_tmp = list(set(self.labels) - set(labels))
         self.remove_labels(labels_tmp, relabel=relabel)
 
     def remove_labels(self, labels, relabel=False):
@@ -287,14 +319,35 @@ class SegmentationImage(object):
         Examples
         --------
         >>> from photutils import SegmentationImage
-        >>> segm = SegmentationImage([[1, 1, 0],
-        ...                           [1, 0, 3],
-        ...                           [2, 3, 3]])
-        >>> segm.remove_labels(labels=2)
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.remove_labels(labels=5)
         >>> segm.data
-        array([[1, 1, 0],
-               [0, 0, 3],
-               [0, 0, 3]])
+        array([[1, 1, 0, 0, 4, 4],
+               [0, 0, 0, 0, 0, 4],
+               [0, 0, 3, 3, 0, 0],
+               [7, 0, 0, 0, 0, 0],
+               [7, 7, 0, 0, 0, 0],
+               [7, 7, 0, 0, 0, 0]])
+
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.remove_labels(labels=[5, 3])
+        >>> segm.data
+        array([[1, 1, 0, 0, 4, 4],
+               [0, 0, 0, 0, 0, 4],
+               [0, 0, 0, 0, 0, 0],
+               [7, 0, 0, 0, 0, 0],
+               [7, 7, 0, 0, 0, 0],
+               [7, 7, 0, 0, 0, 0]])
         """
 
         self.relabel(labels, new_label=0)
@@ -326,27 +379,36 @@ class SegmentationImage(object):
         Examples
         --------
         >>> from photutils import SegmentationImage
-        >>> segm = SegmentationImage([[1, 1, 0, 4, 4],
-        ...                           [0, 0, 0, 0, 0],
-        ...                           [0, 0, 3, 0, 5],
-        ...                           [2, 2, 0, 0, 5],
-        ...                           [2, 2, 0, 5, 5]]
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
         >>> segm.remove_border_labels(border_width=1)
         >>> segm.data
-        array([[0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0],
-               [0, 0, 3, 0, 0],
-               [0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0]])
+        array([[0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0],
+               [0, 0, 3, 3, 0, 0],
+               [0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0]])
 
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
         >>> segm.remove_border_labels(border_width=1,
         ...                           partial_overlap=False)
         >>> segm.data
-        array([[0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0],
-               [0, 0, 3, 0, 0],
-               [2, 2, 0, 0, 0],
-               [2, 2, 0, 0, 0]])
+        array([[0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0],
+               [0, 0, 3, 3, 0, 0],
+               [7, 0, 0, 0, 0, 5],
+               [7, 7, 0, 5, 5, 5],
+               [7, 7, 0, 0, 5, 5]])
         """
 
         if border_width >= min(self.shape) / 2:
@@ -385,27 +447,37 @@ class SegmentationImage(object):
         Examples
         --------
         >>> from photutils import SegmentationImage
-        >>> segm = SegmentationImage([[1, 1, 0, 4, 4],
-        ...                           [0, 0, 0, 0, 4],
-        ...                           [0, 0, 3, 0, 0],
-        ...                           [2, 2, 0, 0, 5],
-        ...                           [2, 2, 0, 5, 5]])
-        >>> mask = np.zeros_like(segment_image, dtype=np.bool)
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> mask = np.zeros_like(segm.data, dtype=np.bool)
         >>> mask[0, :] = True    # mask the first row
-        >>> segm.remove_masked_segments(mask)
+        >>> segm.remove_masked_labels(mask)
         >>> segm.data
-        array([[0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0],
-               [0, 0, 3, 0, 0],
-               [2, 2, 0, 0, 5],
-               [2, 2, 0, 5, 5]])
+        array([[0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0],
+               [0, 0, 3, 3, 0, 0],
+               [7, 0, 0, 0, 0, 5],
+               [7, 7, 0, 5, 5, 5],
+               [7, 7, 0, 0, 5, 5]])
 
-        >>> segm.remove_masked_segments(mask, partial_overlap=False)
-        array([[0, 0, 0, 4, 4],
-               [0, 0, 0, 0, 4],
-               [0, 0, 3, 0, 0],
-               [2, 2, 0, 0, 5],
-               [2, 2, 0, 5, 5]])
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.remove_masked_labels(mask, partial_overlap=False)
+        >>> segm.data
+        array([[0, 0, 0, 0, 4, 4],
+               [0, 0, 0, 0, 0, 4],
+               [0, 0, 3, 3, 0, 0],
+               [7, 0, 0, 0, 0, 5],
+               [7, 7, 0, 5, 5, 5],
+               [7, 7, 0, 0, 5, 5]])
         """
 
         if mask.shape != self.shape:
