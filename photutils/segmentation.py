@@ -10,15 +10,412 @@ from astropy.wcs.utils import pixel_to_skycoord
 from .utils.prepare_data import _prepare_data
 
 
-__all__ = ['SegmentProperties', 'segment_properties', 'properties_table',
-           'check_label', 'segment_labels', 'segment_nlabels',
-           'outline_segments', 'relabel_sequential', 'relabel_segments',
-           'keep_segments', 'remove_segments', 'remove_border_segments',
-           'remove_masked_segments']
+__all__ = ['SegmentationImage', 'SegmentProperties', 'segment_properties',
+           'properties_table']
 
 __doctest_requires__ = {('segment_properties', 'properties_table'): ['scipy'],
-                        ('segment_properties', 'properties_table'):
-                        ['skimage']}
+                        ('SegmentationImage', 'segment_properties',
+                         'properties_table'): ['skimage']}
+
+
+class SegmentationImage(object):
+    """
+    Class for a segmentation image.
+    """
+
+    def __init__(self, data):
+        """
+        Parameters
+        ----------
+        data : array_like (int)
+            A 2D segmentation image where sources are labeled by
+            different positive integer values.  A value of zero is
+            reserved for the background.
+        """
+
+        self.data = np.asanyarray(data, dtype=np.int)
+        self.shape = self.data.shape
+        # define __iter__
+        # self.is_sequential
+
+    def check_label(self, label):
+        """
+        Check for a valid label label number.
+
+        Parameters
+        ----------
+        label : int
+            The label number to check.
+
+        Raises
+        ------
+        ValueError
+            If the input ``label`` is invalid.
+        """
+
+        if label == 0:
+            raise ValueError('label "0" is reserved for the background')
+        if label < 0:
+            raise ValueError('label must be a positive integer, got '
+                             '"{0}"'.format(label))
+        if label not in self.data:
+            raise ValueError('label "{0}" is not in the segmentation '
+                             'image'.format(label))
+
+    @lazyproperty
+    def data_masked(self):
+        """
+        A `~numpy.ma.MaskedArray` version of the segmentation image
+        where the background (label = 0) has been masked.
+        """
+        return np.ma.masked_where(self.data == 0, self.data)
+
+    @staticmethod
+    def _labels(data):
+        """
+        Return the sorted non-zero labels.
+
+        Parameters
+        ----------
+        data : array_like (int)
+            A 2D segmentation image where sources are labeled by
+            different positive integer values.  A value of zero is
+            reserved for the background.
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            An array of non-zero label numbers.
+
+        Notes
+        -----
+        This is a separate static method so it can be used on masked
+        versions of the segmentation image (cf.
+        ``~photutils.SegmentationImage.remove_masked_labels``.
+
+        Examples
+        --------
+        >>> from photutils import SegmentationImage
+        >>> segm = SegmentationImage([[1, 1, 0],
+        ...                           [1, 0, 3],
+        ...                           [0, 3, 3]])
+        >>> segm._labels(segm.data)
+        array([1, 3])
+        """
+
+        return np.unique(data[data != 0])
+
+    @lazyproperty
+    def labels(self):
+        """The sorted non-zero labels."""
+        return self._labels(self.data)
+
+    @lazyproperty
+    def nlabels(self):
+        """The number of non-zero labels."""
+        return len(self.labels)
+
+    @lazyproperty
+    def max(self):
+        """The maximum non-zero label."""
+        return np.max(self.data)
+
+    def outline_segments(self, mask_background=False):
+        """
+        Outline the labeled segments.
+
+        The "outlines" represent the pixels *just inside* the segments,
+        leaving the background pixels unmodified.  This corresponds to
+        the ``mode='inner'`` in `skimage.segmentation.find_boundaries`.
+
+        Parameters
+        ----------
+        mask_background : bool, optional
+            Set to `True` to mask the background pixels (where
+            ``segment_image`` is zero) in the returned image.  This is
+            useful for overplotting the segment outlines on an image.
+            The default is `False`.
+
+        Returns
+        -------
+        boundaries : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+            An image with the same shape of the segmenation image
+            containing only the outlines of the labeled segments.  The
+            pixel values in the outlines correspond to the labels in the
+            segmentation image.  If ``mask_background`` is `True`, then
+            a `~numpy.ma.MaskedArray` is returned.
+
+        Examples
+        --------
+        >>> from photutils import SegmentationImage
+        >>> segm = SegmentationImage([[0, 0, 0, 0, 0],
+        ...                           [0, 2, 2, 2, 0],
+        ...                           [0, 2, 2, 2, 0],
+        ...                           [0, 2, 2, 2, 0],
+        ...                           [0, 0, 0, 0, 0]])
+        >>> segm.outline_segments()
+        array([[0, 0, 0, 0, 0],
+               [0, 2, 2, 2, 0],
+               [0, 2, 0, 2, 0],
+               [0, 2, 2, 2, 0],
+               [0, 0, 0, 0, 0]])
+        """
+
+        from skimage.segmentation import find_boundaries
+
+        outlines = self.data * find_boundaries(self.data, mode='inner')
+        if mask_background:
+            outlines = np.ma.masked_where(outlines == 0, outlines)
+        return outlines
+
+    def relabel(self, labels, new_label):
+        """
+        Relabel one or more label numbers.
+
+        The input ``labels`` will all be relabeled to ``new_label``.
+
+        Parameters
+        ----------
+        labels : int, array-like (1D, int)
+            The label numbers(s) to relabel.
+
+        new_label : int
+            The relabeled label number.
+
+        Examples
+        --------
+        >>> from photutils import SegmentationImage
+        >>> segm = SegmentationImage([[1, 1, 0],
+        ...                           [1, 0, 3],
+        ...                           [2, 3, 3]])
+        >>> segm.relabel(labels=[1, 3], new_label=5)
+        >>> segm.data
+        array([[5, 5, 0],
+               [0, 0, 5],
+               [2, 0, 5]])
+        """
+
+        labels = np.atleast_1d(labels)
+        for label in labels:
+            self.data[np.where(self.data == label)] = new_label
+
+    def relabel_sequential(self, start_label=1):
+        """
+        Relabel the label numbers sequentially, such that there are no
+        missing label numbers (up to the maximum label number).
+
+        Parameters
+        ----------
+        start_label : int, optional
+            The starting label number, which should be strictly
+            positive.  The default is 1.
+
+        Examples
+        --------
+        >>> from photutils import SegmentationImage
+        >>> segm = SegmentationImage([[1, 1, 0],
+        ...                           [1, 0, 3],
+        ...                           [0, 3, 3]])
+        >>> segm.relabel_sequential()
+        >>> segm.data
+        array([[1, 1, 0],
+               [1, 0, 2],
+               [0, 2, 2]])
+        """
+
+        if start_label <= 0:
+            raise ValueError('start_label must be >= 0.')
+
+        if (self.max == self.nlabels) and (self.labels[0] == start_label):
+            return
+
+        forward_map = np.zeros(self.max + 1, dtype=np.int)
+        forward_map[self.labels] = np.arange(self.nlabels) + start_label
+        self.data = forward_map[self.data]
+
+    def keep_labels(self, labels, relabel=False):
+        """
+        Keep only the specified label numbers.
+
+        Parameters
+        ----------
+        labels : int, array-like (1D, int)
+            The label number(s) to keep.  Labels of zero and those not
+            in ``segment_image`` will be ignored.
+
+        relabel : bool
+            If `True`, the the segmentation image will be relabeled such
+            that the labels are in sequential order starting from 1.
+
+        Examples
+        --------
+        >>> from photutils import SegmentationImage
+        >>> segm = SegmentationImage([[1, 1, 0],
+        ...                           [1, 0, 3],
+        ...                           [2, 3, 3]])
+        >>> segm.keep_labels(labels=3)
+        >>> segm.data
+        array([[0, 0, 0],
+               [0, 0, 3],
+               [0, 0, 3]])
+
+        >>> segm.keep_labels(labels=[1, 3])
+        >>> segm.data
+        array([[1, 1, 0],
+               [0, 0, 3],
+               [0, 0, 3]])
+        """
+
+        labels = np.atleast_1d(labels)
+        labels_tmp = list(set(self.data.labels) - set(labels))
+        self.remove_labels(labels_tmp, relabel=relabel)
+
+    def remove_labels(self, labels, relabel=False):
+        """
+        Remove one or more label numbers.
+
+        Parameters
+        ----------
+        labels : int, array-like (1D, int)
+            The label number(s) to remove.  Labels of zero and those not
+            in ``segment_image`` will be ignored.
+
+        relabel : bool
+            If `True`, the the segmentation image will be relabeled such
+            that the labels are in sequential order starting from 1.
+
+        Examples
+        --------
+        >>> from photutils import SegmentationImage
+        >>> segm = SegmentationImage([[1, 1, 0],
+        ...                           [1, 0, 3],
+        ...                           [2, 3, 3]])
+        >>> segm.remove_labels(labels=2)
+        >>> segm.data
+        array([[1, 1, 0],
+               [0, 0, 3],
+               [0, 0, 3]])
+        """
+
+        self.relabel(labels, new_label=0)
+        if relabel:
+            self.relabel_sequential()
+
+    def remove_border_labels(self, border_width, partial_overlap=True,
+                             relabel=False):
+        """
+        Remove labeled segments near the image border.
+
+        Labels within the defined border region will be removed.
+
+        Parameters
+        ----------
+        border_width : int
+            The width of the border region in pixels.
+
+        partial_overlap : bool, optional
+            If this is set to `True` (the default), a segment that
+            partially extends into the border region will be removed.
+            Segments that are completely within the border region are
+            always removed.
+
+        relabel : bool
+            If `True`, the the segmentation image will be relabeled such
+            that the labels are in sequential order starting from 1.
+
+        Examples
+        --------
+        >>> from photutils import SegmentationImage
+        >>> segm = SegmentationImage([[1, 1, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0],
+        ...                           [0, 0, 3, 0, 5],
+        ...                           [2, 2, 0, 0, 5],
+        ...                           [2, 2, 0, 5, 5]]
+        >>> segm.remove_border_labels(border_width=1)
+        >>> segm.data
+        array([[0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0],
+               [0, 0, 3, 0, 0],
+               [0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0]])
+
+        >>> segm.remove_border_labels(border_width=1,
+        ...                           partial_overlap=False)
+        >>> segm.data
+        array([[0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0],
+               [0, 0, 3, 0, 0],
+               [2, 2, 0, 0, 0],
+               [2, 2, 0, 0, 0]])
+        """
+
+        if border_width >= min(self.shape) / 2:
+            raise ValueError('border_width must be smaller than half the '
+                             'image size in either dimension')
+        border = np.zeros(self.shape, dtype=np.bool)
+        border[:border_width, :] = True
+        border[-border_width:, :] = True
+        border[:, :border_width] = True
+        border[:, -border_width:] = True
+        self.remove_masked_labels(border, partial_overlap=partial_overlap,
+                                  relabel=relabel)
+
+    def remove_masked_labels(self, mask, partial_overlap=True,
+                             relabel=False):
+        """
+        Remove labeled segments located within a masked region.
+
+        Parameters
+        ----------
+        mask : array_like (bool), optional
+            A boolean mask, with the same shape as the segmentation
+            image (``.data``), where `True` values indicate masked
+            pixels.
+
+        partial_overlap : bool, optional
+            If this is set to `True` (the default), a segment that
+            partially extends into a masked region will also be removed.
+            Segments that are completely within a masked region are
+            always removed.
+
+        relabel : bool
+            If `True`, the the segmentation image will be relabeled such
+            that the labels are in sequential order starting from 1.
+
+        Examples
+        --------
+        >>> from photutils import SegmentationImage
+        >>> segm = SegmentationImage([[1, 1, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 0, 0],
+        ...                           [2, 2, 0, 0, 5],
+        ...                           [2, 2, 0, 5, 5]])
+        >>> mask = np.zeros_like(segment_image, dtype=np.bool)
+        >>> mask[0, :] = True    # mask the first row
+        >>> segm.remove_masked_segments(mask)
+        >>> segm.data
+        array([[0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0],
+               [0, 0, 3, 0, 0],
+               [2, 2, 0, 0, 5],
+               [2, 2, 0, 5, 5]])
+
+        >>> segm.remove_masked_segments(mask, partial_overlap=False)
+        array([[0, 0, 0, 4, 4],
+               [0, 0, 0, 0, 4],
+               [0, 0, 3, 0, 0],
+               [2, 2, 0, 0, 5],
+               [2, 2, 0, 5, 5]])
+        """
+
+        if mask.shape != self.shape:
+            raise ValueError('mask must have the same shape as the '
+                             'segmentation image')
+        remove_labels = self._labels(self.data[mask])
+        if not partial_overlap:
+            interior_labels = self._labels(self.data[~mask])
+            remove_labels = list(set(remove_labels) - set(interior_labels))
+        self.remove_labels(remove_labels, relabel=relabel)
 
 
 class SegmentProperties(object):
@@ -195,7 +592,7 @@ class SegmentProperties(object):
             if mask.shape != data.shape:
                 raise ValueError('mask and data must have the same shape')
 
-        check_label(label, segment_image)
+        # TODO: check_label(label, segment_image)
 
         self._segment_image = segment_image
         if not data_prepared:
@@ -1273,449 +1670,3 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
             props_table[column] = values
 
     return props_table
-
-
-def check_label(label, segment_image):
-    """
-    Check for a valid segmentation label number.
-
-    Parameters
-    ----------
-    label : int
-        The segmentation label number to check.
-
-    segment_image : array_like (int)
-        A 2D segmentation image where sources are labeled by different
-        positive integer values.  A value of zero is reserved for the
-        background.
-
-    Raises
-    ------
-    ValueError
-        If the input ``label`` is invalid.
-    """
-
-    if label == 0:
-        raise ValueError('label "0" is reserved for the background')
-    if label < 0:
-        raise ValueError('label must be a positive integer, got '
-                         '"{0}"'.format(label))
-    if label not in segment_image:
-        raise ValueError('label "{0}" is not in the input segmentation '
-                         'image'.format(label))
-
-
-def segment_labels(segment_image):
-    """
-    Return the sorted non-zero labels in a segmentation image.
-
-    Parameters
-    ----------
-    segment_image : array_like (int)
-        A 2D segmentation image where sources are labeled by different
-        positive integer values.  A value of zero is reserved for the
-        background.
-
-    Returns
-    -------
-    result : `~numpy.ndarray`
-        An array of label numbers.
-
-    Examples
-    --------
-    >>> from photutils import segment_labels
-    >>> segment_image = [[1, 1, 0],
-    ...                  [1, 0, 3],
-    ...                  [0, 3, 3]]
-    >>> segment_labels(segment_image)
-    array([1, 3])
-    """
-
-    segment_image = np.array(segment_image).astype(np.int)
-    return np.unique(segment_image[segment_image != 0])
-
-
-def segment_nlabels(segment_image):
-    """
-    Return the number of non-zero labels in a segmentation image.
-
-    Parameters
-    ----------
-    segment_image : array_like (int)
-        A 2D segmentation image where sources are labeled by different
-        positive integer values.  A value of zero is reserved for the
-        background.
-
-    Returns
-    -------
-    result : int
-        The number of non-zero labels.
-
-    Examples
-    --------
-    >>> from photutils import segment_nlabels
-    >>> segment_image = [[1, 1, 0],
-    ...                  [1, 0, 3],
-    ...                  [0, 3, 3]]
-    >>> segment_nlabels(segment_image)
-    2
-    """
-
-    return len(segment_labels(segment_image))
-
-
-def outline_segments(segment_image, mask_background=False):
-    """
-    Outline the labeled segments in a segmentation image.
-
-    The "outlines" represent the pixels *just inside* the segments,
-    leaving the background pixels unmodified.  This corresponds to the
-    ``mode='inner'`` in `skimage.segmentation.find_boundaries`.
-
-    Parameters
-    ----------
-    segment_image : array_like (int)
-        A 2D segmentation image where sources are labeled by different
-        positive integer values.  A value of zero is reserved for the
-        background.
-
-    mask_background : bool, optional
-        Set to `True` to mask the background pixels (where
-        ``segment_image`` is zero) in the returned image.  This is
-        useful for overplotting the segment outlines on an image.  The
-        default is `False`.
-
-    Returns
-    -------
-    boundaries : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-        An image with the same shape of ``segment_image`` containing
-        only the outlines of the labeled segments.  The pixel values in
-        the outlines correspond to the labels in the input
-        ``segment_image``.  If ``mask_background`` is `True`, then a
-        `~numpy.ma.MaskedArray` is returned.
-
-    Examples
-    --------
-    >>> from photutils import outline_segments
-    >>> segm = np.array([[0, 0, 0, 0, 0],
-    ...                  [0, 2, 2, 2, 0],
-    ...                  [0, 2, 2, 2, 0],
-    ...                  [0, 2, 2, 2, 0],
-    ...                  [0, 0, 0, 0, 0]])
-    >>> outline_segments(segm)
-    array([[0, 0, 0, 0, 0],
-           [0, 2, 2, 2, 0],
-           [0, 2, 0, 2, 0],
-           [0, 2, 2, 2, 0],
-           [0, 0, 0, 0, 0]])
-    """
-
-    from skimage.segmentation import find_boundaries
-    outlines = segment_image * find_boundaries(segment_image, mode='inner')
-    if mask_background:
-        outlines = np.ma.masked_where(outlines == 0, outlines)
-    return outlines
-
-
-def relabel_sequential(segment_image, start_label=1):
-    """
-    Relabel the labels in a segmentation image sequentially, such that
-    there are no missing label numbers.
-
-    Parameters
-    ----------
-    segment_image : array_like (int)
-        A 2D segmentation image where sources are labeled by different
-        positive integer values.  A value of zero is reserved for the
-        background.
-
-    start_label : int
-        The starting label number, which should be strictly positive.
-        The default is 1.
-
-    Returns
-    -------
-    result : `~numpy.ndarray` (int)
-        The relabeled segmentation image.
-
-    Examples
-    --------
-    >>> from photutils import relabel_sequential
-    >>> segment_image = [[1, 1, 0],
-    ...                  [1, 0, 3],
-    ...                  [0, 3, 3]]
-    >>> relabel_sequential(segment_image)
-    array([[1, 1, 0],
-           [1, 0, 2],
-           [0, 2, 2]])
-    """
-
-    if start_label <= 0:
-        raise ValueError('start_label must be >= 0.')
-    segment_image = np.array(segment_image).astype(np.int)
-    labels = segment_labels(segment_image)
-    label_max = np.max(labels)
-    if (label_max == len(labels)) and (labels[0] == start_label):
-        return segment_image
-    forward_map = np.zeros(label_max + 1, dtype=np.int)
-    forward_map[labels] = np.arange(len(labels)) + start_label
-    return forward_map[segment_image]
-
-
-def relabel_segments(segment_image, labels, new_label):
-    """
-    Relabel the labels in a segmentation image. ``labels`` will be
-    relabeled to ``new_label``.
-
-    Parameters
-    ----------
-    segment_image : array_like (int)
-        A 2D segmentation image where sources are labeled by different
-        positive integer values.  A value of zero is reserved for the
-        background.
-
-    labels : int, array-like (1D, int)
-        The label numbers(s) to relabel.
-
-    new_label : int
-        The relabeled label number.
-
-    Returns
-    -------
-    result : `~numpy.ndarray` (int)
-        The relabeled segmentation image.
-
-    Examples
-    --------
-    >>> from photutils import relabel_segments
-    >>> segment_image = [[1, 1, 0],
-    ...                  [0, 0, 3],
-    ...                  [2, 0, 3]]
-    >>> relabel_segments(segment_image, labels=[1, 3], new_label=5)
-    array([[5, 5, 0],
-           [0, 0, 5],
-           [2, 0, 5]])
-    """
-
-    labels = np.atleast_1d(labels)
-    segment_image = np.array(segment_image, copy=True).astype(np.int)
-    for label in labels:
-        segment_image[np.where(segment_image == label)] = new_label
-    return segment_image
-
-
-def keep_segments(segment_image, labels, relabel=False):
-    """
-    Keep only the specified labeled segments in a segmentation image.
-
-    Parameters
-    ----------
-    segment_image : array_like (int)
-        A 2D segmentation image where sources are labeled by different
-        positive integer values.  A value of zero is reserved for the
-        background.
-
-    labels : int, array-like (1D, int)
-        The label number(s) of the segments to keep.  Labels of zero
-        and those not in ``segment_image`` will be ignored.
-
-    relabel : bool
-        If `True`, the the segmentation image will be relabeled such
-        that the labels are in sequential order starting from 1.
-
-    Returns
-    -------
-    result : `~numpy.ndarray` (int)
-        The modified segmentation image.
-
-    Examples
-    --------
-    >>> from photutils import keep_segments
-    >>> segment_image = [[1, 1, 0],
-    ...                  [0, 0, 3],
-    ...                  [2, 0, 3]]
-    >>> keep_segments(segment_image, labels=3)
-    array([[0, 0, 0],
-           [0, 0, 3],
-           [0, 0, 3]])
-    >>> keep_segments(segment_image, labels=[1, 3])
-    array([[1, 1, 0],
-           [0, 0, 3],
-           [0, 0, 3]])
-    """
-
-    labels = np.atleast_1d(labels)
-    remove_labels = list(set(segment_labels(segment_image)) - set(labels))
-    return remove_segments(segment_image, remove_labels, relabel=relabel)
-
-
-def remove_segments(segment_image, labels, relabel=False):
-    """
-    Remove labeled segments from a segmentation image.
-
-    Parameters
-    ----------
-    segment_image : array_like (int)
-        A 2D segmentation image where sources are labeled by different
-        positive integer values.  A value of zero is reserved for the
-        background.
-
-    labels : int, array-like (1D, int)
-        The label number(s) of the segments to remove.  Labels of zero
-        and those not in ``segment_image`` will be ignored.
-
-    relabel : bool
-        If `True`, the the segmentation image will be relabeled such
-        that the labels are in sequential order starting from 1.
-
-    Returns
-    -------
-    result : `~numpy.ndarray` (int)
-        The modified segmentation image.
-
-    Examples
-    --------
-    >>> from photutils import remove_segments
-    >>> segment_image = [[1, 1, 0],
-    ...                  [0, 0, 3],
-    ...                  [2, 0, 3]]
-    >>> remove_segments(segment_image, labels=2)
-    array([[1, 1, 0],
-           [0, 0, 3],
-           [0, 0, 3]])
-    """
-
-    segment_out = relabel_segments(segment_image, labels, new_label=0)
-    if relabel:
-        segment_out = relabel_sequential(segment_out)
-    return segment_out
-
-
-def remove_border_segments(segment_image, border_width, partial_overlap=True,
-                           relabel=False):
-    """
-    Remove labeled segments around the border of a segmentation image.
-
-    Parameters
-    ----------
-    segment_image : array_like (int)
-        A 2D segmentation image where sources are labeled by different
-        positive integer values.  A value of zero is reserved for the
-        background.
-
-    border_width : int
-        The width of the border region in pixels.
-
-    partial_overlap : bool, optional
-        If this is set to `True` (the default), a segment that partially
-        extends into the border region will also be removed.  Segments
-        that are completely within the border region are always removed.
-
-    relabel : bool
-        If `True`, the the segmentation image will be relabeled such
-        that the labels are in sequential order starting from 1.
-
-    Returns
-    -------
-    result : `~numpy.ndarray` (int)
-        The modified segmentation image.
-
-    Examples
-    --------
-    >>> from photutils import remove_border_segments
-    >>> segment_image = [[1, 1, 0, 4, 4],
-    ...                  [0, 0, 0, 0, 0],
-    ...                  [0, 0, 3, 0, 5],
-    ...                  [2, 2, 0, 0, 5],
-    ...                  [2, 2, 0, 5, 5]]
-    >>> remove_border_segments(segment_image, border_width=1)
-    array([[0, 0, 0, 0, 0],
-           [0, 0, 0, 0, 0],
-           [0, 0, 3, 0, 0],
-           [0, 0, 0, 0, 0],
-           [0, 0, 0, 0, 0]])
-    >>> remove_border_segments(segment_image, border_width=1,
-    ...                        partial_overlap=False)
-    array([[0, 0, 0, 0, 0],
-           [0, 0, 0, 0, 0],
-           [0, 0, 3, 0, 0],
-           [2, 2, 0, 0, 0],
-           [2, 2, 0, 0, 0]])
-    """
-
-    segment_image = np.array(segment_image).astype(np.int)
-    if border_width >= min(segment_image.shape) / 2:
-        raise ValueError('border_width must be smaller than half the '
-                         'image size in either dimension')
-    border = np.zeros_like(segment_image, dtype=np.bool)
-    border[:border_width, :] = True
-    border[-border_width:, :] = True
-    border[:, :border_width] = True
-    border[:, -border_width:] = True
-    return remove_masked_segments(segment_image, border,
-                                  partial_overlap=partial_overlap,
-                                  relabel=relabel)
-
-
-def remove_masked_segments(segment_image, mask, partial_overlap=True,
-                           relabel=False):
-    """
-    Remove labeled segments located within a masked region.
-
-    Parameters
-    ----------
-    segment_image : array_like (int)
-        A 2D segmentation image where sources are labeled by different
-        positive integer values.  A value of zero is reserved for the
-        background.
-
-    mask : array_like (bool), optional
-        A boolean mask, with the same shape as ``segment_image``, where
-        a `True` value indicates masked pixels.
-
-    partial_overlap : bool, optional
-        If this is set to `True` (the default), a segment that partially
-        extends into a masked region will also be removed.  Segments
-        that are completely within a masked region are always removed.
-
-    relabel : bool
-        If `True`, the the segmentation image will be relabeled such
-        that the labels are in sequential order starting from 1.
-
-    Returns
-    -------
-    result : `~numpy.ndarray` (int)
-        The modified segmentation image.
-
-    Examples
-    --------
-    >>> from photutils import remove_masked_segments
-    >>> segment_image = [[1, 1, 0, 4, 4],
-    ...                  [0, 0, 0, 0, 4],
-    ...                  [0, 0, 3, 0, 0],
-    ...                  [2, 2, 0, 0, 5],
-    ...                  [2, 2, 0, 5, 5]]
-    >>> mask = np.zeros_like(segment_image, dtype=np.bool)
-    >>> mask[0, :] = True
-    >>> remove_masked_segments(segment_image, mask)
-    array([[0, 0, 0, 0, 0],
-           [0, 0, 0, 0, 0],
-           [0, 0, 3, 0, 0],
-           [2, 2, 0, 0, 5],
-           [2, 2, 0, 5, 5]])
-    >>> remove_masked_segments(segment_image, mask, partial_overlap=False)
-    array([[0, 0, 0, 4, 4],
-           [0, 0, 0, 0, 4],
-           [0, 0, 3, 0, 0],
-           [2, 2, 0, 0, 5],
-           [2, 2, 0, 5, 5]])
-    """
-
-    segment_image = np.array(segment_image).astype(np.int)
-    if segment_image.shape != mask.shape:
-        raise ValueError('segment_image and mask must have the same shape')
-    labels = segment_labels(segment_image[mask])
-    if not partial_overlap:
-        inside_labels = segment_labels(segment_image[~mask])
-        labels = [i for i in labels if i not in inside_labels]
-    return remove_segments(segment_image, labels, relabel=relabel)
