@@ -34,9 +34,10 @@ class SegmentationImage(object):
         """
 
         self.data = np.asanyarray(data, dtype=np.int)
+        if np.min(self.data) < 0:
+            raise ValueError('The segmentation image cannot contain '
+                             'negative integers.')
         self.shape = self.data.shape
-        # define __iter__
-        # self.is_sequential
 
     def check_label(self, label):
         """
@@ -62,7 +63,7 @@ class SegmentationImage(object):
             raise ValueError('label "{0}" is not in the segmentation '
                              'image'.format(label))
 
-    @lazyproperty
+    @property
     def data_masked(self):
         """
         A `~numpy.ma.MaskedArray` version of the segmentation image
@@ -108,20 +109,27 @@ class SegmentationImage(object):
 
         return np.unique(data[data != 0])
 
-    @lazyproperty
+    @property
     def labels(self):
         """The sorted non-zero labels."""
         return self._labels(self.data)
 
-    @lazyproperty
+    @property
     def nlabels(self):
         """The number of non-zero labels."""
         return len(self.labels)
 
-    @lazyproperty
+    @property
     def max(self):
         """The maximum non-zero label."""
         return np.max(self.data)
+
+    @property
+    def is_sequential(self):
+        if (self.labels[-1] - self.labels[0] + 1) == self.nlabels:
+            return True
+        else:
+            return False
 
     def outline_segments(self, mask_background=False):
         """
@@ -218,8 +226,8 @@ class SegmentationImage(object):
         Parameters
         ----------
         start_label : int, optional
-            The starting label number, which should be strictly
-            positive.  The default is 1.
+            The starting label number, which should be a positive
+            integer.  The default is 1.
 
         Examples
         --------
@@ -241,9 +249,9 @@ class SegmentationImage(object):
         """
 
         if start_label <= 0:
-            raise ValueError('start_label must be >= 0.')
+            raise ValueError('start_label must be > 0.')
 
-        if (self.max == self.nlabels) and (self.labels[0] == start_label):
+        if self.is_sequential and (self.labels[0] == start_label):
             return
 
         forward_map = np.zeros(self.max + 1, dtype=np.int)
