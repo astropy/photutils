@@ -1,16 +1,16 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-from astropy.tests.helper import pytest
 import os.path as op
 import itertools
-import numpy as np
-from astropy.table import Table
 import warnings
-from astropy.utils.exceptions import AstropyUserWarning
+import numpy as np
 from numpy.testing import assert_allclose
+from astropy.tests.helper import pytest
+from astropy.table import Table
+from astropy.utils.exceptions import AstropyUserWarning
 from ..findstars import daofind, irafstarfind
-from photutils.datasets import make_100gaussians_image
+from ...datasets import make_100gaussians_image
 
 try:
     import scipy

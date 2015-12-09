@@ -1,11 +1,12 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-from astropy.tests.helper import pytest
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
+from astropy.tests.helper import pytest, catch_warnings
+from astropy.utils.exceptions import AstropyUserWarning
+from astropy.convolution import Gaussian2DKernel
 from ..core import detect_threshold, detect_sources, find_peaks
-
 
 try:
     import scipy
@@ -118,6 +119,12 @@ class TestDetectThreshold(object):
 
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestDetectSources(object):
+    def setup_class(self):
+        FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+        filter_kernel = Gaussian2DKernel(2.*FWHM2SIGMA, x_size=3, y_size=3)
+        filter_kernel.normalize()
+        self.filter_kernel = filter_kernel
+
     def test_detection(self):
         """Test basic detection."""
         segm = detect_sources(DATA, threshold=0.9, npixels=2)
@@ -151,13 +158,15 @@ class TestDetectSources(object):
         segm = detect_sources(data, threshold=0.9, npixels=1, connectivity=4)
         assert_array_equal(segm, ref)
 
-    def test_filter_kernel(self):
+    def test_basic_filter_kernel(self):
         """Test detection with filter_kernel."""
-        kernel = np.ones((3, 3))
-        threshold = 1.5
+        kernel = np.ones((3, 3)) / 9.
+        threshold = 0.3
+        expected = np.ones((3, 3))
+        expected[2] = 0
         segm = detect_sources(DATA, threshold, npixels=1,
                               filter_kernel=kernel)
-        assert_array_equal(segm, kernel)
+        assert_array_equal(segm, expected)
 
     def test_npixels_nonint(self):
         """Test if error raises if npixel is non-integer."""
@@ -174,21 +183,23 @@ class TestDetectSources(object):
         with pytest.raises(ValueError):
             detect_sources(DATA, threshold=1, npixels=1, connectivity=10)
 
-    def test_filtering(self):
-        from astropy.convolution import Gaussian2DKernel
-        FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
-        filter_kernel = Gaussian2DKernel(2.*FWHM2SIGMA, x_size=3, y_size=3)
+    def test_filter_kernel_array(self):
         segm = detect_sources(DATA, 0.1, npixels=1,
-                              filter_kernel=filter_kernel.array)
+                              filter_kernel=self.filter_kernel.array)
         assert_array_equal(segm, np.ones((3, 3)))
 
-    def test_filtering_kernel(self):
-        from astropy.convolution import Gaussian2DKernel
-        FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
-        filter_kernel = Gaussian2DKernel(2.*FWHM2SIGMA, x_size=3, y_size=3)
+    def test_filter_kernel(self):
         segm = detect_sources(DATA, 0.1, npixels=1,
-                              filter_kernel=filter_kernel)
+                              filter_kernel=self.filter_kernel)
         assert_array_equal(segm, np.ones((3, 3)))
+
+    def test_unnormalized_filter_kernel(self):
+        with catch_warnings(AstropyUserWarning) as warning_lines:
+            detect_sources(DATA, 0.1, npixels=1,
+                           filter_kernel=self.filter_kernel*10.)
+            assert warning_lines[0].category == AstropyUserWarning
+            assert ('The kernel is not normalized.'
+                    in str(warning_lines[0].message))
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

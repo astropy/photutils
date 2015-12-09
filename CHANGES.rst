@@ -23,6 +23,9 @@ New Features
   - ``find_peaks`` has new ``mask``, ``error``, ``wcs`` and ``subpixel``
     precision options. [#244]
 
+  - ``detect_sources`` will now issue a warning if the filter kernel
+    is not normalized to 1. [#298]
+
 - ``photutils.morphology``
 
   - Added new ``GaussianConst2D`` (2D Gaussian plus a constant) model
