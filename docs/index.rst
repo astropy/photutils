@@ -61,7 +61,7 @@ Reporting Issues
 
 If you have found a bug in photutils please report it by creating a
 new issue on the `photutils GitHub issue tracker
-<http://github.com/astropy/photutils/issues>`_.
+<https://github.com/astropy/photutils/issues>`_.
 
 Please include an example that demonstrates the issue that will allow
 the developers to reproduce and fix the problem. You may be asked to
@@ -69,10 +69,11 @@ also provide information about your operating system and a full Python
 stack trace.  The developers will walk you through obtaining a stack
 trace if it is necessary.
 
-Photutils uses a package of utilities called astropy-helpers during
-building and installation.  If you have any build or installation
-issue mentioning the ``astropy_helpers`` or ``ah_bootstrap`` modules
-please send a report to the `astropy-helpers issue tracker
+Photutils uses a package of utilities called `astropy-helpers
+<https://github.com/astropy/astropy-helpers>`_ during building and
+installation.  If you have any build or installation issue mentioning
+the ``astropy_helpers`` or ``ah_bootstrap`` modules please send a
+report to the `astropy-helpers issue tracker
 <https://github.com/astropy/astropy-helpers/issues>`_.  If you are
 unsure, then it's fine to report to the main photutils issue tracker.
 
