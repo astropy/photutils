@@ -41,6 +41,7 @@ dependencies are installed:
 .. _scikit-image: http://scikit-image.org/
 .. _pip: https://pip.pypa.io/en/latest/
 .. _conda: http://conda.pydata.org/docs/
+.. _Cython: http://cython.org
 
 
 Installing Photutils Using pip
@@ -186,21 +187,12 @@ correctly is to use the :func:`photutils.test()` function:
     >>> photutils.test()
 
 The tests should run and print out any failures, which you can report
-at the `Photutils issue tracker
+to the `Photutils issue tracker
 <http://github.com/astropy/photutils/issues>`_.
 
 .. note::
 
     This way of running the tests may not work if you do it in the
-    photutils source distribution.  See :ref:`sourcebuildtest` for how
-    to run the tests from the source code directory.
-
-.. note::
-
-    Running the tests this way is currently disabled in the IPython
-    REPL due to conflicts with some common display settings in
-    IPython.  Please run the photutils tests under the standard Python
-    command-line interpreter.
-
-
-.. _Cython: http://cython.org
+    photutils source distribution directory.  See
+    :ref:`sourcebuildtest` for how to run the tests from the source
+    code directory.
