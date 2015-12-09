@@ -109,13 +109,15 @@ Now let's plot the results:
 
 .. doctest-skip::
 
+    >>> from photutils.utils import random_cmap
     >>> from astropy.visualization import SqrtStretch
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> import matplotlib.pylab as plt
+    >>> rand_cmap = random_cmap(np.max(segm) + 1, random_state=12345)
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
     >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    >>> ax2.imshow(segm, origin='lower', cmap='jet')
+    >>> ax2.imshow(segm, origin='lower', cmap=rand_cmap)
     >>> for aperture in apertures:
     ...     aperture.plot(color='blue', lw=1.5, alpha=0.5, ax=ax1)
     ...     aperture.plot(color='white', lw=1.5, alpha=1.0, ax=ax2)
@@ -127,12 +129,14 @@ Now let's plot the results:
     from photutils.datasets import make_100gaussians_image
     from photutils import Background, detect_threshold, detect_sources
     from photutils import segment_properties, properties_table
+    from photutils.utils import random_cmap
     data = make_100gaussians_image()
     bkg = Background(data, (50, 50), filter_shape=(3, 3), method='median')
     threshold = bkg.background + (3. * bkg.background_rms)
     sigma = 2.0 * gaussian_fwhm_to_sigma    # FWHM = 2.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
+    rand_cmap = random_cmap(np.max(segm) + 1, random_state=12345)
     props = segment_properties(data, segm)
     from photutils import EllipticalAperture
     apertures = []
@@ -148,7 +152,7 @@ Now let's plot the results:
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    ax2.imshow(segm, origin='lower', cmap='jet')
+    ax2.imshow(segm, origin='lower', cmap=rand_cmap)
     for aperture in apertures:
         aperture.plot(color='blue', lw=1.5, alpha=0.5, ax=ax1)
         aperture.plot(color='white', lw=1.5, alpha=1.0, ax=ax2)

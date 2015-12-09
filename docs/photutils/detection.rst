@@ -185,13 +185,15 @@ image showing the detected sources:
 
 .. doctest-skip::
 
+    >>> from photutils.utils import random_cmap
     >>> from astropy.visualization import SqrtStretch
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> import matplotlib.pylab as plt
+    >>> rand_cmap = random_cmap(np.max(segm) + 1, random_state=12345)
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
     >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    >>> ax2.imshow(segm, origin='lower', cmap='jet')
+    >>> ax2.imshow(segm, origin='lower', cmap=rand_cmap)
 
 .. plot::
 
@@ -202,15 +204,17 @@ image showing the detected sources:
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import make_100gaussians_image
     from photutils import detect_threshold, detect_sources
+    from photutils.utils import random_cmap
     data = make_100gaussians_image()
     threshold = detect_threshold(data, snr=3.)
     sigma = 2.0 * gaussian_fwhm_to_sigma    # FWHM = 2.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
+    rand_cmap = random_cmap(np.max(segm) + 1, random_state=12345)
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    ax2.imshow(segm, origin='lower', cmap='jet')
+    ax2.imshow(segm, origin='lower', cmap=rand_cmap)
 
 
 When the segmentation image is generated using image thresholding
