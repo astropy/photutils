@@ -20,7 +20,7 @@ Photutils
 Photutils is an `AstroPy`_ affiliated package to provide tools for
 detecting and performing photometry of astronomical sources.
 
-.. image:: https://travis-ci.org/astropy/photutils.png?branch=master
+.. image:: https://travis-ci.org/astropy/photutils.svg?branch=master
     :target: https://travis-ci.org/astropy/photutils
 
 .. image:: https://coveralls.io/repos/astropy/photutils/badge.png
