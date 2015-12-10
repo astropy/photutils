@@ -23,7 +23,7 @@ detecting and performing photometry of astronomical sources.
 .. image:: https://travis-ci.org/astropy/photutils.svg?branch=master
     :target: https://travis-ci.org/astropy/photutils
 
-.. image:: https://coveralls.io/repos/astropy/photutils/badge.png
+.. image:: https://coveralls.io/repos/astropy/photutils/badge.svg?branch=master
     :target: https://coveralls.io/r/astropy/photutils
 
 .. image:: https://ci.appveyor.com/api/projects/status/by27a71echj18b4f/branch/master?svg=true
