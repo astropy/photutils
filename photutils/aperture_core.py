@@ -1070,12 +1070,6 @@ class RectangularAnnulus(PixelAperture):
         self.positions = _sanitize_pixel_positions(positions)
 
     def area(self):
-        """
-        Returns
-        -------
-        area : float
-            Area of aperture.
-        """
         return self.w_out * self.h_out - self.w_in * self.h_in
 
     def plot(self, ax=None, fill=False, source_id=None, **kwargs):
