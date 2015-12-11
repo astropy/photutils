@@ -58,7 +58,7 @@ Bug Fixes
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- Update astropy-helpers to v1.0.6 [#300]
+- Update astropy-helpers to v1.1 [#302]
 
 
 0.1 (December 22, 2014)
