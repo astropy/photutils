@@ -264,9 +264,10 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         threshold = detect_threshold(image, snr=3)
         from astropy.convolution import Gaussian2DKernel
         sigma = 3.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))   # FWHM = 3
-        filter_kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
+        kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
+        kernel.normalize()
         segm_image = detect_sources(image, threshold, npixels=5,
-                                    filter_kernel=filter_kernel)
+                                    filter_kernel=kernel)
 
         # plot the image and the segmentation image
         import matplotlib.pyplot as plt
