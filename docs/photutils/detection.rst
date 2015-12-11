@@ -175,6 +175,7 @@ image prior to thresholding:
     >>> from photutils import detect_sources
     >>> sigma = 2.0 * gaussian_fwhm_to_sigma    # FWHM = 2.
     >>> kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
+    >>> kernel.normalize()
     >>> segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
 
 The result is a 2D segmentation image (or sometimes called a "labeled"
@@ -209,6 +210,7 @@ image showing the detected sources:
     threshold = detect_threshold(data, snr=3.)
     sigma = 2.0 * gaussian_fwhm_to_sigma    # FWHM = 2.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
+    kernel.normalize()
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
     rand_cmap = random_cmap(np.max(segm) + 1, random_state=12345)
     norm = ImageNormalize(stretch=SqrtStretch())

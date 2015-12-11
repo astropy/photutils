@@ -60,6 +60,7 @@ thresholding:
     >>> from astropy.stats import gaussian_fwhm_to_sigma
     >>> sigma = 2.0 * gaussian_fwhm_to_sigma    # FWHM = 2.
     >>> kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
+    >>> kernel.normalize()
     >>> segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
 
 Now let's measure the properties of the detected sources defined in
@@ -135,6 +136,7 @@ Now let's plot the results:
     threshold = bkg.background + (3. * bkg.background_rms)
     sigma = 2.0 * gaussian_fwhm_to_sigma    # FWHM = 2.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
+    kernel.normalize()
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
     rand_cmap = random_cmap(np.max(segm) + 1, random_state=12345)
     props = segment_properties(data, segm)
