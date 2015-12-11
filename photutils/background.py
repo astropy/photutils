@@ -6,9 +6,11 @@ from numpy.lib.index_tricks import index_exp
 from astropy.stats import sigma_clip
 from astropy.utils import lazyproperty
 import warnings
-
 import astropy
-ASTROPY_LT_1P1 = [int(x) for x in astropy.__version__.split('.')[:2]] < [1, 1]
+
+majv, minv = astropy.__version__.split('.')[:2]
+minv = minv.split('rc')[0]
+ASTROPY_LT_1P1 = ([int(majv), int(minv)] < [1, 1])
 
 
 __all__ = ['Background']
