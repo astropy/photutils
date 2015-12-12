@@ -186,10 +186,11 @@ image showing the detected sources:
 
 .. doctest-skip::
 
-    >>> from photutils.utils import random_cmap
+    >>> import numpy as np
+    >>> import matplotlib.pylab as plt
     >>> from astropy.visualization import SqrtStretch
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
-    >>> import matplotlib.pylab as plt
+    >>> from photutils.utils import random_cmap
     >>> rand_cmap = random_cmap(np.max(segm) + 1, random_state=12345)
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
@@ -198,6 +199,7 @@ image showing the detected sources:
 
 .. plot::
 
+    import numpy as np
     import matplotlib.pylab as plt
     from astropy.stats import gaussian_fwhm_to_sigma
     from astropy.convolution import Gaussian2DKernel

@@ -73,21 +73,21 @@ the segmentation image with the minimum number of inputs to
     >>> props = segment_properties(data, segm)
     >>> tbl = properties_table(props)
     >>> print(tbl)
-	id   xcentroid     ycentroid   ...        cxy              cyy
-			pix           pix      ...      1 / pix2         1 / pix2
-	--- ------------- ------------- ... ----------------- ---------------
-	1 235.187719359 1.09919615282 ...   -0.192074627794    1.2174907202
-	2 494.139941114 5.77044246809 ...   -0.541775595871   1.02440633651
-	3 207.375726658 10.0753101977 ...     0.77640832975  0.465060945444
-	4 364.689548633 10.8904591886 ...   -0.547888762468  0.304081033554
-	5 258.192771992 11.9617673653 ...   0.0443061872873  0.321833380384
-	...           ...           ... ...               ...             ...
-	82 74.4566900469 259.833303502 ...     0.47891309336  0.565732743194
-	83 82.5392499545 267.718933667 ...    0.067591261795  0.244881586651
-	84 477.674384997 267.891446048 ...    -0.02140562548  0.391914760017
-	85 139.763784105 275.041398359 ...    0.232932536525  0.352391174432
-	86 434.040665678 285.607027036 ...  -0.0607421731445 0.0555135557551
-	Length = 86 rows
+    id   xcentroid     ycentroid   ...        cxy              cyy
+            pix           pix      ...      1 / pix2         1 / pix2
+    --- ------------- ------------- ... ----------------- ---------------
+    1 235.187719359 1.09919615282 ...   -0.192074627794    1.2174907202
+    2 494.139941114 5.77044246809 ...   -0.541775595871   1.02440633651
+    3 207.375726658 10.0753101977 ...     0.77640832975  0.465060945444
+    4 364.689548633 10.8904591886 ...   -0.547888762468  0.304081033554
+    5 258.192771992 11.9617673653 ...   0.0443061872873  0.321833380384
+    ...           ...           ... ...               ...             ...
+    82 74.4566900469 259.833303502 ...     0.47891309336  0.565732743194
+    83 82.5392499545 267.718933667 ...    0.067591261795  0.244881586651
+    84 477.674384997 267.891446048 ...    -0.02140562548  0.391914760017
+    85 139.763784105 275.041398359 ...    0.232932536525  0.352391174432
+    86 434.040665678 285.607027036 ...  -0.0607421731445 0.0555135557551
+    Length = 86 rows
 
 Let's use the measured source morphological properties to define
 approximate isophotal ellipses for each object:
@@ -110,10 +110,11 @@ Now let's plot the results:
 
 .. doctest-skip::
 
-    >>> from photutils.utils import random_cmap
+    >>> import numpy as np
+    >>> import matplotlib.pylab as plt
     >>> from astropy.visualization import SqrtStretch
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
-    >>> import matplotlib.pylab as plt
+    >>> from photutils.utils import random_cmap
     >>> rand_cmap = random_cmap(np.max(segm) + 1, random_state=12345)
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
@@ -125,12 +126,17 @@ Now let's plot the results:
 
 .. plot::
 
+    import numpy as np
+    import matplotlib.pylab as plt
     from astropy.stats import gaussian_fwhm_to_sigma
     from astropy.convolution import Gaussian2DKernel
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import make_100gaussians_image
     from photutils import Background, detect_threshold, detect_sources
     from photutils import segment_properties, properties_table
     from photutils.utils import random_cmap
+    from photutils import EllipticalAperture
     data = make_100gaussians_image()
     bkg = Background(data, (50, 50), filter_shape=(3, 3), method='median')
     threshold = bkg.background + (3. * bkg.background_rms)
@@ -140,7 +146,6 @@ Now let's plot the results:
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
     rand_cmap = random_cmap(np.max(segm) + 1, random_state=12345)
     props = segment_properties(data, segm)
-    from photutils import EllipticalAperture
     apertures = []
     for prop in props:
         position = (prop.xcentroid.value, prop.ycentroid.value)
@@ -148,9 +153,6 @@ Now let's plot the results:
         b = prop.semiminor_axis_sigma.value * 3.
         theta = prop.orientation.value
         apertures.append(EllipticalAperture(position, a, b, theta=theta))
-    from astropy.visualization import SqrtStretch
-    from astropy.visualization.mpl_normalize import ImageNormalize
-    import matplotlib.pylab as plt
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
@@ -168,15 +170,15 @@ the segmentation image:
     >>> props = segment_properties(data, segm, labels=labels)
     >>> tbl = properties_table(props)
     >>> print(tbl)
-	id   xcentroid     ycentroid   ...       cxy            cyy
-			pix           pix      ...     1 / pix2       1 / pix2
-	--- ------------- ------------- ... --------------- --------------
-	1 235.187719359 1.09919615282 ... -0.192074627794   1.2174907202
-	5 258.192771992 11.9617673653 ... 0.0443061872873 0.321833380384
-	20 347.177561006 66.5509575226 ...  0.115277391421 0.359564354573
-	50 380.796873199 174.418513707 ...  -1.03058291289   1.2769245589
-	75  32.176218827 241.158486946 ...  0.196860594008 0.601167034704
-	80  355.61483405 252.142253219 ...  0.178598051026 0.400332492208
+    id   xcentroid     ycentroid   ...       cxy            cyy
+            pix           pix      ...     1 / pix2       1 / pix2
+    --- ------------- ------------- ... --------------- --------------
+    1 235.187719359 1.09919615282 ... -0.192074627794   1.2174907202
+    5 258.192771992 11.9617673653 ... 0.0443061872873 0.321833380384
+    20 347.177561006 66.5509575226 ...  0.115277391421 0.359564354573
+    50 380.796873199 174.418513707 ...  -1.03058291289   1.2769245589
+    75  32.176218827 241.158486946 ...  0.196860594008 0.601167034704
+    80  355.61483405 252.142253219 ...  0.178598051026 0.400332492208
 
 By default, `~photutils.segmentation.properties_table` will include
 all scalar-valued properties from
@@ -191,15 +193,15 @@ properties can also be specified (or excluded) in the
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'segment_sum', 'area']
     >>> tbl = properties_table(props, columns=columns)
     >>> print(tbl)
-	id   xcentroid     ycentroid    segment_sum  area
-			pix           pix                    pix2
-	--- ------------- ------------- ------------- ----
-	1 235.187719359 1.09919615282 496.635623206 27.0
-	5 258.192771992 11.9617673653 347.611342072 25.0
-	20 347.177561006 66.5509575226 415.992569678 31.0
-	50 380.796873199 174.418513707 145.726417518 11.0
-	75  32.176218827 241.158486946 398.411403711 29.0
-	80  355.61483405 252.142253219 906.422600037 45.0
+    id   xcentroid     ycentroid    segment_sum  area
+            pix           pix                    pix2
+    --- ------------- ------------- ------------- ----
+    1 235.187719359 1.09919615282 496.635623206 27.0
+    5 258.192771992 11.9617673653 347.611342072 25.0
+    20 347.177561006 66.5509575226 415.992569678 31.0
+    50 380.796873199 174.418513707 145.726417518 11.0
+    75  32.176218827 241.158486946 398.411403711 29.0
+    80  355.61483405 252.142253219 906.422600037 45.0
 
 A `~astropy.wcs.WCS` transformation can also be input to
 `~photutils.segmentation.segment_properties` via the ``wcs`` keyword,
@@ -225,14 +227,14 @@ background properties with each source segment:
     ...            'background_sum']
     >>> tbl = properties_table(props, columns=columns)
     >>> print(tbl)
-	 id background_atcentroid background_mean background_sum
-	--- --------------------- --------------- --------------
-	  1         5.20197122115   5.20212082569  140.457262294
-	  5         5.21400789846     5.213780145  130.344503625
-	 20         5.27879125871   5.27877182437  163.641926556
-	 50         5.19862649302    5.1986157424  57.1847731664
-	 75         5.21058813463   5.21060573569  151.107566335
-	 80         5.12419787209   5.12502080804  230.625936362
+     id background_atcentroid background_mean background_sum
+    --- --------------------- --------------- --------------
+      1         5.20197122115   5.20212082569  140.457262294
+      5         5.21400789846     5.213780145  130.344503625
+     20         5.27879125871   5.27877182437  163.641926556
+     50         5.19862649302    5.1986157424  57.1847731664
+     75         5.21058813463   5.21060573569  151.107566335
+     80         5.12419787209   5.12502080804  230.625936362
 
 
 Photometric Errors
@@ -268,15 +270,15 @@ we set it to 500 seconds):
     ...            'segment_sum_err']
     >>> tbl = properties_table(props, columns=columns)
     >>> print(tbl)
-	id   xcentroid     ycentroid    segment_sum  segment_sum_err
-			pix           pix
-	--- ------------- ------------- ------------- ---------------
-	1 235.187719359 1.09919615282 496.635623206   11.0788667038
-	5 258.192771992 11.9617673653 347.611342072    10.723068215
-	20 347.177561006 66.5509575226 415.992569678   12.1782078398
-	50 380.796873199 174.418513707 145.726417518   7.29536295106
-	75  32.176218827 241.158486946 398.411403711    11.553412812
-	80  355.61483405 252.142253219 906.422600037   13.7686828317
+    id   xcentroid     ycentroid    segment_sum  segment_sum_err
+            pix           pix
+    --- ------------- ------------- ------------- ---------------
+    1 235.187719359 1.09919615282 496.635623206   11.0788667038
+    5 258.192771992 11.9617673653 347.611342072    10.723068215
+    20 347.177561006 66.5509575226 415.992569678   12.1782078398
+    50 380.796873199 174.418513707 145.726417518   7.29536295106
+    75  32.176218827 241.158486946 398.411403711    11.553412812
+    80  355.61483405 252.142253219 906.422600037   13.7686828317
 
 `~photutils.SegmentProperties.segment_sum` and
 `~photutils.SegmentProperties.segment_sum_err` are the instrumental
