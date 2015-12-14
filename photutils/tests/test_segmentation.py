@@ -342,7 +342,7 @@ class TestSegmentPropertiesFunction(object):
         assert_allclose(len(props[0].coords), 2)
         assert_allclose(len(props[0].coords[0]), props[0].area.value)
 
-        properties = ['background_atcentroid', 'background_mean',
+        properties = ['background_at_centroid', 'background_mean',
                       'eccentricity', 'ellipticity', 'elongation',
                       'equivalent_radius', 'max_value', 'maxval_xpos',
                       'maxval_ypos', 'min_value', 'minval_xpos',
@@ -372,7 +372,7 @@ class TestSegmentPropertiesFunction(object):
         value = 1.
         props = segment_properties(IMAGE, SEGM, background=value)
         assert props[0].background_mean == value
-        assert props[0].background_atcentroid == value
+        assert props[0].background_at_centroid == value
 
     def test_properties_error_background_None(self):
         props = segment_properties(IMAGE, SEGM)

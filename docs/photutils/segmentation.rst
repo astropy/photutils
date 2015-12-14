@@ -223,11 +223,11 @@ background properties with each source segment:
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> props = segment_properties(data, segm, labels=labels,
     ...                            background=bkg.background)
-    >>> columns = ['id', 'background_atcentroid', 'background_mean',
+    >>> columns = ['id', 'background_at_centroid', 'background_mean',
     ...            'background_sum']
     >>> tbl = properties_table(props, columns=columns)
     >>> print(tbl)
-     id background_atcentroid background_mean background_sum
+     id background_at_centroid background_mean background_sum
     --- --------------------- --------------- --------------
       1         5.20197122115   5.20212082569  140.457262294
       5         5.21400789846     5.213780145  130.344503625

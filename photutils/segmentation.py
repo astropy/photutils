@@ -1450,17 +1450,20 @@ class SegmentProperties(object):
             return None
 
     @lazyproperty
-    def background_atcentroid(self):
+    def background_at_centroid(self):
         """
         The value of the ``background`` at the position of the source
-        centroid.
+        centroid.  Fractional position values are determined using
+        bilinear interpolation.
         """
+
+        from scipy.ndimage import map_coordinates
 
         if self._background is None:
             return None
         else:
-            return self._background[int(self.ycentroid.value),
-                                    int(self.xcentroid.value)]
+            return map_coordinates(self._background, [[self.ycentroid.value],
+                                                      [self.xcentroid.value]])
 
 
 def segment_properties(data, segment_img, error=None, effective_gain=None,
@@ -1767,7 +1770,7 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
     columns_all = ['id', 'xcentroid', 'ycentroid', 'ra_icrs_centroid',
                    'dec_icrs_centroid', 'segment_sum',
                    'segment_sum_err', 'background_sum', 'background_mean',
-                   'background_atcentroid', 'xmin', 'xmax', 'ymin', 'ymax',
+                   'background_at_centroid', 'xmin', 'xmax', 'ymin', 'ymax',
                    'min_value', 'max_value', 'minval_xpos', 'minval_ypos',
                    'maxval_xpos', 'maxval_ypos', 'area', 'equivalent_radius',
                    'perimeter', 'semimajor_axis_sigma',
