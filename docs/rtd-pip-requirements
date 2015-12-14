@@ -1,8 +1,7 @@
+Cython
 numpy
 scipy
 matplotlib
-Cython
-networkx    # needed by scikit-image, not auto-installed for some reason
 scikit-image
 astropy-helpers
 astropy
