@@ -1462,8 +1462,9 @@ class SegmentProperties(object):
         if self._background is None:
             return None
         else:
-            return map_coordinates(self._background, [[self.ycentroid.value],
-                                                      [self.xcentroid.value]])
+            return map_coordinates(
+                self._background, [[self.ycentroid.value],
+                                   [self.xcentroid.value]])[0]
 
 
 def segment_properties(data, segment_img, error=None, effective_gain=None,
@@ -1676,7 +1677,7 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
     labels = np.atleast_1d(labels)
 
     # prepare the input data once, instead of repeating for each segment
-    data, error, background = _prepare_data(
+    data, error_total, background = _prepare_data(
         data, error=error, effective_gain=effective_gain,
         background=background)
 
@@ -1694,7 +1695,7 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
             continue      # skip invalid labels (without warnings)
         segm_propslist.append(SegmentProperties(
             data, segment_img, label, filtered_data=filtered_data,
-            error=error, effective_gain=effective_gain, mask=mask,
+            error=error_total, effective_gain=None, mask=mask,
             background=background, wcs=wcs))
 
     return segm_propslist

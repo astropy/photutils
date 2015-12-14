@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+import itertools
 import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest, assert_quantity_allclose
@@ -35,9 +36,9 @@ IMAGE = g(x, y)
 THRESHOLD = 0.1
 SEGM = (IMAGE >= THRESHOLD).astype(np.int)
 
-ERR_VALS = [2., 2., 2., 2.]
-EFFGAIN_VALS = [None, 2., 1.e10, 2.]
-BACKGRD_VALS = [None, None, None, 0.]
+ERR_VALS = [0., 2.5]
+EFFGAIN_VALS = [None, 2., 1.e10]
+BACKGRD_VALS = [None, 0., 1., 3.5]
 
 
 class TestSegmentationImage(object):
@@ -396,7 +397,8 @@ class TestSegmentPropertiesFunction(object):
             props[0].make_cutout(data)
 
     @pytest.mark.parametrize(('error_value', 'effective_gain', 'background'),
-                             zip(ERR_VALS, EFFGAIN_VALS, BACKGRD_VALS))
+                             list(itertools.product(
+                                 ERR_VALS, EFFGAIN_VALS, BACKGRD_VALS)))
     def test_segmentation_inputs(self, error_value, effective_gain,
                                  background):
         error = np.ones_like(IMAGE) * error_value
@@ -412,20 +414,18 @@ class TestSegmentPropertiesFunction(object):
         assert_quantity_allclose(props[0].orientation, THETA*u.rad,
                                  rtol=1.e-3)
         assert_allclose(props[0].bbox.value, [35, 25, 70, 77])
-        assert_allclose(props[0].area.value, 1058.0)
-        if background is None:
-            background_sum = 0.
-        else:
-            background_sum = props[0].background_sum
-        true_sum = IMAGE[IMAGE >= THRESHOLD].sum() - background_sum
+        area = props[0].area.value
+        assert_allclose(area, 1058.0)
+
+        if background is not None:
+            assert_allclose(props[0].background_sum, area * background)
+        true_sum = IMAGE[IMAGE >= THRESHOLD].sum()
         assert_allclose(props[0].segment_sum, true_sum)
-        if effective_gain is None:
-            true_error = np.sqrt(props[0].area.value) * error_value
-        else:
-            true_error = np.sqrt(((props[0].segment_sum + background_sum) /
-                                  effective_gain) +
-                                 (np.sqrt(props[0].area.value) *
-                                  error_value)**2)
+
+        true_error = np.sqrt(props[0].area.value) * error_value
+        if effective_gain is not None:
+            true_error = np.sqrt(
+                (props[0].segment_sum / effective_gain) + true_error**2)
         assert_allclose(props[0].segment_sum_err, true_error)
 
     def test_data_allzero(self):
