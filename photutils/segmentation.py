@@ -609,7 +609,7 @@ class SegmentProperties(object):
     then:
 
     .. math:: \\sigma_{\\mathrm{tot}} = \\sqrt{\\sigma_{\\mathrm{b}}^2 +
-                    \\frac{(I - B)}{g}}
+              \\frac{(I - B)}{g}}
 
     where :math:`\sigma_b`, :math:`(I - B)`, and :math:`g` are the
     background ``error`` image, the background-subtracted ``data``
@@ -645,7 +645,7 @@ class SegmentProperties(object):
     pixels within the source segment:
 
     .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
-                \\sigma_{\\mathrm{tot}, i}^2}
+              \\sigma_{\\mathrm{tot}, i}^2}
 
     where :math:`\Delta F` is
     `~photutils.SegmentProperties.segment_sum_err` and :math:`S` are the
@@ -1479,8 +1479,9 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
         The 2D array from which to calculate the source photometry and
         properties.  ``data`` should be background-subtracted.
 
-    segment_img : array_like (int)
-        A 2D segmentation image, with the same shape as ``data``, where
+    segment_img : `SegmentationImage` or array_like (int)
+        A 2D segmentation image, either as a `SegmentationImage` object
+        or an `~numpy.ndarray`, with the same shape as ``data`` where
         sources are labeled by different positive integer values.  A
         value of zero is reserved for the background.
 
@@ -1488,26 +1489,32 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
         The pixel-wise Gaussian 1-sigma errors of the input ``data``.
         If ``effective_gain`` is input, then ``error`` should include
         all sources of "background" error but *exclude* the Poisson
-        error of the sources.  If ``effective_gain`` is `None`, then the
-        ``error_image`` is assumed to include *all* sources of error,
+        error of the sources.  If ``effective_gain`` is `None`, then
+        ``error`` is assumed to include *all* sources of error,
         including the Poisson error of the sources.  ``error`` must have
         the same shape as ``data``.  See the Notes section below for
         details on the error propagation.
 
     effective_gain : float, array-like, or `~astropy.units.Quantity`, optional
         Ratio of counts (e.g., electrons or photons) to the units of
-        ``data`` used to calculate the Poisson error of the sources.  If
-        ``effective_gain`` is `None`, then the ``error`` is assumed to
+        ``data``.  This ratio is used to calculate the Poisson error of
+        the sources when it is not included in ``error``.  If
+        ``effective_gain`` is `None`, then ``error`` is assumed to
         include *all* sources of error.  See the Notes section below for
         details on the error propagation.
 
+        If you are calculating the properties of many segments from the
+        same data, it is highly recommended that you input a *total*
+        error array instead of using ``effective_gain``.  Otherwise a
+        total error array will need to be repeatedly recalculated.
+
     mask : array_like (bool), optional
-        A boolean mask, with the same shape as ``data``, where a `True`
+        A boolean mask with the same shape as ``data`` where a `True`
         value indicates the corresponding element of ``data`` is masked.
         Masked data are excluded from all calculations.
 
     background : float, array_like, or `~astropy.units.Quantity`, optional
-        The background level that was previously present in the input
+        The background level that was *previously* present in the input
         ``data``.  ``background`` may either be a scalar value or a 2D
         image with the same shape as the input ``data``.  Inputting the
         ``background`` merely allows for its properties to be measured
@@ -1525,14 +1532,13 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
         calculated from the filtered "detection" image.
 
     wcs : `~astropy.wcs.WCS`
-        The WCS transformation to use.  If `None`, then the
-        ``ra_icrs_centroid`` and ``dec_icrs_centroid`` columns will
-        contain `None`\s.
+        The WCS transformation to use.  If `None`, then `icrs_centroid`,
+        `ra_icrs_centroid`, and `dec_icrs_centroid` will be `None`.
 
     labels : int or list of ints
-        Subset of ``segment_img`` labels for which to calculate the
+        Subset of segmentation labels for which to calculate the
         properties.  If `None`, then the properties will be calculated
-        for all source segments (the default).
+        for all source labels (the default).
 
     Returns
     -------
@@ -1554,11 +1560,11 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
     segment are set to zero when measuring morphological properties
     based on image moments.  This could occur, for example, if the
     segmentation image was defined from a different image (e.g.,
-    different bandpass) or if the subtracted background was incorrectly
-    too high.  `~photutils.SegmentProperties.segment_sum` is not
-    affected by negative (background-subtracted) data values.
-    `~photutils.SegmentProperties.segment_sum_err` is affected only if
-    ``effective_gain`` is used (see below).
+    different bandpass) or if the background was oversubtracted.  Note
+    that `segment_sum` includes the contribution of negative
+    (background-subtracted) data values.  `segment_sum_err` will ignore
+    such pixels when calculating the source Poission error (i.e. when if
+    ``effective_gain`` is input; see below).
 
     If ``effective_gain`` is input, then ``error`` should include all
     sources of "background" error but *exclude* the Poisson error of the
@@ -1566,7 +1572,7 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
     then:
 
     .. math:: \\sigma_{\\mathrm{tot}} = \\sqrt{\\sigma_{\\mathrm{b}}^2 +
-                  \\frac{(I - B)}{g}}
+              \\frac{(I - B)}{g}}
 
     where :math:`\sigma_b`, :math:`(I - B)`, and :math:`g` are the
     background ``error`` image, the background-subtracted ``data``
@@ -1582,7 +1588,8 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
 
     If ``effective_gain`` is `None`, then ``error`` is assumed to
     include *all* sources of error, including the Poisson error of the
-    sources, i.e. :math:`\sigma_{\mathrm{tot}} = \mathrm{error}`.
+    sources, i.e. :math:`\sigma_{\mathrm{tot}} = \sigma_{\mathrm{b} =
+    \mathrm{error}`.
 
     For example, if your input ``data`` are in units of ADU, then
     ``effective_gain`` should represent electrons/ADU.  If your input
@@ -1611,91 +1618,87 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
 
     See Also
     --------
-    :class:`photutils.detection.detect_sources`, properties_table
+    SegmentationImage, SegmentationProperties, properties_table,
+    :func:`photutils.detection.detect_sources`
 
     Examples
     --------
     >>> import numpy as np
-    >>> from photutils import segment_properties
+    >>> from photutils import SegmentationImage, segment_properties
     >>> image = np.arange(16.).reshape(4, 4)
     >>> print(image)
     [[  0.   1.   2.   3.]
      [  4.   5.   6.   7.]
      [  8.   9.  10.  11.]
      [ 12.  13.  14.  15.]]
-    >>> segm_image = np.array([[1, 1, 0, 0],
-    ...                        [1, 0, 0, 2],
-    ...                        [0, 0, 2, 2],
-    ...                        [0, 2, 2, 0]])
-    >>> props = segment_properties(image, segm_image)
+    >>> segm = SegmentationImage([[1, 1, 0, 0],
+    ...                           [1, 0, 0, 2],
+    ...                           [0, 0, 2, 2],
+    ...                           [0, 2, 2, 0]])
+    >>> props = segment_properties(image, segm)
 
     Print some properties of the first object (labeled with ``1`` in the
     segmentation image):
 
-    >>> print(props[0].id)    # id corresponds to segment label number
+    >>> props[0].id    # id corresponds to segment label number
     1
-    >>> print(props[0].centroid)    # doctest: +FLOAT_CMP
-    [ 0.8  0.2] pix
-    >>> print(props[0].segment_sum)    # doctest: +FLOAT_CMP
+    >>> props[0].centroid    # doctest: +FLOAT_CMP
+    <Quantity [ 0.8, 0.2] pix>
+    >>> props[0].segment_sum    # doctest: +FLOAT_CMP
     5.0
-    >>> print(props[0].area)    # doctest: +FLOAT_CMP
-    3.0 pix2
-    >>> print(props[0].max_value)    # doctest: +FLOAT_CMP
+    >>> props[0].area    # doctest: +FLOAT_CMP
+    <Quantity 3.0 pix2>
+    >>> props[0].max_value    # doctest: +FLOAT_CMP
     4.0
 
     Print some properties of the second object (labeled with ``2`` in
     the segmentation image):
 
-    >>> print(props[1].id)    # id corresponds to segment label number
+    >>> props[1].id    # id corresponds to segment label number
     2
-    >>> print(props[1].centroid)    # doctest: +FLOAT_CMP
-    [ 2.36363636  2.09090909] pix
-    >>> print(props[1].perimeter)    # doctest: +FLOAT_CMP
-    5.41421356237 pix
-    >>> print(props[1].orientation)    # doctest: +FLOAT_CMP
-    -0.741759306923 rad
+    >>> props[1].centroid    # doctest: +FLOAT_CMP
+    <Quantity [ 2.36363636, 2.09090909] pix>
+    >>> props[1].perimeter    # doctest: +FLOAT_CMP
+    <Quantity 5.414213562373095 pix>
+    >>> props[1].orientation    # doctest: +FLOAT_CMP
+    <Quantity -0.7417593069227176 rad>
     """
 
     from scipy import ndimage
 
+    if not isinstance(segment_img, SegmentationImage):
+        segment_img = SegmentationImage(segment_img)
+
     if segment_img.shape != data.shape:
-        raise ValueError('segment_img and data must have the same shape')
+        raise ValueError('The data and segmentation image must have '
+                         'the same shape')
 
     if labels is None:
-        label_ids = np.unique(segment_img[segment_img > 0])
-    else:
-        label_ids = np.atleast_1d(labels)
+        labels = segment_img.labels
+    labels = np.atleast_1d(labels)
 
     # prepare the input data once, instead of repeating for each segment
     data, error, background = _prepare_data(
         data, error=error, effective_gain=effective_gain,
         background=background)
-    data_prepared = True
 
     # filter the data once, instead of repeating for each segment
     if filter_kernel is not None:
-        conv_mode, conv_val = 'constant', 0.0
-        if isinstance(filter_kernel, Kernel2D):
-            filtered_data = ndimage.convolve(data, filter_kernel.array,
-                                             mode=conv_mode, cval=conv_val)
-        else:
-            filtered_data = ndimage.convolve(data, filter_kernel,
-                                             mode=conv_mode, cval=conv_val)
+        filtered_data = _convolve_data(data, filter_kernel, mode='constant',
+                                       fill_value=0.0,
+                                       check_normalization=True)
     else:
         filtered_data = None
 
-    label_slices = ndimage.find_objects(segment_img)
     segm_propslist = []
-    for i, label_slice in enumerate(label_slices):
-        label = i + 1    # consecutive even if some label numbers are missing
-        # label_slice is None for missing label numbers
-        if label_slice is None or label not in label_ids:
-            continue
-        segm_props = SegmentProperties(
-            data, segment_img, label, label_slice=label_slice, error=error,
-            effective_gain=effective_gain, mask=mask, background=background,
-            wcs=wcs, filtered_data=filtered_data, data_prepared=data_prepared)
-        segm_propslist.append(segm_props)
+    for label in labels:
+        if label not in segment_img.labels:
+            continue      # skip invalid labels (without warnings)
+        segm_propslist.append(SegmentProperties(
+            data, segment_img, label, filtered_data=filtered_data,
+            error=error, effective_gain=effective_gain, mask=mask,
+            background=background, wcs=wcs))
+
     return segm_propslist
 
 
