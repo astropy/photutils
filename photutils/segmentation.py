@@ -1735,7 +1735,8 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
 
     See Also
     --------
-    :class:`photutils.detection.detect_sources`, segment_properties
+    SegmentationImage, SegmentationProperties, segment_properties,
+    :func:`photutils.detection.detect_sources`
 
     Examples
     --------
@@ -1747,14 +1748,14 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
      [  4.   5.   6.   7.]
      [  8.   9.  10.  11.]
      [ 12.  13.  14.  15.]]
-    >>> segm_image = np.array([[1, 1, 0, 0],
-    ...                        [1, 0, 0, 2],
-    ...                        [0, 0, 2, 2],
-    ...                        [0, 2, 2, 0]])
-    >>> segm_props = segment_properties(image, segm_image)
+    >>> segm = SegmentationImage([[1, 1, 0, 0],
+    ...                           [1, 0, 0, 2],
+    ...                           [0, 0, 2, 2],
+    ...                           [0, 2, 2, 0]])
+    >>> segm_props = segment_properties(image, segm)
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'segment_sum']
-    >>> t = properties_table(segm_props, columns=columns)
-    >>> print(t)
+    >>> tbl = properties_table(segm_props, columns=columns)
+    >>> print(tbl)
      id   xcentroid     ycentroid   segment_sum
              pix           pix
     --- ------------- ------------- -----------
@@ -1766,7 +1767,6 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
         raise ValueError('segment_props is an empty list')
     segment_props = np.atleast_1d(segment_props)
 
-    props_table = Table()
     # all scalar-valued properties
     columns_all = ['id', 'xcentroid', 'ycentroid', 'ra_icrs_centroid',
                    'dec_icrs_centroid', 'segment_sum',
@@ -1782,10 +1782,8 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
     table_columns = None
     if exclude_columns is not None:
         table_columns = [s for s in columns_all if s not in exclude_columns]
-
     if columns is not None:
         table_columns = np.atleast_1d(columns)
-
     if table_columns is None:
         table_columns = columns_all
 
@@ -1794,23 +1792,29 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
     # The assumption here is that the wcs is the same for each
     # element of segment_props.
     if ('ra_icrs_centroid' in table_columns or
-            'dec_icrs_centroid' in table_columns):
+            'dec_icrs_centroid' in table_columns or
+            'icrs_centroid' in table_columns):
         xcentroid = [props.xcentroid.value for props in segment_props]
         ycentroid = [props.ycentroid.value for props in segment_props]
         if segment_props[0]._wcs is not None:
             skycoord = pixel_to_skycoord(
                 xcentroid, ycentroid, segment_props[0]._wcs, origin=1).icrs
-            ra = skycoord.ra.degree * u.deg
-            dec = skycoord.dec.degree * u.deg
+            icrs_ra = skycoord.ra.degree * u.deg
+            icrs_dec = skycoord.dec.degree * u.deg
         else:
             nprops = len(segment_props)
-            ra, dec = [None] * nprops, [None] * nprops
+            icrs_ra = [None] * nprops
+            icrs_dec = [None] * nprops
+            icrs_centroid = [None] * nprops
 
+    props_table = Table()
     for column in table_columns:
         if column == 'ra_icrs_centroid':
-            props_table[column] = ra
+            props_table[column] = icrs_ra
         elif column == 'dec_icrs_centroid':
-            props_table[column] = dec
+            props_table[column] = icrs_dec
+        elif column == 'icrs_centroid':
+            props_table[column] = skycoord
         else:
             values = [getattr(props, column) for props in segment_props]
             if isinstance(values[0], u.Quantity):
