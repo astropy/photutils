@@ -4,9 +4,9 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from astropy.table import Table
 from astropy.utils import lazyproperty
-from astropy.convolution import Kernel2D
 import astropy.units as u
 from astropy.wcs.utils import pixel_to_skycoord
+from .utils.convolution import _convolve_data
 from .utils.prepare_data import _prepare_data
 
 
@@ -1663,8 +1663,6 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
     >>> props[1].orientation    # doctest: +FLOAT_CMP
     <Quantity -0.7417593069227176 rad>
     """
-
-    from scipy import ndimage
 
     if not isinstance(segment_img, SegmentationImage):
         segment_img = SegmentationImage(segment_img)
