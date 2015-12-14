@@ -43,8 +43,8 @@ def random_cmap(ncolors=256, background_color='black', random_state=None):
     h = prng.uniform(low=0.0, high=1.0, size=ncolors)
     s = prng.uniform(low=0.2, high=0.7, size=ncolors)
     v = prng.uniform(low=0.5, high=1.0, size=ncolors)
-    hsv = np.transpose(np.array([h, s, v]))
-    rgb = colors.hsv_to_rgb(hsv)
+    hsv = np.dstack((h, s, v))
+    rgb = np.squeeze(colors.hsv_to_rgb(hsv))
 
     if background_color is not None:
         if background_color not in colors.cnames:
