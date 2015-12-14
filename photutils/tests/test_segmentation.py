@@ -240,18 +240,17 @@ class TestSegmentProperties(object):
         with pytest.raises(ValueError):
             SegmentProperties(IMAGE, np.zeros((2, 2)), label=1)
 
-    # TODO: fix me
-    #@pytest.mark.parametrize('label', (0, -1))
-    #def test_label_invalid(self, label):
-    #    with pytest.raises(ValueError):
-    #        SegmentProperties(IMAGE, SEGM, label=label)
+    @pytest.mark.parametrize('label', (0, -1))
+    def test_label_invalid(self, label):
+        with pytest.raises(ValueError):
+            SegmentProperties(IMAGE, SEGM, label=label)
 
     @pytest.mark.parametrize('label', (0, -1))
     def test_label_missing(self, label):
         segm = SEGM.copy()
         segm[0:2, 0:2] = 3   # skip label 2
         with pytest.raises(ValueError):
-            SegmentProperties(IMAGE, segm, label=2, label_slice=None)
+            SegmentProperties(IMAGE, segm, label=2)
 
     def test_wcs(self):
         mywcs = WCS.WCS(naxis=2)
@@ -352,8 +351,8 @@ class TestSegmentPropertiesFunction(object):
         for propname in properties:
             assert not isiterable(getattr(props[0], propname))
 
-        properties = ['centroid', 'covariance_eigvals', 'local_centroid',
-                      'maxval_local_pos', 'minval_local_pos']
+        properties = ['centroid', 'covariance_eigvals', 'cutout_centroid',
+                      'maxval_cutout_pos', 'minval_cutout_pos']
         shapes = [getattr(props[0], p).shape for p in properties]
         for shape in shapes:
             assert shape == (2,)
@@ -372,7 +371,7 @@ class TestSegmentPropertiesFunction(object):
         value = 1.
         props = segment_properties(IMAGE, SEGM, background=value)
         assert props[0].background_mean == value
-        assert props[0].background_at_centroid == value
+        assert_allclose(props[0].background_at_centroid, value)
 
     def test_properties_error_background_None(self):
         props = segment_properties(IMAGE, SEGM)
@@ -547,6 +546,8 @@ class TestPropertiesTable(object):
         mywcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
 
         props = segment_properties(IMAGE, SEGM, wcs=mywcs)
-        t = properties_table(props)
+        columns = ['icrs_centroid', 'ra_icrs_centroid', 'dec_icrs_centroid']
+        t = properties_table(props, columns=columns)
+        assert t[0]['icrs_centroid'] is not None
         assert t[0]['ra_icrs_centroid'] is not None
         assert t[0]['dec_icrs_centroid'] is not None
