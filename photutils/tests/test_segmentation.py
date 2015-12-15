@@ -10,7 +10,7 @@ from astropy.table import Table
 import astropy.units as u
 from astropy.utils.misc import isiterable
 import astropy.wcs as WCS
-from ..segmentation import (SegmentationImage, SegmentProperties,
+from ..segmentation import (SegmentationImage, SourceProperties,
                             segment_properties, properties_table)
 
 try:
@@ -236,22 +236,22 @@ class TestSegmentationImage(object):
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestSegmentProperties(object):
+class TestSourceProperties(object):
     def test_segment_shape(self):
         with pytest.raises(ValueError):
-            SegmentProperties(IMAGE, np.zeros((2, 2)), label=1)
+            SourceProperties(IMAGE, np.zeros((2, 2)), label=1)
 
     @pytest.mark.parametrize('label', (0, -1))
     def test_label_invalid(self, label):
         with pytest.raises(ValueError):
-            SegmentProperties(IMAGE, SEGM, label=label)
+            SourceProperties(IMAGE, SEGM, label=label)
 
     @pytest.mark.parametrize('label', (0, -1))
     def test_label_missing(self, label):
         segm = SEGM.copy()
         segm[0:2, 0:2] = 3   # skip label 2
         with pytest.raises(ValueError):
-            SegmentProperties(IMAGE, segm, label=2)
+            SourceProperties(IMAGE, segm, label=2)
 
     def test_wcs(self):
         mywcs = WCS.WCS(naxis=2)
@@ -260,19 +260,19 @@ class TestSegmentProperties(object):
         mywcs.wcs.cd = [[scale*np.cos(rho), -scale*np.sin(rho)],
                         [scale*np.sin(rho), scale*np.cos(rho)]]
         mywcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
-        props = SegmentProperties(IMAGE, SEGM, wcs=mywcs, label=1)
+        props = SourceProperties(IMAGE, SEGM, wcs=mywcs, label=1)
         assert props.icrs_centroid is not None
         assert props.ra_icrs_centroid is not None
         assert props.dec_icrs_centroid is not None
 
     def test_nowcs(self):
-        props = SegmentProperties(IMAGE, SEGM, wcs=None, label=1)
+        props = SourceProperties(IMAGE, SEGM, wcs=None, label=1)
         assert props.icrs_centroid is None
         assert props.ra_icrs_centroid is None
         assert props.dec_icrs_centroid is None
 
     def test_to_table(self):
-        props = SegmentProperties(IMAGE, SEGM, label=1)
+        props = SourceProperties(IMAGE, SEGM, label=1)
         t1 = props.to_table()
         t2 = properties_table(props)
         assert isinstance(t1, Table)

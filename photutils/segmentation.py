@@ -10,7 +10,7 @@ from .utils.convolution import _convolve_data
 from .utils.prepare_data import _prepare_data
 
 
-__all__ = ['SegmentationImage', 'SegmentProperties', 'segment_properties',
+__all__ = ['SegmentationImage', 'SourceProperties', 'segment_properties',
            'properties_table']
 
 __doctest_requires__ = {('segment_properties', 'properties_table'): ['scipy'],
@@ -509,7 +509,7 @@ class SegmentationImage(object):
         self.remove_labels(remove_labels, relabel=relabel)
 
 
-class SegmentProperties(object):
+class SourceProperties(object):
     """
     Class to calculate photometry and morphological properties of a
     single labeled source.
@@ -581,9 +581,9 @@ class SegmentProperties(object):
 
     wcs : `~astropy.wcs.WCS`
         The WCS transformation to use.  If `None`, then
-        `~photutils.SegmentProperties.icrs_centroid`,
-        `~photutils.SegmentProperties.ra_icrs_centroid`, and
-        `~photutils.SegmentProperties.dec_icrs_centroid` will be `None`.
+        `~photutils.SourceProperties.icrs_centroid`,
+        `~photutils.SourceProperties.ra_icrs_centroid`, and
+        `~photutils.SourceProperties.dec_icrs_centroid` will be `None`.
 
     Notes
     -----
@@ -600,9 +600,9 @@ class SegmentProperties(object):
     based on image moments.  This could occur, for example, if the
     segmentation image was defined from a different image (e.g.,
     different bandpass) or if the background was oversubtracted.  Note
-    that `~photutils.SegmentProperties.segment_sum` includes the
+    that `~photutils.SourceProperties.segment_sum` includes the
     contribution of negative (background-subtracted) data values.
-    `~photutils.SegmentProperties.segment_sum_err` will ignore such
+    `~photutils.SourceProperties.segment_sum_err` will ignore such
     pixels when calculating the source Poission error (i.e. when if
     ``effective_gain`` is input; see below).
 
@@ -643,7 +643,7 @@ class SegmentProperties(object):
     should use an exposure-time map as the ``effective_gain`` for a
     variable depth mosaic image in count-rate units.
 
-    `~photutils.SegmentProperties.segment_sum_err` is simply the
+    `~photutils.SourceProperties.segment_sum_err` is simply the
     quadrature sum of the pixel-wise total errors over the non-masked
     pixels within the source segment:
 
@@ -651,13 +651,13 @@ class SegmentProperties(object):
               \\sigma_{\\mathrm{tot}, i}^2}
 
     where :math:`\Delta F` is
-    `~photutils.SegmentProperties.segment_sum_err` and :math:`S` are the
+    `~photutils.SourceProperties.segment_sum_err` and :math:`S` are the
     non-masked pixels in the source segment.
 
     Custom errors for source segments can be calculated using the
-    `~photutils.SegmentProperties.error_cutout_ma` and
-    `~photutils.SegmentProperties.background_cutout_ma` properties,
-    which are 2D `~numpy.ma.MaskedArray` cutout versions of the input
+    `~photutils.SourceProperties.error_cutout_ma` and
+    `~photutils.SourceProperties.background_cutout_ma` properties, which
+    are 2D `~numpy.ma.MaskedArray` cutout versions of the input
     ``error`` and ``background``.  The mask is `True` for both pixels
     outside of the source segment and masked pixels.
 
@@ -710,7 +710,7 @@ class SegmentProperties(object):
         data : array-like (2D)
             The data array from which to create the masked cutout array.
             ``data`` must have the same shape as the segmentation image
-            input into `SegmentProperties`.
+            input into `SourceProperties`.
 
         masked_array : bool, optional
             If `True` then a `~numpy.ma.MaskedArray` will be created
@@ -730,8 +730,7 @@ class SegmentProperties(object):
         data = np.asarray(data)
         if data.shape != self._data.shape:
             raise ValueError('data must have the same shape as the '
-                             'segmentation image input to '
-                             'SegmentProperties')
+                             'segmentation image input to SourceProperties')
         if masked_array:
             return np.ma.masked_array(data[self._slice],
                                       mask=self._cutout_total_mask)
@@ -745,7 +744,7 @@ class SegmentProperties(object):
         If ``columns`` or ``exclude_columns`` are not input, then the
         `~astropy.table.Table` will include all scalar-valued
         properties.  Multi-dimensional properties, e.g.
-        `~photutils.SegmentProperties.data_cutout`, can be included in
+        `~photutils.SourceProperties.data_cutout`, can be included in
         the ``columns`` input.
 
         Parameters
@@ -753,7 +752,7 @@ class SegmentProperties(object):
         columns : str or list of str, optional
             Names of columns, in order, to include in the output
             `~astropy.table.Table`.  The allowed column names are any of
-            the attributes of `SegmentProperties`.
+            the attributes of `SourceProperties`.
 
         exclude_columns : str or list of str, optional
             Names of columns to exclude from the default properties list
@@ -993,7 +992,7 @@ class SegmentProperties(object):
     def xmin(self):
         """
         The minimum ``x`` pixel location of the minimal bounding box
-        (`~photutils.SegmentProperties.bbox`) of the source segment.
+        (`~photutils.SourceProperties.bbox`) of the source segment.
         """
 
         return self.bbox[1]
@@ -1002,7 +1001,7 @@ class SegmentProperties(object):
     def xmax(self):
         """
         The maximum ``x`` pixel location of the minimal bounding box
-        (`~photutils.SegmentProperties.bbox`) of the source segment.
+        (`~photutils.SourceProperties.bbox`) of the source segment.
         """
 
         return self.bbox[3]
@@ -1011,7 +1010,7 @@ class SegmentProperties(object):
     def ymin(self):
         """
         The minimum ``y`` pixel location of the minimal bounding box
-        (`~photutils.SegmentProperties.bbox`) of the source segment.
+        (`~photutils.SourceProperties.bbox`) of the source segment.
         """
 
         return self.bbox[0]
@@ -1020,7 +1019,7 @@ class SegmentProperties(object):
     def ymax(self):
         """
         The maximum ``y`` pixel location of the minimal bounding box
-        (`~photutils.SegmentProperties.bbox`) of the source segment.
+        (`~photutils.SourceProperties.bbox`) of the source segment.
         """
 
         return self.bbox[2]
@@ -1410,7 +1409,7 @@ class SegmentProperties(object):
     @lazyproperty
     def segment_sum_err(self):
         """
-        The uncertainty of `~photutils.SegmentProperties.segment_sum`,
+        The uncertainty of `~photutils.SourceProperties.segment_sum`,
         propagated from the input ``error`` array.
 
         ``segment_sum_err`` is the quadrature sum of the total errors
@@ -1537,9 +1536,9 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
 
     wcs : `~astropy.wcs.WCS`
         The WCS transformation to use.  If `None`, then
-        `~photutils.SegmentProperties.icrs_centroid`,
-        `~photutils.SegmentProperties.ra_icrs_centroid`, and
-        `~photutils.SegmentProperties.dec_icrs_centroid` will be `None`.
+        `~photutils.SourceProperties.icrs_centroid`,
+        `~photutils.SourceProperties.ra_icrs_centroid`, and
+        `~photutils.SourceProperties.dec_icrs_centroid` will be `None`.
 
     labels : int or list of ints
         Subset of segmentation labels for which to calculate the
@@ -1548,8 +1547,8 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
 
     Returns
     -------
-    output : list of `SegmentProperties` objects
-        A list of `SegmentProperties` objects, one for each source
+    output : list of `SourceProperties` objects
+        A list of `SourceProperties` objects, one for each source
         segment.  The properties can be accessed as attributes or keys.
 
     Notes
@@ -1567,9 +1566,9 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
     based on image moments.  This could occur, for example, if the
     segmentation image was defined from a different image (e.g.,
     different bandpass) or if the background was oversubtracted.  Note
-    that `~photutils.SegmentProperties.segment_sum` includes the
+    that `~photutils.SourceProperties.segment_sum` includes the
     contribution of negative (background-subtracted) data values.
-    `~photutils.SegmentProperties.segment_sum_err` will ignore such
+    `~photutils.SourceProperties.segment_sum_err` will ignore such
     pixels when calculating the source Poission error (i.e. when if
     ``effective_gain`` is input; see below).
 
@@ -1610,7 +1609,7 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
     should use an exposure-time map as the ``effective_gain`` for a
     variable depth mosaic image in count-rate units.
 
-    `~photutils.SegmentProperties.segment_sum_err` is simply the
+    `~photutils.SourceProperties.segment_sum_err` is simply the
     quadrature sum of the pixel-wise total errors over the non-masked
     pixels within the source segment:
 
@@ -1618,14 +1617,14 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
               \\sigma_{\\mathrm{tot}, i}^2}
 
     where :math:`\Delta F` is
-    `~photutils.SegmentProperties.segment_sum_err` and :math:`S` are the
+    `~photutils.SourceProperties.segment_sum_err` and :math:`S` are the
     non-masked pixels in the source segment.
 
     .. _SExtractor: http://www.astromatic.net/software/sextractor
 
     See Also
     --------
-    SegmentationImage, SegmentProperties, properties_table,
+    SegmentationImage, SourceProperties, properties_table,
     :func:`photutils.detection.detect_sources`
 
     Examples
@@ -1695,39 +1694,39 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
     else:
         filtered_data = None
 
-    segm_propslist = []
+    sources_props = []
     for label in labels:
         if label not in segment_img.labels:
             continue      # skip invalid labels (without warnings)
-        segm_propslist.append(SegmentProperties(
+        sources_props.append(SourceProperties(
             data, segment_img, label, filtered_data=filtered_data,
             error=error_total, effective_gain=None, mask=mask,
             background=background, wcs=wcs))
 
-    return segm_propslist
+    return sources_props
 
 
 def properties_table(segment_props, columns=None, exclude_columns=None):
     """
     Construct a `~astropy.table.Table` of properties from a list of
-    `SegmentProperties` objects.
+    `SourceProperties` objects.
 
     If ``columns`` or ``exclude_columns`` are not input, then the
     `~astropy.table.Table` will include all scalar-valued properties.
     Multi-dimensional properties, e.g.
-    `~photutils.SegmentProperties.data_cutout`, can be included in the
+    `~photutils.SourceProperties.data_cutout`, can be included in the
     ``columns`` input.
 
     Parameters
     ----------
-    segment_props : `SegmentProperties` or list of `SegmentProperties`
-        A `SegmentProperties` object or list of `SegmentProperties`
+    segment_props : `SourceProperties` or list of `SourceProperties`
+        A `SourceProperties` object or list of `SourceProperties`
         objects, one for each source segment.
 
     columns : str or list of str, optional
         Names of columns, in order, to include in the output
         `~astropy.table.Table`.  The allowed column names are any of the
-        attributes of `SegmentProperties`.
+        attributes of `SourceProperties`.
 
     exclude_columns : str or list of str, optional
         Names of columns to exclude from the default properties list in
@@ -1742,7 +1741,7 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
 
     See Also
     --------
-    SegmentationImage, SegmentProperties, segment_properties,
+    SegmentationImage, SourceProperties, segment_properties,
     :func:`photutils.detection.detect_sources`
 
     Examples

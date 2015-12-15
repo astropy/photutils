@@ -25,11 +25,11 @@ effectively represent the isophotal footprint of each source and the
 resulting photometry is effectively isophotal photometry.
 
 :func:`~photutils.segmentation.segment_properties` returns a list of
-:class:`~photutils.segmentation.SegmentProperties` objects, one for
+:class:`~photutils.segmentation.SourceProperties` objects, one for
 each segmented source (or a specified subset of sources).  An Astropy
 `~astropy.table.Table` of source properties can be generated using the
 :func:`~photutils.segmentation.properties_table` function.  Please see
-:class:`~photutils.segmentation.SegmentProperties` for the list of the
+:class:`~photutils.segmentation.SourceProperties` for the list of the
 many properties that are calculated for each source.  More properties
 are likely to be added in the future.
 
@@ -185,7 +185,7 @@ the segmentation image:
 
 By default, :func:`~photutils.segmentation.properties_table` will
 include all scalar-valued properties from
-:class:`~photutils.segmentation.SegmentProperties`, but a subset of
+:class:`~photutils.segmentation.SourceProperties`, but a subset of
 properties can also be specified (or excluded) in the
 `~astropy.table.Table`:
 
@@ -284,8 +284,8 @@ we set it to 500 seconds):
     75  32.176218827 241.158486946 398.411403711    11.553412812
     80  355.61483405 252.142253219 906.422600037   13.7686828317
 
-`~photutils.SegmentProperties.segment_sum` and
-`~photutils.SegmentProperties.segment_sum_err` are the instrumental
+`~photutils.SourceProperties.segment_sum` and
+`~photutils.SourceProperties.segment_sum_err` are the instrumental
 flux and propagated flux error within the source segments.
 
 

@@ -10,7 +10,7 @@ import numpy as np
 from astropy.modeling.models import Gaussian1D, Gaussian2D, Const1D, Const2D
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import overlap_slices
-from .segmentation import SegmentProperties
+from .segmentation import SourceProperties
 import warnings
 from astropy.utils.exceptions import AstropyUserWarning
 
@@ -369,13 +369,13 @@ def data_properties(data, mask=None, background=None):
 
     Returns
     -------
-    result : `~photutils.segmentation.SegmentProperties` instance
-        A `~photutils.segmentation.SegmentProperties` object.
+    result : `~photutils.segmentation.SourceProperties` instance
+        A `~photutils.segmentation.SourceProperties` object.
     """
 
     segment_image = np.ones(data.shape, dtype=np.int)
-    return SegmentProperties(data, segment_image, label=1, mask=mask,
-                             background=background)
+    return SourceProperties(data, segment_image, label=1, mask=mask,
+                            background=background)
 
 
 def cutout_footprint(data, position, box_size=3, footprint=None, mask=None,
