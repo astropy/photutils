@@ -580,8 +580,10 @@ class SegmentProperties(object):
         background-subtracted.
 
     wcs : `~astropy.wcs.WCS`
-        The WCS transformation to use.  If `None`, then `icrs_centroid`,
-        `ra_icrs_centroid`, and `dec_icrs_centroid` will be `None`.
+        The WCS transformation to use.  If `None`, then
+        `~photutils.SegmentProperties.icrs_centroid`,
+        `~photutils.SegmentProperties.ra_icrs_centroid`, and
+        `~photutils.SegmentProperties.dec_icrs_centroid` will be `None`.
 
     Notes
     -----
@@ -598,9 +600,10 @@ class SegmentProperties(object):
     based on image moments.  This could occur, for example, if the
     segmentation image was defined from a different image (e.g.,
     different bandpass) or if the background was oversubtracted.  Note
-    that `segment_sum` includes the contribution of negative
-    (background-subtracted) data values.  `segment_sum_err` will ignore
-    such pixels when calculating the source Poission error (i.e. when if
+    that `~photutils.SegmentProperties.segment_sum` includes the
+    contribution of negative (background-subtracted) data values.
+    `~photutils.SegmentProperties.segment_sum_err` will ignore such
+    pixels when calculating the source Poission error (i.e. when if
     ``effective_gain`` is input; see below).
 
     If ``effective_gain`` is input, then ``error`` should include all
@@ -625,7 +628,7 @@ class SegmentProperties(object):
 
     If ``effective_gain`` is `None`, then ``error`` is assumed to
     include *all* sources of error, including the Poisson error of the
-    sources, i.e. :math:`\sigma_{\mathrm{tot}} = \sigma_{\mathrm{b} =
+    sources, i.e. :math:`\sigma_{\mathrm{tot}} = \sigma_{\mathrm{b}} =
     \mathrm{error}`.
 
     For example, if your input ``data`` are in units of ADU, then
@@ -1533,8 +1536,10 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
         calculated from the filtered "detection" image.
 
     wcs : `~astropy.wcs.WCS`
-        The WCS transformation to use.  If `None`, then `icrs_centroid`,
-        `ra_icrs_centroid`, and `dec_icrs_centroid` will be `None`.
+        The WCS transformation to use.  If `None`, then
+        `~photutils.SegmentProperties.icrs_centroid`,
+        `~photutils.SegmentProperties.ra_icrs_centroid`, and
+        `~photutils.SegmentProperties.dec_icrs_centroid` will be `None`.
 
     labels : int or list of ints
         Subset of segmentation labels for which to calculate the
@@ -1562,9 +1567,10 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
     based on image moments.  This could occur, for example, if the
     segmentation image was defined from a different image (e.g.,
     different bandpass) or if the background was oversubtracted.  Note
-    that `segment_sum` includes the contribution of negative
-    (background-subtracted) data values.  `segment_sum_err` will ignore
-    such pixels when calculating the source Poission error (i.e. when if
+    that `~photutils.SegmentProperties.segment_sum` includes the
+    contribution of negative (background-subtracted) data values.
+    `~photutils.SegmentProperties.segment_sum_err` will ignore such
+    pixels when calculating the source Poission error (i.e. when if
     ``effective_gain`` is input; see below).
 
     If ``effective_gain`` is input, then ``error`` should include all
@@ -1589,7 +1595,7 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
 
     If ``effective_gain`` is `None`, then ``error`` is assumed to
     include *all* sources of error, including the Poisson error of the
-    sources, i.e. :math:`\sigma_{\mathrm{tot}} = \sigma_{\mathrm{b} =
+    sources, i.e. :math:`\sigma_{\mathrm{tot}} = \sigma_{\mathrm{b}} =
     \mathrm{error}`.
 
     For example, if your input ``data`` are in units of ADU, then
@@ -1619,7 +1625,7 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
 
     See Also
     --------
-    SegmentationImage, SegmentationProperties, properties_table,
+    SegmentationImage, SegmentProperties, properties_table,
     :func:`photutils.detection.detect_sources`
 
     Examples
@@ -1736,7 +1742,7 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
 
     See Also
     --------
-    SegmentationImage, SegmentationProperties, segment_properties,
+    SegmentationImage, SegmentProperties, segment_properties,
     :func:`photutils.detection.detect_sources`
 
     Examples
@@ -1798,10 +1804,10 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
         xcentroid = [props.xcentroid.value for props in segment_props]
         ycentroid = [props.ycentroid.value for props in segment_props]
         if segment_props[0]._wcs is not None:
-            skycoord = pixel_to_skycoord(
+            icrs_centroid = pixel_to_skycoord(
                 xcentroid, ycentroid, segment_props[0]._wcs, origin=1).icrs
-            icrs_ra = skycoord.ra.degree * u.deg
-            icrs_dec = skycoord.dec.degree * u.deg
+            icrs_ra = icrs_centroid.ra.degree * u.deg
+            icrs_dec = icrs_centroid.dec.degree * u.deg
         else:
             nprops = len(segment_props)
             icrs_ra = [None] * nprops
@@ -1815,7 +1821,7 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
         elif column == 'dec_icrs_centroid':
             props_table[column] = icrs_dec
         elif column == 'icrs_centroid':
-            props_table[column] = skycoord
+            props_table[column] = icrs_centroid
         else:
             values = [getattr(props, column) for props in segment_props]
             if isinstance(values[0], u.Quantity):

@@ -22,22 +22,23 @@ Detecting Stars
 Photutils includes two widely-used tools that are used to detect stars
 in an image, `DAOFIND`_ and IRAF's `starfind`_.
 
-`~photutils.daofind` is an implementation of the `DAOFIND`_ algorithm
-(`Stetson 1987, PASP 99, 191
+:func:`~photutils.daofind` is an implementation of the `DAOFIND`_
+algorithm (`Stetson 1987, PASP 99, 191
 <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_).  It searches
 images for local density maxima that have a peak amplitude greater
 than a specified threshold (the threshold is applied to a convolved
 image) and have a size and shape similar to a defined 2D Gaussian
-kernel.  `~photutils.daofind` also provides an estimate of the
+kernel.  :func:`~photutils.daofind` also provides an estimate of the
 objects' roundness and sharpness, whose lower and upper bounds can be
 specified.
 
-`~photutils.irafstarfind` is an implementation of IRAF's `starfind`_
-algorithm.  It is similar to `~photutils.daofind`, but it always uses
-a 2D circular Gaussian kernel, while `~photutils.daofind` can use an
-elliptical Gaussian kernel.  `~photutils.irafstarfind` is also
-different in that it calculates the objects' centroid, roundness, and
-sharpness using image moments.
+:func:`~photutils.irafstarfind` is an implementation of IRAF's
+`starfind`_ algorithm.  It is similar to :func:`~photutils.daofind`,
+but it always uses a 2D circular Gaussian kernel, while
+:func:`~photutils.daofind` can use an elliptical Gaussian kernel.
+:func:`~photutils.irafstarfind` is also different in that it
+calculates the objects' centroid, roundness, and sharpness using image
+moments.
 
 As an example, let's load an image from the bundled datasets and
 select a subset of the image.  We will estimate the background and
@@ -119,7 +120,7 @@ every pixel in an image such that pixels with the same label are part
 of the same source.  The segmentation procedure implemented in
 photutils is called the threshold method, where detected sources must
 have a minimum number of connected pixels that are each greater than a
-specified threshold value in an image.  The threshold is usually
+specified threshold value in an image.  The threshold level is usually
 defined at some multiple of the background standard deviation (sigma)
 above the background.  The image can also be filtered before
 thresholding to smooth the noise and maximize the detectability of
@@ -138,35 +139,35 @@ by the `datasets <datasets.html>`_ module::
     >>> from photutils.datasets import make_100gaussians_image
     >>> data = make_100gaussians_image()
 
-We will use `~photutils.detection.detect_threshold` to produce a
-detection threshold image.  `~photutils.detection.detect_threshold`
-will estimate the background and background rms using sigma-clipped
-statistics if they are not input.  The threshold level is calculated
-using the ``snr`` input as the sigma level above the background.  Here
-we generate a simple pixel-wise threshold at 3 sigma above the
-background::
+We will use :func:`~photutils.detection.detect_threshold` to produce a
+detection threshold image.
+:func:`~photutils.detection.detect_threshold` will estimate the
+background and background rms using sigma-clipped statistics if they
+are not input.  The threshold level is calculated using the ``snr``
+input as the sigma level above the background.  Here we generate a
+simple pixel-wise threshold at 3 sigma above the background::
 
     >>> from photutils import detect_threshold
     >>> threshold = detect_threshold(data, snr=3.)
 
 For more sophisticated analyses, one should generate a 2D background
 and background-only error image (e.g., from your data reduction or by
-using `~photutils.background.Background`).  In that case, a 3-sigma
-threshold image is simply::
+using :class:`~photutils.background.Background`).  In that case, a
+3-sigma threshold image is simply::
 
     >>> threshold = bkg + (3.0 * bkg_rms)    # doctest: +SKIP
 
 Note that if the threshold includes the background level (as above),
-then the image input into `~photutils.detection.detect_sources` should
-*not* be background subtracted.
+then the image input into :func:`~photutils.detection.detect_sources`
+should *not* be background subtracted.
 
 Let's find sources that have 5 connected pixels that are each greater
 than the corresponding pixel-wise ``threshold`` level defined above.
 Because the threshold returned by
-`~photutils.detection.detect_threshold` includes the background, we do
-not subtract the background from the data here.  We will also input a
-2D circular Gaussian kernel with a FWHM of 2 pixels to filter the
-image prior to thresholding:
+:func:`~photutils.detection.detect_threshold` includes the background,
+we do not subtract the background from the data here.  We will also
+input a 2D circular Gaussian kernel with a FWHM of 2 pixels to filter
+the image prior to thresholding:
 
 .. doctest-requires:: scipy
 
@@ -178,8 +179,8 @@ image prior to thresholding:
     >>> kernel.normalize()
     >>> segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
 
-The result is a 2D segmentation image (or sometimes called a "labeled"
-image) with the same shape as the data, where sources are labeled by
+The result is a :class:`~photutils.segmentation.SegmentationImage`
+object with the same shape as the data, where sources are labeled by
 different positive integer values.  A value of zero is always reserved
 for the background.  Let's plot both the image and the segmentation
 image showing the detected sources:
@@ -191,11 +192,11 @@ image showing the detected sources:
     >>> from astropy.visualization import SqrtStretch
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> from photutils.utils import random_cmap
-    >>> rand_cmap = random_cmap(np.max(segm) + 1, random_state=12345)
+    >>> rand_cmap = random_cmap(segm.max + 1, random_state=12345)
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
     >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    >>> ax2.imshow(segm, origin='lower', cmap=rand_cmap)
+    >>> ax2.imshow(segm.data, origin='lower', cmap=rand_cmap)
 
 .. plot::
 
@@ -214,15 +215,15 @@ image showing the detected sources:
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     kernel.normalize()
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
-    rand_cmap = random_cmap(np.max(segm) + 1, random_state=12345)
+    rand_cmap = random_cmap(segm.max + 1, random_state=12345)
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    ax2.imshow(segm, origin='lower', cmap=rand_cmap)
+    ax2.imshow(segm.data, origin='lower', cmap=rand_cmap)
 
 
 When the segmentation image is generated using image thresholding
-(e.g., using `~photutils.detect_sources`), the source segments
+(e.g., using :func:`~photutils.detect_sources`), the source segments
 effectively represent the isophotal footprint of each source.
 
 Note that overlapping sources are detected as single sources.
@@ -247,10 +248,11 @@ threshold value.  Peaks are the local maxima above a specified
 threshold that separated by a a specified minimum number of pixels.
 The return pixel coordinates are always integer (i.e., no centroiding
 is performed, only the peak pixel is identified).
-`~photutils.detection.find_peaks` also supports a number of options,
-including searching for peaks only within a segmentation image or a
-specified footprint.  Please see the `~photutils.detection.find_peaks`
-documentation for more options.
+:func:`~photutils.detection.find_peaks` also supports a number of
+options, including searching for peaks only within a segmentation
+image or a specified footprint.  Please see the
+:func:`~photutils.detection.find_peaks` documentation for more
+options.
 
 As simple example, let's find the local peaks in an image that are 10
 sigma above the background and a separated by a least 2 pixels:
