@@ -16,7 +16,7 @@ measuring photometry and other source properties.
 Getting Started
 ---------------
 
-The :func:`~photutils.segmentation.segment_properties` function is the
+The :func:`~photutils.segmentation.source_properties` function is the
 primary tool for measuring the photometry, centroids, and
 morphological properties of sources defined in a segmentation image.
 When the segmentation image is generated using image thresholding
@@ -24,7 +24,7 @@ When the segmentation image is generated using image thresholding
 effectively represent the isophotal footprint of each source and the
 resulting photometry is effectively isophotal photometry.
 
-:func:`~photutils.segmentation.segment_properties` returns a list of
+:func:`~photutils.segmentation.source_properties` returns a list of
 :class:`~photutils.segmentation.SourceProperties` objects, one for
 each segmented source (or a specified subset of sources).  An Astropy
 `~astropy.table.Table` of source properties can be generated using the
@@ -68,12 +68,12 @@ The result is a :class:`~photutils.segmentation.SegmentationImage`
 where sources are labeled by different positive integer values.  Now
 let's measure the properties of the detected sources defined in the
 segmentation image with the minimum number of inputs to
-:func:`~photutils.segmentation.segment_properties`:
+:func:`~photutils.segmentation.source_properties`:
 
 .. doctest-requires:: scipy, skimage
 
-    >>> from photutils import segment_properties, properties_table
-    >>> props = segment_properties(data, segm)
+    >>> from photutils import source_properties, properties_table
+    >>> props = source_properties(data, segm)
     >>> tbl = properties_table(props)
     >>> print(tbl)
     id   xcentroid     ycentroid   ...        cxy              cyy
@@ -97,8 +97,8 @@ approximate isophotal ellipses for each object:
 
 .. doctest-requires:: scipy, skimage
 
-    >>> from photutils import segment_properties, properties_table
-    >>> props = segment_properties(data, segm)
+    >>> from photutils import source_properties, properties_table
+    >>> props = source_properties(data, segm)
     >>> from photutils import EllipticalAperture
     >>> r = 3.    # approximate isophotal extent
     >>> apertures = []
@@ -137,7 +137,7 @@ Now let's plot the results:
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import make_100gaussians_image
     from photutils import Background, detect_threshold, detect_sources
-    from photutils import segment_properties, properties_table
+    from photutils import source_properties, properties_table
     from photutils.utils import random_cmap
     from photutils import EllipticalAperture
     data = make_100gaussians_image()
@@ -148,7 +148,7 @@ Now let's plot the results:
     kernel.normalize()
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
     rand_cmap = random_cmap(segm.max + 1, random_state=12345)
-    props = segment_properties(data, segm)
+    props = source_properties(data, segm)
     apertures = []
     for prop in props:
         position = (prop.xcentroid.value, prop.ycentroid.value)
@@ -170,7 +170,7 @@ the segmentation image:
 .. doctest-requires:: scipy, skimage
 
     >>> labels = [1, 5, 20, 50, 75, 80]
-    >>> props = segment_properties(data, segm, labels=labels)
+    >>> props = source_properties(data, segm, labels=labels)
     >>> tbl = properties_table(props)
     >>> print(tbl)
     id   xcentroid     ycentroid   ...       cxy            cyy
@@ -192,7 +192,7 @@ properties can also be specified (or excluded) in the
 .. doctest-requires:: scipy, skimage
 
     >>> labels = [1, 5, 20, 50, 75, 80]
-    >>> props = segment_properties(data, segm, labels=labels)
+    >>> props = source_properties(data, segm, labels=labels)
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'segment_sum', 'area']
     >>> tbl = properties_table(props, columns=columns)
     >>> print(tbl)
@@ -207,7 +207,7 @@ properties can also be specified (or excluded) in the
     80  355.61483405 252.142253219 906.422600037 45.0
 
 A `~astropy.wcs.WCS` transformation can also be input to
-:func:`~photutils.segmentation.segment_properties` via the ``wcs``
+:func:`~photutils.segmentation.source_properties` via the ``wcs``
 keyword, in which case the International Celestial Reference System
 (ICRS) Right Ascension and Declination coordinates at the source
 centroids will be returned.
@@ -217,15 +217,15 @@ Background Properties
 ^^^^^^^^^^^^^^^^^^^^^
 
 Like with :func:`~photutils.aperture_photometry`, the ``data`` array
-that is input to :func:`~photutils.segmentation.segment_properties`
+that is input to :func:`~photutils.segmentation.source_properties`
 should be background subtracted.  If you input the ``background``
-keyword to :func:`~photutils.segmentation.segment_properties`, it will
+keyword to :func:`~photutils.segmentation.source_properties`, it will
 calculate background properties with each source segment:
 
 .. doctest-requires:: scipy, skimage
 
     >>> labels = [1, 5, 20, 50, 75, 80]
-    >>> props = segment_properties(data, segm, labels=labels,
+    >>> props = source_properties(data, segm, labels=labels,
     ...                            background=bkg.background)
     >>> columns = ['id', 'background_at_centroid', 'background_mean',
     ...            'background_sum']
@@ -244,11 +244,11 @@ calculate background properties with each source segment:
 Photometric Errors
 ^^^^^^^^^^^^^^^^^^
 
-With :func:`~photutils.segmentation.segment_properties` we can use the
+With :func:`~photutils.segmentation.source_properties` we can use the
 background-only error image and an effective gain to estimate the
 error in the photometry.  Like the aperture photometry
 :ref:`error_estimation`, the
-:func:`~photutils.segmentation.segment_properties` ``error`` keyword
+:func:`~photutils.segmentation.source_properties` ``error`` keyword
 can either specify the total error array (i.e., it includes Poisson
 noise due to individual sources or such noise is irrelevant) or it can
 specify the background-only noise.  In the later case, we can specify
@@ -267,7 +267,7 @@ we set it to 500 seconds):
 .. doctest-requires:: scipy, skimage
 
     >>> labels = [1, 5, 20, 50, 75, 80]
-    >>> props = segment_properties(data, segm, labels=labels,
+    >>> props = source_properties(data, segm, labels=labels,
     ...                            error=bkg.background_rms,
     ...                            effective_gain=500.)
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'segment_sum',
@@ -306,7 +306,7 @@ calculated from a filtered "detection" image.  The usual downside of
 the filtering is the sources will be made more circular than they
 actually are.  If you wish to reproduce `SExtractor`_ results, then
 use the ``filter_kernel`` input to
-:func:`~photutils.segmentation.segment_properties` to filter the
+:func:`~photutils.segmentation.source_properties` to filter the
 ``data`` prior to centroid and morphological measurements.   The
 kernel should be the same one used to define the source segments in
 :func:`~photutils.detect_sources`.  If ``filter_kernel`` is `None`,

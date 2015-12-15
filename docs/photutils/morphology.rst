@@ -125,10 +125,10 @@ properties that are calculated.  Even more properties are likely to be
 added in the future.
 
 If you have a segmentation image, the
-:func:`~photutils.segmentation.segment_properties` function can be
-used to calculate the properties for all (or a specified subset) of
-the segmented sources.  Please see `Source Photometry and Properties
-from Image Segmentation <segmentation.html>`_ for more details.
+:func:`~photutils.segmentation.source_properties` function can be used
+to calculate the properties for all (or a specified subset) of the
+segmented sources.  Please see `Source Photometry and Properties from
+Image Segmentation <segmentation.html>`_ for more details.
 
 As an example, let's calculate the properties of the source defined
 above.  For this example, we will subtract the background using simple

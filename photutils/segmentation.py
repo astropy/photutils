@@ -10,11 +10,11 @@ from .utils.convolution import _convolve_data
 from .utils.prepare_data import _prepare_data
 
 
-__all__ = ['SegmentationImage', 'SourceProperties', 'segment_properties',
+__all__ = ['SegmentationImage', 'SourceProperties', 'source_properties',
            'properties_table']
 
-__doctest_requires__ = {('segment_properties', 'properties_table'): ['scipy'],
-                        ('SegmentationImage', 'segment_properties',
+__doctest_requires__ = {('source_properties', 'properties_table'): ['scipy'],
+                        ('SegmentationImage', 'source_properties',
                          'properties_table'): ['skimage']}
 
 
@@ -560,7 +560,7 @@ class SourceProperties(object):
         include *all* sources of error.  See the Notes section below for
         details on the error propagation.
 
-        If you are calculating the properties of many segments from the
+        If you are calculating the properties of many sources from the
         same data, it is highly recommended that you input a *total*
         error array instead of using ``effective_gain``.  Otherwise a
         total error array will need to be repeatedly recalculated.
@@ -762,7 +762,7 @@ class SourceProperties(object):
         Returns
         -------
         table : `~astropy.table.Table`
-            A single-row table of properties of the segmented source.
+            A single-row table of properties of the source.
         """
 
         return properties_table(self, columns=columns,
@@ -870,7 +870,7 @@ class SourceProperties(object):
 
     @lazyproperty
     def moments(self):
-        """Spatial moments up to 3rd order of the source segment."""
+        """Spatial moments up to 3rd order of the source."""
 
         from skimage.measure import moments
         return moments(self._data_cutout_maskzeroed_double, 3)
@@ -878,8 +878,8 @@ class SourceProperties(object):
     @lazyproperty
     def moments_central(self):
         """
-        Central moments (translation invariant) of the source segment up
-        to 3rd order.
+        Central moments (translation invariant) of the source up to 3rd
+        order.
         """
 
         from skimage.measure import moments_central
@@ -1144,8 +1144,8 @@ class SourceProperties(object):
     @lazyproperty
     def inertia_tensor(self):
         """
-        The inertia tensor of the source segment for the rotation around
-        its center of mass.
+        The inertia tensor of the source for the rotation around its
+        center of mass.
         """
 
         mu = self.moments_central
@@ -1158,7 +1158,7 @@ class SourceProperties(object):
     def covariance(self):
         """
         The covariance matrix of the 2D Gaussian function that has the
-        same second-order moments as the source segment.
+        same second-order moments as the source.
         """
 
         mu = self.moments_central
@@ -1211,7 +1211,7 @@ class SourceProperties(object):
         """
         The 1-sigma standard deviation along the semimajor axis of the
         2D Gaussian function that has the same second-order central
-        moments as the source segment.
+        moments as the source.
         """
 
         # this matches SExtractor's A parameter
@@ -1222,7 +1222,7 @@ class SourceProperties(object):
         """
         The 1-sigma standard deviation along the semiminor axis of the
         2D Gaussian function that has the same second-order central
-        moments as the source segment.
+        moments as the source.
         """
 
         # this matches SExtractor's B parameter
@@ -1232,7 +1232,7 @@ class SourceProperties(object):
     def eccentricity(self):
         """
         The eccentricity of the 2D Gaussian function that has the same
-        second-order moments as the source segment.
+        second-order moments as the source.
 
         The eccentricity is the fraction of the distance along the
         semimajor axis at which the focus lies.
@@ -1253,7 +1253,7 @@ class SourceProperties(object):
         """
         The angle in radians between the ``x`` axis and the major axis
         of the 2D Gaussian function that has the same second-order
-        moments as the source segment.  The angle increases in the
+        moments as the source.  The angle increases in the
         counter-clockwise direction.
         """
 
@@ -1469,9 +1469,9 @@ class SourceProperties(object):
                                    [self.xcentroid.value]])[0]
 
 
-def segment_properties(data, segment_img, error=None, effective_gain=None,
-                       mask=None, background=None, filter_kernel=None,
-                       wcs=None, labels=None):
+def source_properties(data, segment_img, error=None, effective_gain=None,
+                      mask=None, background=None, filter_kernel=None,
+                      wcs=None, labels=None):
     """
     Calculate photometry and morphological properties of sources defined
     by a labeled segmentation image.
@@ -1506,7 +1506,7 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
         include *all* sources of error.  See the Notes section below for
         details on the error propagation.
 
-        If you are calculating the properties of many segments from the
+        If you are calculating the properties of many sources from the
         same data, it is highly recommended that you input a *total*
         error array instead of using ``effective_gain``.  Otherwise a
         total error array will need to be repeatedly recalculated.
@@ -1543,13 +1543,13 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
     labels : int or list of ints
         Subset of segmentation labels for which to calculate the
         properties.  If `None`, then the properties will be calculated
-        for all source labels (the default).
+        for all labeled sources (the default).
 
     Returns
     -------
     output : list of `SourceProperties` objects
-        A list of `SourceProperties` objects, one for each source
-        segment.  The properties can be accessed as attributes or keys.
+        A list of `SourceProperties` objects, one for each source.  The
+        properties can be accessed as attributes or keys.
 
     Notes
     -----
@@ -1630,7 +1630,7 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
     Examples
     --------
     >>> import numpy as np
-    >>> from photutils import SegmentationImage, segment_properties
+    >>> from photutils import SegmentationImage, source_properties
     >>> image = np.arange(16.).reshape(4, 4)
     >>> print(image)
     [[  0.   1.   2.   3.]
@@ -1641,7 +1641,7 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
     ...                           [1, 0, 0, 2],
     ...                           [0, 0, 2, 2],
     ...                           [0, 2, 2, 0]])
-    >>> props = segment_properties(image, segm)
+    >>> props = source_properties(image, segm)
 
     Print some properties of the first object (labeled with ``1`` in the
     segmentation image):
@@ -1681,12 +1681,12 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
         labels = segment_img.labels
     labels = np.atleast_1d(labels)
 
-    # prepare the input data once, instead of repeating for each segment
+    # prepare the input data once, instead of repeating for each source
     data, error_total, background = _prepare_data(
         data, error=error, effective_gain=effective_gain,
         background=background)
 
-    # filter the data once, instead of repeating for each segment
+    # filter the data once, instead of repeating for each source
     if filter_kernel is not None:
         filtered_data = _convolve_data(data, filter_kernel, mode='constant',
                                        fill_value=0.0,
@@ -1706,7 +1706,7 @@ def segment_properties(data, segment_img, error=None, effective_gain=None,
     return sources_props
 
 
-def properties_table(segment_props, columns=None, exclude_columns=None):
+def properties_table(source_props, columns=None, exclude_columns=None):
     """
     Construct a `~astropy.table.Table` of properties from a list of
     `SourceProperties` objects.
@@ -1719,9 +1719,9 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
 
     Parameters
     ----------
-    segment_props : `SourceProperties` or list of `SourceProperties`
+    source_props : `SourceProperties` or list of `SourceProperties`
         A `SourceProperties` object or list of `SourceProperties`
-        objects, one for each source segment.
+        objects, one for each source.
 
     columns : str or list of str, optional
         Names of columns, in order, to include in the output
@@ -1737,17 +1737,17 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
     -------
     table : `~astropy.table.Table`
         A table of properties of the segmented sources, one row per
-        source segment.
+        source.
 
     See Also
     --------
-    SegmentationImage, SourceProperties, segment_properties,
+    SegmentationImage, SourceProperties, source_properties,
     :func:`photutils.detection.detect_sources`
 
     Examples
     --------
     >>> import numpy as np
-    >>> from photutils import segment_properties, properties_table
+    >>> from photutils import source_properties, properties_table
     >>> image = np.arange(16.).reshape(4, 4)
     >>> print(image)
     [[  0.   1.   2.   3.]
@@ -1758,9 +1758,9 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
     ...                           [1, 0, 0, 2],
     ...                           [0, 0, 2, 2],
     ...                           [0, 2, 2, 0]])
-    >>> segm_props = segment_properties(image, segm)
+    >>> props = source_properties(image, segm)
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'segment_sum']
-    >>> tbl = properties_table(segm_props, columns=columns)
+    >>> tbl = properties_table(props, columns=columns)
     >>> print(tbl)
      id   xcentroid     ycentroid   segment_sum
              pix           pix
@@ -1769,9 +1769,9 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
       2 2.09090909091 2.36363636364        55.0
     """
 
-    if isinstance(segment_props, list) and len(segment_props) == 0:
-        raise ValueError('segment_props is an empty list')
-    segment_props = np.atleast_1d(segment_props)
+    if isinstance(source_props, list) and len(source_props) == 0:
+        raise ValueError('source_props is an empty list')
+    source_props = np.atleast_1d(source_props)
 
     # all scalar-valued properties
     columns_all = ['id', 'xcentroid', 'ycentroid', 'ra_icrs_centroid',
@@ -1796,19 +1796,19 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
     # it's *much* faster to calculate world coordinates using the
     # complete list of (x, y) instead of from the individual (x, y).
     # The assumption here is that the wcs is the same for each
-    # element of segment_props.
+    # element of source_props.
     if ('ra_icrs_centroid' in table_columns or
             'dec_icrs_centroid' in table_columns or
             'icrs_centroid' in table_columns):
-        xcentroid = [props.xcentroid.value for props in segment_props]
-        ycentroid = [props.ycentroid.value for props in segment_props]
-        if segment_props[0]._wcs is not None:
+        xcentroid = [props.xcentroid.value for props in source_props]
+        ycentroid = [props.ycentroid.value for props in source_props]
+        if source_props[0]._wcs is not None:
             icrs_centroid = pixel_to_skycoord(
-                xcentroid, ycentroid, segment_props[0]._wcs, origin=1).icrs
+                xcentroid, ycentroid, source_props[0]._wcs, origin=1).icrs
             icrs_ra = icrs_centroid.ra.degree * u.deg
             icrs_dec = icrs_centroid.dec.degree * u.deg
         else:
-            nprops = len(segment_props)
+            nprops = len(source_props)
             icrs_ra = [None] * nprops
             icrs_dec = [None] * nprops
             icrs_centroid = [None] * nprops
@@ -1822,7 +1822,7 @@ def properties_table(segment_props, columns=None, exclude_columns=None):
         elif column == 'icrs_centroid':
             props_table[column] = icrs_centroid
         else:
-            values = [getattr(props, column) for props in segment_props]
+            values = [getattr(props, column) for props in source_props]
             if isinstance(values[0], u.Quantity):
                 # turn list of Quantities into a Quantity array
                 values = u.Quantity(values)

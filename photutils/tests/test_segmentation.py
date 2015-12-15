@@ -11,7 +11,7 @@ import astropy.units as u
 from astropy.utils.misc import isiterable
 import astropy.wcs as WCS
 from ..segmentation import (SegmentationImage, SourceProperties,
-                            segment_properties, properties_table)
+                            source_properties, properties_table)
 
 try:
     import scipy
@@ -283,47 +283,47 @@ class TestSourceProperties(object):
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestSegmentPropertiesFunctionInputs(object):
+class TestSourcePropertiesFunctionInputs(object):
     def test_segment_shape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
-            segment_properties(IMAGE, wrong_shape)
+            source_properties(IMAGE, wrong_shape)
 
     def test_error_shape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
-            segment_properties(IMAGE, SEGM, error=wrong_shape)
+            source_properties(IMAGE, SEGM, error=wrong_shape)
 
     def test_effective_gain_shape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
-            segment_properties(IMAGE, SEGM, error=IMAGE,
-                               effective_gain=wrong_shape)
+            source_properties(IMAGE, SEGM, error=IMAGE,
+                              effective_gain=wrong_shape)
 
     def test_background_shape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
-            segment_properties(IMAGE, SEGM, background=wrong_shape)
+            source_properties(IMAGE, SEGM, background=wrong_shape)
 
     def test_mask_shape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
-            segment_properties(IMAGE, SEGM, mask=wrong_shape)
+            source_properties(IMAGE, SEGM, mask=wrong_shape)
 
     def test_labels(self):
-        props = segment_properties(IMAGE, SEGM, labels=1)
+        props = source_properties(IMAGE, SEGM, labels=1)
         assert props[0].id == 1
 
     def test_invalidlabels(self):
-        props = segment_properties(IMAGE, SEGM, labels=-1)
+        props = source_properties(IMAGE, SEGM, labels=-1)
         assert len(props) == 0
 
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestSegmentPropertiesFunction(object):
+class TestSourcePropertiesFunction(object):
     def test_properties(self):
-        props = segment_properties(IMAGE, SEGM)
+        props = source_properties(IMAGE, SEGM)
         assert props[0].id == 1
         assert_quantity_allclose(props[0].xcentroid, XCEN*u.pix,
                                  rtol=1.e-2)
@@ -370,18 +370,18 @@ class TestSegmentPropertiesFunction(object):
 
     def test_properties_background_notNone(self):
         value = 1.
-        props = segment_properties(IMAGE, SEGM, background=value)
+        props = source_properties(IMAGE, SEGM, background=value)
         assert props[0].background_mean == value
         assert_allclose(props[0].background_at_centroid, value)
 
     def test_properties_error_background_None(self):
-        props = segment_properties(IMAGE, SEGM)
+        props = source_properties(IMAGE, SEGM)
         assert props[0].background_cutout_ma is None
         assert props[0].error_cutout_ma is None
 
     def test_cutout_shapes(self):
         error = np.ones_like(IMAGE) * 1.
-        props = segment_properties(IMAGE, SEGM, error=error, background=1.)
+        props = source_properties(IMAGE, SEGM, error=error, background=1.)
         bbox = props[0].bbox.value
         true_shape = (bbox[2] - bbox[0] + 1, bbox[3] - bbox[1] + 1)
         properties = ['background_cutout_ma', 'data_cutout',
@@ -391,7 +391,7 @@ class TestSegmentPropertiesFunction(object):
             assert shape == true_shape
 
     def test_make_cutout(self):
-        props = segment_properties(IMAGE, SEGM)
+        props = source_properties(IMAGE, SEGM)
         data = np.ones((2, 2))
         with pytest.raises(ValueError):
             props[0].make_cutout(data)
@@ -402,7 +402,7 @@ class TestSegmentPropertiesFunction(object):
     def test_segmentation_inputs(self, error_value, effective_gain,
                                  background):
         error = np.ones_like(IMAGE) * error_value
-        props = segment_properties(IMAGE, SEGM, error=error,
+        props = source_properties(IMAGE, SEGM, error=error,
                                    effective_gain=effective_gain,
                                    background=background)
         assert_quantity_allclose(props[0].xcentroid, XCEN*u.pix, rtol=1.e-2)
@@ -429,7 +429,7 @@ class TestSegmentPropertiesFunction(object):
         assert_allclose(props[0].segment_sum_err, true_error)
 
     def test_data_allzero(self):
-        props = segment_properties(IMAGE*0., SEGM)
+        props = source_properties(IMAGE*0., SEGM)
         proplist = ['xcentroid', 'ycentroid', 'semimajor_axis_sigma',
                     'semiminor_axis_sigma', 'eccentricity', 'orientation',
                     'ellipticity', 'elongation', 'cxx', 'cxy', 'cyy']
@@ -443,7 +443,7 @@ class TestSegmentPropertiesFunction(object):
         mask = np.zeros_like(data, dtype=np.bool)
         mask[0, 1] = True
         segm = data.astype(np.int)
-        props = segment_properties(data, segm, mask=mask)
+        props = source_properties(data, segm, mask=mask)
         assert_allclose(props[0].xcentroid.value, 1)
         assert_allclose(props[0].ycentroid.value, 1)
         assert_allclose(props[0].segment_sum, 1)
@@ -452,13 +452,13 @@ class TestSegmentPropertiesFunction(object):
     def test_effective_gain_negative(self, effective_gain=-1):
         error = np.ones_like(IMAGE) * 2.
         with pytest.raises(ValueError):
-            segment_properties(IMAGE, SEGM, error=error,
+            source_properties(IMAGE, SEGM, error=error,
                                effective_gain=effective_gain)
 
     def test_single_pixel_segment(self):
         segm = np.zeros_like(SEGM)
         segm[50, 50] = 1
-        props = segment_properties(IMAGE, segm)
+        props = source_properties(IMAGE, segm)
         assert props[0].eccentricity == 0
 
     def test_filtering(self):
@@ -466,8 +466,8 @@ class TestSegmentPropertiesFunction(object):
         FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
         filter_kernel = Gaussian2DKernel(2.*FWHM2SIGMA, x_size=3, y_size=3)
         error = np.sqrt(IMAGE)
-        props1 = segment_properties(IMAGE, SEGM, error=error)
-        props2 = segment_properties(IMAGE, SEGM, error=error,
+        props1 = source_properties(IMAGE, SEGM, error=error)
+        props2 = source_properties(IMAGE, SEGM, error=error,
                                     filter_kernel=filter_kernel.array)
         p1, p2 = props1[0], props2[0]
         keys = ['segment_sum', 'segment_sum_err']
@@ -484,8 +484,8 @@ class TestSegmentPropertiesFunction(object):
         FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
         filter_kernel = Gaussian2DKernel(2.*FWHM2SIGMA, x_size=3, y_size=3)
         error = np.sqrt(IMAGE)
-        props1 = segment_properties(IMAGE, SEGM, error=error)
-        props2 = segment_properties(IMAGE, SEGM, error=error,
+        props1 = source_properties(IMAGE, SEGM, error=error)
+        props2 = source_properties(IMAGE, SEGM, error=error,
                                     filter_kernel=filter_kernel)
         p1, p2 = props1[0], props2[0]
         keys = ['segment_sum', 'segment_sum_err']
@@ -500,13 +500,13 @@ class TestSegmentPropertiesFunction(object):
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestPropertiesTable(object):
     def test_properties_table(self):
-        props = segment_properties(IMAGE, SEGM)
+        props = source_properties(IMAGE, SEGM)
         t = properties_table(props)
         assert isinstance(t, Table)
         assert len(t) == 1
 
     def test_properties_table_include(self):
-        props = segment_properties(IMAGE, SEGM)
+        props = source_properties(IMAGE, SEGM)
         columns = ['id', 'xcentroid']
         t = properties_table(props, columns=columns)
         assert isinstance(t, Table)
@@ -514,13 +514,13 @@ class TestPropertiesTable(object):
         assert t.colnames == columns
 
     def test_properties_table_include_invalidname(self):
-        props = segment_properties(IMAGE, SEGM)
+        props = source_properties(IMAGE, SEGM)
         columns = ['idzz', 'xcentroidzz']
         with pytest.raises(AttributeError):
             properties_table(props, columns=columns)
 
     def test_properties_table_exclude(self):
-        props = segment_properties(IMAGE, SEGM)
+        props = source_properties(IMAGE, SEGM)
         exclude = ['id', 'xcentroid']
         t = properties_table(props, exclude_columns=exclude)
         assert isinstance(t, Table)
@@ -529,7 +529,7 @@ class TestPropertiesTable(object):
             t['id']
 
     def test_properties_table_empty_props(self):
-        props = segment_properties(IMAGE, SEGM, labels=-1)
+        props = source_properties(IMAGE, SEGM, labels=-1)
         with pytest.raises(ValueError):
             properties_table(props)
 
@@ -545,7 +545,7 @@ class TestPropertiesTable(object):
                         [scale*np.sin(rho), scale*np.cos(rho)]]
         mywcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
 
-        props = segment_properties(IMAGE, SEGM, wcs=mywcs)
+        props = source_properties(IMAGE, SEGM, wcs=mywcs)
         columns = ['icrs_centroid', 'ra_icrs_centroid', 'dec_icrs_centroid']
         t = properties_table(props, columns=columns)
         assert t[0]['icrs_centroid'] is not None
