@@ -6,6 +6,7 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from astropy.table import Column, Table
 from astropy.stats import sigma_clipped_stats
+from ..segmentation import SegmentationImage
 from ..morphology import cutout_footprint, fit_2dgaussian
 from ..utils.convolution import _convolve_data
 from ..utils.wcs_helpers import pixel_to_icrs_coords
@@ -131,7 +132,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
                    connectivity=8):
     """
     Detect sources above a specified threshold value in an image and
-    return a segmentation image.
+    return a `~photutils.segmentation.SegmentationImage` object.
 
     Detected sources must have ``npixels`` connected pixels that are
     each greater than the ``threshold`` value.  If the filtering option
@@ -170,14 +171,15 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
 
     Returns
     -------
-    segment_image : `~numpy.ndarray` (int)
+    segment_image : `~photutils.segmentation.SegmentationImage`
         A 2D segmentation image, with the same shape as ``data``, where
         sources are marked by different positive integer values.  A
         value of zero is reserved for the background.
 
     See Also
     --------
-    detect_threshold, :class:`photutils.segmentation.segment_properties`
+    detect_threshold, :class:`photutils.segmentation.SegmentationImage`,
+    :func:`photutils.segmentation.segment_properties`
 
     Examples
     --------
@@ -211,14 +213,14 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         sigma = 3.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))   # FWHM = 3
         kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
         kernel.normalize()
-        segm_image = detect_sources(image, threshold, npixels=5,
-                                    filter_kernel=kernel)
+        segm = detect_sources(image, threshold, npixels=5,
+                              filter_kernel=kernel)
 
         # plot the image and the segmentation image
         import matplotlib.pyplot as plt
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
         ax1.imshow(image, origin='lower', interpolation='nearest')
-        ax2.imshow(segm_image, origin='lower', interpolation='nearest')
+        ax2.imshow(segm.data, origin='lower', interpolation='nearest')
     """
 
     from scipy import ndimage
@@ -251,7 +253,8 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
 
     # relabel to make sequential label indices
     objlabels, nobj = ndimage.label(objlabels, structure=selem)
-    return objlabels
+
+    return SegmentationImage(objlabels)
 
 
 def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
