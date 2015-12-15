@@ -128,35 +128,35 @@ class TestDetectSources(object):
     def test_detection(self):
         """Test basic detection."""
         segm = detect_sources(DATA, threshold=0.9, npixels=2)
-        assert_array_equal(segm, REF2)
+        assert_array_equal(segm.data, REF2)
 
     def test_small_sources(self):
         """Test detection where sources are smaller than npixels size."""
         segm = detect_sources(DATA, threshold=0.9, npixels=5)
-        assert_array_equal(segm, REF1)
+        assert_array_equal(segm.data, REF1)
 
     def test_zerothresh(self):
         """Test detection with zero threshold."""
         segm = detect_sources(DATA, threshold=0., npixels=2)
-        assert_array_equal(segm, REF2)
+        assert_array_equal(segm.data, REF2)
 
     def test_zerodet(self):
         """Test detection with large snr_threshold giving no detections."""
         segm = detect_sources(DATA, threshold=7, npixels=2)
-        assert_array_equal(segm, REF1)
+        assert_array_equal(segm.data, REF1)
 
     def test_8connectivity(self):
         """Test detection with connectivity=8."""
         data = np.eye(3)
         segm = detect_sources(data, threshold=0.9, npixels=1, connectivity=8)
-        assert_array_equal(segm, data)
+        assert_array_equal(segm.data, data)
 
     def test_4connectivity(self):
         """Test detection with connectivity=4."""
         data = np.eye(3)
         ref = np.diag([1, 2, 3])
         segm = detect_sources(data, threshold=0.9, npixels=1, connectivity=4)
-        assert_array_equal(segm, ref)
+        assert_array_equal(segm.data, ref)
 
     def test_basic_filter_kernel(self):
         """Test detection with filter_kernel."""
@@ -166,7 +166,7 @@ class TestDetectSources(object):
         expected[2] = 0
         segm = detect_sources(DATA, threshold, npixels=1,
                               filter_kernel=kernel)
-        assert_array_equal(segm, expected)
+        assert_array_equal(segm.data, expected)
 
     def test_npixels_nonint(self):
         """Test if error raises if npixel is non-integer."""
@@ -186,12 +186,12 @@ class TestDetectSources(object):
     def test_filter_kernel_array(self):
         segm = detect_sources(DATA, 0.1, npixels=1,
                               filter_kernel=self.filter_kernel.array)
-        assert_array_equal(segm, np.ones((3, 3)))
+        assert_array_equal(segm.data, np.ones((3, 3)))
 
     def test_filter_kernel(self):
         segm = detect_sources(DATA, 0.1, npixels=1,
                               filter_kernel=self.filter_kernel)
-        assert_array_equal(segm, np.ones((3, 3)))
+        assert_array_equal(segm.data, np.ones((3, 3)))
 
     def test_unnormalized_filter_kernel(self):
         with catch_warnings(AstropyUserWarning) as warning_lines:

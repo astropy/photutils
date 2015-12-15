@@ -129,7 +129,7 @@ maximize the source detections:
     >>> from photutils.detection import detect_sources
     >>> threshold = median + (std * 2.)
     >>> segm_img = detect_sources(data, threshold, npixels=5)
-    >>> mask = segm_img.astype(np.bool)    # turn segm_img into a mask
+    >>> mask = segm_img.data.astype(np.bool)    # turn segm_img into a mask
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, mask=mask)
     >>> print((mean, median, std))    # doctest: +FLOAT_CMP
     (5.12349231659, 5.11792609168, 2.00503461917)
