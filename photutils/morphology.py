@@ -54,6 +54,7 @@ class GaussianConst2D(Const2D + Gaussian2D):
         ``y_stddev``, and ``theta`` specification.
     """
 
+
 def _convert_image(data, mask=None):
     """
     Convert the input data to a float64 (double) `numpy.ndarray`,
