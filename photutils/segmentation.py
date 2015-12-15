@@ -13,9 +13,16 @@ from .utils.prepare_data import _prepare_data
 __all__ = ['SegmentationImage', 'SourceProperties', 'source_properties',
            'properties_table']
 
-__doctest_requires__ = {('source_properties', 'properties_table'): ['scipy'],
-                        ('SegmentationImage', 'source_properties',
-                         'properties_table'): ['skimage']}
+# requires scikit-image >= 0.11
+__doctest_skip__ = {'SegmentationImage.outline_segments'}
+
+__doctest_requires__ = {('SegmentationImage', 'SegmentationImage.*',
+                         'SourceProperties', 'SourceProperties.*',
+                         'source_properties', 'properties_table'): ['scipy'],
+                        ('SegmentationImage', 'SegmentationImage.*',
+                         'SourceProperties', 'SourceProperties.*',
+                         'source_properties', 'properties_table'):
+                        ['skimage']}
 
 
 class SegmentationImage(object):
@@ -185,6 +192,7 @@ class SegmentationImage(object):
                [0, 0, 0, 0, 0, 0]])
         """
 
+        # NOTE:  requires scikit-image >= 0.11
         from skimage.segmentation import find_boundaries
 
         outlines = self.data * find_boundaries(self.data, mode='inner')

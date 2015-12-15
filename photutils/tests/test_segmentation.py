@@ -22,6 +22,9 @@ except ImportError:
 try:
     import skimage
     HAS_SKIMAGE = True
+    majv, minv = skimage.__version__.split('.')[:2]
+    minv = minv.split('rc')[0]
+    SKIMAGE_LT_0P11 = ([int(majv), int(minv)] < [0, 11])
 except ImportError:
     HAS_SKIMAGE = False
 
@@ -41,6 +44,8 @@ EFFGAIN_VALS = [None, 2., 1.e10]
 BACKGRD_VALS = [None, 0., 1., 3.5]
 
 
+@pytest.mark.skipif('not HAS_SKIMAGE')
+@pytest.mark.skipif('not HAS_SCIPY')
 class TestSegmentationImage(object):
     def setup_class(self):
         self.data = [[1, 1, 0, 0, 4, 4],
@@ -89,6 +94,8 @@ class TestSegmentationImage(object):
         assert segm.max == 7
 
     def test_outline_segments(self):
+        if SKIMAGE_LT_0P11:
+            return    # skip this test
         segm_array = np.zeros((5, 5)).astype(int)
         segm_array[1:4, 1:4] = 2
         segm = SegmentationImage(segm_array)
@@ -97,6 +104,8 @@ class TestSegmentationImage(object):
         assert_allclose(segm.outline_segments(), segm_array_ref)
 
     def test_outline_segments_masked_background(self):
+        if SKIMAGE_LT_0P11:
+            return    # skip this test
         segm_array = np.zeros((5, 5)).astype(int)
         segm_array[1:4, 1:4] = 2
         segm = SegmentationImage(segm_array)
