@@ -329,7 +329,7 @@ class TestSourcePropertiesFunction(object):
                                  rtol=1.e-2)
         assert_quantity_allclose(props[0].ycentroid, YCEN*u.pix,
                                  rtol=1.e-2)
-        assert_allclose(props[0].segment_sum, IMAGE[IMAGE >= THRESHOLD].sum())
+        assert_allclose(props[0].source_sum, IMAGE[IMAGE >= THRESHOLD].sum())
         assert_quantity_allclose(props[0].semimajor_axis_sigma,
                                  MAJOR_SIG*u.pix, rtol=1.e-2)
         assert_quantity_allclose(props[0].semiminor_axis_sigma,
@@ -403,8 +403,8 @@ class TestSourcePropertiesFunction(object):
                                  background):
         error = np.ones_like(IMAGE) * error_value
         props = source_properties(IMAGE, SEGM, error=error,
-                                   effective_gain=effective_gain,
-                                   background=background)
+                                  effective_gain=effective_gain,
+                                  background=background)
         assert_quantity_allclose(props[0].xcentroid, XCEN*u.pix, rtol=1.e-2)
         assert_quantity_allclose(props[0].ycentroid, YCEN*u.pix, rtol=1.e-2)
         assert_quantity_allclose(props[0].semimajor_axis_sigma,
@@ -420,13 +420,13 @@ class TestSourcePropertiesFunction(object):
         if background is not None:
             assert_allclose(props[0].background_sum, area * background)
         true_sum = IMAGE[IMAGE >= THRESHOLD].sum()
-        assert_allclose(props[0].segment_sum, true_sum)
+        assert_allclose(props[0].source_sum, true_sum)
 
         true_error = np.sqrt(props[0].area.value) * error_value
         if effective_gain is not None:
             true_error = np.sqrt(
-                (props[0].segment_sum / effective_gain) + true_error**2)
-        assert_allclose(props[0].segment_sum_err, true_error)
+                (props[0].source_sum / effective_gain) + true_error**2)
+        assert_allclose(props[0].source_sum_err, true_error)
 
     def test_data_allzero(self):
         props = source_properties(IMAGE*0., SEGM)
@@ -446,14 +446,14 @@ class TestSourcePropertiesFunction(object):
         props = source_properties(data, segm, mask=mask)
         assert_allclose(props[0].xcentroid.value, 1)
         assert_allclose(props[0].ycentroid.value, 1)
-        assert_allclose(props[0].segment_sum, 1)
+        assert_allclose(props[0].source_sum, 1)
         assert_allclose(props[0].area.value, 1)
 
     def test_effective_gain_negative(self, effective_gain=-1):
         error = np.ones_like(IMAGE) * 2.
         with pytest.raises(ValueError):
             source_properties(IMAGE, SEGM, error=error,
-                               effective_gain=effective_gain)
+                              effective_gain=effective_gain)
 
     def test_single_pixel_segment(self):
         segm = np.zeros_like(SEGM)
@@ -468,9 +468,9 @@ class TestSourcePropertiesFunction(object):
         error = np.sqrt(IMAGE)
         props1 = source_properties(IMAGE, SEGM, error=error)
         props2 = source_properties(IMAGE, SEGM, error=error,
-                                    filter_kernel=filter_kernel.array)
+                                   filter_kernel=filter_kernel.array)
         p1, p2 = props1[0], props2[0]
-        keys = ['segment_sum', 'segment_sum_err']
+        keys = ['source_sum', 'source_sum_err']
         for key in keys:
             assert p1[key] == p2[key]
         keys = ['semimajor_axis_sigma', 'semiminor_axis_sigma']
@@ -486,9 +486,9 @@ class TestSourcePropertiesFunction(object):
         error = np.sqrt(IMAGE)
         props1 = source_properties(IMAGE, SEGM, error=error)
         props2 = source_properties(IMAGE, SEGM, error=error,
-                                    filter_kernel=filter_kernel)
+                                   filter_kernel=filter_kernel)
         p1, p2 = props1[0], props2[0]
-        keys = ['segment_sum', 'segment_sum_err']
+        keys = ['source_sum', 'source_sum_err']
         for key in keys:
             assert p1[key] == p2[key]
         keys = ['semimajor_axis_sigma', 'semiminor_axis_sigma']

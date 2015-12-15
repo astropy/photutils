@@ -600,10 +600,10 @@ class SourceProperties(object):
     based on image moments.  This could occur, for example, if the
     segmentation image was defined from a different image (e.g.,
     different bandpass) or if the background was oversubtracted.  Note
-    that `~photutils.SourceProperties.segment_sum` includes the
+    that `~photutils.SourceProperties.source_sum` includes the
     contribution of negative (background-subtracted) data values.
-    `~photutils.SourceProperties.segment_sum_err` will ignore such
-    pixels when calculating the source Poission error (i.e. when if
+    `~photutils.SourceProperties.source_sum_err` will ignore such pixels
+    when calculating the source Poission error (i.e. when if
     ``effective_gain`` is input; see below).
 
     If ``effective_gain`` is input, then ``error`` should include all
@@ -643,7 +643,7 @@ class SourceProperties(object):
     should use an exposure-time map as the ``effective_gain`` for a
     variable depth mosaic image in count-rate units.
 
-    `~photutils.SourceProperties.segment_sum_err` is simply the
+    `~photutils.SourceProperties.source_sum_err` is simply the
     quadrature sum of the pixel-wise total errors over the non-masked
     pixels within the source segment:
 
@@ -651,7 +651,7 @@ class SourceProperties(object):
               \\sigma_{\\mathrm{tot}, i}^2}
 
     where :math:`\Delta F` is
-    `~photutils.SourceProperties.segment_sum_err` and :math:`S` are the
+    `~photutils.SourceProperties.source_sum_err` and :math:`S` are the
     non-masked pixels in the source segment.
 
     Custom errors for source segments can be calculated using the
@@ -1391,14 +1391,14 @@ class SourceProperties(object):
                  (1. / self.semiminor_axis_sigma**2)))
 
     @lazyproperty
-    def segment_sum(self):
+    def source_sum(self):
         """
         The sum of the non-masked (background-subtracted) data values
         within the source segment.
 
         .. math:: F = \\sum_{i \\in S} (I_i - B_i)
 
-        where :math:`F` is ``segment_sum``, :math:`(I_i - B_i)` is the
+        where :math:`F` is ``source_sum``, :math:`(I_i - B_i)` is the
         background-subtracted input ``data``, and :math:`S` are the
         non-masked pixels in the source segment.
         """
@@ -1407,18 +1407,18 @@ class SourceProperties(object):
                                          mask=self._cutout_total_mask))
 
     @lazyproperty
-    def segment_sum_err(self):
+    def source_sum_err(self):
         """
-        The uncertainty of `~photutils.SourceProperties.segment_sum`,
+        The uncertainty of `~photutils.SourceProperties.source_sum`,
         propagated from the input ``error`` array.
 
-        ``segment_sum_err`` is the quadrature sum of the total errors
+        ``source_sum_err`` is the quadrature sum of the total errors
         over the non-masked pixels within the source segment:
 
         .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
                   \\sigma_{\\mathrm{tot}, i}^2}
 
-        where :math:`\Delta F` is ``segment_sum_err``,
+        where :math:`\Delta F` is ``source_sum_err``,
         :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise total
         errors, and :math:`S` are the non-masked pixels in the source
         segment.
@@ -1566,10 +1566,10 @@ def source_properties(data, segment_img, error=None, effective_gain=None,
     based on image moments.  This could occur, for example, if the
     segmentation image was defined from a different image (e.g.,
     different bandpass) or if the background was oversubtracted.  Note
-    that `~photutils.SourceProperties.segment_sum` includes the
+    that `~photutils.SourceProperties.source_sum` includes the
     contribution of negative (background-subtracted) data values.
-    `~photutils.SourceProperties.segment_sum_err` will ignore such
-    pixels when calculating the source Poission error (i.e. when if
+    `~photutils.SourceProperties.source_sum_err` will ignore such pixels
+    when calculating the source Poission error (i.e. when if
     ``effective_gain`` is input; see below).
 
     If ``effective_gain`` is input, then ``error`` should include all
@@ -1609,7 +1609,7 @@ def source_properties(data, segment_img, error=None, effective_gain=None,
     should use an exposure-time map as the ``effective_gain`` for a
     variable depth mosaic image in count-rate units.
 
-    `~photutils.SourceProperties.segment_sum_err` is simply the
+    `~photutils.SourceProperties.source_sum_err` is simply the
     quadrature sum of the pixel-wise total errors over the non-masked
     pixels within the source segment:
 
@@ -1617,7 +1617,7 @@ def source_properties(data, segment_img, error=None, effective_gain=None,
               \\sigma_{\\mathrm{tot}, i}^2}
 
     where :math:`\Delta F` is
-    `~photutils.SourceProperties.segment_sum_err` and :math:`S` are the
+    `~photutils.SourceProperties.source_sum_err` and :math:`S` are the
     non-masked pixels in the source segment.
 
     .. _SExtractor: http://www.astromatic.net/software/sextractor
@@ -1650,7 +1650,7 @@ def source_properties(data, segment_img, error=None, effective_gain=None,
     1
     >>> props[0].centroid    # doctest: +FLOAT_CMP
     <Quantity [ 0.8, 0.2] pix>
-    >>> props[0].segment_sum    # doctest: +FLOAT_CMP
+    >>> props[0].source_sum    # doctest: +FLOAT_CMP
     5.0
     >>> props[0].area    # doctest: +FLOAT_CMP
     <Quantity 3.0 pix2>
@@ -1759,14 +1759,14 @@ def properties_table(source_props, columns=None, exclude_columns=None):
     ...                           [0, 0, 2, 2],
     ...                           [0, 2, 2, 0]])
     >>> props = source_properties(image, segm)
-    >>> columns = ['id', 'xcentroid', 'ycentroid', 'segment_sum']
+    >>> columns = ['id', 'xcentroid', 'ycentroid', 'source_sum']
     >>> tbl = properties_table(props, columns=columns)
     >>> print(tbl)
-     id   xcentroid     ycentroid   segment_sum
+     id   xcentroid     ycentroid   source_sum
              pix           pix
-    --- ------------- ------------- -----------
-      1           0.2           0.8         5.0
-      2 2.09090909091 2.36363636364        55.0
+    --- ------------- ------------- ----------
+      1           0.2           0.8        5.0
+      2 2.09090909091 2.36363636364       55.0
     """
 
     if isinstance(source_props, list) and len(source_props) == 0:
@@ -1775,8 +1775,8 @@ def properties_table(source_props, columns=None, exclude_columns=None):
 
     # all scalar-valued properties
     columns_all = ['id', 'xcentroid', 'ycentroid', 'ra_icrs_centroid',
-                   'dec_icrs_centroid', 'segment_sum',
-                   'segment_sum_err', 'background_sum', 'background_mean',
+                   'dec_icrs_centroid', 'source_sum',
+                   'source_sum_err', 'background_sum', 'background_mean',
                    'background_at_centroid', 'xmin', 'xmax', 'ymin', 'ymax',
                    'min_value', 'max_value', 'minval_xpos', 'minval_ypos',
                    'maxval_xpos', 'maxval_ypos', 'area', 'equivalent_radius',
