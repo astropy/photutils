@@ -4,8 +4,14 @@
 General
 ^^^^^^^
 
-- photutils now requires AstroPy v1.0 or later.
-- photutils now requires python 2.7 or 3.3 or later.
+- Photutils has the following requirements:
+
+  - Python 2.7 or 3.3 or later
+
+  - Numpy 1.6 or later
+
+  - Astropy v1.0 or later
+
 
 New Features
 ^^^^^^^^^^^^
@@ -23,17 +29,44 @@ New Features
 
 - ``photutils.morphology``
 
-  - Added new ``GaussianConst2D`` (2D Gaussian plus a constant) model
-    [#244].
+  - Added new ``GaussianConst2D`` (2D Gaussian plus a constant) model.
+    [#244]
 
-  - Added new ``marginalize_data2d`` function [#244].
+  - Added new ``marginalize_data2d`` function. [#244]
 
-  - Added new ``cutout_footprint`` function [#244].
+  - Added new ``cutout_footprint`` function. [#244]
+
+- ``photutils.segmentation``
+
+  - Added new ``SegmentationImage`` class. [#306]
+
+  - Added new ``check_label``, ``keep_labels``, and ``outline_segments``
+    methods for modifying ``SegmentationImage``. [#306]
 
 - ``photutils.utils``
 
   - Added new ``random_cmap`` function to generate a colormap comprised
-    of random colors [#299].
+    of random colors. [#299]
+
+API changes
+^^^^^^^^^^^
+
+- ``photutils.segmentation``
+
+  - The ``relabel_sequential``, ``relabel_segments``,
+    ``remove_segments``, ``remove_border_segments``, and
+    ``remove_masked_segments`` functions are now ``SegmentationImage``
+    methods (with slightly different names). [#306]
+
+  - The ``SegmentProperties`` class has been renamed to
+    ``SourceProperties``.  Likewise the ``segment_properties`` function
+    has been renamed to ``source_properties``. [#306]
+
+  - The ``segment_sum`` and ``segment_sum_err`` attributes have been
+    renamed to ``source_sum`` and ``source_sum_err``, respectively. [#306]
+
+  - The ``background_atcentroid`` attribute has been renamed to
+    ``background_at_centroid``. [#306]
 
 Bug Fixes
 ^^^^^^^^^
@@ -58,11 +91,11 @@ Bug Fixes
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- Update astropy-helpers to v1.1 [#302]
+- Updated astropy-helpers to v1.1. [#302]
 
 
 0.1 (December 22, 2014)
 -----------------------
 
-photutils 0.1 was released on December 22, 2014.
-It requires Astropy version 0.4 or later.
+Photutils 0.1 was released on December 22, 2014.  It requires Astropy
+version 0.4 or later.
