@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
+from .. import ShepardIDWInterpolator as idw
 from .. import interpolate_masked_data, mask_to_mirrored_num
 
 SHAPE = (5, 5)
@@ -13,6 +14,90 @@ MASK[2, 2] = True
 ERROR = np.ones(SHAPE)
 BACKGROUND = np.ones(SHAPE)
 WRONG_SHAPE = np.ones((2, 2))
+
+
+class TestShepardIDWInterpolator(object):
+    def setup_class(self):
+        np.random.seed(123)
+        self.x = np.random.random(100)
+        self.y = np.sin(self.x)
+        self.f = idw(self.x, self.y)
+
+    @pytest.mark.parametrize('positions', [0.4, np.arange(2, 5)*0.1])
+    def test_idw_1d(self, positions):
+        f = idw(self.x, self.y)
+        assert_allclose(f(positions), np.sin(positions), atol=1e-2)
+
+    def test_idw_weights(self):
+        weights = self.y * 0.1
+        f = idw(self.x, self.y, weights=weights)
+        pos = 0.4
+        assert_allclose(f(pos), np.sin(pos), atol=1e-2)
+
+    def test_idw_2d(self):
+        pos = np.random.rand(1000, 2)
+        val = np.sin(pos[:, 0] + pos[:, 1])
+        f = idw(pos, val)
+        x = 0.5
+        y = 0.6
+        assert_allclose(f([x, y]), np.sin(x + y), atol=1e-2)
+
+    def test_idw_3d(self):
+        val = np.ones((3, 3, 3))
+        pos = np.indices(val.shape)
+        f = idw(pos, val)
+        assert_allclose(f([0.5, 0.5, 0.5]), 1.0)
+
+    def test_no_coordinates(self):
+        with pytest.raises(ValueError):
+            idw([], 0)
+
+    def test_values_invalid_shape(self):
+        with pytest.raises(ValueError):
+            idw(self.x, 0)
+
+    def test_weights_invalid_shape(self):
+        with pytest.raises(ValueError):
+            idw(self.x, self.y, weights=10)
+
+    def test_weights_negative(self):
+        with pytest.raises(ValueError):
+            idw(self.x, self.y, weights=-self.y)
+
+    def test_n_neighbors_one(self):
+        assert_allclose(self.f(0.5, n_neighbors=1), 0.48103656)
+
+    def test_n_neighbors_negative(self):
+        with pytest.raises(ValueError):
+            self.f(0.5, n_neighbors=-1)
+
+    def test_conf_dist_negative(self):
+        assert_allclose(self.f(0.5, conf_dist=-1),
+                        self.f(0.5, conf_dist=None))
+
+    def test_dtype_none(self):
+        result = self.f(0.5, dtype=None)
+        assert result.dtype.type == np.float64
+
+    def test_positions_0d_nomatch(self):
+        """test when position ndim doesn't match coordinates ndim"""
+        pos = np.random.rand(10, 2)
+        val = np.sin(pos[:, 0] + pos[:, 1])
+        f = idw(pos, val)
+        with pytest.raises(ValueError):
+            f(0.5)
+
+    def test_positions_1d_nomatch(self):
+        """test when position ndim doesn't match coordinates ndim"""
+        pos = np.random.rand(10, 2)
+        val = np.sin(pos[:, 0] + pos[:, 1])
+        f = idw(pos, val)
+        with pytest.raises(ValueError):
+            f([0.5])
+
+    def test_positions_3d(self):
+        with pytest.raises(ValueError):
+            self.f(np.ones((3, 3, 3)))
 
 
 class TestInterpolateMaskedData(object):
