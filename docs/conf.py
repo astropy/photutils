@@ -108,7 +108,7 @@ release = package.__version__
 html_theme_options = {
     'logotext1': 'phot',   # white, semi-bold
     'logotext2': 'utils',  # orange, light
-    'logotext3': ':docs'   # white, light
+    'logotext3': ''        # white, light
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
