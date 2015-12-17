@@ -166,7 +166,7 @@ mesh of a grid that covers the input data to create a low-resolution
 background map.  The final background or background rms map is then
 generated using spline interpolation of the low-resolution map.
 
-In photutils, the :class:`~photutils.background.Background` class can
+In Photutils, the :class:`~photutils.background.Background` class can
 be used to estimate a 2D background and background rms noise in an
 astronomical image.  `~photutils.background.Background` requires the
 shape of the box (``box_shape``) in which to estimate the background.

@@ -24,7 +24,7 @@ The code and the documentation are available at the following links:
 Coordinate Conventions
 ----------------------
 
-In photutils, pixel coordinates are zero-indexed, meaning that ``(x,
+In Photutils, pixel coordinates are zero-indexed, meaning that ``(x,
 y) = (0, 0)`` corresponds to the center of the lowest, leftmost array
 element.  This means that the value of ``data[0, 0]`` is taken as the
 value over the range ``-0.5 < x <= 0.5``, ``-0.5 < y <= 0.5``.  Note
@@ -64,6 +64,6 @@ where the ``[0]`` accesses the first HDU in the FITS file.
 Contributors
 ------------
 
-For the complete list of contributors please see the `photutils
+For the complete list of contributors please see the `Photutils
 contributors page on Github
 <https://github.com/astropy/photutils/graphs/contributors>`_.

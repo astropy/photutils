@@ -39,7 +39,7 @@ reports, comments, and help with development are very welcome.
 
 .. note::
 
-    photutils is still under development and has not seen widespread
+    Photutils is still under development and has not seen widespread
     use yet.  We will change its API if we find that something can be
     improved.
 
@@ -65,8 +65,8 @@ User Documentation
 Reporting Issues
 ================
 
-If you have found a bug in photutils please report it by creating a
-new issue on the `photutils GitHub issue tracker
+If you have found a bug in Photutils please report it by creating a
+new issue on the `Photutils GitHub issue tracker
 <https://github.com/astropy/photutils/issues>`_.
 
 Please include an example that demonstrates the issue that will allow
@@ -81,13 +81,13 @@ installation.  If you have any build or installation issue mentioning
 the ``astropy_helpers`` or ``ah_bootstrap`` modules please send a
 report to the `astropy-helpers issue tracker
 <https://github.com/astropy/astropy-helpers/issues>`_.  If you are
-unsure, then it's fine to report to the main photutils issue tracker.
+unsure, then it's fine to report to the main Photutils issue tracker.
 
 
 Contributing
 ============
 
-Like the `Astropy`_ project, photutils is made both by and for its
+Like the `Astropy`_ project, Photutils is made both by and for its
 users.  We accept contributions at all levels, spanning the gamut from
 fixing a typo in the documentation to developing a major new feature.
 We welcome contributors who will abide by the `Python Software
