@@ -119,16 +119,16 @@ Source Morphological Properties
 The :func:`~photutils.morphology.data_properties` function can be used
 to calculate the properties of a single source from a cutout image.
 `~photutils.morphology.data_properties` returns a
-`~photutils.segmentation.SegmentProperties` object.  Please see
-`~photutils.segmentation.SegmentProperties` for the list of the many
+`~photutils.segmentation.SourceProperties` object.  Please see
+`~photutils.segmentation.SourceProperties` for the list of the many
 properties that are calculated.  Even more properties are likely to be
 added in the future.
 
 If you have a segmentation image, the
-:func:`~photutils.segmentation.segment_properties` function can be
-used to calculate the properties for all (or a specified subset) of
-the segmented sources.  Please see `Source Photometry and Properties
-from Image Segmentation <segmentation.html>`_ for more details.
+:func:`~photutils.segmentation.source_properties` function can be used
+to calculate the properties for all (or a specified subset) of the
+segmented sources.  Please see `Source Photometry and Properties from
+Image Segmentation <segmentation.html>`_ for more details.
 
 As an example, let's calculate the properties of the source defined
 above.  For this example, we will subtract the background using simple

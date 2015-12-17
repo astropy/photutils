@@ -3,13 +3,12 @@
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-import warnings
 import numpy as np
 from astropy.table import Column, Table
-from astropy.convolution import Kernel2D
 from astropy.stats import sigma_clipped_stats
-from astropy.utils.exceptions import AstropyUserWarning
+from ..segmentation import SegmentationImage
 from ..morphology import cutout_footprint, fit_2dgaussian
+from ..utils.convolution import _convolve_data
 from ..utils.wcs_helpers import pixel_to_icrs_coords
 
 import astropy
@@ -17,59 +16,6 @@ ASTROPY_LT_1P1 = [int(x) for x in astropy.__version__.split('.')[:2]] < [1, 1]
 
 
 __all__ = ['detect_threshold', 'detect_sources', 'find_peaks']
-
-
-def _convolve_data(data, kernel, mode='constant', fill_value=0.0,
-                   check_normalization=False):
-    """
-    Convolve a 2D image with a 2D kernel.
-
-    The kernel may either be a 2D `~numpy.ndarray` or a
-    `~astropy.convolution.Kernel2D` object.
-
-    Parameters
-    ----------
-    data : array_like
-        The 2D array of the image.
-
-    kernel : array-like (2D) or `~astropy.convolution.Kernel2D`
-        The 2D kernel used to filter the input ``data``. Filtering the
-        ``data`` will smooth the noise and maximize detectability of
-        objects with a shape similar to the kernel.
-
-    mode : {'constant', 'reflect', 'nearest', 'mirror', 'wrap'}, optional
-        The ``mode`` determines how the array borders are handled.  For
-        the ``'constant'`` mode, values outside the array borders are
-        set to ``fill_value``.  The default is ``'constant'``.
-
-    fill_value : scalar, optional
-        Value to fill data values beyond the array borders if ``mode``
-        is ``'constant'``.  The default is ``0.0``.
-
-    check_normalization : bool, optional
-        If `True` then a warning will be issued if the kernel is not
-        normalized to 1.
-    """
-
-    from scipy import ndimage
-
-    if kernel is not None:
-        if isinstance(kernel, Kernel2D):
-            kernel_array = kernel.array
-        else:
-            kernel_array = kernel
-
-        if check_normalization:
-            if not np.allclose(np.sum(kernel_array), 1.0):
-                warnings.warn('The kernel is not normalized.',
-                              AstropyUserWarning)
-
-        # NOTE:  astropy.convolution.convolve fails with zero-sum
-        # kernels (used in findstars) (cf. astropy #1647)
-        return ndimage.convolve(data, kernel_array, mode=mode,
-                                cval=fill_value)
-    else:
-        return data
 
 
 def detect_threshold(data, snr, background=None, error=None, mask=None,
@@ -186,7 +132,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
                    connectivity=8):
     """
     Detect sources above a specified threshold value in an image and
-    return a segmentation image.
+    return a `~photutils.segmentation.SegmentationImage` object.
 
     Detected sources must have ``npixels`` connected pixels that are
     each greater than the ``threshold`` value.  If the filtering option
@@ -225,14 +171,15 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
 
     Returns
     -------
-    segment_image : `~numpy.ndarray` (int)
+    segment_image : `~photutils.segmentation.SegmentationImage`
         A 2D segmentation image, with the same shape as ``data``, where
         sources are marked by different positive integer values.  A
         value of zero is reserved for the background.
 
     See Also
     --------
-    detect_threshold, :class:`photutils.segmentation.segment_properties`
+    detect_threshold, :class:`photutils.segmentation.SegmentationImage`,
+    :func:`photutils.segmentation.source_properties`
 
     Examples
     --------
@@ -266,14 +213,14 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         sigma = 3.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))   # FWHM = 3
         kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
         kernel.normalize()
-        segm_image = detect_sources(image, threshold, npixels=5,
-                                    filter_kernel=kernel)
+        segm = detect_sources(image, threshold, npixels=5,
+                              filter_kernel=kernel)
 
         # plot the image and the segmentation image
         import matplotlib.pyplot as plt
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
         ax1.imshow(image, origin='lower', interpolation='nearest')
-        ax2.imshow(segm_image, origin='lower', interpolation='nearest')
+        ax2.imshow(segm.data, origin='lower', interpolation='nearest')
     """
 
     from scipy import ndimage
@@ -306,7 +253,8 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
 
     # relabel to make sequential label indices
     objlabels, nobj = ndimage.label(objlabels, structure=selem)
-    return objlabels
+
+    return SegmentationImage(objlabels)
 
 
 def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,

@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+import itertools
 import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest, assert_quantity_allclose
@@ -9,10 +10,9 @@ from astropy.table import Table
 import astropy.units as u
 from astropy.utils.misc import isiterable
 import astropy.wcs as WCS
-from ..segmentation import (SegmentProperties, segment_properties,
-                            properties_table, relabel_sequential,
-                            remove_segments, remove_border_segments,
-                            remove_masked_segments)
+from ..segmentation import (SegmentationImage, SourceProperties,
+                            source_properties, properties_table)
+
 try:
     import scipy
     HAS_SCIPY = True
@@ -22,6 +22,9 @@ except ImportError:
 try:
     import skimage
     HAS_SKIMAGE = True
+    majv, minv = skimage.__version__.split('.')[:2]
+    minv = minv.split('rc')[0]
+    SKIMAGE_LT_0P11 = ([int(majv), int(minv)] < [0, 11])
 except ImportError:
     HAS_SKIMAGE = False
 
@@ -36,29 +39,228 @@ IMAGE = g(x, y)
 THRESHOLD = 0.1
 SEGM = (IMAGE >= THRESHOLD).astype(np.int)
 
-ERR_VALS = [2., 2., 2., 2.]
-EFFGAIN_VALS = [None, 2., 1.e10, 2.]
-BACKGRD_VALS = [None, None, None, 0.]
+ERR_VALS = [0., 2.5]
+EFFGAIN_VALS = [None, 2., 1.e10]
+BACKGRD_VALS = [None, 0., 1., 3.5]
 
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestSegmentProperties(object):
+class TestSegmentationImage(object):
+    def setup_class(self):
+        self.data = [[1, 1, 0, 0, 4, 4],
+                     [0, 0, 0, 0, 0, 4],
+                     [0, 0, 3, 3, 0, 0],
+                     [7, 0, 0, 0, 0, 5],
+                     [7, 7, 0, 5, 5, 5],
+                     [7, 7, 0, 0, 5, 5]]
+
+    def test_negative_data(self):
+        data = np.arange(-1, 8).reshape(3, 3)
+        with pytest.raises(ValueError):
+            SegmentationImage(data)
+
+    def test_zero_label(self):
+        with pytest.raises(ValueError):
+            segm = SegmentationImage(self.data)
+            segm.check_label(0)
+
+    def test_negative_label(self):
+        with pytest.raises(ValueError):
+            segm = SegmentationImage(self.data)
+            segm.check_label(-1)
+
+    def test_invalid_label(self):
+        with pytest.raises(ValueError):
+            segm = SegmentationImage(self.data)
+            segm.check_label(2)
+
+    def test_data_masked(self):
+        segm = SegmentationImage(self.data)
+        assert isinstance(segm.data_masked, np.ma.MaskedArray)
+        assert np.ma.count(segm.data_masked) == 18
+        assert np.ma.count_masked(segm.data_masked) == 18
+
+    def test_labels(self):
+        segm = SegmentationImage(self.data)
+        assert_allclose(segm.labels, [1, 3, 4, 5, 7])
+
+    def test_nlabels(self):
+        segm = SegmentationImage(self.data)
+        assert segm.nlabels == 5
+
+    def test_max(self):
+        segm = SegmentationImage(self.data)
+        assert segm.max == 7
+
+    def test_outline_segments(self):
+        if SKIMAGE_LT_0P11:
+            return    # skip this test
+        segm_array = np.zeros((5, 5)).astype(int)
+        segm_array[1:4, 1:4] = 2
+        segm = SegmentationImage(segm_array)
+        segm_array_ref = np.copy(segm_array)
+        segm_array_ref[2, 2] = 0
+        assert_allclose(segm.outline_segments(), segm_array_ref)
+
+    def test_outline_segments_masked_background(self):
+        if SKIMAGE_LT_0P11:
+            return    # skip this test
+        segm_array = np.zeros((5, 5)).astype(int)
+        segm_array[1:4, 1:4] = 2
+        segm = SegmentationImage(segm_array)
+        segm_array_ref = np.copy(segm_array)
+        segm_array_ref[2, 2] = 0
+        segm_outlines = segm.outline_segments(mask_background=True)
+        assert isinstance(segm_outlines, np.ma.MaskedArray)
+        assert np.ma.count(segm_outlines) == 8
+        assert np.ma.count_masked(segm_outlines) == 17
+
+    def test_relabel(self):
+        segm = SegmentationImage(self.data)
+        segm.relabel(labels=[1, 7], new_label=2)
+        ref_data = np.array([[2, 2, 0, 0, 4, 4],
+                             [0, 0, 0, 0, 0, 4],
+                             [0, 0, 3, 3, 0, 0],
+                             [2, 0, 0, 0, 0, 5],
+                             [2, 2, 0, 5, 5, 5],
+                             [2, 2, 0, 0, 5, 5]])
+        assert_allclose(segm.data, ref_data)
+
+    @pytest.mark.parametrize('start_label', [1, 5])
+    def test_relabel_sequential(self, start_label):
+        segm = SegmentationImage(self.data)
+        ref_data = np.array([[1, 1, 0, 0, 3, 3],
+                             [0, 0, 0, 0, 0, 3],
+                             [0, 0, 2, 2, 0, 0],
+                             [5, 0, 0, 0, 0, 4],
+                             [5, 5, 0, 4, 4, 4],
+                             [5, 5, 0, 0, 4, 4]])
+        ref_data[ref_data != 0] += (start_label - 1)
+        segm.relabel_sequential(start_label=start_label)
+        assert_allclose(segm.data, ref_data)
+
+        # relabel_sequential should do nothing if already sequential
+        segm.relabel_sequential(start_label=start_label)
+        assert_allclose(segm.data, ref_data)
+
+    @pytest.mark.parametrize('start_label', [0, -1])
+    def test_relabel_sequential_start_invalid(self, start_label):
+        with pytest.raises(ValueError):
+            segm = SegmentationImage(self.data)
+            segm.relabel_sequential(start_label=start_label)
+
+    def test_keep_labels(self):
+        ref_data = np.array([[0, 0, 0, 0, 0, 0],
+                             [0, 0, 0, 0, 0, 0],
+                             [0, 0, 3, 3, 0, 0],
+                             [0, 0, 0, 0, 0, 5],
+                             [0, 0, 0, 5, 5, 5],
+                             [0, 0, 0, 0, 5, 5]])
+        segm = SegmentationImage(self.data)
+        segm.keep_labels([5, 3])
+        assert_allclose(segm.data, ref_data)
+
+    def test_keep_labels_relabel(self):
+        ref_data = np.array([[0, 0, 0, 0, 0, 0],
+                             [0, 0, 0, 0, 0, 0],
+                             [0, 0, 1, 1, 0, 0],
+                             [0, 0, 0, 0, 0, 2],
+                             [0, 0, 0, 2, 2, 2],
+                             [0, 0, 0, 0, 2, 2]])
+        segm = SegmentationImage(self.data)
+        segm.keep_labels([5, 3], relabel=True)
+        assert_allclose(segm.data, ref_data)
+
+    def test_remove_labels(self):
+        ref_data = np.array([[1, 1, 0, 0, 4, 4],
+                             [0, 0, 0, 0, 0, 4],
+                             [0, 0, 0, 0, 0, 0],
+                             [7, 0, 0, 0, 0, 0],
+                             [7, 7, 0, 0, 0, 0],
+                             [7, 7, 0, 0, 0, 0]])
+        segm = SegmentationImage(self.data)
+        segm.remove_labels(labels=[5, 3])
+        assert_allclose(segm.data, ref_data)
+
+    def test_remove_labels_relabel(self):
+        ref_data = np.array([[1, 1, 0, 0, 2, 2],
+                             [0, 0, 0, 0, 0, 2],
+                             [0, 0, 0, 0, 0, 0],
+                             [3, 0, 0, 0, 0, 0],
+                             [3, 3, 0, 0, 0, 0],
+                             [3, 3, 0, 0, 0, 0]])
+        segm = SegmentationImage(self.data)
+        segm.remove_labels(labels=[5, 3], relabel=True)
+        assert_allclose(segm.data, ref_data)
+
+    def test_remove_border_labels(self):
+        ref_data = np.array([[0, 0, 0, 0, 0, 0],
+                             [0, 0, 0, 0, 0, 0],
+                             [0, 0, 3, 3, 0, 0],
+                             [0, 0, 0, 0, 0, 0],
+                             [0, 0, 0, 0, 0, 0],
+                             [0, 0, 0, 0, 0, 0]])
+        segm = SegmentationImage(self.data)
+        segm.remove_border_labels(border_width=1)
+        assert_allclose(segm.data, ref_data)
+
+    def test_remove_border_labels_border_width(self):
+        with pytest.raises(ValueError):
+            segm = SegmentationImage(self.data)
+            segm.remove_border_labels(border_width=3)
+
+    def test_remove_masked_labels(self):
+        ref_data = np.array([[0, 0, 0, 0, 0, 0],
+                             [0, 0, 0, 0, 0, 0],
+                             [0, 0, 3, 3, 0, 0],
+                             [7, 0, 0, 0, 0, 5],
+                             [7, 7, 0, 5, 5, 5],
+                             [7, 7, 0, 0, 5, 5]])
+        segm = SegmentationImage(self.data)
+        mask = np.zeros_like(segm.data, dtype=np.bool)
+        mask[0, :] = True
+        segm.remove_masked_labels(mask)
+        assert_allclose(segm.data, ref_data)
+
+    def test_remove_masked_labels_without_partial_overlap(self):
+        ref_data = np.array([[0, 0, 0, 0, 4, 4],
+                             [0, 0, 0, 0, 0, 4],
+                             [0, 0, 3, 3, 0, 0],
+                             [7, 0, 0, 0, 0, 5],
+                             [7, 7, 0, 5, 5, 5],
+                             [7, 7, 0, 0, 5, 5]])
+        segm = SegmentationImage(self.data)
+        mask = np.zeros_like(segm.data, dtype=np.bool)
+        mask[0, :] = True
+        segm.remove_masked_labels(mask, partial_overlap=False)
+        assert_allclose(segm.data, ref_data)
+
+    def test_remove_masked_segments_mask_shape(self):
+        segm = SegmentationImage(np.ones((5, 5)))
+        mask = np.zeros((3, 3), dtype=np.bool)
+        with pytest.raises(ValueError):
+            segm.remove_masked_labels(mask)
+
+
+@pytest.mark.skipif('not HAS_SKIMAGE')
+@pytest.mark.skipif('not HAS_SCIPY')
+class TestSourceProperties(object):
     def test_segment_shape(self):
         with pytest.raises(ValueError):
-            SegmentProperties(IMAGE, np.zeros((2, 2)), label=1)
+            SourceProperties(IMAGE, np.zeros((2, 2)), label=1)
 
     @pytest.mark.parametrize('label', (0, -1))
     def test_label_invalid(self, label):
         with pytest.raises(ValueError):
-            SegmentProperties(IMAGE, SEGM, label=label)
+            SourceProperties(IMAGE, SEGM, label=label)
 
     @pytest.mark.parametrize('label', (0, -1))
     def test_label_missing(self, label):
         segm = SEGM.copy()
         segm[0:2, 0:2] = 3   # skip label 2
         with pytest.raises(ValueError):
-            SegmentProperties(IMAGE, segm, label=2, label_slice=None)
+            SourceProperties(IMAGE, segm, label=2)
 
     def test_wcs(self):
         mywcs = WCS.WCS(naxis=2)
@@ -67,19 +269,19 @@ class TestSegmentProperties(object):
         mywcs.wcs.cd = [[scale*np.cos(rho), -scale*np.sin(rho)],
                         [scale*np.sin(rho), scale*np.cos(rho)]]
         mywcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
-        props = SegmentProperties(IMAGE, SEGM, wcs=mywcs, label=1)
+        props = SourceProperties(IMAGE, SEGM, wcs=mywcs, label=1)
         assert props.icrs_centroid is not None
         assert props.ra_icrs_centroid is not None
         assert props.dec_icrs_centroid is not None
 
     def test_nowcs(self):
-        props = SegmentProperties(IMAGE, SEGM, wcs=None, label=1)
+        props = SourceProperties(IMAGE, SEGM, wcs=None, label=1)
         assert props.icrs_centroid is None
         assert props.ra_icrs_centroid is None
         assert props.dec_icrs_centroid is None
 
     def test_to_table(self):
-        props = SegmentProperties(IMAGE, SEGM, label=1)
+        props = SourceProperties(IMAGE, SEGM, label=1)
         t1 = props.to_table()
         t2 = properties_table(props)
         assert isinstance(t1, Table)
@@ -90,53 +292,53 @@ class TestSegmentProperties(object):
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestSegmentPropertiesFunctionInputs(object):
+class TestSourcePropertiesFunctionInputs(object):
     def test_segment_shape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
-            segment_properties(IMAGE, wrong_shape)
+            source_properties(IMAGE, wrong_shape)
 
     def test_error_shape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
-            segment_properties(IMAGE, SEGM, error=wrong_shape)
+            source_properties(IMAGE, SEGM, error=wrong_shape)
 
     def test_effective_gain_shape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
-            segment_properties(IMAGE, SEGM, error=IMAGE,
-                               effective_gain=wrong_shape)
+            source_properties(IMAGE, SEGM, error=IMAGE,
+                              effective_gain=wrong_shape)
 
     def test_background_shape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
-            segment_properties(IMAGE, SEGM, background=wrong_shape)
+            source_properties(IMAGE, SEGM, background=wrong_shape)
 
     def test_mask_shape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
-            segment_properties(IMAGE, SEGM, mask=wrong_shape)
+            source_properties(IMAGE, SEGM, mask=wrong_shape)
 
     def test_labels(self):
-        props = segment_properties(IMAGE, SEGM, labels=1)
+        props = source_properties(IMAGE, SEGM, labels=1)
         assert props[0].id == 1
 
     def test_invalidlabels(self):
-        props = segment_properties(IMAGE, SEGM, labels=-1)
+        props = source_properties(IMAGE, SEGM, labels=-1)
         assert len(props) == 0
 
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestSegmentPropertiesFunction(object):
+class TestSourcePropertiesFunction(object):
     def test_properties(self):
-        props = segment_properties(IMAGE, SEGM)
+        props = source_properties(IMAGE, SEGM)
         assert props[0].id == 1
         assert_quantity_allclose(props[0].xcentroid, XCEN*u.pix,
                                  rtol=1.e-2)
         assert_quantity_allclose(props[0].ycentroid, YCEN*u.pix,
                                  rtol=1.e-2)
-        assert_allclose(props[0].segment_sum, IMAGE[IMAGE >= THRESHOLD].sum())
+        assert_allclose(props[0].source_sum, IMAGE[IMAGE >= THRESHOLD].sum())
         assert_quantity_allclose(props[0].semimajor_axis_sigma,
                                  MAJOR_SIG*u.pix, rtol=1.e-2)
         assert_quantity_allclose(props[0].semiminor_axis_sigma,
@@ -149,7 +351,7 @@ class TestSegmentPropertiesFunction(object):
         assert_allclose(len(props[0].coords), 2)
         assert_allclose(len(props[0].coords[0]), props[0].area.value)
 
-        properties = ['background_atcentroid', 'background_mean',
+        properties = ['background_at_centroid', 'background_mean',
                       'eccentricity', 'ellipticity', 'elongation',
                       'equivalent_radius', 'max_value', 'maxval_xpos',
                       'maxval_ypos', 'min_value', 'minval_xpos',
@@ -159,8 +361,8 @@ class TestSegmentPropertiesFunction(object):
         for propname in properties:
             assert not isiterable(getattr(props[0], propname))
 
-        properties = ['centroid', 'covariance_eigvals', 'local_centroid',
-                      'maxval_local_pos', 'minval_local_pos']
+        properties = ['centroid', 'covariance_eigvals', 'cutout_centroid',
+                      'maxval_cutout_pos', 'minval_cutout_pos']
         shapes = [getattr(props[0], p).shape for p in properties]
         for shape in shapes:
             assert shape == (2,)
@@ -177,18 +379,18 @@ class TestSegmentPropertiesFunction(object):
 
     def test_properties_background_notNone(self):
         value = 1.
-        props = segment_properties(IMAGE, SEGM, background=value)
+        props = source_properties(IMAGE, SEGM, background=value)
         assert props[0].background_mean == value
-        assert props[0].background_atcentroid == value
+        assert_allclose(props[0].background_at_centroid, value)
 
     def test_properties_error_background_None(self):
-        props = segment_properties(IMAGE, SEGM)
+        props = source_properties(IMAGE, SEGM)
         assert props[0].background_cutout_ma is None
         assert props[0].error_cutout_ma is None
 
     def test_cutout_shapes(self):
         error = np.ones_like(IMAGE) * 1.
-        props = segment_properties(IMAGE, SEGM, error=error, background=1.)
+        props = source_properties(IMAGE, SEGM, error=error, background=1.)
         bbox = props[0].bbox.value
         true_shape = (bbox[2] - bbox[0] + 1, bbox[3] - bbox[1] + 1)
         properties = ['background_cutout_ma', 'data_cutout',
@@ -198,19 +400,20 @@ class TestSegmentPropertiesFunction(object):
             assert shape == true_shape
 
     def test_make_cutout(self):
-        props = segment_properties(IMAGE, SEGM)
+        props = source_properties(IMAGE, SEGM)
         data = np.ones((2, 2))
         with pytest.raises(ValueError):
             props[0].make_cutout(data)
 
     @pytest.mark.parametrize(('error_value', 'effective_gain', 'background'),
-                             zip(ERR_VALS, EFFGAIN_VALS, BACKGRD_VALS))
+                             list(itertools.product(
+                                 ERR_VALS, EFFGAIN_VALS, BACKGRD_VALS)))
     def test_segmentation_inputs(self, error_value, effective_gain,
                                  background):
         error = np.ones_like(IMAGE) * error_value
-        props = segment_properties(IMAGE, SEGM, error=error,
-                                   effective_gain=effective_gain,
-                                   background=background)
+        props = source_properties(IMAGE, SEGM, error=error,
+                                  effective_gain=effective_gain,
+                                  background=background)
         assert_quantity_allclose(props[0].xcentroid, XCEN*u.pix, rtol=1.e-2)
         assert_quantity_allclose(props[0].ycentroid, YCEN*u.pix, rtol=1.e-2)
         assert_quantity_allclose(props[0].semimajor_axis_sigma,
@@ -220,24 +423,22 @@ class TestSegmentPropertiesFunction(object):
         assert_quantity_allclose(props[0].orientation, THETA*u.rad,
                                  rtol=1.e-3)
         assert_allclose(props[0].bbox.value, [35, 25, 70, 77])
-        assert_allclose(props[0].area.value, 1058.0)
-        if background is None:
-            background_sum = 0.
-        else:
-            background_sum = props[0].background_sum
-        true_sum = IMAGE[IMAGE >= THRESHOLD].sum() - background_sum
-        assert_allclose(props[0].segment_sum, true_sum)
-        if effective_gain is None:
-            true_error = np.sqrt(props[0].area.value) * error_value
-        else:
-            true_error = np.sqrt(((props[0].segment_sum + background_sum) /
-                                  effective_gain) +
-                                 (np.sqrt(props[0].area.value) *
-                                  error_value)**2)
-        assert_allclose(props[0].segment_sum_err, true_error)
+        area = props[0].area.value
+        assert_allclose(area, 1058.0)
+
+        if background is not None:
+            assert_allclose(props[0].background_sum, area * background)
+        true_sum = IMAGE[IMAGE >= THRESHOLD].sum()
+        assert_allclose(props[0].source_sum, true_sum)
+
+        true_error = np.sqrt(props[0].area.value) * error_value
+        if effective_gain is not None:
+            true_error = np.sqrt(
+                (props[0].source_sum / effective_gain) + true_error**2)
+        assert_allclose(props[0].source_sum_err, true_error)
 
     def test_data_allzero(self):
-        props = segment_properties(IMAGE*0., SEGM)
+        props = source_properties(IMAGE*0., SEGM)
         proplist = ['xcentroid', 'ycentroid', 'semimajor_axis_sigma',
                     'semiminor_axis_sigma', 'eccentricity', 'orientation',
                     'ellipticity', 'elongation', 'cxx', 'cxy', 'cyy']
@@ -251,22 +452,22 @@ class TestSegmentPropertiesFunction(object):
         mask = np.zeros_like(data, dtype=np.bool)
         mask[0, 1] = True
         segm = data.astype(np.int)
-        props = segment_properties(data, segm, mask=mask)
+        props = source_properties(data, segm, mask=mask)
         assert_allclose(props[0].xcentroid.value, 1)
         assert_allclose(props[0].ycentroid.value, 1)
-        assert_allclose(props[0].segment_sum, 1)
+        assert_allclose(props[0].source_sum, 1)
         assert_allclose(props[0].area.value, 1)
 
     def test_effective_gain_negative(self, effective_gain=-1):
         error = np.ones_like(IMAGE) * 2.
         with pytest.raises(ValueError):
-            segment_properties(IMAGE, SEGM, error=error,
-                               effective_gain=effective_gain)
+            source_properties(IMAGE, SEGM, error=error,
+                              effective_gain=effective_gain)
 
     def test_single_pixel_segment(self):
         segm = np.zeros_like(SEGM)
         segm[50, 50] = 1
-        props = segment_properties(IMAGE, segm)
+        props = source_properties(IMAGE, segm)
         assert props[0].eccentricity == 0
 
     def test_filtering(self):
@@ -274,11 +475,11 @@ class TestSegmentPropertiesFunction(object):
         FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
         filter_kernel = Gaussian2DKernel(2.*FWHM2SIGMA, x_size=3, y_size=3)
         error = np.sqrt(IMAGE)
-        props1 = segment_properties(IMAGE, SEGM, error=error)
-        props2 = segment_properties(IMAGE, SEGM, error=error,
-                                    filter_kernel=filter_kernel.array)
+        props1 = source_properties(IMAGE, SEGM, error=error)
+        props2 = source_properties(IMAGE, SEGM, error=error,
+                                   filter_kernel=filter_kernel.array)
         p1, p2 = props1[0], props2[0]
-        keys = ['segment_sum', 'segment_sum_err']
+        keys = ['source_sum', 'source_sum_err']
         for key in keys:
             assert p1[key] == p2[key]
         keys = ['semimajor_axis_sigma', 'semiminor_axis_sigma']
@@ -292,11 +493,11 @@ class TestSegmentPropertiesFunction(object):
         FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
         filter_kernel = Gaussian2DKernel(2.*FWHM2SIGMA, x_size=3, y_size=3)
         error = np.sqrt(IMAGE)
-        props1 = segment_properties(IMAGE, SEGM, error=error)
-        props2 = segment_properties(IMAGE, SEGM, error=error,
-                                    filter_kernel=filter_kernel)
+        props1 = source_properties(IMAGE, SEGM, error=error)
+        props2 = source_properties(IMAGE, SEGM, error=error,
+                                   filter_kernel=filter_kernel)
         p1, p2 = props1[0], props2[0]
-        keys = ['segment_sum', 'segment_sum_err']
+        keys = ['source_sum', 'source_sum_err']
         for key in keys:
             assert p1[key] == p2[key]
         keys = ['semimajor_axis_sigma', 'semiminor_axis_sigma']
@@ -308,13 +509,13 @@ class TestSegmentPropertiesFunction(object):
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestPropertiesTable(object):
     def test_properties_table(self):
-        props = segment_properties(IMAGE, SEGM)
+        props = source_properties(IMAGE, SEGM)
         t = properties_table(props)
         assert isinstance(t, Table)
         assert len(t) == 1
 
     def test_properties_table_include(self):
-        props = segment_properties(IMAGE, SEGM)
+        props = source_properties(IMAGE, SEGM)
         columns = ['id', 'xcentroid']
         t = properties_table(props, columns=columns)
         assert isinstance(t, Table)
@@ -322,13 +523,13 @@ class TestPropertiesTable(object):
         assert t.colnames == columns
 
     def test_properties_table_include_invalidname(self):
-        props = segment_properties(IMAGE, SEGM)
+        props = source_properties(IMAGE, SEGM)
         columns = ['idzz', 'xcentroidzz']
         with pytest.raises(AttributeError):
             properties_table(props, columns=columns)
 
     def test_properties_table_exclude(self):
-        props = segment_properties(IMAGE, SEGM)
+        props = source_properties(IMAGE, SEGM)
         exclude = ['id', 'xcentroid']
         t = properties_table(props, exclude_columns=exclude)
         assert isinstance(t, Table)
@@ -337,7 +538,7 @@ class TestPropertiesTable(object):
             t['id']
 
     def test_properties_table_empty_props(self):
-        props = segment_properties(IMAGE, SEGM, labels=-1)
+        props = source_properties(IMAGE, SEGM, labels=-1)
         with pytest.raises(ValueError):
             properties_table(props)
 
@@ -353,67 +554,9 @@ class TestPropertiesTable(object):
                         [scale*np.sin(rho), scale*np.cos(rho)]]
         mywcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
 
-        props = segment_properties(IMAGE, SEGM, wcs=mywcs)
-        t = properties_table(props)
+        props = source_properties(IMAGE, SEGM, wcs=mywcs)
+        columns = ['icrs_centroid', 'ra_icrs_centroid', 'dec_icrs_centroid']
+        t = properties_table(props, columns=columns)
+        assert t[0]['icrs_centroid'] is not None
         assert t[0]['ra_icrs_centroid'] is not None
         assert t[0]['dec_icrs_centroid'] is not None
-
-
-@pytest.mark.parametrize('start_label', [1, 5])
-def test_relabel_sequential(start_label):
-    segm = np.zeros((3, 3))
-    segm[1, 1] = 1
-    segm_out = relabel_sequential(segm, start_label=start_label)
-    assert_allclose(segm_out, segm*start_label)
-
-
-@pytest.mark.parametrize('start_label', [0, -1])
-def test_relabel_sequential_start_invalid(start_label):
-    segm = np.ones((2, 2))
-    with pytest.raises(ValueError):
-        relabel_sequential(segm, start_label=start_label)
-
-
-def test_remove_segments():
-    segm = [[2, 0], [0, 3]]
-    segm_ref = [[2, 0], [0, 0]]
-    segm_new = remove_segments(segm, labels=3)
-    assert_allclose(segm_new, segm_ref)
-
-
-def test_remove_segments_relabel():
-    segm = [[2, 0], [0, 3]]
-    segm_ref = [[1, 0], [0, 0]]
-    segm_new = remove_segments(segm, labels=3, relabel=True)
-    assert_allclose(segm_new, segm_ref)
-
-
-def test_remove_border_segments():
-    segm = np.ones((5, 5))
-    with pytest.raises(ValueError):
-        remove_border_segments(segm, border_width=3)
-
-
-def test_remove_masked_segments():
-    segm = np.array([[1, 2, 2], [0, 0, 2], [0, 3, 3]])
-    segm_ref = np.array([[0, 0, 0], [0, 0, 0], [0, 3, 3]])
-    mask = np.zeros((3, 3), dtype=np.bool)
-    mask[0, :] = True
-    segm_new = remove_masked_segments(segm, mask)
-    assert_allclose(segm_new, segm_ref)
-
-
-def test_remove_masked_segments_partial_overlap():
-    segm = np.array([[1, 2, 2], [0, 0, 2], [0, 3, 3]])
-    segm_ref = np.array([[0, 2, 2], [0, 0, 2], [0, 3, 3]])
-    mask = np.zeros((3, 3), dtype=np.bool)
-    mask[0, :] = True
-    segm_new = remove_masked_segments(segm, mask, partial_overlap=False)
-    assert_allclose(segm_new, segm_ref)
-
-
-def test_remove_masked_segments_input_shapes():
-    segm = np.ones((5, 5))
-    mask = np.zeros((3, 3), dtype=np.bool)
-    with pytest.raises(ValueError):
-        remove_masked_segments(segm, mask)
