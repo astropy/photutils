@@ -48,6 +48,9 @@ New Features
   - Added new ``random_cmap`` function to generate a colormap comprised
     of random colors. [#299]
 
+  - Added new ``ShepardIDWInterpolator`` class to perform Inverse
+    Distance Weighted (IDW) interpolation. [#307]
+
 API changes
 ^^^^^^^^^^^
 
