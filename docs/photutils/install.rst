@@ -13,7 +13,7 @@ Photutils has the following strict requirements:
 
 * `Astropy`_ 1.0 or later
 
-You will also need `Cython`_ (0.15 or later) to build photutils from
+You will also need `Cython`_ (0.15 or later) to build Photutils from
 source, unless you are installing a numbered release (see
 :ref:`sourceinstall` below).
 
@@ -31,10 +31,10 @@ dependencies are installed:
 
 .. warning::
 
-    While photutils will import even if these dependencies are not
+    While Photutils will import even if these dependencies are not
     installed, the functionality will be severely limited.  It is very
     strongly recommended that you install `Scipy`_ and `scikit-image`_
-    to use photutils.  Both are easily installed via `pip`_ or
+    to use Photutils.  Both are easily installed via `pip`_ or
     `conda`_.
 
 .. _Scipy: http://www.scipy.org/
@@ -47,12 +47,12 @@ dependencies are installed:
 Installing Photutils Using pip
 ==============================
 
-To install the latest photutils **stable** version with `pip`_, simply
+To install the latest Photutils **stable** version with `pip`_, simply
 run::
 
     pip install --no-deps photutils
 
-To install the current photutils **development** version using
+To install the current Photutils **development** version using
 `pip`_::
 
     pip install --no-deps git+https://github.com/astropy/photutils.git
@@ -79,7 +79,7 @@ To install the current photutils **development** version using
     You can read more about how to do this in the `pip documentation
     <http://www.pip-installer.org/en/1.2.1/other-tools.html#using-pip-with-the-user-scheme>`_.
 
-    Do **not** install photutils or other third-party packages using
+    Do **not** install Photutils or other third-party packages using
     ``sudo`` unless you are fully aware of the risks.
 
 
@@ -92,7 +92,7 @@ Prerequisites
 -------------
 
 You will need a compiler suite and the development headers for Python
-and Numpy in order to build photutils.  On Linux, using the package
+and Numpy in order to build Photutils.  On Linux, using the package
 manager for your distribution will usually be the easiest route, while
 on MacOS X you will need the XCode command line tools.
 
@@ -127,13 +127,13 @@ Obtaining the Source Package
 Stable Version
 ^^^^^^^^^^^^^^
 
-The latest stable source package for photutils can be `downloaded here
+The latest stable source package for Photutils can be `downloaded here
 <https://pypi.python.org/pypi/photutils>`_.
 
 Development Version
 ^^^^^^^^^^^^^^^^^^^
 
-The latest development version of photutils can be cloned from github
+The latest development version of Photutils can be cloned from github
 using this command::
 
    git clone git://github.com/astropy/photutils.git
@@ -151,11 +151,11 @@ already provided by your system.
 
 Numpy and Astropy must already installed in your Python environment.
 
-To build photutils (from the root of the source tree)::
+To build Photutils (from the root of the source tree)::
 
     python setup.py build
 
-To install photutils (from the root of the source tree)::
+To install Photutils (from the root of the source tree)::
 
     python setup.py install
 
@@ -165,8 +165,8 @@ To install photutils (from the root of the source tree)::
 Testing a Source-Code Build of Photutils
 ----------------------------------------
 
-The easiest way to test that your photutils built correctly (without
-installing photutils) is to run this from the root of the source
+The easiest way to test that your Photutils built correctly (without
+installing Photutils) is to run this from the root of the source
 tree::
 
     python setup.py test
@@ -178,7 +178,7 @@ See the Astropy documentation for alternative methods of
 Testing an Installed Photutils
 ==============================
 
-The easiest way to test your installed version of photutils is running
+The easiest way to test your installed version of Photutils is running
 correctly is to use the :func:`photutils.test()` function:
 
 .. doctest-skip::
@@ -193,6 +193,6 @@ to the `Photutils issue tracker
 .. note::
 
     This way of running the tests may not work if you do it in the
-    photutils source distribution directory.  See
+    Photutils source distribution directory.  See
     :ref:`sourcebuildtest` for how to run the tests from the source
     code directory.

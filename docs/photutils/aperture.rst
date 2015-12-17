@@ -6,7 +6,7 @@ Aperture Photometry
 Introduction
 ------------
 
-In photutils, the :func:`~photutils.aperture_photometry` function is
+In Photutils, the :func:`~photutils.aperture_photometry` function is
 the main tool to perform aperture photometry on an astronomical image
 for a given set of apertures.  The aperture shapes that are currently
 provided are:

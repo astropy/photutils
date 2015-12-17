@@ -118,7 +118,7 @@ Photutils also provides tools to detect astronomical sources using
 `image segmentation`_, which is a process of assigning a label to
 every pixel in an image such that pixels with the same label are part
 of the same source.  The segmentation procedure implemented in
-photutils is called the threshold method, where detected sources must
+Photutils is called the threshold method, where detected sources must
 have a minimum number of connected pixels that are each greater than a
 specified threshold value in an image.  The threshold level is usually
 defined at some multiple of the background standard deviation (sigma)
@@ -126,7 +126,7 @@ above the background.  The image can also be filtered before
 thresholding to smooth the noise and maximize the detectability of
 objects with a shape similar to the filter kernel.
 
-In photutils, source extraction is performed using the
+In Photutils, source extraction is performed using the
 :func:`~photutils.detection.detect_sources` function.  The
 :func:`~photutils.detection.detect_threshold` tool is a convenience
 function to generate a 2D detection threshold image using simple

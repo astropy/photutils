@@ -1,7 +1,7 @@
 Getting Started
 ===============
 
-The following example uses photutils to find sources in an
+The following example uses Photutils to find sources in an
 astronomical image and perform circular aperture photometry on them.
 
 We start by loading an image from the bundled datasets and selecting a
