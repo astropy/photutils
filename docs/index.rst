@@ -11,7 +11,9 @@
 Photutils
 *********
 
-.. image:: _static/photutils_banner-475x120.png
+.. raw:: html
+
+   <img src="_static/photutils_banner.svg" onerror="this.src='_static/photutils_banner-475x120.png'; this.onerror=null;" width="495"/>
 
 
 Photutils at a Glance
