@@ -144,12 +144,15 @@ htmlhelp_basename = project + 'doc'
 html_static_path = ['_static']
 html_style = 'photutils.css'
 
+
 # -- Options for LaTeX output --------------------------------------------------
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [('index', project + '.tex', project + u' Documentation',
                     author, 'manual')]
+
+latex_logo = '_static/photutils_banner.pdf'
 
 
 # -- Options for manual page output --------------------------------------------
