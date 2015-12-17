@@ -20,14 +20,11 @@ source, unless you are installing a numbered release (see
 Some functionality is available only if the following optional
 dependencies are installed:
 
-* `Scipy`_: To power a variety of features including background
-  estimation, source detection, source segmentation properties, and
-  fitting.
+* `Scipy`_ 0.15 or later
 
-* `scikit-image`_:  To power a variety of features including source
-  detection and source morphological properties.
+* `scikit-image`_ 0.11 or later
 
-* `matplotlib <http://matplotlib.org/>`_:  For plotting functions.
+* `matplotlib <http://matplotlib.org/>`_ 1.3 or later
 
 .. warning::
 
