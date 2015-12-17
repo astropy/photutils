@@ -3,6 +3,8 @@
 
 div.topbar a.brand {
   background: transparent url("photutils_logo-32x32.png") no-repeat 8px 3px;
+  background-image: url("photutils_logo.svg"), none;
+  background-size: 32px 32px;
 }
 
 #logotext1 {
