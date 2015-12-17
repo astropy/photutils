@@ -9,6 +9,8 @@ from astropy.utils.exceptions import AstropyUserWarning
 __all__ = ['ShepardIDWInterpolator', 'interpolate_masked_data',
            'mask_to_mirrored_num']
 
+__doctest_requires__ = {('ShepardIDWInterpolator'): ['scipy']}
+
 
 class ShepardIDWInterpolator(object):
     """

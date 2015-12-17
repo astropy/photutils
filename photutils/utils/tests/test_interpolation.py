@@ -7,6 +7,13 @@ from astropy.tests.helper import pytest
 from .. import ShepardIDWInterpolator as idw
 from .. import interpolate_masked_data, mask_to_mirrored_num
 
+try:
+    import scipy
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
+
+
 SHAPE = (5, 5)
 DATA = np.ones(SHAPE) * 2.0
 MASK = np.zeros_like(DATA, dtype=bool)
@@ -16,6 +23,7 @@ BACKGROUND = np.ones(SHAPE)
 WRONG_SHAPE = np.ones((2, 2))
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 class TestShepardIDWInterpolator(object):
     def setup_class(self):
         np.random.seed(123)
