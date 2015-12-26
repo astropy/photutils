@@ -357,7 +357,7 @@ def interpolate_masked_data(data, mask, error=None, background=None):
                                  'shape')
             error_out = np.copy(error)
             error_out[x] = np.sqrt(
-                    np.mean(eval('error[X]')[goodpix]**2))
+                    np.mean(error[X][goodpix]**2))
         else:
             error_out = None
 
