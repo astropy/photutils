@@ -286,7 +286,7 @@ class ShepardIDWInterpolator(object):
 
 
 
-def interpolate_masked_data3D(data, mask, error=None, background=None):
+def interpolate_masked_data(data, mask, error=None, background=None):
     """
     Interpolate over masked pixels in data and optional error or
     background images.
