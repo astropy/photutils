@@ -335,7 +335,7 @@ def interpolate_masked_data(data, mask, error=None, background=None):
         X = np.array([[max(x[i]-1,0), min(x[i]+2,data.shape[i])] for i in range(len(data.shape))])
         goodpix = ~mask[X]
         if not np.any(goodpix):
-            warnings.warn('The masked pixel at "%s" is completely '
+            warnings.warn('The masked pixel at "{}" is completely '
                           'surrounded by (connected) masked pixels, '
                           'thus unable to interpolate'.format(x,),
                           AstropyUserWarning)
