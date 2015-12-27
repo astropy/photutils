@@ -336,7 +336,7 @@ def interpolate_masked_data(data, mask, error=None, background=None):
         raise ValueError('all items in data is masked')
 
     for x in zip(*mask_idx):
-        X = np.array([[max(x[i]-1,0), min(x[i]+2,data.shape[i])] for i in range(len(data.shape))])
+        X = np.array([[max(x[i]-1,0), min(x[i]+1,data.shape[i]-1)] for i in range(len(data.shape))])
         goodpix = ~mask[X]
 
         if not np.any(goodpix):
