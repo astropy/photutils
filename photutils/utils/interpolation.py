@@ -330,6 +330,10 @@ def interpolate_masked_data(data, mask, error=None, background=None):
 
     data_out = np.copy(data)    # do not alter input data
     mask_idx = mask.nonzero()
+
+    if mask_idx[0].size == 0:
+        raise ValueError('all items in data is masked')
+
     for j, i in zip(*mask_idx):
         y0, y1 = max(j - 1, 0), min(j + 2, data.shape[0])
         x0, x1 = max(i - 1, 0), min(i + 2, data.shape[1])
