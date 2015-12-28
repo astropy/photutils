@@ -1,7 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
 """
-Astropy affiliated package for image photometry utilities.
+An Astropy affiliated package for photometry.
 """
 
 # Affiliated packages may add whatever they like to this file, but
