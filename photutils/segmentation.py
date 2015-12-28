@@ -40,37 +40,36 @@ class SegmentationImage(object):
     def __init__(self, data):
         from scipy import ndimage
 
-        self.data = np.asanyarray(data, dtype=np.int)
-        if np.min(self.data) < 0:
+        self._data = np.asanyarray(data, dtype=np.int)
+        if np.min(self._data) < 0:
             raise ValueError('The segmentation image cannot contain '
                              'negative integers.')
-        self.shape = self.data.shape
-        self.slices = ndimage.find_objects(self.data)
+        self.shape = self._data.shape
+        self.slices = ndimage.find_objects(self._data)
 
-    def check_label(self, label):
+    @property
+    def data(self):
         """
-        Check for a valid label label number within the segmentation
-        image.
-
-        Parameters
-        ----------
-        label : int
-            The label number to check.
-
-        Raises
-        ------
-        ValueError
-            If the input ``label`` is invalid.
+        The 2D segmentation image.
         """
 
-        if label == 0:
-            raise ValueError('label "0" is reserved for the background')
-        if label < 0:
-            raise ValueError('label must be a positive integer, got '
-                             '"{0}"'.format(label))
-        if label not in self.data:
-            raise ValueError('label "{0}" is not in the segmentation '
-                             'image'.format(label))
+        return self._data
+
+    @property
+    def array(self):
+        """
+        The 2D segmentation image.
+        """
+
+        return self._data
+
+    def __array__(self):
+        """
+        Array representation of the segmentation image (e.g., for
+        matplotlib).
+        """
+
+        return self._data
 
     @property
     def data_masked(self):
@@ -149,6 +148,31 @@ class SegmentationImage(object):
             return True
         else:
             return False
+
+    def check_label(self, label):
+        """
+        Check for a valid label label number within the segmentation
+        image.
+
+        Parameters
+        ----------
+        label : int
+            The label number to check.
+
+        Raises
+        ------
+        ValueError
+            If the input ``label`` is invalid.
+        """
+
+        if label == 0:
+            raise ValueError('label "0" is reserved for the background')
+        if label < 0:
+            raise ValueError('label must be a positive integer, got '
+                             '"{0}"'.format(label))
+        if label not in self.data:
+            raise ValueError('label "{0}" is not in the segmentation '
+                             'image'.format(label))
 
     def outline_segments(self, mask_background=False):
         """
@@ -235,7 +259,7 @@ class SegmentationImage(object):
 
         labels = np.atleast_1d(labels)
         for label in labels:
-            self.data[np.where(self.data == label)] = new_label
+            self._data[np.where(self.data == label)] = new_label
 
     def relabel_sequential(self, start_label=1):
         """
@@ -275,7 +299,7 @@ class SegmentationImage(object):
 
         forward_map = np.zeros(self.max + 1, dtype=np.int)
         forward_map[self.labels] = np.arange(self.nlabels) + start_label
-        self.data = forward_map[self.data]
+        self._data = forward_map[self.data]
 
     def keep_labels(self, labels, relabel=False):
         """

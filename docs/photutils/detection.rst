@@ -196,7 +196,7 @@ image showing the detected sources:
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
     >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    >>> ax2.imshow(segm.data, origin='lower', cmap=rand_cmap)
+    >>> ax2.imshow(segm, origin='lower', cmap=rand_cmap)
 
 .. plot::
 
@@ -219,7 +219,7 @@ image showing the detected sources:
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    ax2.imshow(segm.data, origin='lower', cmap=rand_cmap)
+    ax2.imshow(segm, origin='lower', cmap=rand_cmap)
 
 
 When the segmentation image is generated using image thresholding

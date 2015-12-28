@@ -122,7 +122,7 @@ Now let's plot the results:
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
     >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    >>> ax2.imshow(segm.data, origin='lower', cmap=rand_cmap)
+    >>> ax2.imshow(segm, origin='lower', cmap=rand_cmap)
     >>> for aperture in apertures:
     ...     aperture.plot(color='blue', lw=1.5, alpha=0.5, ax=ax1)
     ...     aperture.plot(color='white', lw=1.5, alpha=1.0, ax=ax2)
@@ -159,7 +159,7 @@ Now let's plot the results:
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    ax2.imshow(segm.data, origin='lower', cmap=rand_cmap)
+    ax2.imshow(segm, origin='lower', cmap=rand_cmap)
     for aperture in apertures:
         aperture.plot(color='blue', lw=1.5, alpha=0.5, ax=ax1)
         aperture.plot(color='white', lw=1.5, alpha=1.0, ax=ax2)

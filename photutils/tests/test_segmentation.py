@@ -55,6 +55,11 @@ class TestSegmentationImage(object):
                      [7, 7, 0, 5, 5, 5],
                      [7, 7, 0, 0, 5, 5]]
 
+    def test_array(self):
+        segm = SegmentationImage(self.data)
+        assert_allclose(segm.data, segm.array)
+        assert_allclose(segm.data, segm.__array__())
+
     def test_negative_data(self):
         data = np.arange(-1, 8).reshape(3, 3)
         with pytest.raises(ValueError):
