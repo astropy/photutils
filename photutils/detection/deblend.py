@@ -1,92 +1,100 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-"""Functions for detecting sources in an astronomical image."""
+"""Functions for deblending sources."""
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from copy import deepcopy
 import warnings
 import numpy as np
-from astropy import log
 from astropy.utils.exceptions import AstropyUserWarning
 from .core import _convolve_data, detect_sources
-from ..segmentation import remove_segments
+from ..segmentation import SegmentationImage
 
 
 __all__ = ['deblend_sources']
 
 
-def deblend_sources(data, segment_image, npixels, labels=None,
+def deblend_sources(data, segment_img, npixels, labels=None,
                     filter_kernel=None,
                     nlevels=32, contrast=0.001, mode='exponential',
-                    connectivity=8):
+                    connectivity=8, relabel=True):
 
-    from scipy import ndimage
+    if not isinstance(segment_img, SegmentationImage):
+        segment_img = SegmentationImage(segment_img)
 
-    nsources = np.max(segment_image)
+    if segment_img.shape != data.shape:
+        raise ValueError('The data and segmentation image must have '
+                         'the same shape')
+
     if labels is None:
-        labels = np.arange(1, nsources+1)
-
-    label_slices = ndimage.find_objects(segment_image)
+        labels = segment_img.labels
+    labels = np.atleast_1d(labels)
 
     data = _convolve_data(data, filter_kernel, mode='constant',
                           fill_value=0.0)
 
-    segm_deblended = deepcopy(segment_image)
-    new_label = nsources
+    last_label = segment_img.max
+    segm_deblended = deepcopy(segment_img)
     for label in labels:
-        #log.info('Deblending source {0}'.format(label))
-        if label > nsources:
-            raise ValueError('label "{0}" is not in the input segmentation '
-                             'image'.format(label))
-        source_slice = label_slices[label - 1]
-        if source_slice is None:
-            raise ValueError('label "{0}" is not in the input segmentation '
-                             'image'.format(label))
+        segment_img.check_label(label)
+        source_slice = segment_img.slices[label - 1]
         source_data = data[source_slice]
-        source_segm = segment_image[source_slice]
-
-        source_segm_deblended, nsources_deblended, a, b, c = _deblend_source(
-            source_data, source_segm, npixels, label, nlevels=nlevels,
+        source_segm = SegmentationImage(np.copy(
+            segment_img.data[source_slice]))
+        source_segm.keep_labels(label)    # include only one label
+        source_deblended = _deblend_source(
+            source_data, source_segm, npixels, nlevels=nlevels,
             contrast=contrast, mode=mode, connectivity=connectivity)
 
-        if nsources_deblended > 1:
-            print(label, 'deblended, nsources_deblended={0}'.format(
-                nsources_deblended))
-            source_mask = (source_segm_deblended > 0)
-            segm_deblended[source_slice] = (source_segm_deblended +
-                                            new_label) * source_mask
-            new_label += nsources_deblended
+        if source_deblended.nlabels > 1:
+            # replace the original source with the deblended source
+            source_mask = (source_deblended.data > 0)
+            segm_deblended._data[source_slice][source_mask] = (
+                source_deblended.data[source_mask] + last_label)
+            last_label += source_deblended.nlabels
 
-    return segm_deblended, a, b, c
+    if relabel:
+        segm_deblended.relabel_sequential()
+    return segm_deblended
 
 
-def _deblend_source(data, segm, npixels, label, nlevels=32, contrast=0.001,
+def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
                     mode='exponential', connectivity=8):
     """
-    Deblend a single source segment.
+    Deblend a single labeled source.
 
     data : `~numpy.ndarray`
         data should be smoothed by the same filter used in ``detect_sources``.
 
+    segment_img : `SegmentationImage`
+        A cutout from a segmentation image.  Must contain only **one** non-zero label.
+
     mode : {'exponential', 'linear'}
     """
 
+    from scipy import ndimage
     from skimage.morphology import watershed
 
-    mask = (segm > 0)
-    source_values = data[mask]
+    if nlevels < 1:
+        raise ValueError('nlevels must be >= 1, got "{0}"'.format(nlevels))
+    if contrast < 0 or contrast > 1:
+        raise ValueError('contrast must be >= 0 or <= 1, got '
+                         '"{0}"'.format(contrast))
+
+    segm_mask = (segment_img.data > 0)
+    source_values = data[segm_mask]
     source_min = np.min(source_values)
     source_max = np.max(source_values)
     if source_min == source_max:
-        return segm     # no deblending
+        return segment_img     # no deblending
     if source_min < 0:
         warnings.warn('Source "{0}" contains negative values, setting '
-                      'deblending mode="linear"'.format(label),
-                      AstropyUserWarning)
+                      'deblending mode to "linear"'.format(
+                          segment_img.labels[0]), AstropyUserWarning)
         mode = 'linear'
     source_sum = float(np.sum(source_values))
 
-    steps = np.arange(1., nlevels+1)
+    steps = np.arange(1., nlevels + 1)
     if mode == 'exponential':
         if source_min == 0:
             source_min = source_max * 0.01
@@ -102,14 +110,15 @@ def _deblend_source(data, segm, npixels, label, nlevels=32, contrast=0.001,
     # create top-down tree of local peaks
     segm_tree = []
     all_segm = []     # tmp
+
     for level in thresholds[::-1]:
         segm_tmp = detect_sources(data, level, npixels=npixels,
                                   connectivity=connectivity)
-        all_segm.append(segm_tmp)
-        npeaks = np.max(segm_tmp)
-        if npeaks >= 2:
+        all_segm.append(segm_tmp)   # tmp
+
+        if segm_tmp.nlabels >= 2:
             fluxes = []
-            for i in np.arange(1, npeaks+1):
+            for i in segm_tmp.labels:
                 fluxes.append(np.sum(data[segm_tmp == i]))
             idx = np.where((np.array(fluxes) / source_sum) >= contrast)[0]
             if len(idx >= 2):
@@ -118,22 +127,24 @@ def _deblend_source(data, segm, npixels, label, nlevels=32, contrast=0.001,
     segm_tree_orig = deepcopy(segm_tree)     # tmp
     nbranch = len(segm_tree)
     if nbranch == 0:
-        return segm, 1, None, None, None
+        return segment_img
     else:
-        for j in np.arange(1, nbranch):
-            intersection = (segm_tree[j] * segm_tree[j - 1]).astype(bool)
-            labels = np.unique(segm_tree[j][intersection])
+        for j in np.arange(nbranch - 1, 0, -1):
+            intersect_mask = (segm_tree[j].data *
+                              segm_tree[j - 1].data).astype(bool)
+            intersect_labels = np.unique(segm_tree[j].data[intersect_mask])
 
-            if np.max(segm_tree[j-1]) > len(labels):
+            if segm_tree[j - 1].nlabels <= len(intersect_labels):
+                segm_tree[j - 1] = segm_tree[j]
+            else:
                 # If higher tree level has more peaks, then remove the
                 # intersecting labels in the lower level, add to the higher
                 # level, and relabel.
-                segm_tmp = remove_segments(segm_tree[j], labels,
-                                           relabel=False)
-                segm_tree[j] = segm_tree[j-1] + segm_tmp
-                segm_tree[j] = detect_sources(segm_tree[j], 0, npixels=1,
-                                              connectivity=connectivity)
+                segm_tree[j].remove_labels(intersect_labels)
+                new_segments = segm_tree[j].data + segm_tree[j - 1].data
+                new_segm, nsegm = ndimage.label(new_segments)
+                segm_tree[j - 1] = SegmentationImage(new_segm)
 
-        segm_deblend = watershed(-data, segm_tree[-1], mask=segm)
-        return (segm_deblend, np.max(segm_deblend), all_segm,
-                segm_tree_orig, segm_tree)
+        return SegmentationImage(watershed(-data, segm_tree[0].data,
+                                           mask=segment_img.data))
+        #return result, all_segm, segm_tree_orig, segm_tree
