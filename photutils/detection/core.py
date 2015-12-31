@@ -138,7 +138,9 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
     each greater than the ``threshold`` value.  If the filtering option
     is used, then the ``threshold`` is applied to the filtered image.
 
-    This function does not deblend overlapping sources.
+    This function does not deblend overlapping sources.  First use this
+    function to detect sources followed by
+    :func:`~photutils.detection.deblend_sources` to deblend sources.
 
     Parameters
     ----------
@@ -180,6 +182,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
     --------
     detect_threshold, :class:`photutils.segmentation.SegmentationImage`,
     :func:`photutils.segmentation.source_properties`
+    :func:`photutils.detection.deblend_sources`
 
     Examples
     --------
