@@ -285,7 +285,6 @@ class ShepardIDWInterpolator(object):
             return interp_values
 
 
-
 def interpolate_masked_data(data, mask, error=None, background=None):
     """
     Interpolate over masked pixels in data and optional error or
@@ -336,7 +335,8 @@ def interpolate_masked_data(data, mask, error=None, background=None):
         raise ValueError('all items in data is masked')
 
     for x in zip(*mask_idx):
-        X = np.array([[max(x[i]-1,0), min(x[i]+1,data.shape[i]-1)] for i in range(len(data.shape))])
+        X = np.array([[max(x[i] - 1, 0), min(x[i] + 1, data.shape[i] - 1)]
+                      for i in range(len(data.shape))])
         goodpix = ~mask[X]
 
         if not np.any(goodpix):
@@ -362,12 +362,11 @@ def interpolate_masked_data(data, mask, error=None, background=None):
                 raise ValueError('error and data must have the same '
                                  'shape')
             error_out = np.copy(error)
-            error_out[x] = np.sqrt( np.mean(error[X][goodpix]**2) )
+            error_out[x] = np.sqrt(np.mean(error[X][goodpix]**2))
         else:
             error_out = None
 
     return data_out, error_out, background_out
-
 
 
 def mask_to_mirrored_num(image, mask_image, center_position, bbox=None):
