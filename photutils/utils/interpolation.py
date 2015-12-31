@@ -297,7 +297,7 @@ def interpolate_masked_data(data, mask, error=None, background=None):
     Parameters
     ----------
     data : array_like or `~astropy.units.Quantity`
-        The n-D data array.
+        The data array.
 
     mask : array_like (bool)
         A boolean mask, with the same shape as ``data``, where a `True`
@@ -313,14 +313,14 @@ def interpolate_masked_data(data, mask, error=None, background=None):
 
     Returns
     -------
-    data : n-D `~numpy.ndarray` or `~astropy.units.Quantity`
+    data : `~numpy.ndarray` or `~astropy.units.Quantity`
         Input ``data`` with interpolated masked pixels.
 
-    error : n-D `~numpy.ndarray` or `~astropy.units.Quantity`
+    error : `~numpy.ndarray` or `~astropy.units.Quantity`
         Input ``error`` with interpolated masked pixels.  `None` if
         input ``error`` is not input.
 
-    background : n-D `~numpy.ndarray` or `~astropy.units.Quantity`
+    background : `~numpy.ndarray` or `~astropy.units.Quantity`
         Input ``background`` with interpolated masked pixels.  `None` if
         input ``background`` is not input.
     """
