@@ -1,4 +1,4 @@
-0.2 (unreleased)
+0.2 (2015-12-31)
 ----------------
 
 General
@@ -102,8 +102,8 @@ Other Changes and Additions
 - Updated astropy-helpers to v1.1. [#302]
 
 
-0.1 (December 22, 2014)
------------------------
+0.1 (2014-12-22)
+----------------
 
 Photutils 0.1 was released on December 22, 2014.  It requires Astropy
 version 0.4 or later.
