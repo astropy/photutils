@@ -12,7 +12,6 @@ General
 
   - Astropy v1.0 or later
 
-
 New Features
 ^^^^^^^^^^^^
 
@@ -53,6 +52,9 @@ New Features
 
   - Added new ``ShepardIDWInterpolator`` class to perform Inverse
     Distance Weighted (IDW) interpolation. [#307]
+
+  - The ``interpolate_masked_data`` function can now interpolate
+    higher-dimensional data. [#310]
 
 API changes
 ^^^^^^^^^^^
