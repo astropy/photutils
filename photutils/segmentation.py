@@ -311,9 +311,10 @@ class SegmentationImage(object):
             The label number(s) to keep.  Labels of zero and those not
             in the segmentation image will be ignored.
 
-        relabel : bool
-            If `True`, the the segmentation image will be relabeled such
-            that the labels are in sequential order starting from 1.
+        relabel : bool, optional
+            If `True`, then the segmentation image will be relabeled
+            such that the labels are in sequential order starting from
+            1.
 
         Examples
         --------
@@ -363,9 +364,10 @@ class SegmentationImage(object):
             The label number(s) to remove.  Labels of zero and those not
             in the segmentation image will be ignored.
 
-        relabel : bool
-            If `True`, the the segmentation image will be relabeled such
-            that the labels are in sequential order starting from 1.
+        relabel : bool, optional
+            If `True`, then the segmentation image will be relabeled
+            such that the labels are in sequential order starting from
+            1.
 
         Examples
         --------
@@ -423,9 +425,10 @@ class SegmentationImage(object):
             Segments that are completely within the border region are
             always removed.
 
-        relabel : bool
-            If `True`, the the segmentation image will be relabeled such
-            that the labels are in sequential order starting from 1.
+        relabel : bool, optional
+            If `True`, then the segmentation image will be relabeled
+            such that the labels are in sequential order starting from
+            1.
 
         Examples
         --------
@@ -480,7 +483,7 @@ class SegmentationImage(object):
 
         Parameters
         ----------
-        mask : array_like (bool), optional
+        mask : array_like (bool)
             A boolean mask, with the same shape as the segmentation
             image (``.data``), where `True` values indicate masked
             pixels.
@@ -491,9 +494,10 @@ class SegmentationImage(object):
             Segments that are completely within a masked region are
             always removed.
 
-        relabel : bool
-            If `True`, the the segmentation image will be relabeled such
-            that the labels are in sequential order starting from 1.
+        relabel : bool, optional
+            If `True`, then the segmentation image will be relabeled
+            such that the labels are in sequential order starting from
+            1.
 
         Examples
         --------

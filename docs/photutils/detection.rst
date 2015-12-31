@@ -221,18 +221,42 @@ image showing the detected sources:
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     ax2.imshow(segm, origin='lower', cmap=rand_cmap)
 
-
 When the segmentation image is generated using image thresholding
 (e.g., using :func:`~photutils.detect_sources`), the source segments
 effectively represent the isophotal footprint of each source.
 
+
+Source Deblending
+^^^^^^^^^^^^^^^^^
+
 Note that overlapping sources are detected as single sources.
 Separating those sources requires a deblending procedure, such as a
 multi-thresholding technique used by `SExtractor
-<http://www.astromatic.net/software/sextractor>`_.  Photutils does not
-yet provide a tool to deblend overlapping sources, but it will likely
-incorporate elements of `sep`_, which uses the SExtractor deblending
-algorithm.  In the meantime, `sep`_ can be used to deblend sources.
+<http://www.astromatic.net/software/sextractor>`_.  Photutils provides
+an experimental :func:`~photutils.deblend_sources` function that
+deblends sources uses a combination of multi-thresholding and
+`watershed segmentation
+<https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_.  In
+order to deblend sources, they must be separated enough such that
+there is a saddle between them:
+
+.. doctest-requires:: scipy, skimage
+
+    >>> from photutils import deblend_sources
+    >>> segm_deblend = deblend_sources(data, segm, npixels=5,
+    ...                                filter_kernel=kernel)
+
+where ``segm`` is the
+:class:`~photutils.segmentation.SegmentationImage` that was generated
+by :func:`~photutils.detect_sources`.  Note that the ``npixels`` and
+``filter_kernel`` input values should match those used in
+:func:`~photutils.detect_sources`.  The result is a
+:class:`~photutils.segmentation.SegmentationImage` object containing
+the deblended segmentation image.
+
+
+Centroids, Photometry, and Morphological Properties
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To calculate the centroids, photometry, and morphological properties
 of sources from a segmentation map, please see `Segmentation

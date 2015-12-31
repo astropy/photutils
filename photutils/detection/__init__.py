@@ -5,4 +5,5 @@ an astronomical image.
 """
 
 from .core import *
+from .deblend import *
 from .findstars import *
