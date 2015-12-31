@@ -11,14 +11,23 @@ __pycache__
 
 # Other generated files
 */version.py
-benchmarks/_results
 */cython_version.py
 htmlcov
 .coverage
+MANIFEST
+benchmarks/_results
 
 # Sphinx
-_build
 docs/api
+docs/_build
+
+# Eclipse editor project files
+.project
+.pydevproject
+.settings
+
+# Pycharm editor project files
+.idea
 
 # Packages/installer info
 *.egg
@@ -37,13 +46,8 @@ distribute-*.tar.gz
 # Other
 .cache
 .tox
-.*.swp
+.*.sw[op]
 *~
-.project
-.pydevproject
-.settings
-.idea
-
 
 # Mac OSX
 .DS_Store
