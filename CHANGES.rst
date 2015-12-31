@@ -27,6 +27,9 @@ New Features
   - ``detect_sources`` will now issue a warning if the filter kernel
     is not normalized to 1. [#298]
 
+  - Added new ``deblend_sources`` function, an experimental source
+    deblender. [#314]
+
 - ``photutils.morphology``
 
   - Added new ``GaussianConst2D`` (2D Gaussian plus a constant) model.
