@@ -22,13 +22,11 @@ try:
 except ImportError:
     __githash__ = ''
 
-
 # set up the test command
 def _get_test_runner():
     import os
     from astropy.tests.helper import TestRunner
     return TestRunner(os.path.dirname(__file__))
-
 
 def test(package=None, test_path=None, args=None, plugins=None,
          verbose=False, pastebin=None, remote_data=False, pep8=False,
@@ -88,8 +86,8 @@ def test(package=None, test_path=None, args=None, plugins=None,
 
     open_files : bool, optional
         Fail when any tests leave files open.  Off by default, because
-        this adds extra run time to the test suite.  Works only on
-        platforms with a working ``lsof`` command.
+        this adds extra run time to the test suite.  Requires the
+        `psutil <https://pypi.python.org/pypi/psutil>`_ package.
 
     parallel : int, optional
         When provided, run the tests in parallel on the specified
@@ -112,42 +110,10 @@ def test(package=None, test_path=None, args=None, plugins=None,
         remote_data=remote_data, pep8=pep8, pdb=pdb,
         coverage=coverage, open_files=open_files, **kwargs)
 
-
-def _rollback_import(message):
-    """
-    Roll back any photutils sub-modules that have been imported thus far.
-    """
-
-    import sys
-    warn(message)
-    for key in list(sys.modules):
-        if key.startswith('photutils.'):
-            del sys.modules[key]
-    raise ImportError('photutils')
-
-
 if not _ASTROPY_SETUP_:
     import os
     from warnings import warn
     from astropy import config
-
-    # If this _astropy_init.py file is in ./photutils/ then import is
-    # within a source directory
-    is_photutils_source_dir = (os.path.abspath(os.path.dirname(__file__)) ==
-                               os.path.abspath('photutils') and
-                               os.path.exists('setup.py'))
-    try:
-        from .geometry import circular_overlap
-    except ImportError:
-        if is_photutils_source_dir:
-            _rollback_import(
-                ('You appear to be trying to import photutils from within '
-                'a source checkout; please run `./setup.py develop` or '
-                '`./setup.py build_ext --inplace` first so that extension '
-                'modules can be compiled and made importable.'))
-        else:
-            # Outright broken installation; don't be nice.
-            raise
 
     # add these here so we only need to cleanup the namespace at the end
     config_dir = None
