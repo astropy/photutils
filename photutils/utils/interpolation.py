@@ -332,7 +332,7 @@ def interpolate_masked_data(data, mask, error=None, background=None):
     mask_idx = mask.nonzero()
 
     if mask_idx[0].size == 0:
-        raise ValueError('all items in data is masked')
+        raise ValueError('All items in data are masked')
 
     for x in zip(*mask_idx):
         X = np.array([[max(x[i] - 1, 0), min(x[i] + 1, data.shape[i] - 1)]
