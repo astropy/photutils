@@ -24,7 +24,7 @@ try:
     HAS_SKIMAGE = True
     majv, minv = skimage.__version__.split('.')[:2]
     minv = minv.split('rc')[0]
-    SKIMAGE_LT_0P11 = ([int(majv), int(minv)] < [0, 11])
+    SKIMAGE_LT_0P11 = ([int(majv), int(minv[:2])] < [0, 11])
 except ImportError:
     HAS_SKIMAGE = False
 
