@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+from distutils.version import LooseVersion
 import itertools
 import numpy as np
 from numpy.testing import assert_allclose
@@ -22,9 +23,10 @@ except ImportError:
 try:
     import skimage
     HAS_SKIMAGE = True
-    majv, minv = skimage.__version__.split('.')[:2]
-    minv = minv.split('rc')[0]
-    SKIMAGE_LT_0P11 = ([int(majv), int(minv[:2])] < [0, 11])
+    if LooseVersion(skimage.__version__) < LooseVersion('0.11'):
+        SKIMAGE_LT_0P11 = True
+    else:
+        SKIMAGE_LT_0P11 = False
 except ImportError:
     HAS_SKIMAGE = False
 
