@@ -1,7 +1,20 @@
+
 0.3 (unreleased)
 ----------------
 
 - No changes yet
+
+
+0.2.1 (unreleased)
+------------------
+
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.segmentation``
+
+  - Fixed issue where ``SegmentationImage`` slices were not being updated.
+    [#317]
 
 
 0.2 (2015-12-31)
