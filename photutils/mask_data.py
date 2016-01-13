@@ -29,7 +29,6 @@ def get_cutouts(data, circular_aperture, use_exact=0, subpixels=5):
     circular_aperture: `~photutils.CircularAperture` instance
         A `~photutils.CircularAperture` object.
 
-
     use_exact : 0 or 1
         If ``1`` calculates exact overlap, if ``0`` uses ``subpixel`` number
         of subpixels to calculate the overlap.  The default is 0.
