@@ -16,3 +16,4 @@ if not _ASTROPY_SETUP_:
     from .detection import *
     from .segmentation import *
     from .psf import *
+    from .mask_data import *
