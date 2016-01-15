@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+from distutils.version import LooseVersion
 import numpy as np
 from astropy.table import Table
 from astropy.utils import lazyproperty
@@ -13,7 +14,7 @@ from .utils.prepare_data import _prepare_data
 __all__ = ['SegmentationImage', 'SourceProperties', 'source_properties',
            'properties_table']
 
-# requires scikit-image >= 0.11
+# outline_segments requires scikit-image >= 0.11
 __doctest_skip__ = {'SegmentationImage.outline_segments'}
 
 __doctest_requires__ = {('SegmentationImage', 'SegmentationImage.*',
@@ -231,7 +232,10 @@ class SegmentationImage(object):
                [0, 0, 0, 0, 0, 0]])
         """
 
-        # NOTE:  requires scikit-image >= 0.11
+        import skimage
+        if LooseVersion(skimage.__version__) < LooseVersion('0.11'):
+            raise ImportError('The outline_segments() function requires '
+                              'scikit-image >= 0.11')
         from skimage.segmentation import find_boundaries
 
         outlines = self.data * find_boundaries(self.data, mode='inner')
