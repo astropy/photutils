@@ -16,6 +16,18 @@ Bug Fixes
   - Fixed issue where ``SegmentationImage`` slices were not being updated.
     [#317]
 
+- ``photutils.background``
+
+  - Added more robust version checking of Astropy. [#318]
+
+- ``photutils.detection``
+
+  - Added more robust version checking of Astropy. [#318]
+
+- ``photutils.segmentation``
+
+  - Added more robust version checking of scikit-image. [#318]
+
 
 0.2 (2015-12-31)
 ----------------
