@@ -3,6 +3,7 @@
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+from distutils.version import LooseVersion
 import numpy as np
 from astropy.table import Column, Table
 from astropy.stats import sigma_clipped_stats
@@ -12,7 +13,10 @@ from ..utils.convolution import _convolve_data
 from ..utils.wcs_helpers import pixel_to_icrs_coords
 
 import astropy
-ASTROPY_LT_1P1 = [int(x) for x in astropy.__version__.split('.')[:2]] < [1, 1]
+if LooseVersion(astropy.__version__) < LooseVersion('1.1'):
+    ASTROPY_LT_1P1 = True
+else:
+    ASTROPY_LT_1P1 = False
 
 
 __all__ = ['detect_threshold', 'detect_sources', 'find_peaks']

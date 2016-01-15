@@ -1,16 +1,18 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+from distutils.version import LooseVersion
 import numpy as np
 from numpy.lib.index_tricks import index_exp
 from astropy.stats import sigma_clip
 from astropy.utils import lazyproperty
 import warnings
-import astropy
 
-majv, minv = astropy.__version__.split('.')[:2]
-minv = minv.split('rc')[0]
-ASTROPY_LT_1P1 = ([int(majv), int(minv)] < [1, 1])
+import astropy
+if LooseVersion(astropy.__version__) < LooseVersion('1.1'):
+    ASTROPY_LT_1P1 = True
+else:
+    ASTROPY_LT_1P1 = False
 
 
 __all__ = ['Background']
