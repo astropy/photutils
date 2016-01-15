@@ -131,6 +131,7 @@ class TestSegmentationImage(object):
                              [2, 2, 0, 5, 5, 5],
                              [2, 2, 0, 0, 5, 5]])
         assert_allclose(segm.data, ref_data)
+        assert segm.nlabels == len(segm.slices) - segm.slices.count(None)
 
     @pytest.mark.parametrize('start_label', [1, 5])
     def test_relabel_sequential(self, start_label):
@@ -148,6 +149,7 @@ class TestSegmentationImage(object):
         # relabel_sequential should do nothing if already sequential
         segm.relabel_sequential(start_label=start_label)
         assert_allclose(segm.data, ref_data)
+        assert segm.nlabels == len(segm.slices) - segm.slices.count(None)
 
     @pytest.mark.parametrize('start_label', [0, -1])
     def test_relabel_sequential_start_invalid(self, start_label):

@@ -38,14 +38,21 @@ class SegmentationImage(object):
     """
 
     def __init__(self, data):
-        from scipy import ndimage
 
-        self._data = np.asanyarray(data, dtype=np.int)
-        if np.min(self._data) < 0:
+        if np.min(data) < 0:
             raise ValueError('The segmentation image cannot contain '
                              'negative integers.')
-        self.shape = self._data.shape
-        self.slices = ndimage.find_objects(self._data)
+        self._data = np.asanyarray(data, dtype=np.int)
+        self._update_slices()
+
+    def _update_slices(self):
+        """
+        Update the segmentation slices after changes to self._data made
+        by the class methods.
+        """
+
+        from scipy.ndimage import find_objects
+        self.slices = find_objects(self._data)
 
     @property
     def data(self):
@@ -118,6 +125,14 @@ class SegmentationImage(object):
         """
 
         return np.unique(data[data != 0])
+
+    @property
+    def shape(self):
+        """
+        The shape of the 2D segmentation image.
+        """
+
+        return self._data.shape
 
     @property
     def labels(self):
@@ -260,6 +275,7 @@ class SegmentationImage(object):
         labels = np.atleast_1d(labels)
         for label in labels:
             self._data[np.where(self.data == label)] = new_label
+        self._update_slices()
 
     def relabel_sequential(self, start_label=1):
         """
@@ -300,6 +316,7 @@ class SegmentationImage(object):
         forward_map = np.zeros(self.max + 1, dtype=np.int)
         forward_map[self.labels] = np.arange(self.nlabels) + start_label
         self._data = forward_map[self.data]
+        self._update_slices()
 
     def keep_labels(self, labels, relabel=False):
         """
