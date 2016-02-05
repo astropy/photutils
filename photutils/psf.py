@@ -182,7 +182,7 @@ class DiscretePRF(Fittable2DModel):
 
 
 class GaussianPSF(Fittable2DModel):
-    """
+    r"""
     Symmetrical Gaussian PSF model.
 
     The PSF is evaluated by using the `scipy.special.erf` function
@@ -207,19 +207,19 @@ class GaussianPSF(Fittable2DModel):
         .. math::
 
             f(x, y) =
-                \\frac{A}{0.02538010595464}
-                \\left[
-                \\textnormal{erf} \\left(\\frac{x - x_0 + 0.5}
-                {\\sqrt{2} \\sigma} \\right) -
-                \\textnormal{erf} \\left(\\frac{x - x_0 - 0.5}
-                {\\sqrt{2} \\sigma} \\right)
-                \\right]
-                \\left[
-                \\textnormal{erf} \\left(\\frac{y - y_0 + 0.5}
-                {\\sqrt{2} \\sigma} \\right) -
-                \\textnormal{erf} \\left(\\frac{y - y_0 - 0.5}
-                {\\sqrt{2} \\sigma} \\right)
-                \\right]
+                \frac{A}{0.02538010595464}
+                \left[
+                {\rm erf} \left(\frac{x - x_0 + 0.5}
+                {\sqrt{2} \sigma} \right) -
+                {\rm erf} \left(\frac{x - x_0 - 0.5}
+                {\sqrt{2} \sigma} \right)
+                \right]
+                \left[
+                {\rm erf} \left(\frac{y - y_0 + 0.5}
+                {\sqrt{2} \sigma} \right) -
+                {\rm erf} \left(\frac{y - y_0 - 0.5}
+                {\sqrt{2} \sigma} \right)
+                \right]
 
     Where ``erf`` denotes the error function and ``A`` is the amplitude.
     """
