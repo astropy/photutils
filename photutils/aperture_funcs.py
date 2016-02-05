@@ -178,6 +178,66 @@ def do_circular_photometry(data, positions, radius, error, effective_gain,
         return (flux, np.sqrt(fluxvar))
 
 
+def get_circular_fractions(data, positions, radius, method, subpixels,
+                           r_in=None):
+
+    extents = np.zeros((len(positions), 4), dtype=int)
+
+    extents[:, 0] = positions[:, 0] - radius + 0.5
+    extents[:, 1] = positions[:, 0] + radius + 1.5
+    extents[:, 2] = positions[:, 1] - radius + 0.5
+    extents[:, 3] = positions[:, 1] + radius + 1.5
+
+    ood_filter, extent, phot_extent = get_phot_extents(data, positions,
+                                                       extents)
+
+    fractions = np.zeros((data.shape[0], data.shape[1], len(positions)),
+                         dtype=np.float)
+
+    if np.sum(ood_filter):
+        warnings.warn("The aperture at position {0} does not have any "
+                      "overlap with the data"
+                      .format(positions[ood_filter]),
+                      AstropyUserWarning)
+        if np.sum(ood_filter) == len(positions):
+            return np.squeeze(fractions)
+
+    x_min, x_max, y_min, y_max = extent
+    x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
+
+    if method == 'center':
+        use_exact = 0
+        subpixels = 1
+    elif method == 'subpixel':
+        use_exact = 0
+    else:
+        use_exact = 1
+        subpixels = 1
+
+    from .geometry import circular_overlap_grid
+
+    for i in range(len(positions)):
+
+        if ood_filter[i] is not True:
+
+            fractions[y_min[i]: y_max[i], x_min[i]: x_max[i], i] = \
+                circular_overlap_grid(x_pmin[i], x_pmax[i],
+                                      y_pmin[i], y_pmax[i],
+                                      x_max[i] - x_min[i],
+                                      y_max[i] - y_min[i],
+                                      radius, use_exact, subpixels)
+
+            if r_in is not None:
+                fractions[y_min[i]: y_max[i], x_min[i]: x_max[i], i] -= \
+                    circular_overlap_grid(x_pmin[i], x_pmax[i],
+                                          y_pmin[i], y_pmax[i],
+                                          x_max[i] - x_min[i],
+                                          y_max[i] - y_min[i],
+                                          r_in, use_exact, subpixels)
+
+    return np.squeeze(fractions)
+
+
 def do_elliptical_photometry(data, positions, a, b, theta, error,
                              effective_gain, pixelwise_error, method,
                              subpixels, a_in=None):
@@ -259,6 +319,73 @@ def do_elliptical_photometry(data, positions, a, b, theta, error,
         return (flux, np.sqrt(fluxvar))
 
 
+def get_elliptical_fractions(data, positions, a, b, theta,
+                             method, subpixels, a_in=None):
+
+    extents = np.zeros((len(positions), 4), dtype=int)
+
+    # TODO: we can be more efficient in terms of bounding box
+    radius = max(a, b)
+
+    extents[:, 0] = positions[:, 0] - radius + 0.5
+    extents[:, 1] = positions[:, 0] + radius + 1.5
+    extents[:, 2] = positions[:, 1] - radius + 0.5
+    extents[:, 3] = positions[:, 1] + radius + 1.5
+
+    ood_filter, extent, phot_extent = get_phot_extents(data, positions,
+                                                       extents)
+
+    fractions = np.zeros((data.shape[0], data.shape[1], len(positions)),
+                         dtype=np.float)
+
+    # TODO: flag these objects
+    if np.sum(ood_filter):
+        warnings.warn("The aperture at position {0} does not have any "
+                      "overlap with the data"
+                      .format(positions[ood_filter]),
+                      AstropyUserWarning)
+        if np.sum(ood_filter) == len(positions):
+            return np.squeeze(fractions)
+
+    x_min, x_max, y_min, y_max = extent
+    x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
+
+    if method == 'center':
+        use_exact = 0
+        subpixels = 1
+    elif method == 'subpixel':
+        use_exact = 0
+    else:
+        use_exact = 1
+        subpixels = 1
+
+    from .geometry import elliptical_overlap_grid
+
+    for i in range(len(positions)):
+
+        if ood_filter[i] is not True:
+
+            fractions[y_min[i]: y_max[i], x_min[i]: x_max[i], i] = \
+                elliptical_overlap_grid(x_pmin[i], x_pmax[i],
+                                        y_pmin[i], y_pmax[i],
+                                        x_max[i] - x_min[i],
+                                        y_max[i] - y_min[i],
+                                        a, b, theta, use_exact,
+                                        subpixels)
+
+            if a_in is not None:
+                b_in = a_in * b / a
+                fractions[y_min[i]: y_max[i], x_min[i]: x_max[i], i] -= \
+                    elliptical_overlap_grid(x_pmin[i], x_pmax[i],
+                                            y_pmin[i], y_pmax[i],
+                                            x_max[i] - x_min[i],
+                                            y_max[i] - y_min[i],
+                                            a_in, b_in, theta,
+                                            use_exact, subpixels)
+
+    return np.squeeze(fractions)
+
+
 def do_rectangular_photometry(data, positions, w, h, theta, error,
                               effective_gain, pixelwise_error, method,
                               subpixels, reduce='sum', w_in=None):
@@ -332,3 +459,63 @@ def do_rectangular_photometry(data, positions, w, h, theta, error,
         return (flux, )
     else:
         return (flux, np.sqrt(fluxvar))
+
+
+def get_rectangular_fractions(data, positions, w, h, theta, method,
+                              subpixels, reduce='sum', w_in=None):
+
+    extents = np.zeros((len(positions), 4), dtype=int)
+
+    # TODO: this is an overestimate by up to sqrt(2) unless theta = 45 deg
+    radius = max(h, w) * (2 ** -0.5)
+
+    extents[:, 0] = positions[:, 0] - radius + 0.5
+    extents[:, 1] = positions[:, 0] + radius + 1.5
+    extents[:, 2] = positions[:, 1] - radius + 0.5
+    extents[:, 3] = positions[:, 1] + radius + 1.5
+
+    ood_filter, extent, phot_extent = get_phot_extents(data, positions,
+                                                       extents)
+
+    fractions = np.zeros((data.shape[0], data.shape[1], len(positions)),
+                         dtype=np.float)
+
+    if np.sum(ood_filter):
+        warnings.warn("The aperture at position {0} does not have any "
+                      "overlap with the data"
+                      .format(positions[ood_filter]),
+                      AstropyUserWarning)
+        if np.sum(ood_filter) == len(positions):
+            return np.squeeze(fractions)
+
+    x_min, x_max, y_min, y_max = extent
+    x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
+
+    if method in ('center', 'subpixel'):
+        if method == 'center':
+            method = 'subpixel'
+            subpixels = 1
+
+        from .geometry import rectangular_overlap_grid
+
+        for i in range(len(positions)):
+
+            if ood_filter[i] is not True:
+
+                fractions[y_min[i]: y_max[i], x_min[i]: x_max[i], i] = \
+                    rectangular_overlap_grid(x_pmin[i], x_pmax[i],
+                                             y_pmin[i], y_pmax[i],
+                                             x_max[i] - x_min[i],
+                                             y_max[i] - y_min[i],
+                                             w, h, theta, 0, subpixels)
+                if w_in is not None:
+                    h_in = w_in * h / w
+                    fractions[y_min[i]: y_max[i], x_min[i]: x_max[i], i] -= \
+                        rectangular_overlap_grid(x_pmin[i], x_pmax[i],
+                                                 y_pmin[i], y_pmax[i],
+                                                 x_max[i] - x_min[i],
+                                                 y_max[i] - y_min[i],
+                                                 w_in, h_in, theta,
+                                                 0, subpixels)
+
+    return np.squeeze(fractions)
