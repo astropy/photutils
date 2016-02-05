@@ -13,7 +13,7 @@ from .utils import mask_to_mirrored_num
 
 
 __all__ = ['DiscretePRF', 'create_prf', 'psf_photometry',
-           'GaussianPSF', 'subtract_psf']
+           'IntegratedGaussianPSF', 'subtract_psf']
 
 
 class DiscretePRF(Fittable2DModel):
@@ -181,11 +181,12 @@ class DiscretePRF(Fittable2DModel):
             return 0
 
 
-class GaussianPSF(Fittable2DModel):
-    r"""
+class IntegratedGaussianPSF(Fittable2DModel):
+    """
     Symmetrical Gaussian PSF model.
 
-    The PSF is evaluated by using the `scipy.special.erf` function
+    In contract to ` astropy.modeling.functional_models.Gaussian2D`,
+    the PSF here is evaluated by using the `scipy.special.erf` function
     on a fixed grid of the size of 1 pixel to assure flux conservation
     on subpixel scale.
 
@@ -193,8 +194,8 @@ class GaussianPSF(Fittable2DModel):
     ----------
     sigma : float
         Width of the Gaussian PSF.
-    amplitude : float (default 1)
-        The peak amplitude of the PSF.
+    flux : float (default 1)
+        Total integrated flux over the entire PSF
     x_0 : float (default 0)
         Position of the peak in x direction.
     y_0 : float (default 0)
@@ -207,104 +208,57 @@ class GaussianPSF(Fittable2DModel):
         .. math::
 
             f(x, y) =
-                \frac{A}{0.02538010595464}
-                \left[
-                {\rm erf} \left(\frac{x - x_0 + 0.5}
-                {\sqrt{2} \sigma} \right) -
-                {\rm erf} \left(\frac{x - x_0 - 0.5}
-                {\sqrt{2} \sigma} \right)
-                \right]
-                \left[
-                {\rm erf} \left(\frac{y - y_0 + 0.5}
-                {\sqrt{2} \sigma} \right) -
-                {\rm erf} \left(\frac{y - y_0 - 0.5}
-                {\sqrt{2} \sigma} \right)
-                \right]
-
-    Where ``erf`` denotes the error function and ``A`` is the amplitude.
+                \\frac{F}{4}
+                \\left[
+                \\textnormal{erf} \\left(\\frac{x - x_0 + 0.5}
+                {\\sqrt{2} \\sigma} \\right) -
+                \\textnormal{erf} \\left(\\frac{x - x_0 - 0.5}
+                {\\sqrt{2} \\sigma} \\right)
+                \\right]
+                \\left[
+                \\textnormal{erf} \\left(\\frac{y - y_0 + 0.5}
+                {\\sqrt{2} \\sigma} \\right) -
+                \\textnormal{erf} \\left(\\frac{y - y_0 - 0.5}
+                {\\sqrt{2} \\sigma} \\right)
+                \\right]
+    where ``erf`` denotes the error function and ``F`` the total
+    integrated flux.
     """
 
-    amplitude = Parameter('amplitude')
-    x_0 = Parameter('x_0')
-    y_0 = Parameter('y_0')
-    sigma = Parameter('sigma')
+    flux = Parameter(default=1)
+    x_0 = Parameter(default=0, fixed=True)
+    y_0 = Parameter(default=0, fixed=True)
+    sigma = Parameter(default=1, fixed=True)
 
     _erf = None
+    fit_deriv = None
 
-    def __init__(self, sigma, amplitude=1, x_0=0, y_0=0):
+    @property
+    def bounding_box(self):
+        halfwidth = 4 * self.sigma
+        return ((int(self.y_0 - halfwidth), int(self.y_0 + halfwidth)),
+                (int(self.x_0 - halfwidth), int(self.x_0 + halfwidth)))
+
+    def __init__(self, sigma=sigma.default,
+                 x_0=x_0.default, y_0=y_0.default, flux=flux.default,
+                 **kwargs):
         if self._erf is None:
             from scipy.special import erf
             self.__class__._erf = erf
 
-        constraints = {'fixed': {'x_0': True, 'y_0': True, 'sigma': True}}
-        super(GaussianPSF, self).__init__(n_models=1, sigma=sigma,
-                                          x_0=x_0, y_0=y_0,
-                                          amplitude=amplitude, **constraints)
+        super(IntegratedGaussianPSF, self).__init__(n_models=1, sigma=sigma,
+                                                    x_0=x_0, y_0=y_0,
+                                                    flux=flux, **kwargs)
 
-        # Default size is 8 * sigma
-        self.shape = (int(8 * sigma) + 1, int(8 * sigma) + 1)
-        self.fitter = LevMarLSQFitter()
-
-        # Fix position per default
-        self.x_0.fixed = True
-        self.y_0.fixed = True
-
-    def evaluate(self, x, y, amplitude, x_0, y_0, sigma):
+    def evaluate(self, x, y, flux, x_0, y_0, sigma):
         """
         Model function Gaussian PSF model.
         """
-        psf = (1.0 *
-               ((self._erf((x - x_0 + 0.5) / (np.sqrt(2) * sigma)) -
-                 self._erf((x - x_0 - 0.5) / (np.sqrt(2) * sigma))) *
-                (self._erf((y - y_0 + 0.5) / (np.sqrt(2) * sigma)) -
-                 self._erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma)))))
-        return amplitude * psf / psf.max()
-
-    def fit(self, data, indices):
-        """
-        Fit PSF/PRF to data.
-
-        Fits the PSF/PRF to the data and returns the best fitting flux.
-        If the data contains NaN values or if the source is not completely
-        contained in the image data the fitting is omitted and a flux of 0
-        is returned.
-
-        For reasons of performance, indices for the data have to be created
-        outside and passed to the function.
-
-        The fit is performed on a slice of the data with the same size as
-        the PRF.
-
-        Parameters
-        ----------
-        data : ndarray
-            Array containig image data.
-        indices : ndarray
-            Array with indices of the data. As
-            returned by np.indices(data.shape)
-
-        Returns
-        -------
-        flux : float
-            Best fit flux value. Returns flux = 0 if PSF is not completely
-            contained in the image or if NaN values are present.
-        """
-        # Set position
-        position = (self.y_0.value, self.x_0.value)
-
-        # Extract sub array with data of interest
-        sub_array_data = extract_array(data, self.shape, position)
-
-        # Fit only if PSF is completely contained in the image and no NaN
-        # values are present
-        if (sub_array_data.shape == self.shape and
-                not np.isnan(sub_array_data).any()):
-            y = extract_array(indices[0], self.shape, position)
-            x = extract_array(indices[1], self.shape, position)
-            m = self.fitter(self, x, y, sub_array_data)
-            return m.amplitude.value
-        else:
-            return 0
+        return (flux / 4 *
+                ((self._erf((x - x_0 + 0.5) / (np.sqrt(2) * sigma)) -
+                  self._erf((x - x_0 - 0.5) / (np.sqrt(2) * sigma))) *
+                 (self._erf((y - y_0 + 0.5) / (np.sqrt(2) * sigma)) -
+                  self._erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma)))))
 
 
 def psf_photometry(data, positions, psf, mask=None, mode='sequential',
@@ -371,6 +325,25 @@ def psf_photometry(data, positions, psf, mask=None, mode='sequential',
                 psf.x_0, psf.y_0 = position
                 flux = psf.fit(data, indices)
                 result = np.append(result, flux)
+
+        # Set position
+        #position = (self.y_0.value, self.x_0.value)
+
+        # Extract sub array with data of interest
+        #sub_array_data = extract_array(data, self.shape, position)
+
+        # Fit only if PSF is completely contained in the image and no NaN
+        # values are present
+        #if (sub_array_data.shape == self.shape and
+        #        not np.isnan(sub_array_data).any()):
+        #    y = extract_array(indices[0], self.shape, position)
+        #    x = extract_array(indices[1], self.shape, position)
+        #    m = self.fitter(self, x, y, sub_array_data)
+        #    return m.amplitude.value
+        #else:
+        #    return 0
+
+
     else:
         raise Exception('Invalid photometry mode.')
     return result
