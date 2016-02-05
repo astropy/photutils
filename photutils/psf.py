@@ -262,7 +262,8 @@ class IntegratedGaussianPSF(Fittable2DModel):
                   self._erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma)))))
 
 
-def psf_photometry(data, positions, psf, mask=None, mode='sequential',
+def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
+                   mask=None, mode='sequential',
                    tune_coordinates=False):
     """
     Perform PSF/PRF photometry on the data.
@@ -281,8 +282,11 @@ def psf_photometry(data, positions, psf, mask=None, mode='sequential',
     positions : List or array
         List of positions in pixel coordinates
         where to fit the PSF/PRF.
-    psf : `photutils.psf.DiscretePRF` or `photutils.psf.GaussianPSF`
-        PSF/PRF model to fit to the data.
+    psf : `astropy.modeling.Fittable2DModel` instance
+        PSF or PRF model to fit to the data. Examples for such models are
+        `photutils.psf.DiscretePRF` or `photutils.psf.GaussianPSF`.
+    fitter : an astropy fitter
+        This could be a `astropy.modeling.fitting.Fitter` instance.
     mask : ndarray, optional
         Mask to be applied to the data.
     mode : {'sequential', 'simultaneous'}
@@ -324,7 +328,9 @@ def psf_photometry(data, positions, psf, mask=None, mode='sequential',
     elif mode == 'sequential':
         for position in positions:
                 psf.x_0, psf.y_0 = position
-                flux = psf.fit(data, indices)
+                setattr(psf, xname, position[0])
+                setattr(psf, yname, position[1])
+                flux = fitter(psf, indices)
                 result = np.append(result, flux)
 
         # Set position
