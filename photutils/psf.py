@@ -182,7 +182,7 @@ class DiscretePRF(Fittable2DModel):
 
 
 class IntegratedGaussianPSF(Fittable2DModel):
-    """
+    r"""
     Symmetrical Gaussian PSF model.
 
     In contract to ` astropy.modeling.functional_models.Gaussian2D`,
@@ -208,19 +208,19 @@ class IntegratedGaussianPSF(Fittable2DModel):
         .. math::
 
             f(x, y) =
-                \\frac{F}{4}
-                \\left[
-                \\textnormal{erf} \\left(\\frac{x - x_0 + 0.5}
-                {\\sqrt{2} \\sigma} \\right) -
-                \\textnormal{erf} \\left(\\frac{x - x_0 - 0.5}
-                {\\sqrt{2} \\sigma} \\right)
-                \\right]
-                \\left[
-                \\textnormal{erf} \\left(\\frac{y - y_0 + 0.5}
-                {\\sqrt{2} \\sigma} \\right) -
-                \\textnormal{erf} \\left(\\frac{y - y_0 - 0.5}
-                {\\sqrt{2} \\sigma} \\right)
-                \\right]
+                \frac{F}{4}
+                \left[
+                {\rm erf} \left(\frac{x - x_0 + 0.5}
+                {\sqrt{2} \sigma} \right) -
+                {\rm erf} \left(\frac{x - x_0 - 0.5}
+                {\sqrt{2} \sigma} \right)
+                \right]
+                \left[
+                {\rm erf} \left(\frac{y - y_0 + 0.5}
+                {\sqrt{2} \sigma} \right) -
+                {\rm erf} \left(\frac{y - y_0 - 0.5}
+                {\sqrt{2} \sigma} \right)
+                \right]
 
     where ``erf`` denotes the error function and ``F`` the total
     integrated flux.
