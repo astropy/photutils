@@ -52,6 +52,7 @@ class DiscretePRF(Fittable2DModel):
     linear = True
 
     def __init__(self, prf_array, normalize=True, subsampling=1):
+        raise NotImplementedError("DiscretePRF is not yet compatible with psf module changes." )
 
         # Array shape and dimension check
         if subsampling == 1:
@@ -264,8 +265,7 @@ class IntegratedGaussianPSF(Fittable2DModel):
 
 
 def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
-                   mask=None, mode='sequential',
-                   tune_coordinates=False):
+                   mask=None, mode='sequential'):
     """
     Perform PSF/PRF photometry on the data.
 
@@ -296,9 +296,6 @@ def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
                 Fit PSF/PRF simultaneous to all given positions.
             * 'sequential' (default)
                 Fit PSF/PRF one after another to the given positions.
-    tune_coordinates : boolean
-        If ``True`` the peak position of the PSF will be fit, if ``False``,
-        it is frozen to the input value.
 
     Examples
     --------
@@ -311,14 +308,6 @@ def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
     if data.ndim != 2:
         raise ValueError('{0}-d array not supported. '
                          'Only 2-d arrays supported.'.format(data.ndim))
-
-    # Fit coordinates if requested
-    if tune_coordinates:
-        psf.fixed['x_0'] = False
-        psf.fixed['y_0'] = False
-    else:
-        psf.fixed['x_0'] = True
-        psf.fixed['y_0'] = True
 
     # Actual photometry
     result = np.array([])
