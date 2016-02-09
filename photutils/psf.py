@@ -183,12 +183,13 @@ class DiscretePRF(Fittable2DModel):
 
 class IntegratedGaussianPSF(Fittable2DModel):
     r"""
-    Symmetrical Gaussian PSF model.
+    Circular Gaussian model integrated over pixels.
 
-    In contract to ` astropy.modeling.functional_models.Gaussian2D`,
-    the PSF here is evaluated by using the `scipy.special.erf` function
-    on a fixed grid of the size of 1 pixel to assure flux conservation
-    on subpixel scale.
+    This model is a Gaussian *integrated* over an area of ``1`` (in units
+    of the model input coordinates).  This is in contrast to the apparently
+    similar `astropy.modeling.functional_models.Gaussian2D`, which is the value
+    of a 2D Gaussian *at* the input coordinates, with no integration.  So this
+    model is equivalent to assuming the sub-pixel PSF is Gaussian.
 
     Parameters
     ----------
