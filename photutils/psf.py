@@ -3,13 +3,16 @@
 
 from __future__ import division
 import warnings
+
 import numpy as np
-from astropy.modeling.parameters import Parameter
-from astropy.utils.exceptions import AstropyUserWarning
-from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.modeling import Fittable2DModel
-from astropy.nddata.utils import extract_array, add_array, subpixel_indices
+
 from .utils import mask_to_mirrored_num
+
+from astropy.table import Table, Column
+from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling import Parameter, Fittable2DModel
+from astropy.utils.exceptions import AstropyUserWarning
+from astropy.nddata.utils import extract_array, add_array, subpixel_indices
 
 
 __all__ = ['DiscretePRF', 'create_prf', 'psf_photometry',
@@ -263,6 +266,34 @@ class IntegratedGaussianPSF(Fittable2DModel):
                   self._erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma)))))
 
 
+def _extract_psf_fitting_names(psf):
+    """
+    Determine the names of the x coordinate, y coordinate, and flux from a
+    model.  Returns (xname, yname, fluxname)
+    """
+    if hasattr(psf, 'psf_xname'):
+        xname = psf.psf_xname
+    elif 'x_0' in psf.param_names:
+        xname = 'x_0'
+    else:
+        raise ValueError('Could not determine x coordinate name for psf_photometry.')
+
+    if hasattr(psf, 'psf_yname'):
+        yname = psf.psf_yname
+    elif 'y_0' in psf.param_names:
+        yname = 'y_0'
+    else:
+        raise ValueError('Could not determine y coordinate name for psf_photometry.')
+
+    if hasattr(psf, 'psf_fluxname'):
+        fluxname = psf.psf_fluxname
+    elif 'flux' in psf.param_names:
+        fluxname = 'flux'
+    else:
+        raise ValueError('Could not determine flux name for psf_photometry.')
+
+    return xname, yname, fluxname
+
 def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
                    mask=None, mode='sequential'):
     """
@@ -277,11 +308,11 @@ def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
 
     Parameters
     ----------
-    data : ndarray
-        Image data array
-    positions : List or array
-        List of positions in pixel coordinates
-        where to fit the PSF/PRF.
+    data : `~astropy.nddata.NDData` or array (must be 2D)
+        Image data
+    positions : Array-like of shape (N, 2) or `~astropy.table.Table`
+        Positions at which to *start* the fit, in pixel coordinates.  If a
+        table, the columns 'x_0' and 'y_0' must be present.
     psf : `astropy.modeling.Fittable2DModel` instance
         PSF or PRF model to fit to the data. Examples for such models are
         `photutils.psf.DiscretePRF` or `photutils.psf.GaussianPSF`.
@@ -289,38 +320,78 @@ def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
         This could be a `astropy.modeling.fitting.Fitter` instance.
     mask : ndarray, optional
         Mask to be applied to the data.
-    mode : {'sequential', 'simultaneous'}
+    mode : {'sequential'}
         One of the following modes to do PSF/PRF photometry:
-            * 'simultaneous'
-                Fit PSF/PRF simultaneous to all given positions.
             * 'sequential' (default)
-                Fit PSF/PRF one after another to the given positions.
+                Fit PSF/PRF separately for the given positions.
+            * (No other modes are yet implemented)
+
+    Returns
+    -------
+    result_tab : `~astropy.table.Table`
+        The results of the fitting procedure.  The fitted flux is in the column
+        'flux_fit', and the centroids are in 'x_fit' and 'y_fit'. If `positions`
+        was a table, any columns in that table will be carried over to this
+        table.
 
     Examples
     --------
     See `Spitzer PSF Photometry <http://nbviewer.ipython.org/gist/adonath/
     6550989/PSFPhotometrySpitzer.ipynb>`_ for a short tutorial.
     """
+    # accept nddata.  The isinstance is necessary because arrays have a `data`
+    # attribute but it's a buffer, not an array like in an NDData
+    if hasattr(data, 'data') and not isinstance(data.data, buffer):
+        fluxunit = data.unit
+        data = data.data
+    else:
+        fluxunit = getattr(data, 'unit', None)
+
+    # determine the names of the model's relevant attributes
+    xname, yname, fluxname = _extract_psf_fitting_names(psf)
+
     # Check input array type and dimension.
     if np.iscomplexobj(data):
         raise TypeError('Complex type not supported')
     if data.ndim != 2:
-        raise ValueError('{0}-d array not supported. '
-                         'Only 2-d arrays supported.'.format(data.ndim))
+        raise ValueError('{0}-d array not supported. Only 2-d arrays can be '
+                         'passed to psf_photometry.'.format(data.ndim))
 
-    # Actual photometry
-    result = np.array([])
+    # Prep the index arrays and the table for output
     indices = np.indices(data.shape)
+    if hasattr(positions, 'colnames'):
+        # quacks like a table, so assume it's a table
+        if 'x_0' not in positions.colnames:
+            raise ValueError('Input table does not have x0 column')
+        if 'y_0' not in positions.colnames:
+            raise ValueError('Input table does not have y0 column')
+        result_tab = positions.copy()
+    else:
+        positions = np.array(positions, copy=False)
+        result_tab = Table()
+        result_tab['x_0'] = positions[:, 0]
+        result_tab['y_0'] = positions[:, 1]
 
-    if mode == 'simultaneous':
-        raise NotImplementedError('Simultaneous mode not implemented')
-    elif mode == 'sequential':
-        for position in positions:
-                psf.x_0, psf.y_0 = position
-                setattr(psf, xname, position[0])
-                setattr(psf, yname, position[1])
-                flux = fitter(psf, indices)
-                result = np.append(result, flux)
+    result_tab['x_fit'] = result_tab['x_0']
+    result_tab['y_fit'] = result_tab['y_0']
+    result_tab.add_column(Column(name='flux_fit', unit=fluxunit,
+                                 data=np.empty(len(result_tab), dtype=data.dtype)))
+
+    # prep for fitting
+    psf = psf.copy()  # don't want to muck up whatever PSF the user gives us
+    setflux = 'flux_0' in result_tab.colnames
+
+    if mode == 'sequential':
+        for row in result_tab:
+            setattr(psf, xname, row['x_0'])
+            setattr(psf, yname, row['y_0'])
+            if setflux:
+                setattr(psf, fluxname, row['flux_0'])
+
+            fitted = fitter(psf, indices, data)
+            row['x_fit'] = getattr(fitted, xname).value
+            row['y_fit'] = getattr(fitted, yname).value
+            row['flux_fit'] = getattr(fitted, fluxname).value
 
         # Set position
         #position = (self.y_0.value, self.x_0.value)
@@ -341,8 +412,9 @@ def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
 
 
     else:
-        raise Exception('Invalid photometry mode.')
-    return result
+        raise ValueError('Invalid photometry mode.')
+
+    return result_tab
 
 
 def create_prf(data, positions, size, fluxes=None, mask=None, mode='mean',
