@@ -118,7 +118,18 @@ def calc_total_error(data, bkg_error, effective_gain):
 
 
 def _check_units(inputs):
-    """Check for consistent units on data, error, and background."""
+    """
+    Check for consistent units on data, error, and background.
+
+    Parameters
+    ----------
+    inputs : list
+        List of `~numpy.ndarray` or `None.
+    """
+
+    # exclude inputs that are `None`
+    inputs = [i for i in inputs if i is not None]
+
     has_unit = [hasattr(x, 'unit') for x in inputs]
     if any(has_unit) and not all(has_unit):
         raise ValueError('If any of data, error, or background has units, '
@@ -155,7 +166,7 @@ def _prepare_data(data, error=None, effective_gain=None, background=None):
     """
 
     inputs = [data, error, background]
-    _check_units(inputs)
+    _check_units([i for i in inputs if i is not None])
 
     # generate a 2D background array, if necessary
     if background is not None:
