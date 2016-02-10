@@ -295,8 +295,9 @@ def _extract_psf_fitting_names(psf):
     return xname, yname, fluxname
 
 
-def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
-                   mask=None, mode='sequential'):
+def psf_photometry(data, positions, psf, fitshape=None,
+                   fitter=LevMarLSQFitter(), mask=None, mode='sequential',
+                   store_fit_info=False):
     """
     Perform PSF/PRF photometry on the data.
 
@@ -319,6 +320,10 @@ def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
         `photutils.psf.DiscretePRF` or `photutils.psf.GaussianPSF`.
     fitter : an astropy fitter
         This could be a `astropy.modeling.fitting.Fitter` instance.
+    fitshape : length-2 or None
+        The shape of the region around the center of the target location to do
+        the fitting in.  If None, fit the whole image without windowing. (See
+        notes)
     mask : ndarray, optional
         Mask to be applied to the data.
     mode : {'sequential'}
@@ -326,6 +331,11 @@ def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
             * 'sequential' (default)
                 Fit PSF/PRF separately for the given positions.
             * (No other modes are yet implemented)
+    store_fit_info : bool or list
+        If False, the fitting information is discarded.  If True, the output
+        table will have an additional column 'fit_message' with the message that
+        came from the fit.  If a list, it will be populated with the
+        ``fit_info`` dictionary of the fitter for each fit.
 
     Returns
     -------
@@ -334,6 +344,11 @@ def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
         'flux_fit', and the centroids are in 'x_fit' and 'y_fit'. If `positions`
         was a table, any columns in that table will be carried over to this
         table.
+
+    Notes
+    -----
+    Most fitters will not do well if ``fitshape`` is None because they will try
+    to fit the whole image as just one star.
 
     Examples
     --------
@@ -384,6 +399,13 @@ def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
     psf = psf.copy()  # don't want to muck up whatever PSF the user gives us
     setflux = 'flux_0' in result_tab.colnames
 
+    fit_messages = None
+    fit_infos = None
+    if isinstance(store_fit_info, list):
+        fit_infos = store_fit_info
+    elif store_fit_info:
+        fit_messages = []
+
     if mode == 'sequential':
         for row in result_tab:
             setattr(psf, xname, row['x_0'])
@@ -391,33 +413,30 @@ def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
             if setflux:
                 setattr(psf, fluxname, row['flux_0'])
 
-            fitted = fitter(psf, indices[0], indices[1], data)
+            if fitshape is None:
+                fitted = fitter(psf, indices[1], indices[0], data)
+            else:
+                position = (row['y_0'], row['x_0'])
+                y = extract_array(indices[0], fitshape, position)
+                x = extract_array(indices[1], fitshape, position)
+                sub_array_data = extract_array(data, fitshape, position)
+                fitted = fitter(psf, x, y, sub_array_data)
+
             row['x_fit'] = getattr(fitted, xname).value
             row['y_fit'] = getattr(fitted, yname).value
             row['flux_fit'] = getattr(fitted, fluxname).value
 
-        # Set position
-        #position = (self.y_0.value, self.x_0.value)
-
-        # Extract sub array with data of interest
-        #sub_array_data = extract_array(data, self.shape, position)
-
-        # Fit only if PSF is completely contained in the image and no NaN
-        # values are present
-        #if (sub_array_data.shape == self.shape and
-        #        not np.isnan(sub_array_data).any()):
-        #    y = extract_array(indices[0], self.shape, position)
-        #    x = extract_array(indices[1], self.shape, position)
-        #    m = self.fitter(self, x, y, sub_array_data)
-        #    return m.amplitude.value
-        #else:
-        #    return 0
-
-
+            if fit_infos is not None:
+                fit_infos.append(fitter.fit_info)
+            if fit_messages is not None:
+                fit_messages.append(fitter.fit_info['message'])
     else:
         raise ValueError('Invalid photometry mode.')
 
-    return result_tab, fitted
+    if fit_messages is not None:
+        result_tab['fit_messages'] = fit_messages
+
+    return result_tab
 
 
 def create_prf(data, positions, size, fluxes=None, mask=None, mode='mean',
@@ -574,7 +593,7 @@ def subtract_psf(data, psf, posflux, subshape=None):
         Positions and fluxes for the objects to subtract.  If an array, it is
         interpreted as ``(x, y, flux)``  If a table, the columns 'x_fit',
         'y_fit', and 'flux_fit' must be present.
-    subshape : 2-tuple or None
+    subshape : length-2 or None
         The shape of the region around the center of the location to subtract
         the PSF from.  If None, subtract from the whole image.
 
