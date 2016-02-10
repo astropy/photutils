@@ -589,11 +589,11 @@ def subtract_psf(data, psf, posflux, subshape=None):
 
     #  translate array input into table
     if hasattr(posflux, 'colnames'):
-        if 'x_fit' not in posflux:
+        if 'x_fit' not in posflux.colnames:
             raise ValueError('Input table does not have x_fit')
-        if 'y_fit' not in posflux:
+        if 'y_fit' not in posflux.colnames:
             raise ValueError('Input table does not have y_fit')
-        if 'flux_fit' not in posflux:
+        if 'flux_fit' not in posflux.colnames:
             raise ValueError('Input table does not have flux_fit')
     else:
         posflux = Table(names=['x_fit', 'y_fit', 'flux_fit'], data=posflux)
