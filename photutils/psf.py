@@ -294,6 +294,7 @@ def _extract_psf_fitting_names(psf):
 
     return xname, yname, fluxname
 
+
 def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
                    mask=None, mode='sequential'):
     """
@@ -309,8 +310,8 @@ def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
     Parameters
     ----------
     data : `~astropy.nddata.NDData` or array (must be 2D)
-        Image data
-    positions : Array-like of shape (N, 2) or `~astropy.table.Table`
+        Image data.
+    positions : Array-like of shape (2, N) or `~astropy.table.Table`
         Positions at which to *start* the fit, in pixel coordinates.  If a
         table, the columns 'x_0' and 'y_0' must be present.
     psf : `astropy.modeling.Fittable2DModel` instance
@@ -340,15 +341,14 @@ def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
     6550989/PSFPhotometrySpitzer.ipynb>`_ for a short tutorial.
     """
     # accept nddata.  The isinstance is necessary because arrays have a `data`
-    # attribute but it's a buffer, not an array like in an NDData
-    if hasattr(data, 'data') and not isinstance(data.data, buffer):
+    # attribute but it's not an array like in an NDData
+    # we also can't check its type directly because on py2 it's a buffer but
+    # in py3 it's a memoryview
+    if hasattr(data, 'data') and hasattr(data.data, 'dtype'):
         fluxunit = data.unit
         data = data.data
     else:
         fluxunit = getattr(data, 'unit', None)
-
-    # determine the names of the model's relevant attributes
-    xname, yname, fluxname = _extract_psf_fitting_names(psf)
 
     # Check input array type and dimension.
     if np.iscomplexobj(data):
@@ -356,6 +356,9 @@ def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
     if data.ndim != 2:
         raise ValueError('{0}-d array not supported. Only 2-d arrays can be '
                          'passed to psf_photometry.'.format(data.ndim))
+
+    # determine the names of the model's relevant attributes
+    xname, yname, fluxname = _extract_psf_fitting_names(psf)
 
     # Prep the index arrays and the table for output
     indices = np.indices(data.shape)
@@ -369,8 +372,8 @@ def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
     else:
         positions = np.array(positions, copy=False)
         result_tab = Table()
-        result_tab['x_0'] = positions[:, 0]
-        result_tab['y_0'] = positions[:, 1]
+        result_tab['x_0'] = positions[0]
+        result_tab['y_0'] = positions[1]
 
     result_tab['x_fit'] = result_tab['x_0']
     result_tab['y_fit'] = result_tab['y_0']
@@ -388,7 +391,7 @@ def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
             if setflux:
                 setattr(psf, fluxname, row['flux_0'])
 
-            fitted = fitter(psf, indices, data)
+            fitted = fitter(psf, indices[0], indices[1], data)
             row['x_fit'] = getattr(fitted, xname).value
             row['y_fit'] = getattr(fitted, yname).value
             row['flux_fit'] = getattr(fitted, fluxname).value
@@ -414,7 +417,7 @@ def psf_photometry(data, positions, psf, fitter=LevMarLSQFitter(),
     else:
         raise ValueError('Invalid photometry mode.')
 
-    return result_tab
+    return result_tab, fitted
 
 
 def create_prf(data, positions, size, fluxes=None, mask=None, mode='mean',
@@ -557,35 +560,70 @@ def create_prf(data, positions, size, fluxes=None, mask=None, mode='mean',
     return DiscretePRF(prf_model, subsampling=subsampling)
 
 
-def subtract_psf(data, psf, positions, fluxes, mask=None):
+def subtract_psf(data, psf, posflux, subshape=None):
     """
-    Removes PSF/PRF at the given positions.
-
-    To calculate residual images the PSF/PRF model is subtracted from the data
-    at the given positions.
+    Subtracts PSF/PRFs from an image.
 
     Parameters
     ----------
-    data : ndarray
+    data : `~astropy.nddata.NDData` or array (must be 2D)
         Image data.
-    psf : `photutils.psf.DiscretePRF` or `photutils.psf.GaussianPSF`
+    psf : `astropy.modeling.Fittable2DModel` instance
         PSF/PRF model to be substracted from the data.
-    positions : ndarray
-        List of center positions where PSF/PRF is removed.
-    fluxes : ndarray
-        List of fluxes of the sources, for correct
-        normalization.
+    posflux : Array-like of shape (3, N) or `~astropy.table.Table`
+        Positions and fluxes for the objects to subtract.  If an array, it is
+        interpreted as ``(x, y, flux)``  If a table, the columns 'x_fit',
+        'y_fit', and 'flux_fit' must be present.
+    subshape : 2-tuple or None
+        The shape of the region around the center of the location to subtract
+        the PSF from.  If None, subtract from the whole image.
+
+    Returns
+    -------
+    subdata : same as `data`
+        The image with the PSF subtracted
     """
-    # Set up indices
+    if data.ndim != 2:
+        raise ValueError('{0}-d array not supported. Only 2-d arrays can be '
+                         'passed to subtract_psf.'.format(data.ndim))
+
+    #  translate array input into table
+    if hasattr(posflux, 'colnames'):
+        if 'x_fit' not in posflux:
+            raise ValueError('Input table does not have x_fit')
+        if 'y_fit' not in posflux:
+            raise ValueError('Input table does not have y_fit')
+        if 'flux_fit' not in posflux:
+            raise ValueError('Input table does not have flux_fit')
+    else:
+        posflux = Table(names=['x_fit', 'y_fit', 'flux_fit'], data=posflux)
+
+    # Set up contstants across the loop
+    psf = psf.copy()
+    xname, yname, fluxname = _extract_psf_fitting_names(psf)
     indices = np.indices(data.shape)
-    data_ = data.copy()
-    # Loop over position
-    for i, position in enumerate(positions):
-        x_0, y_0 = position
-        y = extract_array(indices[0], psf.shape, (y_0, x_0))
-        x = extract_array(indices[1], psf.shape, (y_0, x_0))
-        psf.amplitude.value = fluxes[i]
-        psf.x_0.value, psf.y_0.value = x_0, y_0
-        psf_image = psf(x, y)
-        data_ = add_array(data_, -psf_image, (y_0, x_0))
-    return data_
+    subbeddata = data.copy()
+
+    if subshape is None:
+        indicies_reversed = indices[::-1]
+
+        for row in posflux:
+            getattr(psf, xname).value = row['x_fit']
+            getattr(psf, yname).value = row['y_fit']
+            getattr(psf, fluxname).value = row['flux_fit']
+
+            subbeddata -= psf(*indicies_reversed)
+    else:
+        for row in posflux:
+            x_0, y_0 = row['x_fit'], row['y_fit']
+
+            y = extract_array(indices[0], subshape, (y_0, x_0))
+            x = extract_array(indices[1], subshape, (y_0, x_0))
+
+            getattr(psf, xname).value = x_0
+            getattr(psf, yname).value = y_0
+            getattr(psf, fluxname).value = row['flux_fit']
+
+            subbeddata = add_array(subbeddata, -psf(x, y), (y_0, x_0))
+
+    return subbeddata
