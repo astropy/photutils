@@ -137,6 +137,146 @@ class DiscretePRF(Fittable2DModel):
         result[out_of_bounds] = 0
         return result
 
+    @classmethod
+    def create_from_image(cls, imdata, positions, size, fluxes=None, mask=None,
+                          mode='mean', subsampling=1, fix_nan=False):
+        """
+        Estimate point response function (PRF) from image data.
+
+        Given a list of positions and size this function estimates an image of
+        the PRF by extracting and combining the individual PRFs from the given
+        positions. Different modes of combining are available.
+
+        NaN values are either ignored by passing a mask or can be replaced by
+        the mirrored value with respect to the center of the PRF.
+
+        Furthermore it is possible to specify fluxes to have a correct
+        normalization of the individual PRFs. Otherwise the flux is estimated from
+        a quadratic aperture of the same size as the PRF image.
+
+        Parameters
+        ----------
+        imdata : array
+            Data array with the image to extract the PRF from
+        positions : List or array
+            List of pixel coordinate source positions to use in creating the PRF.
+        size : odd int
+            Size of the quadratic PRF image in pixels.
+        mask : bool array, optional
+            Boolean array to mask out bad values.
+        fluxes : array, optional
+            Object fluxes to normalize extracted PRFs.
+        mode : {'mean', 'median'}
+            One of the following modes to combine the extracted PRFs:
+                * 'mean'
+                    Take the pixelwise mean of the extracted PRFs.
+                * 'median'
+                    Take the pixelwise median of the extracted PRFs.
+        subsampling : int
+            Factor of subsampling of the PRF (default = 1).
+        fix_nan : bool
+            Fix NaN values in the data by replacing it with the
+            mirrored value. Assuming that the PRF is symmetrical.
+
+        Returns
+        -------
+        prf : `photutils.psf.DiscretePRF`
+            Discrete PRF model estimated from data.
+
+        Notes
+        -----
+        In Astronomy different definitions of Point Spread Function (PSF) and
+        Point Response Function (PRF) are used. Here we assume that the PRF is
+        an image of a point source after discretization e.g. with a CCD. This
+        definition is equivalent to the `Spitzer definiton of the PRF
+        <http://irsa.ipac.caltech.edu/data/SPITZER/docs/dataanalysistools/tools/mopex/mopexusersguide/89/>`_.
+
+        References
+        ----------
+        `Spitzer PSF vs. PRF
+        <http://irsa.ipac.caltech.edu/data/SPITZER/docs/files/spitzer/PRF_vs_PSF.pdf>`_
+
+        `Kepler PSF calibration
+        <http://keplerscience.arc.nasa.gov/CalibrationPSF.shtml>`_
+
+        `The Kepler Pixel Response Function
+        <http://adsabs.harvard.edu/abs/2010ApJ...713L..97B>`_
+        """
+
+        # Check input array type and dimension.
+        if np.iscomplexobj(imdata):
+            raise TypeError('Complex type not supported')
+        if imdata.ndim != 2:
+            raise ValueError('{0}-d array not supported. '
+                             'Only 2-d arrays supported.'.format(imdata.ndim))
+        if size % 2 == 0:
+            raise TypeError("Size must be odd.")
+
+        if fluxes is not None and len(fluxes) != len(positions):
+            raise TypeError("Position and flux arrays must be of equal length.")
+
+        if mask is None:
+            mask = np.isnan(imdata)
+
+        if isinstance(positions, (list, tuple)):
+            positions = np.array(positions)
+
+        if isinstance(fluxes, (list, tuple)):
+            fluxes = np.array(fluxes)
+
+        if mode == 'mean':
+            combine = np.ma.mean
+        elif mode == 'median':
+            combine = np.ma.median
+        else:
+            raise Exception('Invalid mode to combine prfs.')
+
+        data_internal = np.ma.array(data=imdata, mask=mask)
+        prf_model = np.ndarray(shape=(subsampling, subsampling, size, size))
+        positions_subpixel_indices = np.array([subpixel_indices(_, subsampling)
+                                               for _ in positions], dtype=np.int)
+
+        for i in range(subsampling):
+            for j in range(subsampling):
+                extracted_sub_prfs = []
+                sub_prf_indices = np.all(positions_subpixel_indices == [j, i],
+                                         axis=1)
+                positions_sub_prfs = positions[sub_prf_indices]
+                for k, position in enumerate(positions_sub_prfs):
+                    x, y = position
+                    extracted_prf = extract_array(data_internal, (size, size),
+                                                  (y, x))
+                    # Check shape to exclude incomplete PRFs at the boundaries
+                    # of the image
+                    if (extracted_prf.shape == (size, size) and
+                            np.ma.sum(extracted_prf) != 0):
+                        # Replace NaN values by mirrored value, with respect
+                        # to the prf's center
+                        if fix_nan:
+                            prf_nan = extracted_prf.mask
+                            if prf_nan.any():
+                                if (prf_nan.sum() > 3 or
+                                        prf_nan[size // 2, size // 2]):
+                                    continue
+                                else:
+                                    extracted_prf = mask_to_mirrored_num(
+                                        extracted_prf, prf_nan,
+                                        (size // 2, size // 2))
+                        # Normalize and add extracted PRF to data cube
+                        if fluxes is None:
+                            extracted_prf_norm = (np.ma.copy(extracted_prf) /
+                                                  np.ma.sum(extracted_prf))
+                        else:
+                            fluxes_sub_prfs = fluxes[sub_prf_indices]
+                            extracted_prf_norm = (np.ma.copy(extracted_prf) /
+                                                  fluxes_sub_prfs[k])
+                        extracted_sub_prfs.append(extracted_prf_norm)
+                    else:
+                        continue
+                prf_model[i, j] = np.ma.getdata(
+                    combine(np.ma.dstack(extracted_sub_prfs), axis=2))
+        return cls(prf_model, subsampling=subsampling)
+
 
 class IntegratedGaussianPSF(Fittable2DModel):
     """
@@ -392,144 +532,6 @@ def psf_photometry(data, positions, psf, fitshape=None,
     return result_tab
 
 
-def create_prf(data, positions, size, fluxes=None, mask=None, mode='mean',
-               subsampling=1, fix_nan=False):
-    """
-    Estimate point response function (PRF) from image data.
-
-    Given a list of positions and size this function estimates an image of
-    the PRF by extracting and combining the individual PRFs from the given
-    positions. Different modes of combining are available.
-
-    NaN values are either ignored by passing a mask or can be replaced by
-    the mirrored value with respect to the center of the PRF.
-
-    Furthermore it is possible to specify fluxes to have a correct
-    normalization of the individual PRFs. Otherwise the flux is estimated from
-    a quadratic aperture of the same size as the PRF image.
-
-    Parameters
-    ----------
-    data : array
-        Data array
-    positions : List or array
-        List of pixel coordinate source positions to use in creating the PRF.
-    size : odd int
-        Size of the quadratic PRF image in pixels.
-    mask : bool array, optional
-        Boolean array to mask out bad values.
-    fluxes : array, optional
-        Object fluxes to normalize extracted PRFs.
-    mode : {'mean', 'median'}
-        One of the following modes to combine the extracted PRFs:
-            * 'mean'
-                Take the pixelwise mean of the extracted PRFs.
-            * 'median'
-                Take the pixelwise median of the extracted PRFs.
-    subsampling : int
-        Factor of subsampling of the PRF (default = 1).
-    fix_nan : bool
-        Fix NaN values in the data by replacing it with the
-        mirrored value. Assuming that the PRF is symmetrical.
-
-    Returns
-    -------
-    prf : `photutils.psf.DiscretePRF`
-        Discrete PRF model estimated from data.
-
-    Notes
-    -----
-    In Astronomy different definitions of Point Spread Function (PSF) and
-    Point Response Function (PRF) are used. Here we assume that the PRF is
-    an image of a point source after discretization e.g. with a CCD. This
-    definition is equivalent to the `Spitzer definiton of the PRF
-    <http://irsa.ipac.caltech.edu/data/SPITZER/docs/dataanalysistools/tools/mopex/mopexusersguide/89/>`_.
-
-    References
-    ----------
-    `Spitzer PSF vs. PRF
-    <http://irsa.ipac.caltech.edu/data/SPITZER/docs/files/spitzer/PRF_vs_PSF.pdf>`_
-
-    `Kepler PSF calibration
-    <http://keplerscience.arc.nasa.gov/CalibrationPSF.shtml>`_
-
-    `The Kepler Pixel Response Function
-    <http://adsabs.harvard.edu/abs/2010ApJ...713L..97B>`_
-    """
-
-    # Check input array type and dimension.
-    if np.iscomplexobj(data):
-        raise TypeError('Complex type not supported')
-    if data.ndim != 2:
-        raise ValueError('{0}-d array not supported. '
-                         'Only 2-d arrays supported.'.format(data.ndim))
-    if size % 2 == 0:
-        raise TypeError("Size must be odd.")
-
-    if fluxes is not None and len(fluxes) != len(positions):
-        raise TypeError("Position and flux arrays must be of equal length.")
-
-    if mask is None:
-        mask = np.isnan(data)
-
-    if isinstance(positions, (list, tuple)):
-        positions = np.array(positions)
-
-    if isinstance(fluxes, (list, tuple)):
-        fluxes = np.array(fluxes)
-
-    if mode == 'mean':
-        combine = np.ma.mean
-    elif mode == 'median':
-        combine = np.ma.median
-    else:
-        raise Exception('Invalid mode to combine prfs.')
-
-    data_internal = np.ma.array(data=data, mask=mask)
-    prf_model = np.ndarray(shape=(subsampling, subsampling, size, size))
-    positions_subpixel_indices = np.array([subpixel_indices(_, subsampling)
-                                           for _ in positions], dtype=np.int)
-
-    for i in range(subsampling):
-        for j in range(subsampling):
-            extracted_sub_prfs = []
-            sub_prf_indices = np.all(positions_subpixel_indices == [j, i],
-                                     axis=1)
-            positions_sub_prfs = positions[sub_prf_indices]
-            for k, position in enumerate(positions_sub_prfs):
-                x, y = position
-                extracted_prf = extract_array(data_internal, (size, size),
-                                              (y, x))
-                # Check shape to exclude incomplete PRFs at the boundaries
-                # of the image
-                if (extracted_prf.shape == (size, size) and
-                        np.ma.sum(extracted_prf) != 0):
-                    # Replace NaN values by mirrored value, with respect
-                    # to the prf's center
-                    if fix_nan:
-                        prf_nan = extracted_prf.mask
-                        if prf_nan.any():
-                            if (prf_nan.sum() > 3 or
-                                    prf_nan[size // 2, size // 2]):
-                                continue
-                            else:
-                                extracted_prf = mask_to_mirrored_num(
-                                    extracted_prf, prf_nan,
-                                    (size // 2, size // 2))
-                    # Normalize and add extracted PRF to data cube
-                    if fluxes is None:
-                        extracted_prf_norm = (np.ma.copy(extracted_prf) /
-                                              np.ma.sum(extracted_prf))
-                    else:
-                        fluxes_sub_prfs = fluxes[sub_prf_indices]
-                        extracted_prf_norm = (np.ma.copy(extracted_prf) /
-                                              fluxes_sub_prfs[k])
-                    extracted_sub_prfs.append(extracted_prf_norm)
-                else:
-                    continue
-            prf_model[i, j] = np.ma.getdata(
-                combine(np.ma.dstack(extracted_sub_prfs), axis=2))
-    return DiscretePRF(prf_model, subsampling=subsampling)
 
 
 def subtract_psf(data, psf, posflux, subshape=None):
