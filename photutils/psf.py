@@ -55,8 +55,6 @@ class DiscretePRF(Fittable2DModel):
     linear = True
 
     def __init__(self, prf_array, normalize=True, subsampling=1):
-        raise NotImplementedError("DiscretePRF is not yet compatible with psf module changes." )
-
         # Array shape and dimension check
         if subsampling == 1:
             if prf_array.ndim == 2:
@@ -138,51 +136,6 @@ class DiscretePRF(Fittable2DModel):
         # Set out of boundary values to zero
         result[out_of_bounds] = 0
         return result
-
-    def fit(self, data, indices):
-        """
-        Fit PSF/PRF to data.
-
-        Fits the PSF/PRF to the data and returns the best fitting flux.
-        If the data contains NaN values or if the source is not completely
-        contained in the image data the fitting is omitted and a flux of 0
-        is returned.
-
-        For reasons of performance, indices for the data have to be created
-        outside and passed to the function.
-
-        The fit is performed on a slice of the data with the same size as
-        the PRF.
-
-        Parameters
-        ----------
-        data : ndarray
-            Array containig image data.
-        indices : ndarray
-            Array with indices of the data. As
-            returned by np.indices(data.shape)
-        """
-        # Extract sub array of the data of the size of the PRF grid
-        sub_array_data = extract_array(data, self.shape,
-                                       (self.y_0.value, self.x_0.value))
-
-        # Fit only if PSF is completely contained in the image and no NaN
-        # values are present
-        if (sub_array_data.shape == self.shape and
-                not np.isnan(sub_array_data).any()):
-            y = extract_array(indices[0], self.shape,
-                              (self.y_0.value, self.x_0.value))
-            x = extract_array(indices[1], self.shape,
-                              (self.y_0.value, self.x_0.value))
-            # TODO: It should be discussed whether this is the right
-            # place to fix the warning.  Maybe it should be handled better
-            # in astropy.modeling.fitting
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", AstropyUserWarning)
-                m = self.fitter(self, x, y, sub_array_data)
-            return m.amplitude.value
-        else:
-            return 0
 
 
 class IntegratedGaussianPSF(Fittable2DModel):
