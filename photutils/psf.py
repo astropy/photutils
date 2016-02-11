@@ -2,7 +2,6 @@
 """Functions for performing PSF fitting photometry on 2D arrays."""
 
 from __future__ import division
-import warnings
 
 import numpy as np
 
@@ -11,22 +10,25 @@ from .utils import mask_to_mirrored_num
 from astropy.table import Table, Column
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling import Parameter, Fittable2DModel
-from astropy.utils.exceptions import AstropyUserWarning
 from astropy.nddata.utils import extract_array, add_array, subpixel_indices
 
 
-__all__ = ['DiscretePRF', 'create_prf', 'psf_photometry',
-           'IntegratedGaussianPSF', 'subtract_psf']
+__all__ = ['DiscretePRF', 'IntegratedGaussianPSF', 'psf_photometry',
+           'subtract_psf']
 
 
 class DiscretePRF(Fittable2DModel):
     """
-    A discrete PRF model.
+    A discrete Pixel Response Function (PRF) model.
 
     The discrete PRF model stores images of the PRF at different subpixel
     positions or offsets as a lookup table. The resolution is given by the
     subsampling parameter, which states in how many subpixels a pixel is
     divided.
+
+    In the typical case of wanting to create a PRF from an image with many point
+    sources, use the `create_from_image` method, rather than directly
+    initializing this class.
 
     The discrete PRF model class in initialized with a 4 dimensional
     array, that contains the PRF images at different subpixel positions.
@@ -45,11 +47,32 @@ class DiscretePRF(Fittable2DModel):
     prf_array : ndarray
         Array containing PRF images.
     normalize : bool
-        Normalize PRF images to unity.
+        Normalize PRF images to unity.  Equivalent to saying there is *no* flux
+        outside the bounds of the PRF images.
     subsampling : int, optional
         Factor of subsampling. Default = 1.
+
+
+    Notes
+    -----
+    In Astronomy different definitions of Point Spread Function (PSF) and
+    Point Response Function (PRF) are used. Here we assume that the PRF is
+    an image of a point source after discretization e.g. with a CCD. This
+    definition is equivalent to the `Spitzer definiton of the PRF
+    <http://irsa.ipac.caltech.edu/data/SPITZER/docs/dataanalysistools/tools/mopex/mopexusersguide/89/>`_.
+
+    References
+    ----------
+    `Spitzer PSF vs. PRF
+    <http://irsa.ipac.caltech.edu/data/SPITZER/docs/files/spitzer/PRF_vs_PSF.pdf>`_
+
+    `Kepler PSF calibration
+    <http://keplerscience.arc.nasa.gov/CalibrationPSF.shtml>`_
+
+    `The Kepler Pixel Response Function
+    <http://adsabs.harvard.edu/abs/2010ApJ...713L..97B>`_
     """
-    amplitude = Parameter('amplitude')
+    flux = Parameter('flux')
     x_0 = Parameter('x_0')
     y_0 = Parameter('y_0')
     linear = True
@@ -79,9 +102,9 @@ class DiscretePRF(Fittable2DModel):
         constraints = {'fixed': {'x_0': True, 'y_0': True}}
         x_0 = 0
         y_0 = 0
-        amplitude = 1
+        flux = 1
         super(DiscretePRF, self).__init__(n_models=1, x_0=x_0, y_0=y_0,
-                                          amplitude=amplitude, **constraints)
+                                          flux=flux, **constraints)
         self.fitter = LevMarLSQFitter()
 
         # Fix position per default
@@ -95,12 +118,12 @@ class DiscretePRF(Fittable2DModel):
         """
         return self._prf_array.shape[-2:]
 
-    def evaluate(self, x, y, amplitude, x_0, y_0):
+    def evaluate(self, x, y, flux, x_0, y_0):
         """
         Discrete PRF model evaluation.
 
-        Given a certain position and amplitude the corresponding image of
-        the PSF is chosen and scaled to the amplitude. If x and y are
+        Given a certain position and flux the corresponding image of
+        the PSF is chosen and scaled to the flux. If x and y are
         outside the boundaries of the image, zero will be returned.
 
         Parameters
@@ -109,8 +132,8 @@ class DiscretePRF(Fittable2DModel):
             x coordinate array in pixel coordinates.
         y : float
             y coordinate array in pixel coordinates.
-        amplitude : float
-            Model amplitude.
+        flux : float
+            Model flux.
         x_0 : float
             x position of the center of the PRF.
         y_0 : float
@@ -131,7 +154,7 @@ class DiscretePRF(Fittable2DModel):
         # Set out of boundary indices to zero
         x[x_bound] = 0
         y[y_bound] = 0
-        result = amplitude * self._prf_array[int(y_sub), int(x_sub)][y, x]
+        result = flux * self._prf_array[int(y_sub), int(x_sub)][y, x]
 
         # Set out of boundary values to zero
         result[out_of_bounds] = 0
@@ -182,25 +205,6 @@ class DiscretePRF(Fittable2DModel):
         -------
         prf : `photutils.psf.DiscretePRF`
             Discrete PRF model estimated from data.
-
-        Notes
-        -----
-        In Astronomy different definitions of Point Spread Function (PSF) and
-        Point Response Function (PRF) are used. Here we assume that the PRF is
-        an image of a point source after discretization e.g. with a CCD. This
-        definition is equivalent to the `Spitzer definiton of the PRF
-        <http://irsa.ipac.caltech.edu/data/SPITZER/docs/dataanalysistools/tools/mopex/mopexusersguide/89/>`_.
-
-        References
-        ----------
-        `Spitzer PSF vs. PRF
-        <http://irsa.ipac.caltech.edu/data/SPITZER/docs/files/spitzer/PRF_vs_PSF.pdf>`_
-
-        `Kepler PSF calibration
-        <http://keplerscience.arc.nasa.gov/CalibrationPSF.shtml>`_
-
-        `The Kepler Pixel Response Function
-        <http://adsabs.harvard.edu/abs/2010ApJ...713L..97B>`_
         """
 
         # Check input array type and dimension.
@@ -531,8 +535,6 @@ def psf_photometry(data, positions, psf, fitshape=None,
         result_tab['fit_messages'] = fit_messages
 
     return result_tab
-
-
 
 
 def subtract_psf(data, psf, posflux, subshape=None):
