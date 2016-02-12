@@ -484,21 +484,23 @@ def psf_photometry(data, positions, psf, fitshape=None,
     sequentially to the given positions to obtain an estimate of the
     flux. If required, coordinates are also tuned to match best the data.
 
-    If the data contains NaN values or the PSF/PRF is not completely
-    contained in the image, a flux of zero is returned.
-
     Parameters
     ----------
     data : `~astropy.nddata.NDData` or array (must be 2D)
         Image data.
-    positions : Array-like of shape (2, N) or `~astropy.table.Table`
-        Positions at which to *start* the fit, in pixel coordinates.  If a
-        table, the columns 'x_0' and 'y_0' must be present.
+    positions : Array-like of shape (2 or 3, N) or `~astropy.table.Table`
+        Positions at which to *start* the fit, in pixel coordinates. If
+        array-like, it can be either (x_0, y_0) or (x_0, y_0, flux_0). If a
+        table, the columns 'x_0' and 'y_0' must be present.  'flux_0' can also
+        be provided to set initial fluxes.  Additional columns of the form
+        '<parametername>_0' will be used to set the initial guess for any
+        parameters of the ``psf`` model that are not fixed.
     psf : `astropy.modeling.Fittable2DModel` instance
         PSF or PRF model to fit to the data. Examples for such models are
         `photutils.psf.DiscretePRF` or `photutils.psf.GaussianPSF`.
-    fitter : an astropy fitter
-        This could be a `astropy.modeling.fitting.Fitter` instance.
+    fitter : an `astropy.modeling.fitting.Fitter` object
+        The fitter object used to actually derive the fits. See
+        `astropy.modeling.fitting` for more details on fitters.
     fitshape : length-2 or None
         The shape of the region around the center of the target location to do
         the fitting in.  If None, fit the whole image without windowing. (See
@@ -522,7 +524,8 @@ def psf_photometry(data, positions, psf, fitshape=None,
         The results of the fitting procedure.  The fitted flux is in the column
         'flux_fit', and the centroids are in 'x_fit' and 'y_fit'. If `positions`
         was a table, any columns in that table will be carried over to this
-        table.
+        table.  If any of the ``psf`` model parameters other than flux/x/y are
+        not fixed, their results will be in the column '<parametername>_fit'.
 
     Notes
     -----
@@ -565,9 +568,16 @@ def psf_photometry(data, positions, psf, fitshape=None,
         result_tab = positions.copy()
     else:
         positions = np.array(positions, copy=False)
+        if positions.shape[0] < 2:
+            raise ValueError('Positions should be a table or an array (2, N) or (3, N)')
+        elif positions.shape[0] > 3:
+            raise ValueError('Positions should be a table or an array (2, N) or (3, N)')
+
         result_tab = Table()
         result_tab['x_0'] = positions[0]
         result_tab['y_0'] = positions[1]
+        if positions.shape[0] >= 3:
+            result_tab['flux_0'] = positions[2]
 
     result_tab['x_fit'] = result_tab['x_0']
     result_tab['y_fit'] = result_tab['y_0']
@@ -576,7 +586,21 @@ def psf_photometry(data, positions, psf, fitshape=None,
 
     # prep for fitting
     psf = psf.copy()  # don't want to muck up whatever PSF the user gives us
-    setflux = 'flux_0' in result_tab.colnames
+
+    pars_to_set = {'x_0': xname, 'y_0': yname}  # maps input table name to parameter name
+    if 'flux_0' in result_tab.colnames:
+        pars_to_set['flux_0': fluxname]
+
+    pars_to_output = {'x_fit': xname,
+                      'y_fit': yname,
+                      'flux_fit': fluxname}  # maps output table name to parameter name
+
+    for p, isfixed in psf.fixed.items():
+        if not isfixed:
+            if p + '_0' in result_tab.colnames:
+                pars_to_set[p + '_0'] = p
+            else:
+                pars_to_output[p + '_fit'] = p
 
     fit_messages = None
     fit_infos = None
@@ -587,10 +611,8 @@ def psf_photometry(data, positions, psf, fitshape=None,
 
     if mode == 'sequential':
         for row in result_tab:
-            setattr(psf, xname, row['x_0'])
-            setattr(psf, yname, row['y_0'])
-            if setflux:
-                setattr(psf, fluxname, row['flux_0'])
+            for table_name, parameter_name in pars_to_set.items():
+                setattr(psf, parameter_name, row[table_name + '_0'])
 
             if fitshape is None:
                 fitted = fitter(psf, indices[1], indices[0], data)
@@ -601,9 +623,8 @@ def psf_photometry(data, positions, psf, fitshape=None,
                 sub_array_data = extract_array(data, fitshape, position)
                 fitted = fitter(psf, x, y, sub_array_data)
 
-            row['x_fit'] = getattr(fitted, xname).value
-            row['y_fit'] = getattr(fitted, yname).value
-            row['flux_fit'] = getattr(fitted, fluxname).value
+            for table_name, parameter_name in pars_to_set.items():
+                row[table_name + '_fit'] = getattr(fitted, parameter_name).value
 
             if fit_infos is not None:
                 fit_infos.append(fitter.fit_info)
