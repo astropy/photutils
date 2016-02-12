@@ -588,18 +588,19 @@ def psf_photometry(data, positions, psf, fitshape=None,
 
     pars_to_set = {'x_0': xname, 'y_0': yname}  # maps input table name to parameter name
     if 'flux_0' in result_tab.colnames:
-        pars_to_set['flux_0': fluxname]
+        pars_to_set['flux_0'] = fluxname
 
     pars_to_output = {'x_fit': xname,
                       'y_fit': yname,
                       'flux_fit': fluxname}  # maps output table name to parameter name
 
     for p, isfixed in psf.fixed.items():
-        if not isfixed:
-            if p + '_0' in result_tab.colnames:
-                pars_to_set[p + '_0'] = p
-            else:
-                pars_to_output[p + '_fit'] = p
+        p0 = p + '_0'
+        if p0 in result_tab.colnames and p not in (xname, yname, fluxname):
+            pars_to_set[p0] = p
+        pfit = p + '_fit'
+        if not isfixed and p not in (xname, yname, fluxname):
+                pars_to_output[pfit] = p
 
     fit_messages = None
     fit_infos = None
@@ -611,7 +612,7 @@ def psf_photometry(data, positions, psf, fitshape=None,
     if mode == 'sequential':
         for row in result_tab:
             for table_name, parameter_name in pars_to_set.items():
-                setattr(psf, parameter_name, row[table_name + '_0'])
+                setattr(psf, parameter_name, row[table_name])
 
             if fitshape is None:
                 fitted = fitter(psf, indices[1], indices[0], data)
@@ -622,8 +623,8 @@ def psf_photometry(data, positions, psf, fitshape=None,
                 sub_array_data = extract_array(data, fitshape, position)
                 fitted = fitter(psf, x, y, sub_array_data)
 
-            for table_name, parameter_name in pars_to_set.items():
-                row[table_name + '_fit'] = getattr(fitted, parameter_name).value
+            for table_name, parameter_name in pars_to_output.items():
+                row[table_name] = getattr(fitted, parameter_name).value
 
             if fit_infos is not None:
                 fit_infos.append(fitter.fit_info)
