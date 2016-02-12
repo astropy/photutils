@@ -364,6 +364,87 @@ class IntegratedGaussianPSF(Fittable2DModel):
                   self._erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma)))))
 
 
+class PSFAdapter(Fittable2DModel):
+    """
+    A minimal model for doing PSF fitting with an already-defined model of the
+    PSF.
+
+    Parameters
+    ----------
+    psfmodel : a 2D model
+        The model to assume as representative of the PSF
+    renormalize_psf : bool
+        If True, the model will be integrated from -inf to inf and re-scaled
+        so that the total integrates to 1.  Note that this renormalization only
+        occurs *once*, so if the total flux of ``psfmodel`` depends on position,
+        this will *not* be correct.
+    xname : str or None
+        The name of the ``psfmodel`` parameter that corresponds to the x-axis
+        center of the PSF.  If None, the model will be assumed to be centered at x=0.
+    yname : str or None
+        The name of the ``psfmodel`` parameter that corresponds to the y-axis
+        center of the PSF.  If None, the model will be assumed to be centered at y=0.
+    fluxname : str or None
+        The name of the ``psfmodel`` parameter that corresponds to the total
+        flux of the star.  If None, a scaling factor will be applied by the
+        ``PSFAdapter`` instead of modifying the ``psfmodel``.
+
+    Notes
+    -----
+    This class will be intrinsically slower than using a PSF model directly. It
+    is primarily intended as a convenience to wrap models that are more easily
+    represented in a form that doesn't have a fixed flux or otherwise is
+    parametrized in a way that is awkward to use with model-fitting photometry.
+    """
+    flux = Parameter(default=1)
+    x_0 = Parameter(default=0)
+    y_0 = Parameter(default=0)
+
+    def __init__(self, psfmodel, renormalize_psf=True, flux=flux.default,
+                 x_0=x_0.default, y_0=y_0.default, xname=None, yname=None,
+                 fluxname=None, **kwargs):
+
+        self.psfmodel = psfmodel.copy()
+
+        if renormalize_psf:
+            from scipy import integrate
+            self._psf_scale_factor = 1/integrate.dblquad(self.psfmodel,
+                                                         -np.inf, np.inf,
+                                                         lambda x: -np.inf,
+                                                         lambda x: np.inf)[0]
+        else:
+            self._psf_scale_factor = 1
+
+        self.xname = xname
+        self.yname = yname
+        self.fluxname = fluxname
+
+        super(PSFAdapter, self).__init__(n_models=1, x_0=x_0, y_0=y_0,
+                                         flux=flux, **kwargs)
+
+    def evaluate(self, x, y, flux, x_0, y_0):
+        """
+        The evaluation function for PSFAdapter.
+        """
+        if self.xname is None:
+            dx = x - x_0
+        else:
+            dx = x
+            setattr(self.psfmodel, self.xname, x_0)
+
+        if self.xname is None:
+            dx = y - y_0
+        else:
+            dy = y
+            setattr(self.psfmodel, self.yname, y_0)
+
+        if self.fluxname is None:
+            return flux * self._psf_scale_factor * self.psfmodel(dx, dy)
+        else:
+            setattr(self.psfmodel, self.yname, flux * self._psf_scale_factor)
+            return self.psfmodel(dx, dy)
+
+
 def _extract_psf_fitting_names(psf):
     """
     Determine the names of the x coordinate, y coordinate, and flux from a
