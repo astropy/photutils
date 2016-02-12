@@ -75,7 +75,6 @@ class DiscretePRF(Fittable2DModel):
     flux = Parameter('flux')
     x_0 = Parameter('x_0')
     y_0 = Parameter('y_0')
-    linear = True
 
     def __init__(self, prf_array, normalize=True, subsampling=1):
         # Array shape and dimension check
@@ -107,16 +106,12 @@ class DiscretePRF(Fittable2DModel):
                                           flux=flux, **constraints)
         self.fitter = LevMarLSQFitter()
 
-        # Fix position per default
-        self.x_0.fixed = True
-        self.y_0.fixed = True
-
-    @property
-    def shape(self):
-        """
-        Shape of the PRF image.
-        """
-        return self._prf_array.shape[-2:]
+        @property
+        def prf_shape(self):
+            """
+            Shape of the PRF image.
+            """
+            return self._prf_array.shape[-2:]
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """
@@ -140,15 +135,15 @@ class DiscretePRF(Fittable2DModel):
             y position of the center of the PRF.
         """
         # Convert x and y to index arrays
-        x = (x - x_0 + 0.5 + self.shape[1] // 2).astype('int')
-        y = (y - y_0 + 0.5 + self.shape[0] // 2).astype('int')
+        x = (x - x_0 + 0.5 + self.prf_shape[1] // 2).astype('int')
+        y = (y - y_0 + 0.5 + self.prf_shape[0] // 2).astype('int')
 
         # Get subpixel indices
         y_sub, x_sub = subpixel_indices((y_0, x_0), self.subsampling)
 
         # Out of boundary masks
-        x_bound = np.logical_or(x < 0, x >= self.shape[1])
-        y_bound = np.logical_or(y < 0, y >= self.shape[0])
+        x_bound = np.logical_or(x < 0, x >= self.prf_shape[1])
+        y_bound = np.logical_or(y < 0, y >= self.prf_shape[0])
         out_of_bounds = np.logical_or(x_bound, y_bound)
 
         # Set out of boundary indices to zero
