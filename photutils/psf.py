@@ -290,7 +290,7 @@ class IntegratedGaussianPSF(Fittable2DModel):
     of the model input coordinates).  This is in contrast to the apparently
     similar `astropy.modeling.functional_models.Gaussian2D`, which is the value
     of a 2D Gaussian *at* the input coordinates, with no integration.  So this
-    model is equivalent to assuming the sub-pixel PSF is Gaussian.
+    model is equivalent to assuming the *sub-pixel* PSF is Gaussian.
 
     Parameters
     ----------
@@ -328,8 +328,8 @@ class IntegratedGaussianPSF(Fittable2DModel):
     """
 
     flux = Parameter(default=1)
-    x_0 = Parameter(default=0, fixed=True)
-    y_0 = Parameter(default=0, fixed=True)
+    x_0 = Parameter(default=0)
+    y_0 = Parameter(default=0)
     sigma = Parameter(default=1, fixed=True)
 
     _erf = None
