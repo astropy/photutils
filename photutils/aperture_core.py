@@ -1141,12 +1141,17 @@ def _prepare_photometry_input(data, unit, wcs, mask, error, effective_gain,
     '''Parse photometry input.
 
     Photometry routines accept a wide range of inputs, e.g. ``data``
-    could be (among others)  NDData, a numpy array, or a fits HDU.
+    could be (among others)  a numpy array, or a fits HDU.
     This requires some parsing and bookkeping to ensure that all inputs
     are complete and consistent.
     For example, the data could carry a unit and the wcs itself, so we need to
     check that it is consistent with the unit and wcs given as explicit
     parameters.
+
+    Note that this function is meant to be used in addition to, not instead
+    of, the `~astropy.nddata.support_nddata` decorator, i. e. ``data`` is
+    never an `~astropy.nddata.NDData` object, because that will be split up
+    in data, wcs, mask, ... keywords by the decorator already.
 
     See `~photutils.aperture_photometry` for a description of all
     possible input values.
@@ -1179,12 +1184,6 @@ def _prepare_photometry_input(data, unit, wcs, mask, error, effective_gain,
         if 'BUNIT' in header:
             dataunit = header['BUNIT']
 
-    # this is basically for NDData inputs and alike
-    elif hasattr(data, 'data') and not isinstance(data, np.ndarray):
-        if data.wcs is not None and wcs_transformation is None:
-            wcs_transformation = data.wcs
-        datamask = data.mask
-
     if wcs_transformation is None:
         try:
             wcs_transformation = WCS(header)
@@ -1192,7 +1191,6 @@ def _prepare_photometry_input(data, unit, wcs, mask, error, effective_gain,
             # data was not fits so header is not defined or header is invalid
             # Let the calling application raise an error is it needs a WCS.
             pass
-
 
     if hasattr(data, 'unit'):
         dataunit = data.unit
