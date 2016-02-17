@@ -1136,6 +1136,165 @@ class RectangularAnnulus(PixelAperture):
         return flux
 
 
+def _prepare_photometry_input(data, unit, wcs, mask, error, effective_gain,
+                              pixelwise_error):
+    '''Parse photometry input.
+
+    Photometry routines accept a wide range of inputs, e.g. ``data``
+    could be (among others)  NDData, a numpy array, or a fits HDU.
+    This requires some parsing and bookkeping to ensure that all inputs
+    are complete and consistent.
+    For example, the data could carry a unit and the wcs itself, so we need to
+    check that it is consistent with the unit and wcs given as explicit
+    parameters.
+
+    See `~photutils.aperture_photometry` for a description of all
+    possible input values.
+
+    Returns
+    -------
+    data : `~astropy.units.Quantity` instance
+    wcs_transformation : `~astropy.wcs.WCS` instance or None
+    mask : np.array
+    error : `~astropy.units.Quantity` instance or None
+    effective_gain : `~astropy.units.Quantity` instance or None
+    '''
+    dataunit = None
+    datamask = None
+    wcs_transformation = wcs
+
+    if isinstance(data, fits.HDUList):
+        for i in range(len(data)):
+            if data[i].data is not None:
+                warnings.warn("Input data is a HDUList object, photometry is "
+                              "run only for the {0} HDU."
+                              .format(i), AstropyUserWarning)
+                data = data[i]
+                break
+
+    if isinstance(data, (fits.PrimaryHDU, fits.ImageHDU)):
+        header = data.header
+        data = data.data
+
+        if 'BUNIT' in header:
+            dataunit = header['BUNIT']
+
+    # this is basically for NDData inputs and alike
+    elif hasattr(data, 'data') and not isinstance(data, np.ndarray):
+        if data.wcs is not None and wcs_transformation is None:
+            wcs_transformation = data.wcs
+        datamask = data.mask
+
+    if wcs_transformation is None:
+        try:
+            wcs_transformation = WCS(header)
+        except:
+            # data was not fits so header is not defined or header is invalid
+            # Let the calling application raise an error is it needs a WCS.
+            pass
+
+
+    if hasattr(data, 'unit'):
+        dataunit = data.unit
+
+    if unit is not None and dataunit is not None:
+        dataunit = u.Unit(dataunit, parse_strict='warn')
+        unit = u.Unit(unit, parse_strict='warn')
+
+        if not isinstance(unit, u.UnrecognizedUnit):
+            data = u.Quantity(data, unit=unit, copy=False)
+            if not isinstance(dataunit, u.UnrecognizedUnit):
+                if unit != dataunit:
+                    warnings.warn('Unit of input data ({0}) and unit given by '
+                                  'unit argument ({1}) are not identical.'
+                                  .format(dataunit, unit))
+        else:
+            if not isinstance(dataunit, u.UnrecognizedUnit):
+                data = u.Quantity(data, unit=dataunit, copy=False)
+            else:
+                warnings.warn('Neither the unit of the input data ({0}), nor '
+                              'the unit given by the unit argument ({1}) is '
+                              'parseable as a valid unit'
+                              .format(dataunit, unit))
+
+    elif unit is None:
+        if dataunit is not None:
+            dataunit = u.Unit(dataunit, parse_strict='warn')
+            data = u.Quantity(data, unit=dataunit, copy=False)
+        else:
+            data = u.Quantity(data, copy=False)
+    else:
+        unit = u.Unit(unit, parse_strict='warn')
+        data = u.Quantity(data, unit=unit, copy=False)
+
+    # Check input array type and dimension.
+    if np.iscomplexobj(data):
+        raise TypeError('Complex type not supported')
+    if data.ndim != 2:
+        raise ValueError('{0}-d array not supported. '
+                         'Only 2-d arrays supported.'.format(data.ndim))
+
+    # Deal with the mask if it exists
+    if mask is not None or datamask is not None:
+        if mask is None:
+            mask = datamask
+        else:
+            mask = np.asarray(mask)
+            if np.iscomplexobj(mask):
+                raise TypeError('Complex type not supported')
+            if mask.shape != data.shape:
+                raise ValueError('Shapes of mask array and data array '
+                                 'must match')
+
+            if datamask is not None:
+                # combine the masks
+                mask = np.logical_or(mask, datamask)
+
+    # Check whether we really need to calculate pixelwise errors, even if
+    # requested.  If neither error nor effective_gain is an array, then it's
+    # not neeed.
+    if ((error is None) or (np.isscalar(error) and effective_gain is None) or
+            (np.isscalar(error) and np.isscalar(effective_gain))):
+        pixelwise_error = False
+
+    # Check error shape.
+    if error is not None:
+        if isinstance(error, u.Quantity):
+            if np.isscalar(error.value):
+                error = u.Quantity(np.broadcast_arrays(error, data),
+                                   unit=error.unit)[0]
+        elif np.isscalar(error):
+            error = u.Quantity(np.broadcast_arrays(error, data),
+                               unit=data.unit)[0]
+        else:
+            error = u.Quantity(error, unit=data.unit, copy=False)
+
+        if error.shape != data.shape:
+            raise ValueError('shapes of error array and data array must'
+                             ' match')
+
+    # Check effective_gain shape.
+    if effective_gain is not None:
+        # effective_gain doesn't do anything without error set, so raise an
+        # exception. (TODO: instead, should we just set effective_gain = None
+        # and ignore it?)
+        if error is None:
+            raise ValueError('effective_gain requires error')
+
+        if isinstance(effective_gain, u.Quantity):
+            if np.isscalar(effective_gain.value):
+                effective_gain = u.Quantity(np.broadcast_arrays(
+                    effective_gain, data), unit=effective_gain.unit)[0]
+
+        elif np.isscalar(effective_gain):
+            effective_gain = np.broadcast_arrays(effective_gain, data)[0]
+        if effective_gain.shape != data.shape:
+            raise ValueError('shapes of effective_gain array and data array '
+                             'must match')
+
+    return data, wcs_transformation, mask, error, effective_gain, pixelwise_error
+
+
 @support_nddata
 def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
                         effective_gain=None, mask=None, method='exact',
@@ -1229,143 +1388,23 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     This function is decorated with `~astropy.nddata.support_nddata` and
     thus supports `~astropy.nddata.NDData` objects as input.
     """
+    data, wcs_transformation, mask, error, effective_gain, pixelwise_error = \
+        _prepare_photometry_input(data, unit, wcs, mask, error, effective_gain,
+                                  pixelwise_error)
 
-    dataunit = None
-    datamask = None
-    wcs_transformation = wcs
-
-    if isinstance(data, (fits.PrimaryHDU, fits.ImageHDU)):
-        header = data.header
-        data = data.data
-
-        if 'BUNIT' in header:
-            dataunit = header['BUNIT']
-
-    elif isinstance(data, fits.HDUList):
-        for i in range(len(data)):
-            if data[i].data is not None:
-                warnings.warn("Input data is a HDUList object, photometry is "
-                              "run only for the {0} HDU."
-                              .format(i), AstropyUserWarning)
-                return aperture_photometry(data[i], apertures, unit, wcs,
-                                           error, effective_gain, mask,
-                                           method, subpixels, pixelwise_error)
-
-    # this is basically for NDData inputs and alike
-    elif hasattr(data, 'data') and not isinstance(data, np.ndarray):
-        if data.wcs is not None and wcs_transformation is None:
-            wcs_transformation = data.wcs
-        datamask = data.mask
-
-    if hasattr(data, 'unit'):
-        dataunit = data.unit
-
-    if unit is not None and dataunit is not None:
-        dataunit = u.Unit(dataunit, parse_strict='warn')
-        unit = u.Unit(unit, parse_strict='warn')
-
-        if not isinstance(unit, u.UnrecognizedUnit):
-            data = u.Quantity(data, unit=unit, copy=False)
-            if not isinstance(dataunit, u.UnrecognizedUnit):
-                if unit != dataunit:
-                    warnings.warn('Unit of input data ({0}) and unit given by '
-                                  'unit argument ({1}) are not identical.'
-                                  .format(dataunit, unit))
-        else:
-            if not isinstance(dataunit, u.UnrecognizedUnit):
-                data = u.Quantity(data, unit=dataunit, copy=False)
-            else:
-                warnings.warn('Neither the unit of the input data ({0}), nor '
-                              'the unit given by the unit argument ({1}) is '
-                              'parseable as a valid unit'
-                              .format(dataunit, unit))
-
-    elif unit is None:
-        if dataunit is not None:
-            dataunit = u.Unit(dataunit, parse_strict='warn')
-            data = u.Quantity(data, unit=dataunit, copy=False)
-        else:
-            data = u.Quantity(data, copy=False)
-    else:
-        unit = u.Unit(unit, parse_strict='warn')
-        data = u.Quantity(data, unit=unit, copy=False)
-
-    # Check input array type and dimension.
-    if np.iscomplexobj(data):
-        raise TypeError('Complex type not supported')
-    if data.ndim != 2:
-        raise ValueError('{0}-d array not supported. '
-                         'Only 2-d arrays supported.'.format(data.ndim))
-
-    # Deal with the mask if it exists
-    if mask is not None or datamask is not None:
-        if mask is None:
-            mask = datamask
-        else:
-            mask = np.asarray(mask)
-            if np.iscomplexobj(mask):
-                raise TypeError('Complex type not supported')
-            if mask.shape != data.shape:
-                raise ValueError('Shapes of mask array and data array '
-                                 'must match')
-
-            if datamask is not None:
-                # combine the masks
-                mask = np.logical_or(mask, datamask)
-
-        # masked values are replaced with zeros, so they do not contribute
-        # to the aperture sums
+    # masked values are replaced with zeros, so they do not contribute
+    # to the aperture sums
+    if mask is not None:
         data = copy.deepcopy(data)    # do not modify input data
         data[mask] = 0
 
-    # Check whether we really need to calculate pixelwise errors, even if
-    # requested.  If neither error nor effective_gain is an array, then it's
-    # not neeed.
-    if ((error is None) or (np.isscalar(error) and effective_gain is None) or
-            (np.isscalar(error) and np.isscalar(effective_gain))):
-        pixelwise_error = False
+    # mask the error array, if necessary
+    # masked values are replaced with zeros, so they do not contribute
+    # to the sums
+    if mask is not None and error is not None:
+        error = copy.deepcopy(error)    # do not modify input data
+        error[mask] = 0.
 
-    # Check error shape.
-    if error is not None:
-        if isinstance(error, u.Quantity):
-            if np.isscalar(error.value):
-                error = u.Quantity(np.broadcast_arrays(error, data),
-                                   unit=error.unit)[0]
-        elif np.isscalar(error):
-            error = u.Quantity(np.broadcast_arrays(error, data),
-                               unit=data.unit)[0]
-        else:
-            error = u.Quantity(error, unit=data.unit, copy=False)
-
-        if error.shape != data.shape:
-            raise ValueError('shapes of error array and data array must'
-                             ' match')
-
-        # mask the error array, if necessary
-        # masked values are replaced with zeros, so they do not contribute
-        # to the sums
-        if mask is not None:
-            error = copy.deepcopy(error)    # do not modify input data
-            error[mask] = 0.
-
-    # Check effective_gain shape.
-    if effective_gain is not None:
-        # effective_gain doesn't do anything without error set, so raise an
-        # exception. (TODO: instead, should we just set effective_gain = None
-        # and ignore it?)
-        if error is None:
-            raise ValueError('effective_gain requires error')
-
-        if isinstance(effective_gain, u.Quantity):
-            if np.isscalar(effective_gain.value):
-                effective_gain = u.Quantity(np.broadcast_arrays(
-                    effective_gain, data), unit=effective_gain.unit)[0]
-
-        elif np.isscalar(effective_gain):
-            effective_gain = np.broadcast_arrays(effective_gain, data)[0]
-        if effective_gain.shape != data.shape:
-            raise ValueError('shapes of effective_gain array and data array '
-                             'must match')
 
     # Check that 'subpixels' is an int and is 1 or greater.
     if method == 'subpixel':
@@ -1382,7 +1421,8 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
             wcs_transformation = WCS(header)
         ap = ap.to_pixel(wcs_transformation)
         pixelpositions = ap.positions * u.pixel
-
+        if wcs_transformation is None:
+            raise ValueError('WCS transform not defined by data or wcs keyword.')
         pixpos = np.transpose(pixelpositions)
         # check whether single or multiple positions
         if len(pixelpositions) > 1 and pixelpositions[0].size >= 2:
