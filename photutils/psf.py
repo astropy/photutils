@@ -474,13 +474,13 @@ def _extract_psf_fitting_names(psf):
     return xname, yname, fluxname
 
 
-def _call_fitter(fitter, psf, x, y, data, weight):
+def _call_fitter(fitter, psf, x, y, data, weights):
     '''Not all fitters have to support a weight array. This function includes
     the weight in the fitter call only if really needed.'''
-    if np.all(weight == 1.):
+    if np.all(weights == 1.):
         return fitter(psf, x, y, data)
     else:
-        return fitter(psf, x, y, data, weight=weight)
+        return fitter(psf, x, y, data, weights=weights)
 
 
 @support_nddata
@@ -592,7 +592,7 @@ def psf_photometry(data, positions, psf, fitshape=None,
 
     # As long as models don't support quantities, we'll break that apart
     fluxunit = data.unit
-    data = data.data
+    data = np.array(data)
 
     if (error is not None) or (effective_gain is not None):
         warnings.warn('Uncertainties are not yet supported in PSF fitting.',
@@ -669,16 +669,18 @@ def psf_photometry(data, positions, psf, fitshape=None,
                 setattr(psf, parameter_name, row[table_name])
 
             if fitshape is None:
-                fitted = _call_fitter(psf, indices[1], indices[0], data,
-                                      weights=weights)
+                fitted = _call_fitter(fitter, psf, indices[1], indices[0],
+                                      data, weights=weights)
             else:
                 position = (row['y_0'], row['x_0'])
                 y = extract_array(indices[0], fitshape, position)
                 x = extract_array(indices[1], fitshape, position)
-                sub_array_data = extract_array(data, fitshape, position)
-                sub_array_weights = extract_array(weights, fitshape, position)
-                fitted = _call_fitter(psf, x, y, sub_array_data,
-                                       weights=sub_array_weights)
+                sub_array_data = extract_array(data, fitshape, position,
+                                               fill_value=0.)
+                sub_array_weights = extract_array(weights, fitshape,
+                                                  position, fill_value=0.)
+                fitted = _call_fitter(fitter, psf, x, y, sub_array_data,
+                                      weights=sub_array_weights)
 
             for table_name, parameter_name in pars_to_output.items():
                 row[table_name] = getattr(fitted, parameter_name).value
