@@ -111,12 +111,12 @@ class DiscretePRF(Fittable2DModel):
                                           flux=flux, **constraints)
         self.fitter = LevMarLSQFitter()
 
-        @property
-        def prf_shape(self):
-            """
-            Shape of the PRF image.
-            """
-            return self._prf_array.shape[-2:]
+    @property
+    def prf_shape(self):
+        """
+        Shape of the PRF image.
+        """
+        return self._prf_array.shape[-2:]
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """
@@ -181,8 +181,10 @@ class DiscretePRF(Fittable2DModel):
         ----------
         imdata : array
             Data array with the image to extract the PRF from
-        positions : List or array
+        positions : List or array or `~astropy.table.Table`
             List of pixel coordinate source positions to use in creating the PRF.
+            If this is a `~astropy.table.Table` it must have columns called
+            ``x_0`` and ``y_0``.
         size : odd int
             Size of the quadratic PRF image in pixels.
         mask : bool array, optional
@@ -224,6 +226,16 @@ class DiscretePRF(Fittable2DModel):
 
         if isinstance(positions, (list, tuple)):
             positions = np.array(positions)
+
+        if isinstance(positions, Table) or ():
+            # Can do clever things like
+            # positions['x_0', 'y_0'].as_array().view((positions['x_0'].dtype, 2))
+            # but that requires  positions['x_0'].dtype is positions['y_0'].dtype
+            # better do something simple to allow type promotion if required.
+            pos = np.empty((len(positions), 2))
+            pos[:, 0] = positions['x_0']
+            pos[:, 1] = positions['y_0']
+            positions = pos
 
         if isinstance(fluxes, (list, tuple)):
             fluxes = np.array(fluxes)
