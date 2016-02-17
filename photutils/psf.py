@@ -3,15 +3,20 @@
 
 from __future__ import division
 
+import warnings
+import copy
+
 import numpy as np
 
 from .utils import mask_to_mirrored_num
+from .aperture_core import _prepare_photometry_input
 
 from astropy.table import Table, Column
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling import Parameter, Fittable2DModel
 from astropy.nddata.utils import extract_array, add_array, subpixel_indices
-
+from astropy.nddata import support_nddata
+from astropy.utils.exceptions import AstropyUserWarning
 
 __all__ = ['DiscretePRF', 'IntegratedGaussianPSF', 'psf_photometry',
            'subtract_psf']
@@ -468,8 +473,21 @@ def _extract_psf_fitting_names(psf):
     return xname, yname, fluxname
 
 
+def _call_fitter(fitter, psf, x, y, data, weight):
+    '''Not all fitters have to support a weight array. This function includes
+    the weight in the fitter call only if really needed.'''
+    if np.all(weight == 1.):
+        return fitter(psf, x, y, data)
+    else:
+        return fitter(psf, x, y, data, weight=weight)
+
+
+@support_nddata
 def psf_photometry(data, positions, psf, fitshape=None,
-                   fitter=LevMarLSQFitter(), mask=None, mode='sequential',
+                   fitter=LevMarLSQFitter(),
+                   unit=None, wcs=None, error=None, effective_gain=None,
+                   mask=None, pixelwise_error=True,
+                   mode='sequential',
                    store_fit_info=False):
     """
     Perform PSF/PRF photometry on the data.
@@ -480,8 +498,11 @@ def psf_photometry(data, positions, psf, fitshape=None,
 
     Parameters
     ----------
-    data : `~astropy.nddata.NDData` or array (must be 2D)
-        Image data.
+    data : array_like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
+        The 2-d array on which to perform photometry. ``data`` should be
+        background-subtracted.  Units are used during the photometry,
+        either provided along with the data array, or stored in the
+        header keyword ``'BUNIT'``.
     positions : Array-like of shape (2 or 3, N) or `~astropy.table.Table`
         Positions at which to *start* the fit, in pixel coordinates. If
         array-like, it can be either (x_0, y_0) or (x_0, y_0, flux_0). If a
@@ -492,15 +513,45 @@ def psf_photometry(data, positions, psf, fitshape=None,
     psf : `astropy.modeling.Fittable2DModel` instance
         PSF or PRF model to fit to the data. Examples for such models are
         `photutils.psf.DiscretePRF` or `photutils.psf.GaussianPSF`.
-    fitter : an `astropy.modeling.fitting.Fitter` object
-        The fitter object used to actually derive the fits. See
-        `astropy.modeling.fitting` for more details on fitters.
     fitshape : length-2 or None
         The shape of the region around the center of the target location to do
         the fitting in.  If None, fit the whole image without windowing. (See
         notes)
-    mask : ndarray, optional
-        Mask to be applied to the data.
+    fitter : an `astropy.modeling.fitting.Fitter` object
+        The fitter object used to actually derive the fits. See
+        `astropy.modeling.fitting` for more details on fitters.
+    unit : `~astropy.units.UnitBase` instance, str
+        An object that represents the unit associated with ``data``.  Must
+        be an `~astropy.units.UnitBase` object or a string parseable by the
+        :mod:`~astropy.units` package. It overrides the ``data`` unit from
+        the ``'BUNIT'`` header keyword and issues a warning if
+        different. However an error is raised if ``data`` as an array
+        already has a different unit.
+    wcs : `~astropy.wcs.WCS`, optional
+        Use this as the wcs transformation. It overrides any wcs transformation
+        passed along with ``data`` either in the header or in an attribute.
+    error : float or array_like, optional
+        Error in each pixel, interpreted as Gaussian 1-sigma uncertainty.
+    effective_gain : float or array_like, optional
+        Ratio of counts (e.g., electrons or photons) to units of the
+        data (e.g., ADU), for the purpose of calculating Poisson error
+        from the object itself. If ``effective_gain`` is `None`
+        (default), ``error`` is assumed to include all uncertainty in
+        each pixel. If ``effective_gain`` is given, ``error`` is assumed
+        to be the "background error" only (not accounting for Poisson
+        error in the flux in the apertures).
+    mask : array_like (bool), optional
+        Mask to apply to the data.  Masked pixels are excluded/ignored.
+    pixelwise_error : bool, optional
+        For ``error`` and/or ``effective_gain`` arrays. If `True`,
+        assume ``error`` and/or ``effective_gain`` vary significantly
+        within an aperture: sum contribution from each pixel. If
+        `False`, assume ``error`` and ``effective_gain`` do not vary
+        significantly within an aperture. Use the single value of
+        ``error`` and/or ``effective_gain`` at the center of each
+        aperture as the value for the entire aperture.  Default is
+        `True`.
+
     mode : {'sequential'}
         One of the following modes to do PSF/PRF photometry:
             * 'sequential' (default)
@@ -526,27 +577,26 @@ def psf_photometry(data, positions, psf, fitshape=None,
     Most fitters will not do well if ``fitshape`` is None because they will try
     to fit the whole image as just one star.
 
+    This function is decorated with `~astropy.nddata.support_nddata` and
+    thus supports `~astropy.nddata.NDData` objects as input.
+
     Examples
     --------
     See `Spitzer PSF Photometry <http://nbviewer.ipython.org/gist/adonath/
     6550989/PSFPhotometrySpitzer.ipynb>`_ for a short tutorial.
     """
-    # accept nddata.  The isinstance is necessary because arrays have a `data`
-    # attribute but it's not an array like in an NDData
-    # we also can't check its type directly because on py2 it's a buffer but
-    # in py3 it's a memoryview
-    if hasattr(data, 'data') and hasattr(data.data, 'dtype'):
-        fluxunit = data.unit
-        data = data.data
-    else:
-        fluxunit = getattr(data, 'unit', None)
+    data, wcs_transformation, mask, error, effective_gain, pixelwise_error \
+        = _prepare_photometry_input(data, unit, wcs, mask, error, effective_gain,
+                                    pixelwise_error)
 
-    # Check input array type and dimension.
-    if np.iscomplexobj(data):
-        raise TypeError('Complex type not supported')
-    if data.ndim != 2:
-        raise ValueError('{0}-d array not supported. Only 2-d arrays can be '
-                         'passed to psf_photometry.'.format(data.ndim))
+    # As long as models don't support quantities, we'll break that apart
+    fluxunit = data.unit
+    data = data.data
+
+    if (error is not None) or (effective_gain is not None):
+        warnings.warn('Uncertainties are not yet supported in PSF fitting.',
+                      AstropyUserWarning)
+    weights = np.ones_like(data)
 
     # determine the names of the model's relevant attributes
     xname, yname, fluxname = _extract_psf_fitting_names(psf)
@@ -604,19 +654,30 @@ def psf_photometry(data, positions, psf, fitshape=None,
     elif store_fit_info:
         fit_messages = []
 
+    # Many fitters take a "weight" array, but no "mask".
+    # Thus, we convert the mask to weights on 1 and 0. Unfortunately,
+    # that only works if the values "behind the mask" are finite.
+    if mask is not None:
+        data = copy.deepcopy(data)
+        data[mask] = 0
+        weights[mask] = 0.
+
     if mode == 'sequential':
         for row in result_tab:
             for table_name, parameter_name in pars_to_set.items():
                 setattr(psf, parameter_name, row[table_name])
 
             if fitshape is None:
-                fitted = fitter(psf, indices[1], indices[0], data)
+                fitted = _call_fitter(psf, indices[1], indices[0], data,
+                                      weights=weights)
             else:
                 position = (row['y_0'], row['x_0'])
                 y = extract_array(indices[0], fitshape, position)
                 x = extract_array(indices[1], fitshape, position)
                 sub_array_data = extract_array(data, fitshape, position)
-                fitted = fitter(psf, x, y, sub_array_data)
+                sub_array_weights = extract_array(weights, fitshape, position)
+                fitted = _call_fitter(psf, x, y, sub_array_data,
+                                       weights=sub_array_weights)
 
             for table_name, parameter_name in pars_to_output.items():
                 row[table_name] = getattr(fitted, parameter_name).value
