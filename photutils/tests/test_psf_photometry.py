@@ -7,6 +7,7 @@ from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 from astropy.modeling.models import Gaussian2D
 from astropy.convolution.utils import discretize_model
+from astropy.table import Table
 
 from ..psf import (create_prf, DiscretePRF, psf_photometry,
                    IntegratedGaussianPSF, subtract_psf)
@@ -42,6 +43,19 @@ for flux, position in zip(FLUXES, POSITIONS):
                        x, y, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
     image += discretize_model(model, (0, IMAGE_SIZE), (0, IMAGE_SIZE),
                               mode='oversample')
+
+# Some tests require an image with wider sources.
+WIDE_GAUSSIAN_WIDTH = 3.
+WIDE_INTAB = Table([[50, 23.2], [50.5, 1], [10, 20]],
+                   names=['x_0', 'y_0', 'flux_0'])
+wide_image = np.zeros((IMAGE_SIZE, IMAGE_SIZE))
+
+# Add sources to test image
+for x, y, flux in WIDE_INTAB:
+    model = Gaussian2D(flux / (2 * np.pi * WIDE_GAUSSIAN_WIDTH ** 2),
+                       x, y, WIDE_GAUSSIAN_WIDTH, WIDE_GAUSSIAN_WIDTH)
+    wide_image += discretize_model(model, (0, IMAGE_SIZE), (0, IMAGE_SIZE),
+                                   mode='oversample')
 
 
 def test_create_prf_mean():
@@ -158,3 +172,46 @@ def test_subtract_psf():
     prf = DiscretePRF(test_psf, subsampling=1)
     residuals = subtract_psf(image, prf, POSITIONS, FLUXES)
     assert_allclose(residuals, np.zeros_like(image), atol=1E-6)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_psf_fitting_data_on_edge():
+    """
+    No mask is input explicitly here, but source 2 is so close to the edge
+    that the subarray that's extracted gets a mask internally.
+    """
+    psf_guess = IntegratedGaussianPSF(flux=1, sigma=WIDE_GAUSSIAN_WIDTH)
+    psf_guess.flux.fixed = psf_guess.x_0.fixed = psf_guess.y_0.fixed = False
+    fitshape = (8, 8)
+    outtab = psf_photometry(wide_image, WIDE_INTAB, psf_guess, fitshape)
+    for n in ['x', 'y', 'flux']:
+        assert_allclose(outtab[n + '_0'], outtab[n + '_fit'],
+                        rtol=0.05, atol=0.1)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_psf_fitting_data_masked():
+    """
+    There are several ways to input masked data, but we do not test
+    all of them here, because the @nddata decorartor and the
+    aperture_photometry tests take care of some of them.
+    """
+    mimage = wide_image.copy()
+    mask = np.zeros((IMAGE_SIZE, IMAGE_SIZE), dtype=np.bool)
+    mask[::3, 1::4] = 1
+    # Set masked values so high it would be obvious if they were used in fit
+    mimage[mask] = 1e5
+
+    psf_guess = IntegratedGaussianPSF(flux=1, sigma=WIDE_GAUSSIAN_WIDTH)
+    psf_guess.flux.fixed = psf_guess.x_0.fixed = psf_guess.y_0.fixed = False
+    fitshape = (8, 8)
+    # This definitely has to fail
+    outtab = psf_photometry(mimage, WIDE_INTAB, psf_guess, fitshape)
+    for n in ['x', 'y', 'flux']:
+        assert not np.allclose(outtab[n + '_0'], outtab[n + '_fit'],
+                               rtol=0.05, atol=0.1)
+
+    outtab = psf_photometry(mimage, WIDE_INTAB, psf_guess, fitshape, mask=mask)
+    for n in ['x', 'y', 'flux']:
+        assert_allclose(outtab[n + '_0'], outtab[n + '_fit'],
+                        rtol=0.05, atol=0.1)
