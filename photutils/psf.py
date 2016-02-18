@@ -436,7 +436,7 @@ class PSFAdapter(Fittable2DModel):
             setattr(self.psfmodel, self.xname, x_0)
 
         if self.xname is None:
-            dx = y - y_0
+            dy = y - y_0
         else:
             dy = y
             setattr(self.psfmodel, self.yname, y_0)
