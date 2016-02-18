@@ -18,8 +18,9 @@ from astropy.utils.misc import InheritDocstrings
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import skycoord_to_pixel
 from astropy.nddata import support_nddata
-from .aperture_funcs import (do_circular_photometry, do_elliptical_photometry,
-                             do_rectangular_photometry)
+from .aperture_funcs import (do_circular_photometry, get_circular_fractions,
+                             do_elliptical_photometry, get_elliptical_fractions,
+                             do_rectangular_photometry, get_rectangular_fractions)
 from .utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
                                 assert_angle_or_pixel)
 
@@ -186,7 +187,47 @@ class PixelAperture(Aperture):
         """
 
     @abc.abstractmethod
-    def area(self):
+    def get_fractions(self, data, method='exact', subpixels=5):
+        """Weight of pixels in data, within aperture(s).
+
+        Parameters
+        ----------
+        data : array_like
+            The 2-d array on which to perform photometry.
+        method : str, optional
+            Method to use for determining overlap between the aperture
+            and pixels.  Options include ['center', 'subpixel',
+            'exact'], but not all options are available for all types of
+            apertures. More precise methods will generally be slower.
+
+            * ``'center'``
+                A pixel is considered to be entirely in or out of the
+                aperture depending on whether its center is in or out of
+                the aperture.
+
+            * ``'subpixel'``
+                A pixel is divided into subpixels and the center of each
+                subpixel is tested (as above). With ``subpixels`` set to
+                1, this method is equivalent to 'center'. Note that for
+                subpixel sampling, the input array is only resampled
+                once for each object.
+
+            * ``'exact'`` (default)
+                The exact overlap between the aperture and each pixel is
+                calculated.
+        subpixels : int, optional
+            For the ``'subpixel'`` method, resample pixels by this factor (in
+            each dimension). That is, each pixel is divided into
+            ``subpixels ** 2`` subpixels.
+
+        Returns
+        -------
+        fraction : `numpy.array`
+            Array with the same shape as ``data``. Each element is the fraction
+        of the corresponding ``data`` pixel that falls within the aperture.
+        """
+
+    def area():
         """
         Area of aperture.
 
@@ -312,6 +353,17 @@ class CircularAperture(PixelAperture):
                                       subpixels=subpixels)
         return flux
 
+    def get_fractions(self, data, method='exact', subpixels=5):
+
+        if method not in ('center', 'subpixel', 'exact'):
+            raise ValueError('{0} method not supported for aperture class '
+                             '{1}'.format(method, self.__class__.__name__))
+
+        fractions = get_circular_fractions(data, self.positions,
+                                           self.r, method=method,
+                                           subpixels=subpixels)
+        return fractions
+
 
 class SkyCircularAnnulus(SkyAperture):
     """
@@ -431,6 +483,19 @@ class CircularAnnulus(PixelAperture):
                                       r_in=self.r_in)
 
         return flux
+
+    def get_fractions(self, data, method='exact', subpixels=5):
+
+        if method not in ('center', 'subpixel', 'exact'):
+            raise ValueError('{0} method not supported for aperture class '
+                             '{1}'.format(method, self.__class__.__name__))
+
+        fractions = get_circular_fractions(data, self.positions,
+                                           self.r_out, method=method,
+                                           subpixels=subpixels, r_in=self.r_in)
+        return fractions
+
+
 
     def plot(self, ax=None, fill=False, source_id=None, **kwargs):
 
@@ -582,6 +647,19 @@ class EllipticalAperture(PixelAperture):
                                         method=method,
                                         subpixels=subpixels)
         return flux
+
+    def get_fractions(self, data, method='exact', subpixels=5):
+
+        if method not in ('center', 'subpixel', 'exact'):
+            raise ValueError('{0} method not supported for aperture class '
+                             '{1}'.format(method, self.__class__.__name__))
+
+        fractions = get_elliptical_fractions(data, self.positions,
+                                             self.a, self.b, self.theta,
+                                             method=method, subpixels=subpixels)
+        return fractions
+
+
 
     def plot(self, ax=None, fill=False, source_id=None, **kwargs):
 
@@ -779,6 +857,18 @@ class EllipticalAnnulus(PixelAperture):
 
         return flux
 
+    def get_fractions(self, data, method='exact', subpixels=5):
+
+        if method not in ('center', 'subpixel', 'exact'):
+            raise ValueError('{0} method not supported for aperture class '
+                             '{1}'.format(method, self.__class__.__name__))
+
+        fractions = get_elliptical_fractions(data, self.positions,
+                                             self.a_out, self.b_out, self.theta,
+                                             method=method, subpixels=subpixels,
+                                             a_in=self.a_in)
+        return fractions
+
 
 class SkyRectangularAperture(SkyAperture):
     """
@@ -938,6 +1028,26 @@ class RectangularAperture(PixelAperture):
                                          method=method,
                                          subpixels=subpixels)
         return flux
+
+    def get_fractions(self, data, method='exact', subpixels=5):
+
+        if method == 'exact':
+            warnings.warn("'exact' method is not implemented, defaults to "
+                          "'subpixel' method and subpixels=32 instead",
+                          AstropyUserWarning)
+            method = 'subpixel'
+            subpixels = 32
+
+        elif method not in ('center', 'subpixel'):
+            raise ValueError('{0} method not supported for aperture class '
+                             '{1}'.format(method, self.__class__.__name__))
+
+        fractions = get_rectangular_fractions(data, self.positions,
+                                              self.w, self.h, self.theta,
+                                              method=method,
+                                              subpixels=subpixels)
+                                              
+        return fractions
 
 
 class SkyRectangularAnnulus(SkyAperture):
@@ -1134,6 +1244,26 @@ class RectangularAnnulus(PixelAperture):
                                          w_in=self.w_in)
 
         return flux
+
+    def get_fractions(self, data, method='exact', subpixels=5):
+
+        if method == 'exact':
+            warnings.warn("'exact' method is not implemented, defaults to "
+                          "'subpixel' method and subpixels=32 instead",
+                          AstropyUserWarning)
+            method = 'subpixel'
+            subpixels = 32
+
+        elif method not in ('center', 'subpixel'):
+            raise ValueError('{0} method not supported for aperture class '
+                             '{1}'.format(method, self.__class__.__name__))
+
+        fractions = get_rectangular_fractions(data, self.positions,
+                                              self.w_out, self.h_out,
+                                              self.theta,
+                                              method=method,
+                                              subpixels=subpixels,
+                                              w_in=self.w_in)
 
 
 @support_nddata
