@@ -14,7 +14,8 @@ from .aperture_core import _prepare_photometry_input
 from astropy.table import Table, Column
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling import Parameter, Fittable2DModel
-from astropy.nddata.utils import extract_array, add_array, subpixel_indices
+from astropy.nddata.utils import add_array, subpixel_indices
+from .extern.nddata_compat import extract_array
 from astropy.nddata import support_nddata
 from astropy.utils.exceptions import AstropyUserWarning
 
