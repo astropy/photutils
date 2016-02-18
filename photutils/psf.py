@@ -227,7 +227,8 @@ class DiscretePRF(Fittable2DModel):
         if isinstance(positions, (list, tuple)):
             positions = np.array(positions)
 
-        if isinstance(positions, Table) or ():
+        if isinstance(positions, Table) or \
+            (isinstance(positions, np.ndarray) and positions.dtype.names is not None):
             # Can do clever things like
             # positions['x_0', 'y_0'].as_array().view((positions['x_0'].dtype, 2))
             # but that requires  positions['x_0'].dtype is positions['y_0'].dtype
