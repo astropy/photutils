@@ -51,3 +51,8 @@ distribute-*.tar.gz
 
 # Mac OSX
 .DS_Store
+
+#generated notebook stuff
+docs/notebooks/*.rst
+docs/notebooks/*_files
+docs/notebooks/.ipynb_checkpoints
