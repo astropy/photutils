@@ -10,7 +10,7 @@ from astropy.convolution.utils import discretize_model
 from astropy.table import Table
 
 from ..psf import (DiscretePRF, psf_photometry,
-                   IntegratedGaussianPSF, subtract_psf)
+                   IntegratedGaussianPRF, subtract_psf)
 
 try:
     from scipy import optimize
@@ -146,7 +146,7 @@ def test_psf_boundary_gaussian():
     This also tests the case were input positions is an array instead
     of a table.
     """
-    psf = IntegratedGaussianPSF(GAUSSIAN_WIDTH)
+    psf = IntegratedGaussianPRF(GAUSSIAN_WIDTH)
     f = psf_photometry(image, np.ones((2, 1)), psf)
     assert_allclose(f['flux_fit'], 0, atol=1e-8)
 
@@ -156,7 +156,7 @@ def test_psf_photometry_gaussian():
     """
     Test psf_photometry with Gaussian PSF model.
     """
-    psf = IntegratedGaussianPSF(sigma=GAUSSIAN_WIDTH)
+    psf = IntegratedGaussianPRF(sigma=GAUSSIAN_WIDTH)
     f = psf_photometry(image, INTAB, psf)
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
@@ -181,7 +181,7 @@ def test_psf_fitting_data_on_edge():
     No mask is input explicitly here, but source 2 is so close to the edge
     that the subarray that's extracted gets a mask internally.
     """
-    psf_guess = IntegratedGaussianPSF(flux=1, sigma=WIDE_GAUSSIAN_WIDTH)
+    psf_guess = IntegratedGaussianPRF(flux=1, sigma=WIDE_GAUSSIAN_WIDTH)
     psf_guess.flux.fixed = psf_guess.x_0.fixed = psf_guess.y_0.fixed = False
     fitshape = (8, 8)
     outtab = psf_photometry(wide_image, WIDE_INTAB, psf_guess, fitshape)
@@ -203,7 +203,7 @@ def test_psf_fitting_data_masked():
     # Set masked values so high it would be obvious if they were used in fit
     mimage[mask] = 1e5
 
-    psf_guess = IntegratedGaussianPSF(flux=1, sigma=WIDE_GAUSSIAN_WIDTH)
+    psf_guess = IntegratedGaussianPRF(flux=1, sigma=WIDE_GAUSSIAN_WIDTH)
     psf_guess.flux.fixed = psf_guess.x_0.fixed = psf_guess.y_0.fixed = False
     fitshape = (8, 8)
     # This definitely has to fail
