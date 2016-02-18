@@ -172,7 +172,7 @@ def test_subtract_psf():
     for n in posflux.colnames:
         posflux.rename_column(n, n.split('_')[0] + '_fit')
     residuals = subtract_psf(image, prf, posflux)
-    assert_allclose(residuals, np.zeros_like(image), atol=1E-6)
+    assert_allclose(residuals, np.zeros_like(image), atol=1E-4)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
