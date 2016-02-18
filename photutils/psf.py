@@ -1,5 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-"""Functions for performing PSF fitting photometry on 2D arrays."""
+"""Models and functions for doing PSF/PRF fitting photometry on image data."""
 
 from __future__ import division
 
@@ -19,7 +19,7 @@ from .extern.nddata_compat import extract_array
 from astropy.nddata import support_nddata
 from astropy.utils.exceptions import AstropyUserWarning
 
-__all__ = ['DiscretePRF', 'IntegratedGaussianPSF', 'psf_photometry',
+__all__ = ['DiscretePRF', 'IntegratedGaussianPRF', 'psf_photometry',
            'subtract_psf']
 
 
@@ -33,8 +33,8 @@ class DiscretePRF(Fittable2DModel):
     divided.
 
     In the typical case of wanting to create a PRF from an image with many point
-    sources, use the `create_from_image` method, rather than directly
-    initializing this class.
+    sources, use the `~DiscretePRF.create_from_image` method, rather than
+    directly initializing this class.
 
     The discrete PRF model class in initialized with a 4 dimensional
     array, that contains the PRF images at different subpixel positions.
@@ -58,25 +58,10 @@ class DiscretePRF(Fittable2DModel):
     subsampling : int, optional
         Factor of subsampling. Default = 1.
 
-
     Notes
     -----
-    In Astronomy different definitions of Point Spread Function (PSF) and
-    Point Response Function (PRF) are used. Here we assume that the PRF is
-    an image of a point source after discretization e.g. with a CCD. This
-    definition is equivalent to the `Spitzer definiton of the PRF
-    <http://irsa.ipac.caltech.edu/data/SPITZER/docs/dataanalysistools/tools/mopex/mopexusersguide/89/>`_.
-
-    References
-    ----------
-    `Spitzer PSF vs. PRF
-    <http://irsa.ipac.caltech.edu/data/SPITZER/docs/files/spitzer/PRF_vs_PSF.pdf>`_
-
-    `Kepler PSF calibration
-    <http://keplerscience.arc.nasa.gov/CalibrationPSF.shtml>`_
-
-    `The Kepler Pixel Response Function
-    <http://adsabs.harvard.edu/abs/2010ApJ...713L..97B>`_
+    See :ref:`psf-terminology` for more details on the distinction between PSF
+    and PRF as used in this module.
     """
     flux = Parameter('flux')
     x_0 = Parameter('x_0')
@@ -165,18 +150,19 @@ class DiscretePRF(Fittable2DModel):
     def create_from_image(cls, imdata, positions, size, fluxes=None, mask=None,
                           mode='mean', subsampling=1, fix_nan=False):
         """
-        Estimate point response function (PRF) from image data.
+        Create a discrete point response function (PRF) from image data.
 
         Given a list of positions and size this function estimates an image of
         the PRF by extracting and combining the individual PRFs from the given
-        positions. Different modes of combining are available.
+        positions.
 
         NaN values are either ignored by passing a mask or can be replaced by
         the mirrored value with respect to the center of the PRF.
 
-        Furthermore it is possible to specify fluxes to have a correct
-        normalization of the individual PRFs. Otherwise the flux is estimated from
-        a quadratic aperture of the same size as the PRF image.
+        Note that if fluxes are *not* specified explicitly, it will be flux
+        estimated from an aperture of the same size as the PRF image. This does
+        *not* account for aperture corrections so often will *not* be what you
+        want for anything other than quick-look needs.
 
         Parameters
         ----------
@@ -191,7 +177,9 @@ class DiscretePRF(Fittable2DModel):
         mask : bool array, optional
             Boolean array to mask out bad values.
         fluxes : array, optional
-            Object fluxes to normalize extracted PRFs.
+            Object fluxes to normalize extracted PRFs. If not given (or None),
+            the flux is estimated from an aperture of the same size as
+            the PRF image.
         mode : {'mean', 'median'}
             One of the following modes to combine the extracted PRFs:
                 * 'mean'
@@ -296,9 +284,11 @@ class DiscretePRF(Fittable2DModel):
         return cls(prf_model, subsampling=subsampling)
 
 
-class IntegratedGaussianPSF(Fittable2DModel):
+class IntegratedGaussianPRF(Fittable2DModel):
     r"""
-    Circular Gaussian model integrated over pixels.
+    Circular Gaussian model integrated over pixels. Because it is integrated,
+    this model is considered a PRF, *not* a PSF (see :ref:`psf-terminology` for
+    more about the terminology used here.)
 
     This model is a Gaussian *integrated* over an area of ``1`` (in units
     of the model input coordinates).  This is in contrast to the apparently
@@ -319,7 +309,7 @@ class IntegratedGaussianPSF(Fittable2DModel):
 
     Notes
     -----
-    The PSF model is evaluated according to the following formula:
+    This model is evaluated according to the following formula:
 
         .. math::
 
@@ -363,7 +353,7 @@ class IntegratedGaussianPSF(Fittable2DModel):
             from scipy.special import erf
             self.__class__._erf = erf
 
-        super(IntegratedGaussianPSF, self).__init__(n_models=1, sigma=sigma,
+        super(IntegratedGaussianPRF, self).__init__(n_models=1, sigma=sigma,
                                                     x_0=x_0, y_0=y_0,
                                                     flux=flux, **kwargs)
 
