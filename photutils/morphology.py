@@ -83,15 +83,11 @@ def _convert_image(data, mask=None):
         The converted 2D array of the image, where masked pixels have
         been set to zero.
     """
-
-    try:
-        if mask is None:
-            copy = False
-        else:
-            copy = True
-        image = np.asarray(data).astype(np.float, copy=copy)
-    except TypeError:    # pragma: no cover
-        image = np.asarray(data).astype(np.float)    # for numpy <= 1.6
+    if mask is None:
+        copy = False
+    else:
+        copy = True
+    image = np.asarray(data).astype(np.float, copy=copy)
     if mask is not None:
         mask = np.asanyarray(mask)
         if data.shape != mask.shape:

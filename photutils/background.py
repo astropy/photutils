@@ -154,54 +154,27 @@ class Background(object):
         self.data_ma_shape = data_ma.shape
         self._sigclip_data(data_ma)
 
-    @staticmethod
-    def _pad(data, xpad, ypad, value=np.nan):
-        """
-        Pad a data array on the right and top.  Used only for numpy 1.6,
-        where np.pad is not available.
-        """
-
-        ny, nx = data.shape
-        shape = (ny + ypad, nx + xpad)
-        padded_data = np.ones(shape) * value
-        padded_data[0:ny, 0:nx] = data
-        return padded_data
-
     def _pad_data(self, data, mask=None):
         """
         Pad the ``data`` and ``mask`` on the right and top with zeros if
         necessary to have a integer number of background meshes of size
         ``box_shape``.
         """
-
-        try:
-            from numpy import pad
-            has_nppad = True
-        except ImportError:
-            has_nppad = False
-
         ypad, xpad = 0, 0
         if self.yextra > 0:
             ypad = self.box_shape[0] - self.yextra
         if self.xextra > 0:
             xpad = self.box_shape[1] - self.xextra
 
-        if has_nppad:
-            pad_width = ((0, ypad), (0, xpad))
-            mode = str('constant')
-            padded_data = np.pad(data, pad_width, mode=mode,
-                                 constant_values=[np.nan])
-        else:
-            padded_data = self._pad(data, xpad, ypad, value=np.nan)
+        pad_width = ((0, ypad), (0, xpad))
+        mode = str('constant')
+        padded_data = np.pad(data, pad_width, mode=mode,
+                             constant_values=[np.nan])
         padded_mask = np.isnan(padded_data)
 
         if mask is not None:
-            if has_nppad:
-                mask_pad = np.pad(mask, pad_width, mode=mode,
-                                  constant_values=[False])
-            else:
-                mask_pad = self._pad(mask, xpad, ypad,
-                                     value=False).astype(np.bool)
+            mask_pad = np.pad(mask, pad_width, mode=mode,
+                              constant_values=[False])
             padded_mask = np.logical_or(padded_mask, mask_pad)
         return np.ma.masked_array(padded_data, mask=padded_mask)
 
