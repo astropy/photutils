@@ -19,7 +19,7 @@ usage is taken into account.  For this module we assume that the PRF is an image
 of a point source *after discretization* e.g., onto a rectilinear CCD grid. This
 is the definition used by `Spitzer
 <http://irsa.ipac.caltech.edu/data/SPITZER/docs/dataanalysistools/tools/mopex/mopexusersguide/89/>`_.
-Where relevant, we use this terminology for this sort of model, and consder
+Where relevant, we use this terminology for this sort of model, and consider
 "PSF" to refer to the underlying model. In many cases this distinction is
 unimportant, but can be critical when dealing with undersampled data.
 

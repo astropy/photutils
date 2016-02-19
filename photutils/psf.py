@@ -291,10 +291,11 @@ class IntegratedGaussianPRF(Fittable2DModel):
     more about the terminology used here.)
 
     This model is a Gaussian *integrated* over an area of ``1`` (in units
-    of the model input coordinates).  This is in contrast to the apparently
+    of the model input coordinates, e.g. 1 pixel).
+    This is in contrast to the apparently
     similar `astropy.modeling.functional_models.Gaussian2D`, which is the value
     of a 2D Gaussian *at* the input coordinates, with no integration.  So this
-    model is equivalent to assuming the *sub-pixel* PSF is Gaussian.
+    model is equivalent to assuming the PSF is Gaussian at a *sub-pixel* level.
 
     Parameters
     ----------
@@ -369,7 +370,7 @@ class IntegratedGaussianPRF(Fittable2DModel):
 
 class PRFAdapter(Fittable2DModel):
     """
-    A model that adapts a supplied PSF model to actas a PRF.  I.e., this
+    A model that adapts a supplied PSF model to act as a PRF. It
     integrates the PSF model over pixel "boxes".  A critical built-in assumption
     is that the PSF model scale and location parameters are in *pixel* units.
 
@@ -395,7 +396,7 @@ class PRFAdapter(Fittable2DModel):
 
     Notes
     -----
-    This current implementation of this class (using numberical integration for
+    This current implementation of this class (using numerical integration for
     each pixel) is extremely slow, and only suited for experimentation over
     relatively few small regions.
     """
@@ -410,11 +411,11 @@ class PRFAdapter(Fittable2DModel):
         self.psfmodel = psfmodel.copy()
 
         if renormalize_psf:
-            from scipy import integrate
-            self._psf_scale_factor = 1/integrate.dblquad(self.psfmodel,
-                                                         -np.inf, np.inf,
-                                                         lambda x: -np.inf,
-                                                         lambda x: np.inf)[0]
+            from scipy.integrate import dblquad
+            self._psf_scale_factor = 1. / dblquad(self.psfmodel,
+                                                  -np.inf, np.inf,
+                                                  lambda x: -np.inf,
+                                                  lambda x: np.inf)[0]
         else:
             self._psf_scale_factor = 1
 
@@ -515,7 +516,7 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
     Parameters
     ----------
     psfmodel : a 2D model
-        The model to assume as representative of the PSF
+        The model to assume as representative of the PSF.
     xname : str or None
         The name of the ``psfmodel`` parameter that corresponds to the x-axis
         center of the PSF.  If None, the model will be assumed to be centered
@@ -613,16 +614,29 @@ def psf_photometry(data, positions, psf, fitshape=None,
         either provided along with the data array, or stored in the
         header keyword ``'BUNIT'``.
     positions : Array-like of shape (2 or 3, N) or `~astropy.table.Table`
-        Positions at which to *start* the fit, in pixel coordinates. If
+        Positions at which to *start* the fit for each object, in pixel
+        coordinates. If
         array-like, it can be either (x_0, y_0) or (x_0, y_0, flux_0). If a
         table, the columns 'x_0' and 'y_0' must be present.  'flux_0' can also
         be provided to set initial fluxes.  Additional columns of the form
         '<parametername>_0' will be used to set the initial guess for any
         parameters of the ``psf`` model that are not fixed.
     psf : `astropy.modeling.Fittable2DModel` instance
-        PSF or PRF model to fit to the data. Could be some of the models in this
-        package like `~photutils.psf.DiscretePRF`, `~photutils.psf.IntegratedGaussianPRF`,
-        or any other suitable 2D model.
+        PSF or PRF model to fit the data. Could be one of the models in this
+        package like `~photutils.psf.DiscretePRF`,
+        `~photutils.psf.IntegratedGaussianPRF`, or any other suitable 2D model.
+        This function needs to identify three parameters (position of center in
+        x and y coordinates and the flux) in order to set them to suitable
+        starting values for each fit. The names of these parameters can be given
+        as follows:
+
+        - Set ``psf.psf_xname``, ``psf.psf_yname`` and ``psf.psf_fluxname`` to
+          strings with the names of the respective psf model parameter.
+        - If those attributes are not found, the names ``x_0``, ``y_0`` and
+          ``flux`` are assumed.
+
+        `~photutils.psf.prepare_psf_model` can be used to prepare any 2D model
+        to match these assumptions.
     fitshape : length-2 or None
         The shape of the region around the center of the target location to do
         the fitting in.  If None, fit the whole image without windowing. (See
