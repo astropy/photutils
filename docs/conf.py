@@ -272,7 +272,8 @@ def notebooks_to_rst(app):
 
         nbc_app.start()
     except:
-        app.warn('Failed to convert notebooks to RST (see above).')
+        e = sys.exc_info()[0]
+        app.warn('Failed to convert notebooks to RST (see above): ' + str(e))
     finally:
         os.chdir(olddir)
 
