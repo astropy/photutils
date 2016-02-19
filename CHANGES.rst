@@ -5,7 +5,7 @@
 General
 ^^^^^^^
 
-- Drop numpy 1.6 support, minimal required version is not numpy 1.7 [#327]
+- Drop numpy 1.6 support, minimal required version is now numpy 1.7 [#327]
 
 
 0.2.1 (2016-01-15)
