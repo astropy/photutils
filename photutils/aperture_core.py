@@ -1046,7 +1046,7 @@ class RectangularAperture(PixelAperture):
                                               self.w, self.h, self.theta,
                                               method=method,
                                               subpixels=subpixels)
-                                              
+
         return fractions
 
 
