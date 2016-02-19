@@ -47,9 +47,9 @@ matrix:
         # Check for sphinx doc build warnings - we do this first because it
         # may run for a long time
         - python: 2.7
-          env: ASTROPY_VERSION=development SETUP_CMD='build_sphinx -w'
+          env: ASTROPY_VERSION=development SETUP_CMD='build_sphinx -w' CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter'
         - python: 3.4
-          env: ASTROPY_VERSION=development SETUP_CMD='build_sphinx -w'
+          env: ASTROPY_VERSION=development SETUP_CMD='build_sphinx -w' CONDA_DEPENDENCIES='Cython scipy scikit-image jupyter'
 
         # Python 3.3 doesn't have numpy 1.10 in conda, revoke this commit once
         # it's available in the astropy-ci-extras channel
