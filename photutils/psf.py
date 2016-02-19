@@ -367,10 +367,11 @@ class IntegratedGaussianPRF(Fittable2DModel):
                   self._erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma)))))
 
 
-class PSFAdapter(Fittable2DModel):
+class PRFAdapter(Fittable2DModel):
     """
-    A minimal model for doing PSF fitting with an already-defined model of the
-    PSF.
+    A model that adapts a supplied PSF model to actas a PRF.  I.e., this
+    integrates the PSF model over pixel "boxes".  A critical built-in assumption
+    is that the PSF model scale and location parameters are in *pixel* units.
 
     Parameters
     ----------
@@ -390,14 +391,13 @@ class PSFAdapter(Fittable2DModel):
     fluxname : str or None
         The name of the ``psfmodel`` parameter that corresponds to the total
         flux of the star.  If None, a scaling factor will be applied by the
-        ``PSFAdapter`` instead of modifying the ``psfmodel``.
+        ``PRFAdapter`` instead of modifying the ``psfmodel``.
 
     Notes
     -----
-    This class will be intrinsically slower than using a PSF model directly. It
-    is primarily intended as a convenience to wrap models that are more easily
-    represented in a form that doesn't have a fixed flux or otherwise is
-    parametrized in a way that is awkward to use with model-fitting photometry.
+    This current implementation of this class (using numberical integration for
+    each pixel) is extremely slow, and only suited for experimentation over
+    relatively few small regions.
     """
     flux = Parameter(default=1)
     x_0 = Parameter(default=0)
@@ -422,12 +422,16 @@ class PSFAdapter(Fittable2DModel):
         self.yname = yname
         self.fluxname = fluxname
 
-        super(PSFAdapter, self).__init__(n_models=1, x_0=x_0, y_0=y_0,
+        # these can be used to adjust the integration behavior. Might be used
+        # in the future to expose how the integration happens
+        self._dblquadkwargs = {}
+
+        super(PRFAdapter, self).__init__(n_models=1, x_0=x_0, y_0=y_0,
                                          flux=flux, **kwargs)
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """
-        The evaluation function for PSFAdapter.
+        The evaluation function for PRFAdapter.
         """
         if self.xname is None:
             dx = x - x_0
@@ -442,10 +446,24 @@ class PSFAdapter(Fittable2DModel):
             setattr(self.psfmodel, self.yname, y_0)
 
         if self.fluxname is None:
-            return flux * self._psf_scale_factor * self.psfmodel(dx, dy)
+            return flux * self._psf_scale_factor * self._integrated_psfmodel(dx, dy)
         else:
             setattr(self.psfmodel, self.yname, flux * self._psf_scale_factor)
-            return self.psfmodel(dx, dy)
+            return self._integrated_psfmodel(dx, dy)
+
+    def _integrated_psfmodel(self, dx, dy):
+        from scipy.integrate import dblquad
+
+        # infer type/shape from the PSF model.  Seems wasteful, but the
+        # integration step is a *lot* more expensive so its just peanuts
+        out = np.empty_like(self.psfmodel(dx, dy))
+        outravel = out.ravel()
+        for i, (xi, yi) in enumerate(zip(dx.ravel(), dy.ravel())):
+            outravel[i] = dblquad(self.psfmodel,
+                                  xi-0.5, xi+0.5,
+                                  lambda x: yi-0.5, lambda x: yi+0.5,
+                                  **self._dblquadkwargs)[0]
+        return out
 
 
 def _extract_psf_fitting_names(psf):
