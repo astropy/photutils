@@ -1,0 +1,466 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# PSF/PRF Photometry on Spitzer Data"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The affiliated package *photutils* offers now some functions to perform PSF photometry on astronomical image data. This notebook gives a short introduction on the basis of a Spitzer data set. "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Introduction"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "As an improvement, compared to aperture photometry, PSF photometry makes use of instrument related information. To estimate the \n",
+    "the physical parameters of an astrophysical point source it uses a model how this point souce is imaged by the instrument.\n",
+    "This model is called point spread function (PSF). The PSF can be either obtained from the data itself or modeled by some analytical\n",
+    "function. Additionally there is a second concept, the so called point response function (PRF), which denotes the PSF after discretization with a CCD. We are going to deal mostly with PRFs."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Preliminaries"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "First we do our required imports"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "import numpy as np\n",
+    "\n",
+    "from astropy.table import Table\n",
+    "from astropy.utils.data import get_readable_fileobj\n",
+    "from astropy.io import fits\n",
+    "from astropy.wcs import wcs\n",
+    "from astropy.coordinates import SkyCoord\n",
+    "import astropy.units as u"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "from photutils import psf"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Then we set up the matplotlib environment for this notebook"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "%matplotlib inline\n",
+    "import matplotlib.pyplot as plt"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Obtaining and loading the data"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The test data are originally from the [Spitzer database](http://irsa.ipac.caltech.edu/data/SPITZER/GLIMPSE/images/I/1.2_mosaics_v2.0/GLON_10-30/GLM_01800+0000_mosaic_I2.fits). However, a copy of this and a source catalog are contained in the [photutils-data](https://github.com/astropy/photutils-datasets) GitHub repository, which we access below."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "At first we use `astropy.table` to read the coordinates and fluxes for the sources from the catalog.  Using ``get_readable_fileobj`` with ``cache=True`` allows the data to be downloaded only once at a local copy re-used after:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "catalogurl = 'https://raw.githubusercontent.com/astropy/photutils-datasets/master/data/spitzer_example_catalog.xml'\n",
+    "with get_readable_fileobj(catalogurl, 'binary', cache=True) as f:\n",
+    "    catalog = Table.read(f, format='votable')\n",
+    "fluxes_catalog = catalog['f4_5']"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We then read the image data using `astropy.io.fits`. As the image data is given in `MJy/sr`, but in the catalog the units are `mJy`, we have to convert the units. Therefore we use that the image data has a resolution of `(1.2 arcsec)^2 / pixel`. Furthermore we set up a mask to exclude NaN values."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "imgurl = 'https://github.com/astropy/photutils-datasets/raw/master/data/spitzer_example_image.fits'\n",
+    "\n",
+    "data = fits.getdata(imgurl, cache=True)\n",
+    "factor = (u.MJy / u.sr * (1.2 * u.arcsec) ** 2 / u.pixel).to(u.mJy / u.pixel)\n",
+    "data *= factor.value\n",
+    "mask = np.isfinite(data)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "As the photometry function is currently only able to handle pixel coordinates, we define a WCS transformation to convert the galactic coordinates into pixel coordinates:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "header = fits.getheader(imgurl)\n",
+    "wcs_transform = wcs.WCS(header)\n",
+    "coords = wcs_transform.wcs_world2pix(l, b, 0)\n",
+    "\n",
+    "galcoords = SkyCoord(l=catalog['l'], b=catalog['b'], frame='galactic')\n",
+    "pxcoords = np.array(galcoords.to_pixel(wcs_transform))\n",
+    "\n",
+    "\n",
+    "# It seems that the coordinates are shifted. To have the PRF images properly aligned in the plot below, we correct for this.\n",
+    "pxcoords[0] += 0.18\n",
+    "pxcoords[1] += 0.3"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Here is a plot with the source positions overlayed:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "plt.figure(figsize=(16, 12))\n",
+    "plt.imshow(data, cmap='hot', vmin=0, vmax=10, interpolation='None', origin='lower')\n",
+    "plt.xlim(0, 1024)\n",
+    "plt.ylim(0, 512)\n",
+    "plt.plot(pxcoords[0], pxcoords[1], marker=\"o\", markerfacecolor='None', markeredgecolor='y', linestyle='None')\n",
+    "plt.colorbar(orientation='horizontal')\n",
+    "plt.tight_layout()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now we're ready to estimate the PRF from the data."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Creating PRFs from image data"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "To estimate the PRF we work on the complete dataset. We choose a size of 7 pixels and a subsampling of 5 / pixel for the PRF."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "prf_discrete = psf.DiscretePRF.create_from_image(data, pxcoords.T, 7, fluxes=fluxes_catalog, \n",
+    "                                                 mask=np.logical_not(mask), subsampling=5)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "%timeit -n 3 create_prf(data, pxcoords, 7, fluxes=fluxes_catalog, mask=np.logical_not(mask), subsampling=5)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The object returned by `create_prf` is a `DiscretePRF` object, which is basically a look-up table of the different PRFs at different subpixel positions. But it behaves and can be handled like a usual `astropy.modeling.ParametricModel`. The PRFs are stored in the `DiscretePRF._prf_array` attribute. We make a plot to illustrate this:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "fig, axes = plt.subplots(nrows=5, ncols=5)\n",
+    "fig.set_size_inches(12, 9)\n",
+    "# Plot kernels\n",
+    "for i in range(5):\n",
+    "    for j in range(5):\n",
+    "        prf_image = prf_discrete._prf_array[i, j]\n",
+    "        im = axes[i, j].imshow(prf_image, interpolation='None')\n",
+    "\t\t\t\n",
+    "cax = fig.add_axes([0.9, 0.1, 0.03, 0.8])\n",
+    "plt.colorbar(im, cax=cax)\n",
+    "plt.subplots_adjust(left=0.05, right=0.85, top=0.95, bottom=0.05)\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "As we work on a reduced dataset the PRF images at the boundaries show a few artifacts due to bad statistics. A better handling of outliers could be achieved by setting `mode = 'median'` in the `create_prf` function or reducing the size of the prf."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Photometry with DiscretePRF"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We perform photometry on the first 500 sources of the dataset:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "from photutils.psf import psf_photometry\n",
+    "fluxes_photutils = psf_photometry(data, pxcoords, prf_discrete)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "To compare with the catalog results, we make a scatter plot:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "plt.scatter(fluxes_catalog, fluxes_photutils)\n",
+    "plt.loglog()\n",
+    "plt.xlim(40, 500)\n",
+    "plt.ylim(40, 500)\n",
+    "plt.xlabel(\"Fluxes catalog [mJy]\")\n",
+    "plt.ylabel(\"Fluxes Photutils [mJy]\")\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Photometry with Gaussian PSF"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We can also perform photometry using an `IntegratedGaussianPRF`:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "psf_gaussian = psf.IntegratedGaussianPRF(1)\n",
+    "fit_photometry = psf.psf_photometry(data, pxcoords, psf_gaussian, fitshape=(8, 8))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "# Measure runtime\n",
+    "%timeit -n 3 psf.psf_photometry(data, pxcoords, psf_gaussian, fitshape=(8, 8))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Again we compare with the catalog:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "plt.scatter(fluxes_catalog, fit_photometry['flux_fit'])\n",
+    "plt.loglog()\n",
+    "plt.xlim(40, 500)\n",
+    "plt.ylim(40, 500)\n",
+    "plt.xlabel(\"Fluxes catalog [mJy]\")\n",
+    "plt.ylabel(\"Fluxes Gaussian Photutils [mJy]\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Making residual images"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "It is also possible to remove PRFs from the data and make residual images:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "residuals = psf.subtract_psf(data.copy(), prf_discrete, pxcoords, fluxes_photutils)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We make a plot of the residual image:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "plt.figure(figsize=(16, 12))\n",
+    "plt.imshow(residuals, cmap='hot', vmin=-1, vmax=10, interpolation='None', origin='lower')\n",
+    "plt.plot(pxcoords.T[0], pxcoords.T[1], marker=\"o\", markerfacecolor='None', markeredgecolor='y', linestyle='None')\n",
+    "plt.xlim(0, 1024)\n",
+    "plt.ylim(0, 512)\n",
+    "plt.colorbar(orientation='horizontal')"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.5.1"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 0
+}
