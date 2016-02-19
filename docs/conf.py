@@ -201,10 +201,16 @@ def notebooks_to_rst(app):
         # post "big-split", nbconvert is a separate namespace
         from nbconvert.nbconvertapp import NbConvertApp
         from nbconvert.writers import FilesWriter
+        from nbconvert.preprocessors import Preprocessor, ExecutePreprocessor
+        from nbconvert.exporters import RSTExporter
+        from nbformat import NotebookNode
     except ImportError:
         try:
             from IPython.nbconvert.nbconvertapp import NbConvertApp
             from IPython.nbconvert.writers import FilesWriter
+            from IPython.nbconvert.preprocessors import Preprocessor
+            from IPython.nbconvert.exporters import RSTExporter
+            from IPython.nbformat import NotebookNode
         except ImportError:
             raise ImportError('Failed to find Jupyter or IPython. Cannot build '
                               'the notebooks embedded in the docs. Proceeding '
@@ -217,24 +223,56 @@ def notebooks_to_rst(app):
             output = ':orphan:\n\n' + output
             FilesWriter.write(self, output, resources, **kwargs)
 
+    class AddSysPath(Preprocessor):
+        """
+        Adds the local system path to the top of the notebook.  This makes sure
+        when build_sphinx is invoked that the notebook actually runs with the
+        current build.
+        """
+        def preprocess(self, nb, resources):
+            syspathstr = 'sys.path = {} + sys.path'.format(str(sys.path))
+            cell = {'cell_type': 'code',
+                    'execution_count': None,
+                    'metadata': {},
+                    'outputs': [],
+                    'source': 'import sys\n' + syspathstr}
+            nb.cells.insert(0, NotebookNode(cell))
+            return nb, resources
+
+    class RemoveSysPath(Preprocessor):
+        """
+        Removes the sys.path cell added by AddSysPath
+        """
+        def preprocess(self, nb, resources):
+            if 'sys.path' in nb.cells[0].source:
+                del nb.cells[0]
+            return nb, resources
+
     olddir = os.path.abspath(os.curdir)
     try:
         srcdir = os.path.abspath(os.path.split(__file__)[0])
         os.chdir(os.path.join(srcdir, 'notebooks'))
         nbs = glob('*.ipynb')
 
-        app.info("Converting these notebooks to sphinx files: " + str(nbs))
+        app.info("Executing and converting these notebooks to sphinx files: " + str(nbs))
 
-        app = NbConvertApp()
-        app.initialize(argv=[])
-        app.writer = OrphanizerWriter()
+        nbc_app = NbConvertApp()
+        nbc_app.initialize()
 
-        app.export_format = 'rst'
-        app.notebooks = nbs
+        nbc_app.writer = OrphanizerWriter()
 
-        app.start()
+        nbc_app.export_format = 'rst'
+
+        pps = RSTExporter().default_preprocessors
+        pps.insert(0, AddSysPath)
+        pps.append(RemoveSysPath)
+        nbc_app.config.RSTExporter.preprocessors = pps
+
+        nbc_app.notebooks = nbs
+
+        nbc_app.start()
     except:
-        pass
+        app.warn('Failed to convert notebooks to RST (see above).')
     finally:
         os.chdir(olddir)
 
