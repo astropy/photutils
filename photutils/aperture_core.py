@@ -1160,7 +1160,7 @@ def _prepare_photometry_input(data, unit, wcs, mask, error, effective_gain,
     -------
     data : `~astropy.units.Quantity` instance
     wcs_transformation : `~astropy.wcs.WCS` instance or None
-    mask : np.array
+    mask : np.array or None
     error : `~astropy.units.Quantity` instance or None
     effective_gain : `~astropy.units.Quantity` instance or None
     '''
