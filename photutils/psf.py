@@ -1,5 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-"""Functions for performing PSF fitting photometry on 2D arrays."""
+"""Models and functions for doing PSF/PRF fitting photometry on image data."""
 
 from __future__ import division
 
@@ -12,14 +12,15 @@ from .utils import mask_to_mirrored_num
 from .aperture_core import _prepare_photometry_input
 
 from astropy.table import Table, Column
+from astropy.modeling import models, Parameter, Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.modeling import Parameter, Fittable2DModel
-from astropy.nddata.utils import extract_array, add_array, subpixel_indices
+from astropy.nddata.utils import add_array, subpixel_indices
+from .extern.nddata_compat import extract_array
 from astropy.nddata import support_nddata
 from astropy.utils.exceptions import AstropyUserWarning
 
-__all__ = ['DiscretePRF', 'IntegratedGaussianPSF', 'psf_photometry',
-           'subtract_psf']
+__all__ = ['DiscretePRF', 'IntegratedGaussianPRF', 'PRFAdapter',
+           'psf_photometry', 'subtract_psf', 'prepare_psf_model']
 
 
 class DiscretePRF(Fittable2DModel):
@@ -32,8 +33,8 @@ class DiscretePRF(Fittable2DModel):
     divided.
 
     In the typical case of wanting to create a PRF from an image with many point
-    sources, use the `create_from_image` method, rather than directly
-    initializing this class.
+    sources, use the `~DiscretePRF.create_from_image` method, rather than
+    directly initializing this class.
 
     The discrete PRF model class in initialized with a 4 dimensional
     array, that contains the PRF images at different subpixel positions.
@@ -57,25 +58,10 @@ class DiscretePRF(Fittable2DModel):
     subsampling : int, optional
         Factor of subsampling. Default = 1.
 
-
     Notes
     -----
-    In Astronomy different definitions of Point Spread Function (PSF) and
-    Point Response Function (PRF) are used. Here we assume that the PRF is
-    an image of a point source after discretization e.g. with a CCD. This
-    definition is equivalent to the `Spitzer definiton of the PRF
-    <http://irsa.ipac.caltech.edu/data/SPITZER/docs/dataanalysistools/tools/mopex/mopexusersguide/89/>`_.
-
-    References
-    ----------
-    `Spitzer PSF vs. PRF
-    <http://irsa.ipac.caltech.edu/data/SPITZER/docs/files/spitzer/PRF_vs_PSF.pdf>`_
-
-    `Kepler PSF calibration
-    <http://keplerscience.arc.nasa.gov/CalibrationPSF.shtml>`_
-
-    `The Kepler Pixel Response Function
-    <http://adsabs.harvard.edu/abs/2010ApJ...713L..97B>`_
+    See :ref:`psf-terminology` for more details on the distinction between PSF
+    and PRF as used in this module.
     """
     flux = Parameter('flux')
     x_0 = Parameter('x_0')
@@ -164,18 +150,19 @@ class DiscretePRF(Fittable2DModel):
     def create_from_image(cls, imdata, positions, size, fluxes=None, mask=None,
                           mode='mean', subsampling=1, fix_nan=False):
         """
-        Estimate point response function (PRF) from image data.
+        Create a discrete point response function (PRF) from image data.
 
         Given a list of positions and size this function estimates an image of
         the PRF by extracting and combining the individual PRFs from the given
-        positions. Different modes of combining are available.
+        positions.
 
         NaN values are either ignored by passing a mask or can be replaced by
         the mirrored value with respect to the center of the PRF.
 
-        Furthermore it is possible to specify fluxes to have a correct
-        normalization of the individual PRFs. Otherwise the flux is estimated from
-        a quadratic aperture of the same size as the PRF image.
+        Note that if fluxes are *not* specified explicitly, it will be flux
+        estimated from an aperture of the same size as the PRF image. This does
+        *not* account for aperture corrections so often will *not* be what you
+        want for anything other than quick-look needs.
 
         Parameters
         ----------
@@ -190,7 +177,9 @@ class DiscretePRF(Fittable2DModel):
         mask : bool array, optional
             Boolean array to mask out bad values.
         fluxes : array, optional
-            Object fluxes to normalize extracted PRFs.
+            Object fluxes to normalize extracted PRFs. If not given (or None),
+            the flux is estimated from an aperture of the same size as
+            the PRF image.
         mode : {'mean', 'median'}
             One of the following modes to combine the extracted PRFs:
                 * 'mean'
@@ -295,9 +284,11 @@ class DiscretePRF(Fittable2DModel):
         return cls(prf_model, subsampling=subsampling)
 
 
-class IntegratedGaussianPSF(Fittable2DModel):
+class IntegratedGaussianPRF(Fittable2DModel):
     r"""
-    Circular Gaussian model integrated over pixels.
+    Circular Gaussian model integrated over pixels. Because it is integrated,
+    this model is considered a PRF, *not* a PSF (see :ref:`psf-terminology` for
+    more about the terminology used here.)
 
     This model is a Gaussian *integrated* over an area of ``1`` (in units
     of the model input coordinates).  This is in contrast to the apparently
@@ -318,7 +309,7 @@ class IntegratedGaussianPSF(Fittable2DModel):
 
     Notes
     -----
-    The PSF model is evaluated according to the following formula:
+    This model is evaluated according to the following formula:
 
         .. math::
 
@@ -362,7 +353,7 @@ class IntegratedGaussianPSF(Fittable2DModel):
             from scipy.special import erf
             self.__class__._erf = erf
 
-        super(IntegratedGaussianPSF, self).__init__(n_models=1, sigma=sigma,
+        super(IntegratedGaussianPRF, self).__init__(n_models=1, sigma=sigma,
                                                     x_0=x_0, y_0=y_0,
                                                     flux=flux, **kwargs)
 
@@ -377,10 +368,11 @@ class IntegratedGaussianPSF(Fittable2DModel):
                   self._erf((y - y_0 - 0.5) / (np.sqrt(2) * sigma)))))
 
 
-class PSFAdapter(Fittable2DModel):
+class PRFAdapter(Fittable2DModel):
     """
-    A minimal model for doing PSF fitting with an already-defined model of the
-    PSF.
+    A model that adapts a supplied PSF model to actas a PRF.  I.e., this
+    integrates the PSF model over pixel "boxes".  A critical built-in assumption
+    is that the PSF model scale and location parameters are in *pixel* units.
 
     Parameters
     ----------
@@ -400,14 +392,13 @@ class PSFAdapter(Fittable2DModel):
     fluxname : str or None
         The name of the ``psfmodel`` parameter that corresponds to the total
         flux of the star.  If None, a scaling factor will be applied by the
-        ``PSFAdapter`` instead of modifying the ``psfmodel``.
+        ``PRFAdapter`` instead of modifying the ``psfmodel``.
 
     Notes
     -----
-    This class will be intrinsically slower than using a PSF model directly. It
-    is primarily intended as a convenience to wrap models that are more easily
-    represented in a form that doesn't have a fixed flux or otherwise is
-    parametrized in a way that is awkward to use with model-fitting photometry.
+    This current implementation of this class (using numberical integration for
+    each pixel) is extremely slow, and only suited for experimentation over
+    relatively few small regions.
     """
     flux = Parameter(default=1)
     x_0 = Parameter(default=0)
@@ -432,12 +423,16 @@ class PSFAdapter(Fittable2DModel):
         self.yname = yname
         self.fluxname = fluxname
 
-        super(PSFAdapter, self).__init__(n_models=1, x_0=x_0, y_0=y_0,
+        # these can be used to adjust the integration behavior. Might be used
+        # in the future to expose how the integration happens
+        self._dblquadkwargs = {}
+
+        super(PRFAdapter, self).__init__(n_models=1, x_0=x_0, y_0=y_0,
                                          flux=flux, **kwargs)
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """
-        The evaluation function for PSFAdapter.
+        The evaluation function for PRFAdapter.
         """
         if self.xname is None:
             dx = x - x_0
@@ -446,16 +441,30 @@ class PSFAdapter(Fittable2DModel):
             setattr(self.psfmodel, self.xname, x_0)
 
         if self.xname is None:
-            dx = y - y_0
+            dy = y - y_0
         else:
             dy = y
             setattr(self.psfmodel, self.yname, y_0)
 
         if self.fluxname is None:
-            return flux * self._psf_scale_factor * self.psfmodel(dx, dy)
+            return flux * self._psf_scale_factor * self._integrated_psfmodel(dx, dy)
         else:
             setattr(self.psfmodel, self.yname, flux * self._psf_scale_factor)
-            return self.psfmodel(dx, dy)
+            return self._integrated_psfmodel(dx, dy)
+
+    def _integrated_psfmodel(self, dx, dy):
+        from scipy.integrate import dblquad
+
+        # infer type/shape from the PSF model.  Seems wasteful, but the
+        # integration step is a *lot* more expensive so its just peanuts
+        out = np.empty_like(self.psfmodel(dx, dy))
+        outravel = out.ravel()
+        for i, (xi, yi) in enumerate(zip(dx.ravel(), dy.ravel())):
+            outravel[i] = dblquad(self.psfmodel,
+                                  xi-0.5, xi+0.5,
+                                  lambda x: yi-0.5, lambda x: yi+0.5,
+                                  **self._dblquadkwargs)[0]
+        return out
 
 
 def _extract_psf_fitting_names(psf):
@@ -496,6 +505,93 @@ def _call_fitter(fitter, psf, x, y, data, weights):
         return fitter(psf, x, y, data, weights=weights)
 
 
+def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
+                      renormalize_psf=True):
+    """
+    This takes a 2D PSF model and returns one derived from it but suitable for
+    use with `psf_photometry`.  The resulting model may be a composite model, but
+    should have only the x, y, and flux related parameters un-fixed.
+
+
+    Parameters
+    ----------
+    psfmodel : a 2D model
+        The model to assume as representative of the PSF
+    xname : str or None
+        The name of the ``psfmodel`` parameter that corresponds to the x-axis
+        center of the PSF.  If None, the model will be assumed to be centered
+        at x=0, and a new paramter will be added for the offset.
+    yname : str or None
+        The name of the ``psfmodel`` parameter that corresponds to the y-axis
+        center of the PSF.  If None, the model will be assumed to be centered
+        at x=0, and a new paramter will be added for the offset.
+    fluxname : str or None
+        The name of the ``psfmodel`` parameter that corresponds to the total
+        flux of the star.  If None, a scaling factor will be added to the model.
+    renormalize_psf : bool
+        If True, the model will be integrated from -inf to inf and re-scaled
+        so that the total integrates to 1.  Note that this renormalization only
+        occurs *once*, so if the total flux of ``psfmodel`` depends on position,
+        this will *not* be correct.
+
+    Returns
+    -------
+    outmod : a model
+        A new model ready to be passed into `psf_photometry`.
+    """
+    if xname is None:
+        xinmod = models.Shift(0, name='x_offset')
+        xname = 'offset_0'
+    else:
+        xinmod = models.Identity(1)
+        xname = xname + '_2'
+    xinmod.fittable = True
+
+    if yname is None:
+        yinmod = models.Shift(0, name='y_offset')
+        yname = 'offset_1'
+    else:
+        yinmod = models.Identity(1)
+        yname = yname + '_2'
+    yinmod.fittable = True
+
+    outmod = (xinmod & yinmod) | psfmodel
+
+    if fluxname is None:
+        outmod = outmod * models.Const2D(1, name='flux_scaling')
+        fluxname = 'amplitude_3'
+    else:
+        fluxname = fluxname + '_2'
+
+    if renormalize_psf:
+        # we do the import here because other machinery works w/o scipy
+        from scipy import integrate
+
+        integrand = integrate.dblquad(psfmodel, -np.inf, np.inf,
+                                      lambda x: -np.inf, lambda x: np.inf)[0]
+        normmod = models.Const2D(1./integrand, name='renormalize_scaling')
+        outmod = outmod * normmod
+
+    # final setup of the output model - fix all the non-offset/scale parameters
+    for pnm in outmod.param_names:
+        outmod.fixed[pnm] = pnm not in (xname, yname, fluxname)
+
+    # and set the names so that psf_photometry knows what to do
+    outmod.xname = xname
+    outmod.yname = yname
+    outmod.fluxname = fluxname
+
+    # now some convenience aliases if reasonable
+    outmod.psfmodel = outmod[2]
+    if 'x_0' not in outmod.param_names and 'y_0' not in outmod.param_names:
+        outmod.x_0 = getattr(outmod, xname)
+        outmod.y_0 = getattr(outmod, yname)
+    if 'flux' not in outmod.param_names:
+        outmod.flux = getattr(outmod, fluxname)
+
+    return outmod
+
+
 @support_nddata
 def psf_photometry(data, positions, psf, fitshape=None,
                    fitter=LevMarLSQFitter(),
@@ -525,8 +621,9 @@ def psf_photometry(data, positions, psf, fitshape=None,
         '<parametername>_0' will be used to set the initial guess for any
         parameters of the ``psf`` model that are not fixed.
     psf : `astropy.modeling.Fittable2DModel` instance
-        PSF or PRF model to fit to the data. Examples for such models are
-        `photutils.psf.DiscretePRF` or `photutils.psf.GaussianPSF`.
+        PSF or PRF model to fit to the data. Could be some of the models in this
+        package like `~photutils.psf.DiscretePRF`, `~photutils.psf.IntegratedGaussianPRF`,
+        or any other suitable 2D model.
     fitshape : length-2 or None
         The shape of the region around the center of the target location to do
         the fitting in.  If None, fit the whole image without windowing. (See
@@ -565,7 +662,6 @@ def psf_photometry(data, positions, psf, fitshape=None,
         ``error`` and/or ``effective_gain`` at the center of each
         aperture as the value for the entire aperture.  Default is
         `True`.
-
     mode : {'sequential'}
         One of the following modes to do PSF/PRF photometry:
             * 'sequential' (default)
@@ -581,10 +677,11 @@ def psf_photometry(data, positions, psf, fitshape=None,
     -------
     result_tab : `~astropy.table.Table`
         The results of the fitting procedure.  The fitted flux is in the column
-        'flux_fit', and the centroids are in 'x_fit' and 'y_fit'. If `positions`
-        was a table, any columns in that table will be carried over to this
-        table.  If any of the ``psf`` model parameters other than flux/x/y are
-        not fixed, their results will be in the column '<parametername>_fit'.
+        'flux_fit', and the centroids are in 'x_fit' and 'y_fit'. If
+        ``positions`` was a table, any columns in that table will be carried
+        over to this table.  If any of the ``psf`` model parameters other than
+        flux/x/y are not fixed, their results will be in the column
+        '<parametername>_fit'.
 
     Notes
     -----
@@ -593,11 +690,6 @@ def psf_photometry(data, positions, psf, fitshape=None,
 
     This function is decorated with `~astropy.nddata.support_nddata` and
     thus supports `~astropy.nddata.NDData` objects as input.
-
-    Examples
-    --------
-    See `Spitzer PSF Photometry <http://nbviewer.ipython.org/gist/adonath/
-    6550989/PSFPhotometrySpitzer.ipynb>`_ for a short tutorial.
     """
     data, wcs_transformation, mask, error, effective_gain, pixelwise_error \
         = _prepare_photometry_input(data, unit, wcs, mask, error, effective_gain,
@@ -731,7 +823,7 @@ def subtract_psf(data, psf, posflux, subshape=None):
 
     Returns
     -------
-    subdata : same as `data`
+    subdata : same shape and type as ``data``
         The image with the PSF subtracted
     """
     if data.ndim != 2:

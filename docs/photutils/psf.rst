@@ -1,12 +1,50 @@
 PSF Photometry
 ==============
 
-.. warning::
-    The PSF photometry API is currently *experimental* and may change
-    in the future.  For example, the functions currently accept
-    `~numpy.ndarray` objects for the ``data`` parameters, but they may
-    be changed to accept `astropy.nddata` objects.
+The `photutils.psf` module contains tools for model-fitting photometry, often
+called "PSF photometry".
 
+.. warning::
+    The PSF photometry API is currently considered *experimental* and may change
+    in the future.  We will aim to keep compatibility where practical, but will
+    not finalize the API until sufficient user feedback has been accumulated.
+
+.. _psf-terminology:
+
+Terminology
+-----------
+Different astronomy sub-fields use the terms Point Spread Function (PSF) and
+Point Response Function (PRF) somewhat differently, especially when colloquial
+usage is taken into account.  For this module we assume that the PRF is an image
+of a point source *after discretization* e.g., onto a rectilinear CCD grid. This
+is the definition used by `Spitzer
+<http://irsa.ipac.caltech.edu/data/SPITZER/docs/dataanalysistools/tools/mopex/mopexusersguide/89/>`_.
+Where relevant, we use this terminology for this sort of model, and consder
+"PSF" to refer to the underlying model. In many cases this distinction is
+unimportant, but can be critical when dealing with undersampled data.
+
+Despite this, in colloquial usage "PSF photometry" often means the same sort of
+model-fitting analysis, regardless to exactly what kind of model is actually
+being fit.  We take this road, using "PSF photometry" as shorthand for the
+general approach.
+
+
+References
+----------
+`Spitzer PSF vs. PRF
+<http://irsa.ipac.caltech.edu/data/SPITZER/docs/files/spitzer/PRF_vs_PSF.pdf>`_
+
+`Kepler PSF calibration
+<http://keplerscience.arc.nasa.gov/CalibrationPSF.shtml>`_
+
+`The Kepler Pixel Response Function
+<http://adsabs.harvard.edu/abs/2010ApJ...713L..97B>`_
+
+
+Examples
+--------
+
+* :doc:`../notebooks/gaussian_psfs`
 
 Reference/API
 -------------
