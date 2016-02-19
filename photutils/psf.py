@@ -621,8 +621,9 @@ def psf_photometry(data, positions, psf, fitshape=None,
         '<parametername>_0' will be used to set the initial guess for any
         parameters of the ``psf`` model that are not fixed.
     psf : `astropy.modeling.Fittable2DModel` instance
-        PSF or PRF model to fit to the data. Examples for such models are
-        `photutils.psf.DiscretePRF` or `photutils.psf.GaussianPSF`.
+        PSF or PRF model to fit to the data. Could be some of the models in this
+        package like `~photutils.psf.DiscretePRF`, `~photutils.psf.IntegratedGaussianPRF`,
+        or any other suitable 2D model.
     fitshape : length-2 or None
         The shape of the region around the center of the target location to do
         the fitting in.  If None, fit the whole image without windowing. (See
@@ -661,7 +662,6 @@ def psf_photometry(data, positions, psf, fitshape=None,
         ``error`` and/or ``effective_gain`` at the center of each
         aperture as the value for the entire aperture.  Default is
         `True`.
-
     mode : {'sequential'}
         One of the following modes to do PSF/PRF photometry:
             * 'sequential' (default)
@@ -677,10 +677,11 @@ def psf_photometry(data, positions, psf, fitshape=None,
     -------
     result_tab : `~astropy.table.Table`
         The results of the fitting procedure.  The fitted flux is in the column
-        'flux_fit', and the centroids are in 'x_fit' and 'y_fit'. If `positions`
-        was a table, any columns in that table will be carried over to this
-        table.  If any of the ``psf`` model parameters other than flux/x/y are
-        not fixed, their results will be in the column '<parametername>_fit'.
+        'flux_fit', and the centroids are in 'x_fit' and 'y_fit'. If
+        ``positions`` was a table, any columns in that table will be carried
+        over to this table.  If any of the ``psf`` model parameters other than
+        flux/x/y are not fixed, their results will be in the column
+        '<parametername>_fit'.
 
     Notes
     -----
@@ -689,11 +690,6 @@ def psf_photometry(data, positions, psf, fitshape=None,
 
     This function is decorated with `~astropy.nddata.support_nddata` and
     thus supports `~astropy.nddata.NDData` objects as input.
-
-    Examples
-    --------
-    See `Spitzer PSF Photometry <http://nbviewer.ipython.org/gist/adonath/
-    6550989/PSFPhotometrySpitzer.ipynb>`_ for a short tutorial.
     """
     data, wcs_transformation, mask, error, effective_gain, pixelwise_error \
         = _prepare_photometry_input(data, unit, wcs, mask, error, effective_gain,
@@ -827,7 +823,7 @@ def subtract_psf(data, psf, posflux, subshape=None):
 
     Returns
     -------
-    subdata : same as `data`
+    subdata : same shape and type as ``data``
         The image with the PSF subtracted
     """
     if data.ndim != 2:
