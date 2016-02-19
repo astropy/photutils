@@ -54,9 +54,7 @@ def moffimg():
 
     # now create an "image" of the PSF
     xg, yg = np.meshgrid(*([np.linspace(-2, 2, 100)]*2))
-    img = mof.render(coords=(xg, yg))
-
-    return mof, (xg, yg, img)
+    return mof, (xg, yg, mof(xg, yg))
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
