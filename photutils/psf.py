@@ -12,15 +12,15 @@ from .utils import mask_to_mirrored_num
 from .aperture_core import _prepare_photometry_input
 
 from astropy.table import Table, Column
+from astropy.modeling import models, Parameter, Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.modeling import Parameter, Fittable2DModel
 from astropy.nddata.utils import add_array, subpixel_indices
 from .extern.nddata_compat import extract_array
 from astropy.nddata import support_nddata
 from astropy.utils.exceptions import AstropyUserWarning
 
-__all__ = ['DiscretePRF', 'IntegratedGaussianPRF', 'psf_photometry',
-           'subtract_psf']
+__all__ = ['DiscretePRF', 'IntegratedGaussianPRF', 'PRFAdapter',
+           'psf_photometry', 'subtract_psf', 'prepare_psf_model']
 
 
 class DiscretePRF(Fittable2DModel):
@@ -503,6 +503,93 @@ def _call_fitter(fitter, psf, x, y, data, weights):
         return fitter(psf, x, y, data)
     else:
         return fitter(psf, x, y, data, weights=weights)
+
+
+def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
+                      renormalize_psf=True):
+    """
+    This takes a 2D PSF model and returns one derived from it but suitable for
+    use with `psf_photometry`.  The resulting model may be a composite model, but
+    should have only the x, y, and flux related parameters un-fixed.
+
+
+    Parameters
+    ----------
+    psfmodel : a 2D model
+        The model to assume as representative of the PSF
+    xname : str or None
+        The name of the ``psfmodel`` parameter that corresponds to the x-axis
+        center of the PSF.  If None, the model will be assumed to be centered
+        at x=0, and a new paramter will be added for the offset.
+    yname : str or None
+        The name of the ``psfmodel`` parameter that corresponds to the y-axis
+        center of the PSF.  If None, the model will be assumed to be centered
+        at x=0, and a new paramter will be added for the offset.
+    fluxname : str or None
+        The name of the ``psfmodel`` parameter that corresponds to the total
+        flux of the star.  If None, a scaling factor will be added to the model.
+    renormalize_psf : bool
+        If True, the model will be integrated from -inf to inf and re-scaled
+        so that the total integrates to 1.  Note that this renormalization only
+        occurs *once*, so if the total flux of ``psfmodel`` depends on position,
+        this will *not* be correct.
+
+    Returns
+    -------
+    outmod : a model
+        A new model ready to be passed into `psf_photometry`.
+    """
+    if xname is None:
+        xinmod = models.Shift(0, name='x_offset')
+        xname = 'offset_0'
+    else:
+        xinmod = models.Identity(1)
+        xname = xname + '_2'
+    xinmod.fittable = True
+
+    if yname is None:
+        yinmod = models.Shift(0, name='y_offset')
+        yname = 'offset_1'
+    else:
+        yinmod = models.Identity(1)
+        yname = yname + '_2'
+    yinmod.fittable = True
+
+    outmod = (xinmod & yinmod) | psfmodel
+
+    if fluxname is None:
+        outmod = outmod * models.Const2D(1, name='flux_scaling')
+        fluxname = 'amplitude_3'
+    else:
+        fluxname = fluxname + '_2'
+
+    if renormalize_psf:
+        # we do the import here because other machinery works w/o scipy
+        from scipy import integrate
+
+        integrand = integrate.dblquad(psfmodel, -np.inf, np.inf,
+                                      lambda x: -np.inf, lambda x: np.inf)[0]
+        normmod = models.Const2D(1./integrand, name='renormalize_scaling')
+        outmod = outmod * normmod
+
+    # final setup of the output model - fix all the non-offset/scale parameters
+    for pnm in outmod.param_names:
+        outmod.fixed[pnm] = pnm not in (xname, yname, fluxname)
+
+    # and set the names so that psf_photometry knows what to do
+    outmod.xname = xname
+    outmod.yname = yname
+    outmod.fluxname = fluxname
+
+    # now some convenience aliases if reasonable
+    outmod.psfmodel = outmod[2]
+    if 'x_0' not in outmod.param_names and 'y_0' not in outmod.param_names:
+        outmod.x_0 = getattr(outmod, xname)
+        outmod.y_0 = getattr(outmod, yname)
+    if 'flux' not in outmod.param_names:
+        outmod.flux = getattr(outmod, fluxname)
+
+    return outmod
 
 
 @support_nddata
