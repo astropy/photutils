@@ -156,15 +156,29 @@ class SegmentationImage(object):
 
     @property
     def areas(self):
-        """The areas (in pixel**2) of the labeled regions."""
+        """The areas (in pixel**2) of all labeled regions."""
 
         return np.bincount(self.data.ravel())
 
-    def area(self, label):
-        """The area (in pixel**2) of the region for a single label."""
+    def area(self, labels):
+        """
+        The areas (in pixel**2) of the regions for the input labels.
 
-        self.check_label(label, allow_zero=True)
-        return self.areas[label]
+        Parameters
+        ----------
+        labels : int, array-like (1D, int)
+            The label(s) for which to return areas.
+
+        Returns
+        -------
+        areas : `~numpy.ndarray`
+            The areas of the labeled regions.
+        """
+
+        labels = np.atleast_1d(labels)
+        for label in labels:
+            self.check_label(label, allow_zero=True)
+        return self.areas[labels]
 
     @property
     def is_sequential(self):
@@ -1623,7 +1637,7 @@ def source_properties(data, segment_img, error=None, effective_gain=None,
         `~photutils.SourceProperties.ra_icrs_centroid`, and
         `~photutils.SourceProperties.dec_icrs_centroid` will be `None`.
 
-    labels : int or list of ints
+    labels : int, array-like (1D, int)
         Subset of segmentation labels for which to calculate the
         properties.  If `None`, then the properties will be calculated
         for all labeled sources (the default).

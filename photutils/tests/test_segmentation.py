@@ -108,6 +108,18 @@ class TestSegmentationImage(object):
         segm = SegmentationImage(self.data)
         assert segm.max == 7
 
+    def test_areas(self):
+        segm = SegmentationImage(self.data)
+        expected = np.array([18, 2, 0, 2, 3, 6, 0, 5])
+        assert_allclose(segm.areas, expected)
+
+    def test_area(self):
+        segm = SegmentationImage(self.data)
+        expected = np.array([18, 2, 0, 2, 3, 6, 0, 5])
+        assert segm.area(0) == expected[0]
+        labels = [3, 1, 4]
+        assert_allclose(segm.area(labels), expected[labels])
+
     def test_outline_segments(self):
         if SKIMAGE_LT_0P11:
             return    # skip this test
