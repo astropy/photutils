@@ -155,6 +155,18 @@ class SegmentationImage(object):
         return np.max(self.data)
 
     @property
+    def areas(self):
+        """The areas (in pixel**2) of the labeled regions."""
+
+        return np.bincount(self.data.ravel())
+
+    def area(self, label):
+        """The area (in pixel**2) of the region for a single label."""
+
+        self.check_label(label)
+        return self.areas[label]
+
+    @property
     def is_sequential(self):
         """
         Determine whether or not the non-zero labels in the segmenation
