@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+from copy import deepcopy
 from distutils.version import LooseVersion
 import numpy as np
 from astropy.table import Table
@@ -164,6 +165,15 @@ class SegmentationImage(object):
             return True
         else:
             return False
+
+    def copy(self):
+        """
+        Return a deep copy of this class instance.
+
+        Deep copy is used so that all attributes and values are copied.
+        """
+
+        return deepcopy(self)
 
     def check_label(self, label):
         """
