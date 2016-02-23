@@ -163,7 +163,7 @@ class SegmentationImage(object):
     def area(self, label):
         """The area (in pixel**2) of the region for a single label."""
 
-        self.check_label(label)
+        self.check_label(label, allow_zero=True)
         return self.areas[label]
 
     @property
@@ -187,7 +187,7 @@ class SegmentationImage(object):
 
         return deepcopy(self)
 
-    def check_label(self, label):
+    def check_label(self, label, allow_zero=False):
         """
         Check for a valid label label number within the segmentation
         image.
@@ -197,13 +197,17 @@ class SegmentationImage(object):
         label : int
             The label number to check.
 
+        allow_zero : bool
+            If `True` then a label of 0 is valid, otherwise 0 is
+            invalid.
+
         Raises
         ------
         ValueError
             If the input ``label`` is invalid.
         """
 
-        if label == 0:
+        if label == 0 and not allow_zero:
             raise ValueError('label "0" is reserved for the background')
         if label < 0:
             raise ValueError('label must be a positive integer, got '
