@@ -41,10 +41,11 @@ References
 <http://adsabs.harvard.edu/abs/2010ApJ...713L..97B>`_
 
 
-Examples
---------
+Example Notebooks (online)
+--------------------------
 
-* :doc:`../notebooks/gaussian_psfs`
+* `PSF photometry on artificial Gaussian stars <https://github.com/astropy/photutils-datasets/blob/master/notebooks/GaussianPSFPhot.ipynb>`_
+* `PSF/PRF Photometry on Spitzer Data <https://github.com/astropy/photutils-datasets/blob/master/notebooks/PSFPhotometrySpitzer.ipynb>`_
 
 Reference/API
 -------------
