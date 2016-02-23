@@ -257,26 +257,29 @@ def notebooks_to_rst(app):
     olddir = os.path.abspath(os.curdir)
     try:
         srcdir = os.path.abspath(os.path.split(__file__)[0])
-        os.chdir(os.path.join(srcdir, 'notebooks'))
-        nbs = glob('*.ipynb')
+        if os.path.isdir('notebooks'):
+            os.chdir(os.path.join(srcdir, 'notebooks'))
+            nbs = glob('*.ipynb')
 
-        app.info("Executing and converting these notebooks to sphinx files: " + str(nbs))
+            app.info("Executing and converting these notebooks to sphinx files: " + str(nbs))
 
-        nbc_app = NbConvertApp()
-        nbc_app.initialize(argv=[])
+            nbc_app = NbConvertApp()
+            nbc_app.initialize(argv=[])
 
-        nbc_app.writer = OrphanizerWriter()
+            nbc_app.writer = OrphanizerWriter()
 
-        nbc_app.export_format = 'rst'
+            nbc_app.export_format = 'rst'
 
-        pps = RSTExporter().default_preprocessors
-        pps.insert(0, AddSysPath)
-        pps.append(RemoveSysPath)
-        nbc_app.config.RSTExporter.preprocessors = pps
+            pps = RSTExporter().default_preprocessors
+            pps.insert(0, AddSysPath)
+            pps.append(RemoveSysPath)
+            nbc_app.config.RSTExporter.preprocessors = pps
 
-        nbc_app.notebooks = nbs
+            nbc_app.notebooks = nbs
 
-        nbc_app.start()
+            nbc_app.start()
+        else:
+            app.info('No notebook directory found in docs so not converting any notebooks.')
     except:
         e = sys.exc_info()[0]
         app.warn('Failed to convert notebooks to RST (see above): ' + str(e))
