@@ -62,6 +62,14 @@ class TestSegmentationImage(object):
         assert_allclose(segm.data, segm.array)
         assert_allclose(segm.data, segm.__array__())
 
+    def test_copy(self):
+        segm = SegmentationImage(self.data)
+        segm2 = segm.copy()
+        assert segm.data is not segm2.data
+        assert segm.labels is not segm.labels
+        segm.data[0, 0] = 100.
+        assert segm.data[0, 0] != segm2.data[0, 0]
+
     def test_negative_data(self):
         data = np.arange(-1, 8).reshape(3, 3)
         with pytest.raises(ValueError):
