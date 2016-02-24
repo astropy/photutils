@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+from copy import deepcopy
 from distutils.version import LooseVersion
 import numpy as np
 from astropy.table import Table
@@ -154,6 +155,32 @@ class SegmentationImage(object):
         return np.max(self.data)
 
     @property
+    def areas(self):
+        """The areas (in pixel**2) of all labeled regions."""
+
+        return np.bincount(self.data.ravel())
+
+    def area(self, labels):
+        """
+        The areas (in pixel**2) of the regions for the input labels.
+
+        Parameters
+        ----------
+        labels : int, array-like (1D, int)
+            The label(s) for which to return areas.
+
+        Returns
+        -------
+        areas : `~numpy.ndarray`
+            The areas of the labeled regions.
+        """
+
+        labels = np.atleast_1d(labels)
+        for label in labels:
+            self.check_label(label, allow_zero=True)
+        return self.areas[labels]
+
+    @property
     def is_sequential(self):
         """
         Determine whether or not the non-zero labels in the segmenation
@@ -165,7 +192,16 @@ class SegmentationImage(object):
         else:
             return False
 
-    def check_label(self, label):
+    def copy(self):
+        """
+        Return a deep copy of this class instance.
+
+        Deep copy is used so that all attributes and values are copied.
+        """
+
+        return deepcopy(self)
+
+    def check_label(self, label, allow_zero=False):
         """
         Check for a valid label label number within the segmentation
         image.
@@ -175,13 +211,17 @@ class SegmentationImage(object):
         label : int
             The label number to check.
 
+        allow_zero : bool
+            If `True` then a label of 0 is valid, otherwise 0 is
+            invalid.
+
         Raises
         ------
         ValueError
             If the input ``label`` is invalid.
         """
 
-        if label == 0:
+        if label == 0 and not allow_zero:
             raise ValueError('label "0" is reserved for the background')
         if label < 0:
             raise ValueError('label must be a positive integer, got '
@@ -1597,7 +1637,7 @@ def source_properties(data, segment_img, error=None, effective_gain=None,
         `~photutils.SourceProperties.ra_icrs_centroid`, and
         `~photutils.SourceProperties.dec_icrs_centroid` will be `None`.
 
-    labels : int or list of ints
+    labels : int, array-like (1D, int)
         Subset of segmentation labels for which to calculate the
         properties.  If `None`, then the properties will be calculated
         for all labeled sources (the default).

@@ -62,6 +62,14 @@ class TestSegmentationImage(object):
         assert_allclose(segm.data, segm.array)
         assert_allclose(segm.data, segm.__array__())
 
+    def test_copy(self):
+        segm = SegmentationImage(self.data)
+        segm2 = segm.copy()
+        assert segm.data is not segm2.data
+        assert segm.labels is not segm.labels
+        segm.data[0, 0] = 100.
+        assert segm.data[0, 0] != segm2.data[0, 0]
+
     def test_negative_data(self):
         data = np.arange(-1, 8).reshape(3, 3)
         with pytest.raises(ValueError):
@@ -99,6 +107,18 @@ class TestSegmentationImage(object):
     def test_max(self):
         segm = SegmentationImage(self.data)
         assert segm.max == 7
+
+    def test_areas(self):
+        segm = SegmentationImage(self.data)
+        expected = np.array([18, 2, 0, 2, 3, 6, 0, 5])
+        assert_allclose(segm.areas, expected)
+
+    def test_area(self):
+        segm = SegmentationImage(self.data)
+        expected = np.array([18, 2, 0, 2, 3, 6, 0, 5])
+        assert segm.area(0) == expected[0]
+        labels = [3, 1, 4]
+        assert_allclose(segm.area(labels), expected[labels])
 
     def test_outline_segments(self):
         if SKIMAGE_LT_0P11:
