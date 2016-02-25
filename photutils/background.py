@@ -167,6 +167,8 @@ class Background(object):
             xpad = self.box_shape[1] - self.xextra
 
         pad_width = ((0, ypad), (0, xpad))
+        # mode must be a string for numpy < 0.11
+        # (see https://github.com/numpy/numpy/issues/7112)
         mode = str('constant')
         padded_data = np.pad(data, pad_width, mode=mode,
                              constant_values=[np.nan])
