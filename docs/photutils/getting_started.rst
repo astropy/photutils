@@ -21,8 +21,8 @@ background-subtracted.
 Photutils supports several source detection algorithms.  For this
 example, we use :func:`~photutils.daofind` to detect the stars in the
 image.  We set the detection threshold at the 3-sigma noise level,
-estimated using the median absolution deviation of the image.  The
-parameters of the detected sources are returned as an Astropy
+estimated using the median absolute deviation (`~astropy.stats.mad_std`) of
+the image. The parameters of the detected sources are returned as an Astropy
 `~astropy.table.Table`:
 
 .. doctest-requires:: scipy, skimage
