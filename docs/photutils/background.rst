@@ -125,7 +125,6 @@ maximize the source detections:
 
 .. doctest-requires:: scipy
 
-    >>> from astropy.convolution import Gaussian2DKernel
     >>> from photutils.detection import detect_sources
     >>> threshold = median + (std * 2.)
     >>> segm_img = detect_sources(data, threshold, npixels=5)
