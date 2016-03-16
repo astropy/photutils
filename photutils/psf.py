@@ -18,6 +18,8 @@ from astropy.nddata.utils import add_array, subpixel_indices
 from .extern.nddata_compat import extract_array
 from astropy.nddata import support_nddata
 from astropy.utils.exceptions import AstropyUserWarning
+from astropy.convolution import discretize_model
+
 
 __all__ = ['DiscretePRF', 'IntegratedGaussianPRF', 'PRFAdapter',
            'psf_photometry', 'subtract_psf', 'prepare_psf_model']
@@ -454,17 +456,11 @@ class PRFAdapter(Fittable2DModel):
             return self._integrated_psfmodel(dx, dy)
 
     def _integrated_psfmodel(self, dx, dy):
-        from scipy.integrate import dblquad
-
-        # infer type/shape from the PSF model.  Seems wasteful, but the
-        # integration step is a *lot* more expensive so its just peanuts
-        out = np.empty_like(self.psfmodel(dx, dy))
-        outravel = out.ravel()
-        for i, (xi, yi) in enumerate(zip(dx.ravel(), dy.ravel())):
-            outravel[i] = dblquad(self.psfmodel,
-                                  xi-0.5, xi+0.5,
-                                  lambda x: yi-0.5, lambda x: yi+0.5,
-                                  **self._dblquadkwargs)[0]
+        minx = np.min(dx)
+        miny = np.min(dy)
+        maxx = np.max(dx) + 0.5
+        maxy = np.max(dy) + 0.5
+        out =  discretize_model(self.psfmodel, (minx, maxx), (miny, maxy), 'integrate')
         return out
 
 
