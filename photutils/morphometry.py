@@ -33,7 +33,7 @@ def gini(data):
     Returns
     -------
     gini : `float`
-        Value for the Gini coefficient for given 2-D array.
+        Gini coefficient value for given 2-D array.
     """
     flattened = np.sort(np.ravel(data))
     N = np.size(flattened)
