@@ -24,8 +24,9 @@ def gini(data):
     in just one pixel.
 
     Usually Gini's measurement needs some sort of pre-processing
-    based on the quality of the input data. As there is not a general
-    standard for doing this, this is left for the user.
+    for defining the galaxy region in the image based on the quality
+    of the input data. As there is not a general standard for doing
+    this, this is left for the user.
 
     .. [Lotz2004] Lotz et al. 2004, A new nonparametric approach to galaxy morphological classification, http://arxiv.org/abs/astro-ph/0311352
 
@@ -38,7 +39,8 @@ def gini(data):
     gini : `float`
         Gini coefficient value for given 2-D array.
     """
-    flattened = np.sort(np.ravel(data))
+    #ravel array and sort in descending order
+    flattened = np.sort(np.ravel(data))[::-1]
     N = np.size(flattened)
     normalization = 1/(np.abs(np.mean(flattened)) * N * (N-1))
     kernel = (2*np.arange(1, N+1) - N - 1) * np.abs(flattened)
