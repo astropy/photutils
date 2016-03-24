@@ -9,7 +9,15 @@ import numpy as np
 
 def gini(data):
     """Measures the Gini coefficient on a 2-D array based on perscription
-    from [lotz2004]_. It is a way of measuring the inaquality in a
+    from [lotz2004]_.
+
+    .. math::
+
+        G = \\frac{1}{\\left | \\bar{f} \\right | N (N - 1)}
+        \\sum^N_i (2i - N - 1) \\left | f_i \\right |
+
+
+    It is a way of measuring the inaquality in a
     given set of values. In the context of galaxy morphology, it
     measures how the light of a galaxy image is distributed among its
     pixels. A Gini value of 0 corresponds to a galaxy image with the
