@@ -396,6 +396,9 @@ class PRFAdapter(Fittable2DModel):
         The name of the ``psfmodel`` parameter that corresponds to the total
         flux of the star.  If None, a scaling factor will be applied by the
         ``PRFAdapter`` instead of modifying the ``psfmodel``.
+    discretizemode : str
+        The method used to discretize the PSF. Uses ``astropy.convolution.discretize_model``
+        to perform discretization. The default value is ``integrate``.
 
     Notes
     -----
@@ -426,9 +429,11 @@ class PRFAdapter(Fittable2DModel):
         self.yname = yname
         self.fluxname = fluxname
 
-        # these can be used to adjust the integration behavior. Might be used
-        # in the future to expose how the integration happens
-        self._dblquadkwargs = {}
+
+        self.discretizemode = 'integrate'
+        # these can be used to adjust the discretization behavior. Might be used
+        # in the future to expose how the discretization happens
+        self._discretize_modelkwargs = {}
 
         super(PRFAdapter, self).__init__(n_models=1, x_0=x_0, y_0=y_0,
                                          flux=flux, **kwargs)
@@ -450,18 +455,19 @@ class PRFAdapter(Fittable2DModel):
             setattr(self.psfmodel, self.yname, y_0)
 
         if self.fluxname is None:
-            return flux * self._psf_scale_factor * self._integrated_psfmodel(dx, dy)
+            return flux * self._psf_scale_factor * self._discretized_psfmodel(dx, dy)
         else:
             setattr(self.psfmodel, self.yname, flux * self._psf_scale_factor)
-            return self._integrated_psfmodel(dx, dy)
+            return self._discretized_psfmodel(dx, dy)
 
-    def _integrated_psfmodel(self, dx, dy):
+    def _discretized_psfmodel(self, dx, dy):
         minx = np.min(dx)
         miny = np.min(dy)
         maxx = np.max(dx) + 0.5
         maxy = np.max(dy) + 0.5
-        out =  discretize_model(self.psfmodel, (minx, maxx), (miny, maxy), 'integrate')
+        out =  discretize_model(self.psfmodel, (minx, maxx), (miny, maxy), self.discretizemode, **self._discretize_modelkwargs)
         return out
+
 
 
 def _extract_psf_fitting_names(psf):
