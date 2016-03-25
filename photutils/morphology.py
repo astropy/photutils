@@ -476,8 +476,8 @@ def gini(data):
     It is a way of measuring the inequality in a given set of
     values. In the context of galaxy morphology, it measures how
     the light of a galaxy image is distributed among its pixels.
-    A Gini value of 0 corresponds to a galaxy image with the
-    light equally distributed over all pixels while a Gini value
+    A G value of 0 corresponds to a galaxy image with the
+    light evenly distributed over all pixels while a G value
     of 1 represents a galaxy image with all its light concentrated
     in just one pixel.
 
