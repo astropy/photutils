@@ -7,7 +7,7 @@ from numpy.testing import assert_allclose
 import itertools
 from ..morphology import (centroid_com, centroid_1dg, centroid_2dg,
                           gaussian1d_moments, data_properties,
-                          fit_2dgaussian, cutout_footprint)
+                          fit_2dgaussian, cutout_footprint, gini)
 from astropy.modeling.models import Gaussian1D, Gaussian2D
 try:
     import skimage
@@ -168,3 +168,15 @@ class TestCutoutFootprint(object):
     def test_wrongboxsize(self):
         with pytest.raises(ValueError):
             cutout_footprint(np.ones((3, 3)), (1, 1), box_size=(1, 2, 3))
+
+    def test_gini():
+        """
+        Test Gini coefficient measurement
+        """
+        #test equally distributate case
+        data = np.ones((100, 100))
+        assert gini(data) == 0
+        #test extremely concentrate case
+        data = np.zeros((100, 100))
+        data[50][50] = 1
+        assert gini(data) == 1
