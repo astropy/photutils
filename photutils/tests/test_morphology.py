@@ -127,6 +127,17 @@ def test_fit2dgaussian_dof():
     assert result is None
 
 
+def test_gini():
+    """
+    Test Gini coefficient measurement
+    """
+    data_evenly_distributed = np.ones((100, 100))
+    data_point_like = np.zeros((100, 100))
+    data_point_like[50][50] = 1
+    assert gini(data_evenly_distributed) == 0
+    assert gini(data_point_like) == 1
+
+
 class TestCutoutFootprint(object):
     def test_dataonly(self):
         data = np.ones((5, 5))
@@ -168,13 +179,3 @@ class TestCutoutFootprint(object):
     def test_wrongboxsize(self):
         with pytest.raises(ValueError):
             cutout_footprint(np.ones((3, 3)), (1, 1), box_size=(1, 2, 3))
-
-    def test_gini():
-        """
-        Test Gini coefficient measurement
-        """
-        data_evenly_distributed = np.ones((100, 100))
-        data_point_like = np.zeros((100, 100))
-        data_point_like[50][50] = 1
-        assert gini(data_evenly_distributed) == 0
-        assert gini(data_point_like) == 1
