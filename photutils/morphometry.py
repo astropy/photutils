@@ -39,8 +39,7 @@ def gini(data):
     gini : `float`
         Gini coefficient value for given 2-D array.
     """
-    #ravel array and sort in descending order
-    flattened = np.sort(np.ravel(data))[::-1]
+    flattened = np.sort(np.ravel(data))
     N = np.size(flattened)
     normalization = 1/(np.abs(np.mean(flattened)) * N * (N-1))
     kernel = (2*np.arange(1, N+1) - N - 1) * np.abs(flattened)
