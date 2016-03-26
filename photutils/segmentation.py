@@ -45,16 +45,6 @@ class SegmentationImage(object):
             raise ValueError('The segmentation image cannot contain '
                              'negative integers.')
         self._data = np.asanyarray(data, dtype=np.int)
-        self._update_slices()
-
-    def _update_slices(self):
-        """
-        Update the segmentation slices after changes to self._data made
-        by the class methods.
-        """
-
-        from scipy.ndimage import find_objects
-        self.slices = find_objects(self._data)
 
     @property
     def data(self):
@@ -153,6 +143,13 @@ class SegmentationImage(object):
         """The maximum non-zero label in the segmentation image."""
 
         return np.max(self.data)
+
+    @property
+    def slices(self):
+        """The minimal bounding box slices for each labeled region."""
+
+        from scipy.ndimage import find_objects
+        return find_objects(self._data)
 
     @property
     def areas(self):
@@ -319,7 +316,6 @@ class SegmentationImage(object):
         labels = np.atleast_1d(labels)
         for label in labels:
             self._data[np.where(self.data == label)] = new_label
-        self._update_slices()
 
     def relabel_sequential(self, start_label=1):
         """
@@ -360,7 +356,6 @@ class SegmentationImage(object):
         forward_map = np.zeros(self.max + 1, dtype=np.int)
         forward_map[self.labels] = np.arange(self.nlabels) + start_label
         self._data = forward_map[self.data]
-        self._update_slices()
 
     def keep_labels(self, labels, relabel=False):
         """
