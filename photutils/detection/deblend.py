@@ -128,6 +128,14 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
             source_data, source_segm, npixels, nlevels=nlevels,
             contrast=contrast, mode=mode, connectivity=connectivity)
 
+        if not np.array_equal(source_deblended.data.astype(bool),
+                              source_segm.data.astype(bool)):
+            raise ValueError('Deblending failed for source "{0}".  Please '
+                             'ensure you used the same pixel connectivity '
+                             'in detect_sources and deblend_sources.  If '
+                             'this issue persists, then please inform the '
+                             'developers.'.format(label))
+
         if source_deblended.nlabels > 1:
             # replace the original source with the deblended source
             source_mask = (source_deblended.data > 0)
@@ -205,6 +213,14 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
         raise ValueError('contrast must be >= 0 or <= 1, got '
                          '"{0}"'.format(contrast))
 
+    if connectivity == 4:
+        selem = ndimage.generate_binary_structure(2, 1)
+    elif connectivity == 8:
+        selem = ndimage.generate_binary_structure(2, 2)
+    else:
+        raise ValueError('Invalid connectivity={0}.  '
+                         'Options are 4 or 8'.format(connectivity))
+
     segm_mask = (segment_img.data > 0)
     source_values = data[segm_mask]
     source_min = np.min(source_values)
@@ -266,4 +282,5 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
                 segm_tree[j - 1] = SegmentationImage(new_segm)
 
         return SegmentationImage(watershed(-data, segm_tree[0].data,
-                                           mask=segment_img.data))
+                                           mask=segment_img.data,
+                                           connectivity=selem))
