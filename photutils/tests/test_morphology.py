@@ -7,7 +7,7 @@ from numpy.testing import assert_allclose
 import itertools
 from ..morphology import (centroid_com, centroid_1dg, centroid_2dg,
                           gaussian1d_moments, data_properties,
-                          fit_2dgaussian, cutout_footprint, gini)
+                          fit_2dgaussian, cutout_footprint)
 from astropy.modeling.models import Gaussian1D, Gaussian2D
 try:
     import skimage
@@ -125,17 +125,6 @@ def test_fit2dgaussian_dof():
     data = np.ones((2, 2))
     result = fit_2dgaussian(data)
     assert result is None
-
-
-def test_gini():
-    """
-    Test Gini coefficient measurement
-    """
-    data_evenly_distributed = np.ones((100, 100))
-    data_point_like = np.zeros((100, 100))
-    data_point_like[50][50] = 1
-    assert gini(data_evenly_distributed) == 0
-    assert gini(data_point_like) == 1
 
 
 class TestCutoutFootprint(object):

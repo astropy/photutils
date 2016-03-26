@@ -18,8 +18,8 @@ def gini(data):
     It is a way of measuring the inequality in a given set of
     values. In the context of galaxy morphology, it measures how
     the light of a galaxy image is distributed among its pixels.
-    A Gini value of 0 corresponds to a galaxy image with the
-    light equally distributed over all pixels while a Gini value
+    A G value of 0 corresponds to a galaxy image with the
+    light evenly distributed over all pixels while a G value
     of 1 represents a galaxy image with all its light concentrated
     in just one pixel.
 
@@ -28,14 +28,16 @@ def gini(data):
     of the input data. As there is not a general standard for doing
     this, this is left for the user.
 
-    .. [Lotz2004] Lotz et al. 2004, A new nonparametric approach
-        to galaxy morphological classification,
-        http://arxiv.org/abs/astro-ph/0311352
+    .. [Lotz2004] Lotz et al. 2004,
+        A new nonparametric approach to galaxy morphological
+        classification, http://arxiv.org/abs/astro-ph/0311352
 
     Parameters
     ----------
     data : array_like
-        The 2-d array with the values for measuring the Gini Coefficient.
+        The 2-d array with the values for measuring the Gini
+        Coefficient.
+
     Returns
     -------
     gini : `float`
