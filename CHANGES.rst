@@ -8,6 +8,18 @@ General
 - Drop numpy 1.6 support, minimal required version is now numpy 1.7 [#327]
 
 
+0.2.2 (unreleased)
+------------------
+
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.detection``
+
+  - Fixed an issue to update segmentation image slices after
+    deblending. [#340]
+
+
 0.2.1 (2016-01-15)
 ------------------
 
