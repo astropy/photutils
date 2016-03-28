@@ -7,6 +7,7 @@ from astropy.tests.helper import pytest
 from astropy.modeling import models
 from ..core import detect_sources
 from ..deblend import deblend_sources
+from ...segmentation import SegmentationImage
 
 try:
     import scipy
@@ -41,10 +42,20 @@ class TestDeblendSources(object):
         result = deblend_sources(self.data, self.segm, self.npixels,
                                  mode=mode)
         assert result.nlabels == 2
+        assert result.nlabels == len(result.slices)
         mask1 = (result.data == 1)
         mask2 = (result.data == 2)
         assert_allclose(len(result.data[mask1]), len(result.data[mask2]))
         assert_allclose(np.sum(self.data[mask1]), np.sum(self.data[mask2]))
+        assert_allclose(np.nonzero(self.segm), np.nonzero(result))
+
+    @pytest.mark.parametrize('mode', ['exponential', 'linear'])
+    def test_deblend_sources_norelabel(self, mode):
+        result = deblend_sources(self.data, self.segm, self.npixels,
+                                 mode=mode, relabel=False)
+        assert result.nlabels == 2
+        assert len(result.slices) <= result.max
+        assert len(result.slices) == 3   # label 1 is None
         assert_allclose(np.nonzero(self.segm), np.nonzero(result))
 
     @pytest.mark.parametrize('mode', ['exponential', 'linear'])
@@ -75,3 +86,18 @@ class TestDeblendSources(object):
         with pytest.raises(ValueError):
             deblend_sources(self.data, self.segm, self.npixels,
                             mode='invalid')
+
+    def test_connectivity(self):
+        """Regression test for #341."""
+        data = np.zeros((3, 3))
+        data[0, 0] = 2
+        data[1, 1] = 2
+        data[2, 2] = 1
+        segm = np.zeros_like(data)
+        segm[data.nonzero()] = 1
+        segm = SegmentationImage(segm)
+        data = data * 100.
+        segm_deblend = deblend_sources(data, segm, npixels=1, connectivity=8)
+        assert segm_deblend.nlabels == 1
+        with pytest.raises(ValueError):
+            deblend_sources(data, segm, npixels=1, connectivity=4)
