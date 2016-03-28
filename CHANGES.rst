@@ -22,6 +22,11 @@ Bug Fixes
   - Fixed source deblending to pass the pixel connectivity to the
     watershed algorithm. [#347]
 
+- ``photutils.utils``
+
+  - Fixed a bug in ``pixel_to_icrs_coords`` where the incorrect pixel
+    origin was being passed. [#348]
+
 
 0.2.1 (2016-01-15)
 ------------------
