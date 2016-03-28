@@ -27,6 +27,9 @@ Bug Fixes
   - Fixed an issue to update segmentation image slices after
     deblending. [#340]
 
+  - Fixed source deblending to pass the pixel connectivity to the
+    watershed algorithm. [#347]
+
 
 0.2.1 (2016-01-15)
 ------------------
