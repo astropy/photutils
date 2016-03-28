@@ -16,6 +16,18 @@ New Features
     ``SegmentationImage``. [#331]
 
 
+0.2.2 (unreleased)
+------------------
+
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.detection``
+
+  - Fixed an issue to update segmentation image slices after
+    deblending. [#340]
+
+
 0.2.1 (2016-01-15)
 ------------------
 
