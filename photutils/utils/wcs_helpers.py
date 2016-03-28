@@ -122,7 +122,7 @@ def pixel_to_icrs_coords(x, y, wcs):
         The ICRS Declination in degrees.
     """
 
-    icrs_coords = pixel_to_skycoord(x, y, wcs, origin=1).icrs
+    icrs_coords = pixel_to_skycoord(x, y, wcs).icrs
     icrs_ra = icrs_coords.ra.degree * u.deg
     icrs_dec = icrs_coords.dec.degree * u.deg
     return icrs_ra, icrs_dec
