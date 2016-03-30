@@ -56,17 +56,26 @@ class BackgroundBase(object):
         value indicates the corresponding element of ``data`` is masked.
         Masked data are excluded from calculations.
 
-    remove_masked : {'all', 'any'}, optional
+    remove_masked : {'threshold', 'all', 'any'}, optional
         Determines whether to include a particular mesh in the
         background interpolation based on the number of masked pixels it
         contains:
 
-            * 'all':  exclude meshes that contain all masked pixels
-            * 'any':  exclude meshes that contain any masked pixels
+            * ``'threshold'``:  exclude meshes that contain less than
+              ``meshpix_threshold`` unmasked pixels after the
+              sigma-clipping step.
+            * ``'all'``:  exclude meshes that contain all masked pixels.
+            * ``'any'``:  exclude meshes that contain any masked pixels.
 
-        The default is 'all'.  Note that this applies only to pixels in
-        the input ``mask``.  It does not include pixels that are
-        rejected via sigma clipping.
+        Note that ``'all'`` and ``'any'`` apply only to pixels in the
+        input or padding ``mask``, while ``'threshold'`` also applies to
+        pixels that are rejected via sigma clipping.
+
+    meshpix_threshold : int, optional
+        The number of unmasked pixels required in a mesh after the
+        sigma-clipping step in order to use it in estimating the
+        background and background rms.  This parameter is used only if
+        ``remove_masked='threshold'``.
 
     filter_size : int or array_like (int), optional
         The window size of the 2D median filter to apply to the
@@ -139,10 +148,10 @@ class BackgroundBase(object):
     .. _SExtractor: http://www.astromatic.net/software/sextractor
     """
 
-    def __init__(self, data, box_size, mask=None, remove_masked='all',
-                 filter_size=(3, 3), filter_threshold=None,
-                 method='sextractor', backfunc=None, edge_method='crop',
-                 sigclip_sigma=3., sigclip_iters=10):
+    def __init__(self, data, box_size, mask=None, remove_masked='threshold',
+                 meshpix_threshold=50, filter_size=(3, 3),
+                 filter_threshold=None, method='sextractor', backfunc=None,
+                 edge_method='crop', sigclip_sigma=3., sigclip_iters=10):
 
         if mask is not None:
             if mask.shape != data.shape:
@@ -160,10 +169,16 @@ class BackgroundBase(object):
                          min(box_size[1], data.shape[1]))
         self.box_npts = self.box_size[0] * self.box_size[1]
 
+        if remove_masked == 'threshold' and meshpix_threshold > self.box_npts:
+            raise ValueError('meshpix_threshold must be smaller than the '
+                             'number of pixels in mesh box.')
+
         self.data = data
         self.mask = mask
         self.remove_masked = remove_masked
+        self.meshpix_threshold = meshpix_threshold
 
+        filter_size = np.atleast_1d(filter_size)
         if len(filter_size) == 1:
             filter_size = np.repeat(filter_size, 2)
         self.filter_size = filter_size
@@ -252,7 +267,7 @@ class BackgroundBase(object):
             mask = False
         return np.ma.masked_array(self.data[crop_slc], mask=mask)
 
-    def _define_mesh_indices(self, nmasked_img):
+    def _define_mesh_indices(self, nmasked_mesh):
         """
         Define the x and y indices with respect to the low-resolution
         mesh of the meshes to use for the background interpolation.
@@ -262,7 +277,7 @@ class BackgroundBase(object):
 
         Parameters
         ----------
-        nmasked_img : 2D `~numpy.ndarray` of int
+        nmasked_mesh : 2D `~numpy.ndarray` of int
             A 2D array containing the number of masked pixels in each
             mesh.
 
@@ -272,17 +287,28 @@ class BackgroundBase(object):
             The ``y`` and ``x`` mesh indices.
         """
 
+        # np.where is used, not np.ma.where
+        if isinstance(nmasked_mesh, np.ma.MaskedArray):
+            raise ValueError('nmasked_mesh must not be a masked array.')
+
         if self.remove_masked == 'any':
-            # remove meshes that have any masked pixels
-            yidx, xidx = np.where(nmasked_img == 0)
+            # include meshes that do not have any masked pixels
+            yidx, xidx = np.where(nmasked_mesh == 0)
             if len(yidx) == 0:
                 raise ValueError('All meshes contain at least one masked '
                                  'pixel.')
         elif self.remove_masked == 'all':
-            # remove meshes where all pixels are masked
-            yidx, xidx = np.where((self.box_npts - nmasked_img) != 0)
+            # include meshes that are not completely masked
+            yidx, xidx = np.where((self.box_npts - nmasked_mesh) != 0)
             if len(yidx) == 0:
                 raise ValueError('All meshes are completely masked.')
+        elif self.remove_masked == 'threshold':
+            # include meshes only with at least meshpix_threshold
+            # unmasked pixels
+            yidx, xidx = np.where((self.box_npts - nmasked_mesh) >=
+                                  self.meshpix_threshold)
+            if len(yidx) == 0:
+                raise ValueError('There are no valid meshes available.')
         elif self.remove_masked == '_none':
             # include all meshes (effectively same as 'all' because
             # mask will be True where all pixels are masked)
@@ -290,7 +316,8 @@ class BackgroundBase(object):
             yidx = yidx.ravel()
             xidx = xidx.ravel()
         else:
-            raise ValueError('remove_masked must be "any", or "all".')
+            raise ValueError('remove_masked must be "any", "all", or '
+                             '"threshold".')
         return yidx, xidx
 
     def _convert_1d_to_2d_mesh(self, data):
@@ -336,10 +363,10 @@ class BackgroundBase(object):
 
         # the number of masked pixels in each mesh including *only* the
         # input (and padding) mask
-        self._nmasked_img_orig = np.ma.count_masked(data3d, axis=2)
+        self._nmasked_mesh_orig = np.ma.count_masked(data3d, axis=2)
 
         self.mesh_yidx, self.mesh_xidx = self._define_mesh_indices(
-            self._nmasked_img_orig)
+            self._nmasked_mesh_orig)
         data2d = data3d[self.mesh_yidx, self.mesh_xidx, :]
 
         with warnings.catch_warnings():
@@ -359,8 +386,19 @@ class BackgroundBase(object):
         # including *both* the input (and padding) mask and pixels masked
         # via sigma clipping
         nmasked = np.ma.count_masked(self.data_sigclip, axis=1)
-        self.nmasked_img = self._convert_1d_to_2d_mesh(nmasked)
-        self.nunmasked_img = self.box_npts - self.nmasked_img
+
+        if self.remove_masked == 'threshold':
+            idx1d = np.where((self.box_npts - nmasked) >=
+                             self.meshpix_threshold)
+            self.data_sigclip = self.data_sigclip[idx1d]
+            nmasked = nmasked[idx1d]
+            self.mesh_yidx = self.mesh_yidx[idx1d]
+            self.mesh_xidx = self.mesh_xidx[idx1d]
+            if len(self.mesh_yidx) == 0:
+                raise ValueError('There are no valid meshes available.')
+
+        self.nmasked_mesh = self._convert_1d_to_2d_mesh(nmasked)
+        self.nunmasked_mesh = self.box_npts - self.nmasked_mesh
         return
 
     def _calc_bkg_meshes1d(self):
@@ -401,10 +439,8 @@ class BackgroundBase(object):
                                  '"backfunc" is not correct.')
 
         bkgrms_mesh1d = np.ma.std(self.data_sigclip, axis=1)
-        # NOTE:  remove_masked='_none' will return 1D arrays
-        # that are masked for meshes that are completely masked
-        # self.bkg_mesh1d = np.ma.filled(bkg_mesh1d, fill_value=np.nan)
-        # self.bkgrms_mesh1d = np.ma.filled(bkgrms_mesh1d, fill_value=np.nan)
+        # NOTE:  remove_masked='_none' will return 1D arrays that are
+        # masked for meshes that are completely masked
         self.bkg_mesh1d = bkg_mesh1d
         self.bkgrms_mesh1d = bkgrms_mesh1d
 
@@ -491,10 +527,12 @@ class BackgroundBase(object):
 
         self.bkg_mesh2d = self._interpolate_meshes(self.bkg_mesh1d)
         self.bkgrms_mesh2d = self._interpolate_meshes(self.bkgrms_mesh1d)
-        if self.filter_size != (1, 1):
+        if not np.array_equal(self.filter_size, [1, 1]):
             self.bkg_mesh2d = self._filter_meshes(self.bkg_mesh2d)
             self.bkgrms_mesh2d = self._filter_meshes(self.bkgrms_mesh2d)
-
+            self.bkg_mesh1d = self.bkg_mesh2d[self.mesh_yidx, self.mesh_xidx]
+            self.bkgrms_mesh1d = self.bkgrms_mesh2d[self.mesh_yidx,
+                                                    self.mesh_xidx]
         self.bkg_mesh2d_ma = self._convert_1d_to_2d_mesh(self.bkg_mesh1d)
         self.bkgrms_mesh2d_ma = self._convert_1d_to_2d_mesh(
             self.bkgrms_mesh1d)
