@@ -438,13 +438,13 @@ class BackgroundBase(object):
                 raise ValueError('The shape of the array returned by '
                                  '"backfunc" is not correct.')
 
-        bkgrms_mesh1d = np.ma.std(self.data_sigclip, axis=1)
-        # NOTE:  remove_masked='_none' will return 1D arrays that are
+        # NOTE: remove_masked='_none' will return 1D arrays that are
         # masked for meshes that are completely masked
         self.bkg_mesh1d = bkg_mesh1d
-        self.bkgrms_mesh1d = bkgrms_mesh1d
+        self.bkgrms_mesh1d = np.ma.std(self.data_sigclip, axis=1)
 
-        # define the position arrays used to initialize an interpolator
+        # define the position arrays used to initialize the final IDW
+        # interpolation
         self.y = (self.mesh_yidx * self.box_size[0] +
                   (self.box_size[0] - 1) / 2.)
         self.x = (self.mesh_xidx * self.box_size[1] +
@@ -536,6 +536,28 @@ class BackgroundBase(object):
         self.bkg_mesh2d_ma = self._convert_1d_to_2d_mesh(self.bkg_mesh1d)
         self.bkgrms_mesh2d_ma = self._convert_1d_to_2d_mesh(
             self.bkgrms_mesh1d)
+
+    @lazyproperty
+    def background_median(self):
+        """
+        The median value of the 2D low-resolution background map.
+
+        This is equivalent to the value `SExtractor`_ prints to stdout
+        (i.e., "(M+D) Background: <value>").
+        """
+
+        return np.median(self.bkg_mesh2d)
+
+    @lazyproperty
+    def background_rms_median(self):
+        """
+        The median value of the low-resolution background rms map.
+
+        This is equivalent to the value `SExtractor`_ prints to stdout
+        (i.e., "(M+D) RMS: <value>").
+        """
+
+        return np.median(self.bkgrms_mesh2d)
 
     def plot_meshes(self, ax=None, marker='+', color='blue', outlines=False,
                     **kwargs):
