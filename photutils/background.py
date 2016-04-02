@@ -211,7 +211,7 @@ class BackgroundBase(object):
         self.xextra = self.data.shape[1] % self.box_size[1]
 
         if (self.xextra + self.yextra) == 0:
-            self.data_ma = self.data
+            self.data_ma = np.ma.masked_array(self.data, mask=self.mask)
         else:
             if self.edge_method == 'pad':
                 self.data_ma = self._pad_data()
@@ -227,7 +227,7 @@ class BackgroundBase(object):
         """
         Pad the ``data`` and ``mask`` on the top and/or right to have a
         integer number of background meshes of size ``box_size`` in both
-        dimensions.
+        dimensions.  Returns a numpy masked array.
         """
 
         ypad, xpad = 0, 0
@@ -255,7 +255,7 @@ class BackgroundBase(object):
         """
         Crop the ``data`` and ``mask`` on the top and/or right to have a
         integer number of background meshes of size ``box_size`` in both
-        dimensions.
+        dimensions.  Returns a numpy masked array.
         """
 
         ny_crop = self.nyboxes * self.box_size[0]
