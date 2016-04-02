@@ -431,9 +431,6 @@ class BackgroundBase(object):
             bkg_mesh1d = self.backfunc(self.data_sigclip)
             if not isinstance(bkg_mesh1d, np.ndarray):   # np.ma will pass
                 raise ValueError('"backfunc" must return a numpy.ndarray.')
-            if isinstance(bkg_mesh1d, np.ma.MaskedArray):
-                raise ValueError('"backfunc" must return a numpy.ndarray, '
-                                 'not a masked array.')
             if bkg_mesh1d.shape != (self.data_sigclip.shape[0], ):
                 raise ValueError('The shape of the array returned by '
                                  '"backfunc" is not correct.')
