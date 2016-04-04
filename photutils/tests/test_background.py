@@ -5,7 +5,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 import itertools
-from ..background import Background
+from ..background import Background, BackgroundIDW
 
 try:
     import scipy
@@ -197,3 +197,24 @@ class TestBackground(object):
 
         b = Background(DATA, (25, 25))
         b.plot_meshes(outlines=True)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+class TestBackgroundIDW(object):
+    def test_background_idw(self):
+        b = BackgroundIDW(DATA, (25, 25), filter_size=(1, 1), method='mean')
+        assert_allclose(b.background, DATA)
+        assert_allclose(b.background_rms, BKG_RMS)
+        assert_allclose(b.bkg_mesh2d, BKG_MESH)
+        assert_allclose(b.bkgrms_mesh2d, BKG_RMS_MESH)
+        assert b.background_median == 1.0
+        assert b.background_rms_median == 0.0
+
+    def test_background_idw_nonconstant(self):
+        data = np.copy(DATA)
+        data[25:50, 50:75] = 10.
+        bkg_low_res = np.copy(BKG_MESH)
+        bkg_low_res[1, 2] = 10.
+        b = BackgroundIDW(data, (25, 25), filter_size=(1, 1), method='mean')
+        assert_allclose(b.bkg_mesh2d, bkg_low_res)
+        assert b.background.shape == data.shape
