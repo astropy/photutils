@@ -22,6 +22,7 @@ PADBKG_MESH = np.ones((5, 5))
 PADBKG_RMS_MESH = np.zeros((5, 5))
 FILTER_SIZES = [(1, 1), (3, 3)]
 METHODS = ['mean', 'median', 'sextractor', 'mode_estimator']
+EDGE_METHODS = ['pad', 'crop']
 
 
 def custom_backfunc(data):
@@ -31,16 +32,6 @@ def custom_backfunc(data):
 
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestBackground(object):
-    def test_mask_badshape(self):
-        with pytest.raises(ValueError):
-            Background(DATA, (25, 25), filter_size=(1, 1),
-                       mask=np.zeros((2, 2)))
-
-    def test_invalid_method(self):
-        with pytest.raises(ValueError):
-            Background(DATA, (25, 25), filter_size=(1, 1),
-                       method='not_valid')
-
     @pytest.mark.parametrize(('filter_size', 'method'),
                              list(itertools.product(FILTER_SIZES, METHODS)))
     def test_background(self, filter_size, method):
@@ -57,22 +48,31 @@ class TestBackground(object):
         data[25:50, 50:75] = 10.
         bkg_low_res = np.copy(BKG_MESH)
         bkg_low_res[1, 2] = 10.
-        b = Background(data, (25, 25), filter_size=(1, 1), method='mean')
-        assert_allclose(b.bkg_mesh2d, bkg_low_res)
-        assert b.background.shape == data.shape
+        b1 = Background(data, (25, 25), filter_size=(1, 1), method='mean')
+        assert_allclose(b1.bkg_mesh2d, bkg_low_res)
+        assert b1.background.shape == data.shape
+        b2 = Background(data, (25, 25), filter_size=(1, 1), method='mean',
+                        edge_method='pad')
+        assert_allclose(b2.bkg_mesh2d, bkg_low_res)
+        assert b2.background.shape == data.shape
 
     @pytest.mark.parametrize(('filter_size', 'method'),
                              list(itertools.product(FILTER_SIZES, METHODS)))
-    def test_background_padding(self, filter_size, method):
-        b = Background(DATA, (22, 22), filter_size=filter_size,
-                       edge_method='pad', method=method)
-        assert_allclose(b.background, DATA)
-        assert_allclose(b.background_rms, BKG_RMS)
-        assert_allclose(b.bkg_mesh2d, PADBKG_MESH)
-        assert_allclose(b.bkgrms_mesh2d, PADBKG_RMS_MESH)
+    def test_resizing(self, filter_size, method):
+        b1 = Background(DATA, (22, 22), filter_size=filter_size,
+                        edge_method='crop', method=method)
+        b2 = Background(DATA, (22, 22), filter_size=filter_size,
+                        edge_method='pad', method=method)
+        assert_allclose(b1.background, b2.background)
+        assert_allclose(b1.background_rms, b2.background_rms)
 
     @pytest.mark.parametrize('box_size', ([(25, 25), (22, 22)]))
     def test_background_mask(self, box_size):
+        """
+        Test with an input mask.  Note that box_size=(22, 22) tests the
+        resizing of the image and mask.
+        """
+
         data = np.copy(DATA)
         data[25:50, 25:50] = 100.
         mask = np.zeros_like(DATA, dtype=np.bool)
@@ -80,6 +80,23 @@ class TestBackground(object):
         b = Background(data, box_size, filter_size=(1, 1), mask=mask)
         assert_allclose(b.background, DATA)
         assert_allclose(b.background_rms, BKG_RMS)
+
+        # test mask padding
+        b2 = Background(data, (22, 22), filter_size=(1, 1), mask=mask,
+                        edge_method='pad')
+        assert_allclose(b2.background, DATA)
+
+    @pytest.mark.parametrize('remove_masked', (['any', 'all', 'threshold']))
+    def test_remove_masked(self, remove_masked):
+        b = Background(DATA, (25, 25), remove_masked=remove_masked)
+        assert_allclose(b.background, DATA)
+        b2 = Background(DATA, (25, 25), remove_masked='_none')
+        assert_allclose(b2.background, DATA)
+
+        # test if data is completely masked
+        with pytest.raises(ValueError):
+            mask = np.ones_like(DATA, dtype=np.bool)
+            Background(DATA, (25, 25), mask=mask, remove_masked=remove_masked)
 
     def test_filter_threshold(self):
         """Only meshes greater than filter_threshold are filtered."""
@@ -113,12 +130,43 @@ class TestBackground(object):
                        filter_threshold=1.)
         assert_allclose(b.bkg_mesh2d, ref_data)
 
+    def test_scalar_sizes(self):
+        b1 = Background(DATA, (25, 25), filter_size=(3, 3), method='mean')
+        b2 = Background(DATA, 25, filter_size=3, method='mean')
+        assert_allclose(b1.background, b2.background)
+        assert_allclose(b1.background_rms, b2.background_rms)
+
+    def test_meshpix_threshold(self):
+        with pytest.raises(ValueError):
+            Background(DATA, (5, 5), remove_masked='threshold',
+                       meshpix_threshold=26)
+
     def test_custom_method(self):
         b0 = Background(DATA, (25, 25), filter_size=(3, 3), method='mean')
         b1 = Background(DATA, (25, 25), filter_size=(3, 3), method='custom',
                         backfunc=custom_backfunc)
         assert_allclose(b0.background, b1.background)
         assert_allclose(b0.background_rms, b1.background_rms)
+
+    def test_mask_badshape(self):
+        with pytest.raises(ValueError):
+            Background(DATA, (25, 25), filter_size=(1, 1),
+                       mask=np.zeros((2, 2)))
+
+    def test_invalid_method(self):
+        with pytest.raises(ValueError):
+            Background(DATA, (25, 25), filter_size=(1, 1),
+                       method='not_valid')
+
+    def test_invalid_edge_method(self):
+        with pytest.raises(ValueError):
+            Background(DATA, (22, 22), filter_size=(1, 1),
+                       edge_method='not_valid')
+
+    def test_invalid_remove_masked(self):
+        with pytest.raises(ValueError):
+            Background(DATA, (22, 22), filter_size=(1, 1),
+                       remove_masked='not_valid')
 
     def test_custom_return_nonarray(self):
         def backfunc(data):
@@ -140,3 +188,12 @@ class TestBackground(object):
         with pytest.raises(ValueError):
             Background(DATA, (25, 25), filter_size=(3, 3),
                        method='custom', backfunc=backfunc)
+
+    def test_plot_meshes(self):
+        """
+        This test should run without any errors, but there is no return
+        value.
+        """
+
+        b = Background(DATA, (25, 25))
+        b.plot_meshes(outlines=True)

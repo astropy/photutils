@@ -743,7 +743,7 @@ class Background(BackgroundBase):
     .. _SExtractor: http://www.astromatic.net/software/sextractor
     """
 
-    def __init__(self, data, box_size, interp_order=3, pad_crop=False,
+    def __init__(self, data, box_size, interp_order=3, pad_crop=True,
                  **kwargs):
 
         super(Background, self).__init__(data, box_size, **kwargs)
