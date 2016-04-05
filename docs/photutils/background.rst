@@ -113,42 +113,35 @@ levels::
 Masking Sources
 ^^^^^^^^^^^^^^^
 
-An even better method is to exclude the sources in the image by
+An even better procedure is to exclude the sources in the image by
 masking them.  Of course, this technique requires one to `identify the
 sources in the data <detection.html>`_, which in turn depends on the
 background and background noise.  Therefore, this method for
 estimating the background and background rms requires an iterative
-procedure.  We start by using the sigma-clipped statistics as the
-first estimate of the background and noise levels for the source
-detection.  Here we use a aggressive 2-sigma detection threshold to
-maximize the source detections:
+procedure.
+
+Photutils provides a convenience function,
+:func:`~photutils.detection.make_source_mask`, for creating source
+masks.  It uses sigma-clipped statistics as the first estimate of the
+background and noise levels for the source detection.  Sources are
+then identified using image segmentation.  Finally, the source masks
+are dilated to ensure that the extended regions of detected sources
+are completely masked.
+
+Here we use a aggressive 2-sigma detection threshold to maximize the
+source detections and dilate using a 11x11 box:
 
 .. doctest-requires:: scipy
 
-    >>> from photutils.detection import detect_sources
-    >>> threshold = median + (std * 2.)
-    >>> segm_img = detect_sources(data, threshold, npixels=5)
-    >>> mask = segm_img.data.astype(np.bool)    # turn segm_img into a mask
+    >>> from photutils import make_source_mask
+    >>> mask = make_source_mask(data, snr=2, npixels=5, dilate_size=11)
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, mask=mask)
     >>> print((mean, median, std))    # doctest: +FLOAT_CMP
-    (5.12349231659, 5.11792609168, 2.00503461917)
-
-To ensure that we are completely masking the extended regions of
-detected sources, we can dilate the source mask (NOTE: this requires
-`scipy`_):
-
-.. doctest-requires:: scipy
-
-    >>> from scipy.ndimage import binary_dilation
-    >>> selem = np.ones((5, 5))    # dilate using a 5x5 box
-    >>> mask2 = binary_dilation(mask, selem)
-    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, mask=mask2)
-    >>> print((mean, median, std))    # doctest: +FLOAT_CMP
-    (5.02603895921, 5.02341384438, 1.97423026273)
+    (5.0010134754755695, 5.0005849056043763, 1.970887100626572)
 
 Of course, the source detection and masking procedure can be iterated
-further.  Even with one iteration we are within ~%1 of the true
-values.
+further.  Even with one iteration we are within 0.02% of the true
+background and 1.5% of the true background rms.
 
 .. _scipy: http://www.scipy.org/
 
@@ -299,23 +292,22 @@ The background level in each of the background meshes can by estimated
 using one of several defined methods or by using a custom method.  For
 all methods, the statistics are calculated from the sigma-clipped data
 values in each mesh.  The defined methods are ``'mean'``,
-``'median'``, ``'sextractor'``, and ``'mode_estimate'``.  ``'mean'``
+``'median'``, ``'sextractor'``, and ``'mode_estimator'``.  ``'mean'``
 and ``'median'`` are simply the sigma-clipped mean and median,
 respectively, in each background mesh.  For ``'sextractor'``, the
 background in each mesh is ``(2.5 * median) - (1.5 * mean)``.
 However, if ``(mean - median) / std > 0.3`` then the ``median`` is
 used instead (despite what the `SExtractor
 <http://www.astromatic.net/software/sextractor>`_ User's Manual says,
-this is the method it always uses).  For ``'mode_estimate'``, the
+this is the method it always uses).  For ``'mode_estimator'``, the
 background is ``(3 * median) - (2 * mean)``.
 
 A custom calculation can also be defined for the background level by
 setting ``method='custom'`` and inputing a custom function to the
-``backfunc`` parameter.  The custom function must must take in a 3D
-`~numpy.ma.MaskedArray` of size ``MxNxZ``, where the ``Z`` axis
-(axis=2) contains the sigma-clipped pixels in each background mesh,
-and outputs a 2D `~numpy.ndarray` low-resolution background map of
-size ``MxN``.
+``backfunc`` parameter.  The custom function must must take in a 2D
+`~numpy.ma.MaskedArray` of size ``NxZ``, where the ``Z`` axis (axis=1)
+contains the sigma-clipped pixels in each background mesh, and outputs
+a 1D `~numpy.ndarray` low-resolution background map of length ``N``.
 
 We demonstrate this capability using a custom function that is simply
 the median of the sigma-clipped data in each mesh (this is the same
@@ -330,9 +322,9 @@ class:
 
 .. doctest-requires:: scipy
 
-    >>> bkg = Background(data, (50, 50), filter_size=(3, 3),
-    ...                  method='custom', backfunc=backfunc)
-    >>> back = bkg.background
+    >>> b = Background(data, (50, 50), filter_size=(3, 3),
+    ...                method='custom', backfunc=backfunc)
+    >>> bkg = b.background
 
 
 Masking
