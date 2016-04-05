@@ -17,7 +17,7 @@ else:
     ASTROPY_LT_1P1 = False
 
 
-__all__ = ['BackgroundBase', 'Background', 'BackgroundIDW']
+__all__ = ['BackgroundBase', 'Background', 'BackgroundIDW', 'std_blocksum']
 
 __doctest_requires__ = {('Background'): ['scipy']}
 
@@ -937,3 +937,71 @@ class BackgroundIDW(BackgroundBase):
         bkgrms_1d = f_bkgrms(self.data_coords, n_neighbors=n_neighbors,
                              power=power, reg=reg)
         self.background_rms = bkgrms_1d.reshape(data.shape)
+
+
+def _mesh_values(data, box_size, mask=None):
+    """
+    Extract all the data values in boxes of size box_size.
+    """
+
+    data = np.asanyarray(data)
+    box_size = np.atleast_1d(box_size)
+    if len(box_size) == 1:
+        box_size = np.repeat(box_size, 2)
+
+    if mask is not None:
+        data = np.ma.masked_array(data, mask=mask)
+
+    ny, nx = data.shape
+    nyboxes = ny // box_size[0]
+    nxboxes = nx // box_size[1]
+    ny_crop = nyboxes * box_size[0]
+    nx_crop = nxboxes * box_size[1]
+    crop_slc = index_exp[0:ny_crop, 0:nx_crop]
+    data = data[crop_slc]
+
+    data = np.ma.swapaxes(data.reshape(
+        nyboxes, box_size[0], nxboxes, box_size[1]), 1, 2).reshape(
+            nyboxes, nxboxes, box_size[0]*box_size[1])
+    mesh_yidx, mesh_xidx = np.where(np.ma.count_masked(data, axis=2) == 0)
+    mesh_values = data[mesh_yidx, mesh_xidx, :]
+
+    # y = (mesh_yidx * box_size[0]) + (box_size[0] - 1) / 2.
+    # x = (mesh_xidx * box_size[1]) + (box_size[1] - 1) / 2.
+    return (mesh_yidx, mesh_xidx), mesh_values
+
+
+def std_blocksum(data, block_sizes, mask=None):
+    """
+    Calculate the standard deviation of block-summed data values at
+    sizes of ``block_sizes``.
+
+    Parameters
+    ----------
+    data : array-like
+        The 2D array to block sum.
+
+    block_sizes : int, array-like of int
+        An array of integer block sizes.
+
+    mask : array-like (bool), optional
+        A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Meshes that contain *any* masked data are excluded from
+        calculations.
+
+    Returns
+    -------
+    result : `~numpy.ndarray`
+        An array of the standard deviations of the block-summed array
+        for the input ``block_sizes``.
+    """
+
+    stds = []
+    block_sizes = np.atleast_1d(block_sizes)
+    for block_size in block_sizes:
+        mesh_idx, mesh_values = _mesh_values(data, (block_size, block_size),
+                                             mask=mask)
+        block_sums = np.sum(mesh_values, axis=1)
+        stds.append(np.std(block_sums))
+    return np.array(stds)
