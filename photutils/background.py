@@ -944,11 +944,6 @@ def _mesh_values(data, box_size, mask=None):
     Extract all the data values in boxes of size box_size.
     """
 
-    data = np.asanyarray(data)
-    box_size = np.atleast_1d(box_size)
-    if len(box_size) == 1:
-        box_size = np.repeat(box_size, 2)
-
     if mask is not None:
         data = np.ma.masked_array(data, mask=mask)
 

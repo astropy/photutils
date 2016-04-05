@@ -5,7 +5,8 @@ import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 import itertools
-from ..background import Background, BackgroundIDW
+from ..background import Background, BackgroundIDW, std_blocksum
+from ..datasets import make_noise_image
 
 try:
     import scipy
@@ -218,3 +219,18 @@ class TestBackgroundIDW(object):
         b = BackgroundIDW(data, (25, 25), filter_size=(1, 1), method='mean')
         assert_allclose(b.bkg_mesh2d, bkg_low_res)
         assert b.background.shape == data.shape
+
+
+class TestStdBlocksum(object):
+    stddev = 5
+    data = make_noise_image((100, 100), mean=0, stddev=stddev,
+                            random_state=12345)
+    block_sizes = np.array([5, 7, 10])
+    stds = std_blocksum(data, block_sizes)
+    expected = np.array([stddev, stddev, stddev])
+    assert_allclose(stds / block_sizes, expected, atol=0.2)
+
+    mask = np.zeros_like(data, dtype=np.bool)
+    mask[25:50, 25:50] = True
+    stds2 = std_blocksum(data, block_sizes, mask=mask)
+    assert_allclose(stds2 / block_sizes, expected, atol=0.3)
