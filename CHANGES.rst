@@ -15,6 +15,32 @@ New Features
   - Added ``copy`` and ``area`` methods and a ``areas`` property to
     ``SegmentationImage``. [#331]
 
+- ``photutils.background``
+
+  - Added new ``BackgroundBase`` and ``BackgroundIDW`` classes and
+    ``std_blocksum`` function. [#355]
+
+  - Added new ``removed_masked``, ``meshpix_threshold``, and
+    ``edge_method`` keywords for the background classes. [#355]
+
+  - Added new ``std_blocksum`` function. [#355]
+
+- ``photutils.detection``
+
+  - Added new ``make_source_mask`` convenience function. [#355]
+
+API changes
+^^^^^^^^^^^
+
+- ``photutils.background``
+
+  - For the background classes, the ``filter_shape`` keyword was
+    renamed to ``filter_size``.  The ``mode_estimate`` keyword was
+    renamed to ``mode_estimator``.  The ``background_low_res`` and
+    ``background_rms_low_res`` class attributes were renamed to
+    ``background_mesh2d`` and ``background_rms_mesh2d``, respectively.
+    [#355]
+
 
 0.2.2 (unreleased)
 ------------------

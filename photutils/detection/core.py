@@ -6,7 +6,8 @@ from __future__ import (absolute_import, division, print_function,
 from distutils.version import LooseVersion
 import numpy as np
 from astropy.table import Column, Table
-from astropy.stats import sigma_clipped_stats
+from astropy.stats import sigma_clipped_stats, gaussian_fwhm_to_sigma
+from astropy.convolution import Gaussian2DKernel
 from ..segmentation import SegmentationImage
 from ..morphology import cutout_footprint, fit_2dgaussian
 from ..utils.convolution import _convolve_data
@@ -19,7 +20,8 @@ else:
     ASTROPY_LT_1P1 = False
 
 
-__all__ = ['detect_threshold', 'detect_sources', 'find_peaks']
+__all__ = ['detect_threshold', 'detect_sources', 'find_peaks',
+           'make_source_mask']
 
 
 def detect_threshold(data, snr, background=None, error=None, mask=None,
@@ -437,3 +439,94 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
                                     name='icrs_dec_centroid'), index=idx+2)
 
     return table
+
+
+def make_source_mask(data, snr, npixels, mask=None, mask_value=None,
+                     filter_fwhm=None, filter_size=3, filter_kernel=None,
+                     sigclip_sigma=3.0, sigclip_iters=5, dilate_size=11):
+    """
+    Make a source mask using source segmentation and binary dilation.
+
+    Parameters
+    ----------
+    data : array_like
+        The 2D array of the image.
+
+    snr : float
+        The signal-to-noise ratio per pixel above the ``background`` for
+        which to consider a pixel as possibly being part of a source.
+
+    npixels : int
+        The number of connected pixels, each greater than ``threshold``,
+        that an object must have to be detected.  ``npixels`` must be a
+        positive integer.
+
+    mask : array_like, bool, optional
+        A boolean mask with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Masked pixels are ignored when computing the image background
+        statistics.
+
+    mask_value : float, optional
+        An image data value (e.g., ``0.0``) that is ignored when
+        computing the image background statistics.  ``mask_value`` will
+        be ignored if ``mask`` is input.
+
+    filter_fwhm : float, optional
+        The full-width at half-maximum (FWHM) of the Gaussian kernel to
+        filter the image before thresholding.  ``filter_fwhm`` and
+        ``filter_size`` are ignored if ``filter_kernel`` is defined.
+
+    filter_size : float, optional
+        The size of the square Gaussian kernel image.  Used only if
+        ``filter_fwhm`` is defined.  ``filter_fwhm`` and ``filter_size``
+        are ignored if ``filter_kernel`` is defined.
+
+    filter_kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
+        The 2D array of the kernel used to filter the image before
+        thresholding.  Filtering the image will smooth the noise and
+        maximize detectability of objects with a shape similar to the
+        kernel.  ``filter_kernel`` overrides ``filter_fwhm`` and
+        ``filter_size``.
+
+    sigclip_sigma : float, optional
+        The number of standard deviations to use as the clipping limit
+        when calculating the image background statistics.
+
+    sigclip_iters : float, optional
+       The number of iterations to perform sigma clipping, or `None` to
+       clip until convergence is achieved (i.e., continue until the last
+       iteration clips nothing) when calculating the image background
+       statistics.
+
+    dilate_size : int, optional
+        The size of the square array used to dilate the segmentation
+        image.
+
+    Returns
+    -------
+    mask : 2D `~numpy.ndarray`, bool
+        A 2D boolean image containing the source mask.
+    """
+
+    from scipy import ndimage
+
+    threshold = detect_threshold(data, snr, background=None, error=None,
+                                 mask=mask, mask_value=None,
+                                 sigclip_sigma=sigclip_sigma,
+                                 sigclip_iters=sigclip_iters)
+
+    kernel = None
+    if filter_kernel is not None:
+        kernel = filter_kernel
+    if filter_fwhm is not None:
+        sigma = filter_fwhm * gaussian_fwhm_to_sigma
+        kernel = Gaussian2DKernel(sigma, x_size=filter_size,
+                                  y_size=filter_size)
+    if kernel is not None:
+        kernel.normalize()
+
+    segm = detect_sources(data, threshold, npixels, filter_kernel=kernel)
+
+    selem = np.ones((dilate_size, dilate_size))
+    return ndimage.binary_dilation(segm.data.astype(np.bool), selem)

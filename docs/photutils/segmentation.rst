@@ -46,7 +46,7 @@ the threshold at 3 sigma above the background:
     >>> from photutils import Background, detect_threshold, detect_sources
     >>> from astropy.convolution import Gaussian2DKernel
     >>> data = make_100gaussians_image()
-    >>> bkg = Background(data, (50, 50), filter_shape=(3, 3), method='median')
+    >>> bkg = Background(data, (50, 50), filter_size=(3, 3), method='median')
     >>> threshold = bkg.background + (3. * bkg.background_rms)
 
 Now we find sources that have 5 connected pixels that are each greater
@@ -141,7 +141,7 @@ Now let's plot the results:
     from photutils.utils import random_cmap
     from photutils import EllipticalAperture
     data = make_100gaussians_image()
-    bkg = Background(data, (50, 50), filter_shape=(3, 3), method='median')
+    bkg = Background(data, (50, 50), filter_size=(3, 3), method='median')
     threshold = bkg.background + (3. * bkg.background_rms)
     sigma = 2.0 * gaussian_fwhm_to_sigma    # FWHM = 2.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
