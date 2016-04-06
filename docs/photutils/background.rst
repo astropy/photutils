@@ -236,9 +236,9 @@ attributes, respectively:
 .. doctest-requires:: scipy
 
     >>> print(bkg.background_median)
-    19.2448529312
+    10.8219978626
     >>> print(bkg.background_rms_median)
-    3.09090781196
+    2.29882053968
 
 Let's plot the background image:
 
