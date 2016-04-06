@@ -192,8 +192,8 @@ class BackgroundBase(object):
 
         self._resize_data()
         self._sigclip_data()
-        self._calc_bkg_meshes1d()
-        self._calc_bkg_meshes2d()
+        self._calc_meshes1d()
+        self._calc_meshes2d()
 
         # the data coordinates to use when calling an interpolator
         nx, ny = self.data.shape
@@ -267,10 +267,11 @@ class BackgroundBase(object):
             mask = False
         return np.ma.masked_array(self.data[crop_slc], mask=mask)
 
-    def _define_mesh_indices(self, nmasked_mesh):
+    def _define_mesh2d_indices(self, nmasked_mesh):
         """
         Define the x and y indices with respect to the low-resolution
-        mesh of the meshes to use for the background interpolation.
+        mesh image of the meshes to use for the background
+        interpolation.
 
         The ``remove_masked`` option determines which meshes are used
         for the background interpolation.
@@ -365,7 +366,7 @@ class BackgroundBase(object):
         # input (and padding) mask
         self._nmasked_mesh_orig = np.ma.count_masked(data3d, axis=2)
 
-        self.mesh_yidx, self.mesh_xidx = self._define_mesh_indices(
+        self.mesh_yidx, self.mesh_xidx = self._define_mesh2d_indices(
             self._nmasked_mesh_orig)
         data2d = data3d[self.mesh_yidx, self.mesh_xidx, :]
 
@@ -401,7 +402,7 @@ class BackgroundBase(object):
         self.nunmasked_mesh = self.box_npts - self.nmasked_mesh
         return
 
-    def _calc_bkg_meshes1d(self):
+    def _calc_meshes1d(self):
         """
         Calculate 1D arrays containing the background and background rms
         estimate in each of the meshes.  The 1D x and y indices of the
@@ -437,8 +438,8 @@ class BackgroundBase(object):
 
         # NOTE: remove_masked='_none' will return 1D arrays that are
         # masked for meshes that are completely masked
-        self.bkg_mesh1d = bkg_mesh1d
-        self.bkgrms_mesh1d = np.ma.std(self.data_sigclip, axis=1)
+        self.background_mesh1d = bkg_mesh1d
+        self.background_rms_mesh1d = np.ma.std(self.data_sigclip, axis=1)
 
         # define the position arrays used to initialize the final IDW
         # interpolation
@@ -506,7 +507,7 @@ class BackgroundBase(object):
                 data_out[i, j] = np.median(mesh2d[y0:y1, x0:x1])
             return data_out
 
-    def _calc_bkg_meshes2d(self):
+    def _calc_meshes2d(self):
         """
         Calculate 2D arrays containing the background and background rms
         estimate in each of the meshes.  The strictly ascending 1D x and
@@ -522,17 +523,23 @@ class BackgroundBase(object):
         increasing 1D array of the x and y spans.
         """
 
-        self.bkg_mesh2d = self._interpolate_meshes(self.bkg_mesh1d)
-        self.bkgrms_mesh2d = self._interpolate_meshes(self.bkgrms_mesh1d)
+        self.background_mesh2d = self._interpolate_meshes(
+            self.background_mesh1d)
+        self.background_rms_mesh2d = self._interpolate_meshes(
+            self.background_rms_mesh1d)
         if not np.array_equal(self.filter_size, [1, 1]):
-            self.bkg_mesh2d = self._filter_meshes(self.bkg_mesh2d)
-            self.bkgrms_mesh2d = self._filter_meshes(self.bkgrms_mesh2d)
-            self.bkg_mesh1d = self.bkg_mesh2d[self.mesh_yidx, self.mesh_xidx]
-            self.bkgrms_mesh1d = self.bkgrms_mesh2d[self.mesh_yidx,
-                                                    self.mesh_xidx]
-        self.bkg_mesh2d_ma = self._convert_1d_to_2d_mesh(self.bkg_mesh1d)
-        self.bkgrms_mesh2d_ma = self._convert_1d_to_2d_mesh(
-            self.bkgrms_mesh1d)
+            self.background_mesh2d = self._filter_meshes(
+                self.background_mesh2d)
+            self.background_rms_mesh2d = self._filter_meshes(
+                self.background_rms_mesh2d)
+            self.background_mesh1d = self.background_mesh2d[
+                self.mesh_yidx, self.mesh_xidx]
+            self.background_rms_mesh1d = self.background_rms_mesh2d[
+                self.mesh_yidx, self.mesh_xidx]
+        self.background_mesh2d_ma = self._convert_1d_to_2d_mesh(
+            self.background_mesh1d)
+        self.background_rms_mesh2d_ma = self._convert_1d_to_2d_mesh(
+            self.background_rms_mesh1d)
 
     @lazyproperty
     def background_median(self):
@@ -543,7 +550,7 @@ class BackgroundBase(object):
         (i.e., "(M+D) Background: <value>").
         """
 
-        return np.median(self.bkg_mesh2d)
+        return np.median(self.background_mesh2d)
 
     @lazyproperty
     def background_rms_median(self):
@@ -554,7 +561,7 @@ class BackgroundBase(object):
         (i.e., "(M+D) RMS: <value>").
         """
 
-        return np.median(self.bkgrms_mesh2d)
+        return np.median(self.background_rms_mesh2d)
 
     def plot_meshes(self, ax=None, marker='+', color='blue', outlines=False,
                     **kwargs):
@@ -750,8 +757,8 @@ class Background(BackgroundBase):
         self.interp_order = interp_order
         self.pad_crop = pad_crop
         self.data_slc = index_exp[0:data.shape[0], 0:data.shape[1]]
-        self.background = self._resize_mesh(self.bkg_mesh2d)
-        self.background_rms = self._resize_mesh(self.bkgrms_mesh2d)
+        self.background = self._resize_mesh(self.background_mesh2d)
+        self.background_rms = self._resize_mesh(self.background_rms_mesh2d)
 
     def _resize_mesh(self, mesh2d):
         if np.ptp(mesh2d) == 0:
@@ -926,17 +933,18 @@ class BackgroundIDW(BackgroundBase):
 
         super(BackgroundIDW, self).__init__(data, box_size, **kwargs)
 
-        f_bkg = ShepardIDWInterpolator(self.yx, self.bkg_mesh1d,
+        f_bkg = ShepardIDWInterpolator(self.yx, self.background_mesh1d,
                                        leafsize=leafsize)
         bkg_1d = f_bkg(self.data_coords, n_neighbors=n_neighbors, power=power,
                        reg=reg)
         self.background = bkg_1d.reshape(data.shape)
 
-        f_bkgrms = ShepardIDWInterpolator(self.yx, self.bkgrms_mesh1d,
-                                          leafsize=leafsize)
-        bkgrms_1d = f_bkgrms(self.data_coords, n_neighbors=n_neighbors,
-                             power=power, reg=reg)
-        self.background_rms = bkgrms_1d.reshape(data.shape)
+        f_bkg_rms = ShepardIDWInterpolator(self.yx,
+                                           self.background_rms_mesh1d,
+                                           leafsize=leafsize)
+        bkg_rms_1d = f_bkg_rms(self.data_coords, n_neighbors=n_neighbors,
+                               power=power, reg=reg)
+        self.background_rms = bkg_rms_1d.reshape(data.shape)
 
 
 def _mesh_values(data, box_size, mask=None):

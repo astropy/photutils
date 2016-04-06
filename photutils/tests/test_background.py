@@ -39,8 +39,8 @@ class TestBackground(object):
         b = Background(DATA, (25, 25), filter_size=filter_size, method=method)
         assert_allclose(b.background, DATA)
         assert_allclose(b.background_rms, BKG_RMS)
-        assert_allclose(b.bkg_mesh2d, BKG_MESH)
-        assert_allclose(b.bkgrms_mesh2d, BKG_RMS_MESH)
+        assert_allclose(b.background_mesh2d, BKG_MESH)
+        assert_allclose(b.background_rms_mesh2d, BKG_RMS_MESH)
         assert b.background_median == 1.0
         assert b.background_rms_median == 0.0
 
@@ -50,11 +50,11 @@ class TestBackground(object):
         bkg_low_res = np.copy(BKG_MESH)
         bkg_low_res[1, 2] = 10.
         b1 = Background(data, (25, 25), filter_size=(1, 1), method='mean')
-        assert_allclose(b1.bkg_mesh2d, bkg_low_res)
+        assert_allclose(b1.background_mesh2d, bkg_low_res)
         assert b1.background.shape == data.shape
         b2 = Background(data, (25, 25), filter_size=(1, 1), method='mean',
                         edge_method='pad')
-        assert_allclose(b2.bkg_mesh2d, bkg_low_res)
+        assert_allclose(b2.background_mesh2d, bkg_low_res)
         assert b2.background.shape == data.shape
 
     @pytest.mark.parametrize(('filter_size', 'method'),
@@ -106,10 +106,10 @@ class TestBackground(object):
         b = Background(data, (25, 25), filter_size=(3, 3),
                        filter_threshold=9.)
         assert_allclose(b.background, DATA)
-        assert_allclose(b.bkg_mesh2d, BKG_MESH)
+        assert_allclose(b.background_mesh2d, BKG_MESH)
         b2 = Background(data, (25, 25), filter_size=(3, 3),
                         filter_threshold=11.)   # no filtering
-        assert b2.bkg_mesh2d[1, 2] == 10
+        assert b2.background_mesh2d[1, 2] == 10
 
     def test_filter_threshold_high(self):
         """No filtering because filter_threshold is too large."""
@@ -119,7 +119,7 @@ class TestBackground(object):
         ref_data[1, 2] = 10.
         b = Background(data, (25, 25), filter_size=(3, 3),
                        filter_threshold=100.)
-        assert_allclose(b.bkg_mesh2d, ref_data)
+        assert_allclose(b.background_mesh2d, ref_data)
 
     def test_filter_threshold_nofilter(self):
         """No filtering because filter_size is (1, 1)."""
@@ -129,7 +129,7 @@ class TestBackground(object):
         ref_data[1, 2] = 10.
         b = Background(data, (25, 25), filter_size=(1, 1),
                        filter_threshold=1.)
-        assert_allclose(b.bkg_mesh2d, ref_data)
+        assert_allclose(b.background_mesh2d, ref_data)
 
     def test_scalar_sizes(self):
         b1 = Background(DATA, (25, 25), filter_size=(3, 3), method='mean')
@@ -206,8 +206,8 @@ class TestBackgroundIDW(object):
         b = BackgroundIDW(DATA, (25, 25), filter_size=(1, 1), method='mean')
         assert_allclose(b.background, DATA)
         assert_allclose(b.background_rms, BKG_RMS)
-        assert_allclose(b.bkg_mesh2d, BKG_MESH)
-        assert_allclose(b.bkgrms_mesh2d, BKG_RMS_MESH)
+        assert_allclose(b.background_mesh2d, BKG_MESH)
+        assert_allclose(b.background_rms_mesh2d, BKG_RMS_MESH)
         assert b.background_median == 1.0
         assert b.background_rms_median == 0.0
 
@@ -217,7 +217,7 @@ class TestBackgroundIDW(object):
         bkg_low_res = np.copy(BKG_MESH)
         bkg_low_res[1, 2] = 10.
         b = BackgroundIDW(data, (25, 25), filter_size=(1, 1), method='mean')
-        assert_allclose(b.bkg_mesh2d, bkg_low_res)
+        assert_allclose(b.background_mesh2d, bkg_low_res)
         assert b.background.shape == data.shape
 
 
