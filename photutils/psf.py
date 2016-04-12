@@ -18,6 +18,8 @@ from astropy.nddata.utils import add_array, subpixel_indices
 from .extern.nddata_compat import extract_array
 from astropy.nddata import support_nddata
 from astropy.utils.exceptions import AstropyUserWarning
+from astropy.convolution import discretize_model
+
 
 __all__ = ['DiscretePRF', 'IntegratedGaussianPRF', 'PRFAdapter',
            'psf_photometry', 'subtract_psf', 'prepare_psf_model']
@@ -394,6 +396,9 @@ class PRFAdapter(Fittable2DModel):
         The name of the ``psfmodel`` parameter that corresponds to the total
         flux of the star.  If None, a scaling factor will be applied by the
         ``PRFAdapter`` instead of modifying the ``psfmodel``.
+    discretizemode : str
+        The method used to discretize the PSF. Uses ``astropy.convolution.discretize_model``
+        to perform discretization. The default value is ``integrate``.
 
     Notes
     -----
@@ -424,9 +429,11 @@ class PRFAdapter(Fittable2DModel):
         self.yname = yname
         self.fluxname = fluxname
 
-        # these can be used to adjust the integration behavior. Might be used
-        # in the future to expose how the integration happens
-        self._dblquadkwargs = {}
+
+        self.discretizemode = 'integrate'
+        # these can be used to adjust the discretization behavior. Might be used
+        # in the future to expose how the discretization happens
+        self._discretize_modelkwargs = {}
 
         super(PRFAdapter, self).__init__(n_models=1, x_0=x_0, y_0=y_0,
                                          flux=flux, **kwargs)
@@ -448,24 +455,19 @@ class PRFAdapter(Fittable2DModel):
             setattr(self.psfmodel, self.yname, y_0)
 
         if self.fluxname is None:
-            return flux * self._psf_scale_factor * self._integrated_psfmodel(dx, dy)
+            return flux * self._psf_scale_factor * self._discretized_psfmodel(dx, dy)
         else:
             setattr(self.psfmodel, self.yname, flux * self._psf_scale_factor)
-            return self._integrated_psfmodel(dx, dy)
+            return self._discretized_psfmodel(dx, dy)
 
-    def _integrated_psfmodel(self, dx, dy):
-        from scipy.integrate import dblquad
-
-        # infer type/shape from the PSF model.  Seems wasteful, but the
-        # integration step is a *lot* more expensive so its just peanuts
-        out = np.empty_like(self.psfmodel(dx, dy))
-        outravel = out.ravel()
-        for i, (xi, yi) in enumerate(zip(dx.ravel(), dy.ravel())):
-            outravel[i] = dblquad(self.psfmodel,
-                                  xi-0.5, xi+0.5,
-                                  lambda x: yi-0.5, lambda x: yi+0.5,
-                                  **self._dblquadkwargs)[0]
+    def _discretized_psfmodel(self, dx, dy):
+        minx = np.min(dx)
+        miny = np.min(dy)
+        maxx = np.max(dx) + 0.5
+        maxy = np.max(dy) + 0.5
+        out =  discretize_model(self.psfmodel, (minx, maxx), (miny, maxy), self.discretizemode, **self._discretize_modelkwargs)
         return out
+
 
 
 def _extract_psf_fitting_names(psf):
