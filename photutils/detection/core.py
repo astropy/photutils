@@ -70,7 +70,7 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
         The number of standard deviations to use as the clipping limit
         when calculating the image background statistics.
 
-    sigclip_iters : float, optional
+    sigclip_iters : int, optional
        The number of iterations to perform sigma clipping, or `None` to
        clip until convergence is achieved (i.e., continue until the last
        iteration clips nothing) when calculating the image background
@@ -493,7 +493,7 @@ def make_source_mask(data, snr, npixels, mask=None, mask_value=None,
         The number of standard deviations to use as the clipping limit
         when calculating the image background statistics.
 
-    sigclip_iters : float, optional
+    sigclip_iters : int, optional
        The number of iterations to perform sigma clipping, or `None` to
        clip until convergence is achieved (i.e., continue until the last
        iteration clips nothing) when calculating the image background
