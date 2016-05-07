@@ -39,6 +39,10 @@ New Features
   - SegmentationImage properties are now cached to significantly
     improve performance. [#361]
 
+- ``photutils.psf_photometry``
+
+  - Added the option ``param_uncert`` so that users can easily get
+    uncertainties on fitted parameters. [#358]
 
 API changes
 ^^^^^^^^^^^

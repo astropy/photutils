@@ -154,7 +154,7 @@ def psf_photometry(data, positions, psf, fitshape=None,
                    unit=None, wcs=None, error=None,
                    mask=None, pixelwise_error=True,
                    mode='sequential',
-                   store_fit_info=False):
+                   store_fit_info=False, param_uncert=False):
     """
     Perform PSF/PRF photometry on the data.
 
@@ -179,8 +179,8 @@ def psf_photometry(data, positions, psf, fitshape=None,
         parameters of the ``psf`` model that are not fixed.
     psf : `astropy.modeling.Fittable2DModel` instance
         PSF or PRF model to fit the data. Could be one of the models in this
-        package like `~photutils.psf.IntegratedGaussianPRF`,
-        `~photutils.psf.sandbox.DiscretePRF`, or any other suitable 2D model.
+        package like `~photutils.psf.DiscretePRF`,
+        `~photutils.psf.IntegratedGaussianPRF`, or any other suitable 2D model.
         This function needs to identify three parameters (position of center in
         x and y coordinates and the flux) in order to set them to suitable
         starting values for each fit. The names of these parameters can be given
@@ -234,6 +234,11 @@ def psf_photometry(data, positions, psf, fitshape=None,
         table will have an additional column 'fit_message' with the message that
         came from the fit.  If a list, it will be populated with the
         ``fit_info`` dictionary of the fitter for each fit.
+    param_uncert : bool (default=False)
+        If True, the uncertainties on each parameter estimate will be stored
+        in the output table. This option assumes that the fitter has the
+        'param_cov' key in its 'fit_info' dictionary.
+        See 'fit_info' in `~astropy.modeling.fitting.LevMarLSQFitter`.
 
     Returns
     -------
@@ -322,6 +327,15 @@ def psf_photometry(data, positions, psf, fitshape=None,
         fit_infos = store_fit_info
     elif store_fit_info:
         fit_messages = []
+    if param_uncert:
+        if 'param_cov' in fitter.fit_info:
+            uncert = []
+        else:
+            warnings.warn("uncertainties on fitted parameters cannot be " +
+                           "computed because fitter does not contain " +
+                           "`param_cov` key in its `fit_info` dictionary.",
+                           AstropyUserWarning)
+            param_uncert = False
 
     # Many fitters take a "weight" array, but no "mask".
     # Thus, we convert the mask to weights on 1 and 0. Unfortunately,
@@ -357,11 +371,28 @@ def psf_photometry(data, positions, psf, fitshape=None,
                 fit_infos.append(fitter.fit_info)
             if fit_messages is not None:
                 fit_messages.append(fitter.fit_info['message'])
+            if param_uncert:
+                if fitter.fit_info['param_cov'] is not None:
+                    uncert.append(np.sqrt(np.diag(\
+                            fitter.fit_info['param_cov'])))
+                else:
+                    warnings.warn("uncertainties on fitted parameters " +
+                                  "cannot be computed because the fit may " +
+                                  "be unsuccessful", AstropyUserWarning)
+                    uncert.append((None, None, None))
     else:
         raise ValueError('Invalid photometry mode.')
 
     if fit_messages is not None:
         result_tab['fit_messages'] = fit_messages
+    if param_uncert:
+        uncert = np.array(uncert)
+        i = 0
+        for param in psf.param_names:
+            if not getattr(psf, param).fixed:
+                result_tab.add_column(Column(name=param + "_fit_uncertainty",
+                                             unit=None, data=uncert[:, i]))
+                i += 1
 
     return result_tab
 
