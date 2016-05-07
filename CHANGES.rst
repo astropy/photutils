@@ -29,6 +29,11 @@ New Features
 
   - Added new ``make_source_mask`` convenience function. [#355]
 
+- ``photutils.psf_photometry``
+
+  - Added the option ``param_uncert`` so that users can easily get
+    uncertainties on fitted parameters. [#358]
+
 API changes
 ^^^^^^^^^^^
 
