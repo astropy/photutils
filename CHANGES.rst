@@ -25,6 +25,7 @@ New Features
 
   - Added new ``make_source_mask`` convenience function. [#355]
 
+<<<<<<< HEAD
 - ``photutils.segmentation``
 
   - Added ``copy`` and ``area`` methods and a ``areas`` property to
@@ -33,6 +34,12 @@ New Features
   - SegmentationImage properties are now cached to significantly
     improve performance. [#361]
 
+=======
+- ``photutils.psf_photometry``
+
+  - Added the option ``param_uncert`` so that users can easily get
+    uncertainties on fitted parameters. [#358]
+>>>>>>> add changelog and proper warning in case fitter does not contain 'param_cov' key
 
 API changes
 ^^^^^^^^^^^
