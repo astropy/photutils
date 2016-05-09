@@ -99,10 +99,10 @@ Photutils follows the same workflow and coding guidelines as
 contributing fixes, code, or documentation (no git or GitHub
 experience necessary):
 
-* `How to make a code contribution <http://astropy.readthedocs.org/en/stable/development/workflow/development_workflow.html>`_
+* `How to make a code contribution <http://astropy.readthedocs.io/en/stable/development/workflow/development_workflow.html>`_
 
 * `Coding Guidelines <http://docs.astropy.org/en/latest/development/codeguide.html>`_
 
-* `Try the development version <http://astropy.readthedocs.org/en/stable/development/workflow/get_devel_version.html>`_
+* `Try the development version <http://astropy.readthedocs.io/en/stable/development/workflow/get_devel_version.html>`_
 
 * `Developer Documentation <http://docs.astropy.org/en/latest/#developer-documentation>`_

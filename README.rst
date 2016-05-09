@@ -6,11 +6,11 @@ Photutils
     :alt: Latest release
 
 .. image:: https://readthedocs.org/projects/photutils/badge/?version=stable
-    :target: http://photutils.readthedocs.org/en/stable/
+    :target: http://photutils.readthedocs.io/en/stable/
     :alt: Stable Documentation Status
 
 .. image:: https://readthedocs.org/projects/photutils/badge/?version=latest
-    :target: http://photutils.readthedocs.org/en/latest/
+    :target: http://photutils.readthedocs.io/en/latest/
     :alt: Latest Documentation Status
 
 .. image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
