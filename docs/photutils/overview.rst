@@ -16,7 +16,7 @@ The code and the documentation are available at the following links:
 
 * Code: https://github.com/astropy/photutils
 * Issue Tracker: https://github.com/astropy/photutils/issues
-* Documentation: https://photutils.readthedocs.org/
+* Documentation: https://photutils.readthedocs.io/
 
 
 .. _coordinate-conventions:

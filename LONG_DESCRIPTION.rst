@@ -1,6 +1,6 @@
 
 * Code: https://github.com/astropy/photutils
-* Docs: https://photutils.readthedocs.org/
+* Docs: https://photutils.readthedocs.io/
 
 **Photutils** is an in-development `affiliated package
 <http://www.astropy.org/affiliated/index.html>`_ of `Astropy
