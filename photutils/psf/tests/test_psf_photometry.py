@@ -2,7 +2,7 @@
 from __future__ import division
 
 import numpy as np
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 
 from astropy.tests.helper import pytest
 from astropy.modeling.models import Gaussian2D
@@ -161,6 +161,19 @@ def test_psf_photometry_gaussian():
     f = psf_photometry(image, INTAB, psf)
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_psf_photometry_uncertainties():
+    """
+    Make sure proper columns are added to store uncertainties on fitted
+    parameters.
+    """
+    psf = IntegratedGaussianPRF(sigma=GAUSSIAN_WIDTH)
+    f = psf_photometry(image, INTAB, psf, param_uncert=True)
+    assert_equal(f['flux_uncertainty'].all() > 0 and
+                 f['x_uncertainty'].all() > 0 and
+                 f['y_uncertainty'].all() > 0, True)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
