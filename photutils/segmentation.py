@@ -225,12 +225,16 @@ class SegmentationImage(object):
             If the input ``label`` is invalid.
         """
 
-        if label == 0 and not allow_zero:
-            raise ValueError('label "0" is reserved for the background')
+        if label == 0:
+            if allow_zero:
+                return
+            else:
+                raise ValueError('label "0" is reserved for the background')
+
         if label < 0:
             raise ValueError('label must be a positive integer, got '
                              '"{0}"'.format(label))
-        if label not in self.data:
+        if label not in self.labels:
             raise ValueError('label "{0}" is not in the segmentation '
                              'image'.format(label))
 
