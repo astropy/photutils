@@ -54,6 +54,13 @@ class SegmentationImage(object):
 
         return self._data
 
+    @data.setter
+    def data(self, value):
+        # be sure to delete any lazy properties to reset their values.
+        self._data = value
+        del (self.data_masked, self.shape, self.labels, self.nlabels,
+             self.max, self.slices, self.areas, self.is_sequential)
+
     @property
     def array(self):
         """
@@ -70,7 +77,7 @@ class SegmentationImage(object):
 
         return self._data
 
-    @property
+    @lazyproperty
     def data_masked(self):
         """
         A `~numpy.ma.MaskedArray` version of the segmentation image
@@ -118,7 +125,7 @@ class SegmentationImage(object):
 
         return np.unique(data[data != 0])
 
-    @property
+    @lazyproperty
     def shape(self):
         """
         The shape of the 2D segmentation image.
@@ -126,32 +133,32 @@ class SegmentationImage(object):
 
         return self._data.shape
 
-    @property
+    @lazyproperty
     def labels(self):
         """The sorted non-zero labels in the segmentation image."""
 
         return self._labels(self.data)
 
-    @property
+    @lazyproperty
     def nlabels(self):
         """The number of non-zero labels in the segmentation image."""
 
         return len(self.labels)
 
-    @property
+    @lazyproperty
     def max(self):
         """The maximum non-zero label in the segmentation image."""
 
         return np.max(self.data)
 
-    @property
+    @lazyproperty
     def slices(self):
         """The minimal bounding box slices for each labeled region."""
 
         from scipy.ndimage import find_objects
         return find_objects(self._data)
 
-    @property
+    @lazyproperty
     def areas(self):
         """The areas (in pixel**2) of all labeled regions."""
 
@@ -177,7 +184,7 @@ class SegmentationImage(object):
             self.check_label(label, allow_zero=True)
         return self.areas[labels]
 
-    @property
+    @lazyproperty
     def is_sequential(self):
         """
         Determine whether or not the non-zero labels in the segmenation
@@ -315,7 +322,9 @@ class SegmentationImage(object):
 
         labels = np.atleast_1d(labels)
         for label in labels:
-            self._data[np.where(self.data == label)] = new_label
+            data = self.data
+            data[np.where(data == label)] = new_label
+            self.data = data     # needed to call the data setter
 
     def relabel_sequential(self, start_label=1):
         """
@@ -355,7 +364,7 @@ class SegmentationImage(object):
 
         forward_map = np.zeros(self.max + 1, dtype=np.int)
         forward_map[self.labels] = np.arange(self.nlabels) + start_label
-        self._data = forward_map[self.data]
+        self.data = forward_map[self.data]
 
     def keep_labels(self, labels, relabel=False):
         """
