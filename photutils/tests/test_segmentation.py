@@ -56,11 +56,11 @@ class TestSegmentationImage(object):
                      [7, 0, 0, 0, 0, 5],
                      [7, 7, 0, 5, 5, 5],
                      [7, 7, 0, 0, 5, 5]]
+        self.segm = SegmentationImage(self.data)
 
     def test_array(self):
-        segm = SegmentationImage(self.data)
-        assert_allclose(segm.data, segm.array)
-        assert_allclose(segm.data, segm.__array__())
+        assert_allclose(self.segm.data, self.segm.array)
+        assert_allclose(self.segm.data, self.segm.__array__())
 
     def test_copy(self):
         segm = SegmentationImage(self.data)
@@ -77,48 +77,39 @@ class TestSegmentationImage(object):
 
     def test_zero_label(self):
         with pytest.raises(ValueError):
-            segm = SegmentationImage(self.data)
-            segm.check_label(0)
+            self.segm.check_label(0)
 
     def test_negative_label(self):
         with pytest.raises(ValueError):
-            segm = SegmentationImage(self.data)
-            segm.check_label(-1)
+            self.segm.check_label(-1)
 
     def test_invalid_label(self):
         with pytest.raises(ValueError):
-            segm = SegmentationImage(self.data)
-            segm.check_label(2)
+            self.segm.check_label(2)
 
     def test_data_masked(self):
-        segm = SegmentationImage(self.data)
-        assert isinstance(segm.data_masked, np.ma.MaskedArray)
-        assert np.ma.count(segm.data_masked) == 18
-        assert np.ma.count_masked(segm.data_masked) == 18
+        assert isinstance(self.segm.data_masked, np.ma.MaskedArray)
+        assert np.ma.count(self.segm.data_masked) == 18
+        assert np.ma.count_masked(self.segm.data_masked) == 18
 
     def test_labels(self):
-        segm = SegmentationImage(self.data)
-        assert_allclose(segm.labels, [1, 3, 4, 5, 7])
+        assert_allclose(self.segm.labels, [1, 3, 4, 5, 7])
 
     def test_nlabels(self):
-        segm = SegmentationImage(self.data)
-        assert segm.nlabels == 5
+        assert self.segm.nlabels == 5
 
     def test_max(self):
-        segm = SegmentationImage(self.data)
-        assert segm.max == 7
+        assert self.segm.max == 7
 
     def test_areas(self):
-        segm = SegmentationImage(self.data)
         expected = np.array([18, 2, 0, 2, 3, 6, 0, 5])
-        assert_allclose(segm.areas, expected)
+        assert_allclose(self.segm.areas, expected)
 
     def test_area(self):
-        segm = SegmentationImage(self.data)
         expected = np.array([18, 2, 0, 2, 3, 6, 0, 5])
-        assert segm.area(0) == expected[0]
+        assert self.segm.area(0) == expected[0]
         labels = [3, 1, 4]
-        assert_allclose(segm.area(labels), expected[labels])
+        assert_allclose(self.segm.area(labels), expected[labels])
 
     def test_outline_segments(self):
         if SKIMAGE_LT_0P11:
