@@ -66,7 +66,7 @@ class TestSegmentationImage(object):
         segm = SegmentationImage(self.data)
         segm2 = segm.copy()
         assert segm.data is not segm2.data
-        assert segm.labels is not segm.labels
+        assert segm.labels is not segm2.labels
         segm.data[0, 0] = 100.
         assert segm.data[0, 0] != segm2.data[0, 0]
 
