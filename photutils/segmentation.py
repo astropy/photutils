@@ -41,10 +41,7 @@ class SegmentationImage(object):
 
     def __init__(self, data):
 
-        if np.min(data) < 0:
-            raise ValueError('The segmentation image cannot contain '
-                             'negative integers.')
-        self._data = np.asanyarray(data, dtype=np.int)
+        self.data = np.asanyarray(data, dtype=np.int)
 
     @property
     def data(self):
@@ -56,8 +53,11 @@ class SegmentationImage(object):
 
     @data.setter
     def data(self, value):
-        # be sure to delete any lazy properties to reset their values.
+        if np.min(value) < 0:
+            raise ValueError('The segmentation image cannot contain '
+                             'negative integers.')
         self._data = value
+        # be sure to delete any lazy properties to reset their values.
         del (self.data_masked, self.shape, self.labels, self.nlabels,
              self.max, self.slices, self.areas, self.is_sequential)
 
