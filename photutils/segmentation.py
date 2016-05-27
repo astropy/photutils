@@ -190,7 +190,7 @@ class SegmentationImage(object):
         if label < 0:
             raise ValueError('label must be a positive integer, got '
                              '"{0}"'.format(label))
-        if label not in self.data:
+        if label not in self.labels:
             raise ValueError('label "{0}" is not in the segmentation '
                              'image'.format(label))
 
