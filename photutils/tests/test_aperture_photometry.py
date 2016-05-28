@@ -5,14 +5,13 @@
 # algorithms in aperture_photometry, not in the wrappers.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-import pytest
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal
 from astropy.tests.helper import assert_quantity_allclose
 import astropy.units as u
 from astropy.io import fits
 from astropy.nddata import NDData
-from astropy.tests.helper import remote_data
+from astropy.tests.helper import pytest, remote_data
 
 from ..aperture_core import *
 
