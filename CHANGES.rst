@@ -15,6 +15,9 @@ New Features
   - Added ``copy`` and ``area`` methods and a ``areas`` property to
     ``SegmentationImage``. [#331]
 
+  - SegmentationImage properties are now cached to significantly
+    improve performance. [#361]
+
 - ``photutils.background``
 
   - Added new ``BackgroundBase`` and ``BackgroundIDW`` classes and
