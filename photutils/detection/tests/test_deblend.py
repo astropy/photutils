@@ -3,7 +3,8 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
 from numpy.testing import assert_allclose
-from astropy.tests.helper import pytest
+from astropy.tests.helper import pytest, catch_warnings
+from astropy.utils.exceptions import AstropyUserWarning
 from astropy.modeling import models
 from ..core import detect_sources
 from ..deblend import deblend_sources
@@ -86,6 +87,32 @@ class TestDeblendSources(object):
         with pytest.raises(ValueError):
             deblend_sources(self.data, self.segm, self.npixels,
                             mode='invalid')
+
+    def test_invalid_connectivity(self):
+        with pytest.raises(ValueError):
+            deblend_sources(self.data, self.segm, self.npixels,
+                            connectivity='invalid')
+
+    def test_constant_source(self):
+        data = self.data.copy()
+        data[data.nonzero()] = 1.
+        result = deblend_sources(data, self.segm, self.npixels)
+        assert_allclose(result, self.segm)
+
+    def test_source_with_negval(self):
+        data = self.data.copy()
+        data -= 20
+        with catch_warnings(AstropyUserWarning) as warning_lines:
+            deblend_sources(data, self.segm, self.npixels)
+            assert ('contains negative values' in
+                    str(warning_lines[0].message))
+
+    def test_source_zero_min(self):
+        data = self.data.copy()
+        data -= data[self.segm.data > 0].min()
+        result1 = deblend_sources(self.data, self.segm, self.npixels)
+        result2 = deblend_sources(data, self.segm, self.npixels)
+        assert_allclose(result1, result2)
 
     def test_connectivity(self):
         """Regression test for #341."""
