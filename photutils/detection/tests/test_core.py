@@ -324,3 +324,4 @@ class TestMakeSourceMask(object):
         sigma = 2 * gaussian_fwhm_to_sigma
         kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
         mask2 = make_source_mask(self.data, 5, 10, filter_kernel=kernel)
+        assert_allclose(mask1, mask2)
