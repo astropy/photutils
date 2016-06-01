@@ -22,7 +22,7 @@ env:
         # The following versions are the 'default' for tests, unless
         # overidden underneath. They are defined here in order to save having
         # to repeat them for all configurations.
-        - NUMPY_VERSION=1.10
+        - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
         - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib'
         - PIP_DEPENDENCIES=''
@@ -76,11 +76,17 @@ matrix:
 
         # Try older numpy versions
         - python: 2.7
+          env: NUMPY_VERSION=1.10 SETUP_CMD='test'
+        - python: 2.7
           env: NUMPY_VERSION=1.9 SETUP_CMD='test'
         - python: 2.7
           env: NUMPY_VERSION=1.8 SETUP_CMD='test'
         - python: 2.7
           env: NUMPY_VERSION=1.7 SETUP_CMD='test'
+
+        # Try numpy pre-release
+        - python: 3.5
+          env: NUMPY_VERSION=prerelease
 
 install:
 
