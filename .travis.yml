@@ -26,6 +26,7 @@ env:
         - ASTROPY_VERSION=stable
         - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib'
         - PIP_DEPENDENCIES=''
+        - SETUP_CMD='test'
 
     matrix:
 
@@ -85,6 +86,12 @@ matrix:
           env: NUMPY_VERSION=1.7 SETUP_CMD='test'
 
         # Try numpy pre-release
+        - python: 3.5
+          env: NUMPY_VERSION=prerelease
+
+    allow_failures:
+        # The build with numpy v1.11.1rc1 halts in the middle without
+        # showing any obvious reason, thus allowing it to fail for now.
         - python: 3.5
           env: NUMPY_VERSION=prerelease
 
