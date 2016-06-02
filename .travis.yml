@@ -1,21 +1,25 @@
 language: python
 
+python:
+    - 2.7
+    - 3.4
+    - 3.5
+
 # Setting sudo to false opts in to Travis-CI container-based builds.
 sudo: false
 
-# The apt packages below are needed for sphinx builds, which can no longer
-# be installed with sudo apt-get.
+
+# The apt packages below are needed for sphinx builds. A full list of packages
+# that can be included can be found here:
+#
+# https://github.com/travis-ci/apt-package-whitelist/blob/master/ubuntu-precise
+
 addons:
     apt:
         packages:
             - graphviz
             - texlive-latex-extra
             - dvipng
-
-python:
-    - 2.7
-    - 3.4
-    - 3.5
 
 env:
     global:
@@ -24,66 +28,63 @@ env:
         # to repeat them for all configurations.
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
-        - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib'
-        - PIP_DEPENDENCIES=''
         - SETUP_CMD='test'
+        - PIP_DEPENDENCIES=''
+        - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib'
 
     matrix:
-
         # Make sure that egg_info works without dependencies
         - SETUP_CMD='egg_info'
-
         # Try all python versions with the latest numpy
         - SETUP_CMD='test'
 
 matrix:
+
     include:
 
-        # Do a coverage test in Python 2. This requires the latest
-        # development version of Astropy, which fixes some issues with
-        # coverage testing in affiliated packages.
+        # Do a coverage test in Python 2.
         - python: 2.7
-          env: ASTROPY_VERSION=development SETUP_CMD='test --coverage'
+          env: SETUP_CMD='test --coverage'
 
         # Check for sphinx doc build warnings - we do this first because it
         # may run for a long time
         - python: 2.7
-          env: ASTROPY_VERSION=development SETUP_CMD='build_sphinx -w' CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter'
-        - python: 3.4
-          env: ASTROPY_VERSION=development SETUP_CMD='build_sphinx -w' CONDA_DEPENDENCIES='Cython scipy scikit-image jupyter'
+          env: SETUP_CMD='build_sphinx -w' CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter'
+        - python: 3.5
+          env: SETUP_CMD='build_sphinx -w' CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter'
 
-        # Python 3.3 doesn't have numpy 1.10 in conda, revoke this commit once
-        # it's available in the astropy-ci-extras channel
+        # Python 3.3 doesn't have numpy 1.10 in conda, but it can be put
+        # back into the main matrix once the numpy build is available in the
+        # astropy-ci-extras channel (or in the one provided in the
+        # CONDA_CHANNELS environmental variable).
         - python: 3.3
           env: SETUP_CMD='egg_info'
         - python: 3.3
-          env: SETUP_CMD='test' NUMPY_VERSION=1.9
+          env: NUMPY_VERSION=1.9
 
         # Try Astropy development and LTS versions
         - python: 3.5
-          env: ASTROPY_VERSION=development SETUP_CMD='test'
+          env: ASTROPY_VERSION=development
         - python: 2.7
-          env: ASTROPY_VERSION=lts SETUP_CMD='test'
+          env: ASTROPY_VERSION=lts
         - python: 3.5
-          env: ASTROPY_VERSION=lts SETUP_CMD='test'
+          env: ASTROPY_VERSION=lts
 
         # Try with optional dependencies disabled
         - python: 2.7
-          env: SETUP_CMD='test'
-               CONDA_DEPENDENCIES='Cython'
+          env: CONDA_DEPENDENCIES='Cython'
         - python: 3.5
-          env: SETUP_CMD='test'
-               CONDA_DEPENDENCIES='Cython'
+          env: CONDA_DEPENDENCIES='Cython'
 
         # Try older numpy versions
         - python: 2.7
-          env: NUMPY_VERSION=1.10 SETUP_CMD='test'
+          env: NUMPY_VERSION=1.10
         - python: 2.7
-          env: NUMPY_VERSION=1.9 SETUP_CMD='test'
+          env: NUMPY_VERSION=1.9
         - python: 2.7
-          env: NUMPY_VERSION=1.8 SETUP_CMD='test'
+          env: NUMPY_VERSION=1.8
         - python: 2.7
-          env: NUMPY_VERSION=1.7 SETUP_CMD='test'
+          env: NUMPY_VERSION=1.7
 
         # Try numpy pre-release
         - python: 3.5
@@ -97,12 +98,37 @@ matrix:
 
 install:
 
-    - git clone git://github.com/astropy/ci-helpers.git
-    - source ci-helpers/travis/setup_conda_$TRAVIS_OS_NAME.sh
+before_install:
 
+    # If there are matplotlib tests, comment these out to
     # Make sure that interactive matplotlib backends work
     - export DISPLAY=:99.0
     - sh -e /etc/init.d/xvfb start
+
+install:
+
+    # We now use the ci-helpers package to set up our testing environment.
+    # This is done by using Miniconda and then using conda and pip to install
+    # dependencies. Which dependencies are installed using conda and pip is
+    # determined by the CONDA_DEPDENDENCIES and PIP_DEPENDENCIES variables,
+    # which should be space-delimited lists of package names. See the README
+    # in https://github.com/astropy/ci-helpers for information about the full
+    # list of environment variables that can be used to customize your
+    # environment. In some cases, ci-helpers may not offer enough flexibility
+    # in how to install a package, in which case you can have additional
+    # commands in the install: section below.
+
+    - git clone git://github.com/astropy/ci-helpers.git
+    - source ci-helpers/travis/setup_conda_$TRAVIS_OS_NAME.sh
+
+    # As described above, using ci-helpers, you should be able to set up an
+    # environment with dependencies installed using conda and pip, but in some
+    # cases this may not provide enough flexibility in how to install a
+    # specific dependency (and it will not be able to install non-Python
+    # dependencies). Therefore, you can also include commands below (as
+    # well as at the start of the install section or in the before_install
+    # section if they are needed before setting up conda) to install any
+    # other dependencies.
 
 script:
    - python setup.py $SETUP_CMD
