@@ -127,8 +127,8 @@ class PixelAperture(Aperture):
         """
 
     @abc.abstractmethod
-    def do_photometry(self, data, error=None, effective_gain=None,
-                      pixelwise_error=True, method='exact', subpixels=5):
+    def do_photometry(self, data, error=None, pixelwise_error=True,
+                      method='exact', subpixels=5):
         """Sum flux within aperture(s).
 
         Parameters
@@ -138,17 +138,13 @@ class PixelAperture(Aperture):
         error : array_like, optional
             Error in each pixel, interpreted as Gaussian 1-sigma uncertainty.
             ``error`` has to have the same shape as ``data``.
-        effective_gain : array_like, optional
-            Ratio of counts (e.g., electrons or photons) to units of the
-            data (e.g., ADU), for the purpose of calculating Poisson
-            error from the object itself. ``effective_gain`` must have
-            the same shape as ``data``.
         pixelwise_error : bool, optional
-            For ``error`` and/or ``effective_gain`` arrays. If `True`,
-            assume ``error`` and/or ``effective_gain`` vary
-            significantly within an aperture: sum contribution from each
-            pixel. If `False`, assume ``error`` and ``effective_gain``
-            do not vary significantly within an aperture.
+            If `True`, assume ``error`` varies significantly within an
+            aperture and sum the contribution from each pixel. If
+            `False`, assume ``error`` does not vary significantly within
+            an aperture and use the single value of ``error`` at the
+            center of each aperture as the value for the entire
+            aperture.  Default is `True`.
         method : str, optional
             Method to use for determining overlap between the aperture
             and pixels.  Options include ['center', 'subpixel',
@@ -338,8 +334,8 @@ class CircularAperture(PixelAperture):
             patch = mpatches.Circle(position, self.r, **kwargs)
             ax.add_patch(patch)
 
-    def do_photometry(self, data, error=None, effective_gain=None,
-                      pixelwise_error=True, method='exact', subpixels=5):
+    def do_photometry(self, data, error=None, pixelwise_error=True,
+                      method='exact', subpixels=5):
 
         if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('{0} method not supported for aperture class '
@@ -347,7 +343,6 @@ class CircularAperture(PixelAperture):
 
         flux = do_circular_photometry(data, self.positions,
                                       self.r, error=error,
-                                      effective_gain=effective_gain,
                                       pixelwise_error=pixelwise_error,
                                       method=method,
                                       subpixels=subpixels)
@@ -467,8 +462,8 @@ class CircularAnnulus(PixelAperture):
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
-    def do_photometry(self, data, error=None, effective_gain=None,
-                      pixelwise_error=True, method='exact', subpixels=5):
+    def do_photometry(self, data, error=None, pixelwise_error=True,
+                      method='exact', subpixels=5):
 
         if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('{0} method not supported for aperture class '
@@ -476,7 +471,6 @@ class CircularAnnulus(PixelAperture):
 
         flux = do_circular_photometry(data, self.positions,
                                       self.r_out, error=error,
-                                      effective_gain=effective_gain,
                                       pixelwise_error=pixelwise_error,
                                       method=method,
                                       subpixels=subpixels,
@@ -632,8 +626,8 @@ class EllipticalAperture(PixelAperture):
     def area(self):
         return math.pi * self.a * self.b
 
-    def do_photometry(self, data, error=None, effective_gain=None,
-                      pixelwise_error=True, method='exact', subpixels=5):
+    def do_photometry(self, data, error=None, pixelwise_error=True,
+                      method='exact', subpixels=5):
 
         if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('{0} method not supported for aperture class '
@@ -642,7 +636,6 @@ class EllipticalAperture(PixelAperture):
         flux = do_elliptical_photometry(data, self.positions,
                                         self.a, self.b, self.theta,
                                         error=error,
-                                        effective_gain=effective_gain,
                                         pixelwise_error=pixelwise_error,
                                         method=method,
                                         subpixels=subpixels)
@@ -839,8 +832,8 @@ class EllipticalAnnulus(PixelAperture):
             patch = mpatches.PathPatch(path, **kwargs)
             ax.add_patch(patch)
 
-    def do_photometry(self, data, error=None, effective_gain=None,
-                      pixelwise_error=True, method='exact', subpixels=5):
+    def do_photometry(self, data, error=None, pixelwise_error=True,
+                      method='exact', subpixels=5):
 
         if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('{0} method not supported for aperture class '
@@ -849,7 +842,6 @@ class EllipticalAnnulus(PixelAperture):
         flux = do_elliptical_photometry(data, self.positions,
                                         self.a_out, self.b_out, self.theta,
                                         error=error,
-                                        effective_gain=effective_gain,
                                         pixelwise_error=pixelwise_error,
                                         method=method,
                                         subpixels=subpixels,
@@ -1006,8 +998,8 @@ class RectangularAperture(PixelAperture):
                                        **kwargs)
             ax.add_patch(patch)
 
-    def do_photometry(self, data, error=None, effective_gain=None,
-                      pixelwise_error=True, method='subpixel', subpixels=5):
+    def do_photometry(self, data, error=None, pixelwise_error=True,
+                      method='subpixel', subpixels=5):
 
         if method == 'exact':
             warnings.warn("'exact' method is not implemented, defaults to "
@@ -1023,7 +1015,6 @@ class RectangularAperture(PixelAperture):
         flux = do_rectangular_photometry(data, self.positions,
                                          self.w, self.h, self.theta,
                                          error=error,
-                                         effective_gain=effective_gain,
                                          pixelwise_error=pixelwise_error,
                                          method=method,
                                          subpixels=subpixels)
@@ -1223,8 +1214,8 @@ class RectangularAnnulus(PixelAperture):
             patch = mpatches.PathPatch(path, **kwargs)
             ax.add_patch(patch)
 
-    def do_photometry(self, data, error=None, effective_gain=None,
-                      pixelwise_error=True, method='subpixel', subpixels=5):
+    def do_photometry(self, data, error=None, pixelwise_error=True,
+                      method='subpixel', subpixels=5):
 
         if method == 'exact':
             warnings.warn("'exact' method is not implemented, defaults to "
@@ -1238,7 +1229,6 @@ class RectangularAnnulus(PixelAperture):
         flux = do_rectangular_photometry(data, self.positions,
                                          self.w_out, self.h_out, self.theta,
                                          error=error,
-                                         effective_gain=effective_gain,
                                          pixelwise_error=pixelwise_error,
                                          method=method, subpixels=subpixels,
                                          w_in=self.w_in)
@@ -1266,9 +1256,9 @@ class RectangularAnnulus(PixelAperture):
                                               w_in=self.w_in)
 
 
-def _prepare_photometry_input(data, unit, wcs, mask, error, effective_gain,
-                              pixelwise_error):
-    '''Parse photometry input.
+def _prepare_photometry_input(data, unit, wcs, mask, error, pixelwise_error):
+    """
+    Parse photometry input.
 
     Photometry routines accept a wide range of inputs, e.g. ``data``
     could be (among others)  a numpy array, or a fits HDU.
@@ -1292,8 +1282,8 @@ def _prepare_photometry_input(data, unit, wcs, mask, error, effective_gain,
     wcs_transformation : `~astropy.wcs.WCS` instance or None
     mask : np.array or None
     error : `~astropy.units.Quantity` instance or None
-    effective_gain : `~astropy.units.Quantity` instance or None
-    '''
+    """
+
     dataunit = None
     datamask = None
     wcs_transformation = wcs
@@ -1379,10 +1369,8 @@ def _prepare_photometry_input(data, unit, wcs, mask, error, effective_gain,
                 mask = np.logical_or(mask, datamask)
 
     # Check whether we really need to calculate pixelwise errors, even if
-    # requested.  If neither error nor effective_gain is an array, then it's
-    # not neeed.
-    if ((error is None) or (np.isscalar(error) and effective_gain is None) or
-            (np.isscalar(error) and np.isscalar(effective_gain))):
+    # requested.  If error is not an array, then it's not needed.
+    if (error is None) or (np.isscalar(error)):
         pixelwise_error = False
 
     # Check error shape.
@@ -1401,32 +1389,13 @@ def _prepare_photometry_input(data, unit, wcs, mask, error, effective_gain,
             raise ValueError('shapes of error array and data array must'
                              ' match')
 
-    # Check effective_gain shape.
-    if effective_gain is not None:
-        # effective_gain doesn't do anything without error set, so raise an
-        # exception. (TODO: instead, should we just set effective_gain = None
-        # and ignore it?)
-        if error is None:
-            raise ValueError('effective_gain requires error')
-
-        if isinstance(effective_gain, u.Quantity):
-            if np.isscalar(effective_gain.value):
-                effective_gain = u.Quantity(np.broadcast_arrays(
-                    effective_gain, data), unit=effective_gain.unit)[0]
-
-        elif np.isscalar(effective_gain):
-            effective_gain = np.broadcast_arrays(effective_gain, data)[0]
-        if effective_gain.shape != data.shape:
-            raise ValueError('shapes of effective_gain array and data array '
-                             'must match')
-
-    return data, wcs_transformation, mask, error, effective_gain, pixelwise_error
+    return data, wcs_transformation, mask, error, pixelwise_error
 
 
 @support_nddata
 def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
-                        effective_gain=None, mask=None, method='exact',
-                        subpixels=5, pixelwise_error=True):
+                        mask=None, method='exact', subpixels=5,
+                        pixelwise_error=True):
     """
     Sum flux within an aperture at the given position(s).
 
@@ -1449,16 +1418,12 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     wcs : `~astropy.wcs.WCS`, optional
         Use this as the wcs transformation. It overrides any wcs transformation
         passed along with ``data`` either in the header or in an attribute.
-    error : float or array_like, optional
-        Error in each pixel, interpreted as Gaussian 1-sigma uncertainty.
-    effective_gain : float or array_like, optional
-        Ratio of counts (e.g., electrons or photons) to units of the
-        data (e.g., ADU), for the purpose of calculating Poisson error
-        from the object itself. If ``effective_gain`` is `None`
-        (default), ``error`` is assumed to include all uncertainty in
-        each pixel. If ``effective_gain`` is given, ``error`` is assumed
-        to be the "background error" only (not accounting for Poisson
-        error in the flux in the apertures).
+    error : array_like or `~astropy.units.Quantity`, optional
+        The pixel-wise Gaussian 1-sigma errors of the input ``data``.
+        ``error`` is assumed to include *all* sources of error,
+        including the Poisson error of the sources (see
+        `~photutils.utils.calculate_total_error`) .  ``error`` must have
+        the same shape as the input ``data``.
     mask : array_like (bool), optional
         Mask to apply to the data.  Masked pixels are excluded/ignored.
     method : str, optional
@@ -1484,12 +1449,10 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
         each dimension). That is, each pixel is divided into
         ``subpixels ** 2`` subpixels.
     pixelwise_error : bool, optional
-        For ``error`` and/or ``effective_gain`` arrays. If `True`,
-        assume ``error`` and/or ``effective_gain`` vary significantly
-        within an aperture: sum contribution from each pixel. If
-        `False`, assume ``error`` and ``effective_gain`` do not vary
-        significantly within an aperture. Use the single value of
-        ``error`` and/or ``effective_gain`` at the center of each
+        If `True`, assume ``error`` varies significantly within an
+        aperture and sum the contribution from each pixel. If `False`,
+        assume ``error`` does not vary significantly within an aperture
+        and use the single value of ``error`` at the center of each
         aperture as the value for the entire aperture.  Default is
         `True`.
 
@@ -1516,8 +1479,8 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     This function is decorated with `~astropy.nddata.support_nddata` and
     thus supports `~astropy.nddata.NDData` objects as input.
     """
-    data, wcs_transformation, mask, error, effective_gain, pixelwise_error = \
-        _prepare_photometry_input(data, unit, wcs, mask, error, effective_gain,
+    data, wcs_transformation, mask, error, pixelwise_error = \
+        _prepare_photometry_input(data, unit, wcs, mask, error,
                                   pixelwise_error)
 
     # masked values are replaced with zeros, so they do not contribute
@@ -1577,7 +1540,6 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
 
     photometry_result = ap.do_photometry(data, method=method,
                                          subpixels=subpixels, error=error,
-                                         effective_gain=effective_gain,
                                          pixelwise_error=pixelwise_error)
     if error is None:
         phot_col_names = ('aperture_sum', )
@@ -1590,7 +1552,6 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
                        'version': 'astropy: {0}, photutils: {1}'
                        .format(astropy_version, photutils_version),
                        'calling_args': ('method={0}, subpixels={1}, '
-                                        'error={2}, effective_gain={3}, '
-                                        'pixelwise_error={4}')
+                                        'error={2}, pixelwise_error={3}')
                        .format(method, subpixels, error is not None,
-                               effective_gain is not None, pixelwise_error)})
+                               pixelwise_error)})

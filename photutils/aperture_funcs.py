@@ -67,8 +67,8 @@ def get_phot_extents(data, positions, extents):
     return ood_filter, pixel_extent, phot_extent
 
 
-def find_fluxvar(data, fraction, error, flux, effective_gain, imin, imax,
-                 jmin, jmax, pixelwise_error):
+def find_fluxvar(data, fraction, error, flux, imin, imax, jmin, jmax,
+                 pixelwise_error):
 
     if isinstance(error, u.Quantity):
         zero_variance = 0 * error.unit**2
@@ -77,12 +77,7 @@ def find_fluxvar(data, fraction, error, flux, effective_gain, imin, imax,
 
     if pixelwise_error:
 
-        subvariance = error[jmin:jmax,
-                            imin:imax] ** 2
-
-        if effective_gain is not None:
-            subvariance += (data[jmin:jmax, imin:imax] /
-                            effective_gain[jmin:jmax, imin:imax])
+        subvariance = error[jmin:jmax, imin:imax] ** 2
 
         # Make sure variance is > 0
         fluxvar = np.maximum(np.sum(subvariance * fraction), zero_variance)
@@ -95,16 +90,11 @@ def find_fluxvar(data, fraction, error, flux, effective_gain, imin, imax,
         fluxvar = np.maximum(local_error ** 2 * np.sum(fraction),
                              zero_variance)
 
-        if effective_gain is not None:
-            local_effective_gain = effective_gain[
-                int((jmin + jmax) / 2 + 0.5), int((imin + imax) / 2 + 0.5)]
-            fluxvar += flux / local_effective_gain
-
     return fluxvar
 
 
-def do_circular_photometry(data, positions, radius, error, effective_gain,
-                           pixelwise_error, method, subpixels, r_in=None):
+def do_circular_photometry(data, positions, radius, error, pixelwise_error,
+                           method, subpixels, r_in=None):
 
     extents = np.zeros((len(positions), 4), dtype=int)
 
@@ -169,8 +159,8 @@ def do_circular_photometry(data, positions, radius, error, effective_gain,
             if error is not None:
 
                 fluxvar[i] = find_fluxvar(data, fraction, error, flux[i],
-                                          effective_gain, x_min[i], x_max[i],
-                                          y_min[i], y_max[i], pixelwise_error)
+                                          x_min[i], x_max[i], y_min[i],
+                                          y_max[i], pixelwise_error)
 
     if error is None:
         return (flux, )
@@ -239,8 +229,7 @@ def get_circular_fractions(data, positions, radius, method, subpixels,
 
 
 def do_elliptical_photometry(data, positions, a, b, theta, error,
-                             effective_gain, pixelwise_error, method,
-                             subpixels, a_in=None):
+                             pixelwise_error, method, subpixels, a_in=None):
 
     extents = np.zeros((len(positions), 4), dtype=int)
 
@@ -310,8 +299,8 @@ def do_elliptical_photometry(data, positions, a, b, theta, error,
 
             if error is not None:
                 fluxvar[i] = find_fluxvar(data, fraction, error, flux[i],
-                                          effective_gain, x_min[i], x_max[i],
-                                          y_min[i], y_max[i], pixelwise_error)
+                                          x_min[i], x_max[i], y_min[i],
+                                          y_max[i], pixelwise_error)
 
     if error is None:
         return (flux, )
@@ -387,8 +376,8 @@ def get_elliptical_fractions(data, positions, a, b, theta,
 
 
 def do_rectangular_photometry(data, positions, w, h, theta, error,
-                              effective_gain, pixelwise_error, method,
-                              subpixels, reduce='sum', w_in=None):
+                              pixelwise_error, method, subpixels,
+                              reduce='sum', w_in=None):
 
     extents = np.zeros((len(positions), 4), dtype=int)
 
@@ -450,8 +439,7 @@ def do_rectangular_photometry(data, positions, w, h, theta, error,
                                       x_min[i]:x_max[i]] * fraction)
                 if error is not None:
                     fluxvar[i] = find_fluxvar(data, fraction, error,
-                                              flux[i], effective_gain,
-                                              x_min[i], x_max[i],
+                                              flux[i], x_min[i], x_max[i],
                                               y_min[i], y_max[i],
                                               pixelwise_error)
 
