@@ -651,9 +651,9 @@ class SourceProperties(object):
         The pixel-wise Gaussian 1-sigma errors of the input ``data``.
         ``error`` is assumed to include *all* sources of error,
         including the Poisson error of the sources (see
-        `~photutils.utils.calculate_total_error`) .  ``error`` must have
-        the same shape as the input ``data``.  See the Notes section
-        below for details on the error propagation.
+        `~photutils.utils.calc_total_error`) .  ``error`` must have the
+        same shape as the input ``data``.  See the Notes section below
+        for details on the error propagation.
 
     mask : array_like (bool), optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -1544,9 +1544,9 @@ def source_properties(data, segment_img, error=None, mask=None,
         The pixel-wise Gaussian 1-sigma errors of the input ``data``.
         ``error`` is assumed to include *all* sources of error,
         including the Poisson error of the sources (see
-        `~photutils.utils.calculate_total_error`) .  ``error`` must have
-        the same shape as the input ``data``.  See the Notes section
-        below for details on the error propagation.
+        `~photutils.utils.calc_total_error`) .  ``error`` must have the
+        same shape as the input ``data``.  See the Notes section below
+        for details on the error propagation.
 
     mask : array_like (bool), optional
         A boolean mask with the same shape as ``data`` where a `True`

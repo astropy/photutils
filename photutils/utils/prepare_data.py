@@ -6,18 +6,18 @@ import astropy.units as u
 from astropy.utils.misc import isiterable
 
 
-__all__ = ['calculate_total_error']
+__all__ = ['calc_total_error']
 
 
-def calculate_total_error(data, error, effective_gain):
+def calc_total_error(data, error, effective_gain):
     """
-    Calculate a total error array, combining a background error array
-    with the Poisson noise of sources.
+    Calculate a total error array, combining a background-only error
+    array with the Poisson noise of sources.
 
     Parameters
     ----------
     data : array_like or `~astropy.units.Quantity`
-        The (background-subtracted) data array.
+        The data array.
 
     error : array_like or `~astropy.units.Quantity`
         The pixel-wise Gaussian 1-sigma background errors of the input
@@ -46,6 +46,37 @@ def calculate_total_error(data, error, effective_gain):
     ``effective_gain``, respectively.
 
     ``data`` here should be background-subtracted to match SExtractor.
+
+    `~photutils.SourceProperties.source_sum_err` will ignore such pixels
+    when calculating the source Poission error (i.e. when if
+    ``effective_gain`` is input; see below).
+
+    Pixels where :math:`(I_i - B_i)` is negative do not contribute
+    additional Poisson noise to the total error, i.e.
+    :math:`\sigma_{\mathrm{tot}, i} = \sigma_{\mathrm{b}, i}`.  Note
+    that this is different from `SExtractor`_, which sums the total
+    variance in the segment, including pixels where :math:`(I_i - B_i)`
+    is negative.  In such cases, `SExtractor`_ underestimates the total
+    errors.
+
+    If ``effective_gain`` is `None`, then ``error`` is assumed to
+    include *all* sources of error, including the Poisson error of the
+    sources, i.e. :math:`\sigma_{\mathrm{tot}} = \sigma_{\mathrm{b}} =
+    \mathrm{error}`.
+
+    For example, if your input ``data`` are in units of ADU, then
+    ``effective_gain`` should represent electrons/ADU.  If your input
+    ``data`` are in units of electrons/s then ``effective_gain`` should
+    be the exposure time or an exposure time map (e.g., for mosaics with
+    non-uniform exposure times).
+
+    ``effective_gain`` can be a 2D gain image with the same shape as the
+    ``data``.  This is useful with mosaic images that have variable
+    depths (i.e., exposure times) across the field.  For example, one
+    should use an exposure-time map as the ``effective_gain`` for a
+    variable depth mosaic image in count-rate units.
+
+    .. _SExtractor: http://www.astromatic.net/software/sextractor
     """
 
     data = np.asanyarray(data)
@@ -138,6 +169,6 @@ def _prepare_data(data, error=None, effective_gain=None, background=None):
         if data.shape != error.shape:
             raise ValueError('data and error must have the same shape')
         if effective_gain is not None:
-            error = calculate_total_error(data, error, effective_gain)
+            error = calc_total_error(data, error, effective_gain)
 
     return data, error, background

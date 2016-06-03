@@ -299,14 +299,14 @@ individual sources or such noise is irrelevant.  However, it is often
 the case that one has calculated a smooth "background-only error"
 array, which by design doesn't include increased noise on bright
 pixels.  To include Poisson noise from the sources, we can use the
-:func:`~photutils.utils.calculate_total_error` function.  For example,
+:func:`~photutils.utils.calc_total_error` function.  For example,
 suppose we have a function ``background()`` that calculates the
 position-dependent background level and rms of our data::
 
-    >>> from photutils.utils import calculate_total_error
+    >>> from photutils.utils import calc_total_error
     >>> effective_gain = 1.5
     >>> sky_level, sky_sigma = background(data)  # function returns two arrays   # doctest: +SKIP
-    >>> error = calculate_total_error(data, sky_sigma, effective_gain)
+    >>> error = calc_total_error(data, sky_sigma, effective_gain)
     >>> phot_table = aperture_photometry(data - sky_level, apertures,
     ...                                  error=error)   # doctest: +SKIP
 

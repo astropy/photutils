@@ -247,7 +247,7 @@ Photometric Errors
 :func:`~photutils.segmentation.source_properties` requires inputting a
 *total* error array, i.e. the background-only error plus Poisson noise
 due to individual sources.  The
-:func:`~photutils.utils.calculate_total_error` function can be used to
+:func:`~photutils.utils.calc_total_error` function can be used to
 calculate the total error array from a background-only error array and
 an effective gain.
 
@@ -266,10 +266,10 @@ we set it to 500 seconds):
 
 .. doctest-requires:: scipy, skimage
 
-    >>> from photutils.utils import calculate_total_error
+    >>> from photutils.utils import calc_total_error
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> effective_gain = 500.
-    >>> error = calculate_total_error(data, bkg.background_rms, effective_gain)
+    >>> error = calc_total_error(data, bkg.background_rms, effective_gain)
     >>> props = source_properties(data, segm, labels=labels, error=error)
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'source_sum',
     ...            'source_sum_err']
