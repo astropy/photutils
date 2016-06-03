@@ -283,56 +283,47 @@ pixel's value and saved it in the array ``data_error``::
       28.2743338823   0.531736155272    30.0    30.0
       28.2743338823   0.531736155272    40.0    40.0
 
-``'aperture_sum_err'`` values are given by
+``'aperture_sum_err'`` values are given by:
 
-.. math:: \Delta F = \sqrt{ \sum_{i \in A} \sigma_i^2}
+    .. math:: \Delta F = \sqrt{\sum_{i \in A}
+              \sigma_{\mathrm{tot}, i}^2}
 
-where :math:`\sigma` is the given error array and the sum is over
-pixels in the aperture :math:`A`.
+where :math:`\Delta F` is
+`~photutils.SourceProperties.source_sum_err`, :math:`A` are the
+non-masked pixels in the aperture, and :math:`\sigma_{\mathrm{tot},
+i}` is the input ``error`` array.
 
 In the example above, it is assumed that the ``error`` keyword
-specifies the *full* error (either it includes Poisson noise due to
-individual sources or such noise is irrelevant).  However, it is often
-the case that one has previously calculated a smooth "background
-error" array which by design doesn't include increased noise on bright
-pixels.  In such a case, we wish to explicitly include Poisson noise
-from the sources.  Specifying the ``effective_gain`` keyword does
-this.  For example, suppose we have a function ``background()`` that
-calculates the position-dependent background level and variance of our
-data::
+specifies the *total* error -- either it includes Poisson noise due to
+individual sources or such noise is irrelevant.  However, it is often
+the case that one has calculated a smooth "background-only error"
+array, which by design doesn't include increased noise on bright
+pixels.  To include Poisson noise from the sources, we can use the
+:func:`~photutils.utils.calculate_total_error` function.  For example,
+suppose we have a function ``background()`` that calculates the
+position-dependent background level and rms of our data::
 
+    >>> from photutils.utils import calculate_total_error
     >>> effective_gain = 1.5
     >>> sky_level, sky_sigma = background(data)  # function returns two arrays   # doctest: +SKIP
+    >>> error = calculate_total_error(data, sky_sigma, effective_gain)
     >>> phot_table = aperture_photometry(data - sky_level, apertures,
-    ...                                  error=sky_sigma,
-    ...                                  effective_gain=effective_gain)   # doctest: +SKIP
-
-In this case, and indeed whenever ``effective_gain`` is not `None`, then
-``'aperture_sum_err'`` is given by
-
-.. math:: \Delta F = \sqrt{\sum_{i \in A} (\sigma_i^2 + f_i / g_i)}
-
-where :math:`f_i` is the value of the data (``data - sky_level`` in
-this case) at each pixel and :math:`g_i` is the value of the
-``effective_gain`` at each pixel.
+    ...                                  error=error)   # doctest: +SKIP
 
 .. note::
 
-    In cases where the ``error`` and ``effective_gain`` arrays are
-    slowly varying across the image, it is not necessary to sum the
-    error from every pixel in the aperture individually.  Instead, we
-    can approximate the error as being roughly constant across the
-    aperture and simply take the value of :math:`\sigma` at the center
-    of the aperture.  This can be done by setting the keyword
-    ``pixelwise_errors=False``.  This saves some computation time.  In
-    this case the flux error is
+    In cases where the ``error`` array is slowly varying across the
+    image, it is not necessary to sum the error from every pixel in
+    the aperture individually.  Instead, we can approximate the error
+    as being roughly constant across the aperture and simply take the
+    value of :math:`\sigma` at the center of the aperture.  This can
+    be done by setting the keyword ``pixelwise_errors=False``.  This
+    saves some computation time.  In this case the flux error is
 
-    .. math:: \Delta F = \sqrt{A \sigma^2 + F / g}
+    .. math:: \Delta F = \sigma \sqrt{A}
 
-    where :math:`\sigma` and :math:`g` are the ``error`` and
-    ``effective_gain`` at the center of the aperture, :math:`A` is the
-    area of the aperture, and :math:`F` is the *total* flux in the
-    aperture.
+    where :math:`\sigma` is the ``error`` at the center of the
+    aperture and :math:`A` is the area of the aperture.
 
 Pixel Masking
 -------------

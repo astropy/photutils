@@ -244,21 +244,21 @@ calculate background properties with each source segment:
 Photometric Errors
 ^^^^^^^^^^^^^^^^^^
 
-With :func:`~photutils.segmentation.source_properties` we can use the
-background-only error image and an effective gain to estimate the
-error in the photometry.  Like the aperture photometry
-:ref:`error_estimation`, the
-:func:`~photutils.segmentation.source_properties` ``error`` keyword
-can either specify the total error array (i.e., it includes Poisson
-noise due to individual sources or such noise is irrelevant) or it can
-specify the background-only noise.  In the later case, we can specify
-the ``effective_gain``, which is the ratio of counts (electrons or
-photons) to the units of the data, to explicitly include Poisson noise
-from the sources.  The ``effective_gain`` can be a 2D gain image with
-the same shape as the ``data``.  This is useful with mosaic images
-that have variable depths (i.e., exposure times) across the field. For
-example, one should use an exposure-time map as the ``effective_gain``
-for a variable depth mosaic image in count-rate units.
+:func:`~photutils.segmentation.source_properties` requires inputting a
+*total* error array, i.e. the background-only error plus Poisson noise
+due to individual sources.  The
+:func:`~photutils.utils.calculate_total_error` function can be used to
+calculate the total error array from a background-only error array and
+an effective gain.
+
+The ``effective_gain``, which is the ratio of counts (electrons or
+photons) to the units of the data, is used to include the Poisson
+noise from the sources.  ``effective_gain`` can either be a scalar
+value or a 2D image with the same shape as the ``data``.  A 2D image
+is useful with mosaic images that have variable depths (i.e., exposure
+times) across the field. For example, one should use an exposure-time
+map as the ``effective_gain`` for a variable depth mosaic image in
+count-rate units.
 
 Let's assume our synthetic data is in units of electrons per second.
 In that case, the ``effective_gain`` should be the exposure time (here
@@ -266,10 +266,11 @@ we set it to 500 seconds):
 
 .. doctest-requires:: scipy, skimage
 
+    >>> from photutils.utils import calculate_total_error
     >>> labels = [1, 5, 20, 50, 75, 80]
-    >>> props = source_properties(data, segm, labels=labels,
-    ...                            error=bkg.background_rms,
-    ...                            effective_gain=500.)
+    >>> effective_gain = 500.
+    >>> error = calculate_total_error(data, bkg.background_rms, effective_gain)
+    >>> props = source_properties(data, segm, labels=labels, error=error)
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'source_sum',
     ...            'source_sum_err']
     >>> tbl = properties_table(props, columns=columns)
