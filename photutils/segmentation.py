@@ -649,26 +649,11 @@ class SourceProperties(object):
 
     error : array_like or `~astropy.units.Quantity`, optional
         The pixel-wise Gaussian 1-sigma errors of the input ``data``.
-        If ``effective_gain`` is input, then ``error`` should include
-        all sources of "background" error but *exclude* the Poisson
-        error of the sources.  If ``effective_gain`` is `None`, then
         ``error`` is assumed to include *all* sources of error,
-        including the Poisson error of the sources.  ``error`` must have
-        the same shape as ``data``.  See the Notes section below for
-        details on the error propagation.
-
-    effective_gain : float, array-like, or `~astropy.units.Quantity`, optional
-        Ratio of counts (e.g., electrons or photons) to the units of
-        ``data``.  This ratio is used to calculate the Poisson error of
-        the sources when it is not included in ``error``.  If
-        ``effective_gain`` is `None`, then ``error`` is assumed to
-        include *all* sources of error.  See the Notes section below for
-        details on the error propagation.
-
-        If you are calculating the properties of many sources from the
-        same data, it is highly recommended that you input a *total*
-        error array instead of using ``effective_gain``.  Otherwise a
-        total error array will need to be repeatedly recalculated.
+        including the Poisson error of the sources (see
+        `~photutils.utils.calculate_total_error`) .  ``error`` must have
+        the same shape as the input ``data``.  See the Notes section
+        below for details on the error propagation.
 
     mask : array_like (bool), optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -707,47 +692,9 @@ class SourceProperties(object):
     different bandpass) or if the background was oversubtracted.  Note
     that `~photutils.SourceProperties.source_sum` includes the
     contribution of negative (background-subtracted) data values.
-    `~photutils.SourceProperties.source_sum_err` will ignore such pixels
-    when calculating the source Poission error (i.e. when if
-    ``effective_gain`` is input; see below).
 
-    If ``effective_gain`` is input, then ``error`` should include all
-    sources of "background" error but *exclude* the Poisson error of the
-    sources.  The total error image, :math:`\sigma_{\mathrm{tot}}` is
-    then:
-
-    .. math:: \\sigma_{\\mathrm{tot}} = \\sqrt{\\sigma_{\\mathrm{b}}^2 +
-              \\frac{(I - B)}{g}}
-
-    where :math:`\sigma_b`, :math:`(I - B)`, and :math:`g` are the
-    background ``error`` image, the background-subtracted ``data``
-    image, and ``effective_gain``, respectively.
-
-    Pixels where :math:`(I_i - B_i)` is negative do not contribute
-    additional Poisson noise to the total error, i.e.
-    :math:`\sigma_{\mathrm{tot}, i} = \sigma_{\mathrm{b}, i}`.  Note
-    that this is different from `SExtractor`_, which sums the total
-    variance in the segment, including pixels where :math:`(I_i - B_i)`
-    is negative.  In such cases, `SExtractor`_ underestimates the total
-    errors.
-
-    If ``effective_gain`` is `None`, then ``error`` is assumed to
-    include *all* sources of error, including the Poisson error of the
-    sources, i.e. :math:`\sigma_{\mathrm{tot}} = \sigma_{\mathrm{b}} =
-    \mathrm{error}`.
-
-    For example, if your input ``data`` are in units of ADU, then
-    ``effective_gain`` should represent electrons/ADU.  If your input
-    ``data`` are in units of electrons/s then ``effective_gain`` should
-    be the exposure time or an exposure time map (e.g., for mosaics with
-    non-uniform exposure times).
-
-    ``effective_gain`` can be a 2D gain image with the same shape as the
-    ``data``.  This is useful with mosaic images that have variable
-    depths (i.e., exposure times) across the field.  For example, one
-    should use an exposure-time map as the ``effective_gain`` for a
-    variable depth mosaic image in count-rate units.
-
+    The input ``error`` is assumed to include *all* sources of error,
+    including the Poisson error of the sources.
     `~photutils.SourceProperties.source_sum_err` is simply the
     quadrature sum of the pixel-wise total errors over the non-masked
     pixels within the source segment:
@@ -756,22 +703,23 @@ class SourceProperties(object):
               \\sigma_{\\mathrm{tot}, i}^2}
 
     where :math:`\Delta F` is
-    `~photutils.SourceProperties.source_sum_err` and :math:`S` are the
-    non-masked pixels in the source segment.
+    `~photutils.SourceProperties.source_sum_err`, :math:`S` are the
+    non-masked pixels in the source segment, and
+    :math:`\sigma_{\mathrm{tot}, i}` is the input ``error`` array.
 
     Custom errors for source segments can be calculated using the
     `~photutils.SourceProperties.error_cutout_ma` and
     `~photutils.SourceProperties.background_cutout_ma` properties, which
     are 2D `~numpy.ma.MaskedArray` cutout versions of the input
     ``error`` and ``background``.  The mask is `True` for both pixels
-    outside of the source segment and masked pixels.
+    outside of the source segment and masked pixels from the ``mask``
+    input.
 
     .. _SExtractor: http://www.astromatic.net/software/sextractor
     """
 
     def __init__(self, data, segment_img, label, filtered_data=None,
-                 error=None, effective_gain=None, mask=None, background=None,
-                 wcs=None):
+                 error=None, mask=None, background=None, wcs=None):
 
         if not isinstance(segment_img, SegmentationImage):
             segment_img = SegmentationImage(segment_img)
@@ -791,8 +739,7 @@ class SourceProperties(object):
         self._wcs = wcs
 
         data, error, background = _prepare_data(
-            data, error=error, effective_gain=effective_gain,
-            background=background)
+            data, error=error, background=background)
         # data and filtered_data should be background-subtracted
         self._data = data
         if filtered_data is None:
@@ -1574,9 +1521,9 @@ class SourceProperties(object):
                                    [self.xcentroid.value]])[0]
 
 
-def source_properties(data, segment_img, error=None, effective_gain=None,
-                      mask=None, background=None, filter_kernel=None,
-                      wcs=None, labels=None):
+def source_properties(data, segment_img, error=None, mask=None,
+                      background=None, filter_kernel=None, wcs=None,
+                      labels=None):
     """
     Calculate photometry and morphological properties of sources defined
     by a labeled segmentation image.
@@ -1595,26 +1542,11 @@ def source_properties(data, segment_img, error=None, effective_gain=None,
 
     error : array_like or `~astropy.units.Quantity`, optional
         The pixel-wise Gaussian 1-sigma errors of the input ``data``.
-        If ``effective_gain`` is input, then ``error`` should include
-        all sources of "background" error but *exclude* the Poisson
-        error of the sources.  If ``effective_gain`` is `None`, then
         ``error`` is assumed to include *all* sources of error,
-        including the Poisson error of the sources.  ``error`` must have
-        the same shape as ``data``.  See the Notes section below for
-        details on the error propagation.
-
-    effective_gain : float, array-like, or `~astropy.units.Quantity`, optional
-        Ratio of counts (e.g., electrons or photons) to the units of
-        ``data``.  This ratio is used to calculate the Poisson error of
-        the sources when it is not included in ``error``.  If
-        ``effective_gain`` is `None`, then ``error`` is assumed to
-        include *all* sources of error.  See the Notes section below for
-        details on the error propagation.
-
-        If you are calculating the properties of many sources from the
-        same data, it is highly recommended that you input a *total*
-        error array instead of using ``effective_gain``.  Otherwise a
-        total error array will need to be repeatedly recalculated.
+        including the Poisson error of the sources (see
+        `~photutils.utils.calculate_total_error`) .  ``error`` must have
+        the same shape as the input ``data``.  See the Notes section
+        below for details on the error propagation.
 
     mask : array_like (bool), optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -1673,47 +1605,9 @@ def source_properties(data, segment_img, error=None, effective_gain=None,
     different bandpass) or if the background was oversubtracted.  Note
     that `~photutils.SourceProperties.source_sum` includes the
     contribution of negative (background-subtracted) data values.
-    `~photutils.SourceProperties.source_sum_err` will ignore such pixels
-    when calculating the source Poission error (i.e. when if
-    ``effective_gain`` is input; see below).
 
-    If ``effective_gain`` is input, then ``error`` should include all
-    sources of "background" error but *exclude* the Poisson error of the
-    sources.  The total error image, :math:`\sigma_{\mathrm{tot}}` is
-    then:
-
-    .. math:: \\sigma_{\\mathrm{tot}} = \\sqrt{\\sigma_{\\mathrm{b}}^2 +
-              \\frac{(I - B)}{g}}
-
-    where :math:`\sigma_b`, :math:`(I - B)`, and :math:`g` are the
-    background ``error`` image, the background-subtracted ``data``
-    image, and ``effective_gain``, respectively.
-
-    Pixels where :math:`(I_i - B_i)` is negative do not contribute
-    additional Poisson noise to the total error, i.e.
-    :math:`\sigma_{\mathrm{tot}, i} = \sigma_{\mathrm{b}, i}`.  Note
-    that this is different from `SExtractor`_, which sums the total
-    variance in the segment, including pixels where :math:`(I_i - B_i)`
-    is negative.  In such cases, `SExtractor`_ underestimates the total
-    errors.
-
-    If ``effective_gain`` is `None`, then ``error`` is assumed to
-    include *all* sources of error, including the Poisson error of the
-    sources, i.e. :math:`\sigma_{\mathrm{tot}} = \sigma_{\mathrm{b}} =
-    \mathrm{error}`.
-
-    For example, if your input ``data`` are in units of ADU, then
-    ``effective_gain`` should represent electrons/ADU.  If your input
-    ``data`` are in units of electrons/s then ``effective_gain`` should
-    be the exposure time or an exposure time map (e.g., for mosaics with
-    non-uniform exposure times).
-
-    ``effective_gain`` can be a 2D gain image with the same shape as the
-    ``data``.  This is useful with mosaic images that have variable
-    depths (i.e., exposure times) across the field.  For example, one
-    should use an exposure-time map as the ``effective_gain`` for a
-    variable depth mosaic image in count-rate units.
-
+    The input ``error`` is assumed to include *all* sources of error,
+    including the Poisson error of the sources.
     `~photutils.SourceProperties.source_sum_err` is simply the
     quadrature sum of the pixel-wise total errors over the non-masked
     pixels within the source segment:
@@ -1722,8 +1616,9 @@ def source_properties(data, segment_img, error=None, effective_gain=None,
               \\sigma_{\\mathrm{tot}, i}^2}
 
     where :math:`\Delta F` is
-    `~photutils.SourceProperties.source_sum_err` and :math:`S` are the
-    non-masked pixels in the source segment.
+    `~photutils.SourceProperties.source_sum_err`, :math:`S` are the
+    non-masked pixels in the source segment, and
+    :math:`\sigma_{\mathrm{tot}, i}` is the input ``error`` array.
 
     .. _SExtractor: http://www.astromatic.net/software/sextractor
 
@@ -1788,8 +1683,7 @@ def source_properties(data, segment_img, error=None, effective_gain=None,
 
     # prepare the input data once, instead of repeating for each source
     data, error_total, background = _prepare_data(
-        data, error=error, effective_gain=effective_gain,
-        background=background)
+        data, error=error, background=background)
 
     # filter the data once, instead of repeating for each source
     if filter_kernel is not None:
@@ -1805,8 +1699,7 @@ def source_properties(data, segment_img, error=None, effective_gain=None,
             continue      # skip invalid labels (without warnings)
         sources_props.append(SourceProperties(
             data, segment_img, label, filtered_data=filtered_data,
-            error=error_total, effective_gain=None, mask=mask,
-            background=background, wcs=wcs))
+            error=error_total, mask=mask, background=background, wcs=wcs))
 
     return sources_props
 
