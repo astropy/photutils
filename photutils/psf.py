@@ -837,12 +837,12 @@ def psf_photometry(data, positions, psf, fitshape=None,
         result_tab['fit_messages'] = fit_messages
     if param_uncert:
         uncert = np.array(uncert)
-        result_tab.add_column(Column(name='flux_uncertainty', unit=fluxunit,
-                                     data=uncert[:, 0]))
-        result_tab.add_column(Column(name='x_uncertainty', unit=None,
-                                     data=uncert[:, 1]))
-        result_tab.add_column(Column(name='y_uncertainty', unit=None,
-                                     data=uncert[:, 2]))
+        i = 0
+        for param in psf.param_names:
+            if not getattr(psf, param).fixed:
+                result_tab.add_column(Column(name=param + "_fit_uncertainty",
+                                             unit=None, data=uncert[:, i]))
+                i += 1
 
     return result_tab
 
