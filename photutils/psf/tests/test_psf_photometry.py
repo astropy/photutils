@@ -6,6 +6,7 @@ from numpy.testing import assert_allclose, assert_equal
 
 from astropy.tests.helper import pytest
 from astropy.modeling.models import Gaussian2D
+from astropy.modeling.fitting import SLSQPLSQFitter
 from astropy.convolution.utils import discretize_model
 from astropy.table import Table
 
@@ -171,9 +172,26 @@ def test_psf_photometry_uncertainties():
     """
     psf = IntegratedGaussianPRF(sigma=GAUSSIAN_WIDTH)
     f = psf_photometry(image, INTAB, psf, param_uncert=True)
-    assert_equal(f['flux_uncertainty'].all() > 0 and
-                 f['x_uncertainty'].all() > 0 and
-                 f['y_uncertainty'].all() > 0, True)
+    assert_equal(f['flux_fit_uncertainty'].all() > 0 and
+                 f['x_0_fit_uncertainty'].all() > 0 and
+                 f['y_0_fit_uncertainty'].all() > 0, True)
+
+    # test for fixed params
+    psf = IntegratedGaussianPRF(sigma=GAUSSIAN_WIDTH)
+    psf.flux.fixed = True
+    f = psf_photometry(image, INTAB, psf, param_uncert=True)
+    assert_equal(f['x_0_fit_uncertainty'].all() > 0 and
+                 f['y_0_fit_uncertainty'].all() > 0, True)
+    assert_equal('flux_fit_uncertainty' in f.colnames, False)
+
+    # test in case fitter does not have 'param_cov' key
+    psf = IntegratedGaussianPRF(sigma=GAUSSIAN_WIDTH)
+    f = psf_photometry(image, INTAB, psf, fitter=SLSQPLSQFitter(),
+                       param_uncert=True)
+    assert_equal('flux_fit_uncertainty' in f.colnames or\
+                 'y_0_fit_uncertainty' in f.colnames or \
+                 'x_0_fit_uncertainty' in f.colnames, False)
+
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
