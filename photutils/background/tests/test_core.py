@@ -5,8 +5,8 @@ import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 import itertools
-from ..background import Background2D, BackgroundIDW2D, std_blocksum
-from ..datasets import make_noise_image
+from ..core import Background2D, BackgroundIDW2D, std_blocksum
+from ...datasets import make_noise_image
 
 try:
     import scipy

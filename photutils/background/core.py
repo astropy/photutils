@@ -10,7 +10,7 @@ from numpy.lib.index_tricks import index_exp
 from astropy.stats import (sigma_clip, mad_std, biweight_location,
                            biweight_midvariance)
 from astropy.utils import lazyproperty
-from .utils import ShepardIDWInterpolator
+from ..utils import ShepardIDWInterpolator
 
 import astropy
 if LooseVersion(astropy.__version__) < LooseVersion('1.1'):
