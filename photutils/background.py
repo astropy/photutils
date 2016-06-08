@@ -17,14 +17,15 @@ else:
     ASTROPY_LT_1P1 = False
 
 
-__all__ = ['BackgroundBase', 'Background', 'BackgroundIDW', 'std_blocksum']
+__all__ = ['Background2DBase', 'Background2D', 'BackgroundIDW2D',
+           'std_blocksum']
 
-__doctest_requires__ = {('Background'): ['scipy']}
+__doctest_requires__ = {('Background2D'): ['scipy']}
 
 
-class BackgroundBase(object):
+class Background2DBase(object):
     """
-    Base class for background classes.
+    Base class for 2D background classes.
 
     The background classes estimate the 2D background and background rms
     noise in an image.
@@ -607,7 +608,7 @@ class BackgroundBase(object):
         return
 
 
-class Background(BackgroundBase):
+class Background2D(Background2DBase):
     """
     Class to estimate a 2D background and background rms noise in an
     image.
@@ -753,7 +754,7 @@ class Background(BackgroundBase):
     def __init__(self, data, box_size, interp_order=3, pad_crop=True,
                  **kwargs):
 
-        super(Background, self).__init__(data, box_size, **kwargs)
+        super(Background2D, self).__init__(data, box_size, **kwargs)
         self.interp_order = interp_order
         self.pad_crop = pad_crop
         self.data_slc = index_exp[0:data.shape[0], 0:data.shape[1]]
@@ -781,7 +782,7 @@ class Background(BackgroundBase):
                             mode='reflect')
 
 
-class BackgroundIDW(BackgroundBase):
+class BackgroundIDW2D(Background2DBase):
     """
     Class to estimate a 2D background and background rms noise in an
     image.
@@ -931,7 +932,7 @@ class BackgroundIDW(BackgroundBase):
     def __init__(self, data, box_size, n_neighbors=8, power=1.0, reg=0.0,
                  leafsize=10, **kwargs):
 
-        super(BackgroundIDW, self).__init__(data, box_size, **kwargs)
+        super(BackgroundIDW2D, self).__init__(data, box_size, **kwargs)
 
         f_bkg = ShepardIDWInterpolator(self.yx, self.background_mesh1d,
                                        leafsize=leafsize)
