@@ -16,22 +16,19 @@ def daogroup(starlist, crit_separation):
     GROUP divides an entire starlist into sets of distinct, self-contained
     groups of mutually overlapping stars.
 
-    GROUP accepts as input a list of stars and their approximate
-    brightenesses relative to a model stellar intensity profile for the frame
-    and determines which stars are close enough to be capable of
-    adversely influencing each others' profile fits.
+    GROUP accepts as input a list of stars and determines which stars are
+    close enough to be capable of adversely influencing each others' profile
+    fits.
 
     Parameters
     ----------
     starlist : `~astropy.table.Table` or array-like
         List of stars positions.
         If `~astropy.table.Table`, columns should be named 'x_0' and 'y_0'.
-        Additionally, 'flux_0' may also be provided. 
-        TODO: If array-like, it should be either (x_0, y_0) or
-        (x_0, y_0, flux_0).
+        TODO: If array-like, it should be either (x_0, y_0).
         If 'starlist' only contains x_0 and y_0, 'crit_separation' must be
         provided.
-    crit_separation : float
+    crit_separation : float or int
         Distance, in units of pixels, such that any two stars separated by
         less than this distance will be placed in the same group.
         TODO: If None, 'flux_0' must be provided in 'starlist'.
@@ -52,8 +49,9 @@ def daogroup(starlist, crit_separation):
     `~daofind`
     """
 
-    if not isinstance(crit_separation, type(1.0)):
-        raise ValueError('crit_separation is expected to be float.')
+    if not isinstance(crit_separation, (float, int)):
+        raise ValueError('crit_separation is expected to be either float or' +
+                         ' int. Received {}.'.format(type(crit_separation)))
     if crit_separation < 0.0:
         raise ValueError('crit_separation is expected to be a positive' +
                          'real number.')
@@ -127,10 +125,6 @@ def _remove_stars(starlist, stars_ids):
     -------
     Reduced `~astropy.table.Table` containing only the stars whose ids are not
     listed in `stars_ids`.
-
-    Note
-    ----
-    **There may be a better (faster) way of implementing this**.
     """
     
     for i in range(len(stars_ids)):
