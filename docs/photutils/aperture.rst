@@ -305,10 +305,10 @@ position-dependent background level and rms of our data::
 
     >>> from photutils.utils import calc_total_error
     >>> effective_gain = 1.5
-    >>> sky_level, sky_sigma = background(data)  # function returns two arrays   # doctest: +SKIP
-    >>> error = calc_total_error(data, sky_sigma, effective_gain)
+    >>> sky_level, sky_sigma = background(data)  # function returns two arrays    # doctest: +SKIP
+    >>> error = calc_total_error(data, sky_sigma, effective_gain)    # doctest: +SKIP
     >>> phot_table = aperture_photometry(data - sky_level, apertures,
-    ...                                  error=error)   # doctest: +SKIP
+    ...                                  error=error)    # doctest: +SKIP
 
 .. note::
 
