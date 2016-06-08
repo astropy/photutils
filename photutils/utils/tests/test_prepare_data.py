@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
+import astropy.units as u
 from .. import calc_total_error
 
 SHAPE = (5, 5)
@@ -38,3 +39,34 @@ class TestCalculateTotalError(object):
     def test_gain_array(self):
         error_tot = calc_total_error(DATA, BKG_ERROR, EFFGAIN)
         assert_allclose(error_tot, np.sqrt(2.) * BKG_ERROR)
+
+    def test_units(self):
+        units = u.electron / u.s
+        error_tot1 = calc_total_error(DATA * units, BKG_ERROR * units,
+                                      EFFGAIN * u.s)
+        assert error_tot1.unit == units
+        error_tot2 = calc_total_error(DATA, BKG_ERROR, EFFGAIN)
+        assert_allclose(error_tot1.value, error_tot2)
+
+    def test_error_units(self):
+        units = u.electron / u.s
+        with pytest.raises(ValueError):
+            calc_total_error(DATA * units, BKG_ERROR * u.electron,
+                             EFFGAIN * u.s)
+
+    def test_effgain_units(self):
+        units = u.electron / u.s
+        with pytest.raises(u.UnitsError):
+            calc_total_error(DATA * units, BKG_ERROR * units, EFFGAIN * u.km)
+
+    def test_missing_bkgerror_units(self):
+        units = u.electron / u.s
+        with pytest.raises(ValueError):
+            calc_total_error(DATA * units, BKG_ERROR, EFFGAIN * u.s)
+
+    def test_missing_effgain_units(self):
+        units = u.electron / u.s
+        with pytest.raises(ValueError):
+            calc_total_error(DATA * units, BKG_ERROR * units,
+                             EFFGAIN)
+
