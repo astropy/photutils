@@ -10,10 +10,10 @@ __all__ = ['daogroup']
 
 def daogroup(starlist, crit_separation):
     """
-    This is an implementation which follows the DAO GROUP algorithm presented
-    by Stetson (1987).
+    This is an implementation of the DAOGROUP algorithm presented by
+    Stetson (1987).
 
-    GROUP divides an entire starlist into sets of distinct, self-contained
+    DAOGROUP divides an entire starlist into sets of distinct, self-contained
     groups of mutually overlapping stars.
 
     GROUP accepts as input a list of stars and determines which stars are
@@ -26,13 +26,10 @@ def daogroup(starlist, crit_separation):
         List of stars positions.
         If `~astropy.table.Table`, columns should be named 'x_0' and 'y_0'.
         TODO: If array-like, it should be either (x_0, y_0).
-        If 'starlist' only contains x_0 and y_0, 'crit_separation' must be
-        provided.
     crit_separation : float or int
         Distance, in units of pixels, such that any two stars separated by
         less than this distance will be placed in the same group.
-        TODO: If None, 'flux_0' must be provided in 'starlist'.
-    
+
     Returns
     -------
     group_starlist : list of `~astropy.table.Table`
