@@ -3,7 +3,7 @@ from __future__ import division
 import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
-from ..psf import IntegratedGaussianPRF, prepare_psf_model
+from ..core import IntegratedGaussianPRF, prepare_psf_model
 
 try:
     HAS_SCIPY = True

@@ -8,14 +8,14 @@ import copy
 
 import numpy as np
 
-from .utils import mask_to_mirrored_num
-from .aperture_core import _prepare_photometry_input
+from ..utils import mask_to_mirrored_num
+from ..aperture_core import _prepare_photometry_input
 
 from astropy.table import Table, Column
 from astropy.modeling import models, Parameter, Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import add_array, subpixel_indices
-from .extern.nddata_compat import extract_array
+from ..extern.nddata_compat import extract_array
 from astropy.nddata import support_nddata
 from astropy.utils.exceptions import AstropyUserWarning
 
