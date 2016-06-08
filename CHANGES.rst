@@ -5,7 +5,8 @@
 General
 ^^^^^^^
 
-- Drop numpy 1.6 support, minimal required version is now numpy 1.7. [#327]
+- Drop numpy 1.6 support, minimal required version is now numpy 1.7.
+  [#327]
 
 New Features
 ^^^^^^^^^^^^
@@ -35,6 +36,13 @@ New Features
 API changes
 ^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Removed the ``effective_gain`` keyword from
+    ``aperture_photometry``.  Users must now input the total error,
+    which can be calculating using the ``calc_total_error`` function.
+    [#368]
+
 - ``photutils.background``
 
   - For the background classes, the ``filter_shape`` keyword was
@@ -43,6 +51,23 @@ API changes
     ``background_rms_low_res`` class attributes were renamed to
     ``background_mesh2d`` and ``background_rms_mesh2d``, respectively.
     [#355]
+
+- ``photutils.psf``
+
+  - Removed the ``effective_gain`` keyword from ``psf_photometry``.
+    Users must now input the total error, which can be calculating using
+    the ``calc_total_error`` function. [#368]
+
+- ``photutils.segmentation``
+
+  - Removed the ``effective_gain`` keyword from ``SourceProperties``
+    and ``source_properties``.  Users must now input the total error,
+    which can be calculating using the ``calc_total_error`` function.
+    [#368]
+
+- ``photutils.utils``
+
+  - Renamed ``calculate_total_error`` to ``calc_total_error``. [#368]
 
 
 0.2.2 (unreleased)
