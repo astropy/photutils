@@ -1,5 +1,8 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-"""Functions for implementing the DAOGROUP algorithm proposed by Stetson 1987.
+"""Functions for implementing the DAOGROUP algorithm proposed by Stetson in
+Astronomical Society of the Pacific, Publications, (ISSN 0004-6280),
+vol. 99, March 1987, p. 191-222.
+Available at: http://adsabs.harvard.edu/abs/1987PASP...99..191S
 """
 
 from __future__ import division
@@ -13,19 +16,16 @@ def daogroup(starlist, crit_separation):
     This is an implementation of the DAOGROUP algorithm presented by
     Stetson (1987).
 
-    DAOGROUP divides an entire starlist into sets of distinct, self-contained
-    groups of mutually overlapping stars.
-
-    GROUP accepts as input a list of stars and determines which stars are
-    close enough to be capable of adversely influencing each others' profile
-    fits.
+    daogroup divides an entire starlist into sets of distinct, self-contained
+    groups of mutually overlapping stars. It accepts as input a list of stars
+    and determines which stars are close enough to be capable of adversely
+    influencing each others' profile fits.
 
     Parameters
     ----------
-    starlist : `~astropy.table.Table` or array-like
-        List of stars positions.
-        If `~astropy.table.Table`, columns should be named 'x_0' and 'y_0'.
-        TODO: If array-like, it should be either (x_0, y_0).
+    starlist : `~astropy.table.Table`
+        List of stars positions. Columns named as 'x_0' and 'y_0' must be
+        provided.
     crit_separation : float or int
         Distance, in units of pixels, such that any two stars separated by
         less than this distance will be placed in the same group.
@@ -34,7 +34,7 @@ def daogroup(starlist, crit_separation):
     -------
     group_starlist : list of `~astropy.table.Table`
         Each `~astropy.table.Table` in the list corresponds to a group of
-        mutually overlapping starts.
+        mutually overlapping stars.
 
     Notes
     -----
@@ -53,7 +53,7 @@ def daogroup(starlist, crit_separation):
         raise ValueError('crit_separation is expected to be a positive' +
                          'real number.')
 
-    ## write a method that varifies whether the starlist given by the user
+    ## write a method that verifies whether the starlist given by the user
     ## is valid
 
     group_starlist = []
@@ -90,15 +90,15 @@ def _find_group(star, starlist, crit_separation):
 
     Parameters
     ----------
-    star : `~astropy.table.row.Row`
+    star : `~astropy.table.Row`
         Star which will be either the head of a cluster or an isolated one.
     
-    starlist : `~astropy.table.table.Table`
+    starlist : `~astropy.table.Table`
 
     Returns
     -------
     `~astropy.table.table.Table` containing those stars which are at a distance
-    of `crit_separation` from `star`.
+    less than `crit_separation` from `star`.
     """
     
     star_distance = np.hypot(star['x_0'] - starlist['x_0'],
@@ -112,7 +112,7 @@ def _remove_stars(starlist, stars_ids):
 
     Parameters
     ----------
-    starlist : `~astropy.table.table.Table`
+    starlist : `~astropy.table.Table`
         Star list from which stars will be removed.
 
     stars_ids : numpy.ndarray
