@@ -16,7 +16,8 @@ from astropy.stats import (sigma_clip, mad_std, biweight_location,
 
 __all__ = ['MeanBackground', 'MedianBackground', 'MMMBackground',
            'SExtractorBackground', 'BiweightLocationBackground',
-           'MADStdBackgroundRMS', 'BiweightMidvarianceBackgroundRMS']
+           'StdBackgroundRMS', 'MADStdBackgroundRMS',
+           'BiweightMidvarianceBackgroundRMS']
 
 
 class BackgroundBase(object):
@@ -77,7 +78,7 @@ class MedianBackground(BackgroundBase):
 
     def __init__(self, **kwargs):
 
-        super(MeanBackground, self).__init__(**kwargs)
+        super(MedianBackground, self).__init__(**kwargs)
 
     def calc_background(self, data):
 
@@ -97,7 +98,7 @@ class MMMBackground(BackgroundBase):
 
     def __init__(self, **kwargs):
 
-        super(MeanBackground, self).__init__(**kwargs)
+        super(MMMBackground, self).__init__(**kwargs)
 
     def calc_background(self, data):
 
@@ -123,7 +124,7 @@ class SExtractorBackground(BackgroundBase):
 
     def __init__(self, **kwargs):
 
-        super(MeanBackground, self).__init__(**kwargs)
+        super(SExtractorBackground, self).__init__(**kwargs)
 
     def calc_background(self, data):
 
@@ -132,10 +133,14 @@ class SExtractorBackground(BackgroundBase):
         _median = np.ma.median(data)
         _mean = np.ma.mean(data)
         _std = np.ma.std(data)
-        condition = (np.abs(_mean - _median) / _std) < 0.3
-        mode = (2.5 * _median) - (1.5 * _mean)
-        bkg = np.ma.where(condition, mode, _median)
-        bkg = np.ma.where(_std == 0, _mean, bkg)    # handle std = 0
+
+        if _std == 0:
+            return _mean
+
+        if (np.abs(_mean - _median) / _std) < 0.3:
+            return (2.5 * _median) - (1.5 * _mean)
+        else:
+            return _median
 
 
 class BiweightLocationBackground(BackgroundBase):
@@ -146,7 +151,7 @@ class BiweightLocationBackground(BackgroundBase):
 
     def __init__(self, c=6, M=None, **kwargs):
 
-        super(MeanBackground, self).__init__(**kwargs)
+        super(BiweightLocationBackground, self).__init__(**kwargs)
         self.c = c
         self.M = M
 
@@ -154,7 +159,7 @@ class BiweightLocationBackground(BackgroundBase):
 
         if self.sigclip:
             data = self.sigma_clip(data)
-        return biweight_location(c=self.c, M=self.M)
+        return biweight_location(data, c=self.c, M=self.M)
 
 
 class StdBackgroundRMS(BackgroundBase):
@@ -165,9 +170,9 @@ class StdBackgroundRMS(BackgroundBase):
 
     def __init__(self, **kwargs):
 
-        super(MeanBackground, self).__init__(**kwargs)
+        super(StdBackgroundRMS, self).__init__(**kwargs)
 
-    def calc_background(self, data):
+    def calc_background_rms(self, data):
 
         if self.sigclip:
             data = self.sigma_clip(data)
@@ -193,9 +198,9 @@ class MADStdBackgroundRMS(BackgroundBase):
 
     def __init__(self, **kwargs):
 
-        super(MeanBackground, self).__init__(**kwargs)
+        super(MADStdBackgroundRMS, self).__init__(**kwargs)
 
-    def calc_background(self, data):
+    def calc_background_rms(self, data):
 
         if self.sigclip:
             data = self.sigma_clip(data)
@@ -210,11 +215,11 @@ class BiweightMidvarianceBackgroundRMS(BackgroundBase):
 
     def __init__(self, c=9.0, M=None, **kwargs):
 
-        super(MeanBackground, self).__init__(**kwargs)
+        super(BiweightMidvarianceBackgroundRMS, self).__init__(**kwargs)
         self.c = c
         self.M = M
 
-    def calc_background(self, data):
+    def calc_background_rms(self, data):
 
         if self.sigclip:
             data = self.sigma_clip(data)
