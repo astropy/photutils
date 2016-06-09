@@ -42,7 +42,6 @@ THRESHOLD = 0.1
 SEGM = (IMAGE >= THRESHOLD).astype(np.int)
 
 ERR_VALS = [0., 2.5]
-EFFGAIN_VALS = [None, 2., 1.e10]
 BACKGRD_VALS = [None, 0., 1., 3.5]
 
 
@@ -323,12 +322,6 @@ class TestSourcePropertiesFunctionInputs(object):
         with pytest.raises(ValueError):
             source_properties(IMAGE, SEGM, error=wrong_shape)
 
-    def test_effective_gain_shape(self):
-        wrong_shape = np.zeros((2, 2))
-        with pytest.raises(ValueError):
-            source_properties(IMAGE, SEGM, error=IMAGE,
-                              effective_gain=wrong_shape)
-
     def test_background_shape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
@@ -425,14 +418,11 @@ class TestSourcePropertiesFunction(object):
         with pytest.raises(ValueError):
             props[0].make_cutout(data)
 
-    @pytest.mark.parametrize(('error_value', 'effective_gain', 'background'),
-                             list(itertools.product(
-                                 ERR_VALS, EFFGAIN_VALS, BACKGRD_VALS)))
-    def test_segmentation_inputs(self, error_value, effective_gain,
-                                 background):
+    @pytest.mark.parametrize(('error_value', 'background'),
+                             list(itertools.product(ERR_VALS, BACKGRD_VALS)))
+    def test_segmentation_inputs(self, error_value, background):
         error = np.ones_like(IMAGE) * error_value
         props = source_properties(IMAGE, SEGM, error=error,
-                                  effective_gain=effective_gain,
                                   background=background)
         assert_quantity_allclose(props[0].xcentroid, XCEN*u.pix, rtol=1.e-2)
         assert_quantity_allclose(props[0].ycentroid, YCEN*u.pix, rtol=1.e-2)
@@ -452,9 +442,6 @@ class TestSourcePropertiesFunction(object):
         assert_allclose(props[0].source_sum, true_sum)
 
         true_error = np.sqrt(props[0].area.value) * error_value
-        if effective_gain is not None:
-            true_error = np.sqrt(
-                (props[0].source_sum / effective_gain) + true_error**2)
         assert_allclose(props[0].source_sum_err, true_error)
 
     def test_data_allzero(self):
@@ -477,12 +464,6 @@ class TestSourcePropertiesFunction(object):
         assert_allclose(props[0].ycentroid.value, 1)
         assert_allclose(props[0].source_sum, 1)
         assert_allclose(props[0].area.value, 1)
-
-    def test_effective_gain_negative(self, effective_gain=-1):
-        error = np.ones_like(IMAGE) * 2.
-        with pytest.raises(ValueError):
-            source_properties(IMAGE, SEGM, error=error,
-                              effective_gain=effective_gain)
 
     def test_single_pixel_segment(self):
         segm = np.zeros_like(SEGM)

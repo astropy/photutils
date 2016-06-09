@@ -596,7 +596,7 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
 @support_nddata
 def psf_photometry(data, positions, psf, fitshape=None,
                    fitter=LevMarLSQFitter(),
-                   unit=None, wcs=None, error=None, effective_gain=None,
+                   unit=None, wcs=None, error=None,
                    mask=None, pixelwise_error=True,
                    mode='sequential',
                    store_fit_info=False):
@@ -656,26 +656,19 @@ def psf_photometry(data, positions, psf, fitshape=None,
         Use this as the wcs transformation. It overrides any wcs transformation
         passed along with ``data`` either in the header or in an attribute.
     error : float or array_like, optional
-        Error in each pixel, interpreted as Gaussian 1-sigma uncertainty.
-    effective_gain : float or array_like, optional
-        Ratio of counts (e.g., electrons or photons) to units of the
-        data (e.g., ADU), for the purpose of calculating Poisson error
-        from the object itself. If ``effective_gain`` is `None`
-        (default), ``error`` is assumed to include all uncertainty in
-        each pixel. If ``effective_gain`` is given, ``error`` is assumed
-        to be the "background error" only (not accounting for Poisson
-        error in the flux in the apertures).
+        The pixel-wise Gaussian 1-sigma errors of the input ``data``.
+        ``error`` is assumed to include *all* sources of error,
+        including the Poisson error of the sources (see
+        `~photutils.utils.calc_total_error`) .  ``error`` must have the
+        same shape as the input ``data``.
     mask : array_like (bool), optional
         Mask to apply to the data.  Masked pixels are excluded/ignored.
     pixelwise_error : bool, optional
-        For ``error`` and/or ``effective_gain`` arrays. If `True`,
-        assume ``error`` and/or ``effective_gain`` vary significantly
-        within an aperture: sum contribution from each pixel. If
-        `False`, assume ``error`` and ``effective_gain`` do not vary
-        significantly within an aperture. Use the single value of
-        ``error`` and/or ``effective_gain`` at the center of each
-        aperture as the value for the entire aperture.  Default is
-        `True`.
+        If `True`, assume ``error`` varies significantly across the PSF
+        and sum contribution from each pixel. If `False`,
+        assume ``error`` does not vary significantly across the PSF
+        and use the single value of ``error`` at the center of each
+        PSF.  Default is `True`.
     mode : {'sequential'}
         One of the following modes to do PSF/PRF photometry:
             * 'sequential' (default)
@@ -705,15 +698,16 @@ def psf_photometry(data, positions, psf, fitshape=None,
     This function is decorated with `~astropy.nddata.support_nddata` and
     thus supports `~astropy.nddata.NDData` objects as input.
     """
-    data, wcs_transformation, mask, error, effective_gain, pixelwise_error \
-        = _prepare_photometry_input(data, unit, wcs, mask, error, effective_gain,
-                                    pixelwise_error)
+
+    (data, wcs_transformation, mask, error, pixelwise_error ) = (
+        _prepare_photometry_input(data, unit, wcs, mask, error,
+                                  pixelwise_error))
 
     # As long as models don't support quantities, we'll break that apart
     fluxunit = data.unit
     data = np.array(data)
 
-    if (error is not None) or (effective_gain is not None):
+    if (error is not None):
         warnings.warn('Uncertainties are not yet supported in PSF fitting.',
                       AstropyUserWarning)
     weights = np.ones_like(data)
