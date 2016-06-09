@@ -19,8 +19,35 @@ __all__ = ['MeanBackground', 'MedianBackground', 'MMMBackground',
            'StdBackgroundRMS', 'MADStdBackgroundRMS',
            'BiweightMidvarianceBackgroundRMS']
 
+_bkgdoc = {}
+_bkgdoc['sigclip_params'] = """sigma : float, optional
+        The number of standard deviations to use for both the lower and
+        upper clipping limit. These limits are overridden by
+        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
+    sigma_lower : float or `None`, optional
+        The number of standard deviations to use as the lower bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    sigma_upper : float or `None`, optional
+        The number of standard deviations to use as the upper bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    iters : int or `None`, optional
+        The number of iterations to perform sigma clipping, or `None` to
+        clip until convergence is achieved (i.e., continue until the
+        last iteration clips nothing). Defaults to 5.
+"""
+
 
 class BackgroundBase(object):
+    """
+    Base class for Background classes.
+
+    Parameters
+    ----------
+    {sigclip_params}
+    """
+
     def __init__(self, sigclip=True, sigma=3, sigma_lower=None,
                  sigma_upper=None, iters=5):
 
@@ -53,10 +80,17 @@ class BackgroundBase(object):
         """
 
 
+BackgroundBase.__doc__ = BackgroundBase.__doc__.format(**_bkgdoc)
+
+
 class MeanBackground(BackgroundBase):
     """
     Class to calculate the background in an array as the (sigma-clipped)
     mean.
+
+    Parameters
+    ----------
+    {sigclip_params}
     """
 
     def __init__(self, **kwargs):
@@ -70,10 +104,17 @@ class MeanBackground(BackgroundBase):
         return np.ma.mean(data)
 
 
+MeanBackground.__doc__ = MeanBackground.__doc__.format(**_bkgdoc)
+
+
 class MedianBackground(BackgroundBase):
     """
     Class to calculate the background in an array as the (sigma-clipped)
     median.
+
+    Parameters
+    ----------
+    {sigclip_params}
     """
 
     def __init__(self, **kwargs):
@@ -87,6 +128,9 @@ class MedianBackground(BackgroundBase):
         return np.ma.median(data)
 
 
+MedianBackground.__doc__ = MedianBackground.__doc__.format(**_bkgdoc)
+
+
 class MMMBackground(BackgroundBase):
     """
     Class to calculate the background in an array using the DAOPHOT MMM
@@ -94,6 +138,10 @@ class MMMBackground(BackgroundBase):
 
     The background is calculated using a mode estimator of the form
     ``(3 * median) - (2 * mean)``.
+
+    Parameters
+    ----------
+    {sigclip_params}
     """
 
     def __init__(self, **kwargs):
@@ -105,6 +153,9 @@ class MMMBackground(BackgroundBase):
         if self.sigclip:
             data = self.sigma_clip(data)
         return (3. * np.ma.median(data)) - (2. * np.ma.mean(data))
+
+
+MMMBackground.__doc__ = MMMBackground.__doc__.format(**_bkgdoc)
 
 
 class SExtractorBackground(BackgroundBase):
@@ -120,6 +171,10 @@ class SExtractorBackground(BackgroundBase):
     method it *always* uses.
 
     .. _SExtractor: http://www.astromatic.net/software/sextractor
+
+    Parameters
+    ----------
+    {sigclip_params}
     """
 
     def __init__(self, **kwargs):
@@ -143,10 +198,23 @@ class SExtractorBackground(BackgroundBase):
             return _median
 
 
+SExtractorBackground.__doc__ = SExtractorBackground.__doc__.format(**_bkgdoc)
+
+
 class BiweightLocationBackground(BackgroundBase):
     """
     Class to calculate the background in an array using the biweight
     location.
+
+    Parameters
+    ----------
+    c : float, optional
+        Tuning constant for the biweight estimator.  Default value is
+        6.0.
+    M : float, optional
+        Initial guess for the biweight location.  Default value is
+        `None`.
+    {sigclip_params}
     """
 
     def __init__(self, c=6, M=None, **kwargs):
@@ -162,10 +230,18 @@ class BiweightLocationBackground(BackgroundBase):
         return biweight_location(data, c=self.c, M=self.M)
 
 
+BiweightLocationBackground.__doc__ = (
+    BiweightLocationBackground.__doc__.format(**_bkgdoc))
+
+
 class StdBackgroundRMS(BackgroundBase):
     """
     Class to calculate the background rms in an array as the
     (sigma-clipped) standard deviation.
+
+    Parameters
+    ----------
+    {sigclip_params}
     """
 
     def __init__(self, **kwargs):
@@ -179,6 +255,9 @@ class StdBackgroundRMS(BackgroundBase):
         return np.ma.std(data)
 
 
+StdBackgroundRMS.__doc__ = StdBackgroundRMS.__doc__.format(**_bkgdoc)
+
+
 class MADStdBackgroundRMS(BackgroundBase):
     """
     Class to calculate the background rms in an array as using the
@@ -189,11 +268,15 @@ class MADStdBackgroundRMS(BackgroundBase):
 
     .. math::
 
-        \\sigma \\approx \\frac{\\textrm{MAD}}{\Phi^{-1}(3/4)}
-            \\approx 1.4826 \ \\textrm{MAD}
+        \\sigma \\approx \\frac{{\\textrm{{MAD}}}}{{\Phi^{{-1}}(3/4)}}
+            \\approx 1.4826 \ \\textrm{{MAD}}
 
-    where :math:`\Phi^{-1}(P)` is the normal inverse cumulative
+    where :math:`\Phi^{{-1}}(P)` is the normal inverse cumulative
     distribution function evaluated at probability :math:`P = 3/4`.
+
+    Parameters
+    ----------
+    {sigclip_params}
     """
 
     def __init__(self, **kwargs):
@@ -207,10 +290,23 @@ class MADStdBackgroundRMS(BackgroundBase):
         return mad_std(data)
 
 
+MADStdBackgroundRMS.__doc__ = MADStdBackgroundRMS.__doc__.format(**_bkgdoc)
+
+
 class BiweightMidvarianceBackgroundRMS(BackgroundBase):
     """
     Class to calculate the background rms in an array as the
     (sigma-clipped) biweight midvariance.
+
+    Parameters
+    ----------
+    c : float, optional
+        Tuning constant for the biweight estimator.  Default value is
+        9.0.
+    M : float, optional
+        Initial guess for the biweight location.  Default value is
+        `None`.
+    {sigclip_params}
     """
 
     def __init__(self, c=9.0, M=None, **kwargs):
@@ -224,3 +320,7 @@ class BiweightMidvarianceBackgroundRMS(BackgroundBase):
         if self.sigclip:
             data = self.sigma_clip(data)
         return biweight_midvariance(data, c=self.c, M=self.M)
+
+
+BiweightMidvarianceBackgroundRMS.__doc__ = (
+    BiweightMidvarianceBackgroundRMS.__doc__.format(**_bkgdoc))
