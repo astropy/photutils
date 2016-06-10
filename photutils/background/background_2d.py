@@ -22,13 +22,13 @@ else:
     ASTROPY_LT_1P1 = False
 
 
-__all__ = ['Background2DBase', 'Background2D', 'BackgroundIDW2D',
+__all__ = ['BackgroundBase2D', 'Background2D', 'BackgroundIDW2D',
            'std_blocksum']
 
 __doctest_requires__ = {('Background2D'): ['scipy']}
 
 
-class Background2DBase(object):
+class BackgroundBase2D(object):
     """
     Base class for 2D background classes.
 
@@ -613,7 +613,7 @@ class Background2DBase(object):
         return
 
 
-class Background2D(Background2DBase):
+class Background2D(BackgroundBase2D):
     """
     Class to estimate a 2D background and background rms noise in an
     image.
@@ -787,7 +787,7 @@ class Background2D(Background2DBase):
                             mode='reflect')
 
 
-class BackgroundIDW2D(Background2DBase):
+class BackgroundIDW2D(BackgroundBase2D):
     """
     Class to estimate a 2D background and background rms noise in an
     image.
