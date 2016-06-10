@@ -185,7 +185,12 @@ class SExtractorBackground(BackgroundBase):
 
         if self.sigclip:
             data = self.sigma_clip(data)
-        _median = np.ma.median(data)
+
+        # Use .item() to make the median a scalar for numpy 1.10.
+        # Even when fixed in numpy, this needs to remain for
+        # compatibility with numpy 1.10 (until no longer supported).
+        # https://github.com/numpy/numpy/pull/7635
+        _median = np.ma.median(data).item()
         _mean = np.ma.mean(data)
         _std = np.ma.std(data)
 
