@@ -5,3 +5,4 @@ background rms estimation.
 """
 
 from .core import *
+from .background_2d import *

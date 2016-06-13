@@ -214,7 +214,7 @@ Global Background Subtraction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If ``bkg`` is an array representing the background of the data
-(determined by `~photutils.background.Background` or an external
+(determined by `~photutils.background.Background2D` or an external
 function), simply do::
 
     >>> phot_table = aperture_photometry(data - bkg, apertures)  # doctest: +SKIP

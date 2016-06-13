@@ -9,14 +9,15 @@ the tools in the PSF subpackage.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import abc
-import six
 import numpy as np
+from astropy.extern import six
 from astropy.utils.misc import InheritDocstrings
 from astropy.stats import (sigma_clip, mad_std, biweight_location,
                            biweight_midvariance)
 
 
-__all__ = ['MeanBackground', 'MedianBackground', 'MMMBackground',
+__all__ = ['BkgBase', 'BackgroundBase', 'BackgroundRMSBase',
+           'MeanBackground', 'MedianBackground', 'MMMBackground',
            'SExtractorBackground', 'BiweightLocationBackground',
            'StdBackgroundRMS', 'MADStdBackgroundRMS',
            'BiweightMidvarianceBackgroundRMS']
