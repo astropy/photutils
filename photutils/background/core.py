@@ -8,12 +8,21 @@ the tools in the PSF subpackage.
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+from distutils.version import LooseVersion
 import abc
 import numpy as np
+import warnings
 from astropy.extern import six
 from astropy.utils.misc import InheritDocstrings
+from astropy.utils.exceptions import AstropyUserWarning
 from astropy.stats import (sigma_clip, mad_std, biweight_location,
                            biweight_midvariance)
+
+import astropy
+if LooseVersion(astropy.__version__) < LooseVersion('1.1'):
+    ASTROPY_LT_1P1 = True
+else:
+    ASTROPY_LT_1P1 = False
 
 
 __all__ = ['BkgBase', 'BackgroundBase', 'BackgroundRMSBase',
@@ -62,10 +71,18 @@ class BkgBase(object):
         self.iters = iters
 
     def sigma_clip(self, data):
-        return sigma_clip(data, sigma=self.sigma,
-                          sigma_lower=self.sigma_lower,
-                          sigma_upper=self.sigma_upper,
-                          iters=self.iters)
+
+        if ASTROPY_LT_1P1:
+            warnings.warn('sigma_lower and sigma_upper will be ignored '
+                          'because they are not supported astropy < 1.1',
+                          AstropyUserWarning)
+            return sigma_clip(data, sig=self.sigma,
+                              iters=self.iters)
+        else:
+            return sigma_clip(data, sigma=self.sigma,
+                              sigma_lower=self.sigma_lower,
+                              sigma_upper=self.sigma_upper,
+                              iters=self.iters)
 
 
 class BackgroundBase(BkgBase):
