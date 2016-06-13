@@ -21,8 +21,19 @@ __all__ = ['MeanBackground', 'MedianBackground', 'MMMBackground',
            'StdBackgroundRMS', 'MADStdBackgroundRMS',
            'BiweightMidvarianceBackgroundRMS']
 
-_bkgdoc = {}
-_bkgdoc['sigclip_params'] = """sigma : float, optional
+
+class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
+    pass
+
+
+@six.add_metaclass(_ABCMetaAndInheritDocstrings)
+class BkgBase(object):
+    """
+    Base class for Background and Background RMS classes.
+
+    Parameters
+    ----------
+    sigma : float, optional
         The number of standard deviations to use for both the lower and
         upper clipping limit. These limits are overridden by
         ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
@@ -38,21 +49,6 @@ _bkgdoc['sigclip_params'] = """sigma : float, optional
         The number of iterations to perform sigma clipping, or `None` to
         clip until convergence is achieved (i.e., continue until the
         last iteration clips nothing). Defaults to 5.
-"""
-
-
-class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
-    pass
-
-
-@six.add_metaclass(_ABCMetaAndInheritDocstrings)
-class BkgBase(object):
-    """
-    Base class for Background and Background RMS classes.
-
-    Parameters
-    ----------
-    {sigclip_params}
     """
 
     def __init__(self, sigclip=True, sigma=3, sigma_lower=None,
@@ -77,7 +73,22 @@ class BackgroundBase(BkgBase):
 
     Parameters
     ----------
-    {sigclip_params}
+    sigma : float, optional
+        The number of standard deviations to use for both the lower and
+        upper clipping limit. These limits are overridden by
+        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
+    sigma_lower : float or `None`, optional
+        The number of standard deviations to use as the lower bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    sigma_upper : float or `None`, optional
+        The number of standard deviations to use as the upper bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    iters : int or `None`, optional
+        The number of iterations to perform sigma clipping, or `None` to
+        clip until convergence is achieved (i.e., continue until the
+        last iteration clips nothing). Defaults to 5.
     """
 
     @abc.abstractmethod
@@ -97,16 +108,28 @@ class BackgroundBase(BkgBase):
         """
 
 
-BackgroundBase.__doc__ = BackgroundBase.__doc__.format(**_bkgdoc)
-
-
 class BackgroundRMSBase(BkgBase):
     """
     Base class for classes that estimate scalar background rms values.
 
     Parameters
     ----------
-    {sigclip_params}
+    sigma : float, optional
+        The number of standard deviations to use for both the lower and
+        upper clipping limit. These limits are overridden by
+        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
+    sigma_lower : float or `None`, optional
+        The number of standard deviations to use as the lower bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    sigma_upper : float or `None`, optional
+        The number of standard deviations to use as the upper bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    iters : int or `None`, optional
+        The number of iterations to perform sigma clipping, or `None` to
+        clip until convergence is achieved (i.e., continue until the
+        last iteration clips nothing). Defaults to 5.
     """
 
     @abc.abstractmethod
@@ -126,9 +149,6 @@ class BackgroundRMSBase(BkgBase):
         """
 
 
-BackgroundRMSBase.__doc__ = BackgroundRMSBase.__doc__.format(**_bkgdoc)
-
-
 class MeanBackground(BackgroundBase):
     """
     Class to calculate the background in an array as the (sigma-clipped)
@@ -136,7 +156,22 @@ class MeanBackground(BackgroundBase):
 
     Parameters
     ----------
-    {sigclip_params}
+    sigma : float, optional
+        The number of standard deviations to use for both the lower and
+        upper clipping limit. These limits are overridden by
+        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
+    sigma_lower : float or `None`, optional
+        The number of standard deviations to use as the lower bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    sigma_upper : float or `None`, optional
+        The number of standard deviations to use as the upper bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    iters : int or `None`, optional
+        The number of iterations to perform sigma clipping, or `None` to
+        clip until convergence is achieved (i.e., continue until the
+        last iteration clips nothing). Defaults to 5.
     """
 
     def __init__(self, **kwargs):
@@ -150,9 +185,6 @@ class MeanBackground(BackgroundBase):
         return np.ma.mean(data)
 
 
-MeanBackground.__doc__ = MeanBackground.__doc__.format(**_bkgdoc)
-
-
 class MedianBackground(BackgroundBase):
     """
     Class to calculate the background in an array as the (sigma-clipped)
@@ -160,7 +192,22 @@ class MedianBackground(BackgroundBase):
 
     Parameters
     ----------
-    {sigclip_params}
+    sigma : float, optional
+        The number of standard deviations to use for both the lower and
+        upper clipping limit. These limits are overridden by
+        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
+    sigma_lower : float or `None`, optional
+        The number of standard deviations to use as the lower bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    sigma_upper : float or `None`, optional
+        The number of standard deviations to use as the upper bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    iters : int or `None`, optional
+        The number of iterations to perform sigma clipping, or `None` to
+        clip until convergence is achieved (i.e., continue until the
+        last iteration clips nothing). Defaults to 5.
     """
 
     def __init__(self, **kwargs):
@@ -174,9 +221,6 @@ class MedianBackground(BackgroundBase):
         return np.ma.median(data)
 
 
-MedianBackground.__doc__ = MedianBackground.__doc__.format(**_bkgdoc)
-
-
 class MMMBackground(BackgroundBase):
     """
     Class to calculate the background in an array using the DAOPHOT MMM
@@ -187,7 +231,22 @@ class MMMBackground(BackgroundBase):
 
     Parameters
     ----------
-    {sigclip_params}
+    sigma : float, optional
+        The number of standard deviations to use for both the lower and
+        upper clipping limit. These limits are overridden by
+        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
+    sigma_lower : float or `None`, optional
+        The number of standard deviations to use as the lower bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    sigma_upper : float or `None`, optional
+        The number of standard deviations to use as the upper bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    iters : int or `None`, optional
+        The number of iterations to perform sigma clipping, or `None` to
+        clip until convergence is achieved (i.e., continue until the
+        last iteration clips nothing). Defaults to 5.
     """
 
     def __init__(self, **kwargs):
@@ -199,9 +258,6 @@ class MMMBackground(BackgroundBase):
         if self.sigclip:
             data = self.sigma_clip(data)
         return (3. * np.ma.median(data)) - (2. * np.ma.mean(data))
-
-
-MMMBackground.__doc__ = MMMBackground.__doc__.format(**_bkgdoc)
 
 
 class SExtractorBackground(BackgroundBase):
@@ -220,7 +276,22 @@ class SExtractorBackground(BackgroundBase):
 
     Parameters
     ----------
-    {sigclip_params}
+    sigma : float, optional
+        The number of standard deviations to use for both the lower and
+        upper clipping limit. These limits are overridden by
+        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
+    sigma_lower : float or `None`, optional
+        The number of standard deviations to use as the lower bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    sigma_upper : float or `None`, optional
+        The number of standard deviations to use as the upper bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    iters : int or `None`, optional
+        The number of iterations to perform sigma clipping, or `None` to
+        clip until convergence is achieved (i.e., continue until the
+        last iteration clips nothing). Defaults to 5.
     """
 
     def __init__(self, **kwargs):
@@ -249,9 +320,6 @@ class SExtractorBackground(BackgroundBase):
             return _median
 
 
-SExtractorBackground.__doc__ = SExtractorBackground.__doc__.format(**_bkgdoc)
-
-
 class BiweightLocationBackground(BackgroundBase):
     """
     Class to calculate the background in an array using the biweight
@@ -265,7 +333,22 @@ class BiweightLocationBackground(BackgroundBase):
     M : float, optional
         Initial guess for the biweight location.  Default value is
         `None`.
-    {sigclip_params}
+    sigma : float, optional
+        The number of standard deviations to use for both the lower and
+        upper clipping limit. These limits are overridden by
+        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
+    sigma_lower : float or `None`, optional
+        The number of standard deviations to use as the lower bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    sigma_upper : float or `None`, optional
+        The number of standard deviations to use as the upper bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    iters : int or `None`, optional
+        The number of iterations to perform sigma clipping, or `None` to
+        clip until convergence is achieved (i.e., continue until the
+        last iteration clips nothing). Defaults to 5.
     """
 
     def __init__(self, c=6, M=None, **kwargs):
@@ -281,10 +364,6 @@ class BiweightLocationBackground(BackgroundBase):
         return biweight_location(data, c=self.c, M=self.M)
 
 
-BiweightLocationBackground.__doc__ = (
-    BiweightLocationBackground.__doc__.format(**_bkgdoc))
-
-
 class StdBackgroundRMS(BackgroundRMSBase):
     """
     Class to calculate the background rms in an array as the
@@ -292,7 +371,22 @@ class StdBackgroundRMS(BackgroundRMSBase):
 
     Parameters
     ----------
-    {sigclip_params}
+    sigma : float, optional
+        The number of standard deviations to use for both the lower and
+        upper clipping limit. These limits are overridden by
+        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
+    sigma_lower : float or `None`, optional
+        The number of standard deviations to use as the lower bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    sigma_upper : float or `None`, optional
+        The number of standard deviations to use as the upper bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    iters : int or `None`, optional
+        The number of iterations to perform sigma clipping, or `None` to
+        clip until convergence is achieved (i.e., continue until the
+        last iteration clips nothing). Defaults to 5.
     """
 
     def __init__(self, **kwargs):
@@ -304,9 +398,6 @@ class StdBackgroundRMS(BackgroundRMSBase):
         if self.sigclip:
             data = self.sigma_clip(data)
         return np.ma.std(data)
-
-
-StdBackgroundRMS.__doc__ = StdBackgroundRMS.__doc__.format(**_bkgdoc)
 
 
 class MADStdBackgroundRMS(BackgroundRMSBase):
@@ -327,7 +418,22 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
 
     Parameters
     ----------
-    {sigclip_params}
+    sigma : float, optional
+        The number of standard deviations to use for both the lower and
+        upper clipping limit. These limits are overridden by
+        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
+    sigma_lower : float or `None`, optional
+        The number of standard deviations to use as the lower bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    sigma_upper : float or `None`, optional
+        The number of standard deviations to use as the upper bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    iters : int or `None`, optional
+        The number of iterations to perform sigma clipping, or `None` to
+        clip until convergence is achieved (i.e., continue until the
+        last iteration clips nothing). Defaults to 5.
     """
 
     def __init__(self, **kwargs):
@@ -339,9 +445,6 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
         if self.sigclip:
             data = self.sigma_clip(data)
         return mad_std(data)
-
-
-MADStdBackgroundRMS.__doc__ = MADStdBackgroundRMS.__doc__.format(**_bkgdoc)
 
 
 class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase):
@@ -357,7 +460,22 @@ class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase):
     M : float, optional
         Initial guess for the biweight location.  Default value is
         `None`.
-    {sigclip_params}
+    sigma : float, optional
+        The number of standard deviations to use for both the lower and
+        upper clipping limit. These limits are overridden by
+        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
+    sigma_lower : float or `None`, optional
+        The number of standard deviations to use as the lower bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    sigma_upper : float or `None`, optional
+        The number of standard deviations to use as the upper bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    iters : int or `None`, optional
+        The number of iterations to perform sigma clipping, or `None` to
+        clip until convergence is achieved (i.e., continue until the
+        last iteration clips nothing). Defaults to 5.
     """
 
     def __init__(self, c=9.0, M=None, **kwargs):
@@ -371,7 +489,3 @@ class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase):
         if self.sigclip:
             data = self.sigma_clip(data)
         return biweight_midvariance(data, c=self.c, M=self.M)
-
-
-BiweightMidvarianceBackgroundRMS.__doc__ = (
-    BiweightMidvarianceBackgroundRMS.__doc__.format(**_bkgdoc))
