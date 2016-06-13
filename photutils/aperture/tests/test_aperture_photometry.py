@@ -13,7 +13,7 @@ from astropy.io import fits
 from astropy.nddata import NDData
 from astropy.tests.helper import pytest, remote_data
 
-from ..aperture_core import *
+from ..core import *
 
 try:
     import matplotlib
@@ -351,7 +351,7 @@ class TestInputNDData(BaseTestDifferentData):
 def test_wcs_based_photometry_to_catalogue():
     from astropy.coordinates import SkyCoord
     from astropy.table import Table
-    from ..datasets import get_path
+    from ...datasets import get_path
 
     pathcat = get_path('spitzer_example_catalog.xml', location='remote')
     pathhdu = get_path('spitzer_example_image.fits', location='remote')
@@ -389,7 +389,7 @@ def test_wcs_based_photometry_to_catalogue():
 def test_wcs_based_photometry():
     from astropy.wcs import WCS
     from astropy.wcs.utils import pixel_to_skycoord
-    from ..datasets import make_4gaussians_image
+    from ...datasets import make_4gaussians_image
 
     hdu = make_4gaussians_image(hdu=True, wcs=True)
     wcs = WCS(header=hdu.header)

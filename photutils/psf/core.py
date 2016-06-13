@@ -9,7 +9,7 @@ import copy
 import numpy as np
 
 from ..utils import mask_to_mirrored_num
-from ..aperture_core import _prepare_photometry_input
+from ..aperture.core import _prepare_photometry_input
 
 from astropy.table import Table, Column
 from astropy.modeling import models, Parameter, Fittable2DModel

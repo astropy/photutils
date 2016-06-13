@@ -91,7 +91,7 @@ def _get_fractional_overlap_mask(indiv_absolute_extent, indiv_centered_extent,
     data and the aperture.
     """
 
-    from .geometry import circular_overlap_grid
+    from ..geometry import circular_overlap_grid
 
     x_min, x_max, y_min, y_max = indiv_absolute_extent
     x_pmin, x_pmax, y_pmin, y_pmax = indiv_centered_extent
