@@ -9,7 +9,9 @@ the tools in the PSF subpackage.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import abc
+import six
 import numpy as np
+from astropy.utils.misc import InheritDocstrings
 from astropy.stats import (sigma_clip, mad_std, biweight_location,
                            biweight_midvariance)
 
@@ -39,9 +41,14 @@ _bkgdoc['sigclip_params'] = """sigma : float, optional
 """
 
 
-class BackgroundBase(object):
+class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
+    pass
+
+
+@six.add_metaclass(_ABCMetaAndInheritDocstrings)
+class BkgBase(object):
     """
-    Base class for Background classes.
+    Base class for Background and Background RMS classes.
 
     Parameters
     ----------
@@ -63,24 +70,63 @@ class BackgroundBase(object):
                           sigma_upper=self.sigma_upper,
                           iters=self.iters)
 
+
+class BackgroundBase(BkgBase):
+    """
+    Base class for classes that estimate scalar background values.
+
+    Parameters
+    ----------
+    {sigclip_params}
+    """
+
     @abc.abstractmethod
     def calc_background(self, data):
         """
-        Calculate the background.
+        Calculate the background value.
 
         Parameters
         ----------
         data : array_like or `~numpy.ma.MaskedArray`
-            The array for which to calculate the background.
+            The array for which to calculate the background value.
 
         Returns
         -------
         result : float
-            The calculated background.
+            The calculated background value.
         """
 
 
 BackgroundBase.__doc__ = BackgroundBase.__doc__.format(**_bkgdoc)
+
+
+class BackgroundRMSBase(BkgBase):
+    """
+    Base class for classes that estimate scalar background rms values.
+
+    Parameters
+    ----------
+    {sigclip_params}
+    """
+
+    @abc.abstractmethod
+    def calc_background_rms(self, data):
+        """
+        Calculate the background rms value.
+
+        Parameters
+        ----------
+        data : array_like or `~numpy.ma.MaskedArray`
+            The array for which to calculate the background rms value.
+
+        Returns
+        -------
+        result : float
+            The calculated background rms value.
+        """
+
+
+BackgroundRMSBase.__doc__ = BackgroundRMSBase.__doc__.format(**_bkgdoc)
 
 
 class MeanBackground(BackgroundBase):
@@ -239,7 +285,7 @@ BiweightLocationBackground.__doc__ = (
     BiweightLocationBackground.__doc__.format(**_bkgdoc))
 
 
-class StdBackgroundRMS(BackgroundBase):
+class StdBackgroundRMS(BackgroundRMSBase):
     """
     Class to calculate the background rms in an array as the
     (sigma-clipped) standard deviation.
@@ -263,7 +309,7 @@ class StdBackgroundRMS(BackgroundBase):
 StdBackgroundRMS.__doc__ = StdBackgroundRMS.__doc__.format(**_bkgdoc)
 
 
-class MADStdBackgroundRMS(BackgroundBase):
+class MADStdBackgroundRMS(BackgroundRMSBase):
     """
     Class to calculate the background rms in an array as using the
     `median absolute deviation (MAD)
@@ -298,7 +344,7 @@ class MADStdBackgroundRMS(BackgroundBase):
 MADStdBackgroundRMS.__doc__ = MADStdBackgroundRMS.__doc__.format(**_bkgdoc)
 
 
-class BiweightMidvarianceBackgroundRMS(BackgroundBase):
+class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase):
     """
     Class to calculate the background rms in an array as the
     (sigma-clipped) biweight midvariance.
