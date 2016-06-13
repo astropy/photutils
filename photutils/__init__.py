@@ -10,10 +10,8 @@ from ._astropy_init import *
 # ----------------------------------------------------------------------------
 
 if not _ASTROPY_SETUP_:
-    from .aperture_core import *
-    from .aperture_funcs import *
+    from .aperture import *
     from .background import *
     from .detection import *
-    from .segmentation import *
     from .psf import *
-    from .mask_data import *
+    from .segmentation import *
