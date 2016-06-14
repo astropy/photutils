@@ -14,6 +14,7 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
+
 def normalize_moffat(mof):
     # this is the analytic value needed to get a total flux of 1
     mof = mof.copy()
@@ -37,6 +38,7 @@ def test_create_eval_prfadapter(adapterkwargs):
     prf.flux = 1.2
 
     prf(0, 0)  # just make sure it runs at all
+
 
 @pytest.mark.parametrize("adapterkwargs", [
     dict(xname='x_0', yname='y_0', fluxname=None, renormalize_psf=True),
@@ -75,7 +77,8 @@ def test_prfadapter_sizematch(adapterkwargs):
     mof1 = normalize_moffat(Moffat2D(gamma=1, alpha=4.8))
     prf1 = PRFAdapter(mof1, **adapterkwargs)
 
-    # now try integrating over differently-sampled PRFs and check that they match
+    # now try integrating over differently-sampled PRFs
+    # and check that they match
     mof2 = normalize_moffat(Moffat2D(gamma=2, alpha=4.8))
     prf2 = PRFAdapter(mof2, **adapterkwargs)
 
@@ -86,6 +89,6 @@ def test_prfadapter_sizematch(adapterkwargs):
     eval22 = prf2(xg2, yg2)
 
     integrand, itol = dblquad(mof1, -2, 2, lambda x: -2, lambda x: 2)
-    # it's a bit of a guess that the above itol is appropriate, but it should be
-    # a similar ballpark
+    # it's a bit of a guess that the above itol is appropriate, but it should
+    # be a similar ballpark
     assert_allclose(np.sum(eval11), np.sum(eval22), atol=itol*100)

@@ -10,7 +10,7 @@ from astropy.convolution.utils import discretize_model
 from astropy.table import Table
 
 from ..core import (DiscretePRF, psf_photometry,
-                   IntegratedGaussianPRF, subtract_psf)
+                    IntegratedGaussianPRF, subtract_psf)
 
 try:
     from scipy import optimize
@@ -63,7 +63,8 @@ def test_create_prf_mean():
     Check if create_prf works correctly on simulated data.
     Position input format: list
     """
-    prf = DiscretePRF.create_from_image(image, list(INTAB['x_0', 'y_0'].as_array()),
+    prf = DiscretePRF.create_from_image(image,
+                                        list(INTAB['x_0', 'y_0'].as_array()),
                                         PSF_SIZE, subsampling=1, mode='mean')
     assert_allclose(prf._prf_array[0, 0], test_psf, atol=1E-8)
 
