@@ -24,7 +24,7 @@ addons:
 env:
     global:
         # The following versions are the 'default' for tests, unless
-        # overidden underneath. They are defined here in order to save having
+        # overridden underneath. They are defined here in order to save having
         # to repeat them for all configurations.
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
@@ -39,7 +39,6 @@ env:
         - SETUP_CMD='test'
 
 matrix:
-
     include:
 
         # Do a coverage test in Python 2.
@@ -110,7 +109,7 @@ install:
     # We now use the ci-helpers package to set up our testing environment.
     # This is done by using Miniconda and then using conda and pip to install
     # dependencies. Which dependencies are installed using conda and pip is
-    # determined by the CONDA_DEPDENDENCIES and PIP_DEPENDENCIES variables,
+    # determined by the CONDA_DEPENDENCIES and PIP_DEPENDENCIES variables,
     # which should be space-delimited lists of package names. See the README
     # in https://github.com/astropy/ci-helpers for information about the full
     # list of environment variables that can be used to customize your
