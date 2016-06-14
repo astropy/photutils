@@ -281,7 +281,7 @@ class MMMBackground(BackgroundBase):
 class SExtractorBackground(BackgroundBase):
     """
     Class to calculate the background in an array using the
-    `SExtractor`_ algorithm.
+    SExtractor algorithm.
 
     The background is calculated using a mode estimator of the form
     ``(2.5 * median) - (1.5 * mean)``.

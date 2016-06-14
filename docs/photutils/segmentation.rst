@@ -352,4 +352,4 @@ Reference/API
     :no-heading:
 
 
-.. _Sextractor:  http://www.astromatic.net/software/sextractor
+.. _SExtractor:  http://www.astromatic.net/software/sextractor
