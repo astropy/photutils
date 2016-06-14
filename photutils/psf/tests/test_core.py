@@ -36,6 +36,7 @@ def test_gaussian_psf_integral(sigma):
     y, x = np.mgrid[-100:101, -100:101]
     assert_allclose(psf(y, x).sum(), 1)
 
+
 @pytest.fixture(scope="module")
 def moffimg():
     """
@@ -50,7 +51,8 @@ def moffimg():
     mof.amplitude = (mof.alpha-1)/(np.pi*mof.gamma**2)
 
     # first make sure it really is normalized
-    assert (1 - integrate.dblquad(mof, -10, 10, lambda x: -10, lambda x: 10)[0]) < 1e-6
+    assert (1 - integrate.dblquad(mof, -10, 10,
+                                  lambda x: -10, lambda x: 10)[0]) < 1e-6
 
     # now create an "image" of the PSF
     xg, yg = np.meshgrid(*([np.linspace(-2, 2, 100)]*2))
@@ -69,7 +71,8 @@ def test_moffat_fitting(moffimg):
     mof, (xg, yg, img) = moffimg
 
     # a closeish-but-wrong "guessed Moffat"
-    guess_moffat = Moffat2D(x_0=.1, y_0=-.05, gamma=1.05, amplitude=mof.amplitude*1.06, alpha=4.75)
+    guess_moffat = Moffat2D(x_0=.1, y_0=-.05, gamma=1.05,
+                            amplitude=mof.amplitude*1.06, alpha=4.75)
 
     f = LevMarLSQFitter()
 
@@ -77,13 +80,17 @@ def test_moffat_fitting(moffimg):
     assert_allclose(fit_mof.parameters, mof.parameters, rtol=.01, atol=.0005)
 
 
-# we set the tolerances in flux to be 2-3% because the shape paraameters of the
-# guessed version are known to be wrong.
+# we set the tolerances in flux to be 2-3% because the shape paraameters of
+# the guessed version are known to be wrong.
 @pytest.mark.parametrize("prepkwargs,tols", [
-                         (dict(xname='x_0', yname='y_0', fluxname=None, renormalize_psf=True), (1e-3, .02)),
-                         (dict(xname=None, yname=None, fluxname=None, renormalize_psf=True), (1e-3, .02)),
-                         (dict(xname=None, yname=None, fluxname=None, renormalize_psf=False), (1e-3, .03)),
-                         (dict(xname='x_0', yname='y_0', fluxname='amplitude', renormalize_psf=False), (1e-3, None)),
+                         (dict(xname='x_0', yname='y_0', fluxname=None,
+                               renormalize_psf=True), (1e-3, .02)),
+                         (dict(xname=None, yname=None, fluxname=None,
+                               renormalize_psf=True), (1e-3, .02)),
+                         (dict(xname=None, yname=None, fluxname=None,
+                               renormalize_psf=False), (1e-3, .03)),
+                         (dict(xname='x_0', yname='y_0', fluxname='amplitude',
+                               renormalize_psf=False), (1e-3, None)),
                          ])
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_psf_adapter(moffimg, prepkwargs, tols):
@@ -98,9 +105,12 @@ def test_psf_adapter(moffimg, prepkwargs, tols):
     f = LevMarLSQFitter()
 
     # a close-but-wrong "guessed Moffat"
-    guess_moffat = Moffat2D(x_0=.1, y_0=-.05, gamma=1.01, amplitude=mof.amplitude*1.01, alpha=4.79)
+    guess_moffat = Moffat2D(x_0=.1, y_0=-.05, gamma=1.01,
+                            amplitude=mof.amplitude*1.01, alpha=4.79)
     if prepkwargs['renormalize_psf']:
-        guess_moffat.amplitude = 5.  # definitely very wrong, so this ensures the re-normalization stuff works
+        # definitely very wrong, so this ensures the re-normalization
+        # stuff works
+        guess_moffat.amplitude = 5.
 
     if prepkwargs['xname'] is None:
         guess_moffat.x_0 = 0
