@@ -134,7 +134,7 @@ def do_circular_photometry(data, positions, radius, error, pixelwise_error,
         use_exact = 1
         subpixels = 1
 
-    from .geometry import circular_overlap_grid
+    from ..geometry import circular_overlap_grid
 
     for i in range(len(flux)):
 
@@ -204,7 +204,7 @@ def get_circular_fractions(data, positions, radius, method, subpixels,
         use_exact = 1
         subpixels = 1
 
-    from .geometry import circular_overlap_grid
+    from ..geometry import circular_overlap_grid
 
     for i in range(len(positions)):
 
@@ -272,7 +272,7 @@ def do_elliptical_photometry(data, positions, a, b, theta, error,
         use_exact = 1
         subpixels = 1
 
-    from .geometry import elliptical_overlap_grid
+    from ..geometry import elliptical_overlap_grid
 
     for i in range(len(flux)):
 
@@ -348,7 +348,7 @@ def get_elliptical_fractions(data, positions, a, b, theta,
         use_exact = 1
         subpixels = 1
 
-    from .geometry import elliptical_overlap_grid
+    from ..geometry import elliptical_overlap_grid
 
     for i in range(len(positions)):
 
@@ -416,7 +416,7 @@ def do_rectangular_photometry(data, positions, w, h, theta, error,
             method = 'subpixel'
             subpixels = 1
 
-        from .geometry import rectangular_overlap_grid
+        from ..geometry import rectangular_overlap_grid
 
         for i in range(len(flux)):
             if not np.isnan(flux[i]):
@@ -484,7 +484,7 @@ def get_rectangular_fractions(data, positions, w, h, theta, method,
             method = 'subpixel'
             subpixels = 1
 
-        from .geometry import rectangular_overlap_grid
+        from ..geometry import rectangular_overlap_grid
 
         for i in range(len(positions)):
 

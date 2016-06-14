@@ -481,5 +481,5 @@ See Also
 Reference/API
 -------------
 
-.. automodapi:: photutils.aperture_core
+.. automodapi:: photutils.aperture
     :no-heading:

@@ -3,7 +3,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
-from ..aperture_core import *
+from ..core import *
 from ..mask_data import *
 
 apertures = {'edge': CircularAperture([(0, 0)], r=2.0),

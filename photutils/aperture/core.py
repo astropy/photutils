@@ -21,8 +21,8 @@ from astropy.nddata import support_nddata
 from .aperture_funcs import (do_circular_photometry, get_circular_fractions,
                              do_elliptical_photometry, get_elliptical_fractions,
                              do_rectangular_photometry, get_rectangular_fractions)
-from .utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
-                                assert_angle_or_pixel)
+from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
+                                 assert_angle_or_pixel)
 
 
 skycoord_to_pixel_mode = 'all'
