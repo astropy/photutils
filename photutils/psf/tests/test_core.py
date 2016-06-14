@@ -108,9 +108,9 @@ def test_psf_adapter(moffimg, prepkwargs, tols):
     guess_moffat = Moffat2D(x_0=.1, y_0=-.05, gamma=1.01,
                             amplitude=mof.amplitude*1.01, alpha=4.79)
     if prepkwargs['renormalize_psf']:
-        guess_moffat.amplitude = 5.
         # definitely very wrong, so this ensures the re-normalization
         # stuff works
+        guess_moffat.amplitude = 5.
 
     if prepkwargs['xname'] is None:
         guess_moffat.x_0 = 0
