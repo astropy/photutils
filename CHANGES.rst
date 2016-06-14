@@ -11,14 +11,6 @@ General
 New Features
 ^^^^^^^^^^^^
 
-- ``photutils.segmentation``
-
-  - Added ``copy`` and ``area`` methods and a ``areas`` property to
-    ``SegmentationImage``. [#331]
-
-  - SegmentationImage properties are now cached to significantly
-    improve performance. [#361]
-
 - ``photutils.background``
 
   - Added new ``BackgroundBase`` and ``BackgroundIDW`` classes and
@@ -32,6 +24,15 @@ New Features
 - ``photutils.detection``
 
   - Added new ``make_source_mask`` convenience function. [#355]
+
+- ``photutils.segmentation``
+
+  - Added ``copy`` and ``area`` methods and a ``areas`` property to
+    ``SegmentationImage``. [#331]
+
+  - SegmentationImage properties are now cached to significantly
+    improve performance. [#361]
+
 
 API changes
 ^^^^^^^^^^^
@@ -96,11 +97,6 @@ Bug Fixes
 Bug Fixes
 ^^^^^^^^^
 
-- ``photutils.segmentation``
-
-  - Fixed issue where ``SegmentationImage`` slices were not being updated.
-    [#317]
-
 - ``photutils.background``
 
   - Added more robust version checking of Astropy. [#318]
@@ -110,6 +106,9 @@ Bug Fixes
   - Added more robust version checking of Astropy. [#318]
 
 - ``photutils.segmentation``
+
+  - Fixed issue where ``SegmentationImage`` slices were not being updated.
+    [#317]
 
   - Added more robust version checking of scikit-image. [#318]
 
