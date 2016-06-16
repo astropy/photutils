@@ -196,6 +196,26 @@ class MeanBackground(BackgroundBase):
         The number of iterations to perform sigma clipping, or `None` to
         clip until convergence is achieved (i.e., continue until the
         last iteration clips nothing). Defaults to 5.
+
+    Examples
+    --------
+    >>> from photutils import MeanBackground
+    >>> data = np.arange(100)
+    >>> bkg = MeanBackground(sigma=3.)
+
+    The background value can be calculated by using the
+    ``.calc_background()`` method, e.g.:
+
+    >>> bkg_value = bkg.calc_background(data)
+    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    49.5
+
+    Alternatively, the background value can be calculated by calling the
+    class instance as a function, e.g.:
+
+    >>> bkg_value = bkg(data)
+    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    49.5
     """
 
     def __init__(self, **kwargs):
@@ -232,6 +252,26 @@ class MedianBackground(BackgroundBase):
         The number of iterations to perform sigma clipping, or `None` to
         clip until convergence is achieved (i.e., continue until the
         last iteration clips nothing). Defaults to 5.
+
+    Examples
+    --------
+    >>> from photutils import MedianBackground
+    >>> data = np.arange(100)
+    >>> bkg = MedianBackground(sigma=3.)
+
+    The background value can be calculated by using the
+    ``.calc_background()`` method, e.g.:
+
+    >>> bkg_value = bkg.calc_background(data)
+    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    49.5
+
+    Alternatively, the background value can be calculated by calling the
+    class instance as a function, e.g.:
+
+    >>> bkg_value = bkg(data)
+    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    49.5
     """
 
     def __init__(self, **kwargs):
@@ -271,6 +311,26 @@ class MMMBackground(BackgroundBase):
         The number of iterations to perform sigma clipping, or `None` to
         clip until convergence is achieved (i.e., continue until the
         last iteration clips nothing). Defaults to 5.
+
+    Examples
+    --------
+    >>> from photutils import MMMBackground
+    >>> data = np.arange(100)
+    >>> bkg = MMMBackground(sigma=3.)
+
+    The background value can be calculated by using the
+    ``.calc_background()`` method, e.g.:
+
+    >>> bkg_value = bkg.calc_background(data)
+    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    49.5
+
+    Alternatively, the background value can be calculated by calling the
+    class instance as a function, e.g.:
+
+    >>> bkg_value = bkg(data)
+    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    49.5
     """
 
     def __init__(self, **kwargs):
@@ -316,6 +376,26 @@ class SExtractorBackground(BackgroundBase):
         The number of iterations to perform sigma clipping, or `None` to
         clip until convergence is achieved (i.e., continue until the
         last iteration clips nothing). Defaults to 5.
+
+    Examples
+    --------
+    >>> from photutils import SExtractorBackground
+    >>> data = np.arange(100)
+    >>> bkg = SExtractorBackground(sigma=3.)
+
+    The background value can be calculated by using the
+    ``.calc_background()`` method, e.g.:
+
+    >>> bkg_value = bkg.calc_background(data)
+    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    49.5
+
+    Alternatively, the background value can be calculated by calling the
+    class instance as a function, e.g.:
+
+    >>> bkg_value = bkg(data)
+    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    49.5
     """
 
     def __init__(self, **kwargs):
@@ -373,6 +453,26 @@ class BiweightLocationBackground(BackgroundBase):
         The number of iterations to perform sigma clipping, or `None` to
         clip until convergence is achieved (i.e., continue until the
         last iteration clips nothing). Defaults to 5.
+
+    Examples
+    --------
+    >>> from photutils import BiweightLocationBackground
+    >>> data = np.arange(100)
+    >>> bkg = BiweightLocationBackground(sigma=3.)
+
+    The background value can be calculated by using the
+    ``.calc_background()`` method, e.g.:
+
+    >>> bkg_value = bkg.calc_background(data)
+    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    49.5
+
+    Alternatively, the background value can be calculated by calling the
+    class instance as a function, e.g.:
+
+    >>> bkg_value = bkg(data)
+    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    49.5
     """
 
     def __init__(self, c=6, M=None, **kwargs):
@@ -411,6 +511,26 @@ class StdBackgroundRMS(BackgroundRMSBase):
         The number of iterations to perform sigma clipping, or `None` to
         clip until convergence is achieved (i.e., continue until the
         last iteration clips nothing). Defaults to 5.
+
+    Examples
+    --------
+    >>> from photutils import StdBackgroundRMS
+    >>> data = np.arange(100)
+    >>> bkgrms = StdBackgroundRMS(sigma=3.)
+
+    The background rms value can be calculated by using the
+    ``.calc_background_rms()`` method, e.g.:
+
+    >>> bkgrms_value = bkgrms.calc_background_rms(data)
+    >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
+    28.866070047722118
+
+    Alternatively, the background rms value can be calculated by calling
+    the class instance as a function, e.g.:
+
+    >>> bkgrms_value = bkgrms(data)
+    >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
+    28.866070047722118
     """
 
     def __init__(self, **kwargs):
@@ -458,6 +578,26 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
         The number of iterations to perform sigma clipping, or `None` to
         clip until convergence is achieved (i.e., continue until the
         last iteration clips nothing). Defaults to 5.
+
+    Examples
+    --------
+    >>> from photutils import MADStdBackgroundRMS
+    >>> data = np.arange(100)
+    >>> bkgrms = MADStdBackgroundRMS(sigma=3.)
+
+    The background rms value can be calculated by using the
+    ``.calc_background_rms()`` method, e.g.:
+
+    >>> bkgrms_value = bkgrms.calc_background_rms(data)
+    >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
+    37.065055462640053
+
+    Alternatively, the background rms value can be calculated by calling
+    the class instance as a function, e.g.:
+
+    >>> bkgrms_value = bkgrms(data)
+    >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
+    37.065055462640053
     """
 
     def __init__(self, **kwargs):
@@ -500,6 +640,26 @@ class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase):
         The number of iterations to perform sigma clipping, or `None` to
         clip until convergence is achieved (i.e., continue until the
         last iteration clips nothing). Defaults to 5.
+
+    Examples
+    --------
+    >>> from photutils import BiweightMidvarianceBackgroundRMS
+    >>> data = np.arange(100)
+    >>> bkgrms = BiweightMidvarianceBackgroundRMS(sigma=3.)
+
+    The background rms value can be calculated by using the
+    ``.calc_background_rms()`` method, e.g.:
+
+    >>> bkgrms_value = bkgrms.calc_background_rms(data)
+    >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
+    30.094338485893392
+
+    Alternatively, the background rms value can be calculated by calling
+    the class instance as a function, e.g.:
+
+    >>> bkgrms_value = bkgrms(data)
+    >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
+    30.094338485893392
     """
 
     def __init__(self, c=9.0, M=None, **kwargs):
