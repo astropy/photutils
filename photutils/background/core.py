@@ -109,6 +109,9 @@ class BackgroundBase(BkgBase):
         last iteration clips nothing). Defaults to 5.
     """
 
+    def __call__(self, data):
+        return self.calc_background(data)
+
     @abc.abstractmethod
     def calc_background(self, data):
         """
@@ -149,6 +152,9 @@ class BackgroundRMSBase(BkgBase):
         clip until convergence is achieved (i.e., continue until the
         last iteration clips nothing). Defaults to 5.
     """
+
+    def __call__(self, data):
+        return self.calc_background_rms(data)
 
     @abc.abstractmethod
     def calc_background_rms(self, data):

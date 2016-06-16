@@ -27,6 +27,7 @@ RMS_CLASS = [StdBackgroundRMS, MADStdBackgroundRMS,
 def test_background(bkg_class):
     bkg = bkg_class(sigma=3.0)
     assert_allclose(bkg.calc_background(DATA), BKG, atol=1.e-2)
+    assert_allclose(bkg(DATA), bkg.calc_background(DATA))
 
 
 def test_sextrator_background_zero_std():
@@ -46,3 +47,4 @@ def test_sextrator_background_skew():
 def test_background_rms(rms_class):
     bkgrms = rms_class(sigma=3.0)
     assert_allclose(bkgrms.calc_background_rms(DATA), STD, atol=1.e-2)
+    assert_allclose(bkgrms(DATA), bkgrms.calc_background_rms(DATA))
