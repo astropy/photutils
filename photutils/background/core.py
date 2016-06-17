@@ -184,10 +184,6 @@ class MeanBackground(BackgroundBase, SigmaClip):
     49.5
     """
 
-    def __init__(self, **kwargs):
-
-        super(MeanBackground, self).__init__(**kwargs)
-
     def calc_background(self, data):
         return np.ma.mean(self.sigma_clip(data))
 
@@ -236,10 +232,6 @@ class MedianBackground(BackgroundBase, SigmaClip):
     >>> print(bkg_value)    # doctest: +FLOAT_CMP
     49.5
     """
-
-    def __init__(self, **kwargs):
-
-        super(MedianBackground, self).__init__(**kwargs)
 
     def calc_background(self, data):
 
@@ -293,10 +285,6 @@ class MMMBackground(BackgroundBase, SigmaClip):
     >>> print(bkg_value)    # doctest: +FLOAT_CMP
     49.5
     """
-
-    def __init__(self, **kwargs):
-
-        super(MMMBackground, self).__init__(**kwargs)
 
     def calc_background(self, data):
 
@@ -357,10 +345,6 @@ class SExtractorBackground(BackgroundBase, SigmaClip):
     >>> print(bkg_value)    # doctest: +FLOAT_CMP
     49.5
     """
-
-    def __init__(self, **kwargs):
-
-        super(SExtractorBackground, self).__init__(**kwargs)
 
     def calc_background(self, data):
 
@@ -490,10 +474,6 @@ class StdBackgroundRMS(BackgroundRMSBase, SigmaClip):
     28.866070047722118
     """
 
-    def __init__(self, **kwargs):
-
-        super(StdBackgroundRMS, self).__init__(**kwargs)
-
     def calc_background_rms(self, data):
 
         return np.ma.std(self.sigma_clip(data))
@@ -554,10 +534,6 @@ class MADStdBackgroundRMS(BackgroundRMSBase, SigmaClip):
     >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
     37.065055462640053
     """
-
-    def __init__(self, **kwargs):
-
-        super(MADStdBackgroundRMS, self).__init__(**kwargs)
 
     def calc_background_rms(self, data):
 
