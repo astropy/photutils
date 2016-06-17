@@ -26,10 +26,10 @@ else:
 
 
 __all__ = ['SigmaClip', 'BackgroundBase', 'BackgroundRMSBase',
-           'MeanBackground', 'MedianBackground', 'MMMBackground',
-           'SExtractorBackground', 'BiweightLocationBackground',
-           'StdBackgroundRMS', 'MADStdBackgroundRMS',
-           'BiweightMidvarianceBackgroundRMS']
+           'MeanBackground', 'MedianBackground', 'ModeEstimatorBackground',
+           'MMMBackground', 'SExtractorBackground',
+           'BiweightLocationBackground', 'StdBackgroundRMS',
+           'MADStdBackgroundRMS', 'BiweightMidvarianceBackgroundRMS']
 
 
 class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
@@ -238,7 +238,70 @@ class MedianBackground(BackgroundBase, SigmaClip):
         return np.ma.median(self.sigma_clip(data))
 
 
-class MMMBackground(BackgroundBase, SigmaClip):
+class ModeEstimatorBackground(BackgroundBase, SigmaClip):
+    """
+    Class to calculate the background in an array using a mode estimator
+    of the form ``(median_factor * median) - (mean_factor * mean)``.
+
+    Parameters
+    ----------
+    median_factor : float, optional
+        The multiplicative factor for the data median.  Defaults to 3.
+    mean_factor : float, optional
+        The multiplicative factor for the data mean.  Defaults to 2.
+    sigma : float, optional
+        The number of standard deviations to use for both the lower and
+        upper clipping limit. These limits are overridden by
+        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
+    sigma_lower : float or `None`, optional
+        The number of standard deviations to use as the lower bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    sigma_upper : float or `None`, optional
+        The number of standard deviations to use as the upper bound for
+        the clipping limit. If `None` then the value of ``sigma`` is
+        used. Defaults to `None`.
+    iters : int or `None`, optional
+        The number of iterations to perform sigma clipping, or `None` to
+        clip until convergence is achieved (i.e., continue until the
+        last iteration clips nothing). Defaults to 5.
+
+    Examples
+    --------
+    >>> from photutils import ModeEstimatorBackground
+    >>> data = np.arange(100)
+    >>> bkg = ModeEstimatorBackground(median_factor=3., mean_factor=2.,
+    ...                               sigma=3.)
+
+    The background value can be calculated by using the
+    ``.calc_background()`` method, e.g.:
+
+    >>> bkg_value = bkg.calc_background(data)
+    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    49.5
+
+    Alternatively, the background value can be calculated by calling the
+    class instance as a function, e.g.:
+
+    >>> bkg_value = bkg(data)
+    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    49.5
+    """
+
+    def __init__(self, median_factor=3., mean_factor=2., **kwargs):
+
+        super(ModeEstimatorBackground, self).__init__(**kwargs)
+        self.median_factor = median_factor
+        self.mean_factor = mean_factor
+
+    def calc_background(self, data):
+
+        data = self.sigma_clip(data)
+        return ((self.median_factor * np.ma.median(data)) -
+                (self.mean_factor * np.ma.mean(data)))
+
+
+class MMMBackground(ModeEstimatorBackground, SigmaClip):
     """
     Class to calculate the background in an array using the DAOPHOT MMM
     algorithm.
@@ -286,10 +349,10 @@ class MMMBackground(BackgroundBase, SigmaClip):
     49.5
     """
 
-    def calc_background(self, data):
-
-        data = self.sigma_clip(data)
-        return (3. * np.ma.median(data)) - (2. * np.ma.mean(data))
+    def __init__(self, **kwargs):
+        kwargs['median_factor'] = 3.
+        kwargs['mean_factor'] = 2.
+        super(MMMBackground, self).__init__(**kwargs)
 
 
 class SExtractorBackground(BackgroundBase, SigmaClip):

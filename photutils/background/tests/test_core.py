@@ -5,10 +5,10 @@ import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 from ...datasets.make import make_noise_image
-from ..core import (MeanBackground, MedianBackground, MMMBackground,
-                    SExtractorBackground, BiweightLocationBackground,
-                    StdBackgroundRMS, MADStdBackgroundRMS,
-                    BiweightMidvarianceBackgroundRMS)
+from ..core import (MeanBackground, MedianBackground, ModeEstimatorBackground,
+                    MMMBackground, SExtractorBackground,
+                    BiweightLocationBackground, StdBackgroundRMS,
+                    MADStdBackgroundRMS, BiweightMidvarianceBackgroundRMS)
 
 
 BKG = 0.0
@@ -16,8 +16,8 @@ STD = 0.5
 DATA = make_noise_image((100, 100), type='gaussian', mean=BKG, stddev=STD,
                         random_state=12345)
 
-BKG_CLASS = [MeanBackground, MedianBackground, MMMBackground,
-             SExtractorBackground, BiweightLocationBackground]
+BKG_CLASS = [MeanBackground, MedianBackground, ModeEstimatorBackground,
+             MMMBackground, SExtractorBackground, BiweightLocationBackground]
 
 RMS_CLASS = [StdBackgroundRMS, MADStdBackgroundRMS,
              BiweightMidvarianceBackgroundRMS]
