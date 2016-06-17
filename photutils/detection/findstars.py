@@ -7,6 +7,7 @@ from collections import defaultdict
 import warnings
 import math
 import numpy as np
+import abc
 from astropy.table import Column, Table
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.stats import gaussian_fwhm_to_sigma
@@ -15,6 +16,13 @@ from .core import _convolve_data, find_peaks
 
 __all__ = ['daofind', 'irafstarfind']
 
+
+class StarFinder(metaclass=abc.ABCMeta):
+
+    @abc.abstractmethod
+    __call__(self, data):
+        """Find potential stars in the given data."""
+        pass
 
 def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
             sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0, sky=0.0,
