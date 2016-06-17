@@ -71,6 +71,8 @@ class SigmaClip(object):
         self.iters = iters
 
     def sigma_clip(self, data):
+        if not self.sigclip:
+            return data
 
         if ASTROPY_LT_1P1:
             warnings.warn('sigma_lower and sigma_upper will be ignored '
@@ -187,10 +189,7 @@ class MeanBackground(BackgroundBase, SigmaClip):
         super(MeanBackground, self).__init__(**kwargs)
 
     def calc_background(self, data):
-
-        if self.sigclip:
-            data = self.sigma_clip(data)
-        return np.ma.mean(data)
+        return np.ma.mean(self.sigma_clip(data))
 
 
 class MedianBackground(BackgroundBase, SigmaClip):
@@ -244,9 +243,7 @@ class MedianBackground(BackgroundBase, SigmaClip):
 
     def calc_background(self, data):
 
-        if self.sigclip:
-            data = self.sigma_clip(data)
-        return np.ma.median(data)
+        return np.ma.median(self.sigma_clip(data))
 
 
 class MMMBackground(BackgroundBase, SigmaClip):
@@ -303,8 +300,7 @@ class MMMBackground(BackgroundBase, SigmaClip):
 
     def calc_background(self, data):
 
-        if self.sigclip:
-            data = self.sigma_clip(data)
+        data = self.sigma_clip(data)
         return (3. * np.ma.median(data)) - (2. * np.ma.mean(data))
 
 
@@ -368,8 +364,7 @@ class SExtractorBackground(BackgroundBase, SigmaClip):
 
     def calc_background(self, data):
 
-        if self.sigclip:
-            data = self.sigma_clip(data)
+        data = self.sigma_clip(data)
 
         # Use .item() to make the median a scalar for numpy 1.10.
         # Even when fixed in numpy, this needs to remain for
@@ -447,9 +442,7 @@ class BiweightLocationBackground(BackgroundBase, SigmaClip):
 
     def calc_background(self, data):
 
-        if self.sigclip:
-            data = self.sigma_clip(data)
-        return biweight_location(data, c=self.c, M=self.M)
+        return biweight_location(self.sigma_clip(data), c=self.c, M=self.M)
 
 
 class StdBackgroundRMS(BackgroundRMSBase, SigmaClip):
@@ -503,9 +496,7 @@ class StdBackgroundRMS(BackgroundRMSBase, SigmaClip):
 
     def calc_background_rms(self, data):
 
-        if self.sigclip:
-            data = self.sigma_clip(data)
-        return np.ma.std(data)
+        return np.ma.std(self.sigma_clip(data))
 
 
 class MADStdBackgroundRMS(BackgroundRMSBase, SigmaClip):
@@ -570,9 +561,7 @@ class MADStdBackgroundRMS(BackgroundRMSBase, SigmaClip):
 
     def calc_background_rms(self, data):
 
-        if self.sigclip:
-            data = self.sigma_clip(data)
-        return mad_std(data)
+        return mad_std(self.sigma_clip(data))
 
 
 class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase, SigmaClip):
@@ -634,6 +623,4 @@ class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase, SigmaClip):
 
     def calc_background_rms(self, data):
 
-        if self.sigclip:
-            data = self.sigma_clip(data)
-        return biweight_midvariance(data, c=self.c, M=self.M)
+        return biweight_midvariance(self.sigma_clip(data), c=self.c, M=self.M)
