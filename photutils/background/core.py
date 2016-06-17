@@ -25,7 +25,7 @@ else:
     ASTROPY_LT_1P1 = False
 
 
-__all__ = ['BkgBase', 'BackgroundBase', 'BackgroundRMSBase',
+__all__ = ['SigmaClip', 'BackgroundBase', 'BackgroundRMSBase',
            'MeanBackground', 'MedianBackground', 'MMMBackground',
            'SExtractorBackground', 'BiweightLocationBackground',
            'StdBackgroundRMS', 'MADStdBackgroundRMS',
@@ -36,10 +36,10 @@ class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
     pass
 
 
-@six.add_metaclass(_ABCMetaAndInheritDocstrings)
-class BkgBase(object):
+class SigmaClip(object):
     """
-    Base class for Background and Background RMS classes.
+    Mixin class to perform sigma clipping for Background and Background
+    RMS classes.
 
     Parameters
     ----------
@@ -85,28 +85,10 @@ class BkgBase(object):
                               iters=self.iters)
 
 
-class BackgroundBase(BkgBase):
+@six.add_metaclass(_ABCMetaAndInheritDocstrings)
+class BackgroundBase(object):
     """
     Base class for classes that estimate scalar background values.
-
-    Parameters
-    ----------
-    sigma : float, optional
-        The number of standard deviations to use for both the lower and
-        upper clipping limit. These limits are overridden by
-        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
-    sigma_lower : float or `None`, optional
-        The number of standard deviations to use as the lower bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    sigma_upper : float or `None`, optional
-        The number of standard deviations to use as the upper bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    iters : int or `None`, optional
-        The number of iterations to perform sigma clipping, or `None` to
-        clip until convergence is achieved (i.e., continue until the
-        last iteration clips nothing). Defaults to 5.
     """
 
     def __call__(self, data):
@@ -129,28 +111,10 @@ class BackgroundBase(BkgBase):
         """
 
 
-class BackgroundRMSBase(BkgBase):
+@six.add_metaclass(_ABCMetaAndInheritDocstrings)
+class BackgroundRMSBase(object):
     """
     Base class for classes that estimate scalar background rms values.
-
-    Parameters
-    ----------
-    sigma : float, optional
-        The number of standard deviations to use for both the lower and
-        upper clipping limit. These limits are overridden by
-        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
-    sigma_lower : float or `None`, optional
-        The number of standard deviations to use as the lower bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    sigma_upper : float or `None`, optional
-        The number of standard deviations to use as the upper bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    iters : int or `None`, optional
-        The number of iterations to perform sigma clipping, or `None` to
-        clip until convergence is achieved (i.e., continue until the
-        last iteration clips nothing). Defaults to 5.
     """
 
     def __call__(self, data):
@@ -173,7 +137,7 @@ class BackgroundRMSBase(BkgBase):
         """
 
 
-class MeanBackground(BackgroundBase):
+class MeanBackground(BackgroundBase, SigmaClip):
     """
     Class to calculate the background in an array as the (sigma-clipped)
     mean.
@@ -229,7 +193,7 @@ class MeanBackground(BackgroundBase):
         return np.ma.mean(data)
 
 
-class MedianBackground(BackgroundBase):
+class MedianBackground(BackgroundBase, SigmaClip):
     """
     Class to calculate the background in an array as the (sigma-clipped)
     median.
@@ -285,7 +249,7 @@ class MedianBackground(BackgroundBase):
         return np.ma.median(data)
 
 
-class MMMBackground(BackgroundBase):
+class MMMBackground(BackgroundBase, SigmaClip):
     """
     Class to calculate the background in an array using the DAOPHOT MMM
     algorithm.
@@ -344,7 +308,7 @@ class MMMBackground(BackgroundBase):
         return (3. * np.ma.median(data)) - (2. * np.ma.mean(data))
 
 
-class SExtractorBackground(BackgroundBase):
+class SExtractorBackground(BackgroundBase, SigmaClip):
     """
     Class to calculate the background in an array using the
     SExtractor algorithm.
@@ -424,7 +388,7 @@ class SExtractorBackground(BackgroundBase):
             return _median
 
 
-class BiweightLocationBackground(BackgroundBase):
+class BiweightLocationBackground(BackgroundBase, SigmaClip):
     """
     Class to calculate the background in an array using the biweight
     location.
@@ -488,7 +452,7 @@ class BiweightLocationBackground(BackgroundBase):
         return biweight_location(data, c=self.c, M=self.M)
 
 
-class StdBackgroundRMS(BackgroundRMSBase):
+class StdBackgroundRMS(BackgroundRMSBase, SigmaClip):
     """
     Class to calculate the background rms in an array as the
     (sigma-clipped) standard deviation.
@@ -544,7 +508,7 @@ class StdBackgroundRMS(BackgroundRMSBase):
         return np.ma.std(data)
 
 
-class MADStdBackgroundRMS(BackgroundRMSBase):
+class MADStdBackgroundRMS(BackgroundRMSBase, SigmaClip):
     """
     Class to calculate the background rms in an array as using the
     `median absolute deviation (MAD)
@@ -611,7 +575,7 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
         return mad_std(data)
 
 
-class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase):
+class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase, SigmaClip):
     """
     Class to calculate the background rms in an array as the
     (sigma-clipped) biweight midvariance.
