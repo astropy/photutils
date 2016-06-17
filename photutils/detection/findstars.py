@@ -18,15 +18,12 @@ __all__ = ['daofind', 'irafstarfind']
 
 
 class StarFinder(metaclass=abc.ABCMeta):
-
     @abc.abstractmethod
-    __call__(self, data):
+    def __call__(self, data):
         """Find potential stars in the given data."""
         pass
 
-def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
-            sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0, sky=0.0,
-            exclude_border=False):
+class DAOFind(StarFinder):
     """
     Detect stars in an image using the DAOFIND algorithm.
 
@@ -66,48 +63,37 @@ def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
     ----------
     data : array_like
         The 2D array of the image.
-
     threshold : float
         The absolute image value above which to select sources.
-
     fwhm : float
         The full-width half-maximum (FWHM) of the major axis of the
         Gaussian kernel in units of pixels.
-
     ratio : float, optional
         The ratio of the minor to major axis standard deviations of the
         Gaussian kernel.  ``ratio`` must be strictly positive and less
         than or equal to 1.0.  The default is 1.0 (i.e., a circular
         Gaussian kernel).
-
     theta : float, optional
         The position angle (in degrees) of the major axis of the
         Gaussian kernel measured counter-clockwise from the positive x
         axis.
-
     sigma_radius : float, optional
         The truncation radius of the Gaussian kernel in units of sigma
         (standard deviation) [``1 sigma = FWHM /
         (2.0*sqrt(2.0*log(2.0)))``].
-
     sharplo : float, optional
         The lower bound on sharpness for object detection.
-
     sharphi : float, optional
         The upper bound on sharpness for object detection.
-
     roundlo : float, optional
         The lower bound on roundess for object detection.
-
     roundhi : float, optional
         The upper bound on roundess for object detection.
-
     sky : float, optional
         The background sky level of the image.  Setting ``sky`` affects
         only the output values of the object ``peak``, ``flux``, and
         ``mag`` values.  The default is 0.0, which should be used to
         replicate the results from `DAOFIND`_.
-
     exclude_border : bool, optional
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders.  The default is
@@ -148,37 +134,56 @@ def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
     References
     ----------
 
-    .. [1] Stetson, P. 1987; PASP 99, 191 (http://adsabs.harvard.edu/abs/1987PASP...99..191S)
+    .. [1] Stetson, P. 1987; PASP 99, 191 (http://adsabs.harvard.edu/abs/
+           1987PASP...99..191S)
     .. [2] http://iraf.net/irafhelp.php?val=daofind&help=Help+Page
     .. [3] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
     """
 
-    daofind_kernel = _FindObjKernel(fwhm, ratio, theta, sigma_radius)
-    threshold *= daofind_kernel.relerr
-    objs = _findobjs(data, threshold, daofind_kernel,
-                     exclude_border=exclude_border)
-    tbl = _daofind_properties(objs, threshold, daofind_kernel, sky)
-    if len(objs) == 0:
-        warnings.warn('No sources were found.', AstropyUserWarning)
-        return tbl     # empty table
-    table_mask = ((tbl['sharpness'] > sharplo) &
-                  (tbl['sharpness'] < sharphi) &
-                  (tbl['roundness1'] > roundlo) &
-                  (tbl['roundness1'] < roundhi) &
-                  (tbl['roundness2'] > roundlo) &
-                  (tbl['roundness2'] < roundhi))
-    tbl = tbl[table_mask]
-    idcol = Column(name='id', data=np.arange(len(tbl)) + 1)
-    tbl.add_column(idcol, 0)
-    if len(tbl) == 0:
-        warnings.warn('Sources were found, but none pass the sharpness and '
-                      'roundness criteria.', AstropyUserWarning)
-    return tbl
+    def __init__(self, threshold, fwhm, ratio=1.0, theta=0.0,
+                 sigma_radius=1.5, sharplo=0.2, sharphi=1.0, roundlo=-1.0,
+                 roundhi=1.0, sky=0.0, exclude_border=False):
+        self.threshold = threshold
+        self.fwhm = fwhm
+        self.ratio = ratio
+        self.theta = theta
+        self.sigma_radius = sigma_radius
+        self.sharplo = sharplo
+        self.sharphi = sharphi
+        self.roundlo = roundlo
+        self.roundhi = roundhi
+        self.sky = sky
+        self.exclude_border = exclude_border
 
+    def __call__(self, data):
+        return self._daofind(self, data)
 
-def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
-                 sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2,
-                 sky=None, exclude_border=False):
+    def _daofind(self, data):
+        daofind_kernel = _FindObjKernel(self.fwhm, self.ratio, self.theta,
+                                        self.sigma_radius)
+        self.threshold *= daofind_kernel.relerr
+        objs = _findobjs(data, self.threshold, daofind_kernel,
+                         exclude_border=self.exclude_border)
+        tbl = _daofind_properties(objs, self.threshold, daofind_kernel,
+                                  self.sky)
+        if len(objs) == 0:
+            warnings.warn('No sources were found.', AstropyUserWarning)
+            return tbl     # empty table
+        table_mask = ((tbl['sharpness'] > self.sharplo) &
+                      (tbl['sharpness'] < self.sharphi) &
+                      (tbl['roundness1'] > self.roundlo) &
+                      (tbl['roundness1'] < self.roundhi) &
+                      (tbl['roundness2'] > self.roundlo) &
+                      (tbl['roundness2'] < self.roundhi))
+        tbl = tbl[table_mask]
+        idcol = Column(name='id', data=np.arange(len(tbl)) + 1)
+        tbl.add_column(idcol, 0)
+        if len(tbl) == 0:
+            warnings.warn('Sources were found, but none pass the sharpness'+
+                          ' and roundness criteria.', AstropyUserWarning)
+        return tbl
+
+class IRAFStarFind(StarFinder):
     """
     Detect stars in an image using IRAF's "starfind" algorithm.
 
@@ -194,42 +199,32 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
     ----------
     data : array_like
         The 2D array of the image.
-
     threshold : float
         The absolute image value above which to select sources.
-
     fwhm : float
         The full-width half-maximum (FWHM) of the 2D circular Gaussian
         kernel in units of pixels.
-
     minsep_fwhm : float, optional
         The minimum separation for detected objects in units of
         ``fwhm``.
-
     sigma_radius : float, optional
         The truncation radius of the Gaussian kernel in units of sigma
         (standard deviation) [``1 sigma = FWHM /
         2.0*sqrt(2.0*log(2.0))``].
-
     sharplo : float, optional
         The lower bound on sharpness for object detection.
-
     sharphi : float, optional
         The upper bound on sharpness for object detection.
-
     roundlo : float, optional
         The lower bound on roundess for object detection.
-
     roundhi : float, optional
         The upper bound on roundess for object detection.
-
     sky : float, optional
         The background sky level of the image.  Inputing a ``sky`` value
         will override the background sky estimate.  Setting ``sky``
         affects only the output values of the object ``peak``, ``flux``,
         and ``mag`` values.  The default is ``None``, which means the
         sky value will be estimated using the `starfind`_ method.
-
     exclude_border : bool, optional
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders.  The default is
@@ -293,27 +288,45 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
     .. [2] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
     """
 
-    starfind_kernel = _FindObjKernel(fwhm, ratio=1.0, theta=0.0,
-                                     sigma_radius=sigma_radius)
-    min_separation = max(2, int((fwhm * minsep_fwhm) + 0.5))
-    objs = _findobjs(data, threshold, starfind_kernel,
-                     min_separation=min_separation,
-                     exclude_border=exclude_border)
-    tbl = _irafstarfind_properties(objs, starfind_kernel, sky)
-    if len(objs) == 0:
-        warnings.warn('No sources were found.', AstropyUserWarning)
-        return tbl     # empty table
-    table_mask = ((tbl['sharpness'] > sharplo) &
-                  (tbl['sharpness'] < sharphi) &
-                  (tbl['roundness'] > roundlo) &
-                  (tbl['roundness'] < roundhi))
-    tbl = tbl[table_mask]
-    idcol = Column(name='id', data=np.arange(len(tbl)) + 1)
-    tbl.add_column(idcol, 0)
-    if len(tbl) == 0:
-        warnings.warn('Sources were found, but none pass the sharpness and '
-                      'roundness criteria.', AstropyUserWarning)
-    return tbl
+    def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5, 
+                 sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2, sky=None,
+                 exclude_border=False):
+        self.threshold = threshold
+        self.fwhm = fwhm
+        self.sigma_radius = sigma_radius
+        self.minsep_fwhm = minsep_fwhm
+        self.sharplo = sharplo
+        self.sharphi = sharphi
+        self.roundlo = roundlo
+        self.roundhi = roundhi
+        self.sky = sky
+        self.exclude_border = exclude_border
+
+    def __call__(self, data):
+        return self.irafstarfind(self, data)
+
+    def _irafstarfind(self, data):
+        starfind_kernel = _FindObjKernel(self.fwhm, ratio=1.0, theta=0.0,
+                                         sigma_radius=self.sigma_radius)
+        min_separation = max(2, int((fwhm * minsep_fwhm) + 0.5))
+        objs = _findobjs(data, self.threshold, starfind_kernel,
+                         min_separation=self.min_separation,
+                         exclude_border=self.exclude_border)
+        tbl = _irafstarfind_properties(objs, starfind_kernel, self.sky)
+        if len(objs) == 0:
+            warnings.warn('No sources were found.', AstropyUserWarning)
+            return tbl     # empty table
+        table_mask = ((tbl['sharpness'] > self.sharplo) &
+                      (tbl['sharpness'] < self.sharphi) &
+                      (tbl['roundness'] > self.roundlo) &
+                      (tbl['roundness'] < self.roundhi))
+        tbl = tbl[table_mask]
+        idcol = Column(name='id', data=np.arange(len(tbl)) + 1)
+        tbl.add_column(idcol, 0)
+        if len(tbl) == 0:
+            warnings.warn('Sources were found, but none pass the sharpness and '
+                          'roundness criteria.', AstropyUserWarning)
+        return tbl
 
 
 def _findobjs(data, threshold, kernel, min_separation=None,
@@ -817,10 +830,15 @@ class _FindObjKernel(object):
     """
 
     def __init__(self, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5):
-        assert fwhm > 0, 'FWHM must be positive'
-        assert ((ratio > 0) & (ratio <= 1)), \
-            'ratio must be positive and less than 1'
-        assert sigma_radius > 0, 'sigma_radius must be positive'
+        if fwhm < 0:
+            raise ValueError('fwhm must be positive, ' +
+                             'got fwhm={0}'.format(fwhm))
+        if ratio <= 0 or ratio > 1:
+            raise ValueError('ratio must be positive and less or equal ' +
+                             'than 1, got ratio={0}'.format(ratio))
+        if sigma_radius <= 0:
+            raise ValueError('sigma_radius must be positive, got ' +
+                              'sigma_radius={0}'.format(sigma_radius))
         self.fwhm = fwhm
         self.sigma_radius = sigma_radius
         self.ratio = ratio
