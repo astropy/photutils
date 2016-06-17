@@ -14,9 +14,6 @@ from astropy.stats import gaussian_fwhm_to_sigma
 from .core import _convolve_data, find_peaks
 
 
-__all__ = ['daofind', 'irafstarfind']
-
-
 class StarFinder(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def __call__(self, data):
@@ -156,9 +153,6 @@ class DAOFind(StarFinder):
         self.exclude_border = exclude_border
 
     def __call__(self, data):
-        return self._daofind(self, data)
-
-    def _daofind(self, data):
         daofind_kernel = _FindObjKernel(self.fwhm, self.ratio, self.theta,
                                         self.sigma_radius)
         self.threshold *= daofind_kernel.relerr
@@ -303,9 +297,6 @@ class IRAFStarFind(StarFinder):
         self.exclude_border = exclude_border
 
     def __call__(self, data):
-        return self.irafstarfind(self, data)
-
-    def _irafstarfind(self, data):
         starfind_kernel = _FindObjKernel(self.fwhm, ratio=1.0, theta=0.0,
                                          sigma_radius=self.sigma_radius)
         min_separation = max(2, int((fwhm * minsep_fwhm) + 0.5))
