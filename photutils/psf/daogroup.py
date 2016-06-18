@@ -9,9 +9,14 @@ from __future__ import division
 import numpy as np
 from astropy.table import Column, Table, vstack
 
-__all__ = ['daogroup']
 
-def daogroup(starlist, crit_separation):
+class GroupFinder(metaclass=abc.ABCMeta):
+    @abstractmethod
+    def __call__(self, starlist):
+        pass
+
+
+class DAOGroup(GroupFinder)
     """
     This is an implementation of the DAOGROUP algorithm presented by
     Stetson (1987).
@@ -46,42 +51,57 @@ def daogroup(starlist, crit_separation):
     `~daofind`
     """
 
-    if not isinstance(crit_separation, (float, int)):
-        raise ValueError('crit_separation is expected to be either float or' +
-                         ' int. Received {}.'.format(type(crit_separation)))
-    if crit_separation < 0.0:
-        raise ValueError('crit_separation is expected to be a positive' +
-                         'real number.')
+    def __init__(self, crit_separation):
+        self.crit_separation = crit_separation
 
+    @property
+    def crit_separation(self):
+        return self._crit_separation
+    
+    @crit_separation.setter
+    def crit_separation(self, crit_separation):
+        if not isinstance(crit_separation, (float, int)):
+            raise ValueError('crit_separation is expected to be either '+
+                             'float or int. Received {}.'\
+                             .format(type(crit_separation)))
+        elif crit_separation < 0.0:
+            raise ValueError('crit_separation is expected to be a positive '+
+                             'real number. Got {}'.format(crit_separation))
+        else:
+            self._crit_separation = crit_separation
+ 
     ## write a method that verifies whether the starlist given by the user
     ## is valid
+    def __call__(self, starlist):
+        group_starlist = []
+        cstarlist = starlist.copy()
 
-    group_starlist = []
-    cstarlist = starlist.copy()
-
-    if 'id' not in cstarlist.colnames:
-        cstarlist.add_column(Column(name='id',
-                                    data=np.arange(len(cstarlist))))
-    
-    while len(cstarlist) is not 0:
-        init_group = _find_group(cstarlist[0], cstarlist, crit_separation)
-        assigned_stars_ids = np.intersect1d(cstarlist['id'], init_group['id'],
-                                            assume_unique=True)
-        cstarlist = _remove_stars(cstarlist, assigned_stars_ids)
-        n = 1
-        N = len(init_group)
-        while(n < N):    
-            tmp_group = _find_group(init_group[n], cstarlist, crit_separation)
-            if len(tmp_group) > 0:
-                assigned_stars_ids = np.intersect1d(cstarlist['id'],
-                                                    tmp_group['id'],
-                                                    assume_unique=True)
-                cstarlist = _remove_stars(cstarlist, assigned_stars_ids)
-                init_group = vstack([init_group, tmp_group])
-                N = len(init_group)
-            n = n + 1
-        group_starlist.append(init_group)
-    return group_starlist
+        if 'id' not in cstarlist.colnames:
+            cstarlist.add_column(Column(name='id',
+                                        data=np.arange(len(cstarlist))))
+        
+        while len(cstarlist) is not 0:
+            init_group = _find_group(cstarlist[0], cstarlist,
+                                     self.crit_separation)
+            assigned_stars_ids = np.intersect1d(cstarlist['id'],
+                                                init_group['id'],
+                                                assume_unique=True)
+            cstarlist = _remove_stars(cstarlist, assigned_stars_ids)
+            n = 1
+            N = len(init_group)
+            while(n < N):    
+                tmp_group = _find_group(init_group[n], cstarlist,
+                                        self.crit_separation)
+                if len(tmp_group) > 0:
+                    assigned_stars_ids = np.intersect1d(cstarlist['id'],
+                                                        tmp_group['id'],
+                                                        assume_unique=True)
+                    cstarlist = _remove_stars(cstarlist, assigned_stars_ids)
+                    init_group = vstack([init_group, tmp_group])
+                    N = len(init_group)
+                n = n + 1
+            group_starlist.append(init_group)
+        return group_starlist
 
 def _find_group(star, starlist, crit_separation):
     """
