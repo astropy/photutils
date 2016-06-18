@@ -70,8 +70,6 @@ class DAOGroup(GroupFinder)
         else:
             self._crit_separation = crit_separation
  
-    ## write a method that verifies whether the starlist given by the user
-    ## is valid
     def __call__(self, starlist):
         group_starlist = []
         cstarlist = starlist.copy()
