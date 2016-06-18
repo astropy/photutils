@@ -597,6 +597,7 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
 def psf_photometry(data, positions, psf, fitshape=None,
                    fitter=LevMarLSQFitter(),
 <<<<<<< HEAD:photutils/psf/core.py
+<<<<<<< HEAD:photutils/psf/core.py
                    unit=None, wcs=None, error=None,
                    mask=None, pixelwise_error=True,
                    mode='sequential',
@@ -606,6 +607,11 @@ def psf_photometry(data, positions, psf, fitshape=None,
                    mask=None, pixelwise_error=True, mode='sequential',
                    store_fit_info=False, param_uncert=False):
 >>>>>>> add changelog and proper warning in case fitter does not contain 'param_cov' key:photutils/psf.py
+=======
+                   unit=None, wcs=None, error=None, effective_gain=None,
+                   mask=None, pixelwise_error=True, mode='sequential',
+                   store_fit_info=False, param_uncert=False):
+>>>>>>> a71068eeed44954dde0cf693976dc926a3b60bbe:photutils/psf.py
     """
     Perform PSF/PRF photometry on the data.
 
