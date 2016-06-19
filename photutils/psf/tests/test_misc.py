@@ -1,4 +1,8 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Miscellaneous tests for psf functionality that doesn't have another obvious
+place to go
+"""
 from __future__ import division
 import numpy as np
 from numpy.testing import assert_allclose

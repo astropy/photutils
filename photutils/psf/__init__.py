@@ -4,4 +4,5 @@ This subpackage contains modules and packages for point spread function
 photometry.
 """
 
-from .core import *
+from .funcs import *
+from .models import *
