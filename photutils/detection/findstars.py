@@ -2,10 +2,10 @@
 """
 This module implements classes, called Finders, for detecting stars in an
 astronomical image. The general convention is that all Finders are subclasses
-of an abstract class called StarFinder and should be callable classes.
-Additionally, StarFinder defines two abstract methods, namely, find_stars and
-__call__. In general, find_stars implements an algorithm for detecting stars
-and __call__ invokes find_stars to return stars positions estimatives. 
+of an abstract class called StarFinderBase and should be callable classes.
+Additionally, StarFinderBase defines the method find_stars as abstract.
+In general, find_stars implements an algorithm for detecting stars
+and __call__ invokes find_stars to return stars positions estimates. 
 """
 
 from __future__ import (absolute_import, division, print_function,
@@ -45,7 +45,7 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
     return finder(data)
 
 
-class StarFinder:
+class StarFinderBase(object):
     """
     Base abstract class for Finders.
     """
@@ -57,7 +57,7 @@ class StarFinder:
         pass
 
 
-class DAOStarFinder(StarFinder):
+class DAOStarFinder(StarFinderBase):
     """
     Detect stars in an image using the DAOFIND algorithm.
 
@@ -225,7 +225,7 @@ class DAOStarFinder(StarFinder):
         return tbl
 
 
-class IRAFStarFinder(StarFinder):
+class IRAFStarFinder(StarFinderBase):
     """
     Detect stars in an image using IRAF's "starfind" algorithm.
 

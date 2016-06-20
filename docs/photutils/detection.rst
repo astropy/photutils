@@ -22,21 +22,21 @@ Detecting Stars
 Photutils includes two widely-used tools that are used to detect stars
 in an image, `DAOFIND`_ and IRAF's `starfind`_.
 
-:func:`~photutils.daofind` is an implementation of the `DAOFIND`_
-algorithm (`Stetson 1987, PASP 99, 191
+:class:`~photutils.DAOStarFinder` is a class which provides an implementation
+of the `DAOFIND`_ algorithm (`Stetson 1987, PASP 99, 191
 <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_).  It searches
 images for local density maxima that have a peak amplitude greater
 than a specified threshold (the threshold is applied to a convolved
 image) and have a size and shape similar to a defined 2D Gaussian
-kernel.  :func:`~photutils.daofind` also provides an estimate of the
+kernel.  :class:`~photutils.DAOStarFinder` also provides an estimate of the
 objects' roundness and sharpness, whose lower and upper bounds can be
 specified.
 
-:func:`~photutils.irafstarfind` is an implementation of IRAF's
-`starfind`_ algorithm.  It is similar to :func:`~photutils.daofind`,
+:class:`~photutils.IRAFStarFinder` is a class which implements IRAF's
+`starfind`_ algorithm.  It is similar to :class:`~photutils.DAOStarFinder`,
 but it always uses a 2D circular Gaussian kernel, while
-:func:`~photutils.daofind` can use an elliptical Gaussian kernel.
-:func:`~photutils.irafstarfind` is also different in that it
+:class:`~photutils.DAOStarFinder` can use an elliptical Gaussian kernel.
+:class:`~photutils.IRAFStarFinder` is also different in that it
 calculates the objects' centroid, roundness, and sharpness using image
 moments.
 
@@ -53,14 +53,16 @@ background noise using sigma-clipped statistics::
     >>> print(mean, median, std)    # doctest: +REMOTE_DATA
     (3667.7792400186008, 3649.0, 204.27923665845705)
 
-Now we will subtract the background and use :func:`~photutils.daofind`
-to find the stars in the image that have FWHMs of around 3 pixels and
-have peaks approximately 5-sigma above the background:
+Now we will subtract the background and use an instance of
+:class:`~photutils.DAOStarFinder` to find the stars in the image that have
+FWHMs of around 3 pixels and have peaks approximately 5-sigma above the
+background:
 
 .. doctest-requires:: scipy, skimage
 
-    >>> from photutils import daofind
-    >>> sources = daofind(data - median, fwhm=3.0, threshold=5.*std)    # doctest: +REMOTE_DATA
+    >>> from photutils import DAOStarFinder
+    >>> daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)
+    >>> sources = daofind(data - median)    # doctest: +REMOTE_DATA
     >>> print(sources)    # doctest: +REMOTE_DATA
      id   xcentroid     ycentroid   ...  peak       flux           mag
     --- ------------- ------------- ... ------ ------------- ---------------
@@ -94,14 +96,15 @@ Let's plot the image and mark the location of detected sources:
 .. plot::
 
     from astropy.stats import sigma_clipped_stats
-    from photutils import datasets, daofind, CircularAperture
+    from photutils import datasets, DAOStarFinder, CircularAperture
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     import matplotlib.pylab as plt
     hdu = datasets.load_star_image()
     data = hdu.data[0:400, 0:400]
     mean, median, std = sigma_clipped_stats(data, sigma=3.0)
-    sources = daofind(data - median, fwhm=3.0, threshold=5.*std)
+    daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)
+    sources = daofind(data - median)
     positions = (sources['xcentroid'], sources['ycentroid'])
     apertures = CircularAperture(positions, r=4.)
     norm = ImageNormalize(stretch=SqrtStretch())
@@ -269,7 +272,7 @@ Local Peak Detection
 Photutils also includes a :func:`~photutils.detection.find_peaks`
 function to find local peaks in an image that are above a specified
 threshold value.  Peaks are the local maxima above a specified
-threshold that separated by a a specified minimum number of pixels.
+threshold that separated by a specified minimum number of pixels.
 The return pixel coordinates are always integer (i.e., no centroiding
 is performed, only the peak pixel is identified).
 :func:`~photutils.detection.find_peaks` also supports a number of
