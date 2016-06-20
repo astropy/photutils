@@ -13,11 +13,17 @@ New Features
 
 - ``photutils.background``
 
-  - Added new ``BackgroundBase`` and ``BackgroundIDW`` classes and
-    ``std_blocksum`` function. [#355]
+  - Added new ``MeanBackground``, ``MedianBackground``,
+    ``MMMBackground``, ``SExtractorBackground``,
+    ``BiweightLocationBackground``, ``StdBackgroundRMS``,
+    ``MADStdBackgroundRMS``, and ``BiweightMidvarianceBackgroundRMS``
+    classes. [#370]
+
+  - Added new ``BackgroundBase2D`` and ``BackgroundIDW2D`` classes and
+    ``std_blocksum`` function. [#355, #370]
 
   - Added new ``removed_masked``, ``meshpix_threshold``, and
-    ``edge_method`` keywords for the background classes. [#355]
+    ``edge_method`` keywords for the 2D background classes. [#355]
 
   - Added new ``std_blocksum`` function. [#355]
 

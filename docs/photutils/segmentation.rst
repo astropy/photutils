@@ -35,7 +35,7 @@ are likely to be added in the future.
 
 Let's detect sources and measure their properties in a synthetic
 image.  For this example, we will use the
-:class:`~photutils.background.Background` class to produce a
+:class:`~photutils.background.Background2D` class to produce a
 background and background noise image.  We define a 2D detection
 threshold image using the background and background rms maps.  We set
 the threshold at 3 sigma above the background:
@@ -43,10 +43,10 @@ the threshold at 3 sigma above the background:
 .. doctest-requires:: scipy
 
     >>> from photutils.datasets import make_100gaussians_image
-    >>> from photutils import Background, detect_threshold, detect_sources
+    >>> from photutils import Background2D, detect_threshold, detect_sources
     >>> from astropy.convolution import Gaussian2DKernel
     >>> data = make_100gaussians_image()
-    >>> bkg = Background(data, (50, 50), filter_size=(3, 3), method='median')
+    >>> bkg = Background2D(data, (50, 50), filter_size=(3, 3), method='median')
     >>> threshold = bkg.background + (3. * bkg.background_rms)
 
 Now we find sources that have 5 connected pixels that are each greater
@@ -136,12 +136,12 @@ Now let's plot the results:
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import make_100gaussians_image
-    from photutils import Background, detect_threshold, detect_sources
+    from photutils import Background2D, detect_threshold, detect_sources
     from photutils import source_properties, properties_table
     from photutils.utils import random_cmap
     from photutils import EllipticalAperture
     data = make_100gaussians_image()
-    bkg = Background(data, (50, 50), filter_size=(3, 3), method='median')
+    bkg = Background2D(data, (50, 50), filter_size=(3, 3), method='median')
     threshold = bkg.background + (3. * bkg.background_rms)
     sigma = 2.0 * gaussian_fwhm_to_sigma    # FWHM = 2.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
@@ -352,4 +352,4 @@ Reference/API
     :no-heading:
 
 
-.. _Sextractor:  http://www.astromatic.net/software/sextractor
+.. _SExtractor:  http://www.astromatic.net/software/sextractor

@@ -152,7 +152,7 @@ simple pixel-wise threshold at 3 sigma above the background::
 
 For more sophisticated analyses, one should generate a 2D background
 and background-only error image (e.g., from your data reduction or by
-using :class:`~photutils.background.Background`).  In that case, a
+using :class:`~photutils.background.Background2D`).  In that case, a
 3-sigma threshold image is simply::
 
     >>> threshold = bkg + (3.0 * bkg_rms)    # doctest: +SKIP

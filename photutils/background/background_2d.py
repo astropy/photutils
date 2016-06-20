@@ -1,4 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module defines background classes to estimate the 2D background and
+background rms in a 2D image.
+"""
+
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from distutils.version import LooseVersion
@@ -8,7 +13,7 @@ import numpy as np
 from numpy.lib.index_tricks import index_exp
 from astropy.stats import sigma_clip
 from astropy.utils import lazyproperty
-from .utils import ShepardIDWInterpolator
+from ..utils import ShepardIDWInterpolator
 
 import astropy
 if LooseVersion(astropy.__version__) < LooseVersion('1.1'):
@@ -17,14 +22,15 @@ else:
     ASTROPY_LT_1P1 = False
 
 
-__all__ = ['BackgroundBase', 'Background', 'BackgroundIDW', 'std_blocksum']
+__all__ = ['BackgroundBase2D', 'Background2D', 'BackgroundIDW2D',
+           'std_blocksum']
 
-__doctest_requires__ = {('Background'): ['scipy']}
+__doctest_requires__ = {('Background2D'): ['scipy']}
 
 
-class BackgroundBase(object):
+class BackgroundBase2D(object):
     """
-    Base class for background classes.
+    Base class for 2D background classes.
 
     The background classes estimate the 2D background and background rms
     noise in an image.
@@ -599,7 +605,7 @@ class BackgroundBase(object):
             ax = plt.gca()
         ax.scatter(self.x, self.y, marker=marker, color=color)
         if outlines:
-            from .aperture import RectangularAperture
+            from ..aperture import RectangularAperture
             xy = np.column_stack([self.x, self.y])
             apers = RectangularAperture(xy, self.box_size[1],
                                         self.box_size[0], 0.)
@@ -607,7 +613,7 @@ class BackgroundBase(object):
         return
 
 
-class Background(BackgroundBase):
+class Background2D(BackgroundBase2D):
     """
     Class to estimate a 2D background and background rms noise in an
     image.
@@ -753,7 +759,7 @@ class Background(BackgroundBase):
     def __init__(self, data, box_size, interp_order=3, pad_crop=True,
                  **kwargs):
 
-        super(Background, self).__init__(data, box_size, **kwargs)
+        super(Background2D, self).__init__(data, box_size, **kwargs)
         self.interp_order = interp_order
         self.pad_crop = pad_crop
         self.data_slc = index_exp[0:data.shape[0], 0:data.shape[1]]
@@ -781,7 +787,7 @@ class Background(BackgroundBase):
                             mode='reflect')
 
 
-class BackgroundIDW(BackgroundBase):
+class BackgroundIDW2D(BackgroundBase2D):
     """
     Class to estimate a 2D background and background rms noise in an
     image.
@@ -931,7 +937,7 @@ class BackgroundIDW(BackgroundBase):
     def __init__(self, data, box_size, n_neighbors=8, power=1.0, reg=0.0,
                  leafsize=10, **kwargs):
 
-        super(BackgroundIDW, self).__init__(data, box_size, **kwargs)
+        super(BackgroundIDW2D, self).__init__(data, box_size, **kwargs)
 
         f_bkg = ShepardIDWInterpolator(self.yx, self.background_mesh1d,
                                        leafsize=leafsize)
