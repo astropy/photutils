@@ -6,25 +6,31 @@ Available at: http://adsabs.harvard.edu/abs/1987PASP...99..191S
 """
 
 from __future__ import division
+import abc
 import numpy as np
 from astropy.table import Column, Table, vstack
 
 
-class GroupFinder(metaclass=abc.ABCMeta):
-    @abstractmethod
-    def __call__(self, starlist):
+__all__ = ['DAOGroup']
+
+
+class GroupStarsBase(object):
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def group_stars(self, starlist):
         pass
 
 
-class DAOGroup(GroupFinder)
+class DAOGroup(GroupStarsBase):
     """
-    This is an implementation of the DAOGROUP algorithm presented by
+    This is class implements the DAOGROUP algorithm presented by
     Stetson (1987).
 
-    daogroup divides an entire starlist into sets of distinct, self-contained
-    groups of mutually overlapping stars. It accepts as input a list of stars
-    and determines which stars are close enough to be capable of adversely
-    influencing each others' profile fits.
+    The method ``group_stars`` divides an entire starlist into sets of
+    distinct, self-contained groups of mutually overlapping stars.
+    It accepts as input a list of stars and determines which stars are close
+    enough to be capable of adversely influencing each others' profile fits.
 
     Parameters
     ----------
@@ -70,78 +76,59 @@ class DAOGroup(GroupFinder)
         else:
             self._crit_separation = crit_separation
  
-    def __call__(self, starlist):
-        group_starlist = []
+    def group_stars(self, starlist):
         cstarlist = starlist.copy()
 
         if 'id' not in cstarlist.colnames:
             cstarlist.add_column(Column(name='id',
                                         data=np.arange(len(cstarlist))))
-        
-        while len(cstarlist) is not 0:
-            init_group = _find_group(cstarlist[0], cstarlist,
-                                     self.crit_separation)
-            assigned_stars_ids = np.intersect1d(cstarlist['id'],
-                                                init_group['id'],
-                                                assume_unique=True)
-            cstarlist = _remove_stars(cstarlist, assigned_stars_ids)
-            n = 1
-            N = len(init_group)
-            while(n < N):    
-                tmp_group = _find_group(init_group[n], cstarlist,
+        cstarlist.add_column(Column(name='group_id',\
+                                data=np.zeros(len(cstarlist), dtype=np.int)))
+        n = 1
+        while (cstarlist['group_id'] == 0).sum() > 0:
+            init_star = cstarlist[np.where(cstarlist['group_id'] == 0)[0][0]]
+            index = _find_group(init_star, cstarlist[cstarlist['group_id'] == 0],
+                                self.crit_separation)
+            cstarlist['group_id'][index] = n
+            k = 1
+            K = len(index)
+            while k < K:
+                init_star = cstarlist[cstarlist['id'] == index[k]]
+                tmp_index = _find_group(init_star, cstarlist[cstarlist['group_id'] == 0],
                                         self.crit_separation)
-                if len(tmp_group) > 0:
-                    assigned_stars_ids = np.intersect1d(cstarlist['id'],
-                                                        tmp_group['id'],
-                                                        assume_unique=True)
-                    cstarlist = _remove_stars(cstarlist, assigned_stars_ids)
-                    init_group = vstack([init_group, tmp_group])
-                    N = len(init_group)
-                n = n + 1
-            group_starlist.append(init_group)
-        return group_starlist
+                if len(tmp_index) > 0:
+                    cstarlist['group_id'][tmp_index] = n
+                    index = np.append(index, tmp_index)
+                    K = len(index)
+                k += 1
+            n += 1
+
+        return cstarlist
+
+    def __call__(self, starlist):
+        return self.group_stars(starlist)
 
 def _find_group(star, starlist, crit_separation):
     """
-    Find those stars in `starlist` which are at a distance of
-    `crit_separation` from `star`.
+    Find the ids of those stars in ``starlist`` which are at a distance less
+    than ``crit_separation`` from ``star``.
 
     Parameters
     ----------
     star : `~astropy.table.Row`
         Star which will be either the head of a cluster or an isolated one.
-    
     starlist : `~astropy.table.Table`
+    crit_separation : float or int
+        Distance, in units of pixels, such that any two stars separated by
+        less than this distance will be placed in the same group.
 
     Returns
     -------
-    `~astropy.table.table.Table` containing those stars which are at a distance
-    less than `crit_separation` from `star`.
+    Array containing the ids of those stars which are at a
+    distance less than `crit_separation` from `star`.
     """
     
     star_distance = np.hypot(star['x_0'] - starlist['x_0'],
                              star['y_0'] - starlist['y_0'])
     distance_criteria = star_distance < crit_separation
-    return starlist[distance_criteria]
-
-def _remove_stars(starlist, stars_ids):
-    """
-    Remove stars from `starlist` whose ids are in `stars_ids`.
-
-    Parameters
-    ----------
-    starlist : `~astropy.table.Table`
-        Star list from which stars will be removed.
-
-    stars_ids : numpy.ndarray
-        IDs of the stars which will be removed.
-
-    Returns
-    -------
-    Reduced `~astropy.table.Table` containing only the stars whose ids are not
-    listed in `stars_ids`.
-    """
-    
-    for i in range(len(stars_ids)):
-        starlist.remove_rows(np.where(starlist['id'] == stars_ids[i])[0])
-    return starlist
+    return np.asarray(starlist[distance_criteria]['id'])
