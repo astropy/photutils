@@ -28,6 +28,17 @@ model-fitting analysis, regardless to exactly what kind of model is actually
 being fit.  We take this road, using "PSF photometry" as shorthand for the
 general approach.
 
+Basic Usage
+-----------
+
+
+
+Example Notebooks (online)
+--------------------------
+
+* `PSF photometry on artificial Gaussian stars <https://github.com/astropy/photutils-datasets/blob/master/notebooks/GaussianPSFPhot.ipynb>`_
+* `PSF/PRF Photometry on Spitzer Data <https://github.com/astropy/photutils-datasets/blob/master/notebooks/PSFPhotometrySpitzer.ipynb>`_
+
 
 References
 ----------
@@ -40,12 +51,6 @@ References
 `The Kepler Pixel Response Function
 <http://adsabs.harvard.edu/abs/2010ApJ...713L..97B>`_
 
-
-Example Notebooks (online)
---------------------------
-
-* `PSF photometry on artificial Gaussian stars <https://github.com/astropy/photutils-datasets/blob/master/notebooks/GaussianPSFPhot.ipynb>`_
-* `PSF/PRF Photometry on Spitzer Data <https://github.com/astropy/photutils-datasets/blob/master/notebooks/PSFPhotometrySpitzer.ipynb>`_
 
 Reference/API
 -------------

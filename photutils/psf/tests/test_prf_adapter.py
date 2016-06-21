@@ -4,7 +4,7 @@ from __future__ import division
 import numpy as np
 from numpy.testing import assert_allclose
 
-from ..core import PRFAdapter
+from .. import PRFAdapter
 from astropy.tests.helper import pytest
 from astropy.modeling.models import Moffat2D
 
