@@ -189,7 +189,7 @@ class DiscretePRF(Fittable2DModel):
 
         Returns
         -------
-        prf : `photutils.psf.DiscretePRF`
+        prf : `photutils.psf.sandbox.DiscretePRF`
             Discrete PRF model estimated from data.
         """
 

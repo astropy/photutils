@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 This module stores work related to photutils.psf that is not quite ready for
-prime-time (i.e., is not considered part of the public API), but is included
+prime-time (i.e., is not considered a stable public API), but is included
 either for experimentation or as legacy code.
 """
 from __future__ import division
@@ -190,7 +190,7 @@ class DiscretePRF(Fittable2DModel):
 
         Returns
         -------
-        prf : `photutils.psf.DiscretePRF`
+        prf : `photutils.psf.sandbox.DiscretePRF`
             Discrete PRF model estimated from data.
         """
 
