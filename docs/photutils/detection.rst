@@ -61,7 +61,7 @@ background:
 .. doctest-requires:: scipy, skimage
 
     >>> from photutils import DAOStarFinder
-    >>> daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)
+    >>> daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)    # doctest: +REMOTE_DATA
     >>> sources = daofind(data - median)    # doctest: +REMOTE_DATA
     >>> print(sources)    # doctest: +REMOTE_DATA
      id   xcentroid     ycentroid   ...  peak       flux           mag
