@@ -40,10 +40,9 @@ def calc_total_error(data, bkg_error, effective_gain):
 
     Notes
     -----
-    To use units, ``data``, ``bkg_error``, and ``effective_gain`` must
-    *all* be `~astropy.units.Quantity` objects.  A
-    `~.exceptions.ValueError` will be raised if only some of the inputs
-    are `~astropy.units.Quantity` objects.
+    To use units, ``data``, ``bkg_error``, and ``effective_gain`` must *all*
+    be `~astropy.units.Quantity` objects.  A `ValueError` will be raised if
+    only some of the inputs are `~astropy.units.Quantity` objects.
 
     The total error array, :math:`\sigma_{\mathrm{tot}}` is:
 
