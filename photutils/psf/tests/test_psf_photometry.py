@@ -9,8 +9,8 @@ from astropy.modeling.models import Gaussian2D
 from astropy.convolution.utils import discretize_model
 from astropy.table import Table
 
-from ..core import (DiscretePRF, psf_photometry,
-                    IntegratedGaussianPRF, subtract_psf)
+from .. import IntegratedGaussianPRF, psf_photometry, subtract_psf
+from ..sandbox import DiscretePRF
 
 try:
     from scipy import optimize
