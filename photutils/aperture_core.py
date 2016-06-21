@@ -260,7 +260,7 @@ class CircularAperture(PixelAperture):
 
     Raises
     ------
-    ValueError : `~.exceptions.ValueError`
+    ValueError : `ValueError`
         If the radius is negative.
     """
 
@@ -391,9 +391,9 @@ class CircularAnnulus(PixelAperture):
 
     Raises
     ------
-    ValueError : `~.exceptions.ValueError`
+    ValueError : `ValueError`
         If inner radius (``r_in``) is greater than outer radius (``r_out``).
-    ValueError : `~.exceptions.ValueError`
+    ValueError : `ValueError`
         If inner radius is negative.
     """
 
@@ -544,7 +544,7 @@ class EllipticalAperture(PixelAperture):
 
     Raises
     ------
-    ValueError : `~.exceptions.ValueError`
+    ValueError : `ValueError`
         If either axis (``a`` or ``b``) is negative.
 
     """
@@ -704,10 +704,10 @@ class EllipticalAnnulus(PixelAperture):
 
     Raises
     ------
-    ValueError : `~.exceptions.ValueError`
+    ValueError : `ValueError`
         If inner semimajor axis (``a_in``) is greater than outer semimajor
         axis (``a_out``).
-    ValueError : `~.exceptions.ValueError`
+    ValueError : `ValueError`
         If either the inner semimajor axis (``a_in``) or the outer semiminor
         axis (``b_out``) is negative.
     """
@@ -867,7 +867,7 @@ class RectangularAperture(PixelAperture):
 
     Raises
     ------
-    ValueError : `~.exceptions.ValueError`
+    ValueError : `ValueError`
         If either width (``w``) or height (``h``) is negative.
     """
 
@@ -1041,9 +1041,9 @@ class RectangularAnnulus(PixelAperture):
 
     Raises
     ------
-    ValueError : `~.exceptions.ValueError`
+    ValueError : `ValueError`
         If inner width (``w_in``) is greater than outer width (``w_out``).
-    ValueError : `~.exceptions.ValueError`
+    ValueError : `ValueError`
         If either the inner width (``w_in``) or the outer height (``h_out``)
         is negative.
     """
