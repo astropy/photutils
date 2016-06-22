@@ -22,8 +22,8 @@ Detecting Stars
 Photutils includes two widely-used tools that are used to detect stars
 in an image, `DAOFIND`_ and IRAF's `starfind`_.
 
-:class:`~photutils.DAOStarFinder` is a class which provides an implementation
-of the `DAOFIND`_ algorithm (`Stetson 1987, PASP 99, 191
+:class:`~photutils.DAOStarFinder` is a class which provides an
+implementation of the `DAOFIND`_ algorithm (`Stetson 1987, PASP 99, 191
 <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_).  It searches
 images for local density maxima that have a peak amplitude greater
 than a specified threshold (the threshold is applied to a convolved
@@ -32,13 +32,13 @@ kernel.  :class:`~photutils.DAOStarFinder` also provides an estimate of the
 objects' roundness and sharpness, whose lower and upper bounds can be
 specified.
 
-:class:`~photutils.IRAFStarFinder` is a class which implements IRAF's
-`starfind`_ algorithm.  It is similar to :class:`~photutils.DAOStarFinder`,
-but it always uses a 2D circular Gaussian kernel, while
-:class:`~photutils.DAOStarFinder` can use an elliptical Gaussian kernel.
-:class:`~photutils.IRAFStarFinder` is also different in that it
-calculates the objects' centroid, roundness, and sharpness using image
-moments.
+:class:`~photutils.IRAFStarFinder` is a class which implements
+IRAF's `starfind`_ algorithm.  It is similar to
+:class:`~photutils.DAOStarFinder`, but it always uses a 2D circular
+Gaussian kernel, while :class:`~photutils.DAOStarFinder` can use an
+elliptical Gaussian kernel. :class:`~photutils.IRAFStarFinder` is
+also different in that it calculates the objects' centroid, roundness, and
+sharpness using image moments.
 
 As an example, let's load an image from the bundled datasets and
 select a subset of the image.  We will estimate the background and

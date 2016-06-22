@@ -22,7 +22,7 @@ from astropy.stats import gaussian_fwhm_to_sigma
 from .core import _convolve_data, find_peaks
 
 
-__all__ = ['DAOStarFinder', 'daofind', 'IRAFStarFinder', 'irafstarfind']
+__all__ = ['DAOStarFinder', 'IRAFStarFinder', 'daofind', 'irafstarfind']
 
 
 @deprecated(0.3, alternative='DAOStarFinder')
@@ -47,7 +47,7 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
 
 class StarFinderBase(object):
     """
-    Base abstract class for Finders.
+    Base abstract class for Star Finders.
     """
     __metaclass__ = abc.ABCMeta
 
