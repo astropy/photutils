@@ -32,20 +32,11 @@ class DAOGroup(GroupStarsBase):
     It accepts as input a list of stars and determines which stars are close
     enough to be capable of adversely influencing each others' profile fits.
 
-    Parameters
-    ----------
-    starlist : `~astropy.table.Table`
-        List of stars positions. Columns named as 'x_0' and 'y_0' must be
-        provided.
+    Attributes
+    ---------- 
     crit_separation : float or int
         Distance, in units of pixels, such that any two stars separated by
-        less than this distance will be placed in the same group.
-
-    Returns
-    -------
-    group_starlist : list of `~astropy.table.Table`
-        Each `~astropy.table.Table` in the list corresponds to a group of
-        mutually overlapping stars.
+        less than this distance will be placed in the same group. 
 
     Notes
     -----
@@ -106,6 +97,19 @@ class DAOGroup(GroupStarsBase):
         return cstarlist
 
     def __call__(self, starlist):
+        """
+        Parameters
+        ----------
+        starlist : `~astropy.table.Table`
+            List of stars positions. Columns named as 'x_0' and 'y_0' must be
+            provided.
+
+        Returns
+        -------
+        group_starlist : list of `~astropy.table.Table`
+            Each `~astropy.table.Table` in the list corresponds to a group of
+            mutually overlapping stars.
+        """
         return self.group_stars(starlist)
 
 def _find_group(star, starlist, crit_separation):
