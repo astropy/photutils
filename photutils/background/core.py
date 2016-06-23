@@ -15,8 +15,8 @@ import warnings
 from astropy.extern import six
 from astropy.utils.misc import InheritDocstrings
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.stats import (sigma_clip, mad_std, biweight_location,
-                           biweight_midvariance)
+from astropy.stats import sigma_clip, mad_std
+from ..extern.biweight_stats import biweight_location, biweight_midvariance
 
 import astropy
 if LooseVersion(astropy.__version__) < LooseVersion('1.1'):
@@ -497,9 +497,10 @@ class BiweightLocationBackground(BackgroundBase, SigmaClip):
         self.c = c
         self.M = M
 
-    def calc_background(self, data):
+    def calc_background(self, data, axis=None):
 
-        return biweight_location(self.sigma_clip(data), c=self.c, M=self.M)
+        return biweight_location(self.sigma_clip(data, axis=axis), c=self.c,
+                                 M=self.M, axis=axis)
 
 
 class StdBackgroundRMS(BackgroundRMSBase, SigmaClip):
@@ -670,6 +671,7 @@ class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase, SigmaClip):
         self.c = c
         self.M = M
 
-    def calc_background_rms(self, data):
+    def calc_background_rms(self, data, axis=None):
 
-        return biweight_midvariance(self.sigma_clip(data), c=self.c, M=self.M)
+        return biweight_midvariance(self.sigma_clip(data, axis=axis),
+                                    c=self.c, M=self.M, axis=axis)
