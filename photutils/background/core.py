@@ -113,8 +113,10 @@ class BackgroundBase(object):
 
         Returns
         -------
-        result : float
-            The calculated background value.
+        result : float or `~numpy.ma.MaskedArray`
+            The calculated background value.  If ``axis`` is `None` then
+            a scalar will be returned, otherwise a
+            `~numpy.ma.MaskedArray` will be returned.
         """
 
 
@@ -142,8 +144,10 @@ class BackgroundRMSBase(object):
 
         Returns
         -------
-        result : float
-            The calculated background rms value.
+        result : float or `~numpy.ma.MaskedArray`
+            The calculated background rms value.  If ``axis`` is `None`
+            then a scalar will be returned, otherwise a
+            `~numpy.ma.MaskedArray` will be returned.
         """
 
 
