@@ -1,9 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-"""Functions for implementing the DAOGROUP algorithm proposed by Stetson in
-Astronomical Society of the Pacific, Publications, (ISSN 0004-6280),
-vol. 99, March 1987, p. 191-222.
-Available at: http://adsabs.harvard.edu/abs/1987PASP...99..191S
-"""
+"""Module which provides classes to perform source grouping."""
 
 from __future__ import division
 import abc
@@ -46,6 +42,12 @@ class DAOGroup(GroupStarsBase):
     See
     ---
     `~daofind`
+
+    References
+    ----------
+    [1] Stetson, Astronomical Society of the Pacific, Publications,
+        (ISSN 0004-6280), vol. 99, March 1987, p. 191-222.
+        Available at: http://adsabs.harvard.edu/abs/1987PASP...99..191S
     """
 
     def __init__(self, crit_separation):
@@ -110,6 +112,7 @@ class DAOGroup(GroupStarsBase):
             Each `~astropy.table.Table` in the list corresponds to a group of
             mutually overlapping stars.
         """
+
         return self.group_stars(starlist)
 
 def _find_group(star, starlist, crit_separation):
