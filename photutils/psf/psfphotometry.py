@@ -1,4 +1,12 @@
-class PSFPhotometry(object):
+
+class PSFPhotometryBase(object):
+    __metaclass__ = abc.ABCMeta
+    
+    @abc.abstractmethod
+    def perform_photometry(self):
+        pass
+
+class NStarPSFPhotometry(PSFPhotometryBase):
     """
     This is an implementation of the NSTAR algorithm proposed by Stetson
     (1987) to perform point spread function photometry in crowded fields.
@@ -9,9 +17,8 @@ class PSFPhotometry(object):
 
     def __init__(self, find, group, bkg, psf_model, fitter):
         """
-        Parameters
+        Attributes
         ----------
-
         find : an instance of any StarFinderBase subclasses
         group : an instance of any GroupStarsBase subclasses
         bkg : an instance of any BackgroundBase2D (?) subclasses
@@ -89,9 +96,72 @@ class PSFPhotometry(object):
 
     def nstar(self, image, groups, fitshape, bkg, psf_model, fitter):
         """
-        Perform the simultaneous profile fitting of the sources in ``groups``.
-        """
+        Fit, as appropriate, a compound or single model to the given `groups` of
+        stars. Groups are fitted sequentially from the smallest to the biggest. In
+        each iteration, `image` is subtracted by the previous fitted group. 
+        
+        Parameters
+        ----------
+        image : numpy.ndarray
+            Background-subtracted image.
+        groups : list of `~astropy.table.Table`
+            Each `~astropy.table.Table` in this list corresponds to a group of
+            mutually overlapping starts.
+        shape : tuple
+            Shape of a rectangular region around the center of an isolated source.
+        fitter : `~astropy.modeling.fitting.Fitter` instance
+            An instance of an `~astropy.modeling.fitting.Fitter`
+            See `~astropy.modeling.fitting` for details about fitters.
+        psf_model : `~astropy.modeling.Fittable2DModel` 
+            The PSF/PRF analytical model. This model must have centroid and flux
+            as parameters.
+        weights : numpy.ndarray
+            Weights used in the fitting procedure.
+        psf_kwargs : dict
+            Fixed parameters to be passed to `psf_model`.
+        plot_regions : boolean
+            If True, plot the regions, which were used to fit each group, to the
+            current gca.
 
+        Return
+        ------
+        result_tab : `~astropy.table.Table`
+            Astropy table that contains the results of the photometry.
+        image : numpy.ndarray
+            Residual image.
+        """
+        
+        result_tab = Table([[], [], [], [],],
+                           names=('id', 'x_fit', 'y_fit', 'flux_fit'),
+                           dtype=('i4', 'f8', 'f8', 'f8'))
+        models_order = _get_models_order(groups) 
+        while len(models_order) > 0:
+            curr_order = np.min(models_order)
+            n = 0
+            N = len(models_order)
+            while(n < N):
+                if curr_order == len(groups[n]):
+                    group_psf = _get_group_psf(psf_model, groups[n], **psf_kwargs)
+                    x, y, data = _extract_shape_and_data(shape, groups[n], image)
+                    fitted_model = _call_fitter(fitter, group_psf, x, y, data,
+                                                weights)
+                    param_table = _model_params_to_table(fitted_model, groups[n])
+                    result_tab = vstack([result_tab, param_table])
+                    image = subtract_psf(image, psf_model(**psf_kwargs),
+                                         param_table)
+                    #image = _subtract_psf(image, x, y, fitted_model)
+                    models_order.remove(curr_order)
+                    del groups[n]
+                    N = N - 1
+                    if plot_regions: 
+                        patch = _show_region([(np.min(x), np.min(y)),
+                                              (np.min(x), np.max(y)),
+                                              (np.max(x), np.max(y)),
+                                              (np.max(x), np.min(y)),
+                                              (np.min(x), np.min(y)),])
+                        plt.gca().add_patch(patch)
+                n = n + 1
+        return result_tab, image
     
     def perform_photometry(self, image, niters, fitshape):
         """
