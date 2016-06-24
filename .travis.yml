@@ -53,7 +53,7 @@ matrix:
         - python: 3.5
           env: SETUP_CMD='build_sphinx -w' CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter'
 
-        # Python 3.3 doesn't have numpy 1.10 in conda, but it can be put
+        # Python 3.3 doesn't have numpy > 1.9 in conda, but it can be put
         # back into the main matrix once the numpy build is available in the
         # astropy-ci-extras channel (or in the one provided in the
         # CONDA_CHANNELS environmental variable).
@@ -63,6 +63,8 @@ matrix:
           env: NUMPY_VERSION=1.9
 
         # Try Astropy development and LTS versions
+        - python: 2.7
+          env: ASTROPY_VERSION=development
         - python: 3.5
           env: ASTROPY_VERSION=development
         - python: 2.7
