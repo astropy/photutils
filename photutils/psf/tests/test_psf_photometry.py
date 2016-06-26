@@ -198,6 +198,7 @@ def test_psf_photometry_uncertainties():
     assert_equal('flux_fit_uncertainty' in f.colnames, False)
 
 # test in case fitter does not have 'param_cov' key
+@pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.skipif('not HAS_PYTEST_GEQ_28')
 def test_psf_photometry_uncertainties_warning_check():
     psf = IntegratedGaussianPRF(sigma=GAUSSIAN_WIDTH)
