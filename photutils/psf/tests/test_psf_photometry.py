@@ -22,6 +22,11 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
+if pytest.__version__ >= '2.8':
+    HAS_PYTEST_GEQ_28 = True
+else:
+    HAS_PYTEST_GEQ_28 = False
+
 
 PSF_SIZE = 11
 GAUSSIAN_WIDTH = 1.
@@ -192,7 +197,9 @@ def test_psf_photometry_uncertainties():
                  f['y_0_fit_uncertainty'].all() < 10.0, True)
     assert_equal('flux_fit_uncertainty' in f.colnames, False)
 
-    # test in case fitter does not have 'param_cov' key
+# test in case fitter does not have 'param_cov' key
+@pytest.mark.skipif('not HAS_PYTEST_GEQ_28')
+def test_psf_photometry_uncertainties_warning_check():
     psf = IntegratedGaussianPRF(sigma=GAUSSIAN_WIDTH)
     with pytest.warns(AstropyUserWarning):
         f = psf_photometry(image, INTAB, psf, fitter=SLSQPLSQFitter(),
