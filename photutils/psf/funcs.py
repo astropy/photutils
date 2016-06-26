@@ -180,7 +180,7 @@ def psf_photometry(data, positions, psf, fitshape=None,
     psf : `astropy.modeling.Fittable2DModel` instance
         PSF or PRF model to fit the data. Could be one of the models in this
         package like `~photutils.psf.sandbox.DiscretePRF`,
-        `~photutils.psf.models.IntegratedGaussianPRF`, or any other suitable
+        `~photutils.psf.IntegratedGaussianPRF`, or any other suitable
         2D model.
         This function needs to identify three parameters (position of center in
         x and y coordinates and the flux) in order to set them to suitable
