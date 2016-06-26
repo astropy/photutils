@@ -42,7 +42,7 @@ New Features
 - ``photutils.psf_photometry``
 
   - Added the option ``param_uncert`` so that users can easily get
-    uncertainties on fitted parameters. [#358]
+    uncertainties on fitted parameters. [#376]
 
 API changes
 ^^^^^^^^^^^
