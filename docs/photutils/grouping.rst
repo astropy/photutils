@@ -26,12 +26,16 @@ Grouping Sources
 ^^^^^^^^^^^^^^^^
 
 Photutils provides an implementation of DAOPHOT GROUP in the
-:class:`~photutils.DAOGroup` class. Let's take a look at a simple example::
+:class:`~photutils.DAOGroup` class. Let's take a look at a simple example.
 
-    >>> from photutils.psf import DAOGroup
-    >>> fwhm = 2.0
-    >>> image = ...
-    >>> daogroup = DAOGroup(crit_separation=1.5*fwhm)
-    >>> apert = CircularAperture((daogroup['x_0'], daogroup['y_0']), r=fwhm)
-    >>> apert.plot(lw=1.5, alpha=0.5)
-    >>> plt.imshow(image, origin='lower', interpolation='None')
+First let's make some gaussian sources::
+
+    >>> from photutils.datasets import make_gaussian_sources
+    >>> from photutils.datasets import make_random_gaussians
+    >>> from photutils.datasets import make_
+    fwhm = 2.0
+    image = ...
+    daogroup = DAOGroup(crit_separation=1.5*fwhm)
+    apert = CircularAperture((daogroup['x_0'], daogroup['y_0']), r=fwhm)
+    apert.plot(lw=1.5, alpha=0.5)
+    plt.imshow(image, origin='lower', interpolation='None')
