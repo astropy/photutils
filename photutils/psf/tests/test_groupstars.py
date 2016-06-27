@@ -3,7 +3,7 @@ from __future__ import division
 import numpy as np
 from numpy.testing import assert_array_equal
 from astropy.table import Table, vstack
-from ..daogroup import DAOGroup
+from ..groupstars import DAOGroup
 
 
 class TestDAOGROUP(object):
