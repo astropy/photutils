@@ -1,2 +1,3 @@
 # photutils.morphology
 py:class photutils.morphology.CompoundModel1
+py:class photutils.psf.groupstars.GroupStarsBase
