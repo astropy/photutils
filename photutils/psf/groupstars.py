@@ -7,7 +7,7 @@ import numpy as np
 from astropy.table import Column, Table, vstack
 
 
-__all__ = ['DAOGroup']
+__all__ = ['DAOGroup', 'GroupStarsBase']
 
 
 class GroupStarsBase(object):
