@@ -22,7 +22,8 @@ from astropy.stats import gaussian_fwhm_to_sigma
 from .core import _convolve_data, find_peaks
 
 
-__all__ = ['DAOStarFinder', 'IRAFStarFinder', 'daofind', 'irafstarfind']
+__all__ = ['DAOStarFinder', 'IRAFStarFinder', 'StarFinderBase',
+           'daofind', 'irafstarfind']
 
 
 @deprecated(0.3, alternative='DAOStarFinder')

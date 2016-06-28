@@ -1,7 +1,2 @@
 # photutils.morphology
 py:class photutils.morphology.CompoundModel1
-
-# photutils.detection
-py:class photutils.detection.findstars.StarFinderBase
-py:class photutils.detection.findstars.DAOStarFinder
-py:class photutils.detection.findstars.IRAFStarFinder
