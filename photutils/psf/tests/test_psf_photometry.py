@@ -6,6 +6,7 @@ from numpy.testing import assert_allclose, assert_equal
 
 import warnings
 from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils import minversion
 
 from astropy.tests.helper import pytest
 from astropy.modeling.models import Gaussian2D
@@ -22,7 +23,7 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
-if pytest.__version__ >= '2.8':
+if minversion(pytest, '2.8'):
     HAS_PYTEST_GEQ_28 = True
 else:
     HAS_PYTEST_GEQ_28 = False
