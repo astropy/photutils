@@ -29,28 +29,16 @@ Grouping Sources
 Photutils provides an implementation of DAOPHOT GROUP in the
 :class:`~photutils.psf.DAOGroup` class. Let's take a look at a simple example.
 
-.. code:: python
-
-    # Import required modules
-
-.. code:: python
-
-    %matplotlib inline
+.. plot::
+    :include-source:
+     
     import numpy as np
     from photutils.datasets import make_gaussian_sources
     from photutils.datasets import make_random_gaussians
     from photutils.datasets import make_noise_image
     import matplotlib.pyplot as plt
-    from matplotlib import rcParams
-    rcParams['image.cmap'] = 'viridis'
-    rcParams['image.aspect'] = 1  # to get images with square pixels
-    rcParams['figure.figsize'] = (7,7)
-
-.. code:: python
 
     # Make Gaussian sources
-
-.. code:: python
 
     n_sources = 350
     min_flux = 500
@@ -64,54 +52,28 @@ Photutils provides an implementation of DAOPHOT GROUP in the
                random_state=1234)
     shape = (256, 256)
     sim_image = make_gaussian_sources(shape, starlist)
-    plt.imshow(sim_image, origin='lower', interpolation='nearest')
-
-
-
-
-.. parsed-literal::
-
-    <matplotlib.image.AxesImage at 0x109e03b70>
-
-
-
-
-.. image:: grouping_files/group_notebook_3_1.png
-
-
-.. code:: python
+    plt.imshow(sim_image, origin='lower', interpolation='nearest',
+               cmap='viridis')
+    plt.show()
 
     # Rename the centroids column names, so that they agree with the
     # names that DAOGroup expect:
 
-.. code:: python
-
     starlist['x_mean'].name = 'x_0'
     starlist['y_mean'].name = 'y_0'
 
-.. code:: python
-
-    # Plot circular apertures around the sources and plot them:
-
-.. code:: python
+    # Plot circular apertures around the sources:
 
     from photutils import CircularAperture
     from astropy.stats import gaussian_sigma_to_fwhm
     circ_aperture = CircularAperture((starlist['x_0'], starlist['y_0']),
                                      r=sigma_psf*gaussian_sigma_to_fwhm)
-    plt.imshow(sim_image, origin='lower', interpolation='nearest')
+    plt.imshow(sim_image, origin='lower', interpolation='nearest',
+               cmap='viridis')
     circ_aperture.plot(lw=1.5, alpha=0.5)
+    plt.show()
 
-
-
-.. image:: grouping_files/group_notebook_7_0.png
-
-
-.. code:: python
-
-    # Find the groups of overlapping sources:
-
-.. code:: python
+    # Find groups of overlapping sources:
 
     from photutils.psf.groupstars import DAOGroup
     fwhm = sigma_psf*gaussian_sigma_to_fwhm
@@ -119,15 +81,12 @@ Photutils provides an implementation of DAOPHOT GROUP in the
     star_groups = daogroup(starlist)
     star_groups = star_groups.group_by('group_id')
 
-.. code:: python
-
     # Plot rectangular apertures (which is actually the region that is used
     # to do simultaneous fitting) which cover each group:
 
-.. code:: python
-
     from photutils import RectangularAperture
-    plt.imshow(sim_image, origin='lower', interpolation='nearest')
+    plt.imshow(sim_image, origin='lower', interpolation='nearest',
+               cmap='viridis')
     for group in star_groups.groups:
         group_center = (np.median(group['x_0']), np.median(group['y_0']))
         xmin = np.min(group['x_0']) - fwhm
@@ -140,7 +99,4 @@ Photutils provides an implementation of DAOPHOT GROUP in the
                                             group_height, theta=0)
         rect_aperture.plot(lw=1.5, alpha=0.5)
     circ_aperture.plot(lw=1.5, alpha=0.5)
-
-
-
-.. image:: grouping_files/group_notebook_11_0.png
+    plt.show()
