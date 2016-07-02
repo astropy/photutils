@@ -48,8 +48,6 @@ New Features
   - Added new ``DAOGroup`` class for grouping overlapping sources based on
     daophot GROUP algorithm. [#369]
 
->>>>>>> add changelog entry
-
 API changes
 ^^^^^^^^^^^
 
