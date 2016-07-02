@@ -70,6 +70,11 @@ API changes
 
   - Renamed ``calculate_total_error`` to ``calc_total_error``. [#368]
 
+- ``photutils.detection``
+
+  - Changed finding algorithm implementations (daofind and iraf's star find)
+    from functional to object-oriented style. Deprecate old style. [#379]
+
 
 0.2.2 (unreleased)
 ------------------
