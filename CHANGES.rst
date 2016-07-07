@@ -1,15 +1,13 @@
-
-0.3 (unreleased)
-----------------
+0.2.2 (2016-07-06)
+------------------
 
 General
 ^^^^^^^
 
-- Drop numpy 1.6 support, minimal required version is now numpy 1.7 [#327]
+- Drop numpy 1.6 support, minimal required version is now numpy 1.7. [#327]
 
+- Fixed configparser for Python 3.5. [#366, #384]
 
-0.2.2 (unreleased)
-------------------
 
 Bug Fixes
 ^^^^^^^^^
@@ -21,6 +19,9 @@ Bug Fixes
 
   - Fixed source deblending to pass the pixel connectivity to the
     watershed algorithm. [#347]
+
+  - SegmentationImage properties are now cached instead of recalculated,
+    which significantly improves performance. [#361]
 
 - ``photutils.utils``
 
