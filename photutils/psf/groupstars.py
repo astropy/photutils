@@ -74,7 +74,7 @@ class DAOGroup(GroupStarsBase):
 
         if 'id' not in cstarlist.colnames:
             cstarlist.add_column(Column(name='id',
-                                        data=np.arange(len(cstarlist))))
+                                        data=np.arange(len(cstarlist) + 1)))
         cstarlist.add_column(Column(name='group_id',\
                                 data=np.zeros(len(cstarlist), dtype=np.int)))
         n = 1
@@ -82,15 +82,16 @@ class DAOGroup(GroupStarsBase):
             init_star = cstarlist[np.where(cstarlist['group_id'] == 0)[0][0]]
             index = _find_group(init_star, cstarlist[cstarlist['group_id'] == 0],
                                 self.crit_separation)
-            cstarlist['group_id'][index] = n
+            cstarlist['group_id'][index-1] = n
             k = 1
             K = len(index)
             while k < K:
                 init_star = cstarlist[cstarlist['id'] == index[k]]
-                tmp_index = _find_group(init_star, cstarlist[cstarlist['group_id'] == 0],
+                tmp_index = _find_group(init_star,
+                                        cstarlist[cstarlist['group_id'] == 0],
                                         self.crit_separation)
                 if len(tmp_index) > 0:
-                    cstarlist['group_id'][tmp_index] = n
+                    cstarlist['group_id'][tmp_index-1] = n
                     index = np.append(index, tmp_index)
                     K = len(index)
                 k += 1
