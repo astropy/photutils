@@ -58,7 +58,7 @@ class SegmentationImage(object):
         self._data = value
         # be sure to delete any lazy properties to reset their values.
         del (self.data_masked, self.shape, self.labels, self.nlabels,
-             self.max, self.slices, self.areas, self.is_sequential)
+             self.max, self.slices, self.is_sequential)
 
     @property
     def array(self):
@@ -157,7 +157,7 @@ class SegmentationImage(object):
         from scipy.ndimage import find_objects
         return find_objects(self._data)
 
-    @property
+    @lazyproperty
     def is_sequential(self):
         """
         Determine whether or not the non-zero labels in the segmenation
