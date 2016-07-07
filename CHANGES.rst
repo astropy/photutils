@@ -1,12 +1,8 @@
-
 0.3 (unreleased)
 ----------------
 
 General
 ^^^^^^^
-
-- Drop numpy 1.6 support, minimal required version is now numpy 1.7.
-  [#327]
 
 New Features
 ^^^^^^^^^^^^
@@ -35,9 +31,6 @@ New Features
 
   - Added ``copy`` and ``area`` methods and a ``areas`` property to
     ``SegmentationImage``. [#331]
-
-  - SegmentationImage properties are now cached to significantly
-    improve performance. [#361]
 
 
 API changes
@@ -77,8 +70,16 @@ API changes
   - Renamed ``calculate_total_error`` to ``calc_total_error``. [#368]
 
 
-0.2.2 (unreleased)
+0.2.2 (2016-07-06)
 ------------------
+
+General
+^^^^^^^
+
+- Drop numpy 1.6 support, minimal required version is now numpy 1.7. [#327]
+
+- Fixed configparser for Python 3.5. [#366, #384]
+
 
 Bug Fixes
 ^^^^^^^^^
@@ -90,6 +91,9 @@ Bug Fixes
 
   - Fixed source deblending to pass the pixel connectivity to the
     watershed algorithm. [#347]
+
+  - SegmentationImage properties are now cached instead of recalculated,
+    which significantly improves performance. [#361]
 
 - ``photutils.utils``
 
