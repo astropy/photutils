@@ -2,10 +2,15 @@
 from __future__ import division
 
 import numpy as np
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
+
+import warnings
+from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils import minversion
 
 from astropy.tests.helper import pytest
 from astropy.modeling.models import Gaussian2D
+from astropy.modeling.fitting import SLSQPLSQFitter
 from astropy.convolution.utils import discretize_model
 from astropy.table import Table
 
@@ -17,6 +22,11 @@ try:
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
+
+if minversion(pytest, '2.8'):
+    HAS_PYTEST_GEQ_28 = True
+else:
+    HAS_PYTEST_GEQ_28 = False
 
 
 PSF_SIZE = 11
@@ -162,6 +172,48 @@ def test_psf_photometry_gaussian():
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
 
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_psf_photometry_uncertainties():
+    """
+    Make sure proper columns are added to store uncertainties on fitted
+    parameters.
+    """
+    psf = IntegratedGaussianPRF(sigma=GAUSSIAN_WIDTH)
+    f = psf_photometry(image, INTAB, psf, param_uncert=True)
+    assert_equal(f['flux_fit_uncertainty'].all() > 0.1 and
+                 f['flux_fit_uncertainty'].all() < 10.0 and 
+                 f['x_0_fit_uncertainty'].all() > 0.1 and
+                 f['x_0_fit_uncertainty'].all() < 10.0 and
+                 f['y_0_fit_uncertainty'].all() > 0.1 and
+                 f['y_0_fit_uncertainty'].all() < 10.0, True)
+
+    # test for fixed params
+    psf = IntegratedGaussianPRF(sigma=GAUSSIAN_WIDTH)
+    psf.flux.fixed = True
+    f = psf_photometry(image, INTAB, psf, param_uncert=True)
+    assert_equal(f['x_0_fit_uncertainty'].all() > 0.1 and
+                 f['x_0_fit_uncertainty'].all() < 10.0 and
+                 f['y_0_fit_uncertainty'].all() > 0 and
+                 f['y_0_fit_uncertainty'].all() < 10.0, True)
+    assert_equal('flux_fit_uncertainty' in f.colnames, False)
+
+# test in case fitter does not have 'param_cov' key
+@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_PYTEST_GEQ_28')
+def test_psf_photometry_uncertainties_warning_check():
+    psf = IntegratedGaussianPRF(sigma=GAUSSIAN_WIDTH)
+    with pytest.warns(AstropyUserWarning):
+        f = psf_photometry(image, INTAB, psf, fitter=SLSQPLSQFitter(),
+                           param_uncert=True)
+        assert_equal('flux_fit_uncertainty' in f.colnames or\
+                     'y_0_fit_uncertainty' in f.colnames or \
+                     'x_0_fit_uncertainty' in f.colnames, False)
+        # test that AstropyUserWarning is raised
+        warnings.warn("uncertainties on fitted parameters cannot be " +
+                      "computed because fitter does not contain " +
+                      "`param_cov` key in its `fit_info` dictionary.",
+                      AstropyUserWarning)
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_subtract_psf():

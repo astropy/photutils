@@ -32,6 +32,10 @@ New Features
   - Added ``copy`` and ``area`` methods and a ``areas`` property to
     ``SegmentationImage``. [#331]
 
+- ``photutils.psf_photometry``
+
+  - Added the option ``param_uncert`` so that users can easily get
+    uncertainties on fitted parameters. [#376]
 
 API changes
 ^^^^^^^^^^^
