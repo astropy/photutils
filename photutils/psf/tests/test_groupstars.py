@@ -219,3 +219,18 @@ class TestDAOGROUP(object):
         daogroup = DAOGroup(crit_separation=0.6)
         test_starlist = daogroup(starlist['x_0', 'y_0', 'id'])
         assert_array_equal(starlist, test_starlist)
+
+    def test_isolated_sources(self):
+        """
+        Test case when all sources are isolated.
+        """
+        x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
+                        -np.sqrt(2)/4])
+        y_0 = np.array([0, np.sqrt(2)/4, -np.sqrt(2)/4, np.sqrt(2)/4,
+                        -np.sqrt(2)/4])
+        starlist = Table([x_0, y_0, np.arange(len(x_0)) + 1,
+                          np.arange(len(x_0)) + 1],
+                          names=('x_0', 'y_0', 'id', 'group_id'))
+        daogroup = DAOGroup(crit_separation=0.01)
+        test_starlist = daogroup(starlist['x_0', 'y_0', 'id'])
+        assert_array_equal(starlist, test_starlist)
