@@ -9,30 +9,36 @@ from ..models import IntegratedGaussianPRF
 from ...datasets import make_gaussian_sources
 from ...datasets import make_noise_image
 from ..groupstars import DAOGroup
-from ..psfphotometry import StetsonPSFPhotometry
+from ..psfphotometry import DAOPhotPSFPhotometry
 from ...detection import DAOStarFinder
 from ...background import MedianBackground
 from ...background import StdBackgroundRMS
 
 
-class TestStetsonPSFPhotometry(object):
+class TestDAOPhotPSFPhotometry(object):
     def test_complete_photometry_one(self):
         """
         Tests the whole photometry process.
         """
         sigma_psf = 2.0
         sources = Table()
-        sources['flux'] = [700, 700]
-        sources['x_mean'] = [12, 18]
-        sources['y_mean'] = [15, 15]
+        sources['flux'] = [700, 900]
+        sources['x_mean'] = [12, 17]
+        sources['y_mean'] = [15, 17]
         sources['x_stddev'] = [sigma_psf, sigma_psf]
         sources['y_stddev'] = sources['x_stddev']
         sources['theta'] = [0, 0]
+        sources['id'] = [1, 2]
+        sources['group_id'] = [1, 1]
         tshape = (32, 32)
-
+        
+        # generate image with read-out noise (Gaussian) and
+        # background noise (Poisson)
         image = (make_gaussian_sources(tshape, sources) +
                  make_noise_image(tshape, type='poisson', mean=4.,
-                                  random_state=1)) 
+                                  random_state=1) +
+                 make_noise_image(tshape, type='gaussian', mean=0.,
+                                  stddev=1., random_state=1)) 
 
         bkgrms = StdBackgroundRMS(sigma=3.)
         std = bkgrms(image)
@@ -43,34 +49,38 @@ class TestStetsonPSFPhotometry(object):
         median_bkg = MedianBackground(sigma=3.)
         psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
         fitter = LevMarLSQFitter()
-        nstar_photometry = StetsonPSFPhotometry(find=daofind, group=daogroup,
+        nstar_photometry = DAOPhotPSFPhotometry(find=daofind, group=daogroup,
                                                 bkg=median_bkg, psf=psf_model,
                                                 fitter=LevMarLSQFitter(),
-                                                niters=1, fitshape=(5,5))
-        
+                                                niters=1, fitshape=(11,11))
+
         result_tab, residual_image = nstar_photometry(image)
 
-        assert_allclose(result_tab['x_fit'], sources['x_mean'], rtol=1e-2)
-        assert_allclose(result_tab['y_fit'], sources['y_mean'], rtol=1e-2)
+        assert_allclose(result_tab['x_fit'], sources['x_mean'], rtol=1e-1)
+        assert_allclose(result_tab['y_fit'], sources['y_mean'], rtol=1e-1)
         assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
-        assert_array_equal(result_tab['id'], np.arange(2) + 1)
-        assert_array_equal(result_tab['group_id'], np.ones(2, dtype=np.int))
-        assert_allclose(np.mean(residual_image), 0.0, atol=1e-1)
+        assert_array_equal(result_tab['id'], sources['id'])
+        assert_array_equal(result_tab['group_id'], sources['group_id'])
+        assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
 
     def test_complete_photometry_two(self):
         sigma_psf = 2.0
         sources = Table()
         sources['flux'] = [700, 700, 700, 700]
-        sources['x_mean'] = [12, 18, 12, 18]
-        sources['y_mean'] = [15, 15, 21, 21]
+        sources['x_mean'] = [17, 12, 17, 12]
+        sources['y_mean'] = [20, 20, 15, 15]
         sources['x_stddev'] = sigma_psf*np.ones(4)
         sources['y_stddev'] = sources['x_stddev']
         sources['theta'] = [0, 0, 0, 0]
+        sources['id'] = [1, 2, 3, 4]
+        sources['group_id'] = [1, 1, 1, 1]
         tshape = (32, 32)
-
+        
         image = (make_gaussian_sources(tshape, sources) +
-                 make_noise_image(tshape, type='poisson', mean=2.,
-                                  random_state=1))
+                 make_noise_image(tshape, type='poisson', mean=6.,
+                                  random_state=1) +
+                 make_noise_image(tshape, type='gaussian', mean=0.,
+                                  stddev=2., random_state=1))
         
         bkgrms = StdBackgroundRMS(sigma=3.)
         std = bkgrms(image)
@@ -81,16 +91,16 @@ class TestStetsonPSFPhotometry(object):
         median_bkg = MedianBackground(sigma=3.)
         psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
         fitter = LevMarLSQFitter()
-        nstar_photometry = StetsonPSFPhotometry(find=daofind, group=daogroup,
+        nstar_photometry = DAOPhotPSFPhotometry(find=daofind, group=daogroup,
                                                 bkg=median_bkg, psf=psf_model,
                                                 fitter=LevMarLSQFitter(),
-                                                niters=1, fitshape=(5,5))
+                                                niters=1, fitshape=(11,11))
         
         result_tab, residual_image = nstar_photometry(image)
 
-        assert_allclose(result_tab['x_fit'], sources['x_mean'], rtol=1e-2)
-        assert_allclose(result_tab['y_fit'], sources['y_mean'], rtol=1e-2)
+        assert_allclose(result_tab['x_fit'], sources['x_mean'], rtol=1e-1)
+        assert_allclose(result_tab['y_fit'], sources['y_mean'], rtol=1e-1)
         assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
-        assert_array_equal(result_tab['id'], np.arange(4) + 1)
-        assert_array_equal(result_tab['group_id'], np.ones(4, dtype=np.int))
-        assert_allclose(np.mean(residual_image), 0.0, atol=1e-1)
+        assert_array_equal(result_tab['id'], sources['id'])
+        assert_array_equal(result_tab['group_id'], sources['group_id'])
+        assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
