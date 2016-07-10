@@ -42,7 +42,8 @@ class StetsonPSFPhotometry(object):
             NSTAR.
         fitshape : array-like
             rectangular shape around the center of a star which will be used
-            to collect the data to do the fitting
+            to collect the data to do the fitting, e.g. (5, 5), [5, 5],
+            np.array([5, 5]). Also, each element must be an odd number.
         """
 
         self.find = find
@@ -61,7 +62,7 @@ class StetsonPSFPhotometry(object):
             if isinstance(niters, int) and niters > 0:
                 self._niters = niters
             else:
-                raise ValueError('niters is not defined properly, '
+                raise ValueError('niters must be an interger-valued number, '
                                  'received niters = {}'.format(niters))
         @property
         def fitshape(self):
@@ -69,10 +70,20 @@ class StetsonPSFPhotometry(object):
         @fitshape.setter
         def fitshape(self, fitshape):
             fitshape = np.asarray(fitshape)
-            if len(fitshape) == 2 and np.all(fitshape) > 0:
-                self._fitshape = fitshape
+            if len(fitshape) == 2:
+                if np.all(fitshape) > 0:
+                    if np.all(fitshape) % 2 == 1):
+                        self._fitshape = fitshape
+                    else:
+                        raise ValueError('fitshape must be odd integer-valued, '
+                                         'received fitshape = {}'\
+                                         .format(fitshape))
+                else:
+                    raise ValueError('fitshape must have positive elements, '
+                                     'received fitshape = {}'\
+                                     .format(fitshape))
             else:
-                raise ValueError('fitshape is not defined properly, '
+                raise ValueError('fitshape must have two dimensions, '
                                  'received fitshape = {}'.format(fitshape))
 
     def __call__(self, image):
