@@ -271,10 +271,13 @@ Local Peak Detection
 
 Photutils also includes a :func:`~photutils.detection.find_peaks`
 function to find local peaks in an image that are above a specified
-threshold value.  Peaks are the local maxima above a specified
+threshold value. Peaks are the local maxima above a specified
 threshold that separated by a specified minimum number of pixels.
-The return pixel coordinates are always integer (i.e., no centroiding
-is performed, only the peak pixel is identified).
+By default, the returned pixel coordinates are always integer-valued
+(i.e., no centroiding is performed, only the peak pixel is identified).
+However, :func:`~photutils.detection.find_peaks` may be used to compute
+centroid coordinates with subpixel precision whenever the optional argument
+``subpixel`` is set to `True`.
 :func:`~photutils.detection.find_peaks` also supports a number of
 options, including searching for peaks only within a segmentation
 image or a specified footprint.  Please see the
