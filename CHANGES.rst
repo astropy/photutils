@@ -39,6 +39,16 @@ New Features
   - Added ``copy`` and ``area`` methods and a ``areas`` property to
     ``SegmentationImage``. [#331]
 
+=======
+- ``photutils.psf``
+
+  - Added the option ``param_uncert`` so that users can easily get
+    uncertainties on fitted parameters. [#376]
+
+  - Added new ``DAOGroup`` class for grouping overlapping sources based on
+    daophot GROUP algorithm. [#369]
+
+>>>>>>> add changelog entry
 
 API changes
 ^^^^^^^^^^^
