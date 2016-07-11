@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import division
 import numpy as np
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_raises
 from astropy.table import Table, vstack
 from ..groupstars import DAOGroup
 
@@ -234,3 +234,26 @@ class TestDAOGROUP(object):
         daogroup = DAOGroup(crit_separation=0.01)
         test_starlist = daogroup(starlist['x_0', 'y_0', 'id'])
         assert_array_equal(starlist, test_starlist)
+
+    def test_id_column(self):
+        x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
+                        -np.sqrt(2)/4])
+        y_0 = np.array([0, np.sqrt(2)/4, -np.sqrt(2)/4, np.sqrt(2)/4,
+                        -np.sqrt(2)/4])
+        starlist = Table([x_0, y_0, np.arange(len(x_0)) + 1,
+                          np.arange(len(x_0)) + 1],
+                          names=('x_0', 'y_0', 'id', 'group_id'))
+        daogroup = DAOGroup(crit_separation=0.01)
+        test_starlist = daogroup(starlist['x_0', 'y_0'])
+        assert_array_equal(starlist, test_starlist)
+
+    def test_id_column_raise_error(self):
+        x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
+                        -np.sqrt(2)/4])
+        y_0 = np.array([0, np.sqrt(2)/4, -np.sqrt(2)/4, np.sqrt(2)/4,
+                        -np.sqrt(2)/4])
+        starlist = Table([x_0, y_0, np.arange(len(x_0)),
+                          np.arange(len(x_0)) + 1],
+                          names=('x_0', 'y_0', 'id', 'group_id'))
+        daogroup = DAOGroup(crit_separation=0.01)
+        assert_raises(ValueError, daogroup, starlist['x_0', 'y_0', 'id'])

@@ -52,6 +52,24 @@ class DAOGroup(GroupStarsBase):
 
     def __init__(self, crit_separation):
         self.crit_separation = crit_separation
+    
+    def __call__(self, starlist):
+        """
+        Parameters
+        ----------
+        starlist : `~astropy.table.Table`
+            List of stars positions. Columns named as 'x_0' and 'y_0', which
+            corresponds to the centroid coordinates of the sources, must be
+            provided.
+
+        Returns
+        -------
+        group_starlist : `~astropy.table.Table`
+            ``starlist`` with an additional column named ``group_id`` whose
+            unique values represent groups of mutually overlapping stars.
+        """
+
+        return self.group_stars(starlist)
 
     @property
     def crit_separation(self):
@@ -74,22 +92,27 @@ class DAOGroup(GroupStarsBase):
 
         if 'id' not in cstarlist.colnames:
             cstarlist.add_column(Column(name='id',
-                                        data=np.arange(len(cstarlist) + 1)))
+                                        data=np.arange(len(cstarlist)) + 1))
         cstarlist.add_column(Column(name='group_id',\
                                 data=np.zeros(len(cstarlist), dtype=np.int)))
+
+        if not np.array_equal(cstarlist['id'], np.arange(len(cstarlist)) +1):
+            raise ValueError('id colum must be an integer-valued ' +
+                             'sequence starting from 1. ' +
+                             'Got {}'.format(cstarlist['id']))
+
         n = 1
         while (cstarlist['group_id'] == 0).sum() > 0:
             init_star = cstarlist[np.where(cstarlist['group_id'] == 0)[0][0]]
-            index = _find_group(init_star, cstarlist[cstarlist['group_id'] == 0],
-                                self.crit_separation)
+            index = self.find_group(init_star,
+                                    cstarlist[cstarlist['group_id'] == 0])
             cstarlist['group_id'][index-1] = n
             k = 1
             K = len(index)
             while k < K:
                 init_star = cstarlist[cstarlist['id'] == index[k]]
-                tmp_index = _find_group(init_star,
-                                        cstarlist[cstarlist['group_id'] == 0],
-                                        self.crit_separation)
+                tmp_index = self.find_group(init_star,\
+                                        cstarlist[cstarlist['group_id'] == 0])
                 if len(tmp_index) > 0:
                     cstarlist['group_id'][tmp_index-1] = n
                     index = np.append(index, tmp_index)
@@ -99,44 +122,27 @@ class DAOGroup(GroupStarsBase):
 
         return cstarlist
 
-    def __call__(self, starlist):
+    def find_group(self, star, starlist):
         """
+        Find the ids of those stars in ``starlist`` which are at a distance less
+        than ``crit_separation`` from ``star``.
+
         Parameters
         ----------
+        star : `~astropy.table.Row`
+            Star which will be either the head of a cluster or an isolated one.
         starlist : `~astropy.table.Table`
-            List of stars positions. Columns named as 'x_0' and 'y_0' must be
+            List of stars positions. Columns named as 'x_0' and 'y_0', which
+            corresponds to the centroid coordinates of the sources, must be
             provided.
-
+        
         Returns
         -------
-        group_starlist : list of `~astropy.table.Table`
-            Each `~astropy.table.Table` in the list corresponds to a group of
-            mutually overlapping stars.
+        Array containing the ids of those stars which are at a
+        distance less than `crit_separation` from `star`.
         """
-
-        return self.group_stars(starlist)
-
-def _find_group(star, starlist, crit_separation):
-    """
-    Find the ids of those stars in ``starlist`` which are at a distance less
-    than ``crit_separation`` from ``star``.
-
-    Parameters
-    ----------
-    star : `~astropy.table.Row`
-        Star which will be either the head of a cluster or an isolated one.
-    starlist : `~astropy.table.Table`
-    crit_separation : float or int
-        Distance, in units of pixels, such that any two stars separated by
-        less than this distance will be placed in the same group.
-
-    Returns
-    -------
-    Array containing the ids of those stars which are at a
-    distance less than `crit_separation` from `star`.
-    """
-    
-    star_distance = np.hypot(star['x_0'] - starlist['x_0'],
-                             star['y_0'] - starlist['y_0'])
-    distance_criteria = star_distance < crit_separation
-    return np.asarray(starlist[distance_criteria]['id'])
+        
+        star_distance = np.hypot(star['x_0'] - starlist['x_0'],
+                                 star['y_0'] - starlist['y_0'])
+        distance_criteria = star_distance < self.crit_separation
+        return np.asarray(starlist[distance_criteria]['id'])
