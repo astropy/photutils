@@ -56,7 +56,8 @@ background noise using sigma-clipped statistics::
 Now we will subtract the background and use an instance of
 :class:`~photutils.DAOStarFinder` to find the stars in the image that have
 FWHMs of around 3 pixels and have peaks approximately 5-sigma above the
-background:
+background. Running this class on the data yields an astropy
+`~astropy.table.Table` containing the results of the star-finder:
 
 .. doctest-requires:: scipy, skimage
 
