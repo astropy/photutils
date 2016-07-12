@@ -1,7 +1,8 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import division
 import numpy as np
-from numpy.testing import assert_array_equal, assert_raises
+from astropy.tests.helper import pytest
+from numpy.testing import assert_array_equal
 from astropy.table import Table, vstack
 from ..groupstars import DAOGroup
 
@@ -256,4 +257,5 @@ class TestDAOGROUP(object):
                           np.arange(len(x_0)) + 1],
                           names=('x_0', 'y_0', 'id', 'group_id'))
         daogroup = DAOGroup(crit_separation=0.01)
-        assert_raises(ValueError, daogroup, starlist['x_0', 'y_0', 'id'])
+        with pytest.raises(ValueError):
+            daogroup(starlist['x_0', 'y_0', 'id'])
