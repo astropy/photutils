@@ -36,7 +36,7 @@ class DAOGroup(GroupStarsBase):
 
     Notes
     -----
-    Assuming the psf fwhm to be known, 'crit_separation' may be set to
+    Assuming the psf fwhm to be known, ``crit_separation`` may be set to
     k*fwhm, for some positive real k.
 
     See
@@ -58,9 +58,9 @@ class DAOGroup(GroupStarsBase):
         Parameters
         ----------
         starlist : `~astropy.table.Table`
-            List of stars positions. Columns named as 'x_0' and 'y_0', which
-            corresponds to the centroid coordinates of the sources, must be
-            provided.
+            List of stars positions. Columns named as ``x_0`` and ``y_0``,
+            which corresponds to the centroid coordinates of the sources,
+            must be provided.
 
         Returns
         -------
@@ -132,14 +132,14 @@ class DAOGroup(GroupStarsBase):
         star : `~astropy.table.Row`
             Star which will be either the head of a cluster or an isolated one.
         starlist : `~astropy.table.Table`
-            List of stars positions. Columns named as 'x_0' and 'y_0', which
-            corresponds to the centroid coordinates of the sources, must be
-            provided.
+            List of stars positions. Columns named as ``x_0`` and ``y_0``,
+            which corresponds to the centroid coordinates of the sources,
+            must be provided.
         
         Returns
         -------
-        Array containing the ids of those stars which are at a
-        distance less than `crit_separation` from `star`.
+        Array containing the ids of those stars which are at a distance less
+        than ``crit_separation`` from ``star``.
         """
         
         star_distance = np.hypot(star['x_0'] - starlist['x_0'],
