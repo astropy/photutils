@@ -3,6 +3,7 @@
 
 from __future__ import division
 import abc
+from astropy.extern import six
 import numpy as np
 from astropy.table import Column, Table, vstack
 
@@ -10,13 +11,11 @@ from astropy.table import Column, Table, vstack
 __all__ = ['DAOGroup', 'GroupStarsBase']
 
 
+@six.add_metaclass(abc.ABCMeta)
 class GroupStarsBase(object):
-    __metaclass__ = abc.ABCMeta
-
     @abc.abstractmethod
     def group_stars(self, starlist):
         pass
-
 
 class DAOGroup(GroupStarsBase):
     """
