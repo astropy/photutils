@@ -22,9 +22,9 @@ class TestDAOPhotPSFPhotometry(object):
         """
         sigma_psf = 2.0
         sources = Table()
-        sources['flux'] = [700, 900]
-        sources['x_mean'] = [12, 17]
-        sources['y_mean'] = [15, 17]
+        sources['flux'] = [800, 800]
+        sources['x_mean'] = [18, 13]
+        sources['y_mean'] = [16, 16]
         sources['x_stddev'] = [sigma_psf, sigma_psf]
         sources['y_stddev'] = sources['x_stddev']
         sources['theta'] = [0, 0]
@@ -35,10 +35,10 @@ class TestDAOPhotPSFPhotometry(object):
         # generate image with read-out noise (Gaussian) and
         # background noise (Poisson)
         image = (make_gaussian_sources(tshape, sources) +
-                 make_noise_image(tshape, type='poisson', mean=4.,
+                 make_noise_image(tshape, type='poisson', mean=6.,
                                   random_state=1) +
                  make_noise_image(tshape, type='gaussian', mean=0.,
-                                  stddev=1., random_state=1)) 
+                                  stddev=2., random_state=1)) 
 
         bkgrms = StdBackgroundRMS(sigma=3.)
         std = bkgrms(image)

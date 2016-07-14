@@ -7,8 +7,8 @@ import numpy as np
 from astropy.extern import six
 from astropy.table import Table, vstack
 from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.nddata.utils import overlap_slices
 from ..psf import subtract_psf
-from ..extern.nddata_compat import extract_array
 
 
 __all__ = ['PSFPhotometryBase', 'DAOPhotPSFPhotometry']
@@ -55,9 +55,9 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
             column ``group_id`` should cotain integers starting from ``1``
             that indicate in which group a given source belongs to.
             See, e.g., `~photutils.psf.DAOGroup`
-        bkg : callable or instance of any BackgroundBase subclasses
-            ``bkg`` should be able to compute either a scalar background or a
-            2D background of a given 2D image.
+        bkg : callable or instance of any `~photutils.BackgroundBase`
+            subclasses ``bkg`` should be able to compute either a scalar
+            background or a 2D background of a given 2D image.
             See, e.g., `~photutils.background.MedianBackground`
         psf : `astropy.modeling.Fittable2DModel` instance
             PSF or PRF model to fit the data. Could be one of the models in
@@ -110,6 +110,7 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
         @property
         def niters(self):
             return self._niters
+
         @niters.setter
         def niters(self, niters):
             if isinstance(niters, int) and niters > 0:
@@ -117,9 +118,11 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
             else:
                 raise ValueError('niters must be an interger-valued number, '
                                  'received niters = {}'.format(niters))
+        
         @property
         def fitshape(self):
             return self._fitshape
+
         @fitshape.setter
         def fitshape(self, fitshape):
             fitshape = np.asarray(fitshape)
@@ -219,23 +222,21 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
                                   'flux_fit'),
                            dtype=('i4', 'i4', 'f8', 'f8', 'f8'))
         star_groups = star_groups.group_by('group_id')
-
-        indices = np.indices(image.shape)
+        
+        y, x = np.indices(image.shape)
 
         for n in range(len(star_groups.groups)):
             group_psf = self._get_sum_psf_model(star_groups.groups[n])
-            y = []
-            x = []
-            data = []
+            usepixel = np.zeros_like(image, dtype=np.bool)
+            
             for row in star_groups.groups[n]:
-                pos = (row['y_0'], row['x_0'])
-                y = np.hstack((y, extract_array(indices[0], self.fitshape,\
-                                                pos).flatten()))
-                x = np.hstack((x, extract_array(indices[1], self.fitshape,\
-                                                pos).flatten()))
-                data = np.hstack((data, extract_array(image, self.fitshape,\
-                                            pos, fill_value=0.0).flatten()))
-            fit_model = self.fitter(group_psf, x, y, data)
+                usepixel[overlap_slices(large_array_shape=image.shape,
+                                        small_array_shape=self.fitshape,
+                                        position=(row['y_0'], row['x_0']),
+                                        mode='trim')[0]] = True
+            
+            fit_model = self.fitter(group_psf, x[usepixel], y[usepixel],
+                                    image[usepixel])
             param_table = self._model_params2table(fit_model,
                                                    star_groups.groups[n])
             result_tab = vstack([result_tab, param_table])
