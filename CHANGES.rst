@@ -15,8 +15,8 @@ New Features
     ``MADStdBackgroundRMS``, and ``BiweightMidvarianceBackgroundRMS``
     classes. [#370]
 
-  - Added new ``BackgroundBase2D`` and ``BackgroundIDW2D`` classes and
-    ``std_blocksum`` function. [#355, #370]
+  - Added new ``BackgroundBase2D`` and ``BackgroundIDW2D`` classes.
+    [#355, #370]
 
   - Added new ``removed_masked``, ``meshpix_threshold``, and
     ``edge_method`` keywords for the 2D background classes. [#355]
@@ -27,15 +27,16 @@ New Features
 
   - Added new ``make_source_mask`` convenience function. [#355]
 
+- ``photutils.psf``
+
+  - Added the ``param_uncert`` keyword to ``psf_photometry`` so that
+    users can easily get uncertainties on fitted parameters. [#376]
+
 - ``photutils.segmentation``
 
   - Added ``copy`` and ``area`` methods and a ``areas`` property to
     ``SegmentationImage``. [#331]
 
-- ``photutils.psf_photometry``
-
-  - Added the option ``param_uncert`` so that users can easily get
-    uncertainties on fitted parameters. [#376]
 
 API changes
 ^^^^^^^^^^^
@@ -56,6 +57,12 @@ API changes
     ``background_mesh2d`` and ``background_rms_mesh2d``, respectively.
     [#355]
 
+- ``photutils.detection``
+
+  - Changed finding algorithm implementations (daofind and IRAF's star
+    find) from functional to object-oriented style. Deprecated old
+    style. [#379]
+
 - ``photutils.psf``
 
   - Removed the ``effective_gain`` keyword from ``psf_photometry``.
@@ -72,11 +79,6 @@ API changes
 - ``photutils.utils``
 
   - Renamed ``calculate_total_error`` to ``calc_total_error``. [#368]
-
-- ``photutils.detection``
-
-  - Changed finding algorithm implementations (daofind and iraf's star find)
-    from functional to object-oriented style. Deprecate old style. [#379]
 
 
 0.2.2 (2016-07-06)
