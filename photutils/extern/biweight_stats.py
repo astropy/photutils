@@ -134,7 +134,6 @@ def biweight_midvariance(a, c=9.0, M=None, axis=None):
 
     This is slightly different than given in the reference below, but
     results in a value closer to the true midvariance.
-
     For more details, see `Beers, Flynn, and Gebhardt (1990); AJ 100, 32
     <http://adsabs.harvard.edu/abs/1990AJ....100...32B>`_.
 
@@ -170,7 +169,7 @@ def biweight_midvariance(a, c=9.0, M=None, axis=None):
         >>> from numpy.random import randn
         >>> bmv = biweight_midvariance(rand.randn(1000))
         >>> print(bmv)    # doctest: +FLOAT_CMP
-        0.982631838332
+        0.986726249291
 
     See Also
     --------
@@ -201,8 +200,8 @@ def biweight_midvariance(a, c=9.0, M=None, axis=None):
     f1 = d * d * (1. - u)**4
     f1[~mask] = 0.
     f1 = f1.sum(axis=axis) ** 0.5
-    f2 = np.abs((1. - u) * (1. - 5.*u))
+    f2 = (1. - u) * (1. - 5.*u)
     f2[~mask] = 0.
-    f2 = f2.sum(axis=axis)
+    f2 = np.abs(f2.sum(axis=axis))
 
     return (n ** 0.5) * f1 / f2
