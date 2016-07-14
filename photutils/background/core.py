@@ -32,6 +32,38 @@ __all__ = ['SigmaClip', 'BackgroundBase', 'BackgroundRMSBase',
            'MADStdBackgroundRMS', 'BiweightMidvarianceBackgroundRMS']
 
 
+def _masked_median(data, axis=None):
+    """
+    Calculate the median of a (masked) array.
+
+    This function is necessary for a consistent interface across all
+    numpy versions.  An bug was introduced in numpy v1.10 where
+    `numpy.ma.median` (with ``axis=None``) returns a single-valued
+    `~numpy.ma.MaskedArray` if the input data is a `~numpy.ndarray` or
+    if the data is a `~numpy.ma.MaskedArray`, but the mask is `False`
+    everywhere.
+
+    Parameters
+    ----------
+    data : array-like
+        The input data.
+    axis : int or `None`, optional
+        The array axis along which the median is calculated.  If
+        `None`, then the entire array is used.
+
+    Returns
+    -------
+    result : float or `~numpy.ma.MaskedArray`
+        The resulting median.  If ``axis`` is `None`, then a float is
+        returned, otherwise a `~numpy.ma.MaskedArray` is returned.
+    """
+
+    _median = np.ma.median(data, axis=axis)
+    if axis is None and np.ma.isMaskedArray(_median):
+        _median = _median.item()
+    return _median
+
+
 class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
     pass
 
@@ -248,7 +280,7 @@ class MedianBackground(BackgroundBase, SigmaClip):
 
     def calc_background(self, data, axis=None):
 
-        return np.ma.median(self.sigma_clip(data, axis=axis), axis=axis)
+        return _masked_median(self.sigma_clip(data, axis=axis), axis=axis)
 
 
 class ModeEstimatorBackground(BackgroundBase, SigmaClip):
@@ -310,7 +342,7 @@ class ModeEstimatorBackground(BackgroundBase, SigmaClip):
     def calc_background(self, data, axis=None):
 
         data = self.sigma_clip(data, axis=axis)
-        return ((self.median_factor * np.ma.median(data, axis=axis)) -
+        return ((self.median_factor * _masked_median(data, axis=axis)) -
                 (self.mean_factor * np.ma.mean(data, axis=axis)))
 
 
@@ -426,22 +458,17 @@ class SExtractorBackground(BackgroundBase, SigmaClip):
     def calc_background(self, data, axis=None):
 
         data = self.sigma_clip(data, axis=axis)
-
-        # Use .item() to make the median a scalar for numpy 1.10.
-        # Even when fixed in numpy, this needs to remain for
-        # compatibility with numpy 1.10 (until no longer supported).
-        # https://github.com/numpy/numpy/pull/7635
-        _median = np.ma.median(data, axis=axis).item()
+        _median = _masked_median(data, axis=axis)
         _mean = np.ma.mean(data, axis=axis)
         _std = np.ma.std(data, axis=axis)
 
-        if _std == 0:
-            return _mean
+        bkg = (2.5 * _median) - (1.5 * _mean)
+        bkg = np.ma.where(_std == 0, _mean, bkg)
 
-        if (np.abs(_mean - _median) / _std) < 0.3:
-            return (2.5 * _median) - (1.5 * _mean)
-        else:
-            return _median
+        condition = (np.abs(_mean - _median) / _std) < 0.3
+        bkg = np.ma.where(condition, bkg, _median)
+
+        return bkg
 
 
 class BiweightLocationBackground(BackgroundBase, SigmaClip):
