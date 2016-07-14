@@ -1,8 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module contains new versions of the ``biweight_location`` and
-``biweight_midvariance`` functions from astropy.stats.  These versions
-support the ``axis`` keyword, which is needed by the background classes.
+This module contains the updated versions of the ``mad_std``,
+``biweight_location``, and ``biweight_midvariance`` functions from
+astropy.stats.  These versions support the ``axis`` keyword, which is
+needed by the background classes.
 """
 
 from __future__ import (absolute_import, division, print_function,
@@ -11,7 +12,53 @@ import numpy as np
 from astropy.stats import median_absolute_deviation
 
 
-__all__ = ['biweight_location', 'biweight_midvariance']
+__all__ = ['mad_std', 'biweight_location', 'biweight_midvariance']
+
+
+def mad_std(data, axis=None):
+    """
+    Calculate a robust standard deviation using the `median absolute
+    deviation (MAD)
+    <http://en.wikipedia.org/wiki/Median_absolute_deviation>`_.
+
+    The standard deviation estimator is given by:
+
+    .. math::
+
+        \\sigma \\approx \\frac{\\textrm{MAD}}{\Phi^{-1}(3/4)}
+            \\approx 1.4826 \ \\textrm{MAD}
+
+    where :math:`\Phi^{-1}(P)` is the normal inverse cumulative
+    distribution function evaluated at probability :math:`P = 3/4`.
+
+    Parameters
+    ----------
+    data : array-like
+        Data array or object that can be converted to an array.
+    axis : int, optional
+        Axis along which the robust standard deviations are computed.
+        The default (`None`) is to compute the robust standard deviation
+        of the flattened array.
+
+    Returns
+    -------
+    mad_std : float or `~numpy.ndarray`
+        The robust standard deviation of the input data.  If ``axis`` is
+        `None` then a scalar will be returned, otherwise a
+        `~numpy.ndarray` will be returned.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from photutils.extern.stats import mad_std
+    >>> rand = np.random.RandomState(12345)
+    >>> madstd = mad_std(rand.normal(5, 2, (100, 100)))
+    >>> print(madstd)    # doctest: +FLOAT_CMP
+    2.0232764659422626
+    """
+
+    # NOTE: 1. / scipy.stats.norm.ppf(0.75) = 1.482602218505602
+    return median_absolute_deviation(data, axis=axis) * 1.482602218505602
 
 
 def biweight_location(a, c=6.0, M=None, axis=None):
@@ -66,16 +113,12 @@ def biweight_location(a, c=6.0, M=None, axis=None):
     biweight location of the distribution::
 
         >>> import numpy as np
-        >>> from astropy.stats import biweight_location
+        >>> from photutils.extern.stats import biweight_location
         >>> rand = np.random.RandomState(12345)
         >>> from numpy.random import randn
         >>> loc = biweight_location(rand.randn(1000))
         >>> print(loc)    # doctest: +FLOAT_CMP
         -0.0175741540445
-
-    See Also
-    --------
-    biweight_midvariance, median_absolute_deviation, mad_std
     """
 
     a = np.asanyarray(a)
@@ -164,16 +207,12 @@ def biweight_midvariance(a, c=9.0, M=None, axis=None):
     biweight midvariance of the distribution::
 
         >>> import numpy as np
-        >>> from astropy.stats import biweight_midvariance
+        >>> from photutils.extern.stats import biweight_midvariance
         >>> rand = np.random.RandomState(12345)
         >>> from numpy.random import randn
         >>> bmv = biweight_midvariance(rand.randn(1000))
         >>> print(bmv)    # doctest: +FLOAT_CMP
         0.986726249291
-
-    See Also
-    --------
-    biweight_location, mad_std, median_absolute_deviation
     """
 
     a = np.asanyarray(a)

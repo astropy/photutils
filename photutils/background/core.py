@@ -15,8 +15,8 @@ import warnings
 from astropy.extern import six
 from astropy.utils.misc import InheritDocstrings
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.stats import sigma_clip, mad_std
-from ..extern.biweight_stats import biweight_location, biweight_midvariance
+from astropy.stats import sigma_clip
+from ..extern.stats import mad_std, biweight_location, biweight_midvariance
 
 import astropy
 if LooseVersion(astropy.__version__) < LooseVersion('1.1'):
