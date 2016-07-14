@@ -30,6 +30,25 @@ def test_background(bkg_class):
     assert_allclose(bkg(DATA), bkg.calc_background(DATA))
 
 
+@pytest.mark.parametrize('bkg_class', BKG_CLASS)
+def test_background_axis(bkg_class):
+    bkg = bkg_class(sigma=3.0)
+
+    bkg_arr = bkg.calc_background(DATA, axis=0)
+    bkgi = []
+    for i in range(100):
+        bkgi.append(bkg.calc_background(DATA[:, i]))
+    bkgi = np.array(bkgi)
+    assert_allclose(bkg_arr, bkgi)
+
+    bkg_arr = bkg.calc_background(DATA, axis=1)
+    bkgi = []
+    for i in range(100):
+        bkgi.append(bkg.calc_background(DATA[i, :]))
+    bkgi = np.array(bkgi)
+    assert_allclose(bkg_arr, bkgi)
+
+
 def test_sextrator_background_zero_std():
     data = np.ones((100, 100))
     bkg = SExtractorBackground(sigclip=False)
