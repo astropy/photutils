@@ -13,6 +13,7 @@ import numpy as np
 from numpy.lib.index_tricks import index_exp
 from astropy.stats import sigma_clip
 from astropy.utils import lazyproperty
+from .core import SExtractorBackground
 from ..utils import ShepardIDWInterpolator
 
 import astropy
@@ -97,31 +98,16 @@ class BackgroundBase2D(object):
         median filter will be applied to only the background meshes with
         values larger than ``filter_threshold``.
 
-    method : {'mean', 'median', 'mode_estimator', 'sextractor'}, optional
-        The method used to estimate the background in each of the
-        meshes.  For all methods, the statistics are calculated from the
-        sigma-clipped ``data`` values in each mesh.
-
-        * 'mean':  Mean.
-        * 'median':  Median.
-        * 'mode_estimator':  A mode estimator of the form
-          ``(3 * median) - (2 * mean)``.
-        * 'sextractor':  The mode estimator used by `SExtractor`_:
-          ``(2.5 * median) - (1.5 * mean)``.  If ``(mean - median) / std >
-          0.3`` then the median is used instead.  Despite what the
-          `SExtractor`_ User's Manual says, this is the method it *always*
-          uses.
-        * 'custom': Use this method in combination with the
-          ``backfunc`` parameter to specific a custom function to
-          calculate the background in each mesh.
-
-    backfunc : callable
-        The function to compute the background in each mesh.  Must be a
-        callable that takes in a 2D `~numpy.ma.MaskedArray` of size
-        ``NxZ``, where the ``Z`` axis (axis=1) contains the
-        sigma-clipped pixels in each background mesh, and outputs a 1D
-        `~numpy.ndarray` low-resolution background map of length ``N``.
-        ``backfunc`` is used only if ``method='custom'``.
+    bkg : callable
+        A callable object (a function or e.g., an instance of any
+        `~photutils.background.BackgroundBase` subclass) used to
+        estimate the background in each of the meshes.  The callable
+        must take in a 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+        and have an ``axis`` keyword (internally, the background will be
+        calculated along ``axis=1``).  The callable object must return a
+        1D `~numpy.ma.MaskedArray`.  The default is an instance of
+        `~photutils.background.SExtractorBackground` with ``sigma=3.``
+        and ``iters=10``.
 
     edge_method : {'crop', 'pad'}, optional
         The method used to determine how to handle the case where the
@@ -132,41 +118,18 @@ class BackgroundBase2D(object):
         * ``'crop'``: crop the image along the top and/or right edges.
         * ``'pad'``: pad the image along the top and/or right edges
 
-    sigclip_sigma : float, optional
-        The number of standard deviations to use as the clipping limit
-        when sigma-clipping the data in each mesh.
-
-    sigclip_iters : int, optional
-       The number of iterations to use when sigma-clipping the data in
-       each mesh.  A value of `None` means clipping will continue until
-       convergence is achieved (i.e., continue until the last iteration
-       clips nothing).  The default is 10.
-
     Notes
     -----
     If there is only one background mesh element (i.e., ``box_size`` is
     the same size as the ``data``), then the background map will simply
     be a constant image.
-
-    Reducing ``sigclip_iters`` will speed up the calculations,
-    especially for large images, at the cost of some precision.
-
-    .. _SExtractor: http://www.astromatic.net/software/sextractor
     """
 
     def __init__(self, data, box_size, mask=None, remove_masked='threshold',
                  meshpix_threshold=50, filter_size=(3, 3),
-                 filter_threshold=None, method='sextractor', backfunc=None,
-                 edge_method='crop', sigclip_sigma=3., sigclip_iters=10):
-
-        if mask is not None:
-            if mask.shape != data.shape:
-                raise ValueError('mask shape must match data shape')
-
-        valid_methods = ['mean', 'median', 'mode_estimator', 'sextractor',
-                         'custom']
-        if method not in valid_methods:
-            raise ValueError('method "{0}" is not valid'.format(method))
+                 filter_threshold=None,
+                 bkg=SExtractorBackground(sigma=3., iters=10),
+                 edge_method='crop'):
 
         box_size = np.atleast_1d(box_size)
         if len(box_size) == 1:
@@ -174,6 +137,10 @@ class BackgroundBase2D(object):
         self.box_size = (min(box_size[0], data.shape[0]),
                          min(box_size[1], data.shape[1]))
         self.box_npts = self.box_size[0] * self.box_size[1]
+
+        if mask is not None:
+            if mask.shape != data.shape:
+                raise ValueError('mask shape must match data shape')
 
         if remove_masked == 'threshold' and meshpix_threshold > self.box_npts:
             raise ValueError('meshpix_threshold must be smaller than the '
@@ -189,15 +156,13 @@ class BackgroundBase2D(object):
             filter_size = np.repeat(filter_size, 2)
         self.filter_size = filter_size
         self.filter_threshold = filter_threshold
-
-        self.method = method
-        self.backfunc = backfunc
+        self.bkg = bkg
         self.edge_method = edge_method
-        self.sigclip_sigma = sigclip_sigma
-        self.sigclip_iters = sigclip_iters
 
         self._resize_data()
+
         self._sigclip_data()
+
         self._calc_meshes1d()
         self._calc_meshes2d()
 
