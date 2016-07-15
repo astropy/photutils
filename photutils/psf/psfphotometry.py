@@ -165,10 +165,7 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
         return self.do_photometry(image)
 
     def do_photometry(self, image):
-        outtab = Table([[], [], [], [], [], []],
-                       names=('id', 'group_id', 'x_fit', 'y_fit', 'flux_fit',
-                              'iter_detected'),
-                       dtype=('i4', 'i4', 'f8', 'f8', 'f8', 'i4'))
+        outtab = build_output_table()
         residual_image = image.copy()
         residual_image = residual_image - self.bkg(image)
         sources = self.find(residual_image)
@@ -185,6 +182,14 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
             sources = self.find(residual_image)
             n += 1
         return outtab, residual_image
+
+    def build_output_table():
+        """
+        """
+        return Table([[], [], [], [], [], []],
+                     names=('id', 'group_id', 'x_fit', 'y_fit', 'flux_fit',
+                            'iter_detected'),
+                     dtype=('i4', 'i4', 'f8', 'f8', 'f8', 'i4'))
 
     def get_uncertainties(self):
         """
@@ -226,7 +231,7 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
         y, x = np.indices(image.shape)
 
         for n in range(len(star_groups.groups)):
-            group_psf = self._get_sum_psf_model(star_groups.groups[n])
+            group_psf = self.GroupPSF(self.psf, star_groups.groups[n]).get_model()
             usepixel = np.zeros_like(image, dtype=np.bool)
             
             for row in star_groups.groups[n]:
@@ -282,31 +287,40 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
                                    [getattr(fit_model, 'flux_'+str(i)).value]])
         return param_tab
 
-    def _get_sum_psf_model(self, star_group):
+    class GroupPSF(object):
         """
         Construct a joint psf model which consists in a sum of `self.psf`
         whose parameters are given in `star_group`.
 
-        Parameters
+        Attributes
         ----------
         star_group : `~astropy.table.Table`
             Table from which the compound PSF will be constructed.
             It must have columns named as `x_0`, `y_0`, and `flux_0`.
-        
-        Returns
-        -------
-        sum_psf : CompoundModel
-            `CompoundModel` instance which is a sum of the given PSF
-            models.
+        psf : `astropy.modeling.Fittable2DModel` instance
         """
 
-        psf_class = type(self.psf)
-        sum_psf = psf_class(sigma=self.psf.sigma.value,
-                            flux=star_group['flux_0'][0],
-                            x_0=star_group['x_0'][0], y_0=star_group['y_0'][0])
-        for i in range(len(star_group) - 1):
-            sum_psf += psf_class(sigma=self.psf.sigma.value,
-                                 flux=star_group['flux_0'][i+1],
-                                 x_0=star_group['x_0'][i+1],
-                                 y_0=star_group['y_0'][i+1])
-        return sum_psf 
+        def __init__(psf, star_group):
+            self.star_group = star_group
+            self.psf = psf
+        
+        def get_model(self):
+            """        
+            Returns
+            -------
+            sum_psf : CompoundModel
+                `CompoundModel` instance which is a sum of the given PSF
+                models.
+            """
+
+            psf_class = type(self.psf)
+            sum_psf = psf_class(sigma=self.psf.sigma.value,
+                                flux=self.star_group['flux_0'][0],
+                                x_0=self.star_group['x_0'][0],
+                                y_0=self.star_group['y_0'][0])
+            for i in range(len(self.star_group) - 1):
+                sum_psf += psf_class(sigma=self.psf.sigma.value,
+                                     flux=self.star_group['flux_0'][i+1],
+                                     x_0=self.star_group['x_0'][i+1],
+                                     y_0=self.star_group['y_0'][i+1])
+            return sum_psf 
