@@ -63,14 +63,13 @@ class BackgroundBase2D(object):
         value indicates the corresponding element of ``data`` is masked.
         Masked data are excluded from calculations.
 
-    remove_masked : {'threshold', 'all', 'any'}, optional
-        Determines whether to include a particular mesh in the
-        background interpolation based on the number of masked pixels it
-        contains:
+    remove_mesh : {'threshold', 'all', 'any'}, optional
+        Determines whether to remove a particular mesh in the background
+        interpolation based on the number of masked pixels it contains:
 
             * ``'threshold'``:  exclude meshes that contain less than
-              ``meshpix_threshold`` unmasked pixels after the
-              sigma-clipping step.
+              ``remove_mesh_threshold`` unmasked pixels after the
+              sigma-clipping step.  This is the default.
             * ``'all'``:  exclude meshes that contain all masked pixels.
             * ``'any'``:  exclude meshes that contain any masked pixels.
 
@@ -78,11 +77,11 @@ class BackgroundBase2D(object):
         input or padding ``mask``, while ``'threshold'`` also applies to
         pixels that are rejected via sigma clipping.
 
-    meshpix_threshold : int, optional
+    remove_mesh_threshold : int, optional
         The number of unmasked pixels required in a mesh after the
         sigma-clipping step in order to use it in estimating the
         background and background rms.  This parameter is used only if
-        ``remove_masked='threshold'``.
+        ``remove_mesh='threshold'``.
 
     filter_size : int or array_like (int), optional
         The window size of the 2D median filter to apply to the
@@ -94,9 +93,10 @@ class BackgroundBase2D(object):
 
     filter_threshold : int, optional
         The threshold value for used for selective median filtering of
-        the low-resolution 2D background map.  If not `None`, then the
-        median filter will be applied to only the background meshes with
-        values larger than ``filter_threshold``.
+        the low-resolution 2D background map.  The median filter will be
+        applied to only the background meshes with values larger than
+        ``filter_threshold``.  Set to `None` to filter all meshes
+        (default).
 
     bkg : callable
         A callable object (a function or e.g., an instance of any
@@ -115,8 +115,8 @@ class BackgroundBase2D(object):
         either dimension.  Both options will resize the image to give an
         exact multiple of ``box_size`` in both dimensions.
 
-        * ``'crop'``: crop the image along the top and/or right edges.
-        * ``'pad'``: pad the image along the top and/or right edges
+        * ``'crop'``: crop the image, roughly equally along all edges
+        * ``'pad'``: pad the image, roughly equally along all edges
 
     Notes
     -----
@@ -125,8 +125,8 @@ class BackgroundBase2D(object):
     be a constant image.
     """
 
-    def __init__(self, data, box_size, mask=None, remove_masked='threshold',
-                 meshpix_threshold=50, filter_size=(3, 3),
+    def __init__(self, data, box_size, mask=None, remove_mesh='threshold',
+                 remove_mesh_threshold=50, filter_size=(3, 3),
                  filter_threshold=None,
                  bkg=SExtractorBackground(sigma=3., iters=10),
                  edge_method='crop'):
@@ -136,20 +136,21 @@ class BackgroundBase2D(object):
             box_size = np.repeat(box_size, 2)
         self.box_size = (min(box_size[0], data.shape[0]),
                          min(box_size[1], data.shape[1]))
-        self.box_npts = self.box_size[0] * self.box_size[1]
+        self.box_npixels = self.box_size[0] * self.box_size[1]
 
         if mask is not None:
             if mask.shape != data.shape:
                 raise ValueError('mask shape must match data shape')
 
-        if remove_masked == 'threshold' and meshpix_threshold > self.box_npts:
-            raise ValueError('meshpix_threshold must be smaller than the '
-                             'number of pixels in mesh box.')
+        if (remove_mesh == 'threshold' and
+            (remove_mesh_threshold > self.box_npixels):
+                raise ValueError('remove_mesh_threshold must be smaller '
+                                 'than the number of pixels in mesh box.')
 
         self.data = data
         self.mask = mask
-        self.remove_masked = remove_masked
-        self.meshpix_threshold = meshpix_threshold
+        self.remove_mesh = remove_mesh
+        self.remove_mesh_threshold = remove_mesh_threshold
 
         filter_size = np.atleast_1d(filter_size)
         if len(filter_size) == 1:
@@ -159,7 +160,7 @@ class BackgroundBase2D(object):
         self.bkg = bkg
         self.edge_method = edge_method
 
-        self._resize_data()
+        self._prepare_data()
 
         self._sigclip_data()
 
@@ -170,75 +171,93 @@ class BackgroundBase2D(object):
         nx, ny = self.data.shape
         self.data_coords = np.array(list(product(range(ny), range(nx))))
 
-    def _resize_data(self):
+    def _pad_data(self, xextra, yextra):
         """
-        Pad or crop the 2D data array so that there are an integer
-        number of meshes in both dimensions.
-        """
+        Pad the ``data`` and ``mask`` to have an integer number of
+        background meshes of size ``box_size`` in both dimensions.  The
+        padding is added in (approximately) equal amounts to all edges
+        such that the original data is (approximately) centered in the
+        padded array.
 
-        self.nyboxes = self.data.shape[0] // self.box_size[0]
-        self.nxboxes = self.data.shape[1] // self.box_size[1]
-        self.yextra = self.data.shape[0] % self.box_size[0]
-        self.xextra = self.data.shape[1] % self.box_size[1]
+        Parameters
+        ----------
+        xextra, yextra : int
+            The modulus of the data size and the box size in both the
+            ``x`` and ``y`` dimensions.  This is number of extra pixels
+            beyond a multiple of the box size in the ``x`` and ``y``
+            dimensions.
 
-        if (self.xextra + self.yextra) == 0:
-            self.data_ma = np.ma.masked_array(self.data, mask=self.mask)
-        else:
-            if self.edge_method == 'pad':
-                self.data_ma = self._pad_data()
-                self.nyboxes += 1
-                self.nxboxes += 1
-            elif self.edge_method == 'crop':
-                self.data_ma = self._crop_data()
-            else:
-                raise ValueError('edge_method must be "pad" or "crop"')
-        return
-
-    def _pad_data(self):
-        """
-        Pad the ``data`` and ``mask`` on the top and/or right to have a
-        integer number of background meshes of size ``box_size`` in both
-        dimensions.  Returns a numpy masked array.
+        Returns
+        -------
+        result : `~numpy.ma.MaskedArray`
+            The padded data and mask as a masked array.
         """
 
-        ypad, xpad = 0, 0
+        ypad = 0
+        xpad = 0
         if self.yextra > 0:
             ypad = self.box_size[0] - self.yextra
         if self.xextra > 0:
             xpad = self.box_size[1] - self.xextra
-        pad_width = ((0, ypad), (0, xpad))
+
+        # pad all edges in approximately equal amounts
+        hy0 = ypad // 2
+        hy1 = ypad - hy0
+        hx0 = xpad // 2
+        hx1 = xpad - hx0
+        pad_width = ((hy0, hy1), (hx0, hx1))
+        self.data_origin = (-hy0, -hx0)
+
         # mode must be a string for numpy < 0.11
         # (see https://github.com/numpy/numpy/issues/7112)
         mode = str('constant')
-        padded_data = np.pad(self.data, pad_width, mode=mode,
-                             constant_values=[np.nan])
-        padded_data_mask = np.isnan(padded_data)
+        data = np.pad(self.data, pad_width, mode=mode,
+                      constant_values=[np.nan])
 
-        # must handle the mask separately (no np.ma.pad type function)
+        # mask the padded regions
+        pad_mask = np.zeros_like(data)
+        pad_mask[:pad_width[0][0], :] = True
+        pad_mask[-pad_width[0][1]:, :] = True
+        pad_mask[:, :pad_width[1][0]] = True
+        pad_mask[:, -pad_width[1][1]:] = True
+
+        # pad the input mask separately (there is no np.ma.pad function)
         if self.mask is not None:
-            padded_mask = np.pad(self.mask, pad_width, mode=mode,
-                                 constant_values=[False])
-            padded_data_mask = np.logical_or(padded_data_mask, padded_mask)
+            mask = np.pad(self.mask, pad_width, mode=mode,
+                          constant_values=[False])
+            mask = np.logical_or(mask, pad_mask)
 
-        return np.ma.masked_array(padded_data, mask=padded_data_mask)
+        return np.ma.masked_array(data, mask=mask)
 
     def _crop_data(self):
         """
-        Crop the ``data`` and ``mask`` on the top and/or right to have a
-        integer number of background meshes of size ``box_size`` in both
-        dimensions.  Returns a numpy masked array.
+        Crop the ``data`` and ``mask`` to have a integer number of
+        background meshes of size ``box_size`` in both dimensions.  The
+        data are cropped in roughly equal amounts along all edges.
+
+        Returns
+        -------
+        result : `~numpy.ma.MaskedArray`
+            The cropped data and mask as a masked array.
         """
 
         ny_crop = self.nyboxes * self.box_size[0]
         nx_crop = self.nxboxes * self.box_size[1]
-        crop_slc = index_exp[0:ny_crop, 0:nx_crop]
+        hy0 = ny_crop // 2
+        hy1 = ny_crop - hy0
+        hx0 = nx_crop // 2
+        hx1 = nx_crop - hx0
+        self.data_origin = (hy0, hx0)
+
+        crop_slc = index_exp[hy0:hy1, hx0, hx1]
         if self.mask is not None:
             mask = self.mask[crop_slc]
         else:
             mask = False
+
         return np.ma.masked_array(self.data[crop_slc], mask=mask)
 
-    def _define_mesh2d_indices(self, nmasked_mesh):
+    def _mesh2d_indices(self, data3d):
         """
         Define the x and y indices with respect to the low-resolution
         mesh image of the meshes to use for the background
@@ -249,6 +268,7 @@ class BackgroundBase2D(object):
 
         Parameters
         ----------
+        data3d
         nmasked_mesh : 2D `~numpy.ndarray` of int
             A 2D array containing the number of masked pixels in each
             mesh.
@@ -258,6 +278,10 @@ class BackgroundBase2D(object):
         yidx, xidx : `~numpy.ndarray`
             The ``y`` and ``x`` mesh indices.
         """
+
+        # the number of masked pixels in each mesh including *only* the
+        # input (and padding) mask
+        self._nmasked_mesh_orig = np.ma.count_masked(data3d, axis=2)
 
         # np.where is used, not np.ma.where
         if isinstance(nmasked_mesh, np.ma.MaskedArray):
@@ -290,7 +314,64 @@ class BackgroundBase2D(object):
         else:
             raise ValueError('remove_masked must be "any", "all", or '
                              '"threshold".')
-        return yidx, xidx
+
+        self.mesh_yidx = yidx
+        self.mesh_xidx = xidx
+
+        # define the position arrays used to initialize the final IDW
+        # interpolation
+        self.y = (self.mesh_yidx * self.box_size[0] +
+                  (self.box_size[0] - 1) / 2.)
+        self.x = (self.mesh_xidx * self.box_size[1] +
+                  (self.box_size[1] - 1) / 2.)
+        self.yx = np.column_stack([self.y, self.x])
+
+        return
+
+
+    def _prepare_data(self):
+        """
+        Prepare the data.
+
+        First, pad or crop the 2D data array so that there are an
+        integer number of meshes in both dimensions.
+
+        Then, reshape the 2D masked array into a 3D masked array.
+        """
+
+        self.nyboxes = self.data.shape[0] // self.box_size[0]
+        self.nxboxes = self.data.shape[1] // self.box_size[1]
+        yextra = self.data.shape[0] % self.box_size[0]
+        xextra = self.data.shape[1] % self.box_size[1]
+
+        if (xextra + yextra) == 0:
+            # no resizing of the data is necessary
+            data_ma = np.ma.masked_array(self.data, mask=self.mask)
+        else:
+            # pad or crop the data
+            if self.edge_method == 'pad':
+                data_ma = self._pad_data(yextra, xextra)
+                self.nyboxes += 1
+                self.nxboxes += 1
+            elif self.edge_method == 'crop':
+                data_ma = self._crop_data()
+            else:
+                raise ValueError('edge_method must be "pad" or "crop"')
+
+zzzzz
+        data3d = np.ma.swapaxes(data_ma.reshape(
+            self.nyboxes, self.box_size[0], self.nxboxes, self.box_size[1]),
+            1, 2).reshape(self.nyboxes, self.nxboxes, self.box_npts)
+
+        self.mesh_yidx, self.mesh_xidx = self._mesh2d_indices(data3d)
+
+zzzz
+        self.data2d = data3d[self.mesh_yidx, self.mesh_xidx, :]
+
+        return
+
+
+
 
     def _convert_1d_to_2d_mesh(self, data):
         """
@@ -327,19 +408,6 @@ class BackgroundBase2D(object):
         Perform sigma clipping on the (masked) data in regions of size
         ``box_size``.
         """
-
-        data3d = np.ma.swapaxes(self.data_ma.reshape(
-            self.nyboxes, self.box_size[0], self.nxboxes, self.box_size[1]),
-            1, 2).reshape(self.nyboxes, self.nxboxes, self.box_npts)
-        del self.data_ma
-
-        # the number of masked pixels in each mesh including *only* the
-        # input (and padding) mask
-        self._nmasked_mesh_orig = np.ma.count_masked(data3d, axis=2)
-
-        self.mesh_yidx, self.mesh_xidx = self._define_mesh2d_indices(
-            self._nmasked_mesh_orig)
-        data2d = data3d[self.mesh_yidx, self.mesh_xidx, :]
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
@@ -384,42 +452,14 @@ class BackgroundBase2D(object):
         positions and array values (e.g. `ShepardIDWInterpolator').
         """
 
-        if self.method == 'mean':
-            bkg_mesh1d = np.ma.mean(self.data_sigclip, axis=1)
-        elif self.method == 'median':
-            bkg_mesh1d = np.ma.median(self.data_sigclip, axis=1)
-        elif self.method == 'mode_estimator':
-            bkg_mesh1d = (3. * np.ma.median(self.data_sigclip, axis=1) -
-                          2. * np.ma.mean(self.data_sigclip, axis=1))
-        elif self.method == 'sextractor':
-            box_mean = np.ma.mean(self.data_sigclip, axis=1)
-            box_median = np.ma.median(self.data_sigclip, axis=1)
-            box_std = np.ma.std(self.data_sigclip, axis=1)
-            condition = (np.abs(box_mean - box_median) / box_std) < 0.3
-            bkg_est = (2.5 * box_median) - (1.5 * box_mean)
-            bkg_mesh1d = np.ma.where(condition, bkg_est, box_median)
-            bkg_mesh1d = np.ma.where(box_std == 0, box_mean, bkg_mesh1d)
-        elif self.method == 'custom':
-            bkg_mesh1d = self.backfunc(self.data_sigclip)
-            if not isinstance(bkg_mesh1d, np.ndarray):   # np.ma will pass
-                raise ValueError('"backfunc" must return a numpy.ndarray.')
-            if bkg_mesh1d.shape != (self.data_sigclip.shape[0], ):
-                raise ValueError('The shape of the array returned by '
-                                 '"backfunc" is not correct.')
+        bkg_mesh1d = self.bkg(self.data2d)
 
         # NOTE: remove_masked='_none' will return 1D arrays that are
         # masked for meshes that are completely masked
         self.background_mesh1d = bkg_mesh1d
         self.background_rms_mesh1d = np.ma.std(self.data_sigclip, axis=1)
 
-        # define the position arrays used to initialize the final IDW
-        # interpolation
-        self.y = (self.mesh_yidx * self.box_size[0] +
-                  (self.box_size[0] - 1) / 2.)
-        self.x = (self.mesh_xidx * self.box_size[1] +
-                  (self.box_size[1] - 1) / 2.)
-        self.yx = np.column_stack([self.y, self.x])
-        return
+       return
 
     def _interpolate_meshes(self, mesh1d):
         """
