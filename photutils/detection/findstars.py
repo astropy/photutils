@@ -15,6 +15,7 @@ import warnings
 import math
 import numpy as np
 import abc
+from astropy.extern import six
 from astropy.table import Column, Table
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils import deprecated
@@ -45,13 +46,12 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
                             exclude_border)
     return finder(data)
 
-
+@six.add_metaclass(abc.ABCMeta)
 class StarFinderBase(object):
     """
     Base abstract class for Star Finders.
     """
-    __metaclass__ = abc.ABCMeta
-
+    
     @abc.abstractmethod
     def find_stars(self, data):
         """Find potential stars in the given data."""
