@@ -468,6 +468,10 @@ class SExtractorBackground(BackgroundBase, SigmaClip):
         condition = (np.abs(_mean - _median) / _std) < 0.3
         bkg = np.ma.where(condition, bkg, _median)
 
+        # np.ma.where always returns a masked array
+        if axis is None and np.ma.isMaskedArray(bkg):
+            bkg = bkg.item()
+
         return bkg
 
 
