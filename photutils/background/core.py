@@ -15,8 +15,8 @@ import warnings
 from astropy.extern import six
 from astropy.utils.misc import InheritDocstrings
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.stats import (sigma_clip, mad_std, biweight_location,
-                           biweight_midvariance)
+from astropy.stats import sigma_clip
+from ..extern.stats import mad_std, biweight_location, biweight_midvariance
 
 import astropy
 if LooseVersion(astropy.__version__) < LooseVersion('1.1'):
@@ -30,6 +30,38 @@ __all__ = ['SigmaClip', 'BackgroundBase', 'BackgroundRMSBase',
            'MMMBackground', 'SExtractorBackground',
            'BiweightLocationBackground', 'StdBackgroundRMS',
            'MADStdBackgroundRMS', 'BiweightMidvarianceBackgroundRMS']
+
+
+def _masked_median(data, axis=None):
+    """
+    Calculate the median of a (masked) array.
+
+    This function is necessary for a consistent interface across all
+    numpy versions.  An bug was introduced in numpy v1.10 where
+    `numpy.ma.median` (with ``axis=None``) returns a single-valued
+    `~numpy.ma.MaskedArray` if the input data is a `~numpy.ndarray` or
+    if the data is a `~numpy.ma.MaskedArray`, but the mask is `False`
+    everywhere.
+
+    Parameters
+    ----------
+    data : array-like
+        The input data.
+    axis : int or `None`, optional
+        The array axis along which the median is calculated.  If
+        `None`, then the entire array is used.
+
+    Returns
+    -------
+    result : float or `~numpy.ma.MaskedArray`
+        The resulting median.  If ``axis`` is `None`, then a float is
+        returned, otherwise a `~numpy.ma.MaskedArray` is returned.
+    """
+
+    _median = np.ma.median(data, axis=axis)
+    if axis is None and np.ma.isMaskedArray(_median):
+        _median = _median.item()
+    return _median
 
 
 class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
@@ -70,7 +102,7 @@ class SigmaClip(object):
         self.sigma_upper = sigma_upper
         self.iters = iters
 
-    def sigma_clip(self, data):
+    def sigma_clip(self, data, axis=None):
         if not self.sigclip:
             return data
 
@@ -78,13 +110,15 @@ class SigmaClip(object):
             warnings.warn('sigma_lower and sigma_upper will be ignored '
                           'because they are not supported astropy < 1.1',
                           AstropyUserWarning)
-            return sigma_clip(data, sig=self.sigma,
-                              iters=self.iters)
+            return sigma_clip(data, sig=self.sigma, axis=axis,
+                              iters=self.iters, cenfunc=np.ma.median,
+                              varfunc=np.ma.var)
         else:
             return sigma_clip(data, sigma=self.sigma,
                               sigma_lower=self.sigma_lower,
-                              sigma_upper=self.sigma_upper,
-                              iters=self.iters)
+                              sigma_upper=self.sigma_upper, axis=axis,
+                              iters=self.iters, cenfunc=np.ma.median,
+                              stdfunc=np.std)
 
 
 @six.add_metaclass(_ABCMetaAndInheritDocstrings)
@@ -93,11 +127,11 @@ class BackgroundBase(object):
     Base class for classes that estimate scalar background values.
     """
 
-    def __call__(self, data):
-        return self.calc_background(data)
+    def __call__(self, data, axis=None):
+        return self.calc_background(data, axis=axis)
 
     @abc.abstractmethod
-    def calc_background(self, data):
+    def calc_background(self, data, axis=None):
         """
         Calculate the background value.
 
@@ -105,11 +139,16 @@ class BackgroundBase(object):
         ----------
         data : array_like or `~numpy.ma.MaskedArray`
             The array for which to calculate the background value.
+        axis : int or `None`, optional
+            The array axis along which the background is calculated.  If
+            `None`, then the entire array is used.
 
         Returns
         -------
-        result : float
-            The calculated background value.
+        result : float or `~numpy.ma.MaskedArray`
+            The calculated background value.  If ``axis`` is `None` then
+            a scalar will be returned, otherwise a
+            `~numpy.ma.MaskedArray` will be returned.
         """
 
 
@@ -119,11 +158,11 @@ class BackgroundRMSBase(object):
     Base class for classes that estimate scalar background rms values.
     """
 
-    def __call__(self, data):
-        return self.calc_background_rms(data)
+    def __call__(self, data, axis=None):
+        return self.calc_background_rms(data, axis=axis)
 
     @abc.abstractmethod
-    def calc_background_rms(self, data):
+    def calc_background_rms(self, data, axis=None):
         """
         Calculate the background rms value.
 
@@ -131,11 +170,16 @@ class BackgroundRMSBase(object):
         ----------
         data : array_like or `~numpy.ma.MaskedArray`
             The array for which to calculate the background rms value.
+        axis : int or `None`, optional
+            The array axis along which the background rms is calculated.
+            If `None`, then the entire array is used.
 
         Returns
         -------
-        result : float
-            The calculated background rms value.
+        result : float or `~numpy.ma.MaskedArray`
+            The calculated background rms value.  If ``axis`` is `None`
+            then a scalar will be returned, otherwise a
+            `~numpy.ma.MaskedArray` will be returned.
         """
 
 
@@ -184,8 +228,9 @@ class MeanBackground(BackgroundBase, SigmaClip):
     49.5
     """
 
-    def calc_background(self, data):
-        return np.ma.mean(self.sigma_clip(data))
+    def calc_background(self, data, axis=None):
+
+        return np.ma.mean(self.sigma_clip(data, axis=axis), axis=axis)
 
 
 class MedianBackground(BackgroundBase, SigmaClip):
@@ -233,9 +278,9 @@ class MedianBackground(BackgroundBase, SigmaClip):
     49.5
     """
 
-    def calc_background(self, data):
+    def calc_background(self, data, axis=None):
 
-        return np.ma.median(self.sigma_clip(data))
+        return _masked_median(self.sigma_clip(data, axis=axis), axis=axis)
 
 
 class ModeEstimatorBackground(BackgroundBase, SigmaClip):
@@ -294,11 +339,11 @@ class ModeEstimatorBackground(BackgroundBase, SigmaClip):
         self.median_factor = median_factor
         self.mean_factor = mean_factor
 
-    def calc_background(self, data):
+    def calc_background(self, data, axis=None):
 
-        data = self.sigma_clip(data)
-        return ((self.median_factor * np.ma.median(data)) -
-                (self.mean_factor * np.ma.mean(data)))
+        data = self.sigma_clip(data, axis=axis)
+        return ((self.median_factor * _masked_median(data, axis=axis)) -
+                (self.mean_factor * np.ma.mean(data, axis=axis)))
 
 
 class MMMBackground(ModeEstimatorBackground, SigmaClip):
@@ -350,6 +395,7 @@ class MMMBackground(ModeEstimatorBackground, SigmaClip):
     """
 
     def __init__(self, **kwargs):
+
         kwargs['median_factor'] = 3.
         kwargs['mean_factor'] = 2.
         super(MMMBackground, self).__init__(**kwargs)
@@ -409,25 +455,24 @@ class SExtractorBackground(BackgroundBase, SigmaClip):
     49.5
     """
 
-    def calc_background(self, data):
+    def calc_background(self, data, axis=None):
 
-        data = self.sigma_clip(data)
+        data = self.sigma_clip(data, axis=axis)
+        _median = _masked_median(data, axis=axis)
+        _mean = np.ma.mean(data, axis=axis)
+        _std = np.ma.std(data, axis=axis)
 
-        # Use .item() to make the median a scalar for numpy 1.10.
-        # Even when fixed in numpy, this needs to remain for
-        # compatibility with numpy 1.10 (until no longer supported).
-        # https://github.com/numpy/numpy/pull/7635
-        _median = np.ma.median(data).item()
-        _mean = np.ma.mean(data)
-        _std = np.ma.std(data)
+        bkg = (2.5 * _median) - (1.5 * _mean)
+        bkg = np.ma.where(_std == 0, _mean, bkg)
 
-        if _std == 0:
-            return _mean
+        condition = (np.abs(_mean - _median) / _std) < 0.3
+        bkg = np.ma.where(condition, bkg, _median)
 
-        if (np.abs(_mean - _median) / _std) < 0.3:
-            return (2.5 * _median) - (1.5 * _mean)
-        else:
-            return _median
+        # np.ma.where always returns a masked array
+        if axis is None and np.ma.isMaskedArray(bkg):
+            bkg = bkg.item()
+
+        return bkg
 
 
 class BiweightLocationBackground(BackgroundBase, SigmaClip):
@@ -487,9 +532,10 @@ class BiweightLocationBackground(BackgroundBase, SigmaClip):
         self.c = c
         self.M = M
 
-    def calc_background(self, data):
+    def calc_background(self, data, axis=None):
 
-        return biweight_location(self.sigma_clip(data), c=self.c, M=self.M)
+        return biweight_location(self.sigma_clip(data, axis=axis), c=self.c,
+                                 M=self.M, axis=axis)
 
 
 class StdBackgroundRMS(BackgroundRMSBase, SigmaClip):
@@ -537,9 +583,9 @@ class StdBackgroundRMS(BackgroundRMSBase, SigmaClip):
     28.866070047722118
     """
 
-    def calc_background_rms(self, data):
+    def calc_background_rms(self, data, axis=None):
 
-        return np.ma.std(self.sigma_clip(data))
+        return np.ma.std(self.sigma_clip(data, axis=axis), axis=axis)
 
 
 class MADStdBackgroundRMS(BackgroundRMSBase, SigmaClip):
@@ -598,9 +644,9 @@ class MADStdBackgroundRMS(BackgroundRMSBase, SigmaClip):
     37.065055462640053
     """
 
-    def calc_background_rms(self, data):
+    def calc_background_rms(self, data, axis=None):
 
-        return mad_std(self.sigma_clip(data))
+        return mad_std(self.sigma_clip(data, axis=axis), axis=axis)
 
 
 class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase, SigmaClip):
@@ -660,6 +706,7 @@ class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase, SigmaClip):
         self.c = c
         self.M = M
 
-    def calc_background_rms(self, data):
+    def calc_background_rms(self, data, axis=None):
 
-        return biweight_midvariance(self.sigma_clip(data), c=self.c, M=self.M)
+        return biweight_midvariance(self.sigma_clip(data, axis=axis),
+                                    c=self.c, M=self.M, axis=axis)

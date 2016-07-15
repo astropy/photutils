@@ -26,8 +26,29 @@ RMS_CLASS = [StdBackgroundRMS, MADStdBackgroundRMS,
 @pytest.mark.parametrize('bkg_class', BKG_CLASS)
 def test_background(bkg_class):
     bkg = bkg_class(sigma=3.0)
-    assert_allclose(bkg.calc_background(DATA), BKG, atol=1.e-2)
+    bkgval = bkg.calc_background(DATA)
+    assert not np.ma.isMaskedArray(bkgval)
+    assert_allclose(bkgval, BKG, atol=1.e-2)
     assert_allclose(bkg(DATA), bkg.calc_background(DATA))
+
+
+@pytest.mark.parametrize('bkg_class', BKG_CLASS)
+def test_background_axis(bkg_class):
+    bkg = bkg_class(sigma=3.0)
+
+    bkg_arr = bkg.calc_background(DATA, axis=0)
+    bkgi = []
+    for i in range(100):
+        bkgi.append(bkg.calc_background(DATA[:, i]))
+    bkgi = np.array(bkgi)
+    assert_allclose(bkg_arr, bkgi)
+
+    bkg_arr = bkg.calc_background(DATA, axis=1)
+    bkgi = []
+    for i in range(100):
+        bkgi.append(bkg.calc_background(DATA[i, :]))
+    bkgi = np.array(bkgi)
+    assert_allclose(bkg_arr, bkgi)
 
 
 def test_sextrator_background_zero_std():

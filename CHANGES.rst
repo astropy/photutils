@@ -15,6 +15,8 @@ New Features
     ``MADStdBackgroundRMS``, and ``BiweightMidvarianceBackgroundRMS``
     classes. [#370]
 
+  - Added ``axis`` keyword to new background classes. [#392]
+
   - Added new ``BackgroundBase2D`` and ``BackgroundIDW2D`` classes.
     [#355, #370]
 
