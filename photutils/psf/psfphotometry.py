@@ -165,7 +165,7 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
         return self.do_photometry(image)
 
     def do_photometry(self, image):
-        outtab = build_output_table()
+        outtab = self.build_output_table()
         residual_image = image.copy()
         residual_image = residual_image - self.bkg(image)
         sources = self.find(residual_image)
@@ -183,9 +183,7 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
             n += 1
         return outtab, residual_image
 
-    def build_output_table():
-        """
-        """
+    def build_output_table(self):
         return Table([[], [], [], [], [], []],
                      names=('id', 'group_id', 'x_fit', 'y_fit', 'flux_fit',
                             'iter_detected'),
@@ -231,7 +229,8 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
         y, x = np.indices(image.shape)
 
         for n in range(len(star_groups.groups)):
-            group_psf = self.GroupPSF(self.psf, star_groups.groups[n]).get_model()
+            group_psf = self.GroupPSF(self.psf,
+                                      star_groups.groups[n]).get_model()
             usepixel = np.zeros_like(image, dtype=np.bool)
             
             for row in star_groups.groups[n]:
@@ -300,7 +299,7 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
         psf : `astropy.modeling.Fittable2DModel` instance
         """
 
-        def __init__(psf, star_group):
+        def __init__(self, psf, star_group):
             self.star_group = star_group
             self.psf = psf
         
@@ -308,19 +307,21 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
             """        
             Returns
             -------
-            sum_psf : CompoundModel
+            group_psf : CompoundModel
                 `CompoundModel` instance which is a sum of the given PSF
                 models.
             """
-
+            
             psf_class = type(self.psf)
-            sum_psf = psf_class(sigma=self.psf.sigma.value,
-                                flux=self.star_group['flux_0'][0],
-                                x_0=self.star_group['x_0'][0],
-                                y_0=self.star_group['y_0'][0])
+            group_psf = psf_class(sigma=self.psf.sigma.value,
+                                  flux=self.star_group['flux_0'][0],
+                                  x_0=self.star_group['x_0'][0],
+                                  y_0=self.star_group['y_0'][0],
+                                  fixed=self.psf.fixed)
             for i in range(len(self.star_group) - 1):
-                sum_psf += psf_class(sigma=self.psf.sigma.value,
-                                     flux=self.star_group['flux_0'][i+1],
-                                     x_0=self.star_group['x_0'][i+1],
-                                     y_0=self.star_group['y_0'][i+1])
-            return sum_psf 
+                group_psf += psf_class(sigma=self.psf.sigma.value,
+                                       flux=self.star_group['flux_0'][i+1],
+                                       x_0=self.star_group['x_0'][i+1],
+                                       y_0=self.star_group['y_0'][i+1],
+                                       fixed=self.psf.fixed)
+            return group_psf
