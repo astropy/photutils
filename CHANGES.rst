@@ -39,7 +39,6 @@ New Features
   - Added ``copy`` and ``area`` methods and a ``areas`` property to
     ``SegmentationImage``. [#331]
 
-=======
 - ``photutils.psf``
 
   - Added the option ``param_uncert`` so that users can easily get
