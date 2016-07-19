@@ -108,6 +108,63 @@ class PixelAperture(Aperture):
     optionally, ``area``).
     """
 
+    def _prepare_plot(self, origin=(0, 0), source_id=None, ax=None,
+                      fill=False, **kwargs):
+        """
+        Prepare to plot the aperture(s) on a matplotlib Axes instance.
+
+        Parameters
+        ----------
+        origin : array-like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        source_id : int or array of int, optional
+            The source ID(s) of the aperture(s) to plot.
+
+        ax : `matplotlib.axes.Axes` instance, optional
+            If `None`, then the current ``Axes`` instance is used.
+
+        fill : bool, optional
+            Set whether to fill the aperture patch.  The default is
+            `False`.
+
+        kwargs
+            Any keyword arguments accepted by `matplotlib.patches.Patch`.
+
+        Returns
+        -------
+        plot_positions : `~numpy.ndarray`
+            The positions of the apertures to plot, after any
+            ``source_id`` slicing and origin shift.
+
+        ax : `matplotlib.axes.Axes` instance, optional
+            The `matplotlib.axes.Axes` on which to plot.
+
+        kwargs
+            Any keyword arguments accepted by `matplotlib.patches.Patch`.
+        """
+
+        import matplotlib.pyplot as plt
+        import matplotlib.patches as mpatches
+
+        if ax is None:
+            ax = plt.gca()
+
+        # This is necessary because the `matplotlib.patches.Patch` default
+        # is ``fill=True``.  Here we make the default ``fill=False``.
+        kwargs['fill'] = fill
+
+        plot_positions = copy.deepcopy(self.positions)
+        if source_id is not None:
+            plot_positions = plot_positions[np.atleast_1d(source_id)]
+
+        plot_positions[:, 0] -= origin[0]
+        plot_positions[:, 1] -= origin[1]
+
+        return plot_positions, ax, kwargs
+
+
     @abc.abstractmethod
     def plot(self, ax=None, fill=False, **kwargs):
         """
