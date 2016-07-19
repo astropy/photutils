@@ -7,7 +7,7 @@ import numpy as np
 from astropy.extern import six
 from astropy.table import Table, vstack
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.nddata.utils import overlap_slices
+from astropy.nddata.utils import overlap_slices, NoOverlapError
 from ..psf import subtract_psf
 
 
@@ -29,7 +29,7 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
     iterations is reached.
     """
 
-    def __init__(self, find, group, bkg, psf, fitshape,
+    def __init__(self, group, bkg, psf, fitshape, find=None,
                  fitter=LevMarLSQFitter(), niters=3):
         """
         Attributes
@@ -145,6 +145,12 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
 
     def __call__(self, image):
         """
+        """
+
+        return self.do_photometry(image)
+
+    def do_photometry(self, image):
+        """
         Parameters
         ----------
         image : 2D array-like, `~astropy.io.fits.ImageHDU`,
@@ -162,14 +168,17 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
             and the original image.
         """
 
-        return self.do_photometry(image)
+        outtab = Table([[], [], [], [], [], []],
+                       names=('id', 'group_id', 'x_fit', 'y_fit', 'flux_fit',
+                            'iter_detected'),
+                       dtype=('i4', 'i4', 'f8', 'f8', 'f8', 'i4'))
 
-    def do_photometry(self, image):
-        outtab = self.build_output_table()
         residual_image = image.copy()
         residual_image = residual_image - self.bkg(image)
+        # should skip the find step if the centroid
+        # coordinates are fixed
         sources = self.find(residual_image)
-        
+       
         n = 1
         while(n <= self.niters and len(sources) > 0):
             intab = Table(names=['id', 'x_0', 'y_0', 'flux_0'],
@@ -183,11 +192,44 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
             n += 1
         return outtab, residual_image
 
-    def build_output_table(self):
-        return Table([[], [], [], [], [], []],
-                     names=('id', 'group_id', 'x_fit', 'y_fit', 'flux_fit',
-                            'iter_detected'),
-                     dtype=('i4', 'i4', 'f8', 'f8', 'f8', 'i4'))
+    def do_fixed_photometry(self, image, positions):
+        """
+        Parameters
+        ----------
+        image : 2D array-like, `~astropy.io.fits.ImageHDU`,
+        `~astropy.io.fits.HDUList`
+            Image to perform photometry
+        positions: `~astropy.table.Table`
+            Positions at which to *start* the fit for each object, in pixel
+            coordinates. Columns 'x_0' and 'y_0' must be present.
+            'flux_0' can also be provided to set initial fluxes.
+
+        Returns
+        -------
+        outtab : `~astropy.table.Table`
+            Table with the photometry results, i.e., centroids and fluxes
+            estimations.
+        residual_image : array-like, `~astropy.io.fits.ImageHDU`,
+        `~astropy.io.fits.HDUList`
+            Residual image calculated by subtracting the fitted sources
+            from the original image.
+        """
+
+        residual_image = image.copy()
+        residual_image = residual_image - self.bkg(image)
+
+        if 'flux_0' in positions.colnames:
+               intab = Table(names=['x_0', 'y_0', 'flux_0'],
+                             data=[positions['x_0'], positions['y_0'],
+                                   positions['flux_0']])
+        else:
+            intab = Table(names=['x_0', 'y_0'],
+                          data=[positions['x_0'], positions['y_0']])
+
+        star_groups = self.group(intab)
+        outtab, residual_image = self.nstar(residual_image, star_groups)
+        
+        return outtab, residual_image
 
     def get_uncertainties(self):
         """
@@ -238,14 +280,20 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
                                         small_array_shape=self.fitshape,
                                         position=(row['y_0'], row['x_0']),
                                         mode='trim')[0]] = True
-            
+
             fit_model = self.fitter(group_psf, x[usepixel], y[usepixel],
                                     image[usepixel])
             param_table = self._model_params2table(fit_model,
                                                    star_groups.groups[n])
             result_tab = vstack([result_tab, param_table])
-            image = subtract_psf(image, self.psf, param_table,
-                                 subshape=self.fitshape)
+           
+            # do not subtract if the fitting did not go well
+            try:
+                image = subtract_psf(image, self.psf, param_table,
+                                     subshape=self.fitshape)
+            except NoOverlapError:
+                pass
+
         return result_tab, image
 
     def _model_params2table(self, fit_model, star_group):
