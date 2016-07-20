@@ -7,6 +7,10 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Added new ``origin`` keyword to aperture ``plot`` methods. [#395]
+
 - ``photutils.background``
 
   - Added new ``MeanBackground``, ``MedianBackground``,
