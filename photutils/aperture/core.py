@@ -108,13 +108,76 @@ class PixelAperture(Aperture):
     optionally, ``area``).
     """
 
+    def _prepare_plot(self, origin=(0, 0), source_id=None, ax=None,
+                      fill=False, **kwargs):
+        """
+        Prepare to plot the aperture(s) on a matplotlib Axes instance.
+
+        Parameters
+        ----------
+        origin : array-like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        source_id : int or array of int, optional
+            The source ID(s) of the aperture(s) to plot.
+
+        ax : `matplotlib.axes.Axes` instance, optional
+            If `None`, then the current ``Axes`` instance is used.
+
+        fill : bool, optional
+            Set whether to fill the aperture patch.  The default is
+            `False`.
+
+        kwargs
+            Any keyword arguments accepted by `matplotlib.patches.Patch`.
+
+        Returns
+        -------
+        plot_positions : `~numpy.ndarray`
+            The positions of the apertures to plot, after any
+            ``source_id`` slicing and origin shift.
+
+        ax : `matplotlib.axes.Axes` instance, optional
+            The `matplotlib.axes.Axes` on which to plot.
+
+        kwargs
+            Any keyword arguments accepted by `matplotlib.patches.Patch`.
+        """
+
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            ax = plt.gca()
+
+        # This is necessary because the `matplotlib.patches.Patch` default
+        # is ``fill=True``.  Here we make the default ``fill=False``.
+        kwargs['fill'] = fill
+
+        plot_positions = copy.deepcopy(self.positions)
+        if source_id is not None:
+            plot_positions = plot_positions[np.atleast_1d(source_id)]
+
+        plot_positions[:, 0] -= origin[0]
+        plot_positions[:, 1] -= origin[1]
+
+        return plot_positions, ax, kwargs
+
     @abc.abstractmethod
-    def plot(self, ax=None, fill=False, **kwargs):
+    def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
+             **kwargs):
         """
         Plot the aperture(s) on a matplotlib Axes instance.
 
         Parameters
         ----------
+        origin : array-like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        source_id : int or array of int, optional
+            The source ID(s) of the aperture(s) to plot.
+
         ax : `matplotlib.axes.Axes` instance, optional
             If `None`, then the current ``Axes`` instance is used.
 
@@ -316,21 +379,15 @@ class CircularAperture(PixelAperture):
     def area(self):
         return math.pi * self.r ** 2
 
-    def plot(self, ax=None, fill=False, source_id=None, **kwargs):
+    def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
+             **kwargs):
 
-        import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
 
-        kwargs['fill'] = fill
+        plot_positions, ax, kwargs = self._prepare_plot(
+            origin, source_id, ax, fill, **kwargs)
 
-        if ax is None:
-            ax = plt.gca()
-        if source_id is None:
-            positions = self.positions
-        else:
-            positions = self.positions[np.atleast_1d(source_id)]
-
-        for position in positions:
+        for position in plot_positions:
             patch = mpatches.Circle(position, self.r, **kwargs)
             ax.add_patch(patch)
 
@@ -489,26 +546,16 @@ class CircularAnnulus(PixelAperture):
                                            subpixels=subpixels, r_in=self.r_in)
         return fractions
 
+    def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
+             **kwargs):
 
-
-    def plot(self, ax=None, fill=False, source_id=None, **kwargs):
-
-        import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
 
-        kwargs['fill'] = fill
-
-        if ax is None:
-            ax = plt.gca()
-
-        if source_id is None:
-            positions = self.positions
-        else:
-            positions = self.positions[np.atleast_1d(source_id)]
+        plot_positions, ax, kwargs = self._prepare_plot(
+            origin, source_id, ax, fill, **kwargs)
 
         resolution = 20
-
-        for position in positions:
+        for position in plot_positions:
             patch_inner = mpatches.CirclePolygon(position, self.r_in,
                                                  resolution=resolution)
             patch_outer = mpatches.CirclePolygon(position, self.r_out,
@@ -652,25 +699,16 @@ class EllipticalAperture(PixelAperture):
                                              method=method, subpixels=subpixels)
         return fractions
 
+    def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
+             **kwargs):
 
-
-    def plot(self, ax=None, fill=False, source_id=None, **kwargs):
-
-        import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
 
-        kwargs['fill'] = fill
-
-        if ax is None:
-            ax = plt.gca()
-
-        if source_id is None:
-            positions = self.positions
-        else:
-            positions = self.positions[np.atleast_1d(source_id)]
+        plot_positions, ax, kwargs = self._prepare_plot(
+            origin, source_id, ax, fill, **kwargs)
 
         theta_deg = self.theta * 180. / np.pi
-        for position in positions:
+        for position in plot_positions:
             patch = mpatches.Ellipse(position, 2.*self.a, 2.*self.b,
                                      theta_deg, **kwargs)
             ax.add_patch(patch)
@@ -807,23 +845,16 @@ class EllipticalAnnulus(PixelAperture):
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
-    def plot(self, ax=None, fill=False, source_id=None, **kwargs):
+    def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
+             **kwargs):
 
-        import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
 
-        kwargs['fill'] = fill
-
-        if ax is None:
-            ax = plt.gca()
-
-        if source_id is None:
-            positions = self.positions
-        else:
-            positions = self.positions[np.atleast_1d(source_id)]
+        plot_positions, ax, kwargs = self._prepare_plot(
+            origin, source_id, ax, fill, **kwargs)
 
         theta_deg = self.theta * 180. / np.pi
-        for position in positions:
+        for position in plot_positions:
             patch_inner = mpatches.Ellipse(position, 2.*self.a_in,
                                            2.*self.b_in, theta_deg, **kwargs)
             patch_outer = mpatches.Ellipse(position, 2.*self.a_out,
@@ -970,20 +1001,13 @@ class RectangularAperture(PixelAperture):
     def area(self):
         return self.w * self.h
 
-    def plot(self, ax=None, fill=False, source_id=None, **kwargs):
+    def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
+             **kwargs):
 
-        import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
 
-        kwargs['fill'] = fill
-
-        if ax is None:
-            ax = plt.gca()
-
-        if source_id is None:
-            positions = self.positions
-        else:
-            positions = self.positions[np.atleast_1d(source_id)]
+        plot_positions, ax, kwargs = self._prepare_plot(
+            origin, source_id, ax, fill, **kwargs)
 
         hw = self.w / 2.
         hh = self.h / 2.
@@ -991,9 +1015,9 @@ class RectangularAperture(PixelAperture):
         cost = math.cos(self.theta)
         dx = (hh * sint) - (hw * cost)
         dy = -(hh * cost) - (hw * sint)
-        positions = positions + np.array([dx, dy])
+        plot_positions = plot_positions + np.array([dx, dy])
         theta_deg = self.theta * 180. / np.pi
-        for position in positions:
+        for position in plot_positions:
             patch = mpatches.Rectangle(position, self.w, self.h, theta_deg,
                                        **kwargs)
             ax.add_patch(patch)
@@ -1173,20 +1197,13 @@ class RectangularAnnulus(PixelAperture):
     def area(self):
         return self.w_out * self.h_out - self.w_in * self.h_in
 
-    def plot(self, ax=None, fill=False, source_id=None, **kwargs):
+    def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
+             **kwargs):
 
-        import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
 
-        kwargs['fill'] = fill
-
-        if ax is None:
-            ax = plt.gca()
-
-        if source_id is None:
-            positions = self.positions
-        else:
-            positions = self.positions[np.atleast_1d(source_id)]
+        plot_positions, ax, kwargs = self._prepare_plot(
+            origin, source_id, ax, fill, **kwargs)
 
         sint = math.sin(self.theta)
         cost = math.cos(self.theta)
@@ -1196,12 +1213,12 @@ class RectangularAnnulus(PixelAperture):
         hh_inner = self.h_in / 2.
         dx_inner = (hh_inner * sint) - (hw_inner * cost)
         dy_inner = -(hh_inner * cost) - (hw_inner * sint)
-        positions_inner = positions + np.array([dx_inner, dy_inner])
+        positions_inner = plot_positions + np.array([dx_inner, dy_inner])
         hw_outer = self.w_out / 2.
         hh_outer = self.h_out / 2.
         dx_outer = (hh_outer * sint) - (hw_outer * cost)
         dy_outer = -(hh_outer * cost) - (hw_outer * sint)
-        positions_outer = positions + np.array([dx_outer, dy_outer])
+        positions_outer = plot_positions + np.array([dx_outer, dy_outer])
 
         for i, position_inner in enumerate(positions_inner):
             patch_inner = mpatches.Rectangle(position_inner,
