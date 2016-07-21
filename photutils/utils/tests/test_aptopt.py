@@ -23,7 +23,7 @@ def test_find_center(seed=1234):
 
     # Make initial guesses slightly off.
     result_1 = find_center(val, 1001, 2.5, loc=loc)[0]
-    result_2 = find_center(val, 1007, 3.0, loc=loc)[0]
+    result_2 = find_center(val, 1008, 3.0, loc=loc)[0]
 
     # 0.1%
     assert_allclose(result_1, 1000, rtol=1e-3)
