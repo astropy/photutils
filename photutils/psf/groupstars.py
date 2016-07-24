@@ -27,7 +27,7 @@ class DAOGroup(GroupStarsBase):
     It accepts as input a list of stars and determines which stars are close
     enough to be capable of adversely influencing each others' profile fits.
 
-    Attributes
+    Parameters
     ---------- 
     crit_separation : float or int
         Distance, in units of pixels, such that any two stars separated by
