@@ -97,6 +97,12 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
         group or input a ``star_groups`` table that only includes the groups
         that are relevant (e.g. manually remove all entries that coincide with
         artifacts).
+
+        References
+        ----------
+        [1] Stetson, Astronomical Society of the Pacific, Publications,
+            (ISSN 0004-6280), vol. 99, March 1987, p. 191-222.
+            Available at: http://adsabs.harvard.edu/abs/1987PASP...99..191S
         """
 
         self.find = find
@@ -143,11 +149,33 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
                 raise ValueError('fitshape must have two dimensions, '
                                  'received fitshape = {}'.format(fitshape))
 
-    def __call__(self, image):
+    def __call__(self, **kwargs):
         """
-        """
+        Parameters
+        ----------
+        image : 2D array-like, `~astropy.io.fits.ImageHDU`,
+        `~astropy.io.fits.HDUList`
+            Image to perform photometry
+        positions : `~astropy.table.Table` (optional)
+            Positions, in pixel coordinates, at which stars are located.
+            The columns must be named as 'x_0' and 'y_0'. 'flux_0' can also
+            be provided to set initial fluxes.
 
-        return self.do_photometry(image)
+        Returns
+        -------
+        outtab : `~astropy.table.Table`
+            Table with the photometry results, i.e., centroids and fluxes
+            estimations.
+        residual_image : array-like, `~astropy.io.fits.ImageHDU`,
+        `~astropy.io.fits.HDUList`
+            Residual image calculated by subtracting the fitted sources
+            and the original image.
+        """
+        
+        if len(kwargs) == 1:
+            return self.do_photometry(kwargs['image'])
+        elif len(kwargs) == 2:
+            return self.do_fixed_photometry(kwargs['image'], kwargs['positions'])
 
     def do_photometry(self, image):
         """
@@ -175,8 +203,6 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
 
         residual_image = image.copy()
         residual_image = residual_image - self.bkg(image)
-        # should skip the find step if the centroid
-        # coordinates are fixed
         sources = self.find(residual_image)
        
         n = 1
@@ -223,8 +249,9 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
                              data=[positions['x_0'], positions['y_0'],
                                    positions['flux_0']])
         else:
-            intab = Table(names=['x_0', 'y_0'],
-                          data=[positions['x_0'], positions['y_0']])
+            intab = Table(names=['x_0', 'y_0', 'flux_0'],
+                          data=[positions['x_0'], positions['y_0'],
+                                np.ones(len(positions))])
 
         star_groups = self.group(intab)
         outtab, residual_image = self.nstar(residual_image, star_groups)
@@ -314,7 +341,7 @@ class DAOPhotPSFPhotometry(PSFPhotometryBase):
         param_tab : ~astropy.table.Table
             Table that contains the fitted parameters.
         """
-        
+
         param_tab = Table([[], [], [], [], []],
                           names=('id', 'group_id', 'x_fit', 'y_fit',
                                  'flux_fit'),
