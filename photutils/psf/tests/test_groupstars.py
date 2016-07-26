@@ -4,7 +4,13 @@ import numpy as np
 from astropy.tests.helper import pytest
 from numpy.testing import assert_array_equal
 from astropy.table import Table, vstack
-from ..groupstars import DAOGroup
+from ..groupstars import DAOGroup, DBSCANGroup
+
+try:
+    import sklearn.cluster
+    HAS_SKLEARN = True
+except ImportError:
+    HAS_SKLEARN = False
 
 
 class TestDAOGROUP(object):
@@ -259,3 +265,82 @@ class TestDAOGROUP(object):
         daogroup = DAOGroup(crit_separation=0.01)
         with pytest.raises(ValueError):
             daogroup(starlist['x_0', 'y_0', 'id'])
+
+
+@pytest.mark.skipif('not HAS_SKLEARN')
+class TestDBSCANGroup(object):
+    def test_group_stars_one(object):
+        x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
+                        -np.sqrt(2)/4])
+        y_0 = np.array([0, np.sqrt(2)/4, -np.sqrt(2)/4, np.sqrt(2)/4,
+                        -np.sqrt(2)/4])
+        x_1 = x_0 + 2.0
+        first_group = Table([x_0, y_0, np.arange(len(x_0)) + 1,
+                            np.ones(len(x_0), dtype=np.int)],
+                            names=('x_0', 'y_0', 'id', 'group_id'))
+        second_group = Table([x_1, y_0, len(x_0) + np.arange(len(x_0)) + 1,
+                              2*np.ones(len(x_0), dtype=np.int)],
+                             names=('x_0', 'y_0', 'id', 'group_id'))
+        starlist = vstack([first_group, second_group])
+        dbscan = DBSCANGroup(crit_separation=0.6)
+        test_starlist = dbscan(starlist['x_0', 'y_0', 'id'])
+        assert_array_equal(starlist, test_starlist)
+
+
+    def test_group_stars_two(object):
+        first_group = Table([1.5*np.ones(5), np.linspace(0, 1, 5),
+                             np.arange(5) + 1, np.ones(5, dtype=np.int)],
+                            names=('x_0', 'y_0', 'id', 'group_id'))
+        second_group = Table([1.5*np.ones(5), np.linspace(2, 3, 5),
+                              6 + np.arange(5), 2*np.ones(5, dtype=np.int)],
+                             names=('x_0', 'y_0', 'id', 'group_id'))
+        third_group = Table([np.linspace(0, 1, 5), 1.5*np.ones(5),
+                             11 + np.arange(5), 3*np.ones(5, dtype=np.int)],
+                            names=('x_0', 'y_0', 'id', 'group_id'))
+        fourth_group = Table([np.linspace(2, 3, 5), 1.5*np.ones(5),
+                              16 + np.arange(5), 4*np.ones(5, dtype=np.int)],
+                             names=('x_0', 'y_0', 'id', 'group_id'))
+        starlist = vstack([first_group, second_group, third_group,
+                           fourth_group])
+        dbscan = DBSCANGroup(crit_separation=0.3)
+        test_starlist = dbscan(starlist['x_0', 'y_0', 'id'])
+        assert_array_equal(starlist, test_starlist)
+
+    def test_isolated_sources(self):
+        """
+        Test case when all sources are isolated.
+        """
+        x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
+                        -np.sqrt(2)/4])
+        y_0 = np.array([0, np.sqrt(2)/4, -np.sqrt(2)/4, np.sqrt(2)/4,
+                        -np.sqrt(2)/4])
+        starlist = Table([x_0, y_0, np.arange(len(x_0)) + 1,
+                          np.arange(len(x_0)) + 1],
+                          names=('x_0', 'y_0', 'id', 'group_id'))
+        dbscan = DBSCANGroup(crit_separation=0.01)
+        test_starlist = dbscan(starlist['x_0', 'y_0', 'id'])
+        assert_array_equal(starlist, test_starlist)
+
+    def test_id_column(self):
+        x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
+                        -np.sqrt(2)/4])
+        y_0 = np.array([0, np.sqrt(2)/4, -np.sqrt(2)/4, np.sqrt(2)/4,
+                        -np.sqrt(2)/4])
+        starlist = Table([x_0, y_0, np.arange(len(x_0)) + 1,
+                          np.arange(len(x_0)) + 1],
+                          names=('x_0', 'y_0', 'id', 'group_id'))
+        dbscan = DBSCANGroup(crit_separation=0.01)
+        test_starlist = dbscan(starlist['x_0', 'y_0'])
+        assert_array_equal(starlist, test_starlist)
+
+    def test_id_column_raise_error(self):
+        x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
+                        -np.sqrt(2)/4])
+        y_0 = np.array([0, np.sqrt(2)/4, -np.sqrt(2)/4, np.sqrt(2)/4,
+                        -np.sqrt(2)/4])
+        starlist = Table([x_0, y_0, np.arange(len(x_0)),
+                          np.arange(len(x_0)) + 1],
+                          names=('x_0', 'y_0', 'id', 'group_id'))
+        dbscan = DBSCANGroup(crit_separation=0.01)
+        with pytest.raises(ValueError):
+            dbscan(starlist['x_0', 'y_0', 'id'])
