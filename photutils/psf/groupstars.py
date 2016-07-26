@@ -8,7 +8,7 @@ import numpy as np
 from astropy.table import Column, Table, vstack
 
 
-__all__ = ['DAOGroup', 'GroupStarsBase']
+__all__ = ['DAOGroup', 'DBSCANGroup', 'GroupStarsBase']
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -16,6 +16,7 @@ class GroupStarsBase(object):
     @abc.abstractmethod
     def group_stars(self, starlist):
         pass
+
 
 class DAOGroup(GroupStarsBase):
     """
@@ -145,3 +146,83 @@ class DAOGroup(GroupStarsBase):
                                  star['y_0'] - starlist['y_0'])
         distance_criteria = star_distance < self.crit_separation
         return np.asarray(starlist[distance_criteria]['id'])
+
+
+class DBSCANGroup(GroupStarsBase):
+    """
+    This class creates groups stars according to a distance criteria using the
+    Density-based Spatial Clustering of Applications with Noise (DBSCAN) from
+    scikit-learn.
+
+    Parameters
+    ----------
+    crit_separation : float or int
+        Distance, in units of pixels, such that any two stars separated by
+        less than this distance will be placed in the same group.
+    min_samples : int, optional (default=1)
+        Minimum number of stars necessary to form a group.
+    metric : string or callable (default='euclidean')
+        The metric to use when calculating distance between each pair of
+        stars.
+    algorithm : {'auto', 'ball_tree', 'kd_tree', 'brute'}, optional
+        The algorithm to be used to actually find nearest neighbors.
+    leaf_size : int, optional (default = 30)
+        Leaf size passed to BallTree or cKDTree.
+
+    References
+    ----------
+    [1] Scikit Learn DBSCAN.
+        http://scikit-learn.org/stable/modules/\
+        generated/sklearn.cluster.DBSCAN.html#sklearn.cluster.DBSCAN
+
+    Notes
+    -----
+    The attributes ``crit_separation`` corresponds to ``eps`` in
+    ``sklearn.cluster.DBSCAN``.
+
+    """
+
+    def __init__(self, crit_separation, min_samples=1, metric='euclidean',
+                 algorithm='auto', leaf_size=30):
+        self.crit_separation = crit_separation
+        self.min_samples = min_samples
+        self.metric = metric
+        self.algorithm = algorithm
+        self.leaf_size = leaf_size
+
+    def __call__(self, starlist):
+        """
+        Parameters
+        ----------
+        starlist : `~astropy.table.Table`
+            List of stars positions. Columns named as ``x_0`` and ``y_0``,
+            which corresponds to the centroid coordinates of the sources,
+            must be provided.
+
+        Returns
+        -------
+        group_starlist : `~astropy.table.Table`
+            ``starlist`` with an additional column named ``group_id`` whose
+            unique values represent groups of mutually overlapping stars.
+        """
+        return self.group_stars(starlist)
+
+    def group_stars(self, starlist):
+        from sklearn.cluster import DBSCAN
+
+        if 'id' not in starlist.colnames:
+            starlist.add_column(Column(name='id',
+                                       data=np.arange(len(starlist)) + 1))
+
+        if not np.array_equal(starlist['id'], np.arange(len(starlist)) + 1):
+            raise ValueError('id colum must be an integer-valued ' +
+                             'sequence starting from 1. ' +
+                             'Got {}'.format(starlist['id']))
+
+        pos_stars = list(zip(starlist['x_0'], starlist['y_0']))
+        dbscan = DBSCAN(eps=self.crit_separation,
+                        min_samples=self.min_samples, metric=self.metric,
+                        algorithm=self.algorithm, leaf_size=self.leaf_size)
+        starlist['group_id'] = (dbscan.fit(pos_stars).labels_ +
+                                np.ones(len(starlist), dtype=np.int))
+        return starlist
