@@ -10,3 +10,4 @@ from .matching import *
 from .models import *
 from .psfphotometry import *
 from .groupstars import *
+from .photometry import *
