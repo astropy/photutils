@@ -13,9 +13,28 @@ __all__ = ['DAOGroup', 'DBSCANGroup', 'GroupStarsBase']
 
 @six.add_metaclass(abc.ABCMeta)
 class GroupStarsBase(object):
-    @abc.abstractmethod
-    def group_stars(self, starlist):
-        pass
+    """
+    This base class provides the basic interface for subclasses that
+    are capable of classifying stars in groups.
+    """
+
+    def __call__(self, starlist):
+        """
+        Parameters
+        ----------
+        starlist : `~astropy.table.Table`
+            List of stars positions. Columns named as ``x_0`` and ``y_0``,
+            which corresponds to the centroid coordinates of the sources,
+            must be provided.
+
+        Returns
+        -------
+        group_starlist : `~astropy.table.Table`
+            ``starlist`` with an additional column named ``group_id`` whose
+            unique values represent groups of mutually overlapping stars.
+        """
+
+        return self.group_stars(starlist)
 
 
 class DAOGroup(GroupStarsBase):
@@ -53,24 +72,6 @@ class DAOGroup(GroupStarsBase):
     def __init__(self, crit_separation):
         self.crit_separation = crit_separation
     
-    def __call__(self, starlist):
-        """
-        Parameters
-        ----------
-        starlist : `~astropy.table.Table`
-            List of stars positions. Columns named as ``x_0`` and ``y_0``,
-            which corresponds to the centroid coordinates of the sources,
-            must be provided.
-
-        Returns
-        -------
-        group_starlist : `~astropy.table.Table`
-            ``starlist`` with an additional column named ``group_id`` whose
-            unique values represent groups of mutually overlapping stars.
-        """
-
-        return self.group_stars(starlist)
-
     @property
     def crit_separation(self):
         return self._crit_separation
@@ -88,6 +89,21 @@ class DAOGroup(GroupStarsBase):
             self._crit_separation = crit_separation
  
     def group_stars(self, starlist):
+        """
+        Parameters
+        ----------
+        starlist : `~astropy.table.Table`
+            List of stars positions. Columns named as ``x_0`` and ``y_0``,
+            which corresponds to the centroid coordinates of the sources,
+            must be provided.
+
+        Returns
+        -------
+        group_starlist : `~astropy.table.Table`
+            ``starlist`` with an additional column named ``group_id`` whose
+            unique values represent groups of mutually overlapping stars.
+        """
+
         cstarlist = starlist.copy()
 
         if 'id' not in cstarlist.colnames:
@@ -177,9 +193,13 @@ class DBSCANGroup(GroupStarsBase):
 
     Notes
     -----
-    The attributes ``crit_separation`` corresponds to ``eps`` in
+    - The attribute ``crit_separation`` corresponds to ``eps`` in
     ``sklearn.cluster.DBSCAN``.
-
+    - This class provides more general algorithms than
+    `photutils.psf.DAOGroup`. More precisely, `photutils.psf.DAOGroup`
+    is a special case of `photutils.psf.DBSCANGroup` when ``min_samples=1``
+    and ``metric=euclidean``. Additionally, `photutils.psf.DBSCANGroup` may
+    be faster than `photutils.psf.DAOGroup`.
     """
 
     def __init__(self, crit_separation, min_samples=1, metric='euclidean',
@@ -190,7 +210,7 @@ class DBSCANGroup(GroupStarsBase):
         self.algorithm = algorithm
         self.leaf_size = leaf_size
 
-    def __call__(self, starlist):
+    def group_stars(self, starlist):
         """
         Parameters
         ----------
@@ -205,24 +225,24 @@ class DBSCANGroup(GroupStarsBase):
             ``starlist`` with an additional column named ``group_id`` whose
             unique values represent groups of mutually overlapping stars.
         """
-        return self.group_stars(starlist)
 
-    def group_stars(self, starlist):
         from sklearn.cluster import DBSCAN
 
-        if 'id' not in starlist.colnames:
-            starlist.add_column(Column(name='id',
-                                       data=np.arange(len(starlist)) + 1))
+        cstarlist = starlist.copy()
 
-        if not np.array_equal(starlist['id'], np.arange(len(starlist)) + 1):
+        if 'id' not in cstarlist.colnames:
+            cstarlist.add_column(Column(name='id',
+                                        data=np.arange(len(cstarlist)) + 1))
+
+        if not np.array_equal(cstarlist['id'], np.arange(len(cstarlist)) + 1):
             raise ValueError('id colum must be an integer-valued ' +
                              'sequence starting from 1. ' +
-                             'Got {}'.format(starlist['id']))
+                             'Got {}'.format(cstarlist['id']))
 
-        pos_stars = list(zip(starlist['x_0'], starlist['y_0']))
+        pos_stars = list(zip(cstarlist['x_0'], cstarlist['y_0']))
         dbscan = DBSCAN(eps=self.crit_separation,
                         min_samples=self.min_samples, metric=self.metric,
                         algorithm=self.algorithm, leaf_size=self.leaf_size)
-        starlist['group_id'] = (dbscan.fit(pos_stars).labels_ +
-                                np.ones(len(starlist), dtype=np.int))
-        return starlist
+        cstarlist['group_id'] = (dbscan.fit(pos_stars).labels_ +
+                                 np.ones(len(cstarlist), dtype=np.int))
+        return cstarlist
