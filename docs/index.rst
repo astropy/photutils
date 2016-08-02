@@ -52,6 +52,7 @@ User Documentation
 
     photutils/background.rst
     photutils/detection.rst
+    photutils/grouping.rst
     photutils/aperture.rst
     photutils/psf.rst
     photutils/segmentation.rst
