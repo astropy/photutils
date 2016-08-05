@@ -427,7 +427,7 @@ def _findobjs(data, threshold, kernel, min_separation=None,
         data = data_padded
 
     convolved_data = filter_data(data, kernel.kern, mode='constant',
-                                    fill_value=0.0, check_normalization=False)
+                                 fill_value=0.0, check_normalization=False)
 
     if not exclude_border:
         # keep border=0 in convolved data
