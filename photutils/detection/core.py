@@ -135,7 +135,7 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
 
 
 def detect_sources(data, threshold, npixels, filter_kernel=None,
-                   connectivity=8):
+                   connectivity=8, checkimage_name=None):
     """
     Detect sources above a specified threshold value in an image and
     return a `~photutils.segmentation.SegmentationImage` object.
@@ -176,6 +176,11 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         (default).  4-connected pixels touch along their edges.
         8-connected pixels touch along their edges or corners.  For
         reference, SExtractor uses 8-connected pixels.
+
+    checkimage_name : string, optional
+        Fits file name for the filtered "check image". If None, 
+        the filtered image will not be saved. If the file already
+        exists, it will be overwritten. 
 
     Returns
     -------
@@ -238,9 +243,14 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         raise ValueError('npixels must be a positive integer, got '
                          '"{0}"'.format(npixels))
 
-    image = (_convolve_data(
-        data, filter_kernel, mode='constant', fill_value=0.0,
-        check_normalization=True) > threshold)
+    convolved_image = _convolve_data(data, filter_kernel, mode='constant', 
+                      fill_value=0.0, check_normalization=True)
+
+    if checkimage_name is not None:
+        from astropy.io import fits
+        fits.writeto(checkimage_name, convolved_image, clobber=True)
+
+    image =  convolved_image > threshold
 
     if connectivity == 4:
         selem = ndimage.generate_binary_structure(2, 1)
