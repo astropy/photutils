@@ -6,8 +6,9 @@ import warnings
 from astropy.convolution import Kernel2D
 from astropy.utils.exceptions import AstropyUserWarning
 
+__all__ = ['filter_data']
 
-def _convolve_data(data, kernel, mode='constant', fill_value=0.0,
+def filter_data(data, kernel, mode='constant', fill_value=0.0,
                    check_normalization=False):
     """
     Convolve a 2D image with a 2D kernel.

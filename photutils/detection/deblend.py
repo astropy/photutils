@@ -7,7 +7,7 @@ from copy import deepcopy
 import warnings
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
-from .core import _convolve_data, detect_sources
+from .core import filter_data, detect_sources
 from ..segmentation import SegmentationImage
 
 
@@ -112,7 +112,7 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
         labels = segment_img.labels
     labels = np.atleast_1d(labels)
 
-    data = _convolve_data(data, filter_kernel, mode='constant',
+    data = filter_data(data, filter_kernel, mode='constant',
                           fill_value=0.0)
 
     last_label = segment_img.max

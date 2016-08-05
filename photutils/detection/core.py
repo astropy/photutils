@@ -10,7 +10,7 @@ from astropy.stats import sigma_clipped_stats, gaussian_fwhm_to_sigma
 from astropy.convolution import Gaussian2DKernel
 from ..segmentation import SegmentationImage
 from ..morphology import cutout_footprint, fit_2dgaussian
-from ..utils.convolution import _convolve_data
+from ..utils.convolution import filter_data
 from ..utils.wcs_helpers import pixel_to_icrs_coords
 
 import astropy
@@ -238,7 +238,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         raise ValueError('npixels must be a positive integer, got '
                          '"{0}"'.format(npixels))
 
-    image = (_convolve_data(
+    image = (filter_data(
         data, filter_kernel, mode='constant', fill_value=0.0,
         check_normalization=True) > threshold)
 

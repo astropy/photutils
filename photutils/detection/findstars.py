@@ -20,7 +20,7 @@ from astropy.table import Column, Table
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils import deprecated
 from astropy.stats import gaussian_fwhm_to_sigma
-from .core import _convolve_data, find_peaks
+from .core import filter_data, find_peaks
 
 
 __all__ = ['DAOStarFinder', 'IRAFStarFinder', 'StarFinderBase',
@@ -426,7 +426,7 @@ def _findobjs(data, threshold, kernel, min_separation=None,
                     x_kernradius:x_kernradius + data.shape[1]] = data
         data = data_padded
 
-    convolved_data = _convolve_data(data, kernel.kern, mode='constant',
+    convolved_data = filter_data(data, kernel.kern, mode='constant',
                                     fill_value=0.0, check_normalization=False)
 
     if not exclude_border:
