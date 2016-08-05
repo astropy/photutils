@@ -33,6 +33,9 @@ New Features
 
   - Added new ``make_source_mask`` convenience function. [#355]
 
+  - Added ``checkimage_name`` option to ``detect_sources``, which 
+    gives to option to save the filtered image for inspection. 
+
 - ``photutils.psf``
 
   - Added the ``param_uncert`` keyword to ``psf_photometry`` so that
