@@ -1,11 +1,12 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module implements classes, called Finders, for detecting stars in an
-astronomical image. The general convention is that all Finders are subclasses
-of an abstract class called StarFinderBase and should be callable classes.
-Additionally, StarFinderBase defines the method find_stars as abstract.
-In general, find_stars implements an algorithm for detecting stars
-and __call__ invokes find_stars to return stars positions estimates. 
+This module implements classes, called Finders, for detecting stars in
+an astronomical image. The general convention is that all Finders are
+subclasses of an abstract class called StarFinderBase and should be
+callable classes.  Additionally, StarFinderBase defines an abstract
+method called ``find_stars``.  In general, ``find_stars`` implements an
+algorithm for detecting stars and ``__call__`` invokes ``find_stars`` to
+return the position estimates of the stars.
 """
 
 from __future__ import (absolute_import, division, print_function,
@@ -46,12 +47,13 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
                             exclude_border)
     return finder(data)
 
+
 @six.add_metaclass(abc.ABCMeta)
 class StarFinderBase(object):
     """
     Base abstract class for Star Finders.
     """
-    
+
     @abc.abstractmethod
     def find_stars(self, data):
         """Find potential stars in the given data."""
@@ -175,7 +177,7 @@ class DAOStarFinder(StarFinderBase):
         ----------
         data : array_like
             The 2D array of the image.
-        
+
         Returns
         -------
         table : `~astropy.table.Table`
@@ -219,8 +221,8 @@ class DAOStarFinder(StarFinderBase):
         idcol = Column(name='id', data=np.arange(len(tbl)) + 1)
         tbl.add_column(idcol, 0)
         if len(tbl) == 0:
-            warnings.warn('Sources were found, but none pass the sharpness'+
-                          ' and roundness criteria.', AstropyUserWarning)
+            warnings.warn('Sources were found, but none pass the sharpness '
+                          'and roundness criteria.', AstropyUserWarning)
         return tbl
 
 
@@ -279,7 +281,7 @@ class IRAFStarFinder(StarFinderBase):
     .. [2] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
     """
 
-    def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5, 
+    def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
                  sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2, sky=None,
                  exclude_border=False):
         self.threshold = threshold
@@ -302,7 +304,7 @@ class IRAFStarFinder(StarFinderBase):
         ----------
         data : array_like
             The 2D array of the image.
-        
+
         Returns
         -------
         table : `~astropy.table.Table`
@@ -328,7 +330,7 @@ class IRAFStarFinder(StarFinderBase):
             * ``mag``: the object instrumental magnitude calculated as
               ``-2.5 * log10(flux)``.  The derivation matches that of
               `starfind`_ if ``sky`` is ``None``.
-        
+
         Notes
         -----
         For the convolution step, this routine sets pixels beyond the image
@@ -369,8 +371,8 @@ class IRAFStarFinder(StarFinderBase):
         idcol = Column(name='id', data=np.arange(len(tbl)) + 1)
         tbl.add_column(idcol, 0)
         if len(tbl) == 0:
-            warnings.warn('Sources were found, but none pass the sharpness and '
-                          'roundness criteria.', AstropyUserWarning)
+            warnings.warn('Sources were found, but none pass the sharpness '
+                          'and roundness criteria.', AstropyUserWarning)
         return tbl
 
 
@@ -876,14 +878,14 @@ class _FindObjKernel(object):
 
     def __init__(self, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5):
         if fwhm < 0:
-            raise ValueError('fwhm must be positive, ' +
+            raise ValueError('fwhm must be positive, '
                              'got fwhm={0}'.format(fwhm))
         if ratio <= 0 or ratio > 1:
-            raise ValueError('ratio must be positive and less or equal ' +
+            raise ValueError('ratio must be positive and less or equal '
                              'than 1, got ratio={0}'.format(ratio))
         if sigma_radius <= 0:
-            raise ValueError('sigma_radius must be positive, got ' +
-                              'sigma_radius={0}'.format(sigma_radius))
+            raise ValueError('sigma_radius must be positive, got '
+                             'sigma_radius={0}'.format(sigma_radius))
         self.fwhm = fwhm
         self.sigma_radius = sigma_radius
         self.ratio = ratio
