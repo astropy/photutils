@@ -33,6 +33,8 @@ New Features
 
   - Added new ``make_source_mask`` convenience function. [#355]
 
+  - Added ``filter_data`` function. [#398]
+
 - ``photutils.psf``
 
   - Added the ``param_uncert`` keyword to ``psf_photometry`` so that
