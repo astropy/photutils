@@ -8,7 +8,7 @@ from astropy.table import Table
 from astropy.utils import lazyproperty
 import astropy.units as u
 from astropy.wcs.utils import pixel_to_skycoord
-from .utils.convolution import _convolve_data
+from .utils.convolution import filter_data
 from .utils.prepare_data import _prepare_data
 
 
@@ -1687,9 +1687,9 @@ def source_properties(data, segment_img, error=None, mask=None,
 
     # filter the data once, instead of repeating for each source
     if filter_kernel is not None:
-        filtered_data = _convolve_data(data, filter_kernel, mode='constant',
-                                       fill_value=0.0,
-                                       check_normalization=True)
+        filtered_data = filter_data(
+            data, filter_kernel, mode='constant',
+            fill_value=0.0, check_normalization=True)
     else:
         filtered_data = None
 

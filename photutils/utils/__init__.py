@@ -6,3 +6,4 @@ from .check_random_state import *
 from .colormaps import *
 from .interpolation import *
 from .prepare_data import *
+from .convolution import *
