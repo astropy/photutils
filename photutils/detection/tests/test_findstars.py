@@ -61,7 +61,6 @@ class TestDAOStarFinder(object):
         assert_allclose(np.array(t).astype(np.float),
                         np.array(t_ref).astype(np.float))
 
-
     def test_daofind_include_border(self):
         starfinder = DAOStarFinder(threshold=10, fwhm=2, sigma_radius=1.5,
                                    exclude_border=False)
@@ -144,6 +143,7 @@ class TestDAOStarFinder(object):
             t = daofind(data, threshold=0.1, fwhm=1.0, sky=10)
         assert not np.isfinite(t['mag'])
 
+
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.skipif('not HAS_SKIMAGE')
 class TestIRAFStarFinder(object):
@@ -171,11 +171,11 @@ class TestIRAFStarFinder(object):
         t_ref = Table.read(datafn, format='ascii')
         assert_allclose(np.array(t).astype(np.float),
                         np.array(t_ref).astype(np.float))
-        
+
     def test_irafstarfind_nosources(self):
         data = np.ones((3, 3))
         starfinder = IRAFStarFinder(threshold=10, fwhm=1)
-        t = starfinder(data) 
+        t = starfinder(data)
         assert len(t) == 0
 
     # test for the deprecated irafstarfind
@@ -226,7 +226,7 @@ class TestIRAFStarFinder(object):
         starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0, sky=100.)
         t = starfinder(DATA)
         assert len(t) == 0
-    
+
     # test for the deprecated irafstarfind
     def test_dep_irafstarfind_largesky(self):
         with catch_warnings(AstropyDeprecationWarning):
