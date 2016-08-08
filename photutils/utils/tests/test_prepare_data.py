@@ -69,4 +69,3 @@ class TestCalculateTotalError(object):
         with pytest.raises(ValueError):
             calc_total_error(DATA * units, BKG_ERROR * units,
                              EFFGAIN)
-

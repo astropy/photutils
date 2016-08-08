@@ -11,9 +11,10 @@ import numpy as np
 
 def extract_array(*args, **kwargs):
     """
-    Wrapper for astropy.nddata.utils.extract_array that reproduces v1.1 behavior
-    even if an older Astropy is installed.
+    Wrapper for astropy.nddata.utils.extract_array that reproduces v1.1
+    behavior even if an older Astropy is installed.
     """
+
     from astropy.nddata.utils import extract_array
 
     # fill_value keyword is not in v1.0.x
@@ -22,10 +23,11 @@ def extract_array(*args, **kwargs):
     else:
         return _extract_array_astropy1p1(*args, **kwargs)
 
+
 # Everything below is taken directly from Astropy v1.1.1 to allow the above
 # function to work like v1.1 when older astropys are installed
 def _extract_array_astropy1p1(array_large, shape, position, mode='partial',
-                  fill_value=np.nan, return_position=False):
+                              fill_value=np.nan, return_position=False):
     """
     Extract a smaller array of the given shape and position from a
     larger array.
@@ -98,8 +100,8 @@ def _extract_array_astropy1p1(array_large, shape, position, mode='partial',
 
     if mode not in ['partial', 'trim', 'strict']:
         raise ValueError("Valid modes are 'partial', 'trim', and 'strict'.")
-    large_slices, small_slices = _overlap_slices_astropy1p1(array_large.shape,
-                                                shape, position, mode=mode)
+    large_slices, small_slices = _overlap_slices_astropy1p1(
+        array_large.shape, shape, position, mode=mode)
     extracted_array = array_large[large_slices]
     if return_position:
         new_position = [i - s.start for i, s in zip(position, large_slices)]
@@ -118,7 +120,7 @@ def _extract_array_astropy1p1(array_large, shape, position, mode='partial',
 
 
 def _overlap_slices_astropy1p1(large_array_shape, small_array_shape, position,
-                   mode='partial'):
+                               mode='partial'):
     """
     Get slices for the overlapping part of a small and a large array.
 

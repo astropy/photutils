@@ -238,9 +238,8 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         raise ValueError('npixels must be a positive integer, got '
                          '"{0}"'.format(npixels))
 
-    image = (filter_data(
-        data, filter_kernel, mode='constant', fill_value=0.0,
-        check_normalization=True) > threshold)
+    image = (filter_data(data, filter_kernel, mode='constant', fill_value=0.0,
+                         check_normalization=True) > threshold)
 
     if connectivity == 4:
         selem = ndimage.generate_binary_structure(2, 1)
