@@ -46,8 +46,8 @@ class SplitCosineBellWindow(object):
         The percentage of array values that are tapered.
 
     beta : float, optional
-        The inner radius as a fraction of the array size where the taper
-        begins. ``beta`` must be less or equal to 1.0.
+        The inner diameter as a fraction of the array size beyond which
+        the taper begins. ``beta`` must be less or equal to 1.0.
 
     Examples
     --------
@@ -153,6 +153,11 @@ class TukeyWindow(SplitCosineBellWindow):
     <https://en.wikipedia.org/wiki/Window_function#Tukey_window>`_
     function.
 
+    Parameters
+    ----------
+    alpha : float, optional
+        The percentage of array values that are tapered.
+
     Examples
     --------
     .. plot::
@@ -187,6 +192,11 @@ class CosineBellWindow(SplitCosineBellWindow):
     """
     Class to define a 2D cosine bell window function.
 
+    Parameters
+    ----------
+    alpha : float, optional
+        The percentage of array values that are tapered.
+
     Examples
     --------
     .. plot::
@@ -219,6 +229,12 @@ class CosineBellWindow(SplitCosineBellWindow):
 class TopHatWindow(SplitCosineBellWindow):
     """
     Class to define a 2D top hat window function.
+
+    Parameters
+    ----------
+    beta : float, optional
+        The inner diameter as a fraction of the array size beyond which
+        the taper begins. ``beta`` must be less or equal to 1.0.
 
     Examples
     --------
