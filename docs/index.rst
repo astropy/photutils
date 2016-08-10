@@ -55,6 +55,7 @@ User Documentation
     photutils/grouping.rst
     photutils/aperture.rst
     photutils/psf.rst
+    photutils/psf_match.rst
     photutils/segmentation.rst
     photutils/morphology.rst
     photutils/geometry.rst
