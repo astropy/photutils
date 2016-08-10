@@ -4,4 +4,5 @@ This subpackage contains modules and packages to generate kernels for
 matching point spread functions.
 """
 
+from .fourier import *
 from .windows import *
