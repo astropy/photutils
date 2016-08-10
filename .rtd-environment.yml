@@ -1,0 +1,12 @@
+name: photutils
+
+channels:
+    - astropy
+
+dependencies:
+    - astropy
+    - Cython
+    - matplotlib
+    - numpy
+    - scikit-image
+    - scipy

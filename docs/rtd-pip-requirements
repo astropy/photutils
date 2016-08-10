@@ -1,8 +1,0 @@
-Cython
-numpy
-scipy
-matplotlib
-scikit-image
-astropy-helpers
-astropy
-jupyter
