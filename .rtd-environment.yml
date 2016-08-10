@@ -6,6 +6,7 @@ channels:
 dependencies:
     - astropy
     - Cython
+    - jupyter
     - matplotlib
     - numpy
     - scikit-image
