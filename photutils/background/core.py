@@ -37,7 +37,7 @@ def _masked_median(data, axis=None):
     Calculate the median of a (masked) array.
 
     This function is necessary for a consistent interface across all
-    numpy versions.  An bug was introduced in numpy v1.10 where
+    numpy versions.  A bug was introduced in numpy v1.10 where
     `numpy.ma.median` (with ``axis=None``) returns a single-valued
     `~numpy.ma.MaskedArray` if the input data is a `~numpy.ndarray` or
     if the data is a `~numpy.ma.MaskedArray`, but the mask is `False`
