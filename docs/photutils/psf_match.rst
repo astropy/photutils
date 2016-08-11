@@ -9,6 +9,146 @@ This subpackage contains tools to generate kernels for matching point
 spread functions (PSFs).
 
 
+Matching PSFs
+-------------
+
+Photutils provides a function called
+:func:`~photutils.psf_match.create_matching_kernel` that generates a
+matching kernel between two PSFs using the ratio of Fourier
+transforms.
+
+For this first simple example, let's assume our source and target PSFs
+are noiseless 2D Gaussians.  The "high-resolution" PSF will be a
+Gaussian with :math:`\sigma=3`.  The "low-resolution" PSF will be a
+Gaussian with :math:`\sigma=5`::
+
+    >>> from astropy.modeling.models import Gaussian2D
+    >>> y, x = np.mgrid[0:51, 0:51]
+    >>> gm1 = Gaussian2D(100, 25, 25, 3, 3)
+    >>> gm2 = Gaussian2D(100, 25, 25, 5, 5)
+    >>> g1 = gm1(x, y)
+    >>> g2 = gm2(x, y)
+    >>> g1 /= g1.sum()
+    >>> g2 /= g2.sum()
+
+For these 2D Gaussians, the matching kernel should be a 2D Gaussian
+with :math:`\sigma=4` (``np.sqrt(5**2 - 3**2)``).  Let's create the
+matching kernel using a Fourier ratio method::
+
+    >>> from photutils import create_matching_kernel
+    >>> kernel = create_matching_kernel(g1, g2)
+
+Let's plot the result:
+
+.. plot::
+    :include-source:
+
+    from astropy.modeling.models import Gaussian2D
+    from photutils import create_matching_kernel
+    import matplotlib.pylab as plt
+
+    y, x = np.mgrid[0:51, 0:51]
+    gm1 = Gaussian2D(100, 25, 25, 3, 3)
+    gm2 = Gaussian2D(100, 25, 25, 5, 5)
+    g1 = gm1(x, y)
+    g2 = gm2(x, y)
+    g1 /= g1.sum()
+    g2 /= g2.sum()
+
+    kernel = create_matching_kernel(g1, g2)
+    plt.imshow(kernel, origin='lower', cmap='Greys_r')
+    plt.colorbar()
+
+We quickly observe that the result is not as expected.  This is
+because of high-frequency noise in the Fourier transforms (even though
+these are noiseless PSFs, there is floating-point noise in the
+ratios).  Using the Fourier ratio method, one must filter the
+high-frequency noise from the Fourier ratios.  This is performed by
+inputing a `window function
+<https://en.wikipedia.org/wiki/Window_function>`_, which may be a
+function or a callable object.  In general, the user will need to
+exercise some care when defining a window function.
+
+Photutils provides the following window classes:
+
+* `~photutils.psf_match.HanningWindow`
+* `~photutils.psf_match.TukeyWindow`
+* `~photutils.psf_match.CosineBellWindow`
+* `~photutils.psf_match.SplitCosineBellWindow`
+* `~photutils.psf_match.TopHatWindow`
+
+However, the user may input any function or callable object to
+generate a custom window function.
+
+In this example, because these are noiseless PSFs, we will use a
+`~photutils.psf_match.TopHatWindow` object as the low-pass filter::
+
+    >>> from photutils import TopHatWindow
+    >>> window = TopHatWindow(0.35)
+    >>> kernel = create_matching_kernel(g1, g2, window=window)
+
+Note that the output matching kernel from
+:func:`~photutils.psf_match.create_matching_kernel` is always
+normalized such that the kernel array sums to 1::
+
+    >>> print(kernel.sum())    # doctest: +FLOAT_CMP
+    1.0
+
+Let's display the new matching kernel:
+
+.. plot::
+    :include-source:
+
+    from astropy.modeling.models import Gaussian2D
+    from photutils import create_matching_kernel, TopHatWindow
+    import matplotlib.pylab as plt
+
+    y, x = np.mgrid[0:51, 0:51]
+    gm1 = Gaussian2D(100, 25, 25, 3, 3)
+    gm2 = Gaussian2D(100, 25, 25, 5, 5)
+    g1 = gm1(x, y)
+    g2 = gm2(x, y)
+    g1 /= g1.sum()
+    g2 /= g2.sum()
+
+    window = TopHatWindow(0.35)
+    kernel = create_matching_kernel(g1, g2, window=window)
+    plt.imshow(kernel, origin='lower', cmap='Greys_r')
+    plt.colorbar()
+
+As desired, the result is indeed a 2D Gaussian with a
+:math:`\sigma=4`.  Here we will show 1D cuts across the center of the
+kernel images:
+
+.. plot::
+    :include-source:
+
+    from astropy.modeling.models import Gaussian2D
+    from photutils import create_matching_kernel, TopHatWindow
+    import matplotlib.pylab as plt
+
+    y, x = np.mgrid[0:51, 0:51]
+    gm1 = Gaussian2D(100, 25, 25, 3, 3)
+    gm2 = Gaussian2D(100, 25, 25, 5, 5)
+    gm3 = Gaussian2D(100, 25, 25, 4, 4)
+    g1 = gm1(x, y)
+    g2 = gm2(x, y)
+    g3 = gm3(x, y)
+    g1 /= g1.sum()
+    g2 /= g2.sum()
+    g3 /= g3.sum()
+
+    window = TopHatWindow(0.35)
+    kernel = create_matching_kernel(g1, g2, window=window)
+    kernel /= kernel.sum()
+    plt.plot(kernel[25, :], label='Matching kernel')
+    plt.plot(g3[25, :], label='$\sigma=4$ Gaussian')
+    plt.xlabel('x')
+    plt.ylabel('Flux')
+    plt.legend()
+    plt.ylim((0.0, 0.011))
+
+
 Reference/API
 -------------
 

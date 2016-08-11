@@ -64,15 +64,17 @@ def create_matching_kernel(source_psf, target_psf, window=None):
         to remove high frequency noise from the PSF matching kernel.
         Some examples include:
 
-        * `~photutils.HanningWindow`
-        * `~photutils.TukeyWindow`
-        * `~photutils.CosineBellWindow`
-        * `~photutils.SplitCosineBellWindow`
+        * `~photutils.psf_match.HanningWindow`
+        * `~photutils.psf_match.TukeyWindow`
+        * `~photutils.psf_match.CosineBellWindow`
+        * `~photutils.psf_match.SplitCosineBellWindow`
+        * `~photutils.psf_match.TopHatWindow`
 
     Returns
     -------
     kernel : 2D `~numpy.ndarray`
         The matching kernel to go from ``source_psf`` to ``target_psf``.
+        The output matching kernel is normalized such that it sums to 1.
     """
 
     source_psf = np.asanyarray(source_psf)
