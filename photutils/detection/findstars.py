@@ -72,7 +72,7 @@ class DAOStarFinder(StarFinderBase):
 
     .. _DAOFIND: http://iraf.net/irafhelp.php?val=daofind&help=Help+Page
 
-    ``DAOStarFinder`` finds the object centroid by fitting the the marginal x
+    ``DAOStarFinder`` finds the object centroid by fitting the marginal x
     and y 1D distributions of the Gaussian kernel to the marginal x and
     y distributions of the input (unconvolved) ``data`` image.
 
