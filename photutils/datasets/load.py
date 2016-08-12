@@ -9,15 +9,11 @@ from astropy.io import fits
 from astropy.table import Table
 from astropy.utils.data import get_pkg_data_filename, download_file
 
-__all__ = ['get_path',
-           'load_spitzer_image',
-           'load_spitzer_catalog',
-           'load_fermi_image',
-           'load_star_image'
-           ]
+__all__ = ['get_path', 'load_spitzer_image', 'load_spitzer_catalog',
+           'load_fermi_image', 'load_star_image']
 
 
-def get_path(filename, location='local'):
+def get_path(filename, location='local', cache=False):
     """Get path (location on your disk) for a given file.
 
     Parameters
@@ -28,6 +24,9 @@ def get_path(filename, location='local'):
         File location.
         ``'local'`` means bundled with ``photutils``.
         ``'remote'`` means a server or the Astropy cache on your machine.
+    cache : bool, optional
+        Whether to cache the contents of remote URLs.  Default is
+        currently `False` because `True` will fail with Python 3.
 
     Returns
     -------
@@ -40,12 +39,13 @@ def get_path(filename, location='local'):
     >>> from photutils import datasets
     >>> hdu_list = fits.open(datasets.get_path('fermi_counts.fits.gz'))
     """
+
     if location == 'local':
         path = get_pkg_data_filename('data/' + filename)
     elif location == 'remote':    # pragma: no cover
         url = ('https://github.com/astropy/photutils-datasets/blob/master/'
                'data/{0}?raw=true'.format(filename))
-        path = download_file(url, cache=True)
+        path = download_file(url, cache=cache)
     else:
         raise ValueError('Invalid location: {0}'.format(location))
 
