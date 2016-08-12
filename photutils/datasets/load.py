@@ -4,13 +4,13 @@ Load example datasets.
 """
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-
 from astropy.io import fits
 from astropy.table import Table
 from astropy.utils.data import get_pkg_data_filename, download_file
 
+
 __all__ = ['get_path', 'load_spitzer_image', 'load_spitzer_catalog',
-           'load_fermi_image', 'load_star_image']
+           'load_irac_psf', 'load_fermi_image', 'load_star_image']
 
 
 def get_path(filename, location='local', cache=False):
@@ -103,6 +103,46 @@ def load_spitzer_catalog():    # pragma: no cover
     table = Table.read(path)
 
     return table
+
+
+def load_irac_psf(channel):    # pragma: no cover
+    """
+    Load Spitzer IRAC PSF.
+
+    Parameters
+    ----------
+    channel : int (1-4)
+        The IRAC channel number:
+
+        * Channel 1:  3.6 microns
+        * Channel 2:  4.5 microns
+        * Channel 3:  5.8 microns
+        * Channel 4:  8.0 microns
+
+    Returns
+    -------
+    hdu : `~astropy.io.fits.ImageHDU`
+        The IRAC PSF.
+
+    Examples
+    --------
+    .. plot::
+        :include-source:
+
+        from photutils.datasets import load_irac_psf
+        hdu = load_irac_psf(1)
+        plt.imshow(hdu.data, origin='lower')
+    """
+
+    channel = int(channel)
+    if channel < 1 or channel > 4:
+        raise ValueError('channel must be 1, 2, 3, or 4')
+
+    fn = 'irac_ch{0}_flight.fits'.format(channel)
+    path = get_path(fn, location='remote')
+    hdu = fits.open(path)[0]
+
+    return hdu
 
 
 def load_fermi_image():
