@@ -77,6 +77,56 @@ Photutils provides the following window classes:
 * `~photutils.psf_match.SplitCosineBellWindow`
 * `~photutils.psf_match.TopHatWindow`
 
+Here are plots of 1D cuts across the center of the 2D window
+functions:
+
+.. plot::
+    :include-source:
+
+    from photutils import (HanningWindow, TukeyWindow, CosineBellWindow,
+                           SplitCosineBellWindow, TopHatWindow)
+    import matplotlib.pylab as plt
+    w1 = HanningWindow()
+    w2 = TukeyWindow(alpha=0.5)
+    w3 = CosineBellWindow(alpha=0.5)
+    w4 = SplitCosineBellWindow(alpha=0.4, beta=0.3)
+    w5 = TopHatWindow(beta=0.4)
+    shape = (101, 101)
+    y0 = (shape[0] - 1) // 2
+
+    plt.figure()
+    plt.subplots_adjust(wspace=0.4, hspace=0.4)
+
+    plt.subplot(2, 3, 1)
+    plt.plot(w1(shape)[y0, :])
+    plt.title('Hanning')
+    plt.xlabel('x')
+    plt.ylim((0, 1.1))
+
+    plt.subplot(2, 3, 2)
+    plt.plot(w2(shape)[y0, :])
+    plt.title('Tukey')
+    plt.xlabel('x')
+    plt.ylim((0, 1.1))
+
+    plt.subplot(2, 3, 3)
+    plt.plot(w3(shape)[y0, :])
+    plt.title('Cosine Bell')
+    plt.xlabel('x')
+    plt.ylim((0, 1.1))
+
+    plt.subplot(2, 3, 4)
+    plt.plot(w4(shape)[y0, :])
+    plt.title('Split Cosine Bell')
+    plt.xlabel('x')
+    plt.ylim((0, 1.1))
+
+    plt.subplot(2, 3, 5)
+    plt.plot(w5(shape)[y0, :], label='Top Hat')
+    plt.title('Top Hat')
+    plt.xlabel('x')
+    plt.ylim((0, 1.1))
+
 However, the user may input any function or callable object to
 generate a custom window function.
 
