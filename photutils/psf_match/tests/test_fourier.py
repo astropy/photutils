@@ -6,10 +6,16 @@ import numpy as np
 from numpy.testing import assert_allclose
 from astropy.modeling.models import Gaussian2D
 from ..fourier import resize_psf, create_matching_kernel
-from ..windows import (HanningWindow, TukeyWindow, CosineBellWindow,
-                       SplitCosineBellWindow, TopHatWindow)
+from ..windows import TopHatWindow
+
+try:
+    import scipy    # noqa
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_resize_psf():
     psf1 = np.ones((5, 5))
     psf2 = resize_psf(psf1, 0.1, 0.05)

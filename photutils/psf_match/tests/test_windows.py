@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+from distutils.version import LooseVersion
 from astropy.tests.helper import pytest
 import numpy as np
 from numpy.testing import assert_allclose
@@ -10,6 +11,10 @@ from ..windows import (HanningWindow, TukeyWindow, CosineBellWindow,
 try:
     import scipy    # noqa
     HAS_SCIPY = True
+    if LooseVersion(scipy.__version__) < LooseVersion('0.16'):
+        SKIMAGE_LT_0P16 = True
+    else:
+        SKIMAGE_LT_0P16 = False
 except ImportError:
     HAS_SCIPY = False
 
@@ -25,7 +30,7 @@ def test_hanning_numpy():
     """Test Hanning window against 1D numpy version."""
 
     size = 101
-    cen = (size - 1) / 2.
+    cen = (size - 1) // 2
     shape = (size, size)
     win = HanningWindow()
     data = win(shape)
@@ -44,9 +49,13 @@ def test_tukey():
 def test_tukey_scipy():
     """Test Tukey window against 1D scipy version."""
 
+    if SKIMAGE_LT_0P16:
+        return    # skip this test
+
+    # scipy.signal.tukey was introduced in Scipy v0.16.0
     from scipy.signal import tukey
     size = 101
-    cen = (size - 1) / 2.
+    cen = (size - 1) // 2
     shape = (size, size)
     alpha = 0.4
     win = TukeyWindow(alpha=alpha)

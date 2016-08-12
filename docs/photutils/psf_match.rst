@@ -22,6 +22,7 @@ are noiseless 2D Gaussians.  The "high-resolution" PSF will be a
 Gaussian with :math:`\sigma=3`.  The "low-resolution" PSF will be a
 Gaussian with :math:`\sigma=5`::
 
+    >>> import numpy as np
     >>> from astropy.modeling.models import Gaussian2D
     >>> y, x = np.mgrid[0:51, 0:51]
     >>> gm1 = Gaussian2D(100, 25, 25, 3, 3)
@@ -32,7 +33,7 @@ Gaussian with :math:`\sigma=5`::
     >>> g2 /= g2.sum()
 
 For these 2D Gaussians, the matching kernel should be a 2D Gaussian
-with :math:`\sigma=4` (``np.sqrt(5**2 - 3**2)``).  Let's create the
+with :math:`\sigma=4` (``sqrt(5**2 - 3**2)``).  Let's create the
 matching kernel using a Fourier ratio method.  Note that the input
 source and target PSFs must have the same shape and pixel scale.
 
@@ -44,6 +45,7 @@ Let's plot the result:
 .. plot::
     :include-source:
 
+    import numpy as np
     from astropy.modeling.models import Gaussian2D
     from photutils import create_matching_kernel
     import matplotlib.pylab as plt
@@ -150,6 +152,7 @@ Let's display the new matching kernel:
 .. plot::
     :include-source:
 
+    import numpy as np
     from astropy.modeling.models import Gaussian2D
     from photutils import create_matching_kernel, TopHatWindow
     import matplotlib.pylab as plt
@@ -174,6 +177,7 @@ kernel images:
 .. plot::
     :include-source:
 
+    import numpy as np
     from astropy.modeling.models import Gaussian2D
     from photutils import create_matching_kernel, TopHatWindow
     import matplotlib.pylab as plt
@@ -209,10 +213,10 @@ microns) PSF.  We load the PSFs using the
 :func:`~photutils.datasets.load_irac_psf` convenience function::
 
     >>> from photutils.datasets import load_irac_psf
-    >>> ch1_hdu = load_irac_psf(channel=1)
-    >>> ch4_hdu = load_irac_psf(channel=4)
-    >>> ch1 = ch1_hdu.data
-    >>> ch4 = ch4_hdu.data
+    >>> ch1_hdu = load_irac_psf(channel=1)    # doctest: +REMOTE_DATA
+    >>> ch4_hdu = load_irac_psf(channel=4)    # doctest: +REMOTE_DATA
+    >>> ch1 = ch1_hdu.data    # doctest: +REMOTE_DATA
+    >>> ch4 = ch4_hdu.data    # doctest: +REMOTE_DATA
 
 Let's display the images:
 
@@ -247,6 +251,8 @@ the same shape and pixel scale.  If that is not the case, one can use
 the :func:`~photutils.psf_match.resize_psf` convenience function to
 resize a PSF image.  Typically one would interpolate the
 lower-resolution PSF to the same size as the higher-resolution PSF.
+
+.. doctest-skip::
 
     >>> from photutils import CosineBellWindow, create_matching_kernel
     >>> window = CosineBellWindow(alpha=0.35)
