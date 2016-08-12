@@ -33,7 +33,8 @@ Gaussian with :math:`\sigma=5`::
 
 For these 2D Gaussians, the matching kernel should be a 2D Gaussian
 with :math:`\sigma=4` (``np.sqrt(5**2 - 3**2)``).  Let's create the
-matching kernel using a Fourier ratio method::
+matching kernel using a Fourier ratio method.  Note that the input
+source and target PSFs must have the same shape and pixel scale.
 
     >>> from photutils import create_matching_kernel
     >>> kernel = create_matching_kernel(g1, g2)
@@ -197,6 +198,87 @@ kernel images:
     plt.ylabel('Flux')
     plt.legend()
     plt.ylim((0.0, 0.011))
+
+
+Matching IRAC PSFs
+------------------
+
+For this example, let's generate a matching kernel to go from the
+Spitzer/IRAC channel 1 (3.6 microns) PSF to the channel 4 (8.0
+microns) PSF.  We load the PSFs using the
+:func:`~photutils.datasets.load_irac_psf` convenience function::
+
+    >>> from photutils.datasets import load_irac_psf
+    >>> ch1_hdu = load_irac_psf(channel=1)
+    >>> ch4_hdu = load_irac_psf(channel=4)
+    >>> ch1 = ch1_hdu.data
+    >>> ch4 = ch4_hdu.data
+
+Let's display the images:
+
+.. plot::
+    :include-source:
+
+    import matplotlib.pylab as plt
+    from astropy.visualization import LogStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
+    from photutils.datasets import load_irac_psf
+
+    ch1_hdu = load_irac_psf(channel=1)
+    ch4_hdu = load_irac_psf(channel=4)
+    ch1 = ch1_hdu.data
+    ch4 = ch4_hdu.data
+    norm = ImageNormalize(stretch=LogStretch())
+
+    plt.figure(figsize=(9, 4))
+
+    plt.subplot(1, 2, 1)
+    plt.imshow(ch1, norm=norm, cmap='viridis')
+    plt.title('IRAC channel 1 PSF')
+
+    plt.subplot(1, 2, 2)
+    plt.imshow(ch4, norm=norm, cmap='viridis')
+    plt.title('IRAC channel 4 PSF')
+
+For this example, we will use the
+:class:`~photutils.psf_match.CosineBellWindow` for the low-pass
+window.  Also note that these Spitzer/IRAC channel 1 and 4 PSFs have
+the same shape and pixel scale.  If that is not the case, one can use
+the :func:`~photutils.psf_match.resize_psf` convenience function to
+resize a PSF image.  Typically one would interpolate the
+lower-resolution PSF to the same size as the higher-resolution PSF.
+
+    >>> from photutils import CosineBellWindow, create_matching_kernel
+    >>> window = CosineBellWindow(alpha=0.35)
+    >>> kernel = create_matching_kernel(ch1, ch4, window=window)
+
+Let's display the matching kernel result:
+
+.. plot::
+    :include-source:
+
+    import matplotlib.pylab as plt
+    from astropy.visualization import LogStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
+    from photutils.datasets import load_irac_psf
+    from photutils import CosineBellWindow, create_matching_kernel
+
+    ch1_hdu = load_irac_psf(channel=1)
+    ch4_hdu = load_irac_psf(channel=4)
+    ch1 = ch1_hdu.data
+    ch4 = ch4_hdu.data
+    norm = ImageNormalize(stretch=LogStretch())
+
+    window = CosineBellWindow(alpha=0.35)
+    kernel = create_matching_kernel(ch1, ch4, window=window)
+
+    plt.imshow(kernel, norm=norm, cmap='viridis')
+    plt.colorbar()
+    plt.title('Matching kernel')
+
+The Spitzer/IRAC channel 1 image could then be convolved with this
+matching kernel to produce an image with the same resolution as the
+channel 4 image.
 
 
 Reference/API
