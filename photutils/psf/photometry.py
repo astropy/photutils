@@ -2,9 +2,7 @@
 """Module which provides classes to perform PSF Photometry"""
 
 from __future__ import division
-import abc
 import numpy as np
-from astropy.extern import six
 from astropy.table import Table, vstack
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import overlap_slices, NoOverlapError
@@ -184,12 +182,9 @@ class DAOPhotPSFPhotometry(object):
             and the original image.
         """
         
-        if positions is None:
-            return self.do_photometry(image)
-        else:
-            return self.do_fixed_photometry(image, positions)
+        return self.do_photometry(image, positions)
 
-    def do_photometry(self, image):
+    def do_photometry(self, image, positions=None):
         """
         Perform PSF photometry in ``image``. This method assumes that
         ``psf`` has centroids and flux parameters which will be fitted to the
@@ -197,12 +192,21 @@ class DAOPhotPSFPhotometry(object):
         ``psf``, will be fitted to groups of starts automatically identified
         by ``group``. Also, ``image`` is not assumed to be background
         subtracted.
+        If positions are not ``None`` then this method performs forced PSF
+        photometry. If the centroid positions are set
+        as ``fixed`` in the PSF model ``psf``, then the optimizer will only
+        consider the flux as a variable. Otherwise, ``positions`` will be used
+        as initial guesses for the centroids.
 
         Parameters
         ----------
         image : 2D array-like, `~astropy.io.fits.ImageHDU`,
         `~astropy.io.fits.HDUList`
             Image to perform photometry.
+        positions: `~astropy.table.Table` (default=None)
+            Positions (in pixel coordinates) at which to *start* the fit for
+            each object. Columns 'x_0' and 'y_0' must be present.
+            'flux_0' can also be provided to set initial fluxes.
         
         Returns
         -------
@@ -214,98 +218,66 @@ class DAOPhotPSFPhotometry(object):
             Residual image calculated by subtracting the fitted sources
             and the original image.
         """
-
-        outtab = Table([[], [], [], [], [], []],
-                       names=('id', 'group_id', 'x_fit', 'y_fit', 'flux_fit',
-                              'iter_detected'),
-                       dtype=('i4', 'i4', 'f8', 'f8', 'f8', 'i4'))
-
+        
         residual_image = image.copy()
         residual_image = residual_image - self.bkg(image)
-        sources = self.find(residual_image)
         
         if self.aperture_radius is None:
             if hasattr(self.psf, 'fwhm'):
                 self.aperture_radius = self.psf.fwhm.value
             elif hasattr(self.psf, 'sigma'):
-                self.aperture_radius = self.psf.sigma.value*gaussian_sigma_to_fwhm
+                self.aperture_radius = self.psf.sigma.value*\
+                                       gaussian_sigma_to_fwhm
 
-        apertures = CircularAperture((sources['xcentroid'],
-                                      sources['ycentroid']),
-                                     r=self.aperture_radius)
-
-        sources['aperture_flux'] = aperture_photometry(residual_image,
-                                              apertures)['aperture_sum']
-        n = 1
-        while(n <= self.niters and len(sources) > 0):
-            intab = Table(names=['id', 'x_0', 'y_0', 'flux_0'],
-                          data=[sources['id'], sources['xcentroid'],
-                          sources['ycentroid'], sources['aperture_flux']])
-            star_groups = self.group(intab)
-            tab, residual_image = self.nstar(residual_image, star_groups)
-            tab['iter_detected'] = n*np.ones(tab['x_fit'].shape, dtype=np.int)
-            outtab = vstack([outtab, tab])
+        if positions is None:
+            outtab = Table([[], [], [], [], [], []],
+                           names=('id', 'group_id', 'x_fit', 'y_fit',
+                                  'flux_fit', 'iter_detected'),
+                           dtype=('i4', 'i4', 'f8', 'f8', 'f8', 'i4'))
+            
             sources = self.find(residual_image)
-
-            if len(sources) > 0:
-                apertures = CircularAperture((sources['xcentroid'],
-                                              sources['ycentroid']),
-                                             r=self.aperture_radius)
-                sources['flux'] = aperture_photometry(residual_image,
-                                                      apertures)['aperture_sum']
-            n += 1
-        return outtab, residual_image
-
-    def do_fixed_photometry(self, image, positions):
-        """
-        Perform PSF photometry for the case that the centroid positions of the
-        starts are known with high accuracy. If the centroid positions are set
-        as ``fixed`` in the PSF model ``psf``, then the optimizer will only
-        consider the flux as a variable. Otherwise, ``positions`` will be used
-        as initial guesses for the centroids. Also, ``image`` is not assumed
-        to be background subtracted.
-
-        Parameters
-        ----------
-        image : 2D array-like, `~astropy.io.fits.ImageHDU`,
-        `~astropy.io.fits.HDUList`
-            Image to perform photometry
-        positions: `~astropy.table.Table`
-            Positions (in pixel coordinates) at which to *start* the fit for
-            each object. Columns 'x_0' and 'y_0' must be present.
-            'flux_0' can also be provided to set initial fluxes.
-
-        Returns
-        -------
-        outtab : `~astropy.table.Table`
-            Table with the photometry results, i.e., centroids and fluxes
-            estimations.
-        residual_image : array-like, `~astropy.io.fits.ImageHDU`,
-        `~astropy.io.fits.HDUList`
-            Residual image calculated by subtracting the fitted sources
-            from the original image.
-        """
-
-        residual_image = image.copy()
-        residual_image = residual_image - self.bkg(image)
-
-        if 'flux_0' not in positions.colnames:
-            if self.aperture_radius is None:
-                 self.aperture_radius = self.psf.sigma.value*\
-                                        gaussian_sigma_to_fwhm
-            apertures = CircularAperture((positions['x_0'], positions['y_0']),
+            
+            apertures = CircularAperture((sources['xcentroid'],
+                                          sources['ycentroid']),
                                          r=self.aperture_radius)
 
-            positions['aperture_flux'] = aperture_photometry(residual_image,\
-                                         apertures)['aperture_sum']
+            sources['aperture_flux'] = aperture_photometry(residual_image,
+                                                  apertures)['aperture_sum']
+            n = 1
+            while(n <= self.niters and len(sources) > 0):
+                intab = Table(names=['id', 'x_0', 'y_0', 'flux_0'],
+                              data=[sources['id'], sources['xcentroid'],
+                              sources['ycentroid'], sources['aperture_flux']])
+                star_groups = self.group(intab)
+                tab, residual_image = self.nstar(residual_image, star_groups)
+                tab['iter_detected'] = n*np.ones(tab['x_fit'].shape,
+                                                 dtype=np.int)
+                outtab = vstack([outtab, tab])
+                sources = self.find(residual_image)
 
-        intab = Table(names=['x_0', 'y_0', 'flux_0'],
-                      data=[positions['x_0'], positions['y_0'],
-                      positions['aperture_flux']])
+                if len(sources) > 0:
+                    apertures = CircularAperture((sources['xcentroid'],
+                                                  sources['ycentroid']),
+                                                 r=self.aperture_radius)
+                    sources['flux'] = aperture_photometry(residual_image,\
+                                                apertures)['aperture_sum']
+                n += 1
+        else:
+            if 'flux_0' not in positions.colnames:
+                apertures = CircularAperture((positions['x_0'],
+                                              positions['y_0']),
+                                             r=self.aperture_radius)
 
-        star_groups = self.group(intab)
-        outtab, residual_image = self.nstar(residual_image, star_groups)
-        
+                positions['flux_0'] = aperture_photometry(residual_image,\
+                                             apertures)['aperture_sum']
+
+            intab = Table(names=['x_0', 'y_0', 'flux_0'],
+                          data=[positions['x_0'], positions['y_0'],
+                          positions['flux_0']])
+
+            star_groups = self.group(intab)
+            outtab, residual_image = self.nstar(residual_image, star_groups)
+
         return outtab, residual_image
 
     def get_uncertainties(self):
