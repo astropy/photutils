@@ -7,8 +7,9 @@ from copy import deepcopy
 import warnings
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
-from .core import filter_data, detect_sources
+from .core import detect_sources
 from ..segmentation import SegmentationImage
+from ..utils.convolution import filter_data
 
 
 __all__ = ['deblend_sources']

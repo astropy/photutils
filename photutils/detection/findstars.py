@@ -21,7 +21,8 @@ from astropy.table import Column, Table
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils import deprecated
 from astropy.stats import gaussian_fwhm_to_sigma
-from .core import filter_data, find_peaks
+from .core import find_peaks
+from ..utils.convolution import filter_data
 
 
 __all__ = ['DAOStarFinder', 'IRAFStarFinder', 'StarFinderBase',
