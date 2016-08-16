@@ -1,12 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 This module implements classes, called Finders, for detecting stars in
-an astronomical image. The general convention is that all Finders are
-subclasses of an abstract class called StarFinderBase and should be
-callable classes.  Additionally, StarFinderBase defines an abstract
-method called ``find_stars``.  In general, ``find_stars`` implements an
-algorithm for detecting stars and ``__call__`` invokes ``find_stars`` to
-return the position estimates of the stars.
+an astronomical image. The convention is that all Finders are subclasses
+of an abstract class called ``StarFinderBase``.  Each Finder class
+should define a method called ``find_stars`` that finds stars in an
+image.
 """
 
 from __future__ import (absolute_import, division, print_function,
@@ -54,6 +52,9 @@ class StarFinderBase(object):
     """
     Base abstract class for Star Finders.
     """
+
+    def __call__(self, data):
+        return self.find_stars(data)
 
     @abc.abstractmethod
     def find_stars(self, data):
@@ -224,9 +225,6 @@ class DAOStarFinder(StarFinderBase):
         self.sky = sky
         self.exclude_border = exclude_border
 
-    def __call__(self, data):
-        return self.find_stars(data)
-
     def find_stars(self, data):
         daofind_kernel = _FindObjKernel(self.fwhm, self.ratio, self.theta,
                                         self.sigma_radius)
@@ -321,9 +319,6 @@ class IRAFStarFinder(StarFinderBase):
         self.roundhi = roundhi
         self.sky = sky
         self.exclude_border = exclude_border
-
-    def __call__(self, data):
-        return self.find_stars(data)
 
     def find_stars(self, data):
         starfind_kernel = _FindObjKernel(self.fwhm, ratio=1.0, theta=0.0,
