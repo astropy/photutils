@@ -10,6 +10,7 @@ from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.wcs import WCS
 from ..core import (detect_threshold, detect_sources, find_peaks,
                     make_source_mask)
+from ..findstars import PeakFinder
 from ...datasets import make_4gaussians_image
 
 try:
@@ -225,7 +226,6 @@ class TestDetectSources(object):
 class TestFindPeaks(object):
     def test_box_size(self):
         """Test with box_size."""
-
         tbl = find_peaks(PEAKDATA, 0.1, box_size=3)
         assert_array_equal(tbl['x_peak'], PEAKREF1[:, 1])
         assert_array_equal(tbl['y_peak'], PEAKREF1[:, 0])
@@ -302,6 +302,105 @@ class TestFindPeaks(object):
         hdu = make_4gaussians_image(hdu=True, wcs=True)
         wcs = WCS(hdu.header)
         tbl = find_peaks(hdu.data, 100, wcs=wcs, subpixel=True)
+        cols = ['icrs_ra_peak', 'icrs_dec_peak', 'icrs_ra_centroid',
+                'icrs_dec_centroid']
+        for col in cols:
+            assert col in tbl.colnames
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SKIMAGE')
+class TestPeakFinder(object):
+    def test_box_size(self):
+        """Test with box_size."""
+        peaks = PeakFinder(threshold=0.1, box_size=3, subpixel=False)
+        tbl = peaks(PEAKDATA)
+        assert_array_equal(tbl['xcentroid'], PEAKREF1[:, 1])
+        assert_array_equal(tbl['ycentroid'], PEAKREF1[:, 0])
+        assert_array_equal(tbl['peak_value'], [1., 1.])
+
+    def test_footprint(self):
+        """Test with footprint."""
+        peaks = PeakFinder(threshold=0.1, footprint=np.ones((3,3)),
+                           subpixel=False)
+        tbl = peaks(PEAKDATA)
+        assert_array_equal(tbl['xcentroid'], PEAKREF1[:, 1])
+        assert_array_equal(tbl['ycentroid'], PEAKREF1[:, 0])
+        assert_array_equal(tbl['peak_value'], [1., 1.])
+
+    def test_subpixel_regionsize(self):
+        """Test that data cutout has at least 6 values."""
+        peaks = PeakFinder(threshold=0.1, box_size=2)
+        tbl = peaks(PEAKDATA)
+        assert np.all(np.isnan(tbl['xcentroid']))
+        assert np.all(np.isnan(tbl['ycentroid']))
+        assert np.all(np.isnan(tbl['fit_peak_value']))
+
+    def test_mask(self):
+        """Test with mask."""
+
+        mask = np.zeros_like(PEAKDATA, dtype=bool)
+        mask[0, 0] = True
+
+        peaks = PeakFinder(threshold=0.1, box_size=3, mask=mask,
+                           subpixel=False)
+        tbl = peaks(PEAKDATA)
+        assert len(tbl) == 1
+        assert_array_equal(tbl['xcentroid'], PEAKREF1[1, 0])
+        assert_array_equal(tbl['ycentroid'], PEAKREF1[1, 1])
+        assert_array_equal(tbl['peak_value'], 1.0)
+
+    def test_maskshape(self):
+        """Test if make shape doesn't match data shape."""
+
+        with pytest.raises(ValueError):
+            peaks = PeakFinder(threshold=0.1, mask=np.ones((5,5)),
+                               subpixel=False)
+            peaks(PEAKDATA)
+
+    def test_npeaks(self):
+        """Test npeaks."""
+        peaks = PeakFinder(threshold=0.1, box_size=3, npeaks=1,
+                           subpixel=False)
+        tbl = peaks(PEAKDATA)
+        assert_array_equal(tbl['xcentroid'], PEAKREF1[1, 1])
+        assert_array_equal(tbl['ycentroid'], PEAKREF1[1, 0])
+
+    def test_border_width(self):
+        """Test border exclusion."""
+        peaks = PeakFinder(threshold=0.1, box_size=3, border_width=3,
+                           subpixel=False)
+        tbl = peaks(PEAKDATA)
+        assert_array_equal(len(tbl), 0)
+
+    def test_zerodet(self):
+        """Test with large threshold giving no sources."""
+        peaks = PeakFinder(threshold=5, box_size=3, border_width=3,
+                           subpixel=False)
+        tbl = peaks(PEAKDATA)
+        assert_array_equal(len(tbl), 0)
+
+    def test_constant_data(self):
+        """Test constant data."""
+        peaks = PeakFinder(threshold=0.1, box_size=3., subpixel=False)
+        tbl = peaks(np.ones((5,5)))
+        assert_array_equal(len(tbl), 0)
+
+    def test_box_size_int(self):
+        """Test non-integer box_size."""
+        peaks = PeakFinder(threshold=0.1, box_size=3, subpixel=False)
+        tbl1 = peaks(PEAKDATA)
+        peaks.box_size = 5.5
+        tbl2 = peaks(PEAKDATA)
+        assert_array_equal(tbl1, tbl2)
+
+    def test_wcs(self):
+        """Test with WCS."""
+
+        hdu = make_4gaussians_image(hdu=True, wcs=True)
+        wcs = WCS(hdu.header)
+        peaks = PeakFinder(threshold=100, wcs=wcs)
+        tbl = peaks(hdu.data)
         cols = ['icrs_ra_peak', 'icrs_dec_peak', 'icrs_ra_centroid',
                 'icrs_dec_centroid']
         for col in cols:
