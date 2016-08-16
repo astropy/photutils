@@ -139,7 +139,6 @@ assumed to be Gaussian::
                                                   niters=2, fitshape=(11,11))
     >>> result_tab, residual_image = daophot_photometry(image=image)
     
-    >>> import numpy as np
     >>> from matplotlib import rcParams
     >>> import matplotlib.pyplot as plt
     >>> rcParams['image.cmap'] = 'viridis'
@@ -148,14 +147,87 @@ assumed to be Gaussian::
     >>> rcParams['image.interpolation'] = 'nearest'
     >>> rcParams['image.origin'] = 'lower'
     >>> rcParams['font.size'] = 14
+    >>> plt.subplot(1, 2, 1)
     >>> plt.imshow(image)
     >>> plt.title('Simulated data')
     >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
+    >>> plt.subplot(1 ,2, 2)
+    >>> plt.imshow(residual_image)
+    >>> plt.title('Residual Image')
+    >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)    
+    >>> plt.show()
+
+.. plot::
+    
+    from photutils.datasets import make_random_gaussians
+    from photutils.datasets import make_noise_image
+    from photutils.datasets import make_gaussian_sources
+
+    sigma_psf = 2.0
+    sources = Table()
+    sources['flux'] = [700, 800, 700, 800]
+    sources['x_mean'] = [12, 17, 12, 17]
+    sources['y_mean'] = [15, 15, 20, 20]
+    sources['x_stddev'] = sigma_psf*np.ones(4)
+    sources['y_stddev'] = sources['x_stddev']
+    sources['theta'] = [0, 0, 0, 0]
+    sources['id'] = [1, 2, 3, 4]
+    tshape = (32, 32)
+    image = (make_gaussian_sources(tshape, sources) +
+             make_noise_image(tshape, type='poisson', mean=6.,
+                              random_state=1) +
+             make_noise_image(tshape, type='gaussian', mean=0.,
+                              stddev=2., random_state=1))
+    
+    from photutils.detection import IRAFStarFinder
+    from photutils.psf import IntegratedGaussianPRF, DAOGroup
+    from photutils.background import MMMBackground
+    from photutils.background import MADStdBackgroundRMS
+    from astropy.modeling.fitting import LevMarLSQFitter
+    from astropy.stats import gaussian_sigma_to_fwhm
+
+    bkgrms = MADStdBackgroundRMS()
+    std = bkgrms(image)
+    iraffind = IRAFStarFinder(threshold=3.5*std,
+                              fwhm=sigma_psf*gaussian_sigma_to_fwhm,
+                              minsep_fwhm=0.01, roundhi=5.0, roundlo=-5.0,
+                              sharplo=0.0, sharphi=2.0)
+    daogroup = DAOGroup(2.0*sigma_psf*gaussian_sigma_to_fwhm)
+    mmm_bkg = MMMBackground()
+    psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
+    fitter = LevMarLSQFitter()
+
+    from photutils.psf import DAOPhotPSFPhotometry
+
+    daophot_photometry = DAOPhotPSFPhotometry(find=iraffind, group=daogroup,
+                                          bkg=mmm_bkg, psf=psf_model,
+                                          fitter=LevMarLSQFitter(),
+                                          niters=2, fitshape=(11,11))
+    result_tab, residual_image = daophot_photometry(image=image)
+    
+    from matplotlib import rcParams
+    import matplotlib.pyplot as plt
+    rcParams['image.cmap'] = 'viridis'
+    rcParams['image.aspect'] = 1  # to get images with square pixels
+    rcParams['figure.figsize'] = (20,10)
+    rcParams['image.interpolation'] = 'nearest'
+    rcParams['image.origin'] = 'lower'
+    rcParams['font.size'] = 14
+
+    plt.subplot(1, 2, 1)
+    plt.imshow(image)
+    plt.title('Simulated data')
+    plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
+    plt.subplot(1 ,2, 2)
+    plt.imshow(residual_image)
+    plt.title('Residual Image')
+    plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)    
+
 
 Example Notebooks (online)
 --------------------------
 
-* `PSF photometry on artificial Gaussian stars in crowded fields <https://github.com/astropy/photutils-datasets/blob/master/notebooks/ArtificialCrowdedFieldPSFPhotometry.ipynb>`
+* `PSF photometry on artificial Gaussian stars in crowded fields <https://github.com/astropy/photutils-datasets/blob/master/notebooks/ArtificialCrowdedFieldPSFPhotometry.ipynb>`_
 * `PSF photometry on artificial Gaussian stars <https://github.com/astropy/photutils-datasets/blob/master/notebooks/GaussianPSFPhot.ipynb>`_
 * `PSF/PRF Photometry on Spitzer Data <https://github.com/astropy/photutils-datasets/blob/master/notebooks/PSFPhotometrySpitzer.ipynb>`_
 
