@@ -1,9 +1,10 @@
-language: python
+# We set the language to c because python isn't supported on the MacOS X nodes
+# on Travis. However, the language ends up being irrelevant anyway, since we
+# install Python ourselves using conda.
+language: c
 
-python:
-    - 2.7
-    - 3.4
-    - 3.5
+os:
+    - linux
 
 # Setting sudo to false opts in to Travis-CI container-based builds.
 sudo: false
@@ -26,114 +27,86 @@ env:
         # The following versions are the 'default' for tests, unless
         # overridden underneath. They are defined here in order to save having
         # to repeat them for all configurations.
+        - PYTHON_VERSION=3.5
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
         - SETUP_CMD='test'
         - PIP_DEPENDENCIES=''
         - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib'
         - CONDA_CHANNELS='astropy-ci-extras'
+        - SETUP_XVFB=True
 
     matrix:
-        # Make sure that egg_info works without dependencies
-        - SETUP_CMD='egg_info'
-        # Try all python versions with the latest numpy
-        - SETUP_CMD='test'
+        - PYTHON_VERSION=2.7 SETUP_CMD='egg_info'
+        - PYTHON_VERSION=3.3 SETUP_CMD='egg_info'
+        - PYTHON_VERSION=3.4 SETUP_CMD='egg_info'
+        - PYTHON_VERSION=3.5 SETUP_CMD='egg_info'
 
 matrix:
-    include:
 
-        # Do a coverage test in Python 2.
-        - python: 2.7
-          env: SETUP_CMD='test --coverage'
+    # Don't wait for allowed failures
+    fast_finish: true
+
+    include:
+        # Try MacOS X
+        - os: osx
+          env: SETUP_CMD='test'
+
+        # Do a coverage test in Python 2. Move coverage to 3.x once speed
+        # issues have been solved; astropy/astropy#4826
+        - os: linux
+          env: PYTHON_VERSION=2.7 SETUP_CMD='test --coverage'
 
         # Check for sphinx doc build warnings - we do this first because it
         # may run for a long time
-        - python: 2.7
-          env: SETUP_CMD='build_sphinx -w' CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter'
-        - python: 3.5
-          env: SETUP_CMD='build_sphinx -w' CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter'
+        - os: linux
+          env: PYTHON_VERSION=2.7 SETUP_CMD='build_sphinx -w'
+               CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter'
+        - os: linux
+          env: SETUP_CMD='build_sphinx -w'
+               CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter'
 
-        # Python 3.3 doesn't have numpy > 1.9 in conda, but it can be put
-        # back into the main matrix once the numpy build is available in the
-        # astropy-ci-extras channel (or in the one provided in the
-        # CONDA_CHANNELS environmental variable).
-        - python: 3.3
-          env: SETUP_CMD='egg_info'
-        - python: 3.3
-          env: NUMPY_VERSION=1.9
+        # Try all python versions and Numpy versions. Since we can assume that
+        # the Numpy developers have taken care of testing Numpy with different
+        # versions of Python, we can vary Python and Numpy versions at the same
+        # time.
+        - os: linux
+          env: PYTHON_VERSION=2.7 NUMPY_VERSION=1.7
+        - os: linux
+          env: PYTHON_VERSION=3.3 NUMPY_VERSION=1.8
+        - os: linux
+          env: PYTHON_VERSION=3.4 NUMPY_VERSION=1.9
+        - os: linux
+          env: PYTHON_VERSION=3.5 NUMPY_VERSION=1.10
 
-        # Try Astropy development and LTS versions
-        - python: 2.7
+        # Now try Astropy dev and LTS vesions with the latest 3.x and 2.7.
+        - os: linux
+          env: PYTHON_VERSION=2.7 ASTROPY_VERSION=development
+        - os: linux
           env: ASTROPY_VERSION=development
-        - python: 3.5
-          env: ASTROPY_VERSION=development
-        - python: 2.7
-          env: ASTROPY_VERSION=lts
-        - python: 3.5
+        - os: linux
+          env: PYTHON_VERSION=2.7 ASTROPY_VERSION=lts
+        - os: linux
           env: ASTROPY_VERSION=lts
 
         # Try with optional dependencies disabled
-        - python: 2.7
+        - os: linux
+          env: PYTHON_VERSION=2.7 CONDA_DEPENDENCIES='Cython'
+        - os: linux
           env: CONDA_DEPENDENCIES='Cython'
-        - python: 3.5
-          env: CONDA_DEPENDENCIES='Cython'
-
-        # Try older numpy versions
-        - python: 2.7
-          env: NUMPY_VERSION=1.10
-        - python: 2.7
-          env: NUMPY_VERSION=1.9
-        - python: 2.7
-          env: NUMPY_VERSION=1.8
-        - python: 2.7
-          env: NUMPY_VERSION=1.7
 
         # Try numpy pre-release
-        - python: 3.5
-          env: NUMPY_VERSION=prerelease
-
-    allow_failures:
-        # The build with numpy v1.11.1rc1 halts in the middle without
-        # showing any obvious reason, thus allowing it to fail for now.
-        - python: 3.5
+        - os: linux
           env: NUMPY_VERSION=prerelease
 
 install:
-
-before_install:
-
-    # If there are matplotlib tests, comment these out to
-    # Make sure that interactive matplotlib backends work
-    - export DISPLAY=:99.0
-    - sh -e /etc/init.d/xvfb start
-
-install:
-
-    # We now use the ci-helpers package to set up our testing environment.
-    # This is done by using Miniconda and then using conda and pip to install
-    # dependencies. Which dependencies are installed using conda and pip is
-    # determined by the CONDA_DEPENDENCIES and PIP_DEPENDENCIES variables,
-    # which should be space-delimited lists of package names. See the README
-    # in https://github.com/astropy/ci-helpers for information about the full
-    # list of environment variables that can be used to customize your
-    # environment. In some cases, ci-helpers may not offer enough flexibility
-    # in how to install a package, in which case you can have additional
-    # commands in the install: section below.
-
     - git clone git://github.com/astropy/ci-helpers.git
     - source ci-helpers/travis/setup_conda_$TRAVIS_OS_NAME.sh
-
-    # As described above, using ci-helpers, you should be able to set up an
-    # environment with dependencies installed using conda and pip, but in some
-    # cases this may not provide enough flexibility in how to install a
-    # specific dependency (and it will not be able to install non-Python
-    # dependencies). Therefore, you can also include commands below (as
-    # well as at the start of the install section or in the before_install
-    # section if they are needed before setting up conda) to install any
-    # other dependencies.
 
 script:
    - python setup.py $SETUP_CMD
 
 after_success:
-    - if [[ $SETUP_CMD == 'test --coverage' ]]; then coveralls --rcfile='photutils/tests/coveragerc'; fi
+    - if [[ $SETUP_CMD == 'test --coverage' ]]; then
+          coveralls --rcfile='photutils/tests/coveragerc';
+      fi
