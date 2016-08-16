@@ -18,6 +18,7 @@ from astropy.extern import six
 from astropy.table import Column, Table
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils import deprecated
+from astropy.utils.misc import InheritDocstrings
 from astropy.stats import gaussian_fwhm_to_sigma
 from .core import find_peaks
 from ..utils.convolution import filter_data
@@ -25,6 +26,10 @@ from ..utils.convolution import filter_data
 
 __all__ = ['DAOStarFinder', 'IRAFStarFinder', 'StarFinderBase',
            'daofind', 'irafstarfind']
+
+
+class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
+    pass
 
 
 @deprecated(0.3, alternative='DAOStarFinder')
@@ -47,7 +52,7 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
     return finder(data)
 
 
-@six.add_metaclass(abc.ABCMeta)
+@six.add_metaclass(_ABCMetaAndInheritDocstrings)
 class StarFinderBase(object):
     """
     Base abstract class for Star Finders.
