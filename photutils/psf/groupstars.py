@@ -20,10 +20,12 @@ class GroupStarsBase(object):
 
     def __call__(self, starlist):
         """
+        Classify stars into groups.
+
         Parameters
         ----------
         starlist : `~astropy.table.Table`
-            List of stars positions. Columns named as ``x_0`` and ``y_0``,
+            List of star positions. Columns named as ``x_0`` and ``y_0``,
             which corresponds to the centroid coordinates of the sources,
             must be provided.
 
@@ -48,10 +50,10 @@ class DAOGroup(GroupStarsBase):
     enough to be capable of adversely influencing each others' profile fits.
 
     Parameters
-    ---------- 
+    ----------
     crit_separation : float or int
         Distance, in units of pixels, such that any two stars separated by
-        less than this distance will be placed in the same group. 
+        less than this distance will be placed in the same group.
 
     Notes
     -----
@@ -71,11 +73,11 @@ class DAOGroup(GroupStarsBase):
 
     def __init__(self, crit_separation):
         self.crit_separation = crit_separation
-    
+
     @property
     def crit_separation(self):
         return self._crit_separation
-    
+
     @crit_separation.setter
     def crit_separation(self, crit_separation):
         if not isinstance(crit_separation, (float, int)):
@@ -87,15 +89,17 @@ class DAOGroup(GroupStarsBase):
                              'real number. Got {}'.format(crit_separation))
         else:
             self._crit_separation = crit_separation
- 
+
     def group_stars(self, starlist):
         """
+        Classify stars into groups.
+
         Parameters
         ----------
         starlist : `~astropy.table.Table`
-            List of stars positions. Columns named as ``x_0`` and ``y_0``,
-            which corresponds to the centroid coordinates of the sources,
-            must be provided.
+            List of star positions. Columns named as ``x_0`` and
+            ``y_0``, which corresponds to the centroid coordinates of
+            the sources, must be provided.
 
         Returns
         -------
@@ -148,16 +152,16 @@ class DAOGroup(GroupStarsBase):
         star : `~astropy.table.Row`
             Star which will be either the head of a cluster or an isolated one.
         starlist : `~astropy.table.Table`
-            List of stars positions. Columns named as ``x_0`` and ``y_0``,
-            which corresponds to the centroid coordinates of the sources,
-            must be provided.
-        
+            List of star positions. Columns named as ``x_0`` and
+            ``y_0``, which corresponds to the centroid coordinates of
+            the sources, must be provided.
+
         Returns
         -------
         Array containing the ids of those stars which are at a distance less
         than ``crit_separation`` from ``star``.
         """
-        
+
         star_distance = np.hypot(star['x_0'] - starlist['x_0'],
                                  star['y_0'] - starlist['y_0'])
         distance_criteria = star_distance < self.crit_separation
@@ -212,12 +216,14 @@ class DBSCANGroup(GroupStarsBase):
 
     def group_stars(self, starlist):
         """
+        Classify stars into groups.
+
         Parameters
         ----------
         starlist : `~astropy.table.Table`
-            List of stars positions. Columns named as ``x_0`` and ``y_0``,
-            which corresponds to the centroid coordinates of the sources,
-            must be provided.
+            List of star positions. Columns named as ``x_0`` and
+            ``y_0``, which corresponds to the centroid coordinates of
+            the sources, must be provided.
 
         Returns
         -------
