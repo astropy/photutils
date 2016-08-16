@@ -112,6 +112,9 @@ class StarFinderBase(object):
 
         * `~photutils.detection.IRAFStarFinder` calculates the objects'
           centroid, roundness, and sharpness using image moments.
+
+        .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
+        .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
         """
 
         raise NotImplementedError
@@ -119,17 +122,16 @@ class StarFinderBase(object):
 
 class DAOStarFinder(StarFinderBase):
     """
-    Detect stars in an image using the DAOFIND algorithm.
+    Detect stars in an image using the DAOFIND (`Stetson 1987
+    <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_) algorithm.
 
-    `DAOFIND`_ (`Stetson 1987; PASP 99, 191
+    DAOFIND (`Stetson 1987; PASP 99, 191
     <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_) searches
     images for local density maxima that have a peak amplitude greater
     than ``threshold`` (approximately; ``threshold`` is applied to a
     convolved image) and have a size and shape similar to the defined 2D
     Gaussian kernel.  The Gaussian kernel is defined by the ``fwhm``,
     ``ratio``, ``theta``, and ``sigma_radius`` input parameters.
-
-    .. _DAOFIND: http://iraf.net/irafhelp.php?val=daofind&help=Help+Page
 
     ``DAOStarFinder`` finds the object centroid by fitting the marginal x
     and y 1D distributions of the Gaussian kernel to the marginal x and
@@ -203,11 +205,10 @@ class DAOStarFinder(StarFinderBase):
 
     References
     ----------
+    .. [1] Stetson, P. 1987; PASP 99, 191 (http://adsabs.harvard.edu/abs/1987PASP...99..191S)
+    .. [2] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
 
-    .. [1] Stetson, P. 1987; PASP 99, 191 (http://adsabs.harvard.edu/abs/
-           1987PASP...99..191S)
-    .. [2] http://iraf.net/irafhelp.php?val=daofind&help=Help+Page
-    .. [3] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
+    .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
     """
 
     def __init__(self, threshold, fwhm, ratio=1.0, theta=0.0,
@@ -261,8 +262,6 @@ class IRAFStarFinder(StarFinderBase):
     ``fwhm``.  The objects' centroid, roundness (ellipticity), and
     sharpness are calculated using image moments.
 
-    .. _starfind: http://iraf.net/irafhelp.php?val=starfind&help=Help+Page
-
     Parameters
     ----------
     threshold : float
@@ -302,8 +301,9 @@ class IRAFStarFinder(StarFinderBase):
 
     References
     ----------
-    .. [1] http://iraf.net/irafhelp.php?val=starfind&help=Help+Page
-    .. [2] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
+    .. [1] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
+
+    .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
     """
 
     def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
@@ -380,6 +380,10 @@ def _findobjs(data, threshold, kernel, min_separation=None,
     objects : list of `_ImgCutout`
         A list of `_ImgCutout` objects containing the image cutout for
         each source.
+
+
+    .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
+    .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
     """
 
     from scipy import ndimage
@@ -589,6 +593,8 @@ def _daofind_properties(imgcutouts, threshold, kernel, sky=0.0):
     -------
     table : `~astropy.table.Table`
         A table of the object parameters.
+
+    .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
     """
 
     result = defaultdict(list)
@@ -672,6 +678,8 @@ def _daofind_centroid_roundness(obj, kernel):
 
     g_roundness : float
         `DAOFIND`_ roundness (GROUND) statistic.
+
+    .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
     """
 
     dx, hx = _daofind_centroidfit(obj, kernel, axis=0)
@@ -802,8 +810,8 @@ class _ImgCutout(object):
 class _FindObjKernel(object):
     """
     Calculate a 2D Gaussian density enhancement kernel.  This kernel has
-    negative wings and sums to zero.  It is used by both `daofind` and
-    `irafstarfind`.
+    negative wings and sums to zero.  It is used by both `DAOStarFinder`
+    and `IRAFStarFinder`.
 
     Parameters
     ----------
