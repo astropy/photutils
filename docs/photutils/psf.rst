@@ -91,11 +91,21 @@ Performing PSF Photometry
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Let's take a look in a simple example with simulated stars whose PSF is
-assumed to be Gaussian::
+assumed to be Gaussian.
+
+First let's create an image with four overlapping stars::
     
     >>> from photutils.datasets import make_random_gaussians
     >>> from photutils.datasets import make_noise_image
     >>> from photutils.datasets import make_gaussian_sources
+    >>> from matplotlib import rcParams
+    >>> import matplotlib.pyplot as plt
+    >>> rcParams['image.cmap'] = 'viridis'
+    >>> rcParams['image.aspect'] = 1  # to get images with square pixels
+    >>> rcParams['figure.figsize'] = (20,10)
+    >>> rcParams['image.interpolation'] = 'nearest'
+    >>> rcParams['image.origin'] = 'lower'
+    >>> rcParams['font.size'] = 14
 
     >>> sigma_psf = 2.0
     >>> sources = Table()
@@ -112,6 +122,49 @@ assumed to be Gaussian::
                                   random_state=1) +
                  make_noise_image(tshape, type='gaussian', mean=0.,
                                   stddev=2., random_state=1))
+    >>> plt.imshow(image)
+    >>> plt.title('Simulated data')
+    >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
+    >>> plt.show()
+
+
+.. plot::
+    
+    from photutils.datasets import make_random_gaussians
+    from photutils.datasets import make_noise_image
+    from photutils.datasets import make_gaussian_sources
+
+    sigma_psf = 2.0
+    sources = Table()
+    sources['flux'] = [700, 800, 700, 800]
+    sources['x_mean'] = [12, 17, 12, 17]
+    sources['y_mean'] = [15, 15, 20, 20]
+    sources['x_stddev'] = sigma_psf*np.ones(4)
+    sources['y_stddev'] = sources['x_stddev']
+    sources['theta'] = [0, 0, 0, 0]
+    sources['id'] = [1, 2, 3, 4]
+    tshape = (32, 32)
+    image = (make_gaussian_sources(tshape, sources) +
+             make_noise_image(tshape, type='poisson', mean=6.,
+                              random_state=1) +
+             make_noise_image(tshape, type='gaussian', mean=0.,
+                              stddev=2., random_state=1))
+
+    from matplotlib import rcParams
+    import matplotlib.pyplot as plt
+    rcParams['image.cmap'] = 'viridis'
+    rcParams['image.aspect'] = 1  # to get images with square pixels
+    rcParams['figure.figsize'] = (20,10)
+    rcParams['image.interpolation'] = 'nearest'
+    rcParams['image.origin'] = 'lower'
+    rcParams['font.size'] = 14
+    
+    plt.imshow(image)
+    plt.title('Simulated data')
+    plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
+
+
+Then let's import the required parts to set up a DAOPhotPSFPhotometry object::
 
     >>> from photutils.detection import IRAFStarFinder
     >>> from photutils.psf import IntegratedGaussianPRF, DAOGroup
@@ -128,8 +181,8 @@ assumed to be Gaussian::
                                   sharplo=0.0, sharphi=2.0)
     >>> daogroup = DAOGroup(2.0*sigma_psf*gaussian_sigma_to_fwhm)
     >>> mmm_bkg = MMMBackground()
-    >>> psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
     >>> fitter = LevMarLSQFitter()
+    >>> psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
     
     >>> from photutils.psf import DAOPhotPSFPhotometry
 
@@ -137,16 +190,18 @@ assumed to be Gaussian::
                                                   bkg=mmm_bkg, psf=psf_model,
                                                   fitter=LevMarLSQFitter(),
                                                   niters=2, fitshape=(11,11))
+
+As mention before, one can use the ``daophot_photometry`` object as a function
+to actually perform photometry::
+
     >>> result_tab, residual_image = daophot_photometry(image=image)
+
+It's worth noting that ``image`` does not need to be background subtracted.
+The subtraction is done during the photometry process with the attribute
+``bkg`` that was used to set up ``daophot_photometry``.
+
+Now, let's compare the simulated and the residual images::
     
-    >>> from matplotlib import rcParams
-    >>> import matplotlib.pyplot as plt
-    >>> rcParams['image.cmap'] = 'viridis'
-    >>> rcParams['image.aspect'] = 1  # to get images with square pixels
-    >>> rcParams['figure.figsize'] = (20,10)
-    >>> rcParams['image.interpolation'] = 'nearest'
-    >>> rcParams['image.origin'] = 'lower'
-    >>> rcParams['font.size'] = 14
     >>> plt.subplot(1, 2, 1)
     >>> plt.imshow(image)
     >>> plt.title('Simulated data')
@@ -223,6 +278,121 @@ assumed to be Gaussian::
     plt.title('Residual Image')
     plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)    
 
+Performing PSF Photometry with Fixed Centroids
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In case that the centroids positions of the stars are known a priori, then
+they can be held fixed during the fitting process and the optimizer will
+only consider flux as a variable.
+
+To do that, one has to set the ``fixed`` attribute for the centroid parameters
+in ``psf`` as ``True``.
+
+Consider the previous example after the line
+``psf_model = IntegratedGaussianPRF(sigma=sigma_psf)``::
+
+    >>> psf_model.x_0.fixed = True
+    >>> psf_model.y_0.fixed = True
+    >>> pos = Table(names=['x_0', 'y_0'], data=[sources['x_mean'],
+                                                sources['y_mean']])
+
+Note that we do not need to set the ``find`` and ``niters`` attributes in
+``DAOPhotPSFPhotometry``::
+
+    >>> daophot_photometry = DAOPhotPSFPhotometry(group=daogroup, bkg=mmm_bkg,
+                                                  psf=psf_model,
+                                                  fitter=LevMarLSQFitter(),
+                                                  fitshape=(11,11))
+
+The positions are passed using the keyword ``positions``::
+
+    >>> result_tab, residual_image = daophot_photometry(image=image,
+                                                        positions=pos)
+    >>> plt.subplot(1, 2, 1)
+    >>> plt.imshow(image)
+    >>> plt.title('Simulated data')
+    >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
+    >>> plt.subplot(1 ,2, 2)
+    >>> plt.imshow(residual_image)
+    >>> plt.title('Residual Image')
+    >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
+
+.. plot::
+
+    from photutils.datasets import make_random_gaussians
+    from photutils.datasets import make_noise_image
+    from photutils.datasets import make_gaussian_sources
+
+    sigma_psf = 2.0
+    sources = Table()
+    sources['flux'] = [700, 800, 700, 800]
+    sources['x_mean'] = [12, 17, 12, 17]
+    sources['y_mean'] = [15, 15, 20, 20]
+    sources['x_stddev'] = sigma_psf*np.ones(4)
+    sources['y_stddev'] = sources['x_stddev']
+    sources['theta'] = [0, 0, 0, 0]
+    sources['id'] = [1, 2, 3, 4]
+    tshape = (32, 32)
+    image = (make_gaussian_sources(tshape, sources) +
+             make_noise_image(tshape, type='poisson', mean=6.,
+                              random_state=1) +
+             make_noise_image(tshape, type='gaussian', mean=0.,
+                              stddev=2., random_state=1))
+    
+    from photutils.detection import IRAFStarFinder
+    from photutils.psf import IntegratedGaussianPRF, DAOGroup
+    from photutils.background import MMMBackground
+    from photutils.background import MADStdBackgroundRMS
+    from astropy.modeling.fitting import LevMarLSQFitter
+    from astropy.stats import gaussian_sigma_to_fwhm
+
+    bkgrms = MADStdBackgroundRMS()
+    std = bkgrms(image)
+    iraffind = IRAFStarFinder(threshold=3.5*std,
+                              fwhm=sigma_psf*gaussian_sigma_to_fwhm,
+                              minsep_fwhm=0.01, roundhi=5.0, roundlo=-5.0,
+                              sharplo=0.0, sharphi=2.0)
+    daogroup = DAOGroup(2.0*sigma_psf*gaussian_sigma_to_fwhm)
+    mmm_bkg = MMMBackground()
+    psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
+    
+    psf_model.x_0.fixed = True
+    psf_model.y_0.fixed = True
+
+    pos = Table(names=['x_0', 'y_0'], data=[sources['x_mean'],
+                                            sources['y_mean']])
+    
+    fitter = LevMarLSQFitter()
+
+    from photutils.psf import DAOPhotPSFPhotometry
+
+    daophot_photometry = DAOPhotPSFPhotometry(group=daogroup,
+                                              bkg=mmm_bkg, psf=psf_model,
+                                              fitter=LevMarLSQFitter(),
+                                              fitshape=(11,11))
+
+    result_tab, residual_image = daophot_photometry(image=image,
+                                                    positions=pos)
+    
+    from matplotlib import rcParams
+    import matplotlib.pyplot as plt
+    rcParams['image.cmap'] = 'viridis'
+    rcParams['image.aspect'] = 1  # to get images with square pixels
+    rcParams['figure.figsize'] = (20,10)
+    rcParams['image.interpolation'] = 'nearest'
+    rcParams['image.origin'] = 'lower'
+    rcParams['font.size'] = 14
+
+    plt.subplot(1, 2, 1)
+    plt.imshow(image)
+    plt.title('Simulated data')
+    plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
+    plt.subplot(1 ,2, 2)
+    plt.imshow(residual_image)
+    plt.title('Residual Image')
+    plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04) 
+
+For more examples, also check the online notebook in the next section.
 
 Example Notebooks (online)
 --------------------------
