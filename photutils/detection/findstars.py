@@ -58,7 +58,7 @@ class StarFinderBase(object):
     @abc.abstractmethod
     def find_stars(self, data):
         """Find potential stars in the given data."""
-        pass
+        raise NotImplementedError
 
 
 class DAOStarFinder(StarFinderBase):
