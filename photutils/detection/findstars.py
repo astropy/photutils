@@ -88,25 +88,29 @@ class StarFinderBase(object):
 
         Notes
         -----
-        For the convolution step, this routine sets pixels beyond the image
-        borders to 0.0.  The equivalent parameters in `starfind`_ are
-        ``boundary='constant'`` and ``constant=0.0``.
+        For the convolution step, this routine sets pixels beyond the
+        image borders to 0.0.  The equivalent parameters in IRAF's
+        `starfind`_ are ``boundary='constant'`` and ``constant=0.0``.
 
-        IRAF's `starfind`_ uses ``hwhmpsf``, ``fradius``, and ``sepmin`` as
-        input parameters.  The equivalent input values for ``IRAFStarFinder``
-        are:
+        IRAF's `starfind`_ uses ``hwhmpsf``, ``fradius``, and ``sepmin``
+        as input parameters.  The equivalent input values for
+        `~photutils.detection.IRAFStarFinder` are:
 
         * ``fwhm = hwhmpsf * 2``
         * ``sigma_radius = fradius * sqrt(2.0*log(2.0))``
         * ``minsep_fwhm = 0.5 * sepmin``
 
-        The main differences between ``daofind`` and ``irafstarfind`` are:
+        The main differences between
+        `~photutils.detection.DAOStarFinder` and
+        `~photutils.detection.IRAFStarFinder` are:
 
-        * ``IRAFStarFinder`` always uses a 2D circular Gaussian kernel,
-          while ``DAOStarFinder`` can use an elliptical Gaussian kernel.
+        * `~photutils.detection.IRAFStarFinder` always uses a 2D
+          circular Gaussian kernel, while
+          `~photutils.detection.DAOStarFinder` can use an elliptical
+          Gaussian kernel.
 
-        * ``IRAFStarFinder`` calculates the objects' centroid, roundness,
-          and sharpness using image moments.
+        * `~photutils.detection.IRAFStarFinder` calculates the objects'
+          centroid, roundness, and sharpness using image moments.
         """
 
         raise NotImplementedError
