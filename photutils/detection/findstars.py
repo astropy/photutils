@@ -1,12 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 This module implements classes, called Finders, for detecting stars in
-an astronomical image. The general convention is that all Finders are
-subclasses of an abstract class called StarFinderBase and should be
-callable classes.  Additionally, StarFinderBase defines an abstract
-method called ``find_stars``.  In general, ``find_stars`` implements an
-algorithm for detecting stars and ``__call__`` invokes ``find_stars`` to
-return the position estimates of the stars.
+an astronomical image. The convention is that all Finders are subclasses
+of an abstract class called ``StarFinderBase``.  Each Finder class
+should define a method called ``find_stars`` that finds stars in an
+image.
 """
 
 from __future__ import (absolute_import, division, print_function,
@@ -20,6 +18,7 @@ from astropy.extern import six
 from astropy.table import Column, Table
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils import deprecated
+from astropy.utils.misc import InheritDocstrings
 from astropy.stats import gaussian_fwhm_to_sigma
 from .core import find_peaks
 from ..utils.convolution import filter_data
@@ -27,6 +26,10 @@ from ..utils.convolution import filter_data
 
 __all__ = ['DAOStarFinder', 'IRAFStarFinder', 'StarFinderBase',
            'daofind', 'irafstarfind']
+
+
+class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
+    pass
 
 
 @deprecated(0.3, alternative='DAOStarFinder')
@@ -49,31 +52,91 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
     return finder(data)
 
 
-@six.add_metaclass(abc.ABCMeta)
+@six.add_metaclass(_ABCMetaAndInheritDocstrings)
 class StarFinderBase(object):
     """
     Base abstract class for Star Finders.
     """
 
+    def __call__(self, data):
+        return self.find_stars(data)
+
     @abc.abstractmethod
     def find_stars(self, data):
-        """Find potential stars in the given data."""
-        pass
+        """
+        Find stars in an astronomical image.
+
+        Parameters
+        ----------
+        data : array_like
+            The 2D image array.
+
+        Returns
+        -------
+        table : `~astropy.table.Table`
+            A table of found objects with the following parameters:
+
+            * ``id``: unique object identification number.
+            * ``xcentroid, ycentroid``: object centroid.
+            * ``sharpness``: object sharpness.
+            * ``roundness1``: object roundness based on symmetry.
+            * ``roundness2``: object roundness based on marginal Gaussian
+              fits.
+            * ``npix``: number of pixels in the Gaussian kernel.
+            * ``sky``: the input ``sky`` parameter.
+            * ``peak``: the peak, sky-subtracted, pixel value of the object.
+            * ``flux``: the object flux calculated as the peak density in
+              the convolved image divided by the detection threshold.  This
+              derivation matches that of `DAOFIND`_ if ``sky`` is 0.0.
+            * ``mag``: the object instrumental magnitude calculated as
+              ``-2.5 * log10(flux)``.  The derivation matches that of
+              `DAOFIND`_ if ``sky`` is 0.0.
+
+        Notes
+        -----
+        For the convolution step, this routine sets pixels beyond the
+        image borders to 0.0.  The equivalent parameters in IRAF's
+        `starfind`_ are ``boundary='constant'`` and ``constant=0.0``.
+
+        IRAF's `starfind`_ uses ``hwhmpsf``, ``fradius``, and ``sepmin``
+        as input parameters.  The equivalent input values for
+        `~photutils.detection.IRAFStarFinder` are:
+
+        * ``fwhm = hwhmpsf * 2``
+        * ``sigma_radius = fradius * sqrt(2.0*log(2.0))``
+        * ``minsep_fwhm = 0.5 * sepmin``
+
+        The main differences between
+        `~photutils.detection.DAOStarFinder` and
+        `~photutils.detection.IRAFStarFinder` are:
+
+        * `~photutils.detection.IRAFStarFinder` always uses a 2D
+          circular Gaussian kernel, while
+          `~photutils.detection.DAOStarFinder` can use an elliptical
+          Gaussian kernel.
+
+        * `~photutils.detection.IRAFStarFinder` calculates the objects'
+          centroid, roundness, and sharpness using image moments.
+
+        .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
+        .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
+        """
+
+        raise NotImplementedError
 
 
 class DAOStarFinder(StarFinderBase):
     """
-    Detect stars in an image using the DAOFIND algorithm.
+    Detect stars in an image using the DAOFIND (`Stetson 1987
+    <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_) algorithm.
 
-    `DAOFIND`_ (`Stetson 1987; PASP 99, 191
+    DAOFIND (`Stetson 1987; PASP 99, 191
     <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_) searches
     images for local density maxima that have a peak amplitude greater
     than ``threshold`` (approximately; ``threshold`` is applied to a
     convolved image) and have a size and shape similar to the defined 2D
     Gaussian kernel.  The Gaussian kernel is defined by the ``fwhm``,
     ``ratio``, ``theta``, and ``sigma_radius`` input parameters.
-
-    .. _DAOFIND: http://iraf.net/irafhelp.php?val=daofind&help=Help+Page
 
     ``DAOStarFinder`` finds the object centroid by fitting the marginal x
     and y 1D distributions of the Gaussian kernel to the marginal x and
@@ -147,11 +210,10 @@ class DAOStarFinder(StarFinderBase):
 
     References
     ----------
+    .. [1] Stetson, P. 1987; PASP 99, 191 (http://adsabs.harvard.edu/abs/1987PASP...99..191S)
+    .. [2] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
 
-    .. [1] Stetson, P. 1987; PASP 99, 191 (http://adsabs.harvard.edu/abs/
-           1987PASP...99..191S)
-    .. [2] http://iraf.net/irafhelp.php?val=daofind&help=Help+Page
-    .. [3] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
+    .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
     """
 
     def __init__(self, threshold, fwhm, ratio=1.0, theta=0.0,
@@ -169,39 +231,7 @@ class DAOStarFinder(StarFinderBase):
         self.sky = sky
         self.exclude_border = exclude_border
 
-    def __call__(self, data):
-        return self.find_stars(data)
-
     def find_stars(self, data):
-        """
-        Parameters
-        ----------
-        data : array_like
-            The 2D array of the image.
-
-        Returns
-        -------
-        table : `~astropy.table.Table`
-
-            A table of found objects with the following parameters:
-
-            * ``id``: unique object identification number.
-            * ``xcentroid, ycentroid``: object centroid.
-            * ``sharpness``: object sharpness.
-            * ``roundness1``: object roundness based on symmetry.
-            * ``roundness2``: object roundness based on marginal Gaussian
-              fits.
-            * ``npix``: number of pixels in the Gaussian kernel.
-            * ``sky``: the input ``sky`` parameter.
-            * ``peak``: the peak, sky-subtracted, pixel value of the object.
-            * ``flux``: the object flux calculated as the peak density in
-              the convolved image divided by the detection threshold.  This
-              derivation matches that of `DAOFIND`_ if ``sky`` is 0.0.
-            * ``mag``: the object instrumental magnitude calculated as
-              ``-2.5 * log10(flux)``.  The derivation matches that of
-              `DAOFIND`_ if ``sky`` is 0.0.
-        """
-
         daofind_kernel = _FindObjKernel(self.fwhm, self.ratio, self.theta,
                                         self.sigma_radius)
         self.threshold *= daofind_kernel.relerr
@@ -236,8 +266,6 @@ class IRAFStarFinder(StarFinderBase):
     and have a PSF full-width half-maximum similar to the input
     ``fwhm``.  The objects' centroid, roundness (ellipticity), and
     sharpness are calculated using image moments.
-
-    .. _starfind: http://iraf.net/irafhelp.php?val=starfind&help=Help+Page
 
     Parameters
     ----------
@@ -278,8 +306,9 @@ class IRAFStarFinder(StarFinderBase):
 
     References
     ----------
-    .. [1] http://iraf.net/irafhelp.php?val=starfind&help=Help+Page
-    .. [2] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
+    .. [1] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
+
+    .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
     """
 
     def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
@@ -296,64 +325,7 @@ class IRAFStarFinder(StarFinderBase):
         self.sky = sky
         self.exclude_border = exclude_border
 
-    def __call__(self, data):
-        return self.find_stars(data)
-
     def find_stars(self, data):
-        """
-        Parameters
-        ----------
-        data : array_like
-            The 2D array of the image.
-
-        Returns
-        -------
-        table : `~astropy.table.Table`
-
-            A table of found objects with the following parameters:
-
-            * ``id``: unique object identification number.
-            * ``xcentroid, ycentroid``: object centroid (zero-based origin).
-            * ``fwhm``: estimate of object FWHM from image moments.
-            * ``sharpness``: object sharpness calculated from image moments.
-            * ``roundness``: object ellipticity calculated from image moments.
-            * ``pa``:  object position angle in degrees from the positive x
-              axis calculated from image moments.
-            * ``npix``: number of pixels in the object used to calculate
-              ``flux``.
-            * ``sky``: the derived background sky value, unless ``sky`` was
-              input.  If ``sky`` was input, then that value overrides the
-              background sky estimation.
-            * ``peak``: the peak, sky-subtracted, pixel value of the object.
-            * ``flux``: the object sky-subtracted flux, calculated by
-              summing object pixels over the Gaussian kernel.  The
-              derivation matches that of `starfind`_ if ``sky`` is ``None``.
-            * ``mag``: the object instrumental magnitude calculated as
-              ``-2.5 * log10(flux)``.  The derivation matches that of
-              `starfind`_ if ``sky`` is ``None``.
-
-        Notes
-        -----
-        For the convolution step, this routine sets pixels beyond the image
-        borders to 0.0.  The equivalent parameters in `starfind`_ are
-        ``boundary='constant'`` and ``constant=0.0``.
-
-        IRAF's `starfind`_ uses ``hwhmpsf``, ``fradius``, and ``sepmin`` as
-        input parameters.  The equivalent input values for ``IRAFStarFinder``
-        are:
-
-        * ``fwhm = hwhmpsf * 2``
-        * ``sigma_radius = fradius * sqrt(2.0*log(2.0))``
-        * ``minsep_fwhm = 0.5 * sepmin``
-
-        The main differences between ``daofind`` and ``irafstarfind`` are:
-
-        * ``IRAFStarFinder`` always uses a 2D circular Gaussian kernel,
-          while ``DAOStarFinder`` can use an elliptical Gaussian kernel.
-
-        * ``IRAFStarFinder`` calculates the objects' centroid, roundness,
-          and sharpness using image moments.
-        """
         starfind_kernel = _FindObjKernel(self.fwhm, ratio=1.0, theta=0.0,
                                          sigma_radius=self.sigma_radius)
         min_separation = max(2, int((self.fwhm * self.minsep_fwhm) + 0.5))
@@ -413,6 +385,10 @@ def _findobjs(data, threshold, kernel, min_separation=None,
     objects : list of `_ImgCutout`
         A list of `_ImgCutout` objects containing the image cutout for
         each source.
+
+
+    .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
+    .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
     """
 
     from scipy import ndimage
@@ -622,6 +598,8 @@ def _daofind_properties(imgcutouts, threshold, kernel, sky=0.0):
     -------
     table : `~astropy.table.Table`
         A table of the object parameters.
+
+    .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
     """
 
     result = defaultdict(list)
@@ -705,6 +683,8 @@ def _daofind_centroid_roundness(obj, kernel):
 
     g_roundness : float
         `DAOFIND`_ roundness (GROUND) statistic.
+
+    .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
     """
 
     dx, hx = _daofind_centroidfit(obj, kernel, axis=0)
@@ -835,8 +815,8 @@ class _ImgCutout(object):
 class _FindObjKernel(object):
     """
     Calculate a 2D Gaussian density enhancement kernel.  This kernel has
-    negative wings and sums to zero.  It is used by both `daofind` and
-    `irafstarfind`.
+    negative wings and sums to zero.  It is used by both `DAOStarFinder`
+    and `IRAFStarFinder`.
 
     Parameters
     ----------

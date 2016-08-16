@@ -5,7 +5,7 @@ from __future__ import division
 import abc
 from astropy.extern import six
 import numpy as np
-from astropy.table import Column, Table, vstack
+from astropy.table import Column
 
 
 __all__ = ['DAOGroup', 'DBSCANGroup', 'GroupStarsBase']
@@ -20,10 +20,12 @@ class GroupStarsBase(object):
 
     def __call__(self, starlist):
         """
+        Classify stars into groups.
+
         Parameters
         ----------
         starlist : `~astropy.table.Table`
-            List of stars positions. Columns named as ``x_0`` and ``y_0``,
+            List of star positions. Columns named as ``x_0`` and ``y_0``,
             which corresponds to the centroid coordinates of the sources,
             must be provided.
 
@@ -48,10 +50,10 @@ class DAOGroup(GroupStarsBase):
     enough to be capable of adversely influencing each others' profile fits.
 
     Parameters
-    ---------- 
+    ----------
     crit_separation : float or int
         Distance, in units of pixels, such that any two stars separated by
-        less than this distance will be placed in the same group. 
+        less than this distance will be placed in the same group.
 
     Notes
     -----
@@ -71,31 +73,33 @@ class DAOGroup(GroupStarsBase):
 
     def __init__(self, crit_separation):
         self.crit_separation = crit_separation
-    
+
     @property
     def crit_separation(self):
         return self._crit_separation
-    
+
     @crit_separation.setter
     def crit_separation(self, crit_separation):
         if not isinstance(crit_separation, (float, int)):
-            raise ValueError('crit_separation is expected to be either '+
-                             'float or int. Received {}.'\
+            raise ValueError('crit_separation is expected to be either '
+                             'float or int. Received {}.'
                              .format(type(crit_separation)))
         elif crit_separation < 0.0:
-            raise ValueError('crit_separation is expected to be a positive '+
+            raise ValueError('crit_separation is expected to be a positive '
                              'real number. Got {}'.format(crit_separation))
         else:
             self._crit_separation = crit_separation
- 
+
     def group_stars(self, starlist):
         """
+        Classify stars into groups.
+
         Parameters
         ----------
         starlist : `~astropy.table.Table`
-            List of stars positions. Columns named as ``x_0`` and ``y_0``,
-            which corresponds to the centroid coordinates of the sources,
-            must be provided.
+            List of star positions. Columns named as ``x_0`` and
+            ``y_0``, which corresponds to the centroid coordinates of
+            the sources, must be provided.
 
         Returns
         -------
@@ -109,10 +113,11 @@ class DAOGroup(GroupStarsBase):
         if 'id' not in cstarlist.colnames:
             cstarlist.add_column(Column(name='id',
                                         data=np.arange(len(cstarlist)) + 1))
-        cstarlist.add_column(Column(name='group_id',\
-                                data=np.zeros(len(cstarlist), dtype=np.int)))
+        cstarlist.add_column(Column(name='group_id',
+                                    data=np.zeros(len(cstarlist),
+                                                  dtype=np.int)))
 
-        if not np.array_equal(cstarlist['id'], np.arange(len(cstarlist)) +1):
+        if not np.array_equal(cstarlist['id'], np.arange(len(cstarlist)) + 1):
             raise ValueError('id colum must be an integer-valued ' +
                              'sequence starting from 1. ' +
                              'Got {}'.format(cstarlist['id']))
@@ -127,8 +132,8 @@ class DAOGroup(GroupStarsBase):
             K = len(index)
             while k < K:
                 init_star = cstarlist[cstarlist['id'] == index[k]]
-                tmp_index = self.find_group(init_star,\
-                                        cstarlist[cstarlist['group_id'] == 0])
+                tmp_index = self.find_group(
+                    init_star, cstarlist[cstarlist['group_id'] == 0])
                 if len(tmp_index) > 0:
                     cstarlist['group_id'][tmp_index-1] = n
                     index = np.append(index, tmp_index)
@@ -140,24 +145,24 @@ class DAOGroup(GroupStarsBase):
 
     def find_group(self, star, starlist):
         """
-        Find the ids of those stars in ``starlist`` which are at a distance less
-        than ``crit_separation`` from ``star``.
+        Find the ids of those stars in ``starlist`` which are at a
+        distance less than ``crit_separation`` from ``star``.
 
         Parameters
         ----------
         star : `~astropy.table.Row`
             Star which will be either the head of a cluster or an isolated one.
         starlist : `~astropy.table.Table`
-            List of stars positions. Columns named as ``x_0`` and ``y_0``,
-            which corresponds to the centroid coordinates of the sources,
-            must be provided.
-        
+            List of star positions. Columns named as ``x_0`` and
+            ``y_0``, which corresponds to the centroid coordinates of
+            the sources, must be provided.
+
         Returns
         -------
         Array containing the ids of those stars which are at a distance less
         than ``crit_separation`` from ``star``.
         """
-        
+
         star_distance = np.hypot(star['x_0'] - starlist['x_0'],
                                  star['y_0'] - starlist['y_0'])
         distance_criteria = star_distance < self.crit_separation
@@ -192,13 +197,14 @@ class DBSCANGroup(GroupStarsBase):
 
     Notes
     -----
-    * The attribute ``crit_separation`` corresponds to ``eps`` in\
-    `sklearn.cluster.DBSCAN <http://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html#sklearn.cluster.DBSCAN>`_.
+    * The attribute ``crit_separation`` corresponds to ``eps`` in
+      `sklearn.cluster.DBSCAN <http://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html#sklearn.cluster.DBSCAN>`_.
 
-    * This class provides more general algorithms than `photutils.psf.DAOGroup`.
-      More precisely, `photutils.psf.DAOGroup` is a special case of
-      `photutils.psf.DBSCANGroup` when ``min_samples=1`` and ``metric=euclidean``.
-      Additionally, `photutils.psf.DBSCANGroup` may be faster than
+    * This class provides more general algorithms than
+      `photutils.psf.DAOGroup`.  More precisely, `photutils.psf.DAOGroup`
+      is a special case of `photutils.psf.DBSCANGroup` when
+      ``min_samples=1`` and ``metric=euclidean``.  Additionally,
+      `photutils.psf.DBSCANGroup` may be faster than
       `photutils.psf.DAOGroup`.
     """
 
@@ -212,12 +218,14 @@ class DBSCANGroup(GroupStarsBase):
 
     def group_stars(self, starlist):
         """
+        Classify stars into groups.
+
         Parameters
         ----------
         starlist : `~astropy.table.Table`
-            List of stars positions. Columns named as ``x_0`` and ``y_0``,
-            which corresponds to the centroid coordinates of the sources,
-            must be provided.
+            List of star positions. Columns named as ``x_0`` and
+            ``y_0``, which corresponds to the centroid coordinates of
+            the sources, must be provided.
 
         Returns
         -------

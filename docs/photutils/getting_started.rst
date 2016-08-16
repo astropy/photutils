@@ -19,18 +19,19 @@ In the remainder of this example, we assume that the data is
 background-subtracted.
 
 Photutils supports several source detection algorithms.  For this
-example, we use :func:`~photutils.daofind` to detect the stars in the
-image.  We set the detection threshold at the 3-sigma noise level,
-estimated using the median absolute deviation (`~astropy.stats.mad_std`) of
-the image. The parameters of the detected sources are returned as an Astropy
-`~astropy.table.Table`:
+example, we use :class:`~photutils.detection.DAOStarFinder` to detect
+the stars in the image.  We set the detection threshold at the 3-sigma
+noise level, estimated using the median absolute deviation
+(`~astropy.stats.mad_std`) of the image. The parameters of the
+detected sources are returned as an Astropy `~astropy.table.Table`:
 
 .. doctest-requires:: scipy, skimage
 
-    >>> from photutils import daofind
+    >>> from photutils import DAOStarFinder
     >>> from astropy.stats import mad_std
     >>> bkg_sigma = mad_std(image)    # doctest: +REMOTE_DATA
-    >>> sources = daofind(image, fwhm=4., threshold=3.*bkg_sigma)    # doctest: +REMOTE_DATA
+    >>> daofind = DAOStarFinder(fwhm=4., threshold=3.*bkg_sigma)    # doctest: +REMOTE_DATA
+    >>> sources = daofind(image)    # doctest: +REMOTE_DATA
     >>> print(sources)    # doctest: +REMOTE_DATA
      id   xcentroid     ycentroid    ...  peak       flux           mag
     --- ------------- -------------- ... ------ ------------- ---------------
@@ -91,12 +92,14 @@ apertures:
     import numpy as np
     import matplotlib.pylab as plt
     from astropy.stats import mad_std
-    from photutils import datasets, daofind, aperture_photometry, CircularAperture
+    from photutils import (datasets, DAOStarFinder, aperture_photometry,
+                           CircularAperture)
     hdu = datasets.load_star_image()
     image = hdu.data[500:700, 500:700].astype(float)
     image -= np.median(image)
     bkg_sigma = mad_std(image)
-    sources = daofind(image, fwhm=4., threshold=3.*bkg_sigma)
+    daofind = DAOStarFinder(fwhm=4., threshold=3.*bkg_sigma)
+    sources = daofind(image)
     positions = (sources['xcentroid'], sources['ycentroid'])
     apertures = CircularAperture(positions, r=4.)
     phot_table = aperture_photometry(image, apertures)
