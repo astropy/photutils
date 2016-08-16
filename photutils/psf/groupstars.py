@@ -5,7 +5,7 @@ from __future__ import division
 import abc
 from astropy.extern import six
 import numpy as np
-from astropy.table import Column, Table, vstack
+from astropy.table import Column
 
 
 __all__ = ['DAOGroup', 'DBSCANGroup', 'GroupStarsBase']
@@ -81,11 +81,11 @@ class DAOGroup(GroupStarsBase):
     @crit_separation.setter
     def crit_separation(self, crit_separation):
         if not isinstance(crit_separation, (float, int)):
-            raise ValueError('crit_separation is expected to be either '+
-                             'float or int. Received {}.'\
+            raise ValueError('crit_separation is expected to be either '
+                             'float or int. Received {}.'
                              .format(type(crit_separation)))
         elif crit_separation < 0.0:
-            raise ValueError('crit_separation is expected to be a positive '+
+            raise ValueError('crit_separation is expected to be a positive '
                              'real number. Got {}'.format(crit_separation))
         else:
             self._crit_separation = crit_separation
@@ -113,10 +113,11 @@ class DAOGroup(GroupStarsBase):
         if 'id' not in cstarlist.colnames:
             cstarlist.add_column(Column(name='id',
                                         data=np.arange(len(cstarlist)) + 1))
-        cstarlist.add_column(Column(name='group_id',\
-                                data=np.zeros(len(cstarlist), dtype=np.int)))
+        cstarlist.add_column(Column(name='group_id',
+                                    data=np.zeros(len(cstarlist),
+                                                  dtype=np.int)))
 
-        if not np.array_equal(cstarlist['id'], np.arange(len(cstarlist)) +1):
+        if not np.array_equal(cstarlist['id'], np.arange(len(cstarlist)) + 1):
             raise ValueError('id colum must be an integer-valued ' +
                              'sequence starting from 1. ' +
                              'Got {}'.format(cstarlist['id']))
@@ -131,8 +132,8 @@ class DAOGroup(GroupStarsBase):
             K = len(index)
             while k < K:
                 init_star = cstarlist[cstarlist['id'] == index[k]]
-                tmp_index = self.find_group(init_star,\
-                                        cstarlist[cstarlist['group_id'] == 0])
+                tmp_index = self.find_group(
+                    init_star, cstarlist[cstarlist['group_id'] == 0])
                 if len(tmp_index) > 0:
                     cstarlist['group_id'][tmp_index-1] = n
                     index = np.append(index, tmp_index)
@@ -144,8 +145,8 @@ class DAOGroup(GroupStarsBase):
 
     def find_group(self, star, starlist):
         """
-        Find the ids of those stars in ``starlist`` which are at a distance less
-        than ``crit_separation`` from ``star``.
+        Find the ids of those stars in ``starlist`` which are at a
+        distance less than ``crit_separation`` from ``star``.
 
         Parameters
         ----------
@@ -196,13 +197,14 @@ class DBSCANGroup(GroupStarsBase):
 
     Notes
     -----
-    * The attribute ``crit_separation`` corresponds to ``eps`` in\
-    `sklearn.cluster.DBSCAN <http://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html#sklearn.cluster.DBSCAN>`_.
+    * The attribute ``crit_separation`` corresponds to ``eps`` in
+      `sklearn.cluster.DBSCAN <http://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html#sklearn.cluster.DBSCAN>`_.
 
-    * This class provides more general algorithms than `photutils.psf.DAOGroup`.
-      More precisely, `photutils.psf.DAOGroup` is a special case of
-      `photutils.psf.DBSCANGroup` when ``min_samples=1`` and ``metric=euclidean``.
-      Additionally, `photutils.psf.DBSCANGroup` may be faster than
+    * This class provides more general algorithms than
+      `photutils.psf.DAOGroup`.  More precisely, `photutils.psf.DAOGroup`
+      is a special case of `photutils.psf.DBSCANGroup` when
+      ``min_samples=1`` and ``metric=euclidean``.  Additionally,
+      `photutils.psf.DBSCANGroup` may be faster than
       `photutils.psf.DAOGroup`.
     """
 
