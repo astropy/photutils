@@ -61,6 +61,22 @@ routine again in order to check if there exist any source which has not been
 detected previously. This process goes on until no more sources are identified 
 by the finding routine.
 
+.. note::
+    It is important to note the conventions on the column names of the
+    input/output astropy Tables which are passed along the source detection
+    objects and the photometry objetcs. For instance, all source detection
+    objects should output a table with columns named as ``xcentroid`` and
+    ``ycentroid`` (check `~photutils.detection`). On the other hand,
+    `~photutils.psf.DAOGroup` expects columns named as ``x_0`` and ``y_0``,
+    which represents the initial guesses on the sources' centroids.
+    Finally, the output of the fitting process shows columns named as
+    ``x_fit``, ``y_fit``, ``flux_fit`` for the optimum values and
+    ``x_0``, ``y_0``, ``flux_0`` for the initial guesses.
+    Although this convention implies that the columns have to be renamed
+    along the process, it has the advantage of clarity so that one can
+    keep track and easily differentiate input/outputs.
+
+
 Basic Usage
 ^^^^^^^^^^^
 
