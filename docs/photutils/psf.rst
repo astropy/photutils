@@ -109,42 +109,10 @@ Performing PSF Photometry
 Let's take a look in a simple example with simulated stars whose PSF is
 assumed to be Gaussian.
 
-First let's create an image with four overlapping stars::
+First let's create an image with four overlapping stars:
     
-    >>> from photutils.datasets import make_random_gaussians
-    >>> from photutils.datasets import make_noise_image
-    >>> from photutils.datasets import make_gaussian_sources
-    >>> from matplotlib import rcParams
-    >>> import matplotlib.pyplot as plt
-    >>> rcParams['image.cmap'] = 'viridis'
-    >>> rcParams['image.aspect'] = 1  # to get images with square pixels
-    >>> rcParams['figure.figsize'] = (20,10)
-    >>> rcParams['image.interpolation'] = 'nearest'
-    >>> rcParams['image.origin'] = 'lower'
-    >>> rcParams['font.size'] = 14
-
-    >>> sigma_psf = 2.0
-    >>> sources = Table()
-    >>> sources['flux'] = [700, 800, 700, 800]
-    >>> sources['x_mean'] = [12, 17, 12, 17]
-    >>> sources['y_mean'] = [15, 15, 20, 20]
-    >>> sources['x_stddev'] = sigma_psf*np.ones(4)
-    >>> sources['y_stddev'] = sources['x_stddev']
-    >>> sources['theta'] = [0, 0, 0, 0]
-    >>> sources['id'] = [1, 2, 3, 4]
-    >>> tshape = (32, 32)
-    >>> image = (make_gaussian_sources(tshape, sources) +
-                 make_noise_image(tshape, type='poisson', mean=6.,
-                                  random_state=1) +
-                 make_noise_image(tshape, type='gaussian', mean=0.,
-                                  stddev=2., random_state=1))
-    >>> plt.imshow(image)
-    >>> plt.title('Simulated data')
-    >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
-    >>> plt.show()
-
-
 .. plot::
+    :include-source:
     
     from photutils.datasets import make_random_gaussians
     from photutils.datasets import make_noise_image
