@@ -55,9 +55,26 @@ class StarFinderBase(object):
     """
 
     @abc.abstractmethod
-    def find_stars(self, data):
-        """Find potential stars in the given data."""
-        pass
+    def __call__(self, data):
+        """
+        Find potential stars in the given data.
+
+        Parameters
+        ----------
+        data : array_like
+            The 2D array of the image.
+
+        Returns
+        -------
+        table : `~astropy.table.Table`
+            A table of found objects containing at least the following
+            parameters:
+
+            * ``id``: unique object identification number.
+            * ``xcentroid, ycentroid``: object centroid.
+        """
+
+        return self.find_stars(data)
 
 
 class DAOStarFinder(StarFinderBase):
