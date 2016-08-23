@@ -13,8 +13,8 @@ Matching PSFs
 -------------
 
 Photutils provides a function called
-:func:`~photutils.psf_match.create_matching_kernel` that generates a
-matching kernel between two PSFs using the ratio of Fourier
+:func:`~photutils.psf.matching.create_matching_kernel` that generates
+a matching kernel between two PSFs using the ratio of Fourier
 transforms.
 
 For this first simple example, let's assume our source and target PSFs
@@ -74,11 +74,11 @@ exercise some care when defining a window function.
 
 Photutils provides the following window classes:
 
-* `~photutils.psf_match.HanningWindow`
-* `~photutils.psf_match.TukeyWindow`
-* `~photutils.psf_match.CosineBellWindow`
-* `~photutils.psf_match.SplitCosineBellWindow`
-* `~photutils.psf_match.TopHatWindow`
+* `~photutils.psf.matching.HanningWindow`
+* `~photutils.psf.matching.TukeyWindow`
+* `~photutils.psf.matching.CosineBellWindow`
+* `~photutils.psf.matching.SplitCosineBellWindow`
+* `~photutils.psf.matching.TopHatWindow`
 
 Here are plots of 1D cuts across the center of the 2D window
 functions:
@@ -134,14 +134,14 @@ However, the user may input any function or callable object to
 generate a custom window function.
 
 In this example, because these are noiseless PSFs, we will use a
-`~photutils.psf_match.TopHatWindow` object as the low-pass filter::
+`~photutils.psf.matching.TopHatWindow` object as the low-pass filter::
 
     >>> from photutils import TopHatWindow
     >>> window = TopHatWindow(0.35)
     >>> kernel = create_matching_kernel(g1, g2, window=window)
 
 Note that the output matching kernel from
-:func:`~photutils.psf_match.create_matching_kernel` is always
+:func:`~photutils.psf.matching.create_matching_kernel` is always
 normalized such that the kernel array sums to 1::
 
     >>> print(kernel.sum())    # doctest: +FLOAT_CMP
@@ -245,10 +245,10 @@ Let's display the images:
     plt.title('IRAC channel 4 PSF')
 
 For this example, we will use the
-:class:`~photutils.psf_match.CosineBellWindow` for the low-pass
+:class:`~photutils.psf.matching.CosineBellWindow` for the low-pass
 window.  Also note that these Spitzer/IRAC channel 1 and 4 PSFs have
 the same shape and pixel scale.  If that is not the case, one can use
-the :func:`~photutils.psf_match.resize_psf` convenience function to
+the :func:`~photutils.psf.matching.resize_psf` convenience function to
 resize a PSF image.  Typically one would interpolate the
 lower-resolution PSF to the same size as the higher-resolution PSF.
 
@@ -290,5 +290,5 @@ channel 4 image.
 Reference/API
 -------------
 
-.. automodapi:: photutils.psf_match
+.. automodapi:: photutils.psf.matching
     :no-heading:

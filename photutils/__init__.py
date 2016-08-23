@@ -14,5 +14,4 @@ if not _ASTROPY_SETUP_:
     from .background import *
     from .detection import *
     from .psf import *
-    from .psf_match import *
     from .segmentation import *
