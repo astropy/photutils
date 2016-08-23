@@ -29,6 +29,10 @@ New Features
 
   - Added new ``std_blocksum`` function. [#355]
 
+- ``photutils.datasets``
+
+  - Added ``load_irac_psf`` function. [#403]
+
 - ``photutils.detection``
 
   - Added new ``make_source_mask`` convenience function. [#355]
@@ -39,6 +43,13 @@ New Features
 
   - Added the ``param_uncert`` keyword to ``psf_photometry`` so that
     users can easily get uncertainties on fitted parameters. [#376]
+
+- ``photutils.psf_match``
+
+  - Added ``create_matching_kernel`` and ``resize_psf`` functions.  Also
+    added ``CosineBellWindow``, ``HanningWindow``,
+    ``SplitCosineBellWindow``, ``TopHatWindow``, and ``TukeyWindow``
+    classes. [#403]
 
 - ``photutils.segmentation``
 

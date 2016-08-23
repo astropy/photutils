@@ -5,5 +5,6 @@ photometry.
 """
 
 from .funcs import *
-from .models import *
 from .groupstars import *
+from .matching import *
+from .models import *

@@ -4,20 +4,16 @@ Load example datasets.
 """
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-
 from astropy.io import fits
 from astropy.table import Table
 from astropy.utils.data import get_pkg_data_filename, download_file
 
-__all__ = ['get_path',
-           'load_spitzer_image',
-           'load_spitzer_catalog',
-           'load_fermi_image',
-           'load_star_image'
-           ]
+
+__all__ = ['get_path', 'load_spitzer_image', 'load_spitzer_catalog',
+           'load_irac_psf', 'load_fermi_image', 'load_star_image']
 
 
-def get_path(filename, location='local'):
+def get_path(filename, location='local', cache=False):
     """Get path (location on your disk) for a given file.
 
     Parameters
@@ -28,6 +24,9 @@ def get_path(filename, location='local'):
         File location.
         ``'local'`` means bundled with ``photutils``.
         ``'remote'`` means a server or the Astropy cache on your machine.
+    cache : bool, optional
+        Whether to cache the contents of remote URLs.  Default is
+        currently `False` because `True` will fail with Python 3.
 
     Returns
     -------
@@ -40,12 +39,13 @@ def get_path(filename, location='local'):
     >>> from photutils import datasets
     >>> hdu_list = fits.open(datasets.get_path('fermi_counts.fits.gz'))
     """
+
     if location == 'local':
         path = get_pkg_data_filename('data/' + filename)
     elif location == 'remote':    # pragma: no cover
         url = ('https://github.com/astropy/photutils-datasets/blob/master/'
                'data/{0}?raw=true'.format(filename))
-        path = download_file(url, cache=True)
+        path = download_file(url, cache=cache)
     else:
         raise ValueError('Invalid location: {0}'.format(location))
 
@@ -103,6 +103,46 @@ def load_spitzer_catalog():    # pragma: no cover
     table = Table.read(path)
 
     return table
+
+
+def load_irac_psf(channel):    # pragma: no cover
+    """
+    Load Spitzer IRAC PSF.
+
+    Parameters
+    ----------
+    channel : int (1-4)
+        The IRAC channel number:
+
+        * Channel 1:  3.6 microns
+        * Channel 2:  4.5 microns
+        * Channel 3:  5.8 microns
+        * Channel 4:  8.0 microns
+
+    Returns
+    -------
+    hdu : `~astropy.io.fits.ImageHDU`
+        The IRAC PSF.
+
+    Examples
+    --------
+    .. plot::
+        :include-source:
+
+        from photutils.datasets import load_irac_psf
+        hdu = load_irac_psf(1)
+        plt.imshow(hdu.data, origin='lower')
+    """
+
+    channel = int(channel)
+    if channel < 1 or channel > 4:
+        raise ValueError('channel must be 1, 2, 3, or 4')
+
+    fn = 'irac_ch{0}_flight.fits'.format(channel)
+    path = get_path(fn, location='remote')
+    hdu = fits.open(path)[0]
+
+    return hdu
 
 
 def load_fermi_image():
