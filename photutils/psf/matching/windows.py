@@ -58,7 +58,7 @@ class SplitCosineBellWindow(object):
         from photutils import SplitCosineBellWindow
         taper = SplitCosineBellWindow(alpha=0.4, beta=0.3)
         data = taper((101, 101))
-        plt.imshow(data)
+        plt.imshow(data, cmap='viridis', origin='lower')
         plt.colorbar()
 
     A 1D cut across the image center:
@@ -127,7 +127,7 @@ class HanningWindow(SplitCosineBellWindow):
         from photutils import HanningWindow
         taper = HanningWindow()
         data = taper((101, 101))
-        plt.imshow(data)
+        plt.imshow(data, cmap='viridis', origin='lower')
         plt.colorbar()
 
     A 1D cut across the image center:
@@ -167,7 +167,7 @@ class TukeyWindow(SplitCosineBellWindow):
         from photutils import TukeyWindow
         taper = TukeyWindow(alpha=0.4)
         data = taper((101, 101))
-        plt.imshow(data)
+        plt.imshow(data, cmap='viridis', origin='lower')
         plt.colorbar()
 
     A 1D cut across the image center:
@@ -206,7 +206,7 @@ class CosineBellWindow(SplitCosineBellWindow):
         from photutils import CosineBellWindow
         taper = CosineBellWindow(alpha=0.3)
         data = taper((101, 101))
-        plt.imshow(data)
+        plt.imshow(data, cmap='viridis', origin='lower')
         plt.colorbar()
 
     A 1D cut across the image center:
@@ -245,7 +245,8 @@ class TopHatWindow(SplitCosineBellWindow):
         from photutils import TopHatWindow
         taper = TopHatWindow(beta=0.4)
         data = taper((101, 101))
-        plt.imshow(data, interpolation='nearest')
+        plt.imshow(data, cmap='viridis', origin='lower',
+                   interpolation='nearest')
         plt.colorbar()
 
     A 1D cut across the image center:
