@@ -59,7 +59,7 @@ Let's plot the result:
     g2 /= g2.sum()
 
     kernel = create_matching_kernel(g1, g2)
-    plt.imshow(kernel, origin='lower', cmap='Greys_r')
+    plt.imshow(kernel, cmap='Greys_r', origin='lower')
     plt.colorbar()
 
 We quickly observe that the result is not as expected.  This is
@@ -167,7 +167,7 @@ Let's display the new matching kernel:
 
     window = TopHatWindow(0.35)
     kernel = create_matching_kernel(g1, g2, window=window)
-    plt.imshow(kernel, origin='lower', cmap='Greys_r')
+    plt.imshow(kernel, cmap='Greys_r', origin='lower')
     plt.colorbar()
 
 As desired, the result is indeed a 2D Gaussian with a
@@ -237,11 +237,11 @@ Let's display the images:
     plt.figure(figsize=(9, 4))
 
     plt.subplot(1, 2, 1)
-    plt.imshow(ch1, norm=norm, cmap='viridis')
+    plt.imshow(ch1, norm=norm, cmap='viridis', origin='lower')
     plt.title('IRAC channel 1 PSF')
 
     plt.subplot(1, 2, 2)
-    plt.imshow(ch4, norm=norm, cmap='viridis')
+    plt.imshow(ch4, norm=norm, cmap='viridis', origin='lower')
     plt.title('IRAC channel 4 PSF')
 
 For this example, we will use the
@@ -278,7 +278,7 @@ Let's display the matching kernel result:
     window = CosineBellWindow(alpha=0.35)
     kernel = create_matching_kernel(ch1, ch4, window=window)
 
-    plt.imshow(kernel, norm=norm, cmap='viridis')
+    plt.imshow(kernel, norm=norm, cmap='viridis', origin='lower')
     plt.colorbar()
     plt.title('Matching kernel')
 
