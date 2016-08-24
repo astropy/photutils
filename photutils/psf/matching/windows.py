@@ -153,6 +153,9 @@ class TukeyWindow(SplitCosineBellWindow):
     <https://en.wikipedia.org/wiki/Window_function#Tukey_window>`_
     function.
 
+    The Tukey window is a taper formed by using a split cosine bell
+    function with ends that touch zero.
+
     Parameters
     ----------
     alpha : float, optional
