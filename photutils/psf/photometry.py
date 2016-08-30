@@ -74,9 +74,12 @@ class DAOPhotPSFPhotometry(object):
             Fitter object used to compute the optimized centroid positions
             and/or flux of the identified sources. See
             `~astropy.modeling.fitting` for more details on fitters.
-        niters : int
+        niters : int or None
             Number of iterations to perform of the loop FIND, GROUP, SUBTRACT,
-            NSTAR.
+            NSTAR. If None, iterations will proceed until no more stars remain.
+            Note that in this case it is *possible* that the loop will never
+            end if the PSF has structure that causes subtraction to create new
+            sources infinitely.
         aperture_radius : float
             The radius (in units of pixels) used to compute initial estimates
             for the fluxes of sources. If ``None``, one FWHM will be used if it
@@ -112,14 +115,17 @@ class DAOPhotPSFPhotometry(object):
 
     @niters.setter
     def niters(self, value):
-        try:
-            if value <= 0:
-                raise ValueError('niters must be positive.')
-            else:
-                self._niters = int(value)
-        except:
-            raise ValueError('niters must be an integer or convertable '
-                             'into an integer.')
+        if value is None:
+            self._niters = None
+        else:
+            try:
+                if value <= 0:
+                    raise ValueError('niters must be positive.')
+                else:
+                    self._niters = int(value)
+            except:
+                raise ValueError('niters must be None or an integer or convertable '
+                                 'into an integer.')
 
     @property
     def fitshape(self):
@@ -251,7 +257,7 @@ class DAOPhotPSFPhotometry(object):
 
             sources['aperture_flux'] = aperture_photometry(residual_image, apertures)['aperture_sum']
             n = 1
-            while(n <= self.niters and len(sources) > 0):
+            while(len(sources) > 0 and (self.niters is not None and n <= self.niters)):
                 init_guess_tab = Table(names=['x_0', 'y_0', 'flux_0'],
                                        data=[sources['xcentroid'],
                                              sources['ycentroid'],
