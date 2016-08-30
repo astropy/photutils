@@ -54,11 +54,12 @@ class DAOPhotPSFPhotometry(object):
             parameters should be given as ``x_0``, ``y_0`` and ``flux``.
             `~photutils.psf.prepare_psf_model` can be used to prepare any 2D
             model to match this assumption.
-        fitshape : array-like
+        fitshape : int or length-2 array-like
             Rectangular shape around the center of a star which will be used
-            to collect the data to do the fitting, e.g. (5, 5) means to take
-            the following relative pixel positions: [-2, -1, 0, 1, 2].
-            Each element of ``fitshape`` must be an odd number.
+            to collect the data to do the fitting. Can be an integer to be the
+            same along both axes. E.g., 5 is the same as (5, 5), which means to
+            fit only at the following relative pixel positions: [-2, -1, 0, 1, 2].
+            If an array, each element of ``fitshape`` must be an odd number.
         find : callable or instance of any `~photutils.detection.StarFinderBase` subclasses
             ``find`` should be able to identify stars, i.e. compute a rough
             estimate of the centroids, in a given 2D image.
@@ -126,6 +127,11 @@ class DAOPhotPSFPhotometry(object):
     @fitshape.setter
     def fitshape(self, value):
         value = np.asarray(value)
+
+        # assume a lone value should mean both axes
+        if value.shape == ():
+            value = (value, value)
+
         if value.size == 2:
             if np.all(value) > 0:
                 if np.all(value % 2) == 1:
