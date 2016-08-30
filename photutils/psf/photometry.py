@@ -23,7 +23,7 @@ class DAOPhotPSFPhotometry(object):
     iterations is reached.
     """
 
-    def __init__(self, grouper, bkg_estimator, psf, fitshape, find=None,
+    def __init__(self, grouper, bkg_estimator, psf_model, fitshape, find=None,
                  fitter=LevMarLSQFitter(), niters=3, aperture_radius=None):
         """
         Parameters
@@ -44,7 +44,7 @@ class DAOPhotPSFPhotometry(object):
             background or a 2D background of a given 2D image. See, e.g.,
             `~photutils.background.MedianBackground`.  Can be None to do no
             background subtraction.
-        psf : `astropy.modeling.Fittable2DModel` instance
+        psf_model : `astropy.modeling.Fittable2DModel` instance
             PSF or PRF model to fit the data. Could be one of the models in
             this package like `~photutils.psf.sandbox.DiscretePRF`,
             `~photutils.psf.IntegratedGaussianPRF`, or any other suitable
@@ -100,7 +100,7 @@ class DAOPhotPSFPhotometry(object):
         self.find = find
         self.grouper = grouper
         self.bkg_estimator = bkg_estimator
-        self.psf = psf
+        self.psf_model = psf_model
         self.fitter = fitter
         self.niters = niters
         self.fitshape = fitshape
@@ -192,17 +192,17 @@ class DAOPhotPSFPhotometry(object):
     def do_photometry(self, image, positions=None):
         """
         Perform PSF photometry in ``image``. This method assumes that
-        ``psf`` has centroids and flux parameters which will be fitted to the
-        data provided in ``image``. A compound model, in fact a sum of
-        ``psf``, will be fitted to groups of stars automatically identified
-        by ``grouper``. Also, ``image`` is not assumed to be background
-        subtracted.
+        ``psf_model`` has centroids and flux parameters which will be fitted to
+        the data provided in ``image``. A compound model, in fact a sum of
+        ``psf_model``, will be fitted to groups of stars automatically
+        identified by ``grouper``. Also, ``image`` is not assumed to be
+        background subtracted.
         If positions are not ``None`` then this method performs forced PSF
         photometry, i.e., the positions are assumed to be known with high
         accuracy and only fluxes are fitted. If the centroid positions are
-        set as ``fixed`` in the PSF model ``psf``, then the optimizer will only
-        consider the flux as a variable. Otherwise, ``positions`` will be used
-        as initial guesses for the centroids.
+        set as ``fixed`` in the PSF model ``psf_model``, then the optimizer will
+        only consider the flux as a variable. Otherwise, ``positions`` will be
+        used as initial guesses for the centroids.
 
         Parameters
         ----------
@@ -230,10 +230,10 @@ class DAOPhotPSFPhotometry(object):
             residual_image = image - self.bkg_estimator(image)
 
         if self.aperture_radius is None:
-            if hasattr(self.psf, 'fwhm'):
-                self.aperture_radius = self.psf.fwhm.value
-            elif hasattr(self.psf, 'sigma'):
-                self.aperture_radius = self.psf.sigma.value*\
+            if hasattr(self.psf_model, 'fwhm'):
+                self.aperture_radius = self.psf_model.fwhm.value
+            elif hasattr(self.psf_model, 'sigma'):
+                self.aperture_radius = self.psf_model.sigma.value*\
                                        gaussian_sigma_to_fwhm
 
         if positions is None:
@@ -339,7 +339,7 @@ class DAOPhotPSFPhotometry(object):
         y, x = np.indices(image.shape)
 
         for n in range(len(star_groups.groups)):
-            group_psf = self.GroupPSF(self.psf,
+            group_psf = self.GroupPSF(self.psf_model,
                                       star_groups.groups[n]).get_model()
             usepixel = np.zeros_like(image, dtype=np.bool)
 
@@ -362,7 +362,7 @@ class DAOPhotPSFPhotometry(object):
                                   "this class.")
             # do not subtract if the fitting did not go well
             try:
-                image = subtract_psf(image, self.psf, param_table,
+                image = subtract_psf(image, self.psf_model, param_table,
                                      subshape=self.fitshape)
             except NoOverlapError:
                 pass
@@ -411,7 +411,7 @@ class DAOPhotPSFPhotometry(object):
 
     class GroupPSF(object):
         """
-        Construct a joint psf model which consists in a sum of `self.psf`
+        Construct a joint PSF model which consists in a sum of `self.psf_model`
         whose parameters are given in `star_group`.
 
         Attributes
@@ -419,12 +419,12 @@ class DAOPhotPSFPhotometry(object):
         star_group : `~astropy.table.Table`
             Table from which the compound PSF will be constructed.
             It must have columns named as `x_0`, `y_0`, and `flux_0`.
-        psf : `astropy.modeling.Fittable2DModel` instance
+        psf_model : `astropy.modeling.Fittable2DModel` instance
         """
 
-        def __init__(self, psf, star_group):
+        def __init__(self, psf_model, star_group):
             self.star_group = star_group
-            self.psf = psf
+            self.psf_model = psf_model
 
         def get_model(self):
             """
@@ -435,19 +435,19 @@ class DAOPhotPSFPhotometry(object):
                 models.
             """
 
-            psf_class = type(self.psf)
-            group_psf = psf_class(sigma=self.psf.sigma.value,
+            psf_class = type(self.psf_model)
+            group_psf = psf_class(sigma=self.psf_model.sigma.value,
                                   flux=self.star_group['flux_0'][0],
                                   x_0=self.star_group['x_0'][0],
                                   y_0=self.star_group['y_0'][0],
-                                  fixed=self.psf.fixed, tied=self.psf.tied,
-                                  bounds=self.psf.bounds)
+                                  fixed=self.psf_model.fixed, tied=self.psf_model.tied,
+                                  bounds=self.psf_model.bounds)
             for i in range(len(self.star_group) - 1):
-                group_psf += psf_class(sigma=self.psf.sigma.value,
+                group_psf += psf_class(sigma=self.psf_model.sigma.value,
                                        flux=self.star_group['flux_0'][i+1],
                                        x_0=self.star_group['x_0'][i+1],
                                        y_0=self.star_group['y_0'][i+1],
-                                       fixed=self.psf.fixed,
-                                       tied=self.psf.tied,
-                                       bounds=self.psf.bounds)
+                                       fixed=self.psf_model.fixed,
+                                       tied=self.psf_model.tied,
+                                       bounds=self.psf_model.bounds)
             return group_psf
