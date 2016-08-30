@@ -23,7 +23,7 @@ class DAOPhotPSFPhotometry(object):
     iterations is reached.
     """
 
-    def __init__(self, grouper, bkg_estimator, psf_model, fitshape, find=None,
+    def __init__(self, grouper, bkg_estimator, psf_model, fitshape, finder=None,
                  fitter=LevMarLSQFitter(), niters=3, aperture_radius=None):
         """
         Parameters
@@ -61,10 +61,10 @@ class DAOPhotPSFPhotometry(object):
             same along both axes. E.g., 5 is the same as (5, 5), which means to
             fit only at the following relative pixel positions: [-2, -1, 0, 1, 2].
             If an array, each element of ``fitshape`` must be an odd number.
-        find : callable or instance of any `~photutils.detection.StarFinderBase` subclasses
-            ``find`` should be able to identify stars, i.e. compute a rough
+        finder : callable or instance of any `~photutils.detection.StarFinderBase` subclasses
+            ``finder`` should be able to identify stars, i.e. compute a rough
             estimate of the centroids, in a given 2D image.
-            ``find`` receives as input a 2D image an return an
+            ``finder`` receives as input a 2D image an return an
             `~astropy.table.Table` object which contains columns with names:
             ``id``, ``xcentroid``, ``ycentroid``, and ``flux``. In which
             ``id`` is an interger-valued column starting from ``1``,
@@ -97,7 +97,7 @@ class DAOPhotPSFPhotometry(object):
             Available at: http://adsabs.harvard.edu/abs/1987PASP...99..191S
         """
 
-        self.find = find
+        self.finder = finder
         self.grouper = grouper
         self.bkg_estimator = bkg_estimator
         self.psf_model = psf_model
@@ -246,7 +246,7 @@ class DAOPhotPSFPhotometry(object):
                           names=('x_0', 'y_0', 'flux_0'),
                           dtype=('f8', 'f8', 'f8'))
 
-            sources = self.find(residual_image)
+            sources = self.finder(residual_image)
 
             apertures = CircularAperture((sources['xcentroid'],
                                           sources['ycentroid']),
@@ -270,7 +270,7 @@ class DAOPhotPSFPhotometry(object):
 
                 outtab = vstack([outtab, result_tab])
 
-                sources = self.find(residual_image)
+                sources = self.finder(residual_image)
 
                 if len(sources) > 0:
                     apertures = CircularAperture((sources['xcentroid'],
