@@ -17,10 +17,9 @@ __all__ = ['DAOPhotPSFPhotometry']
 class DAOPhotPSFPhotometry(object):
     """
     This class implements the DAOPHOT algorithm proposed by Stetson
-    (1987) to perform point spread function photometry in crowded fields,
-    which consists basically in applying the loop FIND, GROUP, NSTAR,
-    SUBTRACT, FIND until no more stars are detected or a given number of
-    iterations is reached.
+    (1987) to perform point spread function photometry in crowded fields. This
+    consists of applying the loop FIND, GROUP, NSTAR, SUBTRACT, FIND until no
+    more stars are detected or a given number of iterations is reached.
     """
 
     def __init__(self, grouper, bkg_estimator, psf_model, fitshape, finder=None,
@@ -60,14 +59,14 @@ class DAOPhotPSFPhotometry(object):
             to collect the data to do the fitting. Can be an integer to be the
             same along both axes. E.g., 5 is the same as (5, 5), which means to
             fit only at the following relative pixel positions: [-2, -1, 0, 1, 2].
-            If an array, each element of ``fitshape`` must be an odd number.
+            Each element of ``fitshape`` must be an odd number.
         finder : callable or instance of any `~photutils.detection.StarFinderBase` subclasses
             ``finder`` should be able to identify stars, i.e. compute a rough
             estimate of the centroids, in a given 2D image.
             ``finder`` receives as input a 2D image an return an
             `~astropy.table.Table` object which contains columns with names:
             ``id``, ``xcentroid``, ``ycentroid``, and ``flux``. In which
-            ``id`` is an interger-valued column starting from ``1``,
+            ``id`` is an integer-valued column starting from ``1``,
             ``xcentroid`` and ``ycentroid`` are center position estimates of
             the sources and ``flux`` contains flux estimates of the sources.
             See, e.g., `~photutils.detection.DAOStarFinder`.
@@ -76,11 +75,12 @@ class DAOPhotPSFPhotometry(object):
             and/or flux of the identified sources. See
             `~astropy.modeling.fitting` for more details on fitters.
         niters : int
-            Number of iterations to perform the loop FIND, GROUP, SUBTRACT,
+            Number of iterations to perform of the loop FIND, GROUP, SUBTRACT,
             NSTAR.
         aperture_radius : float
             The radius (in units of pixels) used to compute initial estimates
-            for the fluxes of sources. If ``None``, one fwhm will be used.
+            for the fluxes of sources. If ``None``, one FWHM will be used if it
+            can be determined from the ```psf_model``.
 
         Notes
         -----
@@ -139,12 +139,10 @@ class DAOPhotPSFPhotometry(object):
                     self._fitshape = tuple(value)
                 else:
                     raise ValueError('fitshape must be odd integer-valued, '
-                                     'received fitshape = {}'\
-                                     .format(value))
+                                     'received fitshape = {}'.format(value))
             else:
                 raise ValueError('fitshape must have positive elements, '
-                                 'received fitshape = {}'\
-                                 .format(value))
+                                 'received fitshape = {}'.format(value))
         else:
             raise ValueError('fitshape must have two dimensions, '
                              'received fitshape = {}'.format(value))
@@ -233,8 +231,7 @@ class DAOPhotPSFPhotometry(object):
             if hasattr(self.psf_model, 'fwhm'):
                 self.aperture_radius = self.psf_model.fwhm.value
             elif hasattr(self.psf_model, 'sigma'):
-                self.aperture_radius = self.psf_model.sigma.value*\
-                                       gaussian_sigma_to_fwhm
+                self.aperture_radius = self.psf_model.sigma.value * gaussian_sigma_to_fwhm
 
         if positions is None:
             outtab = Table([[], [], [], [], [], []],
@@ -411,7 +408,7 @@ class DAOPhotPSFPhotometry(object):
 
     class GroupPSF(object):
         """
-        Construct a joint PSF model which consists in a sum of `self.psf_model`
+        Construct a joint PSF model which consists of a sum of `self.psf_model`
         whose parameters are given in `star_group`.
 
         Attributes
