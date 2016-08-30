@@ -46,6 +46,7 @@ New Features
 
   - Added ``DAOPhotPSFPhotometry`` class to perform PSF photometry in
     crowded fields. [#385]
+
 - ``photutils.psf_match``
 
   - Added ``create_matching_kernel`` and ``resize_psf`` functions.  Also

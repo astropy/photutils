@@ -58,7 +58,7 @@ class DAOPhotPSFPhotometry(object):
             Rectangular shape around the center of a star which will be used
             to collect the data to do the fitting, e.g. (5, 5) means to take
             the following relative pixel positions: [-2, -1, 0, 1, 2].
-            Also, each element of ``fitshape`` must be an odd number.
+            Each element of ``fitshape`` must be an odd number.
         find : callable or instance of any `~photutils.detection.StarFinderBase` subclasses
             ``find`` should be able to identify stars, i.e. compute a rough
             estimate of the centroids, in a given 2D image.
@@ -78,7 +78,7 @@ class DAOPhotPSFPhotometry(object):
             NSTAR.
         aperture_radius : float
             The radius (in units of pixels) used to compute initial estimates
-            for the fluxes of sources. If ``None``, one fwhm will be used. 
+            for the fluxes of sources. If ``None``, one fwhm will be used.
 
         Notes
         -----
@@ -118,7 +118,7 @@ class DAOPhotPSFPhotometry(object):
         except:
             raise ValueError('niters must be an integer or convertable '
                              'into an integer.')
-    
+
     @property
     def fitshape(self):
         return self._fitshape
@@ -162,8 +162,7 @@ class DAOPhotPSFPhotometry(object):
         """
         Parameters
         ----------
-        image : 2D array-like, `~astropy.io.fits.ImageHDU`,
-        `~astropy.io.fits.HDUList`
+        image : 2D array-like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
             Image to perform photometry.
         positions : `~astropy.table.Table` (optional)
             Positions, in pixel coordinates, at which stars are located.
@@ -175,12 +174,11 @@ class DAOPhotPSFPhotometry(object):
         outtab : `~astropy.table.Table`
             Table with the photometry results, i.e., centroids and fluxes
             estimations.
-        residual_image : array-like, `~astropy.io.fits.ImageHDU`,
-        `~astropy.io.fits.HDUList`
+        residual_image : array-like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
             Residual image calculated by subtracting the fitted sources
             and the original image.
         """
-        
+
         return self.do_photometry(image, positions)
 
     def do_photometry(self, image, positions=None):
@@ -206,7 +204,7 @@ class DAOPhotPSFPhotometry(object):
             Positions (in pixel coordinates) at which to *start* the fit for
             each object. Columns 'x_0' and 'y_0' must be present.
             'flux_0' can also be provided to set initial fluxes.
-        
+
         Returns
         -------
         outtab : `~astropy.table.Table`
@@ -217,9 +215,9 @@ class DAOPhotPSFPhotometry(object):
             Residual image calculated by subtracting the fitted sources
             and the original image.
         """
-        
+
         residual_image = image - self.bkg(image)
-        
+
         if self.aperture_radius is None:
             if hasattr(self.psf, 'fwhm'):
                 self.aperture_radius = self.psf.fwhm.value
@@ -236,9 +234,9 @@ class DAOPhotPSFPhotometry(object):
             intab = Table([[], [], []],
                           names=('x_0', 'y_0', 'flux_0'),
                           dtype=('f8', 'f8', 'f8'))
-            
+
             sources = self.find(residual_image)
-            
+
             apertures = CircularAperture((sources['xcentroid'],
                                           sources['ycentroid']),
                                          r=self.aperture_radius)
@@ -302,7 +300,7 @@ class DAOPhotPSFPhotometry(object):
         ``star_groups``. Groups are fitted sequentially from the smallest to
         the biggest. In each iteration, ``image`` is subtracted by the
         previous fitted group.
-        
+
         Parameters
         ----------
         image : numpy.ndarray
@@ -326,14 +324,14 @@ class DAOPhotPSFPhotometry(object):
                                   'flux_fit'),
                            dtype=('i4', 'i4', 'f8', 'f8', 'f8'))
         star_groups = star_groups.group_by('group_id')
-        
+
         y, x = np.indices(image.shape)
 
         for n in range(len(star_groups.groups)):
             group_psf = self.GroupPSF(self.psf,
                                       star_groups.groups[n]).get_model()
             usepixel = np.zeros_like(image, dtype=np.bool)
-            
+
             for row in star_groups.groups[n]:
                 usepixel[overlap_slices(large_array_shape=image.shape,
                                         small_array_shape=self.fitshape,
@@ -363,7 +361,7 @@ class DAOPhotPSFPhotometry(object):
     def _model_params2table(self, fit_model, star_group):
         """
         Place fitted parameters into an astropy table.
-        
+
         Parameters
         ----------
         fit_model : `astropy.modeling.Fittable2DModel` instance
@@ -372,7 +370,7 @@ class DAOPhotPSFPhotometry(object):
             `~photutils.psf.IntegratedGaussianPRF`, or any other suitable
             2D model.
         star_group : ~astropy.table.Table
-        
+
         Returns
         -------
         param_tab : ~astropy.table.Table
@@ -383,7 +381,7 @@ class DAOPhotPSFPhotometry(object):
                           names=('id', 'group_id', 'x_fit', 'y_fit',
                                  'flux_fit'),
                           dtype=('i4', 'i4', 'f8', 'f8', 'f8'))
- 
+
         if hasattr(fit_model, 'submodel_names'):
             for i in range(len(fit_model.submodel_names)):
                 param_tab.add_row([[star_group['id'][i]],
@@ -416,16 +414,16 @@ class DAOPhotPSFPhotometry(object):
         def __init__(self, psf, star_group):
             self.star_group = star_group
             self.psf = psf
-        
+
         def get_model(self):
-            """        
+            """
             Returns
             -------
             group_psf : CompoundModel
                 `CompoundModel` instance which is a sum of the given PSF
                 models.
             """
-            
+
             psf_class = type(self.psf)
             group_psf = psf_class(sigma=self.psf.sigma.value,
                                   flux=self.star_group['flux_0'][0],
