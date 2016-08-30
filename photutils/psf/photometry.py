@@ -39,10 +39,11 @@ class DAOPhotPSFPhotometry(object):
             ``group_id`` should cotain integers starting from ``1`` that
             indicate which group a given source belongs to. See, e.g.,
             `~photutils.psf.DAOGroup`.
-        bkg_estimator : callable or instance of any `~photutils.BackgroundBase` subclass
+        bkg_estimator : callable, instance of any `~photutils.BackgroundBase` subclass, or None
             ``bkg_estimator`` should be able to compute either a scalar
             background or a 2D background of a given 2D image. See, e.g.,
-            `~photutils.background.MedianBackground`.
+            `~photutils.background.MedianBackground`.  Can be None to do no
+            background subtraction.
         psf : `astropy.modeling.Fittable2DModel` instance
             PSF or PRF model to fit the data. Could be one of the models in
             this package like `~photutils.psf.sandbox.DiscretePRF`,
@@ -223,7 +224,10 @@ class DAOPhotPSFPhotometry(object):
             and the original image.
         """
 
-        residual_image = image - self.bkg_estimator(image)
+        if self.bkg_estimator is None:
+            residual_image = image.copy()
+        else:
+            residual_image = image - self.bkg_estimator(image)
 
         if self.aperture_radius is None:
             if hasattr(self.psf, 'fwhm'):
