@@ -10,6 +10,7 @@ from astropy.tests.helper import pytest
 from .. import IntegratedGaussianPRF, prepare_psf_model
 
 try:
+    import scipy
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

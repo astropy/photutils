@@ -225,7 +225,6 @@ class TestDetectSources(object):
 class TestFindPeaks(object):
     def test_box_size(self):
         """Test with box_size."""
-
         tbl = find_peaks(PEAKDATA, 0.1, box_size=3)
         assert_array_equal(tbl['x_peak'], PEAKREF1[:, 1])
         assert_array_equal(tbl['y_peak'], PEAKREF1[:, 0])
