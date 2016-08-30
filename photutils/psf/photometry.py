@@ -23,7 +23,7 @@ class DAOPhotPSFPhotometry(object):
     iterations is reached.
     """
 
-    def __init__(self, grouper, bkg, psf, fitshape, find=None,
+    def __init__(self, grouper, bkg_estimator, psf, fitshape, find=None,
                  fitter=LevMarLSQFitter(), niters=3, aperture_radius=None):
         """
         Parameters
@@ -39,9 +39,9 @@ class DAOPhotPSFPhotometry(object):
             ``group_id`` should cotain integers starting from ``1`` that
             indicate which group a given source belongs to. See, e.g.,
             `~photutils.psf.DAOGroup`.
-        bkg : callable or instance of any `~photutils.BackgroundBase` subclasses
-            ``bkg`` should be able to compute either a scalar background or a
-            2D background of a given 2D image. See, e.g.,
+        bkg_estimator : callable or instance of any `~photutils.BackgroundBase` subclass
+            ``bkg_estimator`` should be able to compute either a scalar
+            background or a 2D background of a given 2D image. See, e.g.,
             `~photutils.background.MedianBackground`.
         psf : `astropy.modeling.Fittable2DModel` instance
             PSF or PRF model to fit the data. Could be one of the models in
@@ -98,7 +98,7 @@ class DAOPhotPSFPhotometry(object):
 
         self.find = find
         self.grouper = grouper
-        self.bkg = bkg
+        self.bkg_estimator = bkg_estimator
         self.psf = psf
         self.fitter = fitter
         self.niters = niters
@@ -223,7 +223,7 @@ class DAOPhotPSFPhotometry(object):
             and the original image.
         """
 
-        residual_image = image - self.bkg(image)
+        residual_image = image - self.bkg_estimator(image)
 
         if self.aperture_radius is None:
             if hasattr(self.psf, 'fwhm'):
