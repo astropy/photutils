@@ -432,19 +432,17 @@ class DAOPhotPSFPhotometry(object):
                 models.
             """
 
-            psf_class = type(self.psf_model)
-            group_psf = psf_class(sigma=self.psf_model.sigma.value,
-                                  flux=self.star_group['flux_0'][0],
-                                  x_0=self.star_group['x_0'][0],
-                                  y_0=self.star_group['y_0'][0],
-                                  fixed=self.psf_model.fixed, tied=self.psf_model.tied,
-                                  bounds=self.psf_model.bounds)
-            for i in range(len(self.star_group) - 1):
-                group_psf += psf_class(sigma=self.psf_model.sigma.value,
-                                       flux=self.star_group['flux_0'][i+1],
-                                       x_0=self.star_group['x_0'][i+1],
-                                       y_0=self.star_group['y_0'][i+1],
-                                       fixed=self.psf_model.fixed,
-                                       tied=self.psf_model.tied,
-                                       bounds=self.psf_model.bounds)
+            group_psf = None
+            for i in range(len(self.star_group)):
+                psf_to_add = self.psf_model.copy()
+                psf_to_add.flux = self.star_group['flux_0'][i+1]
+                psf_to_add.x_0 = self.star_group['x_0'][i+1]
+                psf_to_add.y_0 = self.star_group['y_0'][i+1]
+
+                if group_psf is None:
+                    # this is the first one only
+                    group_psf = psf_to_add
+                else:
+                    group_psf += psf_to_add
+
             return group_psf
