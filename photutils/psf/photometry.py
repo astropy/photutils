@@ -257,7 +257,7 @@ class DAOPhotPSFPhotometry(object):
 
             sources['aperture_flux'] = aperture_photometry(residual_image, apertures)['aperture_sum']
             n = 1
-            while(len(sources) > 0 and (self.niters is not None and n <= self.niters)):
+            while(len(sources) > 0 and (self.niters is None or n <= self.niters)):
                 init_guess_tab = Table(names=['x_0', 'y_0', 'flux_0'],
                                        data=[sources['xcentroid'],
                                              sources['ycentroid'],
