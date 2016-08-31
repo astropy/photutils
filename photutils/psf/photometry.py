@@ -157,9 +157,10 @@ class DAOPhotPSFPhotometry(object):
                              'number, received aperture_radius = {}'
                              .format(value))
 
-
     def __call__(self, image, positions=None):
         """
+        Performs PSF photometry using the DAOPHOT algorithm.
+
         Parameters
         ----------
         image : 2D array-like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
