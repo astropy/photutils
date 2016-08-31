@@ -93,9 +93,9 @@ function. The basic idea is illustrated as follows::
     >>> # create a DAOPhotPSFPhotometry object
     >>> from photutils.psf import DAOPhotPSFPhotometry 
     >>> my_photometry = DAOPhotPSFPhotometry(find=my_finder, group=my_group,
-                                             bkg=my_bkg, psf=my_psf_model,
-                                             fitter=my_fitter, niters=5,
-                                             fitshape=(7,7)) #doctest: +SKIP
+    ...                                      bkg=my_bkg, psf=my_psf_model,
+    ...                                      fitter=my_fitter, niters=5,
+    ...                                      fitshape=(7,7)) #doctest: +SKIP
     >>> # get photometry results
     >>> photometry_results, residual_image = my_photometry(image=my_image) # doctest: +SKIP
 
@@ -115,6 +115,7 @@ First let's create an image with four overlapping stars:
 .. plot::
     :include-source:
     
+    from astropy.table import Table 
     from photutils.datasets import make_random_gaussians
     from photutils.datasets import make_noise_image
     from photutils.datasets import make_gaussian_sources
