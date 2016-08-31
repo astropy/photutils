@@ -94,8 +94,10 @@ function. The basic idea is illustrated as follows:
 
     >>> # create a DAOPhotPSFPhotometry object
     >>> from photutils.psf import DAOPhotPSFPhotometry 
-    >>> my_photometry = DAOPhotPSFPhotometry(find=my_finder, group=my_group,
-    ...                                      bkg=my_bkg, psf=my_psf_model,
+    >>> my_photometry = DAOPhotPSFPhotometry(finder=my_finder,
+    ...                                      group_builder=my_group,
+    ...                                      bkg_estimator=my_bkg,
+    ...                                      psf_model=my_psf_model,
     ...                                      fitter=my_fitter, niters=1,
     ...                                      fitshape=(7,7))
     >>> # get photometry results
@@ -183,8 +185,10 @@ Now, we can create a `~photutils.psf.DAOPhotPSFPhotometry` object:
 .. doctest-skip::
 
     >>> from photutils.psf import DAOPhotPSFPhotometry
-    >>> daophot_photometry = DAOPhotPSFPhotometry(find=iraffind, group=daogroup,
-    ...                                           bkg=mmm_bkg, psf=psf_model,
+    >>> daophot_photometry = DAOPhotPSFPhotometry(finder=iraffind,
+    ...                                           group_builder=daogroup,
+    ...                                           bkg_estimator=mmm_bkg,
+    ...                                           psf_model=psf_model,
     ...                                           fitter=LevMarLSQFitter(),
     ...                                           niters=1, fitshape=(11,11))
 
@@ -254,10 +258,12 @@ Now, let's compare the simulated and the residual images:
 
     from photutils.psf import DAOPhotPSFPhotometry
 
-    daophot_photometry = DAOPhotPSFPhotometry(find=iraffind, group=daogroup,
-                                          bkg=mmm_bkg, psf=psf_model,
-                                          fitter=LevMarLSQFitter(),
-                                          niters=1, fitshape=(11,11))
+    daophot_photometry = DAOPhotPSFPhotometry(finder=iraffind,
+                                              group_builder=daogroup,
+                                              bkg_estimator=mmm_bkg,
+                                              psf=psf_model,
+                                              fitter=LevMarLSQFitter(),
+                                              niters=1, fitshape=(11,11))
     result_tab, residual_image = daophot_photometry(image=image)
     
     from matplotlib import rcParams
@@ -303,8 +309,9 @@ Note that we do not need to set the ``find`` and ``niters`` attributes in
 
 .. doctest-skip::
 
-    >>> daophot_photometry = DAOPhotPSFPhotometry(group=daogroup, bkg=mmm_bkg,
-    ...                                           psf=psf_model,
+    >>> daophot_photometry = DAOPhotPSFPhotometry(group_builder=daogroup,
+    ...                                           bkg_estimator=mmm_bkg,
+    ...                                           psf_model=psf_model,
     ...                                           fitter=LevMarLSQFitter(),
     ...                                           fitshape=(11,11))
 
@@ -373,8 +380,9 @@ The positions are passed using the keyword ``positions``:
 
     from photutils.psf import DAOPhotPSFPhotometry
 
-    daophot_photometry = DAOPhotPSFPhotometry(group=daogroup,
-                                              bkg=mmm_bkg, psf=psf_model,
+    daophot_photometry = DAOPhotPSFPhotometry(group_builder=daogroup,
+                                              bkg_estimator=mmm_bkg,
+                                              psf_model=psf_model,
                                               fitter=LevMarLSQFitter(),
                                               fitshape=(11,11))
 
