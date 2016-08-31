@@ -88,16 +88,18 @@ so that one can easily perform PSF photometry just by setting up a
 DAOPhotPSFPhotometry object.
 
 This class was implemented in such a way that it can be used as a callable
-function. The basic idea is illustrated as follows::
+function. The basic idea is illustrated as follows:
+
+.. doctest-skip::
 
     >>> # create a DAOPhotPSFPhotometry object
     >>> from photutils.psf import DAOPhotPSFPhotometry 
     >>> my_photometry = DAOPhotPSFPhotometry(find=my_finder, group=my_group,
     ...                                      bkg=my_bkg, psf=my_psf_model,
-    ...                                      fitter=my_fitter, niters=5,
-    ...                                      fitshape=(7,7)) #doctest: +SKIP
+    ...                                      fitter=my_fitter, niters=1,
+    ...                                      fitshape=(7,7))
     >>> # get photometry results
-    >>> photometry_results, residual_image = my_photometry(image=my_image) # doctest: +SKIP
+    >>> photometry_results, residual_image = my_photometry(image=my_image)
 
 Where ``my_finder``, ``my_group``, and ``my_bkg`` may be any suitable callable
 function. This approach allows one to customize every part of the photometry
@@ -150,7 +152,9 @@ First let's create an image with four overlapping stars:
     plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
 
 
-Then let's import the required parts to set up a DAOPhotPSFPhotometry object::
+Then let's import the required parts to set up a `~photutils.psf.DAOPhotPSFPhotometry` object:
+
+.. doctest-skip::
 
     >>> from photutils.detection import IRAFStarFinder
     >>> from photutils.psf import IntegratedGaussianPRF, DAOGroup
@@ -159,34 +163,43 @@ Then let's import the required parts to set up a DAOPhotPSFPhotometry object::
     >>> from astropy.modeling.fitting import LevMarLSQFitter
     >>> from astropy.stats import gaussian_sigma_to_fwhm
 
+Let's then instantiate the objects:
+
+.. doctest-skip::
+
     >>> bkgrms = MADStdBackgroundRMS()
     >>> std = bkgrms(image)
     >>> iraffind = IRAFStarFinder(threshold=3.5*std,
-                                  fwhm=sigma_psf*gaussian_sigma_to_fwhm,
-                                  minsep_fwhm=0.01, roundhi=5.0, roundlo=-5.0,
-                                  sharplo=0.0, sharphi=2.0)
+    ...                           fwhm=sigma_psf*gaussian_sigma_to_fwhm,
+    ...                           minsep_fwhm=0.01, roundhi=5.0, roundlo=-5.0,
+    ...                           sharplo=0.0, sharphi=2.0)
     >>> daogroup = DAOGroup(2.0*sigma_psf*gaussian_sigma_to_fwhm)
     >>> mmm_bkg = MMMBackground()
     >>> fitter = LevMarLSQFitter()
     >>> psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
-    
-    >>> from photutils.psf import DAOPhotPSFPhotometry
 
+Now, we can create a `~photutils.psf.DAOPhotPSFPhotometry` object:
+
+.. doctest-skip::
+
+    >>> from photutils.psf import DAOPhotPSFPhotometry
     >>> daophot_photometry = DAOPhotPSFPhotometry(find=iraffind, group=daogroup,
-                                                  bkg=mmm_bkg, psf=psf_model,
-                                                  fitter=LevMarLSQFitter(),
-                                                  niters=2, fitshape=(11,11))
+    ...                                           bkg=mmm_bkg, psf=psf_model,
+    ...                                           fitter=LevMarLSQFitter(),
+    ...                                           niters=1, fitshape=(11,11))
 
 As mention before, one can use the ``daophot_photometry`` object as a function
 to actually perform photometry::
 
-    >>> result_tab, residual_image = daophot_photometry(image=image)
+    >>> result_tab, residual_image = daophot_photometry(image=image) # doctest: +SKIP
 
 It's worth noting that ``image`` does not need to be background subtracted.
 The subtraction is done during the photometry process with the attribute
 ``bkg`` that was used to set up ``daophot_photometry``.
 
-Now, let's compare the simulated and the residual images::
+Now, let's compare the simulated and the residual images:
+
+.. doctest-skip::
     
     >>> plt.subplot(1, 2, 1)
     >>> plt.imshow(image)
@@ -195,7 +208,7 @@ Now, let's compare the simulated and the residual images::
     >>> plt.subplot(1 ,2, 2)
     >>> plt.imshow(residual_image)
     >>> plt.title('Residual Image')
-    >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)    
+    >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
     >>> plt.show()
 
 .. plot::
@@ -203,6 +216,7 @@ Now, let's compare the simulated and the residual images::
     from photutils.datasets import make_random_gaussians
     from photutils.datasets import make_noise_image
     from photutils.datasets import make_gaussian_sources
+    from astropy.table import Table
 
     sigma_psf = 2.0
     sources = Table()
@@ -243,7 +257,7 @@ Now, let's compare the simulated and the residual images::
     daophot_photometry = DAOPhotPSFPhotometry(find=iraffind, group=daogroup,
                                           bkg=mmm_bkg, psf=psf_model,
                                           fitter=LevMarLSQFitter(),
-                                          niters=2, fitshape=(11,11))
+                                          niters=1, fitshape=(11,11))
     result_tab, residual_image = daophot_photometry(image=image)
     
     from matplotlib import rcParams
@@ -275,25 +289,31 @@ To do that, one has to set the ``fixed`` attribute for the centroid parameters
 in ``psf`` as ``True``.
 
 Consider the previous example after the line
-``psf_model = IntegratedGaussianPRF(sigma=sigma_psf)``::
+``psf_model = IntegratedGaussianPRF(sigma=sigma_psf)``:
+
+.. doctest-skip::
 
     >>> psf_model.x_0.fixed = True
     >>> psf_model.y_0.fixed = True
     >>> pos = Table(names=['x_0', 'y_0'], data=[sources['x_mean'],
-                                                sources['y_mean']])
+    ...                                         sources['y_mean']])
 
 Note that we do not need to set the ``find`` and ``niters`` attributes in
-``DAOPhotPSFPhotometry``::
+``DAOPhotPSFPhotometry``:
+
+.. doctest-skip::
 
     >>> daophot_photometry = DAOPhotPSFPhotometry(group=daogroup, bkg=mmm_bkg,
-                                                  psf=psf_model,
-                                                  fitter=LevMarLSQFitter(),
-                                                  fitshape=(11,11))
+    ...                                           psf=psf_model,
+    ...                                           fitter=LevMarLSQFitter(),
+    ...                                           fitshape=(11,11))
 
-The positions are passed using the keyword ``positions``::
+The positions are passed using the keyword ``positions``:
+
+.. doctest-skip::
 
     >>> result_tab, residual_image = daophot_photometry(image=image,
-                                                        positions=pos)
+    ...                                                 positions=pos)
     >>> plt.subplot(1, 2, 1)
     >>> plt.imshow(image)
     >>> plt.title('Simulated data')
@@ -308,6 +328,7 @@ The positions are passed using the keyword ``positions``::
     from photutils.datasets import make_random_gaussians
     from photutils.datasets import make_noise_image
     from photutils.datasets import make_gaussian_sources
+    from astropy.table import Table
 
     sigma_psf = 2.0
     sources = Table()
