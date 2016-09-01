@@ -74,7 +74,11 @@ sources2['group_id'] = [1, 1, 1, 1]
 @pytest.mark.xfail('not HAS_SCIPY or not HAS_MIN_ASTROPY')
 @pytest.mark.parametrize("sigma_psf, sources",
                          [(sigma_psfs[0], sources1),
-                          (sigma_psfs[1], sources2)])
+                          (sigma_psfs[1], sources2),
+                          # these ensure that the test *fails* if the model PSFs
+                          # are the wrong shape
+                          pytest.mark.xfail((sigma_psfs[0]/1.2, sources1)),
+                          pytest.mark.xfail((sigma_psfs[1]*1.2, sources2))])
 def test_complete_photometry_oneiter(sigma_psf, sources):
     """
     Tests in an image with a group of two overlapped stars and an
