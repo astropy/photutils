@@ -43,88 +43,51 @@ def make_fiducial_phot_obj(std=1, sigma_psf=1):
                                 fitshape=(11, 11))
 
 
+sigma_psfs = []
+
+# A group of two overlapped stars and an isolated one
+sigma_psfs.append(2)
+sources1 = Table()
+sources1['flux'] = [800, 1000, 1200]
+sources1['x_mean'] = [13, 18, 25]
+sources1['y_mean'] = [16, 16, 25]
+sources1['x_stddev'] = [sigma_psfs[-1]] * 3
+sources1['y_stddev'] = sources1['x_stddev']
+sources1['theta'] = [0] * 3
+sources1['id'] = [1, 2, 3]
+sources1['group_id'] = [1, 1, 2]
+
+
+# one single group with four stars.
+sigma_psfs.append(2)
+sources2 = Table()
+sources2['flux'] = [700, 800, 700, 800]
+sources2['x_mean'] = [12, 17, 12, 17]
+sources2['y_mean'] = [15, 15, 20, 20]
+sources2['x_stddev'] = [sigma_psfs[-1]] * 4
+sources2['y_stddev'] = sources2['x_stddev']
+sources2['theta'] = [0] * 4
+sources2['id'] = [1, 2, 3, 4]
+sources2['group_id'] = [1, 1, 1, 1]
+
+
 @pytest.mark.xfail('not HAS_SCIPY or not HAS_MIN_ASTROPY')
-def test_complete_photometry_one():
+@pytest.mark.parametrize("sigma_psf, sources",
+                         [(sigma_psfs[0], sources1),
+                          (sigma_psfs[1], sources2)])
+def test_complete_photometry_oneiter(sigma_psf, sources):
     """
     Tests in an image with a group of two overlapped stars and an
     isolated one.
     """
-    sigma_psf = 2.0
-    sources = Table()
-    sources['flux'] = [800, 1000, 1200]
-    sources['x_mean'] = [13, 18, 25]
-    sources['y_mean'] = [16, 16, 25]
-    sources['x_stddev'] = [sigma_psf, sigma_psf, sigma_psf]
-    sources['y_stddev'] = sources['x_stddev']
-    sources['theta'] = [0, 0, 0]
-    sources['id'] = [1, 2, 3]
-    sources['group_id'] = [1, 1, 2]
-    tshape = (32, 32)
-
+    img_shape = (32, 32)
 
     # generate image with read-out noise (Gaussian) and
     # background noise (Poisson)
-    image = (make_gaussian_sources(tshape, sources) +
-             make_noise_image(tshape, type='poisson', mean=6.,
+    image = (make_gaussian_sources(img_shape, sources) +
+             make_noise_image(img_shape, type='poisson', mean=6.,
                               random_state=1) +
-             make_noise_image(tshape, type='gaussian', mean=0.,
-                              stddev=2., random_state=1))
-
-    bkgrms = StdBackgroundRMS(sigma=3.)
-    std = bkgrms(image)
-
-    phot_obj = make_fiducial_phot_obj(std, sigma_psf)
-
-    result_tab, residual_image = phot_obj(image)
-
-    assert_allclose(result_tab['x_fit'], sources['x_mean'], rtol=1e-1)
-    assert_allclose(result_tab['y_fit'], sources['y_mean'], rtol=1e-1)
-    assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
-    assert_array_equal(result_tab['id'], sources['id'])
-    assert_array_equal(result_tab['group_id'], sources['group_id'])
-    assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
-
-    # test fixed photometry
-    phot_obj.psf_model.x_0.fixed = True
-    phot_obj.psf_model.y_0.fixed = True
-
-    # setting the finder to None is not strictly needed, but is a good test to
-    # make sure fixed photometry doesn't try to use the star-finder
-    phot_obj.finder = None
-
-    pos = Table(names=['x_0', 'y_0'], data=[sources['x_mean'],
-                                            sources['y_mean']])
-    result_tab, residual_image = phot_obj(image, pos)
-
-    assert_array_equal(result_tab['x_fit'], sources['x_mean'])
-    assert_array_equal(result_tab['y_fit'], sources['y_mean'])
-    assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
-    assert_array_equal(result_tab['id'], sources['id'])
-    assert_array_equal(result_tab['group_id'], sources['group_id'])
-    assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
-
-
-@pytest.mark.xfail('not HAS_SCIPY or not HAS_MIN_ASTROPY')
-def test_complete_photometry_two():
-    """
-    Tests in an image with one single group with four stars.
-    """
-    sigma_psf = 2.0
-    sources = Table()
-    sources['flux'] = [700, 800, 700, 800]
-    sources['x_mean'] = [12, 17, 12, 17]
-    sources['y_mean'] = [15, 15, 20, 20]
-    sources['x_stddev'] = sigma_psf*np.ones(4)
-    sources['y_stddev'] = sources['x_stddev']
-    sources['theta'] = [0, 0, 0, 0]
-    sources['id'] = [1, 2, 3, 4]
-    sources['group_id'] = [1, 1, 1, 1]
-    tshape = (32, 32)
-
-    image = (make_gaussian_sources(tshape, sources) +
-             make_noise_image(tshape, type='poisson', mean=6.,
-                              random_state=1) +
-             make_noise_image(tshape, type='gaussian', mean=0.,
+             make_noise_image(img_shape, type='gaussian', mean=0.,
                               stddev=2., random_state=1))
 
     bkgrms = StdBackgroundRMS(sigma=3.)
