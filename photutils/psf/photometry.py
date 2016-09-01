@@ -138,7 +138,7 @@ class DAOPhotPSFPhotometry(object):
 
         # assume a lone value should mean both axes
         if value.shape == ():
-            value = (value, value)
+            value = np.array((value, value))
 
         if value.size == 2:
             if np.all(value) > 0:
@@ -442,9 +442,9 @@ class DAOPhotPSFPhotometry(object):
             group_psf = None
             for i in range(len(self.star_group)):
                 psf_to_add = self.psf_model.copy()
-                psf_to_add.flux = self.star_group['flux_0'][i+1]
-                psf_to_add.x_0 = self.star_group['x_0'][i+1]
-                psf_to_add.y_0 = self.star_group['y_0'][i+1]
+                psf_to_add.flux = self.star_group['flux_0'][i]
+                psf_to_add.x_0 = self.star_group['x_0'][i]
+                psf_to_add.y_0 = self.star_group['y_0'][i]
 
                 if group_psf is None:
                     # this is the first one only
