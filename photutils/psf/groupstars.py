@@ -60,9 +60,9 @@ class DAOGroup(GroupStarsBase):
     Assuming the psf fwhm to be known, ``crit_separation`` may be set to
     k*fwhm, for some positive real k.
 
-    See
-    ---
-    `~daofind`
+    See Also
+    --------
+    photutils.DAOStarFinder
 
     References
     ----------
