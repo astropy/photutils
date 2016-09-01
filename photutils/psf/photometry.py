@@ -22,16 +22,17 @@ class DAOPhotPSFPhotometry(object):
     more stars are detected or a given number of iterations is reached.
     """
 
-    def __init__(self, grouper, bkg_estimator, psf_model, fitshape, finder=None,
+    def __init__(self, group_maker, bkg_estimator, psf_model, fitshape, finder=None,
                  fitter=LevMarLSQFitter(), niters=3, aperture_radius=None):
         """
         Parameters
         ----------
-        grouper : callable or instance of any `~photutils.psf.GroupStarsBase` subclasses
-            ``grouper`` should be able to decide whether a given star overlaps
-            with any other and label them as beloging to the same group.
-            ``grouper`` receives as input an `~astropy.table.Table` object with
-            columns named as ``id``, ``x_0``, ``y_0``, in which ``x_0`` and
+        group_maker : callable or `~photutils.psf.GroupStarsBase`
+            ``group_maker`` should be able to decide whether a given star
+            overlaps with any other and label them as beloging to the same
+            group.
+            ``group_maker`` receives as input an `~astropy.table.Table` object
+            with columns named as ``id``, ``x_0``, ``y_0``, in which ``x_0`` and
             ``y_0`` have the same meaning of ``xcentroid`` and ``ycentroid``.
             This callable must return an `~astropy.table.Table` with columns
             ``id``, ``x_0``, ``y_0``, and ``group_id``. The column
@@ -101,7 +102,7 @@ class DAOPhotPSFPhotometry(object):
         """
 
         self.finder = finder
-        self.grouper = grouper
+        self.group_maker = group_maker
         self.bkg_estimator = bkg_estimator
         self.psf_model = psf_model
         self.fitter = fitter
@@ -199,7 +200,7 @@ class DAOPhotPSFPhotometry(object):
         ``psf_model`` has centroids and flux parameters which will be fitted to
         the data provided in ``image``. A compound model, in fact a sum of
         ``psf_model``, will be fitted to groups of stars automatically
-        identified by ``grouper``. Also, ``image`` is not assumed to be
+        identified by ``group_maker``. Also, ``image`` is not assumed to be
         background subtracted.
         If positions are not ``None`` then this method performs forced PSF
         photometry, i.e., the positions are assumed to be known with high
@@ -264,7 +265,7 @@ class DAOPhotPSFPhotometry(object):
                                              sources['aperture_flux']])
                 intab = vstack([intab, init_guess_tab])
 
-                star_groups = self.grouper(init_guess_tab)
+                star_groups = self.group_maker(init_guess_tab)
 
                 result_tab, residual_image = self.nstar(residual_image,
                                                         star_groups)
@@ -295,7 +296,7 @@ class DAOPhotPSFPhotometry(object):
                           data=[positions['x_0'], positions['y_0'],
                           positions['flux_0']])
 
-            star_groups = self.grouper(intab)
+            star_groups = self.group_maker(intab)
             outtab, residual_image = self.nstar(residual_image, star_groups)
             outtab = hstack([intab, outtab])
 
