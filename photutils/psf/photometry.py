@@ -61,16 +61,17 @@ class DAOPhotPSFPhotometry(object):
             same along both axes. E.g., 5 is the same as (5, 5), which means to
             fit only at the following relative pixel positions: [-2, -1, 0, 1, 2].
             Each element of ``fitshape`` must be an odd number.
-        finder : callable or instance of any `~photutils.detection.StarFinderBase` subclasses
+        finder : callable or instance of any `~photutils.detection.StarFinderBase` subclasses or None
             ``finder`` should be able to identify stars, i.e. compute a rough
             estimate of the centroids, in a given 2D image.
-            ``finder`` receives as input a 2D image an return an
+            ``finder`` receives as input a 2D image and returns an
             `~astropy.table.Table` object which contains columns with names:
             ``id``, ``xcentroid``, ``ycentroid``, and ``flux``. In which
             ``id`` is an integer-valued column starting from ``1``,
             ``xcentroid`` and ``ycentroid`` are center position estimates of
             the sources and ``flux`` contains flux estimates of the sources.
-            See, e.g., `~photutils.detection.DAOStarFinder`.
+            See, e.g., `~photutils.detection.DAOStarFinder`.  If ``finder`` is
+            ``None``, initial guesses for positions of objects must be provided.
         fitter : `~astropy.modeling.fitting.Fitter` instance
             Fitter object used to compute the optimized centroid positions
             and/or flux of the identified sources. See
@@ -171,25 +172,8 @@ class DAOPhotPSFPhotometry(object):
 
     def __call__(self, image, positions=None):
         """
-        Performs PSF photometry using the DAOPHOT algorithm.
-
-        Parameters
-        ----------
-        image : 2D array-like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
-            Image to perform photometry.
-        positions : `~astropy.table.Table` (optional)
-            Positions, in pixel coordinates, at which stars are located.
-            The columns must be named as 'x_0' and 'y_0'. 'flux_0' can also
-            be provided to set initial fluxes.
-
-        Returns
-        -------
-        outtab : `~astropy.table.Table`
-            Table with the photometry results, i.e., centroids and fluxes
-            estimations.
-        residual_image : array-like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
-            Residual image calculated by subtracting the fitted sources
-            and the original image.
+        Performs PSF photometry using the DAOPHOT algorithm. See `do_photometry`
+        for more details including the `__call__` signature.
         """
 
         return self.do_photometry(image, positions)
@@ -241,6 +225,9 @@ class DAOPhotPSFPhotometry(object):
                 self.aperture_radius = self.psf_model.sigma.value * gaussian_sigma_to_fwhm
 
         if positions is None:
+            if self.finder is None:
+                raise ValueError('Finder cannot be None if positions are not given.')
+
             outtab = Table([[], [], [], [], [], []],
                            names=('id', 'group_id', 'iter_detected', 'x_fit',
                                   'y_fit', 'flux_fit'),
