@@ -27,6 +27,7 @@ if astropy.__version__ < '1.2':
 else:
     HAS_MIN_ASTROPY = True
 
+
 @pytest.mark.xfail('not HAS_SCIPY or not HAS_MIN_ASTROPY')
 class TestDAOPhotPSFPhotometry(object):
     def test_complete_photometry_one(self):
@@ -45,14 +46,14 @@ class TestDAOPhotPSFPhotometry(object):
         sources['id'] = [1, 2, 3]
         sources['group_id'] = [1, 1, 2]
         tshape = (32, 32)
-        
+
         # generate image with read-out noise (Gaussian) and
         # background noise (Poisson)
         image = (make_gaussian_sources(tshape, sources) +
                  make_noise_image(tshape, type='poisson', mean=6.,
                                   random_state=1) +
                  make_noise_image(tshape, type='gaussian', mean=0.,
-                                  stddev=2., random_state=1)) 
+                                  stddev=2., random_state=1))
 
         bkgrms = StdBackgroundRMS(sigma=3.)
         std = bkgrms(image)
@@ -63,10 +64,10 @@ class TestDAOPhotPSFPhotometry(object):
         median_bkg = MedianBackground(sigma=3.)
         psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
         fitter = LevMarLSQFitter()
-        photometry = DAOPhotPSFPhotometry(find=daofind, group=daogroup,
-                                          bkg=median_bkg, psf=psf_model,
-                                          fitter=LevMarLSQFitter(),
-                                          niters=1, fitshape=(11,11))
+        photometry = DAOPhotPSFPhotometry(finder=daofind, group_maker=daogroup,
+                                          bkg_estimator=median_bkg,
+                                          psf_model=psf_model, fitter=fitter,
+                                          niters=1, fitshape=(11, 11))
 
         result_tab, residual_image = photometry(image)
 
@@ -80,9 +81,10 @@ class TestDAOPhotPSFPhotometry(object):
         # test fixed photometry
         psf_model.x_0.fixed = True
         psf_model.y_0.fixed = True
-        photometry = DAOPhotPSFPhotometry(group=daogroup, bkg=median_bkg,
-                                          psf=psf_model, fitter=LevMarLSQFitter(),
-                                          fitshape=(11,11))
+        # this also tests the other form of `fitshape`
+        photometry = DAOPhotPSFPhotometry(group_maker=daogroup, bkg_estimator=median_bkg,
+                                          psf_model=psf_model, fitter=LevMarLSQFitter(),
+                                          fitshape=(11, 11))
 
         pos = Table(names=['x_0', 'y_0'], data=[sources['x_mean'],
                                                 sources['y_mean']])
@@ -110,13 +112,13 @@ class TestDAOPhotPSFPhotometry(object):
         sources['id'] = [1, 2, 3, 4]
         sources['group_id'] = [1, 1, 1, 1]
         tshape = (32, 32)
-        
+
         image = (make_gaussian_sources(tshape, sources) +
                  make_noise_image(tshape, type='poisson', mean=6.,
                                   random_state=1) +
                  make_noise_image(tshape, type='gaussian', mean=0.,
                                   stddev=2., random_state=1))
-        
+
         bkgrms = StdBackgroundRMS(sigma=3.)
         std = bkgrms(image)
 
@@ -126,11 +128,11 @@ class TestDAOPhotPSFPhotometry(object):
         median_bkg = MedianBackground(sigma=3.)
         psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
         fitter = LevMarLSQFitter()
-        phot = DAOPhotPSFPhotometry(find=daofind, group=daogroup,
-                                    bkg=median_bkg, psf=psf_model,
-                                    fitter=LevMarLSQFitter(),
-                                    niters=1, fitshape=(11,11))
-        
+        phot = DAOPhotPSFPhotometry(finder=daofind, group_maker=daogroup,
+                                    bkg_estimator=median_bkg, psf_model=psf_model,
+                                    fitter=fitter,
+                                    niters=1, fitshape=(11, 11))
+
         result_tab, residual_image = phot(image)
 
         assert_allclose(result_tab['x_fit'], sources['x_mean'], rtol=1e-1)
@@ -143,9 +145,9 @@ class TestDAOPhotPSFPhotometry(object):
         # test fixed photometry
         psf_model.x_0.fixed = True
         psf_model.y_0.fixed = True
-        phot = DAOPhotPSFPhotometry(group=daogroup, bkg=median_bkg,
-                                    psf=psf_model, fitter=LevMarLSQFitter(),
-                                    fitshape=(11,11))
+        phot = DAOPhotPSFPhotometry(group_maker=daogroup, bkg_estimator=median_bkg,
+                                    psf_model=psf_model, fitter=LevMarLSQFitter(),
+                                    fitshape=(11, 11))
 
         pos = Table(names=['x_0', 'y_0'], data=[sources['x_mean'],
                                                 sources['y_mean']])
@@ -157,7 +159,7 @@ class TestDAOPhotPSFPhotometry(object):
         assert_array_equal(result_tab['id'], sources['id'])
         assert_array_equal(result_tab['group_id'], sources['group_id'])
         assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
-        
+
 
 @pytest.mark.xfail('not HAS_SCIPY or not HAS_MIN_ASTROPY')
 class TestDAOPhotPSFPhotometryAttributes(object):
@@ -168,13 +170,13 @@ class TestDAOPhotPSFPhotometryAttributes(object):
         median_bkg = MedianBackground(sigma=3.)
         psf_model = IntegratedGaussianPRF(sigma=1.)
         fitter = LevMarLSQFitter()
-        phot = DAOPhotPSFPhotometry(find=daofind, group=daogroup, bkg=median_bkg,
-                                    psf=psf_model, fitter=fitter, niters=1.1,
-                                    fitshape=(11,11))
+        phot = DAOPhotPSFPhotometry(finder=daofind, group_maker=daogroup, bkg_estimator=median_bkg,
+                                    psf_model=psf_model, fitter=fitter, niters=1.1,
+                                    fitshape=(11, 11))
         # tests that niters is set to an integer even if the user inputs
         # a float
         assert_equal(phot.niters, 1)
-        
+
         # test that a ValueError is raised if niters <= 0
         with pytest.raises(ValueError):
             phot.niters = 0
@@ -186,9 +188,9 @@ class TestDAOPhotPSFPhotometryAttributes(object):
         median_bkg = MedianBackground(sigma=3.)
         psf_model = IntegratedGaussianPRF(sigma=1.)
         fitter = LevMarLSQFitter()
-        phot = DAOPhotPSFPhotometry(find=daofind, group=daogroup, bkg=median_bkg,
-                                    psf=psf_model, fitter=fitter, niters=1.1,
-                                    fitshape=(11,11))
+        phot = DAOPhotPSFPhotometry(finder=daofind, group_maker=daogroup, bkg_estimator=median_bkg,
+                                    psf_model=psf_model, fitter=fitter, niters=1.1,
+                                    fitshape=(11, 11))
         # test that a ValuError is raised if fitshape has even components
         with pytest.raises(ValueError):
             phot.fitshape = (2, 2)
@@ -210,9 +212,9 @@ class TestDAOPhotPSFPhotometryAttributes(object):
         median_bkg = MedianBackground(sigma=3.)
         psf_model = IntegratedGaussianPRF(sigma=1.)
         fitter = LevMarLSQFitter()
-        phot = DAOPhotPSFPhotometry(find=daofind, group=daogroup, bkg=median_bkg,
-                                    psf=psf_model, fitter=fitter, niters=1.1,
-                                    fitshape=(11,11))
+        phot = DAOPhotPSFPhotometry(finder=daofind, group_maker=daogroup, bkg_estimator=median_bkg,
+                                    psf_model=psf_model, fitter=fitter, niters=1.1,
+                                    fitshape=(11, 11))
         # test that aperture_radius was set to None by default
         assert_equal(phot.aperture_radius, None)
 
