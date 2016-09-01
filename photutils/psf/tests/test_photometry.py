@@ -181,6 +181,9 @@ class TestDAOPhotPSFPhotometryAttributes(object):
         with pytest.raises(ValueError):
             phot.niters = 0
 
+        # test that it's OK to set niters to None
+        phot.niters = None
+
     def test_fitshape_exceptions(self):
         daofind = DAOStarFinder(threshold=5.0,
                                 fwhm=gaussian_sigma_to_fwhm)
@@ -191,9 +194,17 @@ class TestDAOPhotPSFPhotometryAttributes(object):
         phot = DAOPhotPSFPhotometry(finder=daofind, group_maker=daogroup, bkg_estimator=median_bkg,
                                     psf_model=psf_model, fitter=fitter, niters=1.1,
                                     fitshape=(11, 11))
+
+        # first make sure setting to a scalar does the right thing (and makes
+        # no errors)
+        phot.fitshape = 11
+        assert np.all(phot.fitshape == (11, 11))
+
         # test that a ValuError is raised if fitshape has even components
         with pytest.raises(ValueError):
             phot.fitshape = (2, 2)
+        with pytest.raises(ValueError):
+            phot.fitshape = 2
 
         # test that a ValuError is raised if fitshape has non positive
         # components
