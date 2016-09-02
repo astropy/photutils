@@ -32,8 +32,9 @@ PSF Photometry in Crowded Fields
 --------------------------------
 
 Photutils provides an implementation of the DAOPHOT algorithm
-(`~photutils.psf.DAOPhotPSFPhotometry`) proposed by Stetson in his
-seminal paper for crowded-field stellar photometry.
+(`~photutils.psf.DAOPhotPSFPhotometry`) proposed by `Stetson in his
+seminal paper <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_ for 
+crowded-field stellar photometry.
 The DAOPHOT algorithm consists in applying the loop FIND, GROUP, NSTAR,
 SUBTRACT, FIND until no more stars are detected or a given number of
 iterations is reached.
@@ -49,7 +50,15 @@ After finding sources one would apply a clustering algorithm in order to label
 the sources according to groups. Usually, those groups are formed by a
 distance criterion, which is the case of the grouping algorithm proposed
 by Stetson. In `~photutils.psf.DAOGroup`, we provide an implementation of
-that algorithm.
+that algorithm. In addition, `~photutils.psf.DBSCANGroup` can also be used to
+group sources with more complex distance criteria. The reason behind the
+construction of groups is illustrated as follows: imagine that one would like
+to fit 300 stars and the model for each star has three parameters to be
+fitted. If one constructs a single model to fit the 300 stars simultaneously,
+then the optimization algorithm will to search for the solution in a 900
+dimensional space, which is very likely to give a wrong solution. Reducing the
+stars in groups effectively reduces the dimension of the parameter space,
+which facilitates the optimization process.
 
 Provided that the groups are available, the next step is to fit the sources
 simultaneously for each group. This task can be done using an astropy
@@ -74,18 +83,18 @@ by the finding routine.
     ``x_0``, ``y_0``, ``flux_0`` for the initial guesses.
     Although this convention implies that the columns have to be renamed
     along the process, it has the advantage of clarity so that one can
-    keep track and easily differentiate input/outputs.
+    keep track and easily differentiate from where input/outputs came from.
 
 
 Basic Usage
 ^^^^^^^^^^^
 
-The DAOPhotPSFPhotometry is the core class to implement the DAOPHOT algorithm
-to perform PSF photometry in crowded fields.
+The `~photutils.psf.DAOPhotPSFPhotometry` is the core class to implement the
+DAOPHOT algorithm to perform PSF photometry in crowded fields.
 
-It basically encapsulates the loop "FIND, GROUP, NSTAR, SUBTRACT" in one place
-so that one can easily perform PSF photometry just by setting up a
-DAOPhotPSFPhotometry object.
+It basically encapsulates the loop "FIND, GROUP, NSTAR, SUBTRACT, FIND..." in
+one place so that one can easily perform PSF photometry just by setting up a
+`~photutils.psf.DAOPhotPSFPhotometry` object.
 
 This class was implemented in such a way that it can be used as a callable
 function. The basic idea is illustrated as follows:
@@ -95,18 +104,19 @@ function. The basic idea is illustrated as follows:
     >>> # create a DAOPhotPSFPhotometry object
     >>> from photutils.psf import DAOPhotPSFPhotometry 
     >>> my_photometry = DAOPhotPSFPhotometry(finder=my_finder,
-    ...                                      group_builder=my_group,
-    ...                                      bkg_estimator=my_bkg,
+    ...                                      group_maker=my_group_maker,
+    ...                                      bkg_estimator=my_bkg_estimator,
     ...                                      psf_model=my_psf_model,
     ...                                      fitter=my_fitter, niters=1,
     ...                                      fitshape=(7,7))
     >>> # get photometry results
     >>> photometry_results, residual_image = my_photometry(image=my_image)
 
-Where ``my_finder``, ``my_group``, and ``my_bkg`` may be any suitable callable
-function. This approach allows one to customize every part of the photometry
-process provided that their input/output are compatible with the input/ouput
-expected by DAOPhotPSFPhotometry. See the API documentation for details.
+Where ``my_finder``, ``my_group_maker``, and ``my_bkg_estimator`` may be any
+suitable callable function. This approach allows one to customize every part
+of the photometry process provided that their input/output are compatible with
+the input/ouput expected by `~photutils.psf.DAOPhotPSFPhotometry`.
+See the `API documentation <~photutils.psf.DAOPhotPSFPhotometry>`_ for details.
 
 Performing PSF Photometry
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -114,15 +124,40 @@ Performing PSF Photometry
 Let's take a look in a simple example with simulated stars whose PSF is
 assumed to be Gaussian.
 
-First let's create an image with four overlapping stars:
+First let's create an image with four overlapping stars::
+
+    >>> import numpy as np
+    >>> from astropy.table import Table 
+    >>> from photutils.datasets import make_random_gaussians, make_noise_image
+    >>> from photutils.datasets import make_gaussian_sources
+    >>> sigma_psf = 2.0
+    >>> sources = Table()
+    >>> sources['flux'] = [700, 800, 700, 800]
+    >>> sources['x_mean'] = [12, 17, 12, 17]
+    >>> sources['y_mean'] = [15, 15, 20, 20]
+    >>> sources['x_stddev'] = sigma_psf*np.ones(4)
+    >>> sources['y_stddev'] = sources['x_stddev']
+    >>> sources['theta'] = [0, 0, 0, 0]
+    >>> sources['id'] = [1, 2, 3, 4]
+    >>> tshape = (32, 32)
+    >>> image = (make_gaussian_sources(tshape, sources) +
+    >>> ...      make_noise_image(tshape, type='poisson', mean=6.,
+    >>> ...                       random_state=1) +
+    >>> ...      make_noise_image(tshape, type='gaussian', mean=0.,
+    >>> ...                       stddev=2., random_state=1))
+    >>> from matplotlib import rcParams
+    >>> rcParams['font.size'] = 14
+    >>> import matplotlib.pyplot as plt
+    >>> plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
+    >>> ...        origin='lower')
+    >>> plt.title('Simulated data')
+    >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
     
 .. plot::
-    :include-source:
-    
+
+    import numpy as np
     from astropy.table import Table 
-    from photutils.datasets import make_random_gaussians
-    from photutils.datasets import make_noise_image
-    from photutils.datasets import make_gaussian_sources
+    from photutils.datasets import make_random_gaussians, make_noise_image, make_gaussian_sources
 
     sigma_psf = 2.0
     sources = Table()
@@ -141,33 +176,24 @@ First let's create an image with four overlapping stars:
                               stddev=2., random_state=1))
 
     from matplotlib import rcParams
-    import matplotlib.pyplot as plt
-    rcParams['image.cmap'] = 'viridis'
-    rcParams['image.aspect'] = 1  # to get images with square pixels
-    rcParams['figure.figsize'] = (20,10)
-    rcParams['image.interpolation'] = 'nearest'
-    rcParams['image.origin'] = 'lower'
     rcParams['font.size'] = 14
+    import matplotlib.pyplot as plt
     
-    plt.imshow(image)
+    plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
+               origin='lower')
     plt.title('Simulated data')
     plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
 
 
-Then let's import the required parts to set up a `~photutils.psf.DAOPhotPSFPhotometry` object:
-
-.. doctest-skip::
+Then let's import the required parts to set up a `~photutils.psf.DAOPhotPSFPhotometry` object::
 
     >>> from photutils.detection import IRAFStarFinder
     >>> from photutils.psf import IntegratedGaussianPRF, DAOGroup
-    >>> from photutils.background import MMMBackground
-    >>> from photutils.background import MADStdBackgroundRMS
+    >>> from photutils.background import MMMBackground, MADStdBackgroundRMS
     >>> from astropy.modeling.fitting import LevMarLSQFitter
     >>> from astropy.stats import gaussian_sigma_to_fwhm
 
-Let's then instantiate the objects:
-
-.. doctest-skip::
+Let's then instantiate the objects::
 
     >>> bkgrms = MADStdBackgroundRMS()
     >>> std = bkgrms(image)
@@ -180,31 +206,31 @@ Let's then instantiate the objects:
     >>> fitter = LevMarLSQFitter()
     >>> psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
 
-Now, we can create a `~photutils.psf.DAOPhotPSFPhotometry` object:
+Note that the parameters values for the finder class, i.e.,
+`~photutils.detection.IRAFStarFinder`, are completly chosen in an arbitrary
+manner and optimum values do vary according to the data. 
 
-.. doctest-skip::
+Now, we can create a `~photutils.psf.DAOPhotPSFPhotometry` object::
 
     >>> from photutils.psf import DAOPhotPSFPhotometry
     >>> daophot_photometry = DAOPhotPSFPhotometry(finder=iraffind,
-    ...                                           group_builder=daogroup,
+    ...                                           group_maker=daogroup,
     ...                                           bkg_estimator=mmm_bkg,
     ...                                           psf_model=psf_model,
     ...                                           fitter=LevMarLSQFitter(),
     ...                                           niters=1, fitshape=(11,11))
 
-As mention before, one can use the ``daophot_photometry`` object as a function
+As mentioned before, one can use the ``daophot_photometry`` object as a function
 to actually perform photometry::
 
-    >>> result_tab, residual_image = daophot_photometry(image=image) # doctest: +SKIP
+    >>> result_tab, residual_image = daophot_photometry(image=image)
 
 It's worth noting that ``image`` does not need to be background subtracted.
 The subtraction is done during the photometry process with the attribute
 ``bkg`` that was used to set up ``daophot_photometry``.
 
-Now, let's compare the simulated and the residual images:
+Now, let's compare the simulated and the residual images::
 
-.. doctest-skip::
-    
     >>> plt.subplot(1, 2, 1)
     >>> plt.imshow(image)
     >>> plt.title('Simulated data')
@@ -217,9 +243,8 @@ Now, let's compare the simulated and the residual images:
 
 .. plot::
     
-    from photutils.datasets import make_random_gaussians
-    from photutils.datasets import make_noise_image
-    from photutils.datasets import make_gaussian_sources
+    import numpy as np
+    from photutils.datasets import make_random_gaussians, make_noise_image, make_gaussian_sources
     from astropy.table import Table
 
     sigma_psf = 2.0
@@ -237,11 +262,10 @@ Now, let's compare the simulated and the residual images:
                               random_state=1) +
              make_noise_image(tshape, type='gaussian', mean=0.,
                               stddev=2., random_state=1))
-    
+
     from photutils.detection import IRAFStarFinder
     from photutils.psf import IntegratedGaussianPRF, DAOGroup
-    from photutils.background import MMMBackground
-    from photutils.background import MADStdBackgroundRMS
+    from photutils.background import MMMBackground, MADStdBackgroundRMS
     from astropy.modeling.fitting import LevMarLSQFitter
     from astropy.stats import gaussian_sigma_to_fwhm
 
@@ -259,30 +283,29 @@ Now, let's compare the simulated and the residual images:
     from photutils.psf import DAOPhotPSFPhotometry
 
     daophot_photometry = DAOPhotPSFPhotometry(finder=iraffind,
-                                              group_builder=daogroup,
+                                              group_maker=daogroup,
                                               bkg_estimator=mmm_bkg,
-                                              psf=psf_model,
+                                              psf_model=psf_model,
                                               fitter=LevMarLSQFitter(),
                                               niters=1, fitshape=(11,11))
     result_tab, residual_image = daophot_photometry(image=image)
-    
+
     from matplotlib import rcParams
+    rcParams['font.size'] = 16
     import matplotlib.pyplot as plt
-    rcParams['image.cmap'] = 'viridis'
-    rcParams['image.aspect'] = 1  # to get images with square pixels
-    rcParams['figure.figsize'] = (20,10)
-    rcParams['image.interpolation'] = 'nearest'
-    rcParams['image.origin'] = 'lower'
-    rcParams['font.size'] = 14
 
     plt.subplot(1, 2, 1)
-    plt.imshow(image)
+    plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
+               origin='lower')
     plt.title('Simulated data')
     plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
     plt.subplot(1 ,2, 2)
-    plt.imshow(residual_image)
+    plt.imshow(residual_image, cmap='viridis', aspect=1,
+               interpolation='nearest', origin='lower')
     plt.title('Residual Image')
-    plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)    
+    plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
+    plt.show()
+       
 
 Performing PSF Photometry with Fixed Centroids
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -295,29 +318,24 @@ To do that, one has to set the ``fixed`` attribute for the centroid parameters
 in ``psf`` as ``True``.
 
 Consider the previous example after the line
-``psf_model = IntegratedGaussianPRF(sigma=sigma_psf)``:
-
-.. doctest-skip::
+``psf_model = IntegratedGaussianPRF(sigma=sigma_psf)``::
 
     >>> psf_model.x_0.fixed = True
     >>> psf_model.y_0.fixed = True
     >>> pos = Table(names=['x_0', 'y_0'], data=[sources['x_mean'],
     ...                                         sources['y_mean']])
 
-Note that we do not need to set the ``find`` and ``niters`` attributes in
-``DAOPhotPSFPhotometry``:
+Note that we do not need to set the ``finder`` and ``niters`` attributes in
+`~photutils.psf.DAOPhotPSFPhotometry`::
 
-.. doctest-skip::
-
-    >>> daophot_photometry = DAOPhotPSFPhotometry(group_builder=daogroup,
+    >>> daophot_photometry = DAOPhotPSFPhotometry(group_maker=daogroup,
     ...                                           bkg_estimator=mmm_bkg,
     ...                                           psf_model=psf_model,
     ...                                           fitter=LevMarLSQFitter(),
     ...                                           fitshape=(11,11))
 
-The positions are passed using the keyword ``positions``:
+The positions are passed using the keyword ``positions``::
 
-.. doctest-skip::
 
     >>> result_tab, residual_image = daophot_photometry(image=image,
     ...                                                 positions=pos)
@@ -331,10 +349,9 @@ The positions are passed using the keyword ``positions``:
     >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
 
 .. plot::
-
-    from photutils.datasets import make_random_gaussians
-    from photutils.datasets import make_noise_image
-    from photutils.datasets import make_gaussian_sources
+    
+    import numpy as np
+    from photutils.datasets import make_random_gaussians, make_noise_image, make_gaussian_sources
     from astropy.table import Table
 
     sigma_psf = 2.0
@@ -355,8 +372,7 @@ The positions are passed using the keyword ``positions``:
     
     from photutils.detection import IRAFStarFinder
     from photutils.psf import IntegratedGaussianPRF, DAOGroup
-    from photutils.background import MMMBackground
-    from photutils.background import MADStdBackgroundRMS
+    from photutils.background import MMMBackground, MADStdBackgroundRMS
     from astropy.modeling.fitting import LevMarLSQFitter
     from astropy.stats import gaussian_sigma_to_fwhm
 
@@ -380,7 +396,7 @@ The positions are passed using the keyword ``positions``:
 
     from photutils.psf import DAOPhotPSFPhotometry
 
-    daophot_photometry = DAOPhotPSFPhotometry(group_builder=daogroup,
+    daophot_photometry = DAOPhotPSFPhotometry(group_maker=daogroup,
                                               bkg_estimator=mmm_bkg,
                                               psf_model=psf_model,
                                               fitter=LevMarLSQFitter(),
@@ -393,10 +409,9 @@ The positions are passed using the keyword ``positions``:
     import matplotlib.pyplot as plt
     rcParams['image.cmap'] = 'viridis'
     rcParams['image.aspect'] = 1  # to get images with square pixels
-    rcParams['figure.figsize'] = (20,10)
     rcParams['image.interpolation'] = 'nearest'
     rcParams['image.origin'] = 'lower'
-    rcParams['font.size'] = 14
+    rcParams['font.size'] = 16
 
     plt.subplot(1, 2, 1)
     plt.imshow(image)
