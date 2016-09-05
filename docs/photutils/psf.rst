@@ -31,18 +31,23 @@ general approach.
 PSF Photometry in Crowded Fields
 --------------------------------
 
-Photutils provides an implementation of the DAOPHOT algorithm
-(`~photutils.psf.DAOPhotPSFPhotometry`) proposed by `Stetson in his
-seminal paper <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_ for 
-crowded-field stellar photometry.
-The DAOPHOT algorithm consists in applying the loop FIND, GROUP, NSTAR,
+Photutils provides a modular set of tools to perform PSF photometry for
+different science cases. These are implemented as separate classes to do
+sub-tasks of PSF photometry. It also provides high-level classes that connect
+these pieces together. In particular, it contains an implementation of the
+DAOPHOT algorithm (`~photutils.psf.DAOPhotPSFPhotometry`) proposed by
+`Stetson in his seminal paper <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_
+for crowded-field stellar photometry.
+
+DAOPHOT algorithm consists in applying the loop FIND, GROUP, NSTAR,
 SUBTRACT, FIND until no more stars are detected or a given number of
 iterations is reached.
 
-Basically, DAOPHOT works as follows. The first step is to estimate the sky
-background. For this task, photutils provides several classes to compute
-scalar and 2D backgrounds, see `~photutils.background` for details. The next
-step is to find an initial estimate of the positions of potential sources.
+Basically, `~photutils.psf.DAOPhotPSFPhotometry` works as follows.
+The first step is to estimate the sky background. For this task,
+photutils provides several classes to compute scalar and 2D backgrounds, see
+`~photutils.background` for details. The next step is to find an initial
+estimate of the positions of potential sources.
 This can be accomplished by using source detection algorithms,
 which are implemented in `~photutils.detection`.
 
@@ -97,7 +102,9 @@ one place so that one can easily perform PSF photometry just by setting up a
 `~photutils.psf.DAOPhotPSFPhotometry` object.
 
 This class was implemented in such a way that it can be used as a callable
-function. The basic idea is illustrated as follows:
+function. The actual implementation of the ``__call__`` method is simply the
+return value of the ``do_photometry`` method. The basic idea is illustrated as
+follows:
 
 .. doctest-skip::
 
@@ -116,12 +123,12 @@ Where ``my_finder``, ``my_group_maker``, and ``my_bkg_estimator`` may be any
 suitable callable function. This approach allows one to customize every part
 of the photometry process provided that their input/output are compatible with
 the input/ouput expected by `~photutils.psf.DAOPhotPSFPhotometry`.
-See the `API documentation <~photutils.psf.DAOPhotPSFPhotometry>`_ for details.
+See the API documentation for details.
 
 Performing PSF Photometry
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Let's take a look in a simple example with simulated stars whose PSF is
+Let's take a look at a simple example with simulated stars whose PSF is
 assumed to be Gaussian.
 
 First let's create an image with four overlapping stars::
@@ -141,17 +148,17 @@ First let's create an image with four overlapping stars::
     >>> sources['id'] = [1, 2, 3, 4]
     >>> tshape = (32, 32)
     >>> image = (make_gaussian_sources(tshape, sources) +
-    >>> ...      make_noise_image(tshape, type='poisson', mean=6.,
-    >>> ...                       random_state=1) +
-    >>> ...      make_noise_image(tshape, type='gaussian', mean=0.,
-    >>> ...                       stddev=2., random_state=1))
+    ...          make_noise_image(tshape, type='poisson', mean=6.,
+    ...                           random_state=1) +
+    ...          make_noise_image(tshape, type='gaussian', mean=0.,
+    ...                           stddev=2., random_state=1))
     >>> from matplotlib import rcParams
     >>> rcParams['font.size'] = 14
     >>> import matplotlib.pyplot as plt
     >>> plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
-    >>> ...        origin='lower')
-    >>> plt.title('Simulated data')
-    >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
+    ...            origin='lower') # doctest: +SKIP
+    >>> plt.title('Simulated data') # doctest: +SKIP
+    >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04) # doctest: +SKIP
     
 .. plot::
 
@@ -184,8 +191,7 @@ First let's create an image with four overlapping stars::
     plt.title('Simulated data')
     plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
 
-
-Then let's import the required parts to set up a `~photutils.psf.DAOPhotPSFPhotometry` object::
+Then let's import the required classes to set up a `~photutils.psf.DAOPhotPSFPhotometry` object::
 
     >>> from photutils.detection import IRAFStarFinder
     >>> from photutils.psf import IntegratedGaussianPRF, DAOGroup
@@ -220,8 +226,8 @@ Now, we can create a `~photutils.psf.DAOPhotPSFPhotometry` object::
     ...                                           fitter=LevMarLSQFitter(),
     ...                                           niters=1, fitshape=(11,11))
 
-As mentioned before, one can use the ``daophot_photometry`` object as a function
-to actually perform photometry::
+As mentioned before, the way to actually do the photometry is by using
+``daophot_photometry`` as a function-like call::
 
     >>> result_tab, residual_image = daophot_photometry(image=image)
 
@@ -229,7 +235,9 @@ It's worth noting that ``image`` does not need to be background subtracted.
 The subtraction is done during the photometry process with the attribute
 ``bkg`` that was used to set up ``daophot_photometry``.
 
-Now, let's compare the simulated and the residual images::
+Now, let's compare the simulated and the residual images:
+
+.. doctest-skip::
 
     >>> plt.subplot(1, 2, 1)
     >>> plt.imshow(image)
@@ -305,7 +313,6 @@ Now, let's compare the simulated and the residual images::
     plt.title('Residual Image')
     plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
     plt.show()
-       
 
 Performing PSF Photometry with Fixed Centroids
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -326,19 +333,19 @@ Consider the previous example after the line
     ...                                         sources['y_mean']])
 
 Note that we do not need to set the ``finder`` and ``niters`` attributes in
-`~photutils.psf.DAOPhotPSFPhotometry`::
+`~photutils.psf.DAOPhotPSFPhotometry` and the positions are passed using the
+keyword ``positions``::
 
     >>> daophot_photometry = DAOPhotPSFPhotometry(group_maker=daogroup,
     ...                                           bkg_estimator=mmm_bkg,
     ...                                           psf_model=psf_model,
     ...                                           fitter=LevMarLSQFitter(),
     ...                                           fitshape=(11,11))
-
-The positions are passed using the keyword ``positions``::
-
-
     >>> result_tab, residual_image = daophot_photometry(image=image,
     ...                                                 positions=pos)
+
+.. doctest-skip::
+
     >>> plt.subplot(1, 2, 1)
     >>> plt.imshow(image)
     >>> plt.title('Simulated data')
