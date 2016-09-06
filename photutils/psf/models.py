@@ -7,9 +7,273 @@ from __future__ import division
 import numpy as np
 from astropy.modeling import models, Parameter, Fittable2DModel
 
+__all__ = ['Discrete2DModel', 'IntegratedGaussianPRF', 'PRFAdapter',
+           'prepare_psf_model']
 
 __all__ = ['IntegratedGaussianPRF', 'PRFAdapter', 'prepare_psf_model',
            'get_grouped_psf_model']
+
+class Discrete2DModel(Fittable2DModel):
+    """
+    A discrete fittable 2D model of an image.
+
+    This class stores a discrete 2D image and computes the values at arbitrary
+    locations (including at intra-pixel, fractional positions) within this
+    image using spline interpolation provided by
+    :py:class:`~scipy.interpolate.RectBivariateSpline`. Even though this
+    particular spline interpolator does not support weighted smoothing,
+    :py:class:`Discrete2DModel` can be used to store image weights
+    so that these can be passed to the fitter.
+
+    The fittable model provided by this class has three model parameters:
+    total flux of the underlying image, and two shifts along each axis of the
+    image.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        Array containing 2D image.
+
+    origin : tuple, None, optional
+        Origin of the coordinate system in image pixels. Origin indicates where
+        in the image model coordinates `x` and `y` are zero. If `origin` is
+        `None`, then model's origin will be set to the center of the image.
+
+    weights : numpy.ndarray, None, optional
+        An array of weights for the corresponding data. [Currently not used]
+
+    fillval : float, optional
+        The value to be returned by the `evaluate` or `__call__` methods
+        when evaluation is performed outside the definition domain of the
+        model.
+
+    kwargs : dict, optional
+
+        Additional optional keyword arguments to be passed directly to the
+        `compute_interpolator` method. Possible values are:
+
+        - **degree** : int, tuple, optional
+            Degree of the interpolating spline. A tuple can be used to provide
+            different degrees for the X- and Y-axes. Default value is degree=3.
+
+        - **s** : float, optional
+            Non-negative smoothing factor. Default value s=0 corresponds to
+            interpolation.
+            See :py:class:`~scipy.interpolate.RectBivariateSpline` for more
+            details.
+
+    """
+    flux = Parameter(description='Total flux of the image.', default=None)
+    x_0 = Parameter(description='Shift along the X-axis relative to the '
+                    'origin.', default=0.0)
+    y_0 = Parameter(description='Shift along the Y-axis relative to the '
+                    'origin.', default=0.0)
+
+    def __init__(self, data, flux=flux.default,
+                 x_0=x_0.default, y_0=y_0.default,
+                 origin=None, weights=None, fillval=0.0, kwargs={}):
+        """
+        """
+        self._fillval = fillval
+        self._weights = weights
+
+        # compute flux and normalize data so that sum(data) = 1:
+        tflux = np.sum(data, dtype=np.float64)
+        if tflux == 0.0 or not np.isfinite(tflux):
+            tflux = 1.0
+        if flux is None:
+            flux = tflux
+        self._ndata = data / tflux
+
+        # set input image related parameters:
+        self._ny, self._nx = data.shape
+
+        # find origin of the coordinate system in image's pixel grid:
+        self.origin = origin
+
+        super(Discrete2DModel, self).__init__(flux, x_0, y_0)
+
+        # define interpolating spline:
+        self.compute_interpolator(kwargs)
+
+    @property
+    def ndata(self):
+        """Normalized model data such that sum of all pixels is 1."""
+        return self._ndata
+
+    @property
+    def data(self):
+        """Model data such that sum of all pixels is equal to flux."""
+        return (self.flux.value * self._ndata)
+
+    @property
+    def weights(self):
+        """
+        Weights of image data. When setting weights, :py:class:`numpy.ndarray`
+        or `None` may be used.
+        """
+        return self._weights
+
+    @weights.setter
+    def weights(self, weights):
+        self._weights = weights
+
+    @property
+    def shape(self):
+        """A tuple of dimensions of the data array in numpy style (ny, nx)."""
+        return self._ndata.shape
+
+    @property
+    def nx(self):
+        """Number of columns in the data array."""
+        return self._nx
+
+    @property
+    def ny(self):
+        """Number of rows in the data array."""
+        return self._ny
+
+    @property
+    def origin(self):
+        """
+        A tuple of `x` and `y` coordinates of the origin of the coordinate
+        system in terms of pixels of model's image.
+
+        When setting the coordinate system origin, a tuple of two `int` or
+        `float` may be used. If origin is set to `None`, the origin of the
+        coordinate system will be set to the middle of the data array
+        (``(npix-1)/2.0``).
+
+        .. warning::
+            Modifying `origin` will not adjust (modify) model's parameters
+            `x_0` and `y_0`.
+        """
+        return (self._ox, self._oy)
+
+    @origin.setter
+    def origin(self, origin):
+        if origin is None:
+            self._ox = (self._nx - 1) / 2.0
+            self._oy = (self._ny - 1) / 2.0
+        elif hasattr(origin, '__iter__') and len(origin) == 2:
+            self._ox, self._oy = origin
+        else:
+            raise TypeError("Parameter 'origin' must be either None or an "
+                            "iterable with two elements.")
+
+    @property
+    def ox(self):
+        """X-coordinate of the origin of the coordinate system."""
+        return self._ox
+
+    @property
+    def oy(self):
+        """Y-coordinate of the origin of the coordinate system."""
+        return self._oy
+
+    @property
+    def fillval(self):
+        """Fill value to be returned for coordinates outside of the domain of
+        definition of the interpolator.
+
+        """
+        return self._fillval
+
+    @fillval.setter
+    def fillval(self, fillval):
+        self._fillval = fillval
+
+    def recenter(self):
+        """
+        Shift the origin of the coordinate system by amounts indicated by
+        the model parameters `x_0` and `y_0` and set model parameters
+        `x_0` and `y_0` to 0.0.
+
+        """
+        self._ox -= self.x_0.value
+        self._oy -= self.y_0.value
+        self.x_0 = 0.0
+        self.y_0 = 0.0
+
+    def compute_interpolator(self, kwargs={}):
+        """
+        Compute/define the interpolating spline. This function can be overriden
+        in a subclass to define custom interpolators.
+
+        .. note::
+            When subclassing :py:class:`Discrete2DModel` for the purpose of
+            overriding :py:func:`compute_interpolator`, the :py:func:`evaluate`
+            may need to overriden as well depending on the behavior of the
+            new interpolator.
+
+        .. note::
+            Use caution when modifying interpolator's degree or smoothness in a
+            computationally intensive part of the code as it may decrease code
+            performance due to the need to recompute interpolator.
+
+        Parameters
+        ----------
+        kwargs : dict, optional
+
+            Additional optional keyword arguments. Possible values are:
+
+            - **degree** : int, tuple, optional
+                Degree of the interpolating spline. A tuple can be used to
+                provide different degrees for the X- and Y-axes.
+                Default value is degree=3.
+
+            - **s** : float, optional
+                Non-negative smoothing factor. Default value s=0 corresponds to
+                interpolation.
+                See :py:class:`~scipy.interpolate.RectBivariateSpline` for more
+                details.
+
+        """
+        if 'degree' in kwargs:
+            degree = kwargs['degree']
+            if hasattr(degree, '__iter__') and len(degree) == 2:
+                degx = int(degree[0])
+                degy = int(degree[1])
+            else:
+                degx = int(degree)
+                degy = int(degree)
+            if degx < 0 or degy < 0:
+                raise ValueError("Interpolator degree must be a non-negative "
+                                 "integer")
+        else:
+            degx = 3
+            degy = 3
+
+        if 's' in kwargs:
+            smoothness = kwargs['s']
+        else:
+            smoothness = 0
+
+        x = np.arange(self._nx, dtype=np.float)
+        y = np.arange(self._ny, dtype=np.float)
+        self.interpolator = RectBivariateSpline(
+            x, y, self._ndata.T, kx=degx, ky=degx, s=smoothness
+        )
+
+    def evaluate(self, x, y, flux, x_0, y_0):
+        """
+        Evaluate the model on some input variables and provided model
+        parameters.
+
+        """
+        xi = np.asarray(x, dtype=np.float) + (self._ox - x_0)
+        yi = np.asarray(y, dtype=np.float) + (self._oy - y_0)
+
+        ipsf = flux * self.interpolator.ev(xi, yi)
+
+        if self._fillval is not None:
+            # find indices of pixels that are outside the input pixel grid and
+            # set these pixels to the 'fillval':
+            invalid = (((xi < 0) | (xi > self._nx - 1)) |
+                       ((yi < 0) | (yi > self._ny - 1)))
+            ipsf[invalid] = self._fillval
+
+        return ipsf
 
 
 class IntegratedGaussianPRF(Fittable2DModel):
