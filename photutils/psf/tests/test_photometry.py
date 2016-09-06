@@ -30,15 +30,18 @@ else:
 
 def make_fiducial_phot_obj(std=1, sigma_psf=1):
     """
-    Produces a baseline DAOPhotPSFPhotometry object which is then modified as-needed
-    in specific tests below
+    Produces a baseline DAOPhotPSFPhotometry object which is then
+    modified as-needed in specific tests below
     """
-    daofind = DAOStarFinder(threshold=5.0*std, fwhm=sigma_psf*gaussian_sigma_to_fwhm)
+
+    daofind = DAOStarFinder(threshold=5.0*std,
+                            fwhm=sigma_psf*gaussian_sigma_to_fwhm)
     daogroup = DAOGroup(1.5*sigma_psf*gaussian_sigma_to_fwhm)
     median_bkg = MedianBackground(sigma=3.)
     psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
     fitter = LevMarLSQFitter()
-    return DAOPhotPSFPhotometry(finder=daofind, group_maker=daogroup, bkg_estimator=median_bkg,
+    return DAOPhotPSFPhotometry(finder=daofind, group_maker=daogroup,
+                                bkg_estimator=median_bkg,
                                 psf_model=psf_model, fitter=fitter, niters=1,
                                 fitshape=(11, 11))
 
@@ -75,8 +78,8 @@ sources2['group_id'] = [1, 1, 1, 1]
 @pytest.mark.parametrize("sigma_psf, sources",
                          [(sigma_psfs[0], sources1),
                           (sigma_psfs[1], sources2),
-                          # these ensure that the test *fails* if the model PSFs
-                          # are the wrong shape
+                          # these ensure that the test *fails* if the model
+                          # PSFs are the wrong shape
                           pytest.mark.xfail((sigma_psfs[0]/1.2, sources1)),
                           pytest.mark.xfail((sigma_psfs[1]*1.2, sources2))])
 def test_complete_photometry_oneiter(sigma_psf, sources):
@@ -84,6 +87,7 @@ def test_complete_photometry_oneiter(sigma_psf, sources):
     Tests in an image with a group of two overlapped stars and an
     isolated one.
     """
+
     img_shape = (32, 32)
 
     # generate image with read-out noise (Gaussian) and
@@ -112,8 +116,8 @@ def test_complete_photometry_oneiter(sigma_psf, sources):
     phot_obj.psf_model.x_0.fixed = True
     phot_obj.psf_model.y_0.fixed = True
 
-    # setting the finder to None is not strictly needed, but is a good test to
-    # make sure fixed photometry doesn't try to use the star-finder
+    # setting the finder to None is not strictly needed, but is a good test
+    # to make sure fixed photometry doesn't try to use the star-finder
     phot_obj.finder = None
 
     pos = Table(names=['x_0', 'y_0'], data=[sources['x_mean'],

@@ -1,20 +1,19 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module stores work related to photutils.psf that is not quite ready for
-prime-time (i.e., is not considered a stable public API), but is included
-either for experimentation or as legacy code.
+This module stores work related to photutils.psf that is not quite ready
+for prime-time (i.e., is not considered a stable public API), but is
+included either for experimentation or as legacy code.
 """
+
 from __future__ import division
-
 import numpy as np
-
 from astropy.table import Table
 from astropy.modeling import Parameter, Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import subpixel_indices
-
 from ..utils import mask_to_mirrored_num
 from ..extern.nddata_compat import extract_array
+
 
 __all__ = ['DiscretePRF']
 
@@ -23,14 +22,14 @@ class DiscretePRF(Fittable2DModel):
     """
     A discrete Pixel Response Function (PRF) model.
 
-    The discrete PRF model stores images of the PRF at different subpixel
-    positions or offsets as a lookup table. The resolution is given by the
-    subsampling parameter, which states in how many subpixels a pixel is
-    divided.
+    The discrete PRF model stores images of the PRF at different
+    subpixel positions or offsets as a lookup table. The resolution is
+    given by the subsampling parameter, which states in how many
+    subpixels a pixel is divided.
 
-    In the typical case of wanting to create a PRF from an image with many point
-    sources, use the `~DiscretePRF.create_from_image` method, rather than
-    directly initializing this class.
+    In the typical case of wanting to create a PRF from an image with
+    many point sources, use the `~DiscretePRF.create_from_image` method,
+    rather than directly initializing this class.
 
     The discrete PRF model class in initialized with a 4 dimensional
     array, that contains the PRF images at different subpixel positions.
@@ -49,16 +48,17 @@ class DiscretePRF(Fittable2DModel):
     prf_array : ndarray
         Array containing PRF images.
     normalize : bool
-        Normalize PRF images to unity.  Equivalent to saying there is *no* flux
-        outside the bounds of the PRF images.
+        Normalize PRF images to unity.  Equivalent to saying there is
+        *no* flux outside the bounds of the PRF images.
     subsampling : int, optional
         Factor of subsampling. Default = 1.
 
     Notes
     -----
-    See :ref:`psf-terminology` for more details on the distinction between PSF
-    and PRF as used in this module.
+    See :ref:`psf-terminology` for more details on the distinction
+    between PSF and PRF as used in this module.
     """
+
     flux = Parameter('flux')
     x_0 = Parameter('x_0')
     y_0 = Parameter('y_0')
@@ -95,9 +95,8 @@ class DiscretePRF(Fittable2DModel):
 
     @property
     def prf_shape(self):
-        """
-        Shape of the PRF image.
-        """
+        """Shape of the PRF image."""
+
         return self._prf_array.shape[-2:]
 
     def evaluate(self, x, y, flux, x_0, y_0):
@@ -143,45 +142,48 @@ class DiscretePRF(Fittable2DModel):
         return result
 
     @classmethod
-    def create_from_image(cls, imdata, positions, size, fluxes=None, mask=None,
-                          mode='mean', subsampling=1, fix_nan=False):
+    def create_from_image(cls, imdata, positions, size, fluxes=None,
+                          mask=None, mode='mean', subsampling=1,
+                          fix_nan=False):
         """
         Create a discrete point response function (PRF) from image data.
 
-        Given a list of positions and size this function estimates an image of
-        the PRF by extracting and combining the individual PRFs from the given
-        positions.
+        Given a list of positions and size this function estimates an
+        image of the PRF by extracting and combining the individual PRFs
+        from the given positions.
 
-        NaN values are either ignored by passing a mask or can be replaced by
-        the mirrored value with respect to the center of the PRF.
+        NaN values are either ignored by passing a mask or can be
+        replaced by the mirrored value with respect to the center of the
+        PRF.
 
-        Note that if fluxes are *not* specified explicitly, it will be flux
-        estimated from an aperture of the same size as the PRF image. This does
-        *not* account for aperture corrections so often will *not* be what you
-        want for anything other than quick-look needs.
+        Note that if fluxes are *not* specified explicitly, it will be
+        flux estimated from an aperture of the same size as the PRF
+        image. This does *not* account for aperture corrections so often
+        will *not* be what you want for anything other than quick-look
+        needs.
 
         Parameters
         ----------
         imdata : array
             Data array with the image to extract the PRF from
         positions : List or array or `~astropy.table.Table`
-            List of pixel coordinate source positions to use in creating the PRF.
-            If this is a `~astropy.table.Table` it must have columns called
-            ``x_0`` and ``y_0``.
+            List of pixel coordinate source positions to use in creating
+            the PRF.  If this is a `~astropy.table.Table` it must have
+            columns called ``x_0`` and ``y_0``.
         size : odd int
             Size of the quadratic PRF image in pixels.
         mask : bool array, optional
             Boolean array to mask out bad values.
         fluxes : array, optional
-            Object fluxes to normalize extracted PRFs. If not given (or None),
-            the flux is estimated from an aperture of the same size as
-            the PRF image.
+            Object fluxes to normalize extracted PRFs. If not given (or
+            None), the flux is estimated from an aperture of the same
+            size as the PRF image.
         mode : {'mean', 'median'}
             One of the following modes to combine the extracted PRFs:
-                * 'mean'
-                    Take the pixelwise mean of the extracted PRFs.
-                * 'median'
-                    Take the pixelwise median of the extracted PRFs.
+                * 'mean':  Take the pixelwise mean of the extracted
+                  PRFs.
+                * 'median':  Take the pixelwise median of the extracted
+                  PRFs.
         subsampling : int
             Factor of subsampling of the PRF (default = 1).
         fix_nan : bool
@@ -204,7 +206,8 @@ class DiscretePRF(Fittable2DModel):
             raise TypeError("Size must be odd.")
 
         if fluxes is not None and len(fluxes) != len(positions):
-            raise TypeError("Position and flux arrays must be of equal length.")
+            raise TypeError('Position and flux arrays must be of equal '
+                            'length.')
 
         if mask is None:
             mask = np.isnan(imdata)
@@ -213,11 +216,14 @@ class DiscretePRF(Fittable2DModel):
             positions = np.array(positions)
 
         if isinstance(positions, Table) or \
-            (isinstance(positions, np.ndarray) and positions.dtype.names is not None):
-            # Can do clever things like
-            # positions['x_0', 'y_0'].as_array().view((positions['x_0'].dtype, 2))
-            # but that requires  positions['x_0'].dtype is positions['y_0'].dtype
-            # better do something simple to allow type promotion if required.
+                (isinstance(positions, np.ndarray) and
+                 positions.dtype.names is not None):
+            # One can do clever things like
+            # positions['x_0', 'y_0'].as_array().view((positions['x_0'].dtype,
+            #                                          2))
+            # but that requires positions['x_0'].dtype is
+            # positions['y_0'].dtype.
+            # Better do something simple to allow type promotion if required.
             pos = np.empty((len(positions), 2))
             pos[:, 0] = positions['x_0']
             pos[:, 1] = positions['y_0']
@@ -235,8 +241,9 @@ class DiscretePRF(Fittable2DModel):
 
         data_internal = np.ma.array(data=imdata, mask=mask)
         prf_model = np.ndarray(shape=(subsampling, subsampling, size, size))
-        positions_subpixel_indices = np.array([subpixel_indices(_, subsampling)
-                                               for _ in positions], dtype=np.int)
+        positions_subpixel_indices = \
+            np.array([subpixel_indices(_, subsampling) for _ in positions],
+                     dtype=np.int)
 
         for i in range(subsampling):
             for j in range(subsampling):

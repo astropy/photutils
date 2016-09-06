@@ -1,9 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import division
-
 import numpy as np
 from numpy.testing import assert_allclose
-
 from .. import PRFAdapter
 from astropy.tests.helper import pytest
 from astropy.modeling.models import Moffat2D
@@ -25,8 +23,8 @@ def normalize_moffat(mof):
 @pytest.mark.parametrize("adapterkwargs", [
     dict(xname='x_0', yname='y_0', fluxname=None, renormalize_psf=False),
     dict(xname=None, yname=None, fluxname=None, renormalize_psf=False),
-    dict(xname='x_0', yname='y_0', fluxname='amplitude', renormalize_psf=False)
-    ])
+    dict(xname='x_0', yname='y_0', fluxname='amplitude',
+         renormalize_psf=False)])
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_create_eval_prfadapter(adapterkwargs):
     mof = Moffat2D(gamma=1, alpha=4.8)
@@ -68,8 +66,7 @@ def test_prfadapter_integrates(adapterkwargs):
 
 @pytest.mark.parametrize("adapterkwargs", [
     dict(xname='x_0', yname='y_0', fluxname=None, renormalize_psf=False),
-    dict(xname=None, yname=None, fluxname=None, renormalize_psf=False)
-    ])
+    dict(xname=None, yname=None, fluxname=None, renormalize_psf=False)])
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_prfadapter_sizematch(adapterkwargs):
     from scipy.integrate import dblquad

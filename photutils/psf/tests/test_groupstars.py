@@ -237,7 +237,7 @@ class TestDAOGROUP(object):
                         -np.sqrt(2)/4])
         starlist = Table([x_0, y_0, np.arange(len(x_0)) + 1,
                           np.arange(len(x_0)) + 1],
-                          names=('x_0', 'y_0', 'id', 'group_id'))
+                         names=('x_0', 'y_0', 'id', 'group_id'))
         daogroup = DAOGroup(crit_separation=0.01)
         test_starlist = daogroup(starlist['x_0', 'y_0', 'id'])
         assert_array_equal(starlist, test_starlist)
@@ -249,7 +249,7 @@ class TestDAOGROUP(object):
                         -np.sqrt(2)/4])
         starlist = Table([x_0, y_0, np.arange(len(x_0)) + 1,
                           np.arange(len(x_0)) + 1],
-                          names=('x_0', 'y_0', 'id', 'group_id'))
+                         names=('x_0', 'y_0', 'id', 'group_id'))
         daogroup = DAOGroup(crit_separation=0.01)
         test_starlist = daogroup(starlist['x_0', 'y_0'])
         assert_array_equal(starlist, test_starlist)
@@ -261,7 +261,7 @@ class TestDAOGROUP(object):
                         -np.sqrt(2)/4])
         starlist = Table([x_0, y_0, np.arange(len(x_0)),
                           np.arange(len(x_0)) + 1],
-                          names=('x_0', 'y_0', 'id', 'group_id'))
+                         names=('x_0', 'y_0', 'id', 'group_id'))
         daogroup = DAOGroup(crit_separation=0.01)
         with pytest.raises(ValueError):
             daogroup(starlist['x_0', 'y_0', 'id'])
@@ -285,7 +285,6 @@ class TestDBSCANGroup(object):
         dbscan = DBSCANGroup(crit_separation=0.6)
         test_starlist = dbscan(starlist['x_0', 'y_0', 'id'])
         assert_array_equal(starlist, test_starlist)
-
 
     def test_group_stars_two(object):
         first_group = Table([1.5*np.ones(5), np.linspace(0, 1, 5),
@@ -316,7 +315,7 @@ class TestDBSCANGroup(object):
                         -np.sqrt(2)/4])
         starlist = Table([x_0, y_0, np.arange(len(x_0)) + 1,
                           np.arange(len(x_0)) + 1],
-                          names=('x_0', 'y_0', 'id', 'group_id'))
+                         names=('x_0', 'y_0', 'id', 'group_id'))
         dbscan = DBSCANGroup(crit_separation=0.01)
         test_starlist = dbscan(starlist['x_0', 'y_0', 'id'])
         assert_array_equal(starlist, test_starlist)
@@ -328,7 +327,7 @@ class TestDBSCANGroup(object):
                         -np.sqrt(2)/4])
         starlist = Table([x_0, y_0, np.arange(len(x_0)) + 1,
                           np.arange(len(x_0)) + 1],
-                          names=('x_0', 'y_0', 'id', 'group_id'))
+                         names=('x_0', 'y_0', 'id', 'group_id'))
         dbscan = DBSCANGroup(crit_separation=0.01)
         test_starlist = dbscan(starlist['x_0', 'y_0'])
         assert_array_equal(starlist, test_starlist)
@@ -340,7 +339,7 @@ class TestDBSCANGroup(object):
                         -np.sqrt(2)/4])
         starlist = Table([x_0, y_0, np.arange(len(x_0)),
                           np.arange(len(x_0)) + 1],
-                          names=('x_0', 'y_0', 'id', 'group_id'))
+                         names=('x_0', 'y_0', 'id', 'group_id'))
         dbscan = DBSCANGroup(crit_separation=0.01)
         with pytest.raises(ValueError):
             dbscan(starlist['x_0', 'y_0', 'id'])
