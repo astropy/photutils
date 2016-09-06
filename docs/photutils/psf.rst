@@ -39,12 +39,10 @@ DAOPHOT algorithm (`~photutils.psf.DAOPhotPSFPhotometry`) proposed by
 `Stetson in his seminal paper <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_
 for crowded-field stellar photometry.
 
-DAOPHOT algorithm consists in applying the loop FIND, GROUP, NSTAR,
+The DAOPHOT algorithm consists in applying the loop FIND, GROUP, NSTAR,
 SUBTRACT, FIND until no more stars are detected or a given number of
-iterations is reached.
-
-Basically, `~photutils.psf.DAOPhotPSFPhotometry` works as follows.
-The first step is to estimate the sky background. For this task,
+iterations is reached. Basically, `~photutils.psf.DAOPhotPSFPhotometry` works
+as follows. The first step is to estimate the sky background. For this task,
 photutils provides several classes to compute scalar and 2D backgrounds, see
 `~photutils.background` for details. The next step is to find an initial
 estimate of the positions of potential sources.
@@ -72,7 +70,7 @@ fitter, for instance, `~astropy.modeling.fitting.LevMarLSQFitter`.
 After sources are fitted, they are subtracted from the given image
 and, after fitting all sources, the residual image is analyzed by the finding
 routine again in order to check if there exist any source which has not been
-detected previously. This process goes on until no more sources are identified 
+detected previously. This process goes on until no more sources are identified
 by the finding routine.
 
 .. note::
@@ -94,22 +92,27 @@ by the finding routine.
 Basic Usage
 ^^^^^^^^^^^
 
-The `~photutils.psf.DAOPhotPSFPhotometry` is the core class to implement the
-DAOPHOT algorithm to perform PSF photometry in crowded fields.
-
+The `~photutils.psf.DAOPhotPSFPhotometry` is the core class that implements the
+DAOPHOT algorithm for performing PSF photometry in crowded fields.
 It basically encapsulates the loop "FIND, GROUP, NSTAR, SUBTRACT, FIND..." in
 one place so that one can easily perform PSF photometry just by setting up a
 `~photutils.psf.DAOPhotPSFPhotometry` object.
 
-This class was implemented in such a way that it can be used as a callable
-function. The actual implementation of the ``__call__`` method is simply the
-return value of the ``do_photometry`` method. The basic idea is illustrated as
-follows:
+This class and all of the classes it *uses* for the steps in the process are
+implemented in such a way that they can be used callable functions. The actual
+implementation of the  ``__call__`` method for
+`~photutils.psf.DAOPhotPSFPhotometry` is identical to the ``do_photometry``
+method (which is why the documentation for ``__call__`` is in
+``do_photometry``). This allows subclasses of
+`~photutils.psf.DAOPhotPSFPhotometry` to override ``do_photometry`` if they want
+to change some behavior, making such code more maintainable.
+
+The basic usage of `~photutils.psf.DAOPhotPSFPhotometry` is as follows:
 
 .. doctest-skip::
 
     >>> # create a DAOPhotPSFPhotometry object
-    >>> from photutils.psf import DAOPhotPSFPhotometry 
+    >>> from photutils.psf import DAOPhotPSFPhotometry
     >>> my_photometry = DAOPhotPSFPhotometry(finder=my_finder,
     ...                                      group_maker=my_group_maker,
     ...                                      bkg_estimator=my_bkg_estimator,
@@ -120,10 +123,13 @@ follows:
     >>> photometry_results, residual_image = my_photometry(image=my_image)
 
 Where ``my_finder``, ``my_group_maker``, and ``my_bkg_estimator`` may be any
-suitable callable function. This approach allows one to customize every part
-of the photometry process provided that their input/output are compatible with
-the input/ouput expected by `~photutils.psf.DAOPhotPSFPhotometry`.
-See the API documentation for details.
+suitable class or callable function. This approach allows one to customize every
+part of the photometry process provided that their input/output are compatible
+with the input/ouput expected by `~photutils.psf.DAOPhotPSFPhotometry`.
+`photutils.psf` provides all the necessary classes to reproduce the DAOPHOT
+algorithm, but any individual part of that algorithm can be swapped for a
+user-defined function.  See the API documentation for precise details on what
+these classes or functions should look like.
 
 Performing PSF Photometry
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -134,7 +140,7 @@ assumed to be Gaussian.
 First let's create an image with four overlapping stars::
 
     >>> import numpy as np
-    >>> from astropy.table import Table 
+    >>> from astropy.table import Table
     >>> from photutils.datasets import make_random_gaussians, make_noise_image
     >>> from photutils.datasets import make_gaussian_sources
     >>> sigma_psf = 2.0
@@ -154,7 +160,7 @@ First let's create an image with four overlapping stars::
     ...                           stddev=2., random_state=1))
 
 .. doctest-requires:: matplotlib
-    
+
     >>> from matplotlib import rcParams
     >>> rcParams['font.size'] = 13
     >>> import matplotlib.pyplot as plt
@@ -162,11 +168,11 @@ First let's create an image with four overlapping stars::
     ...            origin='lower') # doctest: +SKIP
     >>> plt.title('Simulated data') # doctest: +SKIP
     >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04) # doctest: +SKIP
-    
+
 .. plot::
 
     import numpy as np
-    from astropy.table import Table 
+    from astropy.table import Table
     from photutils.datasets import make_random_gaussians, make_noise_image, make_gaussian_sources
 
     sigma_psf = 2.0
@@ -188,7 +194,7 @@ First let's create an image with four overlapping stars::
     from matplotlib import rcParams
     rcParams['font.size'] = 13
     import matplotlib.pyplot as plt
-    
+
     plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
                origin='lower')
     plt.title('Simulated data')
@@ -227,11 +233,11 @@ Let's then instantiate and use the objects:
 
 Note that the parameters values for the finder class, i.e.,
 `~photutils.detection.IRAFStarFinder`, are completly chosen in an arbitrary
-manner and optimum values do vary according to the data. 
+manner and optimum values do vary according to the data.
 
 As mentioned before, the way to actually do the photometry is by using
 ``daophot_photometry`` as a function-like call.
-    
+
 It's worth noting that ``image`` does not need to be background subtracted.
 The subtraction is done during the photometry process with the attribute
 ``bkg`` that was used to set up ``daophot_photometry``.
@@ -253,7 +259,7 @@ Now, let's compare the simulated and the residual images:
     >>> plt.show()
 
 .. plot::
-    
+
     import numpy as np
     from photutils.datasets import make_random_gaussians, make_noise_image, make_gaussian_sources
     from astropy.table import Table
@@ -322,10 +328,8 @@ Performing PSF Photometry with Fixed Centroids
 
 In case that the centroids positions of the stars are known a priori, then
 they can be held fixed during the fitting process and the optimizer will
-only consider flux as a variable.
-
-To do that, one has to set the ``fixed`` attribute for the centroid parameters
-in ``psf`` as ``True``.
+only consider flux as a variable. To do that, one has to set the ``fixed``
+attribute for the centroid parameters in ``psf`` as ``True``.
 
 Consider the previous example after the line
 ``psf_model = IntegratedGaussianPRF(sigma=sigma_psf)``:
@@ -365,7 +369,7 @@ keyword ``positions``:
     >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
 
 .. plot::
-    
+
     import numpy as np
     from photutils.datasets import make_random_gaussians, make_noise_image, make_gaussian_sources
     from astropy.table import Table
@@ -385,7 +389,7 @@ keyword ``positions``:
                               random_state=1) +
              make_noise_image(tshape, type='gaussian', mean=0.,
                               stddev=2., random_state=1))
-    
+
     from photutils.detection import IRAFStarFinder
     from photutils.psf import IntegratedGaussianPRF, DAOGroup
     from photutils.background import MMMBackground, MADStdBackgroundRMS
@@ -401,13 +405,13 @@ keyword ``positions``:
     daogroup = DAOGroup(2.0*sigma_psf*gaussian_sigma_to_fwhm)
     mmm_bkg = MMMBackground()
     psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
-    
+
     psf_model.x_0.fixed = True
     psf_model.y_0.fixed = True
 
     pos = Table(names=['x_0', 'y_0'], data=[sources['x_mean'],
                                             sources['y_mean']])
-    
+
     fitter = LevMarLSQFitter()
 
     from photutils.psf import DAOPhotPSFPhotometry
@@ -420,7 +424,7 @@ keyword ``positions``:
 
     result_tab, residual_image = daophot_photometry(image=image,
                                                     positions=pos)
-    
+
     from matplotlib import rcParams
     import matplotlib.pyplot as plt
     rcParams['font.size'] = 13
@@ -434,7 +438,7 @@ keyword ``positions``:
     plt.imshow(residual_image, cmap='viridis', aspect=1,
                interpolation='nearest', origin='lower')
     plt.title('Residual Image')
-    plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04) 
+    plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
 
 For more examples, also check the online notebook in the next section.
 
