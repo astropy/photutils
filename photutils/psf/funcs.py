@@ -67,10 +67,11 @@ def _call_fitter(fitter, psf, x, y, data, weights):
 def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
                       renormalize_psf=True):
     """
-    This takes a 2D PSF model and returns one derived from it but
-    suitable for use with `psf_photometry`.  The resulting model may be
-    a composite model, but should have only the x, y, and flux related
-    parameters un-fixed.
+    Convert a 2D PSF model to one suitable for use with
+    `psf_photometry`.
+
+    The resulting model may be a composite model, but should have only
+    the x, y, and flux related parameters un-fixed.
 
     Parameters
     ----------
@@ -414,7 +415,7 @@ def psf_photometry(data, positions, psf, fitshape=None,
 
 def subtract_psf(data, psf, posflux, subshape=None):
     """
-    Subtracts PSF/PRFs from an image.
+    Subtract PSF/PRFs from an image.
 
     Parameters
     ----------

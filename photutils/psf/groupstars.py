@@ -172,9 +172,9 @@ class DAOGroup(GroupStarsBase):
 
 class DBSCANGroup(GroupStarsBase):
     """
-    This class creates groups stars according to a distance criteria
-    using the Density-based Spatial Clustering of Applications with
-    Noise (DBSCAN) from scikit-learn.
+    Class to create star groups according to a distance criteria using
+    the Density-based Spatial Clustering of Applications with Noise
+    (DBSCAN) from scikit-learn.
 
     Parameters
     ----------

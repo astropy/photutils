@@ -120,6 +120,7 @@ class DiscretePRF(Fittable2DModel):
         y_0 : float
             y position of the center of the PRF.
         """
+
         # Convert x and y to index arrays
         x = (x - x_0 + 0.5 + self.prf_shape[1] // 2).astype('int')
         y = (y - y_0 + 0.5 + self.prf_shape[0] // 2).astype('int')
