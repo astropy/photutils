@@ -152,8 +152,11 @@ First let's create an image with four overlapping stars::
     ...                           random_state=1) +
     ...          make_noise_image(tshape, type='gaussian', mean=0.,
     ...                           stddev=2., random_state=1))
+
+.. doctest-requires:: matplotlib
+    
     >>> from matplotlib import rcParams
-    >>> rcParams['font.size'] = 14
+    >>> rcParams['font.size'] = 13
     >>> import matplotlib.pyplot as plt
     >>> plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
     ...            origin='lower') # doctest: +SKIP
@@ -183,7 +186,7 @@ First let's create an image with four overlapping stars::
                               stddev=2., random_state=1))
 
     from matplotlib import rcParams
-    rcParams['font.size'] = 14
+    rcParams['font.size'] = 13
     import matplotlib.pyplot as plt
     
     plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
@@ -199,7 +202,9 @@ Then let's import the required classes to set up a `~photutils.psf.DAOPhotPSFPho
     >>> from astropy.modeling.fitting import LevMarLSQFitter
     >>> from astropy.stats import gaussian_sigma_to_fwhm
 
-Let's then instantiate the objects::
+Let's then instantiate and use the objects:
+
+.. doctest-requires:: scipy
 
     >>> bkgrms = MADStdBackgroundRMS()
     >>> std = bkgrms(image)
@@ -211,13 +216,6 @@ Let's then instantiate the objects::
     >>> mmm_bkg = MMMBackground()
     >>> fitter = LevMarLSQFitter()
     >>> psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
-
-Note that the parameters values for the finder class, i.e.,
-`~photutils.detection.IRAFStarFinder`, are completly chosen in an arbitrary
-manner and optimum values do vary according to the data. 
-
-Now, we can create a `~photutils.psf.DAOPhotPSFPhotometry` object::
-
     >>> from photutils.psf import DAOPhotPSFPhotometry
     >>> daophot_photometry = DAOPhotPSFPhotometry(finder=iraffind,
     ...                                           group_maker=daogroup,
@@ -225,12 +223,15 @@ Now, we can create a `~photutils.psf.DAOPhotPSFPhotometry` object::
     ...                                           psf_model=psf_model,
     ...                                           fitter=LevMarLSQFitter(),
     ...                                           niters=1, fitshape=(11,11))
-
-As mentioned before, the way to actually do the photometry is by using
-``daophot_photometry`` as a function-like call::
-
     >>> result_tab, residual_image = daophot_photometry(image=image)
 
+Note that the parameters values for the finder class, i.e.,
+`~photutils.detection.IRAFStarFinder`, are completly chosen in an arbitrary
+manner and optimum values do vary according to the data. 
+
+As mentioned before, the way to actually do the photometry is by using
+``daophot_photometry`` as a function-like call.
+    
 It's worth noting that ``image`` does not need to be background subtracted.
 The subtraction is done during the photometry process with the attribute
 ``bkg`` that was used to set up ``daophot_photometry``.
@@ -240,11 +241,13 @@ Now, let's compare the simulated and the residual images:
 .. doctest-skip::
 
     >>> plt.subplot(1, 2, 1)
-    >>> plt.imshow(image)
+    >>> plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
+                   origin='lower')
     >>> plt.title('Simulated data')
     >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
     >>> plt.subplot(1 ,2, 2)
-    >>> plt.imshow(residual_image)
+    >>> plt.imshow(residual_image, cmap='viridis', aspect=1,
+    ...            interpolation='nearest', origin='lower')
     >>> plt.title('Residual Image')
     >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
     >>> plt.show()
@@ -299,7 +302,7 @@ Now, let's compare the simulated and the residual images:
     result_tab, residual_image = daophot_photometry(image=image)
 
     from matplotlib import rcParams
-    rcParams['font.size'] = 16
+    rcParams['font.size'] = 13
     import matplotlib.pyplot as plt
 
     plt.subplot(1, 2, 1)
@@ -325,7 +328,9 @@ To do that, one has to set the ``fixed`` attribute for the centroid parameters
 in ``psf`` as ``True``.
 
 Consider the previous example after the line
-``psf_model = IntegratedGaussianPRF(sigma=sigma_psf)``::
+``psf_model = IntegratedGaussianPRF(sigma=sigma_psf)``:
+
+.. doctest-skip::
 
     >>> psf_model.x_0.fixed = True
     >>> psf_model.y_0.fixed = True
@@ -334,7 +339,9 @@ Consider the previous example after the line
 
 Note that we do not need to set the ``finder`` and ``niters`` attributes in
 `~photutils.psf.DAOPhotPSFPhotometry` and the positions are passed using the
-keyword ``positions``::
+keyword ``positions``:
+
+.. doctest-skip::
 
     >>> daophot_photometry = DAOPhotPSFPhotometry(group_maker=daogroup,
     ...                                           bkg_estimator=mmm_bkg,
@@ -347,11 +354,13 @@ keyword ``positions``::
 .. doctest-skip::
 
     >>> plt.subplot(1, 2, 1)
-    >>> plt.imshow(image)
+    >>> plt.imshow(image, cmap='viridis', aspect=1,
+    ...            interpolation='nearest', origin='lower')
     >>> plt.title('Simulated data')
     >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
     >>> plt.subplot(1 ,2, 2)
-    >>> plt.imshow(residual_image)
+    >>> plt.imshow(residual_image, cmap='viridis', aspect=1,
+    ...            interpolation='nearest', origin='lower')
     >>> plt.title('Residual Image')
     >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
 
@@ -414,18 +423,16 @@ keyword ``positions``::
     
     from matplotlib import rcParams
     import matplotlib.pyplot as plt
-    rcParams['image.cmap'] = 'viridis'
-    rcParams['image.aspect'] = 1  # to get images with square pixels
-    rcParams['image.interpolation'] = 'nearest'
-    rcParams['image.origin'] = 'lower'
-    rcParams['font.size'] = 16
+    rcParams['font.size'] = 13
 
     plt.subplot(1, 2, 1)
-    plt.imshow(image)
+    plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
+               origin='lower')
     plt.title('Simulated data')
     plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
     plt.subplot(1 ,2, 2)
-    plt.imshow(residual_image)
+    plt.imshow(residual_image, cmap='viridis', aspect=1,
+               interpolation='nearest', origin='lower')
     plt.title('Residual Image')
     plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04) 
 
