@@ -13,7 +13,6 @@ __all__ = ['Discrete2DModel', 'IntegratedGaussianPRF', 'PRFAdapter',
 __all__ = ['IntegratedGaussianPRF', 'PRFAdapter', 'prepare_psf_model',
            'get_grouped_psf_model']
 
-@pytest.mark.skipif('not HAS_SCIPY')
 class Discrete2DModel(Fittable2DModel):
     """
     A discrete fittable 2D model of an image.
@@ -230,6 +229,8 @@ class Discrete2DModel(Fittable2DModel):
                 details.
 
         """
+        from scipy.interpolate import RectBivariateSpline
+
         if 'degree' in kwargs:
             degree = kwargs['degree']
             if hasattr(degree, '__iter__') and len(degree) == 2:
