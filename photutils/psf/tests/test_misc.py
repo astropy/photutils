@@ -3,6 +3,7 @@
 Miscellaneous tests for psf functionality that doesn't have another obvious
 place to go
 """
+
 from __future__ import division
 import numpy as np
 from numpy.testing import assert_allclose
@@ -103,6 +104,7 @@ def test_psf_adapter(moffimg, prepkwargs, tols):
     Test that the PSF adapter behaves as expected for fitting (don't worry
     about full-on psf photometry for now)
     """
+
     from astropy.modeling.fitting import LevMarLSQFitter
     from astropy.modeling.models import Moffat2D
 

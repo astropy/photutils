@@ -2,45 +2,45 @@
 """
 Models and functions for doing PSF/PRF fitting photometry on image data.
 """
-from __future__ import division
 
+from __future__ import division
 import warnings
 import copy
-
 import numpy as np
-
-
 from astropy.table import Table, Column
 from astropy.modeling import models
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import add_array
 from astropy.nddata import support_nddata
 from astropy.utils.exceptions import AstropyUserWarning
-
 from ..aperture.core import _prepare_photometry_input
 from ..extern.nddata_compat import extract_array
+
 
 __all__ = ['psf_photometry', 'subtract_psf']
 
 
 def _extract_psf_fitting_names(psf):
     """
-    Determine the names of the x coordinate, y coordinate, and flux from a
-    model.  Returns (xname, yname, fluxname)
+    Determine the names of the x coordinate, y coordinate, and flux from
+    a model.  Returns (xname, yname, fluxname)
     """
+
     if hasattr(psf, 'psf_xname'):
         xname = psf.psf_xname
     elif 'x_0' in psf.param_names:
         xname = 'x_0'
     else:
-        raise ValueError('Could not determine x coordinate name for psf_photometry.')
+        raise ValueError('Could not determine x coordinate name for '
+                         'psf_photometry.')
 
     if hasattr(psf, 'psf_yname'):
         yname = psf.psf_yname
     elif 'y_0' in psf.param_names:
         yname = 'y_0'
     else:
-        raise ValueError('Could not determine y coordinate name for psf_photometry.')
+        raise ValueError('Could not determine y coordinate name for '
+                         'psf_photometry.')
 
     if hasattr(psf, 'psf_fluxname'):
         fluxname = psf.psf_fluxname
@@ -53,8 +53,11 @@ def _extract_psf_fitting_names(psf):
 
 
 def _call_fitter(fitter, psf, x, y, data, weights):
-    '''Not all fitters have to support a weight array. This function includes
-    the weight in the fitter call only if really needed.'''
+    """
+    Not all fitters have to support a weight array. This function
+    includes the weight in the fitter call only if really needed.
+    """
+
     if np.all(weights == 1.):
         return fitter(psf, x, y, data)
     else:
@@ -64,37 +67,42 @@ def _call_fitter(fitter, psf, x, y, data, weights):
 def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
                       renormalize_psf=True):
     """
-    This takes a 2D PSF model and returns one derived from it but suitable for
-    use with `psf_photometry`.  The resulting model may be a composite model, but
-    should have only the x, y, and flux related parameters un-fixed.
+    Convert a 2D PSF model to one suitable for use with
+    `psf_photometry`.
 
+    The resulting model may be a composite model, but should have only
+    the x, y, and flux related parameters un-fixed.
 
     Parameters
     ----------
     psfmodel : a 2D model
         The model to assume as representative of the PSF.
     xname : str or None
-        The name of the ``psfmodel`` parameter that corresponds to the x-axis
-        center of the PSF.  If None, the model will be assumed to be centered
-        at x=0, and a new paramter will be added for the offset.
+        The name of the ``psfmodel`` parameter that corresponds to the
+        x-axis center of the PSF.  If None, the model will be assumed to
+        be centered at x=0, and a new parameter will be added for the
+        offset.
     yname : str or None
-        The name of the ``psfmodel`` parameter that corresponds to the y-axis
-        center of the PSF.  If None, the model will be assumed to be centered
-        at x=0, and a new paramter will be added for the offset.
+        The name of the ``psfmodel`` parameter that corresponds to the
+        y-axis center of the PSF.  If None, the model will be assumed to
+        be centered at x=0, and a new parameter will be added for the
+        offset.
     fluxname : str or None
-        The name of the ``psfmodel`` parameter that corresponds to the total
-        flux of the star.  If None, a scaling factor will be added to the model.
+        The name of the ``psfmodel`` parameter that corresponds to the
+        total flux of the star.  If None, a scaling factor will be added
+        to the model.
     renormalize_psf : bool
-        If True, the model will be integrated from -inf to inf and re-scaled
-        so that the total integrates to 1.  Note that this renormalization only
-        occurs *once*, so if the total flux of ``psfmodel`` depends on position,
-        this will *not* be correct.
+        If True, the model will be integrated from -inf to inf and
+        re-scaled so that the total integrates to 1.  Note that this
+        renormalization only occurs *once*, so if the total flux of
+        ``psfmodel`` depends on position, this will *not* be correct.
 
     Returns
     -------
     outmod : a model
         A new model ready to be passed into `psf_photometry`.
     """
+
     if xname is None:
         xinmod = models.Shift(0, name='x_offset')
         xname = 'offset_0'
@@ -128,7 +136,8 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
         normmod = models.Const2D(1./integrand, name='renormalize_scaling')
         outmod = outmod * normmod
 
-    # final setup of the output model - fix all the non-offset/scale parameters
+    # final setup of the output model - fix all the non-offset/scale
+    # parameters
     for pnm in outmod.param_names:
         outmod.fixed[pnm] = pnm not in (xname, yname, fluxname)
 
@@ -150,67 +159,67 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
 
 @support_nddata
 def psf_photometry(data, positions, psf, fitshape=None,
-                   fitter=LevMarLSQFitter(),
-                   unit=None, wcs=None, error=None,
-                   mask=None, pixelwise_error=True,
-                   mode='sequential',
+                   fitter=LevMarLSQFitter(), unit=None, wcs=None, error=None,
+                   mask=None, pixelwise_error=True, mode='sequential',
                    store_fit_info=False, param_uncert=False):
     """
     Perform PSF/PRF photometry on the data.
 
     Given a PSF or PRF model, the model is fitted simultaneously or
     sequentially to the given positions to obtain an estimate of the
-    flux. If required, coordinates are also tuned to match best the data.
+    flux. If required, coordinates are also tuned to match best the
+    data.
 
     Parameters
     ----------
-    data : array_like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
+    data : array-like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
         The 2-d array on which to perform photometry. ``data`` should be
         background-subtracted.  Units are used during the photometry,
         either provided along with the data array, or stored in the
         header keyword ``'BUNIT'``.
-    positions : Array-like of shape (2 or 3, N) or `~astropy.table.Table`
+    positions : array-like of shape (2 or 3, N) or `~astropy.table.Table`
         Positions at which to *start* the fit for each object, in pixel
-        coordinates. If
-        array-like, it can be either (x_0, y_0) or (x_0, y_0, flux_0). If a
-        table, the columns 'x_0' and 'y_0' must be present.  'flux_0' can also
-        be provided to set initial fluxes.  Additional columns of the form
-        '<parametername>_0' will be used to set the initial guess for any
-        parameters of the ``psf`` model that are not fixed.
+        coordinates. If array-like, it can be either (x_0, y_0) or (x_0,
+        y_0, flux_0). If a table, the columns 'x_0' and 'y_0' must be
+        present.  'flux_0' can also be provided to set initial fluxes.
+        Additional columns of the form '<parametername>_0' will be used
+        to set the initial guess for any parameters of the ``psf`` model
+        that are not fixed.
     psf : `astropy.modeling.Fittable2DModel` instance
-        PSF or PRF model to fit the data. Could be one of the models in this
-        package like `~photutils.psf.sandbox.DiscretePRF`,
-        `~photutils.psf.IntegratedGaussianPRF`, or any other suitable
-        2D model.
-        This function needs to identify three parameters (position of center in
-        x and y coordinates and the flux) in order to set them to suitable
-        starting values for each fit. The names of these parameters can be given
-        as follows:
+        PSF or PRF model to fit the data. Could be one of the models in
+        this package like `~photutils.psf.sandbox.DiscretePRF`,
+        `~photutils.psf.IntegratedGaussianPRF`, or any other suitable 2D
+        model.  This function needs to identify three parameters
+        (position of center in x and y coordinates and the flux) in
+        order to set them to suitable starting values for each fit. The
+        names of these parameters can be given as follows:
 
-        - Set ``psf.psf_xname``, ``psf.psf_yname`` and ``psf.psf_fluxname`` to
-          strings with the names of the respective psf model parameter.
-        - If those attributes are not found, the names ``x_0``, ``y_0`` and
-          ``flux`` are assumed.
+        - Set ``psf.psf_xname``, ``psf.psf_yname`` and
+          ``psf.psf_fluxname`` to strings with the names of the respective
+          psf model parameter.
+        - If those attributes are not found, the names ``x_0``, ``y_0``
+          and ``flux`` are assumed.
 
-        `~photutils.psf.prepare_psf_model` can be used to prepare any 2D model
-        to match these assumptions.
+        `~photutils.psf.prepare_psf_model` can be used to prepare any 2D
+        model to match these assumptions.
     fitshape : length-2 or None
-        The shape of the region around the center of the target location to do
-        the fitting in.  If None, fit the whole image without windowing. (See
-        notes)
+        The shape of the region around the center of the target location
+        to do the fitting in.  If None, fit the whole image without
+        windowing. (See notes)
     fitter : an `astropy.modeling.fitting.Fitter` object
         The fitter object used to actually derive the fits. See
         `astropy.modeling.fitting` for more details on fitters.
     unit : `~astropy.units.UnitBase` instance, str
-        An object that represents the unit associated with ``data``.  Must
-        be an `~astropy.units.UnitBase` object or a string parseable by the
-        :mod:`~astropy.units` package. It overrides the ``data`` unit from
-        the ``'BUNIT'`` header keyword and issues a warning if
-        different. However an error is raised if ``data`` as an array
-        already has a different unit.
+        An object that represents the unit associated with ``data``.
+        Must be an `~astropy.units.UnitBase` object or a string
+        parseable by the :mod:`~astropy.units` package. It overrides the
+        ``data`` unit from the ``'BUNIT'`` header keyword and issues a
+        warning if different. However an error is raised if ``data`` as
+        an array already has a different unit.
     wcs : `~astropy.wcs.WCS`, optional
-        Use this as the wcs transformation. It overrides any wcs transformation
-        passed along with ``data`` either in the header or in an attribute.
+        Use this as the wcs transformation. It overrides any wcs
+        transformation passed along with ``data`` either in the header
+        or in an attribute.
     error : float or array_like, optional
         The pixel-wise Gaussian 1-sigma errors of the input ``data``.
         ``error`` is assumed to include *all* sources of error,
@@ -221,46 +230,47 @@ def psf_photometry(data, positions, psf, fitshape=None,
         Mask to apply to the data.  Masked pixels are excluded/ignored.
     pixelwise_error : bool, optional
         If `True`, assume ``error`` varies significantly across the PSF
-        and sum contribution from each pixel. If `False`,
-        assume ``error`` does not vary significantly across the PSF
-        and use the single value of ``error`` at the center of each
-        PSF.  Default is `True`.
+        and sum contribution from each pixel. If `False`, assume
+        ``error`` does not vary significantly across the PSF and use the
+        single value of ``error`` at the center of each PSF.  Default is
+        `True`.
     mode : {'sequential'}
         One of the following modes to do PSF/PRF photometry:
             * 'sequential' (default)
                 Fit PSF/PRF separately for the given positions.
             * (No other modes are yet implemented)
     store_fit_info : bool or list
-        If False, the fitting information is discarded.  If True, the output
-        table will have an additional column 'fit_message' with the message that
-        came from the fit.  If a list, it will be populated with the
-        ``fit_info`` dictionary of the fitter for each fit.
+        If False, the fitting information is discarded.  If True, the
+        output table will have an additional column 'fit_message' with
+        the message that came from the fit.  If a list, it will be
+        populated with the ``fit_info`` dictionary of the fitter for
+        each fit.
     param_uncert : bool (default=False)
-        If True, the uncertainties on each parameter estimate will be stored
-        in the output table. This option assumes that the fitter has the
-        'param_cov' key in its 'fit_info' dictionary.
-        See 'fit_info' in `~astropy.modeling.fitting.LevMarLSQFitter`.
+        If True, the uncertainties on each parameter estimate will be
+        stored in the output table. This option assumes that the fitter
+        has the 'param_cov' key in its 'fit_info' dictionary.  See
+        'fit_info' in `~astropy.modeling.fitting.LevMarLSQFitter`.
 
     Returns
     -------
     result_tab : `~astropy.table.Table`
-        The results of the fitting procedure.  The fitted flux is in the column
-        'flux_fit', and the centroids are in 'x_fit' and 'y_fit'. If
-        ``positions`` was a table, any columns in that table will be carried
-        over to this table.  If any of the ``psf`` model parameters other than
-        flux/x/y are not fixed, their results will be in the column
-        '<parametername>_fit'.
+        The results of the fitting procedure.  The fitted flux is in the
+        column 'flux_fit', and the centroids are in 'x_fit' and 'y_fit'.
+        If ``positions`` was a table, any columns in that table will be
+        carried over to this table.  If any of the ``psf`` model
+        parameters other than flux/x/y are not fixed, their results will
+        be in the column '<parametername>_fit'.
 
     Notes
     -----
-    Most fitters will not do well if ``fitshape`` is None because they will try
-    to fit the whole image as just one star.
+    Most fitters will not do well if ``fitshape`` is None because they
+    will try to fit the whole image as just one star.
 
     This function is decorated with `~astropy.nddata.support_nddata` and
     thus supports `~astropy.nddata.NDData` objects as input.
     """
 
-    (data, wcs_transformation, mask, error, pixelwise_error ) = (
+    (data, wcs_transformation, mask, error, pixelwise_error) = (
         _prepare_photometry_input(data, unit, wcs, mask, error,
                                   pixelwise_error))
 
@@ -288,9 +298,11 @@ def psf_photometry(data, positions, psf, fitshape=None,
     else:
         positions = np.array(positions, copy=False)
         if positions.shape[0] < 2:
-            raise ValueError('Positions should be a table or an array (2, N) or (3, N)')
+            raise ValueError('Positions should be a table or an array (2, N) '
+                             'or (3, N)')
         elif positions.shape[0] > 3:
-            raise ValueError('Positions should be a table or an array (2, N) or (3, N)')
+            raise ValueError('Positions should be a table or an array (2, N) '
+                             'or (3, N)')
 
         result_tab = Table()
         result_tab['x_0'] = positions[0]
@@ -301,18 +313,21 @@ def psf_photometry(data, positions, psf, fitshape=None,
     result_tab['x_fit'] = result_tab['x_0']
     result_tab['y_fit'] = result_tab['y_0']
     result_tab.add_column(Column(name='flux_fit', unit=fluxunit,
-                                 data=np.empty(len(result_tab), dtype=data.dtype)))
+                                 data=np.empty(len(result_tab),
+                                               dtype=data.dtype)))
 
     # prep for fitting
     psf = psf.copy()  # don't want to muck up whatever PSF the user gives us
 
-    pars_to_set = {'x_0': xname, 'y_0': yname}  # maps input table name to parameter name
+    # maps input table name to parameter name
+    pars_to_set = {'x_0': xname, 'y_0': yname}
     if 'flux_0' in result_tab.colnames:
         pars_to_set['flux_0'] = fluxname
 
+    # maps output table name to parameter name
     pars_to_output = {'x_fit': xname,
                       'y_fit': yname,
-                      'flux_fit': fluxname}  # maps output table name to parameter name
+                      'flux_fit': fluxname}
 
     for p, isfixed in psf.fixed.items():
         p0 = p + '_0'
@@ -332,10 +347,10 @@ def psf_photometry(data, positions, psf, fitshape=None,
         if 'param_cov' in fitter.fit_info:
             uncert = []
         else:
-            warnings.warn("uncertainties on fitted parameters cannot be " +
-                           "computed because fitter does not contain " +
-                           "`param_cov` key in its `fit_info` dictionary.",
-                           AstropyUserWarning)
+            warnings.warn('uncertainties on fitted parameters cannot be '
+                          'computed because fitter does not contain '
+                          '`param_cov` key in its `fit_info` dictionary.',
+                          AstropyUserWarning)
             param_uncert = False
 
     # Many fitters take a "weight" array, but no "mask".
@@ -374,12 +389,12 @@ def psf_photometry(data, positions, psf, fitshape=None,
                 fit_messages.append(fitter.fit_info['message'])
             if param_uncert:
                 if fitter.fit_info['param_cov'] is not None:
-                    uncert.append(np.sqrt(np.diag(\
-                            fitter.fit_info['param_cov'])))
+                    uncert.append(np.sqrt(np.diag(
+                        fitter.fit_info['param_cov'])))
                 else:
-                    warnings.warn("uncertainties on fitted parameters " +
-                                  "cannot be computed because the fit may " +
-                                  "be unsuccessful", AstropyUserWarning)
+                    warnings.warn('uncertainties on fitted parameters '
+                                  'cannot be computed because the fit may '
+                                  'be unsuccessful', AstropyUserWarning)
                     uncert.append((None, None, None))
     else:
         raise ValueError('Invalid photometry mode.')
@@ -400,7 +415,7 @@ def psf_photometry(data, positions, psf, fitshape=None,
 
 def subtract_psf(data, psf, posflux, subshape=None):
     """
-    Subtracts PSF/PRFs from an image.
+    Subtract PSF/PRFs from an image.
 
     Parameters
     ----------
@@ -409,18 +424,19 @@ def subtract_psf(data, psf, posflux, subshape=None):
     psf : `astropy.modeling.Fittable2DModel` instance
         PSF/PRF model to be substracted from the data.
     posflux : Array-like of shape (3, N) or `~astropy.table.Table`
-        Positions and fluxes for the objects to subtract.  If an array, it is
-        interpreted as ``(x, y, flux)``  If a table, the columns 'x_fit',
-        'y_fit', and 'flux_fit' must be present.
+        Positions and fluxes for the objects to subtract.  If an array,
+        it is interpreted as ``(x, y, flux)``  If a table, the columns
+        'x_fit', 'y_fit', and 'flux_fit' must be present.
     subshape : length-2 or None
-        The shape of the region around the center of the location to subtract
-        the PSF from.  If None, subtract from the whole image.
+        The shape of the region around the center of the location to
+        subtract the PSF from.  If None, subtract from the whole image.
 
     Returns
     -------
     subdata : same shape and type as ``data``
         The image with the PSF subtracted
     """
+
     if data.ndim != 2:
         raise ValueError('{0}-d array not supported. Only 2-d arrays can be '
                          'passed to subtract_psf.'.format(data.ndim))

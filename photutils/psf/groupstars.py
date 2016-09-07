@@ -3,8 +3,8 @@
 
 from __future__ import division
 import abc
-from astropy.extern import six
 import numpy as np
+from astropy.extern import six
 from astropy.table import Column
 
 
@@ -151,7 +151,8 @@ class DAOGroup(GroupStarsBase):
         Parameters
         ----------
         star : `~astropy.table.Row`
-            Star which will be either the head of a cluster or an isolated one.
+            Star which will be either the head of a cluster or an
+            isolated one.
         starlist : `~astropy.table.Table`
             List of star positions. Columns named as ``x_0`` and
             ``y_0``, which corresponds to the centroid coordinates of
@@ -171,15 +172,15 @@ class DAOGroup(GroupStarsBase):
 
 class DBSCANGroup(GroupStarsBase):
     """
-    This class creates groups stars according to a distance criteria using the
-    Density-based Spatial Clustering of Applications with Noise (DBSCAN) from
-    scikit-learn.
+    Class to create star groups according to a distance criteria using
+    the Density-based Spatial Clustering of Applications with Noise
+    (DBSCAN) from scikit-learn.
 
     Parameters
     ----------
     crit_separation : float or int
-        Distance, in units of pixels, such that any two stars separated by
-        less than this distance will be placed in the same group.
+        Distance, in units of pixels, such that any two stars separated
+        by less than this distance will be placed in the same group.
     min_samples : int, optional (default=1)
         Minimum number of stars necessary to form a group.
     metric : string or callable (default='euclidean')
@@ -201,11 +202,11 @@ class DBSCANGroup(GroupStarsBase):
       `sklearn.cluster.DBSCAN <http://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html#sklearn.cluster.DBSCAN>`_.
 
     * This class provides more general algorithms than
-      `photutils.psf.DAOGroup`.  More precisely, `photutils.psf.DAOGroup`
-      is a special case of `photutils.psf.DBSCANGroup` when
-      ``min_samples=1`` and ``metric=euclidean``.  Additionally,
-      `photutils.psf.DBSCANGroup` may be faster than
-      `photutils.psf.DAOGroup`.
+      `photutils.psf.DAOGroup`.  More precisely,
+      `photutils.psf.DAOGroup` is a special case of
+      `photutils.psf.DBSCANGroup` when ``min_samples=1`` and
+      ``metric=euclidean``.  Additionally, `photutils.psf.DBSCANGroup`
+      may be faster than `photutils.psf.DAOGroup`.
     """
 
     def __init__(self, crit_separation, min_samples=1, metric='euclidean',
@@ -230,8 +231,9 @@ class DBSCANGroup(GroupStarsBase):
         Returns
         -------
         group_starlist : `~astropy.table.Table`
-            ``starlist`` with an additional column named ``group_id`` whose
-            unique values represent groups of mutually overlapping stars.
+            ``starlist`` with an additional column named ``group_id``
+            whose unique values represent groups of mutually overlapping
+            stars.
         """
 
         from sklearn.cluster import DBSCAN
