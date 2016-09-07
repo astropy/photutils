@@ -44,7 +44,7 @@ class Discrete2DModel(Fittable2DModel):
 
     fillval : float, optional
         The value to be returned by the `evaluate` or
-        :py:func:`~astropy.modeling.Model.__call__` methods
+        ``astropy.modeling.Model.__call__`` methods
         when evaluation is performed outside the definition domain of the
         model.
 
