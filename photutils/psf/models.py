@@ -13,6 +13,7 @@ __all__ = ['Discrete2DModel', 'IntegratedGaussianPRF', 'PRFAdapter',
 __all__ = ['IntegratedGaussianPRF', 'PRFAdapter', 'prepare_psf_model',
            'get_grouped_psf_model']
 
+@pytest.mark.skipif('not HAS_SCIPY')
 class Discrete2DModel(Fittable2DModel):
     """
     A discrete fittable 2D model of an image.
@@ -36,7 +37,7 @@ class Discrete2DModel(Fittable2DModel):
 
     origin : tuple, None, optional
         Origin of the coordinate system in image pixels. Origin indicates where
-        in the image model coordinates `x` and `y` are zero. If `origin` is
+        in the image model coordinates ``x`` and ``y`` are zero. If `origin` is
         `None`, then model's origin will be set to the center of the image.
 
     weights : numpy.ndarray, None, optional
@@ -136,7 +137,7 @@ class Discrete2DModel(Fittable2DModel):
     @property
     def origin(self):
         """
-        A tuple of `x` and `y` coordinates of the origin of the coordinate
+        A tuple of ``x`` and ``y`` coordinates of the origin of the coordinate
         system in terms of pixels of model's image.
 
         When setting the coordinate system origin, a tuple of two `int` or
