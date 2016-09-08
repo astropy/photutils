@@ -576,16 +576,16 @@ def get_grouped_psf_model(template_psf_model, star_group):
     ----------
     template_psf_model : `astropy.modeling.Fittable2DModel` instance
         The model to use for *individual* objects.  Must have parameters named
-        `x_0`, `y_0`, and `flux`.
+        ``x_0``, ``y_0``, and ``flux``.
     star_group : `~astropy.table.Table`
         Table of stars for which the compound PSF will be constructed.  It
-        must have columns named `x_0`, `y_0`, and `flux_0`.
+        must have columns named ``x_0``, ``y_0``, and ``flux_0``.
 
     Returns
     -------
-    group_psf : CompoundModel
-        `CompoundModel` instance which is a sum of the given PSF
-        models.
+    group_psf
+        An `astropy.modeling` ``CompoundModel`` instance which is a sum of the
+        given PSF models.
     """
 
     group_psf = None
