@@ -7,7 +7,8 @@ from astropy.table import Table, vstack, hstack
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import overlap_slices
 from astropy.stats import gaussian_sigma_to_fwhm
-from ..psf import subtract_psf
+from .funcs import subtract_psf
+from .models import get_grouped_psf_model
 from ..aperture import CircularAperture, aperture_photometry
 
 
@@ -337,8 +338,7 @@ class DAOPhotPSFPhotometry(object):
         y, x = np.indices(image.shape)
 
         for n in range(len(star_groups.groups)):
-            group_psf = self.GroupPSF(self.psf_model,
-                                      star_groups.groups[n]).get_model()
+            group_psf = get_grouped_psf_model(self.psf_model, star_groups.groups[n])
             usepixel = np.zeros_like(image, dtype=np.bool)
 
             for row in star_groups.groups[n]:
@@ -407,44 +407,3 @@ class DAOPhotPSFPhotometry(object):
                                [getattr(fit_model, 'flux').value]])
 
         return param_tab
-
-    class GroupPSF(object):
-        """
-        Construct a joint PSF model which consists of a sum of
-        `self.psf_model` whose parameters are given in `star_group`.
-
-        Attributes
-        ----------
-        star_group : `~astropy.table.Table`
-            Table from which the compound PSF will be constructed.  It
-            must have columns named as `x_0`, `y_0`, and `flux_0`.
-        psf_model : `astropy.modeling.Fittable2DModel` instance
-        """
-
-        def __init__(self, psf_model, star_group):
-            self.star_group = star_group
-            self.psf_model = psf_model
-
-        def get_model(self):
-            """
-            Returns
-            -------
-            group_psf : CompoundModel
-                `CompoundModel` instance which is a sum of the given PSF
-                models.
-            """
-
-            group_psf = None
-            for i in range(len(self.star_group)):
-                psf_to_add = self.psf_model.copy()
-                psf_to_add.flux = self.star_group['flux_0'][i]
-                psf_to_add.x_0 = self.star_group['x_0'][i]
-                psf_to_add.y_0 = self.star_group['y_0'][i]
-
-                if group_psf is None:
-                    # this is the first one only
-                    group_psf = psf_to_add
-                else:
-                    group_psf += psf_to_add
-
-            return group_psf

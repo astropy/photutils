@@ -13,7 +13,8 @@ from ..utils import mask_to_mirrored_num
 from ..extern.nddata_compat import extract_array
 
 
-__all__ = ['IntegratedGaussianPRF', 'PRFAdapter', 'prepare_psf_model']
+__all__ = ['IntegratedGaussianPRF', 'PRFAdapter', 'prepare_psf_model',
+           'get_grouped_psf_model']
 
 
 class DiscretePRF(Fittable2DModel):
@@ -564,3 +565,38 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
         outmod.flux = getattr(outmod, fluxname)
 
     return outmod
+
+
+def get_grouped_psf_model(template_psf_model, star_group):
+    """
+    Construct a joint PSF model which consists of a sum of PSF's templated on
+    a specific model, but whose parameters are given by a table of objects.
+
+    Parameters
+    ----------
+    star_group : `~astropy.table.Table`
+        Table of stars for which the compound PSF will be constructed.  It
+        must have columns named `x_0`, `y_0`, and `flux_0`.
+    template_psf_model : `astropy.modeling.Fittable2DModel` instance
+
+    Returns
+    -------
+    group_psf : CompoundModel
+        `CompoundModel` instance which is a sum of the given PSF
+        models.
+    """
+
+    group_psf = None
+    for i in range(len(star_group)):
+        psf_to_add = template_psf_model.copy()
+        psf_to_add.flux = star_group['flux_0'][i]
+        psf_to_add.x_0 = star_group['x_0'][i]
+        psf_to_add.y_0 = star_group['y_0'][i]
+
+        if group_psf is None:
+            # this is the first one only
+            group_psf = psf_to_add
+        else:
+            group_psf += psf_to_add
+
+    return group_psf
