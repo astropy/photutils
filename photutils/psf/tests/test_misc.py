@@ -143,6 +143,7 @@ def test_psf_adapter(moffimg, prepkwargs, tols):
         assert fit_psfmod.psfmodel.amplitude == guess_moffat.amplitude
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_get_grouped_psf_model():
     igp = IntegratedGaussianPRF(sigma=1.2)
     tab = Table(names=['x_0', 'y_0', 'flux_0'], data=[[1, 2], [3, 4], [0.5, 1]])
