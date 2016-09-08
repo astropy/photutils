@@ -8,7 +8,8 @@ from __future__ import division
 import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
-from .. import IntegratedGaussianPRF, prepare_psf_model
+from astropy.table import Table
+from .. import IntegratedGaussianPRF, prepare_psf_model, get_grouped_psf_model
 
 try:
     import scipy
@@ -140,3 +141,16 @@ def test_psf_adapter(moffimg, prepkwargs, tols):
     assert fit_psfmod.psfmodel.alpha == guess_moffat.alpha
     if prepkwargs['fluxname'] is None:
         assert fit_psfmod.psfmodel.amplitude == guess_moffat.amplitude
+
+
+def test_get_grouped_psf_model():
+    igp = IntegratedGaussianPRF(sigma=1.2)
+    tab = Table(names=['x_0', 'y_0', 'flux_0'], data=[[1, 2], [3, 4], [0.5, 1]])
+
+    gpsf = get_grouped_psf_model(igp, tab)
+
+    assert gpsf.x_0_0 == 1
+    assert gpsf.y_0_1 == 4
+    assert gpsf.flux_0 == 0.5
+    assert gpsf.flux_1 == 1
+    assert gpsf.sigma_0 == gpsf.sigma_1 == 1.2
