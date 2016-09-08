@@ -36,10 +36,10 @@ class FittableImageModel2D(Fittable2DModel):
         Array containing 2D image.
 
     origin : tuple, None, optional
-        A reference point in the input image `data` array.
+        A reference point in the input image ``data`` array.
 
         If `origin` represents the location of a feature (e.g., the position
-        of an intensity peak) in the input `data`, then model parameters
+        of an intensity peak) in the input ``data``, then model parameters
         `x_0` and `y_0` show the location of this peak in an another target
         image to which this model was fitted.
 
@@ -53,9 +53,9 @@ class FittableImageModel2D(Fittable2DModel):
         ``sum(normalization_const * data)`` is 1.
 
         Assuming model's data represent a PSF to be fitted to some star,
-        `normalization_const` could be used to account for aperture correction.
-        In this case, best fitted value of the `flux` model parameter will
-        represent an aperture-corrected flux of the star.
+        ``normalization_const`` could be used to account for aperture
+        correction. In this case, best fitted value of the `flux` model
+        parameter will represent an aperture-corrected flux of the star.
 
     fillval : float, optional
         The value to be returned by the `evaluate` or
