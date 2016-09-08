@@ -4,6 +4,7 @@ Models for doing PSF/PRF fitting photometry on image data.
 """
 
 from __future__ import division
+import warnings
 import numpy as np
 from astropy.table import Table
 from astropy.modeling import models, Parameter, Fittable2DModel
@@ -12,27 +13,27 @@ from astropy.nddata.utils import subpixel_indices
 from ..utils import mask_to_mirrored_num
 from ..extern.nddata_compat import extract_array
 
-__all__ = ['Discrete2DModel', 'IntegratedGaussianPRF', 'PRFAdapter',
+__all__ = ['FittableImageModel2D', 'IntegratedGaussianPRF', 'PRFAdapter',
            'prepare_psf_model']
 
 __all__ = ['IntegratedGaussianPRF', 'PRFAdapter', 'prepare_psf_model',
            'get_grouped_psf_model']
 
-class Discrete2DModel(Fittable2DModel):
+class FittableImageModel2D(Fittable2DModel):
     """
-    A discrete fittable 2D model of an image.
+    A fittable 2D model of an image allowing for image intensity scaling
+    and image translations.
 
-    This class stores a discrete 2D image and computes the values at arbitrary
-    locations (including at intra-pixel, fractional positions) within this
-    image using spline interpolation provided by
-    :py:class:`~scipy.interpolate.RectBivariateSpline`. Even though this
-    particular spline interpolator does not support weighted smoothing,
-    :py:class:`Discrete2DModel` can be used to store image weights
-    so that these can be passed to the fitter.
+    This class stores normalized 2D image data and computes the values of
+    the model at arbitrary locations (including at intra-pixel,
+    fractional positions) within this image using spline interpolation
+    provided by :py:class:`~scipy.interpolate.RectBivariateSpline`.
 
     The fittable model provided by this class has three model parameters:
-    total flux of the underlying image, and two shifts along each axis of the
-    image.
+    an image intensity scaling factor (`flux`) which is applied to
+    normalized image, and two positional parameters (`x_0` and `y_0`)
+    indicating the location of a feature in the coordinate grid on which
+    the model is to be evaluated.
 
     Parameters
     ----------
@@ -40,12 +41,26 @@ class Discrete2DModel(Fittable2DModel):
         Array containing 2D image.
 
     origin : tuple, None, optional
-        Origin of the coordinate system in image pixels. Origin indicates where
-        in the image model coordinates ``x`` and ``y`` are zero. If `origin` is
-        `None`, then model's origin will be set to the center of the image.
+        A reference point in the input image `data` array.
 
-    weights : numpy.ndarray, None, optional
-        An array of weights for the corresponding data. [Currently not used]
+        If `origin` represents the location of a feature (e.g., the position
+        of an intensity peak) in the input `data`, then model parameters
+        `x_0` and `y_0` show the location of this peak in an another target
+        image to which this model was fitted.
+
+        Alternatively, when `origin` is set to ``(0,0)``, then model parameters
+        `x_0` and `y_0` are shifts by which model's image should be translated
+        in order to match a target image.
+
+    normalization_const : float, None, optional
+        Normalization constant by which to normalize input image data. If it is
+        `None`, then the normalization constant will be computed such that
+        ``sum(normalization_const * data)`` is 1.
+
+        Assuming model's data represent a PSF to be fitted to some star,
+        `normalization_const` could be used to account for aperture correction.
+        In this case, best fitted value of the `flux` model parameter will
+        represent an aperture-corrected flux of the star.
 
     fillval : float, optional
         The value to be returned by the `evaluate` or
@@ -56,78 +71,74 @@ class Discrete2DModel(Fittable2DModel):
     kwargs : dict, optional
 
         Additional optional keyword arguments to be passed directly to the
-        `compute_interpolator` method. Possible values are:
-
-        - **degree** : int, tuple, optional
-            Degree of the interpolating spline. A tuple can be used to provide
-            different degrees for the X- and Y-axes. Default value is degree=3.
-
-        - **s** : float, optional
-            Non-negative smoothing factor. Default value s=0 corresponds to
-            interpolation.
-            See :py:class:`~scipy.interpolate.RectBivariateSpline` for more
-            details.
+        `compute_interpolator` method. See `compute_interpolator` for more
+        details.
 
     """
-    flux = Parameter(description='Total flux of the image.', default=None)
-    x_0 = Parameter(description='Shift along the X-axis relative to the '
-                    'origin.', default=0.0)
-    y_0 = Parameter(description='Shift along the Y-axis relative to the '
-                    'origin.', default=0.0)
+    flux = Parameter(description='Intensity scaling factor of normalized '
+                     'image data.', default=1.0)
+    x_0 = Parameter(description='X-position of a feature in the image in '
+                    'the output coordinate grid on which the model is '
+                    'evaluated.', default=0.0)
+    y_0 = Parameter(description='Y-position of a feature in the image in '
+                    'the output coordinate grid on which the model is '
+                    'evaluated.', default=0.0)
 
     def __init__(self, data, flux=flux.default,
                  x_0=x_0.default, y_0=y_0.default,
-                 origin=None, weights=None, fillval=0.0, kwargs={}):
-        """
-        """
+                 origin=None, normalization_const=None,
+                 fillval=0.0, kwargs={}):
         self._fillval = fillval
-        self._weights = weights
 
-        # compute flux and normalize data so that sum(data) = 1:
-        tflux = np.sum(data, dtype=np.float64)
-        if tflux == 0.0 or not np.isfinite(tflux):
-            tflux = 1.0
-        if flux is None:
-            flux = tflux
-        self._ndata = data / tflux
+        data = np.asarray(data)
+
+        if not np.all(np.isfinite(data)):
+            raise ValueError("All elements of input 'data' must be finite.")
+
+        if normalization_const is None:
+            # compute normalizization constant so that
+            # sum(normalized_data) = 1:
+            tflux = np.sum(data, dtype=np.float64)
+            if tflux == 0.0 or not np.isfinite(tflux):
+                warnings.warn("Overflow encountered while computing "
+                              "normalization constant. Normalization constant "
+                              "will be set to 1.", RuntimeWarning)
+                tflux = 1.0
+
+            normalization_const = 1.0 / tflux
+
+        else:
+            if normalization_const == 0.0:
+                raise ValueError("'normalizing_constant' must be non-zero.")
+
+        self._normalized_data = normalization_const * data
 
         # set input image related parameters:
         self._ny, self._nx = data.shape
+        self._shape = data.shape
 
-        # find origin of the coordinate system in image's pixel grid:
+        # set the origin of the coordinate system in image's pixel grid:
         self.origin = origin
 
-        super(Discrete2DModel, self).__init__(flux, x_0, y_0)
+        super(FittableImageModel2D, self).__init__(flux, x_0, y_0)
 
         # define interpolating spline:
         self.compute_interpolator(kwargs)
 
     @property
-    def ndata(self):
-        """Normalized model data such that sum of all pixels is 1."""
-        return self._ndata
+    def normalized_data(self):
+        """ Normalized image data defined as ``normalization_const * data``."""
+        return self._normalized_data
 
     @property
-    def data(self):
-        """Model data such that sum of all pixels is equal to flux."""
-        return (self.flux.value * self._ndata)
-
-    @property
-    def weights(self):
-        """
-        Weights of image data. When setting weights, :py:class:`numpy.ndarray`
-        or `None` may be used.
-        """
-        return self._weights
-
-    @weights.setter
-    def weights(self, weights):
-        self._weights = weights
+    def intensity_scaled_data(self):
+        """ Intensity-scaled by a factor of `flux` normalized image data."""
+        return (self.flux.value * self._normalized_data)
 
     @property
     def shape(self):
         """A tuple of dimensions of the data array in numpy style (ny, nx)."""
-        return self._ndata.shape
+        return self._shape
 
     @property
     def nx(self):
@@ -154,28 +165,28 @@ class Discrete2DModel(Fittable2DModel):
             Modifying `origin` will not adjust (modify) model's parameters
             `x_0` and `y_0`.
         """
-        return (self._ox, self._oy)
+        return (self._x_origin, self._y_origin)
 
     @origin.setter
     def origin(self, origin):
         if origin is None:
-            self._ox = (self._nx - 1) / 2.0
-            self._oy = (self._ny - 1) / 2.0
+            self._x_origin = (self._nx - 1) / 2.0
+            self._y_origin = (self._ny - 1) / 2.0
         elif hasattr(origin, '__iter__') and len(origin) == 2:
-            self._ox, self._oy = origin
+            self._x_origin, self._y_origin = origin
         else:
             raise TypeError("Parameter 'origin' must be either None or an "
                             "iterable with two elements.")
 
     @property
-    def ox(self):
+    def x_origin(self):
         """X-coordinate of the origin of the coordinate system."""
-        return self._ox
+        return self._x_origin
 
     @property
-    def oy(self):
+    def y_origin(self):
         """Y-coordinate of the origin of the coordinate system."""
-        return self._oy
+        return self._y_origin
 
     @property
     def fillval(self):
@@ -189,25 +200,13 @@ class Discrete2DModel(Fittable2DModel):
     def fillval(self, fillval):
         self._fillval = fillval
 
-    def recenter(self):
-        """
-        Shift the origin of the coordinate system by amounts indicated by
-        the model parameters `x_0` and `y_0` and set model parameters
-        `x_0` and `y_0` to 0.0.
-
-        """
-        self._ox -= self.x_0.value
-        self._oy -= self.y_0.value
-        self.x_0 = 0.0
-        self.y_0 = 0.0
-
     def compute_interpolator(self, kwargs={}):
         """
         Compute/define the interpolating spline. This function can be overriden
         in a subclass to define custom interpolators.
 
         .. note::
-            When subclassing :py:class:`Discrete2DModel` for the purpose of
+            When subclassing :py:class:`FittableImageModel2D` for the purpose of
             overriding :py:func:`compute_interpolator`, the :py:func:`evaluate`
             may need to overriden as well depending on the behavior of the
             new interpolator.
@@ -260,7 +259,7 @@ class Discrete2DModel(Fittable2DModel):
         x = np.arange(self._nx, dtype=np.float)
         y = np.arange(self._ny, dtype=np.float)
         self.interpolator = RectBivariateSpline(
-            x, y, self._ndata.T, kx=degx, ky=degx, s=smoothness
+            x, y, self._normalized_data.T, kx=degx, ky=degx, s=smoothness
         )
 
     def evaluate(self, x, y, flux, x_0, y_0):
@@ -269,19 +268,19 @@ class Discrete2DModel(Fittable2DModel):
         parameters.
 
         """
-        xi = np.asarray(x, dtype=np.float) + (self._ox - x_0)
-        yi = np.asarray(y, dtype=np.float) + (self._oy - y_0)
+        xi = np.asarray(x, dtype=np.float) + (self._x_origin - x_0)
+        yi = np.asarray(y, dtype=np.float) + (self._y_origin - y_0)
 
-        ipsf = flux * self.interpolator.ev(xi, yi)
+        evaluated_model = flux * self.interpolator.ev(xi, yi)
 
         if self._fillval is not None:
             # find indices of pixels that are outside the input pixel grid and
             # set these pixels to the 'fillval':
             invalid = (((xi < 0) | (xi > self._nx - 1)) |
                        ((yi < 0) | (yi > self._ny - 1)))
-            ipsf[invalid] = self._fillval
+            evaluated_model[invalid] = self._fillval
 
-        return ipsf
+        return evaluated_model
 
 
 class DiscretePRF(Fittable2DModel):
