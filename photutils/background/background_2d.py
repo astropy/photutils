@@ -6,21 +6,13 @@ background rms in a 2D image.
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-from distutils.version import LooseVersion
 from itertools import product
-import warnings
 import numpy as np
 from numpy.lib.index_tricks import index_exp
-from astropy.stats import sigma_clip
 from astropy.utils import lazyproperty
 from .core import SExtractorBackground
 from ..utils import ShepardIDWInterpolator
-
-import astropy
-if LooseVersion(astropy.__version__) < LooseVersion('1.1'):
-    ASTROPY_LT_1P1 = True
-else:
-    ASTROPY_LT_1P1 = False
+from ..extern.sigma_clipping import sigma_clip
 
 
 __all__ = ['BackgroundBase2D', 'Background2D', 'BackgroundIDW2D',
@@ -402,18 +394,10 @@ class BackgroundBase2D(object):
         ``box_size``.
         """
 
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-            if ASTROPY_LT_1P1:
-                self.data_sigclip = sigma_clip(
-                    data2d, sig=self.sigclip_sigma, axis=1,
-                    iters=self.sigclip_iters, cenfunc=np.ma.median,
-                    varfunc=np.ma.var)
-            else:
-                self.data_sigclip = sigma_clip(
-                    data2d, sigma=self.sigclip_sigma, axis=1,
-                    iters=self.sigclip_iters, cenfunc=np.ma.median,
-                    stdfunc=np.std)
+        self.data_sigclip = sigma_clip(
+            data2d, sigma=self.sigclip_sigma, axis=1,
+            iters=self.sigclip_iters, cenfunc=np.ma.median,
+            stdfunc=np.std)
 
         # the number of masked and unmasked pixels in each mesh
         # including *both* the input (and padding) mask and pixels masked
