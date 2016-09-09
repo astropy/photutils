@@ -3,21 +3,15 @@
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-from distutils.version import LooseVersion
 import numpy as np
 from astropy.table import Column, Table
-from astropy.stats import sigma_clipped_stats, gaussian_fwhm_to_sigma
+from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.convolution import Gaussian2DKernel
 from ..segmentation import SegmentationImage
 from ..morphology import cutout_footprint, fit_2dgaussian
 from ..utils.convolution import filter_data
 from ..utils.wcs_helpers import pixel_to_icrs_coords
-
-import astropy
-if LooseVersion(astropy.__version__) < LooseVersion('1.1'):
-    ASTROPY_LT_1P1 = True
-else:
-    ASTROPY_LT_1P1 = False
+from ..extern.sigma_clipping import sigma_clipped_stats
 
 
 __all__ = ['detect_threshold', 'detect_sources', 'find_peaks',
@@ -97,15 +91,9 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
     """
 
     if background is None or error is None:
-        # TODO: remove when astropy 1.1 is released
-        if ASTROPY_LT_1P1:
-            data_mean, data_median, data_std = sigma_clipped_stats(
-                data, mask=mask, mask_val=mask_value, sigma=sigclip_sigma,
-                iters=sigclip_iters)
-        else:
-            data_mean, data_median, data_std = sigma_clipped_stats(
-                data, mask=mask, mask_value=mask_value, sigma=sigclip_sigma,
-                iters=sigclip_iters)
+        data_mean, data_median, data_std = sigma_clipped_stats(
+            data, mask=mask, mask_value=mask_value, sigma=sigclip_sigma,
+            iters=sigclip_iters)
         bkgrd_image = np.zeros_like(data) + data_mean
         bkgrdrms_image = np.zeros_like(data) + data_std
 

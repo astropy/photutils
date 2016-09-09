@@ -8,21 +8,12 @@ the tools in the PSF subpackage.
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-from distutils.version import LooseVersion
 import abc
 import numpy as np
-import warnings
 from astropy.extern import six
 from astropy.utils.misc import InheritDocstrings
-from astropy.utils.exceptions import AstropyUserWarning
-from astropy.stats import sigma_clip
+from ..extern.sigma_clipping import sigma_clip
 from ..extern.stats import mad_std, biweight_location, biweight_midvariance
-
-import astropy
-if LooseVersion(astropy.__version__) < LooseVersion('1.1'):
-    ASTROPY_LT_1P1 = True
-else:
-    ASTROPY_LT_1P1 = False
 
 
 __all__ = ['SigmaClip', 'BackgroundBase', 'BackgroundRMSBase',
@@ -106,19 +97,11 @@ class SigmaClip(object):
         if not self.sigclip:
             return data
 
-        if ASTROPY_LT_1P1:
-            warnings.warn('sigma_lower and sigma_upper will be ignored '
-                          'because they are not supported astropy < 1.1',
-                          AstropyUserWarning)
-            return sigma_clip(data, sig=self.sigma, axis=axis,
-                              iters=self.iters, cenfunc=np.ma.median,
-                              varfunc=np.ma.var)
-        else:
-            return sigma_clip(data, sigma=self.sigma,
-                              sigma_lower=self.sigma_lower,
-                              sigma_upper=self.sigma_upper, axis=axis,
-                              iters=self.iters, cenfunc=np.ma.median,
-                              stdfunc=np.std)
+        return sigma_clip(data, sigma=self.sigma,
+                          sigma_lower=self.sigma_lower,
+                          sigma_upper=self.sigma_upper, axis=axis,
+                          iters=self.iters, cenfunc=np.ma.median,
+                          stdfunc=np.std)
 
 
 @six.add_metaclass(_ABCMetaAndInheritDocstrings)
