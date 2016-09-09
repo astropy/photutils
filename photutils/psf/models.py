@@ -15,10 +15,8 @@ from ..utils import mask_to_mirrored_num
 from ..extern.nddata_compat import extract_array
 
 __all__ = ['FittableImageModel2D', 'IntegratedGaussianPRF', 'PRFAdapter',
-           'prepare_psf_model']
+           'prepare_psf_model', 'get_grouped_psf_model']
 
-__all__ = ['IntegratedGaussianPRF', 'PRFAdapter', 'prepare_psf_model',
-           'get_grouped_psf_model']
 
 class FittableImageModel2D(Fittable2DModel):
     """
