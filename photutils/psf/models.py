@@ -6,7 +6,13 @@ Models for doing PSF/PRF fitting photometry on image data.
 from __future__ import division
 import warnings
 import numpy as np
+import copy
+from astropy.table import Table
 from astropy.modeling import models, Parameter, Fittable2DModel
+from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.nddata.utils import subpixel_indices
+from ..utils import mask_to_mirrored_num
+from ..extern.nddata_compat import extract_array
 
 __all__ = ['FittableImageModel2D', 'IntegratedGaussianPRF', 'PRFAdapter',
            'prepare_psf_model']
@@ -19,16 +25,19 @@ class FittableImageModel2D(Fittable2DModel):
     A fittable 2D model of an image allowing for image intensity scaling
     and image translations.
 
-    This class stores normalized 2D image data and computes the values of
-    the model at arbitrary locations (including at intra-pixel,
+    This class takes 2D image data and computes the
+    values of the model at arbitrary locations (including at intra-pixel,
     fractional positions) within this image using spline interpolation
     provided by :py:class:`~scipy.interpolate.RectBivariateSpline`.
 
     The fittable model provided by this class has three model parameters:
     an image intensity scaling factor (`flux`) which is applied to
-    normalized image, and two positional parameters (`x_0` and `y_0`)
+    (normalized) image, and two positional parameters (`x_0` and `y_0`)
     indicating the location of a feature in the coordinate grid on which
     the model is to be evaluated.
+
+    If this class is initialized with `flux` (intensity scaling factor)
+    set to `None`, then `flux` is be estimated as ``|sum(data)|``.
 
     Parameters
     ----------
@@ -47,15 +56,29 @@ class FittableImageModel2D(Fittable2DModel):
         `x_0` and `y_0` are shifts by which model's image should be translated
         in order to match a target image.
 
-    normalization_const : float, None, optional
-        Normalization constant by which to normalize input image data. If it is
-        `None`, then the normalization constant will be computed such that
-        ``sum(normalization_const * data)`` is 1.
+    normalize : bool, optional
+        Indicates whether or not the model should be build on normalized
+        input image data. If true, then the normalization constant (*N*) is
+        computed so that
 
-        Assuming model's data represent a PSF to be fitted to some star,
-        ``normalization_const`` could be used to account for aperture
-        correction. In this case, best fitted value of the `flux` model
-        parameter will represent an aperture-corrected flux of the star.
+        .. math::
+            N \cdot C \cdot |\Sigma_{i,j}D_{i,j}| = 1,
+
+        where *N* is the normalization constant, *C* is correction factor
+        given by the parameter ``correction_factor``, and :math:`D_{i,j}` are
+        the elements of the input image ``data`` array.
+
+    correction_factor : float, optional
+        A strictly positive number that represents correction that needs to
+        be applied to model's `flux`. This parameter affects the value of
+        the normalization factor (see ``normalize`` for more details).
+
+        A possible application for this parameter is to account for aperture
+        correction. Assuming model's data represent a PSF to be fitted to
+        some target star, we set ``correction_factor`` to the aperture
+        correction that needs to be applied to the model.
+        Then, best fitted value of the `flux` model
+        parameter will represent an aperture-corrected flux of the target star.
 
     fillval : float, optional
         The value to be returned by the `evaluate` or
@@ -70,8 +93,8 @@ class FittableImageModel2D(Fittable2DModel):
         details.
 
     """
-    flux = Parameter(description='Intensity scaling factor of normalized '
-                     'image data.', default=1.0)
+    flux = Parameter(description='Intensity scaling factor for image data.',
+                     default=None)
     x_0 = Parameter(description='X-position of a feature in the image in '
                     'the output coordinate grid on which the model is '
                     'evaluated.', default=0.0)
@@ -81,54 +104,107 @@ class FittableImageModel2D(Fittable2DModel):
 
     def __init__(self, data, flux=flux.default,
                  x_0=x_0.default, y_0=y_0.default,
-                 origin=None, normalization_const=None,
-                 fillval=0.0, kwargs={}):
+                 normalize=False, correction_factor=1.0,
+                 origin=None, fillval=0.0, kwargs={}):
         self._fillval = fillval
 
-        data = np.asarray(data)
+        self._interpolator_kwargs = kwargs
 
-        if not np.all(np.isfinite(data)):
+        if correction_factor <= 0:
+            raise ValueError("'correction_factor' must be strictly positive.")
+        self._correction_factor = correction_factor
+
+        self._data = np.array(data, copy=True, dtype=np.float64)
+
+        if not np.all(np.isfinite(self._data)):
             raise ValueError("All elements of input 'data' must be finite.")
 
-        if normalization_const is None:
-            # compute normalizization constant so that
-            # sum(normalized_data) = 1:
-            tflux = np.sum(data, dtype=np.float64)
-            if tflux == 0.0 or not np.isfinite(tflux):
-                warnings.warn("Overflow encountered while computing "
-                              "normalization constant. Normalization constant "
-                              "will be set to 1.", RuntimeWarning)
-                tflux = 1.0
-
-            normalization_const = 1.0 / tflux
-
-        else:
-            if normalization_const == 0.0:
-                raise ValueError("'normalizing_constant' must be non-zero.")
-
-        self._normalized_data = normalization_const * data
-
         # set input image related parameters:
-        self._ny, self._nx = data.shape
-        self._shape = data.shape
+        self._ny, self._nx = self._data.shape
+        self._shape = self._data.shape
 
         # set the origin of the coordinate system in image's pixel grid:
         self.origin = origin
 
+        self._pix_sum = None
+        self._normalization_constant = 1.0 / correction_factor
+        if flux is None:
+            if self._pix_sum is None:
+                self._pix_sum = np.abs(np.sum(self._data, dtype=np.float64))
+            flux = self._pix_sum
+
+        if normalize:
+            # compute normalization constant so that
+            # N*C*sum(data) = 1:
+            if self._pix_sum is None:
+                self._pix_sum = np.abs(np.sum(self._data, dtype=np.float64))
+            if self._pix_sum != 0.0 and np.isfinite(self._pix_sum):
+                self._normalization_constant /= self._pix_sum
+            else:
+                warnings.warn("Overflow encountered while computing "
+                              "normalization constant.\nNormalization "
+                              "constant will be set to 1/correction_factor.",
+                              RuntimeWarning)
+
+        self._normalized = normalize
+
         super(FittableImageModel2D, self).__init__(flux, x_0, y_0)
 
-        # define interpolating spline:
+        # initialize interpolator:
         self.compute_interpolator(kwargs)
 
     @property
-    def normalized_data(self):
-        """ Normalized image data defined as ``normalization_const * data``."""
-        return self._normalized_data
+    def data(self):
+        """ Get original image data. """
+        return self._data
 
     @property
-    def intensity_scaled_data(self):
-        """ Intensity-scaled by a factor of `flux` normalized image data."""
-        return (self.flux.value * self._normalized_data)
+    def normalized_data(self):
+        """ Get normalized and/or intensity-corrected image data. """
+        return (self._normalization_constant * self._data)
+
+    @property
+    def normalization_constant(self):
+        """ Get normalization constant. """
+        return self._normalization_constant
+
+    @property
+    def normalized(self):
+        """ Check if image model was normalized. """
+        return self._normalized
+
+    @property
+    def correction_factor(self):
+        """
+        Set/Get flux correction factor.
+
+        .. note::
+            When setting correction factor, model's flux will be adjusted
+            such that if this model was a good fit to some target image before,
+            then it will remain a good fit after correction factor change.
+
+        """
+        return self._correction_factor
+
+    @correction_factor.setter
+    def correction_factor(self, correction_factor):
+        old_cf = self._correction_factor
+        self._correction_factor = correction_factor
+        self._normalization_constant = 1.0 / correction_factor
+
+        if self._normalized:
+            # compute normalization constant so that
+            # N*C*sum(data) = 1:
+            if self._pix_sum is None:
+                self._pix_sum = np.abs(np.sum(self._data, dtype=np.float64))
+
+            if self._pix_sum != 0.0 and np.isfinite(self._pix_sum):
+                self._normalization_constant /= self._pix_sum
+
+        # adjust model's flux so that if this model was a good fit to some
+        # target image, then it will remain a good fit after correction factor
+        # change:
+        self.flux *= correction_factor / old_cf
 
     @property
     def shape(self):
@@ -186,7 +262,9 @@ class FittableImageModel2D(Fittable2DModel):
     @property
     def fillval(self):
         """Fill value to be returned for coordinates outside of the domain of
-        definition of the interpolator.
+        definition of the interpolator. If ``fillval`` is `None`, then
+        values outside of the domain of definition are the ones returned
+        by the interpolator.
 
         """
         return self._fillval
@@ -195,21 +273,13 @@ class FittableImageModel2D(Fittable2DModel):
     def fillval(self, fillval):
         self._fillval = fillval
 
+    def _store_interpolator_kwargs(self, kwargs):
+        self._interpolator_kwargs = copy.deepcopy(kwargs)
+
     def compute_interpolator(self, kwargs={}):
         """
         Compute/define the interpolating spline. This function can be overriden
         in a subclass to define custom interpolators.
-
-        .. note::
-            When subclassing :py:class:`FittableImageModel2D` for the purpose of
-            overriding :py:func:`compute_interpolator`, the :py:func:`evaluate`
-            may need to overriden as well depending on the behavior of the
-            new interpolator.
-
-        .. note::
-            Use caution when modifying interpolator's degree or smoothness in a
-            computationally intensive part of the code as it may decrease code
-            performance due to the need to recompute interpolator.
 
         Parameters
         ----------
@@ -227,6 +297,20 @@ class FittableImageModel2D(Fittable2DModel):
                 interpolation.
                 See :py:class:`~scipy.interpolate.RectBivariateSpline` for more
                 details.
+
+        Notes
+        -----
+            * When subclassing :py:class:`FittableImageModel2D` for the
+              purpose of overriding :py:func:`compute_interpolator`,
+              the :py:func:`evaluate` may need to overriden as well depending
+              on the behavior of the new interpolator. In addition, for
+              improved future compatibility, make sure
+              that the overriding method stores keyword arguments ``kwargs``
+              by calling ``_store_interpolator_kwargs`` method.
+
+            * Use caution when modifying interpolator's degree or smoothness in
+              a computationally intensive part of the code as it may decrease
+              code performance due to the need to recompute interpolator.
 
         """
         from scipy.interpolate import RectBivariateSpline
@@ -254,8 +338,10 @@ class FittableImageModel2D(Fittable2DModel):
         x = np.arange(self._nx, dtype=np.float)
         y = np.arange(self._ny, dtype=np.float)
         self.interpolator = RectBivariateSpline(
-            x, y, self._normalized_data.T, kx=degx, ky=degx, s=smoothness
+            x, y, self._data.T, kx=degx, ky=degx, s=smoothness
         )
+
+        self._store_interpolator_kwargs(kwargs)
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """
@@ -266,7 +352,9 @@ class FittableImageModel2D(Fittable2DModel):
         xi = np.asarray(x, dtype=np.float) + (self._x_origin - x_0)
         yi = np.asarray(y, dtype=np.float) + (self._y_origin - y_0)
 
-        evaluated_model = flux * self.interpolator.ev(xi, yi)
+        f = flux * self._normalization_constant
+
+        evaluated_model = f * self.interpolator.ev(xi, yi)
 
         if self._fillval is not None:
             # find indices of pixels that are outside the input pixel grid and
