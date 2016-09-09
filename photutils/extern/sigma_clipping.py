@@ -111,7 +111,7 @@ def sigma_clip(data, sigma=3, sigma_lower=None, sigma_upper=None, iters=5,
     and returns a masked array in which all points that are more than 2
     sample standard deviations from the median are masked::
 
-        >>> from astropy.stats import sigma_clip
+        >>> from photutils.extern.sigma_clipping import sigma_clip
         >>> from numpy.random import randn
         >>> randvar = randn(10000)
         >>> filtered_data = sigma_clip(randvar, sigma=2, iters=5)
@@ -120,7 +120,7 @@ def sigma_clip(data, sigma=3, sigma_lower=None, sigma_upper=None, iters=5,
     relative to the sample *mean*, clips until convergence, and does not
     copy the data::
 
-        >>> from astropy.stats import sigma_clip
+        >>> from photutils.extern.sigma_clipping import sigma_clip
         >>> from numpy.random import randn
         >>> from numpy import mean
         >>> randvar = randn(10000)
@@ -130,7 +130,7 @@ def sigma_clip(data, sigma=3, sigma_lower=None, sigma_upper=None, iters=5,
     This example sigma clips along one axis on a similar distribution
     (with bad points inserted)::
 
-        >>> from astropy.stats import sigma_clip
+        >>> from photutils.extern.sigma_clipping import sigma_clip
         >>> from numpy.random import normal
         >>> from numpy import arange, diag, ones
         >>> data = arange(5) + normal(0., 0.05, (5, 5)) + diag(ones(5))
