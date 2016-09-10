@@ -7,6 +7,7 @@ from __future__ import division
 import warnings
 import numpy as np
 import copy
+from enum import Enum
 from astropy.table import Table
 from astropy.modeling import models, Parameter, Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
@@ -14,8 +15,34 @@ from astropy.nddata.utils import subpixel_indices
 from ..utils import mask_to_mirrored_num
 from ..extern.nddata_compat import extract_array
 
-__all__ = ['FittableImageModel2D', 'IntegratedGaussianPRF', 'PRFAdapter',
+__all__ = ['FittableImageModel2D', 'NormalizationStatus', 'NonNormalizable',
+           'IntegratedGaussianPRF', 'PRFAdapter',
            'prepare_psf_model', 'get_grouped_psf_model']
+
+
+class NormalizationStatus(Enum):
+    """
+    An enumeration used to indicate the normalization status of
+    a :py:class:`FittableImageModel2D` model.
+
+    """
+    Performed = 0
+    """ Model has been successfuly normalized at user's request. """
+
+    Failed = 1
+    """ Attempt to normalize has failed. """
+
+    NotRequested = 2
+    """ User did not request model to be normalized. """
+
+
+class NonNormalizable(Warning):
+    """
+    Used to undicate that a :py:class:`FittableImageModel2D` model is
+    non-normalizable.
+
+    """
+    pass
 
 
 class FittableImageModel2D(Fittable2DModel):
@@ -105,8 +132,8 @@ class FittableImageModel2D(Fittable2DModel):
                  normalize=False, correction_factor=1.0,
                  origin=None, fillval=0.0, kwargs={}):
         self._fillval = fillval
-
-        self._interpolator_kwargs = kwargs
+        self._img_norm = None
+        self._store_interpolator_kwargs(kwargs)
 
         if correction_factor <= 0:
             raise ValueError("'correction_factor' must be strictly positive.")
@@ -120,36 +147,76 @@ class FittableImageModel2D(Fittable2DModel):
         # set input image related parameters:
         self._ny, self._nx = self._data.shape
         self._shape = self._data.shape
+        if self._data.size < 1:
+            raise ValueError("Image data array cannot be zero-sized.")
 
         # set the origin of the coordinate system in image's pixel grid:
         self.origin = origin
 
-        self._pix_sum = None
-        self._normalization_constant = 1.0 / correction_factor
         if flux is None:
-            if self._pix_sum is None:
-                self._pix_sum = np.abs(np.sum(self._data, dtype=np.float64))
-            flux = self._pix_sum
+            self._compute_raw_image_norm()
+            flux = self._img_norm
 
-        if normalize:
-            # compute normalization constant so that
-            # N*C*sum(data) = 1:
-            if self._pix_sum is None:
-                self._pix_sum = np.abs(np.sum(self._data, dtype=np.float64))
-            if self._pix_sum != 0.0 and np.isfinite(self._pix_sum):
-                self._normalization_constant /= self._pix_sum
-            else:
-                warnings.warn("Overflow encountered while computing "
-                              "normalization constant.\nNormalization "
-                              "constant will be set to 1/correction_factor.",
-                              RuntimeWarning)
-
-        self._normalized = normalize
+        self._compute_normalization(normalize)
 
         super(FittableImageModel2D, self).__init__(flux, x_0, y_0)
 
         # initialize interpolator:
         self.compute_interpolator(kwargs)
+
+    def _compute_raw_image_norm(self):
+        """
+        Helper function that computes the inverse normalization factor of the
+        original image data. This quantity is computed as the *absolute value*
+        of the the sum of pixel values. Computation is performed only if this
+        sum has not been previously computed. Otherwise, the existing value is
+        not modified as :py:class:`FittableImageModel2D` does not allow image
+        data to be modified after the object is created.
+
+        .. note::
+            Normally, this function should not be called by the end-user. It
+            is intended to be overriden in a subclass if one desires to change
+            the way the normalization factor is computed.
+
+        """
+        if self._img_norm is None:
+            self._img_norm = np.abs(np.sum(self._data, dtype=np.float64))
+
+    def _compute_normalization(self, normalize):
+        """
+        Helper function that computes the inverse normalization factor of the
+        original image data. This quantity is computed as the *absolute value*
+        of the the sum of pixel values. Computation is performed only if this
+        sum has not been previously computed. Otherwise, the existing value is
+        not modified as :py:class:`FittableImageModel2D` does not allow image
+        data to be modified after the object is created.
+
+        .. note::
+            Normally, this function should not be called by the end-user. It
+            is intended to be overriden in a subclass if one desires to change
+            the way the normalization factor is computed.
+
+        """
+        self._normalization_constant = 1.0 / self._correction_factor
+
+        if normalize:
+            # compute normalization constant so that
+            # N*C*sum(data) = 1:
+            self._compute_raw_image_norm()
+
+            if self._img_norm != 0.0 and np.isfinite(self._img_norm):
+                self._normalization_constant /= self._img_norm
+                self._normalization_status = NormalizationStatus.Performed
+
+            else:
+                warnings.warn("Overflow encountered while computing "
+                              "normalization constant. Normalization "
+                              "constant will be set to 1.", NonNormalizable)
+                self._normalization_constant = 1.0
+                self._normalization_status = NormalizationStatus.Failed
+
+        else:
+            self._normalization_status = NormalizationStatus.NotRequested
 
     @property
     def data(self):
@@ -167,9 +234,9 @@ class FittableImageModel2D(Fittable2DModel):
         return self._normalization_constant
 
     @property
-    def normalized(self):
-        """ Check if image model was normalized. """
-        return self._normalized
+    def normalization_status(self):
+        """ Get normalization status. """
+        return self._normalization_status
 
     @property
     def correction_factor(self):
@@ -178,8 +245,9 @@ class FittableImageModel2D(Fittable2DModel):
 
         .. note::
             When setting correction factor, model's flux will be adjusted
-            such that if this model was a good fit to some target image before,
-            then it will remain a good fit after correction factor change.
+            accordingly such that if this model was a good fit to some target
+            image before, then it will remain a good fit after correction
+            factor change.
 
         """
         return self._correction_factor
@@ -188,16 +256,10 @@ class FittableImageModel2D(Fittable2DModel):
     def correction_factor(self, correction_factor):
         old_cf = self._correction_factor
         self._correction_factor = correction_factor
-        self._normalization_constant = 1.0 / correction_factor
-
-        if self._normalized:
-            # compute normalization constant so that
-            # N*C*sum(data) = 1:
-            if self._pix_sum is None:
-                self._pix_sum = np.abs(np.sum(self._data, dtype=np.float64))
-
-            if self._pix_sum != 0.0 and np.isfinite(self._pix_sum):
-                self._normalization_constant /= self._pix_sum
+        self._compute_normalization(
+            normalize=self._normalization_status
+            is not NormalizationStatus.NotRequested
+        )
 
         # adjust model's flux so that if this model was a good fit to some
         # target image, then it will remain a good fit after correction factor
@@ -273,6 +335,14 @@ class FittableImageModel2D(Fittable2DModel):
 
     def _store_interpolator_kwargs(self, kwargs):
         self._interpolator_kwargs = copy.deepcopy(kwargs)
+
+    @property
+    def interpolator_kwargs(self):
+        """
+        Get current interpolator's arguments used when interpolator was
+        created.
+        """
+        return self._interpolator_kwargs
 
     def compute_interpolator(self, kwargs={}):
         """
