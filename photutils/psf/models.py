@@ -7,7 +7,6 @@ from __future__ import division
 import warnings
 import numpy as np
 import copy
-from enum import Enum
 from astropy.table import Table
 from astropy.modeling import models, Parameter, Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
@@ -15,25 +14,9 @@ from astropy.nddata.utils import subpixel_indices
 from ..utils import mask_to_mirrored_num
 from ..extern.nddata_compat import extract_array
 
-__all__ = ['FittableImageModel2D', 'NormalizationStatus', 'NonNormalizable',
+__all__ = ['FittableImageModel2D', 'NonNormalizable',
            'IntegratedGaussianPRF', 'PRFAdapter',
            'prepare_psf_model', 'get_grouped_psf_model']
-
-
-class NormalizationStatus(Enum):
-    """
-    An enumeration used to indicate the normalization status of
-    a :py:class:`FittableImageModel2D` model.
-
-    """
-    Performed = 0
-    """ Model has been successfuly normalized at user's request. """
-
-    Failed = 1
-    """ Attempt to normalize has failed. """
-
-    NotRequested = 2
-    """ User did not request model to be normalized. """
 
 
 class NonNormalizable(Warning):
@@ -133,6 +116,7 @@ class FittableImageModel2D(Fittable2DModel):
                  origin=None, fillval=0.0, kwargs={}):
         self._fillval = fillval
         self._img_norm = None
+        self._normalization_status = 0 if normalize else 2
         self._store_interpolator_kwargs(kwargs)
 
         if correction_factor <= 0:
@@ -206,17 +190,17 @@ class FittableImageModel2D(Fittable2DModel):
 
             if self._img_norm != 0.0 and np.isfinite(self._img_norm):
                 self._normalization_constant /= self._img_norm
-                self._normalization_status = NormalizationStatus.Performed
+                self._normalization_status = 0
 
             else:
+                self._normalization_constant = 1.0
+                self._normalization_status = 1
                 warnings.warn("Overflow encountered while computing "
                               "normalization constant. Normalization "
                               "constant will be set to 1.", NonNormalizable)
-                self._normalization_constant = 1.0
-                self._normalization_status = NormalizationStatus.Failed
 
         else:
-            self._normalization_status = NormalizationStatus.NotRequested
+            self._normalization_status = 2
 
     @property
     def data(self):
@@ -235,7 +219,15 @@ class FittableImageModel2D(Fittable2DModel):
 
     @property
     def normalization_status(self):
-        """ Get normalization status. """
+        """
+        Get normalization status. Possible status values are:
+
+        - 0: **Performed**. Model has been successfuly normalized at
+          user's request.
+        - 1: **Failed**. Attempt to normalize has failed.
+        - 2: **NotRequested**. User did not request model to be normalized.
+
+        """
         return self._normalization_status
 
     @property
@@ -256,10 +248,7 @@ class FittableImageModel2D(Fittable2DModel):
     def correction_factor(self, correction_factor):
         old_cf = self._correction_factor
         self._correction_factor = correction_factor
-        self._compute_normalization(
-            normalize=self._normalization_status
-            is not NormalizationStatus.NotRequested
-        )
+        self._compute_normalization(normalize=self._normalization_status != 2)
 
         # adjust model's flux so that if this model was a good fit to some
         # target image, then it will remain a good fit after correction factor
