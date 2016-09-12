@@ -5,10 +5,11 @@ import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 from ...datasets.make import make_noise_image
-from ..core import (MeanBackground, MedianBackground, ModeEstimatorBackground,
-                    MMMBackground, SExtractorBackground,
-                    BiweightLocationBackground, StdBackgroundRMS,
-                    MADStdBackgroundRMS, BiweightMidvarianceBackgroundRMS)
+from ..core import (SigmaClip, MeanBackground, MedianBackground,
+                    ModeEstimatorBackground, MMMBackground,
+                    SExtractorBackground, BiweightLocationBackground,
+                    StdBackgroundRMS, MADStdBackgroundRMS,
+                    BiweightMidvarianceBackgroundRMS)
 
 
 BKG = 0.0
@@ -22,10 +23,12 @@ BKG_CLASS = [MeanBackground, MedianBackground, ModeEstimatorBackground,
 RMS_CLASS = [StdBackgroundRMS, MADStdBackgroundRMS,
              BiweightMidvarianceBackgroundRMS]
 
+SIGMA_CLIP = SigmaClip(sigma=3.)
+
 
 @pytest.mark.parametrize('bkg_class', BKG_CLASS)
 def test_background(bkg_class):
-    bkg = bkg_class(sigma=3.0)
+    bkg = bkg_class(sigma_clip=SIGMA_CLIP)
     bkgval = bkg.calc_background(DATA)
     assert not np.ma.isMaskedArray(bkgval)
     assert_allclose(bkgval, BKG, atol=1.e-2)
@@ -34,7 +37,7 @@ def test_background(bkg_class):
 
 @pytest.mark.parametrize('bkg_class', BKG_CLASS)
 def test_background_axis(bkg_class):
-    bkg = bkg_class(sigma=3.0)
+    bkg = bkg_class(sigma_clip=SIGMA_CLIP)
 
     bkg_arr = bkg.calc_background(DATA, axis=0)
     bkgi = []
@@ -53,19 +56,19 @@ def test_background_axis(bkg_class):
 
 def test_sextrator_background_zero_std():
     data = np.ones((100, 100))
-    bkg = SExtractorBackground(sigclip=False)
+    bkg = SExtractorBackground(sigma_clip=None)
     assert_allclose(bkg.calc_background(data), 1.0)
 
 
 def test_sextrator_background_skew():
     data = np.arange(100)
     data[70:] = 1.e7
-    bkg = SExtractorBackground(sigclip=False)
+    bkg = SExtractorBackground(sigma_clip=None)
     assert_allclose(bkg.calc_background(data), np.median(data))
 
 
 @pytest.mark.parametrize('rms_class', RMS_CLASS)
 def test_background_rms(rms_class):
-    bkgrms = rms_class(sigma=3.0)
+    bkgrms = rms_class(sigma_clip=SIGMA_CLIP)
     assert_allclose(bkgrms.calc_background_rms(DATA), STD, atol=1.e-2)
     assert_allclose(bkgrms(DATA), bkgrms.calc_background_rms(DATA))
