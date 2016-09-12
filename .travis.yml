@@ -99,6 +99,9 @@ matrix:
         - os: linux
           env: NUMPY_VERSION=prerelease
 
+    allow_failures:
+      - env: NUMPY_VERSION=prerelease
+
 install:
     - git clone git://github.com/astropy/ci-helpers.git
     - source ci-helpers/travis/setup_conda_$TRAVIS_OS_NAME.sh
