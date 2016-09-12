@@ -61,8 +61,7 @@ class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
 
 class SigmaClip(object):
     """
-    Mixin class to perform sigma clipping for Background and Background
-    RMS classes.
+    Class to perform sigma clipping.
 
     Parameters
     ----------
@@ -82,26 +81,66 @@ class SigmaClip(object):
         The number of iterations to perform sigma clipping, or `None` to
         clip until convergence is achieved (i.e., continue until the
         last iteration clips nothing). Defaults to 5.
+    cenfunc : callable, optional
+        The function used to compute the center for the clipping. Must
+        be a callable that takes in a masked array and outputs the
+        central value. Defaults to the median (`numpy.ma.median`).
+    stdfunc : callable, optional
+        The function used to compute the standard deviation about the
+        center. Must be a callable that takes in a masked array and
+        outputs a width estimator. Masked (rejected) pixels are those
+        where::
+
+             deviation < (-sigma_lower * stdfunc(deviation))
+             deviation > (sigma_upper * stdfunc(deviation))
+
+        where::
+
+            deviation = data - cenfunc(data [,axis=int])
+
+        Defaults to the standard deviation (`numpy.std`).
     """
 
-    def __init__(self, sigclip=True, sigma=3, sigma_lower=None,
-                 sigma_upper=None, iters=5):
-
-        self.sigclip = sigclip
+    def __init__(self, sigma=3, sigma_lower=None, sigma_upper=None, iters=5,
+                 cenfunc=np.ma.median, stdfunc=np.std):
         self.sigma = sigma
         self.sigma_lower = sigma_lower
         self.sigma_upper = sigma_upper
         self.iters = iters
+        self.cenfunc = np.ma.median
+        self.stdfunc = np.std
 
-    def sigma_clip(self, data, axis=None):
-        if not self.sigclip:
-            return data
+    def __call__(self, data, axis=None, copy=True):
+        """
+        Perform sigma clipping on the provided data.
+
+        Parameters
+        ----------
+        data : array-like
+            The data to be sigma clipped.
+        axis : int or `None`, optional
+            If not `None`, clip along the given axis.  For this case,
+            ``axis`` will be passed on to ``cenfunc`` and ``stdfunc``,
+            which are expected to return an array with the axis
+            dimension removed (like the numpy functions).  If `None`,
+            clip over all axes.  Defaults to `None`.
+        copy : bool, optional
+            If `True`, the ``data`` array will be copied.  If `False`,
+            the returned masked array data will contain the same array
+            as ``data``.  Defaults to `True`.
+
+        Returns
+        -------
+        filtered_data : `numpy.ma.MaskedArray`
+            A masked array with the same shape as ``data`` input, where
+            the points rejected by the algorithm have been masked.
+        """
 
         return sigma_clip(data, sigma=self.sigma,
                           sigma_lower=self.sigma_lower,
-                          sigma_upper=self.sigma_upper, axis=axis,
-                          iters=self.iters, cenfunc=np.ma.median,
-                          stdfunc=np.std)
+                          sigma_upper=self.sigma_upper, iters=self.iters,
+                          cenfunc=self.cenfunc, stdfunc=self.stdfunc,
+                          axis=axis, copy=copy)
 
 
 @six.add_metaclass(_ABCMetaAndInheritDocstrings)
