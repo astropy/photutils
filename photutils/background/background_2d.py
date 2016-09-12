@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 This module defines background classes to estimate the 2D background and
-background rms in a 2D image.
+background RMS in a 2D image.
 """
 
 from __future__ import (absolute_import, division, print_function,
@@ -10,9 +10,8 @@ from itertools import product
 import numpy as np
 from numpy.lib.index_tricks import index_exp
 from astropy.utils import lazyproperty
-from .core import SExtractorBackground
+from .core import SigmaClip, SExtractorBackground, StdBackgroundRMS
 from ..utils import ShepardIDWInterpolator
-from ..extern.sigma_clipping import sigma_clip
 
 
 __all__ = ['BackgroundBase2D', 'Background2D', 'BackgroundIDW2D',
@@ -25,7 +24,7 @@ class BackgroundBase2D(object):
     """
     Base class for 2D background classes.
 
-    The background classes estimate the 2D background and background rms
+    The background classes estimate the 2D background and background RMS
     noise in an image.
 
     The background is estimated using sigma-clipped statistics in each
@@ -39,7 +38,7 @@ class BackgroundBase2D(object):
     ----------
     data : array_like
         The 2D array from which to estimate the background and/or
-        background rms map.
+        background RMS map.
 
     box_size : int or array_like (int)
         The box size along each axis.  If ``box_size`` is a scalar then
@@ -60,19 +59,15 @@ class BackgroundBase2D(object):
         interpolation based on the number of masked pixels it contains:
 
             * ``'threshold'``:  exclude meshes that contain less than
-              ``remove_mesh_threshold`` unmasked pixels after the
-              sigma-clipping step.  This is the default.
+              ``remove_mesh_percentile`` percent unmasked pixels.  This
+              is the default.
             * ``'all'``:  exclude meshes that contain all masked pixels
             * ``'any'``:  exclude meshes that contain any masked pixels
 
-        Note that ``'all'`` and ``'any'`` apply only to pixels in the
-        input or padding ``mask``, while ``'threshold'`` also applies to
-        pixels that are rejected via sigma clipping.
-
-    remove_mesh_threshold : int, optional
-        The number of unmasked pixels required in a mesh after the
-        sigma-clipping step in order to use it in estimating the
-        background and background rms.  This parameter is used only if
+    remove_mesh_percentile : int, optional
+        The percent of unmasked pixels required in a mesh after the
+        sigma clipping step in order to use it in estimating the
+        background and background RMS.  This parameter is used only if
         ``remove_mesh='threshold'``.
 
     filter_size : int or array_like (int), optional
@@ -90,7 +85,13 @@ class BackgroundBase2D(object):
         ``filter_threshold``.  Set to `None` to filter all meshes
         (default).
 
-    bkg : callable
+    sigma_clip : `~photutils.background.SigmaClip` instance, optional
+        A `~photutils.background.SigmaClip` object that defines the
+        sigma clipping parameters.  If `None` then no sigma clipping
+        will be performed.  The default is to perform sigma clipping
+        with ``sigma=3.`` and ``iters=5``.
+
+    bkg_estimator : callable, optional
         A callable object (a function or e.g., an instance of any
         `~photutils.background.BackgroundBase` subclass) used to
         estimate the background in each of the meshes.  The callable
@@ -98,9 +99,23 @@ class BackgroundBase2D(object):
         `~numpy.ma.MaskedArray` and have an ``axis`` keyword
         (internally, the background will be calculated along
         ``axis=1``).  The callable object must return a 1D
-        `~numpy.ma.MaskedArray`.  The default is an instance of
-        `~photutils.background.SExtractorBackground` with ``sigma=3.``
-        and ``iters=10``.
+        `~numpy.ma.MaskedArray`.  If ``bkg_estimator`` includes sigma
+        clipping, it will be ignored (use the ``sigma_clip`` keyword to
+        define sigma clipping).  The default is an instance of
+        `~photutils.background.SExtractorBackground`.
+
+    bkgrms_estimator : callable, optional
+        A callable object (a function or e.g., an instance of any
+        `~photutils.background.BackgroundRMSBase` subclass) used to
+        estimate the background RMS in each of the meshes.  The callable
+        object must take in a 2D `~numpy.ndarray` or
+        `~numpy.ma.MaskedArray` and have an ``axis`` keyword
+        (internally, the background RMS will be calculated along
+        ``axis=1``).  The callable object must return a 1D
+        `~numpy.ma.MaskedArray`.  If ``bkgrms_estimator`` includes sigma
+        clipping, it will be ignored (use the ``sigma_clip`` keyword to
+        define sigma clipping).  The default is an instance of
+        `~photutils.background.StdBackgroundRMS`.
 
     edge_method : {'crop', 'pad'}, optional
         The method used to determine how to handle the case where the
@@ -119,9 +134,11 @@ class BackgroundBase2D(object):
     """
 
     def __init__(self, data, box_size, mask=None, remove_mesh='threshold',
-                 remove_mesh_threshold=50, filter_size=(3, 3),
+                 remove_mesh_percentile=0.5, filter_size=(3, 3),
                  filter_threshold=None,
-                 bkg=SExtractorBackground(sigma=3., iters=10),
+                 sigma_clip=SigmaClip(sigma=3., iters=5),
+                 bkg_estimator=SExtractorBackground(sigma_clip=None),
+                 bkgrms_estimator=StdBackgroundRMS(sigma_clip=None),
                  edge_method='crop'):
 
         box_size = np.atleast_1d(box_size)
@@ -135,30 +152,30 @@ class BackgroundBase2D(object):
             if mask.shape != data.shape:
                 raise ValueError('mask and data must have the same shape')
 
-        if (remove_mesh == 'threshold' and
-            (remove_mesh_threshold > self.box_npixels):
-                raise ValueError('remove_mesh_threshold must be smaller '
-                                 'than the number of pixels in a mesh box.')
+        if remove_mesh_percentile < 0 or remove_mesh_percentile > 100:
+            raise ValueError('remove_mesh_percentile must be between 0 and '
+                             '1 (inclusive).')
 
         self.data = data
         self.mask = mask
         self.remove_mesh = remove_mesh
-        self.remove_mesh_threshold = remove_mesh_threshold
+        self.remove_mesh_percentile = remove_mesh_percentile
 
         filter_size = np.atleast_1d(filter_size)
         if len(filter_size) == 1:
             filter_size = np.repeat(filter_size, 2)
         self.filter_size = filter_size
         self.filter_threshold = filter_threshold
-        self.bkg = bkg
         self.edge_method = edge_method
 
+        self.sigma_clip = sigma_clip
+        bkg_estimator.sigma_clip = None
+        bkgrms_estimator.sigma_clip = None
+        self.bkg_estimator = bkg_estimator
+        self.bkgrms_estimator = bkgrms_estimator
+
         self._prepare_data()
-
-        self._sigclip_data()
-
-        self._calc_meshes1d()
-        self._calc_meshes2d()
+        #self._calc_bkg_bkgrms()
 
         # the data coordinates to use when calling an interpolator
         #nx, ny = self.data.shape
@@ -196,10 +213,10 @@ class BackgroundBase2D(object):
 
         ypad = 0
         xpad = 0
-        if self.yextra > 0:
-            ypad = self.box_size[0] - self.yextra
-        if self.xextra > 0:
-            xpad = self.box_size[1] - self.xextra
+        if yextra > 0:
+            ypad = self.box_size[0] - yextra
+        if xextra > 0:
+            xpad = self.box_size[1] - xextra
 
         # pad all edges in approximately equal amounts
         hy0 = ypad // 2
@@ -227,6 +244,8 @@ class BackgroundBase2D(object):
             mask = np.pad(self.mask, pad_width, mode=mode,
                           constant_values=[False])
             mask = np.logical_or(mask, pad_mask)
+        else:
+            mask = False
 
         return np.ma.masked_array(data, mask=mask)
 
@@ -243,12 +262,12 @@ class BackgroundBase2D(object):
             The cropped data and mask as a masked array.
         """
 
-        ny_crop = self.nyboxes * self.box_size[0]
-        nx_crop = self.nxboxes * self.box_size[1]
-        hy0 = ny_crop // 2
-        hy1 = ny_crop - hy0
-        hx0 = nx_crop // 2
-        hx1 = nx_crop - hx0
+        ny_crop = self.nyboxes * self.box_size[1]
+        nx_crop = self.nxboxes * self.box_size[0]
+        hy0 = (self.data.shape[0] - ny_crop) // 2
+        hy1 = hy0 + ny_crop
+        hx0 = (self.data.shape[1] - nx_crop) // 2
+        hx1 = hx0 + nx_crop
         self.data_origin = (hy0, hx0)
 
         crop_slc = index_exp[hy0:hy1, hx0:hx1]
@@ -265,7 +284,7 @@ class BackgroundBase2D(object):
         mesh image of the meshes to use for the background
         interpolation.
 
-        The ``remove_mesh`` and ``remove_mesh_threshold`` keywords
+        The ``remove_mesh`` and ``remove_mesh_percentile`` keywords
         determines which meshes are not used for the background
         interpolation.
 
@@ -299,28 +318,35 @@ class BackgroundBase2D(object):
                 raise ValueError('All meshes are completely masked.')
 
         elif self.remove_mesh == 'threshold':
-            # keep meshes only with at least ``remove_mesh_threshold``
+            # keep meshes only with at least ``remove_mesh_percentile``
             # unmasked pixels
-            mesh_idx = np.where((self.box_npixels - nmasked_mesh) >=
-                                self.remove_mesh_threshold)
+            threshold_npixels = self.remove_mesh_percentile * self.box_npixels
+            mesh_idx = np.where((self.box_npixels - nmasked) >=
+                                threshold_npixels)
             if len(mesh_idx) == 0:
                 raise ValueError('There are no valid meshes available with '
-                                 'at least remove_mesh_threshold unmasked '
-                                 'pixels.')
+                                 'at least remove_mesh_percentile ({0} '
+                                 'percent) unmasked pixels.'
+                                 .format(threshold_npixels))
 
         else:
             raise ValueError('remove_mesh must be "any", "all", or '
                              '"threshold".')
 
-        return mesh_idx
+        return mesh_idx[0]
 
     def _prepare_data(self):
         """
         Prepare the data.
 
         First, pad or crop the 2D data array so that there are an
-        integer number of meshes in both dimensions.
+        integer number of meshes in both dimensions, creating a masked
+        array.
 
+        Then reshape into a different 2D masked array where each row
+        represents the data in a single mesh.  This method also performs
+        a first cut at rejecting certain meshes as specified by the
+        input keywords.
         """
 
         self.nyboxes = self.data.shape[0] // self.box_size[0]
@@ -353,122 +379,96 @@ class BackgroundBase2D(object):
 
         return
 
-
-
-
-
-
-    def _convert_1d_to_2d_mesh(self, data):
+    def _make_2d_array(self, data):
         """
         Convert a 1D array of mesh values to a masked 2D mesh array
-        given the 2D mesh indices ``mesh_yidx`` and ``mesh_xidx``.
+        given the 1D mesh indices ``mesh_idx``.
 
         Parameters
         ----------
         data : 1D `~numpy.ndarray`
-            The 1D array.
+            A 1D array of mesh values.
 
         Returns
         -------
         result : 2D `~numpy.ma.MaskedArray`
-            A 2D masked array.  Pixels not defined in ``mesh_yidx`` and
-            ``mesh_xidx`` are masked.
+            A 2D masked array.  Pixels not defined in ``mesh_idx`` are
+            masked.
         """
 
-        if len(data) != len(self.mesh_yidx):
-            raise ValueError('data and yidx must have the same length')
+        if len(data) != len(self.mesh_idx):
+            raise ValueError('data and mesh_idx must have the same length')
 
-        if self.remove_mesh == '_none':
-            data2d = data.reshape((self.nyboxes, self.nxboxes))
-            mask2d = False
-        else:
-            data2d = np.zeros((self.nyboxes, self.nxboxes))
-            data2d[self.mesh_yidx, self.mesh_xidx] = data
-            mask2d = np.ones_like(data2d).astype(np.bool)
-            mask2d[self.mesh_yidx, self.mesh_xidx] = False
+        data2d = np.zeros(self._mesh_shape)
+        mask2d = np.ones(data2d.shape).astype(np.bool)
+        data2d[self.mesh_yidx, self.mesh_xidx] = data
+        mask2d[self.mesh_yidx, self.mesh_xidx] = False
+
         return np.ma.masked_array(data2d, mask=mask2d)
 
-    def _sigclip_data(self):
-        """
-        Perform sigma clipping on the (masked) data in regions of size
-        ``box_size``.
-        """
-
-        self.data_sigclip = sigma_clip(
-            data2d, sigma=self.sigclip_sigma, axis=1,
-            iters=self.sigclip_iters, cenfunc=np.ma.median,
-            stdfunc=np.std)
-
-        # the number of masked and unmasked pixels in each mesh
-        # including *both* the input (and padding) mask and pixels masked
-        # via sigma clipping
-        nmasked = np.ma.count_masked(self.data_sigclip, axis=1)
-
-        if self.remove_mesh == 'threshold':
-            idx1d = np.where((self.box_npixels - nmasked) >=
-                             self.meshpix_threshold)
-            self.data_sigclip = self.data_sigclip[idx1d]
-            nmasked = nmasked[idx1d]
-            self.mesh_yidx = self.mesh_yidx[idx1d]
-            self.mesh_xidx = self.mesh_xidx[idx1d]
-            if len(self.mesh_yidx) == 0:
-                raise ValueError('There are no valid meshes available.')
-
-        self.nmasked_mesh = self._convert_1d_to_2d_mesh(nmasked)
-        self.nunmasked_mesh = self.box_npixels - self.nmasked_mesh
-        return
-
-    def _calc_meshes1d(self):
-        """
-        Calculate 1D arrays containing the background and background rms
-        estimate in each of the meshes.  The 1D x and y indices of the
-        meshes values with respect to the input ``data`` are also
-        calculated.
-
-        These values can be used with interpolators that require 1D
-        positions and array values (e.g. `ShepardIDWInterpolator').
-        """
-
-        bkg_mesh1d = self.bkg(self.data2d)
-
-        # NOTE: remove_mesh='_none' will return 1D arrays that are
-        # masked for meshes that are completely masked
-        self.background_mesh1d = bkg_mesh1d
-        self.background_rms_mesh1d = np.ma.std(self.data_sigclip, axis=1)
-
-       return
-
-    def _interpolate_meshes(self, mesh1d):
+    def _interpolate_meshes(self, data, n_neighbors=8, eps=0., power=1.,
+                            reg=0.):
         """
         Use IDW interpolation to fill in any masked pixels in the
-        low-resolution 2D mesh background and background rms images.
+        low-resolution 2D mesh background and background RMS images.
 
         This is required to use a regular-grid interpolator to expand
         the low-resolution image to the full size image.
 
         Parameters
         ----------
-        mesh1d : 1D `~numpy.ndarray`
-            A 1D array of the mesh values.
+        data : 1D `~numpy.ndarray`
+            A 1D array of mesh values.
+
+        n_neighbors : int, optional
+            The maximum number of nearest neighbors to use during the
+            interpolation.
+
+        eps : float, optional
+            Set to use approximate nearest neighbors; the kth neighbor
+            is guaranteed to be no further than (1 + ``eps``) times the
+            distance to the real *k*-th nearest neighbor. See
+            `scipy.spatial.cKDTree.query` for further information.
+
+        power : float, optional
+            The power of the inverse distance used for the interpolation
+            weights.  See the Notes section for more details.
+
+        reg : float, optional
+            The regularization parameter. It may be used to control the
+            smoothness of the interpolator. See the Notes section for
+            more details.
 
         Returns
         -------
         result : 2D `~numpy.ndarray`
             A 2D array of the mesh values where masked pixels have been
             filled by IDW interpolation.
-        """
+       """
 
         yx = np.column_stack([self.mesh_yidx, self.mesh_xidx])
         coords = np.array(list(product(range(self.nyboxes),
                                        range(self.nxboxes))))
-        f = ShepardIDWInterpolator(yx, mesh1d)
-        img1d = f(coords, n_neighbors=10, power=1, eps=0.)
-        return img1d.reshape((self.nyboxes, self.nxboxes))
+        f = ShepardIDWInterpolator(yx, data)
+        img1d = f(coords, n_neighbors=n_neighbors, power=power, eps=eps,
+                  reg=reg)
 
-    def _filter_meshes(self, mesh2d):
+        return img1d.reshape(self._mesh_shape)
+
+    def _filter_meshes(self, data):
         """
-        Apply a 2D median filter to the low-resolution 2D meshes,
+        Apply a 2D median filter to the low-resolution 2D mesh,
         including only pixels inside the image at the borders.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            A 2D array of mesh values.
+
+        Returns
+        -------
+        filtered_data : 2D `~numpy.ndarray`
+            The filtered 2D array of mesh values.
         """
 
         from scipy.ndimage import generic_filter
@@ -479,25 +479,28 @@ class BackgroundBase2D(object):
             nanmedian_func = nanmedian
 
         if self.filter_threshold is None:
-            return generic_filter(mesh2d, nanmedian_func,
+            return generic_filter(data, nanmedian_func,
                                   size=self.filter_size, mode='constant',
                                   cval=np.nan)
         else:
             # selectively filter only pixels above ``filter_threshold``
-            data_out = np.copy(mesh2d)
-            for i, j in zip(*np.nonzero(mesh2d > self.filter_threshold)):
+            data_out = np.copy(data)
+            for i, j in zip(*np.nonzero(data > self.filter_threshold)):
                 yfs, xfs = self.filter_size
                 hyfs, hxfs = yfs // 2, xfs // 2
                 y0, y1 = max(i - hyfs, 0), min(i - hyfs + yfs,
-                                               mesh2d.shape[0])
+                                               data.shape[0])
                 x0, x1 = max(j - hxfs, 0), min(j - hxfs + xfs,
-                                               mesh2d.shape[1])
-                data_out[i, j] = np.median(mesh2d[y0:y1, x0:x1])
+                                               data.shape[1])
+                data_out[i, j] = np.median(data[y0:y1, x0:x1])
             return data_out
 
-    def _calc_meshes2d(self):
+    def _calc_bkg_bkgrms(self):
         """
-        Calculate 2D arrays containing the background and background rms
+        Calculate the background and background RMS estimate in each of
+        the meshes.
+
+        Calculate 2D arrays containing the background and background RMS
         estimate in each of the meshes.  The strictly ascending 1D x and
         y indices of the meshes with respect to the input ``data`` are
         also calculated.
@@ -509,25 +512,40 @@ class BackgroundBase2D(object):
         Regular-grid interpolators require a 2D array of values.  Some
         require a 2D meshgrid of x and y.  Other require a strictly
         increasing 1D array of the x and y spans.
+
         """
 
-        self.background_mesh2d = self._interpolate_meshes(
-            self.background_mesh1d)
-        self.background_rms_mesh2d = self._interpolate_meshes(
-            self.background_rms_mesh1d)
+        data_sigclip = self.sigma_clip(self.mesh_data, axis=1)
+
+        # final cut on rejecting meshes
+        idx = self._select_meshes(data_sigclip)
+        data_sigclip = data_sigclip[idx, :]
+        self.mesh_idx = self.mesh_idx[idx]
+
+        self._mesh_shape = (self.nyboxes, self.nxboxes)
+        self.mesh_yidx, self.mesh_xidx = np.unravel_index(self.mesh_idx,
+                                                          self._mesh_shape)
+
+        bkg1d = self.bkg_estimator(data_sigclip, axis=1)
+        bkgrms1d = self.bkgrms_estimator(data_sigclip, axis=1)
+
+        # make the 2D mesh arrays
+        if len(bkg1d) == (self.nxboxes * self.nyboxes):
+            bkg = self._make_2d_mesh(bkg1d)
+            bkgrms = self._make_2d_mesh(bkgrms1d)
+        else:
+            bkg = self._interpolate_meshes(bkg1d)
+            bkgrms = self._interpolate_meshes(bkgrms1d)
+
+        # filter the 2D mesh arrays
         if not np.array_equal(self.filter_size, [1, 1]):
-            self.background_mesh2d = self._filter_meshes(
-                self.background_mesh2d)
-            self.background_rms_mesh2d = self._filter_meshes(
-                self.background_rms_mesh2d)
-            self.background_mesh1d = self.background_mesh2d[
-                self.mesh_yidx, self.mesh_xidx]
-            self.background_rms_mesh1d = self.background_rms_mesh2d[
-                self.mesh_yidx, self.mesh_xidx]
-        self.background_mesh2d_ma = self._convert_1d_to_2d_mesh(
-            self.background_mesh1d)
-        self.background_rms_mesh2d_ma = self._convert_1d_to_2d_mesh(
-            self.background_rms_mesh1d)
+            bkg = self._filter_meshes(self, bkg)
+            bkgrms = self._filter_meshes(self, bkgrms)
+
+        self.background_mesh = bkg
+        self.background_rms_mesh = bkgrms
+
+        return
 
     @lazyproperty
     def background_median(self):
@@ -538,18 +556,18 @@ class BackgroundBase2D(object):
         (i.e., "(M+D) Background: <value>").
         """
 
-        return np.median(self.background_mesh2d)
+        return np.median(self.background_mesh)
 
     @lazyproperty
     def background_rms_median(self):
         """
-        The median value of the low-resolution background rms map.
+        The median value of the low-resolution background RMS map.
 
         This is equivalent to the value `SExtractor`_ prints to stdout
         (i.e., "(M+D) RMS: <value>").
         """
 
-        return np.median(self.background_rms_mesh2d)
+        return np.median(self.background_rms_mesh)
 
     def plot_meshes(self, ax=None, marker='+', color='blue', outlines=False,
                     **kwargs):
@@ -597,18 +615,18 @@ class BackgroundBase2D(object):
 
 class Background2D(BackgroundBase2D):
     """
-    Class to estimate a 2D background and background rms noise in an
+    Class to estimate a 2D background and background RMS noise in an
     image.
 
-    The background and background rms are estimated using sigma-clipped
+    The background and background RMS are estimated using sigma-clipped
     statistics in each mesh of a grid that covers the input ``data`` to
     create a low-resolution background map.
 
     The exact method used to estimate the background in each mesh can be
-    set with the ``method`` parameter.  The background rms in each mesh
+    set with the ``method`` parameter.  The background RMS in each mesh
     is estimated by the sigma-clipped standard deviation.
 
-    This class generates the full-sized background and background rms
+    This class generates the full-sized background and background RMS
     maps from the lower-resolution maps using bicubic spline
     interpolation.
 
@@ -616,7 +634,7 @@ class Background2D(BackgroundBase2D):
     ----------
     data : array_like
         The 2D array from which to estimate the background and/or
-        background rms map.
+        background RMS map.
 
     box_size : int or array_like (int)
         The box size along each axis.  If ``box_size`` is a scalar then
@@ -629,7 +647,7 @@ class Background2D(BackgroundBase2D):
 
     interp_order : int, optional
         The order of the spline interpolation used to resize the
-        low-resolution background and background rms maps.  The value
+        low-resolution background and background RMS maps.  The value
         must be an integer in the range 0-5.  The default is 3 (bicubic
         interpolation).
 
@@ -664,7 +682,7 @@ class Background2D(BackgroundBase2D):
     meshpix_threshold : int, optional
         The number of unmasked pixels required in a mesh after the
         sigma-clipping step in order to use it in estimating the
-        background and background rms.  This parameter is used only if
+        background and background RMS.  This parameter is used only if
         ``remove_masked='threshold'``.
 
     filter_size : int or array_like (int), optional
@@ -771,18 +789,18 @@ class Background2D(BackgroundBase2D):
 
 class BackgroundIDW2D(BackgroundBase2D):
     """
-    Class to estimate a 2D background and background rms noise in an
+    Class to estimate a 2D background and background RMS noise in an
     image.
 
-    The background and background rms are estimated using sigma-clipped
+    The background and background RMS are estimated using sigma-clipped
     statistics in each mesh of a grid that covers the input ``data`` to
     create a low-resolution background map.
 
     The exact method used to estimate the background in each mesh can be
-    set with the ``method`` parameter.  The background rms in each mesh
+    set with the ``method`` parameter.  The background RMS in each mesh
     is estimated by the sigma-clipped standard deviation.
 
-    This class generates the full-sized background and background rms
+    This class generates the full-sized background and background RMS
     maps from the lower-resolution maps using inverse-distance weighting
     (IDW) interpolation.
 
@@ -790,7 +808,7 @@ class BackgroundIDW2D(BackgroundBase2D):
     ----------
     data : array_like
         The 2D array from which to estimate the background and/or
-        background rms map.
+        background RMS map.
 
     box_size : int or array_like (int)
         The box size along each axis.  If ``box_size`` is a scalar then
@@ -842,7 +860,7 @@ class BackgroundIDW2D(BackgroundBase2D):
     meshpix_threshold : int, optional
         The number of unmasked pixels required in a mesh after the
         sigma-clipping step in order to use it in estimating the
-        background and background rms.  This parameter is used only if
+        background and background RMS.  This parameter is used only if
         ``remove_masked='threshold'``.
 
     filter_size : int or array_like (int), optional
