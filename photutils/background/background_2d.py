@@ -175,7 +175,7 @@ class BackgroundBase2D(object):
         self.bkgrms_estimator = bkgrms_estimator
 
         self._prepare_data()
-        #self._calc_bkg_bkgrms()
+        self._calc_bkg_bkgrms()
 
         # the data coordinates to use when calling an interpolator
         #nx, ny = self.data.shape
@@ -455,20 +455,43 @@ class BackgroundBase2D(object):
 
         return img1d.reshape(self._mesh_shape)
 
-    def _filter_meshes(self, data):
+    def _selective_filter(self, data, indices):
         """
-        Apply a 2D median filter to the low-resolution 2D mesh,
-        including only pixels inside the image at the borders.
+        Selectively filter only pixels above ``filter_threshold`` in the
+        background mesh.
+
+        The same pixels are filtered in both the background and
+        background RMS meshes.
 
         Parameters
         ----------
         data : 2D `~numpy.ndarray`
             A 2D array of mesh values.
 
+        indices : 2 tuple of int
+            A tuple of the ``y`` and ``x`` indices of the pixels to
+            filter.
+
         Returns
         -------
         filtered_data : 2D `~numpy.ndarray`
             The filtered 2D array of mesh values.
+        """
+
+        data_out = np.copy(data)
+        for i, j in zip(*indices):
+            yfs, xfs = self.filter_size
+            hyfs, hxfs = yfs // 2, xfs // 2
+            y0, y1 = max(i - hyfs, 0), min(i - hyfs + yfs, data.shape[0])
+            x0, x1 = max(j - hxfs, 0), min(j - hxfs + xfs, data.shape[1])
+            data_out[i, j] = np.median(data[y0:y1, x0:x1])
+
+        return data_out
+
+    def _filter_meshes(self):
+        """
+        Apply a 2D median filter to the low-resolution 2D mesh,
+        including only pixels inside the image at the borders.
         """
 
         from scipy.ndimage import generic_filter
@@ -479,21 +502,22 @@ class BackgroundBase2D(object):
             nanmedian_func = nanmedian
 
         if self.filter_threshold is None:
-            return generic_filter(data, nanmedian_func,
-                                  size=self.filter_size, mode='constant',
-                                  cval=np.nan)
+            # filter the entire arrays
+            self.background_mesh = generic_filter(
+                self.background_mesh, nanmedian_func, size=self.filter_size,
+                mode='constant', cval=np.nan)
+            self.background_rms_mesh = generic_filter(
+                self.background_rms_mesh, nanmedian_func,
+                size=self.filter_size, mode='constant', cval=np.nan)
         else:
-            # selectively filter only pixels above ``filter_threshold``
-            data_out = np.copy(data)
-            for i, j in zip(*np.nonzero(data > self.filter_threshold)):
-                yfs, xfs = self.filter_size
-                hyfs, hxfs = yfs // 2, xfs // 2
-                y0, y1 = max(i - hyfs, 0), min(i - hyfs + yfs,
-                                               data.shape[0])
-                x0, x1 = max(j - hxfs, 0), min(j - hxfs + xfs,
-                                               data.shape[1])
-                data_out[i, j] = np.median(data[y0:y1, x0:x1])
-            return data_out
+            # selectively filter
+            indices = np.nonzero(self.background_mesh > self.filter_threshold)
+            self.background_mesh = self._selective_filter(
+                self.background_mesh, indices)
+            self.background_rms_mesh = self._selective_filter(
+                self.background_rms_mesh, indices)
+
+        return
 
     def _calc_bkg_bkgrms(self):
         """
@@ -531,19 +555,18 @@ class BackgroundBase2D(object):
 
         # make the 2D mesh arrays
         if len(bkg1d) == (self.nxboxes * self.nyboxes):
-            bkg = self._make_2d_mesh(bkg1d)
-            bkgrms = self._make_2d_mesh(bkgrms1d)
+            bkg = self._make_2d_array(bkg1d)
+            bkgrms = self._make_2d_array(bkgrms1d)
         else:
             bkg = self._interpolate_meshes(bkg1d)
             bkgrms = self._interpolate_meshes(bkgrms1d)
 
-        # filter the 2D mesh arrays
-        if not np.array_equal(self.filter_size, [1, 1]):
-            bkg = self._filter_meshes(self, bkg)
-            bkgrms = self._filter_meshes(self, bkgrms)
-
         self.background_mesh = bkg
         self.background_rms_mesh = bkgrms
+
+        # filter the 2D mesh arrays
+        if not np.array_equal(self.filter_size, [1, 1]):
+            self._filter_meshes()
 
         return
 
