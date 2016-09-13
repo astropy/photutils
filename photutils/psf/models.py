@@ -53,12 +53,16 @@ class FittableImageModel2D(Fittable2DModel):
         Array containing 2D image.
 
     origin : tuple, None, optional
-        A reference point in the input image ``data`` array.
+        A reference point in the input image ``data`` array. When origin is
+        `None`, origin will be set at the middle of the image array.
 
         If `origin` represents the location of a feature (e.g., the position
         of an intensity peak) in the input ``data``, then model parameters
         `x_0` and `y_0` show the location of this peak in an another target
-        image to which this model was fitted.
+        image to which this model was fitted. Fundamentally, it is the
+        coordinate in the model's image data that should map to
+        coordinate (`x_0`, `y_0`) of the output coordinate system on which the
+        model is evaluated.
 
         Alternatively, when `origin` is set to ``(0,0)``, then model parameters
         `x_0` and `y_0` are shifts by which model's image should be translated
@@ -88,13 +92,13 @@ class FittableImageModel2D(Fittable2DModel):
         Then, best fitted value of the `flux` model
         parameter will represent an aperture-corrected flux of the target star.
 
-    fillval : float, optional
+    fill_value : float, optional
         The value to be returned by the `evaluate` or
         ``astropy.modeling.Model.__call__`` methods
         when evaluation is performed outside the definition domain of the
         model.
 
-    kwargs : dict, optional
+    ikwargs : dict, optional
 
         Additional optional keyword arguments to be passed directly to the
         `compute_interpolator` method. See `compute_interpolator` for more
@@ -113,11 +117,11 @@ class FittableImageModel2D(Fittable2DModel):
     def __init__(self, data, flux=flux.default,
                  x_0=x_0.default, y_0=y_0.default,
                  normalize=False, correction_factor=1.0,
-                 origin=None, fillval=0.0, kwargs={}):
-        self._fillval = fillval
+                 origin=None, fill_value=0.0, ikwargs={}):
+        self._fill_value = fill_value
         self._img_norm = None
         self._normalization_status = 0 if normalize else 2
-        self._store_interpolator_kwargs(kwargs)
+        self._store_interpolator_kwargs(ikwargs)
 
         if correction_factor <= 0:
             raise ValueError("'correction_factor' must be strictly positive.")
@@ -138,7 +142,8 @@ class FittableImageModel2D(Fittable2DModel):
         self.origin = origin
 
         if flux is None:
-            self._compute_raw_image_norm()
+            if self._img_norm is None:
+                self._img_norm = self._compute_raw_image_norm(self._data)
             flux = self._img_norm
 
         self._compute_normalization(normalize)
@@ -146,25 +151,20 @@ class FittableImageModel2D(Fittable2DModel):
         super(FittableImageModel2D, self).__init__(flux, x_0, y_0)
 
         # initialize interpolator:
-        self.compute_interpolator(kwargs)
+        self.compute_interpolator(ikwargs)
 
-    def _compute_raw_image_norm(self):
+    def _compute_raw_image_norm(self, data):
         """
-        Helper function that computes the inverse normalization factor of the
-        original image data. This quantity is computed as the *absolute value*
-        of the the sum of pixel values. Computation is performed only if this
-        sum has not been previously computed. Otherwise, the existing value is
-        not modified as :py:class:`FittableImageModel2D` does not allow image
-        data to be modified after the object is created.
+        Helper function that computes the uncorrected inverse normalization
+        factor of input image data. This quantity is computed as the
+        *absolute value* of the *sum of all pixel values*.
 
         .. note::
-            Normally, this function should not be called by the end-user. It
-            is intended to be overriden in a subclass if one desires to change
-            the way the normalization factor is computed.
+            This function is intended to be overriden in a subclass if one
+            desires to change the way the normalization factor is computed.
 
         """
-        if self._img_norm is None:
-            self._img_norm = np.abs(np.sum(self._data, dtype=np.float64))
+        return np.abs(np.sum(self._data, dtype=np.float64))
 
     def _compute_normalization(self, normalize):
         """
@@ -186,7 +186,8 @@ class FittableImageModel2D(Fittable2DModel):
         if normalize:
             # compute normalization constant so that
             # N*C*sum(data) = 1:
-            self._compute_raw_image_norm()
+            if self._img_norm is None:
+                self._img_norm = self._compute_raw_image_norm(self._data)
 
             if self._img_norm != 0.0 and np.isfinite(self._img_norm):
                 self._normalization_constant /= self._img_norm
@@ -309,21 +310,25 @@ class FittableImageModel2D(Fittable2DModel):
         return self._y_origin
 
     @property
-    def fillval(self):
+    def fill_value(self):
         """Fill value to be returned for coordinates outside of the domain of
-        definition of the interpolator. If ``fillval`` is `None`, then
+        definition of the interpolator. If ``fill_value`` is `None`, then
         values outside of the domain of definition are the ones returned
         by the interpolator.
 
         """
-        return self._fillval
+        return self._fill_value
 
-    @fillval.setter
-    def fillval(self, fillval):
-        self._fillval = fillval
+    @fill_value.setter
+    def fill_value(self, fill_value):
+        self._fill_value = fill_value
 
-    def _store_interpolator_kwargs(self, kwargs):
-        self._interpolator_kwargs = copy.deepcopy(kwargs)
+    def _store_interpolator_kwargs(self, ikwargs):
+        """
+        This function should be called in a subclass whenever model's
+        interpolator is (re-)computed.
+        """
+        self._interpolator_kwargs = copy.deepcopy(ikwargs)
 
     @property
     def interpolator_kwargs(self):
@@ -333,14 +338,14 @@ class FittableImageModel2D(Fittable2DModel):
         """
         return self._interpolator_kwargs
 
-    def compute_interpolator(self, kwargs={}):
+    def compute_interpolator(self, ikwargs={}):
         """
         Compute/define the interpolating spline. This function can be overriden
         in a subclass to define custom interpolators.
 
         Parameters
         ----------
-        kwargs : dict, optional
+        ikwargs : dict, optional
 
             Additional optional keyword arguments. Possible values are:
 
@@ -362,7 +367,7 @@ class FittableImageModel2D(Fittable2DModel):
               the :py:func:`evaluate` may need to overriden as well depending
               on the behavior of the new interpolator. In addition, for
               improved future compatibility, make sure
-              that the overriding method stores keyword arguments ``kwargs``
+              that the overriding method stores keyword arguments ``ikwargs``
               by calling ``_store_interpolator_kwargs`` method.
 
             * Use caution when modifying interpolator's degree or smoothness in
@@ -372,8 +377,8 @@ class FittableImageModel2D(Fittable2DModel):
         """
         from scipy.interpolate import RectBivariateSpline
 
-        if 'degree' in kwargs:
-            degree = kwargs['degree']
+        if 'degree' in ikwargs:
+            degree = ikwargs['degree']
             if hasattr(degree, '__iter__') and len(degree) == 2:
                 degx = int(degree[0])
                 degy = int(degree[1])
@@ -387,8 +392,8 @@ class FittableImageModel2D(Fittable2DModel):
             degx = 3
             degy = 3
 
-        if 's' in kwargs:
-            smoothness = kwargs['s']
+        if 's' in ikwargs:
+            smoothness = ikwargs['s']
         else:
             smoothness = 0
 
@@ -398,7 +403,7 @@ class FittableImageModel2D(Fittable2DModel):
             x, y, self._data.T, kx=degx, ky=degx, s=smoothness
         )
 
-        self._store_interpolator_kwargs(kwargs)
+        self._store_interpolator_kwargs(ikwargs)
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """
@@ -413,12 +418,12 @@ class FittableImageModel2D(Fittable2DModel):
 
         evaluated_model = f * self.interpolator.ev(xi, yi)
 
-        if self._fillval is not None:
+        if self._fill_value is not None:
             # find indices of pixels that are outside the input pixel grid and
-            # set these pixels to the 'fillval':
+            # set these pixels to the 'fill_value':
             invalid = (((xi < 0) | (xi > self._nx - 1)) |
                        ((yi < 0) | (yi > self._ny - 1)))
-            evaluated_model[invalid] = self._fillval
+            evaluated_model[invalid] = self._fill_value
 
         return evaluated_model
 
