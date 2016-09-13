@@ -29,6 +29,8 @@ New Features
 
   - Added new ``std_blocksum`` function. [#355]
 
+  - Added new ``SigmaClip`` class. [#423]
+
 - ``photutils.datasets``
 
   - Added ``load_irac_psf`` function. [#403]

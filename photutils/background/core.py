@@ -61,8 +61,7 @@ class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
 
 class SigmaClip(object):
     """
-    Mixin class to perform sigma clipping for Background and Background
-    RMS classes.
+    Class to perform sigma clipping.
 
     Parameters
     ----------
@@ -82,33 +81,83 @@ class SigmaClip(object):
         The number of iterations to perform sigma clipping, or `None` to
         clip until convergence is achieved (i.e., continue until the
         last iteration clips nothing). Defaults to 5.
+    cenfunc : callable, optional
+        The function used to compute the center for the clipping. Must
+        be a callable that takes in a masked array and outputs the
+        central value. Defaults to the median (`numpy.ma.median`).
+    stdfunc : callable, optional
+        The function used to compute the standard deviation about the
+        center. Must be a callable that takes in a masked array and
+        outputs a width estimator. Masked (rejected) pixels are those
+        where::
+
+             deviation < (-sigma_lower * stdfunc(deviation))
+             deviation > (sigma_upper * stdfunc(deviation))
+
+        where::
+
+            deviation = data - cenfunc(data [,axis=int])
+
+        Defaults to the standard deviation (`numpy.std`).
     """
 
-    def __init__(self, sigclip=True, sigma=3, sigma_lower=None,
-                 sigma_upper=None, iters=5):
-
-        self.sigclip = sigclip
+    def __init__(self, sigma=3., sigma_lower=None, sigma_upper=None, iters=5,
+                 cenfunc=np.ma.median, stdfunc=np.std):
         self.sigma = sigma
         self.sigma_lower = sigma_lower
         self.sigma_upper = sigma_upper
         self.iters = iters
+        self.cenfunc = np.ma.median
+        self.stdfunc = np.std
 
-    def sigma_clip(self, data, axis=None):
-        if not self.sigclip:
-            return data
+    def __call__(self, data, axis=None, copy=True):
+        """
+        Perform sigma clipping on the provided data.
+
+        Parameters
+        ----------
+        data : array-like
+            The data to be sigma clipped.
+        axis : int or `None`, optional
+            If not `None`, clip along the given axis.  For this case,
+            ``axis`` will be passed on to ``cenfunc`` and ``stdfunc``,
+            which are expected to return an array with the axis
+            dimension removed (like the numpy functions).  If `None`,
+            clip over all axes.  Defaults to `None`.
+        copy : bool, optional
+            If `True`, the ``data`` array will be copied.  If `False`,
+            the returned masked array data will contain the same array
+            as ``data``.  Defaults to `True`.
+
+        Returns
+        -------
+        filtered_data : `numpy.ma.MaskedArray`
+            A masked array with the same shape as ``data`` input, where
+            the points rejected by the algorithm have been masked.
+        """
 
         return sigma_clip(data, sigma=self.sigma,
                           sigma_lower=self.sigma_lower,
-                          sigma_upper=self.sigma_upper, axis=axis,
-                          iters=self.iters, cenfunc=np.ma.median,
-                          stdfunc=np.std)
+                          sigma_upper=self.sigma_upper, iters=self.iters,
+                          cenfunc=self.cenfunc, stdfunc=self.stdfunc,
+                          axis=axis, copy=copy)
 
 
 @six.add_metaclass(_ABCMetaAndInheritDocstrings)
 class BackgroundBase(object):
     """
     Base class for classes that estimate scalar background values.
+
+    Parameters
+    ----------
+    sigma_clip : `SigmaClip` object, optional
+        A `SigmaClip` object that defines the sigma clipping parameters.
+        If `None` then no sigma clipping will be performed.  The default
+        is to perform sigma clipping with ``sigma=3.`` and ``iters=5``.
     """
+
+    def __init__(self, sigma_clip=SigmaClip(sigma=3., iters=5)):
+        self.sigma_clip = sigma_clip
 
     def __call__(self, data, axis=None):
         return self.calc_background(data, axis=axis)
@@ -139,7 +188,17 @@ class BackgroundBase(object):
 class BackgroundRMSBase(object):
     """
     Base class for classes that estimate scalar background rms values.
+
+    Parameters
+    ----------
+    sigma_clip : `SigmaClip` object, optional
+        A `SigmaClip` object that defines the sigma clipping parameters.
+        If `None` then no sigma clipping will be performed.  The default
+        is to perform sigma clipping with ``sigma=3.`` and ``iters=5``.
     """
+
+    def __init__(self, sigma_clip=SigmaClip(sigma=3., iters=5)):
+        self.sigma_clip = sigma_clip
 
     def __call__(self, data, axis=None):
         return self.calc_background_rms(data, axis=axis)
@@ -166,38 +225,27 @@ class BackgroundRMSBase(object):
         """
 
 
-class MeanBackground(BackgroundBase, SigmaClip):
+class MeanBackground(BackgroundBase):
     """
     Class to calculate the background in an array as the (sigma-clipped)
     mean.
 
     Parameters
     ----------
-    sigma : float, optional
-        The number of standard deviations to use for both the lower and
-        upper clipping limit. These limits are overridden by
-        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
-    sigma_lower : float or `None`, optional
-        The number of standard deviations to use as the lower bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    sigma_upper : float or `None`, optional
-        The number of standard deviations to use as the upper bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    iters : int or `None`, optional
-        The number of iterations to perform sigma clipping, or `None` to
-        clip until convergence is achieved (i.e., continue until the
-        last iteration clips nothing). Defaults to 5.
+    sigma_clip : `SigmaClip` object, optional
+        A `SigmaClip` object that defines the sigma clipping parameters.
+        If `None` then no sigma clipping will be performed.  The default
+        is to perform sigma clipping with ``sigma=3.`` and ``iters=5``.
 
     Examples
     --------
-    >>> from photutils import MeanBackground
+    >>> from photutils import SigmaClip, MeanBackground
     >>> data = np.arange(100)
-    >>> bkg = MeanBackground(sigma=3.)
+    >>> sigma_clip = SigmaClip(sigma=3.)
+    >>> bkg = MeanBackground(sigma_clip)
 
     The background value can be calculated by using the
-    ``.calc_background()`` method, e.g.:
+    `calc_background` method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
     >>> print(bkg_value)    # doctest: +FLOAT_CMP
@@ -212,42 +260,33 @@ class MeanBackground(BackgroundBase, SigmaClip):
     """
 
     def calc_background(self, data, axis=None):
+        if self.sigma_clip is not None:
+            data = self.sigma_clip(data, axis=axis)
 
-        return np.ma.mean(self.sigma_clip(data, axis=axis), axis=axis)
+        return np.ma.mean(data, axis=axis)
 
 
-class MedianBackground(BackgroundBase, SigmaClip):
+class MedianBackground(BackgroundBase):
     """
     Class to calculate the background in an array as the (sigma-clipped)
     median.
 
     Parameters
     ----------
-    sigma : float, optional
-        The number of standard deviations to use for both the lower and
-        upper clipping limit. These limits are overridden by
-        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
-    sigma_lower : float or `None`, optional
-        The number of standard deviations to use as the lower bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    sigma_upper : float or `None`, optional
-        The number of standard deviations to use as the upper bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    iters : int or `None`, optional
-        The number of iterations to perform sigma clipping, or `None` to
-        clip until convergence is achieved (i.e., continue until the
-        last iteration clips nothing). Defaults to 5.
+    sigma_clip : `SigmaClip` object, optional
+        A `SigmaClip` object that defines the sigma clipping parameters.
+        If `None` then no sigma clipping will be performed.  The default
+        is to perform sigma clipping with ``sigma=3.`` and ``iters=5``.
 
     Examples
     --------
-    >>> from photutils import MedianBackground
+    >>> from photutils import SigmaClip, MedianBackground
     >>> data = np.arange(100)
-    >>> bkg = MedianBackground(sigma=3.)
+    >>> sigma_clip = SigmaClip(sigma=3.)
+    >>> bkg = MedianBackground(sigma_clip)
 
     The background value can be calculated by using the
-    ``.calc_background()`` method, e.g.:
+    `calc_background` method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
     >>> print(bkg_value)    # doctest: +FLOAT_CMP
@@ -262,11 +301,13 @@ class MedianBackground(BackgroundBase, SigmaClip):
     """
 
     def calc_background(self, data, axis=None):
+        if self.sigma_clip is not None:
+            data = self.sigma_clip(data, axis=axis)
 
-        return _masked_median(self.sigma_clip(data, axis=axis), axis=axis)
+        return _masked_median(data, axis=axis)
 
 
-class ModeEstimatorBackground(BackgroundBase, SigmaClip):
+class ModeEstimatorBackground(BackgroundBase):
     """
     Class to calculate the background in an array using a mode estimator
     of the form ``(median_factor * median) - (mean_factor * mean)``.
@@ -277,32 +318,21 @@ class ModeEstimatorBackground(BackgroundBase, SigmaClip):
         The multiplicative factor for the data median.  Defaults to 3.
     mean_factor : float, optional
         The multiplicative factor for the data mean.  Defaults to 2.
-    sigma : float, optional
-        The number of standard deviations to use for both the lower and
-        upper clipping limit. These limits are overridden by
-        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
-    sigma_lower : float or `None`, optional
-        The number of standard deviations to use as the lower bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    sigma_upper : float or `None`, optional
-        The number of standard deviations to use as the upper bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    iters : int or `None`, optional
-        The number of iterations to perform sigma clipping, or `None` to
-        clip until convergence is achieved (i.e., continue until the
-        last iteration clips nothing). Defaults to 5.
+    sigma_clip : `SigmaClip` object, optional
+        A `SigmaClip` object that defines the sigma clipping parameters.
+        If `None` then no sigma clipping will be performed.  The default
+        is to perform sigma clipping with ``sigma=3.`` and ``iters=5``.
 
     Examples
     --------
-    >>> from photutils import ModeEstimatorBackground
+    >>> from photutils import SigmaClip, ModeEstimatorBackground
     >>> data = np.arange(100)
+    >>> sigma_clip = SigmaClip(sigma=3.)
     >>> bkg = ModeEstimatorBackground(median_factor=3., mean_factor=2.,
-    ...                               sigma=3.)
+    ...                               sigma_clip=sigma_clip)
 
     The background value can be calculated by using the
-    ``.calc_background()`` method, e.g.:
+    `calc_background` method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
     >>> print(bkg_value)    # doctest: +FLOAT_CMP
@@ -317,19 +347,18 @@ class ModeEstimatorBackground(BackgroundBase, SigmaClip):
     """
 
     def __init__(self, median_factor=3., mean_factor=2., **kwargs):
-
         super(ModeEstimatorBackground, self).__init__(**kwargs)
         self.median_factor = median_factor
         self.mean_factor = mean_factor
 
     def calc_background(self, data, axis=None):
-
-        data = self.sigma_clip(data, axis=axis)
+        if self.sigma_clip is not None:
+            data = self.sigma_clip(data, axis=axis)
         return ((self.median_factor * _masked_median(data, axis=axis)) -
                 (self.mean_factor * np.ma.mean(data, axis=axis)))
 
 
-class MMMBackground(ModeEstimatorBackground, SigmaClip):
+class MMMBackground(ModeEstimatorBackground):
     """
     Class to calculate the background in an array using the DAOPHOT MMM
     algorithm.
@@ -339,31 +368,21 @@ class MMMBackground(ModeEstimatorBackground, SigmaClip):
 
     Parameters
     ----------
-    sigma : float, optional
-        The number of standard deviations to use for both the lower and
-        upper clipping limit. These limits are overridden by
-        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
-    sigma_lower : float or `None`, optional
-        The number of standard deviations to use as the lower bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    sigma_upper : float or `None`, optional
-        The number of standard deviations to use as the upper bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    iters : int or `None`, optional
-        The number of iterations to perform sigma clipping, or `None` to
-        clip until convergence is achieved (i.e., continue until the
-        last iteration clips nothing). Defaults to 5.
+    sigma_clip : `SigmaClip` object, optional
+        A `SigmaClip` object that defines the sigma clipping parameters.
+        If `None` then no sigma clipping will be performed.  The default
+        is to perform sigma clipping with ``sigma=3.`` and ``iters=5``.
 
     Examples
     --------
-    >>> from photutils import MMMBackground
+    >>> from photutils import SigmaClip, MMMBackground
     >>> data = np.arange(100)
-    >>> bkg = MMMBackground(sigma=3.)
+    >>> sigma_clip = SigmaClip(sigma=3.)
+    >>> bkg = MMMBackground(sigma_clip=sigma_clip)
 
     The background value can be calculated by using the
-    ``.calc_background()`` method, e.g.:
+    `~photutils.background.core.ModeEstimatorBackground.calc_background`
+    method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
     >>> print(bkg_value)    # doctest: +FLOAT_CMP
@@ -378,13 +397,12 @@ class MMMBackground(ModeEstimatorBackground, SigmaClip):
     """
 
     def __init__(self, **kwargs):
-
         kwargs['median_factor'] = 3.
         kwargs['mean_factor'] = 2.
         super(MMMBackground, self).__init__(**kwargs)
 
 
-class SExtractorBackground(BackgroundBase, SigmaClip):
+class SExtractorBackground(BackgroundBase):
     """
     Class to calculate the background in an array using the
     SExtractor algorithm.
@@ -400,31 +418,20 @@ class SExtractorBackground(BackgroundBase, SigmaClip):
 
     Parameters
     ----------
-    sigma : float, optional
-        The number of standard deviations to use for both the lower and
-        upper clipping limit. These limits are overridden by
-        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
-    sigma_lower : float or `None`, optional
-        The number of standard deviations to use as the lower bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    sigma_upper : float or `None`, optional
-        The number of standard deviations to use as the upper bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    iters : int or `None`, optional
-        The number of iterations to perform sigma clipping, or `None` to
-        clip until convergence is achieved (i.e., continue until the
-        last iteration clips nothing). Defaults to 5.
+    sigma_clip : `SigmaClip` object, optional
+        A `SigmaClip` object that defines the sigma clipping parameters.
+        If `None` then no sigma clipping will be performed.  The default
+        is to perform sigma clipping with ``sigma=3.`` and ``iters=5``.
 
     Examples
     --------
-    >>> from photutils import SExtractorBackground
+    >>> from photutils import SigmaClip, SExtractorBackground
     >>> data = np.arange(100)
-    >>> bkg = SExtractorBackground(sigma=3.)
+    >>> sigma_clip = SigmaClip(sigma=3.)
+    >>> bkg = SExtractorBackground(sigma_clip)
 
     The background value can be calculated by using the
-    ``.calc_background()`` method, e.g.:
+    `calc_background` method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
     >>> print(bkg_value)    # doctest: +FLOAT_CMP
@@ -439,8 +446,9 @@ class SExtractorBackground(BackgroundBase, SigmaClip):
     """
 
     def calc_background(self, data, axis=None):
+        if self.sigma_clip is not None:
+            data = self.sigma_clip(data, axis=axis)
 
-        data = self.sigma_clip(data, axis=axis)
         _median = _masked_median(data, axis=axis)
         _mean = np.ma.mean(data, axis=axis)
         _std = np.ma.std(data, axis=axis)
@@ -458,7 +466,7 @@ class SExtractorBackground(BackgroundBase, SigmaClip):
         return bkg
 
 
-class BiweightLocationBackground(BackgroundBase, SigmaClip):
+class BiweightLocationBackground(BackgroundBase):
     """
     Class to calculate the background in an array using the biweight
     location.
@@ -471,31 +479,20 @@ class BiweightLocationBackground(BackgroundBase, SigmaClip):
     M : float, optional
         Initial guess for the biweight location.  Default value is
         `None`.
-    sigma : float, optional
-        The number of standard deviations to use for both the lower and
-        upper clipping limit. These limits are overridden by
-        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
-    sigma_lower : float or `None`, optional
-        The number of standard deviations to use as the lower bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    sigma_upper : float or `None`, optional
-        The number of standard deviations to use as the upper bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    iters : int or `None`, optional
-        The number of iterations to perform sigma clipping, or `None` to
-        clip until convergence is achieved (i.e., continue until the
-        last iteration clips nothing). Defaults to 5.
+    sigma_clip : `SigmaClip` object, optional
+        A `SigmaClip` object that defines the sigma clipping parameters.
+        If `None` then no sigma clipping will be performed.  The default
+        is to perform sigma clipping with ``sigma=3.`` and ``iters=5``.
 
     Examples
     --------
-    >>> from photutils import BiweightLocationBackground
+    >>> from photutils import SigmaClip, BiweightLocationBackground
     >>> data = np.arange(100)
-    >>> bkg = BiweightLocationBackground(sigma=3.)
+    >>> sigma_clip = SigmaClip(sigma=3.)
+    >>> bkg = BiweightLocationBackground(sigma_clip=sigma_clip)
 
     The background value can be calculated by using the
-    ``.calc_background()`` method, e.g.:
+    `calc_background` method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
     >>> print(bkg_value)    # doctest: +FLOAT_CMP
@@ -510,49 +507,38 @@ class BiweightLocationBackground(BackgroundBase, SigmaClip):
     """
 
     def __init__(self, c=6, M=None, **kwargs):
-
         super(BiweightLocationBackground, self).__init__(**kwargs)
         self.c = c
         self.M = M
 
     def calc_background(self, data, axis=None):
+        if self.sigma_clip is not None:
+            data = self.sigma_clip(data, axis=axis)
 
-        return biweight_location(self.sigma_clip(data, axis=axis), c=self.c,
-                                 M=self.M, axis=axis)
+        return biweight_location(data, c=self.c, M=self.M, axis=axis)
 
 
-class StdBackgroundRMS(BackgroundRMSBase, SigmaClip):
+class StdBackgroundRMS(BackgroundRMSBase):
     """
     Class to calculate the background rms in an array as the
     (sigma-clipped) standard deviation.
 
     Parameters
     ----------
-    sigma : float, optional
-        The number of standard deviations to use for both the lower and
-        upper clipping limit. These limits are overridden by
-        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
-    sigma_lower : float or `None`, optional
-        The number of standard deviations to use as the lower bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    sigma_upper : float or `None`, optional
-        The number of standard deviations to use as the upper bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    iters : int or `None`, optional
-        The number of iterations to perform sigma clipping, or `None` to
-        clip until convergence is achieved (i.e., continue until the
-        last iteration clips nothing). Defaults to 5.
+    sigma_clip : `SigmaClip` object, optional
+        A `SigmaClip` object that defines the sigma clipping parameters.
+        If `None` then no sigma clipping will be performed.  The default
+        is to perform sigma clipping with ``sigma=3.`` and ``iters=5``.
 
     Examples
     --------
-    >>> from photutils import StdBackgroundRMS
+    >>> from photutils import SigmaClip, StdBackgroundRMS
     >>> data = np.arange(100)
-    >>> bkgrms = StdBackgroundRMS(sigma=3.)
+    >>> sigma_clip = SigmaClip(sigma=3.)
+    >>> bkgrms = StdBackgroundRMS(sigma_clip)
 
-    The background rms value can be calculated by using the
-    ``.calc_background_rms()`` method, e.g.:
+    The background value can be calculated by using the
+    `calc_background_rms` method, e.g.:
 
     >>> bkgrms_value = bkgrms.calc_background_rms(data)
     >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
@@ -567,11 +553,13 @@ class StdBackgroundRMS(BackgroundRMSBase, SigmaClip):
     """
 
     def calc_background_rms(self, data, axis=None):
+        if self.sigma_clip is not None:
+            data = self.sigma_clip(data, axis=axis)
 
-        return np.ma.std(self.sigma_clip(data, axis=axis), axis=axis)
+        return np.ma.std(data, axis=axis)
 
 
-class MADStdBackgroundRMS(BackgroundRMSBase, SigmaClip):
+class MADStdBackgroundRMS(BackgroundRMSBase):
     """
     Class to calculate the background rms in an array as using the
     `median absolute deviation (MAD)
@@ -589,31 +577,20 @@ class MADStdBackgroundRMS(BackgroundRMSBase, SigmaClip):
 
     Parameters
     ----------
-    sigma : float, optional
-        The number of standard deviations to use for both the lower and
-        upper clipping limit. These limits are overridden by
-        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
-    sigma_lower : float or `None`, optional
-        The number of standard deviations to use as the lower bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    sigma_upper : float or `None`, optional
-        The number of standard deviations to use as the upper bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    iters : int or `None`, optional
-        The number of iterations to perform sigma clipping, or `None` to
-        clip until convergence is achieved (i.e., continue until the
-        last iteration clips nothing). Defaults to 5.
+    sigma_clip : `SigmaClip` object, optional
+        A `SigmaClip` object that defines the sigma clipping parameters.
+        If `None` then no sigma clipping will be performed.  The default
+        is to perform sigma clipping with ``sigma=3.`` and ``iters=5``.
 
     Examples
     --------
-    >>> from photutils import MADStdBackgroundRMS
+    >>> from photutils import SigmaClip, MADStdBackgroundRMS
     >>> data = np.arange(100)
-    >>> bkgrms = MADStdBackgroundRMS(sigma=3.)
+    >>> sigma_clip = SigmaClip(sigma=3.)
+    >>> bkgrms = MADStdBackgroundRMS(sigma_clip)
 
-    The background rms value can be calculated by using the
-    ``.calc_background_rms()`` method, e.g.:
+    The background value can be calculated by using the
+    `calc_background_rms` method, e.g.:
 
     >>> bkgrms_value = bkgrms.calc_background_rms(data)
     >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
@@ -628,11 +605,13 @@ class MADStdBackgroundRMS(BackgroundRMSBase, SigmaClip):
     """
 
     def calc_background_rms(self, data, axis=None):
+        if self.sigma_clip is not None:
+            data = self.sigma_clip(data, axis=axis)
 
-        return mad_std(self.sigma_clip(data, axis=axis), axis=axis)
+        return mad_std(data, axis=axis)
 
 
-class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase, SigmaClip):
+class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase):
     """
     Class to calculate the background rms in an array as the
     (sigma-clipped) biweight midvariance.
@@ -645,31 +624,20 @@ class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase, SigmaClip):
     M : float, optional
         Initial guess for the biweight location.  Default value is
         `None`.
-    sigma : float, optional
-        The number of standard deviations to use for both the lower and
-        upper clipping limit. These limits are overridden by
-        ``sigma_lower`` and ``sigma_upper``, if input. Defaults to 3.
-    sigma_lower : float or `None`, optional
-        The number of standard deviations to use as the lower bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    sigma_upper : float or `None`, optional
-        The number of standard deviations to use as the upper bound for
-        the clipping limit. If `None` then the value of ``sigma`` is
-        used. Defaults to `None`.
-    iters : int or `None`, optional
-        The number of iterations to perform sigma clipping, or `None` to
-        clip until convergence is achieved (i.e., continue until the
-        last iteration clips nothing). Defaults to 5.
+    sigma_clip : `SigmaClip` object, optional
+        A `SigmaClip` object that defines the sigma clipping parameters.
+        If `None` then no sigma clipping will be performed.  The default
+        is to perform sigma clipping with ``sigma=3.`` and ``iters=5``.
 
     Examples
     --------
-    >>> from photutils import BiweightMidvarianceBackgroundRMS
+    >>> from photutils import SigmaClip, BiweightMidvarianceBackgroundRMS
     >>> data = np.arange(100)
-    >>> bkgrms = BiweightMidvarianceBackgroundRMS(sigma=3.)
+    >>> sigma_clip = SigmaClip(sigma=3.)
+    >>> bkgrms = BiweightMidvarianceBackgroundRMS(sigma_clip=sigma_clip)
 
-    The background rms value can be calculated by using the
-    ``.calc_background_rms()`` method, e.g.:
+    The background value can be calculated by using the
+    `calc_background_rms` method, e.g.:
 
     >>> bkgrms_value = bkgrms.calc_background_rms(data)
     >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
@@ -684,12 +652,12 @@ class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase, SigmaClip):
     """
 
     def __init__(self, c=9.0, M=None, **kwargs):
-
         super(BiweightMidvarianceBackgroundRMS, self).__init__(**kwargs)
         self.c = c
         self.M = M
 
     def calc_background_rms(self, data, axis=None):
+        if self.sigma_clip is not None:
+            data = self.sigma_clip(data, axis=axis)
 
-        return biweight_midvariance(self.sigma_clip(data, axis=axis),
-                                    c=self.c, M=self.M, axis=axis)
+        return biweight_midvariance(data, c=self.c, M=self.M, axis=axis)

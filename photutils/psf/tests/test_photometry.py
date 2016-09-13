@@ -13,8 +13,7 @@ from ...datasets import make_noise_image
 from ..groupstars import DAOGroup
 from ..photometry import DAOPhotPSFPhotometry
 from ...detection import DAOStarFinder
-from ...background import MedianBackground
-from ...background import StdBackgroundRMS
+from ...background import SigmaClip, MedianBackground, StdBackgroundRMS
 
 try:
     import scipy
@@ -37,7 +36,8 @@ def make_fiducial_phot_obj(std=1, sigma_psf=1):
     daofind = DAOStarFinder(threshold=5.0*std,
                             fwhm=sigma_psf*gaussian_sigma_to_fwhm)
     daogroup = DAOGroup(1.5*sigma_psf*gaussian_sigma_to_fwhm)
-    median_bkg = MedianBackground(sigma=3.)
+    sigma_clip = SigmaClip(sigma=3.)
+    median_bkg = MedianBackground(sigma_clip)
     psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
     fitter = LevMarLSQFitter()
     return DAOPhotPSFPhotometry(finder=daofind, group_maker=daogroup,
@@ -98,7 +98,8 @@ def test_complete_photometry_oneiter(sigma_psf, sources):
              make_noise_image(img_shape, type='gaussian', mean=0.,
                               stddev=2., random_state=1))
 
-    bkgrms = StdBackgroundRMS(sigma=3.)
+    sigma_clip = SigmaClip(sigma=3.)
+    bkgrms = StdBackgroundRMS(sigma_clip)
     std = bkgrms(image)
 
     phot_obj = make_fiducial_phot_obj(std, sigma_psf)
