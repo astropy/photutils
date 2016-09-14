@@ -176,18 +176,7 @@ class BackgroundBase2D(object):
 
         self._prepare_data()
         self._calc_bkg_bkgrms()
-
-        # the data coordinates to use when calling an interpolator
-        #nx, ny = self.data.shape
-        #self.data_coords = np.array(list(product(range(ny), range(nx))))
-
-        # define the position arrays used to initialize the final IDW
-        # interpolation
-        #self.y = (self.mesh_yidx * self.box_size[0] +
-        #          (self.box_size[0] - 1) / 2.)
-        #self.x = (self.mesh_xidx * self.box_size[1] +
-        #          (self.box_size[1] - 1) / 2.)
-        #self.yx = np.column_stack([self.y, self.x])
+        self._calc_coordinates()
 
     def _pad_data(self, xextra, yextra):
         """
@@ -230,7 +219,7 @@ class BackgroundBase2D(object):
         # (see https://github.com/numpy/numpy/issues/7112)
         mode = str('constant')
         data = np.pad(self.data, pad_width, mode=mode,
-                      constant_values=[np.nan])
+                      constant_values=[1.e10])
 
         # mask the padded regions
         pad_mask = np.zeros_like(data)
@@ -245,7 +234,7 @@ class BackgroundBase2D(object):
                           constant_values=[False])
             mask = np.logical_or(mask, pad_mask)
         else:
-            mask = False
+            mask = pad_mask
 
         return np.ma.masked_array(data, mask=mask)
 
@@ -305,7 +294,7 @@ class BackgroundBase2D(object):
 
         if self.remove_mesh == 'any':
             # keep meshes that do not have any masked pixels
-            mesh_idx = np.where(nmasked == 0)
+            mesh_idx = np.where(nmasked == 0)[0]
             if len(mesh_idx) == 0:
                 raise ValueError('All meshes contain at least one masked '
                                  'pixel.  Please check your data or try '
@@ -313,16 +302,18 @@ class BackgroundBase2D(object):
 
         elif self.remove_mesh == 'all':
             # keep meshes that are not completely masked
-            mesh_idx = np.where((self.box_npixels - nmasked) != 0)
+            mesh_idx = np.where((self.box_npixels - nmasked) != 0)[0]
             if len(mesh_idx) == 0:
-                raise ValueError('All meshes are completely masked.')
+                raise ValueError('All meshes are completely masked.  '
+                                 'Please check your data or try an '
+                                 'alternate remove_mesh option.')
 
         elif self.remove_mesh == 'threshold':
             # keep meshes only with at least ``remove_mesh_percentile``
             # unmasked pixels
             threshold_npixels = self.remove_mesh_percentile * self.box_npixels
             mesh_idx = np.where((self.box_npixels - nmasked) >=
-                                threshold_npixels)
+                                threshold_npixels)[0]
             if len(mesh_idx) == 0:
                 raise ValueError('There are no valid meshes available with '
                                  'at least remove_mesh_percentile ({0} '
@@ -333,7 +324,7 @@ class BackgroundBase2D(object):
             raise ValueError('remove_mesh must be "any", "all", or '
                              '"threshold".')
 
-        return mesh_idx[0]
+        return mesh_idx
 
     def _prepare_data(self):
         """
@@ -357,6 +348,7 @@ class BackgroundBase2D(object):
         if (xextra + yextra) == 0:
             # no resizing of the data is necessary
             data_ma = np.ma.masked_array(self.data, mask=self.mask)
+            self.data_origin = (0, 0)
         else:
             # pad or crop the data
             if self.edge_method == 'pad':
@@ -542,9 +534,10 @@ class BackgroundBase2D(object):
         data_sigclip = self.sigma_clip(self.mesh_data, axis=1)
 
         # final cut on rejecting meshes
-        idx = self._select_meshes(data_sigclip)
-        data_sigclip = data_sigclip[idx, :]
-        self.mesh_idx = self.mesh_idx[idx]
+        if self.remove_mesh == 'threshold':
+            idx = self._select_meshes(data_sigclip)
+            data_sigclip = data_sigclip[idx, :]
+            self.mesh_idx = self.mesh_idx[idx]
 
         self._mesh_shape = (self.nyboxes, self.nxboxes)
         self.mesh_yidx, self.mesh_xidx = np.unravel_index(self.mesh_idx,
@@ -569,6 +562,24 @@ class BackgroundBase2D(object):
             self._filter_meshes()
 
         return
+
+    def _calc_coordinates(self):
+        """
+        Calculate the coordinates to use when calling an interpolator.
+
+        These are needed for `Background2D` and `BackgroundIDW2D`.
+        """
+
+        # the position coordinates used to initialize an interpolation
+        self.y = (self.mesh_yidx * self.box_size[0] +
+                  (self.box_size[0] - 1) / 2.) + self.data_origin[1]
+        self.x = (self.mesh_xidx * self.box_size[1] +
+                  (self.box_size[1] - 1) / 2.) + self.data_origin[0]
+        self.yx = np.column_stack([self.y, self.x])
+
+        # the position coordinates used when calling an interpolator
+        nx, ny = self.data.shape
+        self.data_coords = np.array(list(product(range(ny), range(nx))))
 
     @lazyproperty
     def background_median(self):
@@ -786,27 +797,27 @@ class Background2D(BackgroundBase2D):
         self.interp_order = interp_order
         self.pad_crop = pad_crop
         self.data_slc = index_exp[0:data.shape[0], 0:data.shape[1]]
-        self.background = self._resize_mesh(self.background_mesh2d)
-        self.background_rms = self._resize_mesh(self.background_rms_mesh2d)
+        self.background = self._resize_mesh(self.background_mesh)
+        self.background_rms = self._resize_mesh(self.background_rms_mesh)
 
-    def _resize_mesh(self, mesh2d):
-        if np.ptp(mesh2d) == 0:
-            return np.zeros_like(self.data) + np.min(mesh2d)
+    def _resize_mesh(self, mesh):
+        if np.ptp(mesh) == 0:
+            return np.zeros_like(self.data) + np.min(mesh)
         else:
             from scipy.ndimage import zoom
             if self.edge_method == 'pad' and self.pad_crop:
                 # matches photutils <= 0.2 Background class
                 zoom_factor = (int(self.nyboxes * self.box_size[0] /
-                                   mesh2d.shape[0]),
+                                   mesh.shape[0]),
                                int(self.nxboxes * self.box_size[1] /
-                                   mesh2d.shape[1]))
-                result = zoom(mesh2d, zoom_factor, order=self.interp_order,
+                                   mesh.shape[1]))
+                result = zoom(mesh, zoom_factor, order=self.interp_order,
                               mode='reflect')
                 return result[self.data_slc]
             else:
-                zoom_factor = (float(self.data.shape[0] / mesh2d.shape[0]),
-                               float(self.data.shape[1] / mesh2d.shape[1]))
-                return zoom(mesh2d, zoom_factor, order=self.interp_order,
+                zoom_factor = (float(self.data.shape[0] / mesh.shape[0]),
+                               float(self.data.shape[1] / mesh.shape[1]))
+                return zoom(mesh, zoom_factor, order=self.interp_order,
                             mode='reflect')
 
 
