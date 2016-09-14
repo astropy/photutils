@@ -54,21 +54,24 @@ class BackgroundBase2D(object):
         value indicates the corresponding element of ``data`` is masked.
         Masked data are excluded from calculations.
 
-    remove_mesh : {'threshold', 'all', 'any'}, optional
-        Determines whether to remove a particular mesh in the background
-        interpolation based on the number of masked pixels it contains:
+    exclude_mesh : {'any', 'threshold', 'all'}, optional
+        Determines whether to exclude a particular mesh in the
+        background interpolation based on the number of masked pixels it
+        contains in the input (e.g. source) ``mask`` or padding mask (if
+        ``edge_method='pad'``):
 
-            * ``'threshold'``:  exclude meshes that contain less than
-              ``remove_mesh_percentile`` percent unmasked pixels.  This
-              is the default.
-            * ``'all'``:  exclude meshes that contain all masked pixels
-            * ``'any'``:  exclude meshes that contain any masked pixels
+            * ``'any'``:  exclude meshes that contain any masked pixels.
+            * ``'threshold'``:  exclude meshes that contain greater than
+              ``exclude_mesh_percentile`` percent masked pixels.
+            * ``'all'``:  exclude meshes that are completely masked.
 
-    remove_mesh_percentile : int, optional
-        The percent of unmasked pixels required in a mesh after the
-        sigma clipping step in order to use it in estimating the
-        background and background RMS.  This parameter is used only if
-        ``remove_mesh='threshold'``.
+    exclude_mesh_percentile : float in the range of [0, 100], optional
+        The percentile of masked pixels in a mesh used as a threshold
+        for determining if the mesh is excluded.  If
+        ``exclude_mesh='threshold'``, then meshes that contain greater
+        than ``exclude_mesh_percentile`` percent masked pixels are
+        excluded.  This parameter is used only if
+        ``exclude_mesh='threshold'``.
 
     filter_size : int or array_like (int), optional
         The window size of the 2D median filter to apply to the
@@ -133,8 +136,8 @@ class BackgroundBase2D(object):
     be a constant image.
     """
 
-    def __init__(self, data, box_size, mask=None, remove_mesh='threshold',
-                 remove_mesh_percentile=0.5, filter_size=(3, 3),
+    def __init__(self, data, box_size, mask=None, exclude_mesh='any',
+                 exclude_mesh_percentile=0.5, filter_size=(3, 3),
                  filter_threshold=None,
                  sigma_clip=SigmaClip(sigma=3., iters=5),
                  bkg_estimator=SExtractorBackground(sigma_clip=None),
@@ -152,14 +155,14 @@ class BackgroundBase2D(object):
             if mask.shape != data.shape:
                 raise ValueError('mask and data must have the same shape')
 
-        if remove_mesh_percentile < 0 or remove_mesh_percentile > 100:
-            raise ValueError('remove_mesh_percentile must be between 0 and '
-                             '1 (inclusive).')
+        if exclude_mesh_percentile < 0 or exclude_mesh_percentile > 100:
+            raise ValueError('exclude_mesh_percentile must be between 0 and '
+                             '100 (inclusive).')
 
         self.data = data
         self.mask = mask
-        self.remove_mesh = remove_mesh
-        self.remove_mesh_percentile = remove_mesh_percentile
+        self.exclude_mesh = exclude_mesh
+        self.exclude_mesh_percentile = exclude_mesh_percentile
 
         filter_size = np.atleast_1d(filter_size)
         if len(filter_size) == 1:
@@ -273,7 +276,7 @@ class BackgroundBase2D(object):
         mesh image of the meshes to use for the background
         interpolation.
 
-        The ``remove_mesh`` and ``remove_mesh_percentile`` keywords
+        The ``exclude_mesh`` and ``exclude_mesh_percentile`` keywords
         determines which meshes are not used for the background
         interpolation.
 
@@ -292,36 +295,37 @@ class BackgroundBase2D(object):
         # the number of masked pixels in each mesh
         nmasked = np.ma.count_masked(data, axis=1)
 
-        if self.remove_mesh == 'any':
+        if self.exclude_mesh == 'any':
             # keep meshes that do not have any masked pixels
             mesh_idx = np.where(nmasked == 0)[0]
             if len(mesh_idx) == 0:
                 raise ValueError('All meshes contain at least one masked '
                                  'pixel.  Please check your data or try '
-                                 'an alternate remove_mesh option.')
+                                 'an alternate exclude_mesh option.')
 
-        elif self.remove_mesh == 'all':
+        elif self.exclude_mesh == 'all':
             # keep meshes that are not completely masked
             mesh_idx = np.where((self.box_npixels - nmasked) != 0)[0]
             if len(mesh_idx) == 0:
                 raise ValueError('All meshes are completely masked.  '
                                  'Please check your data or try an '
-                                 'alternate remove_mesh option.')
+                                 'alternate exclude_mesh option.')
 
-        elif self.remove_mesh == 'threshold':
-            # keep meshes only with at least ``remove_mesh_percentile``
+        elif self.exclude_mesh == 'threshold':
+            # keep meshes only with at least ``exclude_mesh_percentile``
             # unmasked pixels
-            threshold_npixels = self.remove_mesh_percentile * self.box_npixels
+            threshold_npixels = (self.exclude_mesh_percentile *
+                                 self.box_npixels)
             mesh_idx = np.where((self.box_npixels - nmasked) >=
                                 threshold_npixels)[0]
             if len(mesh_idx) == 0:
                 raise ValueError('There are no valid meshes available with '
-                                 'at least remove_mesh_percentile ({0} '
+                                 'at least exclude_mesh_percentile ({0} '
                                  'percent) unmasked pixels.'
                                  .format(threshold_npixels))
 
         else:
-            raise ValueError('remove_mesh must be "any", "all", or '
+            raise ValueError('exclude_mesh must be "any", "all", or '
                              '"threshold".')
 
         return mesh_idx
@@ -532,12 +536,6 @@ class BackgroundBase2D(object):
         """
 
         data_sigclip = self.sigma_clip(self.mesh_data, axis=1)
-
-        # final cut on rejecting meshes
-        if self.remove_mesh == 'threshold':
-            idx = self._select_meshes(data_sigclip)
-            data_sigclip = data_sigclip[idx, :]
-            self.mesh_idx = self.mesh_idx[idx]
 
         self._mesh_shape = (self.nyboxes, self.nxboxes)
         self.mesh_yidx, self.mesh_xidx = np.unravel_index(self.mesh_idx,
