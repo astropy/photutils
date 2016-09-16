@@ -11,24 +11,35 @@ from astropy.table import Table
 from astropy.modeling import models, Parameter, Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import subpixel_indices
+from astropy.utils.exceptions import AstropyWarning
 from ..utils import mask_to_mirrored_num
 from ..extern.nddata_compat import extract_array
 
-__all__ = ['FittableImageModel2D', 'NonNormalizable',
+__all__ = ['FittableImageModel', 'NonNormalizable',
            'IntegratedGaussianPRF', 'PRFAdapter',
            'prepare_psf_model', 'get_grouped_psf_model']
 
 
-class NonNormalizable(Warning):
+try:
+    import scipy
+    HAS_SCIPY = True
+    from distutils.version import LooseVersion
+    SCIPY_VER_GE_014 = (LooseVersion(scipy.version.full_version) >=
+                        LooseVersion('0.14'))
+except ImportError:
+    HAS_SCIPY = False
+
+
+class NonNormalizable(AstropyWarning):
     """
-    Used to undicate that a :py:class:`FittableImageModel2D` model is
+    Used to indicate that a :py:class:`FittableImageModel` model is
     non-normalizable.
 
     """
     pass
 
 
-class FittableImageModel2D(Fittable2DModel):
+class FittableImageModel(Fittable2DModel):
     """
     A fittable 2D model of an image allowing for image intensity scaling
     and image translations.
@@ -74,21 +85,24 @@ class FittableImageModel2D(Fittable2DModel):
         computed so that
 
         .. math::
-            N \cdot C \cdot |\Sigma_{i,j}D_{i,j}| = 1,
+            N \cdot C \cdot \Sigma_{i,j}D_{i,j} = 1,
 
         where *N* is the normalization constant, *C* is correction factor
-        given by the parameter ``correction_factor``, and :math:`D_{i,j}` are
-        the elements of the input image ``data`` array.
+        given by the parameter ``normalization_correction``, and
+        :math:`D_{i,j}` are the elements of the input image ``data`` array.
 
-    correction_factor : float, optional
+    normalization_correction : float, optional
         A strictly positive number that represents correction that needs to
-        be applied to model's `flux`. This parameter affects the value of
-        the normalization factor (see ``normalize`` for more details).
+        be applied to model's data normalization (see *C* in the equation
+        in the comments to ``normalize`` for more details).
 
         A possible application for this parameter is to account for aperture
         correction. Assuming model's data represent a PSF to be fitted to
-        some target star, we set ``correction_factor`` to the aperture
-        correction that needs to be applied to the model.
+        some target star, we set ``normalization_correction`` to the aperture
+        correction that needs to be applied to the model. That is,
+        ``normalization_correction`` in this case should be set to the
+        ratio between the total flux of the PSF (including flux outside model's
+        data) to the flux of model's data.
         Then, best fitted value of the `flux` model
         parameter will represent an aperture-corrected flux of the target star.
 
@@ -116,16 +130,17 @@ class FittableImageModel2D(Fittable2DModel):
 
     def __init__(self, data, flux=flux.default,
                  x_0=x_0.default, y_0=y_0.default,
-                 normalize=False, correction_factor=1.0,
+                 normalize=False, normalization_correction=1.0,
                  origin=None, fill_value=0.0, ikwargs={}):
         self._fill_value = fill_value
         self._img_norm = None
         self._normalization_status = 0 if normalize else 2
         self._store_interpolator_kwargs(ikwargs)
 
-        if correction_factor <= 0:
-            raise ValueError("'correction_factor' must be strictly positive.")
-        self._correction_factor = correction_factor
+        if normalization_correction <= 0:
+            raise ValueError("'normalization_correction' must be strictly "
+                             "positive.")
+        self._normalization_correction = normalization_correction
 
         self._data = np.array(data, copy=True, dtype=np.float64)
 
@@ -148,7 +163,7 @@ class FittableImageModel2D(Fittable2DModel):
 
         self._compute_normalization(normalize)
 
-        super(FittableImageModel2D, self).__init__(flux, x_0, y_0)
+        super(FittableImageModel, self).__init__(flux, x_0, y_0)
 
         # initialize interpolator:
         self.compute_interpolator(ikwargs)
@@ -157,22 +172,22 @@ class FittableImageModel2D(Fittable2DModel):
         """
         Helper function that computes the uncorrected inverse normalization
         factor of input image data. This quantity is computed as the
-        *absolute value* of the *sum of all pixel values*.
+        *sum of all pixel values*.
 
         .. note::
             This function is intended to be overriden in a subclass if one
             desires to change the way the normalization factor is computed.
 
         """
-        return np.abs(np.sum(self._data, dtype=np.float64))
+        return np.sum(self._data, dtype=np.float64)
 
     def _compute_normalization(self, normalize):
         """
         Helper function that computes the inverse normalization factor of the
-        original image data. This quantity is computed as the *absolute value*
-        of the the sum of pixel values. Computation is performed only if this
+        original image data. This quantity is computed as the
+        sum of pixel values. Computation is performed only if this
         sum has not been previously computed. Otherwise, the existing value is
-        not modified as :py:class:`FittableImageModel2D` does not allow image
+        not modified as :py:class:`FittableImageModel` does not allow image
         data to be modified after the object is created.
 
         .. note::
@@ -181,7 +196,7 @@ class FittableImageModel2D(Fittable2DModel):
             the way the normalization factor is computed.
 
         """
-        self._normalization_constant = 1.0 / self._correction_factor
+        self._normalization_constant = 1.0 / self._normalization_correction
 
         if normalize:
             # compute normalization constant so that
@@ -232,7 +247,7 @@ class FittableImageModel2D(Fittable2DModel):
         return self._normalization_status
 
     @property
-    def correction_factor(self):
+    def normalization_correction(self):
         """
         Set/Get flux correction factor.
 
@@ -243,18 +258,18 @@ class FittableImageModel2D(Fittable2DModel):
             factor change.
 
         """
-        return self._correction_factor
+        return self._normalization_correction
 
-    @correction_factor.setter
-    def correction_factor(self, correction_factor):
-        old_cf = self._correction_factor
-        self._correction_factor = correction_factor
+    @normalization_correction.setter
+    def normalization_correction(self, normalization_correction):
+        old_cf = self._normalization_correction
+        self._normalization_correction = normalization_correction
         self._compute_normalization(normalize=self._normalization_status != 2)
 
         # adjust model's flux so that if this model was a good fit to some
         # target image, then it will remain a good fit after correction factor
         # change:
-        self.flux *= correction_factor / old_cf
+        self.flux *= normalization_correction / old_cf
 
     @property
     def shape(self):
@@ -362,7 +377,7 @@ class FittableImageModel2D(Fittable2DModel):
 
         Notes
         -----
-            * When subclassing :py:class:`FittableImageModel2D` for the
+            * When subclassing :py:class:`FittableImageModel` for the
               purpose of overriding :py:func:`compute_interpolator`,
               the :py:func:`evaluate` may need to overriden as well depending
               on the behavior of the new interpolator. In addition, for
@@ -411,12 +426,22 @@ class FittableImageModel2D(Fittable2DModel):
         parameters.
 
         """
-        xi = np.asarray(x, dtype=np.float) + (self._x_origin - x_0)
-        yi = np.asarray(y, dtype=np.float) + (self._y_origin - y_0)
+        xi = np.asarray(x) + (self._x_origin - x_0)
+        yi = np.asarray(y) + (self._y_origin - y_0)
 
         f = flux * self._normalization_constant
 
-        evaluated_model = f * self.interpolator.ev(xi, yi)
+        if SCIPY_VER_GE_014:
+            evaluated_model = f * self.interpolator.ev(xi, yi)
+
+        else:
+            # Flatten x and y arguments in order to evaluate in SCIPY versions
+            # earlier than 0.14.0
+            xi_flat = xi.ravel()
+            yi_flat = yi.ravel()
+            evaluated_model = f * self.interpolator.ev(xi_flat, yi_flat)
+            # reshape evaluated_model to the original shape of x & y arguments:
+            evaluated_model = evaluated_model.reshape(xi.shape)
 
         if self._fill_value is not None:
             # find indices of pixels that are outside the input pixel grid and
