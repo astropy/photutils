@@ -1,9 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+
 import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
+
 from ...datasets.make import make_noise_image
 from ..core import (SigmaClip, MeanBackground, MedianBackground,
                     ModeEstimatorBackground, MMMBackground,
