@@ -183,12 +183,20 @@ class FittableImageModel(Fittable2DModel):
 
     def _compute_normalization(self, normalize):
         """
-        Helper function that computes the inverse normalization factor of the
+        Helper function that computes (corrected) normalization factor of the
         original image data. This quantity is computed as the
-        sum of pixel values. Computation is performed only if this
-        sum has not been previously computed. Otherwise, the existing value is
-        not modified as :py:class:`FittableImageModel` does not allow image
-        data to be modified after the object is created.
+        inverse "raw image norm" (or total "flux" of model's image) corrected
+        by the ``normalization_correction``:
+
+        .. math::
+            N = 1/(\Phi * C),
+
+        where :math:`\Phi` is the "total flux" of model's image as computed
+        by `_compute_raw_image_norm` and *C* is the normalization correction
+        factor. :math:`\Phi` is computed only once if it has not been
+        previously computed. Otherwise, the existing (stored) value of
+        :math:`\Phi` is not modified as :py:class:`FittableImageModel`
+        does not allow image data to be modified after the object is created.
 
         .. note::
             Normally, this function should not be called by the end-user. It
