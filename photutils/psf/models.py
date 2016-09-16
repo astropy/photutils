@@ -120,7 +120,7 @@ class FittableImageModel(Fittable2DModel):
 
     """
     flux = Parameter(description='Intensity scaling factor for image data.',
-                     default=None)
+                     default=1.0)
     x_0 = Parameter(description='X-position of a feature in the image in '
                     'the output coordinate grid on which the model is '
                     'evaluated.', default=0.0)
