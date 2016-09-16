@@ -579,7 +579,10 @@ class Background2D(object):
         "MINIBACK_RMS" background maps in SExtractor, respectively.
         """
 
-        data_sigclip = self.sigma_clip(self.mesh_data, axis=1)
+        if self.sigma_clip is not None:
+            data_sigclip = self.sigma_clip(self.mesh_data, axis=1)
+        else:
+            data_sigclip = self.mesh_data
 
         self._mesh_shape = (self.nyboxes, self.nxboxes)
         self.mesh_yidx, self.mesh_xidx = np.unravel_index(self.mesh_idx,
