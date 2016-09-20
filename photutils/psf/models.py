@@ -56,7 +56,7 @@ class FittableImageModel(Fittable2DModel):
     the model is to be evaluated.
 
     If this class is initialized with `flux` (intensity scaling factor)
-    set to `None`, then `flux` is be estimated as ``|sum(data)|``.
+    set to `None`, then `flux` is be estimated as ``sum(data)``.
 
     Parameters
     ----------
@@ -444,10 +444,15 @@ class FittableImageModel(Fittable2DModel):
 
         else:
             # Flatten x and y arguments in order to evaluate in SCIPY versions
-            # earlier than 0.14.0
+            # earlier than 0.14.0. This essentially replicates the code
+            # in 'RectBivariateSpline.ev()' method in versions >= 0.14.0.
+            if xi.shape != yi.shape:
+                xi, yi = np.broadcast_arrays(xi, yi)
             xi_flat = xi.ravel()
             yi_flat = yi.ravel()
+
             evaluated_model = f * self.interpolator.ev(xi_flat, yi_flat)
+
             # reshape evaluated_model to the original shape of x & y arguments:
             evaluated_model = evaluated_model.reshape(xi.shape)
 

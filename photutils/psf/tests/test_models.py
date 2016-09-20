@@ -13,6 +13,7 @@ except ImportError:
     HAS_SCIPY = False
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_image_model():
     gm = Gaussian2D(x_stddev=3, y_stddev=3)
     xg, yg = np.mgrid[-2:3, -2:3]
