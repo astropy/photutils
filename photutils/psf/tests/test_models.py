@@ -3,6 +3,7 @@ from __future__ import division
 
 import numpy as np
 from astropy.modeling.models import Gaussian2D
+from astropy.tests.helper import pytest
 
 from .. import FittableImageModel
 
