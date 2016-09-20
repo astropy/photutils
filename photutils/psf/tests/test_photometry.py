@@ -11,9 +11,11 @@ from ..models import IntegratedGaussianPRF
 from ...datasets import make_gaussian_sources
 from ...datasets import make_noise_image
 from ..groupstars import DAOGroup
-from ..photometry import DAOPhotPSFPhotometry
+from ..photometry import DAOPhotPSFPhotometry, IterativelySubtractedPSFPhotometry, BasicPSFPhotometry
 from ...detection import DAOStarFinder
 from ...background import SigmaClip, MedianBackground, StdBackgroundRMS
+from ...background import MedianBackground, MMMBackground, SigmaClip
+from ...background import StdBackgroundRMS
 
 try:
     import scipy
@@ -21,15 +23,10 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
-if astropy.__version__ < '1.2':
-    HAS_MIN_ASTROPY = False
-else:
-    HAS_MIN_ASTROPY = True
 
-
-def make_fiducial_phot_obj(std=1, sigma_psf=1):
+def make_psf_photometry_objs(std=1, sigma_psf=1):
     """
-    Produces a baseline DAOPhotPSFPhotometry object which is then
+    Produces baseline photometry objects which are then
     modified as-needed in specific tests below
     """
 
@@ -38,12 +35,37 @@ def make_fiducial_phot_obj(std=1, sigma_psf=1):
     daogroup = DAOGroup(1.5*sigma_psf*gaussian_sigma_to_fwhm)
     sigma_clip = SigmaClip(sigma=3.)
     median_bkg = MedianBackground(sigma_clip)
+    threshold = 5. * std
+    fwhm = sigma_psf * gaussian_sigma_to_fwhm
+    crit_separation = 1.5 * sigma_psf * gaussian_sigma_to_fwhm
+
+    daofind = DAOStarFinder(threshold=threshold, fwhm=fwhm)
+    daogroup = DAOGroup(crit_separation)
+    mode_bkg = MMMBackground()
     psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
     fitter = LevMarLSQFitter()
-    return DAOPhotPSFPhotometry(finder=daofind, group_maker=daogroup,
-                                bkg_estimator=median_bkg,
-                                psf_model=psf_model, fitter=fitter, niters=1,
-                                fitshape=(11, 11))
+    
+    basic_phot_obj = BasicPSFPhotometry(finder=daofind,
+                                        group_maker=daogroup,
+                                        bkg_estimator=mode_bkg,
+                                        psf_model=psf_model,
+                                        fitter=fitter,
+                                        fitshape=(11, 11))
+
+    
+    iter_phot_obj = IterativelySubtractedPSFPhotometry(finder=daofind,
+                                                       group_maker=daogroup,
+                                                       bkg_estimator=mode_bkg,
+                                                       psf_model=psf_model,
+                                                       fitter=fitter, niters=1,
+                                                       fitshape=(11, 11))
+
+    dao_phot_obj = DAOPhotPSFPhotometry(crit_separation=crit_separation,
+                                        threshold=threshold, fwhm=fwhm,
+                                        psf_model=psf_model, fitshape=(11, 11),
+                                        niters=1)
+
+    return (basic_phot_obj, iter_phot_obj, dao_phot_obj)
 
 
 sigma_psfs = []
@@ -74,7 +96,7 @@ sources2['id'] = [1, 2, 3, 4]
 sources2['group_id'] = [1, 1, 1, 1]
 
 
-@pytest.mark.xfail('not HAS_SCIPY or not HAS_MIN_ASTROPY')
+@pytest.mark.xfail('not HAS_SCIPY')
 @pytest.mark.parametrize("sigma_psf, sources",
                          [(sigma_psfs[0], sources1),
                           (sigma_psfs[1], sources2),
@@ -82,7 +104,7 @@ sources2['group_id'] = [1, 1, 1, 1]
                           # PSFs are the wrong shape
                           pytest.mark.xfail((sigma_psfs[0]/1.2, sources1)),
                           pytest.mark.xfail((sigma_psfs[1]*1.2, sources2))])
-def test_complete_photometry_oneiter(sigma_psf, sources):
+def test_psf_photometry_oneiter(sigma_psf, sources):
     """
     Tests in an image with a group of two overlapped stars and an
     isolated one.
@@ -97,92 +119,97 @@ def test_complete_photometry_oneiter(sigma_psf, sources):
                               random_state=1) +
              make_noise_image(img_shape, type='gaussian', mean=0.,
                               stddev=2., random_state=1))
-
-    sigma_clip = SigmaClip(sigma=3.)
+    cp_image = image.copy()
+    
+    sigma_clip = SigmaClip(sigma=3.) 
     bkgrms = StdBackgroundRMS(sigma_clip)
     std = bkgrms(image)
+    phot_objs = make_psf_photometry_objs(std, sigma_psf)
 
-    phot_obj = make_fiducial_phot_obj(std, sigma_psf)
+    for phot_proc in phot_objs:
+        result_tab = phot_proc(image)
+        residual_image = phot_proc.get_residual_image()
+        assert_allclose(result_tab['x_fit'], sources['x_mean'], rtol=1e-1)
+        assert_allclose(result_tab['y_fit'], sources['y_mean'], rtol=1e-1)
+        assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
+        assert_array_equal(result_tab['id'], sources['id'])
+        assert_array_equal(result_tab['group_id'], sources['group_id'])
+        assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
+    
+        # test fixed photometry
+        phot_proc.psf_model.x_0.fixed = True
+        phot_proc.psf_model.y_0.fixed = True
 
-    result_tab, residual_image = phot_obj(image)
+        pos = Table(names=['x_0', 'y_0'], data=[sources['x_mean'],
+                                                sources['y_mean']])
+        result_tab = phot_proc(image, pos)
+        residual_image = phot_proc.get_residual_image()
 
-    assert_allclose(result_tab['x_fit'], sources['x_mean'], rtol=1e-1)
-    assert_allclose(result_tab['y_fit'], sources['y_mean'], rtol=1e-1)
-    assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
-    assert_array_equal(result_tab['id'], sources['id'])
-    assert_array_equal(result_tab['group_id'], sources['group_id'])
-    assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
+        assert_array_equal(result_tab['x_fit'], sources['x_mean'])
+        assert_array_equal(result_tab['y_fit'], sources['y_mean'])
+        assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
+        assert_array_equal(result_tab['id'], sources['id'])
+        assert_array_equal(result_tab['group_id'], sources['group_id'])
+        assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
 
-    # test fixed photometry
-    phot_obj.psf_model.x_0.fixed = True
-    phot_obj.psf_model.y_0.fixed = True
+        # make sure image is note overwritten
+        assert_array_equal(cp_image, image)
 
-    # setting the finder to None is not strictly needed, but is a good test
-    # to make sure fixed photometry doesn't try to use the star-finder
-    phot_obj.finder = None
-
-    pos = Table(names=['x_0', 'y_0'], data=[sources['x_mean'],
-                                            sources['y_mean']])
-    result_tab, residual_image = phot_obj(image, pos)
-
-    assert_array_equal(result_tab['x_fit'], sources['x_mean'])
-    assert_array_equal(result_tab['y_fit'], sources['y_mean'])
-    assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
-    assert_array_equal(result_tab['id'], sources['id'])
-    assert_array_equal(result_tab['group_id'], sources['group_id'])
-    assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
+        # resets fixed positions
+        phot_proc.psf_model.x_0.fixed = False
+        phot_proc.psf_model.y_0.fixed = False
 
 
-@pytest.mark.xfail('not HAS_SCIPY or not HAS_MIN_ASTROPY')
+@pytest.mark.xfail('not HAS_SCIPY')
 def test_niters_exceptions():
-    phot_obj = make_fiducial_phot_obj()
+    iter_phot_obj = make_psf_photometry_objs()[1]
 
     # tests that niters is set to an integer even if the user inputs
     # a float
-    phot_obj.niters = 1.1
-    assert_equal(phot_obj.niters, 1)
+    iter_phot_obj.niters = 1.1
+    assert_equal(iter_phot_obj.niters, 1)
 
     # test that a ValueError is raised if niters <= 0
     with pytest.raises(ValueError):
-        phot_obj.niters = 0
+        iter_phot_obj.niters = 0
 
     # test that it's OK to set niters to None
-    phot_obj.niters = None
+    iter_phot_obj.niters = None
 
 
-@pytest.mark.xfail('not HAS_SCIPY or not HAS_MIN_ASTROPY')
+@pytest.mark.xfail('not HAS_SCIPY')
 def test_fitshape_exceptions():
-    phot_obj = make_fiducial_phot_obj()
+    basic_phot_obj = make_psf_photometry_objs()[0]
 
     # first make sure setting to a scalar does the right thing (and makes
     # no errors)
-    phot_obj.fitshape = 11
-    assert np.all(phot_obj.fitshape == (11, 11))
+    basic_phot_obj.fitshape = 11
+    assert np.all(basic_phot_obj.fitshape == (11, 11))
 
     # test that a ValuError is raised if fitshape has even components
     with pytest.raises(ValueError):
-        phot_obj.fitshape = (2, 2)
+        basic_phot_obj.fitshape = (2, 2)
     with pytest.raises(ValueError):
-        phot_obj.fitshape = 2
+        basic_phot_obj.fitshape = 2
 
     # test that a ValuError is raised if fitshape has non positive
     # components
     with pytest.raises(ValueError):
-        phot_obj.fitshape = (-1, 0)
+        basic_phot_obj.fitshape = (-1, 0)
 
     # test that a ValuError is raised if fitshape does not have two
     # components
     with pytest.raises(ValueError):
-        phot_obj.fitshape = 2
+        basic_phot_obj.fitshape = 2
 
 
-@pytest.mark.xfail('not HAS_SCIPY or not HAS_MIN_ASTROPY')
+@pytest.mark.xfail('not HAS_SCIPY')
 def test_aperture_radius_exceptions():
-    phot_obj = make_fiducial_phot_obj()
+    basic_phot_obj = make_psf_photometry_objs()[0]
 
     # test that aperture_radius was set to None by default
-    assert_equal(phot_obj.aperture_radius, None)
+    assert_equal(basic_phot_obj.aperture_radius, None)
 
     # test that a ValuError is raised if aperture_radius is non positive
     with pytest.raises(ValueError):
-        phot_obj.aperture_radius = -3
+        basic_phot_obj.aperture_radius = -3
