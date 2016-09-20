@@ -61,10 +61,10 @@ matrix:
         # may run for a long time
         - os: linux
           env: PYTHON_VERSION=2.7 SETUP_CMD='build_sphinx -w'
-               CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter'
+               CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter qt=4'
         - os: linux
           env: SETUP_CMD='build_sphinx -w'
-               CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter'
+               CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter qt=4'
 
         # Try all python versions and Numpy versions. Since we can assume that
         # the Numpy developers have taken care of testing Numpy with different
