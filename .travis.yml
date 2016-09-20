@@ -32,7 +32,7 @@ env:
         - ASTROPY_VERSION=stable
         - SETUP_CMD='test'
         - PIP_DEPENDENCIES=''
-        - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib'
+        - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib qt=4'
         - CONDA_CHANNELS='astropy-ci-extras'
         - SETUP_XVFB=True
 
