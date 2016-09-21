@@ -14,5 +14,6 @@ if not _ASTROPY_SETUP_:
     from .background import *
     from .centroids import *
     from .detection import *
+    from .morphology import *
     from .psf import *
     from .segmentation import *

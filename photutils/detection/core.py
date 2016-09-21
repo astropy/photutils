@@ -8,7 +8,8 @@ from astropy.table import Column, Table
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.convolution import Gaussian2DKernel
 from ..segmentation import SegmentationImage
-from ..morphology import cutout_footprint, fit_2dgaussian
+from ..centroids import fit_2dgaussian
+from ..morphology import cutout_footprint
 from ..utils.convolution import filter_data
 from ..utils.wcs_helpers import pixel_to_icrs_coords
 from ..extern.sigma_clipping import sigma_clipped_stats
