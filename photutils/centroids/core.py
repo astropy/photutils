@@ -17,8 +17,7 @@ from ..morphology import data_properties
 
 
 __all__ = ['GaussianConst2D', 'centroid_com', 'gaussian1d_moments',
-           'marginalize_data2d', 'centroid_1dg', 'centroid_2dg',
-           'fit_2dgaussian']
+           'centroid_1dg', 'centroid_2dg', 'fit_2dgaussian']
 
 
 class _GaussianConst1D(Const1D + Gaussian1D):
@@ -162,51 +161,6 @@ def gaussian1d_moments(data, mask=None):
     x_stddev = np.sqrt(abs(np.sum(data * (x - x_mean)**2) / np.sum(data)))
     amplitude = np.nanmax(data) - np.nanmin(data)
     return amplitude, x_mean, x_stddev
-
-
-def marginalize_data2d(data, error=None, mask=None):
-    """
-    Generate the marginal x and y distributions from a 2D data array.
-
-    Parameters
-    ----------
-    data : array_like
-        The 2D data array.
-
-    error : array_like, optional
-        The 2D array of the 1-sigma errors of the input ``data``.
-
-    mask : array_like (bool), optional
-        A boolean mask, with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is masked.
-
-    Returns
-    -------
-    marginal_data : list of `~numpy.ndarray`
-        The marginal x and y distributions of the input ``data``.
-
-    marginal_error : list of `~numpy.ndarray`
-        The marginal x and y distributions of the input ``error``.
-
-    marginal_mask : list of `~numpy.ndarray` (bool)
-        The marginal x and y distributions of the input ``mask``.
-    """
-
-    if error is not None:
-        marginal_error = np.array(
-            [np.sqrt(np.sum(error**2, axis=i)) for i in [0, 1]])
-    else:
-        marginal_error = [None, None]
-
-    if mask is not None:
-        mask = np.asanyarray(mask)
-        marginal_mask = [np.sum(mask, axis=i).astype(np.bool) for i in [0, 1]]
-    else:
-        marginal_mask = [None, None]
-
-    marginal_data = [np.sum(data, axis=i) for i in [0, 1]]
-
-    return marginal_data, marginal_error, marginal_mask
 
 
 def centroid_1dg(data, error=None, mask=None):
