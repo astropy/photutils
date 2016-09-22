@@ -17,7 +17,7 @@ from ..morphology import data_properties
 
 
 __all__ = ['GaussianConst2D', 'centroid_com', 'gaussian1d_moments',
-           'centroid_1dg', 'centroid_2dg', 'fit_2dgaussian']
+           'fit_2dgaussian', 'centroid_1dg', 'centroid_2dg']
 
 
 class _GaussianConst1D(Const1D + Gaussian1D):
@@ -89,12 +89,12 @@ def _convert_image(data, mask=None):
     else:
         copy = True
 
-    data = np.asarray(data).astype(np.float, copy=copy)
+    data = np.asanyarray(data).astype(np.float, copy=copy)
 
     if mask is not None:
-        mask = np.asarray(mask)
+        mask = np.asanyarray(mask)
         if data.shape != mask.shape:
-            raise ValueError('data and mask must have the same shape')
+            raise ValueError('data and mask must have the same shape.')
         data[mask] = 0.0
 
     return data
@@ -104,6 +104,9 @@ def centroid_com(data, mask=None):
     """
     Calculate the centroid of a 2D array as its "center of mass"
     determined from image moments.
+
+    Invalid values (e.g. NaNs or infs) in the ``data`` array are
+    automatically masked.
 
     Parameters
     ----------
@@ -116,18 +119,27 @@ def centroid_com(data, mask=None):
 
     Returns
     -------
-    xcen, ycen : float
-        The (x, y) coordinates of the centroid.
+    centroid : `~numpy.ndarray`
+        The ``x, y`` coordinates of the centroid.
     """
 
     from skimage.measure import moments
 
-    data = _convert_image(data, mask=mask)
+    data = np.ma.masked_invalid(data)
+    if np.any(data.mask):
+        warnings.warn('Input data contains input values (e.g. NaNs or infs), '
+                      'which were automatically masked.', AstropyUserWarning)
+
+    if mask is not None:
+        mask = np.asanyarray(mask)
+        data.mask |= mask
+
+    data = _convert_image(data.data, mask=data.mask)
     m = moments(data, 1)
     xcen = m[1, 0] / m[0, 0]
     ycen = m[0, 1] / m[0, 0]
 
-    return xcen, ycen
+    return np.array([xcen, ycen])
 
 
 def gaussian1d_moments(data, mask=None):
@@ -156,100 +168,23 @@ def gaussian1d_moments(data, mask=None):
         mask = np.asanyarray(mask)
         data = data.copy()
         data[mask] = 0.
+
     x = np.arange(data.size)
     x_mean = np.sum(x * data) / np.sum(data)
     x_stddev = np.sqrt(abs(np.sum(data * (x - x_mean)**2) / np.sum(data)))
     amplitude = np.nanmax(data) - np.nanmin(data)
+
     return amplitude, x_mean, x_stddev
-
-
-def centroid_1dg(data, error=None, mask=None):
-    """
-    Calculate the centroid of a 2D array by fitting 1D Gaussians to the
-    marginal x and y distributions of the array.
-
-    Parameters
-    ----------
-    data : array_like
-        The 2D data array.
-
-    error : array_like, optional
-        The 2D array of the 1-sigma errors of the input ``data``.
-
-    mask : array_like (bool), optional
-        A boolean mask, with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is masked.
-
-    Returns
-    -------
-    xcen, ycen : float
-        (x, y) coordinates of the centroid.
-    """
-
-    data = np.ma.masked_invalid(data)
-    if mask is not None:
-        mask = np.asanyarray(mask)
-        data.mask |= mask
-
-    if error is not None:
-        error = np.ma.masked_invalid(error)
-        data.mask |= error.mask
-    else:
-        error = np.ma.masked_array(np.ones_like(data))
-
-    yx_data = np.array([np.ma.sum(data, axis=i) for i in [0, 1]])
-
-    error.mask = data.mask
-    error.fill_value = 1.e5
-    error = error.filled()
-    yx_error = np.array([np.sqrt(np.ma.sum(error**2, axis=i))
-                         for i in [0, 1]])
-
-    yx_weights = [(1.0 / yx_error[i].clip(min=1.e-30)) for i in [0, 1]]
-
-    constant_init = np.min(data)
-    centroid = []
-    for (data_i, weights_i) in zip(yx_data, yx_weights):
-        params_init = gaussian1d_moments(data_i)
-        g_init = _GaussianConst1D(constant_init, *params_init)
-        fitter = LevMarLSQFitter()
-        x = np.arange(data_i.size)
-        g_fit = fitter(g_init, x, data_i.data, weights=weights_i)
-        centroid.append(g_fit.mean_1.value)
-
-    return np.array(centroid)
-
-
-def centroid_2dg(data, error=None, mask=None):
-    """
-    Calculate the centroid of a 2D array by fitting a 2D Gaussian (plus
-    a constant) to the array.
-
-    Parameters
-    ----------
-    data : array_like
-        The 2D data array.
-
-    error : array_like, optional
-        The 2D array of the 1-sigma errors of the input ``data``.
-
-    mask : array_like (bool), optional
-        A boolean mask, with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is masked.
-
-    Returns
-    -------
-    xcen, ycen : float
-        (x, y) coordinates of the centroid.
-    """
-
-    gfit = fit_2dgaussian(data, error=error, mask=mask)
-    return gfit.x_mean_1.value, gfit.y_mean_1.value
 
 
 def fit_2dgaussian(data, error=None, mask=None):
     """
     Fit a 2D Gaussian plus a constant to a 2D image.
+
+    Invalid values (e.g. NaNs or infs) in the ``data`` or ``error``
+    arrays are automatically masked.  The mask for invalid values
+    represents the combination of the invalid-value masks for the
+    ``data`` and ``error`` arrays.
 
     Parameters
     ----------
@@ -269,40 +204,147 @@ def fit_2dgaussian(data, error=None, mask=None):
         The best-fitting Gaussian 2D model.
     """
 
-    if data.size < 7:
-        warnings.warn('data array must have a least 7 values to fit a 2D '
-                      'Gaussian plus a constant', AstropyUserWarning)
-        return None
-
-    if error is not None:
-        weights = 1.0 / error
-    else:
-        weights = None
+    data = np.ma.masked_invalid(data)
+    if np.any(data.mask):
+        warnings.warn('Input data contains input values (e.g. NaNs or infs), '
+                      'which were automatically masked.', AstropyUserWarning)
 
     if mask is not None:
         mask = np.asanyarray(mask)
-        if weights is None:
-            weights = np.ones_like(data)
-        # down-weight masked pixels
-        weights[mask] = 1.e-30
+        data.mask |= mask
+
+    if error is not None:
+        error = np.ma.masked_invalid(error)
+        data.mask |= error.mask
+        weights = 1.0 / error
+    else:
+        weights = np.ones(data.shape)
+
+    if np.count_nonzero(~data.mask) < 7:
+        raise ValueError('Input data must have a least 7 unmasked values to '
+                         'fit a 2D Gaussian plus a constant.')
+
+    # down-weight masked pixels
+    if data.mask is not np.ma.nomask:
+        weights[data.mask] = 1.e-30
 
     # Subtract the minimum of the data as a crude background estimate.
     # This will also make the data values positive, preventing issues with
     # the moment estimation in data_properties (moments from negative data
     # values can yield undefined Gaussian parameters, e.g. x/y_stddev).
-    shift = np.min(data)
-    data = np.copy(data) - shift
-    props = data_properties(data, mask=mask)
+    shift = np.ma.min(data)
+    data = np.ma.copy(data) - shift
+    props = data_properties(data.data, mask=data.mask)
     init_values = np.array([props.xcentroid.value, props.ycentroid.value,
                             props.semimajor_axis_sigma.value,
                             props.semiminor_axis_sigma.value,
                             props.orientation.value])
 
     init_const = 0.    # subtracted data minimum above
-    init_amplitude = np.nanmax(data) - np.nanmin(data)
+    init_amplitude = np.ma.max(data) - np.ma.min(data)
     g_init = GaussianConst2D(init_const, init_amplitude, *init_values)
     fitter = LevMarLSQFitter()
     y, x = np.indices(data.shape)
-    gfit = fitter(g_init, x, y, data, weights=weights)
+    gfit = fitter(g_init, x, y, data.data, weights=weights)
     gfit.amplitude_0 = gfit.amplitude_0 + shift
+
     return gfit
+
+
+def centroid_1dg(data, error=None, mask=None):
+    """
+    Calculate the centroid of a 2D array by fitting 1D Gaussians to the
+    marginal ``x`` and ``y`` distributions of the array.
+
+    Invalid values (e.g. NaNs or infs) in the ``data`` or ``error``
+    arrays are automatically masked.  The mask for invalid values
+    represents the combination of the invalid-value masks for the
+    ``data`` and ``error`` arrays.
+
+    Parameters
+    ----------
+    data : array_like
+        The 2D data array.
+
+    error : array_like, optional
+        The 2D array of the 1-sigma errors of the input ``data``.
+
+    mask : array_like (bool), optional
+        A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+
+    Returns
+    -------
+    centroid : `~numpy.ndarray`
+        The ``x, y`` coordinates of the centroid.
+    """
+
+    data = np.ma.masked_invalid(data)
+    if np.any(data.mask):
+        warnings.warn('Input data contains input values (e.g. NaNs or infs), '
+                      'which were automatically masked.', AstropyUserWarning)
+
+    if mask is not None:
+        mask = np.asanyarray(mask)
+        data.mask |= mask
+
+    if error is not None:
+        error = np.ma.masked_invalid(error)
+        data.mask |= error.mask
+    else:
+        error = np.ma.masked_array(np.ones_like(data))
+
+    xy_data = np.array([np.ma.sum(data, axis=i) for i in [0, 1]])
+
+    error.mask = data.mask
+    error.fill_value = 1.e5
+    error = error.filled()
+    xy_error = np.array([np.sqrt(np.ma.sum(error**2, axis=i))
+                         for i in [0, 1]])
+
+    xy_weights = [(1.0 / xy_error[i].clip(min=1.e-30)) for i in [0, 1]]
+
+    constant_init = np.min(data)
+    centroid = []
+    for (data_i, weights_i) in zip(xy_data, xy_weights):
+        params_init = gaussian1d_moments(data_i)
+        g_init = _GaussianConst1D(constant_init, *params_init)
+        fitter = LevMarLSQFitter()
+        x = np.arange(data_i.size)
+        g_fit = fitter(g_init, x, data_i.data, weights=weights_i)
+        centroid.append(g_fit.mean_1.value)
+
+    return np.array(centroid)
+
+
+def centroid_2dg(data, error=None, mask=None):
+    """
+    Calculate the centroid of a 2D array by fitting a 2D Gaussian (plus
+    a constant) to the array.
+
+    Invalid values (e.g. NaNs or infs) in the ``data`` or ``error``
+    arrays are automatically masked.  The mask for invalid values
+    represents the combination of the invalid-value masks for the
+    ``data`` and ``error`` arrays.
+
+    Parameters
+    ----------
+    data : array_like
+        The 2D data array.
+
+    error : array_like, optional
+        The 2D array of the 1-sigma errors of the input ``data``.
+
+    mask : array_like (bool), optional
+        A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+
+    Returns
+    -------
+    centroid : `~numpy.ndarray`
+        The ``x, y`` coordinates of the centroid.
+    """
+
+    gfit = fit_2dgaussian(data, error=error, mask=mask)
+
+    return np.array([gfit.x_mean_1.value, gfit.y_mean_1.value])

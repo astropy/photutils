@@ -866,15 +866,20 @@ class SourceProperties(object):
         """
         A 2D cutout from the (background-subtracted) (filtered) data,
         where pixels outside of the source segment and masked pixels are
-        set to zero.  Negative data values are also set to zero because
-        negative pixels (especially at large radii) can result in image
-        moments that result in negative variances.  The cutout image is
-        double precision, which is required for scikit-image's
-        Cython-based moment functions.
+        set to zero.
+
+        Invalid values (e.g. NaNs or infs) are set to zero.  Negative
+        data values are also set to zero because negative pixels
+        (especially at large radii) can result in image moments that
+        result in negative variances.  The cutout image is double
+        precision, which is required for scikit-image's Cython-based
+        moment functions.
         """
 
         cutout = self.make_cutout(self._filtered_data, masked_array=False)
+        cutout = np.where(np.isfinite(cutout), cutout, 0.)
         cutout = np.where(cutout > 0, cutout, 0.)    # negative pixels -> 0
+
         return (cutout * ~self._cutout_total_mask).astype(np.float64)
 
     @lazyproperty
