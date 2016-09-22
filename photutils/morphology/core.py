@@ -48,6 +48,7 @@ def data_properties(data, mask=None, background=None):
     """
 
     segment_image = np.ones(data.shape, dtype=np.int)
+
     return SourceProperties(data, segment_image, label=1, mask=mask,
                             background=background)
 
