@@ -57,6 +57,7 @@ User Documentation
     photutils/psf.rst
     photutils/psf_matching.rst
     photutils/segmentation.rst
+    photutils/centroids.rst
     photutils/morphology.rst
     photutils/geometry.rst
     photutils/datasets.rst
