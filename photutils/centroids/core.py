@@ -3,6 +3,7 @@
 Functions for centroiding sources and measuring their morphological
 properties.
 """
+
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import warnings
@@ -21,12 +22,12 @@ __all__ = ['GaussianConst2D', 'centroid_com', 'gaussian1d_moments',
 
 
 class _GaussianConst1D(Const1D + Gaussian1D):
-    """A 1D Gaussian plus a constant model."""
+    """A model for a 1D Gaussian plus a constant."""
 
 
 class GaussianConst2D(Const2D + Gaussian2D):
     """
-    A 2D Gaussian plus a constant model.
+    A model for a 2D Gaussian plus a constant.
 
     Parameters
     ----------
@@ -79,26 +80,30 @@ def _convert_image(data, mask=None):
 
     Returns
     -------
-    image : `numpy.ndarray`, float64
+    image : `~numpy.ndarray` (float64)
         The converted 2D array of the image, where masked pixels have
         been set to zero.
     """
+
     if mask is None:
         copy = False
     else:
         copy = True
-    image = np.asarray(data).astype(np.float, copy=copy)
+
+    data = np.asarray(data).astype(np.float, copy=copy)
+
     if mask is not None:
-        mask = np.asanyarray(mask)
+        mask = np.asarray(mask)
         if data.shape != mask.shape:
             raise ValueError('data and mask must have the same shape')
-        image[mask] = 0.0
-    return image
+        data[mask] = 0.0
+
+    return data
 
 
 def centroid_com(data, mask=None):
     """
-    Calculate the centroid of a 2D array as its center of mass
+    Calculate the centroid of a 2D array as its "center of mass"
     determined from image moments.
 
     Parameters
@@ -113,14 +118,16 @@ def centroid_com(data, mask=None):
     Returns
     -------
     xcen, ycen : float
-        (x, y) coordinates of the centroid.
+        The (x, y) coordinates of the centroid.
     """
 
     from skimage.measure import moments
+
     data = _convert_image(data, mask=mask)
     m = moments(data, 1)
     xcen = m[1, 0] / m[0, 0]
     ycen = m[0, 1] / m[0, 0]
+
     return xcen, ycen
 
 
@@ -225,30 +232,38 @@ def centroid_1dg(data, error=None, mask=None):
         (x, y) coordinates of the centroid.
     """
 
-    mdata, merror, mmask = marginalize_data2d(data, error=error, mask=mask)
+    data = np.ma.masked_invalid(data)
+    if mask is not None:
+        mask = np.asanyarray(mask)
+        data.mask |= mask
 
-    if merror[0] is None and mmask[0] is None:
-        mweights = [None, None]
+    if error is not None:
+        error = np.ma.masked_invalid(error)
+        data.mask |= error.mask
     else:
-        if merror[0] is not None:
-            mweights = [(1.0 / merror[i].clip(min=1.e-30)) for i in [0, 1]]
-        else:
-            mweights = np.array([np.ones(data.shape[1]),
-                                 np.ones(data.shape[0])])
-        # down-weight masked pixels
-        for i in [0, 1]:
-            mweights[i][mmask[i]] = 1.e-20
+        error = np.ma.masked_array(np.ones_like(data))
 
-    const_init = np.min(data)
+    yx_data = np.array([np.ma.sum(data, axis=i) for i in [0, 1]])
+
+    error.mask = data.mask
+    error.fill_value = 1.e5
+    error = error.filled()
+    yx_error = np.array([np.sqrt(np.ma.sum(error**2, axis=i))
+                         for i in [0, 1]])
+
+    yx_weights = [(1.0 / yx_error[i].clip(min=1.e-30)) for i in [0, 1]]
+
+    constant_init = np.min(data)
     centroid = []
-    for (mdata_i, mweights_i, mmask_i) in zip(mdata, mweights, mmask):
-        params_init = gaussian1d_moments(mdata_i, mask=mmask_i)
-        g_init = _GaussianConst1D(const_init, *params_init)
+    for (data_i, weights_i) in zip(yx_data, yx_weights):
+        params_init = gaussian1d_moments(data_i)
+        g_init = _GaussianConst1D(constant_init, *params_init)
         fitter = LevMarLSQFitter()
-        x = np.arange(mdata_i.size)
-        g_fit = fitter(g_init, x, mdata_i, weights=mweights_i)
+        x = np.arange(data_i.size)
+        g_fit = fitter(g_init, x, data_i.data, weights=weights_i)
         centroid.append(g_fit.mean_1.value)
-    return tuple(centroid)
+
+    return np.array(centroid)
 
 
 def centroid_2dg(data, error=None, mask=None):
