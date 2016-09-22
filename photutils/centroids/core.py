@@ -9,6 +9,7 @@ from __future__ import (absolute_import, division, print_function,
 import warnings
 
 import numpy as np
+from astropy.modeling import Fittable2DModel, Parameter
 from astropy.modeling.models import Gaussian1D, Gaussian2D, Const1D, Const2D
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.utils.exceptions import AstropyUserWarning
@@ -24,35 +25,50 @@ class _GaussianConst1D(Const1D + Gaussian1D):
     """A model for a 1D Gaussian plus a constant."""
 
 
-class GaussianConst2D(Const2D + Gaussian2D):
+class GaussianConst2D(Fittable2DModel):
     """
     A model for a 2D Gaussian plus a constant.
 
     Parameters
     ----------
-    amplitude_0 : float
+    constant : float
         Value of the constant.
-    amplitude_1 : float
+    amplitude : float
         Amplitude of the Gaussian.
-    x_mean_1 : float
+    x_mean : float
         Mean of the Gaussian in x.
-    y_mean_1 : float
+    y_mean : float
         Mean of the Gaussian in y.
-    x_stddev_1 : float
+    x_stddev : float
         Standard deviation of the Gaussian in x.
         ``x_stddev`` and ``y_stddev`` must be specified unless a covariance
         matrix (``cov_matrix``) is input.
-    y_stddev_1 : float
+    y_stddev : float
         Standard deviation of the Gaussian in y.
         ``x_stddev`` and ``y_stddev`` must be specified unless a covariance
         matrix (``cov_matrix``) is input.
-    theta_1 : float, optional
+    theta : float, optional
         Rotation angle in radians. The rotation angle increases
         counterclockwise.
-    cov_matrix_1 : ndarray, optional
-        A 2x2 covariance matrix. If specified, overrides the ``x_stddev``,
-        ``y_stddev``, and ``theta`` specification.
     """
+
+    constant = Parameter(default=1)
+    amplitude = Parameter(default=1)
+    x_mean = Parameter(default=0)
+    y_mean = Parameter(default=0)
+    x_stddev = Parameter(default=1)
+    y_stddev = Parameter(default=1)
+    theta = Parameter(default=0)
+
+    @staticmethod
+    def evaluate(x, y, constant, amplitude, x_mean, y_mean, x_stddev,
+                 y_stddev, theta):
+        """Two dimensional Gaussian plus constant function."""
+
+        model = Const2D(constant)(x, y) + Gaussian2D(amplitude, x_mean,
+                                                     y_mean, x_stddev,
+                                                     y_stddev, theta)(x, y)
+        return model
 
 
 def _convert_image(data, mask=None):
@@ -232,21 +248,19 @@ def fit_2dgaussian(data, error=None, mask=None):
     # This will also make the data values positive, preventing issues with
     # the moment estimation in data_properties (moments from negative data
     # values can yield undefined Gaussian parameters, e.g. x/y_stddev).
-    shift = np.ma.min(data)
-    data = np.ma.copy(data) - shift
-    props = data_properties(data.data, mask=data.mask)
-    init_values = np.array([props.xcentroid.value, props.ycentroid.value,
-                            props.semimajor_axis_sigma.value,
-                            props.semiminor_axis_sigma.value,
-                            props.orientation.value])
+    props = data_properties(data.data - np.ma.min(data), mask=data.mask)
 
     init_const = 0.    # subtracted data minimum above
     init_amplitude = np.ma.max(data) - np.ma.min(data)
-    g_init = GaussianConst2D(init_const, init_amplitude, *init_values)
+    g_init = GaussianConst2D(constant=init_const, amplitude=init_amplitude,
+                             x_mean=props.xcentroid.value,
+                             y_mean=props.ycentroid.value,
+                             x_stddev=props.semimajor_axis_sigma.value,
+                             y_stddev=props.semiminor_axis_sigma.value,
+                             theta=props.orientation.value)
     fitter = LevMarLSQFitter()
     y, x = np.indices(data.shape)
     gfit = fitter(g_init, x, y, data.data, weights=weights)
-    gfit.amplitude_0 = gfit.amplitude_0 + shift
 
     return gfit
 
@@ -347,4 +361,4 @@ def centroid_2dg(data, error=None, mask=None):
 
     gfit = fit_2dgaussian(data, error=error, mask=mask)
 
-    return np.array([gfit.x_mean_1.value, gfit.y_mean_1.value])
+    return np.array([gfit.x_mean.value, gfit.y_mean.value])
