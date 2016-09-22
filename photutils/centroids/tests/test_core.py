@@ -88,6 +88,27 @@ def test_centroids_withmask():
 
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
+def test_centroids_nan_withmask():
+    xc_ref, yc_ref = 24.7, 25.2
+    model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
+    y, x = np.mgrid[0:50, 0:50]
+    data = model(x, y)
+    data[0, :] = np.nan
+    mask = np.zeros_like(data, dtype=bool)
+    data[0, 0] = 1.
+    mask[0, 0] = True
+
+    xc, yc = centroid_com(data, mask=mask)
+    assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
+
+    xc2, yc2 = centroid_1dg(data, mask=mask)
+    assert_allclose([xc2, yc2], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
+
+    xc3, yc3 = centroid_2dg(data, mask=mask)
+    assert_allclose([xc3, yc3], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
+
+
+@pytest.mark.skipif('not HAS_SKIMAGE')
 def test_centroid_com_mask():
     """Test centroid_com with and without an image_mask."""
 
@@ -119,8 +140,13 @@ def test_gaussian1d_moments():
     result = gaussian1d_moments(data)
     assert_allclose(result, desired, rtol=0, atol=1.e-6)
 
+    mask = np.zeros_like(data).astype(bool)
+    mask[0] = True
+    result = gaussian1d_moments(data, mask=mask)
+    assert_allclose(result, desired, rtol=0, atol=1.e-6)
+
 
 def test_fit2dgaussian_dof():
     data = np.ones((2, 2))
-    result = fit_2dgaussian(data)
-    assert result is None
+    with pytest.raises(ValueError):
+        fit_2dgaussian(data)
