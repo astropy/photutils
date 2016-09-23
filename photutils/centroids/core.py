@@ -10,7 +10,8 @@ import warnings
 
 import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
-from astropy.modeling.models import Gaussian1D, Gaussian2D, Const1D, Const2D
+from astropy.modeling.models import (Gaussian1D, Gaussian2D, Const1D,
+                                     Const2D, CONSTRAINTS_DOC)
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.utils.exceptions import AstropyUserWarning
 
@@ -69,6 +70,9 @@ class GaussianConst2D(Fittable2DModel):
                                                      y_mean, x_stddev,
                                                      y_stddev, theta)(x, y)
         return model
+
+
+GaussianConst2D.__doc__ += CONSTRAINTS_DOC
 
 
 def _convert_image(data, mask=None):
