@@ -57,8 +57,9 @@ approximate isophotal ellipse for the source:
     >>> b = props.semiminor_axis_sigma.value * r
     >>> theta = props.orientation.value
     >>> apertures = EllipticalAperture(position, a, b, theta=theta)
-    >>> plt.imshow(data, origin='lower', cmap='Greys_r')
-    >>> apertures.plot(color='red')
+    >>> plt.imshow(data, origin='lower', cmap='viridis',
+    ...            interpolation='nearest')
+    >>> apertures.plot(color='#d62728')
 
 .. plot::
 
@@ -77,8 +78,8 @@ approximate isophotal ellipse for the source:
     b = props.semiminor_axis_sigma.value * r
     theta = props.orientation.value
     apertures = EllipticalAperture(position, a, b, theta=theta)
-    plt.imshow(data, origin='lower', cmap='Greys_r')
-    apertures.plot(color='red')
+    plt.imshow(data, origin='lower', cmap='viridis', interpolation='nearest')
+    apertures.plot(color='#d62728')
 
 
 Reference/API

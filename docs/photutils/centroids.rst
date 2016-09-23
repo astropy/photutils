@@ -55,34 +55,8 @@ subtract the background)::
 Now let's plot the results.  Because the centroids are all very
 similar, we also include an inset plot zoomed in near the centroid:
 
-.. doctest-skip::
-
-    >>> import matplotlib.pyplot as plt
-    >>> fig, ax = plt.subplots(1, 1)
-    >>> ax.imshow(data, origin='lower', cmap='Greys_r')
-    >>> marker = '+'
-    >>> ms, mew = 30, 2.
-    >>> plt.plot(x1, y1, color='red', marker=marker, ms=ms)
-    >>> plt.plot(x2, y2, color='blue', marker=marker, ms=ms)
-    >>> plt.plot(x3, y3, color='green', marker=marker, ms=ms)
-    >>> # include a zoomed inset plot
-    >>> from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
-    >>> from mpl_toolkits.axes_grid1.inset_locator import mark_inset
-    >>> ax2 = zoomed_inset_axes(ax, zoom=6, loc=9)
-    >>> ax2.imshow(data, interpolation='nearest', origin='lower',
-    ...            cmap='Greys_r', vmin=190, vmax=220)
-    >>> ax2.plot(x1, y1, color='red', marker=marker, ms=ms, mew=mew)
-    >>> ax2.plot(x2, y2, color='blue', marker=marker, ms=ms, mew=mew)
-    >>> ax2.plot(x3, y3, color='green', marker=marker, ms=ms, mew=mew)
-    >>> ax2.set_xlim(13, 15)
-    >>> ax2.set_ylim(16, 18)
-    >>> mark_inset(ax, ax2, loc1=3, loc2=4, fc='none', ec='0.5')
-    >>> ax2.axes.get_xaxis().set_visible(False)
-    >>> ax2.axes.get_yaxis().set_visible(False)
-    >>> ax.set_xlim(0, data.shape[1]-1)
-    >>> ax.set_ylim(0, data.shape[0]-1)
-
 .. plot::
+    :include-source:
 
     from photutils.datasets import make_4gaussians_image
     from photutils import centroid_com, centroid_1dg, centroid_2dg
@@ -93,20 +67,21 @@ similar, we also include an inset plot zoomed in near the centroid:
     x2, y2 = centroid_1dg(data)
     x3, y3 = centroid_2dg(data)
     fig, ax = plt.subplots(1, 1)
-    ax.imshow(data, origin='lower', cmap='Greys_r')
+    ax.imshow(data, origin='lower', interpolation='nearest', cmap='viridis')
     marker = '+'
     ms, mew = 30, 2.
-    plt.plot(x1, y1, color='red', marker=marker, ms=ms, mew=mew)
-    plt.plot(x2, y2, color='blue', marker=marker, ms=ms, mew=mew)
-    plt.plot(x3, y3, color='green', marker=marker, ms=ms, mew=mew)
+    plt.plot(x1, y1, color='#1f77b4', marker=marker, ms=ms, mew=mew)
+    plt.plot(x2, y2, color='#17becf', marker=marker, ms=ms, mew=mew)
+    plt.plot(x3, y3, color='#d62728', marker=marker, ms=ms, mew=mew)
+
     from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
     from mpl_toolkits.axes_grid1.inset_locator import mark_inset
     ax2 = zoomed_inset_axes(ax, zoom=6, loc=9)
     ax2.imshow(data, interpolation='nearest', origin='lower',
-               cmap='Greys_r', vmin=190, vmax=220)
-    ax2.plot(x1, y1, color='red', marker=marker, ms=ms, mew=mew)
-    ax2.plot(x2, y2, color='blue', marker=marker, ms=ms, mew=mew)
-    ax2.plot(x3, y3, color='green', marker=marker, ms=ms, mew=mew)
+               cmap='viridis', vmin=190, vmax=220)
+    ax2.plot(x1, y1, color='#1f77b4', marker=marker, ms=ms, mew=mew)
+    ax2.plot(x2, y2, color='#17becf', marker=marker, ms=ms, mew=mew)
+    ax2.plot(x3, y3, color='#d62728', marker=marker, ms=ms, mew=mew)
     ax2.set_xlim(13, 15)
     ax2.set_ylim(16, 18)
     mark_inset(ax, ax2, loc1=3, loc2=4, fc='none', ec='0.5')
