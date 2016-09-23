@@ -88,11 +88,27 @@ API changes
     ``background_mesh2d`` and ``background_rms_mesh2d``, respectively.
     [#355]
 
+- ``photutils.centroids``
+
+  - Created ``photutils.centroids`` subpackage, which contains the
+    ``centroid_com``, ``centroid_1dg``, and ``centroid_2dg``
+    functions.  These functions now return a two-element numpy
+    ndarray.  [#428]
+
 - ``photutils.detection``
 
   - Changed finding algorithm implementations (daofind and IRAF's star
     find) from functional to object-oriented style. Deprecated old
     style. [#379]
+
+- ``photutils.morphology``
+
+  - Created ``photutils.morphology`` subpackage. [#428]
+
+  - Removed ``marginalize_data2d`` function. [#428]
+
+  - Moved ``cutout_footprint`` from ``photutils.morphology`` to
+    ``photutils.utils``. [#428]
 
 - ``photutils.psf``
 
@@ -110,6 +126,15 @@ API changes
 - ``photutils.utils``
 
   - Renamed ``calculate_total_error`` to ``calc_total_error``. [#368]
+
+
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.centroids``
+
+  - Fixed a bug in ``centroid_1dg`` and ``centroid_2dg`` that occured
+    when the input data contained invalid (NaN or inf) values.  [#428]
 
 
 0.2.2 (2016-07-06)
