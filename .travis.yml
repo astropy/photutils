@@ -32,7 +32,7 @@ env:
         - ASTROPY_VERSION=stable
         - SETUP_CMD='test'
         - PIP_DEPENDENCIES=''
-        - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib qt=4'
+        - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib'
         - CONDA_CHANNELS='astropy-ci-extras'
         - SETUP_XVFB=True
 
@@ -61,10 +61,10 @@ matrix:
         # may run for a long time
         - os: linux
           env: PYTHON_VERSION=2.7 SETUP_CMD='build_sphinx -w'
-               CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter qt=4'
+               CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter'
         - os: linux
           env: SETUP_CMD='build_sphinx -w'
-               CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter qt=4'
+               CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter'
 
         # Try all python versions and Numpy versions. Since we can assume that
         # the Numpy developers have taken care of testing Numpy with different
@@ -72,6 +72,7 @@ matrix:
         # time.
         - os: linux
           env: PYTHON_VERSION=2.7 NUMPY_VERSION=1.7
+               CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib qt=4'
         - os: linux
           env: PYTHON_VERSION=3.3 NUMPY_VERSION=1.8
         - os: linux
