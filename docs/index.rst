@@ -39,9 +39,11 @@ reports, comments, and help with development are very welcome.
 
 .. note::
 
-    Photutils is still under development and has not seen widespread
-    use yet.  We will change its API if we find that something can be
-    improved.
+    Like much astronomy software, Photutils is an evolving package.
+    The developers make an effort to maintain backwards compatibility,
+    but at times the API may change if there is a benefit to doing so.
+    If there are specific areas you think API stability is important,
+    please let us know as part of the development process!
 
 
 User Documentation
