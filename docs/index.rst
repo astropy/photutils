@@ -23,7 +23,7 @@ Photutils
 Photutils at a Glance
 =====================
 
-**Photutils** is an in-development `affiliated package
+**Photutils** is an  `affiliated package
 <http://www.astropy.org/affiliated/index.html>`_ of `Astropy`_ to
 provide tools for detecting and performing photometry of astronomical
 sources.  It is an open source (BSD licensed) Python package.  Bug
