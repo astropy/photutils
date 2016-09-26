@@ -166,6 +166,13 @@ def test_gaussian1d_moments():
     result = gaussian1d_moments(data)
     assert_allclose(result, desired, rtol=0, atol=1.e-6)
 
+    data[0] = 1.e5
+    mask = np.zeros_like(data).astype(bool)
+    mask[0] = True
+    result = gaussian1d_moments(data, mask=mask)
+    assert_allclose(result, desired, rtol=0, atol=1.e-6)
+
+    data[0] = np.nan
     mask = np.zeros_like(data).astype(bool)
     mask[0] = True
     result = gaussian1d_moments(data, mask=mask)

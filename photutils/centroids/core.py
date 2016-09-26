@@ -115,6 +115,7 @@ def centroid_com(data, mask=None):
 
     # Convert the data to a float64 (double) `numpy.ndarray`,
     # which is required for input to `skimage.measure.moments`.
+    # Masked values are set to zero.
     data = data.astype(np.float)
     data.fill_value = 0.
     data = data.filled()
@@ -148,17 +149,26 @@ def gaussian1d_moments(data, mask=None):
         The estimated parameters of a 1D Gaussian.
     """
 
+    if np.any(~np.isfinite(data)):
+        data = np.ma.masked_invalid(data)
+        warnings.warn('Input data contains input values (e.g. NaNs or infs), '
+                      'which were automatically masked.', AstropyUserWarning)
+    else:
+        data = np.ma.array(data)
+
     if mask is not None and mask is not np.ma.nomask:
         mask = np.asanyarray(mask)
         if data.shape != mask.shape:
             raise ValueError('data and mask must have the same shape.')
-        data = data.copy()
-        data[mask] = 0.
+        data.mask |= mask
+
+    data.fill_value = 0.
+    data = data.filled()
 
     x = np.arange(data.size)
     x_mean = np.sum(x * data) / np.sum(data)
     x_stddev = np.sqrt(abs(np.sum(data * (x - x_mean)**2) / np.sum(data)))
-    amplitude = np.nanmax(data) - np.nanmin(data)
+    amplitude = np.ptp(data)
 
     return amplitude, x_mean, x_stddev
 
@@ -293,7 +303,7 @@ def centroid_1dg(data, error=None, mask=None):
     xy_data = np.array([np.ma.sum(data, axis=i) for i in [0, 1]])
 
     error.mask = data.mask
-    error.fill_value = 1.e5
+    error.fill_value = 1.e5 * data.data.max()
     error = error.filled()
     xy_error = np.array([np.sqrt(np.ma.sum(error**2, axis=i))
                          for i in [0, 1]])
