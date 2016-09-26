@@ -75,51 +75,6 @@ class GaussianConst2D(Fittable2DModel):
 GaussianConst2D.__doc__ += CONSTRAINTS_DOC
 
 
-def _convert_image(data, mask=None):
-    """
-    Convert the input data to a float64 (double) `numpy.ndarray`,
-    required for input to `skimage.measure.moments` and
-    `skimage.measure.moments_central`.
-
-    The input ``data`` is copied unless it already has that
-    `numpy.dtype`.
-
-    If ``mask`` is input, then masked pixels are set to zero in the
-    output ``data``.
-
-    Parameters
-    ----------
-    data : array_like
-        The 2D array of the image.
-
-    mask : array_like (bool), optional
-        A boolean mask, with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is masked.
-        Masked pixels are set to zero in the output ``data``.
-
-    Returns
-    -------
-    image : `~numpy.ndarray` (float64)
-        The converted 2D array of the image, where masked pixels have
-        been set to zero.
-    """
-
-    if mask is None:
-        copy = False
-    else:
-        copy = True
-
-    data = np.asanyarray(data).astype(np.float, copy=copy)
-
-    if mask is not None and mask is not np.ma.nomask:
-        mask = np.asanyarray(mask)
-        if data.shape != mask.shape:
-            raise ValueError('data and mask must have the same shape.')
-        data[mask] = 0.0
-
-    return data
-
-
 def centroid_com(data, mask=None):
     """
     Calculate the centroid of a 2D array as its "center of mass"
@@ -158,7 +113,12 @@ def centroid_com(data, mask=None):
             raise ValueError('data and mask must have the same shape.')
         data.mask |= mask
 
-    data = _convert_image(data.data, mask=data.mask)
+    # Convert the data to a float64 (double) `numpy.ndarray`,
+    # which is required for input to `skimage.measure.moments`.
+    data = data.astype(np.float)
+    data.fill_value = 0.
+    data = data.filled()
+
     m = moments(data, 1)
     xcen = m[1, 0] / m[0, 0]
     ycen = m[0, 1] / m[0, 0]
