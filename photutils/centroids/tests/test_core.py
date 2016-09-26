@@ -36,7 +36,7 @@ DATA[1, 1] = 2.
 def test_centroids(xc_ref, yc_ref, x_stddev, y_stddev, theta):
     model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=x_stddev,
                        y_stddev=y_stddev, theta=theta)
-    y, x = np.mgrid[0:50, 0:50]
+    y, x = np.mgrid[0:50, 0:47]
     data = model(x, y)
 
     xc, yc = centroid_com(data)
@@ -74,8 +74,8 @@ def test_centroids_withmask():
     y, x = np.mgrid[0:50, 0:50]
     data = model(x, y)
     mask = np.zeros_like(data, dtype=bool)
-    data[0, 0] = 1.
-    mask[0, 0] = True
+    data[10, 10] = 1.e5
+    mask[10, 10] = True
 
     xc, yc = centroid_com(data, mask=mask)
     assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
@@ -88,18 +88,22 @@ def test_centroids_withmask():
 
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
-def test_centroids_nan_withmask():
+@pytest.mark.parametrize('use_mask', [True, False])
+def test_centroids_nan_withmask(use_mask):
     xc_ref, yc_ref = 24.7, 25.2
     model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
     y, x = np.mgrid[0:50, 0:50]
     data = model(x, y)
-    data[0, :] = np.nan
-    mask = np.zeros_like(data, dtype=bool)
-    data[0, 0] = 1.
-    mask[0, 0] = True
+    data[20, :] = np.nan
+    if use_mask:
+        mask = np.zeros_like(data, dtype=bool)
+        mask[20, :] = True
+    else:
+        mask = None
 
     xc, yc = centroid_com(data, mask=mask)
-    assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
+    assert_allclose(xc, xc_ref, rtol=0, atol=1.e-3)
+    assert yc > yc_ref
 
     xc2, yc2 = centroid_1dg(data, mask=mask)
     assert_allclose([xc2, yc2], [xc_ref, yc_ref], rtol=0, atol=1.e-3)

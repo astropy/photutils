@@ -100,18 +100,18 @@ def centroid_com(data, mask=None):
 
     from skimage.measure import moments
 
-    if np.any(~np.isfinite(data)):
-        data = np.ma.masked_invalid(data)
-        warnings.warn('Input data contains input values (e.g. NaNs or infs), '
-                      'which were automatically masked.', AstropyUserWarning)
-    else:
-        data = np.ma.array(data)
+    data = np.ma.asanyarray(data)
 
     if mask is not None and mask is not np.ma.nomask:
         mask = np.asanyarray(mask)
         if data.shape != mask.shape:
             raise ValueError('data and mask must have the same shape.')
         data.mask |= mask
+
+    if np.any(~np.isfinite(data)):
+        data = np.ma.masked_invalid(data)
+        warnings.warn('Input data contains input values (e.g. NaNs or infs), '
+                      'which were automatically masked.', AstropyUserWarning)
 
     # Convert the data to a float64 (double) `numpy.ndarray`,
     # which is required for input to `skimage.measure.moments`.
@@ -200,12 +200,7 @@ def fit_2dgaussian(data, error=None, mask=None):
         The best-fitting Gaussian 2D model.
     """
 
-    if np.any(~np.isfinite(data)):
-        data = np.ma.masked_invalid(data)
-        warnings.warn('Input data contains input values (e.g. NaNs or infs), '
-                      'which were automatically masked.', AstropyUserWarning)
-    else:
-        data = np.ma.array(data)
+    data = np.ma.asanyarray(data)
 
     if mask is not None and mask is not np.ma.nomask:
         mask = np.asanyarray(mask)
@@ -213,12 +208,17 @@ def fit_2dgaussian(data, error=None, mask=None):
             raise ValueError('data and mask must have the same shape.')
         data.mask |= mask
 
+    if np.any(~np.isfinite(data)):
+        data = np.ma.masked_invalid(data)
+        warnings.warn('Input data contains input values (e.g. NaNs or infs), '
+                      'which were automatically masked.', AstropyUserWarning)
+
     if error is not None:
         error = np.ma.masked_invalid(error)
         if data.shape != error.shape:
             raise ValueError('data and error must have the same shape.')
         data.mask |= error.mask
-        weights = 1.0 / error
+        weights = 1.0 / error.clip(min=1.e-30)
     else:
         weights = np.ones(data.shape)
 
@@ -226,18 +226,22 @@ def fit_2dgaussian(data, error=None, mask=None):
         raise ValueError('Input data must have a least 7 unmasked values to '
                          'fit a 2D Gaussian plus a constant.')
 
-    # down-weight masked pixels
+    # assign zero weight to masked pixels
     if data.mask is not np.ma.nomask:
-        weights[data.mask] = 1.e-30
+        weights[data.mask] = 0.
+
+    mask = data.mask
+    data.fill_value = 0.0
+    data = data.filled()
 
     # Subtract the minimum of the data as a crude background estimate.
     # This will also make the data values positive, preventing issues with
     # the moment estimation in data_properties (moments from negative data
     # values can yield undefined Gaussian parameters, e.g. x/y_stddev).
-    props = data_properties(data.data - np.ma.min(data), mask=data.mask)
+    props = data_properties(data - np.min(data), mask=mask)
 
     init_const = 0.    # subtracted data minimum above
-    init_amplitude = np.ma.max(data) - np.ma.min(data)
+    init_amplitude = np.ptp(data)
     g_init = GaussianConst2D(constant=init_const, amplitude=init_amplitude,
                              x_mean=props.xcentroid.value,
                              y_mean=props.ycentroid.value,
@@ -246,7 +250,7 @@ def fit_2dgaussian(data, error=None, mask=None):
                              theta=props.orientation.value)
     fitter = LevMarLSQFitter()
     y, x = np.indices(data.shape)
-    gfit = fitter(g_init, x, y, data.data, weights=weights)
+    gfit = fitter(g_init, x, y, data, weights=weights)
 
     return gfit
 
@@ -279,12 +283,7 @@ def centroid_1dg(data, error=None, mask=None):
         The ``x, y`` coordinates of the centroid.
     """
 
-    if np.any(~np.isfinite(data)):
-        data = np.ma.masked_invalid(data)
-        warnings.warn('Input data contains input values (e.g. NaNs or infs), '
-                      'which were automatically masked.', AstropyUserWarning)
-    else:
-        data = np.ma.array(data)
+    data = np.ma.asanyarray(data)
 
     if mask is not None and mask is not np.ma.nomask:
         mask = np.asanyarray(mask)
@@ -292,25 +291,33 @@ def centroid_1dg(data, error=None, mask=None):
             raise ValueError('data and mask must have the same shape.')
         data.mask |= mask
 
+    if np.any(~np.isfinite(data)):
+        data = np.ma.masked_invalid(data)
+        warnings.warn('Input data contains input values (e.g. NaNs or infs), '
+                      'which were automatically masked.', AstropyUserWarning)
+
     if error is not None:
         error = np.ma.masked_invalid(error)
         if data.shape != error.shape:
             raise ValueError('data and error must have the same shape.')
         data.mask |= error.mask
+
+        error.mask = data.mask
+        xy_error = np.array([np.sqrt(np.ma.sum(error**2, axis=i))
+                             for i in [0, 1]])
+        xy_weights = [(1.0 / xy_error[i].clip(min=1.e-30)) for i in [0, 1]]
     else:
-        error = np.ma.masked_array(np.ones_like(data))
+        xy_weights = [np.ones(data.shape[i]) for i in [1, 0]]
+
+    # assign zero weight to masked pixels
+    if data.mask is not np.ma.nomask:
+        bad_idx = [np.all(data.mask, axis=i) for i in [0, 1]]
+        for i in [0, 1]:
+            xy_weights[i][bad_idx[i]] = 0.
 
     xy_data = np.array([np.ma.sum(data, axis=i) for i in [0, 1]])
 
-    error.mask = data.mask
-    error.fill_value = 1.e5 * data.data.max()
-    error = error.filled()
-    xy_error = np.array([np.sqrt(np.ma.sum(error**2, axis=i))
-                         for i in [0, 1]])
-
-    xy_weights = [(1.0 / xy_error[i].clip(min=1.e-30)) for i in [0, 1]]
-
-    constant_init = np.min(data)
+    constant_init = np.ma.min(data)
     centroid = []
     for (data_i, weights_i) in zip(xy_data, xy_weights):
         params_init = gaussian1d_moments(data_i)
