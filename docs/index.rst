@@ -109,3 +109,11 @@ experience necessary):
 * `Try the development version <http://astropy.readthedocs.io/en/stable/development/workflow/get_devel_version.html>`_
 
 * `Developer Documentation <http://docs.astropy.org/en/latest/#developer-documentation>`_
+
+Citing Photutils
+================
+
+If you use Photutils, please consider citing the package via it's Zenodo record.
+To find all versions (including the latest), you can
+`search for photutils on Zenodo <https://zenodo.org/search?q=photutils>`_.  Then
+cite the Zenodo DOI for whatever version(s) of Photutils you are using.
