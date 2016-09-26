@@ -111,7 +111,7 @@ def _convert_image(data, mask=None):
 
     data = np.asanyarray(data).astype(np.float, copy=copy)
 
-    if mask is not None:
+    if mask is not None and mask is not np.ma.nomask:
         mask = np.asanyarray(mask)
         if data.shape != mask.shape:
             raise ValueError('data and mask must have the same shape.')
@@ -145,13 +145,17 @@ def centroid_com(data, mask=None):
 
     from skimage.measure import moments
 
-    data = np.ma.masked_invalid(data)
-    if np.any(data.mask):
+    if np.any(~np.isfinite(data)):
+        data = np.ma.masked_invalid(data)
         warnings.warn('Input data contains input values (e.g. NaNs or infs), '
                       'which were automatically masked.', AstropyUserWarning)
+    else:
+        data = np.ma.array(data)
 
-    if mask is not None:
+    if mask is not None and mask is not np.ma.nomask:
         mask = np.asanyarray(mask)
+        if data.shape != mask.shape:
+            raise ValueError('data and mask must have the same shape.')
         data.mask |= mask
 
     data = _convert_image(data.data, mask=data.mask)
@@ -184,8 +188,10 @@ def gaussian1d_moments(data, mask=None):
         The estimated parameters of a 1D Gaussian.
     """
 
-    if mask is not None:
+    if mask is not None and mask is not np.ma.nomask:
         mask = np.asanyarray(mask)
+        if data.shape != mask.shape:
+            raise ValueError('data and mask must have the same shape.')
         data = data.copy()
         data[mask] = 0.
 
@@ -224,23 +230,29 @@ def fit_2dgaussian(data, error=None, mask=None):
         The best-fitting Gaussian 2D model.
     """
 
-    data = np.ma.masked_invalid(data)
-    if np.any(data.mask):
+    if np.any(~np.isfinite(data)):
+        data = np.ma.masked_invalid(data)
         warnings.warn('Input data contains input values (e.g. NaNs or infs), '
                       'which were automatically masked.', AstropyUserWarning)
+    else:
+        data = np.ma.array(data)
 
-    if mask is not None:
+    if mask is not None and mask is not np.ma.nomask:
         mask = np.asanyarray(mask)
+        if data.shape != mask.shape:
+            raise ValueError('data and mask must have the same shape.')
         data.mask |= mask
 
     if error is not None:
         error = np.ma.masked_invalid(error)
+        if data.shape != error.shape:
+            raise ValueError('data and error must have the same shape.')
         data.mask |= error.mask
         weights = 1.0 / error
     else:
         weights = np.ones(data.shape)
 
-    if np.count_nonzero(~data.mask) < 7:
+    if np.ma.count(data) < 7:
         raise ValueError('Input data must have a least 7 unmasked values to '
                          'fit a 2D Gaussian plus a constant.')
 
@@ -297,17 +309,23 @@ def centroid_1dg(data, error=None, mask=None):
         The ``x, y`` coordinates of the centroid.
     """
 
-    data = np.ma.masked_invalid(data)
-    if np.any(data.mask):
+    if np.any(~np.isfinite(data)):
+        data = np.ma.masked_invalid(data)
         warnings.warn('Input data contains input values (e.g. NaNs or infs), '
                       'which were automatically masked.', AstropyUserWarning)
+    else:
+        data = np.ma.array(data)
 
-    if mask is not None:
+    if mask is not None and mask is not np.ma.nomask:
         mask = np.asanyarray(mask)
+        if data.shape != mask.shape:
+            raise ValueError('data and mask must have the same shape.')
         data.mask |= mask
 
     if error is not None:
         error = np.ma.masked_invalid(error)
+        if data.shape != error.shape:
+            raise ValueError('data and error must have the same shape.')
         data.mask |= error.mask
     else:
         error = np.ma.masked_array(np.ones_like(data))
@@ -329,7 +347,7 @@ def centroid_1dg(data, error=None, mask=None):
         g_init = _GaussianConst1D(constant_init, *params_init)
         fitter = LevMarLSQFitter()
         x = np.arange(data_i.size)
-        g_fit = fitter(g_init, x, data_i.data, weights=weights_i)
+        g_fit = fitter(g_init, x, data_i, weights=weights_i)
         centroid.append(g_fit.mean_1.value)
 
     return np.array(centroid)

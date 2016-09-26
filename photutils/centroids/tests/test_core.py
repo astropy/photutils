@@ -121,15 +121,41 @@ def test_centroid_com_mask():
 
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
-def test_centroid_com_mask_shape():
+def test_invalid_mask_shape():
     """
     Test if ValueError raises if mask shape doesn't match data
     shape.
     """
 
+    data = np.zeros((4, 4))
+    mask = np.zeros((2, 2), dtype=bool)
+
     with pytest.raises(ValueError):
-        mask = np.zeros((2, 2), dtype=bool)
-        centroid_com(np.zeros((4, 4)), mask=mask)
+        centroid_com(data, mask=mask)
+
+    with pytest.raises(ValueError):
+        centroid_1dg(data, mask=mask)
+
+    with pytest.raises(ValueError):
+        centroid_2dg(data, mask=mask)
+
+    with pytest.raises(ValueError):
+        gaussian1d_moments(data, mask=mask)
+
+
+@pytest.mark.skipif('not HAS_SKIMAGE')
+def test_invalid_error_shape():
+    """
+    Test if ValueError raises if error shape doesn't match data
+    shape.
+    """
+
+    error = np.zeros((2, 2), dtype=bool)
+    with pytest.raises(ValueError):
+        centroid_1dg(np.zeros((4, 4)), error=error)
+
+    with pytest.raises(ValueError):
+        centroid_2dg(np.zeros((4, 4)), error=error)
 
 
 def test_gaussian1d_moments():

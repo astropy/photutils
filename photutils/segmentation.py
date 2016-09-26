@@ -3,11 +3,13 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from copy import deepcopy
 from distutils.version import LooseVersion
+
 import numpy as np
+import astropy.units as u
 from astropy.table import Table
 from astropy.utils import lazyproperty
-import astropy.units as u
 from astropy.wcs.utils import pixel_to_skycoord
+
 from .utils.convolution import filter_data
 from .utils.prepare_data import _prepare_data
 
@@ -727,6 +729,9 @@ class SourceProperties(object):
         if segment_img.shape != data.shape:
             raise ValueError('The data and segmentation image must have '
                              'the same shape')
+
+        if mask is np.ma.nomask:
+            mask = np.zeros(data.shape).astype(bool)
         if mask is not None:
             if mask.shape != data.shape:
                 raise ValueError('The data and mask must have the same shape')
