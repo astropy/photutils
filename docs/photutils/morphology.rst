@@ -24,17 +24,21 @@ Getting Started
 
 Let's extract a single object from a synthetic dataset and find
 calculate its morphological properties.  For this example, we will
-subtract the background using simple sigma-clipped statistics:
+subtract the background using simple sigma-clipped statistics.
+
+First, we create the source image and subtract its background::
+
+    >>> from photutils.datasets import make_4gaussians_image
+    >>> from astropy.stats import sigma_clipped_stats
+    >>> data = make_4gaussians_image()[43:79, 76:104]
+    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, iters=5)
+    >>> data -= median    # subtract background
+
+Then, calculate its properties::
 
 .. doctest-requires:: scipy, skimage
 
-    >>> from photutils.datasets import make_4gaussians_image
-    >>> data = make_4gaussians_image()[43:79, 76:104]
-
-    >>> from astropy.stats import sigma_clipped_stats
     >>> from photutils import data_properties, properties_table
-    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, iters=5)
-    >>> data -= median    # subtract background
     >>> props = data_properties(data)
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'semimajor_axis_sigma',
     ...            'semiminor_axis_sigma', 'orientation']
