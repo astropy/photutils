@@ -114,6 +114,12 @@ Citing Photutils
 ================
 
 If you use Photutils, please consider citing the package via its Zenodo record.
-To find all versions (including the latest), you can
+If you just want the latest release, cite this (follow the link on the badge
+and then use one of the citation methods on the right):
+
+.. image:: https://zenodo.org/badge/2640766.svg
+   :target: https://zenodo.org/badge/latestdoi/2640766
+
+If you want to cite an earlier version, you can
 `search for photutils on Zenodo <https://zenodo.org/search?q=photutils>`_.  Then
 cite the Zenodo DOI for whatever version(s) of Photutils you are using.
