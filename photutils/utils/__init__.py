@@ -2,8 +2,10 @@
 """
 General-purpose utility functions.
 """
+
 from .check_random_state import *
 from .colormaps import *
+from .convolution import *
+from .cutouts import *
 from .interpolation import *
 from .prepare_data import *
-from .convolution import *

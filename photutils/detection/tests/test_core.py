@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 from astropy.tests.helper import pytest, catch_warnings
@@ -8,6 +9,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from astropy.convolution import Gaussian2DKernel
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.wcs import WCS
+
 from ..core import (detect_threshold, detect_sources, find_peaks,
                     make_source_mask)
 from ...datasets import make_4gaussians_image
@@ -225,6 +227,7 @@ class TestDetectSources(object):
 class TestFindPeaks(object):
     def test_box_size(self):
         """Test with box_size."""
+
         tbl = find_peaks(PEAKDATA, 0.1, box_size=3)
         assert_array_equal(tbl['x_peak'], PEAKREF1[:, 1])
         assert_array_equal(tbl['y_peak'], PEAKREF1[:, 0])
@@ -241,10 +244,8 @@ class TestFindPeaks(object):
     def test_subpixel_regionsize(self):
         """Test that data cutout has at least 6 values."""
 
-        tbl = find_peaks(PEAKDATA, 0.1, box_size=2, subpixel=True)
-        assert np.all(np.isnan(tbl['x_centroid']))
-        assert np.all(np.isnan(tbl['y_centroid']))
-        assert np.all(np.isnan(tbl['fit_peak_value']))
+        with pytest.raises(ValueError):
+            find_peaks(PEAKDATA, 0.1, box_size=2, subpixel=True)
 
     def test_mask(self):
         """Test with mask."""

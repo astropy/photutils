@@ -3,13 +3,16 @@
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+
 import numpy as np
 from astropy.table import Column, Table
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.convolution import Gaussian2DKernel
+
 from ..segmentation import SegmentationImage
-from ..morphology import cutout_footprint, fit_2dgaussian
+from ..centroids import fit_2dgaussian
 from ..utils.convolution import filter_data
+from ..utils.cutouts import cutout_footprint
 from ..utils.wcs_helpers import pixel_to_icrs_coords
 from ..extern.sigma_clipping import sigma_clipped_stats
 
@@ -392,10 +395,10 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
             if gaussian_fit is None:
                 x_cen, y_cen, fit_peak_value = np.nan, np.nan, np.nan
             else:
-                x_cen = slc[1].start + gaussian_fit.x_mean_1.value
-                y_cen = slc[0].start + gaussian_fit.y_mean_1.value
-                fit_peak_value = (gaussian_fit.amplitude_0.value +
-                                  gaussian_fit.amplitude_1.value)
+                x_cen = slc[1].start + gaussian_fit.x_mean.value
+                y_cen = slc[0].start + gaussian_fit.y_mean.value
+                fit_peak_value = (gaussian_fit.constant.value +
+                                  gaussian_fit.amplitude.value)
             x_centroid.append(x_cen)
             y_centroid.append(y_cen)
             fit_peak_values.append(fit_peak_value)
