@@ -5,6 +5,28 @@ Photutils
     :target: https://pypi.python.org/pypi/photutils/
     :alt: Latest release
 
+.. image:: https://anaconda.org/astropy/photutils/badges/version.svg
+    :target: https://anaconda.org/astropy/photutils
+
+.. image:: https://anaconda.org/astropy/photutils/badges/downloads.svg
+    :target: https://anaconda.org/astropy/photutils
+
+.. image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
+    :target: http://www.astropy.org/
+
+.. raw:: html
+
+    <br />
+
+Photutils is an `AstroPy`_ affiliated package to provide tools for
+detecting and performing photometry of astronomical sources.
+
+
+Project Status
+--------------
+
+Documentation:
+
 .. image:: https://readthedocs.org/projects/photutils/badge/?version=stable
     :target: http://photutils.readthedocs.io/en/stable/
     :alt: Stable Documentation Status
@@ -13,12 +35,7 @@ Photutils
     :target: http://photutils.readthedocs.io/en/latest/
     :alt: Latest Documentation Status
 
-.. image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
-    :target: http://www.astropy.org/
-
-
-Photutils is an `AstroPy`_ affiliated package to provide tools for
-detecting and performing photometry of astronomical sources.
+Tests:
 
 .. image:: https://travis-ci.org/astropy/photutils.svg?branch=master
     :target: https://travis-ci.org/astropy/photutils
@@ -36,11 +53,10 @@ detecting and performing photometry of astronomical sources.
 Citing Photutils
 ----------------
 
-If you use Photutils, please consider citing the package via its
-Zenodo record.
-
 .. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.155353.svg
     :target: https://doi.org/10.5281/zenodo.155353
+
+If you use Photutils, please cite the package via its Zenodo record.
 
 
 License
