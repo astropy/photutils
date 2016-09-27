@@ -9,9 +9,11 @@ the tools in the PSF subpackage.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import abc
+
 import numpy as np
 from astropy.extern import six
 from astropy.utils.misc import InheritDocstrings
+
 from ..extern.sigma_clipping import sigma_clip
 from ..extern.stats import mad_std, biweight_location, biweight_midvariance
 
@@ -449,15 +451,16 @@ class SExtractorBackground(BackgroundBase):
         if self.sigma_clip is not None:
             data = self.sigma_clip(data, axis=axis)
 
-        _median = _masked_median(data, axis=axis)
-        _mean = np.ma.mean(data, axis=axis)
-        _std = np.ma.std(data, axis=axis)
+        _median = np.atleast_1d(_masked_median(data, axis=axis))
+        _mean = np.atleast_1d(np.ma.mean(data, axis=axis))
+        _std = np.atleast_1d(np.ma.std(data, axis=axis))
+        bkg = np.atleast_1d((2.5 * _median) - (1.5 * _mean))
 
-        bkg = (2.5 * _median) - (1.5 * _mean)
         bkg = np.ma.where(_std == 0, _mean, bkg)
 
-        condition = (np.abs(_mean - _median) / _std) < 0.3
-        bkg = np.ma.where(condition, bkg, _median)
+        idx = np.ma.where(_std != 0)
+        condition = (np.abs(_mean[idx] - _median[idx]) / _std[idx]) < 0.3
+        bkg[idx] = np.ma.where(condition, bkg[idx], _median[idx])
 
         # np.ma.where always returns a masked array
         if axis is None and np.ma.isMaskedArray(bkg):
