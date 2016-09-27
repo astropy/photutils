@@ -33,6 +33,16 @@ detecting and performing photometry of astronomical sources.
     :target: http://astropy.org/photutils-benchmarks/
 
 
+Citing Photutils
+----------------
+
+If you use Photutils, please consider citing the package via its
+Zenodo record.
+
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.155353.svg
+    :target: https://doi.org/10.5281/zenodo.155353
+
+
 License
 -------
 
