@@ -24,68 +24,150 @@ __doctest_requires__ = {('BkgZoomInterpolator', 'Background2D'): ['scipy']}
 
 class BkgZoomInterpolator(object):
     """
-    This class generates the full-sized background and background RMS
-    maps from the lower-resolution maps using bicubic spline
-    interpolation.
+    This class generates full-sized background and background RMS images
+    from lower-resolution mesh images using the
+    `~scipy.ndimage.interpolation.zoom` (spline) interpolator.
+
+    This class must be used in concert with the `Background2D` class.
+
+    Parameters
+    ----------
+    order : int, optional
+        The order of the spline interpolation used to resize the
+        low-resolution background and background RMS mesh images.  The
+        value must be an integer in the range 0-5.  The default is 3
+        (bicubic interpolation).
+
+    mode : {'reflect', 'constant', 'nearest', 'wrap'}, optional
+        Points outside the boundaries of the input are filled according
+        to the given mode.  Default is 'reflect'.
+
+    cval : float, optional
+        The value used for points outside the boundaries of the input if
+        ``mode='constant'``. Default is 0.0
+
+    post_crop : bool, optional
+        This keyword determines how to resize the low-resolution map
+        when it was calculated by padding the input data (i.e.
+        ``edge_method='pad'``).  If `True` (default), the mesh is first
+        resized to the larger padded-data size and then cropped back to
+        the final data size.  If `False`, the mesh is resized directly
+        to the final data size.
     """
 
-    def __init__(self, interp_order=3, mode='reflect', pad_crop=True):
-        self.interp_order = interp_order
+    def __init__(self, order=3, mode='reflect', cval=0.0, post_crop=True):
+        self.order = order
         self.mode = mode
-        self.pad_crop = pad_crop
+        self.cval = cval
+        self.post_crop = post_crop
 
-    def __call__(self, mesh, bkgbase_obj):
+    def __call__(self, mesh, bkg2d_obj):
+        """
+        Resize the 2D mesh array.
+
+        Parameters
+        ----------
+        mesh : 2D `~numpy.ndarray`
+            The low-resolution 2D mesh array.
+
+        bkg2d_obj : `Background2D` object
+            The `Background2D` object that prepared the ``mesh`` array.
+
+        Returns
+        -------
+        result : 2D `~numpy.ndarray`
+            The resized background or background RMS image.
+        """
+
         mesh = np.asanyarray(mesh)
         if np.ptp(mesh) == 0:
-            return np.zeros_like(bkgbase_obj.data) + np.min(mesh)
+            return np.zeros_like(bkg2d_obj.data) + np.min(mesh)
 
         from scipy.ndimage import zoom
 
-        if bkgbase_obj.edge_method == 'pad' and self.pad_crop:
+        if bkg2d_obj.edge_method == 'pad' and self.post_crop:
             # matches photutils <= 0.2 Background class
-            zoom_factor = (int(bkgbase_obj.nyboxes *
-                               bkgbase_obj.box_size[0] / mesh.shape[0]),
-                           int(bkgbase_obj.nxboxes *
-                               bkgbase_obj.box_size[1] / mesh.shape[1]))
-            result = zoom(mesh, zoom_factor, order=self.interp_order,
-                          mode=self.mode)
-            data_slc = index_exp[0:bkgbase_obj.data.shape[0],
-                                 0:bkgbase_obj.data.shape[1]]
+            zoom_factor = (int(bkg2d_obj.nyboxes * bkg2d_obj.box_size[0] /
+                               mesh.shape[0]),
+                           int(bkg2d_obj.nxboxes * bkg2d_obj.box_size[1] /
+                               mesh.shape[1]))
+            result = zoom(mesh, zoom_factor, order=self.order, mode=self.mode,
+                          cval=self.cval)
+            data_slc = index_exp[0:bkg2d_obj.data.shape[0],
+                                 0:bkg2d_obj.data.shape[1]]
 
             return result[data_slc]
         else:
-            zoom_factor = (float(bkgbase_obj.data.shape[0] / mesh.shape[0]),
-                           float(bkgbase_obj.data.shape[1] / mesh.shape[1]))
+            zoom_factor = (float(bkg2d_obj.data.shape[0] / mesh.shape[0]),
+                           float(bkg2d_obj.data.shape[1] / mesh.shape[1]))
 
-            return zoom(mesh, zoom_factor, order=self.interp_order,
-                        mode=self.mode)
+            return zoom(mesh, zoom_factor, order=self.order, mode=self.mode,
+                        cval=self.cval)
 
 
 class BkgIDWInterpolator(object):
     """
-    This class generates the full-sized background and background RMS
-    maps from the lower-resolution maps using inverse-distance weighting
-    (IDW) interpolation.
+    This class generates full-sized background and background RMS images
+    from lower-resolution mesh images using inverse-distance weighting
+    (IDW) interpolation (`~photutils.utils.ShepardIDWInterpolator`).
+
+    This class must be used in concert with the `Background2D` class.
+
+    Parameters
+    ----------
+    leafsize : float, optional
+        The number of points at which the k-d tree algorithm switches
+        over to brute-force. ``leafsize`` must be positive.  See
+        `scipy.spatial.cKDTree` for further information.
+
+    n_neighbors : int, optional
+        The maximum number of nearest neighbors to use during the
+        interpolation.
+
+    power : float, optional
+        The power of the inverse distance used for the interpolation
+        weights.
+
+    reg : float, optional
+        The regularization parameter. It may be used to control the
+        smoothness of the interpolator.
     """
 
-    def __init__(self, n_neighbors=8, power=1.0, reg=0.0, leafsize=10):
+    def __init__(self, leafsize=10, n_neighbors=8, power=1.0, reg=0.0):
+        self.leafsize = leafsize
         self.n_neighbors = n_neighbors
         self.power = power
         self.reg = reg
-        self.leafsize = leafsize
 
-    def __call__(self, mesh, bkgbase_obj):
+    def __call__(self, mesh, bkg2d_obj):
+        """
+        Resize the 2D mesh array.
+
+        Parameters
+        ----------
+        mesh : 2D `~numpy.ndarray`
+            The low-resolution 2D mesh array.
+
+        bkg2d_obj : `Background2D` object
+            The `Background2D` object that prepared the ``mesh`` array.
+
+        Returns
+        -------
+        result : 2D `~numpy.ndarray`
+            The resized background or background RMS image.
+        """
+
         mesh = np.asanyarray(mesh)
         if np.ptp(mesh) == 0:
-            return np.zeros_like(bkgbase_obj.data) + np.min(mesh)
+            return np.zeros_like(bkg2d_obj.data) + np.min(mesh)
 
-        mesh1d = mesh[bkgbase_obj.mesh_yidx, bkgbase_obj.mesh_xidx]
-        f = ShepardIDWInterpolator(bkgbase_obj.yx, mesh1d,
+        mesh1d = mesh[bkg2d_obj.mesh_yidx, bkg2d_obj.mesh_xidx]
+        f = ShepardIDWInterpolator(bkg2d_obj.yx, mesh1d,
                                    leafsize=self.leafsize)
-        data = f(bkgbase_obj.data_coords, n_neighbors=self.n_neighbors,
+        data = f(bkg2d_obj.data_coords, n_neighbors=self.n_neighbors,
                  power=self.power, reg=self.reg)
 
-        return data.reshape(bkgbase_obj.data.shape)
+        return data.reshape(bkg2d_obj.data.shape)
 
 
 class Background2D(object):
@@ -199,7 +281,7 @@ class Background2D(object):
         A callable object (a function or object) used to interpolate the
         low-resolution background or background RMS mesh to the
         full-size background or background RMS maps.  The default is an
-        instance of `BackgroundZoomInterpolator`.
+        instance of `BkgZoomInterpolator`.
 
     Notes
     -----
@@ -262,7 +344,7 @@ class Background2D(object):
         Pad the ``data`` and ``mask`` to have an integer number of
         background meshes of size ``box_size`` in both dimensions.  The
         padding is added on the top and/or right edges (this is the best
-        option for the `BkgZoomInterpolator`).
+        option for the "zoom" interpolator).
 
         Parameters
         ----------
@@ -312,7 +394,7 @@ class Background2D(object):
         Crop the ``data`` and ``mask`` to have an integer number of
         background meshes of size ``box_size`` in both dimensions.  The
         data are cropped on the top and/or right edges (this is the best
-        option for the `BkgZoomInterpolator`).
+        option for the "zoom" interpolator).
 
         Returns
         -------
