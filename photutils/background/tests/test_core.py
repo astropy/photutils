@@ -19,13 +19,26 @@ STD = 0.5
 DATA = make_noise_image((100, 100), type='gaussian', mean=BKG, stddev=STD,
                         random_state=12345)
 
-BKG_CLASS = [MeanBackground, MedianBackground, ModeEstimatorBackground,
-             MMMBackground, SExtractorBackground, BiweightLocationBackground]
+BKG_CLASS0 = [MeanBackground, MedianBackground, ModeEstimatorBackground,
+              MMMBackground, SExtractorBackground]
+# BiweightLocationBackground cannot handle a constant background
+# (astropy.stats.biweight_location needs to be fixed)
+BKG_CLASS = BKG_CLASS0 + [BiweightLocationBackground]
 
 RMS_CLASS = [StdBackgroundRMS, MADStdBackgroundRMS,
              BiweightMidvarianceBackgroundRMS]
 
 SIGMA_CLIP = SigmaClip(sigma=3.)
+
+
+@pytest.mark.parametrize('bkg_class', BKG_CLASS0)
+def test_constant_background(bkg_class):
+    data = np.ones((100, 100))
+    bkg = bkg_class(sigma_clip=SIGMA_CLIP)
+    bkgval = bkg.calc_background(data)
+    assert not np.ma.isMaskedArray(bkgval)
+    assert_allclose(bkgval, 1.0)
+    assert_allclose(bkg(data), bkg.calc_background(data))
 
 
 @pytest.mark.parametrize('bkg_class', BKG_CLASS)

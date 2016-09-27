@@ -72,7 +72,6 @@ class TestBackground2D(object):
 
     @pytest.mark.parametrize('filter_size', FILTER_SIZES)
     def test_resizing(self, filter_size):
-        # SExtractorBackground cannot be used here
         b1 = Background2D(DATA, (22, 22), filter_size=filter_size,
                           bkg_estimator=MeanBackground(), edge_method='crop')
         b2 = Background2D(DATA, (22, 22), filter_size=filter_size,
