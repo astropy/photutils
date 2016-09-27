@@ -113,7 +113,7 @@ experience necessary):
 Citing Photutils
 ================
 
-If you use Photutils, please consider citing the package via it's Zenodo record.
+If you use Photutils, please consider citing the package via its Zenodo record.
 To find all versions (including the latest), you can
 `search for photutils on Zenodo <https://zenodo.org/search?q=photutils>`_.  Then
 cite the Zenodo DOI for whatever version(s) of Photutils you are using.
