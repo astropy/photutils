@@ -35,6 +35,7 @@ class BkgZoomInterpolator(object):
         self.pad_crop = pad_crop
 
     def __call__(self, mesh, bkgbase_obj):
+        mesh = np.asanyarray(mesh)
         if np.ptp(mesh) == 0:
             return np.zeros_like(bkgbase_obj.data) + np.min(mesh)
 
@@ -74,6 +75,7 @@ class BkgIDWInterpolator(object):
         self.leafsize = leafsize
 
     def __call__(self, mesh, bkgbase_obj):
+        mesh = np.asanyarray(mesh)
         if np.ptp(mesh) == 0:
             return np.zeros_like(bkgbase_obj.data) + np.min(mesh)
 
@@ -214,6 +216,8 @@ class Background2D(object):
                  bkgrms_estimator=StdBackgroundRMS(sigma_clip=None),
                  interpolator=BkgZoomInterpolator()):
 
+        data = np.asanyarray(data)
+
         box_size = np.atleast_1d(box_size)
         if len(box_size) == 1:
             box_size = (box_size, box_size)
@@ -222,6 +226,7 @@ class Background2D(object):
         self.box_npixels = self.box_size[0] * self.box_size[1]
 
         if mask is not None:
+            mask = np.asanyarray(mask)
             if mask.shape != data.shape:
                 raise ValueError('mask and data must have the same shape')
 
