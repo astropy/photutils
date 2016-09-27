@@ -16,8 +16,7 @@ from .core import SigmaClip, SExtractorBackground, StdBackgroundRMS
 from ..utils import ShepardIDWInterpolator
 
 
-__all__ = ['BkgZoomInterpolator', 'BkgIDWInterpolator', 'Background2D',
-           'std_blocksum']
+__all__ = ['BkgZoomInterpolator', 'BkgIDWInterpolator', 'Background2D']
 
 __doctest_requires__ = {('BkgZoomInterpolator', 'Background2D'): ['scipy']}
 
@@ -786,64 +785,3 @@ class Background2D(object):
                                         self.box_size[0], 0.)
             apers.plot(ax=ax, **kwargs)
         return
-
-
-def _mesh_values(data, box_size, mask=None):
-    """
-    Extract all the data values in boxes of size box_size.
-    """
-
-    if mask is not None:
-        data = np.ma.masked_array(data, mask=mask)
-
-    ny, nx = data.shape
-    nyboxes = ny // box_size[0]
-    nxboxes = nx // box_size[1]
-    ny_crop = nyboxes * box_size[0]
-    nx_crop = nxboxes * box_size[1]
-    crop_slc = index_exp[0:ny_crop, 0:nx_crop]
-    data = data[crop_slc]
-
-    data = np.ma.swapaxes(data.reshape(
-        nyboxes, box_size[0], nxboxes, box_size[1]), 1, 2).reshape(
-            nyboxes, nxboxes, box_size[0]*box_size[1])
-    mesh_yidx, mesh_xidx = np.where(np.ma.count_masked(data, axis=2) == 0)
-    mesh_values = data[mesh_yidx, mesh_xidx, :]
-
-    return (mesh_yidx, mesh_xidx), mesh_values
-
-
-def std_blocksum(data, block_sizes, mask=None):
-    """
-    Calculate the standard deviation of block-summed data values at
-    sizes of ``block_sizes``.
-
-    Parameters
-    ----------
-    data : array-like
-        The 2D array to block sum.
-
-    block_sizes : int, array-like of int
-        An array of integer block sizes.
-
-    mask : array-like (bool), optional
-        A boolean mask, with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is masked.
-        Meshes that contain *any* masked data are excluded from
-        calculations.
-
-    Returns
-    -------
-    result : `~numpy.ndarray`
-        An array of the standard deviations of the block-summed array
-        for the input ``block_sizes``.
-    """
-
-    stds = []
-    block_sizes = np.atleast_1d(block_sizes)
-    for block_size in block_sizes:
-        mesh_idx, mesh_values = _mesh_values(data, (block_size, block_size),
-                                             mask=mask)
-        block_sums = np.sum(mesh_values, axis=1)
-        stds.append(np.std(block_sums))
-    return np.array(stds)

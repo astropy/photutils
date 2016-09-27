@@ -9,8 +9,7 @@ from astropy.tests.helper import pytest
 
 from ..core import MeanBackground
 from ..background_2d import (BkgZoomInterpolator, BkgIDWInterpolator,
-                             Background2D, std_blocksum)
-from ...datasets import make_noise_image
+                             Background2D)
 
 try:
     import scipy
@@ -187,18 +186,3 @@ class TestBackground2D(object):
 
         b = Background2D(DATA, (25, 25))
         b.plot_meshes(outlines=True)
-
-
-class TestStdBlocksum(object):
-    stddev = 5
-    data = make_noise_image((100, 100), mean=0, stddev=stddev,
-                            random_state=12345)
-    block_sizes = np.array([5, 7, 10])
-    stds = std_blocksum(data, block_sizes)
-    expected = np.array([stddev, stddev, stddev])
-    assert_allclose(stds / block_sizes, expected, atol=0.2)
-
-    mask = np.zeros_like(data, dtype=np.bool)
-    mask[25:50, 25:50] = True
-    stds2 = std_blocksum(data, block_sizes, mask=mask)
-    assert_allclose(stds2 / block_sizes, expected, atol=0.3)

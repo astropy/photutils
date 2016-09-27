@@ -9,3 +9,4 @@ from .convolution import *
 from .cutouts import *
 from .interpolation import *
 from .prepare_data import *
+from .stats import *
