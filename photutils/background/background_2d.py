@@ -45,21 +45,12 @@ class BkgZoomInterpolator(object):
     cval : float, optional
         The value used for points outside the boundaries of the input if
         ``mode='constant'``. Default is 0.0
-
-    post_crop : bool, optional
-        This keyword determines how to resize the low-resolution map
-        when it was calculated by padding the input data (i.e.
-        ``edge_method='pad'``).  If `True` (default), the mesh is first
-        resized to the larger padded-data size and then cropped back to
-        the final data size.  If `False`, the mesh is resized directly
-        to the final data size.
     """
 
-    def __init__(self, order=3, mode='reflect', cval=0.0, post_crop=True):
+    def __init__(self, order=3, mode='reflect', cval=0.0):
         self.order = order
         self.mode = mode
         self.cval = cval
-        self.post_crop = post_crop
 
     def __call__(self, mesh, bkg2d_obj):
         """
@@ -85,19 +76,21 @@ class BkgZoomInterpolator(object):
 
         from scipy.ndimage import zoom
 
-        if bkg2d_obj.edge_method == 'pad' and self.post_crop:
-            # matches photutils <= 0.2 Background class
+        if bkg2d_obj.edge_method == 'pad':
+            # The mesh is first resized to the larger padded-data size
+            # (i.e. zoom_factor should be an integer) and then cropped
+            # back to the final data size.
             zoom_factor = (int(bkg2d_obj.nyboxes * bkg2d_obj.box_size[0] /
                                mesh.shape[0]),
                            int(bkg2d_obj.nxboxes * bkg2d_obj.box_size[1] /
                                mesh.shape[1]))
             result = zoom(mesh, zoom_factor, order=self.order, mode=self.mode,
                           cval=self.cval)
-            data_slc = index_exp[0:bkg2d_obj.data.shape[0],
-                                 0:bkg2d_obj.data.shape[1]]
 
-            return result[data_slc]
+            return result[0:bkg2d_obj.data.shape[0],
+                          0:bkg2d_obj.data.shape[1]]
         else:
+            # The mesh is resized directly to the final data size.
             zoom_factor = (float(bkg2d_obj.data.shape[0] / mesh.shape[0]),
                            float(bkg2d_obj.data.shape[1] / mesh.shape[1]))
 
