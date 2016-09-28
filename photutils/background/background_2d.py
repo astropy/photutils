@@ -125,7 +125,7 @@ class BkgIDWInterpolator(object):
         smoothness of the interpolator.
     """
 
-    def __init__(self, leafsize=10, n_neighbors=8, power=1.0, reg=0.0):
+    def __init__(self, leafsize=10, n_neighbors=10, power=1.0, reg=0.0):
         self.leafsize = leafsize
         self.n_neighbors = n_neighbors
         self.power = power
@@ -186,23 +186,24 @@ class Background2D(object):
         has two elements, they should be in ``(ny, nx)`` order.  For
         best results, the box shape should be chosen such that the
         ``data`` are covered by an integer number of boxes in both
-        dimensions.  When this is not the case, see the ``pad`` keyword
-        for more options.
+        dimensions.  When this is not the case, see the ``edge_method``
+        keyword for more options.
 
     mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
         Masked data are excluded from calculations.
 
-    exclude_mesh_method : {'any', 'threshold', 'all'}, optional
+    exclude_mesh_method : {'threshold', 'any', 'all'}, optional
         The method used to determine whether to exclude a particular
         mesh based on the number of masked pixels it contains in the
         input (e.g. source) ``mask`` or padding mask (if
         ``edge_method='pad'``):
 
-            * ``'any'``:  exclude meshes that contain any masked pixels.
             * ``'threshold'``:  exclude meshes that contain greater than
-              ``exclude_mesh_percentile`` percent masked pixels.
+              ``exclude_mesh_percentile`` percent masked pixels.  This is
+              the default.
+            * ``'any'``:  exclude meshes that contain any masked pixels.
             * ``'all'``:  exclude meshes that are completely masked.
 
     exclude_mesh_percentile : float in the range of [0, 100], optional
@@ -211,7 +212,10 @@ class Background2D(object):
         ``exclude_mesh_method='threshold'``, then meshes that contain
         greater than ``exclude_mesh_percentile`` percent masked pixels
         are excluded.  This parameter is used only if
-        ``exclude_mesh_method='threshold'``.
+        ``exclude_mesh_method='threshold'``.  The default is 10.  For
+        best results, ``exclude_mesh_percentile`` should be kept as low
+        as possible (i.e, as long as there are sufficient pixels for
+        reasonable statistical estimates).
 
     filter_size : int or array_like (int), optional
         The window size of the 2D median filter to apply to the
@@ -228,20 +232,21 @@ class Background2D(object):
         ``filter_threshold``.  Set to `None` to filter all meshes
         (default).
 
-    edge_method : {'crop', 'pad'}, optional
+    edge_method : {'pad', 'crop'}, optional
         The method used to determine how to handle the case where the
         image size is not an integer multiple of the ``box_size`` in
         either dimension.  Both options will resize the image to give an
         exact multiple of ``box_size`` in both dimensions.
 
-        * ``'crop'``: crop the image along the top and/or right edges.
         * ``'pad'``: pad the image along the top and/or right edges.
+          This is the default and recommended method.
+        * ``'crop'``: crop the image along the top and/or right edges.
 
     sigma_clip : `~photutils.background.SigmaClip` instance, optional
         A `~photutils.background.SigmaClip` object that defines the
         sigma clipping parameters.  If `None` then no sigma clipping
         will be performed.  The default is to perform sigma clipping
-        with ``sigma=3.`` and ``iters=5``.
+        with ``sigma=3.`` and ``iters=10``.
 
     bkg_estimator : callable, optional
         A callable object (a function or e.g., an instance of any
@@ -282,10 +287,10 @@ class Background2D(object):
     be a constant image.
     """
 
-    def __init__(self, data, box_size, mask=None, exclude_mesh_method='any',
-                 exclude_mesh_percentile=0.5, filter_size=(3, 3),
-                 filter_threshold=None, edge_method='crop',
-                 sigma_clip=SigmaClip(sigma=3., iters=5),
+    def __init__(self, data, box_size, mask=None,
+                 exclude_mesh_method='threshold', exclude_mesh_percentile=10.,
+                 filter_size=(3, 3), filter_threshold=None,
+                 edge_method='pad', sigma_clip=SigmaClip(sigma=3., iters=10),
                  bkg_estimator=SExtractorBackground(sigma_clip=None),
                  bkgrms_estimator=StdBackgroundRMS(sigma_clip=None),
                  interpolator=BkgZoomInterpolator()):
@@ -294,7 +299,7 @@ class Background2D(object):
 
         box_size = np.atleast_1d(box_size)
         if len(box_size) == 1:
-            box_size = (box_size, box_size)
+            box_size = np.repeat(box_size, 2)
         self.box_size = (min(box_size[0], data.shape[0]),
                          min(box_size[1], data.shape[1]))
         self.box_npixels = self.box_size[0] * self.box_size[1]
@@ -315,7 +320,7 @@ class Background2D(object):
 
         filter_size = np.atleast_1d(filter_size)
         if len(filter_size) == 1:
-            filter_size = (filter_size, filter_size)
+            filter_size = np.repeat(filter_size, 2)
         self.filter_size = filter_size
         self.filter_threshold = filter_threshold
         self.edge_method = edge_method
@@ -448,7 +453,7 @@ class Background2D(object):
         elif self.exclude_mesh_method == 'threshold':
             # keep meshes only with at least ``exclude_mesh_percentile``
             # unmasked pixels
-            threshold_npixels = (self.exclude_mesh_percentile *
+            threshold_npixels = (self.exclude_mesh_percentile / 100. *
                                  self.box_npixels)
             mesh_idx = np.where((self.box_npixels - nmasked) >=
                                 threshold_npixels)[0]
@@ -535,7 +540,7 @@ class Background2D(object):
 
         return np.ma.masked_array(data2d, mask=mask2d)
 
-    def _interpolate_meshes(self, data, n_neighbors=8, eps=0., power=1.,
+    def _interpolate_meshes(self, data, n_neighbors=10, eps=0., power=1.,
                             reg=0.):
         """
         Use IDW interpolation to fill in any masked pixels in the
