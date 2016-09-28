@@ -53,8 +53,8 @@ Tests:
 Citing Photutils
 ----------------
 
-.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.155353.svg
-    :target: https://doi.org/10.5281/zenodo.155353
+.. image:: https://zenodo.org/badge/2640766.svg
+   :target: https://zenodo.org/badge/latestdoi/2640766
 
 If you use Photutils, please cite the package via its Zenodo record.
 
