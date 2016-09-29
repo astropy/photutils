@@ -670,6 +670,7 @@ class Background2D(object):
             data_sigclip = self.sigma_clip(self.mesh_data, axis=1)
         else:
             data_sigclip = self.mesh_data
+        self._data_sigclip = data_sigclip
 
         self._mesh_shape = (self.nyboxes, self.nxboxes)
         self.mesh_yidx, self.mesh_xidx = np.unravel_index(self.mesh_idx,
@@ -718,6 +719,17 @@ class Background2D(object):
         # the position coordinates used when calling an interpolator
         nx, ny = self.data.shape
         self.data_coords = np.array(list(product(range(ny), range(nx))))
+
+    @lazyproperty
+    def mesh_nmasked(self):
+        """
+        A 2D (masked) array of the number of masked pixels in each mesh.
+        Only meshes included in the background estimation are included.
+        Excluded meshes will be masked in the image.
+        """
+
+        return self._make_2d_array(np.ma.count_masked(self._data_sigclip,
+                                                      axis=1))
 
     @lazyproperty
     def background_mesh_ma(self):
