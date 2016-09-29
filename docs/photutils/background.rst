@@ -441,6 +441,44 @@ the background subtraction can be improved by masking the sources
 and/or through further iterations.
 
 
+Plotting Meshes
+^^^^^^^^^^^^^^^
+
+Finally, the meshes that were used in generating the 2D background can
+be plotted on the original image using the
+:meth:`~photutils.background.Background2D.plot_meshes` method:
+
+.. doctest-skip::
+
+    >>> plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm)
+    >>> bkg3.plot_meshes(outlines=True, color='#1f77b4')
+
+.. plot::
+
+    from photutils.datasets import make_100gaussians_image
+    from photutils.background import Background2D
+    from scipy.ndimage.interpolation import rotate
+    import matplotlib.pylab as plt
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
+    data = make_100gaussians_image()
+    ny, nx = data.shape
+    y, x = np.mgrid[:ny, :nx]
+    gradient =  x * y / 5000.
+    data2 = data + gradient
+    data3 = rotate(data2, -45.)
+    mask = (data3 == 0)
+    bkg3 = Background2D(data3, (25, 25), filter_size=(3, 3), mask=mask)
+    back3 = bkg3.background * ~mask
+    norm = ImageNormalize(stretch=SqrtStretch())
+    plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm)
+    bkg3.plot_meshes(outlines=True, color='#17becf')
+
+The meshes extended beyond the original image on the top and right
+because :class:`~photutils.background.Background2D`'s default
+``edge_method`` is ``'pad'``.
+
+
 Reference/API
 -------------
 
