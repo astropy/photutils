@@ -21,15 +21,15 @@ New Features
 
   - Added ``axis`` keyword to new background classes. [#392]
 
-  - Added new ``BackgroundBase2D`` and ``BackgroundIDW2D`` classes.
-    [#355, #370]
-
   - Added new ``removed_masked``, ``meshpix_threshold``, and
     ``edge_method`` keywords for the 2D background classes. [#355]
 
   - Added new ``std_blocksum`` function. [#355]
 
   - Added new ``SigmaClip`` class. [#423]
+
+  - Added new ``BkgZoomInterpolator`` and ``BkgIDWInterpolator``
+    classes. [#437]
 
 - ``photutils.datasets``
 
@@ -58,7 +58,7 @@ New Features
 
 - ``photutils.segmentation``
 
-  - Added ``copy`` and ``area`` methods and a ``areas`` property to
+  - Added ``copy`` and ``area`` methods and an ``areas`` property to
     ``SegmentationImage``. [#331]
 
 - ``photutils.psf``
@@ -76,17 +76,25 @@ API changes
 
   - Removed the ``effective_gain`` keyword from
     ``aperture_photometry``.  Users must now input the total error,
-    which can be calculating using the ``calc_total_error`` function.
+    which can be calculated using the ``calc_total_error`` function.
     [#368]
 
 - ``photutils.background``
 
   - For the background classes, the ``filter_shape`` keyword was
-    renamed to ``filter_size``.  The ``mode_estimate`` keyword was
-    renamed to ``mode_estimator``.  The ``background_low_res`` and
+    renamed to ``filter_size``.  The ``background_low_res`` and
     ``background_rms_low_res`` class attributes were renamed to
-    ``background_mesh2d`` and ``background_rms_mesh2d``, respectively.
-    [#355]
+    ``background_mesh`` and ``background_rms_mesh``, respectively.
+    [#355, #437]
+
+  - The ``Background2D`` ``method`` and ``backfunc`` keywords have
+    been removed.  In its place one can input callable objects via the
+    ``sigma_clip``, ``bkg_estimator``, and ``bkgrms_estimator``
+    keywords. [#437]
+
+  - The interpolator to be used by the ``Background2D`` class can be
+    input as a callable object via the new ``interpolator`` keyword.
+    [#437]
 
 - ``photutils.centroids``
 
@@ -97,9 +105,9 @@ API changes
 
 - ``photutils.detection``
 
-  - Changed finding algorithm implementations (daofind and IRAF's star
-    find) from functional to object-oriented style. Deprecated old
-    style. [#379]
+  - Changed finding algorithm implementations (``daofind`` and
+    ``starfind``) from functional to object-oriented style. Deprecated
+    old style. [#379]
 
 - ``photutils.morphology``
 
@@ -113,14 +121,14 @@ API changes
 - ``photutils.psf``
 
   - Removed the ``effective_gain`` keyword from ``psf_photometry``.
-    Users must now input the total error, which can be calculating using
-    the ``calc_total_error`` function. [#368]
+    Users must now input the total error, which can be calculated
+    using the ``calc_total_error`` function. [#368]
 
 - ``photutils.segmentation``
 
   - Removed the ``effective_gain`` keyword from ``SourceProperties``
     and ``source_properties``.  Users must now input the total error,
-    which can be calculating using the ``calc_total_error`` function.
+    which can be calculated using the ``calc_total_error`` function.
     [#368]
 
 - ``photutils.utils``
@@ -143,7 +151,8 @@ Bug Fixes
 General
 ^^^^^^^
 
-- Drop numpy 1.6 support, minimal required version is now numpy 1.7. [#327]
+- Dropped numpy 1.6 support. Minimal required version is now numpy
+  1.7. [#327]
 
 - Fixed configparser for Python 3.5. [#366, #384]
 
