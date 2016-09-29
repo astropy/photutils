@@ -658,6 +658,9 @@ class Background2D(object):
         Calculate the background and background RMS estimate in each of
         the meshes.
 
+        Both meshes are computed at the same time here method because
+        the filtering of both depends on the background mesh.
+
         The ``background_mesh`` and ``background_rms_mesh`` images are
         equivalent to the low-resolution "MINIBACKGROUND" and
         "MINIBACK_RMS" background maps in SExtractor, respectively.
@@ -672,16 +675,18 @@ class Background2D(object):
         self.mesh_yidx, self.mesh_xidx = np.unravel_index(self.mesh_idx,
                                                           self._mesh_shape)
 
-        bkg1d = self.bkg_estimator(data_sigclip, axis=1)
-        bkgrms1d = self.bkgrms_estimator(data_sigclip, axis=1)
+        # needed for background_mesh_ma and background_rms_mesh_ma
+        # properties
+        self.bkg1d = self.bkg_estimator(data_sigclip, axis=1)
+        self.bkgrms1d = self.bkgrms_estimator(data_sigclip, axis=1)
 
         # make the 2D mesh arrays
-        if len(bkg1d) == (self.nxboxes * self.nyboxes):
-            bkg = self._make_2d_array(bkg1d)
-            bkgrms = self._make_2d_array(bkgrms1d)
+        if len(self.bkg1d) == (self.nxboxes * self.nyboxes):
+            bkg = self._make_2d_array(self.bkg1d)
+            bkgrms = self._make_2d_array(self.bkgrms1d)
         else:
-            bkg = self._interpolate_meshes(bkg1d)
-            bkgrms = self._interpolate_meshes(bkgrms1d)
+            bkg = self._interpolate_meshes(self.bkg1d)
+            bkgrms = self._interpolate_meshes(self.bkgrms1d)
 
         self.background_mesh = bkg
         self.background_rms_mesh = bkgrms
@@ -713,6 +718,28 @@ class Background2D(object):
         # the position coordinates used when calling an interpolator
         nx, ny = self.data.shape
         self.data_coords = np.array(list(product(range(ny), range(nx))))
+
+    @lazyproperty
+    def background_mesh_ma(self):
+        """
+        The background 2D (masked) array mesh prior to any interpolation.
+        """
+
+        if len(self.bkg1d) == (self.nxboxes * self.nyboxes):
+            return self.background_mesh
+        else:
+            return self._make_2d_array(self.bkg1d)
+
+    @lazyproperty
+    def background_rms_mesh_ma(self):
+        """
+        The background RMS 2D (masked) array mesh prior to any interpolation.
+        """
+
+        if len(self.bkg1d) == (self.nxboxes * self.nyboxes):
+            return self.background_rms_mesh
+        else:
+            return self._make_2d_array(self.bkgrms1d)
 
     @lazyproperty
     def background_median(self):
