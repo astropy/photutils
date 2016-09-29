@@ -24,8 +24,8 @@ __doctest_requires__ = {('BkgZoomInterpolator', 'Background2D'): ['scipy']}
 class BkgZoomInterpolator(object):
     """
     This class generates full-sized background and background RMS images
-    from lower-resolution mesh images using the
-    `~scipy.ndimage.interpolation.zoom` (spline) interpolator.
+    from lower-resolution mesh images using the `~scipy.ndimage.zoom`
+    (spline) interpolator.
 
     This class must be used in concert with the `Background2D` class.
 
@@ -719,7 +719,7 @@ class Background2D(object):
         """
         The median value of the 2D low-resolution background map.
 
-        This is equivalent to the value `SExtractor`_ prints to stdout
+        This is equivalent to the value SExtractor prints to stdout
         (i.e., "(M+D) Background: <value>").
         """
 
@@ -730,7 +730,7 @@ class Background2D(object):
         """
         The median value of the low-resolution background RMS map.
 
-        This is equivalent to the value `SExtractor`_ prints to stdout
+        This is equivalent to the value SExtractor prints to stdout
         (i.e., "(M+D) RMS: <value>").
         """
 

@@ -135,7 +135,7 @@ In Photutils, source extraction is performed using the
 :func:`~photutils.detection.detect_threshold` tool is a convenience
 function to generate a 2D detection threshold image using simple
 sigma-clipped statistics to estimate the background and background
-rms.
+RMS.
 
 For this example, let's detect sources in a synthetic image provided
 by the `datasets <datasets.html>`_ module::
@@ -146,7 +146,7 @@ by the `datasets <datasets.html>`_ module::
 We will use :func:`~photutils.detection.detect_threshold` to produce a
 detection threshold image.
 :func:`~photutils.detection.detect_threshold` will estimate the
-background and background rms using sigma-clipped statistics if they
+background and background RMS using sigma-clipped statistics if they
 are not input.  The threshold level is calculated using the ``snr``
 input as the sigma level above the background.  Here we generate a
 simple pixel-wise threshold at 3 sigma above the background::

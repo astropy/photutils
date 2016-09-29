@@ -6,7 +6,7 @@ Introduction
 
 Photutils contains functions for:
 
-* estimating the background and background rms in astronomical images
+* estimating the background and background RMS in astronomical images
 * detecting sources in astronomical images
 * estimating morphological parameters of those sources (e.g., centroid
   and shape parameters)
