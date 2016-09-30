@@ -301,7 +301,7 @@ array, which by design doesn't include increased noise on bright
 pixels.  To include Poisson noise from the sources, we can use the
 :func:`~photutils.utils.calc_total_error` function.  For example,
 suppose we have a function ``background()`` that calculates the
-position-dependent background level and rms of our data::
+position-dependent background level and RMS of our data::
 
     >>> from photutils.utils import calc_total_error
     >>> effective_gain = 1.5

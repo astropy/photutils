@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 This module defines background classes to estimate a scalar background
-and background rms from an array (which may be masked) of any dimension.
+and background RMS from an array (which may be masked) of any dimension.
 These classes were designed as part of an object-oriented interface for
 the tools in the PSF subpackage.
 """
@@ -9,9 +9,11 @@ the tools in the PSF subpackage.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import abc
+
 import numpy as np
 from astropy.extern import six
 from astropy.utils.misc import InheritDocstrings
+
 from ..extern.sigma_clipping import sigma_clip
 from ..extern.stats import mad_std, biweight_location, biweight_midvariance
 
@@ -187,7 +189,7 @@ class BackgroundBase(object):
 @six.add_metaclass(_ABCMetaAndInheritDocstrings)
 class BackgroundRMSBase(object):
     """
-    Base class for classes that estimate scalar background rms values.
+    Base class for classes that estimate scalar background RMS values.
 
     Parameters
     ----------
@@ -206,20 +208,20 @@ class BackgroundRMSBase(object):
     @abc.abstractmethod
     def calc_background_rms(self, data, axis=None):
         """
-        Calculate the background rms value.
+        Calculate the background RMS value.
 
         Parameters
         ----------
         data : array_like or `~numpy.ma.MaskedArray`
-            The array for which to calculate the background rms value.
+            The array for which to calculate the background RMS value.
         axis : int or `None`, optional
-            The array axis along which the background rms is calculated.
+            The array axis along which the background RMS is calculated.
             If `None`, then the entire array is used.
 
         Returns
         -------
         result : float or `~numpy.ma.MaskedArray`
-            The calculated background rms value.  If ``axis`` is `None`
+            The calculated background RMS value.  If ``axis`` is `None`
             then a scalar will be returned, otherwise a
             `~numpy.ma.MaskedArray` will be returned.
         """
@@ -449,15 +451,16 @@ class SExtractorBackground(BackgroundBase):
         if self.sigma_clip is not None:
             data = self.sigma_clip(data, axis=axis)
 
-        _median = _masked_median(data, axis=axis)
-        _mean = np.ma.mean(data, axis=axis)
-        _std = np.ma.std(data, axis=axis)
+        _median = np.atleast_1d(_masked_median(data, axis=axis))
+        _mean = np.atleast_1d(np.ma.mean(data, axis=axis))
+        _std = np.atleast_1d(np.ma.std(data, axis=axis))
+        bkg = np.atleast_1d((2.5 * _median) - (1.5 * _mean))
 
-        bkg = (2.5 * _median) - (1.5 * _mean)
         bkg = np.ma.where(_std == 0, _mean, bkg)
 
-        condition = (np.abs(_mean - _median) / _std) < 0.3
-        bkg = np.ma.where(condition, bkg, _median)
+        idx = np.ma.where(_std != 0)
+        condition = (np.abs(_mean[idx] - _median[idx]) / _std[idx]) < 0.3
+        bkg[idx] = np.ma.where(condition, bkg[idx], _median[idx])
 
         # np.ma.where always returns a masked array
         if axis is None and np.ma.isMaskedArray(bkg):
@@ -520,7 +523,7 @@ class BiweightLocationBackground(BackgroundBase):
 
 class StdBackgroundRMS(BackgroundRMSBase):
     """
-    Class to calculate the background rms in an array as the
+    Class to calculate the background RMS in an array as the
     (sigma-clipped) standard deviation.
 
     Parameters
@@ -537,14 +540,14 @@ class StdBackgroundRMS(BackgroundRMSBase):
     >>> sigma_clip = SigmaClip(sigma=3.)
     >>> bkgrms = StdBackgroundRMS(sigma_clip)
 
-    The background value can be calculated by using the
+    The background RMS value can be calculated by using the
     `calc_background_rms` method, e.g.:
 
     >>> bkgrms_value = bkgrms.calc_background_rms(data)
     >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
     28.866070047722118
 
-    Alternatively, the background rms value can be calculated by calling
+    Alternatively, the background RMS value can be calculated by calling
     the class instance as a function, e.g.:
 
     >>> bkgrms_value = bkgrms(data)
@@ -561,7 +564,7 @@ class StdBackgroundRMS(BackgroundRMSBase):
 
 class MADStdBackgroundRMS(BackgroundRMSBase):
     """
-    Class to calculate the background rms in an array as using the
+    Class to calculate the background RMS in an array as using the
     `median absolute deviation (MAD)
     <http://en.wikipedia.org/wiki/Median_absolute_deviation>`_.
 
@@ -589,14 +592,14 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
     >>> sigma_clip = SigmaClip(sigma=3.)
     >>> bkgrms = MADStdBackgroundRMS(sigma_clip)
 
-    The background value can be calculated by using the
+    The background RMS value can be calculated by using the
     `calc_background_rms` method, e.g.:
 
     >>> bkgrms_value = bkgrms.calc_background_rms(data)
     >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
     37.065055462640053
 
-    Alternatively, the background rms value can be calculated by calling
+    Alternatively, the background RMS value can be calculated by calling
     the class instance as a function, e.g.:
 
     >>> bkgrms_value = bkgrms(data)
@@ -613,7 +616,7 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
 
 class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase):
     """
-    Class to calculate the background rms in an array as the
+    Class to calculate the background RMS in an array as the
     (sigma-clipped) biweight midvariance.
 
     Parameters
@@ -636,14 +639,14 @@ class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase):
     >>> sigma_clip = SigmaClip(sigma=3.)
     >>> bkgrms = BiweightMidvarianceBackgroundRMS(sigma_clip=sigma_clip)
 
-    The background value can be calculated by using the
+    The background RMS value can be calculated by using the
     `calc_background_rms` method, e.g.:
 
     >>> bkgrms_value = bkgrms.calc_background_rms(data)
     >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
     30.094338485893392
 
-    Alternatively, the background rms value can be calculated by calling
+    Alternatively, the background RMS value can be calculated by calling
     the class instance as a function, e.g.:
 
     >>> bkgrms_value = bkgrms(data)
