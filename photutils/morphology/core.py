@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 Functions for measuring morphological properties of objects in an
-astronomical image.
+astronomical image using image moments.
 """
 
 from __future__ import (absolute_import, division, print_function,
@@ -17,8 +17,8 @@ __all__ = ['data_properties']
 
 def data_properties(data, mask=None, background=None):
     """
-    Calculate the centroid and morphological properties of a 2D array,
-    e.g., an image cutout of an object.
+    Calculate the morphological properties (and centroid) of a 2D array
+    (e.g. an image cutout of an object) using image moments.
 
     Parameters
     ----------

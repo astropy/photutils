@@ -5,3 +5,4 @@ objects in an astronomical image.
 """
 
 from .core import *
+from .non_parametric import *

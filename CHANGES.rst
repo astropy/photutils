@@ -118,6 +118,9 @@ API changes
   - Moved ``cutout_footprint`` from ``photutils.morphology`` to
     ``photutils.utils``. [#428]
 
+  - Added a function to calculate the Gini coefficient (``gini``).
+    [#343]
+
 - ``photutils.psf``
 
   - Removed the ``effective_gain`` keyword from ``psf_photometry``.
