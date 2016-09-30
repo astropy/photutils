@@ -504,12 +504,13 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
 
         Returns
         -------
-        output_tab : `~astropy.table.Table` or None
+        output_table : `~astropy.table.Table` or None
             Table with the photometry results, i.e., centroids and
             fluxes estimations and the initial estimates used to start
             the fitting process.
             None is returned if no sources are found in ``image``.
         """
+
         self._residual_image = image
         
         if positions is not None:
@@ -526,6 +527,24 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         return output_table
 
     def _do_photometry(self, n_start=1):
+        """
+        Helper function which performs the iterations of the photometry process.
+
+        Parameters
+        ----------
+        n_start : int
+            Integer representing the start index of the iteration.
+            It is 1 if positions are None, and 2 otherwise.
+
+        Returns
+        -------
+        output_table : `~astropy.table.Table` or None
+            Table with the photometry results, i.e., centroids and
+            fluxes estimations and the initial estimates used to start
+            the fitting process.
+            None is returned if no sources are found in ``image``.
+        """
+
         output_table = Table([[], [], [], [], [], [], [], [], []],
                 names=('x_0', 'y_0', 'flux_0', 'id', 'group_id',
                        'iter_detected', 'x_fit', 'y_fit',
