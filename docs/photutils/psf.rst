@@ -94,11 +94,13 @@ Basic Usage
 
 `~photutils.psf.DAOPhotPSFPhotometry` is the core class that implements the
 DAOPHOT algorithm for performing PSF photometry in crowded fields.
-It basically encapsulates the loop "FIND, GROUP, NSTAR, SUBTRACT, FIND..." in
-one place so that one can easily perform PSF photometry just by setting up a
-`~photutils.psf.DAOPhotPSFPhotometry` object.
+
+The `~photutils.psf.IterativelySubtractedPSFPhotometry` basically encapsulates 
+the loop "FIND, GROUP, NSTAR, SUBTRACT, FIND..." in one place so that one can
+easily perform PSF photometry just by setting up a `~photutils.psf.IterativelySubtractedPSFPhotometry` object.
 
 This class and all of the classes it *uses* for the steps in the process are
+<<<<<<< 602c332796436c318110c45e016999d5f8c85b0c
 implemented in such a way that they can be used as callable functions. The actual
 implementation of the  ``__call__`` method for
 `~photutils.psf.DAOPhotPSFPhotometry` is identical to the ``do_photometry``
@@ -106,26 +108,31 @@ method (which is why the documentation for ``__call__`` is in
 ``do_photometry``). This allows subclasses of
 `~photutils.psf.DAOPhotPSFPhotometry` to override ``do_photometry`` if they want
 to change some behavior, making such code more maintainable.
+=======
+implemented in such a way that they can be used callable functions. 
+>>>>>>> update current docs
 
-The basic usage of `~photutils.psf.DAOPhotPSFPhotometry` is as follows:
+The basic usage of `~photutils.psf.IterativelySubtractedPSFPhotometry` is as follows:
 
 .. doctest-skip::
 
-    >>> # create a DAOPhotPSFPhotometry object
-    >>> from photutils.psf import DAOPhotPSFPhotometry
-    >>> my_photometry = DAOPhotPSFPhotometry(finder=my_finder,
-    ...                                      group_maker=my_group_maker,
-    ...                                      bkg_estimator=my_bkg_estimator,
-    ...                                      psf_model=my_psf_model,
-    ...                                      fitter=my_fitter, niters=1,
-    ...                                      fitshape=(7,7))
+    >>> # create a IterativelySubtractedPSFPhotometry object
+    >>> from photutils.psf import IterativelySubtractedPSFPhotometry
+    >>> my_photometry = IterativelySubtractedPSFPhotometry(finder=my_finder,
+    ...                                                    group_maker=my_group_maker,
+    ...                                                    bkg_estimator=my_bkg_estimator,
+    ...                                                    psf_model=my_psf_model,
+    ...                                                    fitter=my_fitter, niters=3,
+    ...                                                    fitshape=(7,7))
     >>> # get photometry results
-    >>> photometry_results, residual_image = my_photometry(image=my_image)
+    >>> photometry_results = my_photometry(image=my_image)
+    >>> # get residual image
+    >>> residual_image = my_photometry.get_residual_image()
 
 Where ``my_finder``, ``my_group_maker``, and ``my_bkg_estimator`` may be any
 suitable class or callable function. This approach allows one to customize every
 part of the photometry process provided that their input/output are compatible
-with the input/ouput expected by `~photutils.psf.DAOPhotPSFPhotometry`.
+with the input/ouput expected by `~photutils.psf.IterativelySubtractedPSFPhotometry`.
 `photutils.psf` provides all the necessary classes to reproduce the DAOPHOT
 algorithm, but any individual part of that algorithm can be swapped for a
 user-defined function.  See the API documentation for precise details on what
@@ -200,7 +207,7 @@ First let's create an image with four overlapping stars::
     plt.title('Simulated data')
     plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
 
-Then let's import the required classes to set up a `~photutils.psf.DAOPhotPSFPhotometry` object::
+Then let's import the required classes to set up a `~photutils.psf.IterativelySubtractedPSFPhotometry` object::
 
     >>> from photutils.detection import IRAFStarFinder
     >>> from photutils.psf import IntegratedGaussianPRF, DAOGroup
@@ -222,14 +229,15 @@ Let's then instantiate and use the objects:
     >>> mmm_bkg = MMMBackground()
     >>> fitter = LevMarLSQFitter()
     >>> psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
-    >>> from photutils.psf import DAOPhotPSFPhotometry
-    >>> daophot_photometry = DAOPhotPSFPhotometry(finder=iraffind,
-    ...                                           group_maker=daogroup,
-    ...                                           bkg_estimator=mmm_bkg,
-    ...                                           psf_model=psf_model,
-    ...                                           fitter=LevMarLSQFitter(),
-    ...                                           niters=1, fitshape=(11,11))
-    >>> result_tab, residual_image = daophot_photometry(image=image)
+    >>> from photutils.psf import IterativelySubtractedPSFPhotometry
+    >>> photometry = IterativelySubtractedPSFPhotometry(finder=iraffind,
+    ...                                                 group_maker=daogroup,
+    ...                                                 bkg_estimator=mmm_bkg,
+    ...                                                 psf_model=psf_model,
+    ...                                                 fitter=LevMarLSQFitter(),
+    ...                                                 niters=1, fitshape=(11,11))
+    >>> result_tab = photometry(image=image)
+    >>> residual_image = photometry.get_residual_image()
 
 Note that the parameters values for the finder class, i.e.,
 `~photutils.detection.IRAFStarFinder`, are completly chosen in an arbitrary
@@ -240,7 +248,7 @@ As mentioned before, the way to actually do the photometry is by using
 
 It's worth noting that ``image`` does not need to be background subtracted.
 The subtraction is done during the photometry process with the attribute
-``bkg`` that was used to set up ``daophot_photometry``.
+``bkg`` that was used to set up ``photometry``.
 
 Now, let's compare the simulated and the residual images:
 
@@ -297,15 +305,16 @@ Now, let's compare the simulated and the residual images:
     psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
     fitter = LevMarLSQFitter()
 
-    from photutils.psf import DAOPhotPSFPhotometry
+    from photutils.psf import IterativelySubtractedPSFPhotometry
 
-    daophot_photometry = DAOPhotPSFPhotometry(finder=iraffind,
-                                              group_maker=daogroup,
-                                              bkg_estimator=mmm_bkg,
-                                              psf_model=psf_model,
-                                              fitter=LevMarLSQFitter(),
-                                              niters=1, fitshape=(11,11))
-    result_tab, residual_image = daophot_photometry(image=image)
+    photometry = IterativelySubtractedPSFPhotometry(finder=iraffind,
+                                                    group_maker=daogroup,
+                                                    bkg_estimator=mmm_bkg,
+                                                    psf_model=psf_model,
+                                                    fitter=LevMarLSQFitter(),
+                                                    niters=1, fitshape=(11,11))
+    result_tab = photometry(image=image)
+    residual_image = photometry.get_residual_image()
 
     from matplotlib import rcParams
     rcParams['font.size'] = 13
@@ -342,18 +351,18 @@ Consider the previous example after the line
     ...                                         sources['y_mean']])
 
 Note that we do not need to set the ``finder`` and ``niters`` attributes in
-`~photutils.psf.DAOPhotPSFPhotometry` and the positions are passed using the
-keyword ``positions``:
+`~photutils.psf.IterativelySubtractedPSFPhotometry` and the positions are
+passed using the keyword ``positions``:
 
 .. doctest-skip::
 
-    >>> daophot_photometry = DAOPhotPSFPhotometry(group_maker=daogroup,
-    ...                                           bkg_estimator=mmm_bkg,
-    ...                                           psf_model=psf_model,
-    ...                                           fitter=LevMarLSQFitter(),
-    ...                                           fitshape=(11,11))
-    >>> result_tab, residual_image = daophot_photometry(image=image,
-    ...                                                 positions=pos)
+    >>> photometry = IterativelySubtractedPSFPhotometry(group_maker=daogroup,
+    ...                                                 bkg_estimator=mmm_bkg,
+    ...                                                 psf_model=psf_model,
+    ...                                                 fitter=LevMarLSQFitter(),
+    ...                                                 fitshape=(11,11))
+    >>> result_tab = photometry(image=image, positions=pos)
+    >>> residual_image = photometry.get_residual_image()
 
 .. doctest-skip::
 
@@ -414,16 +423,16 @@ keyword ``positions``:
 
     fitter = LevMarLSQFitter()
 
-    from photutils.psf import DAOPhotPSFPhotometry
+    from photutils.psf import IterativelySubtractedPSFPhotometry
 
-    daophot_photometry = DAOPhotPSFPhotometry(group_maker=daogroup,
-                                              bkg_estimator=mmm_bkg,
-                                              psf_model=psf_model,
-                                              fitter=LevMarLSQFitter(),
-                                              fitshape=(11,11))
+    photometry = IterativelySubtractedPSFPhotometry(group_maker=daogroup,
+                                                    bkg_estimator=mmm_bkg,
+                                                    psf_model=psf_model,
+                                                    fitter=LevMarLSQFitter(),
+                                                    fitshape=(11,11))
 
-    result_tab, residual_image = daophot_photometry(image=image,
-                                                    positions=pos)
+    result_tab = photometry(image=image, positions=pos)
+    residual_image = photometry.get_residual_image()
 
     from matplotlib import rcParams
     import matplotlib.pyplot as plt
