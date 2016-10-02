@@ -448,6 +448,7 @@ passed using the keyword ``positions``:
                interpolation='nearest', origin='lower')
     plt.title('Residual Image')
     plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
+    plt.show()
 
 For more examples, also check the online notebook in the next section.
 
