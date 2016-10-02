@@ -6,6 +6,7 @@ from astropy.table import Table
 from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.tests.helper import pytest
+from astropy.utils import minversion
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 from ..models import IntegratedGaussianPRF
 from ...datasets import make_gaussian_sources
@@ -16,6 +17,8 @@ from ...detection import DAOStarFinder
 from ...background import SigmaClip, MedianBackground, StdBackgroundRMS
 from ...background import MedianBackground, MMMBackground, SigmaClip
 from ...background import StdBackgroundRMS
+
+ASTROPY_GT_1_1_2 = minversion('astropy', '1.1.2') 
 
 try:
     import scipy
@@ -96,7 +99,7 @@ sources2['id'] = [1, 2, 3, 4]
 sources2['group_id'] = [1, 1, 1, 1]
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GT_1_1_2')
 @pytest.mark.parametrize("sigma_psf, sources",
                          [(sigma_psfs[0], sources1),
                           (sigma_psfs[1], sources2),
