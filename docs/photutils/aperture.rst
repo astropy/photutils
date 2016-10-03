@@ -398,7 +398,7 @@ Finally, we can plot the comparison:
 
 .. doctest-skip::
 
-    >>> import matplotlib.pylab as plt
+    >>> import matplotlib.pyplot as plt
     >>> plt.scatter(fluxes_catalog, converted_aperture_sum.value)
     >>> plt.xlabel('Spitzer catalog fluxes ')
     >>> plt.ylabel('Aperture photometry fluxes')
@@ -425,7 +425,7 @@ Finally, we can plot the comparison:
   converted_aperture_sum = (phot_table['aperture_sum'] * factor).to(u.mJy / u.pixel)
 
   # Plot
-  import matplotlib.pylab as plt
+  import matplotlib.pyplot as plt
   plt.scatter(fluxes_catalog, converted_aperture_sum.value)
   plt.xlabel('Spitzer catalog fluxes ')
   plt.ylabel('Aperture photometry fluxes')

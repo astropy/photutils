@@ -117,7 +117,7 @@ Now let's plot the results:
 .. doctest-skip::
 
     >>> import numpy as np
-    >>> import matplotlib.pylab as plt
+    >>> import matplotlib.pyplot as plt
     >>> from astropy.visualization import SqrtStretch
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> from photutils.utils import random_cmap
@@ -133,7 +133,7 @@ Now let's plot the results:
 .. plot::
 
     import numpy as np
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
     from astropy.stats import gaussian_fwhm_to_sigma
     from astropy.convolution import Gaussian2DKernel
     from astropy.visualization import SqrtStretch

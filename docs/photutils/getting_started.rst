@@ -83,14 +83,14 @@ apertures:
 
 .. doctest-skip::
 
-    >>> import matplotlib.pylab as plt
+    >>> import matplotlib.pyplot as plt
     >>> plt.imshow(image, cmap='gray_r', origin='lower')
     >>> apertures.plot(color='blue', lw=1.5, alpha=0.5)
 
 .. plot::
 
     import numpy as np
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
     from astropy.stats import mad_std
     from photutils import (datasets, DAOStarFinder, aperture_photometry,
                            CircularAperture)
