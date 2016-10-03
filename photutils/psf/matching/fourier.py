@@ -70,6 +70,9 @@ def create_matching_kernel(source_psf, target_psf, window=None):
         * `~photutils.psf.matching.SplitCosineBellWindow`
         * `~photutils.psf.matching.TopHatWindow`
 
+        For more information on window functions and example usage, see
+        :ref:`psf_matching`.
+
     Returns
     -------
     kernel : 2D `~numpy.ndarray`
