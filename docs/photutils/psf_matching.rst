@@ -48,7 +48,7 @@ Let's plot the result:
     import numpy as np
     from astropy.modeling.models import Gaussian2D
     from photutils import create_matching_kernel
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
 
     y, x = np.mgrid[0:51, 0:51]
     gm1 = Gaussian2D(100, 25, 25, 3, 3)
@@ -88,7 +88,7 @@ functions:
 
     from photutils import (HanningWindow, TukeyWindow, CosineBellWindow,
                            SplitCosineBellWindow, TopHatWindow)
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
     w1 = HanningWindow()
     w2 = TukeyWindow(alpha=0.5)
     w3 = CosineBellWindow(alpha=0.5)
@@ -155,7 +155,7 @@ Let's display the new matching kernel:
     import numpy as np
     from astropy.modeling.models import Gaussian2D
     from photutils import create_matching_kernel, TopHatWindow
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
 
     y, x = np.mgrid[0:51, 0:51]
     gm1 = Gaussian2D(100, 25, 25, 3, 3)
@@ -180,7 +180,7 @@ kernel images:
     import numpy as np
     from astropy.modeling.models import Gaussian2D
     from photutils import create_matching_kernel, TopHatWindow
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
 
     y, x = np.mgrid[0:51, 0:51]
     gm1 = Gaussian2D(100, 25, 25, 3, 3)
@@ -223,7 +223,7 @@ Let's display the images:
 .. plot::
     :include-source:
 
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
     from astropy.visualization import LogStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import load_irac_psf
@@ -263,7 +263,7 @@ Let's display the matching kernel result:
 .. plot::
     :include-source:
 
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
     from astropy.visualization import LogStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import load_irac_psf

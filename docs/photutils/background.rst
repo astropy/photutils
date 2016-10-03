@@ -56,7 +56,7 @@ Let's plot the image:
 
 .. doctest-skip::
 
-    >>> import matplotlib.pylab as plt
+    >>> import matplotlib.pyplot as plt
     >>> from astropy.visualization import SqrtStretch
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> norm = ImageNormalize(stretch=SqrtStretch())
@@ -64,7 +64,7 @@ Let's plot the image:
 
 .. plot::
 
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import make_100gaussians_image
@@ -236,7 +236,7 @@ background gradient to the image defined above::
 
 .. plot::
 
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import make_100gaussians_image
@@ -286,7 +286,7 @@ Let's plot the background image:
 
 .. plot::
 
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
     from photutils.datasets import make_100gaussians_image
     from photutils import Background2D, SigmaClip, MedianBackground
     data = make_100gaussians_image()
@@ -309,7 +309,7 @@ and the background-subtracted image:
 
 .. plot::
 
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import make_100gaussians_image
@@ -357,7 +357,7 @@ Let's create such an image and plot it (NOTE: this example requires
     from scipy.ndimage.interpolation import rotate
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
@@ -396,7 +396,7 @@ apply the coverage mask to the returned background image:
     from scipy.ndimage.interpolation import rotate
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
@@ -421,7 +421,7 @@ Finally, let's subtract the background from the image and plot it:
     from photutils.datasets import make_100gaussians_image
     from photutils.background import Background2D
     from scipy.ndimage.interpolation import rotate
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     data = make_100gaussians_image()
@@ -458,7 +458,7 @@ be plotted on the original image using the
     from photutils.datasets import make_100gaussians_image
     from photutils.background import Background2D
     from scipy.ndimage.interpolation import rotate
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     data = make_100gaussians_image()

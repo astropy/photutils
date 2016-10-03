@@ -87,7 +87,7 @@ Let's plot the image and mark the location of detected sources:
     >>> from photutils import CircularAperture
     >>> from astropy.visualization import SqrtStretch
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
-    >>> import matplotlib.pylab as plt
+    >>> import matplotlib.pyplot as plt
     >>> positions = (sources['xcentroid'], sources['ycentroid'])
     >>> apertures = CircularAperture(positions, r=4.)
     >>> norm = ImageNormalize(stretch=SqrtStretch())
@@ -100,7 +100,7 @@ Let's plot the image and mark the location of detected sources:
     from photutils import datasets, DAOStarFinder, CircularAperture
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
     hdu = datasets.load_star_image()
     data = hdu.data[0:400, 0:400]
     mean, median, std = sigma_clipped_stats(data, sigma=3.0)
@@ -192,7 +192,7 @@ image showing the detected sources:
 .. doctest-skip::
 
     >>> import numpy as np
-    >>> import matplotlib.pylab as plt
+    >>> import matplotlib.pyplot as plt
     >>> from astropy.visualization import SqrtStretch
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> from photutils.utils import random_cmap
@@ -205,7 +205,7 @@ image showing the detected sources:
 .. plot::
 
     import numpy as np
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
     from astropy.stats import gaussian_fwhm_to_sigma
     from astropy.convolution import Gaussian2DKernel
     from astropy.visualization import SqrtStretch
@@ -317,7 +317,7 @@ And let's plot the location of the detected peaks in the image:
 
     >>> from astropy.visualization import SqrtStretch
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
-    >>> import matplotlib.pylab as plt
+    >>> import matplotlib.pyplot as plt
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm)
     >>> plt.plot(tbl['x_peak'], tbl['y_peak'], ls='none', color='cyan',
@@ -337,7 +337,7 @@ And let's plot the location of the detected peaks in the image:
 
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
-    import matplotlib.pylab as plt
+    import matplotlib.pyplot as plt
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm)
     plt.plot(tbl['x_peak'], tbl['y_peak'], ls='none', color='cyan',
