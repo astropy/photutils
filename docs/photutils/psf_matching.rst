@@ -1,6 +1,7 @@
+.. _psf_matching:
+
 PSF Matching
 ============
-
 
 Introduction
 ------------
