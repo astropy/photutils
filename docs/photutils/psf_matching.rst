@@ -1,7 +1,7 @@
 .. _psf_matching:
 
-PSF Matching
-============
+PSF Matching (`photutils.psf.matching`)
+=======================================
 
 Introduction
 ------------
@@ -16,7 +16,7 @@ Matching PSFs
 Photutils provides a function called
 :func:`~photutils.psf.matching.create_matching_kernel` that generates
 a matching kernel between two PSFs using the ratio of Fourier
-transforms.
+transforms (see e.g., `Gordon et al. 2008`_; `Aniano et al. 2011`_).
 
 For this first simple example, let's assume our source and target PSFs
 are noiseless 2D Gaussians.  The "high-resolution" PSF will be a
@@ -71,7 +71,8 @@ high-frequency noise from the Fourier ratios.  This is performed by
 inputing a `window function
 <https://en.wikipedia.org/wiki/Window_function>`_, which may be a
 function or a callable object.  In general, the user will need to
-exercise some care when defining a window function.
+exercise some care when defining a window function.  For more
+information, please see `Aniano et al. 2011`_.
 
 Photutils provides the following window classes:
 
@@ -293,3 +294,7 @@ Reference/API
 
 .. automodapi:: photutils.psf.matching
     :no-heading:
+
+
+.. _Gordon et al. 2008:  http://adsabs.harvard.edu/abs/2008ApJ...682..336G
+.. _Aniano et al. 2011: http://adsabs.harvard.edu/abs/2011PASP..123.1218A
