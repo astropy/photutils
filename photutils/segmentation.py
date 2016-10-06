@@ -22,11 +22,8 @@ __doctest_skip__ = {'SegmentationImage.outline_segments'}
 
 __doctest_requires__ = {('SegmentationImage', 'SegmentationImage.*',
                          'SourceProperties', 'SourceProperties.*',
-                         'source_properties', 'properties_table'): ['scipy'],
-                        ('SegmentationImage', 'SegmentationImage.*',
-                         'SourceProperties', 'SourceProperties.*',
                          'source_properties', 'properties_table'):
-                        ['skimage']}
+                        ['scipy', 'skimage']}
 
 
 class SegmentationImage(object):
