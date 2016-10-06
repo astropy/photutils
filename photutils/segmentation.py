@@ -11,7 +11,6 @@ from astropy.utils import lazyproperty
 from astropy.wcs.utils import pixel_to_skycoord
 
 from .utils.convolution import filter_data
-from .utils.prepare_data import _prepare_data
 
 
 __all__ = ['SegmentationImage', 'SourceProperties', 'source_properties',
@@ -1699,16 +1698,7 @@ def source_properties(data, segment_img, error=None, mask=None,
         segment_img = SegmentationImage(segment_img)
 
     if segment_img.shape != data.shape:
-        raise ValueError('The data and segmentation image must have '
-                         'the same shape')
-
-    if labels is None:
-        labels = segment_img.labels
-    labels = np.atleast_1d(labels)
-
-    # prepare the input data once, instead of repeating for each source
-    data, error_total, background = _prepare_data(
-        data, error=error, background=background)
+        raise ValueError('segment_img and data must have the same shape.')
 
     # filter the data once, instead of repeating for each source
     if filter_kernel is not None:
@@ -1717,13 +1707,17 @@ def source_properties(data, segment_img, error=None, mask=None,
     else:
         filtered_data = None
 
+    if labels is None:
+        labels = segment_img.labels
+    labels = np.atleast_1d(labels)
+
     sources_props = []
     for label in labels:
         if label not in segment_img.labels:
             continue      # skip invalid labels (without warnings)
         sources_props.append(SourceProperties(
             data, segment_img, label, filtered_data=filtered_data,
-            error=error_total, mask=mask, background=background, wcs=wcs))
+            error=error, mask=mask, background=background, wcs=wcs))
 
     return sources_props
 
