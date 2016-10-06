@@ -628,7 +628,8 @@ class SourceProperties(object):
         properties.  If ``filtered_data`` is input, then it will be used
         instead of ``data`` to calculate the source centroid and
         morphological properties.  Source photometry is always measured
-        from ``data``.  ``data`` should be background-subtracted.
+        from ``data``.  For accurate source properties and photometry,
+        ``data`` should be background-subtracted.
 
     segment_img : `SegmentationImage` or array_like (int)
         A 2D segmentation image, either as a `SegmentationImage` object
@@ -646,7 +647,7 @@ class SourceProperties(object):
         the same one used in defining the source segments (e.g., see
         :func:`~photutils.detect_sources`).  If `None`, then the
         unfiltered ``data`` will be used instead.  Note that
-        `SExtractor`_'s centroid and morphological parameters are
+        SExtractor's centroid and morphological parameters are
         calculated from the filtered "detection" image.
 
     error : array_like or `~astropy.units.Quantity`, optional
@@ -727,14 +728,38 @@ class SourceProperties(object):
             segment_img = SegmentationImage(segment_img)
 
         if segment_img.shape != data.shape:
-            raise ValueError('The data and segmentation image must have '
-                             'the same shape')
+            raise ValueError('segment_img and data must have the same shape.')
+
+        if error is not None:
+            error = np.atleast_1d(error)
+            if len(error) == 1:
+                error = np.zeros(data.shape) + error
+            if error.shape != data.shape:
+                raise ValueError('error and data must have the same shape.')
 
         if mask is np.ma.nomask:
             mask = np.zeros(data.shape).astype(bool)
         if mask is not None:
             if mask.shape != data.shape:
-                raise ValueError('The data and mask must have the same shape')
+                raise ValueError('mask and data must have the same shape.')
+
+        if background is not None:
+            background = np.atleast_1d(background)
+            if len(background) == 1:
+                background = np.zeros(data.shape) + background
+            if background.shape != data.shape:
+                raise ValueError('background and data must have the same '
+                                 'shape.')
+
+        # data and filtered_data should be background-subtracted
+        # for accurate source photometry and properties
+        self._data = data
+        if filtered_data is None:
+            self._filtered_data = data
+        else:
+            self._filtered_data = filtered_data
+        self._error = error    # total error; 2D array
+        self._background = background    # 2D array
 
         segment_img.check_label(label)
         self.label = label
@@ -742,17 +767,6 @@ class SourceProperties(object):
         self._segment_img = segment_img
         self._mask = mask
         self._wcs = wcs
-
-        data, error, background = _prepare_data(
-            data, error=error, background=background)
-        # data and filtered_data should be background-subtracted
-        self._data = data
-        if filtered_data is None:
-            self._filtered_data = data
-        else:
-            self._filtered_data = filtered_data
-        self._error = error    # *total* error
-        self._background = background    # 2D array
 
     def __getitem__(self, key):
         return getattr(self, key, None)
