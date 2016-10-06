@@ -795,7 +795,7 @@ class SourceProperties(object):
         if data is None:
             return None
 
-        data = np.asarray(data)
+        data = np.asanyarray(data)
         if data.shape != self._data.shape:
             raise ValueError('data must have the same shape as the '
                              'segmentation image input to SourceProperties')
@@ -1537,9 +1537,13 @@ class SourceProperties(object):
         if self._background is None:
             return None
         else:
-            return map_coordinates(
-                self._background, [[self.ycentroid.value],
-                                   [self.xcentroid.value]])[0]
+            value = map_coordinates(self._background,
+                                    [[self.ycentroid.value],
+                                     [self.xcentroid.value]])[0]
+            if isinstance(self._background, u.Quantity):
+                value *= self._background.unit
+
+            return value
 
 
 def source_properties(data, segment_img, error=None, mask=None,
