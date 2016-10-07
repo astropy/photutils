@@ -1,11 +1,14 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+
 import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 import astropy.units as u
-from .. import calc_total_error
+
+from ..errors import calc_total_error
+
 
 SHAPE = (5, 5)
 DATAVAL = 2.

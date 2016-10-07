@@ -7,6 +7,6 @@ from .check_random_state import *
 from .colormaps import *
 from .convolution import *
 from .cutouts import *
+from .errors import *
 from .interpolation import *
-from .prepare_data import *
 from .stats import *

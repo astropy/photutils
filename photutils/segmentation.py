@@ -11,7 +11,6 @@ from astropy.utils import lazyproperty
 from astropy.wcs.utils import pixel_to_skycoord
 
 from .utils.convolution import filter_data
-from .utils.prepare_data import _prepare_data
 
 
 __all__ = ['SegmentationImage', 'SourceProperties', 'source_properties',
@@ -22,11 +21,8 @@ __doctest_skip__ = {'SegmentationImage.outline_segments'}
 
 __doctest_requires__ = {('SegmentationImage', 'SegmentationImage.*',
                          'SourceProperties', 'SourceProperties.*',
-                         'source_properties', 'properties_table'): ['scipy'],
-                        ('SegmentationImage', 'SegmentationImage.*',
-                         'SourceProperties', 'SourceProperties.*',
                          'source_properties', 'properties_table'):
-                        ['skimage']}
+                        ['scipy', 'skimage']}
 
 
 class SegmentationImage(object):
@@ -628,7 +624,8 @@ class SourceProperties(object):
         properties.  If ``filtered_data`` is input, then it will be used
         instead of ``data`` to calculate the source centroid and
         morphological properties.  Source photometry is always measured
-        from ``data``.  ``data`` should be background-subtracted.
+        from ``data``.  For accurate source properties and photometry,
+        ``data`` should be background-subtracted.
 
     segment_img : `SegmentationImage` or array_like (int)
         A 2D segmentation image, either as a `SegmentationImage` object
@@ -646,7 +643,7 @@ class SourceProperties(object):
         the same one used in defining the source segments (e.g., see
         :func:`~photutils.detect_sources`).  If `None`, then the
         unfiltered ``data`` will be used instead.  Note that
-        `SExtractor`_'s centroid and morphological parameters are
+        SExtractor's centroid and morphological parameters are
         calculated from the filtered "detection" image.
 
     error : array_like or `~astropy.units.Quantity`, optional
@@ -727,14 +724,38 @@ class SourceProperties(object):
             segment_img = SegmentationImage(segment_img)
 
         if segment_img.shape != data.shape:
-            raise ValueError('The data and segmentation image must have '
-                             'the same shape')
+            raise ValueError('segment_img and data must have the same shape.')
+
+        if error is not None:
+            error = np.atleast_1d(error)
+            if len(error) == 1:
+                error = np.zeros(data.shape) + error
+            if error.shape != data.shape:
+                raise ValueError('error and data must have the same shape.')
 
         if mask is np.ma.nomask:
             mask = np.zeros(data.shape).astype(bool)
         if mask is not None:
             if mask.shape != data.shape:
-                raise ValueError('The data and mask must have the same shape')
+                raise ValueError('mask and data must have the same shape.')
+
+        if background is not None:
+            background = np.atleast_1d(background)
+            if len(background) == 1:
+                background = np.zeros(data.shape) + background
+            if background.shape != data.shape:
+                raise ValueError('background and data must have the same '
+                                 'shape.')
+
+        # data and filtered_data should be background-subtracted
+        # for accurate source photometry and properties
+        self._data = data
+        if filtered_data is None:
+            self._filtered_data = data
+        else:
+            self._filtered_data = filtered_data
+        self._error = error    # total error; 2D array
+        self._background = background    # 2D array
 
         segment_img.check_label(label)
         self.label = label
@@ -742,17 +763,6 @@ class SourceProperties(object):
         self._segment_img = segment_img
         self._mask = mask
         self._wcs = wcs
-
-        data, error, background = _prepare_data(
-            data, error=error, background=background)
-        # data and filtered_data should be background-subtracted
-        self._data = data
-        if filtered_data is None:
-            self._filtered_data = data
-        else:
-            self._filtered_data = filtered_data
-        self._error = error    # *total* error
-        self._background = background    # 2D array
 
     def __getitem__(self, key):
         return getattr(self, key, None)
@@ -784,7 +794,7 @@ class SourceProperties(object):
         if data is None:
             return None
 
-        data = np.asarray(data)
+        data = np.asanyarray(data)
         if data.shape != self._data.shape:
             raise ValueError('data must have the same shape as the '
                              'segmentation image input to SourceProperties')
@@ -1526,9 +1536,13 @@ class SourceProperties(object):
         if self._background is None:
             return None
         else:
-            return map_coordinates(
-                self._background, [[self.ycentroid.value],
-                                   [self.xcentroid.value]])[0]
+            value = map_coordinates(self._background,
+                                    [[self.ycentroid.value],
+                                     [self.xcentroid.value]])[0]
+            if isinstance(self._background, u.Quantity):
+                value *= self._background.unit
+
+            return value
 
 
 def source_properties(data, segment_img, error=None, mask=None,
@@ -1684,16 +1698,7 @@ def source_properties(data, segment_img, error=None, mask=None,
         segment_img = SegmentationImage(segment_img)
 
     if segment_img.shape != data.shape:
-        raise ValueError('The data and segmentation image must have '
-                         'the same shape')
-
-    if labels is None:
-        labels = segment_img.labels
-    labels = np.atleast_1d(labels)
-
-    # prepare the input data once, instead of repeating for each source
-    data, error_total, background = _prepare_data(
-        data, error=error, background=background)
+        raise ValueError('segment_img and data must have the same shape.')
 
     # filter the data once, instead of repeating for each source
     if filter_kernel is not None:
@@ -1702,13 +1707,17 @@ def source_properties(data, segment_img, error=None, mask=None,
     else:
         filtered_data = None
 
+    if labels is None:
+        labels = segment_img.labels
+    labels = np.atleast_1d(labels)
+
     sources_props = []
     for label in labels:
         if label not in segment_img.labels:
             continue      # skip invalid labels (without warnings)
         sources_props.append(SourceProperties(
             data, segment_img, label, filtered_data=filtered_data,
-            error=error_total, mask=mask, background=background, wcs=wcs))
+            error=error, mask=mask, background=background, wcs=wcs))
 
     return sources_props
 

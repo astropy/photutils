@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+
 import numpy as np
 import astropy.units as u
 from astropy.utils.misc import isiterable
@@ -105,7 +106,7 @@ def calc_total_error(data, bkg_error, effective_gain):
                              'have the same shape as the input data.')
     if np.any(effective_gain <= 0):
         raise ValueError('effective_gain must be strictly positive '
-                         'everywhere')
+                         'everywhere.')
 
     if use_units:
         source_variance = np.maximum((data * data.unit) /
@@ -115,61 +116,3 @@ def calc_total_error(data, bkg_error, effective_gain):
         source_variance = np.maximum(data / effective_gain, 0)
 
     return np.sqrt(bkg_error**2 + source_variance)
-
-
-def _check_units(inputs):
-    """Check for consistent units on data, error, and background."""
-    has_unit = [hasattr(x, 'unit') for x in inputs]
-    if any(has_unit) and not all(has_unit):
-        raise ValueError('If any of data, error, or background has units, '
-                         'then they all must all have units.')
-    if all(has_unit):
-        if any([inputs[0].unit != getattr(x, 'unit') for x in inputs[1:]]):
-            raise u.UnitsError(
-                'data, error, and background units do not match.')
-
-
-def _prepare_data(data, error=None, effective_gain=None, background=None):
-    """
-    Prepare the data, error, and background arrays.
-
-    If any of ``data``, ``error``, and ``background`` have units, then
-    they all are checked that they have units and the units are the
-    same.
-
-    If ``effective_gain`` is input, then the total error array including
-    source Poisson noise is calculated.
-
-    If ``background`` is input, then it is returned as a 2D array with
-    the same shape as ``data`` (if necessary).  It is *not* subtracted
-    from the input ``data``.
-
-    Notes
-    -----
-    ``data``, ``error``, and ``background`` must all have the same units
-    if they are `~astropy.units.Quantity`\s.
-
-    If ``effective_gain`` is a `~astropy.units.Quantity`, then it must
-    have units such that ``effective_gain * data`` is in units of counts
-    (e.g. counts, electrons, or photons).
-    """
-
-    inputs = [data, error, background]
-    _check_units(inputs)
-
-    # generate a 2D background array, if necessary
-    if background is not None:
-        if not isiterable(background):
-            background = np.zeros(data.shape) + background
-        else:
-            if background.shape != data.shape:
-                raise ValueError('If input background is 2D, then it must '
-                                 'have the same shape as the input data.')
-
-    if error is not None:
-        if data.shape != error.shape:
-            raise ValueError('data and error must have the same shape')
-        if effective_gain is not None:
-            error = calc_total_error(data, error, effective_gain)
-
-    return data, error, background
