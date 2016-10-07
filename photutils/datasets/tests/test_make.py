@@ -1,11 +1,13 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+
 import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest, assert_quantity_allclose
 from astropy.table import Table
 import astropy.units as u
+
 from .. import (make_noise_image, make_poisson_noise, make_gaussian_sources,
                 make_random_gaussians, make_4gaussians_image,
                 make_100gaussians_image)
@@ -35,9 +37,8 @@ def test_make_noise_image_poisson():
 
 
 def test_make_noise_image_nomean():
-    """
-    Test if ValueError raises if mean is not input.
-    """
+    """Test if ValueError raises if mean is not input."""
+
     with pytest.raises(ValueError):
         shape = (100, 100)
         make_noise_image(shape, 'gaussian', stddev=2.)
@@ -47,6 +48,7 @@ def test_make_noise_image_nostddev():
     """
     Test if ValueError raises if stddev is not input for Gaussian noise.
     """
+
     with pytest.raises(ValueError):
         shape = (100, 100)
         make_noise_image(shape, 'gaussian', mean=2.)
@@ -71,6 +73,7 @@ def test_make_poisson_noise():
 
 def test_make_poisson_noise_negative():
     """Test if negative image values raises ValueError."""
+
     with pytest.raises(ValueError):
         shape = (100, 100)
         data = np.zeros(shape) - 1.

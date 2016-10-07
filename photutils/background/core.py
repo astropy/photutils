@@ -54,6 +54,7 @@ def _masked_median(data, axis=None):
     _median = np.ma.median(data, axis=axis)
     if axis is None and np.ma.isMaskedArray(_median):
         _median = _median.item()
+
     return _median
 
 

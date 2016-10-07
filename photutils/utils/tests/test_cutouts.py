@@ -8,6 +8,7 @@ from astropy.tests.helper import pytest
 
 from ..cutouts import cutout_footprint
 
+
 XCS = [25.7]
 YCS = [26.2]
 XSTDDEVS = [3.2, 4.0]

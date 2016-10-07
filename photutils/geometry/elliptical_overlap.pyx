@@ -1,17 +1,21 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
-# The functions defined here allow one to determine the exact area of
-# overlap of an ellipse and a triangle (written by Thomas Robitaille).
-# The approach is to divide the rectangle into two triangles, and
-# reproject these so that the ellipse is a unit circle, then compute the
-# intersection of a triagnel with a unit circle.
+"""
+The functions defined here allow one to determine the exact area of
+overlap of an ellipse and a triangle (written by Thomas Robitaille).
+The approach is to divide the rectangle into two triangles, and
+reproject these so that the ellipse is a unit circle, then compute the
+intersection of a triangle with a unit circle.
+"""
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+
 import numpy as np
 cimport numpy as np
 
+
 __all__ = ['elliptical_overlap_grid']
+
 
 cdef extern from "math.h":
 

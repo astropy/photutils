@@ -1,26 +1,30 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
 """Functions for performing aperture photometry on 2-D arrays."""
+
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-import math
 import abc
-import numpy as np
 import copy
+import math
 import warnings
-import astropy.units as u
-from astropy.io import fits
-from astropy.table import Table
-from astropy.wcs import WCS
+
+import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.extern import six
-from astropy.utils.misc import InheritDocstrings
-from astropy.utils.exceptions import AstropyUserWarning
-from astropy.wcs.utils import skycoord_to_pixel
+from astropy.io import fits
 from astropy.nddata import support_nddata
+from astropy.table import Table
+import astropy.units as u
+from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.misc import InheritDocstrings
+from astropy.wcs import WCS
+from astropy.wcs.utils import skycoord_to_pixel
+
 from .aperture_funcs import (do_circular_photometry, get_circular_fractions,
-                             do_elliptical_photometry, get_elliptical_fractions,
-                             do_rectangular_photometry, get_rectangular_fractions)
+                             do_elliptical_photometry,
+                             get_elliptical_fractions,
+                             do_rectangular_photometry,
+                             get_rectangular_fractions)
 from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
                                  assert_angle_or_pixel)
 
@@ -282,8 +286,9 @@ class PixelAperture(Aperture):
         Returns
         -------
         fraction : `numpy.array`
-            Array with the same shape as ``data``. Each element is the fraction
-        of the corresponding ``data`` pixel that falls within the aperture.
+            Array with the same shape as ``data``. Each element is the
+            fraction of the corresponding ``data`` pixel that falls
+            within the aperture.
         """
 
     def area():
@@ -506,8 +511,8 @@ class CircularAnnulus(PixelAperture):
             self.r_in = r_in
             self.r_out = r_out
         except TypeError:
-            raise TypeError("'r_in' and 'r_out' must be numeric, received {0} "
-                            "and {1}".format((type(r_in), type(r_out))))
+            raise TypeError("'r_in' and 'r_out' must be numeric, received "
+                            "{0} and {1}".format((type(r_in), type(r_out))))
 
         if not (r_out > r_in):
             raise ValueError('r_out must be greater than r_in')
@@ -543,7 +548,9 @@ class CircularAnnulus(PixelAperture):
 
         fractions = get_circular_fractions(data, self.positions,
                                            self.r_out, method=method,
-                                           subpixels=subpixels, r_in=self.r_in)
+                                           subpixels=subpixels,
+                                           r_in=self.r_in)
+
         return fractions
 
     def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
@@ -652,7 +659,6 @@ class EllipticalAperture(PixelAperture):
     ------
     ValueError : `ValueError`
         If either axis (``a`` or ``b``) is negative.
-
     """
 
     def __init__(self, positions, a, b, theta):
@@ -661,8 +667,8 @@ class EllipticalAperture(PixelAperture):
             self.b = float(b)
             self.theta = float(theta)
         except TypeError:
-            raise TypeError("'a' and 'b' and 'theta' must be numeric, received"
-                            "{0} and {1} and {2}."
+            raise TypeError("'a' and 'b' and 'theta' must be numeric, "
+                            "received {0} and {1} and {2}."
                             .format((type(a), type(b), type(theta))))
 
         if a < 0 or b < 0:
@@ -696,7 +702,9 @@ class EllipticalAperture(PixelAperture):
 
         fractions = get_elliptical_fractions(data, self.positions,
                                              self.a, self.b, self.theta,
-                                             method=method, subpixels=subpixels)
+                                             method=method,
+                                             subpixels=subpixels)
+
         return fractions
 
     def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
@@ -829,9 +837,9 @@ class EllipticalAnnulus(PixelAperture):
             self.theta = float(theta)
         except TypeError:
             raise TypeError("'a_in' and 'a_out' and 'b_out' and 'theta' must "
-                            "be numeric, received {0} and {1} and {2} and {3}."
-                            .format((type(a_in), type(a_out),
-                                     type(b_out), type(theta))))
+                            "be numeric, received {0} and {1} and {2} and "
+                            "{3}.".format((type(a_in), type(a_out),
+                                           type(b_out), type(theta))))
 
         if not (a_out > a_in):
             raise ValueError("'a_out' must be greater than 'a_in'")
@@ -886,10 +894,10 @@ class EllipticalAnnulus(PixelAperture):
             raise ValueError('{0} method not supported for aperture class '
                              '{1}'.format(method, self.__class__.__name__))
 
-        fractions = get_elliptical_fractions(data, self.positions,
-                                             self.a_out, self.b_out, self.theta,
-                                             method=method, subpixels=subpixels,
-                                             a_in=self.a_in)
+        fractions = get_elliptical_fractions(
+            data, self.positions, self.a_out, self.b_out, self.theta,
+            method=method, subpixels=subpixels, a_in=self.a_in)
+
         return fractions
 
 
@@ -903,8 +911,8 @@ class SkyRectangularAperture(SkyAperture):
         Celestial coordinates of the aperture center(s). This can be either
         scalar coordinates or an array of coordinates.
     w : `~astropy.units.Quantity`
-        The full width of the aperture(s) (at theta = 0, this is the "x" axis),
-        either in angular or pixel units.
+        The full width of the aperture(s) (at theta = 0, this is the "x"
+        axis), either in angular or pixel units.
     h :  `~astropy.units.Quantity`
         The full height of the aperture(s) (at theta = 0, this is the "y"
         axis), either in angular or pixel units.
@@ -1105,8 +1113,8 @@ class SkyRectangularAnnulus(SkyAperture):
                              "in pixels")
 
         if w_out.unit.physical_type != h_out.unit.physical_type:
-            raise ValueError("w_out and h_out should either both be angles or "
-                             "in pixels")
+            raise ValueError("w_out and h_out should either both be angles "
+                             "or in pixels")
 
         self.w_in = w_in
         self.w_out = w_out
@@ -1181,9 +1189,9 @@ class RectangularAnnulus(PixelAperture):
             self.theta = float(theta)
         except TypeError:
             raise TypeError("'w_in' and 'w_out' and 'h_out' and 'theta' must "
-                            "be numeric, received {0} and {1} and {2} and {3}."
-                            .format((type(w_in), type(w_out),
-                                     type(h_out), type(theta))))
+                            "be numeric, received {0} and {1} and {2} and "
+                            "{3}.".format((type(w_in), type(w_out),
+                                           type(h_out), type(theta))))
 
         if not (w_out > w_in):
             raise ValueError("'w_out' must be greater than 'w_in'")
@@ -1272,6 +1280,8 @@ class RectangularAnnulus(PixelAperture):
                                               subpixels=subpixels,
                                               w_in=self.w_in)
 
+        return fractions
+
 
 def _prepare_photometry_input(data, unit, wcs, mask, error, pixelwise_error):
     """
@@ -1340,8 +1350,8 @@ def _prepare_photometry_input(data, unit, wcs, mask, error, pixelwise_error):
             data = u.Quantity(data, unit=unit, copy=False)
             if not isinstance(dataunit, u.UnrecognizedUnit):
                 if unit != dataunit:
-                    warnings.warn('Unit of input data ({0}) and unit given by '
-                                  'unit argument ({1}) are not identical.'
+                    warnings.warn('Unit of input data ({0}) and unit given '
+                                  'by unit argument ({1}) are not identical.'
                                   .format(dataunit, unit))
         else:
             if not isinstance(dataunit, u.UnrecognizedUnit):
@@ -1496,6 +1506,7 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     This function is decorated with `~astropy.nddata.support_nddata` and
     thus supports `~astropy.nddata.NDData` objects as input.
     """
+
     data, wcs_transformation, mask, error, pixelwise_error = \
         _prepare_photometry_input(data, unit, wcs, mask, error,
                                   pixelwise_error)
@@ -1513,7 +1524,6 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
         error = copy.deepcopy(error)    # do not modify input data
         error[mask] = 0.
 
-
     # Check that 'subpixels' is an int and is 1 or greater.
     if method == 'subpixel':
         subpixels = int(subpixels)
@@ -1530,7 +1540,8 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
         ap = ap.to_pixel(wcs_transformation)
         pixelpositions = ap.positions * u.pixel
         if wcs_transformation is None:
-            raise ValueError('WCS transform not defined by data or wcs keyword.')
+            raise ValueError('WCS transform not defined by data or wcs '
+                             'keyword.')
         pixpos = np.transpose(pixelpositions)
         # check whether single or multiple positions
         if len(pixelpositions) > 1 and pixelpositions[0].size >= 2:

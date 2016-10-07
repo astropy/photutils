@@ -1,10 +1,12 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+
 import numpy as np
+
 from ..core import *
 from ..mask_data import *
+
 
 apertures = {'edge': CircularAperture([(0, 0)], r=2.0),
              'no_overlap': CircularAperture([(100, 100)], r=2.0),

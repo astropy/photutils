@@ -2,14 +2,17 @@
 """
 Make example datasets.
 """
+
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+
 import numpy as np
-from ..utils import check_random_state
 from astropy.table import Table
 from astropy.modeling.models import Gaussian2D
 from astropy.convolution import discretize_model
 import astropy.units as u
+
+from ..utils import check_random_state
 
 
 __all__ = ['make_noise_image', 'make_poisson_noise', 'make_gaussian_sources',

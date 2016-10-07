@@ -1,14 +1,18 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
-# The functions defined here allow one to determine the exact area of
-# overlap of a rectangle and a circle (written by Thomas Robitaille).
+"""
+The functions defined here allow one to determine the exact area of
+overlap of a rectangle and a circle (written by Thomas Robitaille).
+"""
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+
 import numpy as np
 cimport numpy as np
 
+
 __all__ = ['circular_overlap_grid']
+
 
 cdef extern from "math.h":
 

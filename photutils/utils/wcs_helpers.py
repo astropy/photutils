@@ -1,9 +1,12 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import numpy as np
 from astropy import units as u
 from astropy.coordinates import UnitSphericalRepresentation
 from astropy.wcs.utils import skycoord_to_pixel, pixel_to_skycoord
+
 
 skycoord_to_pixel_mode = 'all'
 
@@ -69,6 +72,7 @@ def assert_angle_or_pixel(name, q):
     Check that ``q`` is either an angular or a pixel
     :class:`~astropy.units.Quantity`.
     """
+
     if isinstance(q, u.Quantity):
         if q.unit.physical_type == 'angle' or q.unit is u.pixel:
             pass
@@ -83,6 +87,7 @@ def assert_angle(name, q):
     """
     Check that ``q`` is an angular :class:`~astropy.units.Quantity`.
     """
+
     if isinstance(q, u.Quantity):
         if q.unit.physical_type == 'angle':
             pass
@@ -125,4 +130,5 @@ def pixel_to_icrs_coords(x, y, wcs):
     icrs_coords = pixel_to_skycoord(x, y, wcs).icrs
     icrs_ra = icrs_coords.ra.degree * u.deg
     icrs_dec = icrs_coords.dec.degree * u.deg
+
     return icrs_ra, icrs_dec

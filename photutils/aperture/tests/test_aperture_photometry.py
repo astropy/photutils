@@ -1,17 +1,20 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+The tests in this file test the accuracy of the photometric results.
+Here we test directly with aperture objects since we are checking the
+algorithms in aperture_photometry, not in the wrappers.
+"""
 
-# The tests in this file test the accuracy of the photometric results.
-# Here we test directly with aperture objects since we are checking the
-# algorithms in aperture_photometry, not in the wrappers.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal
-from astropy.tests.helper import assert_quantity_allclose
-import astropy.units as u
 from astropy.io import fits
 from astropy.nddata import NDData
+import astropy.units as u
 from astropy.tests.helper import pytest, remote_data
+from astropy.tests.helper import assert_quantity_allclose
 
 from ..core import *
 
@@ -520,6 +523,7 @@ def test_basic_circular_aperture_photometry_unit():
 
 def test_aperture_photometry_with_error_units():
     """Test aperture_photometry when error has units (see #176)."""
+
     data1 = np.ones((40, 40), dtype=np.float)
     data2 = u.Quantity(data1, unit=u.adu)
     error = u.Quantity(data1, unit=u.adu)
@@ -540,6 +544,7 @@ def test_aperture_photometry_inputs_with_mask():
     Test that aperture_photometry does not modify the input
     data or error array when a mask is input.
     """
+
     data = np.ones((5, 5))
     aperture = CircularAperture((2, 2), 2.)
     mask = np.zeros_like(data, dtype=bool)
@@ -568,6 +573,7 @@ def test_ellipse_exact_grid(x, y, r):
     This is a regression test for the bug discovered in this issue:
     https://github.com/astropy/photutils/issues/198
     """
+
     data = np.ones((10, 10))
 
     aperture = EllipticalAperture((x, y), r, r, 0.)
@@ -579,6 +585,7 @@ def test_ellipse_exact_grid(x, y, r):
 @pytest.mark.parametrize('value', [np.nan, np.inf])
 def test_nan_inf_mask(value):
     """Test that nans and infs are properly masked [267]."""
+
     data = np.ones((9, 9))
     mask = np.zeros_like(data, dtype=bool)
     data[4, 4] = value

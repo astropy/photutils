@@ -1,11 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-"""
-This subpackage contains developer-oriented utilities.
-"""
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-import numpy as np
 import numbers
+
+import numpy as np
 
 
 __all__ = ['check_random_state']
@@ -41,5 +39,6 @@ def check_random_state(seed):
         return np.random.RandomState(seed)
     if isinstance(seed, np.random.RandomState):
         return seed
-    raise ValueError('%r cannot be used to seed a numpy.random.RandomState'
-                     ' instance' % seed)
+
+    raise ValueError('{0!r} cannot be used to seed a numpy.random.RandomState'
+                     ' instance'.format(seed))

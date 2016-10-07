@@ -1,8 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-import numpy as np
 import warnings
+
+import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
 
@@ -154,7 +155,6 @@ class ShepardIDWInterpolator(object):
 
     def __call__(self, positions, n_neighbors=8, eps=0.0, power=1.0, reg=0.0,
                  conf_dist=1e-12, dtype=np.float):
-
         """
         Evaluate the interpolator at the given positions.
 
@@ -445,4 +445,5 @@ def mask_to_mirrored_num(image, mask_image, center_position, bbox=None):
 
     outimage = np.copy(image)
     outimage[bbox[2]:bbox[3]+1, bbox[0]:bbox[1]+1] = subdata
+
     return outimage
