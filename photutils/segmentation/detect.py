@@ -36,8 +36,8 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
     threshold : float or array-like
         The data value or pixel-wise data values to be used for the
         detection threshold.  A 2D ``threshold`` must have the same
-        shape as ``data``.  See `detect_threshold` for one way to create
-        a ``threshold`` image.
+        shape as ``data``.  See `~photutils.detection.detect_threshold`
+        for one way to create a ``threshold`` image.
 
     npixels : int
         The number of connected pixels, each greater than ``threshold``,

@@ -76,7 +76,7 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
 
     See Also
     --------
-    detect_sources
+    :func:`photutils.segmentation.detect_sources`
 
     Notes
     -----

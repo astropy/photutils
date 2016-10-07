@@ -1056,7 +1056,7 @@ def source_properties(data, segment_img, error=None, mask=None,
     See Also
     --------
     SegmentationImage, SourceProperties, properties_table,
-    :func:`photutils.detection.detect_sources`
+    detect_sources
 
     Examples
     --------
@@ -1164,8 +1164,7 @@ def properties_table(source_props, columns=None, exclude_columns=None):
 
     See Also
     --------
-    SegmentationImage, SourceProperties, source_properties,
-    :func:`photutils.detection.detect_sources`
+    SegmentationImage, SourceProperties, source_properties, detect_sources
 
     Examples
     --------
