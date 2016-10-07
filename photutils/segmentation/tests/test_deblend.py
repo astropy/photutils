@@ -10,7 +10,7 @@ from astropy.modeling import models
 
 from ..core import SegmentationImage
 from ..deblend import deblend_sources
-from ...detection import detect_sources
+from ..detect import detect_sources
 
 try:
     import scipy

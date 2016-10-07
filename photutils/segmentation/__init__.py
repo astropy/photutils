@@ -7,4 +7,5 @@ morphological properties.
 
 from .core import *
 from .deblend import *
+from .detect import *
 from .properties import *

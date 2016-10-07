@@ -1,6 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-"""Functions for deblending sources."""
-
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from copy import deepcopy
@@ -10,7 +8,7 @@ import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
 from .core import SegmentationImage
-from ..detection.core import detect_sources
+from .detect import detect_sources
 from ..utils.convolution import filter_data
 
 
