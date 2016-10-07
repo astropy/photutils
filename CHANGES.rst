@@ -147,6 +147,11 @@ Bug Fixes
   - Fixed a bug in ``centroid_1dg`` and ``centroid_2dg`` that occured
     when the input data contained invalid (NaN or inf) values.  [#428]
 
+- ``photutils.segmentation``
+
+  - Fixed a bug in `SourceProperties` where ``error`` and
+    ``background`` units were sometimes dropped. [#441]
+
 
 0.2.2 (2016-07-06)
 ------------------
