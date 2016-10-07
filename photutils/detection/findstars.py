@@ -12,14 +12,16 @@ from __future__ import (absolute_import, division, print_function,
 from collections import defaultdict
 import warnings
 import math
-import numpy as np
 import abc
+
+import numpy as np
 from astropy.extern import six
 from astropy.table import Column, Table
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils import deprecated
 from astropy.utils.misc import InheritDocstrings
 from astropy.stats import gaussian_fwhm_to_sigma
+
 from .core import find_peaks
 from ..utils.convolution import filter_data
 
@@ -55,7 +57,7 @@ def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
 @six.add_metaclass(_ABCMetaAndInheritDocstrings)
 class StarFinderBase(object):
     """
-    Base abstract class for Star Finders.
+    Abstract base class for Star Finders.
     """
 
     def __call__(self, data):

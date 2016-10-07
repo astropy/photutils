@@ -24,9 +24,7 @@ except ImportError:
 
 
 DATA = np.array([[0, 1, 0], [0, 2, 0], [0, 0, 0]]).astype(np.float)
-REF1 = np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
-REF2 = np.array([[0, 1, 0], [0, 1, 0], [0, 0, 0]])
-REF3 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
+REF1 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
 
 PEAKDATA = np.array([[1, 0, 0], [0, 0, 0], [0, 0, 1]]).astype(np.float)
 PEAKREF1 = np.array([[0, 0], [2, 2]])
@@ -106,7 +104,7 @@ class TestDetectThreshold(object):
         sig=10 and iters=1 to prevent sigma clipping after applying the mask.
         """
 
-        mask = REF3.astype(np.bool)
+        mask = REF1.astype(np.bool)
         threshold = detect_threshold(DATA, snr=1., error=0, mask=mask,
                                      sigclip_sigma=10, sigclip_iters=1)
         ref = (1. / 8.) * np.ones((3, 3))
@@ -115,7 +113,7 @@ class TestDetectThreshold(object):
     def test_image_mask_override(self):
         """Test that image_mask overrides mask_value."""
 
-        mask = REF3.astype(np.bool)
+        mask = REF1.astype(np.bool)
         threshold = detect_threshold(DATA, snr=0.1, error=0, mask_value=0.0,
                                      mask=mask, sigclip_sigma=10,
                                      sigclip_iters=1)

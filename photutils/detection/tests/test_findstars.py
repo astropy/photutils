@@ -4,12 +4,14 @@ from __future__ import (absolute_import, division, print_function,
 import os.path as op
 import itertools
 import warnings
+
 import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest, catch_warnings
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils.exceptions import AstropyDeprecationWarning
+
 from ..findstars import daofind, irafstarfind
 from ..findstars import DAOStarFinder, IRAFStarFinder
 from ...datasets import make_100gaussians_image

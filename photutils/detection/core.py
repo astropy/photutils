@@ -18,7 +18,8 @@ __all__ = ['detect_threshold', 'find_peaks']
 def detect_threshold(data, snr, background=None, error=None, mask=None,
                      mask_value=None, sigclip_sigma=3.0, sigclip_iters=None):
     """
-    Calculate a pixel-wise threshold image to be used to detect sources.
+    Calculate a pixel-wise threshold image that can be used to detect
+    sources.
 
     Parameters
     ----------
