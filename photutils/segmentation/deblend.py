@@ -1,14 +1,14 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-"""Functions for deblending sources."""
-
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from copy import deepcopy
 import warnings
+
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
-from .core import detect_sources
-from ..segmentation import SegmentationImage
+
+from .core import SegmentationImage
+from .detect import detect_sources
 from ..utils.convolution import filter_data
 
 
@@ -99,7 +99,7 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
 
     See Also
     --------
-    :func:`photutils.detection.detect_sources`
+    :func:`photutils.detect_sources`
     """
 
     if not isinstance(segment_img, SegmentationImage):

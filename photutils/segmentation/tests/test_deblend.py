@@ -1,14 +1,16 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+
 import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest, catch_warnings
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.modeling import models
-from ..core import detect_sources
+
+from ..core import SegmentationImage
 from ..deblend import deblend_sources
-from ...segmentation import SegmentationImage
+from ..detect import detect_sources
 
 try:
     import scipy
