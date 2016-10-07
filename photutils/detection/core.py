@@ -10,7 +10,6 @@ from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.convolution import Gaussian2DKernel
 
 from ..segmentation import SegmentationImage
-from ..centroids import fit_2dgaussian
 from ..utils.convolution import filter_data
 from ..utils.cutouts import cutout_footprint
 from ..utils.wcs_helpers import pixel_to_icrs_coords
@@ -385,6 +384,8 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         peak_values = peak_values[idx]
 
     if subpixel:
+        from ..centroids import fit_2dgaussian    # prevents circular import
+
         x_centroid, y_centroid = [], []
         fit_peak_values = []
         for (y_peak, x_peak) in zip(y_peaks, x_peaks):

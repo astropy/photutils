@@ -6,4 +6,5 @@ morphological properties.
 """
 
 from .core import *
+from .deblend import *
 from .properties import *
