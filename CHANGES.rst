@@ -149,7 +149,7 @@ Bug Fixes
 
 - ``photutils.segmentation``
 
-  - Fixed a bug in `SourceProperties` where ``error`` and
+  - Fixed a bug in ``SourceProperties`` where ``error`` and
     ``background`` units were sometimes dropped. [#441]
 
 
