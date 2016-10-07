@@ -121,7 +121,7 @@ estimating the background and background RMS requires an iterative
 procedure.
 
 Photutils provides a convenience function,
-:func:`~photutils.detection.make_source_mask`, for creating source
+:func:`~photutils.segmentation.make_source_mask`, for creating source
 masks.  It uses sigma-clipped statistics as the first estimate of the
 background and noise levels for the source detection.  Sources are
 then identified using image segmentation.  Finally, the source masks
