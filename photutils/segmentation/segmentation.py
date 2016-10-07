@@ -10,7 +10,7 @@ from astropy.table import Table
 from astropy.utils import lazyproperty
 from astropy.wcs.utils import pixel_to_skycoord
 
-from .utils.convolution import filter_data
+from ..utils.convolution import filter_data
 
 
 __all__ = ['SegmentationImage', 'SourceProperties', 'source_properties',
