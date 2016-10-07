@@ -58,6 +58,8 @@ New Features
 
 - ``photutils.segmentation``
 
+  - Created new ``photutils.segmentation`` subpackage. [#442]
+
   - Added ``copy`` and ``area`` methods and an ``areas`` property to
     ``SegmentationImage``. [#331]
 
