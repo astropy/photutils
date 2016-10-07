@@ -5,4 +5,5 @@ segmentation and measuring their centroids, photometry, and
 morphological properties.
 """
 
-from .segmentation import *
+from .core import *
+from .properties import *
