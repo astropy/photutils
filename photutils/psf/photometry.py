@@ -26,9 +26,9 @@ class BasicPSFPhotometry(object):
     the DAOPHOT routines FIND, GROUP, NSTAR, and SUBTRACT once.
     This implementation allows a flexible and customizable interface to
     perform photometry. For instance, one is able to use different
-    implementations for grouping and finding sources by passing them using
-    ``group_maker`` and ``finder`` respectivelly. In addition, sky background
-    estimation is performed by ``bkg_estimator``.
+    implementations for grouping and finding sources by using ``group_maker``
+    and ``finder`` respectivelly. In addition, sky background estimation is
+    performed by ``bkg_estimator``.
 
     Parameters
     ----------
@@ -363,11 +363,11 @@ class BasicPSFPhotometry(object):
 
 class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
     """
-    This class implements the an iterative algorithm to perform point
-    spread function photometry in crowded fields. This consists of
-    applying a loop of find sources, make groups, fit groups, subtract
-    groups, and then repeat until no more stars are detected or a given
-    number of iterations is reached.
+    This class implements an iterative algorithm to perform point spread
+    function photometry in crowded fields. This consists of applying a
+    loop of find sources, make groups, fit groups, subtract groups, and then
+    repeat until no more stars are detected or a given number of iterations is
+    reached.
 
     Parameters
     ----------
@@ -586,14 +586,14 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
     
     In order to make groups of sources, this class uses
     `~photutils.psf.DAOGroup`. To find sources, this class uses
-    `~photutitls.detection.DAOStarFinder`. To do background estimation,
+    `~photutils.detection.DAOStarFinder`. To do background estimation,
     it uses `~photutils.background.MMMBackground`.
     
     The parameter ``crit_separation`` is associated with `~photutils.psf.DAOGroup`.
     ``sigma_clip`` is associated with `~photutils.background.MMMBackground`.
-    ``threshold`` and ``fwhm`` are associated with `~photutitls.detection.DAOStarFinder`.
+    ``threshold`` and ``fwhm`` are associated with `~photutils.detection.DAOStarFinder`.
     Parameters from ``ratio`` to ``roundhi`` are also associated with
-    `~photutitls.detection.DAOStarFinder`.
+    `~photutils.detection.DAOStarFinder`.
 
     Parameters
     ----------
@@ -624,7 +624,7 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
         number.
     sigma : float, optional
         Number of standard deviations used to perform sigma clip with a
-        `SigmaClip` object.
+        `~photutils.SigmaClip` object.
     ratio : float, optional
         The ratio of the minor to major axis standard deviations of the
         Gaussian kernel.  ``ratio`` must be strictly positive and less

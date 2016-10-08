@@ -28,6 +28,7 @@ model-fitting analysis, regardless to exactly what kind of model is actually
 being fit.  We take this road, using "PSF photometry" as shorthand for the
 general approach.
 
+
 PSF Photometry in Crowded Fields
 --------------------------------
 
@@ -92,6 +93,7 @@ by the finding routine.
 Basic Usage
 ^^^^^^^^^^^
 
+<<<<<<< 9738851a6026e0026d0452370aaf933ef1f749a7
 `~photutils.psf.DAOPhotPSFPhotometry` is the core class that implements the
 DAOPHOT algorithm for performing PSF photometry in crowded fields.
 
@@ -113,6 +115,41 @@ implemented in such a way that they can be used callable functions.
 >>>>>>> update current docs
 
 The basic usage of `~photutils.psf.IterativelySubtractedPSFPhotometry` is as follows:
+=======
+Photutils provides three classes to perform PSF Photometry, i.e.,
+`~photutils.psf.BasicPSFPhotometry`, `~photutils.psf.IterativelySubtractedPSFPhotometry`,
+and `~photutils.psf.DAOPhotPSFPhotometry`.
+
+`~photutils.psf.BasicPSFPhotometry` implements the minimum tools for
+performing PSF photometry in crowded fields. Basically, it performs
+"FIND, GROUP, NSTAR, SUBTRACT" once. Because of that, this class should be
+used when the degree of crowdness of the field is not very high, for instance,
+when most stars are separated by a distance no less than one FWHM and their
+brightness are relatively uniform.
+
+`~photutils.psf.IterativelySubtractedPSFPhotometry` is similar to
+`~photutils.psf.BasicPSFPhotometry`, however it adds a parameter called
+``n_iters`` which is the number of iterations for which the loop
+"FIND, GROUP, NSTAR, SUBTRACT, FIND..." will be performed. This class enable
+photometry in a scenario where there exist significant overlap amongst
+brighter and fainter companions. For instance, the detection algorithm may not
+be able to detect fainter companions because of the presence of brighter stars,
+however, they will be detected in the next iteration after the brighter stars
+are fitted and subtracted.
+
+`~photutils.psf.DAOPhotPSFPhotometry` is a special case of `~photutils.psf.IterativelySubtractedPSFPhotometry`,
+in which ``finder``, ``group_maker``, ``bkg_estimator`` attributes are already
+set to `~photutils.detection.DAOStarFinder`, `~photutils.psf.DAOGroup`, and
+`~photutils.background.MMMBackground`, respectively. Therefore, users need to
+input the parameters of those classes to set up a `~photutils.psf.DAOPhotPSFPhotometry`
+object.
+
+Those classes and all of the classes they *use* for the steps in the
+photometry process are implemented in such a way that they can be used
+callable functions.
+
+The basic usage of, e.g., `~photutils.psf.IterativelySubtractedPSFPhotometry` is as follows:
+>>>>>>> Add narrative docs
 
 .. doctest-skip::
 
@@ -244,7 +281,7 @@ Note that the parameters values for the finder class, i.e.,
 manner and optimum values do vary according to the data.
 
 As mentioned before, the way to actually do the photometry is by using
-``daophot_photometry`` as a function-like call.
+``photometry`` as a function-like call.
 
 It's worth noting that ``image`` does not need to be background subtracted.
 The subtraction is done during the photometry process with the attribute
@@ -350,17 +387,13 @@ Consider the previous example after the line
     >>> pos = Table(names=['x_0', 'y_0'], data=[sources['x_mean'],
     ...                                         sources['y_mean']])
 
-Note that we do not need to set the ``finder`` and ``niters`` attributes in
-`~photutils.psf.IterativelySubtractedPSFPhotometry` and the positions are
-passed using the keyword ``positions``:
-
 .. doctest-skip::
 
-    >>> photometry = IterativelySubtractedPSFPhotometry(group_maker=daogroup,
-    ...                                                 bkg_estimator=mmm_bkg,
-    ...                                                 psf_model=psf_model,
-    ...                                                 fitter=LevMarLSQFitter(),
-    ...                                                 fitshape=(11,11))
+    >>> photometry = BasicPSFPhotometry(group_maker=daogroup,
+    ...                                 bkg_estimator=mmm_bkg,
+    ...                                 psf_model=psf_model,
+    ...                                 fitter=LevMarLSQFitter(),
+    ...                                 fitshape=(11,11))
     >>> result_tab = photometry(image=image, positions=pos)
     >>> residual_image = photometry.get_residual_image()
 
@@ -407,10 +440,6 @@ passed using the keyword ``positions``:
 
     bkgrms = MADStdBackgroundRMS()
     std = bkgrms(image)
-    iraffind = IRAFStarFinder(threshold=3.5*std,
-                              fwhm=sigma_psf*gaussian_sigma_to_fwhm,
-                              minsep_fwhm=0.01, roundhi=5.0, roundlo=-5.0,
-                              sharplo=0.0, sharphi=2.0)
     daogroup = DAOGroup(2.0*sigma_psf*gaussian_sigma_to_fwhm)
     mmm_bkg = MMMBackground()
     psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
@@ -423,13 +452,13 @@ passed using the keyword ``positions``:
 
     fitter = LevMarLSQFitter()
 
-    from photutils.psf import IterativelySubtractedPSFPhotometry
+    from photutils.psf import BasicPSFPhotometry
 
-    photometry = IterativelySubtractedPSFPhotometry(group_maker=daogroup,
-                                                    bkg_estimator=mmm_bkg,
-                                                    psf_model=psf_model,
-                                                    fitter=LevMarLSQFitter(),
-                                                    fitshape=(11,11))
+    photometry = BasicPSFPhotometry(group_maker=daogroup,
+                                    bkg_estimator=mmm_bkg,
+                                    psf_model=psf_model,
+                                    fitter=LevMarLSQFitter(),
+                                    fitshape=(11,11))
 
     result_tab = photometry(image=image, positions=pos)
     residual_image = photometry.get_residual_image()
