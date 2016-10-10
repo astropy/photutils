@@ -1,7 +1,5 @@
-Aperture Photometry
-===================
-
-.. currentmodule:: photutils
+Aperture Photometry (`photutils.aperture`)
+==========================================
 
 Introduction
 ------------
@@ -207,7 +205,7 @@ Again, for multiple apertures one should loop over them::
 Background Subtraction
 ----------------------
 
-:func:`aperture_photometry` assumes that the data have been
+:func:`~photutils.aperture_photometry` assumes that the data have been
 background-subtracted.
 
 Global Background Subtraction
@@ -266,10 +264,10 @@ Error Estimation
 ----------------
 
 If and only if the ``error`` keyword is input to
-:func:`aperture_photometry`, the returned table will include a
-``'aperture_sum_err'`` column in addition to ``'aperture_sum'``.
-``'aperture_sum_err'`` provides the propagated uncertainty associated
-with ``'aperture_sum'``.
+:func:`~photutils.aperture_photometry`, the returned table will
+include a ``'aperture_sum_err'`` column in addition to
+``'aperture_sum'``.  ``'aperture_sum_err'`` provides the propagated
+uncertainty associated with ``'aperture_sum'``.
 
 For example, suppose we have previously calculated the error on each
 pixel's value and saved it in the array ``data_error``::
@@ -444,7 +442,7 @@ Defining Your Own Custom Apertures
 
 The photometry function :func:`~photutils.aperture_photometry` can
 perform aperture photometry in arbitrary apertures.  This function
-accepts `Aperture`-derived objects, such as
+accepts `~photutils.Aperture`-derived objects, such as
 `~photutils.CircularAperture`.  This makes it simple to extend
 functionality: a new type of aperture photometry simply requires the
 definition of a new `~photutils.Aperture` subclass.

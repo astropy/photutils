@@ -1,5 +1,5 @@
-Geometry Functions
-==================
+Geometry Functions (`photutils.geometry`)
+=========================================
 
 Introduction
 ------------

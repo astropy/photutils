@@ -1,5 +1,5 @@
-Getting Started
-===============
+Getting Started with Photutils
+==============================
 
 The following example uses Photutils to find sources in an
 astronomical image and perform circular aperture photometry on them.

@@ -1,5 +1,5 @@
-PSF Photometry
-==============
+PSF Photometry (`photutils.psf`)
+================================
 
 The `photutils.psf` module contains tools for model-fitting photometry, often
 called "PSF photometry".
