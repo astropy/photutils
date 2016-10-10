@@ -1,7 +1,6 @@
 Source Detection (`photutils.detection`)
 ========================================
 
-
 Introduction
 ------------
 

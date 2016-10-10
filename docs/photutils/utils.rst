@@ -1,5 +1,5 @@
-Utility Functions
-=================
+Utility Functions (`photutils.utils`)
+=====================================
 
 Introduction
 ------------

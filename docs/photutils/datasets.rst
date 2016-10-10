@@ -3,8 +3,6 @@
 Datasets (`photutils.datasets`)
 ===============================
 
-.. currentmodule:: photutils.datasets
-
 Introduction
 ------------
 
