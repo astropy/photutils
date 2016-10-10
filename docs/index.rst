@@ -57,6 +57,10 @@ User Documentation
     photutils/geometry.rst
     photutils/datasets.rst
     photutils/utils.rst
+
+.. toctree::
+    :maxdepth: 1
+
     photutils/high-level_API.rst
 
 .. note::
