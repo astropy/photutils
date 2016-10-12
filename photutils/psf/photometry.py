@@ -688,16 +688,28 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
                  fitshape, sigma=3., ratio=1.0, theta=0.0, sigma_radius=1.5, sharplo=0.2,
                  sharphi=1.0, roundlo=-1.0, roundhi=1.0, fitter=LevMarLSQFitter(), 
                  niters=3, aperture_radius=None):
-        
-        self.group_maker = DAOGroup(crit_separation=crit_separation)
-        self.bkg_estimator = MMMBackground(sigma_clip=SigmaClip(sigma=sigma))
-        self.finder = DAOStarFinder(threshold=threshold, fwhm=fwhm, ratio=ratio,
-                                    theta=theta, sigma_radius=sigma_radius,
-                                    sharplo=sharplo, sharphi=sharphi,
-                                    roundlo=roundlo, roundhi=roundhi)
+       
+        self.crit_separation = crit_separation
+        self.threshold = threshold
+        self.fwhm = fwhm
+        self.sigma = sigma
+        self.ratio = ratio
+        self.theta = theta
+        self.sigma_radius = sigma_radius
+        self.sharplo = sharplo
+        self.sharphi = sharphi
+        self.roundlo = roundlo
+        self.roundhi = roundhi
 
-        super(DAOPhotPSFPhotometry, self).__init__(group_maker=self.group_maker,
-                                                   bkg_estimator=self.bkg_estimator,
+        group_maker = DAOGroup(crit_separation=self.crit_separation)
+        bkg_estimator = MMMBackground(sigma_clip=SigmaClip(sigma=self.sigma))
+        finder = DAOStarFinder(threshold=self.threshold, fwhm=self.fwhm, ratio=self.ratio,
+                               theta=self.theta, sigma_radius=self.sigma_radius,
+                               sharplo=self.sharplo, sharphi=self.sharphi,
+                               roundlo=self.roundlo, roundhi=self.roundhi)
+
+        super(DAOPhotPSFPhotometry, self).__init__(group_maker=group_maker,
+                                                   bkg_estimator=bkg_estimator,
                                                    psf_model=psf_model, fitshape=fitshape,
-                                                   finder=self.finder, fitter=fitter, niters=niters,
+                                                   finder=finder, fitter=fitter, niters=niters,
                                                    aperture_radius=aperture_radius)
