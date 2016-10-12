@@ -472,6 +472,18 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                 raise ValueError('niters must be None or an integer or '
                                  'convertable into an integer.')
 
+    @property
+    def finder(self):
+        return self._finder
+
+    @finder.setter
+    def finder(self, value):
+        if value is None:
+            raise ValueError("finder cannot be None. Please see the Detection, "
+                             "section on photutils docs.")
+        else:
+            self._finder = value
+
     def do_photometry(self, image, positions=None):
         """
         Perform PSF photometry in ``image``.
