@@ -193,6 +193,19 @@ class BasicPSFPhotometry(object):
             if self.finder is None:
                 raise ValueError('Finder cannot be None if positions are '
                                  'not given.')
+            sources = self.finder(image)
+            if len(sources) > 0:
+                apertures = CircularAperture((sources['xcentroid'],
+                                              sources['ycentroid']),
+                                             r=self.aperture_radius)
+                
+                sources['aperture_flux'] = aperture_photometry(image,
+                        apertures)['aperture_sum']
+                
+                positions = Table(names=['x_0', 'y_0', 'flux_0'],
+                                  data=[sources['xcentroid'],
+                                  sources['ycentroid'],
+                                  sources['aperture_flux']])
 
         return self.do_photometry(image, positions)
 
@@ -232,23 +245,6 @@ class BasicPSFPhotometry(object):
             None is returned if no sources are found in ``image``.
         """
 
-        if positions is None:
-            sources = self.finder(image)
-            if len(sources) > 0:
-                apertures = CircularAperture((sources['xcentroid'],
-                                              sources['ycentroid']),
-                                             r=self.aperture_radius)
-                
-                sources['aperture_flux'] = aperture_photometry(image,
-                        apertures)['aperture_sum']
-                
-                positions = Table(names=['x_0', 'y_0', 'flux_0'],
-                                  data=[sources['xcentroid'],
-                                  sources['ycentroid'],
-                                  sources['aperture_flux']])
-            else:
-                return None
-        
         star_groups = self.group_maker(positions)
         output_tab, self._residual_image = self.nstar(image, star_groups)
         output_tab = hstack([positions, output_tab])
