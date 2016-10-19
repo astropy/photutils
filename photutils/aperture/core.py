@@ -7,6 +7,7 @@ import abc
 import copy
 import math
 import warnings
+from collections import OrderedDict
 
 import numpy as np
 from astropy.coordinates import SkyCoord
@@ -1580,9 +1581,10 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
 
     calling_args = ('method={0}, subpixels={1}, pixelwise_error={2}'
                     .format(method, subpixels, pixelwise_error))
-    meta = {'name': 'Aperture photometry results',
-            'version': _get_version_info(),
-            'aperture_photometry_args':  calling_args}
+    meta = OrderedDict()
+    meta['name'] = 'Aperture photometry results'
+    meta['version'] = _get_version_info()
+    meta['aperture_photometry_args'] = calling_args
 
     return QTable(data=(photometry_result + coord_columns),
                   names=(phot_col_names + coord_col_names),
