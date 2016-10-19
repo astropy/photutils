@@ -13,7 +13,7 @@ from astropy.coordinates import SkyCoord
 from astropy.extern import six
 from astropy.io import fits
 from astropy.nddata import support_nddata
-from astropy.table import Table
+from astropy.table import QTable
 import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils.misc import InheritDocstrings
@@ -40,6 +40,17 @@ __all__ = ['Aperture', 'SkyAperture', 'PixelAperture',
            'RectangularAperture', 'RectangularAnnulus',
            'SkyRectangularAperture', 'SkyRectangularAnnulus',
            'aperture_photometry']
+
+
+def _get_version_info():
+    from astropy import __version__
+    astropy_version = __version__
+
+    from photutils import __version__
+    photutils_version = __version__
+
+    return 'astropy: {0}, photutils: {1}'.format(astropy_version,
+                                                 photutils_version)
 
 
 def _sanitize_pixel_positions(positions):
@@ -1485,7 +1496,7 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
 
     Returns
     -------
-    phot_table : `~astropy.table.Table`
+    phot_table : `~astropy.table.QTable`
         A table of the photometry with the following columns:
 
         * ``'aperture_sum'``: Sum of the values within the aperture.
@@ -1559,13 +1570,6 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
             coord_columns = ((pixpos[0],), (pixpos[1],))
         coord_col_names = ('xcenter', 'ycenter')
 
-    # Prepare version return data
-    from astropy import __version__
-    astropy_version = __version__
-
-    from photutils import __version__
-    photutils_version = __version__
-
     photometry_result = ap.do_photometry(data, method=method,
                                          subpixels=subpixels, error=error,
                                          pixelwise_error=pixelwise_error)
@@ -1574,12 +1578,12 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     else:
         phot_col_names = ('aperture_sum', 'aperture_sum_err')
 
-    return Table(data=(photometry_result + coord_columns),
-                 names=(phot_col_names + coord_col_names),
-                 meta={'name': 'Aperture photometry results',
-                       'version': 'astropy: {0}, photutils: {1}'
-                       .format(astropy_version, photutils_version),
-                       'calling_args': ('method={0}, subpixels={1}, '
-                                        'error={2}, pixelwise_error={3}')
-                       .format(method, subpixels, error is not None,
-                               pixelwise_error)})
+    calling_args = ('method={0}, subpixels={1}, pixelwise_error={2}'
+                    .format(method, subpixels, pixelwise_error))
+    meta = {'name': 'Aperture photometry results',
+            'version': _get_version_info(),
+            'aperture_photometry_args':  calling_args}
+
+    return QTable(data=(photometry_result + coord_columns),
+                  names=(phot_col_names + coord_col_names),
+                  meta=meta)
