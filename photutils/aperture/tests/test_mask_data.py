@@ -5,6 +5,9 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 
 from ..core import *
+from ..circle import *
+from ..ellipse import *
+from ..rectangle import *
 from ..mask_data import *
 
 
