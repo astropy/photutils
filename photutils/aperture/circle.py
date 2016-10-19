@@ -2,15 +2,16 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import math
+import warnings
 
 import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
+from astropy.utils.exceptions import AstropyUserWarning
 
 from .core import (SkyAperture, PixelAperture, _sanitize_pixel_positions,
-                   _make_annulus_path)
-from .aperture_funcs import do_circular_photometry, get_circular_fractions
+                   _make_annulus_path, get_phot_extents, find_fluxvar)
 from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle,
                                  assert_angle_or_pixel)
 
@@ -20,6 +21,141 @@ skycoord_to_pixel_mode = 'all'
 
 __all__ = ['SkyCircularAperture', 'CircularAperture',
            'SkyCircularAnnulus', 'CircularAnnulus']
+
+
+def do_circular_photometry(data, positions, radius, error, pixelwise_error,
+                           method, subpixels, r_in=None):
+
+    extents = np.zeros((len(positions), 4), dtype=int)
+
+    extents[:, 0] = positions[:, 0] - radius + 0.5
+    extents[:, 1] = positions[:, 0] + radius + 1.5
+    extents[:, 2] = positions[:, 1] - radius + 0.5
+    extents[:, 3] = positions[:, 1] + radius + 1.5
+
+    ood_filter, extent, phot_extent = get_phot_extents(data, positions,
+                                                       extents)
+
+    flux = u.Quantity(np.zeros(len(positions), dtype=np.float), unit=data.unit)
+
+    if error is not None:
+        fluxvar = u.Quantity(np.zeros(len(positions), dtype=np.float),
+                             unit=error.unit ** 2)
+
+    # TODO: flag these objects
+    if np.sum(ood_filter):
+        flux[ood_filter] = np.nan
+        warnings.warn("The aperture at position {0} does not have any "
+                      "overlap with the data"
+                      .format(positions[ood_filter]),
+                      AstropyUserWarning)
+        if np.sum(ood_filter) == len(positions):
+            return (flux, )
+
+    x_min, x_max, y_min, y_max = extent
+    x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
+
+    if method == 'center':
+        use_exact = 0
+        subpixels = 1
+    elif method == 'subpixel':
+        use_exact = 0
+    else:
+        use_exact = 1
+        subpixels = 1
+
+    from ..geometry import circular_overlap_grid
+
+    for i in range(len(flux)):
+
+        if not np.isnan(flux[i]):
+
+            fraction = circular_overlap_grid(x_pmin[i], x_pmax[i],
+                                             y_pmin[i], y_pmax[i],
+                                             x_max[i] - x_min[i],
+                                             y_max[i] - y_min[i],
+                                             radius, use_exact, subpixels)
+
+            if r_in is not None:
+                fraction -= circular_overlap_grid(x_pmin[i], x_pmax[i],
+                                                  y_pmin[i], y_pmax[i],
+                                                  x_max[i] - x_min[i],
+                                                  y_max[i] - y_min[i],
+                                                  r_in, use_exact, subpixels)
+
+            flux[i] = np.sum(data[y_min[i]:y_max[i],
+                                  x_min[i]:x_max[i]] * fraction)
+
+            if error is not None:
+
+                fluxvar[i] = find_fluxvar(data, fraction, error, flux[i],
+                                          x_min[i], x_max[i], y_min[i],
+                                          y_max[i], pixelwise_error)
+
+    if error is None:
+        return (flux, )
+    else:
+        return (flux, np.sqrt(fluxvar))
+
+
+def get_circular_fractions(data, positions, radius, method, subpixels,
+                           r_in=None):
+
+    extents = np.zeros((len(positions), 4), dtype=int)
+
+    extents[:, 0] = positions[:, 0] - radius + 0.5
+    extents[:, 1] = positions[:, 0] + radius + 1.5
+    extents[:, 2] = positions[:, 1] - radius + 0.5
+    extents[:, 3] = positions[:, 1] + radius + 1.5
+
+    ood_filter, extent, phot_extent = get_phot_extents(data, positions,
+                                                       extents)
+
+    fractions = np.zeros((data.shape[0], data.shape[1], len(positions)),
+                         dtype=np.float)
+
+    if np.sum(ood_filter):
+        warnings.warn("The aperture at position {0} does not have any "
+                      "overlap with the data"
+                      .format(positions[ood_filter]),
+                      AstropyUserWarning)
+        if np.sum(ood_filter) == len(positions):
+            return np.squeeze(fractions)
+
+    x_min, x_max, y_min, y_max = extent
+    x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
+
+    if method == 'center':
+        use_exact = 0
+        subpixels = 1
+    elif method == 'subpixel':
+        use_exact = 0
+    else:
+        use_exact = 1
+        subpixels = 1
+
+    from ..geometry import circular_overlap_grid
+
+    for i in range(len(positions)):
+
+        if ood_filter[i] is not True:
+
+            fractions[y_min[i]: y_max[i], x_min[i]: x_max[i], i] = \
+                circular_overlap_grid(x_pmin[i], x_pmax[i],
+                                      y_pmin[i], y_pmax[i],
+                                      x_max[i] - x_min[i],
+                                      y_max[i] - y_min[i],
+                                      radius, use_exact, subpixels)
+
+            if r_in is not None:
+                fractions[y_min[i]: y_max[i], x_min[i]: x_max[i], i] -= \
+                    circular_overlap_grid(x_pmin[i], x_pmax[i],
+                                          y_pmin[i], y_pmax[i],
+                                          x_max[i] - x_min[i],
+                                          y_max[i] - y_min[i],
+                                          r_in, use_exact, subpixels)
+
+    return np.squeeze(fractions)
 
 
 class SkyCircularAperture(SkyAperture):

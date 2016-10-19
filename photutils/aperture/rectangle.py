@@ -11,9 +11,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import skycoord_to_pixel
 
 from .core import (SkyAperture, PixelAperture, _sanitize_pixel_positions,
-                   _make_annulus_path)
-from .aperture_funcs import (do_rectangular_photometry,
-                             get_rectangular_fractions)
+                   _make_annulus_path, get_phot_extents, find_fluxvar)
 from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
                                  assert_angle_or_pixel)
 
@@ -23,6 +21,140 @@ skycoord_to_pixel_mode = 'all'
 
 __all__ = ['RectangularAperture', 'RectangularAnnulus',
            'SkyRectangularAperture', 'SkyRectangularAnnulus']
+
+
+def do_rectangular_photometry(data, positions, w, h, theta, error,
+                              pixelwise_error, method, subpixels,
+                              reduce='sum', w_in=None):
+
+    extents = np.zeros((len(positions), 4), dtype=int)
+
+    # TODO: this is an overestimate by up to sqrt(2) unless theta = 45 deg
+    radius = max(h, w) * (2 ** -0.5)
+
+    extents[:, 0] = positions[:, 0] - radius + 0.5
+    extents[:, 1] = positions[:, 0] + radius + 1.5
+    extents[:, 2] = positions[:, 1] - radius + 0.5
+    extents[:, 3] = positions[:, 1] + radius + 1.5
+
+    ood_filter, extent, phot_extent = get_phot_extents(data, positions,
+                                                       extents)
+
+    flux = u.Quantity(np.zeros(len(positions), dtype=np.float), unit=data.unit)
+
+    if error is not None:
+        fluxvar = u.Quantity(np.zeros(len(positions), dtype=np.float),
+                             unit=error.unit ** 2)
+
+    # TODO: flag these objects
+    if np.sum(ood_filter):
+        flux[ood_filter] = np.nan
+        warnings.warn("The aperture at position {0} does not have any "
+                      "overlap with the data"
+                      .format(positions[ood_filter]),
+                      AstropyUserWarning)
+        if np.sum(ood_filter) == len(positions):
+            return (flux, )
+
+    x_min, x_max, y_min, y_max = extent
+    x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
+
+    if method in ('center', 'subpixel'):
+        if method == 'center':
+            method = 'subpixel'
+            subpixels = 1
+
+        from ..geometry import rectangular_overlap_grid
+
+        for i in range(len(flux)):
+            if not np.isnan(flux[i]):
+
+                fraction = rectangular_overlap_grid(x_pmin[i], x_pmax[i],
+                                                    y_pmin[i], y_pmax[i],
+                                                    x_max[i] - x_min[i],
+                                                    y_max[i] - y_min[i],
+                                                    w, h, theta, 0, subpixels)
+                if w_in is not None:
+                    h_in = w_in * h / w
+                    fraction -= rectangular_overlap_grid(x_pmin[i], x_pmax[i],
+                                                         y_pmin[i], y_pmax[i],
+                                                         x_max[i] - x_min[i],
+                                                         y_max[i] - y_min[i],
+                                                         w_in, h_in, theta,
+                                                         0, subpixels)
+
+                flux[i] = np.sum(data[y_min[i]:y_max[i],
+                                      x_min[i]:x_max[i]] * fraction)
+                if error is not None:
+                    fluxvar[i] = find_fluxvar(data, fraction, error,
+                                              flux[i], x_min[i], x_max[i],
+                                              y_min[i], y_max[i],
+                                              pixelwise_error)
+
+    if error is None:
+        return (flux, )
+    else:
+        return (flux, np.sqrt(fluxvar))
+
+
+def get_rectangular_fractions(data, positions, w, h, theta, method,
+                              subpixels, reduce='sum', w_in=None):
+
+    extents = np.zeros((len(positions), 4), dtype=int)
+
+    # TODO: this is an overestimate by up to sqrt(2) unless theta = 45 deg
+    radius = max(h, w) * (2 ** -0.5)
+
+    extents[:, 0] = positions[:, 0] - radius + 0.5
+    extents[:, 1] = positions[:, 0] + radius + 1.5
+    extents[:, 2] = positions[:, 1] - radius + 0.5
+    extents[:, 3] = positions[:, 1] + radius + 1.5
+
+    ood_filter, extent, phot_extent = get_phot_extents(data, positions,
+                                                       extents)
+
+    fractions = np.zeros((data.shape[0], data.shape[1], len(positions)),
+                         dtype=np.float)
+
+    if np.sum(ood_filter):
+        warnings.warn("The aperture at position {0} does not have any "
+                      "overlap with the data"
+                      .format(positions[ood_filter]),
+                      AstropyUserWarning)
+        if np.sum(ood_filter) == len(positions):
+            return np.squeeze(fractions)
+
+    x_min, x_max, y_min, y_max = extent
+    x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
+
+    if method in ('center', 'subpixel'):
+        if method == 'center':
+            method = 'subpixel'
+            subpixels = 1
+
+        from ..geometry import rectangular_overlap_grid
+
+        for i in range(len(positions)):
+
+            if ood_filter[i] is not True:
+
+                fractions[y_min[i]: y_max[i], x_min[i]: x_max[i], i] = \
+                    rectangular_overlap_grid(x_pmin[i], x_pmax[i],
+                                             y_pmin[i], y_pmax[i],
+                                             x_max[i] - x_min[i],
+                                             y_max[i] - y_min[i],
+                                             w, h, theta, 0, subpixels)
+                if w_in is not None:
+                    h_in = w_in * h / w
+                    fractions[y_min[i]: y_max[i], x_min[i]: x_max[i], i] -= \
+                        rectangular_overlap_grid(x_pmin[i], x_pmax[i],
+                                                 y_pmin[i], y_pmax[i],
+                                                 x_max[i] - x_min[i],
+                                                 y_max[i] - y_min[i],
+                                                 w_in, h_in, theta,
+                                                 0, subpixels)
+
+    return np.squeeze(fractions)
 
 
 class SkyRectangularAperture(SkyAperture):

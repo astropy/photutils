@@ -11,7 +11,7 @@ import warnings
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
-from .aperture_funcs import get_phot_extents
+from .core import get_phot_extents
 
 
 __all__ = ['get_cutouts']
