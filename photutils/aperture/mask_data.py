@@ -11,7 +11,7 @@ import warnings
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
-from .core import get_phot_extents
+from .core import _get_phot_extents
 
 
 __all__ = ['get_cutouts']
@@ -60,7 +60,7 @@ def get_cutouts(data, circular_aperture, use_exact=0, subpixels=5):
     extents[:, 2] = positions[:, 1] - radius + 0.5
     extents[:, 3] = positions[:, 1] + radius + 1.5
 
-    no_overlap, absolute_extent, centered_extent = get_phot_extents(
+    no_overlap, absolute_extent, centered_extent = _get_phot_extents(
         data, positions, extents)
     # Check that some of the apertures overlap the data
     if np.sum(no_overlap):

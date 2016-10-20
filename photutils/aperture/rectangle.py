@@ -11,7 +11,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import skycoord_to_pixel
 
 from .core import (SkyAperture, PixelAperture, _sanitize_pixel_positions,
-                   _make_annulus_path, get_phot_extents, find_fluxvar)
+                   _make_annulus_path, _get_phot_extents, find_fluxvar)
 from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
                                  assert_angle_or_pixel)
 
@@ -37,8 +37,8 @@ def do_rectangular_photometry(data, positions, w, h, theta, error,
     extents[:, 2] = positions[:, 1] - radius + 0.5
     extents[:, 3] = positions[:, 1] + radius + 1.5
 
-    ood_filter, extent, phot_extent = get_phot_extents(data, positions,
-                                                       extents)
+    ood_filter, extent, phot_extent = _get_phot_extents(data, positions,
+                                                        extents)
 
     flux = u.Quantity(np.zeros(len(positions), dtype=np.float), unit=data.unit)
 
@@ -110,8 +110,8 @@ def get_rectangular_fractions(data, positions, w, h, theta, method,
     extents[:, 2] = positions[:, 1] - radius + 0.5
     extents[:, 3] = positions[:, 1] + radius + 1.5
 
-    ood_filter, extent, phot_extent = get_phot_extents(data, positions,
-                                                       extents)
+    ood_filter, extent, phot_extent = _get_phot_extents(data, positions,
+                                                        extents)
 
     fractions = np.zeros((data.shape[0], data.shape[1], len(positions)),
                          dtype=np.float)
@@ -198,7 +198,8 @@ class SkyRectangularAperture(SkyAperture):
 
     def to_pixel(self, wcs):
         """
-        Return a RectangularAperture instance in pixel coordinates.
+        Convert the aperture to a `RectangularAperture` instance in
+        pixel coordinates.
         """
 
         x, y = skycoord_to_pixel(self.positions, wcs,
@@ -210,7 +211,8 @@ class SkyRectangularAperture(SkyAperture):
         if self.w.unit.physical_type == 'angle':
             w = (scale * self.w).to(u.pixel).value
             h = (scale * self.h).to(u.pixel).value
-        else:  # pixel
+        else:
+            # pixels
             w = self.w.value
             h = self.h.value
 
@@ -379,7 +381,8 @@ class SkyRectangularAnnulus(SkyAperture):
 
     def to_pixel(self, wcs):
         """
-        Return a EllipticalAnnulus instance in pixel coordinates.
+        Convert the aperture to a `EllipticalAnnulus` instance in pixel
+        coordinates.
         """
 
         x, y = skycoord_to_pixel(self.positions, wcs,
@@ -393,6 +396,7 @@ class SkyRectangularAnnulus(SkyAperture):
             w_out = (scale * self.w_out).to(u.pixel).value
             h_out = (scale * self.h_out).to(u.pixel).value
         else:
+            # pixels
             w_in = self.w_in.value
             w_out = self.w_out.value
             h_out = self.h_out.value

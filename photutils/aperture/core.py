@@ -75,7 +75,7 @@ def _make_annulus_path(patch_inner, patch_outer):
     return mpath.Path(verts, codes)
 
 
-def get_phot_extents(data, positions, extents):
+def _get_phot_extents(data, positions, extents):
     """
     Get the photometry extents and check if the apertures is fully out of data.
 

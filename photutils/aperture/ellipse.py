@@ -11,7 +11,7 @@ from astropy.wcs.utils import skycoord_to_pixel
 from astropy.utils.exceptions import AstropyUserWarning
 
 from .core import (SkyAperture, PixelAperture, _sanitize_pixel_positions,
-                   _make_annulus_path, get_phot_extents, find_fluxvar)
+                   _make_annulus_path, _get_phot_extents, find_fluxvar)
 from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
                                  assert_angle_or_pixel)
 
@@ -36,8 +36,8 @@ def do_elliptical_photometry(data, positions, a, b, theta, error,
     extents[:, 2] = positions[:, 1] - radius + 0.5
     extents[:, 3] = positions[:, 1] + radius + 1.5
 
-    ood_filter, extent, phot_extent = get_phot_extents(data, positions,
-                                                       extents)
+    ood_filter, extent, phot_extent = _get_phot_extents(data, positions,
+                                                        extents)
 
     flux = u.Quantity(np.zeros(len(positions), dtype=np.float), unit=data.unit)
 
@@ -116,8 +116,8 @@ def get_elliptical_fractions(data, positions, a, b, theta,
     extents[:, 2] = positions[:, 1] - radius + 0.5
     extents[:, 3] = positions[:, 1] + radius + 1.5
 
-    ood_filter, extent, phot_extent = get_phot_extents(data, positions,
-                                                       extents)
+    ood_filter, extent, phot_extent = _get_phot_extents(data, positions,
+                                                        extents)
 
     fractions = np.zeros((data.shape[0], data.shape[1], len(positions)),
                          dtype=np.float)
