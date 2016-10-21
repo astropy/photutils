@@ -649,9 +649,9 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
                                          subpixels=subpixels, error=error,
                                          pixelwise_error=pixelwise_error)
     if error is None:
-        phot_col_names = ('aperture_sum', )
+        aper_sum = photometry_result
     else:
-        phot_col_names = ('aperture_sum', 'aperture_sum_err')
+        aper_sum, aper_err = photometry_result
 
     calling_args = ('method={0}, subpixels={1}, pixelwise_error={2}'
                     .format(method, subpixels, pixelwise_error))
@@ -660,6 +660,11 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     meta['version'] = _get_version_info()
     meta['aperture_photometry_args'] = calling_args
 
-    return QTable(data=(photometry_result + coord_columns),
-                  names=(phot_col_names + coord_col_names),
-                  meta=meta)
+    tbl = QTable(meta=meta)
+    tbl['xcenter'] = pixpos[0]
+    tbl['ycenter'] = pixpos[1]
+    tbl['aperture_sum'] = aper_sum
+    if error is not None:
+        tbl['aperture_sum_err'] = aper_err
+
+    return tbl
