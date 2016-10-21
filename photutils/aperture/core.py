@@ -593,61 +593,36 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     thus supports `~astropy.nddata.NDData` objects as input.
     """
 
-    data, wcs_transformation, mask, error, pixelwise_error = \
+    data, wcs, mask, error, pixelwise_error = \
         _prepare_photometry_input(data, unit, wcs, mask, error,
                                   pixelwise_error)
 
-    # masked values are replaced with zeros, so they do not contribute
-    # to the aperture sums
     if mask is not None:
         data = copy.deepcopy(data)    # do not modify input data
         data[mask] = 0
 
-    # mask the error array, if necessary
-    # masked values are replaced with zeros, so they do not contribute
-    # to the sums
-    if mask is not None and error is not None:
-        error = copy.deepcopy(error)    # do not modify input data
-        error[mask] = 0.
+        if error is not None:
+            error = copy.deepcopy(error)    # do not modify input data
+            error[mask] = 0.
 
-    # Check that 'subpixels' is an int and is 1 or greater.
     if method == 'subpixel':
-        subpixels = int(subpixels)
-        if subpixels < 1:
-            raise ValueError('subpixels: an integer greater than 0 is '
-                             'required')
+        if (int(subpixels) != subpixels) or (subpixels <= 0):
+            raise ValueError('subpixels must be a positive integer.')
 
-    ap = apertures
-
+    skyaper = False
     if isinstance(apertures, SkyAperture):
-        positions = ap.positions
-        if wcs_transformation is None:
-            wcs_transformation = WCS(header)
-        ap = ap.to_pixel(wcs_transformation)
-        pixelpositions = ap.positions * u.pixel
-        if wcs_transformation is None:
-            raise ValueError('WCS transform not defined by data or wcs '
-                             'keyword.')
-        pixpos = np.transpose(pixelpositions)
-        # check whether single or multiple positions
-        if len(pixelpositions) > 1 and pixelpositions[0].size >= 2:
-            coord_columns = (pixpos[0], pixpos[1], positions)
-        else:
-            coord_columns = (pixpos[0], pixpos[1], (positions, ))
-        coord_col_names = ('xcenter', 'ycenter', 'center_input')
-    else:
-        pixelpositions = ap.positions * u.pixel
-        pixpos = np.transpose(pixelpositions)
-        # check whether single or multiple positions
-        if len(pixelpositions) > 1 and pixelpositions[0].size >= 2:
-            coord_columns = (pixpos[0], pixpos[1])
-        else:
-            coord_columns = ((pixpos[0],), (pixpos[1],))
-        coord_col_names = ('xcenter', 'ycenter')
+        if wcs is None:
+            raise ValueError('A WCS transform must be defined by the input '
+                             'data or the wcs keyword.')
+        skyaper = True
+        skycoord_pos = apertures.positions
+        apertures = apertures.to_pixel(wcs)
 
-    photometry_result = ap.do_photometry(data, method=method,
-                                         subpixels=subpixels, error=error,
-                                         pixelwise_error=pixelwise_error)
+    xypos_pixel = np.transpose(apertures.positions) * u.pixel
+
+    photometry_result = apertures.do_photometry(
+        data, method=method, subpixels=subpixels, error=error,
+        pixelwise_error=pixelwise_error)
     if error is None:
         aper_sum = photometry_result
     else:
@@ -661,8 +636,10 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     meta['aperture_photometry_args'] = calling_args
 
     tbl = QTable(meta=meta)
-    tbl['xcenter'] = pixpos[0]
-    tbl['ycenter'] = pixpos[1]
+    tbl['xcenter'] = xypos_pixel[0]
+    tbl['ycenter'] = xypos_pixel[1]
+    if skyaper:
+        tbl['input_center'] = skycoord_pos
     tbl['aperture_sum'] = aper_sum
     if error is not None:
         tbl['aperture_sum_err'] = aper_err
