@@ -636,6 +636,7 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     meta['aperture_photometry_args'] = calling_args
 
     tbl = QTable(meta=meta)
+    tbl['id'] = np.arange(1, len(xypos_pixel[0]) + 1)
     tbl['xcenter'] = xypos_pixel[0]
     tbl['ycenter'] = xypos_pixel[1]
     if skyaper:
