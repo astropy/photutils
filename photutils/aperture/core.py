@@ -131,8 +131,8 @@ def _get_phot_extents(data, positions, extents):
     return ood_filter, pixel_extent, phot_extent
 
 
-def find_fluxvar(data, fraction, error, flux, imin, imax, jmin, jmax,
-                 pixelwise_error):
+def _calc_aperture_var(data, fraction, error, flux, xmin, xmax, ymin, ymax,
+                       pixelwise_error):
 
     if isinstance(error, u.Quantity):
         zero_variance = 0 * error.unit**2
@@ -140,17 +140,13 @@ def find_fluxvar(data, fraction, error, flux, imin, imax, jmin, jmax,
         zero_variance = 0
 
     if pixelwise_error:
-
-        subvariance = error[jmin:jmax, imin:imax] ** 2
+        subvariance = error[ymin:ymax, xmin:xmax] ** 2
 
         # Make sure variance is > 0
         fluxvar = np.maximum(np.sum(subvariance * fraction), zero_variance)
-
     else:
-
-        local_error = error[int((jmin + jmax) / 2 + 0.5),
-                            int((imin + imax) / 2 + 0.5)]
-
+        local_error = error[int((ymin + ymax) / 2 + 0.5),
+                            int((xmin + xmax) / 2 + 0.5)]
         fluxvar = np.maximum(local_error ** 2 * np.sum(fraction),
                              zero_variance)
 

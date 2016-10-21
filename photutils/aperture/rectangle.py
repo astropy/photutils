@@ -11,7 +11,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import skycoord_to_pixel
 
 from .core import (SkyAperture, PixelAperture, _sanitize_pixel_positions,
-                   _make_annulus_path, _get_phot_extents, find_fluxvar)
+                   _make_annulus_path, _get_phot_extents, _calc_aperture_var)
 from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
                                  assert_angle_or_pixel)
 
@@ -86,10 +86,9 @@ def do_rectangular_photometry(data, positions, w, h, theta, error,
                 flux[i] = np.sum(data[y_min[i]:y_max[i],
                                       x_min[i]:x_max[i]] * fraction)
                 if error is not None:
-                    fluxvar[i] = find_fluxvar(data, fraction, error,
-                                              flux[i], x_min[i], x_max[i],
-                                              y_min[i], y_max[i],
-                                              pixelwise_error)
+                    fluxvar[i] = _calc_aperture_var(
+                        data, fraction, error, flux[i], x_min[i], x_max[i],
+                        y_min[i], y_max[i], pixelwise_error)
 
     if error is None:
         return (flux, )
