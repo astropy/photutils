@@ -86,11 +86,11 @@ with the data and the apertures::
     >>> data = np.ones((100, 100))
     >>> phot_table = aperture_photometry(data, apertures)
     >>> print(phot_table)
-       aperture_sum    xcenter ycenter
-                         pix     pix
-    ------------------ ------- -------
-    28.274333882308138    30.0    30.0
-    28.274333882308138    40.0    40.0
+    xcenter ycenter    aperture_sum
+      pix     pix
+    ------- ------- ------------------
+       30.0    30.0 28.274333882308138
+       40.0    40.0 28.274333882308138
 
 This function returns the results of the photometry in an Astropy
 `~astropy.table.Table`.  In this example, the table has three columns,
@@ -121,11 +121,11 @@ by a factor of 5 in each dimension::
     >>> phot_table = aperture_photometry(data, apertures,
     ...                                  method='subpixel', subpixels=5)
     >>> print(phot_table)
-    aperture_sum xcenter ycenter
-                   pix     pix
-    ------------ ------- -------
-           27.96    30.0    30.0
-           27.96    40.0    40.0
+    xcenter ycenter aperture_sum
+      pix     pix
+    ------- ------- ------------
+       30.0    30.0        27.96
+       40.0    40.0        27.96
 
 Note that the results differ from the true value of 28.274333 (see
 above).
@@ -177,11 +177,11 @@ specify ``a``, ``b``, and ``theta``::
     >>> apertures = EllipticalAperture(positions, a, b, theta)
     >>> phot_table = aperture_photometry(data, apertures)
     >>> print(phot_table)    # doctest: +FLOAT_CMP
-       aperture_sum   xcenter ycenter
-                        pix     pix
-    ----------------- ------- -------
-    47.12388980384689    30.0    30.0
-    47.12388980384689    40.0    40.0
+    xcenter ycenter    aperture_sum
+      pix     pix
+    ------- ------- -----------------
+       30.0    30.0 47.12388980384689
+       40.0    40.0 47.12388980384689
 
 Again, for multiple apertures one should loop over them::
 
@@ -271,11 +271,11 @@ pixel's value and saved it in the array ``data_error``::
     >>> data_error = 0.1 * data  # (100 x 100 array)
     >>> phot_table = aperture_photometry(data, apertures, error=data_error)
     >>> print(phot_table)    # doctest: +FLOAT_CMP
-       aperture_sum     aperture_sum_err  xcenter ycenter
-                                            pix     pix
-    ------------------ ------------------ ------- -------
-    28.274333882308138 0.5317361552716549    30.0    30.0
-    28.274333882308138 0.5317361552716549    40.0    40.0
+    xcenter ycenter    aperture_sum     aperture_sum_err
+      pix     pix
+    ------- ------- ------------------ ------------------
+       30.0    30.0 28.274333882308138 0.5317361552716549
+       40.0    40.0 28.274333882308138 0.5317361552716549
 
 ``'aperture_sum_err'`` values are given by:
 
