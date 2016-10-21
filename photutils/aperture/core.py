@@ -321,7 +321,7 @@ class PixelAperture(Aperture):
             if input ``error`` is not `None`.
         """
 
-    @abc.abstractmethod
+    #@abc.abstractmethod
     def get_fractions(self, data, method='exact', subpixels=5):
         """Weight of pixels in data, within aperture(s).
 
