@@ -639,7 +639,10 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     tbl['xcenter'] = xypos_pixel[0]
     tbl['ycenter'] = xypos_pixel[1]
     if skyaper:
-        tbl['input_center'] = skycoord_pos
+        if skycoord_pos.isscalar:
+            tbl['input_center'] = (skycoord_pos,)
+        else:
+            tbl['input_center'] = skycoord_pos
     tbl['aperture_sum'] = aper_sum
     if error is not None:
         tbl['aperture_sum_err'] = aper_err
