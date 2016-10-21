@@ -53,7 +53,7 @@ def do_elliptical_photometry(data, positions, a, b, theta, error,
                       .format(positions[ood_filter]),
                       AstropyUserWarning)
         if np.sum(ood_filter) == len(positions):
-            return (flux, )
+            return flux
 
     x_min, x_max, y_min, y_max = extent
     x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
@@ -98,9 +98,9 @@ def do_elliptical_photometry(data, positions, a, b, theta, error,
                     y_min[i], y_max[i], pixelwise_error)
 
     if error is None:
-        return (flux, )
+        return flux
     else:
-        return (flux, np.sqrt(fluxvar))
+        return flux, np.sqrt(fluxvar)
 
 
 def get_elliptical_fractions(data, positions, a, b, theta,
