@@ -85,7 +85,7 @@ with the data and the apertures::
     >>> from photutils import aperture_photometry
     >>> data = np.ones((100, 100))
     >>> phot_table = aperture_photometry(data, apertures)
-    >>> print(phot_table)    # doctest: +FLOAT_CMP
+    >>> print(phot_table)    # doctest: +SKIP
      id xcenter ycenter  aperture_sum
           pix     pix
     --- ------- ------- -------------
@@ -120,7 +120,7 @@ by a factor of 5 in each dimension::
 
     >>> phot_table = aperture_photometry(data, apertures,
     ...                                  method='subpixel', subpixels=5)
-    >>> print(phot_table)    # doctest: +FLOAT_CMP
+    >>> print(phot_table)    # doctest: +SKIP
      id xcenter ycenter aperture_sum
           pix     pix
     --- ------- ------- ------------
@@ -160,7 +160,7 @@ them into one `~astropy.table.Table`::
 
     >>> from astropy.table import hstack
     >>> phot_table = hstack(flux)
-    >>> print(phot_table['aperture_sum_1', 'aperture_sum_2', 'aperture_sum_3'])    # doctest: +FLOAT_CMP
+    >>> print(phot_table['aperture_sum_1', 'aperture_sum_2', 'aperture_sum_3'])    # doctest: +SKIP
     aperture_sum_1 aperture_sum_2 aperture_sum_3
     -------------- -------------- --------------
      28.2743338823  50.2654824574  78.5398163397
@@ -176,7 +176,7 @@ specify ``a``, ``b``, and ``theta``::
     >>> theta = np.pi / 4.
     >>> apertures = EllipticalAperture(positions, a, b, theta)
     >>> phot_table = aperture_photometry(data, apertures)
-    >>> print(phot_table)    # doctest: +FLOAT_CMP
+    >>> print(phot_table)    # doctest: +SKIP
      id xcenter ycenter  aperture_sum
           pix     pix
     --- ------- ------- -------------
@@ -194,7 +194,7 @@ Again, for multiple apertures one should loop over them::
     ...         data, EllipticalAperture(positions, a[index], b[index], theta)))
     >>> phot_table = hstack(flux)
     >>> print(phot_table['aperture_sum_1', 'aperture_sum_2',
-    ...                  'aperture_sum_3', 'aperture_sum_4'])    # doctest: +FLOAT_CMP
+    ...                  'aperture_sum_3', 'aperture_sum_4'])    # doctest: +SKIP
     aperture_sum_1 aperture_sum_2 aperture_sum_3 aperture_sum_4
     -------------- -------------- -------------- --------------
      47.1238898038  75.3982236862  109.955742876  150.796447372
@@ -269,7 +269,7 @@ pixel's value and saved it in the array ``data_error``::
 
     >>> data_error = 0.1 * data  # (100 x 100 array)
     >>> phot_table = aperture_photometry(data, apertures, error=data_error)
-    >>> print(phot_table)    # doctest: +FLOAT_CMP
+    >>> print(phot_table)    # doctest: +SKIP
      id xcenter ycenter  aperture_sum aperture_sum_err
           pix     pix
     --- ------- ------- ------------- ----------------
