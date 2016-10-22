@@ -4,6 +4,8 @@ This subpackage contains modules and packages for identifying sources in
 an astronomical image.
 """
 
+from .circle import *
 from .core import *
-from .aperture_funcs import *
+from .ellipse import *
 from .mask_data import *
+from .rectangle import *

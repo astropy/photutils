@@ -11,6 +11,10 @@ New Features
 
   - Added new ``origin`` keyword to aperture ``plot`` methods. [#395]
 
+  - Added new ``id`` column to ``aperture_photometry`` output table. [#446]
+
+  - Added ``__len__`` method for aperture classes. [#446]
+
 - ``photutils.background``
 
   - Added new ``MeanBackground``, ``MedianBackground``,
@@ -81,6 +85,8 @@ API changes
     which can be calculated using the ``calc_total_error`` function.
     [#368]
 
+  - ``aperture_photometry`` now outputs a ``QTable``. [#446]
+
 - ``photutils.background``
 
   - For the background classes, the ``filter_shape`` keyword was
@@ -143,6 +149,11 @@ API changes
 
 Bug Fixes
 ^^^^^^^^^
+
+- ``photutils.aperture``
+
+  - Fixed a bug in ``aperture_photometry`` so that single-row output
+    tables do not return a multidimensional column. [#446]
 
 - ``photutils.centroids``
 
