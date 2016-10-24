@@ -81,7 +81,7 @@ class BasicPSFPhotometry(object):
         Fitter object used to compute the optimized centroid positions
         and/or flux of the identified sources. See
         `~astropy.modeling.fitting` for more details on fitters.
-    aperture_radius : float
+    aperture_radius : float or None
         The radius (in units of pixels) used to compute initial
         estimates for the fluxes of sources. If ``None``, one FWHM will
         be used if it can be determined from the ```psf_model``.
@@ -103,12 +103,12 @@ class BasicPSFPhotometry(object):
 
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
                  finder=None, fitter=LevMarLSQFitter(), aperture_radius=None):
-        self.finder = finder
         self.group_maker = group_maker
         self.bkg_estimator = bkg_estimator
         self.psf_model = psf_model
         self.fitter = fitter
         self.fitshape = fitshape
+        self.finder = finder
         self.aperture_radius = aperture_radius
         self._residual_image = None
 
@@ -180,7 +180,7 @@ class BasicPSFPhotometry(object):
             elif hasattr(self.psf_model, 'sigma'):
                 self.aperture_radius = (self.psf_model.sigma.value *
                                         gaussian_sigma_to_fwhm)
-        
+
         if positions is not None:
             if 'flux_0' not in positions.colnames:
                 apertures = CircularAperture((positions['x_0'],
@@ -198,10 +198,10 @@ class BasicPSFPhotometry(object):
                 apertures = CircularAperture((sources['xcentroid'],
                                               sources['ycentroid']),
                                              r=self.aperture_radius)
-                
+
                 sources['aperture_flux'] = aperture_photometry(image,
                         apertures)['aperture_sum']
-                
+
                 positions = Table(names=['x_0', 'y_0', 'flux_0'],
                                   data=[sources['xcentroid'],
                                   sources['ycentroid'],
@@ -520,12 +520,12 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         """
 
         self._residual_image = image
-        
+
         if positions is not None:
             table = super(IterativelySubtractedPSFPhotometry,
                 self).do_photometry(self._residual_image, positions)
             table['iter_detected'] = np.ones(table['x_fit'].shape, dtype=np.int)
-            
+
             # n_start = 2 because it starts in the second iteration
             # since the first iteration is above
             output_table = self._do_photometry(n_start=2)
@@ -591,12 +591,12 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
     applying a loop of find sources, make groups, fit groups, subtract
     groups, and then repeat until no more stars are detected or a given
     number of iterations is reached.
-    
+
     In order to make groups of sources, this class uses
     `~photutils.psf.DAOGroup`. To find sources, this class uses
     `~photutils.detection.DAOStarFinder`. To do background estimation,
     it uses `~photutils.background.MMMBackground`.
-    
+
     The parameter ``crit_separation`` is associated with `~photutils.psf.DAOGroup`.
     ``sigma_clip`` is associated with `~photutils.background.MMMBackground`.
     ``threshold`` and ``fwhm`` are associated with `~photutils.detection.DAOStarFinder`.
@@ -686,9 +686,9 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
 
     def __init__(self, crit_separation, threshold, fwhm, psf_model,
                  fitshape, sigma=3., ratio=1.0, theta=0.0, sigma_radius=1.5, sharplo=0.2,
-                 sharphi=1.0, roundlo=-1.0, roundhi=1.0, fitter=LevMarLSQFitter(), 
+                 sharphi=1.0, roundlo=-1.0, roundhi=1.0, fitter=LevMarLSQFitter(),
                  niters=3, aperture_radius=None):
-       
+
         self.crit_separation = crit_separation
         self.threshold = threshold
         self.fwhm = fwhm
