@@ -416,16 +416,16 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         Fitter object used to compute the optimized centroid positions
         and/or flux of the identified sources. See
         `~astropy.modeling.fitting` for more details on fitters.
+    aperture_radius : float
+        The radius (in units of pixels) used to compute initial
+        estimates for the fluxes of sources. If ``None``, one FWHM will
+        be used if it can be determined from the ```psf_model``.
     niters : int or None
         Number of iterations to perform of the loop FIND, GROUP,
         SUBTRACT, NSTAR. If None, iterations will proceed until no more
         stars remain.  Note that in this case it is *possible* that the
         loop will never end if the PSF has structure that causes
         subtraction to create new sources infinitely.
-    aperture_radius : float
-        The radius (in units of pixels) used to compute initial
-        estimates for the fluxes of sources. If ``None``, one FWHM will
-        be used if it can be determined from the ```psf_model``.
 
     Notes
     -----
