@@ -9,9 +9,11 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
 from astropy.utils.exceptions import AstropyUserWarning
+from astropy.nddata import Cutout2D
 
 from .core import (SkyAperture, PixelAperture, _sanitize_pixel_positions,
                    _make_annulus_path, _get_phot_extents, _calc_aperture_var)
+from ..geometry import circular_overlap_grid
 from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle,
                                  assert_angle_or_pixel)
 
@@ -23,10 +25,115 @@ __all__ = ['CircularMixin', 'SkyCircularAperture', 'CircularAperture',
            'SkyCircularAnnulus', 'CircularAnnulus']
 
 
+def _translate_mask_method(method, subpixels):
+    if method == 'center':
+        use_exact = 0
+        subpixels = 1
+    elif method == 'subpixel':
+        use_exact = 0
+    elif method == 'exact':
+        use_exact = 1
+        subpixels = 1
+    else:
+        raise ValueError('invalid method')
+
+    return use_exact, subpixels
+
+
+class Mask(object):
+    """
+    Mask class.
+    """
+
+    def __init__(self, position, mask):
+        self.position = position
+        self.data = mask
+        self.shape = mask.shape
+
+    @property
+    def array(self):
+        return self.data
+
+    def __array__(self):
+        return self.data
+
+    def apply(self, data, mode='trim', fill_value=np.nan, copy=False):
+        mask_cutout = None
+
+        data_cutout = Cutout2D(data, self.position, self.shape, mode=mode,
+                               fill_value=fill_value, copy=copy)
+
+        return mask_cutout, data_cutout
+
+
 class CircularMixin(object):
     """
     Mixin class for circular apertures.
     """
+
+    def to_mask(self, method='exact', subpixels=5):
+        """
+        Returns
+        -------
+        mask : `~photutils.Mask`
+            A Mask object.
+        """
+
+        if method not in ('center', 'subpixel', 'exact'):
+            raise ValueError('"{0}" method is not available for this '
+                             'aperture.'.format(method))
+
+        if hasattr(self, 'r'):
+            radius = self.r
+        elif hasattr(self, 'r_out'):    # annulus
+            radius = self.r_out
+        else:
+            raise ValueError('cannot determine aperture radius.')
+
+        #extents = np.zeros((len(self), 4), dtype=int)
+        #extents[:, 0] = self.positions[:, 0] - radius + 0.5
+        #extents[:, 1] = self.positions[:, 0] + radius + 1.5
+        #extents[:, 2] = self.positions[:, 1] - radius + 0.5
+        #extents[:, 3] = self.positions[:, 1] + radius + 1.5
+
+        extents = np.zeros((len(self), 4), dtype=int)
+        extents[:, 0] = self.positions[:, 0] - radius + 0.5
+        extents[:, 1] = self.positions[:, 0] + radius + 1.5
+        extents[:, 2] = self.positions[:, 1] - radius + 0.5
+        extents[:, 3] = self.positions[:, 1] + radius + 1.5
+
+        x_min = np.maximum(extents[:, 0], 0)
+        x_max = np.minimum(extents[:, 1], data.shape[1])
+        y_min = np.maximum(extents[:, 2], 0)
+        y_max = np.minimum(extents[:, 3], data.shape[0])
+
+        x_pmin = x_min - positions[:, 0] - 0.5
+        x_pmax = x_max - positions[:, 0] - 0.5
+        y_pmin = y_min - positions[:, 1] - 0.5
+        y_pmax = y_max - positions[:, 1] - 0.5
+
+        # TODO: check whether any pixel is nan in data[y_min[i]:y_max[i],
+        # x_min[i]:x_max[i])), if yes return something valid rather than nan
+
+        pixel_extent = [x_min, x_max, y_min, y_max]
+        phot_extent = [x_pmin, x_pmax, y_pmin, y_pmax]
+
+        size = 2. * radius + 1.
+        self.shape = np.repeat(size, 2)
+        hy_size, hx_size = self.shape / 2.
+
+        use_exact, subpixels = _translate_mask_method(method, subpixels)
+        mask = circular_overlap_grid(-hx_size, hx_size,
+                                     -hy_size, hy_size,
+                                     self.shape[1],
+                                     self.shape[0],
+                                     radius, use_exact, subpixels)
+
+        masks = []
+        for position in self.positions:
+            masks.append(Mask(position, mask))
+
+        return masks
 
     def do_photometry(self, data, error=None, pixelwise_error=True,
                       method='exact', subpixels=5):
@@ -80,8 +187,6 @@ class CircularMixin(object):
         else:
             use_exact = 1
             subpixels = 1
-
-        from ..geometry import circular_overlap_grid
 
         for i in range(len(self)):
             if not np.isnan(flux[i]):
@@ -158,8 +263,6 @@ class CircularMixin(object):
         else:
             use_exact = 1
             subpixels = 1
-
-        from ..geometry import circular_overlap_grid
 
         for i in range(len(self)):
             if ood_filter[i] is not True:
