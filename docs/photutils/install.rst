@@ -56,6 +56,11 @@ To install using `pip`_, simply run::
 
 .. note::
 
+    You will need a C compiler (e.g. ``gcc`` or ``clang``) to be
+    installed for the installation to succeed.
+
+.. note::
+
     The ``--no-deps`` flag is optional, but highly recommended if you
     already have Numpy and Astropy installed, since otherwise pip will
     sometimes try to "help" you by upgrading your Numpy and Astropy
