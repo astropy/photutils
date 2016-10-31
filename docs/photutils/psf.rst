@@ -58,8 +58,8 @@ group sources with more complex distance criteria. The reason behind the
 construction of groups is illustrated as follows: imagine that one would like
 to fit 300 stars and the model for each star has three parameters to be
 fitted. If one constructs a single model to fit the 300 stars simultaneously,
-then the optimization algorithm will to search for the solution in a 900
-dimensional space, which is very likely to give a wrong solution. Reducing the
+then the optimization algorithm will have to search for the solution in a 900
+dimensional space, which is computationally expensive and error-prone. Reducing the
 stars in groups effectively reduces the dimension of the parameter space,
 which facilitates the optimization process.
 
@@ -75,8 +75,8 @@ by the finding routine.
 
 .. note::
     It is important to note the conventions on the column names of the
-    input/output astropy Tables which are passed along the source detection
-    objects and the photometry objetcs. For instance, all source detection
+    input/output astropy Tables which are passed along to the source detection
+    and photometry objects. For instance, all source detection
     objects should output a table with columns named as ``xcentroid`` and
     ``ycentroid`` (check `~photutils.detection`). On the other hand,
     `~photutils.psf.DAOGroup` expects columns named as ``x_0`` and ``y_0``,
@@ -86,20 +86,20 @@ by the finding routine.
     ``x_0``, ``y_0``, ``flux_0`` for the initial guesses.
     Although this convention implies that the columns have to be renamed
     along the process, it has the advantage of clarity so that one can
-    keep track and easily differentiate from where input/outputs came from.
+    keep track and easily differentiate where input/outputs came from.
 
 
 Basic Usage
 ^^^^^^^^^^^
 
-The `~photutils.psf.DAOPhotPSFPhotometry` is the core class that implements the
+`~photutils.psf.DAOPhotPSFPhotometry` is the core class that implements the
 DAOPHOT algorithm for performing PSF photometry in crowded fields.
 It basically encapsulates the loop "FIND, GROUP, NSTAR, SUBTRACT, FIND..." in
 one place so that one can easily perform PSF photometry just by setting up a
 `~photutils.psf.DAOPhotPSFPhotometry` object.
 
 This class and all of the classes it *uses* for the steps in the process are
-implemented in such a way that they can be used callable functions. The actual
+implemented in such a way that they can be used as callable functions. The actual
 implementation of the  ``__call__`` method for
 `~photutils.psf.DAOPhotPSFPhotometry` is identical to the ``do_photometry``
 method (which is why the documentation for ``__call__`` is in
