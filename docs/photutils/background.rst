@@ -14,7 +14,7 @@ for estimating photometric errors.
 Unfortunately, accurate background and background noise estimation is
 a difficult task.  Further, because astronomical images can cover a
 wide variety of scenes, there is not a single background estimation
-method that will always be applicable.  Photutils provides tools for
+method that will always be applicable. Photutils provides tools for
 estimating the background and background noise in your data, but they
 will likely require some tweaking to optimize the background estimate
 for your data.
@@ -31,7 +31,7 @@ image, the simplest way to estimate these values is to derive scalar
 quantities using simple approximations.  Of course, when computing the
 image statistics one must take into account the astronomical sources
 present in the images, which add a positive tail to the distribution
-of pixel intensities.  For example, one may consider using the image
+of pixel intensities. For example, one may consider using the image
 median as the background level and the image standard deviation as the
 1-sigma background noise, but the resulting values are obviously
 biased by the presence of real sources.
@@ -41,7 +41,7 @@ against the presence of outliers, such as the biweight location for
 the background level and biweight midvariance or `median absolute
 deviation (MAD)
 <http://en.wikipedia.org/wiki/Median_absolute_deviation>`_ for the
-background noise estimation.  However, for most astronomical scenes
+background noise estimation. However, for most astronomical scenes
 these methods will also be biased by the presence of astronomical
 sources in the image.
 
@@ -127,7 +127,7 @@ background and noise levels for the source detection.  Sources are
 then identified using image segmentation.  Finally, the source masks
 are dilated to mask more extended regions around the detected sources.
 
-Here we use a aggressive 2-sigma detection threshold to maximize the
+Here we use an aggressive 2-sigma detection threshold to maximize the
 source detections and dilate using a 11x11 box:
 
 .. doctest-requires:: scipy
@@ -189,7 +189,7 @@ std > 0.3`` then the ``median`` is used instead (despite what the
 `SExtractor <http://www.astromatic.net/software/sextractor>`_ User's
 Manual says, this is the method it always uses).
 
-Likewise, the background RMS level is each mesh is calculated using
+Likewise, the background RMS level in each mesh is calculated using
 the function or callable object input via the ``bkgrms_estimator``
 keyword.  Photutils provides the following classes for this purpose:
 
@@ -217,7 +217,7 @@ the background level is above a specified threshold
 (``filter_threshold``).
 
 The low-resolution background and background RMS images are resized to
-the original data size using the using the function or callable object
+the original data size using the function or callable object
 input via the ``interpolator`` keyword.  Photutils provides two
 interpolator classes:
 :class:`~photutils.background.BkgZoomInterpolator` (default), which
