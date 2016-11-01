@@ -22,8 +22,10 @@ __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',
 
 class BasicPSFPhotometry(object):
     """
-    This class implements a PSF photometry algorithm that basically performs
-    the DAOPHOT routines FIND, GROUP, NSTAR, and SUBTRACT once.
+    This class implements a PSF photometry algorithm that can find sources in an
+    image, group overlapping sources into a single model, fit the model to the
+    sources, and subtracting the models from the image. This is roughly
+    equivalent to the DAOPHOT routines FIND, GROUP, NSTAR, and SUBTRACT.
     This implementation allows a flexible and customizable interface to
     perform photometry. For instance, one is able to use different
     implementations for grouping and finding sources by using ``group_maker``
