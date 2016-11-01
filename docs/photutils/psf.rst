@@ -29,8 +29,8 @@ being fit.  We take this road, using "PSF photometry" as shorthand for the
 general approach.
 
 
-PSF Photometry in Crowded Fields
---------------------------------
+PSF Photometry
+--------------
 
 Photutils provides a modular set of tools to perform PSF photometry for
 different science cases. These are implemented as separate classes to do
@@ -93,6 +93,7 @@ by the finding routine.
 Basic Usage
 ^^^^^^^^^^^
 
+<<<<<<< 9191a3211154cbf2dfdd6a11fccb13beb3ec5763
 <<<<<<< 9738851a6026e0026d0452370aaf933ef1f749a7
 `~photutils.psf.DAOPhotPSFPhotometry` is the core class that implements the
 DAOPHOT algorithm for performing PSF photometry in crowded fields.
@@ -117,39 +118,69 @@ implemented in such a way that they can be used callable functions.
 The basic usage of `~photutils.psf.IterativelySubtractedPSFPhotometry` is as follows:
 =======
 Photutils provides three classes to perform PSF Photometry, i.e.,
+=======
+Photutils provides three classes to perform PSF Photometry:
+>>>>>>> update the explanation for the new scheme
 `~photutils.psf.BasicPSFPhotometry`, `~photutils.psf.IterativelySubtractedPSFPhotometry`,
-and `~photutils.psf.DAOPhotPSFPhotometry`.
+and `~photutils.psf.DAOPhotPSFPhotometry`.  Together these provide the core
+workflow to make photometric measurements given an appropriate PSF (or other)
+model.
 
 `~photutils.psf.BasicPSFPhotometry` implements the minimum tools for
-performing PSF photometry in crowded fields. Basically, it performs
-"FIND, GROUP, NSTAR, SUBTRACT" once. Because of that, this class should be
-used when the degree of crowdness of the field is not very high, for instance,
-when most stars are separated by a distance no less than one FWHM and their
-brightness are relatively uniform.
+model-fitting photometry. At its core, this involves finding sources in an
+image, groupingoverlapping sources into a single model, fitting the model to the
+sources, and subtracting the models from the image.  In DAOPHOT parlance, this
+is essentially running the "FIND, GROUP, NSTAR, SUBTRACT" once. Because it is
+only a single cycle of that sequence, this class should be used when the degree
+of crowdness of the field is not very high, for instance, when most stars are
+separated by a distance no less than one FWHM and their brightness are
+relatively uniform.  It is critical to understand, though, that
+`~photutils.psf.BasicPSFPhotometry` does not actually contain the functionality
+to *do* all these steps - that is provided by other objects (or can be
+user-written) functions.  Rather it provides the framework and data structures
+in which these operations run.  Because of this,
+`~photutils.psf.BasicPSFPhotometry` is particularly useful for build more
+complex workflows, as all of the stages can be turned on or off or
+replaced with different implementations as the user desires.
 
 `~photutils.psf.IterativelySubtractedPSFPhotometry` is similar to
-`~photutils.psf.BasicPSFPhotometry`, however it adds a parameter called
+`~photutils.psf.BasicPSFPhotometry`, but it adds a parameter called
 ``n_iters`` which is the number of iterations for which the loop
-"FIND, GROUP, NSTAR, SUBTRACT, FIND..." will be performed. This class enable
-photometry in a scenario where there exist significant overlap amongst
-brighter and fainter companions. For instance, the detection algorithm may not
-be able to detect fainter companions because of the presence of brighter stars,
-however, they will be detected in the next iteration after the brighter stars
-are fitted and subtracted.
+"FIND, GROUP, NSTAR, SUBTRACT, FIND..." will be performed. This class enables
+photometry in a scenario where there exists significant overlap between stars
+that are of quite different brightness. For instance, the detection algorithm
+may not be able to detect a faint and bright star very close together in the
+first iteration, but they will be detected in the next iteration after the
+brighter stars have been fit and subtracted.  Like
+`~photutils.psf.BasicPSFPhotometry`, it does not include implementations of the
+stages of this process, but it provides t
 
-`~photutils.psf.DAOPhotPSFPhotometry` is a special case of `~photutils.psf.IterativelySubtractedPSFPhotometry`,
-in which ``finder``, ``group_maker``, ``bkg_estimator`` attributes are already
-set to `~photutils.detection.DAOStarFinder`, `~photutils.psf.DAOGroup`, and
+`~photutils.psf.DAOPhotPSFPhotometry` is a special case of
+`~photutils.psf.IterativelySubtractedPSFPhotometry`. Unlike
+`~photutils.psf.IterativelySubtractedPSFPhotometry` and
+`~photutils.psf.BasicPSFPhotometry`, the class includes specific implementations
+of the stages of the photometric measurements, tuned to reproduce the algorithms
+used for the DAOPHOT code. Specifically, the ``finder``,
+``group_maker``, ``bkg_estimator`` attributes are set to the
+`~photutils.detection.DAOStarFinder`, `~photutils.psf.DAOGroup`, and
 `~photutils.background.MMMBackground`, respectively. Therefore, users need to
-input the parameters of those classes to set up a `~photutils.psf.DAOPhotPSFPhotometry`
-object.
+input the parameters of those classes to set up a
+`~photutils.psf.DAOPhotPSFPhotometry` object, rather than providing objects to
+do these stages (which is what the other classes require).
 
 Those classes and all of the classes they *use* for the steps in the
-photometry process are implemented in such a way that they can be used
-callable functions.
+photometry process can always be replaced by user-supplied functions if you wish
+to customize any stage of the photometry process.  This makes the machinery very
+flexible, while still providing a ``batteries included'' approach with a default
+implementation that's suitable for many use cases.
 
+<<<<<<< 9191a3211154cbf2dfdd6a11fccb13beb3ec5763
 The basic usage of, e.g., `~photutils.psf.IterativelySubtractedPSFPhotometry` is as follows:
 >>>>>>> Add narrative docs
+=======
+The basic usage of, e.g., `~photutils.psf.IterativelySubtractedPSFPhotometry` is
+as follows:
+>>>>>>> update the explanation for the new scheme
 
 .. doctest-skip::
 
