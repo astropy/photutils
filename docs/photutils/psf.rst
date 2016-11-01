@@ -128,7 +128,7 @@ model.
 
 `~photutils.psf.BasicPSFPhotometry` implements the minimum tools for
 model-fitting photometry. At its core, this involves finding sources in an
-image, groupingoverlapping sources into a single model, fitting the model to the
+image, grouping overlapping sources into a single model, fitting the model to the
 sources, and subtracting the models from the image.  In DAOPHOT parlance, this
 is essentially running the "FIND, GROUP, NSTAR, SUBTRACT" once. Because it is
 only a single cycle of that sequence, this class should be used when the degree
@@ -153,7 +153,7 @@ may not be able to detect a faint and bright star very close together in the
 first iteration, but they will be detected in the next iteration after the
 brighter stars have been fit and subtracted.  Like
 `~photutils.psf.BasicPSFPhotometry`, it does not include implementations of the
-stages of this process, but it provides t
+stages of this process, but it provides the structure in which those stages run.
 
 `~photutils.psf.DAOPhotPSFPhotometry` is a special case of
 `~photutils.psf.IterativelySubtractedPSFPhotometry`. Unlike
