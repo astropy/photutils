@@ -90,8 +90,8 @@ by the finding routine.
     keep track and easily differentiate where input/outputs came from.
 
 
-Basic Usage
-^^^^^^^^^^^
+High-Level Structure
+^^^^^^^^^^^^^^^^^^^^
 
 <<<<<<< 9191a3211154cbf2dfdd6a11fccb13beb3ec5763
 <<<<<<< 9738851a6026e0026d0452370aaf933ef1f749a7
@@ -171,20 +171,27 @@ do these stages (which is what the other classes require).
 Those classes and all of the classes they *use* for the steps in the
 photometry process can always be replaced by user-supplied functions if you wish
 to customize any stage of the photometry process.  This makes the machinery very
-flexible, while still providing a ``batteries included'' approach with a default
+flexible, while still providing a "batteries included" approach with a default
 implementation that's suitable for many use cases.
 
+<<<<<<< ac156ea6615b6f86dbf4339fc06eefdfd9c2e907
 <<<<<<< 9191a3211154cbf2dfdd6a11fccb13beb3ec5763
 The basic usage of, e.g., `~photutils.psf.IterativelySubtractedPSFPhotometry` is as follows:
 >>>>>>> Add narrative docs
 =======
+=======
+
+Basic Usage
+^^^^^^^^^^^
+
+>>>>>>> more doc updates
 The basic usage of, e.g., `~photutils.psf.IterativelySubtractedPSFPhotometry` is
 as follows:
 >>>>>>> update the explanation for the new scheme
 
 .. doctest-skip::
 
-    >>> # create a IterativelySubtractedPSFPhotometry object
+    >>> # create an IterativelySubtractedPSFPhotometry object
     >>> from photutils.psf import IterativelySubtractedPSFPhotometry
     >>> my_photometry = IterativelySubtractedPSFPhotometry(finder=my_finder,
     ...                                                    group_maker=my_group_maker,
