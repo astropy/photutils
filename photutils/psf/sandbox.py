@@ -181,10 +181,8 @@ class DiscretePRF(Fittable2DModel):
             size as the PRF image.
         mode : {'mean', 'median'}
             One of the following modes to combine the extracted PRFs:
-                * 'mean':  Take the pixelwise mean of the extracted
-                  PRFs.
-                * 'median':  Take the pixelwise median of the extracted
-                  PRFs.
+                * 'mean':  Take the pixelwise mean of the extracted PRFs.
+                * 'median':  Take the pixelwise median of the extracted PRFs.
         subsampling : int
             Factor of subsampling of the PRF (default = 1).
         fix_nan : bool
