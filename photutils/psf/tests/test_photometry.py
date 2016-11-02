@@ -8,7 +8,7 @@ from astropy.table import Table
 from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling import Parameter, Fittable2DModel
-from astropy.tests.helper import pytest
+from astropy.tests.helper import pytest, catch_warnings
 from astropy.utils import minversion
 from astropy.utils.exceptions import AstropyUserWarning
 
@@ -291,7 +291,7 @@ def test_finder_positions_warning():
              make_noise_image((32, 32), type='poisson', mean=6.,
                               random_state=1))
 
-    with pytest.warns(AstropyUserWarning):
+    with catch_warnings(AstropyUserWarning):
         result_tab = basic_phot_obj(image=image, positions=positions)
         assert_array_equal(result_tab['x_0'], positions['x_0'])
         assert_array_equal(result_tab['y_0'], positions['y_0'])
