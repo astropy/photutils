@@ -173,42 +173,6 @@ class BasicPSFPhotometry(object):
         including the `__call__` signature.
         """
 
-        if self.bkg_estimator is not None:
-            image = image - self.bkg_estimator(image)
-
-        if self.aperture_radius is None:
-            if hasattr(self.psf_model, 'fwhm'):
-                self.aperture_radius = self.psf_model.fwhm.value
-            elif hasattr(self.psf_model, 'sigma'):
-                self.aperture_radius = (self.psf_model.sigma.value *
-                                        gaussian_sigma_to_fwhm)
-
-        if positions is not None:
-            if 'flux_0' not in positions.colnames:
-                apertures = CircularAperture((positions['x_0'],
-                                              positions['y_0']),
-                                             r=self.aperture_radius)
-
-                positions['flux_0'] = aperture_photometry(
-                    image, apertures)['aperture_sum']
-        else:
-            if self.finder is None:
-                raise ValueError('Finder cannot be None if positions are '
-                                 'not given.')
-            sources = self.finder(image)
-            if len(sources) > 0:
-                apertures = CircularAperture((sources['xcentroid'],
-                                              sources['ycentroid']),
-                                             r=self.aperture_radius)
-
-                sources['aperture_flux'] = aperture_photometry(image,
-                        apertures)['aperture_sum']
-
-                positions = Table(names=['x_0', 'y_0', 'flux_0'],
-                                  data=[sources['xcentroid'],
-                                  sources['ycentroid'],
-                                  sources['aperture_flux']])
-
         return self.do_photometry(image, positions)
 
 
@@ -247,12 +211,48 @@ class BasicPSFPhotometry(object):
             None is returned if no sources are found in ``image``.
         """
 
+        if self.bkg_estimator is not None:
+            image = image - self.bkg_estimator(image)
+
+        if self.aperture_radius is None:
+            if hasattr(self.psf_model, 'fwhm'):
+                self.aperture_radius = self.psf_model.fwhm.value
+            elif hasattr(self.psf_model, 'sigma'):
+                self.aperture_radius = (self.psf_model.sigma.value *
+                                        gaussian_sigma_to_fwhm)
+
+        if positions is not None:
+            if 'flux_0' not in positions.colnames:
+                apertures = CircularAperture((positions['x_0'],
+                                              positions['y_0']),
+                                             r=self.aperture_radius)
+
+                positions['flux_0'] = aperture_photometry(
+                    image, apertures)['aperture_sum']
+        else:
+            if self.finder is None:
+                raise ValueError('Finder cannot be None if positions are '
+                                 'not given.')
+            sources = self.finder(image)
+            if len(sources) > 0:
+                apertures = CircularAperture((sources['xcentroid'],
+                                              sources['ycentroid']),
+                                             r=self.aperture_radius)
+
+                sources['aperture_flux'] = aperture_photometry(image,
+                        apertures)['aperture_sum']
+
+                positions = Table(names=['x_0', 'y_0', 'flux_0'],
+                                  data=[sources['xcentroid'],
+                                  sources['ycentroid'],
+                                  sources['aperture_flux']])
+
+
         star_groups = self.group_maker(positions)
         output_tab, self._residual_image = self.nstar(image, star_groups)
         output_tab = hstack([positions, output_tab])
 
         return output_tab
-
 
     def nstar(self, image, star_groups):
         """
@@ -521,11 +521,9 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             None is returned if no sources are found in ``image``.
         """
 
-        self._residual_image = image
-
         if positions is not None:
             table = super(IterativelySubtractedPSFPhotometry,
-                self).do_photometry(self._residual_image, positions)
+                self).do_photometry(image, positions)
             table['iter_detected'] = np.ones(table['x_fit'].shape, dtype=np.int)
 
             # n_start = 2 because it starts in the second iteration
@@ -533,6 +531,16 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             output_table = self._do_photometry(n_start=2)
             output_table = vstack([table, output_table])
         else:
+            if self.bkg_estimator is not None:
+                self._residual_image = image - self.bkg_estimator(image)
+
+            if self.aperture_radius is None:
+                if hasattr(self.psf_model, 'fwhm'):
+                    self.aperture_radius = self.psf_model.fwhm.value
+                elif hasattr(self.psf_model, 'sigma'):
+                    self.aperture_radius = (self.psf_model.sigma.value *
+                                            gaussian_sigma_to_fwhm)
+
             output_table = self._do_photometry()
         return output_table
 
@@ -575,9 +583,14 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                                data=[sources['xcentroid'],
                                sources['ycentroid'],
                                sources['aperture_flux']])
-            table = super(IterativelySubtractedPSFPhotometry,
-                    self).do_photometry(self._residual_image, init_guess_tab)
+
+            star_groups = self.group_maker(init_guess_tab)
+            table, self._residual_image = super(IterativelySubtractedPSFPhotometry,
+                    self).nstar(self._residual_image, star_groups)
+            table = hstack([init_guess_tab, table])
+
             table['iter_detected'] = n*np.ones(table['x_fit'].shape, dtype=np.int)
+
             output_table = vstack([output_table, table])
             sources = self.finder(self._residual_image)
             n += 1
