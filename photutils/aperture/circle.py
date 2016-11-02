@@ -45,10 +45,12 @@ class Mask(object):
     Mask class.
     """
 
-    def __init__(self, position, mask):
+    def __init__(self, position, mask, bbox_slice, geom_slice):
         self.position = position
         self.data = mask
         self.shape = mask.shape
+        self._slice = bbox_slice
+        self._geom_slice = geom_slice
 
     @property
     def array(self):
@@ -75,78 +77,40 @@ class CircularMixin(object):
         """
         Returns
         -------
-        mask : `~photutils.Mask`
-            A Mask object.
+        mask : list of `~photutils.Mask`
+            A list of Mask objects.
         """
 
         if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('"{0}" method is not available for this '
                              'aperture.'.format(method))
 
+        use_exact, subpixels = _translate_mask_method(method, subpixels)
+
         if hasattr(self, 'r'):
             radius = self.r
         elif hasattr(self, 'r_out'):    # annulus
             radius = self.r_out
         else:
-            raise ValueError('cannot determine aperture radius.')
-
-        #extents = np.zeros((len(self), 4), dtype=int)
-        #extents[:, 0] = self.positions[:, 0] - radius + 0.5
-        #extents[:, 1] = self.positions[:, 0] + radius + 1.5
-        #extents[:, 2] = self.positions[:, 1] - radius + 0.5
-        #extents[:, 3] = self.positions[:, 1] + radius + 1.5
-
-        extents = np.zeros((len(self), 4), dtype=int)
-        extents[:, 0] = self.positions[:, 0] - radius + 0.5
-        extents[:, 1] = self.positions[:, 0] + radius + 1.5
-        extents[:, 2] = self.positions[:, 1] - radius + 0.5
-        extents[:, 3] = self.positions[:, 1] + radius + 1.5
-
-        #x_min = np.maximum(extents[:, 0], 0)
-        #x_max = np.minimum(extents[:, 1], data.shape[1])
-        #y_min = np.maximum(extents[:, 2], 0)
-        #y_max = np.minimum(extents[:, 3], data.shape[0])
-
-        x_min = extents[:, 0]
-        x_max = extents[:, 1]
-        y_min = extents[:, 2]
-        y_max = extents[:, 3]
-
-        x_pmin = x_min - self.positions[:, 0] - 0.5
-        x_pmax = x_max - self.positions[:, 0] - 0.5
-        y_pmin = y_min - self.positions[:, 1] - 0.5
-        y_pmax = y_max - self.positions[:, 1] - 0.5
-
-        # TODO: check whether any pixel is nan in data[y_min[i]:y_max[i],
-        # x_min[i]:x_max[i])), if yes return something valid rather than nan
-
-        pixel_extent = [x_min, x_max, y_min, y_max]
-        phot_extent = [x_pmin, x_pmax, y_pmin, y_pmax]
-
-        use_exact, subpixels = _translate_mask_method(method, subpixels)
+            raise ValueError('Cannot determine aperture radius.')
 
         masks = []
-        for position in self.positions:
+        for position, _slice, _geom_slice in zip(self.positions, self._slices,
+                                                 self._geom_slices):
+            px_min, px_max = _geom_slice[1].start, _geom_slice[1].stop
+            py_min, py_max = _geom_slice[0].start, _geom_slice[0].stop
+            dx = px_max - px_min
+            dy = py_max - py_min
 
+            mask = circular_overlap_grid(px_min, px_max, py_min, py_max,
+                                         dx, dy, radius, use_exact, subpixels)
 
-            # TODO:  add function to calculate xyi_minmax and pmin/pmax
-            # for all positions at once  -- store results as
-            # (lazy?; careful if positions and radius are mutable) properties
-            xi_min = int(np.floor(position[0] - radius + 0.5))
-            xi_max = int(np.floor(position[0] + radius + 1.5))
-            yi_min = int(np.floor(position[1] - radius + 0.5))
-            yi_max = int(np.floor(position[1] + radius + 1.5))
+            if hasattr(self, 'r_in'):    # annulus
+                mask -= circular_overlap_grid(px_min, px_max, py_min, py_max,
+                                              dx, dy, radius, use_exact,
+                                              subpixels)
 
-            xi_pmin = xi_min - position[0] - 0.5
-            xi_pmax = xi_max - position[0] - 0.5
-            yi_pmin = yi_min - position[1] - 0.5
-            yi_pmax = yi_max - position[1] - 0.5
-
-            # TODO:  access xi_p_minmax as clas attributes
-            mask = circular_overlap_grid(xi_pmin, xi_pmax, yi_pmin, yi_pmax,
-                                         xi_max - xi_min, yi_max - yi_min,
-                                         radius, use_exact, subpixels)
-            masks.append(Mask(position, mask))
+            masks.append(Mask(position, mask, _slice, _geom_slice))
 
         return masks
 
@@ -378,6 +342,17 @@ class CircularAperture(CircularMixin, PixelAperture):
             raise ValueError('r must be non-negative')
 
         self.positions = _sanitize_pixel_positions(positions)
+
+    # TODO: make lazyproperty?, but update if positions or radius change
+    @property
+    def _slices(self):
+        x_min = np.floor(self.positions[:, 0] - self.r + 0.5).astype(int)
+        x_max = np.floor(self.positions[:, 0] + self.r + 1.5).astype(int)
+        y_min = np.floor(self.positions[:, 1] - self.r + 0.5).astype(int)
+        y_max = np.floor(self.positions[:, 1] + self.r + 1.5).astype(int)
+
+        return [(slice(ymin, ymax), slice(xmin, xmax))
+                for xmin, xmax, ymin, ymax in zip(x_min, x_max, y_min, y_max)]
 
     def area(self):
         return math.pi * self.r ** 2
