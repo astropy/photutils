@@ -604,8 +604,8 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
     groups, and then repeat until no more stars are detected or a given
     number of iterations is reached.
 
-    Basically, this classes uses `~IterativelySubstractedPSFPhotometry`, but
-    with grouping, finding, and background estimation routines defined a
+    Basically, this classes uses `~photutils.psf.IterativelySubstractedPSFPhotometry`,
+    but with grouping, finding, and background estimation routines defined a
     priori. More precisely, this class uses `~photutils.psf.DAOGroup` for
     grouping, `~photutils.detection.DAOStarFinder` for finding sources, and
     `~photutils.background.MMMBackground` for background estimation. Those
