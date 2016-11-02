@@ -102,15 +102,20 @@ class CircularMixin(object):
         extents[:, 2] = self.positions[:, 1] - radius + 0.5
         extents[:, 3] = self.positions[:, 1] + radius + 1.5
 
-        x_min = np.maximum(extents[:, 0], 0)
-        x_max = np.minimum(extents[:, 1], data.shape[1])
-        y_min = np.maximum(extents[:, 2], 0)
-        y_max = np.minimum(extents[:, 3], data.shape[0])
+        #x_min = np.maximum(extents[:, 0], 0)
+        #x_max = np.minimum(extents[:, 1], data.shape[1])
+        #y_min = np.maximum(extents[:, 2], 0)
+        #y_max = np.minimum(extents[:, 3], data.shape[0])
 
-        x_pmin = x_min - positions[:, 0] - 0.5
-        x_pmax = x_max - positions[:, 0] - 0.5
-        y_pmin = y_min - positions[:, 1] - 0.5
-        y_pmax = y_max - positions[:, 1] - 0.5
+        x_min = extents[:, 0]
+        x_max = extents[:, 1]
+        y_min = extents[:, 2]
+        y_max = extents[:, 3]
+
+        x_pmin = x_min - self.positions[:, 0] - 0.5
+        x_pmax = x_max - self.positions[:, 0] - 0.5
+        y_pmin = y_min - self.positions[:, 1] - 0.5
+        y_pmax = y_max - self.positions[:, 1] - 0.5
 
         # TODO: check whether any pixel is nan in data[y_min[i]:y_max[i],
         # x_min[i]:x_max[i])), if yes return something valid rather than nan
@@ -118,19 +123,29 @@ class CircularMixin(object):
         pixel_extent = [x_min, x_max, y_min, y_max]
         phot_extent = [x_pmin, x_pmax, y_pmin, y_pmax]
 
-        size = 2. * radius + 1.
-        self.shape = np.repeat(size, 2)
-        hy_size, hx_size = self.shape / 2.
-
         use_exact, subpixels = _translate_mask_method(method, subpixels)
-        mask = circular_overlap_grid(-hx_size, hx_size,
-                                     -hy_size, hy_size,
-                                     self.shape[1],
-                                     self.shape[0],
-                                     radius, use_exact, subpixels)
 
         masks = []
         for position in self.positions:
+
+
+            # TODO:  add function to calculate xyi_minmax and pmin/pmax
+            # for all positions at once  -- store results as
+            # (lazy?; careful if positions and radius are mutable) properties
+            xi_min = int(np.floor(position[0] - radius + 0.5))
+            xi_max = int(np.floor(position[0] + radius + 1.5))
+            yi_min = int(np.floor(position[1] - radius + 0.5))
+            yi_max = int(np.floor(position[1] + radius + 1.5))
+
+            xi_pmin = xi_min - position[0] - 0.5
+            xi_pmax = xi_max - position[0] - 0.5
+            yi_pmin = yi_min - position[1] - 0.5
+            yi_pmax = yi_max - position[1] - 0.5
+
+            # TODO:  access xi_p_minmax as clas attributes
+            mask = circular_overlap_grid(xi_pmin, xi_pmax, yi_pmin, yi_pmax,
+                                         xi_max - xi_min, yi_max - yi_min,
+                                         radius, use_exact, subpixels)
             masks.append(Mask(position, mask))
 
         return masks
