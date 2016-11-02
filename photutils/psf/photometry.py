@@ -7,7 +7,6 @@ import warnings
 
 from astropy.table import Table, vstack, hstack
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.nddata.utils import overlap_slices
 from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.utils.exceptions import AstropyUserWarning
 from .funcs import subtract_psf
@@ -18,6 +17,13 @@ from ..background import MMMBackground, SigmaClip
 from ..detection import DAOStarFinder
 from . import DAOGroup
 
+from astropy.utils import minversion
+ASTROPY_LT_1_1 = not minversion('astropy', '1.1')
+
+if ASTROPY_LT_1_1:
+    from ..extern.nddata_compat import _overlap_slices_astropy1p1 as overlap_slices
+else:
+    from astropy.nddata.utils import overlap_slices
 
 __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',
            'DAOPhotPSFPhotometry']
