@@ -22,13 +22,14 @@ from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle,
 skycoord_to_pixel_mode = 'all'
 
 
-__all__ = ['CircularMixin', 'SkyCircularAperture', 'CircularAperture',
+__all__ = ['CircularMaskMixin', 'SkyCircularAperture', 'CircularAperture',
            'SkyCircularAnnulus', 'CircularAnnulus']
 
 
-class CircularMixin(object):
+class CircularMaskMixin(object):
     """
-    Mixin class for circular apertures.
+    Mixin class to create masks for circular or circular-annulus aperture
+    objects.
     """
 
     def to_mask(self, method='exact', subpixels=5):
@@ -50,7 +51,7 @@ class CircularMixin(object):
         elif hasattr(self, 'r_out'):    # annulus
             radius = self.r_out
         else:
-            raise ValueError('Cannot determine aperture radius.')
+            raise ValueError('Cannot determine the aperture radius.')
 
         masks = []
         for position, _slice, _geom_slice in zip(self.positions, self._slices,
@@ -71,154 +72,6 @@ class CircularMixin(object):
             masks.append(Mask(position, mask, _slice, _geom_slice))
 
         return masks
-
-    def old_photometry(self, data, error=None, pixelwise_error=True,
-                       method='exact', subpixels=5):
-        """
-        Perform circular photometry.
-        """
-
-        if method not in ('center', 'subpixel', 'exact'):
-            raise ValueError('{0} method not supported for aperture class '
-                             '{1}'.format(method, self.__class__.__name__))
-
-        if hasattr(self, 'r'):
-            radius = self.r
-        elif hasattr(self, 'r_out'):    # annulus
-            radius = self.r_out
-        else:
-            raise ValueError('cannot determine aperture radius.')
-
-        extents = np.zeros((len(self), 4), dtype=int)
-        extents[:, 0] = self.positions[:, 0] - radius + 0.5
-        extents[:, 1] = self.positions[:, 0] + radius + 1.5
-        extents[:, 2] = self.positions[:, 1] - radius + 0.5
-        extents[:, 3] = self.positions[:, 1] + radius + 1.5
-
-        ood_filter, extent, phot_extent = _get_phot_extents(
-            data, self.positions, extents)
-
-        flux = u.Quantity(np.zeros(len(self), dtype=np.float), unit=data.unit)
-
-        if error is not None:
-            fluxvar = u.Quantity(np.zeros(len(self), dtype=np.float),
-                                 unit=error.unit ** 2)
-
-        # TODO: flag these objects
-        if np.any(ood_filter):
-            flux[ood_filter] = np.nan
-            warnings.warn('The aperture at position {0} does not have any '
-                          'overlap with the data'.format(
-                              self.positions[ood_filter]), AstropyUserWarning)
-            if np.all(ood_filter):
-                return flux
-
-        x_min, x_max, y_min, y_max = extent
-        x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
-
-        if method == 'center':
-            use_exact = 0
-            subpixels = 1
-        elif method == 'subpixel':
-            use_exact = 0
-        else:
-            use_exact = 1
-            subpixels = 1
-
-        for i in range(len(self)):
-            if not np.isnan(flux[i]):
-                fraction = circular_overlap_grid(x_pmin[i], x_pmax[i],
-                                                 y_pmin[i], y_pmax[i],
-                                                 x_max[i] - x_min[i],
-                                                 y_max[i] - y_min[i],
-                                                 radius, use_exact, subpixels)
-
-                if hasattr(self, 'r_in'):
-                    fraction -= circular_overlap_grid(x_pmin[i], x_pmax[i],
-                                                      y_pmin[i], y_pmax[i],
-                                                      x_max[i] - x_min[i],
-                                                      y_max[i] - y_min[i],
-                                                      self.r_in, use_exact,
-                                                      subpixels)
-
-                flux[i] = np.sum(data[y_min[i]:y_max[i],
-                                      x_min[i]:x_max[i]] * fraction)
-
-                if error is not None:
-                    fluxvar[i] = _calc_aperture_var(
-                        data, fraction, error, flux[i], x_min[i], x_max[i],
-                        y_min[i], y_max[i], pixelwise_error)
-
-        if error is None:
-            return flux
-        else:
-            return flux, np.sqrt(fluxvar)
-
-    def get_mask(self, data, method='exact', subpixels=5):
-        """
-        Define aperture mask(s).
-        """
-
-        if method not in ('center', 'subpixel', 'exact'):
-            raise ValueError('{0} method not supported for aperture class '
-                             '{1}'.format(method, self.__class__.__name__))
-
-        if hasattr(self, 'r'):
-            radius = self.r
-        elif hasattr(self, 'r_out'):    # annulus
-            radius = self.r_out
-        else:
-            raise ValueError('cannot determine aperture radius.')
-
-        extents = np.zeros((len(self), 4), dtype=int)
-        extents[:, 0] = self.positions[:, 0] - radius + 0.5
-        extents[:, 1] = self.positions[:, 0] + radius + 1.5
-        extents[:, 2] = self.positions[:, 1] - radius + 0.5
-        extents[:, 3] = self.positions[:, 1] + radius + 1.5
-
-        ood_filter, extent, phot_extent = _get_phot_extents(
-            data, self.positions, extents)
-
-        fractions = np.zeros((data.shape[0], data.shape[1], len(self)),
-                             dtype=np.float)
-
-        if np.sum(ood_filter):
-            warnings.warn('The aperture at position {0} does not have any '
-                          'overlap with the data'.format(
-                              self.positions[ood_filter]), AstropyUserWarning)
-            if np.sum(ood_filter) == len(self):
-                return np.squeeze(fractions)
-
-        x_min, x_max, y_min, y_max = extent
-        x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
-
-        if method == 'center':
-            use_exact = 0
-            subpixels = 1
-        elif method == 'subpixel':
-            use_exact = 0
-        else:
-            use_exact = 1
-            subpixels = 1
-
-        for i in range(len(self)):
-            if ood_filter[i] is not True:
-                fractions[y_min[i]: y_max[i], x_min[i]: x_max[i], i] = \
-                    circular_overlap_grid(x_pmin[i], x_pmax[i],
-                                          y_pmin[i], y_pmax[i],
-                                          x_max[i] - x_min[i],
-                                          y_max[i] - y_min[i],
-                                          radius, use_exact, subpixels)
-
-                if hasattr(self, 'r_in'):
-                    fractions[y_min[i]: y_max[i], x_min[i]: x_max[i], i] -= \
-                        circular_overlap_grid(x_pmin[i], x_pmax[i],
-                                              y_pmin[i], y_pmax[i],
-                                              x_max[i] - x_min[i],
-                                              y_max[i] - y_min[i],
-                                              self.r_in, use_exact, subpixels)
-
-        return np.squeeze(fractions)
 
 
 class SkyCircularAperture(SkyAperture):
@@ -267,7 +120,7 @@ class SkyCircularAperture(SkyAperture):
         return CircularAperture(pixel_positions, r)
 
 
-class CircularAperture(CircularMixin, PixelAperture):
+class CircularAperture(CircularMaskMixin, PixelAperture):
     """
     Circular aperture(s), defined in pixel coordinates.
 
@@ -386,7 +239,7 @@ class SkyCircularAnnulus(SkyAperture):
         return CircularAnnulus(pixel_positions, r_in, r_out)
 
 
-class CircularAnnulus(CircularMixin, PixelAperture):
+class CircularAnnulus(CircularMaskMixin, PixelAperture):
     """
     Circular annulus aperture(s), defined in pixel coordinates.
 
