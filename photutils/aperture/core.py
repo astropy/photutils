@@ -604,6 +604,9 @@ def _prepare_photometry_input(data, unit, wcs, mask, error, pixelwise_error):
 
 
 def _prepare_photometry_output(_list, unit=None):
+    if len(_list) == 0:   # if error is not input
+        return _list
+
     if isinstance(_list[0], u.Quantity):
         # list of Quantity -> Quantity array
         output = u.Quantity(_list)
@@ -731,13 +734,9 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
 
     xypos_pixel = np.transpose(apertures.positions) * u.pixel
 
-    photometry_result = apertures.do_photometry(
+    aper_sum, aper_sum_err = apertures.do_photometry(
         data, method=method, subpixels=subpixels, error=error,
         pixelwise_error=pixelwise_error)
-    if error is None:
-        aper_sum = photometry_result
-    else:
-        aper_sum, aper_err = photometry_result
 
     calling_args = ('method={0}, subpixels={1}, pixelwise_error={2}'
                     .format(method, subpixels, pixelwise_error))
@@ -757,6 +756,6 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
             tbl['input_center'] = skycoord_pos
     tbl['aperture_sum'] = aper_sum
     if error is not None:
-        tbl['aperture_sum_err'] = aper_err
+        tbl['aperture_sum_err'] = aper_sum_err
 
     return tbl
