@@ -411,9 +411,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         ``id`` is an integer-valued column starting from ``1``,
         ``xcentroid`` and ``ycentroid`` are center position estimates of
         the sources and ``flux`` contains flux estimates of the sources.
-        See, e.g., `~photutils.detection.DAOStarFinder`.  If ``finder``
-        is ``None``, initial guesses for positions of objects must be
-        provided.
+        See, e.g., `~photutils.detection.DAOStarFinder` or `~photutils.detection.IRAFStarFinder`.
     fitter : `~astropy.modeling.fitting.Fitter` instance
         Fitter object used to compute the optimized centroid positions
         and/or flux of the identified sources. See
