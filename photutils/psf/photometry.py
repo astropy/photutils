@@ -93,6 +93,12 @@ class BasicPSFPhotometry(object):
 
     Notes
     -----
+    Note that an ambiguity arises whenever ``finder`` and ``positions``
+    (keyword argument for ``do_photometry`)` are both not ``None``. In this
+    case, ``finder`` is ignored and initial guesses are taken from
+    ``positions``. In addition, an warning is raised to remaind the user about
+    this behavior.
+
     If there are problems with fitting large groups, change the
     parameters of the grouping algorithm to reduce the number of sources
     in each group or input a ``star_groups`` table that only includes

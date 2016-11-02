@@ -3,7 +3,6 @@ from __future__ import division
 
 import numpy as np
 import astropy
-import warnings
 
 from astropy.table import Table
 from astropy.stats import gaussian_sigma_to_fwhm
