@@ -93,34 +93,7 @@ by the finding routine.
 High-Level Structure
 ^^^^^^^^^^^^^^^^^^^^
 
-<<<<<<< 9191a3211154cbf2dfdd6a11fccb13beb3ec5763
-<<<<<<< 9738851a6026e0026d0452370aaf933ef1f749a7
-`~photutils.psf.DAOPhotPSFPhotometry` is the core class that implements the
-DAOPHOT algorithm for performing PSF photometry in crowded fields.
-
-The `~photutils.psf.IterativelySubtractedPSFPhotometry` basically encapsulates 
-the loop "FIND, GROUP, NSTAR, SUBTRACT, FIND..." in one place so that one can
-easily perform PSF photometry just by setting up a `~photutils.psf.IterativelySubtractedPSFPhotometry` object.
-
-This class and all of the classes it *uses* for the steps in the process are
-<<<<<<< 602c332796436c318110c45e016999d5f8c85b0c
-implemented in such a way that they can be used as callable functions. The actual
-implementation of the  ``__call__`` method for
-`~photutils.psf.DAOPhotPSFPhotometry` is identical to the ``do_photometry``
-method (which is why the documentation for ``__call__`` is in
-``do_photometry``). This allows subclasses of
-`~photutils.psf.DAOPhotPSFPhotometry` to override ``do_photometry`` if they want
-to change some behavior, making such code more maintainable.
-=======
-implemented in such a way that they can be used callable functions. 
->>>>>>> update current docs
-
-The basic usage of `~photutils.psf.IterativelySubtractedPSFPhotometry` is as follows:
-=======
-Photutils provides three classes to perform PSF Photometry, i.e.,
-=======
 Photutils provides three classes to perform PSF Photometry:
->>>>>>> update the explanation for the new scheme
 `~photutils.psf.BasicPSFPhotometry`, `~photutils.psf.IterativelySubtractedPSFPhotometry`,
 and `~photutils.psf.DAOPhotPSFPhotometry`.  Together these provide the core
 workflow to make photometric measurements given an appropriate PSF (or other)
@@ -174,20 +147,11 @@ to customize any stage of the photometry process.  This makes the machinery very
 flexible, while still providing a "batteries included" approach with a default
 implementation that's suitable for many use cases.
 
-<<<<<<< ac156ea6615b6f86dbf4339fc06eefdfd9c2e907
-<<<<<<< 9191a3211154cbf2dfdd6a11fccb13beb3ec5763
-The basic usage of, e.g., `~photutils.psf.IterativelySubtractedPSFPhotometry` is as follows:
->>>>>>> Add narrative docs
-=======
-=======
-
 Basic Usage
 ^^^^^^^^^^^
 
->>>>>>> more doc updates
 The basic usage of, e.g., `~photutils.psf.IterativelySubtractedPSFPhotometry` is
 as follows:
->>>>>>> update the explanation for the new scheme
 
 .. doctest-skip::
 
