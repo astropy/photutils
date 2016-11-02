@@ -184,6 +184,28 @@ class PixelAperture(Aperture):
     optionally, ``area``).
     """
 
+    @abc.abstractproperty
+    def _slices(self):
+        raise NotImplementedError('Needs to be implemented in a '
+                                  'PixelAperture subclass.')
+
+    @property
+    def _geom_slices(self):
+        """
+        A list of slices to be used by the low-level
+        `photutils.geometry` functions.
+        """
+
+        _geom_slices = []
+        for _slice, position in zip(self._slices, self.positions):
+            x_min = _slice[1].start - position[0] - 0.5
+            x_max = _slice[1].stop - position[0] - 0.5
+            y_min = _slice[0].start - position[1] - 0.5
+            y_max = _slice[0].stop - position[1] - 0.5
+            _geom_slices.append((slice(y_min, y_max), slice(x_min, x_max)))
+
+        return _geom_slices
+
     def _prepare_plot(self, origin=(0, 0), source_id=None, ax=None,
                       fill=False, **kwargs):
         """
