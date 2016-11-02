@@ -2,17 +2,14 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import math
-import warnings
 
 import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
-from astropy.utils.exceptions import AstropyUserWarning
 
 from .core import (Mask, SkyAperture, PixelAperture,
                    _sanitize_pixel_positions, _make_annulus_path,
-                   _get_phot_extents, _calc_aperture_var,
                    _translate_mask_method)
 from ..geometry import circular_overlap_grid
 from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle,
@@ -66,12 +63,75 @@ class CircularMaskMixin(object):
 
             if hasattr(self, 'r_in'):    # annulus
                 mask -= circular_overlap_grid(px_min, px_max, py_min, py_max,
-                                              dx, dy, radius, use_exact,
+                                              dx, dy, self.r_in, use_exact,
                                               subpixels)
 
             masks.append(Mask(position, mask, _slice, _geom_slice))
 
         return masks
+
+
+class CircularAperture(CircularMaskMixin, PixelAperture):
+    """
+    Circular aperture(s), defined in pixel coordinates.
+
+    Parameters
+    ----------
+    positions : array-like or `~astropy.units.Quantity`
+        Pixel coordinates of the aperture center(s) in one of the
+        following formats:
+
+        * single ``(x, y)`` tuple
+        * list of ``(x, y)`` tuples
+        * ``Nx2`` or ``2xN`` `~numpy.ndarray`
+        * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
+
+        A ``2x2`` `~numpy.ndarray` or `~astropy.units.Quantity` is
+        interpreted as ``Nx2``, i.e. two rows of (x, y) coordinates.
+    r : float
+        The radius of the aperture(s), in pixels.
+
+    Raises
+    ------
+    ValueError : `ValueError`
+        If the input ``radius`` is negative.
+    """
+
+    def __init__(self, positions, r):
+        try:
+            self.r = float(r)
+        except TypeError:
+            raise TypeError('r must be numeric, received {0}'.format(type(r)))
+
+        if r < 0:
+            raise ValueError('r must be non-negative')
+
+        self.positions = _sanitize_pixel_positions(positions)
+
+    # TODO: make lazyproperty?, but update if positions or radius change
+    @property
+    def _slices(self):
+        x_min = np.floor(self.positions[:, 0] - self.r + 0.5).astype(int)
+        x_max = np.floor(self.positions[:, 0] + self.r + 1.5).astype(int)
+        y_min = np.floor(self.positions[:, 1] - self.r + 0.5).astype(int)
+        y_max = np.floor(self.positions[:, 1] + self.r + 1.5).astype(int)
+
+        return [(slice(ymin, ymax), slice(xmin, xmax))
+                for xmin, xmax, ymin, ymax in zip(x_min, x_max, y_min, y_max)]
+
+    def area(self):
+        return math.pi * self.r ** 2
+
+    def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
+             **kwargs):
+        import matplotlib.patches as mpatches
+
+        plot_positions, ax, kwargs = self._prepare_plot(
+            origin, source_id, ax, fill, **kwargs)
+
+        for position in plot_positions:
+            patch = mpatches.Circle(position, self.r, **kwargs)
+            ax.add_patch(patch)
 
 
 class SkyCircularAperture(SkyAperture):
@@ -88,11 +148,10 @@ class SkyCircularAperture(SkyAperture):
     """
 
     def __init__(self, positions, r):
-
         if isinstance(positions, SkyCoord):
             self.positions = positions
         else:
-            raise TypeError("positions should be a SkyCoord instance")
+            raise TypeError('positions must be a SkyCoord object.')
 
         assert_angle_or_pixel('r', r)
         self.r = r
@@ -120,53 +179,63 @@ class SkyCircularAperture(SkyAperture):
         return CircularAperture(pixel_positions, r)
 
 
-class CircularAperture(CircularMaskMixin, PixelAperture):
+class CircularAnnulus(CircularMaskMixin, PixelAperture):
     """
-    Circular aperture(s), defined in pixel coordinates.
+    Circular annulus aperture(s), defined in pixel coordinates.
 
     Parameters
     ----------
-    positions : tuple, list, array, or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s), either as a single
-        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` or
-        ``2xN`` `~numpy.ndarray`, or an ``Nx2`` or ``2xN``
-        `~astropy.units.Quantity` in units of pixels.  A ``2x2``
-        `~numpy.ndarray` or `~astropy.units.Quantity` is interpreted as
-        ``Nx2``, i.e. two rows of (x, y) coordinates.
-    r : float
-        The radius of the aperture(s), in pixels.
+    positions : array-like or `~astropy.units.Quantity`
+        Pixel coordinates of the aperture center(s) in one of the
+        following formats:
+
+        * single ``(x, y)`` tuple
+        * list of ``(x, y)`` tuples
+        * ``Nx2`` or ``2xN`` `~numpy.ndarray`
+        * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
+
+        A ``2x2`` `~numpy.ndarray` or `~astropy.units.Quantity` is
+        interpreted as ``Nx2``, i.e. two rows of (x, y) coordinates.
+    r_in : float
+        The inner radius of the annulus.
+    r_out : float
+        The outer radius of the annulus.
 
     Raises
     ------
     ValueError : `ValueError`
-        If the radius is negative.
+        If inner radius (``r_in``) is greater than outer radius (``r_out``).
+    ValueError : `ValueError`
+        If inner radius is negative.
     """
 
-    def __init__(self, positions, r):
-
+    def __init__(self, positions, r_in, r_out):
         try:
-            self.r = float(r)
+            self.r_in = r_in
+            self.r_out = r_out
         except TypeError:
-            raise TypeError('r must be numeric, received {0}'.format(type(r)))
+            raise TypeError("'r_in' and 'r_out' must be numeric, received "
+                            "{0} and {1}".format((type(r_in), type(r_out))))
 
-        if r < 0:
-            raise ValueError('r must be non-negative')
+        if not (r_out > r_in):
+            raise ValueError('r_out must be greater than r_in')
+        if r_in < 0:
+            raise ValueError('r_in must be non-negative')
 
         self.positions = _sanitize_pixel_positions(positions)
 
-    # TODO: make lazyproperty?, but update if positions or radius change
     @property
     def _slices(self):
-        x_min = np.floor(self.positions[:, 0] - self.r + 0.5).astype(int)
-        x_max = np.floor(self.positions[:, 0] + self.r + 1.5).astype(int)
-        y_min = np.floor(self.positions[:, 1] - self.r + 0.5).astype(int)
-        y_max = np.floor(self.positions[:, 1] + self.r + 1.5).astype(int)
+        x_min = np.floor(self.positions[:, 0] - self.r_out + 0.5).astype(int)
+        x_max = np.floor(self.positions[:, 0] + self.r_out + 1.5).astype(int)
+        y_min = np.floor(self.positions[:, 1] - self.r_out + 0.5).astype(int)
+        y_max = np.floor(self.positions[:, 1] + self.r_out + 1.5).astype(int)
 
         return [(slice(ymin, ymax), slice(xmin, xmax))
                 for xmin, xmax, ymin, ymax in zip(x_min, x_max, y_min, y_max)]
 
     def area(self):
-        return math.pi * self.r ** 2
+        return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
     def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
              **kwargs):
@@ -176,8 +245,14 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         plot_positions, ax, kwargs = self._prepare_plot(
             origin, source_id, ax, fill, **kwargs)
 
+        resolution = 20
         for position in plot_positions:
-            patch = mpatches.Circle(position, self.r, **kwargs)
+            patch_inner = mpatches.CirclePolygon(position, self.r_in,
+                                                 resolution=resolution)
+            patch_outer = mpatches.CirclePolygon(position, self.r_out,
+                                                 resolution=resolution)
+            path = _make_annulus_path(patch_inner, patch_outer)
+            patch = mpatches.PathPatch(path, **kwargs)
             ax.add_patch(patch)
 
 
@@ -200,7 +275,6 @@ class SkyCircularAnnulus(SkyAperture):
     """
 
     def __init__(self, positions, r_in, r_out):
-
         if isinstance(positions, SkyCoord):
             self.positions = positions
         else:
@@ -237,66 +311,3 @@ class SkyCircularAnnulus(SkyAperture):
         pixel_positions = np.array([x, y]).transpose()
 
         return CircularAnnulus(pixel_positions, r_in, r_out)
-
-
-class CircularAnnulus(CircularMaskMixin, PixelAperture):
-    """
-    Circular annulus aperture(s), defined in pixel coordinates.
-
-    Parameters
-    ----------
-    positions : tuple, list, array, or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s), either as a single
-        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` or
-        ``2xN`` `~numpy.ndarray`, or an ``Nx2`` or ``2xN``
-        `~astropy.units.Quantity` in units of pixels.  A ``2x2``
-        `~numpy.ndarray` or `~astropy.units.Quantity` is interpreted as
-        ``Nx2``, i.e. two rows of (x, y) coordinates.
-    r_in : float
-        The inner radius of the annulus.
-    r_out : float
-        The outer radius of the annulus.
-
-    Raises
-    ------
-    ValueError : `ValueError`
-        If inner radius (``r_in``) is greater than outer radius (``r_out``).
-    ValueError : `ValueError`
-        If inner radius is negative.
-    """
-
-    def __init__(self, positions, r_in, r_out):
-        try:
-            self.r_in = r_in
-            self.r_out = r_out
-        except TypeError:
-            raise TypeError("'r_in' and 'r_out' must be numeric, received "
-                            "{0} and {1}".format((type(r_in), type(r_out))))
-
-        if not (r_out > r_in):
-            raise ValueError('r_out must be greater than r_in')
-        if r_in < 0:
-            raise ValueError('r_in must be non-negative')
-
-        self.positions = _sanitize_pixel_positions(positions)
-
-    def area(self):
-        return math.pi * (self.r_out ** 2 - self.r_in ** 2)
-
-    def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
-             **kwargs):
-
-        import matplotlib.patches as mpatches
-
-        plot_positions, ax, kwargs = self._prepare_plot(
-            origin, source_id, ax, fill, **kwargs)
-
-        resolution = 20
-        for position in plot_positions:
-            patch_inner = mpatches.CirclePolygon(position, self.r_in,
-                                                 resolution=resolution)
-            patch_outer = mpatches.CirclePolygon(position, self.r_out,
-                                                 resolution=resolution)
-            path = _make_annulus_path(patch_inner, patch_outer)
-            patch = mpatches.PathPatch(path, **kwargs)
-            ax.add_patch(patch)
