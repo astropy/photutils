@@ -25,6 +25,9 @@ from ...background import SigmaClip, MedianBackground, StdBackgroundRMS
 from ...background import MedianBackground, MMMBackground, SigmaClip
 from ...background import StdBackgroundRMS
 
+
+ASTROPY_GT_1_1 = minversion('astropy', '1.1')
+
 try:
     import scipy
     HAS_SCIPY = True
@@ -119,7 +122,7 @@ sources3['group_id'] = [1] * 2
 sources3['iter_detected'] = [1, 2]
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GT_1_1')
 @pytest.mark.parametrize("sigma_psf, sources", [(sigma_psfs[2], sources3)])
 def test_psf_photometry_niters(sigma_psf, sources):
     img_shape = (32, 32)
@@ -152,7 +155,7 @@ def test_psf_photometry_niters(sigma_psf, sources):
     assert_array_equal(cp_image, image)
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GT_1_1')
 @pytest.mark.parametrize("sigma_psf, sources",
                          [(sigma_psfs[0], sources1),
                           (sigma_psfs[1], sources2),
@@ -279,7 +282,7 @@ def test_finder_erros():
                 group_maker=DAOGroup(1), bkg_estimator=MMMBackground(),
                 psf_model=IntegratedGaussianPRF(1), fitshape=(11, 11))
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GT_1_1')
 def test_finder_positions_warning():
     basic_phot_obj = make_psf_photometry_objs(sigma_psf=2)[0]
     positions = Table()
@@ -297,7 +300,7 @@ def test_finder_positions_warning():
         assert_allclose(result_tab['x_fit'], positions['x_0'], rtol=1e-1)
         assert_allclose(result_tab['y_fit'], positions['y_0'], rtol=1e-1)
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GT_1_1')
 def test_aperture_radius():
     img_shape = (32, 32)
 

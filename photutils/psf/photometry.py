@@ -326,8 +326,8 @@ class BasicPSFPhotometry(object):
             try:
                 from astropy.nddata.utils import NoOverlapError
             except ImportError:
-                raise ImportError("astropy 1.2.1 is required in order to use"
-                                  "this class.")
+                raise ImportError("astropy 1.1 or greater is required in "
+                                  "order to use this class.")
             # do not subtract if the fitting did not go well
             try:
                 image = subtract_psf(image, self.psf_model, param_table,
