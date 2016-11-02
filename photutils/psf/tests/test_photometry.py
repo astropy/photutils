@@ -1,14 +1,20 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import division
+
 import numpy as np
 import astropy
+import warnings
+
 from astropy.table import Table
 from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling import Parameter, Fittable2DModel
 from astropy.tests.helper import pytest
 from astropy.utils import minversion
+from astropy.utils.exceptions import AstropyUserWarning
+
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
+
 from ..models import IntegratedGaussianPRF
 from ...datasets import make_gaussian_sources
 from ...datasets import make_noise_image
@@ -19,7 +25,7 @@ from ...background import SigmaClip, MedianBackground, StdBackgroundRMS
 from ...background import MedianBackground, MMMBackground, SigmaClip
 from ...background import StdBackgroundRMS
 
-ASTROPY_GT_1_1_2 = minversion('astropy', '1.1.2') 
+ASTROPY_GT_1_1_2 = minversion('astropy', '1.1.2')
 
 try:
     import scipy
@@ -55,7 +61,6 @@ def make_psf_photometry_objs(std=1, sigma_psf=1):
                                         psf_model=psf_model,
                                         fitter=fitter,
                                         fitshape=(11, 11))
-
 
     iter_phot_obj = IterativelySubtractedPSFPhotometry(finder=daofind,
                                                        group_maker=daogroup,
@@ -275,6 +280,24 @@ def test_finder_erros():
         iter_phot_obj = IterativelySubtractedPSFPhotometry(finder=None,
                 group_maker=DAOGroup(1), bkg_estimator=MMMBackground(),
                 psf_model=IntegratedGaussianPRF(1), fitshape=(11, 11))
+
+@pytest.mark.xfail('not HAS_SCIPY')
+def test_finder_positions_warning():
+    basic_phot_obj = make_psf_photometry_objs(sigma_psf=2)[0]
+    positions = Table()
+    positions['x_0'] = [12.8, 18.2, 25.3]
+    positions['y_0'] = [15.7, 16.5, 25.1]
+
+    image = (make_gaussian_sources((32, 32), sources1) +
+             make_noise_image((32, 32), type='poisson', mean=6.,
+                              random_state=1))
+
+    with pytest.warns(AstropyUserWarning):
+        result_tab = basic_phot_obj(image=image, positions=positions)
+        assert_array_equal(result_tab['x_0'], positions['x_0'])
+        assert_array_equal(result_tab['y_0'], positions['y_0'])
+        assert_allclose(result_tab['x_fit'], positions['x_0'], rtol=1e-1)
+        assert_allclose(result_tab['y_fit'], positions['y_0'], rtol=1e-1)
 
 @pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GT_1_1_2')
 def test_aperture_radius():

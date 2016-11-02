@@ -3,10 +3,13 @@
 
 from __future__ import division
 import numpy as np
+import warnings
+
 from astropy.table import Table, vstack, hstack
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import overlap_slices
 from astropy.stats import gaussian_sigma_to_fwhm
+from astropy.utils.exceptions import AstropyUserWarning
 from .funcs import subtract_psf
 from .models import get_grouped_psf_model
 from ..aperture import CircularAperture, aperture_photometry
@@ -222,6 +225,11 @@ class BasicPSFPhotometry(object):
                                         gaussian_sigma_to_fwhm)
 
         if positions is not None:
+            if self.finder is not None:
+                warnings.warn('Both positions and finder are different than '
+                              'None, which is ambiguous. finder is going to '
+                              'be ignored.', AstropyUserWarning)
+
             if 'flux_0' not in positions.colnames:
                 apertures = CircularAperture((positions['x_0'],
                                               positions['y_0']),
