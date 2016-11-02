@@ -12,7 +12,8 @@ from astropy.utils.exceptions import AstropyUserWarning
 from astropy.nddata import Cutout2D
 
 from .core import (SkyAperture, PixelAperture, _sanitize_pixel_positions,
-                   _make_annulus_path, _get_phot_extents, _calc_aperture_var)
+                   _make_annulus_path, _get_phot_extents, _calc_aperture_var,
+                   _prepare_photometry_output)
 from ..geometry import circular_overlap_grid
 from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle,
                                  assert_angle_or_pixel)
@@ -115,7 +116,7 @@ class CircularMixin(object):
         return masks
 
     def new_photometry(self, data, error=None, pixelwise_error=True,
-                       method='exact', subpixels=5):
+                       method='exact', subpixels=5, unit=None):
 
         aperture_sums = []
         aperture_sum_errs = []
@@ -135,8 +136,10 @@ class CircularMixin(object):
 
                 aperture_sum_errs.append(np.sqrt(aperture_var))
 
-        aperture_sums = np.array(aperture_sums)
-        aperture_sum_errs = np.array(aperture_sum_errs)
+        # handle Quantity objects and input units
+        aperture_sums = _prepare_photometry_output(aperture_sums, unit=unit)
+        aperture_sum_errs = _prepare_photometry_output(aperture_sum_errs,
+                                                       unit=unit)
 
         return aperture_sums, aperture_sum_errs
 

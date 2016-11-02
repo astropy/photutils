@@ -532,6 +532,19 @@ def _prepare_photometry_input(data, unit, wcs, mask, error, pixelwise_error):
     return data, wcs_transformation, mask, error, pixelwise_error
 
 
+def _prepare_photometry_output(_list, unit=None):
+    if isinstance(_list[0], u.Quantity):
+        # list of Quantity -> Quantity array
+        output = u.Quantity(_list)
+        # TODO:  issue warning if input unit doesn't match Quantity
+    else:
+        output = np.array(_list)
+        if unit is not None:
+            output = u.Quantity(_list, unit=unit)
+
+    return output
+
+
 @support_nddata
 def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
                         mask=None, method='exact', subpixels=5,
