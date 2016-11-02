@@ -447,9 +447,6 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
                  finder, fitter=LevMarLSQFitter(), niters=3,
                  aperture_radius=None):
-        if finder is None:
-            raise ValueError("finder cannot be None. Please see the Detection, "
-                             "section on photutils docs.")
 
         super(IterativelySubtractedPSFPhotometry, self).__init__(group_maker,
                 bkg_estimator, psf_model, fitshape, finder, fitter, aperture_radius)
@@ -481,8 +478,10 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
     @finder.setter
     def finder(self, value):
         if value is None:
-            raise ValueError("finder cannot be None. Please see the Detection, "
-                             "section on photutils docs.")
+            raise ValueError("finder cannot be None for "
+                             "IterativelySubtractedPSFPhotometry - you may "
+                             "want to use BasicPSFPhotometry. Please see the "
+                             "Detection section on photutils documentation.")
         else:
             self._finder = value
 

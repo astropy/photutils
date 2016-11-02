@@ -48,7 +48,7 @@ def make_psf_photometry_objs(std=1, sigma_psf=1):
     mode_bkg = MMMBackground()
     psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
     fitter = LevMarLSQFitter()
-    
+
     basic_phot_obj = BasicPSFPhotometry(finder=daofind,
                                         group_maker=daogroup,
                                         bkg_estimator=mode_bkg,
@@ -56,7 +56,7 @@ def make_psf_photometry_objs(std=1, sigma_psf=1):
                                         fitter=fitter,
                                         fitshape=(11, 11))
 
-    
+
     iter_phot_obj = IterativelySubtractedPSFPhotometry(finder=daofind,
                                                        group_maker=daogroup,
                                                        bkg_estimator=mode_bkg,
@@ -128,7 +128,6 @@ def test_psf_photometry_niters(sigma_psf, sources):
              make_noise_image(img_shape, type='gaussian', mean=0.,
                               stddev=2., random_state=1))
     cp_image = image.copy()
-
     sigma_clip = SigmaClip(sigma=3.)
     bkgrms = StdBackgroundRMS(sigma_clip)
     std = bkgrms(image)
@@ -173,8 +172,8 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
              make_noise_image(img_shape, type='gaussian', mean=0.,
                               stddev=2., random_state=1))
     cp_image = image.copy()
-    
-    sigma_clip = SigmaClip(sigma=3.) 
+
+    sigma_clip = SigmaClip(sigma=3.)
     bkgrms = StdBackgroundRMS(sigma_clip)
     std = bkgrms(image)
     phot_objs = make_psf_photometry_objs(std, sigma_psf)
@@ -188,7 +187,7 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
         assert_array_equal(result_tab['id'], sources['id'])
         assert_array_equal(result_tab['group_id'], sources['group_id'])
         assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
-    
+
         # test fixed photometry
         phot_proc.psf_model.x_0.fixed = True
         phot_proc.psf_model.y_0.fixed = True
@@ -214,7 +213,7 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
 
 
 @pytest.mark.xfail('not HAS_SCIPY')
-def test_niters_exceptions():
+def test_niters_errors():
     iter_phot_obj = make_psf_photometry_objs()[1]
 
     # tests that niters is set to an integer even if the user inputs
@@ -231,7 +230,7 @@ def test_niters_exceptions():
 
 
 @pytest.mark.xfail('not HAS_SCIPY')
-def test_fitshape_exceptions():
+def test_fitshape_erros():
     basic_phot_obj = make_psf_photometry_objs()[0]
 
     # first make sure setting to a scalar does the right thing (and makes
@@ -256,7 +255,7 @@ def test_fitshape_exceptions():
         basic_phot_obj.fitshape = (3, 3, 3)
 
 @pytest.mark.xfail('not HAS_SCIPY')
-def test_aperture_radius_exceptions():
+def test_aperture_radius_errors():
     basic_phot_obj = make_psf_photometry_objs()[0]
 
     # test that aperture_radius was set to None by default
@@ -265,6 +264,17 @@ def test_aperture_radius_exceptions():
     # test that a ValuError is raised if aperture_radius is non positive
     with pytest.raises(ValueError):
         basic_phot_obj.aperture_radius = -3
+
+@pytest.mark.xfail('not HAS_SCIPY')
+def test_finder_erros():
+    iter_phot_obj = make_psf_photometry_objs()[1]
+    with pytest.raises(ValueError):
+        iter_phot_obj.finder = None
+
+    with pytest.raises(ValueError):
+        iter_phot_obj = IterativelySubtractedPSFPhotometry(finder=None,
+                group_maker=DAOGroup(1), bkg_estimator=MMMBackground(),
+                psf_model=IntegratedGaussianPRF(1), fitshape=(11, 11))
 
 @pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GT_1_1_2')
 def test_aperture_radius():
