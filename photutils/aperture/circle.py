@@ -115,35 +115,7 @@ class CircularMixin(object):
 
         return masks
 
-    def new_photometry(self, data, error=None, pixelwise_error=True,
-                       method='exact', subpixels=5, unit=None):
-
-        aperture_sums = []
-        aperture_sum_errs = []
-        for mask in self.to_mask(method=method, subpixels=subpixels):
-            _, data_cutout = mask.apply(data)
-            aperture_sums.append(np.sum(data_cutout.data * mask.data))
-
-            if error is not None:
-                _, error_cutout = mask.apply(error)
-
-                if pixelwise_error:
-                    aperture_var = np.sum(error_cutout.data ** 2 * mask.data)
-                else:
-                    # TODO: use central (x, y) position instead
-                    aperture_var = np.sum(error_cutout.data[0, 0] ** 2 *
-                                          np.sum(mask.data))
-
-                aperture_sum_errs.append(np.sqrt(aperture_var))
-
-        # handle Quantity objects and input units
-        aperture_sums = _prepare_photometry_output(aperture_sums, unit=unit)
-        aperture_sum_errs = _prepare_photometry_output(aperture_sum_errs,
-                                                       unit=unit)
-
-        return aperture_sums, aperture_sum_errs
-
-    def do_photometry(self, data, error=None, pixelwise_error=True,
+    def old_photometry(self, data, error=None, pixelwise_error=True,
                       method='exact', subpixels=5):
         """
         Perform circular photometry.
