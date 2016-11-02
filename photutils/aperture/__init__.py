@@ -7,5 +7,4 @@ an astronomical image.
 from .circle import *
 from .core import *
 from .ellipse import *
-from .mask_data import *
 from .rectangle import *
