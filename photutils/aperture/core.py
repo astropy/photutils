@@ -9,7 +9,7 @@ from collections import OrderedDict
 import numpy as np
 from astropy.extern import six
 from astropy.io import fits
-from astropy.nddata import support_nddata
+from astropy.nddata import support_nddata, Cutout2D
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
@@ -73,6 +73,21 @@ def _make_annulus_path(patch_inner, patch_outer):
     codes = np.concatenate((codes_inner, codes_outer))
     verts = np.concatenate((verts_inner, verts_outer[::-1]))
     return mpath.Path(verts, codes)
+
+
+def _translate_mask_method(method, subpixels):
+    if method == 'center':
+        use_exact = 0
+        subpixels = 1
+    elif method == 'subpixel':
+        use_exact = 0
+    elif method == 'exact':
+        use_exact = 1
+        subpixels = 1
+    else:
+        raise ValueError('invalid method')
+
+    return use_exact, subpixels
 
 
 def _get_phot_extents(data, positions, extents):
@@ -153,6 +168,34 @@ def _calc_aperture_var(data, fraction, error, flux, xmin, xmax, ymin, ymax,
     return fluxvar
 
 
+class Mask(object):
+    """
+    Mask class.
+    """
+
+    def __init__(self, position, mask, bbox_slice, geom_slice):
+        self.position = position
+        self.data = mask
+        self.shape = mask.shape
+        self._slice = bbox_slice
+        self._geom_slice = geom_slice
+
+    @property
+    def array(self):
+        return self.data
+
+    def __array__(self):
+        return self.data
+
+    def apply(self, data, mode='trim', fill_value=np.nan, copy=False):
+        mask_cutout = None
+
+        data_cutout = Cutout2D(data, self.position, self.shape, mode=mode,
+                               fill_value=fill_value, copy=copy)
+
+        return mask_cutout, data_cutout
+
+
 class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
     pass
 
@@ -207,7 +250,7 @@ class PixelAperture(Aperture):
         return _geom_slices
 
     def do_photometry(self, data, error=None, pixelwise_error=True,
-                       method='exact', subpixels=5, unit=None):
+                      method='exact', subpixels=5, unit=None):
 
         aperture_sums = []
         aperture_sum_errs = []
@@ -233,7 +276,6 @@ class PixelAperture(Aperture):
                                                        unit=unit)
 
         return aperture_sums, aperture_sum_errs
-
 
     def _prepare_plot(self, origin=(0, 0), source_id=None, ax=None,
                       fill=False, **kwargs):
@@ -318,7 +360,7 @@ class PixelAperture(Aperture):
 
     #@abc.abstractmethod
     def old_do_photometry(self, data, error=None, pixelwise_error=True,
-                      method='exact', subpixels=5):
+                          method='exact', subpixels=5):
         """Sum flux within aperture(s).
 
         Parameters

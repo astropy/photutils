@@ -9,11 +9,11 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.nddata import Cutout2D
 
-from .core import (SkyAperture, PixelAperture, _sanitize_pixel_positions,
-                   _make_annulus_path, _get_phot_extents, _calc_aperture_var,
-                   _prepare_photometry_output)
+from .core import (Mask, SkyAperture, PixelAperture,
+                   _sanitize_pixel_positions, _make_annulus_path,
+                   _get_phot_extents, _calc_aperture_var,
+                   _translate_mask_method)
 from ..geometry import circular_overlap_grid
 from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle,
                                  assert_angle_or_pixel)
@@ -24,49 +24,6 @@ skycoord_to_pixel_mode = 'all'
 
 __all__ = ['CircularMixin', 'SkyCircularAperture', 'CircularAperture',
            'SkyCircularAnnulus', 'CircularAnnulus']
-
-
-def _translate_mask_method(method, subpixels):
-    if method == 'center':
-        use_exact = 0
-        subpixels = 1
-    elif method == 'subpixel':
-        use_exact = 0
-    elif method == 'exact':
-        use_exact = 1
-        subpixels = 1
-    else:
-        raise ValueError('invalid method')
-
-    return use_exact, subpixels
-
-
-class Mask(object):
-    """
-    Mask class.
-    """
-
-    def __init__(self, position, mask, bbox_slice, geom_slice):
-        self.position = position
-        self.data = mask
-        self.shape = mask.shape
-        self._slice = bbox_slice
-        self._geom_slice = geom_slice
-
-    @property
-    def array(self):
-        return self.data
-
-    def __array__(self):
-        return self.data
-
-    def apply(self, data, mode='trim', fill_value=np.nan, copy=False):
-        mask_cutout = None
-
-        data_cutout = Cutout2D(data, self.position, self.shape, mode=mode,
-                               fill_value=fill_value, copy=copy)
-
-        return mask_cutout, data_cutout
 
 
 class CircularMixin(object):
@@ -116,7 +73,7 @@ class CircularMixin(object):
         return masks
 
     def old_photometry(self, data, error=None, pixelwise_error=True,
-                      method='exact', subpixels=5):
+                       method='exact', subpixels=5):
         """
         Perform circular photometry.
         """
