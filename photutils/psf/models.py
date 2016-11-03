@@ -56,7 +56,7 @@ class FittableImageModel(Fittable2DModel):
     the model is to be evaluated.
 
     If this class is initialized with `flux` (intensity scaling factor)
-    set to `None`, then `flux` is be estimated as ``sum(data)``.
+    set to `None`, then `flux` is going to be estimated as ``sum(data)``.
 
     Parameters
     ----------
