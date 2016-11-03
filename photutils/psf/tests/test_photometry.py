@@ -4,29 +4,33 @@ from __future__ import division
 import numpy as np
 import astropy
 
-from astropy.table import Table
-from astropy.stats import gaussian_sigma_to_fwhm
-from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.modeling import Parameter, Fittable2DModel
-from astropy.tests.helper import pytest, catch_warnings
-from astropy.utils import minversion
-from astropy.utils.exceptions import AstropyUserWarning
-
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 
-from ..models import IntegratedGaussianPRF
-from ...datasets import make_gaussian_sources
-from ...datasets import make_noise_image
+from astropy.table import Table
+from astropy.stats import gaussian_sigma_to_fwhm
+from astropy.utils import minversion
+from astropy.modeling import Parameter, Fittable2DModel
+from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.models import Gaussian2D
+from astropy.convolution.utils import discretize_model
+from astropy.tests.helper import pytest, catch_warnings
+from astropy.utils.exceptions import AstropyUserWarning
+
 from ..groupstars import DAOGroup
+from ..models import IntegratedGaussianPRF
 from ..photometry import DAOPhotPSFPhotometry, IterativelySubtractedPSFPhotometry
 from ..photometry import BasicPSFPhotometry
-from ...detection import DAOStarFinder
+from ..sandbox import DiscretePRF
 from ...background import SigmaClip, MedianBackground, StdBackgroundRMS
 from ...background import MedianBackground, MMMBackground, SigmaClip
 from ...background import StdBackgroundRMS
+from ...datasets import make_gaussian_sources
+from ...datasets import make_noise_image
+from ...detection import DAOStarFinder
 
 
 ASTROPY_GT_1_1 = minversion('astropy', '1.1')
+
 
 try:
     import scipy
@@ -332,3 +336,57 @@ def test_aperture_radius():
     result_tab = basic_phot_obj(image)
 
     assert_equal(basic_phot_obj.aperture_radius, psf_model.fwhm.value)
+
+# ---- # ---- # ---- #
+
+PSF_SIZE = 11
+GAUSSIAN_WIDTH = 1.
+IMAGE_SIZE = 101
+
+# Position and FLUXES of test sources
+INTAB = Table([[50., 23, 12, 86], [50., 83, 80, 84],
+               [np.pi * 10, 3.654, 20., 80 / np.sqrt(3)]],
+              names=['x_0', 'y_0', 'flux_0'])
+
+# Create test psf
+psf_model = Gaussian2D(1. / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE / 2.0,
+                       PSF_SIZE / 2.0, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
+test_psf = discretize_model(psf_model, (0, PSF_SIZE), (0, PSF_SIZE),
+                            mode='oversample')
+
+# Set up grid for test image
+image = np.zeros((IMAGE_SIZE, IMAGE_SIZE))
+
+# Add sources to test image
+for x, y, flux in INTAB:
+    model = Gaussian2D(flux / (2 * np.pi * GAUSSIAN_WIDTH ** 2),
+                       x, y, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
+    image += discretize_model(model, (0, IMAGE_SIZE), (0, IMAGE_SIZE),
+                              mode='oversample')
+
+# Some tests require an image with wider sources.
+WIDE_GAUSSIAN_WIDTH = 3.
+WIDE_INTAB = Table([[50, 23.2], [50.5, 1], [10, 20]],
+                   names=['x_0', 'y_0', 'flux_0'])
+wide_image = np.zeros((IMAGE_SIZE, IMAGE_SIZE))
+
+# Add sources to test image
+for x, y, flux in WIDE_INTAB:
+    model = Gaussian2D(flux / (2 * np.pi * WIDE_GAUSSIAN_WIDTH ** 2),
+                       x, y, WIDE_GAUSSIAN_WIDTH, WIDE_GAUSSIAN_WIDTH)
+    wide_image += discretize_model(model, (0, IMAGE_SIZE), (0, IMAGE_SIZE),
+                                   mode='oversample')
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_psf_photometry_discrete():
+    """ Test psf_photometry with discrete PRF model. """
+
+    prf = DiscretePRF(test_psf, subsampling=1)
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                                    bkg_estimator=None, psf_model=prf,
+                                    fitshape=13)
+    f = basic_phot(image=image, positions=INTAB)
+
+    for n in ['x', 'y', 'flux']:
+        assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-6)
+
