@@ -2,11 +2,13 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import math
+import warnings
 
 import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
+from astropy.utils.exceptions import AstropyUserWarning
 
 from .core import (PixelAperture, SkyAperture, ApertureMask,
                    _sanitize_pixel_positions, _translate_mask_method,
@@ -38,7 +40,13 @@ class RectangularMaskMixin(object):
             A list of aperture mask objects.
         """
 
-        if method not in ('center', 'subpixel', 'exact'):
+        if method == 'exact':
+            warnings.warn("'exact' method is not implemented for rectangular "
+                          "apertures -- instead using 'subpixel' method with "
+                          "subpixels=32", AstropyUserWarning)
+            method = 'subpixel'
+            subpixels = 32
+        elif method not in ('center', 'subpixel'):
             raise ValueError('"{0}" method is not available for this '
                              'aperture.'.format(method))
 
