@@ -16,8 +16,6 @@ from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils.misc import InheritDocstrings
 from astropy.wcs import WCS
 
-from ..extern.nddata_compat import NoOverlapError, Cutout2D
-
 
 __all__ = ['ApertureMask', 'Aperture', 'SkyAperture', 'PixelAperture',
            'aperture_photometry']
@@ -176,12 +174,10 @@ class ApertureMask(object):
     Aperture mask class.
     """
 
-    def __init__(self, position, mask, bbox_slice, geom_slice):
-        self.position = position
+    def __init__(self, mask, bbox_slice):
         self.data = mask
         self.shape = mask.shape
-        self._slice = bbox_slice
-        self._geom_slice = geom_slice
+        self.slices = bbox_slice
 
     @property
     def array(self):
@@ -196,13 +192,23 @@ class ApertureMask(object):
         return data
 
     def apply(self, data):
-        try:
-            cutout = Cutout2D(data, self.position, self.shape, mode='partial',
-                              fill_value=0., copy=False)
-        except NoOverlapError:
-            cutout = None
+        ymin = self.slices[0].start
+        ymax = self.slices[0].stop
+        xmin = self.slices[1].start
+        xmax = self.slices[1].stop
 
-        return cutout
+        if (xmin >= data.shape[1] or ymin >= data.shape[0] or xmax <= 0 or
+                ymax <= 0):
+            # no overlap of the aperture with the data
+            return None
+
+        xmin = max(xmin, 0)
+        xmax = min(xmax, data.shape[1])
+        ymin = max(ymin, 0)
+        ymax = min(ymax, data.shape[0])
+
+        # TODO:  return a Cutout2D-like object
+        return data[ymin:ymax, xmin:xmax]
 
 
 class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
@@ -268,7 +274,7 @@ class PixelAperture(Aperture):
             if data_cutout is None:
                 aperture_sums.append(np.nan)
             else:
-                aperture_sums.append(np.sum(data_cutout.data * mask.data))
+                aperture_sums.append(np.sum(data_cutout * mask.data))
 
             if error is not None:
                 error_cutout = mask.apply(error)
@@ -276,11 +282,10 @@ class PixelAperture(Aperture):
                     aperture_sum_errs.append(np.nan)
                 else:
                     if pixelwise_error:
-                        aperture_var = np.sum(error_cutout.data ** 2 *
-                                              mask.data)
+                        aperture_var = np.sum(error_cutout ** 2 * mask.data)
                     else:
                         # TODO: use central (x, y) position instead
-                        aperture_var = np.sum(error_cutout.data[0, 0] ** 2 *
+                        aperture_var = np.sum(error_cutout[0, 0] ** 2 *
                                               np.sum(mask.data))
 
                 aperture_sum_errs.append(np.sqrt(aperture_var))

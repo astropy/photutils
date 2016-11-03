@@ -80,7 +80,7 @@ class RectangularMaskMixin(object):
                                                  self.w_in, h_in, self.theta,
                                                  0, subpixels)
 
-            masks.append(ApertureMask(position, mask, _slice, _geom_slice))
+            masks.append(ApertureMask(mask, _slice))
 
         return masks
 

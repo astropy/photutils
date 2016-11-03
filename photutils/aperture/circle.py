@@ -66,7 +66,7 @@ class CircularMaskMixin(object):
                                               dx, dy, self.r_in, use_exact,
                                               subpixels)
 
-            masks.append(ApertureMask(position, mask, _slice, _geom_slice))
+            masks.append(ApertureMask(mask, _slice))
 
         return masks
 

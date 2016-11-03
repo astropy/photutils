@@ -71,7 +71,7 @@ class EllipticalMaskMixin(object):
                                                 b_in, self.theta, use_exact,
                                                 subpixels)
 
-            masks.append(ApertureMask(position, mask, _slice, _geom_slice))
+            masks.append(ApertureMask(mask, _slice))
 
         return masks
 
