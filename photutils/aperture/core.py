@@ -19,7 +19,8 @@ from astropy.wcs import WCS
 from ..extern.nddata_compat import NoOverlapError, Cutout2D
 
 
-__all__ = ['Aperture', 'SkyAperture', 'PixelAperture', 'aperture_photometry']
+__all__ = ['ApertureMask', 'Aperture', 'SkyAperture', 'PixelAperture',
+           'aperture_photometry']
 
 
 def _get_version_info():
@@ -170,9 +171,9 @@ def _calc_aperture_var(data, fraction, error, flux, xmin, xmax, ymin, ymax,
     return fluxvar
 
 
-class Mask(object):
+class ApertureMask(object):
     """
-    Mask class.
+    Aperture mask class.
     """
 
     def __init__(self, position, mask, bbox_slice, geom_slice):

@@ -8,7 +8,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
 
-from .core import (Mask, SkyAperture, PixelAperture,
+from .core import (ApertureMask, SkyAperture, PixelAperture,
                    _sanitize_pixel_positions, _make_annulus_path,
                    _translate_mask_method)
 from ..geometry import circular_overlap_grid
@@ -19,8 +19,8 @@ from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle,
 skycoord_to_pixel_mode = 'all'
 
 
-__all__ = ['CircularMaskMixin', 'SkyCircularAperture', 'CircularAperture',
-           'SkyCircularAnnulus', 'CircularAnnulus']
+__all__ = ['CircularMaskMixin', 'CircularAperture', 'SkyCircularAperture',
+           'CircularAnnulus', 'SkyCircularAnnulus']
 
 
 class CircularMaskMixin(object):
@@ -66,7 +66,7 @@ class CircularMaskMixin(object):
                                               dx, dy, self.r_in, use_exact,
                                               subpixels)
 
-            masks.append(Mask(position, mask, _slice, _geom_slice))
+            masks.append(ApertureMask(position, mask, _slice, _geom_slice))
 
         return masks
 
@@ -81,20 +81,22 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         Pixel coordinates of the aperture center(s) in one of the
         following formats:
 
-        * single ``(x, y)`` tuple
-        * list of ``(x, y)`` tuples
-        * ``Nx2`` or ``2xN`` `~numpy.ndarray`
-        * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
+          * single ``(x, y)`` tuple
+          * list of ``(x, y)`` tuples
+          * ``Nx2`` or ``2xN`` `~numpy.ndarray`
+          * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
 
-        A ``2x2`` `~numpy.ndarray` or `~astropy.units.Quantity` is
-        interpreted as ``Nx2``, i.e. two rows of (x, y) coordinates.
+        Note that a ``2x2`` `~numpy.ndarray` or
+        `~astropy.units.Quantity` is interpreted as ``Nx2``, i.e. two
+        rows of (x, y) coordinates.
+
     r : float
         The radius of the aperture(s), in pixels.
 
     Raises
     ------
     ValueError : `ValueError`
-        If the input ``radius`` is negative.
+        If the input radius, ``r``, is negative.
     """
 
     def __init__(self, positions, r):
