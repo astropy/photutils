@@ -8,9 +8,9 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
 
-from .core import (ApertureMask, SkyAperture, PixelAperture,
-                   _sanitize_pixel_positions, _make_annulus_path,
-                   _translate_mask_method)
+from .core import (PixelAperture, SkyAperture, ApertureMask,
+                   _sanitize_pixel_positions, _translate_mask_method,
+                   _make_annulus_path)
 from ..geometry import circular_overlap_grid
 from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle,
                                  assert_angle_or_pixel)
@@ -25,16 +25,16 @@ __all__ = ['CircularMaskMixin', 'CircularAperture', 'SkyCircularAperture',
 
 class CircularMaskMixin(object):
     """
-    Mixin class to create masks for circular or circular-annulus aperture
-    objects.
+    Mixin class to create masks for circular and circular-annulus
+    aperture objects.
     """
 
     def to_mask(self, method='exact', subpixels=5):
         """
         Returns
         -------
-        mask : list of `~photutils.Mask`
-            A list of Mask objects.
+        mask : list of `~photutils.ApertureMask`
+            A list of aperture mask objects.
         """
 
         if method not in ('center', 'subpixel', 'exact'):
