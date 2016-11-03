@@ -19,8 +19,8 @@ from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle,
 skycoord_to_pixel_mode = 'all'
 
 
-__all__ = ['CircularMaskMixin', 'CircularAperture', 'SkyCircularAperture',
-           'CircularAnnulus', 'SkyCircularAnnulus']
+__all__ = ['CircularMaskMixin', 'CircularAperture', 'CircularAnnulus',
+           'SkyCircularAperture', 'SkyCircularAnnulus']
 
 
 class CircularMaskMixin(object):
@@ -136,51 +136,6 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
             ax.add_patch(patch)
 
 
-class SkyCircularAperture(SkyAperture):
-    """
-    Circular aperture(s), defined in sky coordinates.
-
-    Parameters
-    ----------
-    positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be either
-        scalar coordinates or an array of coordinates.
-    r : `~astropy.units.Quantity`
-        The radius of the aperture(s), either in angular or pixel units.
-    """
-
-    def __init__(self, positions, r):
-        if isinstance(positions, SkyCoord):
-            self.positions = positions
-        else:
-            raise TypeError('positions must be a SkyCoord object.')
-
-        assert_angle_or_pixel('r', r)
-        self.r = r
-
-    def to_pixel(self, wcs):
-        """
-        Convert the aperture to a `CircularAperture` instance in
-        pixel coordinates.
-        """
-
-        x, y = skycoord_to_pixel(self.positions, wcs,
-                                 mode=skycoord_to_pixel_mode)
-
-        if self.r.unit.physical_type == 'angle':
-            central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
-                                   unit=wcs.wcs.cunit)
-            xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos,
-                                                                 wcs)
-            r = (scale * self.r).to(u.pixel).value
-        else:
-            r = self.r.value    # pixels
-
-        pixel_positions = np.array([x, y]).transpose()
-
-        return CircularAperture(pixel_positions, r)
-
-
 class CircularAnnulus(CircularMaskMixin, PixelAperture):
     """
     Circular annulus aperture(s), defined in pixel coordinates.
@@ -256,6 +211,51 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
             path = _make_annulus_path(patch_inner, patch_outer)
             patch = mpatches.PathPatch(path, **kwargs)
             ax.add_patch(patch)
+
+
+class SkyCircularAperture(SkyAperture):
+    """
+    Circular aperture(s), defined in sky coordinates.
+
+    Parameters
+    ----------
+    positions : `~astropy.coordinates.SkyCoord`
+        Celestial coordinates of the aperture center(s). This can be either
+        scalar coordinates or an array of coordinates.
+    r : `~astropy.units.Quantity`
+        The radius of the aperture(s), either in angular or pixel units.
+    """
+
+    def __init__(self, positions, r):
+        if isinstance(positions, SkyCoord):
+            self.positions = positions
+        else:
+            raise TypeError('positions must be a SkyCoord object.')
+
+        assert_angle_or_pixel('r', r)
+        self.r = r
+
+    def to_pixel(self, wcs):
+        """
+        Convert the aperture to a `CircularAperture` instance in
+        pixel coordinates.
+        """
+
+        x, y = skycoord_to_pixel(self.positions, wcs,
+                                 mode=skycoord_to_pixel_mode)
+
+        if self.r.unit.physical_type == 'angle':
+            central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
+                                   unit=wcs.wcs.cunit)
+            xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos,
+                                                                 wcs)
+            r = (scale * self.r).to(u.pixel).value
+        else:
+            r = self.r.value    # pixels
+
+        pixel_positions = np.array([x, y]).transpose()
+
+        return CircularAperture(pixel_positions, r)
 
 
 class SkyCircularAnnulus(SkyAperture):
