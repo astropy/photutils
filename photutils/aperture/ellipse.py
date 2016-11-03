@@ -30,13 +30,6 @@ class EllipticalMaskMixin(object):
     """
 
     def to_mask(self, method='exact', subpixels=5):
-        """
-        Returns
-        -------
-        mask : list of `~photutils.ApertureMask`
-            A list of aperture mask objects.
-        """
-
         if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('"{0}" method is not available for this '
                              'aperture.'.format(method))

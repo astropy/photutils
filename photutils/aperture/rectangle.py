@@ -33,13 +33,6 @@ class RectangularMaskMixin(object):
     """
 
     def to_mask(self, method='exact', subpixels=5):
-        """
-        Returns
-        -------
-        mask : list of `~photutils.ApertureMask`
-            A list of aperture mask objects.
-        """
-
         if method == 'exact':
             warnings.warn("'exact' method is not implemented for rectangular "
                           "apertures -- instead using 'subpixel' method with "
