@@ -2,16 +2,16 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import math
-import warnings
 
 import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import skycoord_to_pixel
 
-from .core import (SkyAperture, PixelAperture, _sanitize_pixel_positions,
-                   _make_annulus_path, _get_phot_extents, _calc_aperture_var)
+from .core import (PixelAperture, SkyAperture, ApertureMask,
+                   _sanitize_pixel_positions, _translate_mask_method,
+                   _make_annulus_path)
+from ..geometry import rectangular_overlap_grid
 from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
                                  assert_angle_or_pixel)
 
@@ -19,210 +19,65 @@ from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
 skycoord_to_pixel_mode = 'all'
 
 
-__all__ = ['RectangularAperture', 'RectangularAnnulus',
-           'SkyRectangularAperture', 'SkyRectangularAnnulus']
+__all__ = ['RectangularMaskMixin', 'RectangularAperture',
+           'RectangularAnnulus', 'SkyRectangularAperture',
+           'SkyRectangularAnnulus']
 
 
-def do_rectangular_photometry(data, positions, w, h, theta, error,
-                              pixelwise_error, method, subpixels,
-                              reduce='sum', w_in=None):
+class RectangularMaskMixin(object):
+    """
+    Mixin class to create masks for rectangular or rectangular-annulus
+    aperture objects.
+    """
 
-    extents = np.zeros((len(positions), 4), dtype=int)
+    def to_mask(self, method='exact', subpixels=5):
+        """
+        Returns
+        -------
+        mask : list of `~photutils.ApertureMask`
+            A list of aperture mask objects.
+        """
 
-    # TODO: this is an overestimate by up to sqrt(2) unless theta = 45 deg
-    radius = max(h, w) * (2 ** -0.5)
+        if method not in ('center', 'subpixel', 'exact'):
+            raise ValueError('"{0}" method is not available for this '
+                             'aperture.'.format(method))
 
-    extents[:, 0] = positions[:, 0] - radius + 0.5
-    extents[:, 1] = positions[:, 0] + radius + 1.5
-    extents[:, 2] = positions[:, 1] - radius + 0.5
-    extents[:, 3] = positions[:, 1] + radius + 1.5
+        use_exact, subpixels = _translate_mask_method(method, subpixels)
 
-    ood_filter, extent, phot_extent = _get_phot_extents(data, positions,
-                                                        extents)
+        if hasattr(self, 'w'):
+            w = self.w
+            h = self.h
+        elif hasattr(self, 'w_out'):    # annulus
+            w = self.w_out
+            h = self.h_out
+            h_in = self.w_in * self.h_out / self.w_out
+        else:
+            raise ValueError('Cannot determine the aperture radius.')
 
-    flux = u.Quantity(np.zeros(len(positions), dtype=np.float), unit=data.unit)
+        masks = []
+        for position, _slice, _geom_slice in zip(self.positions, self._slices,
+                                                 self._geom_slices):
+            px_min, px_max = _geom_slice[1].start, _geom_slice[1].stop
+            py_min, py_max = _geom_slice[0].start, _geom_slice[0].stop
+            dx = px_max - px_min
+            dy = py_max - py_min
 
-    if error is not None:
-        fluxvar = u.Quantity(np.zeros(len(positions), dtype=np.float),
-                             unit=error.unit ** 2)
+            mask = rectangular_overlap_grid(px_min, px_max, py_min, py_max,
+                                            dx, dy, w, h, self.theta, 0,
+                                            subpixels)
 
-    # TODO: flag these objects
-    if np.sum(ood_filter):
-        flux[ood_filter] = np.nan
-        warnings.warn("The aperture at position {0} does not have any "
-                      "overlap with the data"
-                      .format(positions[ood_filter]),
-                      AstropyUserWarning)
-        if np.sum(ood_filter) == len(positions):
-            return flux
-
-    x_min, x_max, y_min, y_max = extent
-    x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
-
-    if method in ('center', 'subpixel'):
-        if method == 'center':
-            method = 'subpixel'
-            subpixels = 1
-
-        from ..geometry import rectangular_overlap_grid
-
-        for i in range(len(flux)):
-            if not np.isnan(flux[i]):
-
-                fraction = rectangular_overlap_grid(x_pmin[i], x_pmax[i],
-                                                    y_pmin[i], y_pmax[i],
-                                                    x_max[i] - x_min[i],
-                                                    y_max[i] - y_min[i],
-                                                    w, h, theta, 0, subpixels)
-                if w_in is not None:
-                    h_in = w_in * h / w
-                    fraction -= rectangular_overlap_grid(x_pmin[i], x_pmax[i],
-                                                         y_pmin[i], y_pmax[i],
-                                                         x_max[i] - x_min[i],
-                                                         y_max[i] - y_min[i],
-                                                         w_in, h_in, theta,
-                                                         0, subpixels)
-
-                flux[i] = np.sum(data[y_min[i]:y_max[i],
-                                      x_min[i]:x_max[i]] * fraction)
-                if error is not None:
-                    fluxvar[i] = _calc_aperture_var(
-                        data, fraction, error, flux[i], x_min[i], x_max[i],
-                        y_min[i], y_max[i], pixelwise_error)
-
-    if error is None:
-        return flux
-    else:
-        return flux, np.sqrt(fluxvar)
-
-
-def get_rectangular_fractions(data, positions, w, h, theta, method,
-                              subpixels, reduce='sum', w_in=None):
-
-    extents = np.zeros((len(positions), 4), dtype=int)
-
-    # TODO: this is an overestimate by up to sqrt(2) unless theta = 45 deg
-    radius = max(h, w) * (2 ** -0.5)
-
-    extents[:, 0] = positions[:, 0] - radius + 0.5
-    extents[:, 1] = positions[:, 0] + radius + 1.5
-    extents[:, 2] = positions[:, 1] - radius + 0.5
-    extents[:, 3] = positions[:, 1] + radius + 1.5
-
-    ood_filter, extent, phot_extent = _get_phot_extents(data, positions,
-                                                        extents)
-
-    fractions = np.zeros((data.shape[0], data.shape[1], len(positions)),
-                         dtype=np.float)
-
-    if np.sum(ood_filter):
-        warnings.warn("The aperture at position {0} does not have any "
-                      "overlap with the data"
-                      .format(positions[ood_filter]),
-                      AstropyUserWarning)
-        if np.sum(ood_filter) == len(positions):
-            return np.squeeze(fractions)
-
-    x_min, x_max, y_min, y_max = extent
-    x_pmin, x_pmax, y_pmin, y_pmax = phot_extent
-
-    if method in ('center', 'subpixel'):
-        if method == 'center':
-            method = 'subpixel'
-            subpixels = 1
-
-        from ..geometry import rectangular_overlap_grid
-
-        for i in range(len(positions)):
-
-            if ood_filter[i] is not True:
-
-                fractions[y_min[i]: y_max[i], x_min[i]: x_max[i], i] = \
-                    rectangular_overlap_grid(x_pmin[i], x_pmax[i],
-                                             y_pmin[i], y_pmax[i],
-                                             x_max[i] - x_min[i],
-                                             y_max[i] - y_min[i],
-                                             w, h, theta, 0, subpixels)
-                if w_in is not None:
-                    h_in = w_in * h / w
-                    fractions[y_min[i]: y_max[i], x_min[i]: x_max[i], i] -= \
-                        rectangular_overlap_grid(x_pmin[i], x_pmax[i],
-                                                 y_pmin[i], y_pmax[i],
-                                                 x_max[i] - x_min[i],
-                                                 y_max[i] - y_min[i],
-                                                 w_in, h_in, theta,
+            if hasattr(self, 'w_in'):    # annulus
+                mask -= rectangular_overlap_grid(px_min, px_max, py_min,
+                                                 py_max, dx, dy,
+                                                 self.w_in, h_in, self.theta,
                                                  0, subpixels)
 
-    return np.squeeze(fractions)
+            masks.append(ApertureMask(position, mask, _slice, _geom_slice))
+
+        return masks
 
 
-class SkyRectangularAperture(SkyAperture):
-    """
-    Rectangular aperture(s), defined in sky coordinates.
-
-    Parameters
-    ----------
-    positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be either
-        scalar coordinates or an array of coordinates.
-    w : `~astropy.units.Quantity`
-        The full width of the aperture(s) (at theta = 0, this is the "x"
-        axis), either in angular or pixel units.
-    h :  `~astropy.units.Quantity`
-        The full height of the aperture(s) (at theta = 0, this is the "y"
-        axis), either in angular or pixel units.
-    theta : `~astropy.units.Quantity`
-        The position angle of the width side in radians
-        (counterclockwise).
-    """
-
-    def __init__(self, positions, w, h, theta):
-
-        if isinstance(positions, SkyCoord):
-            self.positions = positions
-        else:
-            raise TypeError("positions should be a SkyCoord instance")
-
-        assert_angle_or_pixel('w', w)
-        assert_angle_or_pixel('h', h)
-        assert_angle('theta', theta)
-
-        if w.unit.physical_type != h.unit.physical_type:
-            raise ValueError("'w' and 'h' should either both be angles or "
-                             "in pixels")
-
-        self.w = w
-        self.h = h
-        self.theta = theta
-
-    def to_pixel(self, wcs):
-        """
-        Convert the aperture to a `RectangularAperture` instance in
-        pixel coordinates.
-        """
-
-        x, y = skycoord_to_pixel(self.positions, wcs,
-                                 mode=skycoord_to_pixel_mode)
-        central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
-                               unit=wcs.wcs.cunit)
-        xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
-
-        if self.w.unit.physical_type == 'angle':
-            w = (scale * self.w).to(u.pixel).value
-            h = (scale * self.h).to(u.pixel).value
-        else:
-            # pixels
-            w = self.w.value
-            h = self.h.value
-
-        theta = (angle + self.theta).to(u.radian).value
-
-        pixel_positions = np.array([x, y]).transpose()
-
-        return RectangularAperture(pixel_positions, w, h, theta)
-
-
-class RectangularAperture(PixelAperture):
+class RectangularAperture(RectangularMaskMixin, PixelAperture):
     """
     Rectangular aperture(s), defined in pixel coordinates.
 
@@ -263,6 +118,18 @@ class RectangularAperture(PixelAperture):
 
         self.positions = _sanitize_pixel_positions(positions)
 
+    @property
+    def _slices(self):
+        # TODO:  use an actual minimal bounding box
+        radius = max(self.h, self.w) * (2. ** -0.5)
+        x_min = np.floor(self.positions[:, 0] - radius + 0.5).astype(int)
+        x_max = np.floor(self.positions[:, 0] + radius + 1.5).astype(int)
+        y_min = np.floor(self.positions[:, 1] - radius + 0.5).astype(int)
+        y_max = np.floor(self.positions[:, 1] + radius + 1.5).astype(int)
+
+        return [(slice(ymin, ymax), slice(xmin, xmax))
+                for xmin, xmax, ymin, ymax in zip(x_min, x_max, y_min, y_max)]
+
     def area(self):
         return self.w * self.h
 
@@ -287,127 +154,8 @@ class RectangularAperture(PixelAperture):
                                        **kwargs)
             ax.add_patch(patch)
 
-    def do_photometry(self, data, error=None, pixelwise_error=True,
-                      method='subpixel', subpixels=5):
 
-        if method == 'exact':
-            warnings.warn("'exact' method is not implemented, defaults to "
-                          "'subpixel' method and subpixels=32 instead",
-                          AstropyUserWarning)
-            method = 'subpixel'
-            subpixels = 32
-
-        elif method not in ('center', 'subpixel'):
-            raise ValueError('{0} method not supported for aperture class '
-                             '{1}'.format(method, self.__class__.__name__))
-
-        flux = do_rectangular_photometry(data, self.positions,
-                                         self.w, self.h, self.theta,
-                                         error=error,
-                                         pixelwise_error=pixelwise_error,
-                                         method=method,
-                                         subpixels=subpixels)
-        return flux
-
-    def get_fractions(self, data, method='exact', subpixels=5):
-
-        if method == 'exact':
-            warnings.warn("'exact' method is not implemented, defaults to "
-                          "'subpixel' method and subpixels=32 instead",
-                          AstropyUserWarning)
-            method = 'subpixel'
-            subpixels = 32
-
-        elif method not in ('center', 'subpixel'):
-            raise ValueError('{0} method not supported for aperture class '
-                             '{1}'.format(method, self.__class__.__name__))
-
-        fractions = get_rectangular_fractions(data, self.positions,
-                                              self.w, self.h, self.theta,
-                                              method=method,
-                                              subpixels=subpixels)
-
-        return fractions
-
-
-class SkyRectangularAnnulus(SkyAperture):
-    """
-    Rectangular annulus aperture(s), defined in sky coordinates.
-
-    Parameters
-    ----------
-    positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be either
-        scalar coordinates or an array of coordinates.
-    w_in : `~astropy.units.Quantity`
-        The inner full width of the aperture(s), either in angular or pixel
-        units.
-    w_out : `~astropy.units.Quantity`
-        The outer full width of the aperture(s), either in angular or pixel
-        units.
-    h_out : `~astropy.units.Quantity`
-        The outer full height of the aperture(s), either in angular or pixel
-        units. (The inner full height is determined by scaling by
-        w_in/w_out.)
-    theta : `~astropy.units.Quantity`
-        The position angle of the semimajor axis (counterclockwise), either
-        in angular or pixel units.
-    """
-
-    def __init__(self, positions, w_in, w_out, h_out, theta):
-
-        if isinstance(positions, SkyCoord):
-            self.positions = positions
-        else:
-            raise TypeError("positions should be a SkyCoord instance")
-        assert_angle_or_pixel('w_in', w_in)
-        assert_angle_or_pixel('w_out', w_out)
-        assert_angle_or_pixel('h_out', h_out)
-        assert_angle('theta', theta)
-
-        if w_in.unit.physical_type != w_out.unit.physical_type:
-            raise ValueError("w_in and w_out should either both be angles or "
-                             "in pixels")
-
-        if w_out.unit.physical_type != h_out.unit.physical_type:
-            raise ValueError("w_out and h_out should either both be angles "
-                             "or in pixels")
-
-        self.w_in = w_in
-        self.w_out = w_out
-        self.h_out = h_out
-        self.theta = theta
-
-    def to_pixel(self, wcs):
-        """
-        Convert the aperture to a `EllipticalAnnulus` instance in pixel
-        coordinates.
-        """
-
-        x, y = skycoord_to_pixel(self.positions, wcs,
-                                 mode=skycoord_to_pixel_mode)
-        central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
-                               unit=wcs.wcs.cunit)
-        xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
-
-        if self.w_in.unit.physical_type == 'angle':
-            w_in = (scale * self.w_in).to(u.pixel).value
-            w_out = (scale * self.w_out).to(u.pixel).value
-            h_out = (scale * self.h_out).to(u.pixel).value
-        else:
-            # pixels
-            w_in = self.w_in.value
-            w_out = self.w_out.value
-            h_out = self.h_out.value
-
-        theta = (angle + self.theta).to(u.radian).value
-
-        pixel_positions = np.array([x, y]).transpose()
-
-        return RectangularAnnulus(pixel_positions, w_in, w_out, h_out, theta)
-
-
-class RectangularAnnulus(PixelAperture):
+class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     """
     Rectangular annulus aperture(s), defined in pixel coordinates.
 
@@ -461,6 +209,18 @@ class RectangularAnnulus(PixelAperture):
 
         self.positions = _sanitize_pixel_positions(positions)
 
+    @property
+    def _slices(self):
+        # TODO:  use an actual minimal bounding box
+        radius = max(self.h_out, self.w_out) * (2. ** -0.5)
+        x_min = np.floor(self.positions[:, 0] - radius + 0.5).astype(int)
+        x_max = np.floor(self.positions[:, 0] + radius + 1.5).astype(int)
+        y_min = np.floor(self.positions[:, 1] - radius + 0.5).astype(int)
+        y_max = np.floor(self.positions[:, 1] + radius + 1.5).astype(int)
+
+        return [(slice(ymin, ymax), slice(xmin, xmax))
+                for xmin, xmax, ymin, ymax in zip(x_min, x_max, y_min, y_max)]
+
     def area(self):
         return self.w_out * self.h_out - self.w_in * self.h_in
 
@@ -498,45 +258,143 @@ class RectangularAnnulus(PixelAperture):
             patch = mpatches.PathPatch(path, **kwargs)
             ax.add_patch(patch)
 
-    def do_photometry(self, data, error=None, pixelwise_error=True,
-                      method='subpixel', subpixels=5):
 
-        if method == 'exact':
-            warnings.warn("'exact' method is not implemented, defaults to "
-                          "'subpixel' instead", AstropyUserWarning)
-            method = 'subpixel'
+class SkyRectangularAperture(SkyAperture):
+    """
+    Rectangular aperture(s), defined in sky coordinates.
 
-        elif method not in ('center', 'subpixel'):
-            raise ValueError('{0} method not supported for aperture class '
-                             '{1}'.format(method, self.__class__.__name__))
+    Parameters
+    ----------
+    positions : `~astropy.coordinates.SkyCoord`
+        Celestial coordinates of the aperture center(s). This can be either
+        scalar coordinates or an array of coordinates.
+    w : `~astropy.units.Quantity`
+        The full width of the aperture(s) (at theta = 0, this is the "x"
+        axis), either in angular or pixel units.
+    h :  `~astropy.units.Quantity`
+        The full height of the aperture(s) (at theta = 0, this is the "y"
+        axis), either in angular or pixel units.
+    theta : `~astropy.units.Quantity`
+        The position angle of the width side in radians
+        (counterclockwise).
+    """
 
-        flux = do_rectangular_photometry(data, self.positions,
-                                         self.w_out, self.h_out, self.theta,
-                                         error=error,
-                                         pixelwise_error=pixelwise_error,
-                                         method=method, subpixels=subpixels,
-                                         w_in=self.w_in)
+    def __init__(self, positions, w, h, theta):
+        if isinstance(positions, SkyCoord):
+            self.positions = positions
+        else:
+            raise TypeError("positions should be a SkyCoord instance")
 
-        return flux
+        assert_angle_or_pixel('w', w)
+        assert_angle_or_pixel('h', h)
+        assert_angle('theta', theta)
 
-    def get_fractions(self, data, method='exact', subpixels=5):
+        if w.unit.physical_type != h.unit.physical_type:
+            raise ValueError("'w' and 'h' should either both be angles or "
+                             "in pixels")
 
-        if method == 'exact':
-            warnings.warn("'exact' method is not implemented, defaults to "
-                          "'subpixel' method and subpixels=32 instead",
-                          AstropyUserWarning)
-            method = 'subpixel'
-            subpixels = 32
+        self.w = w
+        self.h = h
+        self.theta = theta
 
-        elif method not in ('center', 'subpixel'):
-            raise ValueError('{0} method not supported for aperture class '
-                             '{1}'.format(method, self.__class__.__name__))
+    def to_pixel(self, wcs):
+        """
+        Convert the aperture to a `RectangularAperture` instance in
+        pixel coordinates.
+        """
 
-        fractions = get_rectangular_fractions(data, self.positions,
-                                              self.w_out, self.h_out,
-                                              self.theta,
-                                              method=method,
-                                              subpixels=subpixels,
-                                              w_in=self.w_in)
+        x, y = skycoord_to_pixel(self.positions, wcs,
+                                 mode=skycoord_to_pixel_mode)
+        central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
+                               unit=wcs.wcs.cunit)
+        xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
 
-        return fractions
+        if self.w.unit.physical_type == 'angle':
+            w = (scale * self.w).to(u.pixel).value
+            h = (scale * self.h).to(u.pixel).value
+        else:
+            # pixels
+            w = self.w.value
+            h = self.h.value
+
+        theta = (angle + self.theta).to(u.radian).value
+
+        pixel_positions = np.array([x, y]).transpose()
+
+        return RectangularAperture(pixel_positions, w, h, theta)
+
+
+class SkyRectangularAnnulus(SkyAperture):
+    """
+    Rectangular annulus aperture(s), defined in sky coordinates.
+
+    Parameters
+    ----------
+    positions : `~astropy.coordinates.SkyCoord`
+        Celestial coordinates of the aperture center(s). This can be either
+        scalar coordinates or an array of coordinates.
+    w_in : `~astropy.units.Quantity`
+        The inner full width of the aperture(s), either in angular or pixel
+        units.
+    w_out : `~astropy.units.Quantity`
+        The outer full width of the aperture(s), either in angular or pixel
+        units.
+    h_out : `~astropy.units.Quantity`
+        The outer full height of the aperture(s), either in angular or pixel
+        units. (The inner full height is determined by scaling by
+        w_in/w_out.)
+    theta : `~astropy.units.Quantity`
+        The position angle of the semimajor axis (counterclockwise), either
+        in angular or pixel units.
+    """
+
+    def __init__(self, positions, w_in, w_out, h_out, theta):
+        if isinstance(positions, SkyCoord):
+            self.positions = positions
+        else:
+            raise TypeError("positions should be a SkyCoord instance")
+        assert_angle_or_pixel('w_in', w_in)
+        assert_angle_or_pixel('w_out', w_out)
+        assert_angle_or_pixel('h_out', h_out)
+        assert_angle('theta', theta)
+
+        if w_in.unit.physical_type != w_out.unit.physical_type:
+            raise ValueError("w_in and w_out should either both be angles or "
+                             "in pixels")
+
+        if w_out.unit.physical_type != h_out.unit.physical_type:
+            raise ValueError("w_out and h_out should either both be angles "
+                             "or in pixels")
+
+        self.w_in = w_in
+        self.w_out = w_out
+        self.h_out = h_out
+        self.theta = theta
+
+    def to_pixel(self, wcs):
+        """
+        Convert the aperture to a `EllipticalAnnulus` instance in pixel
+        coordinates.
+        """
+
+        x, y = skycoord_to_pixel(self.positions, wcs,
+                                 mode=skycoord_to_pixel_mode)
+        central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
+                               unit=wcs.wcs.cunit)
+        xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
+
+        if self.w_in.unit.physical_type == 'angle':
+            w_in = (scale * self.w_in).to(u.pixel).value
+            w_out = (scale * self.w_out).to(u.pixel).value
+            h_out = (scale * self.h_out).to(u.pixel).value
+        else:
+            # pixels
+            w_in = self.w_in.value
+            w_out = self.w_out.value
+            h_out = self.h_out.value
+
+        theta = (angle + self.theta).to(u.radian).value
+
+        pixel_positions = np.array([x, y]).transpose()
+
+        return RectangularAnnulus(pixel_positions, w_in, w_out, h_out, theta)
