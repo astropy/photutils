@@ -113,6 +113,18 @@ def test_create_prf_flux():
     assert_allclose(prf._prf_array[0, 0], test_psf, atol=1E-8)
 
 
+def test_create_prf_excessive_subsampling():
+    """
+    Check if a helpful error is raised if the subsampling parameter is too high.
+    """
+    with pytest.raises(ValueError) as exc:
+        prf = DiscretePRF.create_from_image(image,
+                                            list(INTAB['x_0', 'y_0'].as_array()),
+                                            PSF_SIZE,
+                                            subsampling=999)
+    assert('subsampling' in exc.value.args[0])
+
+
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_psf_photometry_discrete():
     """

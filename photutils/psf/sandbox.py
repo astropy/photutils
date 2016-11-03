@@ -181,10 +181,8 @@ class DiscretePRF(Fittable2DModel):
             size as the PRF image.
         mode : {'mean', 'median'}
             One of the following modes to combine the extracted PRFs:
-                * 'mean':  Take the pixelwise mean of the extracted
-                  PRFs.
-                * 'median':  Take the pixelwise median of the extracted
-                  PRFs.
+                * 'mean':  Take the pixelwise mean of the extracted PRFs.
+                * 'median':  Take the pixelwise median of the extracted PRFs.
         subsampling : int
             Factor of subsampling of the PRF (default = 1).
         fix_nan : bool
@@ -251,6 +249,11 @@ class DiscretePRF(Fittable2DModel):
                 extracted_sub_prfs = []
                 sub_prf_indices = np.all(positions_subpixel_indices == [j, i],
                                          axis=1)
+                if not sub_prf_indices.any():
+                    raise ValueError('The source coordinates do not sample all '
+                                     'sub-pixel positions. Reduce the value '
+                                     'of the subsampling parameter.')
+
                 positions_sub_prfs = positions[sub_prf_indices]
                 for k, position in enumerate(positions_sub_prfs):
                     x, y = position
