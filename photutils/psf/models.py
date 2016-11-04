@@ -131,11 +131,12 @@ class FittableImageModel(Fittable2DModel):
     def __init__(self, data, flux=flux.default,
                  x_0=x_0.default, y_0=y_0.default,
                  normalize=False, normalization_correction=1.0,
-                 origin=None, fill_value=0.0, ikwargs={}):
+                 origin=None, oversampling=1, fill_value=0.0, ikwargs={}):
         self._fill_value = fill_value
         self._img_norm = None
         self._normalization_status = 0 if normalize else 2
         self._store_interpolator_kwargs(ikwargs)
+        self._set_oversampling(oversampling)
 
         if normalization_correction <= 0:
             raise ValueError("'normalization_correction' must be strictly "
@@ -225,6 +226,29 @@ class FittableImageModel(Fittable2DModel):
 
         else:
             self._normalization_status = 2
+
+    @property
+    def oversampling(self):
+        """
+        The factor by which the stored image is oversampled.  I.e., an input
+        to this model is multipled by this factor to yield the index into the
+        stored image.
+        """
+        return self._oversampling
+
+    def _set_oversampling(self, value):
+        """
+        This is a private method because it's used in the initializer but the
+        ``oversampling``
+        """
+        try:
+            value = float(value)
+        except:
+            raise ValueError('Oversampling factor must be a scalar')
+        if value <= 0:
+            raise ValueError('Oversampling factor must be greater than 0')
+            
+        self._oversampling = value
 
     @property
     def data(self):
@@ -434,8 +458,8 @@ class FittableImageModel(Fittable2DModel):
         parameters.
 
         """
-        xi = np.asarray(x) + (self._x_origin - x_0)
-        yi = np.asarray(y) + (self._y_origin - y_0)
+        xi = self._oversampling * np.asarray(x) + (self._x_origin - x_0)
+        yi = self._oversampling * np.asarray(y) + (self._y_origin - y_0)
 
         f = flux * self._normalization_constant
 

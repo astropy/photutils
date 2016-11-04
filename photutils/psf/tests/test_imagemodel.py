@@ -21,6 +21,7 @@ def test_image_model():
 
     imod_nonorm = FittableImageModel(gm(xg, yg))
     assert np.allclose(imod_nonorm(0, 0), gm(0, 0))
+    assert np.allclose(imod_nonorm(1, 1), gm(1, 1))
 
     imod_norm = FittableImageModel(gm(xg, yg), normalize=True)
     assert not np.allclose(imod_norm(0, 0), gm(0, 0))
@@ -31,3 +32,8 @@ def test_image_model():
     assert not np.allclose(imod_norm2(0, 0), gm(0, 0))
     assert np.allclose(imod_norm(0, 0), imod_norm2(0, 0)*2)
     assert np.allclose(np.sum(imod_norm2(xg, yg)), 0.5)
+
+
+    # imod_oversampled = FittableImageModel(gm(xg, yg), oversampling=2)
+    # assert np.allclose(imod_oversampled(0, 0), gm(0, 0))
+    # assert np.allclose(imod_oversampled(1, 1), gm(1, 1))
