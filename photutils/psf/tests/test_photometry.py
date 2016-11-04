@@ -349,8 +349,8 @@ INTAB = Table([[50., 23, 12, 86], [50., 83, 80, 84],
               names=['x_0', 'y_0', 'flux_0'])
 
 # Create test psf
-psf_model = Gaussian2D(1. / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE / 2.0,
-                       PSF_SIZE / 2.0, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
+psf_model = Gaussian2D(1. / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
+                       PSF_SIZE // 2, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
 test_psf = discretize_model(psf_model, (0, PSF_SIZE), (0, PSF_SIZE),
                             mode='oversample')
 
@@ -384,9 +384,46 @@ def test_psf_photometry_discrete():
     prf = DiscretePRF(test_psf, subsampling=1)
     basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
                                     bkg_estimator=None, psf_model=prf,
-                                    fitshape=13)
+                                    fitshape=7)
     f = basic_phot(image=image, positions=INTAB)
 
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-6)
 
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_tune_coordinates():
+    """
+    Test psf_photometry with discrete PRF model and coordinates that need
+    to be adjusted in the fit.
+    """
+
+    prf = DiscretePRF(test_psf, subsampling=1)
+    prf.x_0.fixed = False
+    prf.y_0.fixed = False
+    # Shift all sources by 0.3 pixels
+    intab = INTAB.copy()
+    intab['x_0'] += 0.3
+
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                                bkg_estimator=None, psf_model=prf,
+                                fitshape=7)
+
+    f = basic_phot(image=image, positions=intab)
+    for n in ['x', 'y', 'flux']:
+        assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_psf_boundary():
+    """
+    Test psf_photometry with discrete PRF model at the boundary of the data.
+    """
+
+    prf = DiscretePRF(test_psf, subsampling=1)
+
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                            bkg_estimator=None, psf_model=prf,
+                            fitshape=7, aperture_radius=5.5)
+
+    intab = Table(data=[[1], [1]], names=['x_0', 'y_0'])
+    f = basic_phot(image=image, positions=intab)
+    assert_allclose(f['flux_fit'], 0, atol=1e-8)
