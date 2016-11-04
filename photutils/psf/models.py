@@ -659,7 +659,7 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
                       renormalize_psf=True):
     """
     Convert a 2D PSF model to one suitable for use with
-    `psf_photometry`.
+    `BasicPSFPhotometry` or its subclasses.
 
     The resulting model may be a composite model, but should have only
     the x, y, and flux related parameters un-fixed.
@@ -691,7 +691,8 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
     Returns
     -------
     outmod : a model
-        A new model ready to be passed into `psf_photometry`.
+        A new model ready to be passed into `BasicPSFPhotometry` or its
+        subclasses.
     """
 
     if xname is None:
@@ -732,7 +733,7 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
     for pnm in outmod.param_names:
         outmod.fixed[pnm] = pnm not in (xname, yname, fluxname)
 
-    # and set the names so that psf_photometry knows what to do
+    # and set the names so that BasicPSFPhotometry knows what to do
     outmod.xname = xname
     outmod.yname = yname
     outmod.fluxname = fluxname

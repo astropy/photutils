@@ -378,7 +378,7 @@ for x, y, flux in WIDE_INTAB:
     wide_image += discretize_model(model, (0, IMAGE_SIZE), (0, IMAGE_SIZE),
                                    mode='oversample')
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
 def test_psf_photometry_discrete():
     """ Test psf_photometry with discrete PRF model. """
 
@@ -391,7 +391,7 @@ def test_psf_photometry_discrete():
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-6)
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
 def test_tune_coordinates():
     """
     Test psf_photometry with discrete PRF model and coordinates that need
@@ -413,7 +413,7 @@ def test_tune_coordinates():
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
 def test_psf_boundary():
     """
     Test psf_photometry with discrete PRF model at the boundary of the data.
@@ -429,7 +429,7 @@ def test_psf_boundary():
     f = basic_phot(image=image, positions=intab)
     assert_allclose(f['flux_fit'], 0, atol=1e-8)
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
 def test_aperture_radius_value_error():
     """
     Test psf_photometry with discrete PRF model at the boundary of the data.
@@ -447,7 +447,7 @@ def test_aperture_radius_value_error():
 
     assert 'aperture_radius is None' in str(err.value)
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
 def test_psf_boundary_gaussian():
     """
     Test psf_photometry with discrete PRF model at the boundary of the data.
@@ -463,7 +463,7 @@ def test_psf_boundary_gaussian():
     f = basic_phot(image=image, positions=intab)
     assert_allclose(f['flux_fit'], 0, atol=1e-8)
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
 def test_psf_photometry_gaussian():
     """
     Test psf_photometry with Gaussian PSF model.
@@ -478,7 +478,7 @@ def test_psf_photometry_gaussian():
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
 def test_psf_fitting_data_on_edge():
     """
     No mask is input explicitly here, but source 2 is so close to the
