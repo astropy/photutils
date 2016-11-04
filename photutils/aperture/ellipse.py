@@ -16,9 +16,6 @@ from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
                                  assert_angle_or_pixel)
 
 
-skycoord_to_pixel_mode = 'all'
-
-
 __all__ = ['EllipticalMaskMixin', 'EllipticalAperture', 'EllipticalAnnulus',
            'SkyEllipticalAperture', 'SkyEllipticalAnnulus']
 
@@ -334,13 +331,28 @@ class SkyEllipticalAperture(SkyAperture):
         self.b = b
         self.theta = theta
 
-    def to_pixel(self, wcs):
+    def to_pixel(self, wcs, mode='all'):
         """
-        Return a EllipticalAperture instance in pixel coordinates.
+        Convert the aperture to an `EllipticalAperture` instance in
+        pixel coordinates.
+
+        Parameters
+        ----------
+        wcs : `~astropy.wcs.WCS`
+            The WCS transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or only including only the core WCS
+            transformation (``'wcs'``).
+
+        Returns
+        -------
+        aperture : `EllipticalAperture` object
+            An `EllipticalAperture` object.
         """
 
-        x, y = skycoord_to_pixel(self.positions, wcs,
-                                 mode=skycoord_to_pixel_mode)
+        x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
         central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
                                unit=wcs.wcs.cunit)
         xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
@@ -412,13 +424,28 @@ class SkyEllipticalAnnulus(SkyAperture):
         self.b_out = b_out
         self.theta = theta
 
-    def to_pixel(self, wcs):
+    def to_pixel(self, wcs, mode='all'):
         """
-        Return a EllipticalAnnulus instance in pixel coordinates.
+        Convert the aperture to an `EllipticalAnnulus` instance in pixel
+        coordinates.
+
+        Parameters
+        ----------
+        wcs : `~astropy.wcs.WCS`
+            The WCS transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or only including only the core WCS
+            transformation (``'wcs'``).
+
+        Returns
+        -------
+        aperture : `EllipticalAnnulus` object
+            An `EllipticalAnnulus` object.
         """
 
-        x, y = skycoord_to_pixel(self.positions, wcs,
-                                 mode=skycoord_to_pixel_mode)
+        x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
         central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
                                unit=wcs.wcs.cunit)
         xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)

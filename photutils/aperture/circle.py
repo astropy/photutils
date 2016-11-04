@@ -16,9 +16,6 @@ from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle,
                                  assert_angle_or_pixel)
 
 
-skycoord_to_pixel_mode = 'all'
-
-
 __all__ = ['CircularMaskMixin', 'CircularAperture', 'CircularAnnulus',
            'SkyCircularAperture', 'SkyCircularAnnulus']
 
@@ -276,14 +273,28 @@ class SkyCircularAperture(SkyAperture):
         assert_angle_or_pixel('r', r)
         self.r = r
 
-    def to_pixel(self, wcs):
+    def to_pixel(self, wcs, mode='all'):
         """
-        Convert the aperture to a `CircularAperture` instance in
-        pixel coordinates.
+        Convert the aperture to a `CircularAperture` instance in pixel
+        coordinates.
+
+        Parameters
+        ----------
+        wcs : `~astropy.wcs.WCS`
+            The WCS transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or only including only the core WCS
+            transformation (``'wcs'``).
+
+        Returns
+        -------
+        aperture : `CircularAperture` object
+            A `CircularAperture` object.
         """
 
-        x, y = skycoord_to_pixel(self.positions, wcs,
-                                 mode=skycoord_to_pixel_mode)
+        x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
 
         if self.r.unit.physical_type == 'angle':
             central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
@@ -334,13 +345,28 @@ class SkyCircularAnnulus(SkyAperture):
         self.r_in = r_in
         self.r_out = r_out
 
-    def to_pixel(self, wcs):
+    def to_pixel(self, wcs, mode='all'):
         """
-        Return a CircularAnnulus instance in pixel coordinates.
+        Convert the aperture to a `CircularAnnulus` instance in pixel
+        coordinates.
+
+        Parameters
+        ----------
+        wcs : `~astropy.wcs.WCS`
+            The WCS transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or only including only the core WCS
+            transformation (``'wcs'``).
+
+        Returns
+        -------
+        aperture : `CircularAnnulus` object
+            A `CircularAnnulus` object.
         """
 
-        x, y = skycoord_to_pixel(self.positions, wcs,
-                                 mode=skycoord_to_pixel_mode)
+        x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
         if self.r_in.unit.physical_type == 'angle':
             central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
                                    unit=wcs.wcs.cunit)

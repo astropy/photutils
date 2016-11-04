@@ -18,9 +18,6 @@ from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
                                  assert_angle_or_pixel)
 
 
-skycoord_to_pixel_mode = 'all'
-
-
 __all__ = ['RectangularMaskMixin', 'RectangularAperture',
            'RectangularAnnulus', 'SkyRectangularAperture',
            'SkyRectangularAnnulus']
@@ -375,14 +372,28 @@ class SkyRectangularAperture(SkyAperture):
         self.h = h
         self.theta = theta
 
-    def to_pixel(self, wcs):
+    def to_pixel(self, wcs, mode='all'):
         """
         Convert the aperture to a `RectangularAperture` instance in
         pixel coordinates.
+
+        Parameters
+        ----------
+        wcs : `~astropy.wcs.WCS`
+            The WCS transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or only including only the core WCS
+            transformation (``'wcs'``).
+
+        Returns
+        -------
+        aperture : `RectangularAperture` object
+            A `RectangularAperture` object.
         """
 
-        x, y = skycoord_to_pixel(self.positions, wcs,
-                                 mode=skycoord_to_pixel_mode)
+        x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
         central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
                                unit=wcs.wcs.cunit)
         xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
@@ -460,14 +471,28 @@ class SkyRectangularAnnulus(SkyAperture):
         self.h_out = h_out
         self.theta = theta
 
-    def to_pixel(self, wcs):
+    def to_pixel(self, wcs, mode='all'):
         """
-        Convert the aperture to a `EllipticalAnnulus` instance in pixel
+        Convert the aperture to a `RectangularAnnulus` instance in pixel
         coordinates.
+
+        Parameters
+        ----------
+        wcs : `~astropy.wcs.WCS`
+            The WCS transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or only including only the core WCS
+            transformation (``'wcs'``).
+
+        Returns
+        -------
+        aperture : `RectangularAnnulus` object
+            A `RectangularAnnulus` object.
         """
 
-        x, y = skycoord_to_pixel(self.positions, wcs,
-                                 mode=skycoord_to_pixel_mode)
+        x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
         central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
                                unit=wcs.wcs.cunit)
         xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
