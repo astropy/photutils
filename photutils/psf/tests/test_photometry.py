@@ -271,7 +271,7 @@ def test_aperture_radius_errors():
     # test that aperture_radius was set to None by default
     assert_equal(basic_phot_obj.aperture_radius, None)
 
-    # test that a ValuError is raised if aperture_radius is non positive
+    # test that a ValueError is raised if aperture_radius is non positive
     with pytest.raises(ValueError):
         basic_phot_obj.aperture_radius = -3
 
@@ -337,7 +337,8 @@ def test_aperture_radius():
 
     assert_equal(basic_phot_obj.aperture_radius, psf_model.fwhm.value)
 
-# ---- # ---- # ---- #
+
+# tests previously written to psf_photometry
 
 PSF_SIZE = 11
 GAUSSIAN_WIDTH = 1.
@@ -427,6 +428,24 @@ def test_psf_boundary():
     intab = Table(data=[[1], [1]], names=['x_0', 'y_0'])
     f = basic_phot(image=image, positions=intab)
     assert_allclose(f['flux_fit'], 0, atol=1e-8)
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_aperture_radius_value_error():
+    """
+    Test psf_photometry with discrete PRF model at the boundary of the data.
+    """
+
+    prf = DiscretePRF(test_psf, subsampling=1)
+
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                            bkg_estimator=None, psf_model=prf,
+                            fitshape=7)
+
+    intab = Table(data=[[1], [1]], names=['x_0', 'y_0'])
+    with pytest.raises(ValueError) as err:
+        f = basic_phot(image=image, positions=intab)
+
+    assert 'aperture_radius is None' in str(err.value)
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_psf_boundary_gaussian():
