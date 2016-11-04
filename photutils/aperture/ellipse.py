@@ -115,7 +115,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
     Parameters
     ----------
-    positions : array-like or `~astropy.units.Quantity`
+    positions : array_like or `~astropy.units.Quantity`
         Pixel coordinates of the aperture center(s) in one of the
         following formats:
 
@@ -195,7 +195,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
     Parameters
     ----------
-    positions : array-like or `~astropy.units.Quantity`
+    positions : array_like or `~astropy.units.Quantity`
         Pixel coordinates of the aperture center(s) in one of the
         following formats:
 

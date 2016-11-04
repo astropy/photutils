@@ -278,7 +278,7 @@ class PixelAperture(Aperture):
             in each dimension.  That is, each pixel is divided into
             ``subpixels ** 2`` subpixels.
 
-        unit : `~astropy.units.UnitBase` instance or str
+        unit : `~astropy.units.UnitBase` object or str, optional
             An object that represents the unit associated with the input
             ``data`` and ``error`` arrays.  Must be a
             `~astropy.units.UnitBase` object or a string parseable by
@@ -334,7 +334,7 @@ class PixelAperture(Aperture):
 
         Parameters
         ----------
-        origin : array-like, optional
+        origin : array_like, optional
             The ``(x, y)`` position of the origin of the displayed
             image.
 
@@ -392,7 +392,7 @@ class PixelAperture(Aperture):
 
         Parameters
         ----------
-        origin : array-like, optional
+        origin : array_like, optional
             The ``(x, y)`` position of the origin of the displayed
             image.
 
@@ -430,7 +430,7 @@ class ApertureMask(object):
     """
 
     def __init__(self, mask, bbox_slice):
-        self.data = mask
+        self.data = np.asanyarray(mask)
         self.shape = mask.shape
         self.slices = bbox_slice
 
@@ -447,9 +447,61 @@ class ApertureMask(object):
 
         return self.data
 
+    def _overlap_slices(self, shape):
+        """
+        Calculate the slices for the overlapping part of ``self.slices``
+        and an array of the given shape.
+
+        Parameters
+        ----------
+        shape : tuple of int
+            The ``(ny, nx)`` shape of array where the slices are to be
+            applied.
+
+        Returns
+        -------
+        slices_large : tuple of slices
+            A tuple of slice objects for each axis of the large array,
+            such that ``large_array[slices_large]`` extracts the region
+            of the large array that overlaps with the small array.
+
+        slices_small : slice
+            A tuple of slice objects for each axis of the small array,
+            such that ``small_array[slices_small]`` extracts the region
+            of the small array that is inside the large array.
+        """
+
+        if len(shape) != 2:
+            raise ValueError('input shape must have 2 elements.')
+
+        ymin = self.slices[0].start
+        ymax = self.slices[0].stop
+        xmin = self.slices[1].start
+        xmax = self.slices[1].stop
+
+        if (xmin >= shape[1] or ymin >= shape[0] or xmax <= 0 or ymax <= 0):
+            # no overlap of the aperture with the data
+            return None, None
+
+        slices_large = (slice(max(ymin, 0), min(ymax, shape[0])),
+                        slice(max(xmin, 0), min(xmax, shape[1])))
+
+        slices_small = (slice(max(-ymin, 0),
+                              min(ymax - ymin, shape[0] - ymin)),
+                        slice(max(-xmin, 0),
+                              min(xmax - xmin, shape[1] - xmin)))
+
+        return slices_large, slices_small
+
     def to_image(self, shape):
         """
-        Return an image of the mask in a 2D array of the given shape.
+        Return an image of the mask in a 2D array of the given shape,
+        taking any edge effects into account.
+
+        Parameters
+        ----------
+        shape : tuple of int
+            The ``(ny, nx)`` shape of the output array.
 
         Returns
         -------
@@ -457,54 +509,65 @@ class ApertureMask(object):
             A 2D array of the mask.
         """
 
-        if len(shape) == 2:
+        if len(shape) != 2:
             raise ValueError('input shape must have 2 elements.')
 
         mask = np.zeros(shape)
-        mask[self._slice] = self.data
+
+        try:
+            mask[self.slices] = self.data
+        except ValueError:    # partial or no overlap
+            slices_large, slices_small = self._overlap_slices(shape)
+
+            if slices_small is None:
+                return None    # no overlap
+
+            mask = np.zeros(shape)
+            mask[slices_large] = self.data[slices_small]
 
         return mask
 
-    def apply(self, data):
+    def apply(self, data, fill_value=0.):
         """
         Apply the aperture mask to the input data, taking any edge
         effects into account.
 
         Parameters
         ----------
-        data : array-like
+        data : array_like or `~astropy.units.Quantity`
             A 2D array on which to apply the aperture mask.
+
+        fill_value : float, optional
+            The value is used to fill pixels where the aperture mask
+            does not overlap with the input ``data``.  The default is 0.
 
         Returns
         -------
         result : `~numpy.ndarray`
             A 2D array cut out from the input ``data`` representing the
             same cutout region as the aperture mask.  If there is a
-            partial overlap of the aperture mask with the input data, a
-            zero value will be returned for pixels outside of the data.
-            `None` is returned if there is no overlap of the aperture
-            with the input ``data``.
+            partial overlap of the aperture mask with the input data,
+            pixels outside of the data will be assigned to
+            ``fill_value``.  `None` is returned if there is no overlap
+            of the aperture with the input ``data``.
         """
 
         data = np.asanyarray(data)
+        cutout = data[self.slices]
 
-        ymin = self.slices[0].start
-        ymax = self.slices[0].stop
-        xmin = self.slices[1].start
-        xmax = self.slices[1].stop
+        if cutout.shape != self.shape:
+            slices_large, slices_small = self._overlap_slices(data.shape)
 
-        if (xmin >= data.shape[1] or ymin >= data.shape[0] or xmax <= 0 or
-                ymax <= 0):
-            # no overlap of the aperture with the data
-            return None
+            if slices_small is None:
+                return None    # no overlap
 
-        xmin = max(xmin, 0)
-        xmax = min(xmax, data.shape[1])
-        ymin = max(ymin, 0)
-        ymax = min(ymax, data.shape[0])
+            cutout = np.full(self.shape, fill_value, dtype=data.dtype)
+            cutout[slices_small] = data[slices_large]
 
-        # TODO:  return a Cutout2D-like object
-        return data[ymin:ymax, xmin:xmax]
+            if isinstance(data, u.Quantity):
+                cutout = u.Quantity(cutout, unit=data.unit)
+
+        return cutout
 
 
 def _prepare_photometry_input(data, unit, wcs, mask, error, pixelwise_error):

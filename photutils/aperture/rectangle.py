@@ -124,7 +124,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
     Parameters
     ----------
-    positions : array-like or `~astropy.units.Quantity`
+    positions : array_like or `~astropy.units.Quantity`
         Pixel coordinates of the aperture center(s) in one of the
         following formats:
 
@@ -212,7 +212,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
     Parameters
     ----------
-    positions : array-like or `~astropy.units.Quantity`
+    positions : array_like or `~astropy.units.Quantity`
         Pixel coordinates of the aperture center(s) in one of the
         following formats:
 
