@@ -175,12 +175,12 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
     def area(self):
         return math.pi * self.a * self.b
 
-    def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
+    def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
              **kwargs):
         import matplotlib.patches as mpatches
 
         plot_positions, ax, kwargs = self._prepare_plot(
-            origin, source_id, ax, fill, **kwargs)
+            origin, indices, ax, fill, **kwargs)
 
         theta_deg = self.theta * 180. / np.pi
         for position in plot_positions:
@@ -273,12 +273,12 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
-    def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
+    def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
              **kwargs):
         import matplotlib.patches as mpatches
 
         plot_positions, ax, kwargs = self._prepare_plot(
-            origin, source_id, ax, fill, **kwargs)
+            origin, indices, ax, fill, **kwargs)
 
         theta_deg = self.theta * 180. / np.pi
         for position in plot_positions:

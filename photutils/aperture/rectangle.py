@@ -185,12 +185,12 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
     def area(self):
         return self.w * self.h
 
-    def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
+    def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
              **kwargs):
         import matplotlib.patches as mpatches
 
         plot_positions, ax, kwargs = self._prepare_plot(
-            origin, source_id, ax, fill, **kwargs)
+            origin, indices, ax, fill, **kwargs)
 
         hw = self.w / 2.
         hh = self.h / 2.
@@ -294,12 +294,12 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     def area(self):
         return self.w_out * self.h_out - self.w_in * self.h_in
 
-    def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
+    def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
              **kwargs):
         import matplotlib.patches as mpatches
 
         plot_positions, ax, kwargs = self._prepare_plot(
-            origin, source_id, ax, fill, **kwargs)
+            origin, indices, ax, fill, **kwargs)
 
         sint = math.sin(self.theta)
         cost = math.cos(self.theta)

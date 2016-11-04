@@ -158,12 +158,12 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
     def area(self):
         return math.pi * self.r ** 2
 
-    def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
+    def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
              **kwargs):
         import matplotlib.patches as mpatches
 
         plot_positions, ax, kwargs = self._prepare_plot(
-            origin, source_id, ax, fill, **kwargs)
+            origin, indices, ax, fill, **kwargs)
 
         for position in plot_positions:
             patch = mpatches.Circle(position, self.r, **kwargs)
@@ -232,12 +232,12 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
-    def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
+    def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
              **kwargs):
         import matplotlib.patches as mpatches
 
         plot_positions, ax, kwargs = self._prepare_plot(
-            origin, source_id, ax, fill, **kwargs)
+            origin, indices, ax, fill, **kwargs)
 
         resolution = 20
         for position in plot_positions:

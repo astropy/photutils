@@ -326,7 +326,7 @@ class PixelAperture(Aperture):
 
         return aperture_sums, aperture_sum_errs
 
-    def _prepare_plot(self, origin=(0, 0), source_id=None, ax=None,
+    def _prepare_plot(self, origin=(0, 0), indices=None, ax=None,
                       fill=False, **kwargs):
         """
         Prepare to plot the aperture(s) on a matplotlib
@@ -338,8 +338,8 @@ class PixelAperture(Aperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        source_id : int or array of int, optional
-            The source ID(s) of the aperture(s) to plot.
+        indices : int or array of int, optional
+            The indices of the aperture(s) to plot.
 
         ax : `matplotlib.axes.Axes` instance, optional
             If `None`, then the current `~matplotlib.axes.Axes` instance
@@ -356,7 +356,7 @@ class PixelAperture(Aperture):
         -------
         plot_positions : `~numpy.ndarray`
             The positions of the apertures to plot, after any
-            ``source_id`` slicing and origin shift.
+            ``indices`` slicing and ``origin`` shift.
 
         ax : `matplotlib.axes.Axes` instance, optional
             The `~matplotlib.axes.Axes` on which to plot.
@@ -375,8 +375,8 @@ class PixelAperture(Aperture):
         kwargs['fill'] = fill
 
         plot_positions = copy.deepcopy(self.positions)
-        if source_id is not None:
-            plot_positions = plot_positions[np.atleast_1d(source_id)]
+        if indices is not None:
+            plot_positions = plot_positions[np.atleast_1d(indices)]
 
         plot_positions[:, 0] -= origin[0]
         plot_positions[:, 1] -= origin[1]
@@ -384,7 +384,7 @@ class PixelAperture(Aperture):
         return plot_positions, ax, kwargs
 
     @abc.abstractmethod
-    def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
+    def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
              **kwargs):
         """
         Plot the aperture(s) on a matplotlib `~matplotlib.axes.Axes`
@@ -396,8 +396,8 @@ class PixelAperture(Aperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        source_id : int or array of int, optional
-            The source ID(s) of the aperture(s) to plot.
+        indices : int or array of int, optional
+            The indices of the aperture(s) to plot.
 
         ax : `matplotlib.axes.Axes` instance, optional
             If `None`, then the current `~matplotlib.axes.Axes` instance
