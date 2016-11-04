@@ -132,7 +132,7 @@ class PixelAperture(Aperture):
     @property
     def _geom_slices(self):
         """
-        A list of slices to be used by the low-level
+        A tuple of slices to be used by the low-level
         `photutils.geometry` functions.
         """
 
@@ -148,12 +148,12 @@ class PixelAperture(Aperture):
 
     def area():
         """
-        Area of aperture.
+        Return the exact area of the aperture shape.
 
         Returns
         -------
         area : float
-            Area of aperture.
+            The aperture area.
         """
 
         raise NotImplementedError('Needs to be implemented in a '
@@ -161,6 +161,49 @@ class PixelAperture(Aperture):
 
     @abc.abstractmethod
     def to_mask(self, method='exact', subpixels=5):
+        """
+        Return a list of `ApertureMask` objects, one for each aperture
+        position.
+
+        Parameters
+        ----------
+        method : {'exact', 'center', 'subpixel'}, optional
+            The method used to determine the overlap of the aperture and
+            the pixel grid.  Not all options are available for all
+            aperture types.  Note that the more precise methods are
+            generally slower.  The following methods are available:
+
+                * ``'exact'`` (default):
+                  The the exact fractional overlap of the aperture and
+                  each pixel is calculated.  The returned mask will
+                  contain values between 0 and 1.
+
+                * ``'center'``:
+                  A pixel is considered to be entirely in or out of the
+                  aperture depending on whether its center is in or out
+                  of the aperture.  The returned mask will contain
+                  values only of 0 (out) and 1 (in).
+
+                * ``'subpixel'``
+                  A pixel is divided into subpixels (see the
+                  ``subpixels`` keyword), each of which are considered
+                  to be entirely in or out of the aperture depending on
+                  whether its center is in or out of the aperture.  If
+                  ``subpixels=1``, this method is equivalent to
+                  ``'center'``.  The returned mask will contain values
+                  between 0 and 1.
+
+        subpixels : int, optional
+            For the ``'subpixel'`` method, resample pixels by this factor
+            in each dimension.  That is, each pixel is divided into
+            ``subpixels ** 2`` subpixels.
+
+        Returns
+        -------
+        mask : list of `~photutils.ApertureMask`
+            A list of aperture mask objects.
+        """
+
         raise NotImplementedError('Needs to be implemented in a '
                                   'PixelAperture subclass.')
 
@@ -182,6 +225,76 @@ class PixelAperture(Aperture):
 
     def do_photometry(self, data, error=None, pixelwise_error=True,
                       method='exact', subpixels=5, unit=None):
+        """
+        Perform aperture photometry on the input ``data``.
+
+        Parameters
+        ----------
+        data: array_like or `~astropy.units.Quantity` instance
+            The 2D array on which to perform photometry.  ``data``
+            should be background subtracted.
+
+        error : array_like or `~astropy.units.Quantity`, optional
+            The pixel-wise Gaussian 1-sigma errors of the input
+            ``data``.  ``error`` is assumed to include *all* sources of
+            error, including the Poisson error of the sources (see
+            `~photutils.utils.calc_total_error`) .  ``error`` must have
+            the same shape as the input ``data``.
+
+        pixelwise_error : bool, optional
+            If `True` (default), the photometric error is calculated
+            using the error values from each pixel within the aperture.
+            If `False`, only the error value at the center of the
+            aperture is used for the entire aperture.
+
+        method : {'exact', 'center', 'subpixel'}, optional
+            The method used to determine the overlap of the aperture and
+            the pixel grid.  Not all options are available for all
+            aperture types.  Note that the more precise methods are
+            generally slower.  The following methods are available:
+
+                * ``'exact'`` (default):
+                  The the exact fractional overlap of the aperture and
+                  each pixel is calculated.  The returned mask will
+                  contain values between 0 and 1.
+
+                * ``'center'``:
+                  A pixel is considered to be entirely in or out of the
+                  aperture depending on whether its center is in or out
+                  of the aperture.  The returned mask will contain
+                  values only of 0 (out) and 1 (in).
+
+                * ``'subpixel'``
+                  A pixel is divided into subpixels (see the
+                  ``subpixels`` keyword), each of which are considered
+                  to be entirely in or out of the aperture depending on
+                  whether its center is in or out of the aperture.  If
+                  ``subpixels=1``, this method is equivalent to
+                  ``'center'``.  The returned mask will contain values
+                  between 0 and 1.
+
+        subpixels : int, optional
+            For the ``'subpixel'`` method, resample pixels by this factor
+            in each dimension.  That is, each pixel is divided into
+            ``subpixels ** 2`` subpixels.
+
+        unit : `~astropy.units.UnitBase` instance or str
+            An object that represents the unit associated with the input
+            ``data`` and ``error`` arrays.  Must be a
+            `~astropy.units.UnitBase` object or a string parseable by
+            the :mod:`~astropy.units` package.  If ``data`` or ``error``
+            already have a different unit, the input ``unit`` will not
+            be used and a warning will be raised.
+
+        Returns
+        -------
+        aperture_sums : `~numpy.ndarray` or `~astropy.units.Quantity`
+            The sums within each aperture.
+
+        aperture_sum_errs : `~numpy.ndarray` or `~astropy.units.Quantity`
+            The errors on the sums within each aperture.
+        """
+
         aperture_sums = []
         aperture_sum_errs = []
         for mask in self.to_mask(method=method, subpixels=subpixels):
@@ -216,7 +329,8 @@ class PixelAperture(Aperture):
     def _prepare_plot(self, origin=(0, 0), source_id=None, ax=None,
                       fill=False, **kwargs):
         """
-        Prepare to plot the aperture(s) on a matplotlib Axes instance.
+        Prepare to plot the aperture(s) on a matplotlib
+        `~matplotlib.axes.Axes` instance.
 
         Parameters
         ----------
@@ -228,7 +342,8 @@ class PixelAperture(Aperture):
             The source ID(s) of the aperture(s) to plot.
 
         ax : `matplotlib.axes.Axes` instance, optional
-            If `None`, then the current ``Axes`` instance is used.
+            If `None`, then the current `~matplotlib.axes.Axes` instance
+            is used.
 
         fill : bool, optional
             Set whether to fill the aperture patch.  The default is
@@ -244,7 +359,7 @@ class PixelAperture(Aperture):
             ``source_id`` slicing and origin shift.
 
         ax : `matplotlib.axes.Axes` instance, optional
-            The `matplotlib.axes.Axes` on which to plot.
+            The `~matplotlib.axes.Axes` on which to plot.
 
         kwargs
             Any keyword arguments accepted by `matplotlib.patches.Patch`.
@@ -272,7 +387,8 @@ class PixelAperture(Aperture):
     def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
              **kwargs):
         """
-        Plot the aperture(s) on a matplotlib Axes instance.
+        Plot the aperture(s) on a matplotlib `~matplotlib.axes.Axes`
+        instance.
 
         Parameters
         ----------
@@ -284,7 +400,8 @@ class PixelAperture(Aperture):
             The source ID(s) of the aperture(s) to plot.
 
         ax : `matplotlib.axes.Axes` instance, optional
-            If `None`, then the current ``Axes`` instance is used.
+            If `None`, then the current `~matplotlib.axes.Axes` instance
+            is used.
 
         fill : bool, optional
             Set whether to fill the aperture patch.  The default is
@@ -297,7 +414,19 @@ class PixelAperture(Aperture):
 
 class ApertureMask(object):
     """
-    Aperture mask class.
+    Class for an aperture mask.
+
+    Parameters
+    ----------
+    mask : array_like
+        A 2D array of an aperture mask representing the fractional
+        overlap of the aperture with the pixel grid.  This should be the
+        full-sized (i.e. not truncated) array that is the direct output
+        of one of the low-level `photutils.geometry` functions.
+
+    bbox_slice : tuple of `~numpy.slice` objects
+        A tuple of ``(y, x)`` `~numpy.slice` objects defining the aperture
+        minimal bounding box.
     """
 
     def __init__(self, mask, bbox_slice):
@@ -313,11 +442,46 @@ class ApertureMask(object):
         return self.data
 
     def to_image(self, shape):
-        data = np.zeros(shape)
-        data[self._slice] = self.data
-        return data
+        """
+        Return an image of the mask in a 2D array of the given shape.
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            A 2D array of the mask.
+        """
+
+        if len(shape) == 2:
+            raise ValueError('input shape must have 2 elements.')
+
+        mask = np.zeros(shape)
+        mask[self._slice] = self.data
+
+        return mask
 
     def apply(self, data):
+        """
+        Apply the aperture mask to the input data, taking any edge
+        effects into account.
+
+        Parameters
+        ----------
+        data : array-like
+            A 2D array on which to apply the aperture mask.
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            A 2D array cut out from the input ``data`` representing the
+            same cutout region as the aperture mask.  If there is a
+            partial overlap of the aperture mask with the input data, a
+            zero value will be returned for pixels outside of the data.
+            `None` is returned if there is no overlap of the aperture
+            with the input ``data``.
+        """
+
+        data = np.asanyarray(data)
+
         ymin = self.slices[0].start
         ymax = self.slices[0].stop
         xmin = self.slices[1].start
