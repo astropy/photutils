@@ -30,6 +30,49 @@ class CircularMaskMixin(object):
     """
 
     def to_mask(self, method='exact', subpixels=5):
+        """
+        Return a list of `ApertureMask` objects, one for each aperture
+        position.
+
+        Parameters
+        ----------
+        method : {'exact', 'center', 'subpixel'}, optional
+            The method used to determine the overlap of the aperture on
+            the pixel grid.  Not all options are available for all
+            aperture types.  Note that the more precise methods are
+            generally slower.  The following methods are available:
+
+                * ``'exact'`` (default):
+                  The the exact fractional overlap of the aperture and
+                  each pixel is calculated.  The returned mask will
+                  contain values between 0 and 1.
+
+                * ``'center'``:
+                  A pixel is considered to be entirely in or out of the
+                  aperture depending on whether its center is in or out
+                  of the aperture.  The returned mask will contain
+                  values only of 0 (out) and 1 (in).
+
+                * ``'subpixel'``
+                  A pixel is divided into subpixels (see the
+                  ``subpixels`` keyword), each of which are considered
+                  to be entirely in or out of the aperture depending on
+                  whether its center is in or out of the aperture.  If
+                  ``subpixels=1``, this method is equivalent to
+                  ``'center'``.  The returned mask will contain values
+                  between 0 and 1.
+
+        subpixels : int, optional
+            For the ``'subpixel'`` method, resample pixels by this factor
+            in each dimension.  That is, each pixel is divided into
+            ``subpixels ** 2`` subpixels.
+
+        Returns
+        -------
+        mask : list of `~photutils.ApertureMask`
+            A list of aperture mask objects.
+        """
+
         if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('"{0}" method is not available for this '
                              'aperture.'.format(method))
@@ -74,10 +117,10 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         Pixel coordinates of the aperture center(s) in one of the
         following formats:
 
-          * single ``(x, y)`` tuple
-          * list of ``(x, y)`` tuples
-          * ``Nx2`` or ``2xN`` `~numpy.ndarray`
-          * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
+            * single ``(x, y)`` tuple
+            * list of ``(x, y)`` tuples
+            * ``Nx2`` or ``2xN`` `~numpy.ndarray`
+            * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
 
         Note that a ``2x2`` `~numpy.ndarray` or
         `~astropy.units.Quantity` is interpreted as ``Nx2``, i.e. two
@@ -114,6 +157,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         return [(slice(ymin, ymax), slice(xmin, xmax))
                 for xmin, xmax, ymin, ymax in zip(x_min, x_max, y_min, y_max)]
 
+    # TODO: make lazyproperty?, but update if positions or radius change
     def area(self):
         return math.pi * self.r ** 2
 
@@ -139,15 +183,18 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         Pixel coordinates of the aperture center(s) in one of the
         following formats:
 
-        * single ``(x, y)`` tuple
-        * list of ``(x, y)`` tuples
-        * ``Nx2`` or ``2xN`` `~numpy.ndarray`
-        * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
+            * single ``(x, y)`` tuple
+            * list of ``(x, y)`` tuples
+            * ``Nx2`` or ``2xN`` `~numpy.ndarray`
+            * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
 
-        A ``2x2`` `~numpy.ndarray` or `~astropy.units.Quantity` is
-        interpreted as ``Nx2``, i.e. two rows of (x, y) coordinates.
+        Note that a ``2x2`` `~numpy.ndarray` or
+        `~astropy.units.Quantity` is interpreted as ``Nx2``, i.e. two
+        rows of (x, y) coordinates.
+
     r_in : float
         The inner radius of the annulus.
+
     r_out : float
         The outer radius of the annulus.
 
@@ -155,8 +202,9 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
     ------
     ValueError : `ValueError`
         If inner radius (``r_in``) is greater than outer radius (``r_out``).
+
     ValueError : `ValueError`
-        If inner radius is negative.
+        If inner radius (``r_in``) is negative.
     """
 
     def __init__(self, positions, r_in, r_out):
@@ -189,7 +237,6 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
 
     def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
              **kwargs):
-
         import matplotlib.patches as mpatches
 
         plot_positions, ax, kwargs = self._prepare_plot(
@@ -213,8 +260,9 @@ class SkyCircularAperture(SkyAperture):
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be either
-        scalar coordinates or an array of coordinates.
+        Celestial coordinates of the aperture center(s). This can be
+        either scalar coordinates or an array of coordinates.
+
     r : `~astropy.units.Quantity`
         The radius of the aperture(s), either in angular or pixel units.
     """
@@ -243,8 +291,8 @@ class SkyCircularAperture(SkyAperture):
             xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos,
                                                                  wcs)
             r = (scale * self.r).to(u.pixel).value
-        else:
-            r = self.r.value    # pixels
+        else:    # pixels
+            r = self.r.value
 
         pixel_positions = np.array([x, y]).transpose()
 
@@ -257,16 +305,17 @@ class SkyCircularAnnulus(SkyAperture):
 
     Parameters
     ----------
-
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be either
-        scalar coordinates or an array of coordinates.
+        Celestial coordinates of the aperture center(s). This can be
+        either scalar coordinates or an array of coordinates.
 
     r_in : `~astropy.units.Quantity`
-        The inner radius of the annulus, either in angular or pixel units.
+        The inner radius of the annulus, either in angular or pixel
+        units.
 
     r_out : `~astropy.units.Quantity`
-        The outer radius of the annulus, either in angular or pixel units.
+        The outer radius of the annulus, either in angular or pixel
+        units.
     """
 
     def __init__(self, positions, r_in, r_out):
@@ -299,7 +348,7 @@ class SkyCircularAnnulus(SkyAperture):
                                                                  wcs)
             r_in = (scale * self.r_in).to(u.pixel).value
             r_out = (scale * self.r_out).to(u.pixel).value
-        else:  # pixel
+        else:    # pixels
             r_in = self.r_in.value
             r_out = self.r_out.value
 

@@ -33,6 +33,49 @@ class RectangularMaskMixin(object):
     """
 
     def to_mask(self, method='exact', subpixels=5):
+        """
+        Return a list of `ApertureMask` objects, one for each aperture
+        position.
+
+        Parameters
+        ----------
+        method : {'exact', 'center', 'subpixel'}, optional
+            The method used to determine the overlap of the aperture on
+            the pixel grid.  Not all options are available for all
+            aperture types.  Note that the more precise methods are
+            generally slower.  The following methods are available:
+
+                * ``'exact'`` (default):
+                  The the exact fractional overlap of the aperture and
+                  each pixel is calculated.  The returned mask will
+                  contain values between 0 and 1.
+
+                * ``'center'``:
+                  A pixel is considered to be entirely in or out of the
+                  aperture depending on whether its center is in or out
+                  of the aperture.  The returned mask will contain
+                  values only of 0 (out) and 1 (in).
+
+                * ``'subpixel'``
+                  A pixel is divided into subpixels (see the
+                  ``subpixels`` keyword), each of which are considered
+                  to be entirely in or out of the aperture depending on
+                  whether its center is in or out of the aperture.  If
+                  ``subpixels=1``, this method is equivalent to
+                  ``'center'``.  The returned mask will contain values
+                  between 0 and 1.
+
+        subpixels : int, optional
+            For the ``'subpixel'`` method, resample pixels by this factor
+            in each dimension.  That is, each pixel is divided into
+            ``subpixels ** 2`` subpixels.
+
+        Returns
+        -------
+        mask : list of `~photutils.ApertureMask`
+            A list of aperture mask objects.
+        """
+
         if method == 'exact':
             warnings.warn("'exact' method is not implemented for rectangular "
                           "apertures -- instead using 'subpixel' method with "
@@ -84,20 +127,31 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
     Parameters
     ----------
-    positions : tuple, or list, or array
-        Pixel coordinates of the aperture center(s), either as a single
-        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` or
-        ``2xN`` `~numpy.ndarray`, or an ``Nx2`` or ``2xN``
-        `~astropy.units.Quantity` in units of pixels.  A ``2x2``
-        `~numpy.ndarray` or `~astropy.units.Quantity` is interpreted as
-        ``Nx2``, i.e. two rows of (x, y) coordinates.
+    positions : array-like or `~astropy.units.Quantity`
+        Pixel coordinates of the aperture center(s) in one of the
+        following formats:
+
+            * single ``(x, y)`` tuple
+            * list of ``(x, y)`` tuples
+            * ``Nx2`` or ``2xN`` `~numpy.ndarray`
+            * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
+
+        Note that a ``2x2`` `~numpy.ndarray` or
+        `~astropy.units.Quantity` is interpreted as ``Nx2``, i.e. two
+        rows of (x, y) coordinates.
+
     w : float
-        The full width of the aperture (at theta = 0, this is the "x" axis).
+        The full width of the aperture.  For ``theta=0`` the width side
+        is along the ``x`` axis.
+
     h : float
-        The full height of the aperture (at theta = 0, this is the "y" axis).
+        The full height of the aperture.  For ``theta=0`` the height
+        side is along the ``y`` axis.
+
     theta : float
-        The position angle of the width side in radians
-        (counterclockwise).
+        The rotation angle in radians of the width (``w``) side from the
+        positive ``x`` axis.  The rotation angle increases
+        counterclockwise.
 
     Raises
     ------
@@ -136,7 +190,6 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
     def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
              **kwargs):
-
         import matplotlib.patches as mpatches
 
         plot_positions, ax, kwargs = self._prepare_plot(
@@ -162,31 +215,50 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
     Parameters
     ----------
-    positions : tuple, list, array, or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s), either as a single
-        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` or
-        ``2xN`` `~numpy.ndarray`, or an ``Nx2`` or ``2xN``
-        `~astropy.units.Quantity` in units of pixels.  A ``2x2``
-        `~numpy.ndarray` or `~astropy.units.Quantity` is interpreted as
-        ``Nx2``, i.e. two rows of (x, y) coordinates.
+    positions : array-like or `~astropy.units.Quantity`
+        Pixel coordinates of the aperture center(s) in one of the
+        following formats:
+
+            * single ``(x, y)`` tuple
+            * list of ``(x, y)`` tuples
+            * ``Nx2`` or ``2xN`` `~numpy.ndarray`
+            * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
+
+        Note that a ``2x2`` `~numpy.ndarray` or
+        `~astropy.units.Quantity` is interpreted as ``Nx2``, i.e. two
+        rows of (x, y) coordinates.
+
     w_in : float
-        The inner full width of the aperture.
+        The inner full width of the aperture.  For ``theta=0`` the width
+        side is along the ``x`` axis.
+
     w_out : float
-        The outer full width of the aperture.
+        The outer full width of the aperture.  For ``theta=0`` the width
+        side is along the ``x`` axis.
+
     h_out : float
-        The outer full height of the aperture. (The inner full height is
-        determined by scaling by w_in/w_out.)
+        The outer full height of the aperture.  The inner full height is
+        calculated as:
+
+            .. math:: h_{in} = h_{out}
+                \\left(\\frac{w_{in}}{w_{out}}\\right)
+
+        For ``theta=0`` the height side is along the ``y`` axis.
+
     theta : float
-        The position angle of the width side in radians.
-        (counterclockwise).
+        The rotation angle in radians of the width side from the
+        positive ``x`` axis.  The rotation angle increases
+        counterclockwise.
 
     Raises
     ------
     ValueError : `ValueError`
-        If inner width (``w_in``) is greater than outer width (``w_out``).
+        If inner width (``w_in``) is greater than outer width
+        (``w_out``).
+
     ValueError : `ValueError`
-        If either the inner width (``w_in``) or the outer height (``h_out``)
-        is negative.
+        If either the inner width (``w_in``) or the outer height
+        (``h_out``) is negative.
     """
 
     def __init__(self, positions, w_in, w_out, h_out, theta):
@@ -227,7 +299,6 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
     def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
              **kwargs):
-
         import matplotlib.patches as mpatches
 
         plot_positions, ax, kwargs = self._prepare_plot(
@@ -267,17 +338,23 @@ class SkyRectangularAperture(SkyAperture):
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be either
-        scalar coordinates or an array of coordinates.
+        Celestial coordinates of the aperture center(s). This can be
+        either scalar coordinates or an array of coordinates.
+
     w : `~astropy.units.Quantity`
-        The full width of the aperture(s) (at theta = 0, this is the "x"
-        axis), either in angular or pixel units.
+        The full width of the aperture, either in angular or pixel
+        units.  For ``theta=0`` the width side is along the North-South
+        axis.
+
     h :  `~astropy.units.Quantity`
-        The full height of the aperture(s) (at theta = 0, this is the "y"
-        axis), either in angular or pixel units.
+        The full height of the aperture, either in angular or pixel
+        units.  For ``theta=0`` the height side is along the East-West
+        axis.
+
     theta : `~astropy.units.Quantity`
-        The position angle of the width side in radians
-        (counterclockwise).
+        The position angle (in angular units) of the width side.  For a
+        right-handed world coordinate system, the position angle
+        increases counterclockwise from North (PA=0).
     """
 
     def __init__(self, positions, w, h, theta):
@@ -332,21 +409,32 @@ class SkyRectangularAnnulus(SkyAperture):
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be either
-        scalar coordinates or an array of coordinates.
+        Celestial coordinates of the aperture center(s). This can be
+        either scalar coordinates or an array of coordinates.
+
     w_in : `~astropy.units.Quantity`
-        The inner full width of the aperture(s), either in angular or pixel
-        units.
+        The inner full width of the aperture, either in angular or pixel
+        units.  For ``theta=0`` the width side is along the North-South
+        axis.
+
     w_out : `~astropy.units.Quantity`
-        The outer full width of the aperture(s), either in angular or pixel
-        units.
+        The outer full width of the aperture, either in angular or pixel
+        units.  For ``theta=0`` the width side is along the North-South
+        axis.
+
     h_out : `~astropy.units.Quantity`
-        The outer full height of the aperture(s), either in angular or pixel
-        units. (The inner full height is determined by scaling by
-        w_in/w_out.)
+        The outer full height of the aperture, either in angular or
+        pixel units.  The inner full height is calculated as:
+
+            .. math:: h_{in} = h_{out}
+                \\left(\\frac{w_{in}}{w_{out}}\\right)
+
+        For ``theta=0`` the height side is along the East-West axis.
+
     theta : `~astropy.units.Quantity`
-        The position angle of the semimajor axis (counterclockwise), either
-        in angular or pixel units.
+        The position angle (in angular units) of the width side.  For a
+        right-handed world coordinate system, the position angle
+        increases counterclockwise from North (PA=0).
     """
 
     def __init__(self, positions, w_in, w_out, h_out, theta):

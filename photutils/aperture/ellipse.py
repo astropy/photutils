@@ -30,6 +30,49 @@ class EllipticalMaskMixin(object):
     """
 
     def to_mask(self, method='exact', subpixels=5):
+        """
+        Return a list of `ApertureMask` objects, one for each aperture
+        position.
+
+        Parameters
+        ----------
+        method : {'exact', 'center', 'subpixel'}, optional
+            The method used to determine the overlap of the aperture on
+            the pixel grid.  Not all options are available for all
+            aperture types.  Note that the more precise methods are
+            generally slower.  The following methods are available:
+
+                * ``'exact'`` (default):
+                  The the exact fractional overlap of the aperture and
+                  each pixel is calculated.  The returned mask will
+                  contain values between 0 and 1.
+
+                * ``'center'``:
+                  A pixel is considered to be entirely in or out of the
+                  aperture depending on whether its center is in or out
+                  of the aperture.  The returned mask will contain
+                  values only of 0 (out) and 1 (in).
+
+                * ``'subpixel'``
+                  A pixel is divided into subpixels (see the
+                  ``subpixels`` keyword), each of which are considered
+                  to be entirely in or out of the aperture depending on
+                  whether its center is in or out of the aperture.  If
+                  ``subpixels=1``, this method is equivalent to
+                  ``'center'``.  The returned mask will contain values
+                  between 0 and 1.
+
+        subpixels : int, optional
+            For the ``'subpixel'`` method, resample pixels by this factor
+            in each dimension.  That is, each pixel is divided into
+            ``subpixels ** 2`` subpixels.
+
+        Returns
+        -------
+        mask : list of `~photutils.ApertureMask`
+            A list of aperture mask objects.
+        """
+
         if method not in ('center', 'subpixel', 'exact'):
             raise ValueError('"{0}" method is not available for this '
                              'aperture.'.format(method))
@@ -75,20 +118,29 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
     Parameters
     ----------
-    positions : tuple, list, array, or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s), either as a single
-        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` or
-        ``2xN`` `~numpy.ndarray`, or an ``Nx2`` or ``2xN``
-        `~astropy.units.Quantity` in units of pixels.  A ``2x2``
-        `~numpy.ndarray` or `~astropy.units.Quantity` is interpreted as
-        ``Nx2``, i.e. two rows of (x, y) coordinates.
+    positions : array-like or `~astropy.units.Quantity`
+        Pixel coordinates of the aperture center(s) in one of the
+        following formats:
+
+            * single ``(x, y)`` tuple
+            * list of ``(x, y)`` tuples
+            * ``Nx2`` or ``2xN`` `~numpy.ndarray`
+            * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
+
+        Note that a ``2x2`` `~numpy.ndarray` or
+        `~astropy.units.Quantity` is interpreted as ``Nx2``, i.e. two
+        rows of (x, y) coordinates.
+
     a : float
         The semimajor axis.
+
     b : float
         The semiminor axis.
+
     theta : float
-        The position angle of the semimajor axis in radians
-        (counterclockwise).
+        The rotation angle in radians of the semimajor axis from the
+        positive ``x`` axis.  The rotation angle increases
+        counterclockwise.
 
     Raises
     ------
@@ -146,29 +198,43 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
     Parameters
     ----------
-    positions : tuple, list, array, or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s), either as a single
-        ``(x, y)`` tuple, a list of ``(x, y)`` tuples, an ``Nx2`` or
-        ``2xN`` `~numpy.ndarray`, or an ``Nx2`` or ``2xN``
-        `~astropy.units.Quantity` in units of pixels.  A ``2x2``
-        `~numpy.ndarray` or `~astropy.units.Quantity` is interpreted as
-        ``Nx2``, i.e. two rows of (x, y) coordinates.
+    positions : array-like or `~astropy.units.Quantity`
+        Pixel coordinates of the aperture center(s) in one of the
+        following formats:
+
+            * single ``(x, y)`` tuple
+            * list of ``(x, y)`` tuples
+            * ``Nx2`` or ``2xN`` `~numpy.ndarray`
+            * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
+
+        Note that a ``2x2`` `~numpy.ndarray` or
+        `~astropy.units.Quantity` is interpreted as ``Nx2``, i.e. two
+        rows of (x, y) coordinates.
+
     a_in : float
         The inner semimajor axis.
+
     a_out : float
         The outer semimajor axis.
+
     b_out : float
-        The outer semiminor axis. (The inner semiminor axis is determined
-        by scaling by a_in/a_out.)
+        The outer semiminor axis.  The inner semiminor axis is
+        calculated as:
+
+            .. math:: b_{in} = b_{out}
+                \\left(\\frac{a_{in}}{a_{out}}\\right)
+
     theta : float
-        The position angle of the semimajor axis in radians.
-        (counterclockwise).
+        The rotation angle in radians of the semimajor axis from the
+        positive ``x`` axis.  The rotation angle increases
+        counterclockwise.
 
     Raises
     ------
     ValueError : `ValueError`
         If inner semimajor axis (``a_in``) is greater than outer semimajor
         axis (``a_out``).
+
     ValueError : `ValueError`
         If either the inner semimajor axis (``a_in``) or the outer semiminor
         axis (``b_out``) is negative.
@@ -191,7 +257,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         if a_in < 0 or b_out < 0:
             raise ValueError("'a_in' and 'b_out' must be non-negative")
 
-        self.b_in = a_in * b_out / a_out
+        self.b_in = b_out * a_in / a_out
 
         self.positions = _sanitize_pixel_positions(positions)
 
@@ -235,15 +301,19 @@ class SkyEllipticalAperture(SkyAperture):
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be either
-        scalar coordinates or an array of coordinates.
+        Celestial coordinates of the aperture center(s). This can be
+        either scalar coordinates or an array of coordinates.
+
     a : `~astropy.units.Quantity`
         The semimajor axis, either in angular or pixel units.
+
     b : `~astropy.units.Quantity`
         The semiminor axis, either in angular or pixel units.
+
     theta : `~astropy.units.Quantity`
-        The position angle of the semimajor axis (counterclockwise), either
-        in angular or pixel units.
+        The position angle (in angular units) of the semimajor axis.
+        For a right-handed world coordinate system, the position angle
+        increases counterclockwise from North (PA=0).
     """
 
     def __init__(self, positions, a, b, theta):
@@ -296,18 +366,26 @@ class SkyEllipticalAnnulus(SkyAperture):
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be either
-        scalar coordinates or an array of coordinates.
+        Celestial coordinates of the aperture center(s). This can be
+        either scalar coordinates or an array of coordinates.
+
     a_in : `~astropy.units.Quantity`
         The inner semimajor axis, either in angular or pixel units.
+
     a_out : `~astropy.units.Quantity`
         The outer semimajor axis, either in angular or pixel units.
-    b_out : `~astropy.units.Quantity`
-        The outer semiminor axis, either in angular or pixel units. The inner
-        semiminor axis is determined by scaling by a_in/a_out.
+
+    b_out : float
+        The outer semiminor axis, either in angular or pixel units.  The
+        inner semiminor axis is calculated as:
+
+            .. math:: b_{in} = b_{out}
+                \\left(\\frac{a_{in}}{a_{out}}\\right)
+
     theta : `~astropy.units.Quantity`
-        The position angle of the semimajor axis (counterclockwise), either
-        in angular or pixel units.
+        The position angle (in angular units) of the semimajor axis.
+        For a right-handed world coordinate system, the position angle
+        increases counterclockwise from North (PA=0).
     """
 
     def __init__(self, positions, a_in, a_out, b_out, theta):

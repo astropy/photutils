@@ -168,7 +168,7 @@ class PixelAperture(Aperture):
         Parameters
         ----------
         method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the overlap of the aperture and
+            The method used to determine the overlap of the aperture on
             the pixel grid.  Not all options are available for all
             aperture types.  Note that the more precise methods are
             generally slower.  The following methods are available:
@@ -226,11 +226,11 @@ class PixelAperture(Aperture):
     def do_photometry(self, data, error=None, pixelwise_error=True,
                       method='exact', subpixels=5, unit=None):
         """
-        Perform aperture photometry on the input ``data``.
+        Perform aperture photometry on the input data.
 
         Parameters
         ----------
-        data: array_like or `~astropy.units.Quantity` instance
+        data : array_like or `~astropy.units.Quantity` instance
             The 2D array on which to perform photometry.  ``data``
             should be background subtracted.
 
@@ -243,12 +243,12 @@ class PixelAperture(Aperture):
 
         pixelwise_error : bool, optional
             If `True` (default), the photometric error is calculated
-            using the error values from each pixel within the aperture.
-            If `False`, only the error value at the center of the
-            aperture is used for the entire aperture.
+            using the ``error`` values from each pixel within the
+            aperture.  If `False`, the ``error`` value at the center of
+            the aperture is used for the entire aperture.
 
         method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the overlap of the aperture and
+            The method used to determine the overlap of the aperture on
             the pixel grid.  Not all options are available for all
             aperture types.  Note that the more precise methods are
             generally slower.  The following methods are available:
@@ -420,12 +420,12 @@ class ApertureMask(object):
     ----------
     mask : array_like
         A 2D array of an aperture mask representing the fractional
-        overlap of the aperture with the pixel grid.  This should be the
+        overlap of the aperture on the pixel grid.  This should be the
         full-sized (i.e. not truncated) array that is the direct output
         of one of the low-level `photutils.geometry` functions.
 
-    bbox_slice : tuple of `~numpy.slice` objects
-        A tuple of ``(y, x)`` `~numpy.slice` objects defining the aperture
+    bbox_slice : tuple of slice objects
+        A tuple of ``(y, x)`` numpy slice objects defining the aperture
         minimal bounding box.
     """
 
@@ -436,9 +436,15 @@ class ApertureMask(object):
 
     @property
     def array(self):
+        """The 2D mask array."""
+
         return self.data
 
     def __array__(self):
+        """
+        Array representation of the mask array (e.g., for matplotlib).
+        """
+
         return self.data
 
     def to_image(self, shape):
