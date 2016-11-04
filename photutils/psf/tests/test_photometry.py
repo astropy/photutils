@@ -427,3 +427,53 @@ def test_psf_boundary():
     intab = Table(data=[[1], [1]], names=['x_0', 'y_0'])
     f = basic_phot(image=image, positions=intab)
     assert_allclose(f['flux_fit'], 0, atol=1e-8)
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_psf_boundary_gaussian():
+    """
+    Test psf_photometry with discrete PRF model at the boundary of the data.
+    """
+
+    psf = IntegratedGaussianPRF(GAUSSIAN_WIDTH)
+
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                            bkg_estimator=None, psf_model=psf,
+                            fitshape=7)
+
+    intab = Table(data=[[1], [1]], names=['x_0', 'y_0'])
+    f = basic_phot(image=image, positions=intab)
+    assert_allclose(f['flux_fit'], 0, atol=1e-8)
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_psf_photometry_gaussian():
+    """
+    Test psf_photometry with Gaussian PSF model.
+    """
+
+    psf = IntegratedGaussianPRF(sigma=GAUSSIAN_WIDTH)
+
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                            bkg_estimator=None, psf_model=psf,
+                            fitshape=7)
+    f = basic_phot(image=image, positions=INTAB)
+    for n in ['x', 'y', 'flux']:
+        assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_psf_fitting_data_on_edge():
+    """
+    No mask is input explicitly here, but source 2 is so close to the
+    edge that the subarray that's extracted gets a mask internally.
+    """
+
+    psf_guess = IntegratedGaussianPRF(flux=1, sigma=WIDE_GAUSSIAN_WIDTH)
+    psf_guess.flux.fixed = psf_guess.x_0.fixed = psf_guess.y_0.fixed = False
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                            bkg_estimator=None, psf_model=psf_guess,
+                            fitshape=7)
+
+    outtab = basic_phot(image=wide_image, positions=WIDE_INTAB)
+
+    for n in ['x', 'y', 'flux']:
+        assert_allclose(outtab[n + '_0'], outtab[n + '_fit'],
+                        rtol=0.05, atol=0.1)
