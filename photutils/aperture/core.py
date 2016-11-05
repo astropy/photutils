@@ -146,7 +146,7 @@ class PixelAperture(Aperture):
 
         return geom_slices
 
-    def area():
+    def area(self):
         """
         Return the exact area of the aperture shape.
 
@@ -158,6 +158,57 @@ class PixelAperture(Aperture):
 
         raise NotImplementedError('Needs to be implemented in a '
                                   'PixelAperture subclass.')
+
+    def mask_area(self, method='exact', subpixels=5):
+        """
+        Return the area of the aperture(s) mask.
+
+        For ``method`` other than ``'exact'``, this area will be less
+        than the exact analytical area (e.g. the ``area`` method).  Note
+        that for these methods, the values can also differ because of
+        fractional pixel positions.
+
+        Parameters
+        ----------
+        method : {'exact', 'center', 'subpixel'}, optional
+            The method used to determine the overlap of the aperture on
+            the pixel grid.  Not all options are available for all
+            aperture types.  Note that the more precise methods are
+            generally slower.  The following methods are available:
+
+                * ``'exact'`` (default):
+                  The the exact fractional overlap of the aperture and
+                  each pixel is calculated.  The returned mask will
+                  contain values between 0 and 1.
+
+                * ``'center'``:
+                  A pixel is considered to be entirely in or out of the
+                  aperture depending on whether its center is in or out
+                  of the aperture.  The returned mask will contain
+                  values only of 0 (out) and 1 (in).
+
+                * ``'subpixel'``:
+                  A pixel is divided into subpixels (see the
+                  ``subpixels`` keyword), each of which are considered
+                  to be entirely in or out of the aperture depending on
+                  whether its center is in or out of the aperture.  If
+                  ``subpixels=1``, this method is equivalent to
+                  ``'center'``.  The returned mask will contain values
+                  between 0 and 1.
+
+        subpixels : int, optional
+            For the ``'subpixel'`` method, resample pixels by this factor
+            in each dimension.  That is, each pixel is divided into
+            ``subpixels ** 2`` subpixels.
+
+        Returns
+        -------
+        area : float
+            A list of the mask area of the aperture(s).
+        """
+
+        mask = self.to_mask(method=method, subpixels=subpixels)
+        return [np.sum(m.data) for m in mask]
 
     @abc.abstractmethod
     def to_mask(self, method='exact', subpixels=5):
