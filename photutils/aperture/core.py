@@ -884,13 +884,6 @@ def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
     thus supports `~astropy.nddata.NDData` objects as input.
     """
 
-    apertures = np.atleast_1d(apertures)
-    positions = apertures[0].positions
-    for aper in apertures[1:]:
-        if not np.array_equal(aper.positions, positions):
-            raise ValueError('Input apertures must all have identical '
-                             'positions.')
-
     data, error, pixelwise_error, mask, wcs = \
         _prepare_photometry_input(data, error, pixelwise_error, mask, wcs,
                                   unit)
@@ -899,6 +892,7 @@ def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
         if (int(subpixels) != subpixels) or (subpixels <= 0):
             raise ValueError('subpixels must be a positive integer.')
 
+    apertures = np.atleast_1d(apertures)
 
     # convert sky to pixel apertures
     skyaper = False
@@ -907,11 +901,19 @@ def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
             raise ValueError('A WCS transform must be defined by the input '
                              'data or the wcs keyword when using a '
                              'SkyAperture object.')
+
         skyaper = True
         skycoord_pos = apertures[0].positions
 
         pix_aper = [aper.to_pixel(wcs) for aper in apertures]
         apertures = pix_aper
+
+    # do comparison in pixels to avoid comparing SkyCoord objects
+    positions = apertures[0].positions
+    for aper in apertures[1:]:
+        if not np.array_equal(aper.positions, positions):
+            raise ValueError('Input apertures must all have identical '
+                             'positions.')
 
     calling_args = ("method='{0}', subpixels={1}, pixelwise_error={2}"
                     .format(method, subpixels, pixelwise_error))
