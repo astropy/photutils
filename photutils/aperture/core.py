@@ -212,14 +212,27 @@ class PixelAperture(Aperture):
         if len(_list) == 0:   # if error is not input
             return _list
 
+        if unit is not None:
+            unit = u.Unit(unit, parse_strict='warn')
+            if isinstance(unit, u.UnrecognizedUnit):
+                warnings.warn('The input unit is not parseable as a valid '
+                              'unit.', AstropyUserWarning)
+                unit = None
+
         if isinstance(_list[0], u.Quantity):
             # list of Quantity -> Quantity array
             output = u.Quantity(_list)
-            # TODO:  issue warning if input unit doesn't match Quantity
+
+            if unit is not None:
+                if output.unit != unit:
+                    warnings.warn('The input unit does not agree with the '
+                                  'data and/or error unit.',
+                                  AstropyUserWarning)
         else:
-            output = np.array(_list)
             if unit is not None:
                 output = u.Quantity(_list, unit=unit)
+            else:
+                output = np.array(_list)
 
         return output
 
@@ -649,8 +662,8 @@ def _prepare_photometry_input(data, unit, wcs, mask, error, pixelwise_error):
         try:
             wcs_transformation = WCS(header)
         except:
-            # data was not fits so header is not defined or header is invalid
-            # Let the calling application raise an error is it needs a WCS.
+            # A valid WCS was not found in the header.  Let the calling
+            # application raise an error if it needs a WCS.
             pass
 
     if hasattr(data, 'unit'):
@@ -666,7 +679,7 @@ def _prepare_photometry_input(data, unit, wcs, mask, error, pixelwise_error):
                 if unit != dataunit:
                     warnings.warn('Unit of input data ({0}) and unit given '
                                   'by unit argument ({1}) are not identical.'
-                                  .format(dataunit, unit))
+                                  .format(dataunit, unit), AstropyUserWarning)
         else:
             if not isinstance(dataunit, u.UnrecognizedUnit):
                 data = u.Quantity(data, unit=dataunit, copy=False)
@@ -674,7 +687,7 @@ def _prepare_photometry_input(data, unit, wcs, mask, error, pixelwise_error):
                 warnings.warn('Neither the unit of the input data ({0}), nor '
                               'the unit given by the unit argument ({1}) is '
                               'parseable as a valid unit'
-                              .format(dataunit, unit))
+                              .format(dataunit, unit), AstropyUserWarning)
 
     elif unit is None:
         if dataunit is not None:
