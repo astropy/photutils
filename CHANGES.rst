@@ -15,6 +15,14 @@ New Features
 
   - Added ``__len__`` method for aperture classes. [#446]
 
+  - Added new ``to_mask`` method to ``PixelAperture`` classes. [#453]
+
+  - Added new ``ApertureMask`` class to generate masks from apertures.
+    [#453]
+
+  - Added new ``mask_area()`` method to ``PixelAperture`` classes.
+    [#453]
+
 - ``photutils.background``
 
   - Added new ``MeanBackground``, ``MedianBackground``,
@@ -86,6 +94,12 @@ API changes
     [#368]
 
   - ``aperture_photometry`` now outputs a ``QTable``. [#446]
+
+  - Renamed ``source_id`` keyword to ``indices`` in the aperture
+    ``plot()`` method. [#453]
+
+  - Added ``mask`` and ``unit`` keywords to aperture
+    ``do_photometry()`` methods.  [#453]
 
 - ``photutils.background``
 
