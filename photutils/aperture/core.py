@@ -610,37 +610,17 @@ class ApertureMask(object):
         return cutout
 
 
-def _prepare_photometry_input(data, unit, wcs, mask, error, pixelwise_error):
+def _prepare_photometry_input(data, error, pixelwise_error, mask, wcs, unit):
     """
-    Parse photometry input.
+    Parse the inputs to `aperture_photometry`.
 
-    Photometry routines accept a wide range of inputs, e.g. ``data``
-    could be (among others)  a numpy array, or a fits HDU.
-    This requires some parsing and bookkeping to ensure that all inputs
-    are complete and consistent.
-    For example, the data could carry a unit and the wcs itself, so we need to
-    check that it is consistent with the unit and wcs given as explicit
-    parameters.
-
-    Note that this function is meant to be used in addition to, not instead
-    of, the `~astropy.nddata.support_nddata` decorator, i. e. ``data`` is
-    never an `~astropy.nddata.NDData` object, because that will be split up
-    in data, wcs, mask, ... keywords by the decorator already.
-
-    See `~photutils.aperture_photometry` for a description of all
-    possible input values.
-
-    Returns
-    -------
-    data : `~astropy.units.Quantity` instance
-    wcs_transformation : `~astropy.wcs.WCS` instance or None
-    mask : np.array or None
-    error : `~astropy.units.Quantity` instance or None
+    `aperture_photometry` accepts a wide range of inputs, e.g. ``data``
+    could be a numpy array, a Quantity array, or a fits HDU.  This
+    requires some parsing and validation to ensure that all inputs are
+    complete and consistent.  For example, the data could carry a unit
+    and the wcs itself, so we need to check that it is consistent with
+    the unit and wcs given as input parameters.
     """
-
-    dataunit = None
-    datamask = None
-    wcs_transformation = wcs
 
     if isinstance(data, fits.HDUList):
         for i in range(len(data)):
@@ -656,94 +636,70 @@ def _prepare_photometry_input(data, unit, wcs, mask, error, pixelwise_error):
         data = data.data
 
         if 'BUNIT' in header:
-            dataunit = header['BUNIT']
+            bunit = u.Unit(header['BUNIT'], parse_strict='warn')
+            if isinstance(bunit, u.UnrecognizedUnit):
+                warnings.warn('The BUNIT in the header of the input data is '
+                              'not parseable as a valid unit.',
+                              AstropyUserWarning)
+            else:
+                data = u.Quantity(data, unit=bunit)
 
-    if wcs_transformation is None:
+    if wcs is None:
         try:
-            wcs_transformation = WCS(header)
+            wcs = WCS(header)
         except:
             # A valid WCS was not found in the header.  Let the calling
-            # application raise an error if it needs a WCS.
+            # application raise an exception if it needs a WCS.
             pass
 
-    if hasattr(data, 'unit'):
-        dataunit = data.unit
-
-    if unit is not None and dataunit is not None:
-        dataunit = u.Unit(dataunit, parse_strict='warn')
-        unit = u.Unit(unit, parse_strict='warn')
-
-        if not isinstance(unit, u.UnrecognizedUnit):
-            data = u.Quantity(data, unit=unit, copy=False)
-            if not isinstance(dataunit, u.UnrecognizedUnit):
-                if unit != dataunit:
-                    warnings.warn('Unit of input data ({0}) and unit given '
-                                  'by unit argument ({1}) are not identical.'
-                                  .format(dataunit, unit), AstropyUserWarning)
-        else:
-            if not isinstance(dataunit, u.UnrecognizedUnit):
-                data = u.Quantity(data, unit=dataunit, copy=False)
-            else:
-                warnings.warn('Neither the unit of the input data ({0}), nor '
-                              'the unit given by the unit argument ({1}) is '
-                              'parseable as a valid unit'
-                              .format(dataunit, unit), AstropyUserWarning)
-
-    elif unit is None:
-        if dataunit is not None:
-            dataunit = u.Unit(dataunit, parse_strict='warn')
-            data = u.Quantity(data, unit=dataunit, copy=False)
-        else:
-            data = u.Quantity(data, copy=False)
-    else:
-        unit = u.Unit(unit, parse_strict='warn')
-        data = u.Quantity(data, unit=unit, copy=False)
-
-    # Check input array type and dimension.
-    if np.iscomplexobj(data):
-        raise TypeError('Complex type not supported')
+    data = np.asanyarray(data)
     if data.ndim != 2:
-        raise ValueError('{0}D array not supported. '
-                         'Only 2D arrays supported.'.format(data.ndim))
+        raise ValueError('data must be a 2D array.')
 
-    # Deal with the mask if it exists
-    if mask is not None or datamask is not None:
-        if mask is None:
-            mask = datamask
-        else:
-            mask = np.asarray(mask)
-            if np.iscomplexobj(mask):
-                raise TypeError('Complex type not supported')
-            if mask.shape != data.shape:
-                raise ValueError('Shapes of mask array and data array '
-                                 'must match')
+    if unit is not None:
+        unit = u.Unit(unit, parse_strict='warn')
+        if isinstance(unit, u.UnrecognizedUnit):
+            warnings.warn('The input unit is not parseable as a valid '
+                          'unit.', AstropyUserWarning)
+            unit = None
 
-            if datamask is not None:
-                # combine the masks
-                mask = np.logical_or(mask, datamask)
+    if isinstance(data, u.Quantity):
+        if data.unit != unit:
+            warnings.warn('The input unit does not agree with the data '
+                          'unit.', AstropyUserWarning)
+    else:
+        if unit is not None:
+            data = u.Quantity(data, unit=unit)
 
-    # Check whether we really need to calculate pixelwise errors, even if
-    # requested.  If error is not an array, then it's not needed.
-    if (error is None) or (np.isscalar(error)):
-        pixelwise_error = False
-
-    # Check error shape.
     if error is not None:
         if isinstance(error, u.Quantity):
+            if error.unit != unit:
+                warnings.warn('The input unit does not agree with the error '
+                              'unit.', AstropyUserWarning)
+
             if np.isscalar(error.value):
                 error = u.Quantity(np.broadcast_arrays(error, data),
                                    unit=error.unit)[0]
-        elif np.isscalar(error):
-            error = u.Quantity(np.broadcast_arrays(error, data),
-                               unit=data.unit)[0]
+                pixelwise_error = False
         else:
-            error = u.Quantity(error, unit=data.unit, copy=False)
+            if np.isscalar(error):
+                error = np.broadcast_arrays(error, data)[0]
+                pixelwise_error = False
+
+            if unit is not None:
+                error = u.Quantity(error, unit=unit)
+
+            error = np.asanyarray(error)
 
         if error.shape != data.shape:
-            raise ValueError('shapes of error array and data array must'
-                             ' match')
+            raise ValueError('error and data must have the same shape.')
 
-    return data, wcs_transformation, mask, error, pixelwise_error
+    if mask is not None:
+        mask = np.asanyarray(mask)
+        if mask.shape != data.shape:
+            raise ValueError('mask and data must have the same shape.')
+
+    return data, error, pixelwise_error, mask, wcs
 
 
 @support_nddata
@@ -865,9 +821,9 @@ def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
     thus supports `~astropy.nddata.NDData` objects as input.
     """
 
-    data, wcs, mask, error, pixelwise_error = \
-        _prepare_photometry_input(data, unit, wcs, mask, error,
-                                  pixelwise_error)
+    data, error, pixelwise_error, mask, wcs = \
+        _prepare_photometry_input(data, error, pixelwise_error, mask, wcs,
+                                  unit)
 
     if method == 'subpixel':
         if (int(subpixels) != subpixels) or (subpixels <= 0):

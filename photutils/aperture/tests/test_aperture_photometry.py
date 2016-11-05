@@ -502,7 +502,6 @@ def test_basic_circular_aperture_photometry_unit():
 
     data1 = np.ones((40, 40), dtype=np.float)
     data2 = u.Quantity(data1, unit=u.adu)
-    data3 = u.Quantity(data1, unit=u.Jy)
 
     radius = 3
     position = (20, 20)
@@ -513,11 +512,6 @@ def test_basic_circular_aperture_photometry_unit():
                                  unit=unit)
     table2 = aperture_photometry(data2, CircularAperture(position, radius),
                                  unit=unit)
-    with pytest.raises(u.UnitConversionError) as err:
-        aperture_photometry(data3, CircularAperture(position, radius),
-                            unit=unit)
-    assert ("UnitConversionError: 'Jy' (spectral flux density) and 'adu' are "
-            "not convertible" in str(err))
 
     assert_allclose(table1['aperture_sum'].value, true_flux)
     assert_allclose(table2['aperture_sum'].value, true_flux)
