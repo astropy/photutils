@@ -686,10 +686,16 @@ def _prepare_photometry_input(data, error, pixelwise_error, mask, wcs, unit):
                 error = u.Quantity(np.broadcast_arrays(error, data),
                                    unit=error.unit)[0]
                 pixelwise_error = False
+                warnings.warn('Because input error was a scalar, '
+                              'pixelwise_error=False is being used.',
+                              AstropyUserWarning)
         else:
             if np.isscalar(error):
                 error = np.broadcast_arrays(error, data)[0]
                 pixelwise_error = False
+                warnings.warn('Because input error was a scalar, '
+                              'pixelwise_error=False is being used.',
+                              AstropyUserWarning)
 
             if unit is not None:
                 error = u.Quantity(error, unit=unit)
