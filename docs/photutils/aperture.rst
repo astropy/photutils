@@ -247,7 +247,10 @@ background times the circular aperture area::
     >>> final_sum = phot_table['aperture_sum_raw'] - bkg_sum
     >>> phot_table['residual_aperture_sum'] = final_sum
     >>> print(phot_table['residual_aperture_sum'])    # doctest: +FLOAT_CMP
-    [ -7.10542736e-15  -7.10542736e-15]
+    residual_aperture_sum
+    ---------------------
+        -7.1054273576e-15
+        -7.1054273576e-15
 
 The result here should be zero because all of the data values are 1.0
 (the small difference from 0.0 is due to numerical precision).
@@ -331,13 +334,18 @@ photometry by providing an image mask via the ``mask`` keyword::
     >>> mask[2, 2] = True
     >>> t1 = aperture_photometry(data, aperture, mask=mask)
     >>> print(t1['aperture_sum'])    # doctest: +FLOAT_CMP
-    [ 11.5663706144]
+     aperture_sum
+     -------------
+     11.5663706144
 
 The result is very different if a ``mask`` image is not provided::
 
     >>> t2 = aperture_photometry(data, aperture)
     >>> print(t2['aperture_sum'])    # doctest: +FLOAT_CMP
-    [ 111.566370614]
+    aperture_sum
+    -------------
+    111.566370614
+
 
 Aperture Photometry Using Sky Coordinates
 -----------------------------------------
