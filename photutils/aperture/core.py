@@ -474,6 +474,11 @@ class ApertureMask(object):
         self.shape = mask.shape
         self.slices = bbox_slice
 
+        dy = bbox_slice[0].stop - bbox_slice[0].start
+        dx = bbox_slice[1].stop - bbox_slice[1].start
+        if self.data.shape != (dy, dx):
+            raise ValueError('mask shape and bbox_slice do not agree.')
+
     @property
     def array(self):
         """The 2D mask array."""
