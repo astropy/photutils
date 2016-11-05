@@ -730,7 +730,7 @@ def _prepare_photometry_input(data, error, pixelwise_error, mask, wcs, unit):
 
     if error is not None:
         if isinstance(error, u.Quantity):
-            if error.unit != unit:
+            if unit is not None and error.unit != unit:
                 warnings.warn('The input unit does not agree with the error '
                               'unit.', AstropyUserWarning)
 
