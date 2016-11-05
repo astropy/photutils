@@ -908,7 +908,7 @@ def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
         data, error=error, pixelwise_error=pixelwise_error, mask=mask,
         method=method, subpixels=subpixels)
 
-    calling_args = ('method={0}, subpixels={1}, pixelwise_error={2}'
+    calling_args = ("method='{0}', subpixels={1}, pixelwise_error={2}"
                     .format(method, subpixels, pixelwise_error))
     meta = OrderedDict()
     meta['name'] = 'Aperture photometry results'
