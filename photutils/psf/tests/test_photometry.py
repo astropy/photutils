@@ -4,29 +4,33 @@ from __future__ import division
 import numpy as np
 import astropy
 
-from astropy.table import Table
-from astropy.stats import gaussian_sigma_to_fwhm
-from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.modeling import Parameter, Fittable2DModel
-from astropy.tests.helper import pytest, catch_warnings
-from astropy.utils import minversion
-from astropy.utils.exceptions import AstropyUserWarning
-
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 
-from ..models import IntegratedGaussianPRF
-from ...datasets import make_gaussian_sources
-from ...datasets import make_noise_image
+from astropy.table import Table
+from astropy.stats import gaussian_sigma_to_fwhm
+from astropy.utils import minversion
+from astropy.modeling import Parameter, Fittable2DModel
+from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.models import Gaussian2D
+from astropy.convolution.utils import discretize_model
+from astropy.tests.helper import pytest, catch_warnings
+from astropy.utils.exceptions import AstropyUserWarning
+
 from ..groupstars import DAOGroup
+from ..models import IntegratedGaussianPRF
 from ..photometry import DAOPhotPSFPhotometry, IterativelySubtractedPSFPhotometry
 from ..photometry import BasicPSFPhotometry
-from ...detection import DAOStarFinder
+from ..sandbox import DiscretePRF
 from ...background import SigmaClip, MedianBackground, StdBackgroundRMS
 from ...background import MedianBackground, MMMBackground, SigmaClip
 from ...background import StdBackgroundRMS
+from ...datasets import make_gaussian_sources
+from ...datasets import make_noise_image
+from ...detection import DAOStarFinder
 
 
 ASTROPY_GT_1_1 = minversion('astropy', '1.1')
+
 
 try:
     import scipy
@@ -267,7 +271,7 @@ def test_aperture_radius_errors():
     # test that aperture_radius was set to None by default
     assert_equal(basic_phot_obj.aperture_radius, None)
 
-    # test that a ValuError is raised if aperture_radius is non positive
+    # test that a ValueError is raised if aperture_radius is non positive
     with pytest.raises(ValueError):
         basic_phot_obj.aperture_radius = -3
 
@@ -332,3 +336,163 @@ def test_aperture_radius():
     result_tab = basic_phot_obj(image)
 
     assert_equal(basic_phot_obj.aperture_radius, psf_model.fwhm.value)
+
+
+# tests previously written to psf_photometry
+
+PSF_SIZE = 11
+GAUSSIAN_WIDTH = 1.
+IMAGE_SIZE = 101
+
+# Position and FLUXES of test sources
+INTAB = Table([[50., 23, 12, 86], [50., 83, 80, 84],
+               [np.pi * 10, 3.654, 20., 80 / np.sqrt(3)]],
+              names=['x_0', 'y_0', 'flux_0'])
+
+# Create test psf
+psf_model = Gaussian2D(1. / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
+                       PSF_SIZE // 2, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
+test_psf = discretize_model(psf_model, (0, PSF_SIZE), (0, PSF_SIZE),
+                            mode='oversample')
+
+# Set up grid for test image
+image = np.zeros((IMAGE_SIZE, IMAGE_SIZE))
+
+# Add sources to test image
+for x, y, flux in INTAB:
+    model = Gaussian2D(flux / (2 * np.pi * GAUSSIAN_WIDTH ** 2),
+                       x, y, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
+    image += discretize_model(model, (0, IMAGE_SIZE), (0, IMAGE_SIZE),
+                              mode='oversample')
+
+# Some tests require an image with wider sources.
+WIDE_GAUSSIAN_WIDTH = 3.
+WIDE_INTAB = Table([[50, 23.2], [50.5, 1], [10, 20]],
+                   names=['x_0', 'y_0', 'flux_0'])
+wide_image = np.zeros((IMAGE_SIZE, IMAGE_SIZE))
+
+# Add sources to test image
+for x, y, flux in WIDE_INTAB:
+    model = Gaussian2D(flux / (2 * np.pi * WIDE_GAUSSIAN_WIDTH ** 2),
+                       x, y, WIDE_GAUSSIAN_WIDTH, WIDE_GAUSSIAN_WIDTH)
+    wide_image += discretize_model(model, (0, IMAGE_SIZE), (0, IMAGE_SIZE),
+                                   mode='oversample')
+
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
+def test_psf_photometry_discrete():
+    """ Test psf_photometry with discrete PRF model. """
+
+    prf = DiscretePRF(test_psf, subsampling=1)
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                                    bkg_estimator=None, psf_model=prf,
+                                    fitshape=7)
+    f = basic_phot(image=image, positions=INTAB)
+
+    for n in ['x', 'y', 'flux']:
+        assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-6)
+
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
+def test_tune_coordinates():
+    """
+    Test psf_photometry with discrete PRF model and coordinates that need
+    to be adjusted in the fit.
+    """
+
+    prf = DiscretePRF(test_psf, subsampling=1)
+    prf.x_0.fixed = False
+    prf.y_0.fixed = False
+    # Shift all sources by 0.3 pixels
+    intab = INTAB.copy()
+    intab['x_0'] += 0.3
+
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                                bkg_estimator=None, psf_model=prf,
+                                fitshape=7)
+
+    f = basic_phot(image=image, positions=intab)
+    for n in ['x', 'y', 'flux']:
+        assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
+
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
+def test_psf_boundary():
+    """
+    Test psf_photometry with discrete PRF model at the boundary of the data.
+    """
+
+    prf = DiscretePRF(test_psf, subsampling=1)
+
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                            bkg_estimator=None, psf_model=prf,
+                            fitshape=7, aperture_radius=5.5)
+
+    intab = Table(data=[[1], [1]], names=['x_0', 'y_0'])
+    f = basic_phot(image=image, positions=intab)
+    assert_allclose(f['flux_fit'], 0, atol=1e-8)
+
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
+def test_aperture_radius_value_error():
+    """
+    Test psf_photometry with discrete PRF model at the boundary of the data.
+    """
+
+    prf = DiscretePRF(test_psf, subsampling=1)
+
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                            bkg_estimator=None, psf_model=prf,
+                            fitshape=7)
+
+    intab = Table(data=[[1], [1]], names=['x_0', 'y_0'])
+    with pytest.raises(ValueError) as err:
+        f = basic_phot(image=image, positions=intab)
+
+    assert 'aperture_radius is None' in str(err.value)
+
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
+def test_psf_boundary_gaussian():
+    """
+    Test psf_photometry with discrete PRF model at the boundary of the data.
+    """
+
+    psf = IntegratedGaussianPRF(GAUSSIAN_WIDTH)
+
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                            bkg_estimator=None, psf_model=psf,
+                            fitshape=7)
+
+    intab = Table(data=[[1], [1]], names=['x_0', 'y_0'])
+    f = basic_phot(image=image, positions=intab)
+    assert_allclose(f['flux_fit'], 0, atol=1e-8)
+
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
+def test_psf_photometry_gaussian():
+    """
+    Test psf_photometry with Gaussian PSF model.
+    """
+
+    psf = IntegratedGaussianPRF(sigma=GAUSSIAN_WIDTH)
+
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                            bkg_estimator=None, psf_model=psf,
+                            fitshape=7)
+    f = basic_phot(image=image, positions=INTAB)
+    for n in ['x', 'y', 'flux']:
+        assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
+
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
+def test_psf_fitting_data_on_edge():
+    """
+    No mask is input explicitly here, but source 2 is so close to the
+    edge that the subarray that's extracted gets a mask internally.
+    """
+
+    psf_guess = IntegratedGaussianPRF(flux=1, sigma=WIDE_GAUSSIAN_WIDTH)
+    psf_guess.flux.fixed = psf_guess.x_0.fixed = psf_guess.y_0.fixed = False
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                            bkg_estimator=None, psf_model=psf_guess,
+                            fitshape=7)
+
+    outtab = basic_phot(image=wide_image, positions=WIDE_INTAB)
+
+    for n in ['x', 'y', 'flux']:
+        assert_allclose(outtab[n + '_0'], outtab[n + '_fit'],
+                        rtol=0.05, atol=0.1)

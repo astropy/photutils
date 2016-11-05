@@ -237,6 +237,13 @@ class BasicPSFPhotometry(object):
                                         gaussian_sigma_to_fwhm)
 
         if positions is not None:
+            if self.aperture_radius is None:
+                if 'flux_0' not in positions.colnames:
+                    raise ValueError('aperture_radius is None and could not be '
+                                     'determined by psf_model. Please, either '
+                                     'provided a value for aperture_radius or '
+                                     'define fwhm/sigma at psf_model.')
+
             if self.finder is not None:
                 warnings.warn('Both positions and finder are different than '
                               'None, which is ambiguous. finder is going to '
