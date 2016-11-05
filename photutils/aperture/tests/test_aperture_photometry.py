@@ -280,7 +280,7 @@ class TestMaskedSkipCircular(BaseTestAperturePhotometry):
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=np.float)
         self.mask = np.zeros((40, 40), dtype=bool)
-        self.mask[20, 20] = True
+        self.mask[19, 19] = True
         position = (20., 20.)
         r = 10.
         self.aperture = CircularAperture(position, r)

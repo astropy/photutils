@@ -299,6 +299,7 @@ class PixelAperture(Aperture):
         aperture_sum_errs = []
         for mask in self.to_mask(method=method, subpixels=subpixels):
             data_cutout = mask.apply(data)
+
             if data_cutout is None:
                 aperture_sums.append(np.nan)
             else:
@@ -306,17 +307,25 @@ class PixelAperture(Aperture):
 
             if error is not None:
                 error_cutout = mask.apply(error)
+
                 if error_cutout is None:
                     aperture_sum_errs.append(np.nan)
                 else:
                     if pixelwise_error:
                         aperture_var = np.sum(error_cutout ** 2 * mask.data)
                     else:
-                        # TODO: use central (x, y) position instead
-                        aperture_var = np.sum(error_cutout[0, 0] ** 2 *
+                        # use central value (shifted for partial overlap)
+                        _, slc_sm = mask._overlap_slices(error.shape)
+                        yidx = int((slc_sm[0].start + slc_sm[0].stop - 1) /
+                                   2. + 0.5)
+                        xidx = int((slc_sm[1].start + slc_sm[1].stop - 1) /
+                                   2. + 0.5)
+                        error_value = error_cutout[yidx, xidx]
+
+                        aperture_var = np.sum(error_value ** 2 *
                                               np.sum(mask.data))
 
-                aperture_sum_errs.append(np.sqrt(aperture_var))
+                    aperture_sum_errs.append(np.sqrt(aperture_var))
 
         # handle Quantity objects and input units
         aperture_sums = self._prepare_photometry_output(aperture_sums,
