@@ -380,7 +380,7 @@ class PixelAperture(Aperture):
         aperture_sums = []
         aperture_sum_errs = []
         for mask in self.to_mask(method=method, subpixels=subpixels):
-            data_cutout = mask.apply(data)
+            data_cutout = mask.cutout(data)
 
             if data_cutout is None:
                 aperture_sums.append(np.nan)
@@ -388,7 +388,7 @@ class PixelAperture(Aperture):
                 aperture_sums.append(np.sum(data_cutout * mask.data))
 
             if error is not None:
-                error_cutout = mask.apply(error)
+                error_cutout = mask.cutout(error)
 
                 if error_cutout is None:
                     aperture_sum_errs.append(np.nan)
@@ -623,10 +623,10 @@ class ApertureMask(object):
 
         return mask
 
-    def apply(self, data, fill_value=0.):
+    def cutout(self, data, fill_value=0.):
         """
-        Apply the aperture mask to the input data, taking any edge
-        effects into account.
+        Create a cutout from the input data over the mask bounding box,
+        taking any edge effects into account.
 
         Parameters
         ----------
@@ -665,6 +665,35 @@ class ApertureMask(object):
                 cutout = u.Quantity(cutout, unit=data.unit)
 
         return cutout
+
+    def apply(self, data, fill_value=0.):
+        """
+        Apply the aperture mask to the input data, taking any edge
+        effects into account.
+
+        The result is a mask-weighted cutout from the data.
+
+        Parameters
+        ----------
+        data : array_like or `~astropy.units.Quantity`
+            A 2D array on which to apply the aperture mask.
+
+        fill_value : float, optional
+            The value is used to fill pixels where the aperture mask
+            does not overlap with the input ``data``.  The default is 0.
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            A 2D mask-weighted cutout from the input ``data``.  If there
+            is a partial overlap of the aperture mask with the input
+            data, pixels outside of the data will be assigned to
+            ``fill_value`` before being multipled with the mask.  `None`
+            is returned if there is no overlap of the aperture with the
+            input ``data``.
+        """
+
+        return self.cutout(data, fill_value=fill_value) * self.data
 
 
 def _prepare_photometry_input(data, error, pixelwise_error, mask, wcs, unit):
