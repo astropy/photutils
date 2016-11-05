@@ -657,7 +657,8 @@ class ApertureMask(object):
             if slices_small is None:
                 return None    # no overlap
 
-            cutout = np.full(self.shape, fill_value, dtype=data.dtype)
+            cutout = np.zeros(self.shape, dtype=data.dtype)
+            cutout[:] = fill_value
             cutout[slices_small] = data[slices_large]
 
             if isinstance(data, u.Quantity):
