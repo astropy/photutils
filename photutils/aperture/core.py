@@ -884,6 +884,13 @@ def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
     thus supports `~astropy.nddata.NDData` objects as input.
     """
 
+    apertures = np.atleast_1d(apertures)
+    positions = apertures[0].positions
+    for aper in apertures[1:]:
+        if not np.array_equal(aper.positions, positions):
+            raise ValueError('Input apertures must all have identical '
+                             'positions.')
+
     data, error, pixelwise_error, mask, wcs = \
         _prepare_photometry_input(data, error, pixelwise_error, mask, wcs,
                                   unit)
@@ -892,7 +899,6 @@ def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
         if (int(subpixels) != subpixels) or (subpixels <= 0):
             raise ValueError('subpixels must be a positive integer.')
 
-    apertures = np.atleast_1d(apertures)
 
     # convert sky to pixel apertures
     skyaper = False
