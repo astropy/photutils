@@ -184,7 +184,7 @@ class PixelAperture(Aperture):
                   of the aperture.  The returned mask will contain
                   values only of 0 (out) and 1 (in).
 
-                * ``'subpixel'``
+                * ``'subpixel'``:
                   A pixel is divided into subpixels (see the
                   ``subpixels`` keyword), each of which are considered
                   to be entirely in or out of the aperture depending on
@@ -707,86 +707,117 @@ def _prepare_photometry_input(data, unit, wcs, mask, error, pixelwise_error):
 
 
 @support_nddata
-def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
-                        mask=None, method='exact', subpixels=5,
-                        pixelwise_error=True):
+def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
+                        mask=None, method='exact', subpixels=5, unit=None,
+                        wcs=None):
     """
-    Sum flux within an aperture at the given position(s).
+    Perform aperture photometry on the input data by summing the flux
+    within the given aperture(s).
 
     Parameters
     ----------
-    data : array_like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
+    data : array_like, `~astropy.units.Quantity`, `~astropy.io.fits.ImageHDU`, or `~astropy.io.fits.HDUList`
         The 2D array on which to perform photometry. ``data`` should be
-        background-subtracted.  Units are used during the photometry,
-        either provided along with the data array, or stored in the
-        header keyword ``'BUNIT'``.
-    apertures : `~photutils.Aperture` instance
-        The apertures to use for the photometry.
-    unit : `~astropy.units.UnitBase` instance, str
-        An object that represents the unit associated with ``data``.  Must
-        be an `~astropy.units.UnitBase` object or a string parseable by the
-        :mod:`~astropy.units` package. It overrides the ``data`` unit from
-        the ``'BUNIT'`` header keyword and issues a warning if
-        different. However an error is raised if ``data`` as an array
-        already has a different unit.
-    wcs : `~astropy.wcs.WCS`, optional
-        Use this as the wcs transformation. It overrides any wcs transformation
-        passed along with ``data`` either in the header or in an attribute.
+        background-subtracted.  Units can be used during the photometry,
+        either provided with the data (i.e. a `~astropy.units.Quantity`
+        array) or the ``unit`` keyword.  If ``data`` is an
+        `~astropy.io.fits.ImageHDU` or `~astropy.io.fits.HDUList`, the
+        unit is determined from the ``'BUNIT'`` header keyword.
+
+    apertures : `~photutils.Aperture`
+        The aperture(s) to use for the photometry.
+
     error : array_like or `~astropy.units.Quantity`, optional
         The pixel-wise Gaussian 1-sigma errors of the input ``data``.
         ``error`` is assumed to include *all* sources of error,
         including the Poisson error of the sources (see
         `~photutils.utils.calc_total_error`) .  ``error`` must have the
         same shape as the input ``data``.
-    mask : array_like (bool), optional
-        Mask to apply to the data.  Masked pixels are excluded/ignored.
-    method : str, optional
-        Method to use for determining overlap between the aperture and pixels.
-        Options include ['center', 'subpixel', 'exact'], but not all options
-        are available for all types of apertures. More precise methods will
-        generally be slower.
 
-        * ``'center'``
-            A pixel is considered to be entirely in or out of the aperture
-            depending on whether its center is in or out of the aperture.
-        * ``'subpixel'``
-            A pixel is divided into subpixels and the center of each
-            subpixel is tested (as above). With ``subpixels`` set to 1, this
-            method is equivalent to 'center'. Note that for subpixel
-            sampling, the input array is only resampled once for each
-            object.
-        * ``'exact'`` (default)
-            The exact overlap between the aperture and each pixel is
-            calculated.
-    subpixels : int, optional
-        For the ``'subpixel'`` method, resample pixels by this factor (in
-        each dimension). That is, each pixel is divided into
-        ``subpixels ** 2`` subpixels.
     pixelwise_error : bool, optional
-        If `True`, assume ``error`` varies significantly within an
-        aperture and sum the contribution from each pixel. If `False`,
-        assume ``error`` does not vary significantly within an aperture
-        and use the single value of ``error`` at the center of each
-        aperture as the value for the entire aperture.  Default is
-        `True`.
+        If `True` (default), the photometric error is calculated using
+        the ``error`` values from each pixel within the aperture.  If
+        `False`, the ``error`` value at the center of the aperture is
+        used for the entire aperture.
+
+    mask : array_like (bool), optional
+        A boolean mask with the same shape as ``data`` where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Masked data are excluded from all calculations.
+
+    method : {'exact', 'center', 'subpixel'}, optional
+        The method used to determine the overlap of the aperture on the
+        pixel grid.  Not all options are available for all aperture
+        types.  Note that the more precise methods are generally slower.
+        The following methods are available:
+
+            * ``'exact'`` (default):
+                The the exact fractional overlap of the aperture and
+                each pixel is calculated.  The returned mask will
+                contain values between 0 and 1.
+
+            * ``'center'``:
+                A pixel is considered to be entirely in or out of the
+                aperture depending on whether its center is in or out of
+                the aperture.  The returned mask will contain values
+                only of 0 (out) and 1 (in).
+
+            * ``'subpixel'``:
+                A pixel is divided into subpixels (see the ``subpixels``
+                keyword), each of which are considered to be entirely in
+                or out of the aperture depending on whether its center
+                is in or out of the aperture.  If ``subpixels=1``, this
+                method is equivalent to ``'center'``.  The returned mask
+                will contain values between 0 and 1.
+
+    subpixels : int, optional
+        For the ``'subpixel'`` method, resample pixels by this factor in
+        each dimension.  That is, each pixel is divided into ``subpixels
+        ** 2`` subpixels.
+
+    unit : `~astropy.units.UnitBase` object or str, optional
+        An object that represents the unit associated with the input
+        ``data`` and ``error`` arrays.  Must be a
+        `~astropy.units.UnitBase` object or a string parseable by the
+        :mod:`~astropy.units` package.  If ``data`` or ``error`` already
+        have a different unit, the input ``unit`` will not be used and a
+        warning will be raised.  If ``data`` is an
+        `~astropy.io.fits.ImageHDU` or `~astropy.io.fits.HDUList`,
+        ``unit`` will override the ``'BUNIT'`` header keyword.
+
+    wcs : `~astropy.wcs.WCS`, optional
+        The WCS transformation to use if the input ``apertures`` is a
+        `SkyAperture` object.  If ``data`` is an
+        `~astropy.io.fits.ImageHDU` or `~astropy.io.fits.HDUList`,
+        ``wcs`` overrides any WCS transformation present in the header.
 
     Returns
     -------
-    phot_table : `~astropy.table.QTable`
+    table : `~astropy.table.QTable`
         A table of the photometry with the following columns:
 
-        * ``'aperture_sum'``: Sum of the values within the aperture.
-        * ``'aperture_sum_err'``: Corresponding uncertainty in
-          ``'aperture_sum'`` values.  Returned only if input ``error``
-          is not `None`.
-        * ``'xcenter'``, ``'ycenter'``: x and y pixel coordinates of the
-          center of the apertures. Unit is pixel.
-        * ``'xcenter_input'``, ``'ycenter_input'``: input x and y
-          coordinates as they were given in the input ``positions``
-          parameter.
+            * ``'id'``:
+              The source ID.
 
-        The metadata of the table stores the version numbers of both astropy
-        and photutils, as well as the calling arguments.
+            * ``'xcenter'``, ``'ycenter'``:
+              The ``x`` and ``y`` pixel coordinates of the input
+              aperture center(s).
+
+            * ``'celestial_center'``:
+              The celestial coordinates of the input aperture center(s).
+              Returned only if the input ``apertures`` is a
+              `SkyAperture` object.
+
+            * ``'aperture_sum'``:
+              The sum of the values within the aperture.
+
+            * ``'aperture_sum_err'``:
+              The corresponding uncertainty in the ``'aperture_sum'``
+              values.  Returned only if the input ``error`` is not
+              `None`.
+
+        The table metadata includes the Astropy and Photutils version
+        numbers and the `aperture_photometry` calling arguments.
 
     Notes
     -----
@@ -814,7 +845,8 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     if isinstance(apertures, SkyAperture):
         if wcs is None:
             raise ValueError('A WCS transform must be defined by the input '
-                             'data or the wcs keyword.')
+                             'data or the wcs keyword when using a '
+                             'SkyAperture object.')
         skyaper = True
         skycoord_pos = apertures.positions
         apertures = apertures.to_pixel(wcs)
@@ -838,9 +870,9 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     tbl['ycenter'] = xypos_pixel[1]
     if skyaper:
         if skycoord_pos.isscalar:
-            tbl['input_center'] = (skycoord_pos,)
+            tbl['celestial_center'] = (skycoord_pos,)
         else:
-            tbl['input_center'] = skycoord_pos
+            tbl['celestial_center'] = skycoord_pos
     tbl['aperture_sum'] = aper_sum
     if error is not None:
         tbl['aperture_sum_err'] = aper_sum_err

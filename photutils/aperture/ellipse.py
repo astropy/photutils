@@ -50,7 +50,7 @@ class EllipticalMaskMixin(object):
                   of the aperture.  The returned mask will contain
                   values only of 0 (out) and 1 (in).
 
-                * ``'subpixel'``
+                * ``'subpixel'``:
                   A pixel is divided into subpixels (see the
                   ``subpixels`` keyword), each of which are considered
                   to be entirely in or out of the aperture depending on
