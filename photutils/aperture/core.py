@@ -892,21 +892,20 @@ def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
         if (int(subpixels) != subpixels) or (subpixels <= 0):
             raise ValueError('subpixels must be a positive integer.')
 
+    apertures = np.atleast_1d(apertures)
+
+    # convert sky to pixel apertures
     skyaper = False
-    if isinstance(apertures, SkyAperture):
+    if isinstance(apertures[0], SkyAperture):
         if wcs is None:
             raise ValueError('A WCS transform must be defined by the input '
                              'data or the wcs keyword when using a '
                              'SkyAperture object.')
         skyaper = True
-        skycoord_pos = apertures.positions
-        apertures = apertures.to_pixel(wcs)
+        skycoord_pos = apertures[0].positions
 
-    xypos_pixel = np.transpose(apertures.positions) * u.pixel
-
-    aper_sum, aper_sum_err = apertures.do_photometry(
-        data, error=error, pixelwise_error=pixelwise_error, mask=mask,
-        method=method, subpixels=subpixels)
+        pix_aper = [aper.to_pixel(wcs) for aper in apertures]
+        apertures = pix_aper
 
     calling_args = ("method='{0}', subpixels={1}, pixelwise_error={2}"
                     .format(method, subpixels, pixelwise_error))
@@ -916,16 +915,31 @@ def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
     meta['aperture_photometry_args'] = calling_args
 
     tbl = QTable(meta=meta)
-    tbl['id'] = np.arange(len(apertures), dtype=int) + 1
+    tbl['id'] = np.arange(len(apertures[0]), dtype=int) + 1
+
+    xypos_pixel = np.transpose(apertures[0].positions) * u.pixel
     tbl['xcenter'] = xypos_pixel[0]
     tbl['ycenter'] = xypos_pixel[1]
+
     if skyaper:
         if skycoord_pos.isscalar:
             tbl['celestial_center'] = (skycoord_pos,)
         else:
             tbl['celestial_center'] = skycoord_pos
-    tbl['aperture_sum'] = aper_sum
-    if error is not None:
-        tbl['aperture_sum_err'] = aper_sum_err
+
+    for i, aper in enumerate(apertures):
+        aper_sum, aper_sum_err = aper.do_photometry(
+            data, error=error, pixelwise_error=pixelwise_error, mask=mask,
+            method=method, subpixels=subpixels)
+
+        sum_key = 'aperture_sum'
+        sum_err_key = 'aperture_sum_err'
+        if len(apertures) > 1:
+            sum_key += '_{}'.format(i)
+            sum_err_key += '_{}'.format(i)
+
+        tbl[sum_key] = aper_sum
+        if error is not None:
+            tbl[sum_err_key] = aper_sum_err
 
     return tbl
