@@ -224,7 +224,7 @@ class PixelAperture(Aperture):
         return output
 
     def do_photometry(self, data, error=None, pixelwise_error=True,
-                      method='exact', subpixels=5, unit=None):
+                      mask=None, method='exact', subpixels=5, unit=None):
         """
         Perform aperture photometry on the input data.
 
@@ -246,6 +246,11 @@ class PixelAperture(Aperture):
             using the ``error`` values from each pixel within the
             aperture.  If `False`, the ``error`` value at the center of
             the aperture is used for the entire aperture.
+
+        mask : array_like (bool), optional
+            A boolean mask with the same shape as ``data`` where a
+            `True` value indicates the corresponding element of ``data``
+            is masked.  Masked data are excluded from all calculations.
 
         method : {'exact', 'center', 'subpixel'}, optional
             The method used to determine the overlap of the aperture on
@@ -294,6 +299,19 @@ class PixelAperture(Aperture):
         aperture_sum_errs : `~numpy.ndarray` or `~astropy.units.Quantity`
             The errors on the sums within each aperture.
         """
+
+        data = np.asanyarray(data)
+
+        if mask is not None:
+            mask = np.asanyarray(mask)
+
+            data = copy.deepcopy(data)    # do not modify input data
+            data[mask] = 0
+
+            if error is not None:
+                # do not modify input data
+                error = copy.deepcopy(np.asanyarray(error))
+                error[mask] = 0.
 
         aperture_sums = []
         aperture_sum_errs = []
@@ -838,14 +856,6 @@ def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
         _prepare_photometry_input(data, unit, wcs, mask, error,
                                   pixelwise_error)
 
-    if mask is not None:
-        data = copy.deepcopy(data)    # do not modify input data
-        data[mask] = 0
-
-        if error is not None:
-            error = copy.deepcopy(error)    # do not modify input data
-            error[mask] = 0.
-
     if method == 'subpixel':
         if (int(subpixels) != subpixels) or (subpixels <= 0):
             raise ValueError('subpixels must be a positive integer.')
@@ -863,8 +873,8 @@ def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
     xypos_pixel = np.transpose(apertures.positions) * u.pixel
 
     aper_sum, aper_sum_err = apertures.do_photometry(
-        data, method=method, subpixels=subpixels, error=error,
-        pixelwise_error=pixelwise_error)
+        data, error=error, pixelwise_error=pixelwise_error, mask=mask,
+        method=method, subpixels=subpixels)
 
     calling_args = ('method={0}, subpixels={1}, pixelwise_error={2}'
                     .format(method, subpixels, pixelwise_error))
