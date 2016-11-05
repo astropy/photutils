@@ -17,7 +17,8 @@ from astropy.utils.misc import InheritDocstrings
 from astropy.wcs import WCS
 
 
-__all__ = ['Aperture', 'SkyAperture', 'PixelAperture', 'aperture_photometry']
+__all__ = ['Aperture', 'SkyAperture', 'PixelAperture', 'ApertureMask',
+           'aperture_photometry']
 
 
 def _get_version_info():
@@ -32,7 +33,6 @@ def _get_version_info():
 
 
 def _sanitize_pixel_positions(positions):
-
     if isinstance(positions, u.Quantity):
         if positions.unit is u.pixel:
             positions = np.atleast_2d(positions.value)
@@ -54,14 +54,30 @@ def _sanitize_pixel_positions(positions):
                         "is expected got '{0}'.".format(positions))
 
     if positions.ndim > 2:
-        raise ValueError('{0}-d position array not supported. Only 2-d '
+        raise ValueError('{0}D position array not supported. Only 2D '
                          'arrays supported.'.format(positions.ndim))
 
     return positions
 
 
+def _translate_mask_method(method, subpixels):
+    if method == 'center':
+        use_exact = 0
+        subpixels = 1
+    elif method == 'subpixel':
+        use_exact = 0
+    elif method == 'exact':
+        use_exact = 1
+        subpixels = 1
+    else:
+        raise ValueError('"{0}" is not a valid method.'.format(method))
+
+    return use_exact, subpixels
+
+
 def _make_annulus_path(patch_inner, patch_outer):
     import matplotlib.path as mpath
+
     verts_inner = patch_inner.get_verts()
     verts_outer = patch_outer.get_verts()
     codes_inner = (np.ones(len(verts_inner), dtype=mpath.Path.code_type) *
@@ -72,85 +88,8 @@ def _make_annulus_path(patch_inner, patch_outer):
     codes_outer[0] = mpath.Path.MOVETO
     codes = np.concatenate((codes_inner, codes_outer))
     verts = np.concatenate((verts_inner, verts_outer[::-1]))
+
     return mpath.Path(verts, codes)
-
-
-def _get_phot_extents(data, positions, extents):
-    """
-    Get the photometry extents and check if the apertures is fully out of data.
-
-    Parameters
-    ----------
-    data : array_like
-        The 2-d array on which to perform photometry.
-
-    Returns
-    -------
-    extents : dict
-        The ``extents`` dictionary contains 3 elements:
-
-        * ``'ood_filter'``
-            A boolean array with `True` elements where the aperture is
-            falling out of the data region.
-        * ``'pixel_extent'``
-            x_min, x_max, y_min, y_max : Refined extent of apertures with
-            data coverage.
-        * ``'phot_extent'``
-            x_pmin, x_pmax, y_pmin, y_pmax: Extent centered to the 0, 0
-            positions as required by the `~photutils.geometry` functions.
-    """
-
-    # Check if an aperture is fully out of data
-    ood_filter = np.logical_or(extents[:, 0] >= data.shape[1],
-                               extents[:, 1] <= 0)
-    np.logical_or(ood_filter, extents[:, 2] >= data.shape[0],
-                  out=ood_filter)
-    np.logical_or(ood_filter, extents[:, 3] <= 0, out=ood_filter)
-
-    # TODO check whether it makes sense to have negative pixel
-    # coordinate, one could imagine a stackes image where the reference
-    # was a bit offset from some of the images? Or in those cases just
-    # give Skycoord to the Aperture and it should deal with the
-    # conversion for the actual case?
-    x_min = np.maximum(extents[:, 0], 0)
-    x_max = np.minimum(extents[:, 1], data.shape[1])
-    y_min = np.maximum(extents[:, 2], 0)
-    y_max = np.minimum(extents[:, 3], data.shape[0])
-
-    x_pmin = x_min - positions[:, 0] - 0.5
-    x_pmax = x_max - positions[:, 0] - 0.5
-    y_pmin = y_min - positions[:, 1] - 0.5
-    y_pmax = y_max - positions[:, 1] - 0.5
-
-    # TODO: check whether any pixel is nan in data[y_min[i]:y_max[i],
-    # x_min[i]:x_max[i])), if yes return something valid rather than nan
-
-    pixel_extent = [x_min, x_max, y_min, y_max]
-    phot_extent = [x_pmin, x_pmax, y_pmin, y_pmax]
-
-    return ood_filter, pixel_extent, phot_extent
-
-
-def _calc_aperture_var(data, fraction, error, flux, xmin, xmax, ymin, ymax,
-                       pixelwise_error):
-
-    if isinstance(error, u.Quantity):
-        zero_variance = 0 * error.unit**2
-    else:
-        zero_variance = 0
-
-    if pixelwise_error:
-        subvariance = error[ymin:ymax, xmin:xmax] ** 2
-
-        # Make sure variance is > 0
-        fluxvar = np.maximum(np.sum(subvariance * fraction), zero_variance)
-    else:
-        local_error = error[int((ymin + ymax) / 2 + 0.5),
-                            int((xmin + xmax) / 2 + 0.5)]
-        fluxvar = np.maximum(local_error ** 2 * np.sum(fraction),
-                             zero_variance)
-
-    return fluxvar
 
 
 class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
@@ -171,35 +110,331 @@ class Aperture(object):
 
 class SkyAperture(Aperture):
     """
-    Abstract base class for 2-d apertures defined in celestial coordinates.
+    Abstract base class for 2D apertures defined in celestial coordinates.
     """
 
 
 class PixelAperture(Aperture):
     """
-    Abstract base class for 2-d apertures defined in pixel coordinates.
+    Abstract base class for 2D apertures defined in pixel coordinates.
 
-    Derived classes should contain whatever internal data is needed to
-    define the aperture, and provide the method `do_photometry` (and
-    optionally, ``area``).
+    Derived classes must define a ``_slices`` property, ``to_mask`` and
+    ``plot`` methods, and optionally an ``area`` method.
     """
 
-    def _prepare_plot(self, origin=(0, 0), source_id=None, ax=None,
-                      fill=False, **kwargs):
+    @abc.abstractproperty
+    def _slices(self):
+        """The minimal bounding box slices for the aperture(s)."""
+
+        raise NotImplementedError('Needs to be implemented in a '
+                                  'PixelAperture subclass.')
+
+    @property
+    def _geom_slices(self):
         """
-        Prepare to plot the aperture(s) on a matplotlib Axes instance.
+        A tuple of slices to be used by the low-level
+        `photutils.geometry` functions.
+        """
+
+        geom_slices = []
+        for _slice, position in zip(self._slices, self.positions):
+            x_min = _slice[1].start - position[0] - 0.5
+            x_max = _slice[1].stop - position[0] - 0.5
+            y_min = _slice[0].start - position[1] - 0.5
+            y_max = _slice[0].stop - position[1] - 0.5
+            geom_slices.append((slice(y_min, y_max), slice(x_min, x_max)))
+
+        return geom_slices
+
+    def area(self):
+        """
+        Return the exact area of the aperture shape.
+
+        Returns
+        -------
+        area : float
+            The aperture area.
+        """
+
+        raise NotImplementedError('Needs to be implemented in a '
+                                  'PixelAperture subclass.')
+
+    def mask_area(self, method='exact', subpixels=5):
+        """
+        Return the area of the aperture(s) mask.
+
+        For ``method`` other than ``'exact'``, this area will be less
+        than the exact analytical area (e.g. the ``area`` method).  Note
+        that for these methods, the values can also differ because of
+        fractional pixel positions.
 
         Parameters
         ----------
-        origin : array-like, optional
+        method : {'exact', 'center', 'subpixel'}, optional
+            The method used to determine the overlap of the aperture on
+            the pixel grid.  Not all options are available for all
+            aperture types.  Note that the more precise methods are
+            generally slower.  The following methods are available:
+
+                * ``'exact'`` (default):
+                  The the exact fractional overlap of the aperture and
+                  each pixel is calculated.  The returned mask will
+                  contain values between 0 and 1.
+
+                * ``'center'``:
+                  A pixel is considered to be entirely in or out of the
+                  aperture depending on whether its center is in or out
+                  of the aperture.  The returned mask will contain
+                  values only of 0 (out) and 1 (in).
+
+                * ``'subpixel'``:
+                  A pixel is divided into subpixels (see the
+                  ``subpixels`` keyword), each of which are considered
+                  to be entirely in or out of the aperture depending on
+                  whether its center is in or out of the aperture.  If
+                  ``subpixels=1``, this method is equivalent to
+                  ``'center'``.  The returned mask will contain values
+                  between 0 and 1.
+
+        subpixels : int, optional
+            For the ``'subpixel'`` method, resample pixels by this factor
+            in each dimension.  That is, each pixel is divided into
+            ``subpixels ** 2`` subpixels.
+
+        Returns
+        -------
+        area : float
+            A list of the mask area of the aperture(s).
+        """
+
+        mask = self.to_mask(method=method, subpixels=subpixels)
+        return [np.sum(m.data) for m in mask]
+
+    @abc.abstractmethod
+    def to_mask(self, method='exact', subpixels=5):
+        """
+        Return a list of `ApertureMask` objects, one for each aperture
+        position.
+
+        Parameters
+        ----------
+        method : {'exact', 'center', 'subpixel'}, optional
+            The method used to determine the overlap of the aperture on
+            the pixel grid.  Not all options are available for all
+            aperture types.  Note that the more precise methods are
+            generally slower.  The following methods are available:
+
+                * ``'exact'`` (default):
+                  The the exact fractional overlap of the aperture and
+                  each pixel is calculated.  The returned mask will
+                  contain values between 0 and 1.
+
+                * ``'center'``:
+                  A pixel is considered to be entirely in or out of the
+                  aperture depending on whether its center is in or out
+                  of the aperture.  The returned mask will contain
+                  values only of 0 (out) and 1 (in).
+
+                * ``'subpixel'``:
+                  A pixel is divided into subpixels (see the
+                  ``subpixels`` keyword), each of which are considered
+                  to be entirely in or out of the aperture depending on
+                  whether its center is in or out of the aperture.  If
+                  ``subpixels=1``, this method is equivalent to
+                  ``'center'``.  The returned mask will contain values
+                  between 0 and 1.
+
+        subpixels : int, optional
+            For the ``'subpixel'`` method, resample pixels by this factor
+            in each dimension.  That is, each pixel is divided into
+            ``subpixels ** 2`` subpixels.
+
+        Returns
+        -------
+        mask : list of `~photutils.ApertureMask`
+            A list of aperture mask objects.
+        """
+
+        raise NotImplementedError('Needs to be implemented in a '
+                                  'PixelAperture subclass.')
+
+    @staticmethod
+    def _prepare_photometry_output(_list, unit=None):
+        if len(_list) == 0:   # if error is not input
+            return _list
+
+        if unit is not None:
+            unit = u.Unit(unit, parse_strict='warn')
+            if isinstance(unit, u.UnrecognizedUnit):
+                warnings.warn('The input unit is not parseable as a valid '
+                              'unit.', AstropyUserWarning)
+                unit = None
+
+        if isinstance(_list[0], u.Quantity):
+            # list of Quantity -> Quantity array
+            output = u.Quantity(_list)
+
+            if unit is not None:
+                if output.unit != unit:
+                    warnings.warn('The input unit does not agree with the '
+                                  'data and/or error unit.',
+                                  AstropyUserWarning)
+        else:
+            if unit is not None:
+                output = u.Quantity(_list, unit=unit)
+            else:
+                output = np.array(_list)
+
+        return output
+
+    def do_photometry(self, data, error=None, pixelwise_error=True,
+                      mask=None, method='exact', subpixels=5, unit=None):
+        """
+        Perform aperture photometry on the input data.
+
+        Parameters
+        ----------
+        data : array_like or `~astropy.units.Quantity` instance
+            The 2D array on which to perform photometry.  ``data``
+            should be background subtracted.
+
+        error : array_like or `~astropy.units.Quantity`, optional
+            The pixel-wise Gaussian 1-sigma errors of the input
+            ``data``.  ``error`` is assumed to include *all* sources of
+            error, including the Poisson error of the sources (see
+            `~photutils.utils.calc_total_error`) .  ``error`` must have
+            the same shape as the input ``data``.
+
+        pixelwise_error : bool, optional
+            If `True` (default), the photometric error is calculated
+            using the ``error`` values from each pixel within the
+            aperture.  If `False`, the ``error`` value at the center of
+            the aperture is used for the entire aperture.
+
+        mask : array_like (bool), optional
+            A boolean mask with the same shape as ``data`` where a
+            `True` value indicates the corresponding element of ``data``
+            is masked.  Masked data are excluded from all calculations.
+
+        method : {'exact', 'center', 'subpixel'}, optional
+            The method used to determine the overlap of the aperture on
+            the pixel grid.  Not all options are available for all
+            aperture types.  Note that the more precise methods are
+            generally slower.  The following methods are available:
+
+                * ``'exact'`` (default):
+                  The the exact fractional overlap of the aperture and
+                  each pixel is calculated.  The returned mask will
+                  contain values between 0 and 1.
+
+                * ``'center'``:
+                  A pixel is considered to be entirely in or out of the
+                  aperture depending on whether its center is in or out
+                  of the aperture.  The returned mask will contain
+                  values only of 0 (out) and 1 (in).
+
+                * ``'subpixel'``
+                  A pixel is divided into subpixels (see the
+                  ``subpixels`` keyword), each of which are considered
+                  to be entirely in or out of the aperture depending on
+                  whether its center is in or out of the aperture.  If
+                  ``subpixels=1``, this method is equivalent to
+                  ``'center'``.  The returned mask will contain values
+                  between 0 and 1.
+
+        subpixels : int, optional
+            For the ``'subpixel'`` method, resample pixels by this factor
+            in each dimension.  That is, each pixel is divided into
+            ``subpixels ** 2`` subpixels.
+
+        unit : `~astropy.units.UnitBase` object or str, optional
+            An object that represents the unit associated with the input
+            ``data`` and ``error`` arrays.  Must be a
+            `~astropy.units.UnitBase` object or a string parseable by
+            the :mod:`~astropy.units` package.  If ``data`` or ``error``
+            already have a different unit, the input ``unit`` will not
+            be used and a warning will be raised.
+
+        Returns
+        -------
+        aperture_sums : `~numpy.ndarray` or `~astropy.units.Quantity`
+            The sums within each aperture.
+
+        aperture_sum_errs : `~numpy.ndarray` or `~astropy.units.Quantity`
+            The errors on the sums within each aperture.
+        """
+
+        data = np.asanyarray(data)
+
+        if mask is not None:
+            mask = np.asanyarray(mask)
+
+            data = copy.deepcopy(data)    # do not modify input data
+            data[mask] = 0
+
+            if error is not None:
+                # do not modify input data
+                error = copy.deepcopy(np.asanyarray(error))
+                error[mask] = 0.
+
+        aperture_sums = []
+        aperture_sum_errs = []
+        for mask in self.to_mask(method=method, subpixels=subpixels):
+            data_cutout = mask.apply(data)
+
+            if data_cutout is None:
+                aperture_sums.append(np.nan)
+            else:
+                aperture_sums.append(np.sum(data_cutout * mask.data))
+
+            if error is not None:
+                error_cutout = mask.apply(error)
+
+                if error_cutout is None:
+                    aperture_sum_errs.append(np.nan)
+                else:
+                    if pixelwise_error:
+                        aperture_var = np.sum(error_cutout ** 2 * mask.data)
+                    else:
+                        # use central value (shifted for partial overlap)
+                        _, slc_sm = mask._overlap_slices(error.shape)
+                        yidx = int((slc_sm[0].start + slc_sm[0].stop - 1) /
+                                   2. + 0.5)
+                        xidx = int((slc_sm[1].start + slc_sm[1].stop - 1) /
+                                   2. + 0.5)
+                        error_value = error_cutout[yidx, xidx]
+
+                        aperture_var = np.sum(error_value ** 2 *
+                                              np.sum(mask.data))
+
+                    aperture_sum_errs.append(np.sqrt(aperture_var))
+
+        # handle Quantity objects and input units
+        aperture_sums = self._prepare_photometry_output(aperture_sums,
+                                                        unit=unit)
+        aperture_sum_errs = self._prepare_photometry_output(aperture_sum_errs,
+                                                            unit=unit)
+
+        return aperture_sums, aperture_sum_errs
+
+    def _prepare_plot(self, origin=(0, 0), indices=None, ax=None,
+                      fill=False, **kwargs):
+        """
+        Prepare to plot the aperture(s) on a matplotlib
+        `~matplotlib.axes.Axes` instance.
+
+        Parameters
+        ----------
+        origin : array_like, optional
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        source_id : int or array of int, optional
-            The source ID(s) of the aperture(s) to plot.
+        indices : int or array of int, optional
+            The indices of the aperture(s) to plot.
 
         ax : `matplotlib.axes.Axes` instance, optional
-            If `None`, then the current ``Axes`` instance is used.
+            If `None`, then the current `~matplotlib.axes.Axes` instance
+            is used.
 
         fill : bool, optional
             Set whether to fill the aperture patch.  The default is
@@ -212,10 +447,10 @@ class PixelAperture(Aperture):
         -------
         plot_positions : `~numpy.ndarray`
             The positions of the apertures to plot, after any
-            ``source_id`` slicing and origin shift.
+            ``indices`` slicing and ``origin`` shift.
 
         ax : `matplotlib.axes.Axes` instance, optional
-            The `matplotlib.axes.Axes` on which to plot.
+            The `~matplotlib.axes.Axes` on which to plot.
 
         kwargs
             Any keyword arguments accepted by `matplotlib.patches.Patch`.
@@ -231,8 +466,8 @@ class PixelAperture(Aperture):
         kwargs['fill'] = fill
 
         plot_positions = copy.deepcopy(self.positions)
-        if source_id is not None:
-            plot_positions = plot_positions[np.atleast_1d(source_id)]
+        if indices is not None:
+            plot_positions = plot_positions[np.atleast_1d(indices)]
 
         plot_positions[:, 0] -= origin[0]
         plot_positions[:, 1] -= origin[1]
@@ -240,22 +475,24 @@ class PixelAperture(Aperture):
         return plot_positions, ax, kwargs
 
     @abc.abstractmethod
-    def plot(self, origin=(0, 0), source_id=None, ax=None, fill=False,
+    def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
              **kwargs):
         """
-        Plot the aperture(s) on a matplotlib Axes instance.
+        Plot the aperture(s) on a matplotlib `~matplotlib.axes.Axes`
+        instance.
 
         Parameters
         ----------
-        origin : array-like, optional
+        origin : array_like, optional
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        source_id : int or array of int, optional
-            The source ID(s) of the aperture(s) to plot.
+        indices : int or array of int, optional
+            The indices of the aperture(s) to plot.
 
         ax : `matplotlib.axes.Axes` instance, optional
-            If `None`, then the current ``Axes`` instance is used.
+            If `None`, then the current `~matplotlib.axes.Axes` instance
+            is used.
 
         fill : bool, optional
             Set whether to fill the aperture patch.  The default is
@@ -265,146 +502,182 @@ class PixelAperture(Aperture):
             Any keyword arguments accepted by `matplotlib.patches.Patch`.
         """
 
-    @abc.abstractmethod
-    def do_photometry(self, data, error=None, pixelwise_error=True,
-                      method='exact', subpixels=5):
-        """Sum flux within aperture(s).
+
+class ApertureMask(object):
+    """
+    Class for an aperture mask.
+
+    Parameters
+    ----------
+    mask : array_like
+        A 2D array of an aperture mask representing the fractional
+        overlap of the aperture on the pixel grid.  This should be the
+        full-sized (i.e. not truncated) array that is the direct output
+        of one of the low-level `photutils.geometry` functions.
+
+    bbox_slice : tuple of slice objects
+        A tuple of ``(y, x)`` numpy slice objects defining the aperture
+        minimal bounding box.
+    """
+
+    def __init__(self, mask, bbox_slice):
+        self.data = np.asanyarray(mask)
+        self.shape = mask.shape
+        self.slices = bbox_slice
+
+        dy = bbox_slice[0].stop - bbox_slice[0].start
+        dx = bbox_slice[1].stop - bbox_slice[1].start
+        if self.data.shape != (dy, dx):
+            raise ValueError('mask shape and bbox_slice do not agree.')
+
+    @property
+    def array(self):
+        """The 2D mask array."""
+
+        return self.data
+
+    def __array__(self):
+        """
+        Array representation of the mask array (e.g., for matplotlib).
+        """
+
+        return self.data
+
+    def _overlap_slices(self, shape):
+        """
+        Calculate the slices for the overlapping part of ``self.slices``
+        and an array of the given shape.
 
         Parameters
         ----------
-        data : array_like
-            The 2-d array on which to perform photometry.
-        error : array_like, optional
-            Error in each pixel, interpreted as Gaussian 1-sigma uncertainty.
-            ``error`` has to have the same shape as ``data``.
-        pixelwise_error : bool, optional
-            If `True`, assume ``error`` varies significantly within an
-            aperture and sum the contribution from each pixel. If
-            `False`, assume ``error`` does not vary significantly within
-            an aperture and use the single value of ``error`` at the
-            center of each aperture as the value for the entire
-            aperture.  Default is `True`.
-        method : str, optional
-            Method to use for determining overlap between the aperture
-            and pixels.  Options include ['center', 'subpixel',
-            'exact'], but not all options are available for all types of
-            apertures. More precise methods will generally be slower.
-
-            * ``'center'``
-                A pixel is considered to be entirely in or out of the
-                aperture depending on whether its center is in or out of
-                the aperture.
-
-            * ``'subpixel'``
-                A pixel is divided into subpixels and the center of each
-                subpixel is tested (as above). With ``subpixels`` set to
-                1, this method is equivalent to 'center'. Note that for
-                subpixel sampling, the input array is only resampled
-                once for each object.
-
-            * ``'exact'`` (default)
-                The exact overlap between the aperture and each pixel is
-                calculated.
-        subpixels : int, optional
-            For the ``'subpixel'`` method, resample pixels by this factor (in
-            each dimension). That is, each pixel is divided into
-            ``subpixels ** 2`` subpixels.
+        shape : tuple of int
+            The ``(ny, nx)`` shape of array where the slices are to be
+            applied.
 
         Returns
         -------
-        flux : `~astropy.units.Quantity`
-            Sum of the values withint the aperture(s). Unit is kept to be the
-            unit of the input ``data``.
+        slices_large : tuple of slices
+            A tuple of slice objects for each axis of the large array,
+            such that ``large_array[slices_large]`` extracts the region
+            of the large array that overlaps with the small array.
 
-        fluxvar :  `~astropy.units.Quantity`
-            Corresponting uncertainity in the ``flux`` values. Returned only
-            if input ``error`` is not `None`.
+        slices_small : slice
+            A tuple of slice objects for each axis of the small array,
+            such that ``small_array[slices_small]`` extracts the region
+            of the small array that is inside the large array.
         """
 
-    @abc.abstractmethod
-    def get_fractions(self, data, method='exact', subpixels=5):
-        """Weight of pixels in data, within aperture(s).
+        if len(shape) != 2:
+            raise ValueError('input shape must have 2 elements.')
+
+        ymin = self.slices[0].start
+        ymax = self.slices[0].stop
+        xmin = self.slices[1].start
+        xmax = self.slices[1].stop
+
+        if (xmin >= shape[1] or ymin >= shape[0] or xmax <= 0 or ymax <= 0):
+            # no overlap of the aperture with the data
+            return None, None
+
+        slices_large = (slice(max(ymin, 0), min(ymax, shape[0])),
+                        slice(max(xmin, 0), min(xmax, shape[1])))
+
+        slices_small = (slice(max(-ymin, 0),
+                              min(ymax - ymin, shape[0] - ymin)),
+                        slice(max(-xmin, 0),
+                              min(xmax - xmin, shape[1] - xmin)))
+
+        return slices_large, slices_small
+
+    def to_image(self, shape):
+        """
+        Return an image of the mask in a 2D array of the given shape,
+        taking any edge effects into account.
 
         Parameters
         ----------
-        data : array_like
-            The 2-d array on which to perform photometry.
-        method : str, optional
-            Method to use for determining overlap between the aperture
-            and pixels.  Options include ['center', 'subpixel',
-            'exact'], but not all options are available for all types of
-            apertures. More precise methods will generally be slower.
-
-            * ``'center'``
-                A pixel is considered to be entirely in or out of the
-                aperture depending on whether its center is in or out of
-                the aperture.
-
-            * ``'subpixel'``
-                A pixel is divided into subpixels and the center of each
-                subpixel is tested (as above). With ``subpixels`` set to
-                1, this method is equivalent to 'center'. Note that for
-                subpixel sampling, the input array is only resampled
-                once for each object.
-
-            * ``'exact'`` (default)
-                The exact overlap between the aperture and each pixel is
-                calculated.
-        subpixels : int, optional
-            For the ``'subpixel'`` method, resample pixels by this factor (in
-            each dimension). That is, each pixel is divided into
-            ``subpixels ** 2`` subpixels.
+        shape : tuple of int
+            The ``(ny, nx)`` shape of the output array.
 
         Returns
         -------
-        fraction : `numpy.array`
-            Array with the same shape as ``data``. Each element is the
-            fraction of the corresponding ``data`` pixel that falls
-            within the aperture.
+        result : `~numpy.ndarray`
+            A 2D array of the mask.
         """
 
-    def area():
+        if len(shape) != 2:
+            raise ValueError('input shape must have 2 elements.')
+
+        mask = np.zeros(shape)
+
+        try:
+            mask[self.slices] = self.data
+        except ValueError:    # partial or no overlap
+            slices_large, slices_small = self._overlap_slices(shape)
+
+            if slices_small is None:
+                return None    # no overlap
+
+            mask = np.zeros(shape)
+            mask[slices_large] = self.data[slices_small]
+
+        return mask
+
+    def apply(self, data, fill_value=0.):
         """
-        Area of aperture.
+        Apply the aperture mask to the input data, taking any edge
+        effects into account.
+
+        Parameters
+        ----------
+        data : array_like or `~astropy.units.Quantity`
+            A 2D array on which to apply the aperture mask.
+
+        fill_value : float, optional
+            The value is used to fill pixels where the aperture mask
+            does not overlap with the input ``data``.  The default is 0.
 
         Returns
         -------
-        area : float
-            Area of aperture.
+        result : `~numpy.ndarray`
+            A 2D array cut out from the input ``data`` representing the
+            same cutout region as the aperture mask.  If there is a
+            partial overlap of the aperture mask with the input data,
+            pixels outside of the data will be assigned to
+            ``fill_value``.  `None` is returned if there is no overlap
+            of the aperture with the input ``data``.
         """
 
+        data = np.asanyarray(data)
+        cutout = data[self.slices]
 
-def _prepare_photometry_input(data, unit, wcs, mask, error, pixelwise_error):
+        if cutout.shape != self.shape:
+            slices_large, slices_small = self._overlap_slices(data.shape)
+
+            if slices_small is None:
+                return None    # no overlap
+
+            cutout = np.zeros(self.shape, dtype=data.dtype)
+            cutout[:] = fill_value
+            cutout[slices_small] = data[slices_large]
+
+            if isinstance(data, u.Quantity):
+                cutout = u.Quantity(cutout, unit=data.unit)
+
+        return cutout
+
+
+def _prepare_photometry_input(data, error, pixelwise_error, mask, wcs, unit):
     """
-    Parse photometry input.
+    Parse the inputs to `aperture_photometry`.
 
-    Photometry routines accept a wide range of inputs, e.g. ``data``
-    could be (among others)  a numpy array, or a fits HDU.
-    This requires some parsing and bookkeping to ensure that all inputs
-    are complete and consistent.
-    For example, the data could carry a unit and the wcs itself, so we need to
-    check that it is consistent with the unit and wcs given as explicit
-    parameters.
-
-    Note that this function is meant to be used in addition to, not instead
-    of, the `~astropy.nddata.support_nddata` decorator, i. e. ``data`` is
-    never an `~astropy.nddata.NDData` object, because that will be split up
-    in data, wcs, mask, ... keywords by the decorator already.
-
-    See `~photutils.aperture_photometry` for a description of all
-    possible input values.
-
-    Returns
-    -------
-    data : `~astropy.units.Quantity` instance
-    wcs_transformation : `~astropy.wcs.WCS` instance or None
-    mask : np.array or None
-    error : `~astropy.units.Quantity` instance or None
+    `aperture_photometry` accepts a wide range of inputs, e.g. ``data``
+    could be a numpy array, a Quantity array, or a fits HDU.  This
+    requires some parsing and validation to ensure that all inputs are
+    complete and consistent.  For example, the data could carry a unit
+    and the wcs itself, so we need to check that it is consistent with
+    the unit and wcs given as input parameters.
     """
-
-    dataunit = None
-    datamask = None
-    wcs_transformation = wcs
 
     if isinstance(data, fits.HDUList):
         for i in range(len(data)):
@@ -420,177 +693,190 @@ def _prepare_photometry_input(data, unit, wcs, mask, error, pixelwise_error):
         data = data.data
 
         if 'BUNIT' in header:
-            dataunit = header['BUNIT']
+            bunit = u.Unit(header['BUNIT'], parse_strict='warn')
+            if isinstance(bunit, u.UnrecognizedUnit):
+                warnings.warn('The BUNIT in the header of the input data is '
+                              'not parseable as a valid unit.',
+                              AstropyUserWarning)
+            else:
+                data = u.Quantity(data, unit=bunit)
 
-    if wcs_transformation is None:
+    if wcs is None:
         try:
-            wcs_transformation = WCS(header)
+            wcs = WCS(header)
         except:
-            # data was not fits so header is not defined or header is invalid
-            # Let the calling application raise an error is it needs a WCS.
+            # A valid WCS was not found in the header.  Let the calling
+            # application raise an exception if it needs a WCS.
             pass
 
-    if hasattr(data, 'unit'):
-        dataunit = data.unit
-
-    if unit is not None and dataunit is not None:
-        dataunit = u.Unit(dataunit, parse_strict='warn')
-        unit = u.Unit(unit, parse_strict='warn')
-
-        if not isinstance(unit, u.UnrecognizedUnit):
-            data = u.Quantity(data, unit=unit, copy=False)
-            if not isinstance(dataunit, u.UnrecognizedUnit):
-                if unit != dataunit:
-                    warnings.warn('Unit of input data ({0}) and unit given '
-                                  'by unit argument ({1}) are not identical.'
-                                  .format(dataunit, unit))
-        else:
-            if not isinstance(dataunit, u.UnrecognizedUnit):
-                data = u.Quantity(data, unit=dataunit, copy=False)
-            else:
-                warnings.warn('Neither the unit of the input data ({0}), nor '
-                              'the unit given by the unit argument ({1}) is '
-                              'parseable as a valid unit'
-                              .format(dataunit, unit))
-
-    elif unit is None:
-        if dataunit is not None:
-            dataunit = u.Unit(dataunit, parse_strict='warn')
-            data = u.Quantity(data, unit=dataunit, copy=False)
-        else:
-            data = u.Quantity(data, copy=False)
-    else:
-        unit = u.Unit(unit, parse_strict='warn')
-        data = u.Quantity(data, unit=unit, copy=False)
-
-    # Check input array type and dimension.
-    if np.iscomplexobj(data):
-        raise TypeError('Complex type not supported')
+    data = np.asanyarray(data)
     if data.ndim != 2:
-        raise ValueError('{0}-d array not supported. '
-                         'Only 2-d arrays supported.'.format(data.ndim))
+        raise ValueError('data must be a 2D array.')
 
-    # Deal with the mask if it exists
-    if mask is not None or datamask is not None:
-        if mask is None:
-            mask = datamask
-        else:
-            mask = np.asarray(mask)
-            if np.iscomplexobj(mask):
-                raise TypeError('Complex type not supported')
-            if mask.shape != data.shape:
-                raise ValueError('Shapes of mask array and data array '
-                                 'must match')
+    if unit is not None:
+        unit = u.Unit(unit, parse_strict='warn')
+        if isinstance(unit, u.UnrecognizedUnit):
+            warnings.warn('The input unit is not parseable as a valid '
+                          'unit.', AstropyUserWarning)
+            unit = None
 
-            if datamask is not None:
-                # combine the masks
-                mask = np.logical_or(mask, datamask)
+    if isinstance(data, u.Quantity):
+        if unit is not None and data.unit != unit:
+            warnings.warn('The input unit does not agree with the data '
+                          'unit.', AstropyUserWarning)
+    else:
+        if unit is not None:
+            data = u.Quantity(data, unit=unit)
 
-    # Check whether we really need to calculate pixelwise errors, even if
-    # requested.  If error is not an array, then it's not needed.
-    if (error is None) or (np.isscalar(error)):
-        pixelwise_error = False
-
-    # Check error shape.
     if error is not None:
         if isinstance(error, u.Quantity):
+            if error.unit != unit:
+                warnings.warn('The input unit does not agree with the error '
+                              'unit.', AstropyUserWarning)
+
             if np.isscalar(error.value):
                 error = u.Quantity(np.broadcast_arrays(error, data),
                                    unit=error.unit)[0]
-        elif np.isscalar(error):
-            error = u.Quantity(np.broadcast_arrays(error, data),
-                               unit=data.unit)[0]
+                pixelwise_error = False
+                warnings.warn('Because input error was a scalar, '
+                              'pixelwise_error=False is being used.',
+                              AstropyUserWarning)
         else:
-            error = u.Quantity(error, unit=data.unit, copy=False)
+            if np.isscalar(error):
+                error = np.broadcast_arrays(error, data)[0]
+                pixelwise_error = False
+                warnings.warn('Because input error was a scalar, '
+                              'pixelwise_error=False is being used.',
+                              AstropyUserWarning)
+
+            if unit is not None:
+                error = u.Quantity(error, unit=unit)
+
+            error = np.asanyarray(error)
 
         if error.shape != data.shape:
-            raise ValueError('shapes of error array and data array must'
-                             ' match')
+            raise ValueError('error and data must have the same shape.')
 
-    return data, wcs_transformation, mask, error, pixelwise_error
+    if mask is not None:
+        mask = np.asanyarray(mask)
+        if mask.shape != data.shape:
+            raise ValueError('mask and data must have the same shape.')
+
+    return data, error, pixelwise_error, mask, wcs
 
 
 @support_nddata
-def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
-                        mask=None, method='exact', subpixels=5,
-                        pixelwise_error=True):
+def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
+                        mask=None, method='exact', subpixels=5, unit=None,
+                        wcs=None):
     """
-    Sum flux within an aperture at the given position(s).
+    Perform aperture photometry on the input data by summing the flux
+    within the given aperture(s).
 
     Parameters
     ----------
-    data : array_like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
-        The 2-d array on which to perform photometry. ``data`` should be
-        background-subtracted.  Units are used during the photometry,
-        either provided along with the data array, or stored in the
-        header keyword ``'BUNIT'``.
-    apertures : `~photutils.Aperture` instance
-        The apertures to use for the photometry.
-    unit : `~astropy.units.UnitBase` instance, str
-        An object that represents the unit associated with ``data``.  Must
-        be an `~astropy.units.UnitBase` object or a string parseable by the
-        :mod:`~astropy.units` package. It overrides the ``data`` unit from
-        the ``'BUNIT'`` header keyword and issues a warning if
-        different. However an error is raised if ``data`` as an array
-        already has a different unit.
-    wcs : `~astropy.wcs.WCS`, optional
-        Use this as the wcs transformation. It overrides any wcs transformation
-        passed along with ``data`` either in the header or in an attribute.
+    data : array_like, `~astropy.units.Quantity`, `~astropy.io.fits.ImageHDU`, or `~astropy.io.fits.HDUList`
+        The 2D array on which to perform photometry. ``data`` should be
+        background-subtracted.  Units can be used during the photometry,
+        either provided with the data (i.e. a `~astropy.units.Quantity`
+        array) or the ``unit`` keyword.  If ``data`` is an
+        `~astropy.io.fits.ImageHDU` or `~astropy.io.fits.HDUList`, the
+        unit is determined from the ``'BUNIT'`` header keyword.
+
+    apertures : `~photutils.Aperture`
+        The aperture(s) to use for the photometry.
+
     error : array_like or `~astropy.units.Quantity`, optional
         The pixel-wise Gaussian 1-sigma errors of the input ``data``.
         ``error`` is assumed to include *all* sources of error,
         including the Poisson error of the sources (see
         `~photutils.utils.calc_total_error`) .  ``error`` must have the
         same shape as the input ``data``.
-    mask : array_like (bool), optional
-        Mask to apply to the data.  Masked pixels are excluded/ignored.
-    method : str, optional
-        Method to use for determining overlap between the aperture and pixels.
-        Options include ['center', 'subpixel', 'exact'], but not all options
-        are available for all types of apertures. More precise methods will
-        generally be slower.
 
-        * ``'center'``
-            A pixel is considered to be entirely in or out of the aperture
-            depending on whether its center is in or out of the aperture.
-        * ``'subpixel'``
-            A pixel is divided into subpixels and the center of each
-            subpixel is tested (as above). With ``subpixels`` set to 1, this
-            method is equivalent to 'center'. Note that for subpixel
-            sampling, the input array is only resampled once for each
-            object.
-        * ``'exact'`` (default)
-            The exact overlap between the aperture and each pixel is
-            calculated.
-    subpixels : int, optional
-        For the ``'subpixel'`` method, resample pixels by this factor (in
-        each dimension). That is, each pixel is divided into
-        ``subpixels ** 2`` subpixels.
     pixelwise_error : bool, optional
-        If `True`, assume ``error`` varies significantly within an
-        aperture and sum the contribution from each pixel. If `False`,
-        assume ``error`` does not vary significantly within an aperture
-        and use the single value of ``error`` at the center of each
-        aperture as the value for the entire aperture.  Default is
-        `True`.
+        If `True` (default), the photometric error is calculated using
+        the ``error`` values from each pixel within the aperture.  If
+        `False`, the ``error`` value at the center of the aperture is
+        used for the entire aperture.
+
+    mask : array_like (bool), optional
+        A boolean mask with the same shape as ``data`` where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Masked data are excluded from all calculations.
+
+    method : {'exact', 'center', 'subpixel'}, optional
+        The method used to determine the overlap of the aperture on the
+        pixel grid.  Not all options are available for all aperture
+        types.  Note that the more precise methods are generally slower.
+        The following methods are available:
+
+            * ``'exact'`` (default):
+                The the exact fractional overlap of the aperture and
+                each pixel is calculated.  The returned mask will
+                contain values between 0 and 1.
+
+            * ``'center'``:
+                A pixel is considered to be entirely in or out of the
+                aperture depending on whether its center is in or out of
+                the aperture.  The returned mask will contain values
+                only of 0 (out) and 1 (in).
+
+            * ``'subpixel'``:
+                A pixel is divided into subpixels (see the ``subpixels``
+                keyword), each of which are considered to be entirely in
+                or out of the aperture depending on whether its center
+                is in or out of the aperture.  If ``subpixels=1``, this
+                method is equivalent to ``'center'``.  The returned mask
+                will contain values between 0 and 1.
+
+    subpixels : int, optional
+        For the ``'subpixel'`` method, resample pixels by this factor in
+        each dimension.  That is, each pixel is divided into ``subpixels
+        ** 2`` subpixels.
+
+    unit : `~astropy.units.UnitBase` object or str, optional
+        An object that represents the unit associated with the input
+        ``data`` and ``error`` arrays.  Must be a
+        `~astropy.units.UnitBase` object or a string parseable by the
+        :mod:`~astropy.units` package.  If ``data`` or ``error`` already
+        have a different unit, the input ``unit`` will not be used and a
+        warning will be raised.  If ``data`` is an
+        `~astropy.io.fits.ImageHDU` or `~astropy.io.fits.HDUList`,
+        ``unit`` will override the ``'BUNIT'`` header keyword.
+
+    wcs : `~astropy.wcs.WCS`, optional
+        The WCS transformation to use if the input ``apertures`` is a
+        `SkyAperture` object.  If ``data`` is an
+        `~astropy.io.fits.ImageHDU` or `~astropy.io.fits.HDUList`,
+        ``wcs`` overrides any WCS transformation present in the header.
 
     Returns
     -------
-    phot_table : `~astropy.table.QTable`
+    table : `~astropy.table.QTable`
         A table of the photometry with the following columns:
 
-        * ``'aperture_sum'``: Sum of the values within the aperture.
-        * ``'aperture_sum_err'``: Corresponding uncertainty in
-          ``'aperture_sum'`` values.  Returned only if input ``error``
-          is not `None`.
-        * ``'xcenter'``, ``'ycenter'``: x and y pixel coordinates of the
-          center of the apertures. Unit is pixel.
-        * ``'xcenter_input'``, ``'ycenter_input'``: input x and y
-          coordinates as they were given in the input ``positions``
-          parameter.
+            * ``'id'``:
+              The source ID.
 
-        The metadata of the table stores the version numbers of both astropy
-        and photutils, as well as the calling arguments.
+            * ``'xcenter'``, ``'ycenter'``:
+              The ``x`` and ``y`` pixel coordinates of the input
+              aperture center(s).
+
+            * ``'celestial_center'``:
+              The celestial coordinates of the input aperture center(s).
+              Returned only if the input ``apertures`` is a
+              `SkyAperture` object.
+
+            * ``'aperture_sum'``:
+              The sum of the values within the aperture.
+
+            * ``'aperture_sum_err'``:
+              The corresponding uncertainty in the ``'aperture_sum'``
+              values.  Returned only if the input ``error`` is not
+              `None`.
+
+        The table metadata includes the Astropy and Photutils version
+        numbers and the `aperture_photometry` calling arguments.
 
     Notes
     -----
@@ -598,17 +884,9 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     thus supports `~astropy.nddata.NDData` objects as input.
     """
 
-    data, wcs, mask, error, pixelwise_error = \
-        _prepare_photometry_input(data, unit, wcs, mask, error,
-                                  pixelwise_error)
-
-    if mask is not None:
-        data = copy.deepcopy(data)    # do not modify input data
-        data[mask] = 0
-
-        if error is not None:
-            error = copy.deepcopy(error)    # do not modify input data
-            error[mask] = 0.
+    data, error, pixelwise_error, mask, wcs = \
+        _prepare_photometry_input(data, error, pixelwise_error, mask, wcs,
+                                  unit)
 
     if method == 'subpixel':
         if (int(subpixels) != subpixels) or (subpixels <= 0):
@@ -618,20 +896,17 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     if isinstance(apertures, SkyAperture):
         if wcs is None:
             raise ValueError('A WCS transform must be defined by the input '
-                             'data or the wcs keyword.')
+                             'data or the wcs keyword when using a '
+                             'SkyAperture object.')
         skyaper = True
         skycoord_pos = apertures.positions
         apertures = apertures.to_pixel(wcs)
 
     xypos_pixel = np.transpose(apertures.positions) * u.pixel
 
-    photometry_result = apertures.do_photometry(
-        data, method=method, subpixels=subpixels, error=error,
-        pixelwise_error=pixelwise_error)
-    if error is None:
-        aper_sum = photometry_result
-    else:
-        aper_sum, aper_err = photometry_result
+    aper_sum, aper_sum_err = apertures.do_photometry(
+        data, error=error, pixelwise_error=pixelwise_error, mask=mask,
+        method=method, subpixels=subpixels)
 
     calling_args = ('method={0}, subpixels={1}, pixelwise_error={2}'
                     .format(method, subpixels, pixelwise_error))
@@ -646,11 +921,11 @@ def aperture_photometry(data, apertures, unit=None, wcs=None, error=None,
     tbl['ycenter'] = xypos_pixel[1]
     if skyaper:
         if skycoord_pos.isscalar:
-            tbl['input_center'] = (skycoord_pos,)
+            tbl['celestial_center'] = (skycoord_pos,)
         else:
-            tbl['input_center'] = skycoord_pos
+            tbl['celestial_center'] = skycoord_pos
     tbl['aperture_sum'] = aper_sum
     if error is not None:
-        tbl['aperture_sum_err'] = aper_err
+        tbl['aperture_sum_err'] = aper_sum_err
 
     return tbl

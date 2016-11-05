@@ -9,7 +9,8 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import numpy as np
-from numpy.testing import assert_allclose, assert_array_equal
+from numpy.testing import (assert_allclose, assert_array_equal,
+                           assert_array_less)
 from astropy.io import fits
 from astropy.nddata import NDData
 import astropy.units as u
@@ -279,7 +280,7 @@ class TestMaskedSkipCircular(BaseTestAperturePhotometry):
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=np.float)
         self.mask = np.zeros((40, 40), dtype=bool)
-        self.mask[20, 20] = True
+        self.mask[19, 19] = True
         position = (20., 20.)
         r = 10.
         self.aperture = CircularAperture(position, r)
@@ -501,7 +502,6 @@ def test_basic_circular_aperture_photometry_unit():
 
     data1 = np.ones((40, 40), dtype=np.float)
     data2 = u.Quantity(data1, unit=u.adu)
-    data3 = u.Quantity(data1, unit=u.Jy)
 
     radius = 3
     position = (20, 20)
@@ -512,11 +512,6 @@ def test_basic_circular_aperture_photometry_unit():
                                  unit=unit)
     table2 = aperture_photometry(data2, CircularAperture(position, radius),
                                  unit=unit)
-    with pytest.raises(u.UnitConversionError) as err:
-        aperture_photometry(data3, CircularAperture(position, radius),
-                            unit=unit)
-    assert ("UnitConversionError: 'Jy' (spectral flux density) and 'adu' are "
-            "not convertible" in str(err))
 
     assert_allclose(table1['aperture_sum'].value, true_flux)
     assert_allclose(table2['aperture_sum'].value, true_flux)
@@ -598,3 +593,21 @@ def test_nan_inf_mask(value):
     tbl = aperture_photometry(data, aper, mask=mask)
     desired = (np.pi * radius**2) - 1
     assert_allclose(tbl['aperture_sum'], desired)
+
+def test_aperture_partial_overlap():
+    data = np.ones((20, 20))
+    error = np.ones((20, 20))
+    xypos= [(10, 10), (0, 0), (0, 19), (19, 0), (19, 19)]
+    r = 5.
+    aper = CircularAperture(xypos, r=r)
+    tbl = aperture_photometry(data, aper, error=error)
+    assert_allclose(tbl['aperture_sum'][0], np.pi * r **2)
+    assert_array_less(tbl['aperture_sum'][1:], np.pi * r **2)
+
+    unit = u.MJy / u.sr
+    tbl = aperture_photometry(data * unit, aper, error=error * unit)
+    assert_allclose(tbl['aperture_sum'][0].value, np.pi * r **2)
+    assert_array_less(tbl['aperture_sum'][1:].value, np.pi * r **2)
+    assert_array_less(tbl['aperture_sum_err'][1:].value, np.pi * r **2)
+    assert tbl['aperture_sum'].unit == unit
+    assert tbl['aperture_sum_err'].unit == unit
