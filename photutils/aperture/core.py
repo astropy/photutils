@@ -113,6 +113,31 @@ class SkyAperture(Aperture):
     Abstract base class for 2D apertures defined in celestial coordinates.
     """
 
+    @abc.abstractmethod
+    def to_pixel(self, wcs, mode='all'):
+        """
+        Convert the aperture to a `PixelAperture` object in pixel
+        coordinates.
+
+        Parameters
+        ----------
+        wcs : `~astropy.wcs.WCS`
+            The WCS transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or only including only the core WCS
+            transformation (``'wcs'``).
+
+        Returns
+        -------
+        aperture : `PixelAperture` object
+            A `PixelAperture` object.
+        """
+
+        raise NotImplementedError('Needs to be implemented in a '
+                                  'SkyAperture subclass.')
+
 
 class PixelAperture(Aperture):
     """
