@@ -23,6 +23,9 @@ New Features
   - Added new ``mask_area()`` method to ``PixelAperture`` classes.
     [#453]
 
+  - The ``aperture_photometry()`` function now accepts a list of
+    aperture objects. [#454]
+
 - ``photutils.background``
 
   - Added new ``MeanBackground``, ``MedianBackground``,
