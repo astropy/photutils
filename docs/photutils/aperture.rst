@@ -461,6 +461,51 @@ computed using PSF photometry.  Therefore, differences are expected
 between the two measurements.
 
 
+Aperture Masks
+--------------
+
+All `~photutils.PixelAperture` objects have a
+:meth:`~photutils.PixelAperture.to_mask` method that returns a list of
+`~photutils.ApertureMask` objects, one for each aperture position.
+The `~photutils.ApertureMask` object contains a cutout of the aperture
+mask and a slices object that provides the locations where the mask is
+to be applied.  It also provides a
+:meth:`~photutils.ApertureMask.to_image` method to obtain an image of
+the mask in a 2D array of the given shape, a
+:meth:`~photutils.ApertureMask.cutout` method to create a cutout from
+the input data over the mask bounding box, and an
+:meth:`~photutils.ApertureMask.apply` method to apply the aperture
+mask to the input data to create a mask-weighted data cutout.   All of
+these methods properly handle the cases of partial or no overlap of
+the aperture mask with the data.
+
+Let's start by creating an aperture object::
+
+    >>> from photutils import CircularAperture
+    >>> positions = [(30., 30.), (40., 40.)]
+    >>> apertures = CircularAperture(positions, r=3.)
+
+Now let's create a list of `~photutils.ApertureMask` objects using the
+:meth:`~photutils.PixelAperture.to_mask` method::
+
+    >>> masks = aperture.to_mask(method='center')
+
+We can now create an image with of the first aperture mask at its
+position::
+
+    >>> mask = masks[0]
+    >>> image = mask.to_image(shape=((200, 200)))
+
+We can also create a cutout from a data image over the mask domain::
+
+    >>> data_cutout = mask.cutout(data)
+
+We can also create a mask-weighted cutout from the data.  Here the
+circular aperture mask has been applied to the data::
+
+    >>> data_cutout_aper = mask.apply(data)
+
+
 .. _custom-apertures:
 
 Defining Your Own Custom Apertures
