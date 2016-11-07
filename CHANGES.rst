@@ -56,13 +56,18 @@ New Features
 
   - Added ``filter_data`` function. [#398]
 
+  - Added ``DAOStarFinder`` and ``IRAFStarFinder`` as oop interfaces for
+    ``daofind`` and ``irafstarfinder``, respectively, which are now
+    deprecated. [#379]
+
 - ``photutils.psf``
 
-  - Added the ``param_uncert`` keyword to ``psf_photometry`` so that
-    users can easily get uncertainties on fitted parameters. [#376]
+  - Added ``BasicPSFPhotometry``, ``IterativelySubtractedPSFPhotometry``, and
+    ``DAOPhotPSFPhotometry`` classes to perform PSF photometry in
+    crowded fields. [#427]
 
-  - Added ``DAOPhotPSFPhotometry`` class to perform PSF photometry in
-    crowded fields. [#385]
+  - Added ``DAOGroup`` and ``DBSCANGroup`` classes for grouping overlapping
+    sources. [#369]
 
 - ``photutils.psf_match``
 
@@ -77,14 +82,6 @@ New Features
 
   - Added ``copy`` and ``area`` methods and an ``areas`` property to
     ``SegmentationImage``. [#331]
-
-- ``photutils.psf``
-
-  - Added the option ``param_uncert`` so that users can easily get
-    uncertainties on fitted parameters. [#376]
-
-  - Added new ``DAOGroup`` class for grouping overlapping sources based on
-    daophot GROUP algorithm. [#369]
 
 API changes
 ^^^^^^^^^^^
