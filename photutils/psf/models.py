@@ -247,7 +247,7 @@ class FittableImageModel(Fittable2DModel):
             raise ValueError('Oversampling factor must be a scalar')
         if value <= 0:
             raise ValueError('Oversampling factor must be greater than 0')
-            
+
         self._oversampling = value
 
     @property
@@ -458,8 +458,8 @@ class FittableImageModel(Fittable2DModel):
         parameters.
 
         """
-        xi = self._oversampling * np.asarray(x) + (self._x_origin - x_0)
-        yi = self._oversampling * np.asarray(y) + (self._y_origin - y_0)
+        xi = self._oversampling * (np.asarray(x) - x_0) + self._x_origin
+        yi = self._oversampling * (np.asarray(y) - y_0) + self._y_origin
 
         f = flux * self._normalization_constant
 
