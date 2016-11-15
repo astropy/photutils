@@ -66,3 +66,26 @@ def test_image_model_oversampling():
     assert not np.allclose(imod_wrongsampled(-2, 1), gm(-2, 1))
     assert not np.allclose(imod_wrongsampled(0.5, 0.5), gm(0.5, 0.5), rtol=.001)
     assert not np.allclose(imod_wrongsampled(-0.5, 1.75), gm(-0.5, 1.75), rtol=.001)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_centering_oversampled():
+    gm = Gaussian2D(x_stddev=2, y_stddev=3)
+
+    osa = 3  #oversampling factor
+    xg, yg = np.mgrid[-3:3.00001:(1/osa), -3:3.00001:(1/osa)]
+
+    imod_oversampled = FittableImageModel(gm(xg, yg), oversampling=osa)
+
+    valcen = gm(0, 0)
+    val36 = gm(0.66, 0.66)
+
+    assert np.allclose(valcen, imod_oversampled(0, 0))
+    assert np.allclose(val36, imod_oversampled(0.66, 0.66))
+
+    imod_oversampled.x_0 = 2.5
+    imod_oversampled.y_0 = -3.5
+
+    assert np.allclose(valcen, imod_oversampled(2.5, -3.5))
+    assert np.allclose(val36, imod_oversampled(2.5 + 0.66, -3.5 + 0.66))
+
