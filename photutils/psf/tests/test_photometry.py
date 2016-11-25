@@ -144,6 +144,7 @@ def test_psf_photometry_niters(sigma_psf, sources):
 
     iter_phot_obj = make_psf_photometry_objs(std, sigma_psf)[1]
     iter_phot_obj.niters = None
+
     result_tab = iter_phot_obj(image)
     residual_image = iter_phot_obj.get_residual_image()
 

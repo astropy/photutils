@@ -5,11 +5,11 @@ from __future__ import division
 import numpy as np
 import warnings
 
-from astropy.table import Table, vstack, hstack
+from astropy.table import Table, Column, vstack, hstack
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.utils.exceptions import AstropyUserWarning
-from .funcs import subtract_psf
+from .funcs import subtract_psf, _extract_psf_fitting_names
 from .models import get_grouped_psf_model
 from ..aperture import CircularAperture, aperture_photometry
 
@@ -127,7 +127,10 @@ class BasicPSFPhotometry(object):
         self.fitshape = fitshape
         self.finder = finder
         self.aperture_radius = aperture_radius
+        self._pars_to_set = None
+        self._pars_to_output = None
         self._residual_image = None
+
 
     @property
     def fitshape(self):
@@ -189,7 +192,6 @@ class BasicPSFPhotometry(object):
         """
 
         return self.do_photometry(image, positions)
-
 
     def do_photometry(self, image, positions=None):
         """
@@ -277,6 +279,7 @@ class BasicPSFPhotometry(object):
                                   sources['ycentroid'],
                                   sources['aperture_flux']])
 
+        self._pars_to_set, self._pars_to_output = self._define_fit_param_names(positions.colnames)
 
         star_groups = self.group_maker(positions)
         output_tab, self._residual_image = self.nstar(image, star_groups)
@@ -309,16 +312,19 @@ class BasicPSFPhotometry(object):
             Residual image.
         """
 
-        result_tab = Table([[], [], [], [], []],
-                           names=('id', 'group_id', 'x_fit', 'y_fit',
-                                  'flux_fit'),
-                           dtype=('i4', 'i4', 'f8', 'f8', 'f8'))
+        result_tab = Table([[], []], names=('id', 'group_id'),
+                           dtype=['i4', 'i4'])
+
+        for param_tab_name in self._pars_to_output.keys():
+            result_tab.add_column(Column(name=param_tab_name))
+
         star_groups = star_groups.group_by('group_id')
 
         y, x = np.indices(image.shape)
 
         for n in range(len(star_groups.groups)):
-            group_psf = get_grouped_psf_model(self.psf_model, star_groups.groups[n])
+            group_psf = get_grouped_psf_model(self.psf_model, star_groups.groups[n],
+                                              self._pars_to_set)
             usepixel = np.zeros_like(image, dtype=np.bool)
 
             for row in star_groups.groups[n]:
@@ -347,6 +353,47 @@ class BasicPSFPhotometry(object):
 
         return result_tab, image
 
+    def _define_fit_param_names(self, param_names):
+        """
+        Convinience function to define mappings between the names of the
+        columns in the initial guess table (and the name of the fitted
+        parameters) and the actual name of the parameters in the model.
+
+        Parameters
+        ----------
+        param_names :  list
+            Names of the columns which represent the initial guesses.
+            For example, ['x_0', 'y_0', 'flux_0'], for intial guesses on the
+            center positions and the flux.
+
+        Returns
+        -------
+        pars_to_set : dict
+            Dict which maps the names of the parameters initial guesses to the
+            actual name of the parameter in the model.
+        pars_to_output : dict
+            Dict which maps the names of the fitted parameters to the
+            actual name of the parameter in the model.
+        """
+
+        xname, yname, fluxname = _extract_psf_fitting_names(self.psf_model)
+
+        pars_to_set = {'x_0': xname, 'y_0': yname, 'flux_0': fluxname}
+
+        pars_to_output = {'x_fit': xname, 'y_fit': yname,
+                'flux_fit': fluxname}
+
+        for p, isfixed in self.psf_model.fixed.items():
+            p0 = p + '_0'
+            if p0 in param_names and p not in (xname, yname, fluxname):
+                pars_to_set[p0] = p
+            pfit = p + '_fit'
+
+            if not isfixed and p not in (xname, yname, fluxname):
+                pars_to_output[pfit] = p
+
+        return pars_to_set, pars_to_output
+
     def _model_params2table(self, fit_model, star_group):
         """
         Place fitted parameters into an astropy table.
@@ -358,33 +405,29 @@ class BasicPSFPhotometry(object):
             in this package like `~photutils.psf.sandbox.DiscretePRF`,
             `~photutils.psf.IntegratedGaussianPRF`, or any other
             suitable 2D model.
-        star_group : ~astropy.table.Table
+        star_group : `~astropy.table.Table`
 
         Returns
         -------
-        param_tab : ~astropy.table.Table
+        param_tab : `~astropy.table.Table`
             Table that contains the fitted parameters.
         """
 
-        param_tab = Table([[], [], [], [], []],
-                          names=('id', 'group_id', 'x_fit', 'y_fit',
-                                 'flux_fit'),
-                          dtype=('i4', 'i4', 'f8', 'f8', 'f8'))
+        param_tab = Table(data=[star_group['id'], star_group['group_id']],
+                          names=('id', 'group_id'), dtype=['i4', 'i4'])
+
+        for param_tab_name in self._pars_to_output.keys():
+            param_tab.add_column(Column(name=param_tab_name,
+                                        data=np.empty(len(param_tab))))
 
         if hasattr(fit_model, 'submodel_names'):
-            for i in range(len(fit_model.submodel_names)):
-                param_tab.add_row([[star_group['id'][i]],
-                                   [star_group['group_id'][i]],
-                                   [getattr(fit_model, 'x_0_'+str(i)).value],
-                                   [getattr(fit_model, 'y_0_'+str(i)).value],
-                                   [getattr(fit_model,
-                                            'flux_'+str(i)).value]])
+            for i in range(len(star_group)):
+                for param_tab_name, param_name in self._pars_to_output.items():
+                    param_tab[param_tab_name][i] = getattr(fit_model,
+                                                           param_name + '_' + str(i)).value
         else:
-            param_tab.add_row([[star_group['id'][0]],
-                               [star_group['group_id'][0]],
-                               [getattr(fit_model, 'x_0').value],
-                               [getattr(fit_model, 'y_0').value],
-                               [getattr(fit_model, 'flux').value]])
+            for param_tab_name, param_name in self._pars_to_output.items():
+                param_tab[param_tab_name] = getattr(fit_model, param_name).value
 
         return param_tab
 
@@ -555,7 +598,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
 
             # n_start = 2 because it starts in the second iteration
             # since the first iteration is above
-            output_table = self._do_photometry(n_start=2)
+            output_table = self._do_photometry(positions.colnames, n_start=2)
             output_table = vstack([table, output_table])
         else:
             if self.bkg_estimator is not None:
@@ -568,15 +611,19 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                     self.aperture_radius = (self.psf_model.sigma.value *
                                             gaussian_sigma_to_fwhm)
 
-            output_table = self._do_photometry()
+            output_table = self._do_photometry(['x_0', 'y_0', 'flux_0'])
         return output_table
 
-    def _do_photometry(self, n_start=1):
+    def _do_photometry(self, param_tab, n_start=1):
         """
         Helper function which performs the iterations of the photometry process.
 
         Parameters
         ----------
+        param_names :  list
+            Names of the columns which represent the initial guesses.
+            For example, ['x_0', 'y_0', 'flux_0'], for intial guesses on the
+            center positions and the flux.
         n_start : int
             Integer representing the start index of the iteration.
             It is 1 if positions are None, and 2 otherwise.
@@ -590,12 +637,16 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             None is returned if no sources are found in ``image``.
         """
 
-        output_table = Table([[], [], [], [], [], [], [], [], []],
-                names=('x_0', 'y_0', 'flux_0', 'id', 'group_id',
-                       'iter_detected', 'x_fit', 'y_fit',
-                       'flux_fit'),
-                dtype=('f8', 'f8', 'f8', 'i4', 'i4', 'i4', 'f8', 'f8',
-                       'f8'))
+        output_table = Table([[], [], []],
+                             names=('id', 'group_id', 'iter_detected'),
+                             dtype=('i4', 'i4', 'i4'))
+
+        self._pars_to_set, self._pars_to_output = self._define_fit_param_names(param_tab)
+        for (init_param_name, fit_param_name) in zip(self._pars_to_set.keys(),
+                                                     self._pars_to_output.keys()):
+            output_table.add_column(Column(name=init_param_name))
+            output_table.add_column(Column(name=fit_param_name))
+
         sources = self.finder(self._residual_image)
 
         n = n_start
@@ -606,10 +657,17 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                                           r=self.aperture_radius)
             sources['aperture_flux'] = aperture_photometry(self._residual_image,
                     apertures)['aperture_sum']
+
             init_guess_tab = Table(names=['x_0', 'y_0', 'flux_0'],
                                data=[sources['xcentroid'],
                                sources['ycentroid'],
                                sources['aperture_flux']])
+
+            for param_tab_name, param_name in self._pars_to_set.items():
+                if param_tab_name not in (['x_0', 'y_0', 'flux_0']):
+                    init_guess_tab.add_column(Column(name=param_tab_name,
+                            data=getattr(self.psf_model,
+                                         param_name)*np.ones(len(sources))))
 
             star_groups = self.group_maker(init_guess_tab)
             table, self._residual_image = super(IterativelySubtractedPSFPhotometry,
