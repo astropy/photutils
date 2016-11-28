@@ -217,7 +217,7 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
         assert_array_equal(result_tab['group_id'], sources['group_id'])
         assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
 
-        # make sure image is note overwritten
+        # make sure image is not overwritten
         assert_array_equal(cp_image, image)
 
         # make sure initial guess table is not modified
@@ -283,7 +283,9 @@ def test_aperture_radius_errors():
 
 @pytest.mark.xfail('not HAS_SCIPY')
 def test_finder_erros():
+    basic_phot_obj = make_psf_photometry_objs()[0]
     iter_phot_obj = make_psf_photometry_objs()[1]
+
     with pytest.raises(ValueError):
         iter_phot_obj.finder = None
 
@@ -309,6 +311,10 @@ def test_finder_positions_warning():
         assert_array_equal(result_tab['y_0'], positions['y_0'])
         assert_allclose(result_tab['x_fit'], positions['x_0'], rtol=1e-1)
         assert_allclose(result_tab['y_fit'], positions['y_0'], rtol=1e-1)
+
+    with pytest.raises(ValueError):
+        basic_phot_obj.finder = None
+        result_tab = basic_phot_obj(image=image)
 
 @pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GT_1_1')
 def test_aperture_radius():
