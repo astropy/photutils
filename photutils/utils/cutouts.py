@@ -30,9 +30,10 @@ def cutout_footprint(data, position, box_size=3, footprint=None, mask=None,
 
     box_size : scalar or tuple, optional
         The size of the region to cutout from ``data``.  If ``box_size``
-        is a scalar, then the region shape will be ``(box_size,
-        box_size)``.  Either ``box_size`` or ``footprint`` must be
-        defined.  If they are both defined, then ``footprint`` overrides
+        is a scalar then a square box of size ``box_size`` will be used.
+        If ``box_size`` has two elements, they should be in ``(ny, nx)``
+        order.  Either ``box_size`` or ``footprint`` must be defined.
+        If they are both defined, then ``footprint`` overrides
         ``box_size``.
 
     footprint : `~numpy.ndarray` of bools, optional
