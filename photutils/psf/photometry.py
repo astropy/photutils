@@ -594,7 +594,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         if positions is not None:
             table = super(IterativelySubtractedPSFPhotometry,
                 self).do_photometry(image, positions)
-            table['iter_detected'] = np.ones(table['x_fit'].shape, dtype=np.int)
+            table['iter_detected'] = np.ones(table['x_fit'].shape, dtype=np.int32)
 
             # n_start = 2 because it starts in the second iteration
             # since the first iteration is above
@@ -674,7 +674,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                     self).nstar(self._residual_image, star_groups)
             table = hstack([init_guess_tab, table])
 
-            table['iter_detected'] = n*np.ones(table['x_fit'].shape, dtype=np.int)
+            table['iter_detected'] = n*np.ones(table['x_fit'].shape, dtype=np.int32)
 
             output_table = vstack([output_table, table])
             sources = self.finder(self._residual_image)

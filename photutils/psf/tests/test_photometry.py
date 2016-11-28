@@ -343,6 +343,19 @@ def test_aperture_radius():
 
     assert_equal(basic_phot_obj.aperture_radius, psf_model.fwhm.value)
 
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_define_fit_param_names():
+    psf_model = IntegratedGaussianPRF()
+    psf_model.sigma.fixed = False
+
+    basic_phot_obj = make_psf_photometry_objs()[0]
+    basic_phot_obj.psf_model = psf_model
+
+    pars_to_set, pars_to_output = basic_phot_obj._define_fit_param_names(['x_0', 'y_0', 'flux_0', 'sigma_0'])
+    assert_equal(pars_to_set, {'x_0': 'x_0', 'y_0': 'y_0', 'flux_0': 'flux',
+                               'sigma_0': 'sigma'})
+    assert_equal(pars_to_output, {'x_fit': 'x_0', 'y_fit': 'y_0',
+                                  'flux_fit': 'flux', 'sigma_fit': 'sigma'})
 
 # tests previously written to psf_photometry
 
