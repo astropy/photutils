@@ -45,8 +45,7 @@ def get_path(filename, location='local', cache=False):
     if location == 'local':
         path = get_pkg_data_filename('data/' + filename)
     elif location == 'remote':    # pragma: no cover
-        url = ('https://github.com/astropy/photutils-datasets/blob/master/'
-               'data/{0}?raw=true'.format(filename))
+        url = 'http://data.astropy.org/photometry/{0}'.format(filename)
         path = download_file(url, cache=cache)
     else:
         raise ValueError('Invalid location: {0}'.format(location))
@@ -72,6 +71,7 @@ def load_spitzer_image():    # pragma: no cover
         hdu = datasets.load_spitzer_image()
         plt.imshow(hdu.data, origin='lower', vmax=50)
     """
+
     path = get_path('spitzer_example_image.fits', location='remote')
     hdu = fits.open(path)[0]
 
@@ -101,6 +101,7 @@ def load_spitzer_catalog():    # pragma: no cover
         plt.xlim(18.39, 18.05)
         plt.ylim(0.13, 0.30)
     """
+
     path = get_path('spitzer_example_catalog.xml', location='remote')
     table = Table.read(path)
 
@@ -164,6 +165,7 @@ def load_fermi_image():
         hdu = datasets.load_fermi_image()
         plt.imshow(hdu.data, origin='lower', vmax=10)
     """
+
     path = get_path('fermi_counts.fits.gz', location='local')
     hdu = fits.open(path)[1]
 
@@ -187,7 +189,8 @@ def load_star_image():    # pragma: no cover
         hdu = datasets.load_star_image()
         plt.imshow(hdu.data, origin='lower', cmap='gray')
     """
-    path = get_path('M6707HH.fits.gz', location='remote')
+
+    path = get_path('M6707HH.fits', location='remote')
     hdu = fits.open(path)[0]
 
     return hdu
