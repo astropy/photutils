@@ -17,7 +17,8 @@ from ..utils import check_random_state
 
 __all__ = ['make_noise_image', 'make_poisson_noise', 'make_gaussian_sources',
            'make_random_gaussians', 'make_4gaussians_image',
-           'make_100gaussians_image']
+           'make_100gaussians_image', 'make_random_models',
+           'make_model_sources']
 
 
 def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
@@ -270,31 +271,113 @@ def make_gaussian_sources(image_shape, source_table, oversample=1, unit=None,
         ax2.imshow(image2, origin='lower', interpolation='nearest')
         ax3.imshow(image3, origin='lower', interpolation='nearest')
     """
-
-    image = np.zeros(image_shape, dtype=np.float64)
-    y, x = np.indices(image_shape)
-
+    # TODO: change to *fail* if flux/amplitude are both present?
     if 'flux' in source_table.colnames:
+        source_table = source_table.copy()
         amplitude = source_table['flux'] / (2. * np.pi *
                                             source_table['x_stddev'] *
                                             source_table['y_stddev'])
-    elif 'amplitude' in source_table.colnames:
-        amplitude = source_table['amplitude']
-    else:
+        source_table['amplitude'] = amplitude
+        del source_table['flux']
+    elif 'amplitude' not in source_table.colnames:
         raise ValueError('either "amplitude" or "flux" must be columns in '
                          'the input source_table')
 
-    for i, source in enumerate(source_table):
-        model = Gaussian2D(amplitude=amplitude[i], x_mean=source['x_mean'],
-                           y_mean=source['y_mean'],
-                           x_stddev=source['x_stddev'],
-                           y_stddev=source['y_stddev'], theta=source['theta'])
-        if oversample == 1:
-            image += model(x, y)
+    model = Gaussian2D(x_stddev=1, y_stddev=1)
+    return make_model_sources(image_shape, model, source_table, oversample,
+                              unit, hdu, wcs, wcsheader)
+
+
+def make_model_sources(image_shape, model, source_table, oversample=1,
+                       unit=None, hdu=False, wcs=False, wcsheader=None):
+    """
+    Make an image containing sources generated from a user-specified flux model.
+
+    Parameters
+    ----------
+    image_shape : 2-tuple of int or `~numpy.ndarray`
+        If a 2-tuple, shape of the output 2D image.  If an array, these sources
+        will be *added* to that array.
+
+    model : 2D astropy.modeling.models object
+        The model to be used for rendering the sources.  Usually would be a
+        `photutils.psf.models` model.
+
+    source_table : `~astropy.table.Table`
+        Table of parameters for the sources.  The column names must have names
+        that match the parameters of the `model`. Any parameter that is *not* in
+        the table will be left at whatever value it has for ``model``.
+
+    oversample : float, optional
+        The sampling factor used to discretize the models on a
+        pixel grid.
+
+        If the value is 1.0 (the default), then the models will be
+        discretized by taking the value at the center of the pixel bin.
+        Note that this method will not preserve the total flux of very
+        small sources.
+
+        Otherwise, the models will be discretized by taking the average
+        over an oversampled grid.  The pixels will be oversampled by the
+        ``oversample`` factor.
+
+    unit : `~astropy.units.UnitBase` instance, str, optional
+        An object that represents the unit desired for the output image.
+        Must be an `~astropy.units.UnitBase` object or a string
+        parseable by the `~astropy.units` package.
+
+    hdu : bool, optional
+        If `True` returns ``image`` as an `~astropy.io.fits.ImageHDU`
+        object.  To include WCS information in the header, use the
+        ``wcs`` and ``wcsheader`` inputs.  Otherwise the header will be
+        minimal.  Default is `False`.
+
+    wcs : bool, optional
+        If `True` and ``hdu=True``, then a simple WCS will be included
+        in the returned `~astropy.io.fits.ImageHDU` header.  Default is
+        `False`.
+
+    wcsheader : dict or `None`, optional
+        If ``hdu`` and ``wcs`` are `True`, this dictionary is passed to
+        `~astropy.wcs.WCS` to generate the returned
+        `~astropy.io.fits.ImageHDU` header.
+
+    Returns
+    -------
+    image : `~numpy.ndarray` or `~astropy.units.Quantity` or `~astropy.io.fits.ImageHDU`
+        Image or `~astropy.io.fits.ImageHDU` containing 2D Gaussian
+        sources.
+    """
+    image = np.zeros(image_shape, dtype=np.float64)
+    y, x = np.indices(image_shape)
+
+    params_to_set = []
+    for colnm in source_table.colnames:
+        if colnm in model.param_names:
+            params_to_set.append(colnm)
         else:
-            image += discretize_model(model, (0, image_shape[1]),
-                                      (0, image_shape[0]), mode='oversample',
-                                      factor=oversample)
+            raise ValueError('Table column {} is not a parameter in model '
+                             '{}'.format(colnm, model))
+
+    # use this to store the *initial* values so we can set them back when done
+    # with the loop.  Best not to copy a model, because some PSF models may have
+    # substantial amounts of data in them
+    params_to_set = {pnm: getattr(model, pnm) for pnm in params_to_set}
+
+    try:
+        for i, source in enumerate(source_table):
+            for paramnm in params_to_set:
+                setattr(model, paramnm, source[paramnm])
+            if oversample == 1:
+                image += model(x, y)
+            else:
+                image += discretize_model(model, (0, image_shape[1]),
+                                          (0, image_shape[0]), mode='oversample',
+                                          factor=oversample)
+    finally:
+        for pnm, val in params_to_set.items():
+            setattr(model, paramnm, val)
+
     if unit is not None:
         image = u.Quantity(image, unit=unit)
 
@@ -547,3 +630,48 @@ def make_100gaussians_image():
     image2 = image1 + make_noise_image(shape, type='gaussian', mean=5.,
                                        stddev=2., random_state=12345)
     return image2
+
+
+def make_random_models(model, n_sources, param_ranges=None, random_state=None):
+    """
+    Make an `~astropy.table.Table` and the actual image for a simulated set of
+    sources encoded as a PSF or other astropy model.
+
+    Parameters
+    ----------
+    model : 2D astropy.modeling.models object
+        The model to be used for the sources.  Usually would be a
+        `photutils.psf.models` model.
+
+    n_sources : int
+        The number of random Gaussian sources to generate
+
+    param_ranges : dict or None
+        The lower and upper boundaries for each of the parameters in ``model``
+        as a dict mapping the parameter name to a ``(lower, upper)``. Must be
+        valid parameter names for ``model``.
+
+    random_state : int or `~numpy.random.RandomState`, optional
+        Pseudo-random number generator state used for random sampling.
+        Separate function calls with the same parameters and
+        ``random_state`` will generate identical sources.
+
+    Returns
+    -------
+    table : `~astropy.table.Table`
+        A table of parameters for the randomly generated Gaussian
+        sources.  Each row of the table corresponds to a Gaussian source
+        whose parameters are defined by the column names.  The column
+        names will be the keys of the dictionary ``param_ranges``.
+    """
+
+    prng = check_random_state(random_state)
+
+    sources = Table()
+
+    for pnm, (lower, upper) in param_ranges.items():
+        if pnm not in model.param_names:
+            raise ValueError('Requested parameter {} is not in model {}'.format(pnm, model))
+        sources[pnm] = prng.uniform(lower, upper, n_sources)
+
+    return sources
