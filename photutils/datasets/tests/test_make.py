@@ -7,10 +7,12 @@ from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest, assert_quantity_allclose
 from astropy.table import Table
 import astropy.units as u
+from astropy.modeling.models import Moffat2D
 
 from .. import (make_noise_image, make_poisson_noise, make_gaussian_sources,
                 make_random_gaussians, make_4gaussians_image,
-                make_100gaussians_image)
+                make_100gaussians_image,
+                make_random_models, make_model_sources)
 
 
 TABLE = Table()
@@ -160,3 +162,19 @@ def test_make_100gaussians_image():
     image = make_100gaussians_image()
     assert image.shape == shape
     assert_allclose(image.sum(), data_sum, rtol=1.e-6)
+
+
+def test_make_random_models():
+    model = Moffat2D(amplitude=1)
+    param_ranges = {'x_0': (0, 300), 'y_0': (0, 500),
+                    'gamma': (1, 3), 'alpha': (1.5, 3)}
+
+    source_table = make_random_models(model, 10, param_ranges)
+
+    # most of the make_model_sources options are exercised in the make_gaussian_sources tests
+    imshape = (300, 500)
+
+    image = make_model_sources(imshape, model, source_table)
+
+    assert image.sum() > 1
+    assert image.sum() < 100
