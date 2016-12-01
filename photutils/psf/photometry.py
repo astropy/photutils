@@ -217,7 +217,9 @@ class BasicPSFPhotometry(object):
             for each object. Columns 'x_0' and 'y_0' must be present.
             'flux_0' can also be provided to set initial fluxes.
             If 'flux_0' is not provided, aperture photometry is used to
-            estimate initial values for the fluxes.
+            estimate initial values for the fluxes. Additional columns of the
+            form '<parametername>_0' will be used to set the initial guess for
+            any parameters of the ``psf_model`` model that are not fixed.
 
         Returns
         -------
@@ -580,7 +582,9 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             for each object. Columns 'x_0' and 'y_0' must be present.
             'flux_0' can also be provided to set initial fluxes.
             If 'flux_0' is not provided, aperture photometry is used to
-            estimate initial values for the fluxes.
+            estimate initial values for the fluxes. Additional columns of the
+            form '<parametername>_0' will be used to set the initial guess for
+            any parameters of the ``psf_model`` model that are not fixed.
 
         Returns
         -------
