@@ -357,7 +357,7 @@ def test_define_fit_param_names():
     basic_phot_obj = make_psf_photometry_objs()[0]
     basic_phot_obj.psf_model = psf_model
 
-    pars_to_set, pars_to_output = basic_phot_obj._define_fit_param_names(['x_0', 'y_0', 'flux_0', 'sigma_0'])
+    pars_to_set, pars_to_output = basic_phot_obj._define_fit_param_names()
     assert_equal(pars_to_set, {'x_0': 'x_0', 'y_0': 'y_0', 'flux_0': 'flux',
                                'sigma_0': 'sigma'})
     assert_equal(pars_to_output, {'x_fit': 'x_0', 'y_fit': 'y_0',

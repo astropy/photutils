@@ -281,7 +281,11 @@ class BasicPSFPhotometry(object):
                                   sources['ycentroid'],
                                   sources['aperture_flux']])
 
-        self._pars_to_set, self._pars_to_output = self._define_fit_param_names(positions.colnames)
+        self._pars_to_set, self._pars_to_output = self._define_fit_param_names()
+
+        for p0, param in self._pars_to_set.items():
+            if p0 not in positions.colnames:
+                positions[p0] = len(positions) * [getattr(self.psf_model, param).value]
 
         star_groups = self.group_maker(positions)
         output_tab, self._residual_image = self.nstar(image, star_groups)
@@ -355,18 +359,11 @@ class BasicPSFPhotometry(object):
 
         return result_tab, image
 
-    def _define_fit_param_names(self, param_names):
+    def _define_fit_param_names(self):
         """
         Convinience function to define mappings between the names of the
         columns in the initial guess table (and the name of the fitted
         parameters) and the actual name of the parameters in the model.
-
-        Parameters
-        ----------
-        param_names :  list
-            Names of the columns which represent the initial guesses.
-            For example, ['x_0', 'y_0', 'flux_0'], for intial guesses on the
-            center positions and the flux.
 
         Returns
         -------
@@ -387,7 +384,7 @@ class BasicPSFPhotometry(object):
 
         for p, isfixed in self.psf_model.fixed.items():
             p0 = p + '_0'
-            if p0 in param_names and p not in (xname, yname, fluxname):
+            if p not in (xname, yname, fluxname):
                 pars_to_set[p0] = p
             pfit = p + '_fit'
 
@@ -645,7 +642,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                              names=('id', 'group_id', 'iter_detected'),
                              dtype=('i4', 'i4', 'i4'))
 
-        self._pars_to_set, self._pars_to_output = self._define_fit_param_names(param_tab)
+        self._pars_to_set, self._pars_to_output = self._define_fit_param_names()
         for (init_param_name, fit_param_name) in zip(self._pars_to_set.keys(),
                                                      self._pars_to_output.keys()):
             output_table.add_column(Column(name=init_param_name))
