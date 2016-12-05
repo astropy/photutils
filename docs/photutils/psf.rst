@@ -481,6 +481,157 @@ Consider the previous example after the line
     plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
     plt.show()
 
+Fitting additional parameters
+-----------------------------
+
+The PSF photometry classes can also be used to fit additional parameters
+simultaneously, for instance, the PSF width and the sky background.
+
+Consider the case in which one would like to fit the ``sigma`` parameter in
+``IntegratedGaussianPRF``. First, let us instantiate a psf model object:
+
+.. doctest-skip::
+
+    >>> gaussian_prf = IntegratedGaussianPRF()
+
+The attribute ``fixed`` for the ``sigma`` parameter is set to ``True`` by
+default, i.e., ``sigma`` is not considered during the fitting process.
+Let's first change this behavior:
+
+.. doctest-skip::
+
+    >>> gaussian_prf.sigma.fixed = False
+
+In addition, we need to indicate the inital guess which will be used in during
+the fitting process. By the default, the initial guess is taken as the default
+value of ``sigma``, but we can change that by doing:
+
+.. doctest-skip::
+
+    >>> gaussian_prf.sigma.value = 2.05
+
+Now, let's create an artificial image which has a brighter star and one
+overlapping companion at a distance close enough so that the detection
+algorithms won't be able to identify it, and hence we should use
+``IterativelySubtractedPSFPhotometry`` to reduce the fainter star as well.
+Also, note that both of the stars have ``sigma=2.0``.
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    from photutils.datasets import make_random_gaussians, make_noise_image
+    from photutils.datasets import make_gaussian_sources
+    from photutils.psf import IterativelySubtractedPSFPhotometry, BasicPSFPhotometry
+    from photutils import MMMBackground
+    from photutils.psf import IntegratedGaussianPRF, DAOGroup
+    from photutils.detection import DAOStarFinder
+    from photutils.detection import IRAFStarFinder
+    from astropy.table import Table
+    from astropy.modeling.fitting import LevMarLSQFitter
+
+    sources = Table()
+    sources['flux'] = [10000, 1000]
+    sources['x_mean'] = [18, 13]
+    sources['y_mean'] = [17, 19]
+    sources['x_stddev'] = [2] * 2
+    sources['y_stddev'] = sources['x_stddev']
+    sources['theta'] = [0] * 2
+    tshape = (32, 32)
+    image = (make_gaussian_sources(tshape, sources) +
+             make_noise_image(tshape, type='poisson', mean=6.,
+                              random_state=1) +
+             make_noise_image(tshape, type='gaussian', mean=0.,
+                              stddev=2., random_state=1))
+
+    plt.imshow(image, cmap='viridis', aspect=1,
+               interpolation='nearest', origin='lower')
+
+Let's instantiate the necessary objetcs in order to use an
+`~photutils.psf.IterativelySubtractedPSFPhotometry` to perform photometry::
+
+    >>> daogroup = DAOGroup(crit_separation=8)
+    >>> mmm_bkg = MMMBackground()
+    >>> iraffind = IRAFStarFinder(threshold=2.5*mmm_bkg(image), fwhm=4.5)
+    >>> fitter = LevMarLSQFitter()
+
+    >>> gaussian_prf = IntegratedGaussianPRF(sigma=2.05)
+    >>> gaussian_prf.sigma.fixed = False
+
+    >>> itr_phot_obj = IterativelySubtractedPSFPhotometry(finder=iraffind,
+    ...                                                   group_maker=daogroup,
+    ...                                                   bkg_estimator=mmm_bkg,
+    ...                                                   psf_model=psf_model,
+    ...                                                   fitter=fitter,
+    ...                                                   fitshape=(11, 11),
+    ...                                                   niters=None)
+
+Now, let's use the callable ``itr_phot_obj`` to perform photometry::
+
+    >>> phot_results = itr_phot_obj(image)
+    >>> phot_results_itr['id', 'group_id', 'iter_detected', 'x_0', 'y_0', 'flux_0'] #doctest: +SKIP
+        id group_id iter_detected      x_0           y_0          flux_0
+        --- -------- ------------- ------------- ------------- -------------
+          1        1             1 17.9830836988  17.014907321 9753.12898388
+          1        1             2 12.6296930472 19.6647630336 722.116920665
+    >>> phot_results_itr['sigma_0', 'sigma_fit', 'x_fit', 'y_fit', 'flux_fit'] #doctest: +SKIP
+        sigma_0   sigma_fit       x_fit         y_fit        flux_fit
+        ------- ------------- ------------- ------------- -------------
+           2.05 2.03898434182 17.9155310586 17.0377322599 10478.1845716
+           2.05 1.77365765325 12.2809666868 19.2416219146 772.882624378
+
+We can see that ``sigma_0`` (the initial guess for ``sigma``) was assigned
+to the value we used when creating the PSF model.
+
+Let's take a look at the residual image::
+
+    >>> plt.imshow(itr_phot_obj.get_residual_image(), cmap='viridis',
+    ... aspect=1, interpolation='nearest', origin='lower') #doctest: +SKIP
+
+.. plot::
+
+    from photutils.datasets import make_random_gaussians, make_noise_image
+    from photutils.datasets import make_gaussian_sources
+    import matplotlib.pyplot as plt
+    from photutils.psf import IterativelySubtractedPSFPhotometry, BasicPSFPhotometry
+    from astropy.stats import gaussian_sigma_to_fwhm
+    from astropy.table import Table
+    from photutils import MMMBackground
+    from photutils.psf import IntegratedGaussianPRF, DAOGroup
+    from photutils.detection import DAOStarFinder
+    from astropy.modeling.fitting import LevMarLSQFitter
+    from photutils.detection import IRAFStarFinder
+
+    sources = Table()
+    sources['flux'] = [10000, 1000]
+    sources['x_mean'] = [18, 13]
+    sources['y_mean'] = [17, 19]
+    sources['x_stddev'] = [2] * 2
+    sources['y_stddev'] = sources['x_stddev']
+    sources['theta'] = [0] * 2
+    tshape = (32, 32)
+    image = (make_gaussian_sources(tshape, sources) +
+             make_noise_image(tshape, type='poisson', mean=6.,
+                              random_state=1) +
+             make_noise_image(tshape, type='gaussian', mean=0.,
+                              stddev=2., random_state=1))
+
+    daogroup = DAOGroup(crit_separation=8)
+    mmm_bkg = MMMBackground()
+    psf_model = IntegratedGaussianPRF(sigma=2.05)
+    iraffind = IRAFStarFinder(threshold=2.5*mmm_bkg(image),
+                              fwhm=4.5)
+    fitter = LevMarLSQFitter()
+    psf_model.sigma.fixed = False
+
+    itr_phot_obj = IterativelySubtractedPSFPhotometry(finder=iraffind, group_maker=daogroup,
+                                        bkg_estimator=mmm_bkg, psf_model=psf_model,
+                                        fitter=fitter, fitshape=(11, 11), niters=2)
+
+    phot_results_itr = itr_phot_obj(image)
+    plt.imshow(itr_phot_obj.get_residual_image(), cmap='viridis', aspect=1,
+            interpolation='nearest', origin='lower')
+
+
 For more examples, also check the online notebook in the next section.
 
 Example Notebooks (online)
