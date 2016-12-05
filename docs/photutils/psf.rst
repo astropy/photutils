@@ -547,16 +547,16 @@ Also, note that both of the stars have ``sigma=2.0``.
                interpolation='nearest', origin='lower')
 
 Let's instantiate the necessary objetcs in order to use an
-`~photutils.psf.IterativelySubtractedPSFPhotometry` to perform photometry::
+`~photutils.psf.IterativelySubtractedPSFPhotometry` to perform photometry:
+
+.. doctest-requires:: scipy
 
     >>> daogroup = DAOGroup(crit_separation=8)
     >>> mmm_bkg = MMMBackground()
     >>> iraffind = IRAFStarFinder(threshold=2.5*mmm_bkg(image), fwhm=4.5)
     >>> fitter = LevMarLSQFitter()
-
     >>> gaussian_prf = IntegratedGaussianPRF(sigma=2.05)
     >>> gaussian_prf.sigma.fixed = False
-
     >>> itr_phot_obj = IterativelySubtractedPSFPhotometry(finder=iraffind,
     ...                                                   group_maker=daogroup,
     ...                                                   bkg_estimator=mmm_bkg,
@@ -565,7 +565,9 @@ Let's instantiate the necessary objetcs in order to use an
     ...                                                   fitshape=(11, 11),
     ...                                                   niters=None)
 
-Now, let's use the callable ``itr_phot_obj`` to perform photometry::
+Now, let's use the callable ``itr_phot_obj`` to perform photometry:
+
+.. doctest-requires:: scipy
 
     >>> phot_results = itr_phot_obj(image)
     >>> phot_results_itr['id', 'group_id', 'iter_detected', 'x_0', 'y_0', 'flux_0'] #doctest: +SKIP
