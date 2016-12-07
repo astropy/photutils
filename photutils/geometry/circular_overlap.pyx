@@ -27,7 +27,7 @@ ctypedef np.float64_t DTYPE_t
 # NOTE: Here we need to make sure we use cimport to import the C functions from
 # core (since these were defined with cdef). This also requires the core.pxd
 # file to exist with the function signatures.
-from .core cimport area_arc, area_triangle
+from .core cimport area_arc, area_triangle, floor_sqrt
 
 
 def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
@@ -188,9 +188,10 @@ cdef double circular_overlap_single_exact(double xmin, double ymin,
                 + circular_overlap_single_exact(0., 0., xmax, ymax, r)
 
 
-def circular_overlap_core(double xmin, double ymin, double xmax, double ymax,
+cdef double circular_overlap_core(double xmin, double ymin, double xmax, double ymax,
                           double r):
-    """Assumes that the center of the circle is <= xmin,
+    """
+    Assumes that the center of the circle is <= xmin,
     ymin (can always modify input to conform to this).
     """
 
@@ -202,29 +203,29 @@ def circular_overlap_core(double xmin, double ymin, double xmax, double ymax,
         area = (xmax - xmin) * (ymax - ymin)
     else:
         area = 0.
-        d1 = sqrt(xmax * xmax + ymin * ymin)
-        d2 = sqrt(xmin * xmin + ymax * ymax)
+        d1 = floor_sqrt(xmax * xmax + ymin * ymin)
+        d2 = floor_sqrt(xmin * xmin + ymax * ymax)
         if d1 < r and d2 < r:
-            x1, y1 = sqrt(r * r - ymax * ymax), ymax
-            x2, y2 = xmax, sqrt(r * r - xmax * xmax)
+            x1, y1 = floor_sqrt(r * r - ymax * ymax), ymax
+            x2, y2 = xmax, floor_sqrt(r * r - xmax * xmax)
             area = ((xmax - xmin) * (ymax - ymin) -
                     area_triangle(x1, y1, x2, y2, xmax, ymax) +
                     area_arc(x1, y1, x2, y2, r))
         elif d1 < r:
-            x1, y1 = xmin, sqrt(r * r - xmin * xmin)
-            x2, y2 = xmax, sqrt(r * r - xmax * xmax)
+            x1, y1 = xmin, floor_sqrt(r * r - xmin * xmin)
+            x2, y2 = xmax, floor_sqrt(r * r - xmax * xmax)
             area = (area_arc(x1, y1, x2, y2, r) +
                     area_triangle(x1, y1, x1, ymin, xmax, ymin) +
                     area_triangle(x1, y1, x2, ymin, x2, y2))
         elif d2 < r:
-            x1, y1 = sqrt(r * r - ymin * ymin), ymin
-            x2, y2 = sqrt(r * r - ymax * ymax), ymax
+            x1, y1 = floor_sqrt(r * r - ymin * ymin), ymin
+            x2, y2 = floor_sqrt(r * r - ymax * ymax), ymax
             area = (area_arc(x1, y1, x2, y2, r) +
                     area_triangle(x1, y1, xmin, y1, xmin, ymax) +
                     area_triangle(x1, y1, xmin, y2, x2, y2))
         else:
-            x1, y1 = sqrt(r * r - ymin * ymin), ymin
-            x2, y2 = xmin, sqrt(r * r - xmin * xmin)
+            x1, y1 = floor_sqrt(r * r - ymin * ymin), ymin
+            x2, y2 = xmin, floor_sqrt(r * r - xmin * xmin)
             area = (area_arc(x1, y1, x2, y2, r) +
                     area_triangle(x1, y1, x2, y2, xmin, ymin))
 
