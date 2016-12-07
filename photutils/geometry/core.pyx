@@ -37,6 +37,22 @@ ctypedef struct intersections:
     point p2
 
 
+cdef double floor_sqrt(double x):
+    """
+    In some of the geometrical functions, we have to take the sqrt of a number
+    and we know that the number should be >= 0. However, in some cases the
+    value is e.g. -1e-10, but we want to treat it as zero, which is what
+    this function does.
+
+    Note that this does **not** check whether negative values are close or not
+    to zero, so this should be used only in cases where the value is expected
+    to be positive on paper.
+    """
+    if x > 0:
+        return sqrt(x)
+    else:
+        return 0
+
 # NOTE: The following two functions use cdef because they are not intended to be
 # called from the Python code. Using def makes them callable from outside, but
 # also slower. Some functions currently return multiple values, and for those we
