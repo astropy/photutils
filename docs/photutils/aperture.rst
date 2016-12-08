@@ -385,7 +385,9 @@ Galactic plane::
 
     >>> from photutils import datasets
     >>> hdu = datasets.load_spitzer_image()   # doctest: +REMOTE_DATA
+    Downloading http://data.astropy.org/photometry/spitzer_example_image.fits [Done]
     >>> catalog = datasets.load_spitzer_catalog()   # doctest: +REMOTE_DATA
+    Downloading http://data.astropy.org/photometry/spitzer_example_catalog.xml [Done]
 
 The catalog contains (among other things) the Galactic coordinates of
 the sources in the image as well as the PSF-fitted fluxes from the
