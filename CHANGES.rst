@@ -10,6 +10,12 @@ New Features
 API changes
 ^^^^^^^^^^^
 
+- ``photutils.datasets``
+
+  - The ``load_*`` functions that use remote data now retrieve the
+    data from ``data.astropy.org`` (the astropy data repository).
+    [#472]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -17,6 +23,11 @@ Bug Fixes
 
   - Fixed a bug in ``circular_overlap_grid`` affecting 32-bit machines
     that could cause errors circular aperture photometry. [#475]
+
+- ``photutils.psf``
+
+  - Fixed a bug in how ``FittableImageModel`` represents its center.
+    [#460]
 
 
 0.3 (2016-11-06)
@@ -181,7 +192,6 @@ API changes
 
   - Renamed ``calculate_total_error`` to ``calc_total_error``. [#368]
 
-
 Bug Fixes
 ^^^^^^^^^
 
@@ -211,7 +221,6 @@ General
   1.7. [#327]
 
 - Fixed configparser for Python 3.5. [#366, #384]
-
 
 Bug Fixes
 ^^^^^^^^^
