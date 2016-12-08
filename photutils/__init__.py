@@ -1,6 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-An Astropy affiliated package for photometry.
+Photutils is an Astropy affiliated package to provide tools for
+detecting and performing photometry of astronomical sources.  It also
+has tools for background estimation, PSF matching, centroiding, and
+morphological measurements.
 """
 
 # Affiliated packages may add whatever they like to this file, but
