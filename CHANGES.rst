@@ -1,3 +1,24 @@
+0.4 (unreleased)
+----------------
+
+General
+^^^^^^^
+
+New Features
+^^^^^^^^^^^^
+
+API changes
+^^^^^^^^^^^
+
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.geometry``
+
+  - Fixed a bug in ``circular_overlap_grid`` affecting 32-bit machines
+    that could cause errors circular aperture photometry. [#475]
+
+
 0.3 (2016-11-06)
 ----------------
 
