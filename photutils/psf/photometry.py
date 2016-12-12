@@ -289,7 +289,9 @@ class BasicPSFPhotometry(object):
 
         star_groups = self.group_maker(positions)
         output_tab, self._residual_image = self.nstar(image, star_groups)
-        output_tab = hstack([positions, output_tab])
+
+        star_groups = star_groups.group_by('group_id')
+        output_tab = hstack([star_groups, output_tab])
 
         return output_tab
 
@@ -318,16 +320,14 @@ class BasicPSFPhotometry(object):
             Residual image.
         """
 
-        result_tab = Table([[], []], names=('id', 'group_id'),
-                           dtype=['i4', 'i4'])
+        result_tab = Table()
 
         for param_tab_name in self._pars_to_output.keys():
             result_tab.add_column(Column(name=param_tab_name))
 
-        star_groups = star_groups.group_by('group_id')
-
         y, x = np.indices(image.shape)
 
+        star_groups = star_groups.group_by('group_id')
         for n in range(len(star_groups.groups)):
             group_psf = get_grouped_psf_model(self.psf_model, star_groups.groups[n],
                                               self._pars_to_set)
@@ -384,11 +384,9 @@ class BasicPSFPhotometry(object):
 
         for p, isfixed in self.psf_model.fixed.items():
             p0 = p + '_0'
-            if p not in (xname, yname, fluxname):
-                pars_to_set[p0] = p
             pfit = p + '_fit'
-
-            if not isfixed and p not in (xname, yname, fluxname):
+            if p not in (xname, yname, fluxname) and not isfixed:
+                pars_to_set[p0] = p
                 pars_to_output[pfit] = p
 
         return pars_to_set, pars_to_output
@@ -412,12 +410,11 @@ class BasicPSFPhotometry(object):
             Table that contains the fitted parameters.
         """
 
-        param_tab = Table(data=[star_group['id'], star_group['group_id']],
-                          names=('id', 'group_id'), dtype=['i4', 'i4'])
+        param_tab = Table()
 
         for param_tab_name in self._pars_to_output.keys():
             param_tab.add_column(Column(name=param_tab_name,
-                                        data=np.empty(len(param_tab))))
+                                        data=np.empty(len(star_group))))
 
         if hasattr(fit_model, 'submodel_names'):
             for i in range(len(star_group)):
@@ -638,9 +635,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             None is returned if no sources are found in ``image``.
         """
 
-        output_table = Table([[], [], []],
-                             names=('id', 'group_id', 'iter_detected'),
-                             dtype=('i4', 'i4', 'i4'))
+        output_table = Table()
 
         self._pars_to_set, self._pars_to_output = self._define_fit_param_names()
         for (init_param_name, fit_param_name) in zip(self._pars_to_set.keys(),
@@ -659,8 +654,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             sources['aperture_flux'] = aperture_photometry(self._residual_image,
                     apertures)['aperture_sum']
 
-            init_guess_tab = Table(names=['x_0', 'y_0', 'flux_0'],
-                               data=[sources['xcentroid'],
+            init_guess_tab = Table(names=['id', 'x_0', 'y_0', 'flux_0'],
+                               data=[sources['id'], sources['xcentroid'],
                                sources['ycentroid'],
                                sources['aperture_flux']])
 
@@ -673,7 +668,9 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             star_groups = self.group_maker(init_guess_tab)
             table, self._residual_image = super(IterativelySubtractedPSFPhotometry,
                     self).nstar(self._residual_image, star_groups)
-            table = hstack([init_guess_tab, table])
+
+            star_groups = star_groups.group_by('group_id')
+            table = hstack([star_groups, table])
 
             table['iter_detected'] = n*np.ones(table['x_fit'].shape, dtype=np.int32)
 
