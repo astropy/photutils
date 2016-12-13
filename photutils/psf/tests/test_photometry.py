@@ -349,19 +349,31 @@ def test_aperture_radius():
 
     assert_equal(basic_phot_obj.aperture_radius, psf_model.fwhm.value)
 
+
+PARS_TO_SET_0 = {'x_0': 'x_0', 'y_0': 'y_0', 'flux_0': 'flux'}
+PARS_TO_OUTPUT_0 = {'x_fit': 'x_0', 'y_fit': 'y_0', 'flux_fit': 'flux'}
+PARS_TO_SET_1 = PARS_TO_SET_0.copy()
+PARS_TO_SET_1['sigma_0'] = 'sigma'
+PARS_TO_OUTPUT_1 = PARS_TO_OUTPUT_0.copy()
+PARS_TO_OUTPUT_1['sigma_fit'] = 'sigma'
+@pytest.mark.parametrize("actual_pars_to_set, actual_pars_to_output,"
+                         "is_sigma_fixed",[(PARS_TO_SET_0, PARS_TO_OUTPUT_0,
+                                            True),
+                                           (PARS_TO_SET_1, PARS_TO_OUTPUT_1,
+                                            False)])
 @pytest.mark.skipif('not HAS_SCIPY')
-def test_define_fit_param_names():
+def test_define_fit_param_names(actual_pars_to_set, actual_pars_to_output,
+                                is_sigma_fixed):
     psf_model = IntegratedGaussianPRF()
-    psf_model.sigma.fixed = False
+    psf_model.sigma.fixed = is_sigma_fixed
 
     basic_phot_obj = make_psf_photometry_objs()[0]
     basic_phot_obj.psf_model = psf_model
 
     pars_to_set, pars_to_output = basic_phot_obj._define_fit_param_names()
-    assert_equal(pars_to_set, {'x_0': 'x_0', 'y_0': 'y_0', 'flux_0': 'flux',
-                               'sigma_0': 'sigma'})
-    assert_equal(pars_to_output, {'x_fit': 'x_0', 'y_fit': 'y_0',
-                                  'flux_fit': 'flux', 'sigma_fit': 'sigma'})
+    assert_equal(pars_to_set, actual_pars_to_set)
+    assert_equal(pars_to_output, actual_pars_to_output)
+
 
 # tests previously written to psf_photometry
 
