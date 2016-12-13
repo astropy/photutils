@@ -216,7 +216,9 @@ microns) PSF.  We load the PSFs using the
 
     >>> from photutils.datasets import load_irac_psf
     >>> ch1_hdu = load_irac_psf(channel=1)    # doctest: +REMOTE_DATA
+    Downloading http://data.astropy.org/photometry/irac_ch1_flight.fits [Done]
     >>> ch4_hdu = load_irac_psf(channel=4)    # doctest: +REMOTE_DATA
+    Downloading http://data.astropy.org/photometry/irac_ch4_flight.fits [Done]
     >>> ch1 = ch1_hdu.data    # doctest: +REMOTE_DATA
     >>> ch4 = ch4_hdu.data    # doctest: +REMOTE_DATA
 
