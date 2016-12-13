@@ -49,7 +49,7 @@ background noise using sigma-clipped statistics::
     Downloading ...
     >>> data = hdu.data[0:400, 0:400]    # doctest: +REMOTE_DATA
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, iters=5)    # doctest: +REMOTE_DATA
-    >>> print(mean, median, std)    # doctest: +REMOTE_DATA
+    >>> print((mean, median, std))    # doctest: +REMOTE_DATA, +FLOAT_CMP
     (3667.7792400186008, 3649.0, 204.27923665845705)
 
 Now we will subtract the background and use an instance of
