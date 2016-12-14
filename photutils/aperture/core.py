@@ -110,10 +110,7 @@ class Aperture(object):
 
 class PixelAperture(Aperture):
     """
-    Abstract base class for 2D apertures defined in pixel coordinates.
-
-    Derived classes must define a ``_slices`` property, ``to_mask`` and
-    ``plot`` methods, and optionally an ``area`` method.
+    Abstract base class for apertures defined in pixel coordinates.
     """
 
     @abc.abstractproperty
