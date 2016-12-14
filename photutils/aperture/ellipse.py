@@ -8,9 +8,9 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
 
-from .core import (PixelAperture, SkyAperture, ApertureMask,
-                   _sanitize_pixel_positions, _translate_mask_method,
-                   _make_annulus_path)
+from .core import (PixelAperture, SkyAperture, _sanitize_pixel_positions,
+                   _translate_mask_method, _make_annulus_path)
+from .mask import ApertureMask
 from ..geometry import elliptical_overlap_grid
 from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
                                  assert_angle_or_pixel)
@@ -28,8 +28,8 @@ class EllipticalMaskMixin(object):
 
     def to_mask(self, method='exact', subpixels=5):
         """
-        Return a list of `ApertureMask` objects, one for each aperture
-        position.
+        Return a list of `~photutils.ApertureMask` objects, one for each
+        aperture position.
 
         Parameters
         ----------
