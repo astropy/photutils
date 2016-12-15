@@ -21,26 +21,16 @@ class ApertureMask(object):
         full-sized (i.e. not truncated) array that is the direct output
         of one of the low-level `photutils.geometry` functions.
 
-    bbox_slice : tuple of slice objects
-        A tuple of ``(y, x)`` numpy slice objects defining the aperture
-        minimal bounding box.
+    bbox : `photutils.BoundingBox`
+        The bounding box object defining the aperture minimal bounding
+        box.
     """
 
-    def __init__(self, mask, bbox_slice):
+    def __init__(self, mask, bbox):
+        if mask.shape != bbox.shape:
+            raise ValueError('mask and bbox must have the same shape')
         self.data = np.asanyarray(mask)
-        self.shape = mask.shape
-        self.slices = bbox_slice
-
-        dy = bbox_slice[0].stop - bbox_slice[0].start
-        dx = bbox_slice[1].stop - bbox_slice[1].start
-        if self.data.shape != (dy, dx):
-            raise ValueError('mask shape and bbox_slice do not agree.')
-
-    @property
-    def array(self):
-        """The 2D mask array."""
-
-        return self.data
+        self.bbox = bbox
 
     def __array__(self):
         """
@@ -49,10 +39,18 @@ class ApertureMask(object):
 
         return self.data
 
+    @property
+    def shape(self):
+        """
+        The shape of the mask array.
+        """
+
+        return self.data.shape
+
     def _overlap_slices(self, shape):
         """
-        Calculate the slices for the overlapping part of ``self.slices``
-        and an array of the given shape.
+        Calculate the slices for the overlapping part of the bounding
+        box and an array of the given shape.
 
         Parameters
         ----------
@@ -76,10 +74,10 @@ class ApertureMask(object):
         if len(shape) != 2:
             raise ValueError('input shape must have 2 elements.')
 
-        ymin = self.slices[0].start
-        ymax = self.slices[0].stop
-        xmin = self.slices[1].start
-        xmax = self.slices[1].stop
+        xmin = self.bbox.ixmin
+        xmax = self.bbox.ixmax
+        ymin = self.bbox.iymin
+        ymax = self.bbox.iymax
 
         if (xmin >= shape[1] or ymin >= shape[0] or xmax <= 0 or ymax <= 0):
             # no overlap of the aperture with the data
@@ -117,7 +115,7 @@ class ApertureMask(object):
         mask = np.zeros(shape)
 
         try:
-            mask[self.slices] = self.data
+            mask[self.bbox.slices] = self.data
         except ValueError:    # partial or no overlap
             slices_large, slices_small = self._overlap_slices(shape)
 
@@ -155,7 +153,7 @@ class ApertureMask(object):
         """
 
         data = np.asanyarray(data)
-        cutout = data[self.slices]
+        cutout = data[self.bbox.slices]
 
         if cutout.shape != self.shape:
             slices_large, slices_small = self._overlap_slices(data.shape)

@@ -470,8 +470,8 @@ All `~photutils.PixelAperture` objects have a
 :meth:`~photutils.PixelAperture.to_mask` method that returns a list of
 `~photutils.ApertureMask` objects, one for each aperture position.
 The `~photutils.ApertureMask` object contains a cutout of the aperture
-mask and a slices object that provides the locations where the mask is
-to be applied.  It also provides a
+mask and a `~photutils.BoundingBox` object that provides the bounding
+box where the mask is to be applied.  It also provides a
 :meth:`~photutils.ApertureMask.to_image` method to obtain an image of
 the mask in a 2D array of the given shape, a
 :meth:`~photutils.ApertureMask.cutout` method to create a cutout from
