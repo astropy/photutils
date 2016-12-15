@@ -4,6 +4,7 @@ This subpackage contains modules and packages for identifying sources in
 an astronomical image.
 """
 
+from .bounding_box import *
 from .circle import *
 from .core import *
 from .ellipse import *
