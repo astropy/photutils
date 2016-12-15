@@ -172,9 +172,9 @@ class ApertureMask(object):
 
         return cutout
 
-    def apply(self, data, fill_value=0.):
+    def multiply(self, data, fill_value=0.):
         """
-        Apply the aperture mask to the input data, taking any edge
+        Multiply the aperture mask with the input data, taking any edge
         effects into account.
 
         The result is a mask-weighted cutout from the data.
@@ -182,7 +182,7 @@ class ApertureMask(object):
         Parameters
         ----------
         data : array_like or `~astropy.units.Quantity`
-            A 2D array on which to apply the aperture mask.
+            The 2D array to multiply with the aperture mask.
 
         fill_value : float, optional
             The value is used to fill pixels where the aperture mask
