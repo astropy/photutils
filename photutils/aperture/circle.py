@@ -124,15 +124,11 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
     """
 
     def __init__(self, positions, r):
-        try:
-            self.r = float(r)
-        except TypeError:
-            raise TypeError('r must be numeric, received {0}'.format(type(r)))
-
         if r < 0:
             raise ValueError('r must be non-negative')
 
         self.positions = self._sanitize_positions(positions)
+        self.r = float(r)
 
     # TODO: make lazyproperty?, but update if positions or radius change
     @property
@@ -196,19 +192,14 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
     """
 
     def __init__(self, positions, r_in, r_out):
-        try:
-            self.r_in = r_in
-            self.r_out = r_out
-        except TypeError:
-            raise TypeError("'r_in' and 'r_out' must be numeric, received "
-                            "{0} and {1}".format((type(r_in), type(r_out))))
-
         if not (r_out > r_in):
             raise ValueError('r_out must be greater than r_in')
         if r_in < 0:
             raise ValueError('r_in must be non-negative')
 
         self.positions = self._sanitize_positions(positions)
+        self.r_in = float(r_in)
+        self.r_out = float(r_out)
 
     @property
     def bounding_boxes(self):
@@ -259,7 +250,7 @@ class SkyCircularAperture(SkyAperture):
         if isinstance(positions, SkyCoord):
             self.positions = positions
         else:
-            raise TypeError('positions must be a SkyCoord object.')
+            raise TypeError('positions must be a SkyCoord object')
 
         assert_angle_or_pixel('r', r)
         self.r = r
@@ -324,14 +315,14 @@ class SkyCircularAnnulus(SkyAperture):
         if isinstance(positions, SkyCoord):
             self.positions = positions
         else:
-            raise TypeError("positions should be a SkyCoord instance")
+            raise TypeError('positions must be a SkyCoord object')
 
         assert_angle_or_pixel('r_in', r_in)
         assert_angle_or_pixel('r_out', r_out)
 
         if r_in.unit.physical_type != r_out.unit.physical_type:
             raise ValueError("r_in and r_out should either both be angles "
-                             "or in pixels")
+                             "or in pixels.")
 
         self.r_in = r_in
         self.r_out = r_out

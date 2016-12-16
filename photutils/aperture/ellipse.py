@@ -136,19 +136,13 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
     """
 
     def __init__(self, positions, a, b, theta):
-        try:
-            self.a = float(a)
-            self.b = float(b)
-            self.theta = float(theta)
-        except TypeError:
-            raise TypeError("'a' and 'b' and 'theta' must be numeric, "
-                            "received {0} and {1} and {2}."
-                            .format((type(a), type(b), type(theta))))
-
         if a < 0 or b < 0:
             raise ValueError("'a' and 'b' must be non-negative.")
 
         self.positions = self._sanitize_positions(positions)
+        self.a = float(a)
+        self.b = float(b)
+        self.theta = float(theta)
 
     @property
     def bounding_boxes(self):
@@ -228,25 +222,17 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
     """
 
     def __init__(self, positions, a_in, a_out, b_out, theta):
-        try:
-            self.a_in = float(a_in)
-            self.a_out = float(a_out)
-            self.b_out = float(b_out)
-            self.theta = float(theta)
-        except TypeError:
-            raise TypeError("'a_in' and 'a_out' and 'b_out' and 'theta' must "
-                            "be numeric, received {0} and {1} and {2} and "
-                            "{3}.".format((type(a_in), type(a_out),
-                                           type(b_out), type(theta))))
-
         if not (a_out > a_in):
-            raise ValueError("'a_out' must be greater than 'a_in'")
+            raise ValueError('"a_out" must be greater than "a_in".')
         if a_in < 0 or b_out < 0:
-            raise ValueError("'a_in' and 'b_out' must be non-negative")
-
-        self.b_in = b_out * a_in / a_out
+            raise ValueError('"a_in" and "b_out" must be non-negative.')
 
         self.positions = self._sanitize_positions(positions)
+        self.a_in = float(a_in)
+        self.a_out = float(a_out)
+        self.b_out = float(b_out)
+        self.b_in = self.b_out * self.a_in / self.a_out
+        self.theta = float(theta)
 
     @property
     def bounding_boxes(self):
@@ -307,7 +293,7 @@ class SkyEllipticalAperture(SkyAperture):
         if isinstance(positions, SkyCoord):
             self.positions = positions
         else:
-            raise TypeError("positions should be a SkyCoord instance")
+            raise TypeError('positions must be a SkyCoord instance')
 
         assert_angle_or_pixel('a', a)
         assert_angle_or_pixel('b', b)
@@ -394,7 +380,7 @@ class SkyEllipticalAnnulus(SkyAperture):
         if isinstance(positions, SkyCoord):
             self.positions = positions
         else:
-            raise TypeError("positions should be a SkyCoord instance")
+            raise TypeError('positions must be a SkyCoord instance')
 
         assert_angle_or_pixel('a_in', a_in)
         assert_angle_or_pixel('a_out', a_out)

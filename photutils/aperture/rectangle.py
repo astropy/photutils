@@ -140,18 +140,13 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
     """
 
     def __init__(self, positions, w, h, theta):
-        try:
-            self.w = float(w)
-            self.h = float(h)
-            self.theta = float(theta)
-        except TypeError:
-            raise TypeError("'w' and 'h' and 'theta' must "
-                            "be numeric, received {0} and {1} and {2}."
-                            .format((type(w), type(h), type(theta))))
         if w < 0 or h < 0:
             raise ValueError("'w' and 'h' must be nonnegative.")
 
         self.positions = self._sanitize_positions(positions)
+        self.w = float(w)
+        self.h = float(h)
+        self.theta = float(theta)
 
     @property
     def bounding_boxes(self):
@@ -242,25 +237,17 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     """
 
     def __init__(self, positions, w_in, w_out, h_out, theta):
-        try:
-            self.w_in = float(w_in)
-            self.w_out = float(w_out)
-            self.h_out = float(h_out)
-            self.theta = float(theta)
-        except TypeError:
-            raise TypeError("'w_in' and 'w_out' and 'h_out' and 'theta' must "
-                            "be numeric, received {0} and {1} and {2} and "
-                            "{3}.".format((type(w_in), type(w_out),
-                                           type(h_out), type(theta))))
-
         if not (w_out > w_in):
             raise ValueError("'w_out' must be greater than 'w_in'")
         if w_in < 0 or h_out < 0:
             raise ValueError("'w_in' and 'h_out' must be non-negative")
 
-        self.h_in = w_in * h_out / w_out
-
         self.positions = self._sanitize_positions(positions)
+        self.w_in = float(w_in)
+        self.w_out = float(w_out)
+        self.h_out = float(h_out)
+        self.h_in = self.w_in * self.h_out / self.w_out
+        self.theta = float(theta)
 
     @property
     def bounding_boxes(self):
@@ -341,7 +328,7 @@ class SkyRectangularAperture(SkyAperture):
         if isinstance(positions, SkyCoord):
             self.positions = positions
         else:
-            raise TypeError("positions should be a SkyCoord instance")
+            raise TypeError('positions must be a SkyCoord instance')
 
         assert_angle_or_pixel('w', w)
         assert_angle_or_pixel('h', h)
@@ -435,7 +422,8 @@ class SkyRectangularAnnulus(SkyAperture):
         if isinstance(positions, SkyCoord):
             self.positions = positions
         else:
-            raise TypeError("positions should be a SkyCoord instance")
+            raise TypeError('positions must be a SkyCoord instance')
+
         assert_angle_or_pixel('w_in', w_in)
         assert_angle_or_pixel('w_out', w_out)
         assert_angle_or_pixel('h_out', h_out)
