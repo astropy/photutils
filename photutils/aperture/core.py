@@ -16,19 +16,10 @@ from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils.misc import InheritDocstrings
 from astropy.wcs import WCS
 
+from ..utils import get_version_info
+
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture', 'aperture_photometry']
-
-
-def _get_version_info():
-    from astropy import __version__
-    astropy_version = __version__
-
-    from photutils import __version__
-    photutils_version = __version__
-
-    return 'astropy: {0}, photutils: {1}'.format(astropy_version,
-                                                 photutils_version)
 
 
 class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
@@ -801,7 +792,7 @@ def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
                     .format(method, subpixels, pixelwise_error))
     meta = OrderedDict()
     meta['name'] = 'Aperture photometry results'
-    meta['version'] = _get_version_info()
+    meta['version'] = get_version_info()
     meta['aperture_photometry_args'] = calling_args
 
     tbl = QTable(meta=meta)
