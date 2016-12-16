@@ -8,8 +8,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
 
-from .core import (PixelAperture, SkyAperture, _sanitize_pixel_positions,
-                   _make_annulus_path)
+from .core import PixelAperture, SkyAperture, _make_annulus_path
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import rectangular_overlap_grid
@@ -152,7 +151,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         if w < 0 or h < 0:
             raise ValueError("'w' and 'h' must be nonnegative.")
 
-        self.positions = _sanitize_pixel_positions(positions)
+        self.positions = self._sanitize_positions(positions)
 
     @property
     def bounding_boxes(self):
@@ -261,7 +260,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
         self.h_in = w_in * h_out / w_out
 
-        self.positions = _sanitize_pixel_positions(positions)
+        self.positions = self._sanitize_positions(positions)
 
     @property
     def bounding_boxes(self):

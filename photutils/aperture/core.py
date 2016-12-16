@@ -31,34 +31,6 @@ def _get_version_info():
                                                  photutils_version)
 
 
-def _sanitize_pixel_positions(positions):
-    if isinstance(positions, u.Quantity):
-        if positions.unit is u.pixel:
-            positions = np.atleast_2d(positions.value)
-        else:
-            raise u.UnitsError("positions should be in pixel units")
-    elif isinstance(positions, (list, tuple, np.ndarray)):
-        positions = np.atleast_2d(positions)
-        if positions.shape[1] != 2:
-            if positions.shape[0] == 2:
-                positions = np.transpose(positions)
-            else:
-                raise TypeError("List or array of (x, y) pixel coordinates "
-                                "is expected got '{0}'.".format(positions))
-    elif isinstance(positions, zip):
-        # This is needed for zip to work seamlessly in Python 3
-        positions = np.atleast_2d(list(positions))
-    else:
-        raise TypeError("List or array of (x, y) pixel coordinates "
-                        "is expected got '{0}'.".format(positions))
-
-    if positions.ndim > 2:
-        raise ValueError('{0}D position array not supported. Only 2D '
-                         'arrays supported.'.format(positions.ndim))
-
-    return positions
-
-
 def _make_annulus_path(patch_inner, patch_outer):
     import matplotlib.path as mpath
 
@@ -96,6 +68,35 @@ class PixelAperture(Aperture):
     """
     Abstract base class for apertures defined in pixel coordinates.
     """
+
+    @staticmethod
+    def _sanitize_positions(positions):
+        if isinstance(positions, u.Quantity):
+            if positions.unit is u.pixel:
+                positions = np.atleast_2d(positions.value)
+            else:
+                raise u.UnitsError('positions should be in pixel units')
+        elif isinstance(positions, (list, tuple, np.ndarray)):
+            positions = np.atleast_2d(positions)
+            if positions.shape[1] != 2:
+                if positions.shape[0] == 2:
+                    positions = np.transpose(positions)
+                else:
+                    raise TypeError('List or array of (x, y) pixel '
+                                    'coordinates is expected, got "{0}".'
+                                    .format(positions))
+        elif isinstance(positions, zip):
+            # This is needed for zip to work seamlessly in Python 3
+            positions = np.atleast_2d(list(positions))
+        else:
+            raise TypeError('List or array of (x, y) pixel coordinates '
+                            'is expected, got "{0}".'.format(positions))
+
+        if positions.ndim > 2:
+            raise ValueError('{0}D position array is not supported. Only 2D '
+                             'arrays are supported.'.format(positions.ndim))
+
+        return positions
 
     @staticmethod
     def _translate_mask_mode(mode, subpixels, rectangle=False):

@@ -8,8 +8,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
 
-from .core import (PixelAperture, SkyAperture, _sanitize_pixel_positions,
-                   _make_annulus_path)
+from .core import PixelAperture, SkyAperture, _make_annulus_path
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import circular_overlap_grid
@@ -133,7 +132,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         if r < 0:
             raise ValueError('r must be non-negative')
 
-        self.positions = _sanitize_pixel_positions(positions)
+        self.positions = self._sanitize_positions(positions)
 
     # TODO: make lazyproperty?, but update if positions or radius change
     @property
@@ -209,7 +208,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         if r_in < 0:
             raise ValueError('r_in must be non-negative')
 
-        self.positions = _sanitize_pixel_positions(positions)
+        self.positions = self._sanitize_positions(positions)
 
     @property
     def bounding_boxes(self):

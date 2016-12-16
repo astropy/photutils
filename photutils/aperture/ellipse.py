@@ -8,8 +8,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
 
-from .core import (PixelAperture, SkyAperture, _sanitize_pixel_positions,
-                   _make_annulus_path)
+from .core import PixelAperture, SkyAperture, _make_annulus_path
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import elliptical_overlap_grid
@@ -149,7 +148,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         if a < 0 or b < 0:
             raise ValueError("'a' and 'b' must be non-negative.")
 
-        self.positions = _sanitize_pixel_positions(positions)
+        self.positions = self._sanitize_positions(positions)
 
     @property
     def bounding_boxes(self):
@@ -247,7 +246,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
         self.b_in = b_out * a_in / a_out
 
-        self.positions = _sanitize_pixel_positions(positions)
+        self.positions = self._sanitize_positions(positions)
 
     @property
     def bounding_boxes(self):
