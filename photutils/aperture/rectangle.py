@@ -12,6 +12,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from .core import (PixelAperture, SkyAperture, _sanitize_pixel_positions,
                    _translate_mask_method, _make_annulus_path)
+from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import rectangular_overlap_grid
 from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
@@ -96,24 +97,18 @@ class RectangularMaskMixin(object):
             raise ValueError('Cannot determine the aperture radius.')
 
         masks = []
-        for position, _slice, _geom_slice in zip(self.positions, self._slices,
-                                                 self._geom_slices):
-            px_min, px_max = _geom_slice[1].start, _geom_slice[1].stop
-            py_min, py_max = _geom_slice[0].start, _geom_slice[0].stop
-            dx = px_max - px_min
-            dy = py_max - py_min
+        for bbox, edges in zip(self.bounding_boxes, self._centered_edges):
+            ny, nx = bbox.shape
+            mask = rectangular_overlap_grid(*edges, nx, ny, w, h, self.theta,
+                                            0, subpixels)
 
-            mask = rectangular_overlap_grid(px_min, px_max, py_min, py_max,
-                                            dx, dy, w, h, self.theta, 0,
-                                            subpixels)
+            # subtract the inner circle for an annulus
+            if hasattr(self, 'w_in'):
+                mask -= rectangular_overlap_grid(*edges, nx, ny, self.w_in,
+                                                 h_in, self.theta, 0,
+                                                 subpixels)
 
-            if hasattr(self, 'w_in'):    # annulus
-                mask -= rectangular_overlap_grid(px_min, px_max, py_min,
-                                                 py_max, dx, dy,
-                                                 self.w_in, h_in, self.theta,
-                                                 0, subpixels)
-
-            masks.append(ApertureMask(mask, _slice))
+            masks.append(ApertureMask(mask, bbox))
 
         return masks
 
@@ -171,16 +166,16 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         self.positions = _sanitize_pixel_positions(positions)
 
     @property
-    def _slices(self):
+    def bounding_boxes(self):
         # TODO:  use an actual minimal bounding box
         radius = max(self.h, self.w) * (2. ** -0.5)
-        x_min = np.floor(self.positions[:, 0] - radius + 0.5).astype(int)
-        x_max = np.floor(self.positions[:, 0] + radius + 1.5).astype(int)
-        y_min = np.floor(self.positions[:, 1] - radius + 0.5).astype(int)
-        y_max = np.floor(self.positions[:, 1] + radius + 1.5).astype(int)
+        xmin = self.positions[:, 0] - radius
+        xmax = self.positions[:, 0] + radius
+        ymin = self.positions[:, 1] - radius
+        ymax = self.positions[:, 1] + radius
 
-        return [(slice(ymin, ymax), slice(xmin, xmax))
-                for xmin, xmax, ymin, ymax in zip(x_min, x_max, y_min, y_max)]
+        return [BoundingBox._from_float(x0, x1, y0, y1)
+                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
 
     def area(self):
         return self.w * self.h
@@ -280,16 +275,16 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         self.positions = _sanitize_pixel_positions(positions)
 
     @property
-    def _slices(self):
+    def bounding_boxes(self):
         # TODO:  use an actual minimal bounding box
         radius = max(self.h_out, self.w_out) * (2. ** -0.5)
-        x_min = np.floor(self.positions[:, 0] - radius + 0.5).astype(int)
-        x_max = np.floor(self.positions[:, 0] + radius + 1.5).astype(int)
-        y_min = np.floor(self.positions[:, 1] - radius + 0.5).astype(int)
-        y_max = np.floor(self.positions[:, 1] + radius + 1.5).astype(int)
+        xmin = self.positions[:, 0] - radius
+        xmax = self.positions[:, 0] + radius
+        ymin = self.positions[:, 1] - radius
+        ymax = self.positions[:, 1] + radius
 
-        return [(slice(ymin, ymax), slice(xmin, xmax))
-                for xmin, xmax, ymin, ymax in zip(x_min, x_max, y_min, y_max)]
+        return [BoundingBox._from_float(x0, x1, y0, y1)
+                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
 
     def area(self):
         return self.w_out * self.h_out - self.w_in * self.h_in
