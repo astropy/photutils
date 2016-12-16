@@ -10,6 +10,7 @@ from astropy.wcs.utils import skycoord_to_pixel
 
 from .core import (PixelAperture, SkyAperture, _sanitize_pixel_positions,
                    _translate_mask_method, _make_annulus_path)
+from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import circular_overlap_grid
 from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle,
@@ -84,22 +85,17 @@ class CircularMaskMixin(object):
             raise ValueError('Cannot determine the aperture radius.')
 
         masks = []
-        for position, _slice, _geom_slice in zip(self.positions, self._slices,
-                                                 self._geom_slices):
-            px_min, px_max = _geom_slice[1].start, _geom_slice[1].stop
-            py_min, py_max = _geom_slice[0].start, _geom_slice[0].stop
-            dx = px_max - px_min
-            dy = py_max - py_min
+        for bbox, edges in zip(self.bounding_boxes, self._centered_edges):
+            ny, nx = bbox.shape
+            mask = circular_overlap_grid(*edges, nx, ny, radius, use_exact,
+                                         subpixels)
 
-            mask = circular_overlap_grid(px_min, px_max, py_min, py_max,
-                                         dx, dy, radius, use_exact, subpixels)
+            # subtract the inner circle for an annulus
+            if hasattr(self, 'r_in'):
+                mask -= circular_overlap_grid(*edges, nx, ny, self.r_in,
+                                              use_exact, subpixels)
 
-            if hasattr(self, 'r_in'):    # annulus
-                mask -= circular_overlap_grid(px_min, px_max, py_min, py_max,
-                                              dx, dy, self.r_in, use_exact,
-                                              subpixels)
-
-            masks.append(ApertureMask(mask, _slice))
+            masks.append(ApertureMask(mask, bbox))
 
         return masks
 
@@ -145,14 +141,14 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
 
     # TODO: make lazyproperty?, but update if positions or radius change
     @property
-    def _slices(self):
-        x_min = np.floor(self.positions[:, 0] - self.r + 0.5).astype(int)
-        x_max = np.floor(self.positions[:, 0] + self.r + 1.5).astype(int)
-        y_min = np.floor(self.positions[:, 1] - self.r + 0.5).astype(int)
-        y_max = np.floor(self.positions[:, 1] + self.r + 1.5).astype(int)
+    def bounding_boxes(self):
+        xmin = self.positions[:, 0] - self.r
+        xmax = self.positions[:, 0] + self.r
+        ymin = self.positions[:, 1] - self.r
+        ymax = self.positions[:, 1] + self.r
 
-        return [(slice(ymin, ymax), slice(xmin, xmax))
-                for xmin, xmax, ymin, ymax in zip(x_min, x_max, y_min, y_max)]
+        return [BoundingBox._from_float(x0, x1, y0, y1)
+                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
 
     # TODO: make lazyproperty?, but update if positions or radius change
     def area(self):
@@ -220,14 +216,14 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         self.positions = _sanitize_pixel_positions(positions)
 
     @property
-    def _slices(self):
-        x_min = np.floor(self.positions[:, 0] - self.r_out + 0.5).astype(int)
-        x_max = np.floor(self.positions[:, 0] + self.r_out + 1.5).astype(int)
-        y_min = np.floor(self.positions[:, 1] - self.r_out + 0.5).astype(int)
-        y_max = np.floor(self.positions[:, 1] + self.r_out + 1.5).astype(int)
+    def bounding_boxes(self):
+        xmin = self.positions[:, 0] - self.r_out
+        xmax = self.positions[:, 0] + self.r_out
+        ymin = self.positions[:, 1] - self.r_out
+        ymax = self.positions[:, 1] + self.r_out
 
-        return [(slice(ymin, ymax), slice(xmin, xmax))
-                for xmin, xmax, ymin, ymax in zip(x_min, x_max, y_min, y_max)]
+        return [BoundingBox._from_float(x0, x1, y0, y1)
+                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
 
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
