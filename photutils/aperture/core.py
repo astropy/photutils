@@ -113,28 +113,35 @@ class PixelAperture(Aperture):
     """
 
     @abc.abstractproperty
-    def _slices(self):
-        """The minimal bounding box slices for the aperture(s)."""
+    def bounding_boxes(self):
+        """
+        A list of minimal bounding boxes (`~photutils.BoundingBox`), one
+        for each position, for the aperture.
+        """
 
         raise NotImplementedError('Needs to be implemented in a '
                                   'PixelAperture subclass.')
 
     @property
-    def _geom_slices(self):
+    def _centered_edges(self):
         """
-        A tuple of slices to be used by the low-level
-        `photutils.geometry` functions.
+        A list of ``(xmin, xmax, ymin, ymax)`` tuples, one for each
+        position, of the pixel edges after recentering the aperture at
+        the origin.
+
+        These pixel edges are used by the low-level `photutils.geometry`
+        functions.
         """
 
-        geom_slices = []
-        for _slice, position in zip(self._slices, self.positions):
-            x_min = _slice[1].start - position[0] - 0.5
-            x_max = _slice[1].stop - position[0] - 0.5
-            y_min = _slice[0].start - position[1] - 0.5
-            y_max = _slice[0].stop - position[1] - 0.5
-            geom_slices.append((slice(y_min, y_max), slice(x_min, x_max)))
+        edges = []
+        for position, bbox in zip(self.positions, self.bounding_boxes):
+            xmin = bbox.ixmin - 0.5 - position[0]
+            xmax = bbox.ixmax - 0.5 - position[0]
+            ymin = bbox.iymin - 0.5 - position[1]
+            ymax = bbox.iymax - 0.5 - position[1]
+            edges.append((xmin, xmax, ymin, ymax))
 
-        return geom_slices
+        return edges
 
     def area(self):
         """
