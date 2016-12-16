@@ -48,8 +48,6 @@ class BoundingBox(object):
     >>> # "extent" is useful when plotting the BoundingBox with matplotlib
     >>> bbox.extent  # matplotlib order: (x, y)
     (0.5, 9.5, 1.5, 19.5)
-    >>> print(bbox.as_patch())
-    Rectangle(0.5,1.5;9x18)
     """
 
     def __init__(self, ixmin, ixmax, iymin, iymax):
