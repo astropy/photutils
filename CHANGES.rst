@@ -7,8 +7,17 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Added ``BoundingBox`` class, used when defining apertures. [#481]
+
 API changes
 ^^^^^^^^^^^
+
+- ``photutils.aperture``
+
+  - The ``ApertureMask`` ``apply()`` method has been renamed to
+    ``multiply()``. [#481].
 
 - ``photutils.datasets``
 
