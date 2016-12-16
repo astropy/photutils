@@ -470,16 +470,16 @@ All `~photutils.PixelAperture` objects have a
 :meth:`~photutils.PixelAperture.to_mask` method that returns a list of
 `~photutils.ApertureMask` objects, one for each aperture position.
 The `~photutils.ApertureMask` object contains a cutout of the aperture
-mask and a slices object that provides the locations where the mask is
-to be applied.  It also provides a
+mask and a `~photutils.BoundingBox` object that provides the bounding
+box where the mask is to be applied.  It also provides a
 :meth:`~photutils.ApertureMask.to_image` method to obtain an image of
 the mask in a 2D array of the given shape, a
 :meth:`~photutils.ApertureMask.cutout` method to create a cutout from
 the input data over the mask bounding box, and an
-:meth:`~photutils.ApertureMask.apply` method to apply the aperture
-mask to the input data to create a mask-weighted data cutout.   All of
-these methods properly handle the cases of partial or no overlap of
-the aperture mask with the data.
+:meth:`~photutils.ApertureMask.multiply` method to multiply the
+aperture mask with the input data to create a mask-weighted data
+cutout.   All of these methods properly handle the cases of partial or
+no overlap of the aperture mask with the data.
 
 Let's start by creating an aperture object::
 
@@ -503,9 +503,9 @@ We can also create a cutout from a data image over the mask domain::
     >>> data_cutout = mask.cutout(data)
 
 We can also create a mask-weighted cutout from the data.  Here the
-circular aperture mask has been applied to the data::
+circular aperture mask has been multiplied with the data::
 
-    >>> data_cutout_aper = mask.apply(data)
+    >>> data_cutout_aper = mask.multiply(data)
 
 
 .. _custom-apertures:

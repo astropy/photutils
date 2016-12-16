@@ -8,9 +8,9 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
 
-from .core import (PixelAperture, SkyAperture, ApertureMask,
-                   _sanitize_pixel_positions, _translate_mask_method,
-                   _make_annulus_path)
+from .core import PixelAperture, SkyAperture
+from .bounding_box import BoundingBox
+from .mask import ApertureMask
 from ..geometry import elliptical_overlap_grid
 from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
                                  assert_angle_or_pixel)
@@ -28,8 +28,8 @@ class EllipticalMaskMixin(object):
 
     def to_mask(self, method='exact', subpixels=5):
         """
-        Return a list of `ApertureMask` objects, one for each aperture
-        position.
+        Return a list of `~photutils.ApertureMask` objects, one for each
+        aperture position.
 
         Parameters
         ----------
@@ -70,11 +70,7 @@ class EllipticalMaskMixin(object):
             A list of aperture mask objects.
         """
 
-        if method not in ('center', 'subpixel', 'exact'):
-            raise ValueError('"{0}" method is not available for this '
-                             'aperture.'.format(method))
-
-        use_exact, subpixels = _translate_mask_method(method, subpixels)
+        use_exact, subpixels = self._translate_mask_mode(method, subpixels)
 
         if hasattr(self, 'a'):
             a = self.a
@@ -87,24 +83,20 @@ class EllipticalMaskMixin(object):
             raise ValueError('Cannot determine the aperture shape.')
 
         masks = []
-        for position, _slice, _geom_slice in zip(self.positions, self._slices,
-                                                 self._geom_slices):
-            px_min, px_max = _geom_slice[1].start, _geom_slice[1].stop
-            py_min, py_max = _geom_slice[0].start, _geom_slice[0].stop
-            dx = px_max - px_min
-            dy = py_max - py_min
-
-            mask = elliptical_overlap_grid(px_min, px_max, py_min, py_max,
-                                           dx, dy, a, b, self.theta,
+        for bbox, edges in zip(self.bounding_boxes, self._centered_edges):
+            ny, nx = bbox.shape
+            mask = elliptical_overlap_grid(edges[0], edges[1], edges[2],
+                                           edges[3], nx, ny, a, b, self.theta,
                                            use_exact, subpixels)
 
-            if hasattr(self, 'a_in'):    # annulus
-                mask -= elliptical_overlap_grid(px_min, px_max, py_min,
-                                                py_max, dx, dy, self.a_in,
+            # subtract the inner ellipse for an annulus
+            if hasattr(self, 'a_in'):
+                mask -= elliptical_overlap_grid(edges[0], edges[1], edges[2],
+                                                edges[3], nx, ny, self.a_in,
                                                 b_in, self.theta, use_exact,
                                                 subpixels)
 
-            masks.append(ApertureMask(mask, _slice))
+            masks.append(ApertureMask(mask, bbox))
 
         return masks
 
@@ -146,31 +138,25 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
     """
 
     def __init__(self, positions, a, b, theta):
-        try:
-            self.a = float(a)
-            self.b = float(b)
-            self.theta = float(theta)
-        except TypeError:
-            raise TypeError("'a' and 'b' and 'theta' must be numeric, "
-                            "received {0} and {1} and {2}."
-                            .format((type(a), type(b), type(theta))))
-
         if a < 0 or b < 0:
             raise ValueError("'a' and 'b' must be non-negative.")
 
-        self.positions = _sanitize_pixel_positions(positions)
+        self.positions = self._sanitize_positions(positions)
+        self.a = float(a)
+        self.b = float(b)
+        self.theta = float(theta)
 
     @property
-    def _slices(self):
+    def bounding_boxes(self):
         # TODO:  use an actual minimal bounding box
         radius = max(self.a, self.b)
-        x_min = np.floor(self.positions[:, 0] - radius + 0.5).astype(int)
-        x_max = np.floor(self.positions[:, 0] + radius + 1.5).astype(int)
-        y_min = np.floor(self.positions[:, 1] - radius + 0.5).astype(int)
-        y_max = np.floor(self.positions[:, 1] + radius + 1.5).astype(int)
+        xmin = self.positions[:, 0] - radius
+        xmax = self.positions[:, 0] + radius
+        ymin = self.positions[:, 1] - radius
+        ymax = self.positions[:, 1] + radius
 
-        return [(slice(ymin, ymax), slice(xmin, xmax))
-                for xmin, xmax, ymin, ymax in zip(x_min, x_max, y_min, y_max)]
+        return [BoundingBox._from_float(x0, x1, y0, y1)
+                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
 
     def area(self):
         return math.pi * self.a * self.b
@@ -238,37 +224,29 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
     """
 
     def __init__(self, positions, a_in, a_out, b_out, theta):
-        try:
-            self.a_in = float(a_in)
-            self.a_out = float(a_out)
-            self.b_out = float(b_out)
-            self.theta = float(theta)
-        except TypeError:
-            raise TypeError("'a_in' and 'a_out' and 'b_out' and 'theta' must "
-                            "be numeric, received {0} and {1} and {2} and "
-                            "{3}.".format((type(a_in), type(a_out),
-                                           type(b_out), type(theta))))
-
         if not (a_out > a_in):
-            raise ValueError("'a_out' must be greater than 'a_in'")
+            raise ValueError('"a_out" must be greater than "a_in".')
         if a_in < 0 or b_out < 0:
-            raise ValueError("'a_in' and 'b_out' must be non-negative")
+            raise ValueError('"a_in" and "b_out" must be non-negative.')
 
-        self.b_in = b_out * a_in / a_out
-
-        self.positions = _sanitize_pixel_positions(positions)
+        self.positions = self._sanitize_positions(positions)
+        self.a_in = float(a_in)
+        self.a_out = float(a_out)
+        self.b_out = float(b_out)
+        self.b_in = self.b_out * self.a_in / self.a_out
+        self.theta = float(theta)
 
     @property
-    def _slices(self):
+    def bounding_boxes(self):
         # TODO:  use an actual minimal bounding box
         radius = max(self.a_out, self.b_out)
-        x_min = np.floor(self.positions[:, 0] - radius + 0.5).astype(int)
-        x_max = np.floor(self.positions[:, 0] + radius + 1.5).astype(int)
-        y_min = np.floor(self.positions[:, 1] - radius + 0.5).astype(int)
-        y_max = np.floor(self.positions[:, 1] + radius + 1.5).astype(int)
+        xmin = self.positions[:, 0] - radius
+        xmax = self.positions[:, 0] + radius
+        ymin = self.positions[:, 1] - radius
+        ymax = self.positions[:, 1] + radius
 
-        return [(slice(ymin, ymax), slice(xmin, xmax))
-                for xmin, xmax, ymin, ymax in zip(x_min, x_max, y_min, y_max)]
+        return [BoundingBox._from_float(x0, x1, y0, y1)
+                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
 
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
@@ -286,7 +264,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
                                            2.*self.b_in, theta_deg, **kwargs)
             patch_outer = mpatches.Ellipse(position, 2.*self.a_out,
                                            2.*self.b_out, theta_deg, **kwargs)
-            path = _make_annulus_path(patch_inner, patch_outer)
+            path = self._make_annulus_path(patch_inner, patch_outer)
             patch = mpatches.PathPatch(path, **kwargs)
             ax.add_patch(patch)
 
@@ -317,7 +295,7 @@ class SkyEllipticalAperture(SkyAperture):
         if isinstance(positions, SkyCoord):
             self.positions = positions
         else:
-            raise TypeError("positions should be a SkyCoord instance")
+            raise TypeError('positions must be a SkyCoord instance')
 
         assert_angle_or_pixel('a', a)
         assert_angle_or_pixel('b', b)
@@ -404,7 +382,7 @@ class SkyEllipticalAnnulus(SkyAperture):
         if isinstance(positions, SkyCoord):
             self.positions = positions
         else:
-            raise TypeError("positions should be a SkyCoord instance")
+            raise TypeError('positions must be a SkyCoord instance')
 
         assert_angle_or_pixel('a_in', a_in)
         assert_angle_or_pixel('a_out', a_out)

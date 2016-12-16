@@ -9,4 +9,5 @@ from .convolution import *
 from .cutouts import *
 from .errors import *
 from .interpolation import *
+from .misc import *
 from .stats import *

@@ -16,80 +16,10 @@ from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils.misc import InheritDocstrings
 from astropy.wcs import WCS
 
-
-__all__ = ['Aperture', 'SkyAperture', 'PixelAperture', 'ApertureMask',
-           'aperture_photometry']
+from ..utils import get_version_info
 
 
-def _get_version_info():
-    from astropy import __version__
-    astropy_version = __version__
-
-    from photutils import __version__
-    photutils_version = __version__
-
-    return 'astropy: {0}, photutils: {1}'.format(astropy_version,
-                                                 photutils_version)
-
-
-def _sanitize_pixel_positions(positions):
-    if isinstance(positions, u.Quantity):
-        if positions.unit is u.pixel:
-            positions = np.atleast_2d(positions.value)
-        else:
-            raise u.UnitsError("positions should be in pixel units")
-    elif isinstance(positions, (list, tuple, np.ndarray)):
-        positions = np.atleast_2d(positions)
-        if positions.shape[1] != 2:
-            if positions.shape[0] == 2:
-                positions = np.transpose(positions)
-            else:
-                raise TypeError("List or array of (x, y) pixel coordinates "
-                                "is expected got '{0}'.".format(positions))
-    elif isinstance(positions, zip):
-        # This is needed for zip to work seamlessly in Python 3
-        positions = np.atleast_2d(list(positions))
-    else:
-        raise TypeError("List or array of (x, y) pixel coordinates "
-                        "is expected got '{0}'.".format(positions))
-
-    if positions.ndim > 2:
-        raise ValueError('{0}D position array not supported. Only 2D '
-                         'arrays supported.'.format(positions.ndim))
-
-    return positions
-
-
-def _translate_mask_method(method, subpixels):
-    if method == 'center':
-        use_exact = 0
-        subpixels = 1
-    elif method == 'subpixel':
-        use_exact = 0
-    elif method == 'exact':
-        use_exact = 1
-        subpixels = 1
-    else:
-        raise ValueError('"{0}" is not a valid method.'.format(method))
-
-    return use_exact, subpixels
-
-
-def _make_annulus_path(patch_inner, patch_outer):
-    import matplotlib.path as mpath
-
-    verts_inner = patch_inner.get_verts()
-    verts_outer = patch_outer.get_verts()
-    codes_inner = (np.ones(len(verts_inner), dtype=mpath.Path.code_type) *
-                   mpath.Path.LINETO)
-    codes_inner[0] = mpath.Path.MOVETO
-    codes_outer = (np.ones(len(verts_outer), dtype=mpath.Path.code_type) *
-                   mpath.Path.LINETO)
-    codes_outer[0] = mpath.Path.MOVETO
-    codes = np.concatenate((codes_inner, codes_outer))
-    verts = np.concatenate((verts_inner, verts_outer[::-1]))
-
-    return mpath.Path(verts, codes)
+__all__ = ['Aperture', 'SkyAperture', 'PixelAperture', 'aperture_photometry']
 
 
 class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
@@ -108,68 +38,98 @@ class Aperture(object):
         return len(self.positions)
 
 
-class SkyAperture(Aperture):
-    """
-    Abstract base class for 2D apertures defined in celestial coordinates.
-    """
-
-    @abc.abstractmethod
-    def to_pixel(self, wcs, mode='all'):
-        """
-        Convert the aperture to a `PixelAperture` object in pixel
-        coordinates.
-
-        Parameters
-        ----------
-        wcs : `~astropy.wcs.WCS`
-            The WCS transformation to use.
-
-        mode : {'all', 'wcs'}, optional
-            Whether to do the transformation including distortions
-            (``'all'``; default) or only including only the core WCS
-            transformation (``'wcs'``).
-
-        Returns
-        -------
-        aperture : `PixelAperture` object
-            A `PixelAperture` object.
-        """
-
-        raise NotImplementedError('Needs to be implemented in a '
-                                  'SkyAperture subclass.')
-
-
 class PixelAperture(Aperture):
     """
-    Abstract base class for 2D apertures defined in pixel coordinates.
-
-    Derived classes must define a ``_slices`` property, ``to_mask`` and
-    ``plot`` methods, and optionally an ``area`` method.
+    Abstract base class for apertures defined in pixel coordinates.
     """
 
+    @staticmethod
+    def _sanitize_positions(positions):
+        if isinstance(positions, u.Quantity):
+            if positions.unit is u.pixel:
+                positions = np.atleast_2d(positions.value)
+            else:
+                raise u.UnitsError('positions should be in pixel units')
+        elif isinstance(positions, (list, tuple, np.ndarray)):
+            positions = np.atleast_2d(positions)
+            if positions.shape[1] != 2:
+                if positions.shape[0] == 2:
+                    positions = np.transpose(positions)
+                else:
+                    raise TypeError('List or array of (x, y) pixel '
+                                    'coordinates is expected, got "{0}".'
+                                    .format(positions))
+        elif isinstance(positions, zip):
+            # This is needed for zip to work seamlessly in Python 3
+            positions = np.atleast_2d(list(positions))
+        else:
+            raise TypeError('List or array of (x, y) pixel coordinates '
+                            'is expected, got "{0}".'.format(positions))
+
+        if positions.ndim > 2:
+            raise ValueError('{0}D position array is not supported. Only 2D '
+                             'arrays are supported.'.format(positions.ndim))
+
+        return positions
+
+    @staticmethod
+    def _translate_mask_mode(mode, subpixels, rectangle=False):
+        if mode not in ('center', 'subpixel', 'exact'):
+            raise ValueError('Invalid mask mode: {0}'.format(mode))
+
+        if rectangle and mode == 'exact':
+            warnings.warn('The "exact" method is not yet implemented for '
+                          'rectangular apertures -- using "subpixel" method '
+                          'with "subpixels=32"', AstropyUserWarning)
+            mode = 'subpixel'
+            subpixels = 32
+
+        if mode == 'subpixels':
+            if not isinstance(subpixels, int) or subpixels <= 0:
+                raise ValueError('subpixels must be a strictly positive '
+                                 'integer'.format(subpixels))
+
+        if mode == 'center':
+            use_exact = 0
+            subpixels = 1
+        elif mode == 'subpixel':
+            use_exact = 0
+        elif mode == 'exact':
+            use_exact = 1
+            subpixels = 1
+
+        return use_exact, subpixels
+
     @abc.abstractproperty
-    def _slices(self):
-        """The minimal bounding box slices for the aperture(s)."""
+    def bounding_boxes(self):
+        """
+        A list of minimal bounding boxes (`~photutils.BoundingBox`), one
+        for each position, for the aperture.
+        """
 
         raise NotImplementedError('Needs to be implemented in a '
                                   'PixelAperture subclass.')
 
     @property
-    def _geom_slices(self):
+    def _centered_edges(self):
         """
-        A tuple of slices to be used by the low-level
-        `photutils.geometry` functions.
+        A list of ``(xmin, xmax, ymin, ymax)`` tuples, one for each
+        position, of the pixel edges after recentering the aperture at
+        the origin.
+
+        These pixel edges are used by the low-level `photutils.geometry`
+        functions.
         """
 
-        geom_slices = []
-        for _slice, position in zip(self._slices, self.positions):
-            x_min = _slice[1].start - position[0] - 0.5
-            x_max = _slice[1].stop - position[0] - 0.5
-            y_min = _slice[0].start - position[1] - 0.5
-            y_max = _slice[0].stop - position[1] - 0.5
-            geom_slices.append((slice(y_min, y_max), slice(x_min, x_max)))
+        edges = []
+        for position, bbox in zip(self.positions, self.bounding_boxes):
+            xmin = bbox.ixmin - 0.5 - position[0]
+            xmax = bbox.ixmax - 0.5 - position[0]
+            ymin = bbox.iymin - 0.5 - position[1]
+            ymax = bbox.iymax - 0.5 - position[1]
+            edges.append((xmin, xmax, ymin, ymax))
 
-        return geom_slices
+        return edges
 
     def area(self):
         """
@@ -238,8 +198,8 @@ class PixelAperture(Aperture):
     @abc.abstractmethod
     def to_mask(self, method='exact', subpixels=5):
         """
-        Return a list of `ApertureMask` objects, one for each aperture
-        position.
+        Return a list of `~photutils.ApertureMask` objects, one for each
+        aperture position.
 
         Parameters
         ----------
@@ -442,6 +402,23 @@ class PixelAperture(Aperture):
 
         return aperture_sums, aperture_sum_errs
 
+    @staticmethod
+    def _make_annulus_path(patch_inner, patch_outer):
+        import matplotlib.path as mpath
+
+        verts_inner = patch_inner.get_verts()
+        verts_outer = patch_outer.get_verts()
+        codes_inner = (np.ones(len(verts_inner), dtype=mpath.Path.code_type) *
+                       mpath.Path.LINETO)
+        codes_inner[0] = mpath.Path.MOVETO
+        codes_outer = (np.ones(len(verts_outer), dtype=mpath.Path.code_type) *
+                       mpath.Path.LINETO)
+        codes_outer[0] = mpath.Path.MOVETO
+        codes = np.concatenate((codes_inner, codes_outer))
+        verts = np.concatenate((verts_inner, verts_outer[::-1]))
+
+        return mpath.Path(verts, codes)
+
     def _prepare_plot(self, origin=(0, 0), indices=None, ax=None,
                       fill=False, **kwargs):
         """
@@ -527,198 +504,40 @@ class PixelAperture(Aperture):
             Any keyword arguments accepted by `matplotlib.patches.Patch`.
         """
 
+        raise NotImplementedError('Needs to be implemented in a '
+                                  'PixelAperture subclass.')
 
-class ApertureMask(object):
+
+class SkyAperture(Aperture):
     """
-    Class for an aperture mask.
-
-    Parameters
-    ----------
-    mask : array_like
-        A 2D array of an aperture mask representing the fractional
-        overlap of the aperture on the pixel grid.  This should be the
-        full-sized (i.e. not truncated) array that is the direct output
-        of one of the low-level `photutils.geometry` functions.
-
-    bbox_slice : tuple of slice objects
-        A tuple of ``(y, x)`` numpy slice objects defining the aperture
-        minimal bounding box.
+    Abstract base class for all apertures defined in celestial
+    coordinates.
     """
 
-    def __init__(self, mask, bbox_slice):
-        self.data = np.asanyarray(mask)
-        self.shape = mask.shape
-        self.slices = bbox_slice
-
-        dy = bbox_slice[0].stop - bbox_slice[0].start
-        dx = bbox_slice[1].stop - bbox_slice[1].start
-        if self.data.shape != (dy, dx):
-            raise ValueError('mask shape and bbox_slice do not agree.')
-
-    @property
-    def array(self):
-        """The 2D mask array."""
-
-        return self.data
-
-    def __array__(self):
+    @abc.abstractmethod
+    def to_pixel(self, wcs, mode='all'):
         """
-        Array representation of the mask array (e.g., for matplotlib).
-        """
-
-        return self.data
-
-    def _overlap_slices(self, shape):
-        """
-        Calculate the slices for the overlapping part of ``self.slices``
-        and an array of the given shape.
+        Convert the aperture to a `PixelAperture` object in pixel
+        coordinates.
 
         Parameters
         ----------
-        shape : tuple of int
-            The ``(ny, nx)`` shape of array where the slices are to be
-            applied.
+        wcs : `~astropy.wcs.WCS` object
+            The world coordinate system (WCS) transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or including only the core WCS
+            transformation (``'wcs'``).
 
         Returns
         -------
-        slices_large : tuple of slices
-            A tuple of slice objects for each axis of the large array,
-            such that ``large_array[slices_large]`` extracts the region
-            of the large array that overlaps with the small array.
-
-        slices_small : slice
-            A tuple of slice objects for each axis of the small array,
-            such that ``small_array[slices_small]`` extracts the region
-            of the small array that is inside the large array.
+        aperture : `PixelAperture` object
+            A `PixelAperture` object.
         """
 
-        if len(shape) != 2:
-            raise ValueError('input shape must have 2 elements.')
-
-        ymin = self.slices[0].start
-        ymax = self.slices[0].stop
-        xmin = self.slices[1].start
-        xmax = self.slices[1].stop
-
-        if (xmin >= shape[1] or ymin >= shape[0] or xmax <= 0 or ymax <= 0):
-            # no overlap of the aperture with the data
-            return None, None
-
-        slices_large = (slice(max(ymin, 0), min(ymax, shape[0])),
-                        slice(max(xmin, 0), min(xmax, shape[1])))
-
-        slices_small = (slice(max(-ymin, 0),
-                              min(ymax - ymin, shape[0] - ymin)),
-                        slice(max(-xmin, 0),
-                              min(xmax - xmin, shape[1] - xmin)))
-
-        return slices_large, slices_small
-
-    def to_image(self, shape):
-        """
-        Return an image of the mask in a 2D array of the given shape,
-        taking any edge effects into account.
-
-        Parameters
-        ----------
-        shape : tuple of int
-            The ``(ny, nx)`` shape of the output array.
-
-        Returns
-        -------
-        result : `~numpy.ndarray`
-            A 2D array of the mask.
-        """
-
-        if len(shape) != 2:
-            raise ValueError('input shape must have 2 elements.')
-
-        mask = np.zeros(shape)
-
-        try:
-            mask[self.slices] = self.data
-        except ValueError:    # partial or no overlap
-            slices_large, slices_small = self._overlap_slices(shape)
-
-            if slices_small is None:
-                return None    # no overlap
-
-            mask = np.zeros(shape)
-            mask[slices_large] = self.data[slices_small]
-
-        return mask
-
-    def cutout(self, data, fill_value=0.):
-        """
-        Create a cutout from the input data over the mask bounding box,
-        taking any edge effects into account.
-
-        Parameters
-        ----------
-        data : array_like or `~astropy.units.Quantity`
-            A 2D array on which to apply the aperture mask.
-
-        fill_value : float, optional
-            The value is used to fill pixels where the aperture mask
-            does not overlap with the input ``data``.  The default is 0.
-
-        Returns
-        -------
-        result : `~numpy.ndarray`
-            A 2D array cut out from the input ``data`` representing the
-            same cutout region as the aperture mask.  If there is a
-            partial overlap of the aperture mask with the input data,
-            pixels outside of the data will be assigned to
-            ``fill_value``.  `None` is returned if there is no overlap
-            of the aperture with the input ``data``.
-        """
-
-        data = np.asanyarray(data)
-        cutout = data[self.slices]
-
-        if cutout.shape != self.shape:
-            slices_large, slices_small = self._overlap_slices(data.shape)
-
-            if slices_small is None:
-                return None    # no overlap
-
-            cutout = np.zeros(self.shape, dtype=data.dtype)
-            cutout[:] = fill_value
-            cutout[slices_small] = data[slices_large]
-
-            if isinstance(data, u.Quantity):
-                cutout = u.Quantity(cutout, unit=data.unit)
-
-        return cutout
-
-    def apply(self, data, fill_value=0.):
-        """
-        Apply the aperture mask to the input data, taking any edge
-        effects into account.
-
-        The result is a mask-weighted cutout from the data.
-
-        Parameters
-        ----------
-        data : array_like or `~astropy.units.Quantity`
-            A 2D array on which to apply the aperture mask.
-
-        fill_value : float, optional
-            The value is used to fill pixels where the aperture mask
-            does not overlap with the input ``data``.  The default is 0.
-
-        Returns
-        -------
-        result : `~numpy.ndarray`
-            A 2D mask-weighted cutout from the input ``data``.  If there
-            is a partial overlap of the aperture mask with the input
-            data, pixels outside of the data will be assigned to
-            ``fill_value`` before being multipled with the mask.  `None`
-            is returned if there is no overlap of the aperture with the
-            input ``data``.
-        """
-
-        return self.cutout(data, fill_value=fill_value) * self.data
+        raise NotImplementedError('Needs to be implemented in a '
+                                  'SkyAperture subclass.')
 
 
 def _prepare_photometry_input(data, error, pixelwise_error, mask, wcs, unit):
@@ -973,7 +792,7 @@ def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
                     .format(method, subpixels, pixelwise_error))
     meta = OrderedDict()
     meta['name'] = 'Aperture photometry results'
-    meta['version'] = _get_version_info()
+    meta['version'] = get_version_info()
     meta['aperture_photometry_args'] = calling_args
 
     tbl = QTable(meta=meta)
