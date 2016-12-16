@@ -82,12 +82,14 @@ class CircularMaskMixin(object):
         masks = []
         for bbox, edges in zip(self.bounding_boxes, self._centered_edges):
             ny, nx = bbox.shape
-            mask = circular_overlap_grid(*edges, nx, ny, radius, use_exact,
+            mask = circular_overlap_grid(edges[0], edges[1], edges[2],
+                                         edges[3], nx, ny, radius, use_exact,
                                          subpixels)
 
             # subtract the inner circle for an annulus
             if hasattr(self, 'r_in'):
-                mask -= circular_overlap_grid(*edges, nx, ny, self.r_in,
+                mask -= circular_overlap_grid(edges[0], edges[1], edges[2],
+                                              edges[3], nx, ny, self.r_in,
                                               use_exact, subpixels)
 
             masks.append(ApertureMask(mask, bbox))
