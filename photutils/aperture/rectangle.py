@@ -2,16 +2,14 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import math
-import warnings
 
 import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
-from astropy.utils.exceptions import AstropyUserWarning
 
 from .core import (PixelAperture, SkyAperture, _sanitize_pixel_positions,
-                   _translate_mask_method, _make_annulus_path)
+                   _make_annulus_path)
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import rectangular_overlap_grid
@@ -74,17 +72,8 @@ class RectangularMaskMixin(object):
             A list of aperture mask objects.
         """
 
-        if method == 'exact':
-            warnings.warn("'exact' method is not implemented for rectangular "
-                          "apertures -- instead using 'subpixel' method with "
-                          "subpixels=32", AstropyUserWarning)
-            method = 'subpixel'
-            subpixels = 32
-        elif method not in ('center', 'subpixel'):
-            raise ValueError('"{0}" method is not available for this '
-                             'aperture.'.format(method))
-
-        use_exact, subpixels = _translate_mask_method(method, subpixels)
+        use_exact, subpixels = self._translate_mask_mode(method, subpixels,
+                                                         rectangle=True)
 
         if hasattr(self, 'w'):
             w = self.w

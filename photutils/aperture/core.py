@@ -59,21 +59,6 @@ def _sanitize_pixel_positions(positions):
     return positions
 
 
-def _translate_mask_method(method, subpixels):
-    if method == 'center':
-        use_exact = 0
-        subpixels = 1
-    elif method == 'subpixel':
-        use_exact = 0
-    elif method == 'exact':
-        use_exact = 1
-        subpixels = 1
-    else:
-        raise ValueError('"{0}" is not a valid method.'.format(method))
-
-    return use_exact, subpixels
-
-
 def _make_annulus_path(patch_inner, patch_outer):
     import matplotlib.path as mpath
 
@@ -111,6 +96,34 @@ class PixelAperture(Aperture):
     """
     Abstract base class for apertures defined in pixel coordinates.
     """
+
+    @staticmethod
+    def _translate_mask_mode(mode, subpixels, rectangle=False):
+        if mode not in ('center', 'subpixel', 'exact'):
+            raise ValueError('Invalid mask mode: {0}'.format(mode))
+
+        if rectangle and mode == 'exact':
+            warnings.warn('The "exact" method is not yet implemented for '
+                          'rectangular apertures -- using "subpixel" method '
+                          'with "subpixels=32"', AstropyUserWarning)
+            mode = 'subpixel'
+            subpixels = 32
+
+        if mode == 'subpixels':
+            if not isinstance(subpixels, int) or subpixels <= 0:
+                raise ValueError('subpixels must be a strictly positive '
+                                 'integer'.format(subpixels))
+
+        if mode == 'center':
+            use_exact = 0
+            subpixels = 1
+        elif mode == 'subpixel':
+            use_exact = 0
+        elif mode == 'exact':
+            use_exact = 1
+            subpixels = 1
+
+        return use_exact, subpixels
 
     @abc.abstractproperty
     def bounding_boxes(self):

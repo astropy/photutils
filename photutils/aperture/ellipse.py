@@ -9,7 +9,7 @@ import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
 
 from .core import (PixelAperture, SkyAperture, _sanitize_pixel_positions,
-                   _translate_mask_method, _make_annulus_path)
+                   _make_annulus_path)
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import elliptical_overlap_grid
@@ -71,11 +71,7 @@ class EllipticalMaskMixin(object):
             A list of aperture mask objects.
         """
 
-        if method not in ('center', 'subpixel', 'exact'):
-            raise ValueError('"{0}" method is not available for this '
-                             'aperture.'.format(method))
-
-        use_exact, subpixels = _translate_mask_method(method, subpixels)
+        use_exact, subpixels = self._translate_mask_mode(method, subpixels)
 
         if hasattr(self, 'a'):
             a = self.a
