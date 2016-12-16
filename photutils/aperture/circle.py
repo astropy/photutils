@@ -8,7 +8,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
 
-from .core import PixelAperture, SkyAperture, _make_annulus_path
+from .core import PixelAperture, SkyAperture
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import circular_overlap_grid
@@ -227,7 +227,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
                                                  resolution=resolution)
             patch_outer = mpatches.CirclePolygon(position, self.r_out,
                                                  resolution=resolution)
-            path = _make_annulus_path(patch_inner, patch_outer)
+            path = self._make_annulus_path(patch_inner, patch_outer)
             patch = mpatches.PathPatch(path, **kwargs)
             ax.add_patch(patch)
 

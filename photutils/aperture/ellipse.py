@@ -8,7 +8,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
 
-from .core import PixelAperture, SkyAperture, _make_annulus_path
+from .core import PixelAperture, SkyAperture
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import elliptical_overlap_grid
@@ -262,7 +262,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
                                            2.*self.b_in, theta_deg, **kwargs)
             patch_outer = mpatches.Ellipse(position, 2.*self.a_out,
                                            2.*self.b_out, theta_deg, **kwargs)
-            path = _make_annulus_path(patch_inner, patch_outer)
+            path = self._make_annulus_path(patch_inner, patch_outer)
             patch = mpatches.PathPatch(path, **kwargs)
             ax.add_patch(patch)
 

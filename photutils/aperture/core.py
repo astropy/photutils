@@ -31,23 +31,6 @@ def _get_version_info():
                                                  photutils_version)
 
 
-def _make_annulus_path(patch_inner, patch_outer):
-    import matplotlib.path as mpath
-
-    verts_inner = patch_inner.get_verts()
-    verts_outer = patch_outer.get_verts()
-    codes_inner = (np.ones(len(verts_inner), dtype=mpath.Path.code_type) *
-                   mpath.Path.LINETO)
-    codes_inner[0] = mpath.Path.MOVETO
-    codes_outer = (np.ones(len(verts_outer), dtype=mpath.Path.code_type) *
-                   mpath.Path.LINETO)
-    codes_outer[0] = mpath.Path.MOVETO
-    codes = np.concatenate((codes_inner, codes_outer))
-    verts = np.concatenate((verts_inner, verts_outer[::-1]))
-
-    return mpath.Path(verts, codes)
-
-
 class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
     pass
 
@@ -427,6 +410,23 @@ class PixelAperture(Aperture):
                                                             unit=unit)
 
         return aperture_sums, aperture_sum_errs
+
+    @staticmethod
+    def _make_annulus_path(patch_inner, patch_outer):
+        import matplotlib.path as mpath
+
+        verts_inner = patch_inner.get_verts()
+        verts_outer = patch_outer.get_verts()
+        codes_inner = (np.ones(len(verts_inner), dtype=mpath.Path.code_type) *
+                       mpath.Path.LINETO)
+        codes_inner[0] = mpath.Path.MOVETO
+        codes_outer = (np.ones(len(verts_outer), dtype=mpath.Path.code_type) *
+                       mpath.Path.LINETO)
+        codes_outer[0] = mpath.Path.MOVETO
+        codes = np.concatenate((codes_inner, codes_outer))
+        verts = np.concatenate((verts_inner, verts_outer[::-1]))
+
+        return mpath.Path(verts, codes)
 
     def _prepare_plot(self, origin=(0, 0), indices=None, ax=None,
                       fill=False, **kwargs):

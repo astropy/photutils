@@ -8,7 +8,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.wcs.utils import skycoord_to_pixel
 
-from .core import PixelAperture, SkyAperture, _make_annulus_path
+from .core import PixelAperture, SkyAperture
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import rectangular_overlap_grid
@@ -293,7 +293,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
             patch_outer = mpatches.Rectangle(positions_outer[i],
                                              self.w_out, self.h_out,
                                              theta_deg, **kwargs)
-            path = _make_annulus_path(patch_inner, patch_outer)
+            path = self._make_annulus_path(patch_inner, patch_outer)
             patch = mpatches.PathPatch(path, **kwargs)
             ax.add_patch(patch)
 
