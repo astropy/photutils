@@ -198,8 +198,10 @@ class BoundingBox(object):
             fig = plt.figure()
             ax = fig.add_subplot(1, 1, 1)
             np.random.seed(12345)
-            ax.imshow(np.random.random((10, 10)), interpolation='nearest', cmap='viridis')
-            ax.add_patch(bbox.as_patch(facecolor='none', edgecolor='white', lw=2.))
+            ax.imshow(np.random.random((10, 10)), interpolation='nearest',
+                      cmap='viridis')
+            ax.add_patch(bbox.as_patch(facecolor='none', edgecolor='white',
+                         lw=2.))
         """
 
         from matplotlib.patches import Rectangle
