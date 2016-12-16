@@ -10,6 +10,7 @@ from astropy.wcs.utils import skycoord_to_pixel
 
 from .core import (PixelAperture, SkyAperture, _sanitize_pixel_positions,
                    _translate_mask_method, _make_annulus_path)
+from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import elliptical_overlap_grid
 from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
@@ -87,24 +88,18 @@ class EllipticalMaskMixin(object):
             raise ValueError('Cannot determine the aperture shape.')
 
         masks = []
-        for position, _slice, _geom_slice in zip(self.positions, self._slices,
-                                                 self._geom_slices):
-            px_min, px_max = _geom_slice[1].start, _geom_slice[1].stop
-            py_min, py_max = _geom_slice[0].start, _geom_slice[0].stop
-            dx = px_max - px_min
-            dy = py_max - py_min
-
-            mask = elliptical_overlap_grid(px_min, px_max, py_min, py_max,
-                                           dx, dy, a, b, self.theta,
+        for bbox, edges in zip(self.bounding_boxes, self._centered_edges):
+            ny, nx = bbox.shape
+            mask = elliptical_overlap_grid(*edges, nx, ny, a, b, self.theta,
                                            use_exact, subpixels)
 
-            if hasattr(self, 'a_in'):    # annulus
-                mask -= elliptical_overlap_grid(px_min, px_max, py_min,
-                                                py_max, dx, dy, self.a_in,
+            # subtract the inner ellipse for an annulus
+            if hasattr(self, 'a_in'):
+                mask -= elliptical_overlap_grid(*edges, nx, ny, self.a_in,
                                                 b_in, self.theta, use_exact,
                                                 subpixels)
 
-            masks.append(ApertureMask(mask, _slice))
+            masks.append(ApertureMask(mask, bbox))
 
         return masks
 
@@ -161,16 +156,16 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         self.positions = _sanitize_pixel_positions(positions)
 
     @property
-    def _slices(self):
+    def bounding_boxes(self):
         # TODO:  use an actual minimal bounding box
         radius = max(self.a, self.b)
-        x_min = np.floor(self.positions[:, 0] - radius + 0.5).astype(int)
-        x_max = np.floor(self.positions[:, 0] + radius + 1.5).astype(int)
-        y_min = np.floor(self.positions[:, 1] - radius + 0.5).astype(int)
-        y_max = np.floor(self.positions[:, 1] + radius + 1.5).astype(int)
+        xmin = self.positions[:, 0] - radius
+        xmax = self.positions[:, 0] + radius
+        ymin = self.positions[:, 1] - radius
+        ymax = self.positions[:, 1] + radius
 
-        return [(slice(ymin, ymax), slice(xmin, xmax))
-                for xmin, xmax, ymin, ymax in zip(x_min, x_max, y_min, y_max)]
+        return [BoundingBox._from_float(x0, x1, y0, y1)
+                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
 
     def area(self):
         return math.pi * self.a * self.b
@@ -259,16 +254,16 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         self.positions = _sanitize_pixel_positions(positions)
 
     @property
-    def _slices(self):
+    def bounding_boxes(self):
         # TODO:  use an actual minimal bounding box
         radius = max(self.a_out, self.b_out)
-        x_min = np.floor(self.positions[:, 0] - radius + 0.5).astype(int)
-        x_max = np.floor(self.positions[:, 0] + radius + 1.5).astype(int)
-        y_min = np.floor(self.positions[:, 1] - radius + 0.5).astype(int)
-        y_max = np.floor(self.positions[:, 1] + radius + 1.5).astype(int)
+        xmin = self.positions[:, 0] - radius
+        xmax = self.positions[:, 0] + radius
+        ymin = self.positions[:, 1] - radius
+        ymax = self.positions[:, 1] + radius
 
-        return [(slice(ymin, ymax), slice(xmin, xmax))
-                for xmin, xmax, ymin, ymax in zip(x_min, x_max, y_min, y_max)]
+        return [BoundingBox._from_float(x0, x1, y0, y1)
+                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
 
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
