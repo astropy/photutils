@@ -520,13 +520,14 @@ aperture photometry in arbitrary apertures.  This function accepts any
 functionality: a new type of aperture photometry simply requires the
 definition of a new `~photutils.Aperture` subclass.
 
-All `~photutils.PixelAperture` subclasses must define a ``_slices``
-property, ``to_mask()`` and ``plot()`` methods, and optionally an
-``area()`` method.  All `~photutils.SkyAperture` subclasses must
-implement only a ``to_pixel()`` method.
+All `~photutils.PixelAperture` subclasses must define a
+``bounding_boxes`` property, ``to_mask()`` and ``plot()`` methods, and
+optionally an ``area()`` method.  All `~photutils.SkyAperture`
+subclasses must implement only a ``to_pixel()`` method.
 
-    * ``_slices``:  A property defining the minimal bounding box
-      slices for the aperture at each position.
+    * ``bounding_boxes``:  A property defining a list of minimal
+      `~photutils.BoundingBox` objects for the aperture, one at each
+      aperture position.
 
     * ``to_mask()``: A method to return a list of
       `~photutils.ApertureMask` objects, one for each aperture position.
