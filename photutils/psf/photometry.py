@@ -237,6 +237,9 @@ class BasicPSFPhotometry(object):
                                         gaussian_sigma_to_fwhm)
 
         if positions is not None:
+            # make sure the code does not modify user's input
+            positions = positions.copy()
+
             if self.aperture_radius is None:
                 if 'flux_0' not in positions.colnames:
                     raise ValueError('aperture_radius is None and could not be '
