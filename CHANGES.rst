@@ -19,6 +19,19 @@ API changes
   - The ``ApertureMask`` ``apply()`` method has been renamed to
     ``multiply()``. [#481].
 
+Bug Fixes
+^^^^^^^^^
+
+
+0.3.1 (unreleased)
+------------------
+
+General
+^^^^^^^
+
+API changes
+^^^^^^^^^^^
+
 - ``photutils.datasets``
 
   - The ``load_*`` functions that use remote data now retrieve the
