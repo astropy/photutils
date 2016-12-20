@@ -204,6 +204,8 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
 
         pos = Table(names=['x_0', 'y_0'], data=[sources['x_mean'],
                                                 sources['y_mean']])
+        cp_pos = pos.copy()
+
         result_tab = phot_proc(image, pos)
         residual_image = phot_proc.get_residual_image()
 
@@ -216,6 +218,9 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
 
         # make sure image is note overwritten
         assert_array_equal(cp_image, image)
+
+        # make sure initial guess table is not modified
+        assert_array_equal(cp_pos, pos)
 
         # resets fixed positions
         phot_proc.psf_model.x_0.fixed = False
