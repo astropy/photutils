@@ -51,6 +51,9 @@ Bug Fixes
   - Fixed a bug in how ``FittableImageModel`` represents its center.
     [#460]
 
+  -  Fix bug which modified user's input table when doing forced
+     photometry. [#485]
+
 
 0.3 (2016-11-06)
 ----------------
