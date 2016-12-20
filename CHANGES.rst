@@ -25,9 +25,6 @@ Bug Fixes
 General
 ^^^^^^^
 
-API changes
-^^^^^^^^^^^
-
 - ``photutils.datasets``
 
   - The ``load_*`` functions that use remote data now retrieve the
