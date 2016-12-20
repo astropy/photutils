@@ -11,3 +11,4 @@ dependencies:
     - numpy
     - scikit-image
     - scipy
+    - docutils<0.13.1
