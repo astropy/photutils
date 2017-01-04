@@ -19,6 +19,9 @@ API changes
   - The ``ApertureMask`` ``apply()`` method has been renamed to
     ``multiply()``. [#481].
 
+  - Removed the ``pixelwise_errors`` keyword from
+    ``aperture_photometry``. [#489]
+
 Bug Fixes
 ^^^^^^^^^
 

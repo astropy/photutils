@@ -328,21 +328,6 @@ time as the effective gain::
     >>> error = calc_total_error(data, bkg_error, effective_gain)    # doctest: +SKIP
     >>> phot_table = aperture_photometry(data - bkg, apertures, error=error)    # doctest: +SKIP
 
-.. note::
-
-    In cases where the ``error`` array is slowly varying across the
-    image, it is not necessary to sum the error from every pixel in
-    the aperture individually.  Instead, we can approximate the error
-    as being roughly constant across the aperture and simply take the
-    value of :math:`\sigma` at the center of the aperture.  This can
-    be done by setting the keyword ``pixelwise_errors=False``.  In
-    this case the flux error is
-
-    .. math:: \Delta F = \sigma \sqrt{A}
-
-    where :math:`\sigma` is the ``error`` at the center of the
-    aperture and :math:`A` is the area of the aperture.
-
 
 Pixel Masking
 -------------
