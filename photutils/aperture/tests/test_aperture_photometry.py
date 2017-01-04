@@ -104,8 +104,11 @@ class BaseTestAperturePhotometry(object):
         error = 1.
         if not hasattr(self, 'mask'):
             mask = None
+            true_error = np.sqrt(self.area)
         else:
             mask = self.mask
+            # 1 masked pixel
+            true_error = np.sqrt(self.area - 1)
 
         table1 = aperture_photometry(self.data,
                                      self.aperture, method='center',
@@ -125,7 +128,6 @@ class BaseTestAperturePhotometry(object):
                             atol=0.1)
         assert np.all(table1['aperture_sum'] < table3['aperture_sum'])
 
-        true_error = np.sqrt(self.area)
         if not isinstance(self.aperture, (RectangularAperture,
                                           RectangularAnnulus)):
             assert_allclose(table3['aperture_sum_err'], true_error)
@@ -280,7 +282,7 @@ class TestMaskedSkipCircular(BaseTestAperturePhotometry):
     def setup_class(self):
         self.data = np.ones((40, 40), dtype=np.float)
         self.mask = np.zeros((40, 40), dtype=bool)
-        self.mask[19, 19] = True
+        self.mask[20, 20] = True
         position = (20., 20.)
         r = 10.
         self.aperture = CircularAperture(position, r)
