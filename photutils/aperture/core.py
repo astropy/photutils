@@ -272,8 +272,8 @@ class PixelAperture(Aperture):
 
         return output
 
-    def do_photometry(self, data, error=None, pixelwise_error=True,
-                      mask=None, method='exact', subpixels=5, unit=None):
+    def do_photometry(self, data, error=None, mask=None, method='exact',
+                      subpixels=5, unit=None):
         """
         Perform aperture photometry on the input data.
 
@@ -289,12 +289,6 @@ class PixelAperture(Aperture):
             error, including the Poisson error of the sources (see
             `~photutils.utils.calc_total_error`) .  ``error`` must have
             the same shape as the input ``data``.
-
-        pixelwise_error : bool, optional
-            If `True` (default), the photometric error is calculated
-            using the ``error`` values from each pixel within the
-            aperture.  If `False`, the ``error`` value at the center of
-            the aperture is used for the entire aperture.
 
         mask : array_like (bool), optional
             A boolean mask with the same shape as ``data`` where a
@@ -378,20 +372,7 @@ class PixelAperture(Aperture):
                 if error_cutout is None:
                     aperture_sum_errs.append(np.nan)
                 else:
-                    if pixelwise_error:
-                        aperture_var = np.sum(error_cutout ** 2 * mask.data)
-                    else:
-                        # use central value (shifted for partial overlap)
-                        _, slc_sm = mask._overlap_slices(error.shape)
-                        yidx = int((slc_sm[0].start + slc_sm[0].stop - 1) /
-                                   2. + 0.5)
-                        xidx = int((slc_sm[1].start + slc_sm[1].stop - 1) /
-                                   2. + 0.5)
-                        error_value = error_cutout[yidx, xidx]
-
-                        aperture_var = np.sum(error_value ** 2 *
-                                              np.sum(mask.data))
-
+                    aperture_var = np.sum(error_cutout ** 2 * mask.data)
                     aperture_sum_errs.append(np.sqrt(aperture_var))
 
         # handle Quantity objects and input units
@@ -540,7 +521,7 @@ class SkyAperture(Aperture):
                                   'SkyAperture subclass.')
 
 
-def _prepare_photometry_input(data, error, pixelwise_error, mask, wcs, unit):
+def _prepare_photometry_input(data, error, mask, wcs, unit):
     """
     Parse the inputs to `aperture_photometry`.
 
@@ -610,17 +591,9 @@ def _prepare_photometry_input(data, error, pixelwise_error, mask, wcs, unit):
             if np.isscalar(error.value):
                 error = u.Quantity(np.broadcast_arrays(error, data),
                                    unit=error.unit)[0]
-                pixelwise_error = False
-                warnings.warn('Because input error was a scalar, '
-                              'pixelwise_error=False is being used.',
-                              AstropyUserWarning)
         else:
             if np.isscalar(error):
                 error = np.broadcast_arrays(error, data)[0]
-                pixelwise_error = False
-                warnings.warn('Because input error was a scalar, '
-                              'pixelwise_error=False is being used.',
-                              AstropyUserWarning)
 
             if unit is not None:
                 error = u.Quantity(error, unit=unit)
@@ -635,13 +608,12 @@ def _prepare_photometry_input(data, error, pixelwise_error, mask, wcs, unit):
         if mask.shape != data.shape:
             raise ValueError('mask and data must have the same shape.')
 
-    return data, error, pixelwise_error, mask, wcs
+    return data, error, mask, wcs
 
 
 @support_nddata
-def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
-                        mask=None, method='exact', subpixels=5, unit=None,
-                        wcs=None):
+def aperture_photometry(data, apertures, error=None, mask=None,
+                        method='exact', subpixels=5, unit=None, wcs=None):
     """
     Perform aperture photometry on the input data by summing the flux
     within the given aperture(s).
@@ -665,12 +637,6 @@ def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
         including the Poisson error of the sources (see
         `~photutils.utils.calc_total_error`) .  ``error`` must have the
         same shape as the input ``data``.
-
-    pixelwise_error : bool, optional
-        If `True` (default), the photometric error is calculated using
-        the ``error`` values from each pixel within the aperture.  If
-        `False`, the ``error`` value at the center of the aperture is
-        used for the entire aperture.
 
     mask : array_like (bool), optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -757,9 +723,8 @@ def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
     thus supports `~astropy.nddata.NDData` objects as input.
     """
 
-    data, error, pixelwise_error, mask, wcs = \
-        _prepare_photometry_input(data, error, pixelwise_error, mask, wcs,
-                                  unit)
+    data, error, mask, wcs = _prepare_photometry_input(data, error, mask,
+                                                       wcs, unit)
 
     if method == 'subpixel':
         if (int(subpixels) != subpixels) or (subpixels <= 0):
@@ -788,11 +753,10 @@ def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
             raise ValueError('Input apertures must all have identical '
                              'positions.')
 
-    calling_args = ("method='{0}', subpixels={1}, pixelwise_error={2}"
-                    .format(method, subpixels, pixelwise_error))
     meta = OrderedDict()
     meta['name'] = 'Aperture photometry results'
     meta['version'] = get_version_info()
+    calling_args = ("method='{0}', subpixels={1}".format(method, subpixels))
     meta['aperture_photometry_args'] = calling_args
 
     tbl = QTable(meta=meta)
@@ -809,9 +773,9 @@ def aperture_photometry(data, apertures, error=None, pixelwise_error=True,
             tbl['celestial_center'] = skycoord_pos
 
     for i, aper in enumerate(apertures):
-        aper_sum, aper_sum_err = aper.do_photometry(
-            data, error=error, pixelwise_error=pixelwise_error, mask=mask,
-            method=method, subpixels=subpixels)
+        aper_sum, aper_sum_err = aper.do_photometry(data, error=error,
+                                                    mask=mask, method=method,
+                                                    subpixels=subpixels)
 
         sum_key = 'aperture_sum'
         sum_err_key = 'aperture_sum_err'
