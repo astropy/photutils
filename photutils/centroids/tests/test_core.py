@@ -6,7 +6,7 @@ import itertools
 import numpy as np
 from numpy.testing import assert_allclose
 from astropy.modeling.models import Gaussian1D, Gaussian2D
-from astropy.tests.helper import pytest
+import pytest
 
 from ..core import (centroid_com, centroid_1dg, centroid_2dg,
                     gaussian1d_moments, fit_2dgaussian)

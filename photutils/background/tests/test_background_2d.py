@@ -5,7 +5,7 @@ import itertools
 
 import numpy as np
 from numpy.testing import assert_allclose, assert_equal
-from astropy.tests.helper import pytest
+import pytest
 
 from ..core import MeanBackground
 from ..background_2d import (BkgZoomInterpolator, BkgIDWInterpolator,

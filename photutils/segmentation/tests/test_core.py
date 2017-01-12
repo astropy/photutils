@@ -5,7 +5,7 @@ from distutils.version import LooseVersion
 
 import numpy as np
 from numpy.testing import assert_allclose
-from astropy.tests.helper import pytest
+import pytest
 
 from ..core import SegmentationImage
 

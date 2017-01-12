@@ -7,7 +7,7 @@ place to go
 from __future__ import division
 import numpy as np
 from numpy.testing import assert_allclose
-from astropy.tests.helper import pytest
+import pytest
 from astropy.table import Table
 from .. import IntegratedGaussianPRF, prepare_psf_model, get_grouped_psf_model
 
