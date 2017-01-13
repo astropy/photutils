@@ -7,7 +7,9 @@ import warnings
 
 import numpy as np
 from numpy.testing import assert_allclose
-from astropy.tests.helper import pytest, catch_warnings
+import pytest
+
+from astropy.tests.helper import catch_warnings
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils.exceptions import AstropyDeprecationWarning
