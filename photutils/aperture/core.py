@@ -72,6 +72,9 @@ class PixelAperture(Aperture):
 
         return positions
 
+    def _positions_str(self, prefix=None):
+        return np.array2string(self.positions, separator=', ', prefix=prefix)
+
     @staticmethod
     def _translate_mask_mode(mode, subpixels, rectangle=False):
         if mode not in ('center', 'subpixel', 'exact'):

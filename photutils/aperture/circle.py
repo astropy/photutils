@@ -132,9 +132,6 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         self.positions = self._sanitize_positions(positions)
         self.r = float(r)
 
-    def _positions_str(self, prefix=None):
-        return np.array2string(self.positions, separator=',', prefix=prefix)
-
     def __repr__(self):
         prefix = '<{0}('.format(self.__class__.__name__)
         return '{0}{1}, r={2})>'.format(prefix, self._positions_str(prefix),
