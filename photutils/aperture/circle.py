@@ -219,6 +219,23 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         self.r_in = float(r_in)
         self.r_out = float(r_out)
 
+    def __repr__(self):
+        prefix = '<{0}('.format(self.__class__.__name__)
+        return '{0}{1}, r_in={2}, r_out={3})>'.format(
+            prefix, self._positions_str(prefix), self.r_in, self.r_out)
+
+    def __str__(self):
+        prefix = 'positions'
+        clsinfo = [
+            ('Aperture', self.__class__.__name__),
+            (prefix, self._positions_str(prefix + ': ')),
+            ('r_in', self.r_in),
+            ('r_out', self.r_out)
+        ]
+
+        fmt = ['{0}: {1}'.format(key, val) for key, val in clsinfo]
+        return '\n'.join(fmt)
+
     @property
     def bounding_boxes(self):
         xmin = self.positions[:, 0] - self.r_out
