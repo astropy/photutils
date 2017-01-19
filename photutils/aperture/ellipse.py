@@ -146,6 +146,24 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         self.b = float(b)
         self.theta = float(theta)
 
+    def __repr__(self):
+        prefix = '<{0}('.format(self.__class__.__name__)
+        return '{0}{1}, a={2}, b={3}, theta={4})>'.format(
+            prefix, self._positions_str(prefix), self.a, self.b, self.theta)
+
+    def __str__(self):
+        prefix = 'positions'
+        clsinfo = [
+            ('Aperture', self.__class__.__name__),
+            (prefix, self._positions_str(prefix + ': ')),
+            ('a', self.a),
+            ('b', self.b),
+            ('theta', self.theta)
+        ]
+
+        fmt = ['{0}: {1}'.format(key, val) for key, val in clsinfo]
+        return '\n'.join(fmt)
+
     @property
     def bounding_boxes(self):
         # TODO:  use an actual minimal bounding box
@@ -235,6 +253,27 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         self.b_out = float(b_out)
         self.b_in = self.b_out * self.a_in / self.a_out
         self.theta = float(theta)
+
+    def __repr__(self):
+        prefix = '<{0}('.format(self.__class__.__name__)
+        return '{0}{1}, a_in={2}, a_out={3}, b_out={4}, theta={5})>'.format(
+            prefix, self._positions_str(prefix), self.a_in, self.a_out,
+            self.b_out, self.theta)
+
+    def __str__(self):
+        prefix = 'positions'
+        clsinfo = [
+            ('Aperture', self.__class__.__name__),
+            (prefix, self._positions_str(prefix + ': ')),
+            ('a_in', self.a_in),
+            ('a_out', self.a_out),
+            ('b_in', self.b_in),
+            ('b_out', self.b_out),
+            ('theta', self.theta)
+        ]
+
+        fmt = ['{0}: {1}'.format(key, val) for key, val in clsinfo]
+        return '\n'.join(fmt)
 
     @property
     def bounding_boxes(self):

@@ -150,6 +150,24 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         self.h = float(h)
         self.theta = float(theta)
 
+    def __repr__(self):
+        prefix = '<{0}('.format(self.__class__.__name__)
+        return '{0}{1}, w={2}, h={3}, theta={4})>'.format(
+            prefix, self._positions_str(prefix), self.w, self.h, self.theta)
+
+    def __str__(self):
+        prefix = 'positions'
+        clsinfo = [
+            ('Aperture', self.__class__.__name__),
+            (prefix, self._positions_str(prefix + ': ')),
+            ('w', self.w),
+            ('h', self.h),
+            ('theta', self.theta)
+        ]
+
+        fmt = ['{0}: {1}'.format(key, val) for key, val in clsinfo]
+        return '\n'.join(fmt)
+
     @property
     def bounding_boxes(self):
         # TODO:  use an actual minimal bounding box
@@ -250,6 +268,27 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         self.h_out = float(h_out)
         self.h_in = self.w_in * self.h_out / self.w_out
         self.theta = float(theta)
+
+    def __repr__(self):
+        prefix = '<{0}('.format(self.__class__.__name__)
+        return '{0}{1}, w_in={2}, w_out={3}, h_out={4}, theta={5})>'.format(
+            prefix, self._positions_str(prefix), self.w_in, self.w_out,
+            self.h_out, self.theta)
+
+    def __str__(self):
+        prefix = 'positions'
+        clsinfo = [
+            ('Aperture', self.__class__.__name__),
+            (prefix, self._positions_str(prefix + ': ')),
+            ('w_in', self.w_in),
+            ('w_out', self.w_out),
+            ('h_in', self.h_in),
+            ('h_out', self.h_out),
+            ('theta', self.theta)
+        ]
+
+        fmt = ['{0}: {1}'.format(key, val) for key, val in clsinfo]
+        return '\n'.join(fmt)
 
     @property
     def bounding_boxes(self):
