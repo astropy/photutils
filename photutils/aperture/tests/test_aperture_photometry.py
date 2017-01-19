@@ -613,3 +613,52 @@ def test_aperture_partial_overlap():
     assert_array_less(tbl['aperture_sum_err'][1:].value, np.pi * r **2)
     assert tbl['aperture_sum'].unit == unit
     assert tbl['aperture_sum_err'].unit == unit
+
+
+def test_pixel_aperture_repr():
+    aper = CircularAperture((10, 20), r=3.0)
+    a_repr = '<CircularAperture([[10, 20]], r=3.0)>'
+    a_str = 'Aperture: CircularAperture\npositions: [[10, 20]]\nr: 3.0'
+    assert repr(aper) == a_repr
+    assert str(aper) == a_str
+
+    aper = CircularAnnulus((10, 20), r_in=3.0, r_out=5.0)
+    a_repr = '<CircularAnnulus([[10, 20]], r_in=3.0, r_out=5.0)>'
+    a_str = ('Aperture: CircularAnnulus\npositions: [[10, 20]]\nr_in: 3.0\n'
+             'r_out: 5.0')
+    assert repr(aper) == a_repr
+    assert str(aper) == a_str
+
+    aper = EllipticalAperture((10, 20), a=5.0, b=3.0, theta=15.0)
+    a_repr = '<EllipticalAperture([[10, 20]], a=5.0, b=3.0, theta=15.0)>'
+    a_str = ('Aperture: EllipticalAperture\npositions: [[10, 20]]\n'
+             'a: 5.0\nb: 3.0\ntheta: 15.0')
+    assert repr(aper) == a_repr
+    assert str(aper) == a_str
+
+    aper = EllipticalAnnulus((10, 20), a_in=5.0, a_out=7.0, b_out=3.0,
+                             theta=15.0)
+    a_repr = ('<EllipticalAnnulus([[10, 20]], a_in=5.0, a_out=7.0, b_out='
+              '3.0, theta=15.0)>')
+    a_str = ('Aperture: EllipticalAnnulus\npositions: [[10, 20]]\na_in: '
+             '5.0\na_out: 7.0\nb_in: 2.142857142857143\nb_out: 3.0\n'
+             'theta: 15.0')
+    assert repr(aper) == a_repr
+    assert str(aper) == a_str
+
+    aper = RectangularAperture((10, 20), w=5.0, h=3.0, theta=15.0)
+    a_repr = '<RectangularAperture([[10, 20]], w=5.0, h=3.0, theta=15.0)>'
+    a_str = ('Aperture: RectangularAperture\npositions: [[10, 20]]\n'
+             'w: 5.0\nh: 3.0\ntheta: 15.0')
+    assert repr(aper) == a_repr
+    assert str(aper) == a_str
+
+    aper = RectangularAnnulus((10, 20), w_in=5.0, w_out=7.0, h_out=3.0,
+                              theta=15.0)
+    a_repr = ('<RectangularAnnulus([[10, 20]], w_in=5.0, w_out=7.0, '
+              'h_out=3.0, theta=15.0)>')
+    a_str = ('Aperture: RectangularAnnulus\npositions: [[10, 20]]\n'
+             'w_in: 5.0\nw_out: 7.0\nh_in: 2.142857142857143\nh_out: 3.0\n'
+             'theta: 15.0')
+    assert repr(aper) == a_repr
+    assert str(aper) == a_str
