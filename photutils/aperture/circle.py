@@ -290,6 +290,20 @@ class SkyCircularAperture(SkyAperture):
         assert_angle_or_pixel('r', r)
         self.r = r
 
+    def __repr__(self):
+        prefix = '<{0}('.format(self.__class__.__name__)
+        return '{0}{1}, r={2})>'.format(prefix, self.positions, self.r)
+
+    def __str__(self):
+        clsinfo = [
+            ('Aperture', self.__class__.__name__),
+            ('positions', self.positions),
+            ('r', self.r)
+        ]
+
+        fmt = ['{0}: {1}'.format(key, val) for key, val in clsinfo]
+        return '\n'.join(fmt)
+
     def to_pixel(self, wcs, mode='all'):
         """
         Convert the aperture to a `CircularAperture` instance in pixel
@@ -361,6 +375,22 @@ class SkyCircularAnnulus(SkyAperture):
 
         self.r_in = r_in
         self.r_out = r_out
+
+    def __repr__(self):
+        prefix = '<{0}('.format(self.__class__.__name__)
+        return '{0}{1}, r_in={2}, r_out={3})>'.format(prefix, self.positions,
+                                                      self.r_in, self.r_out)
+
+    def __str__(self):
+        clsinfo = [
+            ('Aperture', self.__class__.__name__),
+            ('positions', self.positions),
+            ('r_in', self.r_in),
+            ('r_out', self.r_out)
+        ]
+
+        fmt = ['{0}: {1}'.format(key, val) for key, val in clsinfo]
+        return '\n'.join(fmt)
 
     def to_pixel(self, wcs, mode='all'):
         """

@@ -348,6 +348,23 @@ class SkyEllipticalAperture(SkyAperture):
         self.b = b
         self.theta = theta
 
+    def __repr__(self):
+        prefix = '<{0}('.format(self.__class__.__name__)
+        return '{0}{1}, a={2}, b={3}, theta={4})>'.format(
+            prefix, self.positions, self.a, self.b, self.theta)
+
+    def __str__(self):
+        clsinfo = [
+            ('Aperture', self.__class__.__name__),
+            ('positions', self.positions),
+            ('a', self.a),
+            ('b', self.b),
+            ('theta', self.theta)
+        ]
+
+        fmt = ['{0}: {1}'.format(key, val) for key, val in clsinfo]
+        return '\n'.join(fmt)
+
     def to_pixel(self, wcs, mode='all'):
         """
         Convert the aperture to an `EllipticalAperture` instance in
@@ -440,6 +457,25 @@ class SkyEllipticalAnnulus(SkyAperture):
         self.a_out = a_out
         self.b_out = b_out
         self.theta = theta
+
+    def __repr__(self):
+        prefix = '<{0}('.format(self.__class__.__name__)
+        return '{0}{1}, a_in={2}, a_out={3}, b_out={4}, theta={5})>'.format(
+            prefix, self.positions, self.a_in, self.a_out, self.b_out,
+            self.theta)
+
+    def __str__(self):
+        clsinfo = [
+            ('Aperture', self.__class__.__name__),
+            ('positions', self.positions),
+            ('a_in', self.a_in),
+            ('a_out', self.a_out),
+            ('b_out', self.b_out),
+            ('theta', self.theta)
+        ]
+
+        fmt = ['{0}: {1}'.format(key, val) for key, val in clsinfo]
+        return '\n'.join(fmt)
 
     def to_pixel(self, wcs, mode='all'):
         """

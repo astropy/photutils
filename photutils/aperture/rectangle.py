@@ -383,6 +383,23 @@ class SkyRectangularAperture(SkyAperture):
         self.h = h
         self.theta = theta
 
+    def __repr__(self):
+        prefix = '<{0}('.format(self.__class__.__name__)
+        return '{0}{1}, w={2}, h={3}, theta={4})>'.format(
+            prefix, self.positions, self.w, self.h, self.theta)
+
+    def __str__(self):
+        clsinfo = [
+            ('Aperture', self.__class__.__name__),
+            ('positions', self.positions),
+            ('w', self.w),
+            ('h', self.h),
+            ('theta', self.theta)
+        ]
+
+        fmt = ['{0}: {1}'.format(key, val) for key, val in clsinfo]
+        return '\n'.join(fmt)
+
     def to_pixel(self, wcs, mode='all'):
         """
         Convert the aperture to a `RectangularAperture` instance in
@@ -482,6 +499,25 @@ class SkyRectangularAnnulus(SkyAperture):
         self.w_out = w_out
         self.h_out = h_out
         self.theta = theta
+
+    def __repr__(self):
+        prefix = '<{0}('.format(self.__class__.__name__)
+        return '{0}{1}, w_in={2}, w_out={3}, h_out={4}, theta={5})>'.format(
+            prefix, self.positions, self.w_in, self.w_out, self.h_out,
+            self.theta)
+
+    def __str__(self):
+        clsinfo = [
+            ('Aperture', self.__class__.__name__),
+            ('positions', self.positions),
+            ('w_in', self.w_in),
+            ('w_out', self.w_out),
+            ('h_out', self.h_out),
+            ('theta', self.theta)
+        ]
+
+        fmt = ['{0}: {1}'.format(key, val) for key, val in clsinfo]
+        return '\n'.join(fmt)
 
     def to_pixel(self, wcs, mode='all'):
         """
