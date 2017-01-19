@@ -662,3 +662,68 @@ def test_pixel_aperture_repr():
              'theta: 15.0')
     assert repr(aper) == a_repr
     assert str(aper) == a_str
+
+
+def test_sky_aperture_repr():
+    from astropy.coordinates import SkyCoord
+
+    s = SkyCoord([1, 2], [3, 4], unit='deg')
+    aper = SkyCircularAperture(s, r=3*u.pix)
+    a_repr = ('<SkyCircularAperture(<SkyCoord (ICRS): (ra, dec) in deg\n'
+              '    [( 1.,  3.), ( 2.,  4.)]>, r=3.0 pix)>')
+    a_str = ('Aperture: SkyCircularAperture\npositions: <SkyCoord (ICRS): '
+             '(ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\n'
+             'r: 3.0 pix')
+    assert repr(aper) == a_repr
+    assert str(aper) == a_str
+
+    aper = SkyCircularAnnulus(s, r_in=3.*u.pix, r_out=5*u.pix)
+    a_repr = ('<SkyCircularAnnulus(<SkyCoord (ICRS): (ra, dec) in deg\n    '
+              '[( 1.,  3.), ( 2.,  4.)]>, r_in=3.0 pix, r_out=5.0 pix)>')
+    a_str = ('Aperture: SkyCircularAnnulus\npositions: <SkyCoord (ICRS): '
+             '(ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\nr_in: 3.0 '
+             'pix\nr_out: 5.0 pix')
+    assert repr(aper) == a_repr
+    assert str(aper) == a_str
+
+    aper = SkyEllipticalAperture(s, a=3*u.pix, b=5*u.pix, theta=15*u.deg)
+    a_repr = ('<SkyEllipticalAperture(<SkyCoord (ICRS): (ra, dec) in deg\n'
+              '    [( 1.,  3.), ( 2.,  4.)]>, a=3.0 pix, b=5.0 pix, theta='
+              '15.0 deg)>')
+    a_str = ('Aperture: SkyEllipticalAperture\npositions: <SkyCoord (ICRS): '
+             '(ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\na: 3.0 pix\n'
+             'b: 5.0 pix\ntheta: 15.0 deg')
+    assert repr(aper) == a_repr
+    assert str(aper) == a_str
+
+    aper = SkyEllipticalAnnulus(s, a_in=3*u.pix, a_out=5*u.pix, b_out=3*u.pix,
+                                theta=15*u.deg)
+    a_repr = ('<SkyEllipticalAnnulus(<SkyCoord (ICRS): (ra, dec) in deg\n    '
+              '[( 1.,  3.), ( 2.,  4.)]>, a_in=3.0 pix, a_out=5.0 pix, b_out='
+              '3.0 pix, theta=15.0 deg)>')
+    a_str = ('Aperture: SkyEllipticalAnnulus\npositions: <SkyCoord (ICRS): '
+             '(ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\na_in: 3.0 pix'
+             '\na_out: 5.0 pix\nb_out: 3.0 pix\ntheta: 15.0 deg')
+    assert repr(aper) == a_repr
+    assert str(aper) == a_str
+
+    aper = SkyRectangularAperture(s, w=3*u.pix, h=5*u.pix, theta=15*u.deg)
+    a_repr = ('<SkyRectangularAperture(<SkyCoord (ICRS): (ra, dec) in deg\n'
+              '    [( 1.,  3.), ( 2.,  4.)]>, w=3.0 pix, h=5.0 pix, theta='
+              '15.0 deg)>')
+    a_str = ('Aperture: SkyRectangularAperture\npositions: <SkyCoord (ICRS):'
+             ' (ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\nw: 3.0 pix\n'
+             'h: 5.0 pix\ntheta: 15.0 deg')
+    assert repr(aper) == a_repr
+    assert str(aper) == a_str
+
+    aper = SkyRectangularAnnulus(s, w_in=3*u.pix, w_out=3.4*u.pix,
+                                 h_out=5*u.pix, theta=15*u.deg)
+    a_repr = ('<SkyRectangularAnnulus(<SkyCoord (ICRS): (ra, dec) in deg\n'
+              '    [( 1.,  3.), ( 2.,  4.)]>, w_in=3.0 pix, w_out=3.4 pix, '
+              'h_out=5.0 pix, theta=15.0 deg)>')
+    a_str = ('Aperture: SkyRectangularAnnulus\npositions: <SkyCoord (ICRS): '
+             '(ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\nw_in: 3.0 pix'
+             '\nw_out: 3.4 pix\nh_out: 5.0 pix\ntheta: 15.0 deg')
+    assert repr(aper) == a_repr
+    assert str(aper) == a_str
