@@ -75,6 +75,21 @@ class PixelAperture(Aperture):
     def _positions_str(self, prefix=None):
         return np.array2string(self.positions, separator=', ', prefix=prefix)
 
+    def _cls_repr(self, shape_info):
+        prefix = '<{0}('.format(self.__class__.__name__)
+        return '{0}{1}, {2})>'.format(prefix, self._positions_str(prefix),
+                                      shape_info)
+
+    def _cls_str(self, shape_info):
+        prefix = 'positions'
+        cls_info = [
+            ('Aperture', self.__class__.__name__),
+            (prefix, self._positions_str(prefix + ': '))]
+        cls_info += shape_info
+
+        fmt = ['{0}: {1}'.format(key, val) for key, val in cls_info]
+        return '\n'.join(fmt)
+
     @staticmethod
     def _translate_mask_mode(mode, subpixels, rectangle=False):
         if mode not in ('center', 'subpixel', 'exact'):
