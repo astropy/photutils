@@ -131,6 +131,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
 
         self.positions = self._sanitize_positions(positions)
         self.r = float(r)
+        self._repr_params = [('r', self.r)]
 
     # TODO: make lazyproperty?, but update if positions or radius change
     @property
@@ -202,6 +203,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         self.positions = self._sanitize_positions(positions)
         self.r_in = float(r_in)
         self.r_out = float(r_out)
+        self._repr_params = [('r_in', self.r_in), ('r_out', self.r_out)]
 
     @property
     def bounding_boxes(self):
@@ -256,6 +258,7 @@ class SkyCircularAperture(SkyAperture):
 
         assert_angle_or_pixel('r', r)
         self.r = r
+        self._repr_params = [('r', self.r)]
 
     def to_pixel(self, wcs, mode='all'):
         """
@@ -328,6 +331,7 @@ class SkyCircularAnnulus(SkyAperture):
 
         self.r_in = r_in
         self.r_out = r_out
+        self._repr_params = [('r_in', self.r_in), ('r_out', self.r_out)]
 
     def to_pixel(self, wcs, mode='all'):
         """

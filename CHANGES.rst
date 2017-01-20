@@ -11,6 +11,8 @@ New Features
 
   - Added ``BoundingBox`` class, used when defining apertures. [#481]
 
+  - Apertures now have ``__repr__`` and ``__str__`` defined. [#493]
+
 API changes
 ^^^^^^^^^^^
 

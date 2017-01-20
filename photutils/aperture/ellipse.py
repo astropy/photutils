@@ -145,6 +145,8 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         self.a = float(a)
         self.b = float(b)
         self.theta = float(theta)
+        self._repr_params = [('a', self.a), ('b', self.b),
+                             ('theta', self.theta)]
 
     @property
     def bounding_boxes(self):
@@ -235,6 +237,9 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         self.b_out = float(b_out)
         self.b_in = self.b_out * self.a_in / self.a_out
         self.theta = float(theta)
+        self._repr_params = [('a_in', self.a_in), ('a_out', self.a_out),
+                             ('b_in', self.b_in), ('b_out', self.b_out),
+                             ('theta', self.theta)]
 
     @property
     def bounding_boxes(self):
@@ -308,6 +313,8 @@ class SkyEllipticalAperture(SkyAperture):
         self.a = a
         self.b = b
         self.theta = theta
+        self._repr_params = [('a', self.a), ('b', self.b),
+                             ('theta', self.theta)]
 
     def to_pixel(self, wcs, mode='all'):
         """
@@ -401,6 +408,8 @@ class SkyEllipticalAnnulus(SkyAperture):
         self.a_out = a_out
         self.b_out = b_out
         self.theta = theta
+        self._repr_params = [('a_in', self.a_in), ('a_out', self.a_out),
+                             ('b_out', self.b_out), ('theta', self.theta)]
 
     def to_pixel(self, wcs, mode='all'):
         """
