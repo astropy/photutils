@@ -37,6 +37,31 @@ class Aperture(object):
             return 1
         return len(self.positions)
 
+    def _positions_str(self, prefix=None):
+        if isinstance(self, PixelAperture):
+            return np.array2string(self.positions, separator=', ',
+                                   prefix=prefix)
+        elif isinstance(self, SkyAperture):
+            return self.positions
+        else:
+            raise TypeError('Aperture must be a subclass of PixelAperture '
+                            'or SkyAperture')
+
+    def _cls_repr(self, shape_info):
+        prefix = '<{0}('.format(self.__class__.__name__)
+        return '{0}{1}, {2})>'.format(prefix, self._positions_str(prefix),
+                                      shape_info)
+
+    def _cls_str(self, shape_info):
+        prefix = 'positions'
+        cls_info = [
+            ('Aperture', self.__class__.__name__),
+            (prefix, self._positions_str(prefix + ': '))]
+        cls_info += shape_info
+
+        fmt = ['{0}: {1}'.format(key, val) for key, val in cls_info]
+        return '\n'.join(fmt)
+
 
 class PixelAperture(Aperture):
     """
@@ -71,24 +96,6 @@ class PixelAperture(Aperture):
                              'arrays are supported.'.format(positions.ndim))
 
         return positions
-
-    def _positions_str(self, prefix=None):
-        return np.array2string(self.positions, separator=', ', prefix=prefix)
-
-    def _cls_repr(self, shape_info):
-        prefix = '<{0}('.format(self.__class__.__name__)
-        return '{0}{1}, {2})>'.format(prefix, self._positions_str(prefix),
-                                      shape_info)
-
-    def _cls_str(self, shape_info):
-        prefix = 'positions'
-        cls_info = [
-            ('Aperture', self.__class__.__name__),
-            (prefix, self._positions_str(prefix + ': '))]
-        cls_info += shape_info
-
-        fmt = ['{0}: {1}'.format(key, val) for key, val in cls_info]
-        return '\n'.join(fmt)
 
     @staticmethod
     def _translate_mask_mode(mode, subpixels, rectangle=False):

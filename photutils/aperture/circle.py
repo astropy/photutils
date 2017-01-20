@@ -274,18 +274,12 @@ class SkyCircularAperture(SkyAperture):
         self.r = r
 
     def __repr__(self):
-        prefix = '<{0}('.format(self.__class__.__name__)
-        return '{0}{1}, r={2})>'.format(prefix, self.positions, self.r)
+        shape_info = 'r={0}'.format(self.r)
+        return self._cls_repr(shape_info)
 
     def __str__(self):
-        clsinfo = [
-            ('Aperture', self.__class__.__name__),
-            ('positions', self.positions),
-            ('r', self.r)
-        ]
-
-        fmt = ['{0}: {1}'.format(key, val) for key, val in clsinfo]
-        return '\n'.join(fmt)
+        shape_info = [('r', self.r)]
+        return self._cls_str(shape_info)
 
     def to_pixel(self, wcs, mode='all'):
         """
@@ -360,20 +354,12 @@ class SkyCircularAnnulus(SkyAperture):
         self.r_out = r_out
 
     def __repr__(self):
-        prefix = '<{0}('.format(self.__class__.__name__)
-        return '{0}{1}, r_in={2}, r_out={3})>'.format(prefix, self.positions,
-                                                      self.r_in, self.r_out)
+        shape_info = 'r_in={0}, r_out={1}'.format(self.r_in, self.r_out)
+        return self._cls_repr(shape_info)
 
     def __str__(self):
-        clsinfo = [
-            ('Aperture', self.__class__.__name__),
-            ('positions', self.positions),
-            ('r_in', self.r_in),
-            ('r_out', self.r_out)
-        ]
-
-        fmt = ['{0}: {1}'.format(key, val) for key, val in clsinfo]
-        return '\n'.join(fmt)
+        shape_info = [('r_in', self.r_in), ('r_out', self.r_out)]
+        return self._cls_str(shape_info)
 
     def to_pixel(self, wcs, mode='all'):
         """
