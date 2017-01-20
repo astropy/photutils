@@ -416,18 +416,28 @@ class PixelAperture(Aperture):
 
     @staticmethod
     def _make_annulus_path(patch_inner, patch_outer):
+        """
+        Define a matplotlib annulus path from two patches.
+
+        This preserves the cubic Bezier curves (CURVE4) of the aperture
+        paths.
+        """
+
         import matplotlib.path as mpath
 
-        verts_inner = patch_inner.get_verts()
-        verts_outer = patch_outer.get_verts()
-        codes_inner = (np.ones(len(verts_inner), dtype=mpath.Path.code_type) *
-                       mpath.Path.LINETO)
-        codes_inner[0] = mpath.Path.MOVETO
-        codes_outer = (np.ones(len(verts_outer), dtype=mpath.Path.code_type) *
-                       mpath.Path.LINETO)
-        codes_outer[0] = mpath.Path.MOVETO
-        codes = np.concatenate((codes_inner, codes_outer))
-        verts = np.concatenate((verts_inner, verts_outer[::-1]))
+        path_inner = patch_inner.get_path()
+        transform_inner = patch_inner.get_transform()
+        path_inner = transform_inner.transform_path(path_inner)
+
+        path_outer = patch_outer.get_path()
+        transform_outer = patch_outer.get_transform()
+        path_outer = transform_outer.transform_path(path_outer)
+
+        verts_inner = path_inner.vertices[:-1][::-1]
+        verts_inner = np.concatenate((verts_inner, [verts_inner[-1]]))
+
+        verts = np.vstack((path_outer.vertices, verts_inner))
+        codes = np.hstack((path_outer.codes, path_inner.codes))
 
         return mpath.Path(verts, codes)
 

@@ -13,6 +13,8 @@ New Features
 
   - Apertures now have ``__repr__`` and ``__str__`` defined. [#493]
 
+  - Improved plotting of annulus apertures using Bezier curves. [#494]
+
 API changes
 ^^^^^^^^^^^
 
