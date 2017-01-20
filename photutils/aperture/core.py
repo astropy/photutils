@@ -42,24 +42,30 @@ class Aperture(object):
             return np.array2string(self.positions, separator=', ',
                                    prefix=prefix)
         elif isinstance(self, SkyAperture):
-            return self.positions
+            return repr(self.positions)
         else:
             raise TypeError('Aperture must be a subclass of PixelAperture '
                             'or SkyAperture')
 
-    def _cls_repr(self, shape_info):
+    def __repr__(self):
         prefix = '<{0}('.format(self.__class__.__name__)
-        return '{0}{1}, {2})>'.format(prefix, self._positions_str(prefix),
-                                      shape_info)
+        params = [self._positions_str(prefix)]
+        for key, val in self._repr_params:
+            if key not in ['b_in', 'h_in']:   # not aperture parameters
+                params.append('{0}={1}'.format(key, val))
+        params = ', '.join(params)
 
-    def _cls_str(self, shape_info):
+        return '{0}{1})>'.format(prefix, params)
+
+    def __str__(self):
         prefix = 'positions'
         cls_info = [
             ('Aperture', self.__class__.__name__),
             (prefix, self._positions_str(prefix + ': '))]
-        cls_info += shape_info
-
+        if self._repr_params is not None:
+            cls_info += self._repr_params
         fmt = ['{0}: {1}'.format(key, val) for key, val in cls_info]
+
         return '\n'.join(fmt)
 
 

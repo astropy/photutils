@@ -149,15 +149,8 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         self.w = float(w)
         self.h = float(h)
         self.theta = float(theta)
-
-    def __repr__(self):
-        shape_info = 'w={0}, h={1}, theta={2}'.format(self.w, self.h,
-                                                      self.theta)
-        return self._cls_repr(shape_info)
-
-    def __str__(self):
-        shape_info = [('w', self.w), ('h', self.h), ('theta', self.theta)]
-        return self._cls_str(shape_info)
+        self._repr_params = [('w', self.w), ('h', self.h),
+                             ('theta', self.theta)]
 
     @property
     def bounding_boxes(self):
@@ -259,17 +252,9 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         self.h_out = float(h_out)
         self.h_in = self.w_in * self.h_out / self.w_out
         self.theta = float(theta)
-
-    def __repr__(self):
-        shape_info = ('w_in={0}, w_out={1}, h_out={2}, theta={3}'
-                      .format(self.w_in, self.w_out, self.h_out, self.theta))
-        return self._cls_repr(shape_info)
-
-    def __str__(self):
-        shape_info = [('w_in', self.w_in), ('w_out', self.w_out),
-                      ('h_in', self.h_in), ('h_out', self.h_out),
-                      ('theta', self.theta)]
-        return self._cls_str(shape_info)
+        self._repr_params = [('w_in', self.w_in), ('w_out', self.w_out),
+                             ('h_in', self.h_in), ('h_out', self.h_out),
+                             ('theta', self.theta)]
 
     @property
     def bounding_boxes(self):
@@ -363,15 +348,8 @@ class SkyRectangularAperture(SkyAperture):
         self.w = w
         self.h = h
         self.theta = theta
-
-    def __repr__(self):
-        shape_info = 'w={0}, h={1}, theta={2}'.format(self.w, self.h,
-                                                      self.theta)
-        return self._cls_repr(shape_info)
-
-    def __str__(self):
-        shape_info = [('w', self.w), ('h', self.h), ('theta', self.theta)]
-        return self._cls_str(shape_info)
+        self._repr_params = [('w', self.w), ('h', self.h),
+                             ('theta', self.theta)]
 
     def to_pixel(self, wcs, mode='all'):
         """
@@ -472,16 +450,8 @@ class SkyRectangularAnnulus(SkyAperture):
         self.w_out = w_out
         self.h_out = h_out
         self.theta = theta
-
-    def __repr__(self):
-        shape_info = ('w_in={0}, w_out={1}, h_out={2}, theta={3}'
-                      .format(self.w_in, self.w_out, self.h_out, self.theta))
-        return self._cls_repr(shape_info)
-
-    def __str__(self):
-        shape_info = [('w_in', self.w_in), ('w_out', self.w_out),
-                      ('h_out', self.h_out), ('theta', self.theta)]
-        return self._cls_str(shape_info)
+        self._repr_params = [('w_in', self.w_in), ('w_out', self.w_out),
+                             ('h_out', self.h_out), ('theta', self.theta)]
 
     def to_pixel(self, wcs, mode='all'):
         """

@@ -145,15 +145,8 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         self.a = float(a)
         self.b = float(b)
         self.theta = float(theta)
-
-    def __repr__(self):
-        shape_info = 'a={0}, b={1}, theta={2}'.format(self.a, self.b,
-                                                      self.theta)
-        return self._cls_repr(shape_info)
-
-    def __str__(self):
-        shape_info = [('a', self.a), ('b', self.b), ('theta', self.theta)]
-        return self._cls_str(shape_info)
+        self._repr_params = [('a', self.a), ('b', self.b),
+                             ('theta', self.theta)]
 
     @property
     def bounding_boxes(self):
@@ -244,17 +237,9 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         self.b_out = float(b_out)
         self.b_in = self.b_out * self.a_in / self.a_out
         self.theta = float(theta)
-
-    def __repr__(self):
-        shape_info = ('a_in={0}, a_out={1}, b_out={2}, theta={3}'
-                      .format(self.a_in, self.a_out, self.b_out, self.theta))
-        return self._cls_repr(shape_info)
-
-    def __str__(self):
-        shape_info = [('a_in', self.a_in), ('a_out', self.a_out),
-                      ('b_in', self.b_in), ('b_out', self.b_out),
-                      ('theta', self.theta)]
-        return self._cls_str(shape_info)
+        self._repr_params = [('a_in', self.a_in), ('a_out', self.a_out),
+                             ('b_in', self.b_in), ('b_out', self.b_out),
+                             ('theta', self.theta)]
 
     @property
     def bounding_boxes(self):
@@ -328,15 +313,8 @@ class SkyEllipticalAperture(SkyAperture):
         self.a = a
         self.b = b
         self.theta = theta
-
-    def __repr__(self):
-        shape_info = 'a={0}, b={1}, theta={2}'.format(self.a, self.b,
-                                                      self.theta)
-        return self._cls_repr(shape_info)
-
-    def __str__(self):
-        shape_info = [('a', self.a), ('b', self.b), ('theta', self.theta)]
-        return self._cls_str(shape_info)
+        self._repr_params = [('a', self.a), ('b', self.b),
+                             ('theta', self.theta)]
 
     def to_pixel(self, wcs, mode='all'):
         """
@@ -430,16 +408,8 @@ class SkyEllipticalAnnulus(SkyAperture):
         self.a_out = a_out
         self.b_out = b_out
         self.theta = theta
-
-    def __repr__(self):
-        shape_info = ('a_in={0}, a_out={1}, b_out={2}, theta={3}'
-                      .format(self.a_in, self.a_out, self.b_out, self.theta))
-        return self._cls_repr(shape_info)
-
-    def __str__(self):
-        shape_info = [('a_in', self.a_in), ('a_out', self.a_out),
-                      ('b_out', self.b_out), ('theta', self.theta)]
-        return self._cls_str(shape_info)
+        self._repr_params = [('a_in', self.a_in), ('a_out', self.a_out),
+                             ('b_out', self.b_out), ('theta', self.theta)]
 
     def to_pixel(self, wcs, mode='all'):
         """

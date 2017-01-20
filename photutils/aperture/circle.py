@@ -131,14 +131,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
 
         self.positions = self._sanitize_positions(positions)
         self.r = float(r)
-
-    def __repr__(self):
-        shape_info = 'r={0}'.format(self.r)
-        return self._cls_repr(shape_info)
-
-    def __str__(self):
-        shape_info = [('r', self.r)]
-        return self._cls_str(shape_info)
+        self._repr_params = [('r', self.r)]
 
     # TODO: make lazyproperty?, but update if positions or radius change
     @property
@@ -210,14 +203,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         self.positions = self._sanitize_positions(positions)
         self.r_in = float(r_in)
         self.r_out = float(r_out)
-
-    def __repr__(self):
-        shape_info = 'r_in={0}, r_out={1}'.format(self.r_in, self.r_out)
-        return self._cls_repr(shape_info)
-
-    def __str__(self):
-        shape_info = [('r_in', self.r_in), ('r_out', self.r_out)]
-        return self._cls_str(shape_info)
+        self._repr_params = [('r_in', self.r_in), ('r_out', self.r_out)]
 
     @property
     def bounding_boxes(self):
@@ -272,14 +258,7 @@ class SkyCircularAperture(SkyAperture):
 
         assert_angle_or_pixel('r', r)
         self.r = r
-
-    def __repr__(self):
-        shape_info = 'r={0}'.format(self.r)
-        return self._cls_repr(shape_info)
-
-    def __str__(self):
-        shape_info = [('r', self.r)]
-        return self._cls_str(shape_info)
+        self._repr_params = [('r', self.r)]
 
     def to_pixel(self, wcs, mode='all'):
         """
@@ -352,14 +331,7 @@ class SkyCircularAnnulus(SkyAperture):
 
         self.r_in = r_in
         self.r_out = r_out
-
-    def __repr__(self):
-        shape_info = 'r_in={0}, r_out={1}'.format(self.r_in, self.r_out)
-        return self._cls_repr(shape_info)
-
-    def __str__(self):
-        shape_info = [('r_in', self.r_in), ('r_out', self.r_out)]
-        return self._cls_str(shape_info)
+        self._repr_params = [('r_in', self.r_in), ('r_out', self.r_out)]
 
     def to_pixel(self, wcs, mode='all'):
         """
