@@ -46,7 +46,7 @@ Tests:
 .. image:: https://ci.appveyor.com/api/projects/status/by27a71echj18b4f/branch/master?svg=true
     :target: https://ci.appveyor.com/project/Astropy/photutils/branch/master
 
-.. image:: http://img.shields.io/badge/benchmarked%20by-asv-green.svg?style=flat
+.. image:: https://img.shields.io/badge/benchmarked%20by-asv-green.svg?style=flat
     :target: http://astropy.org/photutils-benchmarks/
 
 
