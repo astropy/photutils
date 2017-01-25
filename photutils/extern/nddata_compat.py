@@ -18,7 +18,7 @@ def extract_array(*args, **kwargs):
     from astropy.nddata.utils import extract_array
 
     # fill_value keyword is not in v1.0.x
-    if 'fill_value' in inspect.getargspec(extract_array)[0]:
+    if 'fill_value' in inspect.getfullargspec(extract_array)[0]:
         return extract_array(*args, **kwargs)
     else:
         return _extract_array_astropy1p1(*args, **kwargs)
