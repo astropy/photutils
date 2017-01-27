@@ -71,17 +71,17 @@ class TestBackground2D(object):
 
     @pytest.mark.parametrize('filter_size', FILTER_SIZES)
     def test_resizing(self, filter_size):
-        b1 = Background2D(DATA, (22, 22), filter_size=filter_size,
+        b1 = Background2D(DATA, (23, 22), filter_size=filter_size,
                           bkg_estimator=MeanBackground(), edge_method='crop')
-        b2 = Background2D(DATA, (22, 22), filter_size=filter_size,
+        b2 = Background2D(DATA, (23, 22), filter_size=filter_size,
                           bkg_estimator=MeanBackground(), edge_method='pad')
         assert_allclose(b1.background, b2.background)
         assert_allclose(b1.background_rms, b2.background_rms)
 
-    @pytest.mark.parametrize('box_size', ([(25, 25), (22, 22)]))
+    @pytest.mark.parametrize('box_size', ([(25, 25), (23, 22)]))
     def test_background_mask(self, box_size):
         """
-        Test with an input mask.  Note that box_size=(22, 22) tests the
+        Test with an input mask.  Note that box_size=(23, 22) tests the
         resizing of the image and mask.
         """
 
@@ -165,12 +165,12 @@ class TestBackground2D(object):
 
     def test_invalid_edge_method(self):
         with pytest.raises(ValueError):
-            Background2D(DATA, (22, 22), filter_size=(1, 1),
+            Background2D(DATA, (23, 22), filter_size=(1, 1),
                          edge_method='not_valid')
 
     def test_invalid_exclude_mesh_method(self):
         with pytest.raises(ValueError):
-            Background2D(DATA, (22, 22), filter_size=(1, 1),
+            Background2D(DATA, (23, 22), filter_size=(1, 1),
                          exclude_mesh_method='not_valid')
 
     def test_invalid_mesh_idx_len(self):

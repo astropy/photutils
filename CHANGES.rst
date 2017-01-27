@@ -34,6 +34,12 @@ General
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.background``
+
+  - Fixed issue with ``Background2D`` with ``edge_method='pad'`` that
+    occurred when unequal padding needed to be applied to each axis.
+    [#498]
+
 - ``photutils.geometry``
 
   - Fixed a bug in ``circular_overlap_grid`` affecting 32-bit machines
