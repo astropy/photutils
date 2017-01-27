@@ -7,6 +7,8 @@ from distutils.version import LooseVersion
 import numpy as np
 from astropy.utils import lazyproperty
 
+from ..utils.colormaps import random_cmap
+
 
 __all__ = ['SegmentationImage']
 
@@ -227,6 +229,28 @@ class SegmentationImage(object):
         if label not in self.labels:
             raise ValueError('label "{0}" is not in the segmentation '
                              'image'.format(label))
+
+    def cmap(self, background_color='black', random_state=None):
+        """
+        A matplotlib colormap consisting of random (muted) colors.
+
+        This is very useful for plotting the segmentation image.
+
+        Parameters
+        ----------
+        background_color : str, optional
+            The name of the background (first) color in the colormap.
+            Valid colors names are defined by
+            ``matplotlib.colors.cnames``.  The default is ``'black'``.
+
+        random_state : int or `~numpy.random.RandomState`, optional
+            The pseudo-random number generator state used for random
+            sampling.  Separate function calls with the same
+            ``random_state`` will generate the same colormap.
+        """
+
+        return random_cmap(self.max + 1, background_color=background_color,
+                           random_state=random_state)
 
     def outline_segments(self, mask_background=False):
         """
