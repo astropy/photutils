@@ -336,7 +336,7 @@ class Background2D(object):
         self._calc_bkg_bkgrms()
         self._calc_coordinates()
 
-    def _pad_data(self, xextra, yextra):
+    def _pad_data(self, yextra, xextra):
         """
         Pad the ``data`` and ``mask`` to have an integer number of
         background meshes of size ``box_size`` in both dimensions.  The
@@ -345,11 +345,11 @@ class Background2D(object):
 
         Parameters
         ----------
-        xextra, yextra : int
+        yextra, xextra : int
             The modulus of the data size and the box size in both the
-            ``x`` and ``y`` dimensions.  This is the number of extra
-            pixels beyond a multiple of the box size in the ``x`` and
-            ``y`` dimensions.
+            ``y`` and ``x`` dimensions.  This is the number of extra
+            pixels beyond a multiple of the box size in the ``y`` and
+            ``x`` dimensions.
 
         Returns
         -------
