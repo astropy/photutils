@@ -112,6 +112,15 @@ class TestBackground2D(object):
             Background2D(DATA, (25, 25), mask=mask,
                          exclude_mesh_method=exclude_mesh_method)
 
+    def test_zero_padding(self):
+        """Test case where padding is added only on one axis."""
+
+        b = Background2D(DATA, (25, 22), filter_size=(1, 1))
+        assert_allclose(b.background, DATA)
+        assert_allclose(b.background_rms, BKG_RMS)
+        assert b.background_median == 1.0
+        assert b.background_rms_median == 0.0
+
     def test_filter_threshold(self):
         """Only meshes greater than filter_threshold are filtered."""
 
