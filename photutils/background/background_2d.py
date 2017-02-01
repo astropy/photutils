@@ -373,8 +373,10 @@ class Background2D(object):
 
         # mask the padded regions
         pad_mask = np.zeros_like(data)
-        pad_mask[-ypad:, :] = True
-        pad_mask[:, -xpad:] = True
+        y0 = data.shape[0] - ypad
+        x0 = data.shape[1] - xpad
+        pad_mask[y0:, :] = True
+        pad_mask[:, x0:] = True
 
         # pad the input mask separately (there is no np.ma.pad function)
         if self.mask is not None:
