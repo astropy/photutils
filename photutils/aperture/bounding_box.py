@@ -114,9 +114,9 @@ class BoundingBox(object):
         """
 
         ixmin = int(np.floor(xmin + 0.5))
-        ixmax = int(np.floor(xmax + 1.5))
+        ixmax = int(np.ceil(xmax + 0.5))
         iymin = int(np.floor(ymin + 0.5))
-        iymax = int(np.floor(ymax + 1.5))
+        iymax = int(np.ceil(ymax + 0.5))
 
         return cls(ixmin, ixmax, iymin, iymax)
 
