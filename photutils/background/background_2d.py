@@ -495,8 +495,8 @@ class Background2D(object):
             # pad or crop the data
             if self.edge_method == 'pad':
                 data_ma = self._pad_data(yextra, xextra)
-                self.nyboxes += 1
-                self.nxboxes += 1
+                self.nyboxes = data_ma.shape[0] // self.box_size[0]
+                self.nxboxes = data_ma.shape[1] // self.box_size[1]
             elif self.edge_method == 'crop':
                 data_ma = self._crop_data()
             else:
