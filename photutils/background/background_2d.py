@@ -458,10 +458,11 @@ class Background2D(object):
             mesh_idx = np.where((self.box_npixels - nmasked) >=
                                 threshold_npixels)[0]
             if len(mesh_idx) == 0:
-                raise ValueError('There are no valid meshes available with '
-                                 'at least exclude_mesh_percentile ({0} '
-                                 'percent) unmasked pixels.'
-                                 .format(threshold_npixels))
+                raise ValueError('All meshes contain < {0} ({1} percent per '
+                                 'mesh) unmasked pixels.  Please check your '
+                                 'data or decrease "exclude_mesh_percentile".'
+                                 .format(threshold_npixels,
+                                         self.exclude_mesh_percentile))
 
         else:
             raise ValueError('exclude_mesh_method must be "any", "all", or '
