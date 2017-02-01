@@ -40,6 +40,9 @@ Bug Fixes
     occurred when unequal padding needed to be applied to each axis.
     [#498]
 
+  - Fixed issue with ``Background2D`` that occurred when zero padding
+    needed to apply along only one axis. [#500]
+
 - ``photutils.geometry``
 
   - Fixed a bug in ``circular_overlap_grid`` affecting 32-bit machines

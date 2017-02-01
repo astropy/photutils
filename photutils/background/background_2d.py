@@ -373,8 +373,10 @@ class Background2D(object):
 
         # mask the padded regions
         pad_mask = np.zeros_like(data)
-        pad_mask[-ypad:, :] = True
-        pad_mask[:, -xpad:] = True
+        y0 = data.shape[0] - ypad
+        x0 = data.shape[1] - xpad
+        pad_mask[y0:, :] = True
+        pad_mask[:, x0:] = True
 
         # pad the input mask separately (there is no np.ma.pad function)
         if self.mask is not None:
@@ -458,10 +460,11 @@ class Background2D(object):
             mesh_idx = np.where((self.box_npixels - nmasked) >=
                                 threshold_npixels)[0]
             if len(mesh_idx) == 0:
-                raise ValueError('There are no valid meshes available with '
-                                 'at least exclude_mesh_percentile ({0} '
-                                 'percent) unmasked pixels.'
-                                 .format(threshold_npixels))
+                raise ValueError('All meshes contain < {0} ({1} percent per '
+                                 'mesh) unmasked pixels.  Please check your '
+                                 'data or decrease "exclude_mesh_percentile".'
+                                 .format(threshold_npixels,
+                                         self.exclude_mesh_percentile))
 
         else:
             raise ValueError('exclude_mesh_method must be "any", "all", or '
@@ -495,8 +498,8 @@ class Background2D(object):
             # pad or crop the data
             if self.edge_method == 'pad':
                 data_ma = self._pad_data(yextra, xextra)
-                self.nyboxes += 1
-                self.nxboxes += 1
+                self.nyboxes = data_ma.shape[0] // self.box_size[0]
+                self.nxboxes = data_ma.shape[1] // self.box_size[1]
             elif self.edge_method == 'crop':
                 data_ma = self._crop_data()
             else:
