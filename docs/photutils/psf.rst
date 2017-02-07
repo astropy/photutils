@@ -519,6 +519,7 @@ able to identify it, and hence we should use
 star as well. Also, note that both of the stars have ``sigma=2.0``.
 
 .. plot::
+    :include-source:
 
     import matplotlib.pyplot as plt
     from photutils.datasets import make_random_gaussians, make_noise_image
@@ -565,7 +566,7 @@ Let's instantiate the necessary objetcs in order to use an
     ...                                                   psf_model=psf_model,
     ...                                                   fitter=fitter,
     ...                                                   fitshape=(11, 11),
-    ...                                                   niters=None)
+    ...                                                   niters=2)
 
 Now, let's use the callable ``itr_phot_obj`` to perform photometry:
 
