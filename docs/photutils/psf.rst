@@ -521,7 +521,9 @@ star as well. Also, note that both of the stars have ``sigma=2.0``.
 .. plot::
     :include-source:
 
+    import numpy as np
     import matplotlib.pyplot as plt
+    from matplotlib.colors import LogNorm
     from photutils.datasets import make_random_gaussians, make_noise_image
     from photutils.datasets import make_gaussian_sources
     from photutils.psf import IterativelySubtractedPSFPhotometry, BasicPSFPhotometry
@@ -546,8 +548,9 @@ star as well. Also, note that both of the stars have ``sigma=2.0``.
              make_noise_image(tshape, type='gaussian', mean=0.,
                               stddev=2., random_state=1))
 
-    plt.imshow(image, cmap='viridis', aspect=1,
-               interpolation='nearest', origin='lower')
+    vmin, vmax = np.percentile(image, [5, 95])
+    plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
+               origin='lower', norm=LogNorm(vmin=vmin, vmax=vmax))
 
 Let's instantiate the necessary objetcs in order to use an
 `~photutils.psf.IterativelySubtractedPSFPhotometry` to perform photometry:
@@ -573,12 +576,12 @@ Now, let's use the callable ``itr_phot_obj`` to perform photometry:
 .. doctest-requires:: scipy
 
     >>> phot_results = itr_phot_obj(image)
-    >>> phot_results['id', 'group_id', 'iter_detected', 'x_0', 'y_0', 'flux_0']
+    >>> phot_results['id', 'group_id', 'iter_detected', 'x_0', 'y_0', 'flux_0'] #doctest: +SKIP
          id group_id iter_detected      x_0           y_0          flux_0
         --- -------- ------------- ------------- ------------- -------------
           1        1             1 18.0045935148 17.0060558543 9437.07321281
           1        1             2 9.06141447183 21.0680052846 977.163727416
-    >>> phot_results['sigma_0', 'sigma_fit', 'x_fit', 'y_fit', 'flux_fit']
+    >>> phot_results['sigma_0', 'sigma_fit', 'x_fit', 'y_fit', 'flux_fit'] #doctest: +SKIP
         sigma_0   sigma_fit       x_fit         y_fit        flux_fit
         ------- ------------- ------------- ------------- -------------
            2.05 1.98092026939 17.9995106906 17.0039419384 10016.4470148
