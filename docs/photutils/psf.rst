@@ -484,11 +484,13 @@ Consider the previous example after the line
 Fitting additional parameters
 -----------------------------
 
-The PSF photometry classes can also be used to fit additional parameters
-simultaneously, for instance, the PSF width and the sky background.
+The PSF photometry classes can also be used to fit more model parameters than
+just the flux and center positions. While a more realistic use case might be
+fitting sky backgrounds, or shape parameters of galaxies, here we use the
+``sigma`` parameter in `~photutils.psf.IntegratedGaussianPRF` as the simplest
+possible example of this feature.
 
-Consider the case in which one would like to fit the ``sigma`` parameter in
-``IntegratedGaussianPRF``. First, let us instantiate a psf model object:
+First, let us instantiate a psf model object:
 
 .. doctest-skip::
 
@@ -510,11 +512,11 @@ value of ``sigma``, but we can change that by doing:
 
     >>> gaussian_prf.sigma.value = 2.05
 
-Now, let's create an artificial image which has a brighter star and one
-overlapping companion at a distance close enough so that the detection
-algorithms won't be able to identify it, and hence we should use
-``IterativelySubtractedPSFPhotometry`` to reduce the fainter star as well.
-Also, note that both of the stars have ``sigma=2.0``.
+Now, let's create a simulated image which has a brighter star and one
+overlapping fainter companion so that the detection algorithm won't be
+able to identify it, and hence we should use
+`~photutils.psf.IterativelySubtractedPSFPhotometry` to measure the fainter
+star as well. Also, note that both of the stars have ``sigma=2.0``.
 
 .. plot::
 
@@ -531,8 +533,8 @@ Also, note that both of the stars have ``sigma=2.0``.
 
     sources = Table()
     sources['flux'] = [10000, 1000]
-    sources['x_mean'] = [18, 13]
-    sources['y_mean'] = [17, 19]
+    sources['x_mean'] = [18, 9]
+    sources['y_mean'] = [17, 21]
     sources['x_stddev'] = [2] * 2
     sources['y_stddev'] = sources['x_stddev']
     sources['theta'] = [0] * 2
@@ -570,16 +572,16 @@ Now, let's use the callable ``itr_phot_obj`` to perform photometry:
 .. doctest-requires:: scipy
 
     >>> phot_results = itr_phot_obj(image)
-    >>> phot_results_itr['id', 'group_id', 'iter_detected', 'x_0', 'y_0', 'flux_0'] #doctest: +SKIP
-        id group_id iter_detected      x_0           y_0          flux_0
+    >>> phot_results['id', 'group_id', 'iter_detected', 'x_0', 'y_0', 'flux_0']
+         id group_id iter_detected      x_0           y_0          flux_0
         --- -------- ------------- ------------- ------------- -------------
-          1        1             1 17.9830836988  17.014907321 9753.12898388
-          1        1             2 12.6296930472 19.6647630336 722.116920665
-    >>> phot_results_itr['sigma_0', 'sigma_fit', 'x_fit', 'y_fit', 'flux_fit'] #doctest: +SKIP
+          1        1             1 18.0045935148 17.0060558543 9437.07321281
+          1        1             2 9.06141447183 21.0680052846 977.163727416
+    >>> phot_results['sigma_0', 'sigma_fit', 'x_fit', 'y_fit', 'flux_fit']
         sigma_0   sigma_fit       x_fit         y_fit        flux_fit
         ------- ------------- ------------- ------------- -------------
-           2.05 2.03898434182 17.9155310586 17.0377322599 10478.1845716
-           2.05 1.77365765325 12.2809666868 19.2416219146 772.882624378
+           2.05 1.98092026939 17.9995106906 17.0039419384 10016.4470148
+           2.05 1.98516037471 9.12116345703 21.0599164498 1036.79115883
 
 We can see that ``sigma_0`` (the initial guess for ``sigma``) was assigned
 to the value we used when creating the PSF model.
@@ -605,8 +607,8 @@ Let's take a look at the residual image::
 
     sources = Table()
     sources['flux'] = [10000, 1000]
-    sources['x_mean'] = [18, 13]
-    sources['y_mean'] = [17, 19]
+    sources['x_mean'] = [18, 9]
+    sources['y_mean'] = [17, 21]
     sources['x_stddev'] = [2] * 2
     sources['y_stddev'] = sources['x_stddev']
     sources['theta'] = [0] * 2
@@ -634,10 +636,8 @@ Let's take a look at the residual image::
             interpolation='nearest', origin='lower')
 
 
-For more examples, also check the online notebook in the next section.
-
-Example Notebooks (online)
---------------------------
+Additional Example Notebooks (online)
+-------------------------------------
 
 * `PSF photometry on artificial Gaussian stars in crowded fields <https://github.com/astropy/photutils-datasets/blob/master/notebooks/ArtificialCrowdedFieldPSFPhotometry.ipynb>`_
 * `PSF photometry on artificial Gaussian stars <https://github.com/astropy/photutils-datasets/blob/master/notebooks/GaussianPSFPhot.ipynb>`_

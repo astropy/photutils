@@ -370,9 +370,9 @@ def test_define_fit_param_names(actual_pars_to_set, actual_pars_to_output,
     basic_phot_obj = make_psf_photometry_objs()[0]
     basic_phot_obj.psf_model = psf_model
 
-    pars_to_set, pars_to_output = basic_phot_obj._define_fit_param_names()
-    assert_equal(pars_to_set, actual_pars_to_set)
-    assert_equal(pars_to_output, actual_pars_to_output)
+    basic_phot_obj._define_fit_param_names()
+    assert_equal(basic_phot_obj._pars_to_set, actual_pars_to_set)
+    assert_equal(basic_phot_obj._pars_to_output, actual_pars_to_output)
 
 
 # tests previously written to psf_photometry

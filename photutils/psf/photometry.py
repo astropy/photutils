@@ -281,8 +281,7 @@ class BasicPSFPhotometry(object):
                                   sources['ycentroid'],
                                   sources['aperture_flux']])
 
-        self._pars_to_set, self._pars_to_output = self._define_fit_param_names()
-
+        self._define_fit_param_names()
         for p0, param in self._pars_to_set.items():
             if p0 not in positions.colnames:
                 positions[p0] = len(positions) * [getattr(self.psf_model, param).value]
@@ -310,7 +309,9 @@ class BasicPSFPhotometry(object):
             This table must contain the following columns: ``id``,
             ``group_id``, ``x_0``, ``y_0``, ``flux_0``.  ``x_0`` and
             ``y_0`` are initial estimates of the centroids and
-            ``flux_0`` is an initial estimate of the flux.
+            ``flux_0`` is an initial estimate of the flux. Additionally,
+            columns named as ``<param_name>_0`` are required to fit any other
+            free (non fixed) parameter.
 
         Returns
         -------
@@ -361,7 +362,7 @@ class BasicPSFPhotometry(object):
 
     def _define_fit_param_names(self):
         """
-        Convinience function to define mappings between the names of the
+        Convenience function to define mappings between the names of the
         columns in the initial guess table (and the name of the fitted
         parameters) and the actual name of the parameters in the model.
 
@@ -376,20 +377,16 @@ class BasicPSFPhotometry(object):
         """
 
         xname, yname, fluxname = _extract_psf_fitting_names(self.psf_model)
-
-        pars_to_set = {'x_0': xname, 'y_0': yname, 'flux_0': fluxname}
-
-        pars_to_output = {'x_fit': xname, 'y_fit': yname,
+        self._pars_to_set = {'x_0': xname, 'y_0': yname, 'flux_0': fluxname}
+        self._pars_to_output = {'x_fit': xname, 'y_fit': yname,
                 'flux_fit': fluxname}
 
         for p, isfixed in self.psf_model.fixed.items():
             p0 = p + '_0'
             pfit = p + '_fit'
             if p not in (xname, yname, fluxname) and not isfixed:
-                pars_to_set[p0] = p
-                pars_to_output[pfit] = p
-
-        return pars_to_set, pars_to_output
+                self._pars_to_set[p0] = p
+                self._pars_to_output[pfit] = p
 
     def _model_params2table(self, fit_model, star_group):
         """
@@ -636,8 +633,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         """
 
         output_table = Table()
+        self._define_fit_param_names()
 
-        self._pars_to_set, self._pars_to_output = self._define_fit_param_names()
         for (init_param_name, fit_param_name) in zip(self._pars_to_set.keys(),
                                                      self._pars_to_output.keys()):
             output_table.add_column(Column(name=init_param_name))
