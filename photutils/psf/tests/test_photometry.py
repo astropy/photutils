@@ -29,7 +29,7 @@ from ...datasets import make_noise_image
 from ...detection import DAOStarFinder
 
 
-ASTROPY_GT_1_1 = minversion('astropy', '1.1')
+ASTROPY_GT_1_3 = minversion('astropy', '1.3')
 
 
 try:
@@ -126,7 +126,7 @@ sources3['group_id'] = [1] * 2
 sources3['iter_detected'] = [1, 2]
 
 
-@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GT_1_1')
+@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GT_1_3')
 @pytest.mark.parametrize("sigma_psf, sources", [(sigma_psfs[2], sources3)])
 def test_psf_photometry_niters(sigma_psf, sources):
     img_shape = (32, 32)
@@ -160,7 +160,7 @@ def test_psf_photometry_niters(sigma_psf, sources):
     assert_array_equal(cp_image, image)
 
 
-@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GT_1_1')
+@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GT_1_3')
 @pytest.mark.parametrize("sigma_psf, sources",
                          [(sigma_psfs[0], sources1),
                           (sigma_psfs[1], sources2),
@@ -294,7 +294,7 @@ def test_finder_erros():
                 group_maker=DAOGroup(1), bkg_estimator=MMMBackground(),
                 psf_model=IntegratedGaussianPRF(1), fitshape=(11, 11))
 
-@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GT_1_1')
+@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GT_1_3')
 def test_finder_positions_warning():
     basic_phot_obj = make_psf_photometry_objs(sigma_psf=2)[0]
     positions = Table()
@@ -306,7 +306,7 @@ def test_finder_positions_warning():
                               random_state=1))
 
     with catch_warnings(AstropyUserWarning):
-        result_tab = basic_phot_obj(image=image, positions=positions)
+        result_tab = basic_phot_obj(image=image, init_guesses=positions)
         assert_array_equal(result_tab['x_0'], positions['x_0'])
         assert_array_equal(result_tab['y_0'], positions['y_0'])
         assert_allclose(result_tab['x_fit'], positions['x_0'], rtol=1e-1)
@@ -316,7 +316,7 @@ def test_finder_positions_warning():
         basic_phot_obj.finder = None
         result_tab = basic_phot_obj(image=image)
 
-@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GT_1_1')
+@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GT_1_3')
 def test_aperture_radius():
     img_shape = (32, 32)
 
@@ -415,7 +415,7 @@ for x, y, flux in WIDE_INTAB:
     wide_image += discretize_model(model, (0, IMAGE_SIZE), (0, IMAGE_SIZE),
                                    mode='oversample')
 
-@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_3')
 def test_psf_photometry_discrete():
     """ Test psf_photometry with discrete PRF model. """
 
@@ -423,12 +423,12 @@ def test_psf_photometry_discrete():
     basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
                                     bkg_estimator=None, psf_model=prf,
                                     fitshape=7)
-    f = basic_phot(image=image, positions=INTAB)
+    f = basic_phot(image=image, init_guesses=INTAB)
 
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-6)
 
-@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_3')
 def test_tune_coordinates():
     """
     Test psf_photometry with discrete PRF model and coordinates that need
@@ -450,7 +450,7 @@ def test_tune_coordinates():
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
 
-@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_3')
 def test_psf_boundary():
     """
     Test psf_photometry with discrete PRF model at the boundary of the data.
@@ -463,10 +463,10 @@ def test_psf_boundary():
                             fitshape=7, aperture_radius=5.5)
 
     intab = Table(data=[[1], [1]], names=['x_0', 'y_0'])
-    f = basic_phot(image=image, positions=intab)
+    f = basic_phot(image=image, init_guesses=intab)
     assert_allclose(f['flux_fit'], 0, atol=1e-8)
 
-@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_3')
 def test_aperture_radius_value_error():
     """
     Test psf_photometry with discrete PRF model at the boundary of the data.
@@ -480,11 +480,11 @@ def test_aperture_radius_value_error():
 
     intab = Table(data=[[1], [1]], names=['x_0', 'y_0'])
     with pytest.raises(ValueError) as err:
-        f = basic_phot(image=image, positions=intab)
+        f = basic_phot(image=image, init_guesses=intab)
 
     assert 'aperture_radius is None' in str(err.value)
 
-@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_3')
 def test_psf_boundary_gaussian():
     """
     Test psf_photometry with discrete PRF model at the boundary of the data.
@@ -497,10 +497,10 @@ def test_psf_boundary_gaussian():
                             fitshape=7)
 
     intab = Table(data=[[1], [1]], names=['x_0', 'y_0'])
-    f = basic_phot(image=image, positions=intab)
+    f = basic_phot(image=image, init_guesses=intab)
     assert_allclose(f['flux_fit'], 0, atol=1e-8)
 
-@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_3')
 def test_psf_photometry_gaussian():
     """
     Test psf_photometry with Gaussian PSF model.
@@ -511,11 +511,11 @@ def test_psf_photometry_gaussian():
     basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
                             bkg_estimator=None, psf_model=psf,
                             fitshape=7)
-    f = basic_phot(image=image, positions=INTAB)
+    f = basic_phot(image=image, init_guesses=INTAB)
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
 
-@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_1')
+@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GT_1_3')
 def test_psf_fitting_data_on_edge():
     """
     No mask is input explicitly here, but source 2 is so close to the
@@ -528,7 +528,7 @@ def test_psf_fitting_data_on_edge():
                             bkg_estimator=None, psf_model=psf_guess,
                             fitshape=7)
 
-    outtab = basic_phot(image=wide_image, positions=WIDE_INTAB)
+    outtab = basic_phot(image=wide_image, init_guesses=WIDE_INTAB)
 
     for n in ['x', 'y', 'flux']:
         assert_allclose(outtab[n + '_0'], outtab[n + '_fit'],

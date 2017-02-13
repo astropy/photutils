@@ -10,12 +10,12 @@ from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.utils.exceptions import AstropyUserWarning
 from .funcs import subtract_psf, _extract_psf_fitting_names
+from . import DAOGroup
 from .models import get_grouped_psf_model
 from ..aperture import CircularAperture, aperture_photometry
-
 from ..background import MMMBackground, SigmaClip
 from ..detection import DAOStarFinder
-from . import DAOGroup
+from ...utils.decorators import deprecated_renamed_argument
 
 from astropy.utils import minversion
 ASTROPY_LT_1_1 = not minversion('astropy', '1.1')
@@ -24,6 +24,7 @@ if ASTROPY_LT_1_1:
     from ..extern.nddata_compat import _overlap_slices_astropy1p1 as overlap_slices
 else:
     from astropy.nddata.utils import overlap_slices
+
 
 __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',
            'DAOPhotPSFPhotometry']
@@ -99,11 +100,11 @@ class BasicPSFPhotometry(object):
 
     Notes
     -----
-    Note that an ambiguity arises whenever ``finder`` and ``positions``
+    Note that an ambiguity arises whenever ``finder`` and ``init_guesses``
     (keyword argument for ``do_photometry`)` are both not ``None``. In this
     case, ``finder`` is ignored and initial guesses are taken from
-    ``positions``. In addition, an warning is raised to remaind the user about
-    this behavior.
+    ``init_guesses``. In addition, an warning is raised to remaind the user
+    about this behavior.
 
     If there are problems with fitting large groups, change the
     parameters of the grouping algorithm to reduce the number of sources
@@ -185,15 +186,17 @@ class BasicPSFPhotometry(object):
 
         return self._residual_image
 
-    def __call__(self, image, positions=None):
+    @deprecated_renamed_argument('positions', 'init_guesses', '0.4')
+    def __call__(self, image, init_guesses=None):
         """
         Performs PSF photometry. See `do_photometry` for more details
         including the `__call__` signature.
         """
 
-        return self.do_photometry(image, positions)
+        return self.do_photometry(image, init_guesses)
 
-    def do_photometry(self, image, positions=None):
+    @deprecated_renamed_argument('positions', 'init_guesses', '0.4')
+    def do_photometry(self, image, init_guesses=None):
         """
         Perform PSF photometry in ``image``.
 
@@ -202,8 +205,8 @@ class BasicPSFPhotometry(object):
         ``image``. A compound model, in fact a sum of ``psf_model``,
         will be fitted to groups of stars automatically identified by
         ``group_maker``. Also, ``image`` is not assumed to be background
-        subtracted.  If ``positions`` are not ``None`` then this method uses
-        ``positions`` as initial guesses for the centroids. If
+        subtracted.  If ``init_guesses`` are not ``None`` then this method
+        uses ``init_guesses`` as initial guesses for the centroids. If
         the centroid positions are set as ``fixed`` in the PSF model
         ``psf_model``, then the optimizer will only consider the flux as
         a variable.
@@ -212,9 +215,10 @@ class BasicPSFPhotometry(object):
         ----------
         image : 2D array-like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
             Image to perform photometry.
-        positions: `~astropy.table.Table`
-            Positions (in pixel coordinates) at which to *start* the fit
-            for each object. Columns 'x_0' and 'y_0' must be present.
+        init_guesses: `~astropy.table.Table`
+            Table which contains the initial guesses (estimates) for the set
+            of parameters. Columns 'x_0' and 'y_0' which represent the
+            positions (in pixel coordinates) for each object must be present.
             'flux_0' can also be provided to set initial fluxes.
             If 'flux_0' is not provided, aperture photometry is used to
             estimate initial values for the fluxes. Additional columns of the
@@ -240,32 +244,33 @@ class BasicPSFPhotometry(object):
                 self.aperture_radius = (self.psf_model.sigma.value *
                                         gaussian_sigma_to_fwhm)
 
-        if positions is not None:
+        if init_guesses is not None:
             # make sure the code does not modify user's input
-            positions = positions.copy()
+            init_guesses = init_guesses.copy()
 
+        if init_guesses is not None:
             if self.aperture_radius is None:
-                if 'flux_0' not in positions.colnames:
+                if 'flux_0' not in init_guesses.colnames:
                     raise ValueError('aperture_radius is None and could not be '
                                      'determined by psf_model. Please, either '
                                      'provided a value for aperture_radius or '
                                      'define fwhm/sigma at psf_model.')
 
             if self.finder is not None:
-                warnings.warn('Both positions and finder are different than '
+                warnings.warn('Both init_guesses and finder are different than '
                               'None, which is ambiguous. finder is going to '
                               'be ignored.', AstropyUserWarning)
 
-            if 'flux_0' not in positions.colnames:
-                apertures = CircularAperture((positions['x_0'],
-                                              positions['y_0']),
+            if 'flux_0' not in init_guesses.colnames:
+                apertures = CircularAperture((init_guesses['x_0'],
+                                              init_guesses['y_0']),
                                              r=self.aperture_radius)
 
-                positions['flux_0'] = aperture_photometry(
-                    image, apertures)['aperture_sum']
+                init_guesses['flux_0'] = aperture_photometry(image,
+                        apertures)['aperture_sum']
         else:
             if self.finder is None:
-                raise ValueError('Finder cannot be None if positions are '
+                raise ValueError('Finder cannot be None if init_guesses are '
                                  'not given.')
             sources = self.finder(image)
             if len(sources) > 0:
@@ -276,17 +281,17 @@ class BasicPSFPhotometry(object):
                 sources['aperture_flux'] = aperture_photometry(image,
                         apertures)['aperture_sum']
 
-                positions = Table(names=['x_0', 'y_0', 'flux_0'],
+                init_guesses = Table(names=['x_0', 'y_0', 'flux_0'],
                                   data=[sources['xcentroid'],
                                   sources['ycentroid'],
                                   sources['aperture_flux']])
 
         self._define_fit_param_names()
         for p0, param in self._pars_to_set.items():
-            if p0 not in positions.colnames:
-                positions[p0] = len(positions) * [getattr(self.psf_model, param).value]
+            if p0 not in init_guesses.colnames:
+                init_guesses[p0] = len(init_guesses) * [getattr(self.psf_model, param).value]
 
-        star_groups = self.group_maker(positions)
+        star_groups = self.group_maker(init_guesses)
         output_tab, self._residual_image = self.nstar(image, star_groups)
 
         star_groups = star_groups.group_by('group_id')
@@ -549,7 +554,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         else:
             self._finder = value
 
-    def do_photometry(self, image, positions=None):
+    @deprecated_renamed_argument('positions', 'init_guesses', '0.4')
+    def do_photometry(self, image, init_guesses=None):
         """
         Perform PSF photometry in ``image``.
 
@@ -558,8 +564,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         ``image``. A compound model, in fact a sum of ``psf_model``,
         will be fitted to groups of stars automatically identified by
         ``group_maker``. Also, ``image`` is not assumed to be background
-        subtracted.  If ``positions`` are not ``None`` then this method uses
-        ``positions`` as initial guesses for the centroids. If
+        subtracted.  If ``init_guesses`` are not ``None`` then this method
+        uses ``init_guesses`` as initial guesses for the centroids. If
         the centroid positions are set as ``fixed`` in the PSF model
         ``psf_model``, then the optimizer will only consider the flux as
         a variable.
@@ -568,9 +574,10 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         ----------
         image : 2D array-like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
             Image to perform photometry.
-        positions: `~astropy.table.Table`
-            Positions (in pixel coordinates) at which to *start* the fit
-            for each object. Columns 'x_0' and 'y_0' must be present.
+        init_guesses: `~astropy.table.Table`
+            Table which contains the initial guesses (estimates) for the set
+            of parameters. Columns 'x_0' and 'y_0' which represent the
+            positions (in pixel coordinates) for each object must be present.
             'flux_0' can also be provided to set initial fluxes.
             If 'flux_0' is not provided, aperture photometry is used to
             estimate initial values for the fluxes. Additional columns of the
@@ -586,14 +593,16 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             None is returned if no sources are found in ``image``.
         """
 
-        if positions is not None:
+        if init_guesses is not None:
             table = super(IterativelySubtractedPSFPhotometry,
-                self).do_photometry(image, positions)
-            table['iter_detected'] = np.ones(table['x_fit'].shape, dtype=np.int32)
+                self).do_photometry(image, init_guesses)
+            table['iter_detected'] = np.ones(table['x_fit'].shape,
+                                             dtype=np.int32)
 
             # n_start = 2 because it starts in the second iteration
             # since the first iteration is above
-            output_table = self._do_photometry(positions.colnames, n_start=2)
+            output_table = self._do_photometry(init_guesses.colnames,
+                                               n_start=2)
             output_table = vstack([table, output_table])
         else:
             if self.bkg_estimator is not None:
@@ -621,7 +630,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             center positions and the flux.
         n_start : int
             Integer representing the start index of the iteration.
-            It is 1 if positions are None, and 2 otherwise.
+            It is 1 if init_guesses are None, and 2 otherwise.
 
         Returns
         -------
