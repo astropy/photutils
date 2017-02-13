@@ -396,7 +396,7 @@ Consider the previous example after the line
     ...                                 psf_model=psf_model,
     ...                                 fitter=LevMarLSQFitter(),
     ...                                 fitshape=(11,11))
-    >>> result_tab = photometry(image=image, positions=pos)
+    >>> result_tab = photometry(image=image, init_guesses=pos)
     >>> residual_image = photometry.get_residual_image()
 
 .. doctest-skip::
@@ -462,7 +462,7 @@ Consider the previous example after the line
                                     fitter=LevMarLSQFitter(),
                                     fitshape=(11,11))
 
-    result_tab = photometry(image=image, positions=pos)
+    result_tab = photometry(image=image, init_guesses=pos)
     residual_image = photometry.get_residual_image()
 
     from matplotlib import rcParams
