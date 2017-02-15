@@ -82,6 +82,8 @@ matrix:
           env: PYTHON_VERSION=3.4 NUMPY_VERSION=1.9
         - os: linux
           env: PYTHON_VERSION=3.5 NUMPY_VERSION=1.10
+        - os: linux
+          env: PYTHON_VERSION=3.5 NUMPY_VERSION=1.11
 
         # Now try Astropy dev and LTS vesions with the latest 3.x and 2.7.
         - os: linux
