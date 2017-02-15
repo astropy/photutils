@@ -7,9 +7,9 @@ Requirements
 
 Photutils has the following strict requirements:
 
-* `Python <http://www.python.org/>`_ 2.7, 3.3, 3.4 or 3.5
+* `Python <http://www.python.org/>`_ 2.7, 3.3, 3.4, 3.5 or 3.6
 
-* `Numpy <http://www.numpy.org/>`_ 1.7 or later
+* `Numpy <http://www.numpy.org/>`_ 1.8 or later
 
 * `Astropy`_ 1.0 or later
 
