@@ -20,6 +20,7 @@ from astropy.tests.helper import assert_quantity_allclose
 
 import astropy
 ASTROPY_LT_13 = LooseVersion(astropy.__version__) < LooseVersion('1.3')
+NUMPY_LT_12 = LooseVersion(np.__version__) < LooseVersion('1.2')
 
 from ..core import *
 from ..circle import *
@@ -672,7 +673,7 @@ def test_sky_aperture_repr():
     s = SkyCoord([1, 2], [3, 4], unit='deg')
 
     aper = SkyCircularAperture(s, r=3*u.pix)
-    if ASTROPY_LT_13:
+    if ASTROPY_LT_13 and NUMPY_LT_12:
         a_repr = ('<SkyCircularAperture(<SkyCoord (ICRS): (ra, dec) in deg\n'
                   '    [(1.0, 3.0), (2.0, 4.0)]>, r=3.0 pix)>')
         a_str = ('Aperture: SkyCircularAperture\npositions: <SkyCoord '
@@ -688,7 +689,7 @@ def test_sky_aperture_repr():
     assert str(aper) == a_str
 
     aper = SkyCircularAnnulus(s, r_in=3.*u.pix, r_out=5*u.pix)
-    if ASTROPY_LT_13:
+    if ASTROPY_LT_13 and NUMPY_LT_12:
         a_repr = ('<SkyCircularAnnulus(<SkyCoord (ICRS): (ra, dec) in deg\n'
                   '    [(1.0, 3.0), (2.0, 4.0)]>, r_in=3.0 pix, r_out=5.0 '
                   'pix)>')
@@ -706,7 +707,7 @@ def test_sky_aperture_repr():
     assert str(aper) == a_str
 
     aper = SkyEllipticalAperture(s, a=3*u.pix, b=5*u.pix, theta=15*u.deg)
-    if ASTROPY_LT_13:
+    if ASTROPY_LT_13 and NUMPY_LT_12:
         a_repr = ('<SkyEllipticalAperture(<SkyCoord (ICRS): (ra, dec) in '
                   'deg\n    [(1.0, 3.0), (2.0, 4.0)]>, a=3.0 pix, b=5.0 pix,'
                   ' theta=15.0 deg)>')
@@ -725,7 +726,7 @@ def test_sky_aperture_repr():
 
     aper = SkyEllipticalAnnulus(s, a_in=3*u.pix, a_out=5*u.pix, b_out=3*u.pix,
                                 theta=15*u.deg)
-    if ASTROPY_LT_13:
+    if ASTROPY_LT_13 and NUMPY_LT_12:
         a_repr = ('<SkyEllipticalAnnulus(<SkyCoord (ICRS): (ra, dec) in '
                   'deg\n    [(1.0, 3.0), (2.0, 4.0)]>, a_in=3.0 pix, '
                   'a_out=5.0 pix, b_out=3.0 pix, theta=15.0 deg)>')
@@ -745,7 +746,7 @@ def test_sky_aperture_repr():
     assert str(aper) == a_str
 
     aper = SkyRectangularAperture(s, w=3*u.pix, h=5*u.pix, theta=15*u.deg)
-    if ASTROPY_LT_13:
+    if ASTROPY_LT_13 and NUMPY_LT_12:
         a_repr = ('<SkyRectangularAperture(<SkyCoord (ICRS): (ra, dec) in '
                   'deg\n    [(1.0, 3.0), (2.0, 4.0)]>, w=3.0 pix, h=5.0 pix'
                   ', theta=15.0 deg)>')
@@ -765,7 +766,7 @@ def test_sky_aperture_repr():
 
     aper = SkyRectangularAnnulus(s, w_in=3*u.pix, w_out=3.4*u.pix,
                                  h_out=5*u.pix, theta=15*u.deg)
-    if ASTROPY_LT_13:
+    if ASTROPY_LT_13 and NUMPY_LT_12:
         a_repr = ('<SkyRectangularAnnulus(<SkyCoord (ICRS): (ra, dec) in deg'
                   '\n    [(1.0, 3.0), (2.0, 4.0)]>, w_in=3.0 pix, '
                   'w_out=3.4 pix, h_out=5.0 pix, theta=15.0 deg)>')
