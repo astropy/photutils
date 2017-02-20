@@ -6,6 +6,7 @@ from __future__ import print_function
 
 import functools
 import warnings
+import inspect
 
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
@@ -67,63 +68,6 @@ def deprecated_renamed_argument(old_name, new_name, since,
         also be a list or tuple with the same number of entries. ``relax`` and
         ``arg_in_kwarg`` can be a single bool (applied to all) or also a
         list/tuple with the same number of entries like ``new_name``, etc.
-
-    Examples
-    --------
-    The deprecation warnings are not shown in the following examples.
-
-    To deprecate a positional or keyword argument::
-
-        >>> from photutils.extern.decorators import deprecated_renamed_argument
-        >>> @deprecated_renamed_argument('sig', 'sigma', '1.0')
-        ... def test(sigma):
-        ...     return sigma
-
-        >>> test(2)
-        2
-        >>> test(sigma=2)
-        2
-        >>> test(sig=2)
-        2
-
-    To deprecate an argument catched inside the ``**kwargs`` the
-    ``arg_in_kwargs`` has to be set::
-
-        >>> @deprecated_renamed_argument('sig', 'sigma', '1.0',
-        ...                             arg_in_kwargs=True)
-        ... def test(**kwargs):
-        ...     return kwargs['sigma']
-
-        >>> test(sigma=2)
-        2
-        >>> test(sig=2)
-        2
-
-    By default providing the new and old keyword will lead to an Exception. If
-    a Warning is desired set the ``relax`` argument::
-
-        >>> @deprecated_renamed_argument('sig', 'sigma', '1.0', relax=True)
-        ... def test(sigma):
-        ...     return sigma
-
-        >>> test(sig=2)
-        2
-
-    It is also possible to replace multiple arguments. The ``old_name``,
-    ``new_name`` and ``since`` have to be `tuple` or `list` and contain the
-    same number of entries::
-
-        >>> @deprecated_renamed_argument(['a', 'b'], ['alpha', 'beta'],
-        ...                              ['1.0', 1.2])
-        ... def test(alpha, beta):
-        ...     return alpha, beta
-
-        >>> test(a=2, b=3)
-        (2, 3)
-
-    In this case ``arg_in_kwargs`` and ``relax`` can be a single value (which
-    is applied to all renamed arguments) or must also be a `tuple` or `list`
-    with values for each of the arguments.
 
     .. warning::
         This decorator needs to access the original signature of the decorated
