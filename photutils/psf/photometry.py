@@ -27,7 +27,8 @@ else:
 
 if not ASTROPY_LT_1_3:
     from astropy.utils.decorators import deprecated_renamed_argument
-
+else:
+    from ..extern.decorators import deprecated_renamed_argument
 
 __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',
            'DAOPhotPSFPhotometry']
