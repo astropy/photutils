@@ -16,11 +16,10 @@ from astropy.io import fits
 from astropy.nddata import NDData
 import astropy.units as u
 from astropy.tests.helper import pytest, remote_data
-from astropy.tests.helper import assert_quantity_allclose
 
 import astropy
 ASTROPY_LT_13 = LooseVersion(astropy.__version__) < LooseVersion('1.3')
-NUMPY_LT_12 = LooseVersion(np.__version__) < LooseVersion('1.2')
+NUMPY_LT_12 = LooseVersion(np.__version__) < LooseVersion('1.12')
 
 from ..core import *
 from ..circle import *
