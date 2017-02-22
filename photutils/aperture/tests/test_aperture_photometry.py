@@ -783,3 +783,30 @@ def test_sky_aperture_repr():
                  'theta: 15.0 deg')
     assert repr(aper) == a_repr
     assert str(aper) == a_str
+
+
+def test_rectangular_bbox():
+    # odd sizes
+    width = 7
+    height = 3
+    a = RectangularAperture((50, 50), w=width, h=height, theta=0)
+    assert a.bounding_boxes[0].shape == (height, width)
+
+    a = RectangularAperture((50.5, 50.5), w=width, h=height, theta=0)
+    assert a.bounding_boxes[0].shape == (height + 1, width + 1)
+
+    a = RectangularAperture((50, 50), w=width, h=height, theta=90.*np.pi/180.)
+    assert a.bounding_boxes[0].shape == (width, height)
+
+    # even sizes
+    width = 8
+    height = 4
+    a = RectangularAperture((50, 50), w=width, h=height, theta=0)
+    assert a.bounding_boxes[0].shape == (height + 1, width + 1)
+
+    a = RectangularAperture((50.5, 50.5), w=width, h=height, theta=0)
+    assert a.bounding_boxes[0].shape == (height, width)
+
+    a = RectangularAperture((50.5, 50.5), w=width, h=height,
+                            theta=90.*np.pi/180.)
+    assert a.bounding_boxes[0].shape == (width, height)
