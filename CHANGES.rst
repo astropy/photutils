@@ -15,6 +15,8 @@ New Features
 
   - Improved plotting of annulus apertures using Bezier curves. [#494]
 
+  - Rectangular apertures now use the true minimal bounding box. [#507]
+
 API changes
 ^^^^^^^^^^^
 
