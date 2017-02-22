@@ -25,6 +25,9 @@ Bug Fixes
 General
 ^^^^^^^
 
+- Dropped numpy 1.7 support. Minimal required version is now numpy
+  1.8. [#327]
+
 - ``photutils.datasets``
 
   - The ``load_*`` functions that use remote data now retrieve the

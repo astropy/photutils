@@ -15,7 +15,6 @@ from astropy.io import fits
 from astropy.nddata import NDData
 import astropy.units as u
 from astropy.tests.helper import pytest, remote_data
-from astropy.tests.helper import assert_quantity_allclose
 
 from ..core import *
 from ..circle import *
