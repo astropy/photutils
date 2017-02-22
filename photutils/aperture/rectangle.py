@@ -154,12 +154,27 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
     @property
     def bounding_boxes(self):
-        # TODO:  use an actual minimal bounding box
-        radius = max(self.h, self.w) * (2. ** -0.5)
-        xmin = self.positions[:, 0] - radius
-        xmax = self.positions[:, 0] + radius
-        ymin = self.positions[:, 1] - radius
-        ymax = self.positions[:, 1] + radius
+        """
+        A list of minimal bounding boxes (`~photutils.BoundingBox`), one
+        for each position, enclosing the rectangular apertures for the
+        "exact" case.
+        """
+
+        w2 = self.w / 2.
+        h2 = self.h / 2.
+        cos_theta = math.cos(self.theta)
+        sin_theta = math.sin(self.theta)
+        dx1 = abs(w2 * cos_theta - h2 * sin_theta)
+        dy1 = abs(w2 * sin_theta + h2 * cos_theta)
+        dx2 = abs(w2 * cos_theta + h2 * sin_theta)
+        dy2 = abs(w2 * sin_theta - h2 * cos_theta)
+        dx = max(dx1, dx2)
+        dy = max(dy1, dy2)
+
+        xmin = self.positions[:, 0] - dx
+        xmax = self.positions[:, 0] + dx
+        ymin = self.positions[:, 1] - dy
+        ymax = self.positions[:, 1] + dy
 
         return [BoundingBox._from_float(x0, x1, y0, y1)
                 for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
@@ -258,12 +273,27 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
     @property
     def bounding_boxes(self):
-        # TODO:  use an actual minimal bounding box
-        radius = max(self.h_out, self.w_out) * (2. ** -0.5)
-        xmin = self.positions[:, 0] - radius
-        xmax = self.positions[:, 0] + radius
-        ymin = self.positions[:, 1] - radius
-        ymax = self.positions[:, 1] + radius
+        """
+        A list of minimal bounding boxes (`~photutils.BoundingBox`), one
+        for each position, enclosing the rectangular apertures for the
+        "exact" case.
+        """
+
+        w2 = self.w_out / 2.
+        h2 = self.h_out / 2.
+        cos_theta = math.cos(self.theta)
+        sin_theta = math.sin(self.theta)
+        dx1 = abs(w2 * cos_theta - h2 * sin_theta)
+        dy1 = abs(w2 * sin_theta + h2 * cos_theta)
+        dx2 = abs(w2 * cos_theta + h2 * sin_theta)
+        dy2 = abs(w2 * sin_theta - h2 * cos_theta)
+        dx = max(dx1, dx2)
+        dy = max(dy1, dy2)
+
+        xmin = self.positions[:, 0] - dx
+        xmax = self.positions[:, 0] + dx
+        ymin = self.positions[:, 1] - dy
+        ymax = self.positions[:, 1] + dy
 
         return [BoundingBox._from_float(x0, x1, y0, y1)
                 for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
