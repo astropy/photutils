@@ -17,6 +17,8 @@ New Features
 
   - Rectangular apertures now use the true minimal bounding box. [#507]
 
+  - Elliptical apertures now use the true minimal bounding box. [#508]
+
 API changes
 ^^^^^^^^^^^
 
