@@ -156,8 +156,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
     def bounding_boxes(self):
         """
         A list of minimal bounding boxes (`~photutils.BoundingBox`), one
-        for each position, enclosing the rectangular apertures for the
-        "exact" case.
+        for each position, enclosing the exact rectangular apertures.
         """
 
         w2 = self.w / 2.
