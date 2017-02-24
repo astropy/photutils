@@ -810,3 +810,29 @@ def test_rectangular_bbox():
     a = RectangularAperture((50.5, 50.5), w=width, h=height,
                             theta=90.*np.pi/180.)
     assert a.bounding_boxes[0].shape == (width, height)
+
+
+def test_elliptical_bbox():
+    # integer axes
+    a = 7
+    b = 3
+    ap = EllipticalAperture((50, 50), a=a, b=b, theta=0)
+    assert ap.bounding_boxes[0].shape == (2*b + 1, 2*a + 1)
+
+    ap = EllipticalAperture((50.5, 50.5), a=a, b=b, theta=0)
+    assert ap.bounding_boxes[0].shape == (2*b, 2*a)
+
+    ap = EllipticalAperture((50, 50), a=a, b=b, theta=90.*np.pi/180.)
+    assert ap.bounding_boxes[0].shape == (2*a + 1, 2*b + 1)
+
+    # fractional axes
+    a = 7.5
+    b = 4.5
+    ap = EllipticalAperture((50, 50), a=a, b=b, theta=0)
+    assert ap.bounding_boxes[0].shape == (2*b, 2*a)
+
+    ap = EllipticalAperture((50.5, 50.5), a=a, b=b, theta=0)
+    assert ap.bounding_boxes[0].shape == (2*b + 1, 2*a + 1)
+
+    ap = EllipticalAperture((50, 50), a=a, b=b, theta=90.*np.pi/180.)
+    assert ap.bounding_boxes[0].shape == (2*a, 2*b)

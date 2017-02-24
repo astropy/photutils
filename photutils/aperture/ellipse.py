@@ -150,12 +150,24 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
     @property
     def bounding_boxes(self):
-        # TODO:  use an actual minimal bounding box
-        radius = max(self.a, self.b)
-        xmin = self.positions[:, 0] - radius
-        xmax = self.positions[:, 0] + radius
-        ymin = self.positions[:, 1] - radius
-        ymax = self.positions[:, 1] + radius
+        """
+        A list of minimal bounding boxes (`~photutils.BoundingBox`), one
+        for each position, enclosing the exact elliptical apertures.
+        """
+
+        cos_theta = np.cos(self.theta)
+        sin_theta = np.sin(self.theta)
+        ax = self.a * cos_theta
+        ay = self.a * sin_theta
+        bx = self.b * -sin_theta
+        by = self.b * cos_theta
+        dx = np.sqrt(ax*ax + bx*bx)
+        dy = np.sqrt(ay*ay + by*by)
+
+        xmin = self.positions[:, 0] - dx
+        xmax = self.positions[:, 0] + dx
+        ymin = self.positions[:, 1] - dy
+        ymax = self.positions[:, 1] + dy
 
         return [BoundingBox._from_float(x0, x1, y0, y1)
                 for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
@@ -243,12 +255,24 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
     @property
     def bounding_boxes(self):
-        # TODO:  use an actual minimal bounding box
-        radius = max(self.a_out, self.b_out)
-        xmin = self.positions[:, 0] - radius
-        xmax = self.positions[:, 0] + radius
-        ymin = self.positions[:, 1] - radius
-        ymax = self.positions[:, 1] + radius
+        """
+        A list of minimal bounding boxes (`~photutils.BoundingBox`), one
+        for each position, enclosing the exact elliptical apertures.
+        """
+
+        cos_theta = np.cos(self.theta)
+        sin_theta = np.sin(self.theta)
+        ax = self.a_out * cos_theta
+        ay = self.a_out * sin_theta
+        bx = self.b_out * -sin_theta
+        by = self.b_out * cos_theta
+        dx = np.sqrt(ax*ax + bx*bx)
+        dy = np.sqrt(ay*ay + by*by)
+
+        xmin = self.positions[:, 0] - dx
+        xmax = self.positions[:, 0] + dx
+        ymin = self.positions[:, 1] - dy
+        ymax = self.positions[:, 1] + dy
 
         return [BoundingBox._from_float(x0, x1, y0, y1)
                 for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
