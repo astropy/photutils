@@ -6,7 +6,7 @@ import math
 import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-from astropy.wcs.utils import skycoord_to_pixel
+from astropy.wcs.utils import skycoord_to_pixel, wcs_to_celestial_frame
 
 from .core import PixelAperture, SkyAperture
 from .bounding_box import BoundingBox
@@ -268,7 +268,7 @@ class SkyCircularAperture(SkyAperture):
         Parameters
         ----------
         wcs : `~astropy.wcs.WCS`
-            The WCS transformation to use.
+            The world coordinate system (WCS) transformation to use.
 
         mode : {'all', 'wcs'}, optional
             Whether to do the transformation including distortions
@@ -282,16 +282,19 @@ class SkyCircularAperture(SkyAperture):
         """
 
         x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
+        pixel_positions = np.array([x, y]).transpose()
 
+        # The aperture object must have a single value of r, so we must
+        # use a single pixel scale for all positions.  Here, we define
+        # the scale at the WCS CRVAL position.
         if self.r.unit.physical_type == 'angle':
-            central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
-                                   unit=wcs.wcs.cunit)
-            scale, _ = pixel_scale_angle_at_skycoord(central_pos, wcs)
+            crval = SkyCoord([wcs.wcs.crval],
+                             frame=wcs_to_celestial_frame(wcs),
+                             unit=wcs.wcs.cunit)
+            scale, _ = pixel_scale_angle_at_skycoord(crval, wcs)
             r = (self.r / scale).to(u.pixel).value
         else:    # pixels
             r = self.r.value
-
-        pixel_positions = np.array([x, y]).transpose()
 
         return CircularAperture(pixel_positions, r)
 
@@ -340,7 +343,7 @@ class SkyCircularAnnulus(SkyAperture):
         Parameters
         ----------
         wcs : `~astropy.wcs.WCS`
-            The WCS transformation to use.
+            The world coordinate system (WCS) transformation to use.
 
         mode : {'all', 'wcs'}, optional
             Whether to do the transformation including distortions
@@ -354,16 +357,20 @@ class SkyCircularAnnulus(SkyAperture):
         """
 
         x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
+        pixel_positions = np.array([x, y]).transpose()
+
+        # The aperture object must have a single value of r, so we must
+        # use a single pixel scale for all positions.  Here, we define
+        # the scale at the WCS CRVAL position.
         if self.r_in.unit.physical_type == 'angle':
-            central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
-                                   unit=wcs.wcs.cunit)
-            scale, _ = pixel_scale_angle_at_skycoord(central_pos, wcs)
+            crval = SkyCoord([wcs.wcs.crval],
+                             frame=wcs_to_celestial_frame(wcs),
+                             unit=wcs.wcs.cunit)
+            scale, _ = pixel_scale_angle_at_skycoord(crval, wcs)
             r_in = (self.r_in / scale).to(u.pixel).value
             r_out = (self.r_out / scale).to(u.pixel).value
         else:    # pixels
             r_in = self.r_in.value
             r_out = self.r_out.value
-
-        pixel_positions = np.array([x, y]).transpose()
 
         return CircularAnnulus(pixel_positions, r_in, r_out)
