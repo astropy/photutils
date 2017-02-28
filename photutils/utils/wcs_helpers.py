@@ -8,63 +8,60 @@ from astropy.coordinates import UnitSphericalRepresentation
 from astropy.wcs.utils import skycoord_to_pixel, pixel_to_skycoord
 
 
-skycoord_to_pixel_mode = 'all'
-
-
-def skycoord_to_pixel_scale_angle(coords, wcs):
+def pixel_scale_angle_at_skycoord(skycoord, wcs, offset=1. * u.arcsec):
     """
-    Convert a set of SkyCoord coordinates into pixel coordinates, pixel
-    scales, and position angles.
+    Calculate the pixel scale and WCS rotation angle at the position of
+    a SkyCoord coordinate.
 
     Parameters
     ----------
-    coords : `~astropy.coordinates.SkyCoord`
-        The coordinates to convert
+    skycoord : `~astropy.coordinates.SkyCoord`
+        The SkyCoord coordinate.
     wcs : `~astropy.wcs.WCS`
-        The WCS transformation to use
+        The world coordinate system (WCS) transformation to use.
+    offset : `~astropy.units.Quantity`
+        A small angular offset to use to compute the pixel scale and
+        position angle.
 
     Returns
     -------
-    x, y : `~numpy.ndarray`
-        The x and y pixel coordinates corresponding to the input coordinates
     scale : `~astropy.units.Quantity`
-        The pixel scale at each location, in degrees/pixel
+        The pixel scale in arcsec/pixel.
     angle : `~astropy.units.Quantity`
-        The position angle of the celestial coordinate system in pixel space.
+        The angle (in degrees) measured counterclockwise from the
+        positive x axis to the "North" axis of the celestial coordinate
+        system.
+
+    Notes
+    -----
+    If distortions are present in the image, the x and y pixel scales
+    likely differ.  This function computes a single pixel scale along
+    the North/South axis.
     """
 
-    # Convert to pixel coordinates
-    x, y = skycoord_to_pixel(coords, wcs, mode=skycoord_to_pixel_mode)
-
-    # We take a point directly 'above' (in latitude) the position requested
-    # and convert it to pixel coordinates, then we use that to figure out the
-    # scale and position angle of the coordinate system at the location of
-    # the points.
+    # We take a point directly "above" (in latitude) the input position
+    # and convert it to pixel coordinates, then we use the pixel deltas
+    # between the input and offset point to calculate the pixel scale and
+    # angle.
 
     # Find the coordinates as a representation object
-    r_old = coords.represent_as('unitspherical')
+    coord = skycoord.represent_as('unitspherical')
 
     # Add a a small perturbation in the latitude direction (since longitude
-    # is more difficult because it is not directly an angle).
-    dlat = 1 * u.arcsec
-    r_new = UnitSphericalRepresentation(r_old.lon, r_old.lat + dlat)
-    coords_offset = coords.realize_frame(r_new)
+    # is more difficult because it is not directly an angle)
+    coord_new = UnitSphericalRepresentation(coord.lon, coord.lat + offset)
+    coord_offset = skycoord.realize_frame(coord_new)
 
-    # Find pixel coordinates of offset coordinates
-    x_offset, y_offset = skycoord_to_pixel(coords_offset, wcs,
-                                           mode=skycoord_to_pixel_mode)
-
-    # Find vector
+    # Find pixel coordinates of offset coordinates and pixel deltas
+    x_offset, y_offset = skycoord_to_pixel(coord_offset, wcs, mode='all')
+    x, y = skycoord_to_pixel(skycoord, wcs, mode='all')
     dx = x_offset - x
     dy = y_offset - y
 
-    # Find the length of the vector
-    scale = np.hypot(dx, dy) * u.pixel / dlat
+    scale = offset.to(u.arcsec) / (np.hypot(dx, dy) * u.pixel)
+    angle = (np.arctan2(dy, dx) * u.radian).to(u.deg)
 
-    # Find the position angle
-    angle = np.arctan2(dy, dx) * u.radian
-
-    return x, y, scale, angle
+    return scale, angle
 
 
 def assert_angle_or_pixel(name, q):
