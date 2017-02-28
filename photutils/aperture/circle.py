@@ -12,7 +12,7 @@ from .core import PixelAperture, SkyAperture
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import circular_overlap_grid
-from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle,
+from ..utils.wcs_helpers import (pixel_scale_angle_at_skycoord,
                                  assert_angle_or_pixel)
 
 
@@ -286,9 +286,8 @@ class SkyCircularAperture(SkyAperture):
         if self.r.unit.physical_type == 'angle':
             central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
                                    unit=wcs.wcs.cunit)
-            xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos,
-                                                                 wcs)
-            r = (scale * self.r).to(u.pixel).value
+            scale, _ = pixel_scale_angle_at_skycoord(central_pos, wcs)
+            r = (self.r / scale).to(u.pixel).value
         else:    # pixels
             r = self.r.value
 
@@ -358,10 +357,9 @@ class SkyCircularAnnulus(SkyAperture):
         if self.r_in.unit.physical_type == 'angle':
             central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
                                    unit=wcs.wcs.cunit)
-            xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos,
-                                                                 wcs)
-            r_in = (scale * self.r_in).to(u.pixel).value
-            r_out = (scale * self.r_out).to(u.pixel).value
+            scale, _ = pixel_scale_angle_at_skycoord(central_pos, wcs)
+            r_in = (self.r_in / scale).to(u.pixel).value
+            r_out = (self.r_out / scale).to(u.pixel).value
         else:    # pixels
             r_in = self.r_in.value
             r_out = self.r_out.value

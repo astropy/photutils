@@ -12,7 +12,7 @@ from .core import PixelAperture, SkyAperture
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import elliptical_overlap_grid
-from ..utils.wcs_helpers import (skycoord_to_pixel_scale_angle, assert_angle,
+from ..utils.wcs_helpers import (pixel_scale_angle_at_skycoord, assert_angle,
                                  assert_angle_or_pixel)
 
 
@@ -364,11 +364,11 @@ class SkyEllipticalAperture(SkyAperture):
         x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
         central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
                                unit=wcs.wcs.cunit)
-        xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
+        scale, angle = pixel_scale_angle_at_skycoord(central_pos, wcs)
 
         if self.a.unit.physical_type == 'angle':
-            a = (scale * self.a).to(u.pixel).value
-            b = (scale * self.b).to(u.pixel).value
+            a = (self.a / scale).to(u.pixel).value
+            b = (self.b / scale).to(u.pixel).value
         else:  # pixel
             a = self.a.value
             b = self.b.value
@@ -459,12 +459,12 @@ class SkyEllipticalAnnulus(SkyAperture):
         x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
         central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
                                unit=wcs.wcs.cunit)
-        xc, yc, scale, angle = skycoord_to_pixel_scale_angle(central_pos, wcs)
+        scale, angle = pixel_scale_angle_at_skycoord(central_pos, wcs)
 
         if self.a_in.unit.physical_type == 'angle':
-            a_in = (scale * self.a_in).to(u.pixel).value
-            a_out = (scale * self.a_out).to(u.pixel).value
-            b_out = (scale * self.b_out).to(u.pixel).value
+            a_in = (self.a_in / scale).to(u.pixel).value
+            a_out = (self.a_out / scale).to(u.pixel).value
+            b_out = (self.b_out / scale).to(u.pixel).value
         else:
             a_in = self.a_in.value
             a_out = self.a_out.value
