@@ -1,24 +1,3 @@
-0.4 (unreleased)
-----------------
-
-General
-^^^^^^^
-
-New Features
-^^^^^^^^^^^^
-
-API changes
-^^^^^^^^^^^
-
-- ``photutils.aperture``
-
-  - The ``ApertureMask`` ``apply()`` method has been renamed to
-    ``multiply()``. [#481].
-
-Bug Fixes
-^^^^^^^^^
-
-
 0.3.1 (unreleased)
 ------------------
 
