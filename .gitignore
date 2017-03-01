@@ -15,6 +15,7 @@ __pycache__
 htmlcov
 .coverage
 MANIFEST
+.ipynb_checkpoints
 benchmarks/_results
 
 # Sphinx
@@ -51,8 +52,3 @@ distribute-*.tar.gz
 
 # Mac OSX
 .DS_Store
-
-#generated notebook stuff
-docs/notebooks/*.rst
-docs/notebooks/*_files
-docs/notebooks/.ipynb_checkpoints
