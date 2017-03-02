@@ -12,6 +12,7 @@ environment:
                         # to the matrix section.
       CONDA_DEPENDENCIES: "Cython scipy jinja2 scikit-image matplotlib"
 
+
   matrix:
       - PYTHON_VERSION: "2.7"
         ASTROPY_VERSION: "stable"
@@ -30,9 +31,8 @@ install:
     - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
     - "activate test"
 
-# Not a .NET project, we build photutils in the install step instead
+# Not a .NET project, we build the package in the install step instead
 build: false
 
 test_script:
-  - "%CMD_IN_ENV% python setup.py test"
-
+    - "%CMD_IN_ENV% python setup.py test"

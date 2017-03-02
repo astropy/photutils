@@ -9,12 +9,9 @@ os:
 # Setting sudo to false opts in to Travis-CI container-based builds.
 sudo: false
 
-
-# The apt packages below are needed for sphinx builds. A full list of packages
-# that can be included can be found here:
-#
+# The apt packages below are needed for sphinx builds. A full list of
+# packages that can be included can be found here:
 # https://github.com/travis-ci/apt-package-whitelist/blob/master/ubuntu-precise
-
 addons:
     apt:
         packages:
@@ -30,12 +27,13 @@ env:
         - PYTHON_VERSION=3.6
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
+        - MAIN_CMD='python setup.py'
         - SETUP_CMD='test'
+        - EVENT_TYPE='pull_request push'
         - PIP_DEPENDENCIES=''
         - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib'
         - CONDA_CHANNELS='astropy-ci-extras'
         - SETUP_XVFB=True
-        - EVENT_TYPE='pull_request push'
 
     matrix:
         - PYTHON_VERSION=2.7 SETUP_CMD='egg_info'
@@ -45,7 +43,6 @@ env:
         - PYTHON_VERSION=3.6 SETUP_CMD='egg_info'
 
 matrix:
-
     # Don't wait for allowed failures
     fast_finish: true
 
@@ -54,20 +51,31 @@ matrix:
         - os: osx
           env: SETUP_CMD='test'
 
-        # Do a coverage test in Python 2. Move coverage to 3.x once speed
-        # issues have been solved; astropy/astropy#4826
+        # Do a coverage test.
         - os: linux
-          env: PYTHON_VERSION=2.7 SETUP_CMD='test --coverage'
+          env: SETUP_CMD='test --coverage'
 
         # Check for sphinx doc build warnings - we do this first because it
         # may run for a long time
         - os: linux
-          env: PYTHON_VERSION=2.7 SETUP_CMD='build_sphinx -w'
+          env: PYTHON_VERSION=2.7 SETUP_CMD='build_docs -w'
                CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter'
         - os: linux
-          env: SETUP_CMD='build_sphinx -w'
+          env: SETUP_CMD='build_docs -w'
                CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter'
                EVENT_TYPE='pull_request push cron'
+
+        # Now try Astropy dev and LTS versions with the latest 3.x and 2.7.
+        - os: linux
+          env: PYTHON_VERSION=2.7 ASTROPY_VERSION=development
+               EVENT_TYPE='pull_request push cron'
+        - os: linux
+          env: ASTROPY_VERSION=development
+               EVENT_TYPE='pull_request push cron'
+        - os: linux
+          env: PYTHON_VERSION=2.7 ASTROPY_VERSION=lts
+        - os: linux
+          env: ASTROPY_VERSION=lts
 
         # Try all python versions and Numpy versions. Since we can assume that
         # the Numpy developers have taken care of testing Numpy with different
@@ -80,19 +88,7 @@ matrix:
         - os: linux
           env: PYTHON_VERSION=3.5 NUMPY_VERSION=1.10
         - os: linux
-          env: PYTHON_VERSION=3.5 NUMPY_VERSION=1.11
-
-        # Now try Astropy dev and LTS vesions with the latest 3.x and 2.7.
-        - os: linux
-          env: PYTHON_VERSION=2.7 ASTROPY_VERSION=development
-               EVENT_TYPE='pull_request push cron'
-        - os: linux
-          env: ASTROPY_VERSION=development
-               EVENT_TYPE='pull_request push cron'
-        - os: linux
-          env: PYTHON_VERSION=2.7 ASTROPY_VERSION=lts
-        - os: linux
-          env: ASTROPY_VERSION=lts
+          env: NUMPY_VERSION=1.11
 
         # Try with optional dependencies disabled
         - os: linux
@@ -105,14 +101,23 @@ matrix:
           env: NUMPY_VERSION=prerelease
                EVENT_TYPE='pull_request push cron'
 
+        # Do a PEP8 test with pycodestyle
+        - os: linux
+          env: MAIN_CMD='pycodestyle photutils --count' SETUP_CMD=''
+
+    allow_failures:
+        # Do a PEP8 test with pycodestyle
+        - os: linux
+          env: MAIN_CMD='pycodestyle photutils --count' SETUP_CMD=''
+
 install:
     - git clone git://github.com/astropy/ci-helpers.git
     - source ci-helpers/travis/setup_conda_$TRAVIS_OS_NAME.sh
 
 script:
-   - python setup.py $SETUP_CMD
+   - $MAIN_CMD $SETUP_CMD
 
 after_success:
-    - if [[ $SETUP_CMD == 'test --coverage' ]]; then
+    - if [[ $SETUP_CMD == *coverage* ]]; then
           coveralls --rcfile='photutils/tests/coveragerc';
       fi
