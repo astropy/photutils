@@ -6,7 +6,7 @@ import math
 import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-from astropy.wcs.utils import skycoord_to_pixel
+from astropy.wcs.utils import skycoord_to_pixel, wcs_to_celestial_frame
 
 from .core import PixelAperture, SkyAperture
 from .bounding_box import BoundingBox
@@ -348,7 +348,7 @@ class SkyEllipticalAperture(SkyAperture):
         Parameters
         ----------
         wcs : `~astropy.wcs.WCS`
-            The WCS transformation to use.
+            The world coordinate system (WCS) transformation to use.
 
         mode : {'all', 'wcs'}, optional
             Whether to do the transformation including distortions
@@ -362,20 +362,23 @@ class SkyEllipticalAperture(SkyAperture):
         """
 
         x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
-        central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
-                               unit=wcs.wcs.cunit)
-        scale, angle = pixel_scale_angle_at_skycoord(central_pos, wcs)
+        pixel_positions = np.array([x, y]).transpose()
+
+        # The aperture object must have a single value of a and b so we
+        # must use a single pixel scale for all positions.  Here, we
+        # define the scale at the WCS CRVAL position.
+        crval = SkyCoord([wcs.wcs.crval], frame=wcs_to_celestial_frame(wcs),
+                         unit=wcs.wcs.cunit)
+        scale, angle = pixel_scale_angle_at_skycoord(crval, wcs)
 
         if self.a.unit.physical_type == 'angle':
             a = (self.a / scale).to(u.pixel).value
             b = (self.b / scale).to(u.pixel).value
-        else:  # pixel
+        else:    # pixels
             a = self.a.value
             b = self.b.value
 
         theta = (angle + self.theta).to(u.radian).value
-
-        pixel_positions = np.array([x, y]).transpose()
 
         return EllipticalAperture(pixel_positions, a, b, theta)
 
@@ -443,7 +446,7 @@ class SkyEllipticalAnnulus(SkyAperture):
         Parameters
         ----------
         wcs : `~astropy.wcs.WCS`
-            The WCS transformation to use.
+            The world coordinate system (WCS) transformation to use.
 
         mode : {'all', 'wcs'}, optional
             Whether to do the transformation including distortions
@@ -457,21 +460,24 @@ class SkyEllipticalAnnulus(SkyAperture):
         """
 
         x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
-        central_pos = SkyCoord([wcs.wcs.crval], frame=self.positions.name,
-                               unit=wcs.wcs.cunit)
-        scale, angle = pixel_scale_angle_at_skycoord(central_pos, wcs)
+        pixel_positions = np.array([x, y]).transpose()
+
+        # The aperture object must have a single value of a_in, a_out,
+        # and b_out so we must use a single pixel scale for all
+        # positions.  Here, we define the scale at the WCS CRVAL position.
+        crval = SkyCoord([wcs.wcs.crval], frame=wcs_to_celestial_frame(wcs),
+                         unit=wcs.wcs.cunit)
+        scale, angle = pixel_scale_angle_at_skycoord(crval, wcs)
 
         if self.a_in.unit.physical_type == 'angle':
             a_in = (self.a_in / scale).to(u.pixel).value
             a_out = (self.a_out / scale).to(u.pixel).value
             b_out = (self.b_out / scale).to(u.pixel).value
-        else:
+        else:    # pixels
             a_in = self.a_in.value
             a_out = self.a_out.value
             b_out = self.b_out.value
 
         theta = (angle + self.theta).to(u.radian).value
-
-        pixel_positions = np.array([x, y]).transpose()
 
         return EllipticalAnnulus(pixel_positions, a_in, a_out, b_out, theta)
