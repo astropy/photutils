@@ -53,9 +53,8 @@ class Aperture(object):
     def __repr__(self):
         prefix = '<{0}('.format(self.__class__.__name__)
         params = [self._positions_str(prefix)]
-        for key, val in self._repr_params:
-            if key not in ['b_in', 'h_in']:   # not aperture parameters
-                params.append('{0}={1}'.format(key, val))
+        for param in self._params:
+            params.append('{0}={1}'.format(param, getattr(self, param)))
         params = ', '.join(params)
 
         return '{0}{1})>'.format(prefix, params)
@@ -65,8 +64,9 @@ class Aperture(object):
         cls_info = [
             ('Aperture', self.__class__.__name__),
             (prefix, self._positions_str(prefix + ': '))]
-        if self._repr_params is not None:
-            cls_info += self._repr_params
+        if self._params is not None:
+            for param in self._params:
+                cls_info.append((param, getattr(self, param)))
         fmt = ['{0}: {1}'.format(key, val) for key, val in cls_info]
 
         return '\n'.join(fmt)

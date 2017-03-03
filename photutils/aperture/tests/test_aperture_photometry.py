@@ -645,7 +645,7 @@ def test_pixel_aperture_repr():
     a_repr = ('<EllipticalAnnulus([[10, 20]], a_in=4.0, a_out=8.0, b_out='
               '4.0, theta=15.0)>')
     a_str = ('Aperture: EllipticalAnnulus\npositions: [[10, 20]]\na_in: '
-             '4.0\na_out: 8.0\nb_in: 2.0\nb_out: 4.0\ntheta: 15.0')
+             '4.0\na_out: 8.0\nb_out: 4.0\ntheta: 15.0')
     assert repr(aper) == a_repr
     assert str(aper) == a_str
 
@@ -661,7 +661,7 @@ def test_pixel_aperture_repr():
     a_repr = ('<RectangularAnnulus([[10, 20]], w_in=4.0, w_out=8.0, '
               'h_out=4.0, theta=15.0)>')
     a_str = ('Aperture: RectangularAnnulus\npositions: [[10, 20]]\n'
-             'w_in: 4.0\nw_out: 8.0\nh_in: 2.0\nh_out: 4.0\ntheta: 15.0')
+             'w_in: 4.0\nw_out: 8.0\nh_out: 4.0\ntheta: 15.0')
     assert repr(aper) == a_repr
     assert str(aper) == a_str
 

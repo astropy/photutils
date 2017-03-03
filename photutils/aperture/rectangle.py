@@ -146,8 +146,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         self.w = float(w)
         self.h = float(h)
         self.theta = float(theta)
-        self._repr_params = [('w', self.w), ('h', self.h),
-                             ('theta', self.theta)]
+        self._params = ['w', 'h', 'theta']
 
     @property
     def bounding_boxes(self):
@@ -263,9 +262,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         self.h_out = float(h_out)
         self.h_in = self.w_in * self.h_out / self.w_out
         self.theta = float(theta)
-        self._repr_params = [('w_in', self.w_in), ('w_out', self.w_out),
-                             ('h_in', self.h_in), ('h_out', self.h_out),
-                             ('theta', self.theta)]
+        self._params = ['w_in', 'w_out', 'h_out', 'theta']
 
     @property
     def bounding_boxes(self):
@@ -374,8 +371,6 @@ class SkyRectangularAperture(SkyAperture):
         self.w = w
         self.h = h
         self.theta = theta
-        self._repr_params = [('w', self.w), ('h', self.h),
-                             ('theta', self.theta)]
         self._params = ['w', 'h', 'theta']
 
     def to_pixel(self, wcs, mode='all'):
@@ -461,8 +456,6 @@ class SkyRectangularAnnulus(SkyAperture):
         self.w_out = w_out
         self.h_out = h_out
         self.theta = theta
-        self._repr_params = [('w_in', self.w_in), ('w_out', self.w_out),
-                             ('h_out', self.h_out), ('theta', self.theta)]
         self._params = ['w_in', 'w_out', 'h_out', 'theta']
 
     def to_pixel(self, wcs, mode='all'):
