@@ -21,6 +21,11 @@ New Features
 
   - Added a ``to_sky`` method for pixel apertures. [#512]
 
+- ``photutils.segmentation``
+
+  - Added a ``cmap`` method to ``SegmentationImage`` to generate a
+    random matplotlib colormap. [#513]
+
 
 API changes
 ^^^^^^^^^^^
