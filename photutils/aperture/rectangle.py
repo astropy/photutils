@@ -197,6 +197,30 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
                                        **kwargs)
             ax.add_patch(patch)
 
+    def to_sky(self, wcs, mode='all'):
+        """
+        Convert the aperture to a `SkyRectangularAperture` object
+        defined in celestial coordinates.
+
+        Parameters
+        ----------
+        wcs : `~astropy.wcs.WCS`
+            The world coordinate system (WCS) transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or only including only the core WCS
+            transformation (``'wcs'``).
+
+        Returns
+        -------
+        aperture : `SkyRectangularAperture` object
+            A `SkyRectangularAperture` object.
+        """
+
+        sky_params = self._to_sky_params(wcs, mode=mode)
+        return SkyRectangularAperture(**sky_params)
+
 
 class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     """
@@ -326,6 +350,30 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
             path = self._make_annulus_path(patch_inner, patch_outer)
             patch = mpatches.PathPatch(path, **kwargs)
             ax.add_patch(patch)
+
+    def to_sky(self, wcs, mode='all'):
+        """
+        Convert the aperture to a `SkyRectangularAnnulus` object
+        defined in celestial coordinates.
+
+        Parameters
+        ----------
+        wcs : `~astropy.wcs.WCS`
+            The world coordinate system (WCS) transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or only including only the core WCS
+            transformation (``'wcs'``).
+
+        Returns
+        -------
+        aperture : `SkyRectangularAnnulus` object
+            A `SkyRectangularAnnulus` object.
+        """
+
+        sky_params = self._to_sky_params(wcs, mode=mode)
+        return SkyRectangularAnnulus(**sky_params)
 
 
 class SkyRectangularAperture(SkyAperture):
