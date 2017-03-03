@@ -155,6 +155,30 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
             patch = mpatches.Circle(position, self.r, **kwargs)
             ax.add_patch(patch)
 
+    def to_sky(self, wcs, mode='all'):
+        """
+        Convert the aperture to a `SkyCircularAperture` object defined
+        in celestial coordinates.
+
+        Parameters
+        ----------
+        wcs : `~astropy.wcs.WCS`
+            The world coordinate system (WCS) transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or only including only the core WCS
+            transformation (``'wcs'``).
+
+        Returns
+        -------
+        aperture : `SkyCircularAperture` object
+            A `SkyCircularAperture` object.
+        """
+
+        sky_params = self._to_sky_params(wcs, mode=mode)
+        return SkyCircularAperture(**sky_params)
+
 
 class CircularAnnulus(CircularMaskMixin, PixelAperture):
     """
@@ -230,6 +254,30 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
             path = self._make_annulus_path(patch_inner, patch_outer)
             patch = mpatches.PathPatch(path, **kwargs)
             ax.add_patch(patch)
+
+    def to_sky(self, wcs, mode='all'):
+        """
+        Convert the aperture to a `SkyCircularAnnulus` object defined
+        in celestial coordinates.
+
+        Parameters
+        ----------
+        wcs : `~astropy.wcs.WCS`
+            The world coordinate system (WCS) transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or only including only the core WCS
+            transformation (``'wcs'``).
+
+        Returns
+        -------
+        aperture : `SkyCircularAnnulus` object
+            A `SkyCircularAnnulus` object.
+        """
+
+        sky_params = self._to_sky_params(wcs, mode=mode)
+        return SkyCircularAnnulus(**sky_params)
 
 
 class SkyCircularAperture(SkyAperture):
