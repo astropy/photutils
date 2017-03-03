@@ -184,6 +184,30 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
                                      theta_deg, **kwargs)
             ax.add_patch(patch)
 
+    def to_sky(self, wcs, mode='all'):
+        """
+        Convert the aperture to a `SkyEllipticalAperture` object defined
+        in celestial coordinates.
+
+        Parameters
+        ----------
+        wcs : `~astropy.wcs.WCS`
+            The world coordinate system (WCS) transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or only including only the core WCS
+            transformation (``'wcs'``).
+
+        Returns
+        -------
+        aperture : `SkyEllipticalAperture` object
+            A `SkyEllipticalAperture` object.
+        """
+
+        sky_params = self._to_sky_params(wcs, mode=mode)
+        return SkyEllipticalAperture(**sky_params)
+
 
 class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
     """
@@ -290,6 +314,30 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
             path = self._make_annulus_path(patch_inner, patch_outer)
             patch = mpatches.PathPatch(path, **kwargs)
             ax.add_patch(patch)
+
+    def to_sky(self, wcs, mode='all'):
+        """
+        Convert the aperture to a `SkyEllipticalAnnulus` object defined
+        in celestial coordinates.
+
+        Parameters
+        ----------
+        wcs : `~astropy.wcs.WCS`
+            The world coordinate system (WCS) transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or only including only the core WCS
+            transformation (``'wcs'``).
+
+        Returns
+        -------
+        aperture : `SkyEllipticalAnnulus` object
+            A `SkyEllipticalAnnulus` object.
+        """
+
+        sky_params = self._to_sky_params(wcs, mode=mode)
+        return SkyEllipticalAnnulus(**sky_params)
 
 
 class SkyEllipticalAperture(SkyAperture):
