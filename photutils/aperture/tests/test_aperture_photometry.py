@@ -861,6 +861,19 @@ def test_to_sky_pixel():
     assert_allclose(ap.b_out, ap2.b_out)
     assert_allclose(ap.theta, ap2.theta)
 
+    ap = RectangularAperture(((12.3, 15.7), (48.19, 98.14)), w=3.14, h=5.32,
+                             theta=103.*np.pi/180.)
+    ap2 = ap.to_sky(wcs).to_pixel(wcs)
+    assert_allclose(ap.positions, ap2.positions)
+    assert_allclose(ap.w, ap2.w)
+    assert_allclose(ap.h, ap2.h)
+    assert_allclose(ap.theta, ap2.theta)
 
-
-
+    ap = RectangularAnnulus(((12.3, 15.7), (48.19, 98.14)), w_in=3.14,
+                            w_out=15.32, h_out=4.89, theta=103.*np.pi/180.)
+    ap2 = ap.to_sky(wcs).to_pixel(wcs)
+    assert_allclose(ap.positions, ap2.positions)
+    assert_allclose(ap.w_in, ap2.w_in)
+    assert_allclose(ap.w_out, ap2.w_out)
+    assert_allclose(ap.h_out, ap2.h_out)
+    assert_allclose(ap.theta, ap2.theta)
