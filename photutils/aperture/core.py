@@ -568,7 +568,7 @@ class PixelAperture(Aperture):
         params = self._params[:]
         theta_key = 'theta'
         if theta_key in self._params:
-            sky_params[theta_key] = (self.theta - angle).to(u.radian).value
+            sky_params[theta_key] = (self.theta * u.rad) - angle.to(u.rad)
             params.remove(theta_key)
 
         param_vals = [getattr(self, param) for param in params]
@@ -619,7 +619,7 @@ class SkyAperture(Aperture):
         params = self._params[:]
         theta_key = 'theta'
         if theta_key in self._params:
-            pixel_params[theta_key] = (angle + self.theta).to(u.radian).value
+            pixel_params[theta_key] = (self.theta + angle).to(u.radian).value
             params.remove(theta_key)
 
         param_vals = [getattr(self, param) for param in params]

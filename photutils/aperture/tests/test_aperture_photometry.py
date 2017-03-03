@@ -826,3 +826,41 @@ def test_elliptical_bbox():
 
     ap = EllipticalAperture((50, 50), a=a, b=b, theta=90.*np.pi/180.)
     assert ap.bounding_boxes[0].shape == (2*a, 2*b)
+
+
+def test_to_sky_pixel():
+    hdu = make_4gaussians_image(hdu=True, wcs=True)
+    wcs = WCS(header=hdu.header)
+
+    ap = CircularAperture(((12.3, 15.7), (48.19, 98.14)), r=3.14)
+    ap2 = ap.to_sky(wcs).to_pixel(wcs)
+    assert_allclose(ap.positions, ap2.positions)
+    assert_allclose(ap.r, ap2.r)
+
+    ap = CircularAnnulus(((12.3, 15.7), (48.19, 98.14)), r_in=3.14,
+                         r_out=5.32)
+    ap2 = ap.to_sky(wcs).to_pixel(wcs)
+    assert_allclose(ap.positions, ap2.positions)
+    assert_allclose(ap.r_in, ap2.r_in)
+    assert_allclose(ap.r_out, ap2.r_out)
+
+    ap = EllipticalAperture(((12.3, 15.7), (48.19, 98.14)), a=3.14, b=5.32,
+                            theta=103.*np.pi/180.)
+    ap2 = ap.to_sky(wcs).to_pixel(wcs)
+    assert_allclose(ap.positions, ap2.positions)
+    assert_allclose(ap.a, ap2.a)
+    assert_allclose(ap.b, ap2.b)
+    assert_allclose(ap.theta, ap2.theta)
+
+    ap = EllipticalAnnulus(((12.3, 15.7), (48.19, 98.14)), a_in=3.14,
+                           a_out=15.32, b_out=4.89, theta=103.*np.pi/180.)
+    ap2 = ap.to_sky(wcs).to_pixel(wcs)
+    assert_allclose(ap.positions, ap2.positions)
+    assert_allclose(ap.a_in, ap2.a_in)
+    assert_allclose(ap.a_out, ap2.a_out)
+    assert_allclose(ap.b_out, ap2.b_out)
+    assert_allclose(ap.theta, ap2.theta)
+
+
+
+
