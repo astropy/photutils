@@ -105,11 +105,6 @@ matrix:
         - os: linux
           env: MAIN_CMD='pycodestyle photutils --count' SETUP_CMD=''
 
-    allow_failures:
-        # Do a PEP8 test with pycodestyle
-        - os: linux
-          env: MAIN_CMD='pycodestyle photutils --count' SETUP_CMD=''
-
 install:
     - git clone git://github.com/astropy/ci-helpers.git
     - source ci-helpers/travis/setup_conda_$TRAVIS_OS_NAME.sh
