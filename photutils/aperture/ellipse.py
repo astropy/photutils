@@ -5,15 +5,12 @@ import math
 
 import numpy as np
 from astropy.coordinates import SkyCoord
-import astropy.units as u
-from astropy.wcs.utils import skycoord_to_pixel, wcs_to_celestial_frame
 
 from .core import PixelAperture, SkyAperture
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import elliptical_overlap_grid
-from ..utils.wcs_helpers import (pixel_scale_angle_at_skycoord, assert_angle,
-                                 assert_angle_or_pixel)
+from ..utils.wcs_helpers import assert_angle, assert_angle_or_pixel
 
 
 __all__ = ['EllipticalMaskMixin', 'EllipticalAperture', 'EllipticalAnnulus',
@@ -339,6 +336,7 @@ class SkyEllipticalAperture(SkyAperture):
         self.theta = theta
         self._repr_params = [('a', self.a), ('b', self.b),
                              ('theta', self.theta)]
+        self._params = ['a', 'b', 'theta']
 
     def to_pixel(self, wcs, mode='all'):
         """
@@ -361,26 +359,8 @@ class SkyEllipticalAperture(SkyAperture):
             An `EllipticalAperture` object.
         """
 
-        x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
-        pixel_positions = np.array([x, y]).transpose()
-
-        # The aperture object must have a single value of a and b so we
-        # must use a single pixel scale for all positions.  Here, we
-        # define the scale at the WCS CRVAL position.
-        crval = SkyCoord([wcs.wcs.crval], frame=wcs_to_celestial_frame(wcs),
-                         unit=wcs.wcs.cunit)
-        scale, angle = pixel_scale_angle_at_skycoord(crval, wcs)
-
-        if self.a.unit.physical_type == 'angle':
-            a = (self.a / scale).to(u.pixel).value
-            b = (self.b / scale).to(u.pixel).value
-        else:    # pixels
-            a = self.a.value
-            b = self.b.value
-
-        theta = (angle + self.theta).to(u.radian).value
-
-        return EllipticalAperture(pixel_positions, a, b, theta)
+        pixel_params = self._to_pixel_params(wcs, mode=mode)
+        return EllipticalAperture(**pixel_params)
 
 
 class SkyEllipticalAnnulus(SkyAperture):
@@ -437,6 +417,7 @@ class SkyEllipticalAnnulus(SkyAperture):
         self.theta = theta
         self._repr_params = [('a_in', self.a_in), ('a_out', self.a_out),
                              ('b_out', self.b_out), ('theta', self.theta)]
+        self._params = ['a_in', 'a_out', 'b_out', 'theta']
 
     def to_pixel(self, wcs, mode='all'):
         """
@@ -459,25 +440,5 @@ class SkyEllipticalAnnulus(SkyAperture):
             An `EllipticalAnnulus` object.
         """
 
-        x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
-        pixel_positions = np.array([x, y]).transpose()
-
-        # The aperture object must have a single value of a_in, a_out,
-        # and b_out so we must use a single pixel scale for all
-        # positions.  Here, we define the scale at the WCS CRVAL position.
-        crval = SkyCoord([wcs.wcs.crval], frame=wcs_to_celestial_frame(wcs),
-                         unit=wcs.wcs.cunit)
-        scale, angle = pixel_scale_angle_at_skycoord(crval, wcs)
-
-        if self.a_in.unit.physical_type == 'angle':
-            a_in = (self.a_in / scale).to(u.pixel).value
-            a_out = (self.a_out / scale).to(u.pixel).value
-            b_out = (self.b_out / scale).to(u.pixel).value
-        else:    # pixels
-            a_in = self.a_in.value
-            a_out = self.a_out.value
-            b_out = self.b_out.value
-
-        theta = (angle + self.theta).to(u.radian).value
-
-        return EllipticalAnnulus(pixel_positions, a_in, a_out, b_out, theta)
+        pixel_params = self._to_pixel_params(wcs, mode=mode)
+        return EllipticalAnnulus(**pixel_params)

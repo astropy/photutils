@@ -5,15 +5,12 @@ import math
 
 import numpy as np
 from astropy.coordinates import SkyCoord
-import astropy.units as u
-from astropy.wcs.utils import skycoord_to_pixel, wcs_to_celestial_frame
 
 from .core import PixelAperture, SkyAperture
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import rectangular_overlap_grid
-from ..utils.wcs_helpers import (pixel_scale_angle_at_skycoord, assert_angle,
-                                 assert_angle_or_pixel)
+from ..utils.wcs_helpers import assert_angle, assert_angle_or_pixel
 
 
 __all__ = ['RectangularMaskMixin', 'RectangularAperture',
@@ -379,6 +376,7 @@ class SkyRectangularAperture(SkyAperture):
         self.theta = theta
         self._repr_params = [('w', self.w), ('h', self.h),
                              ('theta', self.theta)]
+        self._params = ['w', 'h', 'theta']
 
     def to_pixel(self, wcs, mode='all'):
         """
@@ -401,26 +399,8 @@ class SkyRectangularAperture(SkyAperture):
             A `RectangularAperture` object.
         """
 
-        x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
-        pixel_positions = np.array([x, y]).transpose()
-
-        # The aperture object must have a single value of w and h so we
-        # must use a single pixel scale for all positions.  Here, we
-        # define the scale at the WCS CRVAL position.
-        crval = SkyCoord([wcs.wcs.crval], frame=wcs_to_celestial_frame(wcs),
-                         unit=wcs.wcs.cunit)
-        scale, angle = pixel_scale_angle_at_skycoord(crval, wcs)
-
-        if self.w.unit.physical_type == 'angle':
-            w = (self.w / scale).to(u.pixel).value
-            h = (self.h / scale).to(u.pixel).value
-        else:    # pixels
-            w = self.w.value
-            h = self.h.value
-
-        theta = (angle + self.theta).to(u.radian).value
-
-        return RectangularAperture(pixel_positions, w, h, theta)
+        pixel_params = self._to_pixel_params(wcs, mode=mode)
+        return RectangularAperture(**pixel_params)
 
 
 class SkyRectangularAnnulus(SkyAperture):
@@ -483,6 +463,7 @@ class SkyRectangularAnnulus(SkyAperture):
         self.theta = theta
         self._repr_params = [('w_in', self.w_in), ('w_out', self.w_out),
                              ('h_out', self.h_out), ('theta', self.theta)]
+        self._params = ['w_in', 'w_out', 'h_out', 'theta']
 
     def to_pixel(self, wcs, mode='all'):
         """
@@ -505,25 +486,5 @@ class SkyRectangularAnnulus(SkyAperture):
             A `RectangularAnnulus` object.
         """
 
-        x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
-        pixel_positions = np.array([x, y]).transpose()
-
-        # The aperture object must have a single value of w_in, w_out,
-        # and h_out so we must use a single pixel scale for all
-        # positions.  Here, we define the scale at the WCS CRVAL position.
-        crval = SkyCoord([wcs.wcs.crval], frame=wcs_to_celestial_frame(wcs),
-                         unit=wcs.wcs.cunit)
-        scale, angle = pixel_scale_angle_at_skycoord(crval, wcs)
-
-        if self.w_in.unit.physical_type == 'angle':
-            w_in = (self.w_in / scale).to(u.pixel).value
-            w_out = (self.w_out / scale).to(u.pixel).value
-            h_out = (self.h_out / scale).to(u.pixel).value
-        else:    # pixels
-            w_in = self.w_in.value
-            w_out = self.w_out.value
-            h_out = self.h_out.value
-
-        theta = (angle + self.theta).to(u.radian).value
-
-        return RectangularAnnulus(pixel_positions, w_in, w_out, h_out, theta)
+        pixel_params = self._to_pixel_params(wcs, mode=mode)
+        return RectangularAnnulus(**pixel_params)

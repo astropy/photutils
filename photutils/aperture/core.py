@@ -7,6 +7,7 @@ import warnings
 from collections import OrderedDict
 
 import numpy as np
+from astropy.coordinates import SkyCoord
 from astropy.extern import six
 from astropy.io import fits
 from astropy.nddata import support_nddata
@@ -15,8 +16,10 @@ import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils.misc import InheritDocstrings
 from astropy.wcs import WCS
+from astropy.wcs.utils import skycoord_to_pixel, wcs_to_celestial_frame
 
 from ..utils import get_version_info
+from ..utils.wcs_helpers import pixel_scale_angle_at_skycoord
 
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture', 'aperture_photometry']
@@ -535,6 +538,54 @@ class SkyAperture(Aperture):
     Abstract base class for all apertures defined in celestial
     coordinates.
     """
+
+    def _to_pixel_params(self, wcs, mode='all'):
+        """
+        Convert the sky aperture parameters to those for a pixel-based
+        aperture.
+
+        Parameters
+        ----------
+        wcs : `~astropy.wcs.WCS`
+            The world coordinate system (WCS) transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or only including only the core WCS
+            transformation (``'wcs'``).
+
+        Returns
+        -------
+        pixel_params : dict
+            A dictionary of parameters for an equivalent pixel aperture.
+        """
+
+        pixel_params = {}
+        x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
+        pixel_params['positions'] = np.array([x, y]).transpose()
+
+        # The aperture object must have a single value for each shape
+        # parameter so we must use a single pixel scale for all positions.
+        # Here, we define the scale at the WCS CRVAL position.
+        crval = SkyCoord([wcs.wcs.crval], frame=wcs_to_celestial_frame(wcs),
+                         unit=wcs.wcs.cunit)
+        scale, angle = pixel_scale_angle_at_skycoord(crval, wcs)
+
+        params = self._params[:]
+        theta_key = 'theta'
+        if theta_key in self._params:
+            pixel_params[theta_key] = (angle + self.theta).to(u.radian).value
+            params.remove(theta_key)
+
+        param_vals = [getattr(self, param) for param in params]
+        if param_vals[0].unit.physical_type == 'angle':
+            for param, param_val in zip(params, param_vals):
+                pixel_params[param] = (param_val / scale).to(u.pixel).value
+        else:    # pixels
+            for param, param_val in zip(params, param_vals):
+                pixel_params[param] = param_val.value
+
+        return pixel_params
 
     @abc.abstractmethod
     def to_pixel(self, wcs, mode='all'):
