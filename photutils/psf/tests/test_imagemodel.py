@@ -88,4 +88,3 @@ def test_centering_oversampled():
 
     assert np.allclose(valcen, imod_oversampled(2.5, -3.5))
     assert np.allclose(val36, imod_oversampled(2.5 + 0.66, -3.5 + 0.66))
-
