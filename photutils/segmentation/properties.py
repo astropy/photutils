@@ -108,10 +108,10 @@ class SourceProperties(object):
     .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
               \\sigma_{\\mathrm{tot}, i}^2}
 
-    where :math:`\Delta F` is
+    where :math:`\\Delta F` is
     `~photutils.SourceProperties.source_sum_err`, :math:`S` are the
     non-masked pixels in the source segment, and
-    :math:`\sigma_{\mathrm{tot}, i}` is the input ``error`` array.
+    :math:`\\sigma_{\\mathrm{tot}, i}` is the input ``error`` array.
 
     Custom errors for source segments can be calculated using the
     `~photutils.SourceProperties.error_cutout_ma` and
@@ -329,8 +329,8 @@ class SourceProperties(object):
     @lazyproperty
     def coords(self):
         """
-        A tuple of `~numpy.ndarray`\s containing the ``y`` and ``x``
-        pixel coordinates of the source segment.  Masked pixels are not
+        A tuple of `~numpy.ndarray` containing the ``y`` and ``x`` pixel
+        coordinates of the source segment.  Masked pixels are not
         included.
         """
 
@@ -746,7 +746,7 @@ class SourceProperties(object):
         """
         The ratio of the lengths of the semimajor and semiminor axes:
 
-        .. math:: \mathrm{elongation} = \\frac{a}{b}
+        .. math:: \\mathrm{elongation} = \\frac{a}{b}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
@@ -763,7 +763,7 @@ class SourceProperties(object):
         ``1`` minus the ratio of the lengths of the semimajor and
         semiminor axes (or ``1`` minus the `elongation`):
 
-        .. math:: \mathrm{ellipticity} = 1 - \\frac{b}{a}
+        .. math:: \\mathrm{ellipticity} = 1 - \\frac{b}{a}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
@@ -778,7 +778,7 @@ class SourceProperties(object):
     def covar_sigx2(self):
         """
         The ``(0, 0)`` element of the `covariance` matrix, representing
-        :math:`\sigma_x^2`, in units of pixel**2.
+        :math:`\\sigma_x^2`, in units of pixel**2.
 
         Note that this is the same as `SExtractor`_'s X2 parameter.
         """
@@ -789,7 +789,7 @@ class SourceProperties(object):
     def covar_sigy2(self):
         """
         The ``(1, 1)`` element of the `covariance` matrix, representing
-        :math:`\sigma_y^2`, in units of pixel**2.
+        :math:`\\sigma_y^2`, in units of pixel**2.
 
         Note that this is the same as `SExtractor`_'s Y2 parameter.
         """
@@ -800,7 +800,7 @@ class SourceProperties(object):
     def covar_sigxy(self):
         """
         The ``(0, 1)`` and ``(1, 0)`` elements of the `covariance`
-        matrix, representing :math:`\sigma_x \sigma_y`, in units of
+        matrix, representing :math:`\\sigma_x \\sigma_y`, in units of
         pixel**2.
 
         Note that this is the same as `SExtractor`_'s XY parameter.
@@ -897,8 +897,8 @@ class SourceProperties(object):
         .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
                   \\sigma_{\\mathrm{tot}, i}^2}
 
-        where :math:`\Delta F` is ``source_sum_err``,
-        :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise total
+        where :math:`\\Delta F` is ``source_sum_err``,
+        :math:`\\sigma_{\\mathrm{tot, i}}` are the pixel-wise total
         errors, and :math:`S` are the non-masked pixels in the source
         segment.
         """
@@ -1046,10 +1046,10 @@ def source_properties(data, segment_img, error=None, mask=None,
     .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
               \\sigma_{\\mathrm{tot}, i}^2}
 
-    where :math:`\Delta F` is
+    where :math:`\\Delta F` is
     `~photutils.SourceProperties.source_sum_err`, :math:`S` are the
     non-masked pixels in the source segment, and
-    :math:`\sigma_{\mathrm{tot}, i}` is the input ``error`` array.
+    :math:`\\sigma_{\\mathrm{tot}, i}` is the input ``error`` array.
 
     .. _SExtractor: http://www.astromatic.net/software/sextractor
 
