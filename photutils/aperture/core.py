@@ -16,7 +16,8 @@ import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils.misc import InheritDocstrings
 from astropy.wcs import WCS
-from astropy.wcs.utils import skycoord_to_pixel, wcs_to_celestial_frame
+from astropy.wcs.utils import (skycoord_to_pixel, pixel_to_skycoord,
+                               wcs_to_celestial_frame)
 
 from ..utils import get_version_info
 from ..utils.wcs_helpers import pixel_scale_angle_at_skycoord
@@ -531,6 +532,50 @@ class PixelAperture(Aperture):
 
         raise NotImplementedError('Needs to be implemented in a '
                                   'PixelAperture subclass.')
+
+    def _to_sky_params(self, wcs, mode='all'):
+        """
+        Convert the pixel aperture parameters to those for a sky
+        aperture.
+
+        Parameters
+        ----------
+        wcs : `~astropy.wcs.WCS`
+            The world coordinate system (WCS) transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or only including only the core WCS
+            transformation (``'wcs'``).
+
+        Returns
+        -------
+        sky_params : dict
+            A dictionary of parameters for an equivalent sky aperture.
+        """
+
+        sky_params = {}
+        x, y = np.transpose(self.positions)
+        sky_params['positions'] = pixel_to_skycoord(x, y, wcs, mode=mode)
+
+        # The aperture object must have a single value for each shape
+        # parameter so we must use a single pixel scale for all positions.
+        # Here, we define the scale at the WCS CRVAL position.
+        crval = SkyCoord([wcs.wcs.crval], frame=wcs_to_celestial_frame(wcs),
+                         unit=wcs.wcs.cunit)
+        scale, angle = pixel_scale_angle_at_skycoord(crval, wcs)
+
+        params = self._params[:]
+        theta_key = 'theta'
+        if theta_key in self._params:
+            sky_params[theta_key] = (self.theta - angle).to(u.radian).value
+            params.remove(theta_key)
+
+        param_vals = [getattr(self, param) for param in params]
+        for param, param_val in zip(params, param_vals):
+            sky_params[param] = (param_val * u.pix * scale).to(u.arcsec)
+
+        return sky_params
 
 
 class SkyAperture(Aperture):
