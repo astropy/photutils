@@ -586,7 +586,7 @@ class SkyAperture(Aperture):
 
     def _to_pixel_params(self, wcs, mode='all'):
         """
-        Convert the sky aperture parameters to those for a pixel-based
+        Convert the sky aperture parameters to those for a pixel
         aperture.
 
         Parameters

@@ -306,8 +306,8 @@ class SkyCircularAperture(SkyAperture):
 
     def to_pixel(self, wcs, mode='all'):
         """
-        Convert the aperture to a `CircularAperture` instance in pixel
-        coordinates.
+        Convert the aperture to a `CircularAperture` object defined in
+        pixel coordinates.
 
         Parameters
         ----------
@@ -367,8 +367,8 @@ class SkyCircularAnnulus(SkyAperture):
 
     def to_pixel(self, wcs, mode='all'):
         """
-        Convert the aperture to a `CircularAnnulus` instance in pixel
-        coordinates.
+        Convert the aperture to a `CircularAnnulus` object defined in
+        pixel coordinates.
 
         Parameters
         ----------

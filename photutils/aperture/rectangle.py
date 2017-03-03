@@ -423,8 +423,8 @@ class SkyRectangularAperture(SkyAperture):
 
     def to_pixel(self, wcs, mode='all'):
         """
-        Convert the aperture to a `RectangularAperture` instance in
-        pixel coordinates.
+        Convert the aperture to a `RectangularAperture` object defined
+        in pixel coordinates.
 
         Parameters
         ----------
@@ -508,8 +508,8 @@ class SkyRectangularAnnulus(SkyAperture):
 
     def to_pixel(self, wcs, mode='all'):
         """
-        Convert the aperture to a `RectangularAnnulus` instance in pixel
-        coordinates.
+        Convert the aperture to a `RectangularAnnulus` object defined in
+        pixel coordinates.
 
         Parameters
         ----------

@@ -383,8 +383,8 @@ class SkyEllipticalAperture(SkyAperture):
 
     def to_pixel(self, wcs, mode='all'):
         """
-        Convert the aperture to an `EllipticalAperture` instance in
-        pixel coordinates.
+        Convert the aperture to an `EllipticalAperture` object defined
+        in pixel coordinates.
 
         Parameters
         ----------
@@ -462,8 +462,8 @@ class SkyEllipticalAnnulus(SkyAperture):
 
     def to_pixel(self, wcs, mode='all'):
         """
-        Convert the aperture to an `EllipticalAnnulus` instance in pixel
-        coordinates.
+        Convert the aperture to an `EllipticalAnnulus` object defined in
+        pixel coordinates.
 
         Parameters
         ----------
