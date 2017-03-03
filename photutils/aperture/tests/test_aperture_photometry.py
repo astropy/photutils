@@ -12,15 +12,20 @@ from distutils.version import LooseVersion
 import numpy as np
 from numpy.testing import (assert_allclose, assert_array_equal,
                            assert_array_less)
+from astropy.coordinates import SkyCoord
 from astropy.io import fits
 from astropy.nddata import NDData
-import astropy.units as u
+from astropy.table import Table
 from astropy.tests.helper import pytest, remote_data
+import astropy.units as u
+from astropy.wcs import WCS
+from astropy.wcs.utils import pixel_to_skycoord
 
 import astropy
 ASTROPY_LT_13 = LooseVersion(astropy.__version__) < LooseVersion('1.3')
 NUMPY_LT_12 = LooseVersion(np.__version__) < LooseVersion('1.12')
 
+from ...datasets import get_path, make_4gaussians_image
 from ..core import *
 from ..circle import *
 from ..ellipse import *
@@ -76,10 +81,9 @@ def test_inside_array_simple(aperture_class, params):
 @pytest.mark.skipif('not HAS_MATPLOTLIB')
 @pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
 def test_aperture_plots(aperture_class, params):
-    # This test should run without any errors, and there is no return value
-
-    # TODO for 0.2: check the content of the plot
-
+    # This test should run without any errors, and there is no return
+    # value.
+    # TODO: check the content of the plot
     aperture = aperture_class((20., 20.), *params)
     aperture.plot()
 
@@ -103,7 +107,6 @@ def test_aperture_pixel_positions():
 class BaseTestAperturePhotometry(object):
 
     def test_scalar_error(self):
-
         # Scalar error
         error = 1.
         if not hasattr(self, 'mask'):
@@ -140,7 +143,6 @@ class BaseTestAperturePhotometry(object):
         assert np.all(table1['aperture_sum_err'] < table3['aperture_sum_err'])
 
     def test_array_error(self):
-
         # Array error
         error = np.ones(self.data.shape, dtype=np.float)
         if not hasattr(self, 'mask'):
@@ -297,7 +299,6 @@ class TestMaskedSkipCircular(BaseTestAperturePhotometry):
 class BaseTestDifferentData(object):
 
     def test_basic_circular_aperture_photometry(self):
-
         aperture = CircularAperture(self.position, self.radius)
         table = aperture_photometry(self.data, aperture,
                                     method='exact', unit='adu')
@@ -305,10 +306,10 @@ class BaseTestDifferentData(object):
         assert_allclose(table['aperture_sum'].value, self.true_flux)
         assert table['aperture_sum'].unit, self.fluxunit
 
-        #assert np.all(table['xcenter'] ==
-        #              np.transpose(self.position)[0])
-        #assert np.all(table['ycenter'] ==
-        #              np.transpose(self.position)[1])
+        assert np.all(table['xcenter'].value ==
+                      np.transpose(self.position)[0])
+        assert np.all(table['ycenter'].value ==
+                      np.transpose(self.position)[1])
 
 
 class TestInputPrimaryHDU(BaseTestDifferentData):
@@ -362,10 +363,6 @@ class TestInputNDData(BaseTestDifferentData):
 
 @remote_data
 def test_wcs_based_photometry_to_catalogue():
-    from astropy.coordinates import SkyCoord
-    from astropy.table import Table
-    from ...datasets import get_path
-
     pathcat = get_path('spitzer_example_catalog.xml', location='remote')
     pathhdu = get_path('spitzer_example_image.fits', location='remote')
     hdu = fits.open(pathhdu)
@@ -400,10 +397,6 @@ def test_wcs_based_photometry_to_catalogue():
 
 
 def test_wcs_based_photometry():
-    from astropy.wcs import WCS
-    from astropy.wcs.utils import pixel_to_skycoord
-    from ...datasets import make_4gaussians_image
-
     hdu = make_4gaussians_image(hdu=True, wcs=True)
     wcs = WCS(header=hdu.header)
 
@@ -505,7 +498,6 @@ def test_wcs_based_photometry():
 
 
 def test_basic_circular_aperture_photometry_unit():
-
     data1 = np.ones((40, 40), dtype=np.float)
     data2 = u.Quantity(data1, unit=u.adu)
 
@@ -600,21 +592,22 @@ def test_nan_inf_mask(value):
     desired = (np.pi * radius**2) - 1
     assert_allclose(tbl['aperture_sum'], desired)
 
+
 def test_aperture_partial_overlap():
     data = np.ones((20, 20))
     error = np.ones((20, 20))
-    xypos= [(10, 10), (0, 0), (0, 19), (19, 0), (19, 19)]
+    xypos = [(10, 10), (0, 0), (0, 19), (19, 0), (19, 19)]
     r = 5.
     aper = CircularAperture(xypos, r=r)
     tbl = aperture_photometry(data, aper, error=error)
-    assert_allclose(tbl['aperture_sum'][0], np.pi * r **2)
-    assert_array_less(tbl['aperture_sum'][1:], np.pi * r **2)
+    assert_allclose(tbl['aperture_sum'][0], np.pi * r ** 2)
+    assert_array_less(tbl['aperture_sum'][1:], np.pi * r ** 2)
 
     unit = u.MJy / u.sr
     tbl = aperture_photometry(data * unit, aper, error=error * unit)
-    assert_allclose(tbl['aperture_sum'][0].value, np.pi * r **2)
-    assert_array_less(tbl['aperture_sum'][1:].value, np.pi * r **2)
-    assert_array_less(tbl['aperture_sum_err'][1:].value, np.pi * r **2)
+    assert_allclose(tbl['aperture_sum'][0].value, np.pi * r ** 2)
+    assert_array_less(tbl['aperture_sum'][1:].value, np.pi * r ** 2)
+    assert_array_less(tbl['aperture_sum_err'][1:].value, np.pi * r ** 2)
     assert tbl['aperture_sum'].unit == unit
     assert tbl['aperture_sum_err'].unit == unit
 
@@ -667,8 +660,6 @@ def test_pixel_aperture_repr():
 
 
 def test_sky_aperture_repr():
-    from astropy.coordinates import SkyCoord
-
     s = SkyCoord([1, 2], [3, 4], unit='deg')
 
     aper = SkyCircularAperture(s, r=3*u.pix)
@@ -761,7 +752,6 @@ def test_sky_aperture_repr():
                  'w: 3.0 pix\nh: 5.0 pix\ntheta: 15.0 deg')
     assert repr(aper) == a_repr
     assert str(aper) == a_str
-
 
     aper = SkyRectangularAnnulus(s, w_in=3*u.pix, w_out=3.4*u.pix,
                                  h_out=5*u.pix, theta=15*u.deg)
