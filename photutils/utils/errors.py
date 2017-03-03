@@ -45,18 +45,18 @@ def calc_total_error(data, bkg_error, effective_gain):
     be `~astropy.units.Quantity` objects.  A `ValueError` will be raised if
     only some of the inputs are `~astropy.units.Quantity` objects.
 
-    The total error array, :math:`\sigma_{\mathrm{tot}}` is:
+    The total error array, :math:`\\sigma_{\\mathrm{tot}}` is:
 
     .. math:: \\sigma_{\\mathrm{tot}} = \\sqrt{\\sigma_{\\mathrm{b}}^2 +
                   \\frac{I}{g}}
 
-    where :math:`\sigma_b`, :math:`I`, and :math:`g` are the background
+    where :math:`\\sigma_b`, :math:`I`, and :math:`g` are the background
     ``bkg_error`` image, ``data`` image, and ``effective_gain``,
     respectively.
 
     Pixels where ``data`` (:math:`I_i)` is negative do not contribute
     additional Poisson noise to the total error, i.e.
-    :math:`\sigma_{\mathrm{tot}, i} = \sigma_{\mathrm{b}, i}`.  Note
+    :math:`\\sigma_{\\mathrm{tot}, i} = \\sigma_{\\mathrm{b}, i}`.  Note
     that this is different from `SExtractor`_, which sums the total
     variance in the segment, including pixels where :math:`I_i` is
     negative.  In such cases, `SExtractor`_ underestimates the total

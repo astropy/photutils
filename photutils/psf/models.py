@@ -85,7 +85,7 @@ class FittableImageModel(Fittable2DModel):
         computed so that
 
         .. math::
-            N \cdot C \cdot \Sigma_{i,j}D_{i,j} = 1,
+            N \\cdot C \\cdot \\Sigma_{i,j}D_{i,j} = 1,
 
         where *N* is the normalization constant, *C* is correction factor
         given by the parameter ``normalization_correction``, and
@@ -184,27 +184,29 @@ class FittableImageModel(Fittable2DModel):
 
     def _compute_normalization(self, normalize):
         """
-        Helper function that computes (corrected) normalization factor of the
-        original image data. This quantity is computed as the
-        inverse "raw image norm" (or total "flux" of model's image) corrected
-        by the ``normalization_correction``:
+        Helper function that computes (corrected) normalization factor
+        of the original image data. This quantity is computed as the
+        inverse "raw image norm" (or total "flux" of model's image)
+        corrected by the ``normalization_correction``:
 
         .. math::
-            N = 1/(\Phi * C),
+            N = 1/(\\Phi * C),
 
-        where :math:`\Phi` is the "total flux" of model's image as computed
-        by `_compute_raw_image_norm` and *C* is the normalization correction
-        factor. :math:`\Phi` is computed only once if it has not been
-        previously computed. Otherwise, the existing (stored) value of
-        :math:`\Phi` is not modified as :py:class:`FittableImageModel`
-        does not allow image data to be modified after the object is created.
+        where :math:`\\Phi` is the "total flux" of model's image as
+        computed by `_compute_raw_image_norm` and *C* is the
+        normalization correction factor. :math:`\\Phi` is computed only
+        once if it has not been previously computed. Otherwise, the
+        existing (stored) value of :math:`\\Phi` is not modified as
+        :py:class:`FittableImageModel` does not allow image data to be
+        modified after the object is created.
 
         .. note::
-            Normally, this function should not be called by the end-user. It
-            is intended to be overriden in a subclass if one desires to change
-            the way the normalization factor is computed.
-
+            Normally, this function should not be called by the
+            end-user. It is intended to be overriden in a subclass if
+            one desires to change the way the normalization factor is
+            computed.
         """
+
         self._normalization_constant = 1.0 / self._normalization_correction
 
         if normalize:
