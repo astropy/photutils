@@ -96,12 +96,10 @@ image showing the detected sources:
     >>> import matplotlib.pyplot as plt
     >>> from astropy.visualization import SqrtStretch
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
-    >>> from photutils.utils import random_cmap
-    >>> rand_cmap = random_cmap(segm.max + 1, random_state=12345)
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
     >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    >>> ax2.imshow(segm, origin='lower', cmap=rand_cmap)
+    >>> ax2.imshow(segm, origin='lower', cmap=segm.cmap(random_state=12345))
 
 .. plot::
 
@@ -113,18 +111,16 @@ image showing the detected sources:
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import make_100gaussians_image
     from photutils import detect_threshold, detect_sources
-    from photutils.utils import random_cmap
     data = make_100gaussians_image()
     threshold = detect_threshold(data, snr=3.)
     sigma = 2.0 * gaussian_fwhm_to_sigma    # FWHM = 2.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     kernel.normalize()
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
-    rand_cmap = random_cmap(segm.max + 1, random_state=12345)
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    ax2.imshow(segm, origin='lower', cmap=rand_cmap)
+    ax2.imshow(segm, origin='lower', cmap=segm.cmap(random_state=12345))
 
 When the segmentation image is generated using image thresholding
 (e.g., using :func:`~photutils.segmentation.detect_sources`), the
@@ -301,12 +297,10 @@ Now let's plot the results:
     >>> import matplotlib.pyplot as plt
     >>> from astropy.visualization import SqrtStretch
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
-    >>> from photutils.utils import random_cmap
-    >>> rand_cmap = random_cmap(segm.max + 1, random_state=12345)
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
     >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    >>> ax2.imshow(segm, origin='lower', cmap=rand_cmap)
+    >>> ax2.imshow(segm, origin='lower', cmap=segm.cmap(random_state=12345))
     >>> for aperture in apertures:
     ...     aperture.plot(color='blue', lw=1.5, alpha=0.5, ax=ax1)
     ...     aperture.plot(color='white', lw=1.5, alpha=1.0, ax=ax2)
@@ -323,7 +317,6 @@ Now let's plot the results:
     from photutils import Background2D, MedianBackground
     from photutils import detect_threshold, detect_sources
     from photutils import source_properties, properties_table
-    from photutils.utils import random_cmap
     from photutils import EllipticalAperture
     data = make_100gaussians_image()
     bkg_estimator = MedianBackground()
@@ -334,7 +327,6 @@ Now let's plot the results:
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     kernel.normalize()
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
-    rand_cmap = random_cmap(segm.max + 1, random_state=12345)
     props = source_properties(data, segm)
     apertures = []
     for prop in props:
@@ -346,7 +338,7 @@ Now let's plot the results:
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    ax2.imshow(segm, origin='lower', cmap=rand_cmap)
+    ax2.imshow(segm, origin='lower', cmap=segm.cmap(random_state=12345))
     for aperture in apertures:
         aperture.plot(color='blue', lw=1.5, alpha=0.5, ax=ax1)
         aperture.plot(color='white', lw=1.5, alpha=1.0, ax=ax2)
