@@ -83,6 +83,28 @@ object::
     coordinates.
 
 
+Converting Between Pixel and Sky Apertures
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The pixel apertures can be converted to sky apertures, and visa versa.
+To accomplish this, use the :meth:`~photutils.PixelAperture.to_sky`
+method for pixel apertures, e.g.:
+
+.. doctest-skip::
+
+    >>> aperture = CircularAperture((10, 20), r=4.)
+    >>> sky_aperture = aperture.to_sky(wcs)
+
+and the :meth:`~photutils.SkyAperture.to_pixel` method for sky
+apertures, e.g.:
+
+.. doctest-skip::
+
+    >>> position = SkyCoord(1.2, 0.1, unit='deg', frame='icrs')
+    >>> aperture = SkyCircularAperture(position, r=4. * u.arcsec)
+    >>> pix_aperture = aperture.to_pixel(wcs)
+
+
 Performing Aperture Photometry
 ------------------------------
 

@@ -7,6 +7,7 @@ import warnings
 from collections import OrderedDict
 
 import numpy as np
+from astropy.coordinates import SkyCoord
 from astropy.extern import six
 from astropy.io import fits
 from astropy.nddata import support_nddata
@@ -15,8 +16,11 @@ import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils.misc import InheritDocstrings
 from astropy.wcs import WCS
+from astropy.wcs.utils import (skycoord_to_pixel, pixel_to_skycoord,
+                               wcs_to_celestial_frame)
 
 from ..utils import get_version_info
+from ..utils.wcs_helpers import pixel_scale_angle_at_skycoord
 
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture', 'aperture_photometry']
@@ -50,9 +54,8 @@ class Aperture(object):
     def __repr__(self):
         prefix = '<{0}('.format(self.__class__.__name__)
         params = [self._positions_str(prefix)]
-        for key, val in self._repr_params:
-            if key not in ['b_in', 'h_in']:   # not aperture parameters
-                params.append('{0}={1}'.format(key, val))
+        for param in self._params:
+            params.append('{0}={1}'.format(param, getattr(self, param)))
         params = ', '.join(params)
 
         return '{0}{1})>'.format(prefix, params)
@@ -62,8 +65,9 @@ class Aperture(object):
         cls_info = [
             ('Aperture', self.__class__.__name__),
             (prefix, self._positions_str(prefix + ': '))]
-        if self._repr_params is not None:
-            cls_info += self._repr_params
+        if self._params is not None:
+            for param in self._params:
+                cls_info.append((param, getattr(self, param)))
         fmt = ['{0}: {1}'.format(key, val) for key, val in cls_info]
 
         return '\n'.join(fmt)
@@ -529,6 +533,75 @@ class PixelAperture(Aperture):
         raise NotImplementedError('Needs to be implemented in a '
                                   'PixelAperture subclass.')
 
+    def _to_sky_params(self, wcs, mode='all'):
+        """
+        Convert the pixel aperture parameters to those for a sky
+        aperture.
+
+        Parameters
+        ----------
+        wcs : `~astropy.wcs.WCS`
+            The world coordinate system (WCS) transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or only including only the core WCS
+            transformation (``'wcs'``).
+
+        Returns
+        -------
+        sky_params : dict
+            A dictionary of parameters for an equivalent sky aperture.
+        """
+
+        sky_params = {}
+        x, y = np.transpose(self.positions)
+        sky_params['positions'] = pixel_to_skycoord(x, y, wcs, mode=mode)
+
+        # The aperture object must have a single value for each shape
+        # parameter so we must use a single pixel scale for all positions.
+        # Here, we define the scale at the WCS CRVAL position.
+        crval = SkyCoord([wcs.wcs.crval], frame=wcs_to_celestial_frame(wcs),
+                         unit=wcs.wcs.cunit)
+        scale, angle = pixel_scale_angle_at_skycoord(crval, wcs)
+
+        params = self._params[:]
+        theta_key = 'theta'
+        if theta_key in self._params:
+            sky_params[theta_key] = (self.theta * u.rad) - angle.to(u.rad)
+            params.remove(theta_key)
+
+        param_vals = [getattr(self, param) for param in params]
+        for param, param_val in zip(params, param_vals):
+            sky_params[param] = (param_val * u.pix * scale).to(u.arcsec)
+
+        return sky_params
+
+    @abc.abstractmethod
+    def to_sky(self, wcs, mode='all'):
+        """
+        Convert the aperture to a `SkyAperture` object defined in
+        celestial coordinates.
+
+        Parameters
+        ----------
+        wcs : `~astropy.wcs.WCS` object
+            The world coordinate system (WCS) transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or including only the core WCS
+            transformation (``'wcs'``).
+
+        Returns
+        -------
+        aperture : `SkyAperture` object
+            A `SkyAperture` object.
+        """
+
+        raise NotImplementedError('Needs to be implemented in a '
+                                  'PixelAperture subclass.')
+
 
 class SkyAperture(Aperture):
     """
@@ -536,11 +609,59 @@ class SkyAperture(Aperture):
     coordinates.
     """
 
+    def _to_pixel_params(self, wcs, mode='all'):
+        """
+        Convert the sky aperture parameters to those for a pixel
+        aperture.
+
+        Parameters
+        ----------
+        wcs : `~astropy.wcs.WCS`
+            The world coordinate system (WCS) transformation to use.
+
+        mode : {'all', 'wcs'}, optional
+            Whether to do the transformation including distortions
+            (``'all'``; default) or only including only the core WCS
+            transformation (``'wcs'``).
+
+        Returns
+        -------
+        pixel_params : dict
+            A dictionary of parameters for an equivalent pixel aperture.
+        """
+
+        pixel_params = {}
+        x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
+        pixel_params['positions'] = np.array([x, y]).transpose()
+
+        # The aperture object must have a single value for each shape
+        # parameter so we must use a single pixel scale for all positions.
+        # Here, we define the scale at the WCS CRVAL position.
+        crval = SkyCoord([wcs.wcs.crval], frame=wcs_to_celestial_frame(wcs),
+                         unit=wcs.wcs.cunit)
+        scale, angle = pixel_scale_angle_at_skycoord(crval, wcs)
+
+        params = self._params[:]
+        theta_key = 'theta'
+        if theta_key in self._params:
+            pixel_params[theta_key] = (self.theta + angle).to(u.radian).value
+            params.remove(theta_key)
+
+        param_vals = [getattr(self, param) for param in params]
+        if param_vals[0].unit.physical_type == 'angle':
+            for param, param_val in zip(params, param_vals):
+                pixel_params[param] = (param_val / scale).to(u.pixel).value
+        else:    # pixels
+            for param, param_val in zip(params, param_vals):
+                pixel_params[param] = param_val.value
+
+        return pixel_params
+
     @abc.abstractmethod
     def to_pixel(self, wcs, mode='all'):
         """
-        Convert the aperture to a `PixelAperture` object in pixel
-        coordinates.
+        Convert the aperture to a `PixelAperture` object defined in
+        pixel coordinates.
 
         Parameters
         ----------

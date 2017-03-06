@@ -19,6 +19,9 @@ New Features
 
   - Elliptical apertures now use the true minimal bounding box. [#508]
 
+  - Added a ``to_sky`` method for pixel apertures. [#512]
+
+
 API changes
 ^^^^^^^^^^^
 
