@@ -14,13 +14,14 @@ from astropy.modeling import Parameter, Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import subpixel_indices
 from astropy import wcs as fitswcs
-from gwcs import wcs
 
 from ..utils import mask_to_mirrored_num
 from ..extern.nddata_compat import extract_array
 
 
 __all__ = ['DiscretePRF', 'Reproject']
+
+__doctest_requires__ = {('Reproject'): ['gwcs']}
 
 
 class DiscretePRF(Fittable2DModel):
@@ -311,6 +312,7 @@ class Reproject(object):
         Whether to use 0- or 1-based pixel coordinates.
     """
 
+
     def __init__(self, wcs_original, wcs_rectified):
         self.wcs_original = wcs_original
         self.wcs_rectified = wcs_rectified
@@ -335,25 +337,27 @@ class Reproject(object):
             indexed.
         """
 
+        import gwcs
+
         forward_origin = []
         if isinstance(wcs1, fitswcs.WCS):
             forward = wcs1.all_pix2world
             forward_origin = [0]
-        elif isinstance(wcs2, wcs.WCS):
+        elif isinstance(wcs2, gwcs.wcs.WCS):
             forward = wcs1.forward_transform
         else:
             raise ValueError('wcs1 must be an astropy.wcs.WCS or '
-                             'gwcs.WCS object.')
+                             'gwcs.wcs.WCS object.')
 
         inverse_origin = []
         if isinstance(wcs2, fitswcs.WCS):
             inverse = wcs2.all_world2pix
             inverse_origin = [0]
-        elif isinstance(wcs2, wcs.WCS):
+        elif isinstance(wcs2, gwcs.wcs.WCS):
             inverse = wcs2.forward_transform.inverse
         else:
             raise ValueError('wcs2 must be an astropy.wcs.WCS or '
-                             'gwcs.WCS object.')
+                             'gwcs.wcs.WCS object.')
 
         def _reproject_func(x, y):
             forward_args = [x, y] + forward_origin
