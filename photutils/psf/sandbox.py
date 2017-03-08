@@ -11,11 +11,13 @@ from astropy.table import Table
 from astropy.modeling import Parameter, Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import subpixel_indices
+from astropy import wcs as fitswcs
+from gwcs import wcs
 from ..utils import mask_to_mirrored_num
 from ..extern.nddata_compat import extract_array
 
 
-__all__ = ['DiscretePRF']
+__all__ = ['DiscretePRF', 'Reproject']
 
 
 class DiscretePRF(Fittable2DModel):
@@ -289,3 +291,111 @@ class DiscretePRF(Fittable2DModel):
                 prf_model[i, j] = np.ma.getdata(
                     combine(np.ma.dstack(extracted_sub_prfs), axis=2))
         return cls(prf_model, subsampling=subsampling)
+
+
+class Reproject(object):
+    """
+    Class to reproject pixel coordinates between unrectified and
+    rectified images.
+
+    Parameters
+    ----------
+    wcs_original, wcs_rectified : `~astropy.wcs.WCS` or `~gwcs.wcs.WCS`
+        The WCS objects for the original (unrectified) and rectified
+        images.
+
+    origin : {0, 1}
+        Whether to use 0- or 1-based pixel coordinates.
+    """
+
+    def __init__(self, wcs_original, wcs_rectified):
+        self.wcs_original = wcs_original
+        self.wcs_rectified = wcs_rectified
+
+    @staticmethod
+    def _reproject(wcs1, wcs2):
+        """
+        Perform the forward transformation of ``wcs1`` followed by the
+        inverse transformation of ``wcs2``.
+
+        Parameters
+        ----------
+        wcs1, wcs2 : `~astropy.wcs.WCS` or `~gwcs.wcs.WCS`
+            The WCS objects.
+
+        Returns
+        -------
+        result : func
+            Function to compute the transformations.  It takes x, y
+            positions in ``wcs1`` and returns x, y positions in
+            ``wcs2``.  The input and output x, y positions are zero
+            indexed.
+        """
+
+        forward_origin = []
+        if isinstance(wcs1, fitswcs.WCS):
+            forward = wcs1.all_pix2world
+            forward_origin = [0]
+        elif isinstance(wcs2, wcs.WCS):
+            forward = wcs1.forward_transform
+        else:
+            raise ValueError('wcs1 must be an astropy.wcs.WCS or '
+                             'gwcs.WCS object.')
+
+        inverse_origin = []
+        if isinstance(wcs2, fitswcs.WCS):
+            inverse = wcs2.all_world2pix
+            inverse_origin = [0]
+        elif isinstance(wcs2, wcs.WCS):
+            inverse = wcs2.forward_transform.inverse
+        else:
+            raise ValueError('wcs2 must be an astropy.wcs.WCS or '
+                             'gwcs.WCS object.')
+
+        def _reproject_func(x, y):
+            forward_args = [x, y] + forward_origin
+            sky = forward(*forward_args)
+            inverse_args = sky + inverse_origin
+            return inverse(*inverse_args)
+
+        return _reproject_func
+
+    def to_rectified(self, x, y):
+        """
+        Convert the input (x, y) positions from the original
+        (unrectified) image to the rectified image.
+
+        Parameters
+        ----------
+        x, y:  float or array-like of float
+            The zero-index pixel coordinates in the original
+            (unrectified) image.
+
+        Returns
+        -------
+        x, y:  float or array-like
+            The zero-index pixel coordinates in the rectified image.
+        """
+
+        return self._reproject(self.wcs_original,
+                               self.wcs_rectified)(x, y)
+
+    def to_original(self, x, y):
+        """
+        Convert the input (x, y) positions from the rectified image to
+        the original (unrectified) image.
+
+        Parameters
+        ----------
+        x, y:  float or array-like of float
+            The zero-index pixel coordinates in the rectified image.
+
+        Returns
+        -------
+        x, y:  float or array-like
+            The zero-index pixel coordinates in the original
+            (unrectified) image.
+        """
+
+        return self._reproject(self.wcs_rectified,
+                               self.wcs_original)(x, y)
