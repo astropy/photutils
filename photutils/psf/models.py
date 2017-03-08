@@ -775,7 +775,7 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
     return outmod
 
 
-def get_grouped_psf_model(template_psf_model, star_group):
+def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
     """
     Construct a joint PSF model which consists of a sum of PSF's templated on
     a specific model, but whose parameters are given by a table of objects.
@@ -797,11 +797,11 @@ def get_grouped_psf_model(template_psf_model, star_group):
     """
 
     group_psf = None
-    for i in range(len(star_group)):
+
+    for star in star_group:
         psf_to_add = template_psf_model.copy()
-        psf_to_add.flux = star_group['flux_0'][i]
-        psf_to_add.x_0 = star_group['x_0'][i]
-        psf_to_add.y_0 = star_group['y_0'][i]
+        for param_tab_name, param_name in pars_to_set.items():
+            setattr(psf_to_add, param_name, star[param_tab_name])
 
         if group_psf is None:
             # this is the first one only

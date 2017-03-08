@@ -147,8 +147,9 @@ def test_psf_adapter(moffimg, prepkwargs, tols):
 def test_get_grouped_psf_model():
     igp = IntegratedGaussianPRF(sigma=1.2)
     tab = Table(names=['x_0', 'y_0', 'flux_0'], data=[[1, 2], [3, 4], [0.5, 1]])
+    pars_to_set = {'x_0':'x_0', 'y_0':'y_0', 'flux_0':'flux'}
 
-    gpsf = get_grouped_psf_model(igp, tab)
+    gpsf = get_grouped_psf_model(igp, tab, pars_to_set)
 
     assert gpsf.x_0_0 == 1
     assert gpsf.y_0_1 == 4
