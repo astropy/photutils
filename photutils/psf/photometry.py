@@ -374,15 +374,12 @@ class BasicPSFPhotometry(object):
         Convenience function to define mappings between the names of the
         columns in the initial guess table (and the name of the fitted
         parameters) and the actual name of the parameters in the model.
-
-        Returns
-        -------
-        pars_to_set : dict
-            Dict which maps the names of the parameters initial guesses to the
-            actual name of the parameter in the model.
-        pars_to_output : dict
-            Dict which maps the names of the fitted parameters to the
-            actual name of the parameter in the model.
+        
+        This method sets the following parameters on the ``self`` object:
+        * ``pars_to_set`` : Dict which maps the names of the parameters 
+          initial guesses to the actual name of the parameter in the model.
+        * ``pars_to_output`` : Dict which maps the names of the fitted 
+          parameters to the actual name of the parameter in the model.
         """
 
         xname, yname, fluxname = _extract_psf_fitting_names(self.psf_model)
