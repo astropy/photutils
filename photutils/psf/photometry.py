@@ -18,17 +18,12 @@ from ..detection import DAOStarFinder
 
 from astropy.utils import minversion
 ASTROPY_LT_1_1 = not minversion('astropy', '1.1')
-ASTROPY_LT_1_3 = not minversion('astropy', '1.3')
 
 if ASTROPY_LT_1_1:
     from ..extern.nddata_compat import _overlap_slices_astropy1p1 as overlap_slices
 else:
     from astropy.nddata.utils import overlap_slices
 
-if not ASTROPY_LT_1_3:
-    from astropy.utils.decorators import deprecated_renamed_argument
-else:
-    from ..extern.decorators import deprecated_renamed_argument
 
 __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',
            'DAOPhotPSFPhotometry']
