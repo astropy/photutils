@@ -5,7 +5,9 @@ for prime-time (i.e., is not considered a stable public API), but is
 included either for experimentation or as legacy code.
 """
 
-from __future__ import division
+from __future__ import (absolute_import, unicode_literals, division,
+                        print_function)
+
 import numpy as np
 from astropy.table import Table
 from astropy.modeling import Parameter, Fittable2DModel
@@ -13,6 +15,7 @@ from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import subpixel_indices
 from astropy import wcs as fitswcs
 from gwcs import wcs
+
 from ..utils import mask_to_mirrored_num
 from ..extern.nddata_compat import extract_array
 
@@ -252,9 +255,9 @@ class DiscretePRF(Fittable2DModel):
                 sub_prf_indices = np.all(positions_subpixel_indices == [j, i],
                                          axis=1)
                 if not sub_prf_indices.any():
-                    raise ValueError('The source coordinates do not sample all '
-                                     'sub-pixel positions. Reduce the value '
-                                     'of the subsampling parameter.')
+                    raise ValueError('The source coordinates do not sample '
+                                     'all sub-pixel positions. Reduce the '
+                                     'value of the subsampling parameter.')
 
                 positions_sub_prfs = positions[sub_prf_indices]
                 for k, position in enumerate(positions_sub_prfs):
