@@ -10,6 +10,7 @@ import inspect
 
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
+from astropy.utils import minversion
 
 ASTROPY_LT_1_3 = not minversion('astropy', '1.3')
 

@@ -15,8 +15,9 @@ from .models import get_grouped_psf_model
 from ..aperture import CircularAperture, aperture_photometry
 from ..background import MMMBackground, SigmaClip
 from ..detection import DAOStarFinder
-
+from ..extern.decorators import deprecated_renamed_argument
 from astropy.utils import minversion
+
 ASTROPY_LT_1_1 = not minversion('astropy', '1.1')
 
 if ASTROPY_LT_1_1:
