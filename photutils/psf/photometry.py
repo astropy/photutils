@@ -319,8 +319,9 @@ class BasicPSFPhotometry(object):
             ``group_id``, ``x_0``, ``y_0``, ``flux_0``.  ``x_0`` and
             ``y_0`` are initial estimates of the centroids and
             ``flux_0`` is an initial estimate of the flux. Additionally,
-            columns named as ``<param_name>_0`` are required to fit any other
-            free (non fixed) parameter.
+            columns named as ``<param_name>_0`` are required if any other
+            parameter in the psf model is free (i.e., the ``fixed``
+            attribute of that parameter is ``False``).
 
         Returns
         -------
@@ -374,11 +375,11 @@ class BasicPSFPhotometry(object):
         Convenience function to define mappings between the names of the
         columns in the initial guess table (and the name of the fitted
         parameters) and the actual name of the parameters in the model.
-        
+
         This method sets the following parameters on the ``self`` object:
-        * ``pars_to_set`` : Dict which maps the names of the parameters 
+        * ``pars_to_set`` : Dict which maps the names of the parameters
           initial guesses to the actual name of the parameter in the model.
-        * ``pars_to_output`` : Dict which maps the names of the fitted 
+        * ``pars_to_output`` : Dict which maps the names of the fitted
           parameters to the actual name of the parameter in the model.
         """
 
