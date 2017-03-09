@@ -81,7 +81,7 @@ intersphinx_mapping['astropy'] = ('http://docs.astropy.org/en/latest/', None)
 
 # Extend astropy intersphinx_mapping with packages we use here
 intersphinx_mapping['skimage'] = ('http://scikit-image.org/docs/stable/', None)
-
+intersphinx_mapping['gwcs'] = ('http://gwcs.readthedocs.io/en/latest/', None)
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

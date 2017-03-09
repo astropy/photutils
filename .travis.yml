@@ -30,7 +30,7 @@ env:
         - MAIN_CMD='python setup.py'
         - SETUP_CMD='test'
         - EVENT_TYPE='pull_request push'
-        - PIP_DEPENDENCIES=''
+        - PIP_DEPENDENCIES='gwcs'
         - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib'
         - CONDA_CHANNELS='astropy-ci-extras'
         - SETUP_XVFB=True
@@ -59,9 +59,11 @@ matrix:
         # may run for a long time
         - os: linux
           env: PYTHON_VERSION=2.7 SETUP_CMD='build_docs -w'
+               PIP_DEPENDENCIES='gwcs'
                CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter'
         - os: linux
           env: SETUP_CMD='build_docs -w'
+               PIP_DEPENDENCIES='gwcs'
                CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib jupyter'
                EVENT_TYPE='pull_request push cron'
 
