@@ -327,8 +327,12 @@ class BasicPSFPhotometry(object):
             Residual image.
         """
 
-        result_tab = Table()
+        unc_tab = Table()
+        for param, isfixed in self.psf_model.fixed.items():
+            if not isfixed:
+                unc_tab.add_column(Column(name=param + "_unc"))
 
+        result_tab = Table()
         for param_tab_name in self._pars_to_output.keys():
             result_tab.add_column(Column(name=param_tab_name))
 
@@ -352,6 +356,11 @@ class BasicPSFPhotometry(object):
                                                    len(star_groups.groups[n]))
             result_tab = vstack([result_tab, param_table])
 
+            if hasattr(self.fitter, 'fit_info'):
+                unc_tab = vstack([unc_tab,
+                                  self._get_uncertainties(fit_model,
+                                          len(star_groups.groups[n]))
+                                 ])
             try:
                 from astropy.nddata.utils import NoOverlapError
             except ImportError:
@@ -364,7 +373,7 @@ class BasicPSFPhotometry(object):
             except NoOverlapError:
                 pass
 
-        return result_tab, image
+        return hstack([result_tab, unc_tab]), image
 
     def _define_fit_param_names(self):
         """
@@ -390,6 +399,41 @@ class BasicPSFPhotometry(object):
             if p not in (xname, yname, fluxname) and not isfixed:
                 self._pars_to_set[p0] = p
                 self._pars_to_output[pfit] = p
+
+    def _get_uncertainties(self, fit_model, star_group_size):
+        """
+        Retrive uncertainties on fitted parameters from the fitter object.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        unc_tab : `~astropy.table.Table`
+            Table which contains uncertainties on the fitted parameters.
+            The uncertainties are reported as one standard deviation.
+        """
+
+        unc_tab = Table()
+        for param, isfixed in self.psf_model.fixed.items():
+            if not isfixed:
+                unc_tab.add_column(Column(name=param + "_unc",
+                                          data=np.empty(star_group_size)))
+
+        if self.fitter.fit_info['param_cov'] is not None:
+            if hasattr(fit_model, 'submodel_names'):
+                k = 0
+                n_fit_params = len(unc_tab.colnames)
+                for i in range(star_group_size):
+                    unc_tab[i] = np.sqrt(np.diag(
+                                          self.fitter.fit_info['param_cov'])
+                                         )[k: k + n_fit_params]
+                    k = k + n_fit_params
+            else:
+                unc_tab[:] = np.sqrt(np.diag(self.fitter.fit_info['param_cov']))
+        else:
+            unc_tab[:] = np.nan
+        return unc_tab
 
     def _model_params2table(self, fit_model, star_group_size):
         """
