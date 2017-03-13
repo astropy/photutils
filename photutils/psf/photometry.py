@@ -349,7 +349,7 @@ class BasicPSFPhotometry(object):
             fit_model = self.fitter(group_psf, x[usepixel], y[usepixel],
                                     image[usepixel])
             param_table = self._model_params2table(fit_model,
-                                                   star_groups.groups[n])
+                                                   len(star_groups.groups[n]))
             result_tab = vstack([result_tab, param_table])
 
             try:
@@ -391,7 +391,7 @@ class BasicPSFPhotometry(object):
                 self._pars_to_set[p0] = p
                 self._pars_to_output[pfit] = p
 
-    def _model_params2table(self, fit_model, star_group):
+    def _model_params2table(self, fit_model, star_group_size):
         """
         Place fitted parameters into an astropy table.
 
@@ -402,7 +402,8 @@ class BasicPSFPhotometry(object):
             in this package like `~photutils.psf.sandbox.DiscretePRF`,
             `~photutils.psf.IntegratedGaussianPRF`, or any other
             suitable 2D model.
-        star_group : `~astropy.table.Table`
+        star_group_size : int
+            Number of stars in the given group.
 
         Returns
         -------
@@ -414,10 +415,10 @@ class BasicPSFPhotometry(object):
 
         for param_tab_name in self._pars_to_output.keys():
             param_tab.add_column(Column(name=param_tab_name,
-                                        data=np.empty(len(star_group))))
+                                        data=np.empty(star_group_size)))
 
         if hasattr(fit_model, 'submodel_names'):
-            for i in range(len(star_group)):
+            for i in range(star_group_size):
                 for param_tab_name, param_name in self._pars_to_output.items():
                     param_tab[param_tab_name][i] = getattr(fit_model,
                                                            param_name + '_' + str(i)).value
