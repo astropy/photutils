@@ -230,8 +230,11 @@ class BasicPSFPhotometry(object):
         output_tab : `~astropy.table.Table` or None
             Table with the photometry results, i.e., centroids and
             fluxes estimations and the initial estimates used to start
-            the fitting process.
-            None is returned if no sources are found in ``image``.
+            the fitting process. Uncertainties on the fitted parameters are
+            reported provided that the fitter object contains a dictionary
+            called ``fit_info`` with ``param_cov`` as key to access the
+            covariance matrix. If this dictionary is not available,
+            uncertainties columns will be filled with ``np.nan``.
         """
 
         if self.bkg_estimator is not None:
@@ -633,8 +636,11 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         output_table : `~astropy.table.Table` or None
             Table with the photometry results, i.e., centroids and
             fluxes estimations and the initial estimates used to start
-            the fitting process.
-            None is returned if no sources are found in ``image``.
+            the fitting process. Uncertainties on the fitted parameters are
+            reported provided that the fitter object contains a dictionary
+            called ``fit_info`` with ``param_cov`` as key to access the
+            covariance matrix. If this dictionary is not available,
+            uncertainties columns will be filled with ``np.nan``.
         """
 
         if init_guesses is not None:
@@ -682,7 +688,6 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             Table with the photometry results, i.e., centroids and
             fluxes estimations and the initial estimates used to start
             the fitting process.
-            None is returned if no sources are found in ``image``.
         """
 
         output_table = Table()
