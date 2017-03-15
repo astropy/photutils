@@ -304,9 +304,11 @@ def make_model_sources(image_shape, model, source_table, oversample=1,
         `photutils.psf.models` model.
 
     source_table : `~astropy.table.Table`
-        Table of parameters for the sources.  The column names must have names
-        that match the parameters of the `model`. Any parameter that is *not* in
-        the table will be left at whatever value it has for ``model``.
+        Table of parameters for the sources.  The column names must
+        match the model parameter names.  Column names that do not match
+        model parameters will be ignored.  Any model parameter that is
+        *not* in the table will be left at whatever value it has for
+        ``model``.
 
     oversample : float, optional
         The sampling factor used to discretize the models on a
@@ -355,9 +357,6 @@ def make_model_sources(image_shape, model, source_table, oversample=1,
     for colnm in source_table.colnames:
         if colnm in model.param_names:
             params_to_set.append(colnm)
-        else:
-            raise ValueError('Table column {} is not a parameter in model '
-                             '{}'.format(colnm, model))
 
     # use this to store the *initial* values so we can set them back when done
     # with the loop.  Best not to copy a model, because some PSF models may have
