@@ -362,7 +362,7 @@ def make_model_sources(image_shape, model, source_table, oversample=1,
     # use this to store the *initial* values so we can set them back when done
     # with the loop.  Best not to copy a model, because some PSF models may have
     # substantial amounts of data in them
-    params_to_set = {pnm: getattr(model, pnm) for pnm in params_to_set}
+    init_params = {pnm: getattr(model, pnm) for pnm in params_to_set}
 
     try:
         for i, source in enumerate(source_table):
@@ -375,7 +375,7 @@ def make_model_sources(image_shape, model, source_table, oversample=1,
                                           (0, image_shape[0]), mode='oversample',
                                           factor=oversample)
     finally:
-        for pnm, val in params_to_set.items():
+        for pnm, val in init_params.items():
             setattr(model, paramnm, val)
 
     if unit is not None:
