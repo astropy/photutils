@@ -340,7 +340,8 @@ class BasicPSFPhotometry(object):
 
         star_groups = star_groups.group_by('group_id')
         for n in range(len(star_groups.groups)):
-            group_psf = get_grouped_psf_model(self.psf_model, star_groups.groups[n],
+            group_psf = get_grouped_psf_model(self.psf_model,
+                                              star_groups.groups[n],
                                               self._pars_to_set)
             usepixel = np.zeros_like(image, dtype=np.bool)
 
@@ -358,8 +359,8 @@ class BasicPSFPhotometry(object):
 
             if hasattr(self.fitter, 'fit_info'):
                 unc_tab = vstack([unc_tab,
-                                  self._get_uncertainties(fit_model,
-                                          len(star_groups.groups[n]))
+                                  self._get_uncertainties(
+                                                len(star_groups.groups[n]))
                                  ])
             try:
                 from astropy.nddata.utils import NoOverlapError
@@ -400,12 +401,14 @@ class BasicPSFPhotometry(object):
                 self._pars_to_set[p0] = p
                 self._pars_to_output[pfit] = p
 
-    def _get_uncertainties(self, fit_model, star_group_size):
+    def _get_uncertainties(self, star_group_size):
         """
-        Retrive uncertainties on fitted parameters from the fitter object.
+        Retrieve uncertainties on fitted parameters from the fitter object.
 
         Parameters
         ----------
+        star_group_size : int
+            Number of stars in the given group.
 
         Returns
         -------
@@ -420,8 +423,8 @@ class BasicPSFPhotometry(object):
                 unc_tab.add_column(Column(name=param + "_unc",
                                           data=np.empty(star_group_size)))
 
-        if self.fitter.fit_info['param_cov'] is not None:
-            if hasattr(fit_model, 'submodel_names'):
+        if 'param_cov' in self.fitter.fit_info.keys():
+            if self.fitter.fit_info['param_cov'] is not None:
                 k = 0
                 n_fit_params = len(unc_tab.colnames)
                 for i in range(star_group_size):
@@ -429,8 +432,6 @@ class BasicPSFPhotometry(object):
                                           self.fitter.fit_info['param_cov'])
                                          )[k: k + n_fit_params]
                     k = k + n_fit_params
-            else:
-                unc_tab[:] = np.sqrt(np.diag(self.fitter.fit_info['param_cov']))
         else:
             unc_tab[:] = np.nan
         return unc_tab
