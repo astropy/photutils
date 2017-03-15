@@ -168,13 +168,9 @@ def test_make_random_models():
     model = Moffat2D(amplitude=1)
     param_ranges = {'x_0': (0, 300), 'y_0': (0, 500),
                     'gamma': (1, 3), 'alpha': (1.5, 3)}
-
     source_table = make_random_models(model, 10, param_ranges)
 
-    # most of the make_model_sources options are exercised in the make_gaussian_sources tests
-    imshape = (300, 500)
-
-    image = make_model_sources(imshape, model, source_table)
-
+    # most of the make_model_sources options are exercised in the
+    # make_gaussian_sources tests
+    image = make_model_sources((300, 500), model, source_table)
     assert image.sum() > 1
-    assert image.sum() < 100
