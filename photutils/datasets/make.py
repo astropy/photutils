@@ -300,8 +300,7 @@ def make_model_sources(image_shape, model, source_table, oversample=1,
         will be *added* to that array.
 
     model : 2D astropy.modeling.models object
-        The model to be used for rendering the sources.  Usually would be a
-        `photutils.psf.models` model.
+        The model to be used for rendering the sources.
 
     source_table : `~astropy.table.Table`
         Table of parameters for the sources.  The column names must
@@ -639,8 +638,7 @@ def make_random_models(model, n_sources, param_ranges=None, random_state=None):
     Parameters
     ----------
     model : 2D astropy.modeling.models object
-        The model to be used for the sources.  Usually would be a
-        `photutils.psf.models` model.
+        The model to be used for the sources.
 
     n_sources : int
         The number of random Gaussian sources to generate
