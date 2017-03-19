@@ -319,7 +319,7 @@ array, which by design doesn't include increased noise on bright
 pixels.  To include Poisson noise from the sources, we can use the
 :func:`~photutils.utils.calc_total_error` function.
 
-Let's assume we we have a background-only image called ``bkg_error``.
+Let's assume we have a background-only image called ``bkg_error``.
 If our data are in units of electrons/s, we would use the exposure
 time as the effective gain::
 

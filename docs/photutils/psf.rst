@@ -105,7 +105,7 @@ image, grouping overlapping sources into a single model, fitting the model to th
 sources, and subtracting the models from the image.  In DAOPHOT parlance, this
 is essentially running the "FIND, GROUP, NSTAR, SUBTRACT" once. Because it is
 only a single cycle of that sequence, this class should be used when the degree
-of crowdness of the field is not very high, for instance, when most stars are
+of crowdedness of the field is not very high, for instance, when most stars are
 separated by a distance no less than one FWHM and their brightness are
 relatively uniform.  It is critical to understand, though, that
 `~photutils.psf.BasicPSFPhotometry` does not actually contain the functionality
@@ -279,7 +279,7 @@ Let's then instantiate and use the objects:
     >>> residual_image = photometry.get_residual_image()
 
 Note that the parameters values for the finder class, i.e.,
-`~photutils.detection.IRAFStarFinder`, are completly chosen in an arbitrary
+`~photutils.detection.IRAFStarFinder`, are completely chosen in an arbitrary
 manner and optimum values do vary according to the data.
 
 As mentioned before, the way to actually do the photometry is by using
