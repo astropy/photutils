@@ -19,7 +19,7 @@ powerful grouping algorithm to decide whether or not the profile
 of a given star extends into the fitting region around the centroid of any
 other star. This goal is achieved by means of a variable called "critical
 separation", which is defined as the distance such that any two stars
-separated by less than it would be overlapping. Stetson also gives intutive
+separated by less than it would be overlapping. Stetson also gives intuitive
 reasoning to suggest that the critical separation may be defined as the
 product of fwhm with some positive real number.
 
