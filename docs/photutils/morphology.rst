@@ -34,7 +34,7 @@ First, we create the source image and subtract its background::
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, iters=5)
     >>> data -= median    # subtract background
 
-Then, calculate its properties::
+Then, calculate its properties:
 
 .. doctest-requires:: scipy, skimage
 
