@@ -194,8 +194,7 @@ Now, let's plot rectangular apertures that cover each group:
     >>>     group_height = ymax - ymin + 1
     >>>     rect_aperture = RectangularAperture(group_center, group_width,
     ...                                         group_height, theta=0)
-    >>>     rect_aperture.plot(lw=1.5, alpha=0.5, color='gray')
-    >>> circ_aperture.plot(lw=1.5, alpha=0.5)
+    >>>     rect_aperture.plot(lw=1.5, color='gray')
     >>> plt.show()
 
 .. plot::
@@ -224,19 +223,16 @@ Now, let's plot rectangular apertures that cover each group:
     starlist['x_mean'].name = 'x_0'
     starlist['y_mean'].name = 'y_0'
 
-    from photutils import CircularAperture
     from astropy.stats import gaussian_sigma_to_fwhm
-    circ_aperture = CircularAperture((starlist['x_0'], starlist['y_0']),
-                                     r=sigma_psf*gaussian_sigma_to_fwhm)
-
     from photutils.psf.groupstars import DAOGroup
     fwhm = sigma_psf*gaussian_sigma_to_fwhm
     daogroup = DAOGroup(crit_separation=1.5*fwhm)
     star_groups = daogroup(starlist)
-    star_groups = star_groups.group_by('group_id')
+
+    plt.imshow(sim_image, origin='lower', interpolation='nearest')
 
     from photutils import RectangularAperture
-    plt.imshow(sim_image, origin='lower', interpolation='nearest')
+    star_groups = star_groups.group_by('group_id')
     for group in star_groups.groups:
         group_center = (np.median(group['x_0']), np.median(group['y_0']))
         xmin = np.min(group['x_0']) - fwhm
@@ -247,5 +243,4 @@ Now, let's plot rectangular apertures that cover each group:
         group_height = ymax - ymin + 1
         rect_aperture = RectangularAperture(group_center, group_width,
                                             group_height, theta=0)
-        rect_aperture.plot(lw=1.5, alpha=0.5)
-    circ_aperture.plot(lw=1.5, alpha=0.5)
+        rect_aperture.plot(lw=1.5, color='gray')
