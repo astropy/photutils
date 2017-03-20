@@ -133,7 +133,7 @@ segmentation image or a specified footprint.  Please see the
 options.
 
 As simple example, let's find the local peaks in an image that are 10
-sigma above the background and a separated by a least 2 pixels:
+sigma above the background and a separated by at least 2 pixels:
 
 .. doctest-requires:: skimage
 

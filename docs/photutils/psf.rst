@@ -105,7 +105,7 @@ image, grouping overlapping sources into a single model, fitting the model to th
 sources, and subtracting the models from the image.  In DAOPHOT parlance, this
 is essentially running the "FIND, GROUP, NSTAR, SUBTRACT" once. Because it is
 only a single cycle of that sequence, this class should be used when the degree
-of crowdness of the field is not very high, for instance, when most stars are
+of crowdedness of the field is not very high, for instance, when most stars are
 separated by a distance no less than one FWHM and their brightness are
 relatively uniform.  It is critical to understand, though, that
 `~photutils.psf.BasicPSFPhotometry` does not actually contain the functionality
@@ -279,7 +279,7 @@ Let's then instantiate and use the objects:
     >>> residual_image = photometry.get_residual_image()
 
 Note that the parameters values for the finder class, i.e.,
-`~photutils.detection.IRAFStarFinder`, are completly chosen in an arbitrary
+`~photutils.detection.IRAFStarFinder`, are completely chosen in an arbitrary
 manner and optimum values do vary according to the data.
 
 As mentioned before, the way to actually do the photometry is by using
@@ -492,7 +492,7 @@ possible example of this feature. (For actual PSF photometry of stars you would
 *not* want to do this, because you the shape of the PSF should be set by bright
 stars or an optical model and held fixed when fitting.)
 
-First, let us instantiate a psf model object:
+First, let us instantiate a PSF model object:
 
 .. doctest-skip::
 
@@ -506,7 +506,7 @@ Let's first change this behavior:
 
     >>> gaussian_prf.sigma.fixed = False
 
-In addition, we need to indicate the inital guess which will be used in during
+In addition, we need to indicate the initial guess which will be used in during
 the fitting process. By the default, the initial guess is taken as the default
 value of ``sigma``, but we can change that by doing:
 
@@ -554,7 +554,7 @@ star as well. Also, note that both of the stars have ``sigma=2.0``.
     plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
                origin='lower', norm=LogNorm(vmin=vmin, vmax=vmax))
 
-Let's instantiate the necessary objetcs in order to use an
+Let's instantiate the necessary objects in order to use an
 `~photutils.psf.IterativelySubtractedPSFPhotometry` to perform photometry:
 
 .. doctest-requires:: scipy
