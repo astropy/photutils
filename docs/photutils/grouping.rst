@@ -125,7 +125,7 @@ Let's plot circular apertures around each of the stars using
 
 Now, let's find the stellar groups.  We start by creating
 `~photutils.DAOGroup` object.  Here we set its ``crit_separation``
-parameter ``1.5 * fwhm``, where the stellar ``fwhm`` was defined above
+parameter ``2.5 * fwhm``, where the stellar ``fwhm`` was defined above
 when we created the stars as 2D Gaussians.  In general one will need
 to measure the FWHM of the stellar profiles.
 
@@ -133,7 +133,7 @@ to measure the FWHM of the stellar profiles.
 
     >>> from photutils.psf.groupstars import DAOGroup
     >>> fwhm = sigma_psf * gaussian_sigma_to_fwhm
-    >>> daogroup = DAOGroup(crit_separation=1.5*fwhm)
+    >>> daogroup = DAOGroup(crit_separation=2.5*fwhm)
 
 ``daogroup`` is a `~photutils.DAOGroup` instance that can be used as a
 calling function that receives as input a table of stars (e.g.
@@ -153,8 +153,8 @@ grouping algorithm separated the 350 stars into 249 distinct groups:
     >>> print(max(star_groups['group_id']))
     249
 
-Finally, one can use the ``group_by`` functionality from
-`~astropy.table.Table` to create groups according ``group_id``:
+One can use the ``group_by`` functionality from `~astropy.table.Table`
+to create groups according ``group_id``:
 
 .. doctest-skip::
 
@@ -176,25 +176,18 @@ Finally, one can use the ``group_by`` functionality from
     1508.68165551 54.0404934991 232.693833605 ...  1.54042673504 349      249
     Length = 350 rows
 
-Now, let's plot rectangular apertures that cover each group:
+Finally, let's plot a circular aperture around each star, where stars
+in the same group have the same aperture color:
 
 .. doctest-skip::
 
-    >>> from photutils import RectangularAperture
-
     >>> plt.imshow(sim_image, origin='lower', interpolation='nearest',
-    ...            cmap='viridis')
-    >>> for group in star_groups.groups:
-    >>>     group_center = (np.median(group['x_0']), np.median(group['y_0']))
-    >>>     xmin = np.min(group['x_0']) - fwhm
-    >>>     xmax = np.max(group['x_0']) + fwhm
-    >>>     ymin = np.min(group['y_0']) - fwhm
-    >>>     ymax = np.max(group['y_0']) + fwhm
-    >>>     group_width = xmax - xmin + 1
-    >>>     group_height = ymax - ymin + 1
-    >>>     rect_aperture = RectangularAperture(group_center, group_width,
-    ...                                         group_height, theta=0)
-    >>>     rect_aperture.plot(lw=1.5, color='gray')
+    ...            cmap='Greys_r')
+    >>> cmap = random_cmap(random_state=12345)
+    >>> for i, group in enumerate(star_groups.groups):
+    >>>     xypos = np.transpose([group['x_0'], group['y_0']])
+    >>>     ap = CircularAperture(xypos, r=fwhm)
+    >>>     ap.plot(color=cmap.colors[i])
     >>> plt.show()
 
 .. plot::
@@ -224,23 +217,19 @@ Now, let's plot rectangular apertures that cover each group:
     starlist['y_mean'].name = 'y_0'
 
     from astropy.stats import gaussian_sigma_to_fwhm
+    from photutils import CircularAperture
     from photutils.psf.groupstars import DAOGroup
+    from photutils.utils import random_cmap
     fwhm = sigma_psf*gaussian_sigma_to_fwhm
-    daogroup = DAOGroup(crit_separation=1.5*fwhm)
+    daogroup = DAOGroup(crit_separation=2.5*fwhm)
     star_groups = daogroup(starlist)
 
-    plt.imshow(sim_image, origin='lower', interpolation='nearest')
+    plt.imshow(sim_image, origin='lower', interpolation='nearest',
+               cmap='Greys_r')
 
-    from photutils import RectangularAperture
     star_groups = star_groups.group_by('group_id')
-    for group in star_groups.groups:
-        group_center = (np.median(group['x_0']), np.median(group['y_0']))
-        xmin = np.min(group['x_0']) - fwhm
-        xmax = np.max(group['x_0']) + fwhm
-        ymin = np.min(group['y_0']) - fwhm
-        ymax = np.max(group['y_0']) + fwhm
-        group_width = xmax - xmin + 1
-        group_height = ymax - ymin + 1
-        rect_aperture = RectangularAperture(group_center, group_width,
-                                            group_height, theta=0)
-        rect_aperture.plot(lw=1.5, color='gray')
+    cmap = random_cmap(random_state=12345)
+    for i, group in enumerate(star_groups.groups):
+        xypos = np.transpose([group['x_0'], group['y_0']])
+        ap = CircularAperture(xypos, r=fwhm)
+        ap.plot(color=cmap.colors[i])
