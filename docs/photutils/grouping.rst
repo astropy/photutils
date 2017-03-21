@@ -78,51 +78,6 @@ Here we rename ``x_mean`` to ``x_0`` and ``y_mean`` to ``y_0``:
     >>> starlist['x_mean'].name = 'x_0'
     >>> starlist['y_mean'].name = 'y_0'
 
-Let's plot circular apertures around each of the stars using
-`~photutils.aperture.CircularAperture`.
-
-.. doctest-skip::
-
-    >>> from photutils import CircularAperture
-    >>> from astropy.stats import gaussian_sigma_to_fwhm
-    >>> circ_aperture = CircularAperture((starlist['x_0'], starlist['y_0']),
-    ...                                  r=sigma_psf*gaussian_sigma_to_fwhm)
-    >>> plt.imshow(sim_image, origin='lower', interpolation='nearest',
-    ...           cmap='viridis')
-    >>> circ_aperture.plot(lw=1.5, alpha=0.5, color='gray')
-    >>> plt.show()
-
-.. plot::
-
-    import numpy as np
-    from photutils.datasets import make_gaussian_sources
-    from photutils.datasets import make_random_gaussians
-    import matplotlib.pyplot as plt
-
-    n_sources = 350
-    min_flux = 500
-    max_flux = 5000
-    min_xmean = min_ymean = 6
-    max_xmean = max_ymean = 250
-    sigma_psf = 2.0
-    starlist = make_random_gaussians(n_sources, [min_flux, max_flux],\
-               [min_xmean, max_xmean], [min_ymean, max_ymean],\
-               [sigma_psf, sigma_psf], [sigma_psf, sigma_psf],\
-               random_state=1234)
-
-    shape = (256, 256)
-    sim_image = make_gaussian_sources(shape, starlist)
-    plt.imshow(sim_image, origin='lower', interpolation='nearest',
-               cmap='viridis')
-    from photutils import CircularAperture
-    from astropy.stats import gaussian_sigma_to_fwhm
-    circ_aperture = CircularAperture((starlist['x_mean'], starlist['y_mean']),
-                                     r=sigma_psf*gaussian_sigma_to_fwhm)
-    plt.imshow(sim_image, origin='lower', interpolation='nearest',
-               cmap='viridis')
-    circ_aperture.plot(lw=1.5, alpha=0.5, color='gray')
-    plt.show()
-
 Now, let's find the stellar groups.  We start by creating
 `~photutils.DAOGroup` object.  Here we set its ``crit_separation``
 parameter ``2.5 * fwhm``, where the stellar ``fwhm`` was defined above
