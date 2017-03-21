@@ -134,6 +134,7 @@ in the same group have the same aperture color:
 
 .. doctest-skip::
 
+    >>> from photutils.utils import random_cmap
     >>> plt.imshow(sim_image, origin='lower', interpolation='nearest',
     ...            cmap='Greys_r')
     >>> cmap = random_cmap(random_state=12345)
