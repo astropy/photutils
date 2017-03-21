@@ -42,8 +42,7 @@ latter will make an actual image using that table.
     :include-source:
 
     import numpy as np
-    from photutils.datasets import make_gaussian_sources
-    from photutils.datasets import make_random_gaussians
+    from photutils.datasets import make_gaussian_sources, make_random_gaussians
     import matplotlib.pyplot as plt
 
     n_sources = 350
@@ -52,19 +51,18 @@ latter will make an actual image using that table.
     min_xmean = min_ymean = 6
     max_xmean = max_ymean = 250
     sigma_psf = 2.0
+    starlist = make_random_gaussians(n_sources, [min_flux, max_flux],
+                                     [min_xmean, max_xmean],
+                                     [min_ymean, max_ymean],
+                                     [sigma_psf, sigma_psf],
+                                     [sigma_psf, sigma_psf], random_state=1234)
 
-    starlist = make_random_gaussians(n_sources, [min_flux, max_flux],\
-               [min_xmean, max_xmean], [min_ymean, max_ymean],\
-               [sigma_psf, sigma_psf], [sigma_psf, sigma_psf],\
-               random_state=1234)
     shape = (256, 256)
-
     sim_image = make_gaussian_sources(shape, starlist)
 
     plt.imshow(sim_image, origin='lower', interpolation='nearest',
                cmap='viridis')
     plt.show()
-
 
 ``starlist`` is an astropy `~astropy.table.Table` of parameters
 defining the position and shape of the stars.
@@ -78,7 +76,7 @@ Here we rename ``x_mean`` to ``x_0`` and ``y_mean`` to ``y_0``:
     >>> starlist['x_mean'].name = 'x_0'
     >>> starlist['y_mean'].name = 'y_0'
 
-Now, let's find the stellar groups.  We start by creating
+Now, let's find the stellar groups.  We start by creating a
 `~photutils.DAOGroup` object.  Here we set its ``crit_separation``
 parameter ``2.5 * fwhm``, where the stellar ``fwhm`` was defined above
 when we created the stars as 2D Gaussians.  In general one will need
@@ -109,7 +107,7 @@ grouping algorithm separated the 350 stars into 249 distinct groups:
     249
 
 One can use the ``group_by`` functionality from `~astropy.table.Table`
-to create groups according ``group_id``:
+to create groups according to ``group_id``:
 
 .. doctest-skip::
 
@@ -148,13 +146,11 @@ in the same group have the same aperture color:
 .. plot::
 
     import numpy as np
-    from photutils.datasets import make_gaussian_sources
-    from photutils.datasets import make_random_gaussians
+    from photutils.datasets import make_gaussian_sources, make_random_gaussians
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
-    rcParams['image.cmap'] = 'viridis'
     rcParams['image.aspect'] = 1  # to get images with square pixels
-    rcParams['figure.figsize'] = (7,7)
+    rcParams['figure.figsize'] = (7, 7)
 
     n_sources = 350
     min_flux = 500
@@ -162,27 +158,31 @@ in the same group have the same aperture color:
     min_xmean = min_ymean = 6
     max_xmean = max_ymean = 250
     sigma_psf = 2.0
-    starlist = make_random_gaussians(n_sources, [min_flux, max_flux],\
-               [min_xmean, max_xmean], [min_ymean, max_ymean],\
-               [sigma_psf, sigma_psf], [sigma_psf, sigma_psf],\
-               random_state=1234)
+    starlist = make_random_gaussians(n_sources, [min_flux, max_flux],
+                                     [min_xmean, max_xmean],
+                                     [min_ymean, max_ymean],
+                                     [sigma_psf, sigma_psf],
+                                     [sigma_psf, sigma_psf], random_state=1234)
+
     shape = (256, 256)
     sim_image = make_gaussian_sources(shape, starlist)
+
     starlist['x_mean'].name = 'x_0'
     starlist['y_mean'].name = 'y_0'
 
     from astropy.stats import gaussian_sigma_to_fwhm
-    from photutils import CircularAperture
     from photutils.psf.groupstars import DAOGroup
+    from photutils import CircularAperture
     from photutils.utils import random_cmap
-    fwhm = sigma_psf*gaussian_sigma_to_fwhm
+
+    fwhm = sigma_psf * gaussian_sigma_to_fwhm
     daogroup = DAOGroup(crit_separation=2.5*fwhm)
     star_groups = daogroup(starlist)
+    star_groups = star_groups.group_by('group_id')
 
     plt.imshow(sim_image, origin='lower', interpolation='nearest',
                cmap='Greys_r')
 
-    star_groups = star_groups.group_by('group_id')
     cmap = random_cmap(random_state=12345)
     for i, group in enumerate(star_groups.groups):
         xypos = np.transpose([group['x_0'], group['y_0']])
