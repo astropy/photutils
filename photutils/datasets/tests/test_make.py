@@ -9,10 +9,10 @@ from astropy.table import Table
 import astropy.units as u
 from astropy.modeling.models import Moffat2D
 
-from .. import (make_noise_image, make_poisson_noise, make_gaussian_sources,
-                make_random_gaussians, make_4gaussians_image,
-                make_100gaussians_image,
-                make_random_models, make_model_sources)
+from .. import (make_noise_image, make_poisson_noise,
+                make_gaussian_sources_image, make_random_gaussians_table,
+                make_4gaussians_image, make_100gaussians_image,
+                make_random_models_table, make_model_sources_image)
 
 
 TABLE = Table()
@@ -92,59 +92,60 @@ def test_make_poisson_noise_unit():
     assert_quantity_allclose(result.mean(), 1.*unit, atol=1.*unit)
 
 
-def test_make_gaussian_sources():
+def test_make_gaussian_sources_image():
     shape = (100, 100)
-    image = make_gaussian_sources(shape, TABLE)
+    image = make_gaussian_sources_image(shape, TABLE)
     assert image.shape == shape
     assert_allclose(image.sum(), TABLE['flux'].sum())
 
 
-def test_make_gaussian_sources_amplitude():
+def test_make_gaussian_sources_image_amplitude():
     table = TABLE.copy()
     table.remove_column('flux')
     table['amplitude'] = [1, 2, 3]
     shape = (100, 100)
-    image = make_gaussian_sources(shape, table)
+    image = make_gaussian_sources_image(shape, table)
     assert image.shape == shape
 
 
-def test_make_gaussian_sources_oversample():
+def test_make_gaussian_sources_image_oversample():
     shape = (100, 100)
-    image = make_gaussian_sources(shape, TABLE, oversample=10)
+    image = make_gaussian_sources_image(shape, TABLE, oversample=10)
     assert image.shape == shape
     assert_allclose(image.sum(), TABLE['flux'].sum())
 
 
-def test_make_gaussian_sources_parameters():
+def test_make_gaussian_sources_image_parameters():
     with pytest.raises(ValueError):
         table = TABLE.copy()
         table.remove_column('flux')
         shape = (100, 100)
-        make_gaussian_sources(shape, table)
+        make_gaussian_sources_image(shape, table)
 
 
-def test_make_gaussian_sources_unit():
+def test_make_gaussian_sources_image_unit():
     shape = (100, 100)
     unit = u.electron / u.s
-    image = make_gaussian_sources(shape, TABLE, unit=unit)
+    image = make_gaussian_sources_image(shape, TABLE, unit=unit)
     assert image.shape == shape
     assert image.unit == unit
     assert_quantity_allclose(image.sum(), TABLE['flux'].sum()*unit)
 
 
-def test_make_random_gaussians():
+def test_make_random_gaussians_table():
     n_sources = 5
     bounds = [0, 1]
-    table = make_random_gaussians(n_sources, bounds, bounds, bounds, bounds,
-                                  bounds)
+    table = make_random_gaussians_table(n_sources, bounds, bounds, bounds,
+                                        bounds, bounds)
     assert len(table) == n_sources
 
 
-def test_make_random_gaussians_amplitude():
+def test_make_random_gaussians_table_amplitude():
     n_sources = 5
     bounds = [0, 1]
-    table = make_random_gaussians(n_sources, bounds, bounds, bounds, bounds,
-                                  bounds, amplitude_range=bounds)
+    table = make_random_gaussians_table(n_sources, bounds, bounds, bounds,
+                                        bounds, bounds,
+                                        amplitude_range=bounds)
     assert len(table) == n_sources
 
 
@@ -164,13 +165,13 @@ def test_make_100gaussians_image():
     assert_allclose(image.sum(), data_sum, rtol=1.e-6)
 
 
-def test_make_random_models():
+def test_make_random_models_table():
     model = Moffat2D(amplitude=1)
     param_ranges = {'x_0': (0, 300), 'y_0': (0, 500),
                     'gamma': (1, 3), 'alpha': (1.5, 3)}
-    source_table = make_random_models(model, 10, param_ranges)
+    source_table = make_random_models_table(model, 10, param_ranges)
 
-    # most of the make_model_sources options are exercised in the
-    # make_gaussian_sources tests
-    image = make_model_sources((300, 500), model, source_table)
+    # most of the make_model_sources_image options are exercised in the
+    # make_gaussian_sources_image tests
+    image = make_model_sources_image((300, 500), model, source_table)
     assert image.sum() > 1

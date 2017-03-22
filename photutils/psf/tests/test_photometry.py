@@ -24,8 +24,7 @@ from ..sandbox import DiscretePRF
 from ...background import SigmaClip, MedianBackground, StdBackgroundRMS
 from ...background import MedianBackground, MMMBackground, SigmaClip
 from ...background import StdBackgroundRMS
-from ...datasets import make_gaussian_sources
-from ...datasets import make_noise_image
+from ...datasets import make_gaussian_sources_image, make_noise_image
 from ...detection import DAOStarFinder
 
 
@@ -133,7 +132,7 @@ def test_psf_photometry_niters(sigma_psf, sources):
     img_shape = (32, 32)
     # generate image with read-out noise (Gaussian) and
     # background noise (Poisson)
-    image = (make_gaussian_sources(img_shape, sources) +
+    image = (make_gaussian_sources_image(img_shape, sources) +
              make_noise_image(img_shape, type='poisson', mean=6.,
                               random_state=1) +
              make_noise_image(img_shape, type='gaussian', mean=0.,
@@ -178,7 +177,7 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
     img_shape = (32, 32)
     # generate image with read-out noise (Gaussian) and
     # background noise (Poisson)
-    image = (make_gaussian_sources(img_shape, sources) +
+    image = (make_gaussian_sources_image(img_shape, sources) +
              make_noise_image(img_shape, type='poisson', mean=6.,
                               random_state=1) +
              make_noise_image(img_shape, type='gaussian', mean=0.,
@@ -302,7 +301,7 @@ def test_finder_positions_warning():
     positions['x_0'] = [12.8, 18.2, 25.3]
     positions['y_0'] = [15.7, 16.5, 25.1]
 
-    image = (make_gaussian_sources((32, 32), sources1) +
+    image = (make_gaussian_sources_image((32, 32), sources1) +
              make_noise_image((32, 32), type='poisson', mean=6.,
                               random_state=1))
 
@@ -323,7 +322,7 @@ def test_aperture_radius():
 
     # generate image with read-out noise (Gaussian) and
     # background noise (Poisson)
-    image = (make_gaussian_sources(img_shape, sources1) +
+    image = (make_gaussian_sources_image(img_shape, sources1) +
              make_noise_image(img_shape, type='poisson', mean=6.,
                               random_state=1) +
              make_noise_image(img_shape, type='gaussian', mean=0.,
