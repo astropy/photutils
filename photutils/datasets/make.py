@@ -36,7 +36,7 @@ def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
         The distribution used to generate the random noise.
 
             * ``'gaussian'``: Gaussian distributed noise.
-            * ``'poisson'``: Poisson distributed nose.
+            * ``'poisson'``: Poisson distributed noise.
 
     mean : float
         The mean of the random distribution.  Required for both Gaussian
