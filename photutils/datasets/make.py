@@ -75,15 +75,17 @@ def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
 
         # make a Gaussian and Poisson noise image
         from photutils.datasets import make_noise_image
-        shape = (100, 200)
+        shape = (100, 100)
         image1 = make_noise_image(shape, type='gaussian', mean=0., stddev=5.)
         image2 = make_noise_image(shape, type='poisson', mean=5.)
 
         # plot the images
         import matplotlib.pyplot as plt
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4))
         ax1.imshow(image1, origin='lower', interpolation='nearest')
+        ax1.set_title('Gaussian noise ($\mu=0$, $\sigma=5.$)')
         ax2.imshow(image2, origin='lower', interpolation='nearest')
+        ax2.set_title('Poisson noise ($\mu=5$)')
     """
 
     if mean is None:
