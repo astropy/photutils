@@ -157,12 +157,10 @@ as follows:
 
     >>> # create an IterativelySubtractedPSFPhotometry object
     >>> from photutils.psf import IterativelySubtractedPSFPhotometry
-    >>> my_photometry = IterativelySubtractedPSFPhotometry(finder=my_finder,
-    ...                                                    group_maker=my_group_maker,
-    ...                                                    bkg_estimator=my_bkg_estimator,
-    ...                                                    psf_model=my_psf_model,
-    ...                                                    fitter=my_fitter, niters=3,
-    ...                                                    fitshape=(7,7))
+    >>> my_photometry = IterativelySubtractedPSFPhotometry(
+    ...     finder=my_finder, group_maker=my_group_maker,
+    ...     bkg_estimator=my_bkg_estimator, psf_model=my_psf_model,
+    ...     fitter=my_fitter, niters=3, fitshape=(7,7))
     >>> # get photometry results
     >>> photometry_results = my_photometry(image=my_image)
     >>> # get residual image
@@ -187,8 +185,9 @@ First let's create an image with four overlapping stars::
 
     >>> import numpy as np
     >>> from astropy.table import Table
-    >>> from photutils.datasets import make_random_gaussians, make_noise_image
-    >>> from photutils.datasets import make_gaussian_sources
+    >>> from photutils.datasets import (make_random_gaussians_table,
+    ...                                 make_noise_image,
+    ...                                 make_gaussian_sources_image)
     >>> sigma_psf = 2.0
     >>> sources = Table()
     >>> sources['flux'] = [700, 800, 700, 800]
@@ -199,7 +198,7 @@ First let's create an image with four overlapping stars::
     >>> sources['theta'] = [0, 0, 0, 0]
     >>> sources['id'] = [1, 2, 3, 4]
     >>> tshape = (32, 32)
-    >>> image = (make_gaussian_sources(tshape, sources) +
+    >>> image = (make_gaussian_sources_image(tshape, sources) +
     ...          make_noise_image(tshape, type='poisson', mean=6.,
     ...                           random_state=1) +
     ...          make_noise_image(tshape, type='gaussian', mean=0.,
@@ -219,7 +218,9 @@ First let's create an image with four overlapping stars::
 
     import numpy as np
     from astropy.table import Table
-    from photutils.datasets import make_random_gaussians, make_noise_image, make_gaussian_sources
+    from photutils.datasets import (make_random_gaussians_table,
+                                    make_noise_image,
+                                    make_gaussian_sources_image)
 
     sigma_psf = 2.0
     sources = Table()
@@ -231,7 +232,7 @@ First let's create an image with four overlapping stars::
     sources['theta'] = [0, 0, 0, 0]
     sources['id'] = [1, 2, 3, 4]
     tshape = (32, 32)
-    image = (make_gaussian_sources(tshape, sources) +
+    image = (make_gaussian_sources_image(tshape, sources) +
              make_noise_image(tshape, type='poisson', mean=6.,
                               random_state=1) +
              make_noise_image(tshape, type='gaussian', mean=0.,
@@ -308,7 +309,9 @@ Now, let's compare the simulated and the residual images:
 .. plot::
 
     import numpy as np
-    from photutils.datasets import make_random_gaussians, make_noise_image, make_gaussian_sources
+    from photutils.datasets import (make_random_gaussians_table,
+                                    make_noise_image,
+                                    make_gaussian_sources_image)
     from astropy.table import Table
 
     sigma_psf = 2.0
@@ -321,7 +324,7 @@ Now, let's compare the simulated and the residual images:
     sources['theta'] = [0, 0, 0, 0]
     sources['id'] = [1, 2, 3, 4]
     tshape = (32, 32)
-    image = (make_gaussian_sources(tshape, sources) +
+    image = (make_gaussian_sources_image(tshape, sources) +
              make_noise_image(tshape, type='poisson', mean=6.,
                               random_state=1) +
              make_noise_image(tshape, type='gaussian', mean=0.,
@@ -415,7 +418,9 @@ Consider the previous example after the line
 .. plot::
 
     import numpy as np
-    from photutils.datasets import make_random_gaussians, make_noise_image, make_gaussian_sources
+    from photutils.datasets import (make_random_gaussians_table,
+                                    make_noise_image,
+                                    make_gaussian_sources_image)
     from astropy.table import Table
 
     sigma_psf = 2.0
@@ -428,7 +433,7 @@ Consider the previous example after the line
     sources['theta'] = [0, 0, 0, 0]
     sources['id'] = [1, 2, 3, 4]
     tshape = (32, 32)
-    image = (make_gaussian_sources(tshape, sources) +
+    image = (make_gaussian_sources_image(tshape, sources) +
              make_noise_image(tshape, type='poisson', mean=6.,
                               random_state=1) +
              make_noise_image(tshape, type='gaussian', mean=0.,
@@ -526,9 +531,11 @@ star as well. Also, note that both of the stars have ``sigma=2.0``.
     import numpy as np
     import matplotlib.pyplot as plt
     from matplotlib.colors import LogNorm
-    from photutils.datasets import make_random_gaussians, make_noise_image
-    from photutils.datasets import make_gaussian_sources
-    from photutils.psf import IterativelySubtractedPSFPhotometry, BasicPSFPhotometry
+    from photutils.datasets import (make_random_gaussians_table,
+                                    make_noise_image,
+                                    make_gaussian_sources_image)
+    from photutils.psf import (IterativelySubtractedPSFPhotometry,
+                               BasicPSFPhotometry)
     from photutils import MMMBackground
     from photutils.psf import IntegratedGaussianPRF, DAOGroup
     from photutils.detection import DAOStarFinder
@@ -544,7 +551,7 @@ star as well. Also, note that both of the stars have ``sigma=2.0``.
     sources['y_stddev'] = sources['x_stddev']
     sources['theta'] = [0] * 2
     tshape = (32, 32)
-    image = (make_gaussian_sources(tshape, sources) +
+    image = (make_gaussian_sources_image(tshape, sources) +
              make_noise_image(tshape, type='poisson', mean=6.,
                               random_state=1) +
              make_noise_image(tshape, type='gaussian', mean=0.,
@@ -599,10 +606,12 @@ Let's take a look at the residual image::
 
 .. plot::
 
-    from photutils.datasets import make_random_gaussians, make_noise_image
-    from photutils.datasets import make_gaussian_sources
+    from photutils.datasets import (make_random_gaussians_table,
+                                    make_noise_image,
+                                    make_gaussian_sources_image)
     import matplotlib.pyplot as plt
-    from photutils.psf import IterativelySubtractedPSFPhotometry, BasicPSFPhotometry
+    from photutils.psf import (IterativelySubtractedPSFPhotometry,
+                               BasicPSFPhotometry)
     from astropy.stats import gaussian_sigma_to_fwhm
     from astropy.table import Table
     from photutils import MMMBackground
@@ -619,7 +628,7 @@ Let's take a look at the residual image::
     sources['y_stddev'] = sources['x_stddev']
     sources['theta'] = [0] * 2
     tshape = (32, 32)
-    image = (make_gaussian_sources(tshape, sources) +
+    image = (make_gaussian_sources_image(tshape, sources) +
              make_noise_image(tshape, type='poisson', mean=6.,
                               random_state=1) +
              make_noise_image(tshape, type='gaussian', mean=0.,
@@ -633,9 +642,9 @@ Let's take a look at the residual image::
     fitter = LevMarLSQFitter()
     psf_model.sigma.fixed = False
 
-    itr_phot_obj = IterativelySubtractedPSFPhotometry(finder=iraffind, group_maker=daogroup,
-                                        bkg_estimator=mmm_bkg, psf_model=psf_model,
-                                        fitter=fitter, fitshape=(11, 11), niters=2)
+    itr_phot_obj = IterativelySubtractedPSFPhotometry(
+        finder=iraffind, group_maker=daogroup, bkg_estimator=mmm_bkg,
+        psf_model=psf_model, fitter=fitter, fitshape=(11, 11), niters=2)
 
     phot_results_itr = itr_phot_obj(image)
     plt.imshow(itr_phot_obj.get_residual_image(), cmap='viridis', aspect=1,

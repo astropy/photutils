@@ -33,8 +33,8 @@ the :class:`~photutils.psf.DAOGroup` class. Let's take a look at a
 simple example.
 
 First, let's make some Gaussian sources using
-`~photutils.datasets.make_random_gaussians` and
-`~photutils.datasets.make_gaussian_sources`. The former will return a
+`~photutils.datasets.make_random_gaussians_table` and
+`~photutils.datasets.make_gaussian_sources_image`. The former will return a
 `~astropy.table.Table` containing parameters for 2D Gaussian sources and the
 latter will make an actual image using that table.
 
@@ -42,7 +42,8 @@ latter will make an actual image using that table.
     :include-source:
 
     import numpy as np
-    from photutils.datasets import make_gaussian_sources, make_random_gaussians
+    from photutils.datasets import make_random_gaussians_table
+    from photutils.datasets import make_gaussian_sources_image
     import matplotlib.pyplot as plt
 
     n_sources = 350
@@ -57,8 +58,12 @@ latter will make an actual image using that table.
                                      [sigma_psf, sigma_psf],
                                      [sigma_psf, sigma_psf], random_state=1234)
 
+    starlist = make_random_gaussians_table(n_sources, [min_flux, max_flux],
+        [min_xmean, max_xmean], [min_ymean, max_ymean],
+        [sigma_psf, sigma_psf], [sigma_psf, sigma_psf], random_state=1234)
     shape = (256, 256)
-    sim_image = make_gaussian_sources(shape, starlist)
+
+    sim_image = make_gaussian_sources_image(shape, starlist)
 
     plt.imshow(sim_image, origin='lower', interpolation='nearest',
                cmap='viridis')
@@ -83,6 +88,34 @@ when we created the stars as 2D Gaussians.  In general one will need
 to measure the FWHM of the stellar profiles.
 
 .. doctest-skip::
+    import numpy as np
+    from photutils.datasets import make_random_gaussians_table
+    from photutils.datasets import make_gaussian_sources_image
+    import matplotlib.pyplot as plt
+
+    n_sources = 350
+    min_flux = 500
+    max_flux = 5000
+    min_xmean = min_ymean = 6
+    max_xmean = max_ymean = 250
+    sigma_psf = 2.0
+    starlist = make_random_gaussians_table(n_sources, [min_flux, max_flux],
+                   [min_xmean, max_xmean], [min_ymean, max_ymean],
+                   [sigma_psf, sigma_psf], [sigma_psf, sigma_psf],
+                   random_state=1234)
+
+    shape = (256, 256)
+    sim_image = make_gaussian_sources_image(shape, starlist)
+    plt.imshow(sim_image, origin='lower', interpolation='nearest',
+               cmap='viridis')
+    from photutils import CircularAperture
+    from astropy.stats import gaussian_sigma_to_fwhm
+    circ_aperture = CircularAperture((starlist['x_mean'], starlist['y_mean']),
+                                     r=sigma_psf*gaussian_sigma_to_fwhm)
+    plt.imshow(sim_image, origin='lower', interpolation='nearest',
+               cmap='viridis')
+    circ_aperture.plot(lw=1.5, alpha=0.5)
+    plt.show()
 
     >>> from photutils.psf.groupstars import DAOGroup
     >>> fwhm = sigma_psf * gaussian_sigma_to_fwhm
@@ -93,6 +126,11 @@ calling function that receives as input a table of stars (e.g.
 ``starlist``):
 
 .. doctest-skip::
+
+    from photutils.psf.groupstars import DAOGroup
+
+    fwhm = sigma_psf*gaussian_sigma_to_fwhm
+    daogroup = DAOGroup(crit_separation=1.5*fwhm)
 
     >>> star_groups = daogroup(starlist)
 
@@ -147,7 +185,8 @@ in the same group have the same aperture color:
 .. plot::
 
     import numpy as np
-    from photutils.datasets import make_gaussian_sources, make_random_gaussians
+    from photutils.datasets import make_random_gaussians_table
+    from photutils.datasets import make_gaussian_sources_image
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
     rcParams['image.aspect'] = 1  # to get images with square pixels
