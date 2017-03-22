@@ -15,10 +15,11 @@ import astropy.units as u
 from ..utils import check_random_state
 
 
-__all__ = ['make_noise_image', 'make_poisson_noise', 'make_gaussian_sources',
-           'make_random_gaussians', 'make_4gaussians_image',
-           'make_100gaussians_image', 'make_random_models',
-           'make_model_sources']
+__all__ = ['make_noise_image', 'make_poisson_noise',
+           'make_gaussian_sources_image',
+           'make_random_gaussians_table', 'make_4gaussians_image',
+           'make_100gaussians_image', 'make_random_models_table',
+           'make_model_sources_image']
 
 
 def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
@@ -64,7 +65,7 @@ def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
 
     See Also
     --------
-    make_poisson_noise, make_gaussian_sources, make_random_gaussians
+    make_poisson_noise, make_gaussian_sources_image, make_random_gaussians_table
 
     Examples
     --------
@@ -131,7 +132,7 @@ def make_poisson_noise(image, random_state=None):
 
     See Also
     --------
-    make_noise_image, make_gaussian_sources, make_random_gaussians
+    make_noise_image, make_gaussian_sources_image, make_random_gaussians_table
 
     Examples
     --------
@@ -151,11 +152,11 @@ def make_poisson_noise(image, random_state=None):
 
         # make an image of the sources and add a background level,
         # then make the Poisson noise image.
-        from photutils.datasets import make_gaussian_sources
+        from photutils.datasets import make_gaussian_sources_image
         from photutils.datasets import make_poisson_noise
         shape = (100, 200)
         bkgrd = 10.
-        image1 = make_gaussian_sources(shape, table) + bkgrd
+        image1 = make_gaussian_sources_image(shape, table) + bkgrd
         image2 = make_poisson_noise(image1, random_state=12345)
 
         # plot the images
@@ -172,8 +173,9 @@ def make_poisson_noise(image, random_state=None):
         return prng.poisson(image)
 
 
-def make_gaussian_sources(image_shape, source_table, oversample=1, unit=None,
-                          hdu=False, wcs=False, wcsheader=None):
+def make_gaussian_sources_image(image_shape, source_table, oversample=1,
+                                unit=None, hdu=False, wcs=False,
+                                wcsheader=None):
     """
     Make an image containing 2D Gaussian sources.
 
@@ -236,7 +238,7 @@ def make_gaussian_sources(image_shape, source_table, oversample=1, unit=None,
 
     See Also
     --------
-    make_random_gaussians, make_noise_image, make_poisson_noise
+    make_random_gaussians_table, make_noise_image, make_poisson_noise
 
     Examples
     --------
@@ -256,10 +258,10 @@ def make_gaussian_sources(image_shape, source_table, oversample=1, unit=None,
 
         # make an image of the sources without noise, with Gaussian
         # noise, and with Poisson noise
-        from photutils.datasets import make_gaussian_sources
+        from photutils.datasets import make_gaussian_sources_image
         from photutils.datasets import make_noise_image
         shape = (100, 200)
-        image1 = make_gaussian_sources(shape, table)
+        image1 = make_gaussian_sources_image(shape, table)
         image2 = image1 + make_noise_image(shape, type='gaussian', mean=5.,
                                            stddev=5.)
         image3 = image1 + make_noise_image(shape, type='poisson', mean=5.)
@@ -284,12 +286,12 @@ def make_gaussian_sources(image_shape, source_table, oversample=1, unit=None,
                          'the input source_table')
 
     model = Gaussian2D(x_stddev=1, y_stddev=1)
-    return make_model_sources(image_shape, model, source_table, oversample,
-                              unit, hdu, wcs, wcsheader)
+    return make_model_sources_image(image_shape, model, source_table,
+                                    oversample, unit, hdu, wcs, wcsheader)
 
 
-def make_model_sources(image_shape, model, source_table, oversample=1,
-                       unit=None, hdu=False, wcs=False, wcsheader=None):
+def make_model_sources_image(image_shape, model, source_table, oversample=1,
+                             unit=None, hdu=False, wcs=False, wcsheader=None):
     """
     Make an image containing sources generated from a user-specified flux model.
 
@@ -402,9 +404,9 @@ def make_model_sources(image_shape, model, source_table, oversample=1,
     return image
 
 
-def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
-                          xstddev_range, ystddev_range, amplitude_range=None,
-                          random_state=None):
+def make_random_gaussians_table(n_sources, flux_range, xmean_range,
+                                ymean_range, xstddev_range, ystddev_range,
+                                amplitude_range=None, random_state=None):
     """
     Make a `~astropy.table.Table` containing parameters for randomly
     generated 2D Gaussian sources.
@@ -413,8 +415,8 @@ def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
     parameters are defined by the column names.  The parameters are
     drawn from a uniform distribution over the specified input bounds.
 
-    The output table can be input into `make_gaussian_sources` to create
-    an image containing the 2D Gaussian sources.
+    The output table can be input into `make_gaussian_sources_image` to
+    create an image containing the 2D Gaussian sources.
 
     Parameters
     ----------
@@ -466,7 +468,7 @@ def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
 
     See Also
     --------
-    make_gaussian_sources, make_noise_image, make_poisson_noise
+    make_gaussian_sources_image, make_noise_image, make_poisson_noise
 
     Examples
     --------
@@ -475,23 +477,24 @@ def make_random_gaussians(n_sources, flux_range, xmean_range, ymean_range,
         :include-source:
 
         # create the random sources
-        from photutils.datasets import make_random_gaussians
+        from photutils.datasets import make_random_gaussians_table
         n_sources = 100
         flux_range = [500, 1000]
         xmean_range = [0, 500]
         ymean_range = [0, 300]
         xstddev_range = [1, 5]
         ystddev_range = [1, 5]
-        table = make_random_gaussians(n_sources, flux_range, xmean_range,
-                                      ymean_range, xstddev_range,
-                                      ystddev_range, random_state=12345)
+        table = make_random_gaussians_table(n_sources, flux_range,
+                                            xmean_range, ymean_range,
+                                            xstddev_range, ystddev_range,
+                                            random_state=12345)
 
         # make an image of the random sources without noise, with
         # Gaussian noise, and with Poisson noise
-        from photutils.datasets import make_gaussian_sources
+        from photutils.datasets import make_gaussian_sources_image
         from photutils.datasets import make_noise_image
         shape = (300, 500)
-        image1 = make_gaussian_sources(shape, table)
+        image1 = make_gaussian_sources_image(shape, table)
         image2 = image1 + make_noise_image(shape, type='gaussian', mean=5.,
                                            stddev=2.)
         image3 = image1 + make_noise_image(shape, type='poisson', mean=5.)
@@ -574,8 +577,8 @@ def make_4gaussians_image(hdu=False, wcs=False, wcsheader=None):
     table['y_stddev'] = [2.6, 2.5, 3., 4.7]
     table['theta'] = np.array([145., 20., 0., 60.]) * np.pi / 180.
     shape = (100, 200)
-    sources = make_gaussian_sources(shape, table, hdu=hdu,
-                                    wcs=wcs, wcsheader=wcsheader)
+    sources = make_gaussian_sources_image(shape, table, hdu=hdu, wcs=wcs,
+                                          wcsheader=wcsheader)
     noise = make_noise_image(shape, type='gaussian', mean=5.,
                              stddev=5., random_state=12345)
 
@@ -620,17 +623,18 @@ def make_100gaussians_image():
     ymean_range = [0, 300]
     xstddev_range = [1, 5]
     ystddev_range = [1, 5]
-    table = make_random_gaussians(n_sources, flux_range, xmean_range,
-                                  ymean_range, xstddev_range,
-                                  ystddev_range, random_state=12345)
+    table = make_random_gaussians_table(n_sources, flux_range, xmean_range,
+                                        ymean_range, xstddev_range,
+                                        ystddev_range, random_state=12345)
     shape = (300, 500)
-    image1 = make_gaussian_sources(shape, table)
+    image1 = make_gaussian_sources_image(shape, table)
     image2 = image1 + make_noise_image(shape, type='gaussian', mean=5.,
                                        stddev=2., random_state=12345)
     return image2
 
 
-def make_random_models(model, n_sources, param_ranges=None, random_state=None):
+def make_random_models_table(model, n_sources, param_ranges=None,
+                             random_state=None):
     """
     Make an `~astropy.table.Table` and the actual image for a simulated set of
     sources encoded as a PSF or other astropy model.
