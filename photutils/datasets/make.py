@@ -10,7 +10,6 @@ import numpy as np
 from astropy.table import Table
 from astropy.modeling.models import Gaussian2D
 from astropy.convolution import discretize_model
-import astropy.units as u
 
 from ..utils import check_random_state
 
@@ -43,7 +42,7 @@ def apply_poisson_noise(image, random_state=None):
 
     Returns
     -------
-    image : `~numpy.ndarray` or `~astropy.units.Quantity`
+    image : `~numpy.ndarray`
         The 2D image after applying Poisson noise.
 
     See Also
@@ -83,14 +82,11 @@ def apply_poisson_noise(image, random_state=None):
     """
 
     prng = check_random_state(random_state)
-    if isinstance(image, u.Quantity):
-        return prng.poisson(image.value) * image.unit
-    else:
-        return prng.poisson(image)
+    return prng.poisson(image)
 
 
 def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
-                     unit=None, random_state=None):
+                     random_state=None):
     """
     Make a noise image containing Gaussian or Poisson noise.
 
@@ -114,11 +110,6 @@ def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
         output image.  Required for Gaussian noise and ignored for
         Poisson noise (the variance of the Poisson distribution is equal
         to its mean).
-
-    unit : `~astropy.units.UnitBase` instance, str
-        An object that represents the unit desired for the output image.
-        Must be an `~astropy.units.UnitBase` object or a string parseable
-        by the `~astropy.units` package.
 
     random_state : int or `~numpy.random.RandomState`, optional
         Pseudo-random number generator state used for random sampling.
@@ -168,15 +159,10 @@ def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
         raise ValueError('Invalid type: {0}. Use one of '
                          '{"gaussian", "poisson"}.'.format(type))
 
-    if unit is not None:
-        image = u.Quantity(image, unit=unit)
-
     return image
 
 
-def make_gaussian_sources_image(image_shape, source_table, oversample=1,
-                                unit=None, hdu=False, wcs=False,
-                                wcsheader=None):
+def make_gaussian_sources_image(image_shape, source_table, oversample=1):
     """
     Make an image containing 2D Gaussian sources.
 
@@ -210,32 +196,10 @@ def make_gaussian_sources_image(image_shape, source_table, oversample=1,
         over an oversampled grid.  The pixels will be oversampled by the
         ``oversample`` factor.
 
-    unit : `~astropy.units.UnitBase` instance, str, optional
-        An object that represents the unit desired for the output image.
-        Must be an `~astropy.units.UnitBase` object or a string
-        parseable by the `~astropy.units` package.
-
-    hdu : bool, optional
-        If `True` returns ``image`` as an `~astropy.io.fits.ImageHDU`
-        object.  To include WCS information in the header, use the
-        ``wcs`` and ``wcsheader`` inputs.  Otherwise the header will be
-        minimal.  Default is `False`.
-
-    wcs : bool, optional
-        If `True` and ``hdu=True``, then a simple WCS will be included
-        in the returned `~astropy.io.fits.ImageHDU` header.  Default is
-        `False`.
-
-    wcsheader : dict or `None`, optional
-        If ``hdu`` and ``wcs`` are `True`, this dictionary is passed to
-        `~astropy.wcs.WCS` to generate the returned
-        `~astropy.io.fits.ImageHDU` header.
-
     Returns
     -------
-    image : `~numpy.ndarray` or `~astropy.units.Quantity` or `~astropy.io.fits.ImageHDU`
-        Image or `~astropy.io.fits.ImageHDU` containing 2D Gaussian
-        sources.
+    image : `~numpy.ndarray`
+        Image containing 2D Gaussian sources.
 
     See Also
     --------
@@ -274,6 +238,7 @@ def make_gaussian_sources_image(image_shape, source_table, oversample=1,
         ax2.imshow(image2, origin='lower', interpolation='nearest')
         ax3.imshow(image3, origin='lower', interpolation='nearest')
     """
+
     # TODO: change to *fail* if flux/amplitude are both present?
     if 'flux' in source_table.colnames:
         source_table = source_table.copy()
@@ -288,11 +253,10 @@ def make_gaussian_sources_image(image_shape, source_table, oversample=1,
 
     model = Gaussian2D(x_stddev=1, y_stddev=1)
     return make_model_sources_image(image_shape, model, source_table,
-                                    oversample, unit, hdu, wcs, wcsheader)
+                                    oversample)
 
 
-def make_model_sources_image(image_shape, model, source_table, oversample=1,
-                             unit=None, hdu=False, wcs=False, wcsheader=None):
+def make_model_sources_image(image_shape, model, source_table, oversample=1):
     """
     Make an image containing sources generated from a user-specified flux model.
 
@@ -325,33 +289,12 @@ def make_model_sources_image(image_shape, model, source_table, oversample=1,
         over an oversampled grid.  The pixels will be oversampled by the
         ``oversample`` factor.
 
-    unit : `~astropy.units.UnitBase` instance, str, optional
-        An object that represents the unit desired for the output image.
-        Must be an `~astropy.units.UnitBase` object or a string
-        parseable by the `~astropy.units` package.
-
-    hdu : bool, optional
-        If `True` returns ``image`` as an `~astropy.io.fits.ImageHDU`
-        object.  To include WCS information in the header, use the
-        ``wcs`` and ``wcsheader`` inputs.  Otherwise the header will be
-        minimal.  Default is `False`.
-
-    wcs : bool, optional
-        If `True` and ``hdu=True``, then a simple WCS will be included
-        in the returned `~astropy.io.fits.ImageHDU` header.  Default is
-        `False`.
-
-    wcsheader : dict or `None`, optional
-        If ``hdu`` and ``wcs`` are `True`, this dictionary is passed to
-        `~astropy.wcs.WCS` to generate the returned
-        `~astropy.io.fits.ImageHDU` header.
-
     Returns
     -------
-    image : `~numpy.ndarray` or `~astropy.units.Quantity` or `~astropy.io.fits.ImageHDU`
-        Image or `~astropy.io.fits.ImageHDU` containing 2D Gaussian
-        sources.
+    image : `~numpy.ndarray`
+        Image containing model sources.
     """
+
     image = np.zeros(image_shape, dtype=np.float64)
     y, x = np.indices(image_shape)
 
@@ -378,29 +321,6 @@ def make_model_sources_image(image_shape, model, source_table, oversample=1,
     finally:
         for pnm, val in init_params.items():
             setattr(model, paramnm, val)
-
-    if unit is not None:
-        image = u.Quantity(image, unit=unit)
-
-    if wcs and not hdu:
-        raise ValueError("wcs header only works with hdu output, use keyword "
-                         "'hdu=True'")
-
-    if hdu is True:
-        from astropy.io import fits
-        if wcs:
-            from astropy.wcs import WCS
-            if wcsheader is None:
-                # Go with the simplest valid header
-                header = WCS({'CTYPE1': 'RA---TAN',
-                              'CTYPE2': 'DEC--TAN',
-                              'CRPIX1': int(image_shape[1] / 2),
-                              'CRPIX2': int(image_shape[0] / 2)}, ).to_header()
-            else:
-                header = WCS(wcsheader)
-        else:
-            header = None
-        image = fits.ImageHDU(image, header=header)
 
     return image
 
@@ -525,36 +445,17 @@ def make_random_gaussians_table(n_sources, flux_range, xmean_range,
     return sources
 
 
-def make_4gaussians_image(hdu=False, wcs=False, wcsheader=None):
+def make_4gaussians_image():
     """
     Make an example image containing four 2D Gaussians plus Gaussian
     noise.
 
     The background has a mean and standard deviation of 5.
 
-    Parameters
-    ----------
-    hdu : bool, optional
-        If `True` returns ``image`` as an `~astropy.io.fits.ImageHDU`
-        object.  To include WCS information in the header, use the
-        ``wcs`` and ``wcsheader`` inputs.  Otherwise the header will be
-        minimal.  Default is `False`.
-
-    wcs : bool, optional
-        If `True` and ``hdu=True``, then a simple WCS will be included
-        in the returned `~astropy.io.fits.ImageHDU` header.  Default is
-        `False`.
-
-    wcsheader : dict or `None`, optional
-        If ``hdu`` and ``wcs`` are `True`, this dictionary is passed to
-        `~astropy.wcs.WCS` to generate the returned
-        `~astropy.io.fits.ImageHDU` header.
-
     Returns
     -------
-    image : `~numpy.ndarray` or `~astropy.io.fits.ImageHDU`
-        Image or `~astropy.io.fits.ImageHDU` containing Gaussian
-        sources.
+    image : `~numpy.ndarray`
+        Image containing four 2D Gaussian sources.
 
     See Also
     --------
@@ -578,18 +479,11 @@ def make_4gaussians_image(hdu=False, wcs=False, wcsheader=None):
     table['y_stddev'] = [2.6, 2.5, 3., 4.7]
     table['theta'] = np.array([145., 20., 0., 60.]) * np.pi / 180.
     shape = (100, 200)
-    sources = make_gaussian_sources_image(shape, table, hdu=hdu, wcs=wcs,
-                                          wcsheader=wcsheader)
+    sources = make_gaussian_sources_image(shape, table)
     noise = make_noise_image(shape, type='gaussian', mean=5.,
                              stddev=5., random_state=12345)
 
-    if hdu is True:
-        sources.data += noise
-        data = sources
-    else:
-        data = (sources + noise)
-
-    return data
+    return sources + noise
 
 
 def make_100gaussians_image():

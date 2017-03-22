@@ -6,7 +6,6 @@ import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest, assert_quantity_allclose
 from astropy.table import Table
-import astropy.units as u
 from astropy.modeling.models import Moffat2D
 
 from .. import (make_noise_image, apply_poisson_noise,
@@ -56,15 +55,6 @@ def test_make_noise_image_nostddev():
         make_noise_image(shape, 'gaussian', mean=2.)
 
 
-def test_make_noise_image_unit():
-    shape = (100, 100)
-    unit = u.electron / u.s
-    image = make_noise_image(shape, 'gaussian', mean=0., stddev=2., unit=unit)
-    assert image.shape == shape
-    assert image.unit == unit
-    assert_quantity_allclose(image.mean(), 0.*unit, atol=1.*unit)
-
-
 def test_apply_poisson_noise():
     shape = (100, 100)
     data = np.ones(shape)
@@ -111,15 +101,6 @@ def test_make_gaussian_sources_image_parameters():
         table.remove_column('flux')
         shape = (100, 100)
         make_gaussian_sources_image(shape, table)
-
-
-def test_make_gaussian_sources_image_unit():
-    shape = (100, 100)
-    unit = u.electron / u.s
-    image = make_gaussian_sources_image(shape, TABLE, unit=unit)
-    assert image.shape == shape
-    assert image.unit == unit
-    assert_quantity_allclose(image.sum(), TABLE['flux'].sum()*unit)
 
 
 def test_make_random_gaussians_table():
