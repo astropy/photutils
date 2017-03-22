@@ -9,7 +9,7 @@ from astropy.table import Table
 import astropy.units as u
 from astropy.modeling.models import Moffat2D
 
-from .. import (make_noise_image, make_poisson_noise,
+from .. import (make_noise_image, apply_poisson_noise,
                 make_gaussian_sources_image, make_random_gaussians_table,
                 make_4gaussians_image, make_100gaussians_image,
                 make_random_models_table, make_model_sources_image)
@@ -65,31 +65,21 @@ def test_make_noise_image_unit():
     assert_quantity_allclose(image.mean(), 0.*unit, atol=1.*unit)
 
 
-def test_make_poisson_noise():
+def test_apply_poisson_noise():
     shape = (100, 100)
     data = np.ones(shape)
-    result = make_poisson_noise(data)
+    result = apply_poisson_noise(data)
     assert result.shape == shape
     assert_allclose(result.mean(), 1., atol=1.)
 
 
-def test_make_poisson_noise_negative():
+def test_apply_poisson_noise_negative():
     """Test if negative image values raises ValueError."""
 
     with pytest.raises(ValueError):
         shape = (100, 100)
         data = np.zeros(shape) - 1.
-        make_poisson_noise(data)
-
-
-def test_make_poisson_noise_unit():
-    shape = (100, 100)
-    unit = u.electron / u.s
-    data = np.ones(shape) * unit
-    result = make_poisson_noise(data)
-    assert result.shape == shape
-    assert result.unit == unit
-    assert_quantity_allclose(result.mean(), 1.*unit, atol=1.*unit)
+        apply_poisson_noise(data)
 
 
 def test_make_gaussian_sources_image():
