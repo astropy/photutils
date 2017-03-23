@@ -7,9 +7,11 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import numpy as np
-from astropy.table import Table
-from astropy.modeling.models import Gaussian2D
 from astropy.convolution import discretize_model
+from astropy.io import fits
+from astropy.modeling.models import Gaussian2D
+from astropy.table import Table
+from astropy.wcs import WCS
 
 from ..utils import check_random_state
 
@@ -18,7 +20,7 @@ __all__ = ['apply_poisson_noise', 'make_noise_image',
            'make_gaussian_sources_image',
            'make_random_gaussians_table', 'make_4gaussians_image',
            'make_100gaussians_image', 'make_random_models_table',
-           'make_model_sources_image']
+           'make_model_sources_image', 'make_wcs', 'make_imagehdu']
 
 
 def apply_poisson_noise(image, random_state=None):
@@ -571,3 +573,67 @@ def make_random_models_table(model, n_sources, param_ranges=None,
         sources[pnm] = prng.uniform(lower, upper, n_sources)
 
     return sources
+
+
+def make_wcs(shape):
+    """
+    Create a simple celestial WCS object.
+
+    Parameters
+    ----------
+    shape : 2-tuple of int
+        The shape of the 2D array to be used with the output
+        `~astropy.wcs.WCS` object.
+
+    Returns
+    -------
+    wcs : `~astropy.wcs.WCS` object
+        The world coordinate system (WCS) transformation.
+    """
+
+    wcs = WCS(naxis=2)
+    rho = np.pi / 3.
+    scale = 0.1 / 3600.
+    wcs._naxis1 = shape[1]     # nx
+    wcs._naxis2 = shape[0]     # ny
+    wcs.wcs.crpix = [shape[1] / 2, shape[0] / 2]     # 1-indexed (x, y)
+    wcs.wcs.crval = [197.8925, -1.36555556]
+    wcs.wcs.cunit = ['deg', 'deg']
+    wcs.wcs.radesys = 'ICRS'
+    wcs.wcs.cd = [[-scale * np.cos(rho), scale * np.sin(rho)],
+                  [scale * np.sin(rho), scale * np.cos(rho)]]
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+
+    return wcs
+
+
+def make_imagehdu(data, wcs=None):
+    """
+    Create a FITS `~astropy.io.fits.ImageHDU` containing the input 2D
+    image.
+
+    Parameters
+    ----------
+    data : 2D array-like
+        The input 2D data.
+
+    wcs : `~astropy.wcs.WCS`, optional
+        The world coordinate system (WCS) transformation to include in
+        the output FITS header.
+
+    Returns
+    -------
+    image_hdu : `~astropy.io.fits.ImageHDU`
+        The FITS `~astropy.io.fits.ImageHDU`.
+    """
+
+    data = np.asanyarray(data)
+    if data.ndim != 2:
+        raise ValueError('data must be a 2D array')
+
+    if wcs is not None:
+        header = wcs.to_header()
+    else:
+        header = None
+
+    return fits.ImageHDU(data, header=header)
