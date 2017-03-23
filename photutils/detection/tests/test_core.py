@@ -5,10 +5,9 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 from astropy.tests.helper import pytest
-from astropy.wcs import WCS
 
 from ..core import detect_threshold, find_peaks
-from ...datasets import make_4gaussians_image
+from ...datasets import make_4gaussians_image, make_wcs
 
 try:
     import scipy
@@ -198,9 +197,9 @@ class TestFindPeaks(object):
     def test_wcs(self):
         """Test with WCS."""
 
-        hdu = make_4gaussians_image(hdu=True, wcs=True)
-        wcs = WCS(hdu.header)
-        tbl = find_peaks(hdu.data, 100, wcs=wcs, subpixel=True)
+        data = make_4gaussians_image()
+        wcs = make_wcs(data.shape)
+        tbl = find_peaks(data, 100, wcs=wcs, subpixel=True)
         cols = ['icrs_ra_peak', 'icrs_dec_peak', 'icrs_ra_centroid',
                 'icrs_dec_centroid']
         for col in cols:

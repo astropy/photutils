@@ -18,14 +18,14 @@ from astropy.nddata import NDData
 from astropy.table import Table
 from astropy.tests.helper import pytest, remote_data
 import astropy.units as u
-from astropy.wcs import WCS
 from astropy.wcs.utils import pixel_to_skycoord
 
 import astropy
 ASTROPY_LT_13 = LooseVersion(astropy.__version__) < LooseVersion('1.3')
 NUMPY_LT_12 = LooseVersion(np.__version__) < LooseVersion('1.12')
 
-from ...datasets import get_path, make_4gaussians_image
+from ...datasets import (get_path, make_4gaussians_image, make_wcs,
+                         make_imagehdu)
 from ..core import *
 from ..circle import *
 from ..ellipse import *
@@ -397,8 +397,9 @@ def test_wcs_based_photometry_to_catalogue():
 
 
 def test_wcs_based_photometry():
-    hdu = make_4gaussians_image(hdu=True, wcs=True)
-    wcs = WCS(header=hdu.header)
+    data = make_4gaussians_image()
+    wcs = make_wcs(data.shape)
+    hdu = make_imagehdu(data, wcs=wcs)
 
     # hard wired positions in make_4gaussian_image
     pos_orig_pixel = u.Quantity(([160., 25., 150., 90.],
@@ -409,19 +410,19 @@ def test_wcs_based_photometry():
     pos_skycoord_s = pos_skycoord[2]
 
     photometry_skycoord_circ = aperture_photometry(
-        hdu, SkyCircularAperture(pos_skycoord, 3 * u.deg))
+        hdu, SkyCircularAperture(pos_skycoord, 3 * u.arcsec))
     photometry_skycoord_circ_2 = aperture_photometry(
-        hdu, SkyCircularAperture(pos_skycoord, 2 * u.deg))
+        hdu, SkyCircularAperture(pos_skycoord, 2 * u.arcsec))
     photometry_skycoord_circ_s = aperture_photometry(
-        hdu, SkyCircularAperture(pos_skycoord_s, 3 * u.deg))
+        hdu, SkyCircularAperture(pos_skycoord_s, 3 * u.arcsec))
 
     assert_allclose(photometry_skycoord_circ['aperture_sum'][2],
                     photometry_skycoord_circ_s['aperture_sum'])
 
     photometry_skycoord_circ_ann = aperture_photometry(
-        hdu, SkyCircularAnnulus(pos_skycoord, 2 * u.deg, 3 * u.deg))
+        hdu, SkyCircularAnnulus(pos_skycoord, 2 * u.arcsec, 3 * u.arcsec))
     photometry_skycoord_circ_ann_s = aperture_photometry(
-        hdu, SkyCircularAnnulus(pos_skycoord_s, 2 * u.deg, 3 * u.deg))
+        hdu, SkyCircularAnnulus(pos_skycoord_s, 2 * u.arcsec, 3 * u.arcsec))
 
     assert_allclose(photometry_skycoord_circ_ann['aperture_sum'][2],
                     photometry_skycoord_circ_ann_s['aperture_sum'])
@@ -431,20 +432,20 @@ def test_wcs_based_photometry():
                     photometry_skycoord_circ_2['aperture_sum'])
 
     photometry_skycoord_ell = aperture_photometry(
-        hdu, SkyEllipticalAperture(pos_skycoord,
-                                   3 * u.deg, 3.0001 * u.deg, 45 * u.deg))
+        hdu, SkyEllipticalAperture(pos_skycoord, 3 * u.arcsec,
+                                   3.0001 * u.arcsec, 45 * u.arcsec))
     photometry_skycoord_ell_2 = aperture_photometry(
-        hdu, SkyEllipticalAperture(pos_skycoord,
-                                   2 * u.deg, 2.0001 * u.deg, 45 * u.deg))
+        hdu, SkyEllipticalAperture(pos_skycoord, 2 * u.arcsec,
+                                   2.0001 * u.arcsec, 45 * u.arcsec))
     photometry_skycoord_ell_s = aperture_photometry(
-        hdu, SkyEllipticalAperture(pos_skycoord_s,
-                                   3 * u.deg, 3.0001 * u.deg, 45 * u.deg))
+        hdu, SkyEllipticalAperture(pos_skycoord_s, 3 * u.arcsec,
+                                   3.0001 * u.arcsec, 45 * u.arcsec))
     photometry_skycoord_ell_ann = aperture_photometry(
-        hdu, SkyEllipticalAnnulus(pos_skycoord, 2 * u.deg, 3 * u.deg,
-                                  3.0001 * u.deg, 45 * u.deg))
+        hdu, SkyEllipticalAnnulus(pos_skycoord, 2 * u.arcsec, 3 * u.arcsec,
+                                  3.0001 * u.arcsec, 45 * u.arcsec))
     photometry_skycoord_ell_ann_s = aperture_photometry(
-        hdu, SkyEllipticalAnnulus(pos_skycoord_s, 2 * u.deg, 3 * u.deg,
-                                  3.0001 * u.deg, 45 * u.deg))
+        hdu, SkyEllipticalAnnulus(pos_skycoord_s, 2 * u.arcsec, 3 * u.arcsec,
+                                  3.0001 * u.arcsec, 45 * u.arcsec))
 
     assert_allclose(photometry_skycoord_ell['aperture_sum'][2],
                     photometry_skycoord_ell_s['aperture_sum'])
@@ -461,26 +462,26 @@ def test_wcs_based_photometry():
 
     photometry_skycoord_rec = aperture_photometry(
         hdu, SkyRectangularAperture(pos_skycoord,
-                                    6 * u.deg, 6 * u.deg,
-                                    0 * u.deg),
+                                    6 * u.arcsec, 6 * u.arcsec,
+                                    0 * u.arcsec),
         method='subpixel', subpixels=20)
     photometry_skycoord_rec_4 = aperture_photometry(
         hdu, SkyRectangularAperture(pos_skycoord,
-                                    4 * u.deg, 4 * u.deg,
-                                    0 * u.deg),
+                                    4 * u.arcsec, 4 * u.arcsec,
+                                    0 * u.arcsec),
         method='subpixel', subpixels=20)
     photometry_skycoord_rec_s = aperture_photometry(
         hdu, SkyRectangularAperture(pos_skycoord_s,
-                                    6 * u.deg, 6 * u.deg,
-                                    0 * u.deg),
+                                    6 * u.arcsec, 6 * u.arcsec,
+                                    0 * u.arcsec),
         method='subpixel', subpixels=20)
     photometry_skycoord_rec_ann = aperture_photometry(
-        hdu, SkyRectangularAnnulus(pos_skycoord, 4 * u.deg, 6 * u.deg,
-                                   6 * u.deg, 0 * u.deg),
+        hdu, SkyRectangularAnnulus(pos_skycoord, 4 * u.arcsec, 6 * u.arcsec,
+                                   6 * u.arcsec, 0 * u.arcsec),
         method='subpixel', subpixels=20)
     photometry_skycoord_rec_ann_s = aperture_photometry(
-        hdu, SkyRectangularAnnulus(pos_skycoord_s, 4 * u.deg, 6 * u.deg,
-                                   6 * u.deg, 0 * u.deg),
+        hdu, SkyRectangularAnnulus(pos_skycoord_s, 4 * u.arcsec, 6 * u.arcsec,
+                                   6 * u.arcsec, 0 * u.arcsec),
         method='subpixel', subpixels=20)
 
     assert_allclose(photometry_skycoord_rec['aperture_sum'][2],
@@ -829,8 +830,8 @@ def test_elliptical_bbox():
 
 
 def test_to_sky_pixel():
-    hdu = make_4gaussians_image(hdu=True, wcs=True)
-    wcs = WCS(header=hdu.header)
+    data = make_4gaussians_image()
+    wcs = make_wcs(data.shape)
 
     ap = CircularAperture(((12.3, 15.7), (48.19, 98.14)), r=3.14)
     ap2 = ap.to_sky(wcs).to_pixel(wcs)
