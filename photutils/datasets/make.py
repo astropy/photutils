@@ -447,12 +447,21 @@ def make_random_gaussians_table(n_sources, flux_range, xmean_range,
     return sources
 
 
-def make_4gaussians_image():
+def make_4gaussians_image(noise=True):
     """
-    Make an example image containing four 2D Gaussians plus Gaussian
-    noise.
+    Make an example image containing four 2D Gaussians plus a constant
+    background.
 
-    The background has a mean and standard deviation of 5.
+    The background has a mean of 5.
+
+    If ``noise`` is `True`, then Gaussian noise with a standard
+    deviation of 5 is added to the output image.
+
+    Parameters
+    ----------
+    noise : bool, optional
+        Whether to include noise in the output image (default is
+        `True`).
 
     Returns
     -------
@@ -481,24 +490,35 @@ def make_4gaussians_image():
     table['y_stddev'] = [2.6, 2.5, 3., 4.7]
     table['theta'] = np.array([145., 20., 0., 60.]) * np.pi / 180.
     shape = (100, 200)
-    sources = make_gaussian_sources_image(shape, table)
-    noise = make_noise_image(shape, type='gaussian', mean=5.,
-                             stddev=5., random_state=12345)
+    data = make_gaussian_sources_image(shape, table) + 5.
 
-    return sources + noise
+    if noise:
+        data += make_noise_image(shape, type='gaussian', mean=0.,
+                                 stddev=5., random_state=12345)
+
+    return data
 
 
-def make_100gaussians_image():
+def make_100gaussians_image(noise=True):
     """
-    Make an example image containing 100 2D Gaussians plus Gaussian
-    noise.
+    Make an example image containing 100 2D Gaussians plus a constant
+    background.
 
-    The background has a mean of 5 and a standard deviation of 2.
+    The background has a mean of 5.
+
+    If ``noise`` is `True`, then Gaussian noise with a standard
+    deviation of 2 is added to the output image.
+
+    Parameters
+    ----------
+    noise : bool, optional
+        Whether to include noise in the output image (default is
+        `True`).
 
     Returns
     -------
     image : `~numpy.ndarray`
-        Image containing Gaussian sources.
+        Image containing 100 2D Gaussian sources.
 
     See Also
     --------
@@ -524,10 +544,13 @@ def make_100gaussians_image():
                                         ymean_range, xstddev_range,
                                         ystddev_range, random_state=12345)
     shape = (300, 500)
-    image1 = make_gaussian_sources_image(shape, table)
-    image2 = image1 + make_noise_image(shape, type='gaussian', mean=5.,
-                                       stddev=2., random_state=12345)
-    return image2
+    data = make_gaussian_sources_image(shape, table) + 5.
+
+    if noise:
+        data += make_noise_image(shape, type='gaussian', mean=0.,
+                                 stddev=2., random_state=12345)
+
+    return data
 
 
 def make_random_models_table(model, n_sources, param_ranges=None,
