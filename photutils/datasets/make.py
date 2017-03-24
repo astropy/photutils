@@ -17,10 +17,10 @@ from ..utils import check_random_state
 
 
 __all__ = ['apply_poisson_noise', 'make_noise_image',
-           'make_gaussian_sources_image',
-           'make_random_gaussians_table', 'make_4gaussians_image',
-           'make_100gaussians_image', 'make_random_models_table',
-           'make_model_sources_image', 'make_wcs', 'make_imagehdu']
+           'make_random_models_table', 'make_random_gaussians_table',
+           'make_model_sources_image', 'make_gaussian_sources_image',
+           'make_4gaussians_image', 'make_100gaussians_image',
+           'make_wcs', 'make_imagehdu']
 
 
 def apply_poisson_noise(data, random_state=None):
@@ -79,15 +79,15 @@ def apply_poisson_noise(data, random_state=None):
     return prng.poisson(data)
 
 
-def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
+def make_noise_image(shape, type='gaussian', mean=None, stddev=None,
                      random_state=None):
     """
     Make a noise image containing Gaussian or Poisson noise.
 
     Parameters
     ----------
-    image_shape : 2-tuple of int
-        Shape of the output 2D image.
+    shape : 2-tuple of int
+        The shape of the output 2D image.
 
     type : {'gaussian', 'poisson'}
         The distribution used to generate the random noise:
@@ -148,9 +148,9 @@ def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
     if type == 'gaussian':
         if stddev is None:
             raise ValueError('"stddev" must be input for Gaussian noise')
-        image = prng.normal(loc=mean, scale=stddev, size=image_shape)
+        image = prng.normal(loc=mean, scale=stddev, size=shape)
     elif type == 'poisson':
-        image = prng.poisson(lam=mean, size=image_shape)
+        image = prng.poisson(lam=mean, size=shape)
     else:
         raise ValueError('Invalid type: {0}. Use one of '
                          '{"gaussian", "poisson"}.'.format(type))
@@ -184,7 +184,7 @@ def make_random_models_table(model, n_sources, param_ranges,
         as a `dict` mapping the parameter name to its ``(lower, upper)``
         bounds.  The dictionary keys must be valid ``model`` parameter
         names.  Model parameters not defined in ``param_ranges`` will be
-        set to the model default value.
+        set to the ``model`` default value.
 
     random_state : int or `~numpy.random.RandomState`, optional
         Pseudo-random number generator state used for random sampling.
@@ -198,6 +198,10 @@ def make_random_models_table(model, n_sources, param_ranges,
         row of the table corresponds to a source whose model parameters
         are defined by the column names.  The column names will be the
         keys of the dictionary ``param_ranges``.
+
+    See Also
+    --------
+    make_random_gaussians_table, make_model_sources_image
 
     Examples
     --------
@@ -262,7 +266,7 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
         or ``'flux'``.  ``'flux'`` can be specified as a parameter
         instead of the ``'amplitude'`` but it will be ignored if
         ``'amplitude'`` is input.  Model parameters not defined in
-        ``param_ranges`` will be set to the model default value.
+        ``param_ranges`` will be set to the default value.
 
     random_state : int or `~numpy.random.RandomState`, optional
         Pseudo-random number generator state used for random sampling.
@@ -278,7 +282,7 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
 
     See Also
     --------
-    make_gaussian_sources_image
+    make_random_models_table, make_gaussian_sources_image
 
     Examples
     --------
@@ -324,8 +328,8 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
     283.862514541 196.070961256 2.19481485508 ... 1.38118426404 14.5943081334
     """
 
-    sources = make_random_models_table(Gaussian2D(), n_sources,
-                                       param_ranges=param_ranges,
+    model = Gaussian2D()
+    sources = make_random_models_table(model, n_sources, param_ranges,
                                        random_state=random_state)
 
     # convert Gaussian2D flux to amplitude
@@ -337,45 +341,116 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
         if 'x_stddev' in sources.colnames:
             xstd = sources['x_stddev']
         else:
-            xstd = 1.0    # default
+            xstd = model.x_stddev.value    # default
         if 'y_stddev' in sources.colnames:
             ystd = sources['y_stddev']
         else:
-            ystd = 1.0    # default
+            ystd = model.y_stddev.value    # default
 
         sources['amplitude'] = flux / (2. * np.pi * xstd * ystd)
 
     return sources
 
 
-def make_gaussian_sources_image(image_shape, source_table, oversample=1):
+def make_model_sources_image(shape, model, source_table, oversample=1):
+    """
+    Make an image containing sources generated from a user-specified
+    model.
+
+    Parameters
+    ----------
+    shape : 2-tuple of int
+        The shape of the output 2D image.
+
+    model : 2D astropy.modeling.models object
+        The model to be used for rendering the sources.
+
+    source_table : `~astropy.table.Table`
+        Table of parameters for the sources.  Each row of the table
+        corresponds to a source whose model parameters are defined by
+        the column names, which must match the model parameter names.
+        Column names that do not match model parameters will be ignored.
+        Model parameters not defined in the table will be set to the
+        ``model`` default value.
+
+    oversample : float, optional
+        The sampling factor used to discretize the models on a pixel
+        grid.  If the value is 1.0 (the default), then the models will
+        be discretized by taking the value at the center of the pixel
+        bin.  Note that this method will not preserve the total flux of
+        very small sources.  Otherwise, the models will be discretized
+        by taking the average over an oversampled grid.  The pixels will
+        be oversampled by the ``oversample`` factor.
+
+    Returns
+    -------
+    image : 2D `~numpy.ndarray`
+        Image containing model sources.
+
+    See Also
+    --------
+    make_random_models_table, make_gaussian_sources_image
+    """
+
+    image = np.zeros(shape, dtype=np.float64)
+    y, x = np.indices(shape)
+
+    params_to_set = []
+    for param in source_table.colnames:
+        if param in model.param_names:
+            params_to_set.append(param)
+
+    # Save the initial parameter values so we can set them back when
+    # done with the loop.  It's best not to copy a model, because some
+    # models (e.g. PSF models) may have substantial amounts of data in
+    # them.
+    init_params = {param: getattr(model, param) for param in params_to_set}
+
+    try:
+        for i, source in enumerate(source_table):
+            for param in params_to_set:
+                setattr(model, param, source[param])
+
+            if oversample == 1:
+                image += model(x, y)
+            else:
+                image += discretize_model(model, (0, shape[1]),
+                                          (0, shape[0]), mode='oversample',
+                                          factor=oversample)
+    finally:
+        for param, value in init_params.items():
+            setattr(model, param, value)
+
+    return image
+
+
+def make_gaussian_sources_image(shape, source_table, oversample=1):
     """
     Make an image containing 2D Gaussian sources.
 
     Parameters
     ----------
-    image_shape : 2-tuple of int
-        Shape of the output 2D image.
+    shape : 2-tuple of int
+        The shape of the output 2D image.
 
     source_table : `~astropy.table.Table`
         Table of parameters for the Gaussian sources.  Each row of the
         table corresponds to a Gaussian source whose parameters are
-        defined by the column names.  The column names must include
-        ``flux`` or ``amplitude``, ``x_mean``, ``y_mean``, ``x_stddev``,
-        ``y_stddev``, and ``theta`` (see
-        `~astropy.modeling.functional_models.Gaussian2D` for a
-        description of the parameter names).  If both ``flux`` and
+        defined by the column names.  With the exception of ``'flux'``,
+        column names that do not match model parameters will be ignored
+        (flux will be converted to amplitude).  If both ``flux`` and
         ``amplitude`` are present, then ``amplitude`` will be ignored.
+        Model parameters not defined in the table will be set to the
+        default value.
 
     oversample : float, optional
-        The sampling factor used to discretize the
-        `~astropy.modeling.functional_models.Gaussian2D` models on a
-        pixel grid.  If the value is 1.0 (the default), then the models
-        will be discretized by taking the value at the center of the
-        pixel bin.  Note that this method will not preserve the total
-        flux of very small sources.  Otherwise, the models will be
-        discretized by taking the average over an oversampled grid.  The
-        pixels will be oversampled by the ``oversample`` factor.
+        The sampling factor used to discretize the models on a pixel
+        grid.  If the value is 1.0 (the default), then the models will
+        be discretized by taking the value at the center of the pixel
+        bin.  Note that this method will not preserve the total flux of
+        very small sources.  Otherwise, the models will be discretized
+        by taking the average over an oversampled grid.  The pixels will
+        be oversampled by the ``oversample`` factor.
 
     Returns
     -------
@@ -384,7 +459,7 @@ def make_gaussian_sources_image(image_shape, source_table, oversample=1):
 
     See Also
     --------
-    make_random_gaussians_table
+    make_model_sources_image, make_random_gaussians_table
 
     Examples
     --------
@@ -424,90 +499,24 @@ def make_gaussian_sources_image(image_shape, source_table, oversample=1):
         ax3.set_title('Original image with added Poisson noise ($\\mu = 5$)')
     """
 
-    # TODO: change to *fail* if flux/amplitude are both present?
-    if 'flux' in source_table.colnames:
+    model = Gaussian2D()
+    if 'x_stddev' in source_table.colnames:
+        xstd = source_table['x_stddev']
+    else:
+        xstd = model.x_stddev.value    # default
+    if 'y_stddev' in source_table.colnames:
+        ystd = source_table['y_stddev']
+    else:
+        ystd = model.y_stddev.value    # default
+
+    colnames = source_table.colnames
+    if 'flux' in colnames and 'amplitude' not in colnames:
         source_table = source_table.copy()
-        amplitude = source_table['flux'] / (2. * np.pi *
-                                            source_table['x_stddev'] *
-                                            source_table['y_stddev'])
-        source_table['amplitude'] = amplitude
-        del source_table['flux']
-    elif 'amplitude' not in source_table.colnames:
-        raise ValueError('either "amplitude" or "flux" must be columns in '
-                         'the input source_table')
+        source_table['amplitude'] = (source_table['flux'] /
+                                     (2. * np.pi * xstd * ystd))
 
-    model = Gaussian2D(x_stddev=1, y_stddev=1)
-    return make_model_sources_image(image_shape, model, source_table,
-                                    oversample)
-
-
-def make_model_sources_image(image_shape, model, source_table, oversample=1):
-    """
-    Make an image containing sources generated from a user-specified flux model.
-
-    Parameters
-    ----------
-    image_shape : 2-tuple of int or `~numpy.ndarray`
-        If a 2-tuple, shape of the output 2D image.  If an array, these sources
-        will be *added* to that array.
-
-    model : 2D astropy.modeling.models object
-        The model to be used for rendering the sources.
-
-    source_table : `~astropy.table.Table`
-        Table of parameters for the sources.  The column names must
-        match the model parameter names.  Column names that do not match
-        model parameters will be ignored.  Any model parameter that is
-        *not* in the table will be left at whatever value it has for
-        ``model``.
-
-    oversample : float, optional
-        The sampling factor used to discretize the models on a
-        pixel grid.
-
-        If the value is 1.0 (the default), then the models will be
-        discretized by taking the value at the center of the pixel bin.
-        Note that this method will not preserve the total flux of very
-        small sources.
-
-        Otherwise, the models will be discretized by taking the average
-        over an oversampled grid.  The pixels will be oversampled by the
-        ``oversample`` factor.
-
-    Returns
-    -------
-    image : `~numpy.ndarray`
-        Image containing model sources.
-    """
-
-    image = np.zeros(image_shape, dtype=np.float64)
-    y, x = np.indices(image_shape)
-
-    params_to_set = []
-    for colnm in source_table.colnames:
-        if colnm in model.param_names:
-            params_to_set.append(colnm)
-
-    # use this to store the *initial* values so we can set them back when done
-    # with the loop.  Best not to copy a model, because some PSF models may have
-    # substantial amounts of data in them
-    init_params = {pnm: getattr(model, pnm) for pnm in params_to_set}
-
-    try:
-        for i, source in enumerate(source_table):
-            for paramnm in params_to_set:
-                setattr(model, paramnm, source[paramnm])
-            if oversample == 1:
-                image += model(x, y)
-            else:
-                image += discretize_model(model, (0, image_shape[1]),
-                                          (0, image_shape[0]), mode='oversample',
-                                          factor=oversample)
-    finally:
-        for pnm, val in init_params.items():
-            setattr(model, paramnm, val)
-
-    return image
+    return make_model_sources_image(shape, Gaussian2D(), source_table,
+                                    oversample=oversample)
 
 
 def make_4gaussians_image(noise=True):
@@ -528,7 +537,7 @@ def make_4gaussians_image(noise=True):
 
     Returns
     -------
-    image : `~numpy.ndarray`
+    image : 2D `~numpy.ndarray`
         Image containing four 2D Gaussian sources.
 
     See Also
@@ -581,7 +590,7 @@ def make_100gaussians_image(noise=True):
 
     Returns
     -------
-    image : `~numpy.ndarray`
+    image : 2D `~numpy.ndarray`
         Image containing 100 2D Gaussian sources.
 
     See Also
@@ -610,7 +619,7 @@ def make_100gaussians_image(noise=True):
     # no longer use make_random_gaussians_table here because
     # it was refactored, giving different random number results
     sources = Table()
-    sources['flux'] = prng.uniform(flux_range[0], flux_range[1], n_sources)
+    flux = prng.uniform(flux_range[0], flux_range[1], n_sources)
     sources['x_mean'] = prng.uniform(xmean_range[0], xmean_range[1], n_sources)
     sources['y_mean'] = prng.uniform(ymean_range[0], ymean_range[1], n_sources)
     sources['x_stddev'] = prng.uniform(xstddev_range[0], xstddev_range[1],
@@ -618,6 +627,9 @@ def make_100gaussians_image(noise=True):
     sources['y_stddev'] = prng.uniform(ystddev_range[0], ystddev_range[1],
                                        n_sources)
     sources['theta'] = prng.uniform(0, 2.*np.pi, n_sources)
+
+    sources['amplitude'] = flux / (2. * np.pi * sources['x_stddev'] *
+                                   sources['y_stddev'])
 
     shape = (300, 500)
     data = make_gaussian_sources_image(shape, sources) + 5.
