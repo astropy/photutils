@@ -158,6 +158,128 @@ def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
     return image
 
 
+def make_random_models_table(model, n_sources, param_ranges,
+                             random_state=None):
+    """
+    Make a `~astropy.table.Table` containing randomly generated
+    parameters for the input model object to simulate a set of sources.
+
+    Each row of the table corresponds to a source whose parameters are
+    defined by the column names.  The parameters are drawn from a
+    uniform distribution over the specified input ranges.
+
+    The output table can be input into `make_model_sources_image` to
+    create an image containing the model sources.
+
+    Parameters
+    ----------
+    model : 2D astropy.modeling.models object
+        The astropy model object to be used for the sources.
+
+    n_sources : float
+        The number of random model sources to generate.
+
+    param_ranges : dict
+        The lower and upper boundaries for each of the model parameters
+        as a `dict` mapping the parameter name to its ``(lower, upper)``
+        bounds.  The dictionary keys must be valid ``model`` parameter
+        names.  Model parameters not defined in ``param_ranges`` will be
+        set to the model default value.
+
+    random_state : int or `~numpy.random.RandomState`, optional
+        Pseudo-random number generator state used for random sampling.
+        Separate function calls with the same parameters and
+        ``random_state`` will generate the identical sources.
+
+    Returns
+    -------
+    table : `~astropy.table.Table`
+        A table of parameters for the randomly generated sources.  Each
+        row of the table corresponds to a source whose model parameters
+        are defined by the column names.  The column names will be the
+        keys of the dictionary ``param_ranges``.
+    """
+
+    prng = check_random_state(random_state)
+
+    sources = Table()
+
+    for param_name, (lower, upper) in param_ranges.items():
+        if param_name in model.param_names:
+            sources[param_name] = prng.uniform(lower, upper, n_sources)
+
+    return sources
+
+
+def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
+    """
+    Make a `~astropy.table.Table` containing randomly generated
+    parameters for 2D Gaussian sources.
+
+    Each row of the table corresponds to a Gaussian source whose
+    parameters are defined by the column names.  The parameters are
+    drawn from a uniform distribution over the specified input ranges.
+
+    The output table can be input into `make_gaussian_sources_image` to
+    create an image containing the 2D Gaussian sources.
+
+    Parameters
+    ----------
+    n_sources : float
+        The number of random Gaussian sources to generate.
+
+    param_ranges : dict
+        The lower and upper boundaries for each of the
+        `~astropy.modeling.functional_models.Gaussian2D` parameters as a
+        `dict` mapping the parameter name to its ``(lower, upper)``
+        bounds.  The dictionary keys must be valid
+        `~astropy.modeling.functional_models.Gaussian2D` parameter names
+        or ``'flux'``.  ``'flux'`` can be specified as a parameter
+        instead of the ``'amplitude'`` but it will be ignored if
+        ``'amplitude'`` is input.  Model parameters not defined in
+        ``param_ranges`` will be set to the model default value.
+
+    random_state : int or `~numpy.random.RandomState`, optional
+        Pseudo-random number generator state used for random sampling.
+        Separate function calls with the same parameters and
+        ``random_state`` will generate the identical sources.
+
+    Returns
+    -------
+    table : `~astropy.table.Table`
+        A table of parameters for the randomly generated Gaussian
+        sources.  Each row of the table corresponds to a Gaussian source
+        whose parameters are defined by the column names.
+
+    See Also
+    --------
+    make_gaussian_sources_image
+    """
+
+    sources = make_random_models_table(Gaussian2D(), n_sources,
+                                       param_ranges=param_ranges,
+                                       random_state=random_state)
+
+    # convert Gaussian2D flux to amplitude
+    if 'flux' in param_ranges:
+        prng = check_random_state(random_state)
+        flux = prng.uniform(param_ranges['flux'][0], param_ranges['flux'][1],
+                            n_sources)
+
+        if 'x_stddev' in sources.colnames:
+            xstd = sources['x_stddev']
+        else:
+            xstd = 1.0    # default
+        if 'y_stddev' in sources.colnames:
+            ystd = sources['y_stddev']
+        else:
+            ystd = 1.0    # default
+
+        sources['amplitude'] = flux / (2. * np.pi * xstd * ystd)
+
+    return sources
+
+
 def make_gaussian_sources_image(image_shape, source_table, oversample=1):
     """
     Make an image containing 2D Gaussian sources.
@@ -320,125 +442,6 @@ def make_model_sources_image(image_shape, model, source_table, oversample=1):
     return image
 
 
-def make_random_gaussians_table(n_sources, flux_range, xmean_range,
-                                ymean_range, xstddev_range, ystddev_range,
-                                amplitude_range=None, random_state=None):
-    """
-    Make a `~astropy.table.Table` containing parameters for randomly
-    generated 2D Gaussian sources.
-
-    Each row of the table corresponds to a Gaussian source whose
-    parameters are defined by the column names.  The parameters are
-    drawn from a uniform distribution over the specified input bounds.
-
-    The output table can be input into `make_gaussian_sources_image` to
-    create an image containing the 2D Gaussian sources.
-
-    Parameters
-    ----------
-    n_sources : float
-        The number of random Gaussian sources to generate.
-
-    flux_range : array-like
-        The lower and upper boundaries, ``(lower, upper)``, of the
-        uniform distribution from which to draw source fluxes.
-        ``flux_range`` will be ignored if ``amplitude_range`` is input.
-
-    xmean_range : array-like
-        The lower and upper boundaries, ``(lower, upper)``, of the
-        uniform distribution from which to draw source ``x_mean``.
-
-    ymean_range : array-like
-        The lower and upper boundaries, ``(lower, upper)``, of the
-        uniform distribution from which to draw source ``y_mean``.
-
-    xstddev_range : array-like
-        The lower and upper boundaries, ``(lower, upper)``, of the
-        uniform distribution from which to draw source ``x_stddev``.
-
-    ystddev_range : array-like
-        The lower and upper boundaries, ``(lower, upper)``, of the
-        uniform distribution from which to draw source ``y_stddev``.
-
-    amplitude_range : array-like, optional
-        The lower and upper boundaries, ``(lower, upper)``, of the
-        uniform distribution from which to draw source amplitudes.  If
-        ``amplitude_range`` is input, then ``flux_range`` will be
-        ignored.
-
-    random_state : int or `~numpy.random.RandomState`, optional
-        Pseudo-random number generator state used for random sampling.
-        Separate function calls with the same parameters and
-        ``random_state`` will generate the identical sources.
-
-    Returns
-    -------
-    table : `~astropy.table.Table`
-        A table of parameters for the randomly generated Gaussian
-        sources.  Each row of the table corresponds to a Gaussian source
-        whose parameters are defined by the column names.  The column
-        names will include ``flux`` or ``amplitude``, ``x_mean``,
-        ``y_mean``, ``x_stddev``, ``y_stddev``, and ``theta`` (see
-        `~astropy.modeling.functional_models.Gaussian2D` for a
-        description of most of these parameter names).
-
-    See Also
-    --------
-    make_gaussian_sources_image, make_noise_image, apply_poisson_noise
-
-    Examples
-    --------
-
-    .. plot::
-        :include-source:
-
-        # create the random sources
-        from photutils.datasets import make_random_gaussians_table
-        n_sources = 100
-        flux_range = [500, 1000]
-        xmean_range = [0, 500]
-        ymean_range = [0, 300]
-        xstddev_range = [1, 5]
-        ystddev_range = [1, 5]
-        table = make_random_gaussians_table(n_sources, flux_range,
-                                            xmean_range, ymean_range,
-                                            xstddev_range, ystddev_range,
-                                            random_state=12345)
-
-        # make an image of the random sources without noise, with
-        # Gaussian noise, and with Poisson noise
-        from photutils.datasets import make_gaussian_sources_image
-        from photutils.datasets import make_noise_image
-        shape = (300, 500)
-        image1 = make_gaussian_sources_image(shape, table)
-        image2 = image1 + make_noise_image(shape, type='gaussian', mean=5.,
-                                           stddev=2.)
-        image3 = image1 + make_noise_image(shape, type='poisson', mean=5.)
-
-        # plot the images
-        import matplotlib.pyplot as plt
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 12))
-        ax1.imshow(image1, origin='lower', interpolation='nearest')
-        ax2.imshow(image2, origin='lower', interpolation='nearest')
-        ax3.imshow(image3, origin='lower', interpolation='nearest')
-    """
-
-    prng = check_random_state(random_state)
-    sources = Table()
-    if amplitude_range is None:
-        sources['flux'] = prng.uniform(flux_range[0], flux_range[1], n_sources)
-    else:
-        sources['amplitude'] = prng.uniform(amplitude_range[0],
-                                            amplitude_range[1], n_sources)
-    sources['x_mean'] = prng.uniform(xmean_range[0], xmean_range[1], n_sources)
-    sources['y_mean'] = prng.uniform(ymean_range[0], ymean_range[1], n_sources)
-    sources['x_stddev'] = prng.uniform(xstddev_range[0], xstddev_range[1],
-                                       n_sources)
-    sources['y_stddev'] = prng.uniform(ystddev_range[0], ystddev_range[1],
-                                       n_sources)
-    sources['theta'] = prng.uniform(0, 2.*np.pi, n_sources)
-    return sources
-
 
 def make_4gaussians_image(noise=True):
     """
@@ -528,14 +531,14 @@ def make_100gaussians_image(noise=True):
     """
 
     n_sources = 100
-    flux_range = [500, 1000]
-    xmean_range = [0, 500]
-    ymean_range = [0, 300]
-    xstddev_range = [1, 5]
-    ystddev_range = [1, 5]
-    table = make_random_gaussians_table(n_sources, flux_range, xmean_range,
-                                        ymean_range, xstddev_range,
-                                        ystddev_range, random_state=12345)
+    param_ranges = {'flux': [500, 1000],
+                    'xmean': [0, 500],
+                    'ymean': [0, 300],
+                    'xstddev': [1, 5],
+                    'ystddev': [1, 5],
+                    'theta' : [0, 2 * np.pi]}
+    table = make_random_gaussians_table(n_sources, param_ranges,
+                                        random_state=12345)
     shape = (300, 500)
     data = make_gaussian_sources_image(shape, table) + 5.
 
@@ -545,50 +548,6 @@ def make_100gaussians_image(noise=True):
 
     return data
 
-
-def make_random_models_table(model, n_sources, param_ranges=None,
-                             random_state=None):
-    """
-    Make an `~astropy.table.Table` and the actual image for a simulated set of
-    sources encoded as a PSF or other astropy model.
-
-    Parameters
-    ----------
-    model : 2D astropy.modeling.models object
-        The model to be used for the sources.
-
-    n_sources : int
-        The number of random Gaussian sources to generate
-
-    param_ranges : dict or None
-        The lower and upper boundaries for each of the parameters in ``model``
-        as a dict mapping the parameter name to a ``(lower, upper)``. Must be
-        valid parameter names for ``model``.
-
-    random_state : int or `~numpy.random.RandomState`, optional
-        Pseudo-random number generator state used for random sampling.
-        Separate function calls with the same parameters and
-        ``random_state`` will generate identical sources.
-
-    Returns
-    -------
-    table : `~astropy.table.Table`
-        A table of parameters for the randomly generated Gaussian
-        sources.  Each row of the table corresponds to a Gaussian source
-        whose parameters are defined by the column names.  The column
-        names will be the keys of the dictionary ``param_ranges``.
-    """
-
-    prng = check_random_state(random_state)
-
-    sources = Table()
-
-    for pnm, (lower, upper) in param_ranges.items():
-        if pnm not in model.param_names:
-            raise ValueError('Requested parameter {} is not in model {}'.format(pnm, model))
-        sources[pnm] = prng.uniform(lower, upper, n_sources)
-
-    return sources
 
 
 def make_wcs(shape):
