@@ -198,6 +198,31 @@ def make_random_models_table(model, n_sources, param_ranges,
         row of the table corresponds to a source whose model parameters
         are defined by the column names.  The column names will be the
         keys of the dictionary ``param_ranges``.
+
+    Examples
+    --------
+    >>> from collections import OrderedDict
+    >>> from astropy.modeling.models import Gaussian2D
+    >>> from photutils.datasets import make_random_models_table
+    >>> n_sources = 5
+    >>> param_ranges = [('amplitude', [500, 1000]),
+    ...                 ('x_mean', [0, 500]),
+    ...                 ('y_mean', [0, 300]),
+    ...                 ('x_stddev', [1, 5]),
+    ...                 ('y_stddev', [1, 5]),
+    ...                 ('theta', [0, np.pi])]
+    >>> param_ranges = OrderedDict(param_ranges)
+    >>> model = Gaussian2D()
+    >>> sources = make_random_models_table(model, n_sources, param_ranges,
+    ...                                    random_state=12345)
+    >>> print(sources)
+      amplitude       x_mean        y_mean    ...    y_stddev       theta
+    ------------- ------------- ------------- ... ------------- --------------
+    964.808046409  297.77235149 224.314442781 ... 3.56990131158  2.29238586176
+    658.187777291 482.257259868 288.392020822 ... 3.86981448325  3.12278892062
+    591.959405839 326.588548436 2.51648938247 ... 2.87039602888  2.12646148032
+    602.280139277 374.453318767 31.9333130093 ... 2.30233871016  2.48444221236
+    783.862514541 326.784935426 89.6111141308 ... 2.75857842354 0.536942976674
     """
 
     prng = check_random_state(random_state)
@@ -254,6 +279,49 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
     See Also
     --------
     make_gaussian_sources_image
+
+    Examples
+    --------
+    >>> from collections import OrderedDict
+    >>> from photutils.datasets import make_random_gaussians_table
+    >>> n_sources = 5
+    >>> param_ranges = [('amplitude', [500, 1000]),
+    ...                 ('x_mean', [0, 500]),
+    ...                 ('y_mean', [0, 300]),
+    ...                 ('x_stddev', [1, 5]),
+    ...                 ('y_stddev', [1, 5]),
+    ...                 ('theta', [0, np.pi])]
+    >>> param_ranges = OrderedDict(param_ranges)
+    >>> sources = make_random_gaussians_table(n_sources, param_ranges,
+    ...                                       random_state=12345)
+    >>> print(sources)
+      amplitude       x_mean        y_mean    ...    y_stddev       theta
+    ------------- ------------- ------------- ... ------------- --------------
+    964.808046409  297.77235149 224.314442781 ... 3.56990131158  2.29238586176
+    658.187777291 482.257259868 288.392020822 ... 3.86981448325  3.12278892062
+    591.959405839 326.588548436 2.51648938247 ... 2.87039602888  2.12646148032
+    602.280139277 374.453318767 31.9333130093 ... 2.30233871016  2.48444221236
+    783.862514541 326.784935426 89.6111141308 ... 2.75857842354 0.536942976674
+
+    To specifying the flux range instead of the amplitude range:
+
+    >>> param_ranges = [('flux', [500, 1000]),
+    ...                 ('x_mean', [0, 500]),
+    ...                 ('y_mean', [0, 300]),
+    ...                 ('x_stddev', [1, 5]),
+    ...                 ('y_stddev', [1, 5]),
+    ...                 ('theta', [0, np.pi])]
+    >>> param_ranges = OrderedDict(param_ranges)
+    >>> sources = make_random_gaussians_table(n_sources, param_ranges,
+    ...                                       random_state=12345)
+    >>> print(sources)
+        x_mean        y_mean       x_stddev   ...     theta       amplitude
+    ------------- ------------- ------------- ... ------------- -------------
+    464.808046409 178.663410894 3.99085923709 ... 2.01839577023 10.6122969086
+    158.187777291 289.354355921 4.84522694429 ... 2.25394702444 5.09996000974
+    91.9594058385 195.953129061 1.03355319177 ... 1.46900560591 20.3075855103
+    102.280139277  224.67199126 1.42577750679 ... 1.02285443108 13.8374679525
+    283.862514541 196.070961256 2.19481485508 ... 1.38118426404 14.5943081334
     """
 
     sources = make_random_models_table(Gaussian2D(), n_sources,
