@@ -95,14 +95,6 @@ def test_make_gaussian_sources_image_oversample():
     assert_allclose(image.sum(), TABLE['flux'].sum())
 
 
-def test_make_gaussian_sources_image_parameters():
-    with pytest.raises(ValueError):
-        table = TABLE.copy()
-        table.remove_column('flux')
-        shape = (100, 100)
-        make_gaussian_sources_image(shape, table)
-
-
 def test_make_random_gaussians_table():
     n_sources = 5
     param_ranges = dict([('amplitude', [500, 1000]), ('x_mean', [0, 500]),
