@@ -58,7 +58,6 @@ def apply_poisson_noise(data, random_state=None):
 
         from photutils.datasets import make_4gaussians_image
         from photutils.datasets import apply_poisson_noise
-
         data1 = make_4gaussians_image(noise=False)
         data2 = apply_poisson_noise(data1, random_state=12345)
 
@@ -91,14 +90,14 @@ def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
         Shape of the output 2D image.
 
     type : {'gaussian', 'poisson'}
-        The distribution used to generate the random noise.
+        The distribution used to generate the random noise:
 
             * ``'gaussian'``: Gaussian distributed noise.
             * ``'poisson'``: Poisson distributed noise.
 
     mean : float
         The mean of the random distribution.  Required for both Gaussian
-        and Poisson noise.
+        and Poisson noise.  The default is 0.
 
     stddev : float, optional
         The standard deviation of the Gaussian noise to add to the
@@ -113,7 +112,7 @@ def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
 
     Returns
     -------
-    image : `~numpy.ndarray`
+    image : 2D `~numpy.ndarray`
         Image containing random noise.
 
     See Also
@@ -126,7 +125,7 @@ def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
     .. plot::
         :include-source:
 
-        # make a Gaussian and Poisson noise image
+        # make Gaussian and Poisson noise images
         from photutils.datasets import make_noise_image
         shape = (100, 100)
         image1 = make_noise_image(shape, type='gaussian', mean=0., stddev=5.)
@@ -143,7 +142,9 @@ def make_noise_image(image_shape, type='gaussian', mean=None, stddev=None,
 
     if mean is None:
         raise ValueError('"mean" must be input')
+
     prng = check_random_state(random_state)
+
     if type == 'gaussian':
         if stddev is None:
             raise ValueError('"stddev" must be input for Gaussian noise')
@@ -173,32 +174,27 @@ def make_gaussian_sources_image(image_shape, source_table, oversample=1):
         ``flux`` or ``amplitude``, ``x_mean``, ``y_mean``, ``x_stddev``,
         ``y_stddev``, and ``theta`` (see
         `~astropy.modeling.functional_models.Gaussian2D` for a
-        description of most of these parameter names).  If both ``flux``
-        and ``amplitude`` are present, then ``amplitude`` will be
-        ignored.
+        description of the parameter names).  If both ``flux`` and
+        ``amplitude`` are present, then ``amplitude`` will be ignored.
 
     oversample : float, optional
         The sampling factor used to discretize the
         `~astropy.modeling.functional_models.Gaussian2D` models on a
-        pixel grid.
-
-        If the value is 1.0 (the default), then the models will be
-        discretized by taking the value at the center of the pixel bin.
-        Note that this method will not preserve the total flux of very
-        small sources.
-
-        Otherwise, the models will be discretized by taking the average
-        over an oversampled grid.  The pixels will be oversampled by the
-        ``oversample`` factor.
+        pixel grid.  If the value is 1.0 (the default), then the models
+        will be discretized by taking the value at the center of the
+        pixel bin.  Note that this method will not preserve the total
+        flux of very small sources.  Otherwise, the models will be
+        discretized by taking the average over an oversampled grid.  The
+        pixels will be oversampled by the ``oversample`` factor.
 
     Returns
     -------
-    image : `~numpy.ndarray`
+    image : 2D `~numpy.ndarray`
         Image containing 2D Gaussian sources.
 
     See Also
     --------
-    make_random_gaussians_table, make_noise_image, apply_poisson_noise
+    make_random_gaussians_table
 
     Examples
     --------
@@ -230,8 +226,12 @@ def make_gaussian_sources_image(image_shape, source_table, oversample=1):
         import matplotlib.pyplot as plt
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 12))
         ax1.imshow(image1, origin='lower', interpolation='nearest')
+        ax1.set_title('Original image')
         ax2.imshow(image2, origin='lower', interpolation='nearest')
+        ax2.set_title('Original image with added Gaussian noise'
+                      ' ($\\mu = 5, \\sigma = 5$)')
         ax3.imshow(image3, origin='lower', interpolation='nearest')
+        ax3.set_title('Original image with added Poisson noise ($\\mu = 5$)')
     """
 
     # TODO: change to *fail* if flux/amplitude are both present?
