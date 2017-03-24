@@ -390,6 +390,30 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
     See Also
     --------
     make_random_models_table, make_gaussian_sources_image
+
+    Examples
+    --------
+
+    .. plot::
+        :include-source:
+
+        from astropy.modeling.models import Moffat2D
+        from photutils.datasets import (make_random_models_table,
+                                        make_model_sources_image)
+
+        model = Moffat2D()
+        n_sources = 10
+        shape = (100, 100)
+        param_ranges = {'amplitude': [100, 200],
+                        'x_0': [0, shape[1]],
+                        'y_0': [0, shape[0]],
+                        'gamma': [5, 10],
+                        'alpha': [1, 2]}
+        sources = make_random_models_table(model, n_sources, param_ranges,
+                                           random_state=12345)
+
+        data = make_model_sources_image(shape, model, sources)
+        plt.imshow(data)
     """
 
     image = np.zeros(shape, dtype=np.float64)
@@ -551,7 +575,7 @@ def make_4gaussians_image(noise=True):
 
         from photutils import datasets
         image = datasets.make_4gaussians_image()
-        plt.imshow(image, origin='lower', cmap='gray')
+        plt.imshow(image, origin='lower', interpolation='nearest')
     """
 
     table = Table()
@@ -604,7 +628,7 @@ def make_100gaussians_image(noise=True):
 
         from photutils import datasets
         image = datasets.make_100gaussians_image()
-        plt.imshow(image, origin='lower', cmap='gray')
+        plt.imshow(image, origin='lower', interpolation='nearest')
     """
 
     prng = check_random_state(12345)
@@ -655,6 +679,26 @@ def make_wcs(shape):
     -------
     wcs : `~astropy.wcs.WCS` object
         The world coordinate system (WCS) transformation.
+
+    See Also
+    --------
+    make_imagehdu
+
+    Examples
+    --------
+    >>> from photutils.datasets import make_wcs
+    >>> shape = (100, 100)
+    >>> wcs = make_wcs(shape)
+    >>> print(wcs)
+    WCS Keywords
+    <BLANKLINE>
+    Number of WCS axes: 2
+    CTYPE : 'RA---TAN'  'DEC--TAN'
+    CRVAL : 197.89250000000001  -1.36555556
+    CRPIX : 50.0  50.0
+    CD1_1 CD1_2  : -1.3888888888888893e-05  2.4056261216234408e-05
+    CD2_1 CD2_2  : 2.4056261216234408e-05  1.3888888888888893e-05
+    NAXIS : 100  100
     """
 
     wcs = WCS(naxis=2)
@@ -691,6 +735,18 @@ def make_imagehdu(data, wcs=None):
     -------
     image_hdu : `~astropy.io.fits.ImageHDU`
         The FITS `~astropy.io.fits.ImageHDU`.
+
+    See Also
+    --------
+    make_wcs
+
+    Examples
+    --------
+    >>> from photutils.datasets import make_imagehdu
+    >>> data = np.ones((100, 100))
+    >>> hdu = make_imagehdu(data)
+    >>> print(hdu.data.shape)
+    (100, 100)
     """
 
     data = np.asanyarray(data)
