@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 
 import numpy as np
 from numpy.testing import assert_allclose
-from astropy.tests.helper import pytest, assert_quantity_allclose
+from astropy.tests.helper import pytest
 from astropy.table import Table
 from astropy.modeling.models import Moffat2D
 
@@ -105,18 +105,23 @@ def test_make_gaussian_sources_image_parameters():
 
 def test_make_random_gaussians_table():
     n_sources = 5
-    bounds = [0, 1]
-    table = make_random_gaussians_table(n_sources, bounds, bounds, bounds,
-                                        bounds, bounds)
+    param_ranges = dict([('amplitude', [500, 1000]), ('x_mean', [0, 500]),
+                         ('y_mean', [0, 300]), ('x_stddev', [1, 5]),
+                         ('y_stddev', [1, 5]), ('theta', [0, np.pi])])
+
+    table = make_random_gaussians_table(n_sources, param_ranges,
+                                        random_state=12345)
     assert len(table) == n_sources
 
 
-def test_make_random_gaussians_table_amplitude():
+def test_make_random_gaussians_table_flux():
     n_sources = 5
-    bounds = [0, 1]
-    table = make_random_gaussians_table(n_sources, bounds, bounds, bounds,
-                                        bounds, bounds,
-                                        amplitude_range=bounds)
+    param_ranges = dict([('flux', [500, 1000]), ('x_mean', [0, 500]),
+                         ('y_mean', [0, 300]), ('x_stddev', [1, 5]),
+                         ('y_stddev', [1, 5]), ('theta', [0, np.pi])])
+    table = make_random_gaussians_table(n_sources, param_ranges,
+                                        random_state=12345)
+    assert 'amplitude' in table.colnames
     assert len(table) == n_sources
 
 

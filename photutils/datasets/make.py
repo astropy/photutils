@@ -510,7 +510,6 @@ def make_model_sources_image(image_shape, model, source_table, oversample=1):
     return image
 
 
-
 def make_4gaussians_image(noise=True):
     """
     Make an example image containing four 2D Gaussians plus a constant
@@ -553,6 +552,7 @@ def make_4gaussians_image(noise=True):
     table['x_stddev'] = [15.2, 5.1, 3., 8.1]
     table['y_stddev'] = [2.6, 2.5, 3., 4.7]
     table['theta'] = np.array([145., 20., 0., 60.]) * np.pi / 180.
+
     shape = (100, 200)
     data = make_gaussian_sources_image(shape, table) + 5.
 
@@ -598,24 +598,35 @@ def make_100gaussians_image(noise=True):
         plt.imshow(image, origin='lower', cmap='gray')
     """
 
+    prng = check_random_state(12345)
+
     n_sources = 100
-    param_ranges = {'flux': [500, 1000],
-                    'xmean': [0, 500],
-                    'ymean': [0, 300],
-                    'xstddev': [1, 5],
-                    'ystddev': [1, 5],
-                    'theta' : [0, 2 * np.pi]}
-    table = make_random_gaussians_table(n_sources, param_ranges,
-                                        random_state=12345)
+    flux_range = [500, 1000]
+    xmean_range = [0, 500]
+    ymean_range = [0, 300]
+    xstddev_range = [1, 5]
+    ystddev_range = [1, 5]
+
+    # no longer use make_random_gaussians_table here because
+    # it was refactored, giving different random number results
+    sources = Table()
+    sources['flux'] = prng.uniform(flux_range[0], flux_range[1], n_sources)
+    sources['x_mean'] = prng.uniform(xmean_range[0], xmean_range[1], n_sources)
+    sources['y_mean'] = prng.uniform(ymean_range[0], ymean_range[1], n_sources)
+    sources['x_stddev'] = prng.uniform(xstddev_range[0], xstddev_range[1],
+                                       n_sources)
+    sources['y_stddev'] = prng.uniform(ystddev_range[0], ystddev_range[1],
+                                       n_sources)
+    sources['theta'] = prng.uniform(0, 2.*np.pi, n_sources)
+
     shape = (300, 500)
-    data = make_gaussian_sources_image(shape, table) + 5.
+    data = make_gaussian_sources_image(shape, sources) + 5.
 
     if noise:
         data += make_noise_image(shape, type='gaussian', mean=0.,
                                  stddev=2., random_state=12345)
 
     return data
-
 
 
 def make_wcs(shape):
