@@ -52,7 +52,6 @@ def apply_poisson_noise(data, random_state=None):
 
     Examples
     --------
-
     .. plot::
         :include-source:
 
@@ -121,7 +120,6 @@ def make_noise_image(shape, type='gaussian', mean=None, stddev=None,
 
     Examples
     --------
-
     .. plot::
         :include-source:
 
@@ -393,7 +391,6 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
 
     Examples
     --------
-
     .. plot::
         :include-source:
 
@@ -487,7 +484,6 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
 
     Examples
     --------
-
     .. plot::
         :include-source:
 
