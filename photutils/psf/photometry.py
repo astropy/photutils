@@ -421,9 +421,9 @@ class BasicPSFPhotometry(object):
         """
 
         unc_tab = Table()
-        for param, isfixed in self.psf_model.fixed.items():
-            if not isfixed:
-                unc_tab.add_column(Column(name=param + "_unc",
+        for param_name in self.psf_model.param_names:
+            if not self.psf_model.fixed[param_name]:
+                unc_tab.add_column(Column(name=param_name + "_unc",
                                           data=np.empty(star_group_size)))
 
         if 'param_cov' in self.fitter.fit_info.keys():
