@@ -6,6 +6,7 @@ Make example datasets.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+from collections import OrderedDict
 import numpy as np
 from astropy.convolution import discretize_model
 from astropy.io import fits
@@ -156,11 +157,10 @@ def make_noise_image(shape, type='gaussian', mean=None, stddev=None,
     return image
 
 
-def make_random_models_table(model, n_sources, param_ranges,
-                             random_state=None):
+def make_random_models_table(n_sources, param_ranges, random_state=None):
     """
     Make a `~astropy.table.Table` containing randomly generated
-    parameters for the input model object to simulate a set of sources.
+    parameters for an Astropy model to simulate a set of sources.
 
     Each row of the table corresponds to a source whose parameters are
     defined by the column names.  The parameters are drawn from a
@@ -171,18 +171,13 @@ def make_random_models_table(model, n_sources, param_ranges,
 
     Parameters
     ----------
-    model : 2D astropy.modeling.models object
-        The astropy model object to be used for the sources.
-
     n_sources : float
         The number of random model sources to generate.
 
     param_ranges : dict
         The lower and upper boundaries for each of the model parameters
         as a `dict` mapping the parameter name to its ``(lower, upper)``
-        bounds.  The dictionary keys must be valid ``model`` parameter
-        names.  Model parameters not defined in ``param_ranges`` will be
-        set to the ``model`` default value.
+        bounds.
 
     random_state : int or `~numpy.random.RandomState`, optional
         Pseudo-random number generator state used for random sampling.
@@ -204,7 +199,6 @@ def make_random_models_table(model, n_sources, param_ranges,
     Examples
     --------
     >>> from collections import OrderedDict
-    >>> from astropy.modeling.models import Gaussian2D
     >>> from photutils.datasets import make_random_models_table
     >>> n_sources = 5
     >>> param_ranges = [('amplitude', [500, 1000]),
@@ -214,8 +208,7 @@ def make_random_models_table(model, n_sources, param_ranges,
     ...                 ('y_stddev', [1, 5]),
     ...                 ('theta', [0, np.pi])]
     >>> param_ranges = OrderedDict(param_ranges)
-    >>> model = Gaussian2D()
-    >>> sources = make_random_models_table(model, n_sources, param_ranges,
+    >>> sources = make_random_models_table(n_sources, param_ranges,
     ...                                    random_state=12345)
     >>> print(sources)
       amplitude       x_mean        y_mean    ...    y_stddev       theta
@@ -230,10 +223,11 @@ def make_random_models_table(model, n_sources, param_ranges,
     prng = check_random_state(random_state)
 
     sources = Table()
-
     for param_name, (lower, upper) in param_ranges.items():
-        if param_name in model.param_names:
-            sources[param_name] = prng.uniform(lower, upper, n_sources)
+        # Generate a column for every item in param_ranges, even if it
+        # is not in the model (e.g. flux).  However, such columns will
+        # be ignored when rendering the image.
+        sources[param_name] = prng.uniform(lower, upper, n_sources)
 
     return sources
 
@@ -317,25 +311,25 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
     >>> sources = make_random_gaussians_table(n_sources, param_ranges,
     ...                                       random_state=12345)
     >>> print(sources)
-        x_mean        y_mean       x_stddev   ...     theta       amplitude
-    ------------- ------------- ------------- ... ------------- -------------
-    464.808046409 178.663410894 3.99085923709 ... 2.01839577023 10.6122969086
-    158.187777291 289.354355921 4.84522694429 ... 2.25394702444 5.09996000974
-    91.9594058385 195.953129061 1.03355319177 ... 1.46900560591 20.3075855103
-    102.280139277  224.67199126 1.42577750679 ... 1.02285443108 13.8374679525
-    283.862514541 196.070961256 2.19481485508 ... 1.38118426404 14.5943081334
+        flux         x_mean        y_mean    ...     theta        amplitude
+    ------------- ------------- ------------- ... -------------- -------------
+    964.808046409  297.77235149 224.314442781 ...  2.29238586176 11.8636845806
+    658.187777291 482.257259868 288.392020822 ...  3.12278892062 6.38543882684
+    591.959405839 326.588548436 2.51648938247 ...  2.12646148032 7.31222089567
+    602.280139277 374.453318767 31.9333130093 ...  2.48444221236 8.56917814506
+    783.862514541 326.784935426 89.6111141308 ... 0.536942976674 11.6117069638
+
+    Note that in this case the output table contains both a flux and
+    amplitude column.  The flux column will be ignored when generating
+    an image of the models using :func:`make_gaussian_sources_image`.
     """
 
-    model = Gaussian2D()
-    sources = make_random_models_table(model, n_sources, param_ranges,
+    sources = make_random_models_table(n_sources, param_ranges,
                                        random_state=random_state)
 
     # convert Gaussian2D flux to amplitude
     if 'flux' in param_ranges:
-        prng = check_random_state(random_state)
-        flux = prng.uniform(param_ranges['flux'][0], param_ranges['flux'][1],
-                            n_sources)
-
+        model = Gaussian2D()
         if 'x_stddev' in sources.colnames:
             xstd = sources['x_stddev']
         else:
@@ -345,7 +339,8 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
         else:
             ystd = model.y_stddev.value    # default
 
-        sources['amplitude'] = flux / (2. * np.pi * xstd * ystd)
+        sources = sources.copy()
+        sources['amplitude'] = sources['flux'] / (2. * np.pi * xstd * ystd)
 
     return sources
 
@@ -546,8 +541,8 @@ def make_4gaussians_image(noise=True):
 
     The background has a mean of 5.
 
-    If ``noise`` is `True`, then Gaussian noise with a standard
-    deviation of 5 is added to the output image.
+    If ``noise`` is `True`, then Gaussian noise with a mean of 0 and a
+    standard deviation of 5 is added to the output image.
 
     Parameters
     ----------
@@ -599,8 +594,8 @@ def make_100gaussians_image(noise=True):
 
     The background has a mean of 5.
 
-    If ``noise`` is `True`, then Gaussian noise with a standard
-    deviation of 2 is added to the output image.
+    If ``noise`` is `True`, then Gaussian noise with a mean of 0 and a
+    standard deviation of 2 is added to the output image.
 
     Parameters
     ----------
@@ -635,21 +630,15 @@ def make_100gaussians_image(noise=True):
     ymean_range = [0, 300]
     xstddev_range = [1, 5]
     ystddev_range = [1, 5]
+    params = OrderedDict([('flux', flux_range),
+                          ('x_mean', xmean_range),
+                          ('y_mean', ymean_range),
+                          ('x_stddev', xstddev_range),
+                          ('y_stddev', ystddev_range),
+                          ('theta', [0, 2*np.pi])])
 
-    # no longer use make_random_gaussians_table here because
-    # it was refactored, giving different random number results
-    sources = Table()
-    flux = prng.uniform(flux_range[0], flux_range[1], n_sources)
-    sources['x_mean'] = prng.uniform(xmean_range[0], xmean_range[1], n_sources)
-    sources['y_mean'] = prng.uniform(ymean_range[0], ymean_range[1], n_sources)
-    sources['x_stddev'] = prng.uniform(xstddev_range[0], xstddev_range[1],
-                                       n_sources)
-    sources['y_stddev'] = prng.uniform(ystddev_range[0], ystddev_range[1],
-                                       n_sources)
-    sources['theta'] = prng.uniform(0, 2.*np.pi, n_sources)
-
-    sources['amplitude'] = flux / (2. * np.pi * sources['x_stddev'] *
-                                   sources['y_stddev'])
+    sources = make_random_gaussians_table(n_sources, params,
+                                          random_state=12345)
 
     shape = (300, 500)
     data = make_gaussian_sources_image(shape, sources) + 5.

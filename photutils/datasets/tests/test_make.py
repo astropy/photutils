@@ -137,7 +137,7 @@ def test_make_random_models_table():
     model = Moffat2D(amplitude=1)
     param_ranges = {'x_0': (0, 300), 'y_0': (0, 500),
                     'gamma': (1, 3), 'alpha': (1.5, 3)}
-    source_table = make_random_models_table(model, 10, param_ranges)
+    source_table = make_random_models_table(10, param_ranges)
 
     # most of the make_model_sources_image options are exercised in the
     # make_gaussian_sources_image tests
