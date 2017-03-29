@@ -686,16 +686,10 @@ def make_wcs(shape):
     >>> from photutils.datasets import make_wcs
     >>> shape = (100, 100)
     >>> wcs = make_wcs(shape)
-    >>> print(wcs)
-    WCS Keywords
-    <BLANKLINE>
-    Number of WCS axes: 2
-    CTYPE : 'RA---TAN'  'DEC--TAN'
-    CRVAL : 197.89250000000001  -1.36555556
-    CRPIX : 50.0  50.0
-    CD1_1 CD1_2  : -1.3888888888888893e-05  2.4056261216234408e-05
-    CD2_1 CD2_2  : 2.4056261216234408e-05  1.3888888888888893e-05
-    NAXIS : 100  100
+    >>> print(wcs.wcs.crpix)
+    [ 50.  50.]
+    >>> print(wcs.wcs.crval)
+    [ 197.8925       -1.36555556]
     """
 
     wcs = WCS(naxis=2)
