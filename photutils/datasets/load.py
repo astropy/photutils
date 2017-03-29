@@ -146,9 +146,30 @@ def load_irac_psf(channel):    # pragma: no cover
     .. plot::
         :include-source:
 
+        from astropy.visualization import LogStretch, ImageNormalize
         from photutils.datasets import load_irac_psf
-        hdu = load_irac_psf(1)
-        plt.imshow(hdu.data, origin='lower', interpolation='nearest')
+        hdu1 = load_irac_psf(1)
+        hdu2 = load_irac_psf(2)
+        hdu3 = load_irac_psf(3)
+        hdu4 = load_irac_psf(4)
+
+        norm = ImageNormalize(hdu1.data, stretch=LogStretch())
+
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+        ax1.imshow(hdu1.data, origin='lower', interpolation='nearest',
+                   norm=norm)
+        ax1.set_title('IRAC Ch1 PSF')
+        ax2.imshow(hdu2.data, origin='lower', interpolation='nearest',
+                   norm=norm)
+        ax2.set_title('IRAC Ch2 PSF')
+        ax3.imshow(hdu3.data, origin='lower', interpolation='nearest',
+                   norm=norm)
+        ax3.set_title('IRAC Ch3 PSF')
+        ax4.imshow(hdu4.data, origin='lower', interpolation='nearest',
+                   norm=norm)
+        ax4.set_title('IRAC Ch4 PSF')
+        plt.tight_layout()
+        plt.show()
     """
 
     channel = int(channel)
