@@ -22,8 +22,7 @@ from ..photometry import DAOPhotPSFPhotometry, IterativelySubtractedPSFPhotometr
 from ..photometry import BasicPSFPhotometry
 from ..sandbox import DiscretePRF
 from ...background import SigmaClip, MedianBackground, StdBackgroundRMS
-from ...background import MedianBackground, MMMBackground, SigmaClip
-from ...background import StdBackgroundRMS
+from ...background import MMMBackground
 from ...datasets import make_gaussian_sources
 from ...datasets import make_noise_image
 from ...detection import DAOStarFinder

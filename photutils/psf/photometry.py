@@ -132,7 +132,6 @@ class BasicPSFPhotometry(object):
         self._pars_to_output = None
         self._residual_image = None
 
-
     @property
     def fitshape(self):
         return self._fitshape
@@ -382,7 +381,7 @@ class BasicPSFPhotometry(object):
         xname, yname, fluxname = _extract_psf_fitting_names(self.psf_model)
         self._pars_to_set = {'x_0': xname, 'y_0': yname, 'flux_0': fluxname}
         self._pars_to_output = {'x_fit': xname, 'y_fit': yname,
-                'flux_fit': fluxname}
+                                'flux_fit': fluxname}
 
         for p, isfixed in self.psf_model.fixed.items():
             p0 = p + '_0'
@@ -520,7 +519,6 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                 bkg_estimator, psf_model, fitshape, finder, fitter, aperture_radius)
         self.niters = niters
 
-
     @property
     def niters(self):
         return self._niters
@@ -594,7 +592,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
 
         if init_guesses is not None:
             table = super(IterativelySubtractedPSFPhotometry,
-                self).do_photometry(image, init_guesses)
+                          self).do_photometry(image, init_guesses)
             table['iter_detected'] = np.ones(table['x_fit'].shape,
                                              dtype=np.int32)
 

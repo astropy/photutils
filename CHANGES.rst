@@ -38,6 +38,10 @@ API changes
   - Removed the ``pixelwise_errors`` keyword from
     ``aperture_photometry``. [#489]
 
+- ``photutils.utils``
+
+  - Deprecated unused ``interpolate_masked_data()``. [#526]
+
 Bug Fixes
 ^^^^^^^^^
 
