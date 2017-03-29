@@ -166,8 +166,8 @@ def make_random_models_table(n_sources, param_ranges, random_state=None):
     defined by the column names.  The parameters are drawn from a
     uniform distribution over the specified input ranges.
 
-    The output table can be input into `make_model_sources_image` to
-    create an image containing the model sources.
+    The output table can be input into :func:`make_model_sources_image`
+    to create an image containing the model sources.
 
     Parameters
     ----------
@@ -241,8 +241,9 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
     parameters are defined by the column names.  The parameters are
     drawn from a uniform distribution over the specified input ranges.
 
-    The output table can be input into `make_gaussian_sources_image` to
-    create an image containing the 2D Gaussian sources.
+    The output table can be input into
+    :func:`make_gaussian_sources_image` to create an image containing
+    the 2D Gaussian sources.
 
     Parameters
     ----------
@@ -255,10 +256,12 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
         `dict` mapping the parameter name to its ``(lower, upper)``
         bounds.  The dictionary keys must be valid
         `~astropy.modeling.functional_models.Gaussian2D` parameter names
-        or ``'flux'``.  ``'flux'`` can be specified as a parameter
-        instead of the ``'amplitude'`` but it will be ignored if
-        ``'amplitude'`` is input.  Model parameters not defined in
-        ``param_ranges`` will be set to the default value.
+        or ``'flux'``.  If ``'flux'`` is specified, but not
+        ``'amplitude'`` then the 2D Gaussian amplitudes will be
+        calculated and placed in the output table.  If both ``'flux'``
+        and ``'amplitude'`` are specified, then ``'flux'`` will be
+        ignored.  Model parameters not defined in ``param_ranges`` will
+        be set to the default value.
 
     random_state : int or `~numpy.random.RandomState`, optional
         Pseudo-random number generator state used for random sampling.
@@ -328,7 +331,7 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
                                        random_state=random_state)
 
     # convert Gaussian2D flux to amplitude
-    if 'flux' in param_ranges:
+    if 'flux' in param_ranges and 'amplitude' not in param_ranges:
         model = Gaussian2D()
         if 'x_stddev' in sources.colnames:
             xstd = sources['x_stddev']
@@ -401,7 +404,7 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
                         'y_0': [0, shape[0]],
                         'gamma': [5, 10],
                         'alpha': [1, 2]}
-        sources = make_random_models_table(model, n_sources, param_ranges,
+        sources = make_random_models_table(n_sources, param_ranges,
                                            random_state=12345)
 
         data = make_model_sources_image(shape, model, sources)
@@ -454,8 +457,8 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
         table corresponds to a Gaussian source whose parameters are
         defined by the column names.  With the exception of ``'flux'``,
         column names that do not match model parameters will be ignored
-        (flux will be converted to amplitude).  If both ``flux`` and
-        ``amplitude`` are present, then ``amplitude`` will be ignored.
+        (flux will be converted to amplitude).  If both ``'flux'`` and
+        ``'amplitude'`` are present, then ``'flux'`` will be ignored.
         Model parameters not defined in the table will be set to the
         default value.
 
@@ -622,8 +625,6 @@ def make_100gaussians_image(noise=True):
         plt.imshow(image, origin='lower', interpolation='nearest')
     """
 
-    prng = check_random_state(12345)
-
     n_sources = 100
     flux_range = [500, 1000]
     xmean_range = [0, 500]
@@ -727,9 +728,10 @@ def make_imagehdu(data, wcs=None):
 
     Examples
     --------
-    >>> from photutils.datasets import make_imagehdu
+    >>> from photutils.datasets import make_imagehdu, make_wcs
     >>> data = np.ones((100, 100))
-    >>> hdu = make_imagehdu(data)
+    >>> wcs = make_wcs()
+    >>> hdu = make_imagehdu(data, wcs=wcs)
     >>> print(hdu.data.shape)
     (100, 100)
     """

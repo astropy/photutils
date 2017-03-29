@@ -6,9 +6,9 @@ Datasets (`photutils.datasets`)
 Introduction
 ------------
 
-`photutils.datasets` gives easy access to a few example datasets.  The
-datasets are are mostly images, but they also include PSF models and a
-source catalog.
+`photutils.datasets` gives easy access to load or make a few example
+datasets.  The datasets are are mostly images, but they also include
+PSF models and a source catalog.
 
 These datasets are useful for the Photutils documentation, tests, and
 benchmarks, but also for users that would like to try out or implement
@@ -29,7 +29,7 @@ simulate much more realistic astronomical images.
 Getting Started
 ---------------
 
-To load an example image with
+Let's load an example image of M67 with
 :func:`~photutils.datasets.load_star_image`::
 
     >>> from photutils import datasets
