@@ -181,8 +181,6 @@ def make_random_models_table(n_sources, param_ranges, random_state=None):
 
     random_state : int or `~numpy.random.RandomState`, optional
         Pseudo-random number generator state used for random sampling.
-        Separate function calls with the same parameters and
-        ``random_state`` will generate the identical sources.
 
     Returns
     -------
@@ -195,6 +193,12 @@ def make_random_models_table(n_sources, param_ranges, random_state=None):
     See Also
     --------
     make_random_gaussians_table, make_model_sources_image
+
+    Notes
+    -----
+    To generate identical parameter values from separate function calls,
+    ``param_ranges`` must be input as an `~collections.OrderedDict` with
+    the same parameter ranges and ``random_state`` must be the same.
 
     Examples
     --------
@@ -265,8 +269,6 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
 
     random_state : int or `~numpy.random.RandomState`, optional
         Pseudo-random number generator state used for random sampling.
-        Separate function calls with the same parameters and
-        ``random_state`` will generate the identical sources.
 
     Returns
     -------
@@ -278,6 +280,13 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
     See Also
     --------
     make_random_models_table, make_gaussian_sources_image
+
+    Notes
+    -----
+    To generate identical parameter values from separate function calls,
+    ``param_ranges`` must be input as an `~collections.OrderedDict` with
+    the same parameter ranges and ``random_state`` must be the same.
+
 
     Examples
     --------
