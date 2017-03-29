@@ -2,6 +2,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 
 from ..colormaps import random_cmap
@@ -15,17 +16,7 @@ except ImportError:
 
 @pytest.mark.skipif('not HAS_MATPLOTLIB')
 def test_colormap():
-    cmap = random_cmap(100, random_state=12345)
-    assert cmap(0) == (0., 0., 0., 1.0)
-
-
-@pytest.mark.skipif('not HAS_MATPLOTLIB')
-def test_colormap_background():
-    cmap = random_cmap(100, background_color='white', random_state=12345)
-    assert cmap(0) == (1., 1., 1., 1.0)
-
-
-@pytest.mark.skipif('not HAS_MATPLOTLIB')
-def test_invalid_background():
-    with pytest.raises(ValueError):
-        random_cmap(100, background_color='invalid', random_state=12345)
+    ncolors = 100
+    cmap = random_cmap(ncolors, random_state=12345)
+    assert len(cmap.colors) == ncolors
+    assert_allclose(cmap.colors[0], [0.9234715, 0.64837165, 0.76454726])
