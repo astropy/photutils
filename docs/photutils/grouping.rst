@@ -34,35 +34,34 @@ simple example.
 
 First, let's make some Gaussian sources using
 `~photutils.datasets.make_random_gaussians_table` and
-`~photutils.datasets.make_gaussian_sources_image`. The former will return a
-`~astropy.table.Table` containing parameters for 2D Gaussian sources and the
-latter will make an actual image using that table.
+`~photutils.datasets.make_gaussian_sources_image`. The former will
+return a `~astropy.table.Table` containing parameters for 2D Gaussian
+sources and the latter will make an actual image using that table.
 
 .. plot::
     :include-source:
 
+    from collections import OrderedDict
     import numpy as np
-    from photutils.datasets import make_random_gaussians_table
-    from photutils.datasets import make_gaussian_sources_image
+    from photutils.datasets import (make_random_gaussians_table,
+                                    make_gaussian_sources_image)
     import matplotlib.pyplot as plt
 
     n_sources = 350
-    min_flux = 500
-    max_flux = 5000
-    min_xmean = min_ymean = 6
-    max_xmean = max_ymean = 250
     sigma_psf = 2.0
-    starlist = make_random_gaussians(n_sources, [min_flux, max_flux],
-                                     [min_xmean, max_xmean],
-                                     [min_ymean, max_ymean],
-                                     [sigma_psf, sigma_psf],
-                                     [sigma_psf, sigma_psf], random_state=1234)
 
-    starlist = make_random_gaussians_table(n_sources, [min_flux, max_flux],
-        [min_xmean, max_xmean], [min_ymean, max_ymean],
-        [sigma_psf, sigma_psf], [sigma_psf, sigma_psf], random_state=1234)
+    # use an OrderedDict to ensure reproducibility
+    params = OrderedDict([('flux', [500, 5000]),
+                          ('x_mean', [6, 250]),
+                          ('y_mean', [6, 250]),
+                          ('x_stddev', [sigma_psf, sigma_psf]),
+                          ('y_stddev', [sigma_psf, sigma_psf]),
+                          ('theta', [0, np.pi])])
+
+    starlist = make_random_gaussians_table(n_sources, params,
+                                           random_state=1234)
+
     shape = (256, 256)
-
     sim_image = make_gaussian_sources_image(shape, starlist)
 
     plt.imshow(sim_image, origin='lower', interpolation='nearest',
@@ -83,54 +82,22 @@ Here we rename ``x_mean`` to ``x_0`` and ``y_mean`` to ``y_0``:
 
 Now, let's find the stellar groups.  We start by creating a
 `~photutils.DAOGroup` object.  Here we set its ``crit_separation``
-parameter ``2.5 * fwhm``, where the stellar ``fwhm`` was defined above
+parameter ``3.5 * fwhm``, where the stellar ``fwhm`` was defined above
 when we created the stars as 2D Gaussians.  In general one will need
 to measure the FWHM of the stellar profiles.
 
 .. doctest-skip::
-    import numpy as np
-    from photutils.datasets import make_random_gaussians_table
-    from photutils.datasets import make_gaussian_sources_image
-    import matplotlib.pyplot as plt
 
-    n_sources = 350
-    min_flux = 500
-    max_flux = 5000
-    min_xmean = min_ymean = 6
-    max_xmean = max_ymean = 250
-    sigma_psf = 2.0
-    starlist = make_random_gaussians_table(n_sources, [min_flux, max_flux],
-                   [min_xmean, max_xmean], [min_ymean, max_ymean],
-                   [sigma_psf, sigma_psf], [sigma_psf, sigma_psf],
-                   random_state=1234)
-
-    shape = (256, 256)
-    sim_image = make_gaussian_sources_image(shape, starlist)
-    plt.imshow(sim_image, origin='lower', interpolation='nearest',
-               cmap='viridis')
-    from photutils import CircularAperture
-    from astropy.stats import gaussian_sigma_to_fwhm
-    circ_aperture = CircularAperture((starlist['x_mean'], starlist['y_mean']),
-                                     r=sigma_psf*gaussian_sigma_to_fwhm)
-    plt.imshow(sim_image, origin='lower', interpolation='nearest',
-               cmap='viridis')
-    circ_aperture.plot(lw=1.5, alpha=0.5)
-    plt.show()
-
+    >>> from astropy.stats import gaussian_sigma_to_fwhm
     >>> from photutils.psf.groupstars import DAOGroup
     >>> fwhm = sigma_psf * gaussian_sigma_to_fwhm
-    >>> daogroup = DAOGroup(crit_separation=2.5*fwhm)
+    >>> daogroup = DAOGroup(crit_separation=3.5*fwhm)
 
 ``daogroup`` is a `~photutils.DAOGroup` instance that can be used as a
 calling function that receives as input a table of stars (e.g.
 ``starlist``):
 
 .. doctest-skip::
-
-    from photutils.psf.groupstars import DAOGroup
-
-    fwhm = sigma_psf*gaussian_sigma_to_fwhm
-    daogroup = DAOGroup(crit_separation=1.5*fwhm)
 
     >>> star_groups = daogroup(starlist)
 
@@ -184,28 +151,30 @@ in the same group have the same aperture color:
 
 .. plot::
 
+    from collections import OrderedDict
     import numpy as np
-    from photutils.datasets import make_random_gaussians_table
-    from photutils.datasets import make_gaussian_sources_image
+    from photutils.datasets import (make_random_gaussians_table,
+                                    make_gaussian_sources_image)
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
     rcParams['image.aspect'] = 1  # to get images with square pixels
     rcParams['figure.figsize'] = (7, 7)
 
     n_sources = 350
-    min_flux = 500
-    max_flux = 5000
-    min_xmean = min_ymean = 6
-    max_xmean = max_ymean = 250
     sigma_psf = 2.0
-    starlist = make_random_gaussians(n_sources, [min_flux, max_flux],
-                                     [min_xmean, max_xmean],
-                                     [min_ymean, max_ymean],
-                                     [sigma_psf, sigma_psf],
-                                     [sigma_psf, sigma_psf], random_state=1234)
+    # use an OrderedDict to ensure reproducibility
+    params = OrderedDict([('flux', [500, 5000]),
+                          ('x_mean', [6, 250]),
+                          ('y_mean', [6, 250]),
+                          ('x_stddev', [sigma_psf, sigma_psf]),
+                          ('y_stddev', [sigma_psf, sigma_psf]),
+                          ('theta', [0, np.pi])])
+
+    starlist = make_random_gaussians_table(n_sources, params,
+                                           random_state=1234)
 
     shape = (256, 256)
-    sim_image = make_gaussian_sources(shape, starlist)
+    sim_image = make_gaussian_sources_image(shape, starlist)
 
     starlist['x_mean'].name = 'x_0'
     starlist['y_mean'].name = 'y_0'
