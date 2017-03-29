@@ -341,7 +341,8 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
 
     # convert Gaussian2D flux to amplitude
     if 'flux' in param_ranges and 'amplitude' not in param_ranges:
-        model = Gaussian2D()
+        model = Gaussian2D(x_stddev=1, y_stddev=1)
+
         if 'x_stddev' in sources.colnames:
             xstd = sources['x_stddev']
         else:
@@ -526,7 +527,8 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
         ax3.set_title('Original image with added Poisson noise ($\\mu = 5$)')
     """
 
-    model = Gaussian2D()
+    model = Gaussian2D(x_stddev=1, y_stddev=1)
+
     if 'x_stddev' in source_table.colnames:
         xstd = source_table['x_stddev']
     else:
@@ -542,7 +544,7 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
         source_table['amplitude'] = (source_table['flux'] /
                                      (2. * np.pi * xstd * ystd))
 
-    return make_model_sources_image(shape, Gaussian2D(), source_table,
+    return make_model_sources_image(shape, model, source_table,
                                     oversample=oversample)
 
 
@@ -738,8 +740,9 @@ def make_imagehdu(data, wcs=None):
     Examples
     --------
     >>> from photutils.datasets import make_imagehdu, make_wcs
-    >>> data = np.ones((100, 100))
-    >>> wcs = make_wcs()
+    >>> shape = (100, 100)
+    >>> data = np.ones(shape)
+    >>> wcs = make_wcs(shape)
     >>> hdu = make_imagehdu(data, wcs=wcs)
     >>> print(hdu.data.shape)
     (100, 100)
