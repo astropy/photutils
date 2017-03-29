@@ -6,7 +6,6 @@ from __future__ import print_function
 
 import functools
 import warnings
-import inspect
 
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)

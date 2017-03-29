@@ -2,23 +2,18 @@
 """
 Models for doing PSF/PRF fitting photometry on image data.
 """
-
 from __future__ import division
+
 import warnings
-import numpy as np
 import copy
-from astropy.table import Table
+
+import numpy as np
 from astropy.modeling import models, Parameter, Fittable2DModel
-from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.nddata.utils import subpixel_indices
 from astropy.utils.exceptions import AstropyWarning
-from ..utils import mask_to_mirrored_num
-from ..extern.nddata_compat import extract_array
 
 __all__ = ['FittableImageModel', 'NonNormalizable',
            'IntegratedGaussianPRF', 'PRFAdapter',
            'prepare_psf_model', 'get_grouped_psf_model']
-
 
 try:
     import scipy

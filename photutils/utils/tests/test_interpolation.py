@@ -2,9 +2,12 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+import warnings
+
 import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
+from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from .. import ShepardIDWInterpolator as idw
 from .. import interpolate_masked_data, mask_to_mirrored_num
@@ -111,6 +114,13 @@ class TestShepardIDWInterpolator(object):
 
 
 class TestInterpolateMaskedData(object):
+    def setup_class(cls):
+        """Ignore all deprecation warnings here."""
+        warnings.simplefilter('ignore', AstropyDeprecationWarning)
+
+    def teardown_class(cls):
+        warnings.resetwarnings()
+
     def test_mask_shape(self):
         with pytest.raises(ValueError):
             interpolate_masked_data(DATA, WRONG_SHAPE)
