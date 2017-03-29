@@ -1,13 +1,10 @@
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
-import logging
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Utility functions for PSF building.
+"""
+from __future__ import absolute_import, division, print_function
 
 import numpy as np
-
-log = logging.getLogger(__name__)
-log.addHandler(logging.NullHandler(level=logging.INFO))
-
 
 __all__ = ['py2round', 'interpolate_missing_data']
 

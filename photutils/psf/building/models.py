@@ -1,12 +1,10 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 This module provides fittable models based on 2D images.
 """
-
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import absolute_import, division, print_function
 
 import warnings
-import logging
 import copy
 
 import numpy as np
@@ -14,9 +12,6 @@ from astropy.modeling import Fittable2DModel
 from astropy.modeling.parameters import Parameter
 
 __all__ = ['FittableImageModel2D', 'NonNormalizable']
-
-log = logging.getLogger(__name__)
-log.addHandler(logging.NullHandler(level=logging.INFO))
 
 
 class NonNormalizable(Warning):

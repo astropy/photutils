@@ -3,3 +3,5 @@
 This subpackage contains modules and packages to build
 point spread functions.
 """
+
+from .core import *  # noqa

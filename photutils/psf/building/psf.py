@@ -1,18 +1,17 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 This module provides tools for creation and fitting of empirical PSFs (ePSF)
 to stars.
 """
+from __future__ import absolute_import, division, print_function
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
-import logging
 import warnings
 import copy
 
 import numpy as np
 from astropy.convolution import convolve, Kernel
 from astropy.modeling import fitting
+from astropy.utils.exceptions import AstropyUserWarning
 
 from .centroid import find_peak
 from .models import FittableImageModel2D, NonNormalizable
@@ -22,10 +21,16 @@ from .utils import py2round, interpolate_missing_data
 __all__ = ['PSF2DModel', 'build_psf', 'iter_build_psf', 'fit_stars',
            'compute_residuals']
 
-log = logging.getLogger(__name__)
-log.addHandler(logging.NullHandler(level=logging.INFO))
-
-
+# TODO: Replace with Astropy models?
+# From Jay Anderson:
+# The kernels are just least-squares solutions to the 2-d paraboloid and 2-d
+# 4-th-order-polynomial over the kernel domain.  The parabola has 6 terms:
+# f(x,y) = A + B*x + C*y + D*x^2 + E*x*y + F*y^2.  If you take the (say) 5x5
+# points centered on the central point and solve for values of A, B, C, D,
+# E, and F, then the value of A will represent the value of the paraboloid
+# at the central pixel of the grid.  This constitutes a ³smooothing², but it
+# respects certain variations.  A boxcar respects linear variations. This
+# respects quadratic (or quartic) variations.
 _kernel_quar = np.array(
     [[+0.041632, -0.080816, 0.078368, -0.080816, +0.041632],
      [-0.080816, -0.019592, 0.200816, -0.019592, -0.080816],
@@ -33,7 +38,6 @@ _kernel_quar = np.array(
      [-0.080816, -0.019592, 0.200816, -0.019592, -0.080816],
      [+0.041632, -0.080816, 0.078368, -0.080816, +0.041632]]
 )
-
 _kernel_quad = np.array(
     [[-0.07428311, 0.01142786, 0.03999952, 0.01142786, -0.07428311],
      [+0.01142786, 0.09714283, 0.12571449, 0.09714283, +0.01142786],
@@ -761,7 +765,8 @@ def _fit_star(star, psf, fit, fit_kwargs, fitter_has_fit_info, residuals,
         fitted_psf = psf
         warnings.warn("Source with coordinates ({}, {}) is being ignored "
                       "because its center is outside the image."
-                      .format(star.x_center, star.y_center))
+                      .format(star.x_center, star.y_center),
+                      AstropyUserWarning)
 
     elif (i2 - i1) < 3 or (j2 - j1) < 3:
         # star's center is too close to the edge of the star's image:
@@ -770,7 +775,8 @@ def _fit_star(star, psf, fit, fit_kwargs, fitter_has_fit_info, residuals,
         fitted_psf = psf
         warnings.warn("Source with coordinates ({}, {}) is being ignored "
                       "because there are too few pixels available around "
-                      "its center pixel.".format(star.x_center, star.y_center))
+                      "its center pixel.".format(star.x_center, star.y_center),
+                      AstropyUserWarning)
 
     else:
         # define PSF sampling grid:

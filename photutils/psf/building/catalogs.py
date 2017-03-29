@@ -1,27 +1,23 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 This module provides tools for source extraction from images and catalogs.
 """
+from __future__ import absolute_import, division, print_function
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
-import logging
+import warnings
 
 import numpy as np
 from astropy.table import Table
 from astropy.nddata import NDData
 from astropy.nddata.nddata import UnknownUncertainty
-from astropy import wcs
+from astropy.utils.exceptions import AstropyUserWarning
+from astropy import log, wcs
 
 from .centroid import find_peak
 from .utils import py2round, interpolate_missing_data
 
-__all__ = [
-    'extract_stars', 'sim_extract_stars', 'Weights', 'Star', 'expand_starlist'
-]
-
-log = logging.getLogger(__name__)
-log.addHandler(logging.NullHandler(level=logging.INFO))
+__all__ = ['extract_stars', 'sim_extract_stars', 'Weights', 'Star',
+           'expand_starlist']
 
 
 class Weights(UnknownUncertainty):
@@ -1396,9 +1392,11 @@ optional
             weights = None
         else:
             if image.uncertainty.uncertainty_type != 'weights':
-                log.warning("Input image's uncertainty has an unsupported "
-                            "'uncertainty_type'. Only 'weights' type can be "
-                            "used as weight. Setting weights to 1.")
+                warnings.warn(
+                    "Input image's uncertainty has an unsupported "
+                    "'uncertainty_type'. Only 'weights' type can be "
+                    "used as weight. Setting weights to 1.",
+                    AstropyUserWarning)
 
             weights = np.asarray(image.uncertainty.array, dtype=np.float)
 
@@ -1429,12 +1427,14 @@ optional
             esx = es[0]
             esy = es[1]
             if esx < 3:
-                log.warning("'extract_size' along X-axis is too small. "
-                            "Setting 'extract_size' to 3.")
+                warnings.warn(
+                    "'extract_size' along X-axis is too small. "
+                    "Setting 'extract_size' to 3.", AstropyUserWarning)
                 esx = 3
             if esy < 3:
-                log.warning("'extract_size' along Y-axis is too small. "
-                            "Setting 'extract_size' to 3.")
+                warnings.warn(
+                    "'extract_size' along Y-axis is too small. "
+                    "Setting 'extract_size' to 3.", AstropyUserWarning)
                 esy = 3
             bsize[:, 0] = esx
             bsize[:, 1] = esy
@@ -1443,8 +1443,10 @@ optional
             bsize[:, :] = es[:, :2]
             # check 'extract_size':
             if not np.all(bsize > 2):
-                log.warning("'extract_size' is too small for some sources. "
-                            "Setting 'extract_size' to min 3 in those cases.")
+                warnings.warn(
+                    "'extract_size' is too small for some sources. "
+                    "Setting 'extract_size' to min 3 in those cases.",
+                    AstropyUserWarning)
                 bsize[bsize < 3] = 3
         else:
             raise ValueError("'extract_size' must be an integer number, or a "
@@ -1454,13 +1456,15 @@ optional
     else:
         # check 'extract_size':
         if extract_size < 3:
-            log.warning("'extract_size' is too small. Setting it to 3")
+            warnings.warn(
+                "'extract_size' is too small. Setting it to 3",
+                AstropyUserWarning)
             extract_size = 3
         bsize[:, :] = extract_size
 
     # extract stars:
     starlist = []
-    blc = []
+    # blc = []
     ny, nx = image.shape
     for x, y, (w, h), wt, i in zip(srcx, srcy, bsize, wght, sid):
         xc = int(x)
@@ -1470,9 +1474,9 @@ optional
         y1 = max(0, yc - (h - 1) // 2)
         y2 = min(ny, y1 + h)
         if x2 - x1 < 3 or y2 - y1 < 3:
-            log.warning("Source with coordinates ({}, {}) is being ignored "
-                        "because there are too few pixels available around "
-                        "its center pixel.".format(x, y))
+            warnings.warn("Source with coordinates ({}, {}) is being ignored "
+                          "because there are too few pixels available around "
+                          "its center pixel.".format(x, y), AstropyUserWarning)
             if _ignored_as_None:
                 starlist.append(None)
             continue
@@ -1502,9 +1506,11 @@ optional
             y1 = max(0, yc - (h - 1) // 2)
             y2 = min(ny, y1 + h)
             if x2 - x1 < 3 or y2 - y1 < 3:
-                log.warning("Source with coordinates ({}, {}) is being "
-                            "ignored because there are too few pixels "
-                            "available around its center pixel.".format(x, y))
+                warnings.warn(
+                    "Source with coordinates ({}, {}) is being "
+                    "ignored because there are too few pixels "
+                    "available around its center pixel.".format(x, y),
+                    AstropyUserWarning)
                 if _ignored_as_None:
                     starlist.append(None)
                 continue

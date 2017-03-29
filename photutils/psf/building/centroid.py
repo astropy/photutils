@@ -2,20 +2,13 @@
 """
 Centroid utilities.
 """
-
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
-import logging
+from __future__ import absolute_import, division, print_function
 
 import numpy as np
 
 from .utils import py2round
 
 __all__ = ['find_peak', 'local_centroid']
-
-log = logging.getLogger(__name__)
-log.addHandler(logging.NullHandler(level=logging.INFO))
 
 
 def find_peak(image_data, xmax=None, ymax=None, peak_fit_box=5,
