@@ -82,7 +82,7 @@ Here we rename ``x_mean`` to ``x_0`` and ``y_mean`` to ``y_0``:
 
 Now, let's find the stellar groups.  We start by creating a
 `~photutils.DAOGroup` object.  Here we set its ``crit_separation``
-parameter ``3.5 * fwhm``, where the stellar ``fwhm`` was defined above
+parameter ``2.5 * fwhm``, where the stellar ``fwhm`` was defined above
 when we created the stars as 2D Gaussians.  In general one will need
 to measure the FWHM of the stellar profiles.
 
@@ -91,7 +91,7 @@ to measure the FWHM of the stellar profiles.
     >>> from astropy.stats import gaussian_sigma_to_fwhm
     >>> from photutils.psf.groupstars import DAOGroup
     >>> fwhm = sigma_psf * gaussian_sigma_to_fwhm
-    >>> daogroup = DAOGroup(crit_separation=3.5*fwhm)
+    >>> daogroup = DAOGroup(crit_separation=2.5*fwhm)
 
 ``daogroup`` is a `~photutils.DAOGroup` instance that can be used as a
 calling function that receives as input a table of stars (e.g.
@@ -104,12 +104,12 @@ calling function that receives as input a table of stars (e.g.
 The ``star_groups`` output is copy of the input ``starlist`` table,
 but with an extra column called ``group_id``.  This column contains
 integers that represent the group assigned to each source.  Here the
-grouping algorithm separated the 350 stars into 249 distinct groups:
+grouping algorithm separated the 350 stars into 92 distinct groups:
 
 .. doctest-skip::
 
     >>> print(max(star_groups['group_id']))
-    249
+    92
 
 One can use the ``group_by`` functionality from `~astropy.table.Table`
 to create groups according to ``group_id``:
@@ -118,20 +118,19 @@ to create groups according to ``group_id``:
 
     >>> star_groups = star_groups.group_by('group_id')
     >>> print(star_groups)
-
-         flux          x_0           y_0      ...     theta       id group_id
-    ------------- ------------- ------------- ... -------------- --- --------
-    1361.83752671 182.958386152 178.708228379 ...  4.36133269879   1        1
-    555.831417775 181.611905957  185.16181342 ... 0.801284325687 222        1
-    3299.48946968  243.60449392 85.8926967927 ...  2.24138419824   2        2
-    2469.77482553 136.657577889 109.771746713 ...  4.82559763746   3        3
-    1650.43978895  131.83343504 110.441871517 ...  5.44328378359 153        3
-              ...           ...           ... ...            ... ...      ...
-     4789.5840034 47.9900598664 29.4596354785 ...  5.47735588068 341      246
-    4831.78338403 49.2618839218  24.821038274 ...  3.84946567257 345      246
-    643.136283663 81.2058931512 197.205965254 ...  5.75254014417 344      247
-    4437.94013032 20.5310110132 159.825683512 ...  5.23140824935 348      248
-    1508.68165551 54.0404934991 232.693833605 ...  1.54042673504 349      249
+         flux          x_0           y_0      ...   amplitude    id group_id
+    ------------- ------------- ------------- ... ------------- --- --------
+    1361.83752671 182.958386152 178.708228379 ... 54.1857935158   1        1
+    4282.41965053 179.998944123 171.437757021 ... 170.392063944 183        1
+    555.831417775 181.611905957  185.16181342 ... 22.1158294162 222        1
+    3299.48946968  243.60449392 85.8926967927 ... 131.282514695   2        2
+    2469.77482553 136.657577889 109.771746713 ... 98.2692179518   3        3
+              ...           ...           ... ...           ... ...      ...
+    818.132804377 117.787387455 92.4349134636 ... 32.5524699806 313       88
+    3979.57421702  154.85279495 18.3148180315 ...  158.34222701 318       89
+    3622.30997136 97.0901736699 50.3565997421 ... 144.127134338 323       90
+     765.47561385 144.952825542 7.57086675812 ... 30.4573069401 330       91
+    1508.68165551 54.0404934991 232.693833605 ... 60.0285357567 349       92
     Length = 350 rows
 
 Finally, let's plot a circular aperture around each star, where stars
@@ -139,6 +138,7 @@ in the same group have the same aperture color:
 
 .. doctest-skip::
 
+    >>> from photutils import CircularAperture
     >>> from photutils.utils import random_cmap
     >>> plt.imshow(sim_image, origin='lower', interpolation='nearest',
     ...            cmap='Greys_r')
