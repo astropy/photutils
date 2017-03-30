@@ -4,15 +4,14 @@ from __future__ import (absolute_import, division, print_function,
 
 import numpy as np
 from numpy.testing import assert_allclose
-from astropy.tests.helper import pytest, assert_quantity_allclose
+from astropy.tests.helper import pytest
 from astropy.table import Table
-import astropy.units as u
 from astropy.modeling.models import Moffat2D
 
-from .. import (make_noise_image, make_poisson_noise, make_gaussian_sources,
-                make_random_gaussians, make_4gaussians_image,
-                make_100gaussians_image,
-                make_random_models, make_model_sources)
+from .. import (make_noise_image, apply_poisson_noise,
+                make_gaussian_sources_image, make_random_gaussians_table,
+                make_4gaussians_image, make_100gaussians_image,
+                make_random_models_table, make_model_sources_image)
 
 
 TABLE = Table()
@@ -56,95 +55,65 @@ def test_make_noise_image_nostddev():
         make_noise_image(shape, 'gaussian', mean=2.)
 
 
-def test_make_noise_image_unit():
-    shape = (100, 100)
-    unit = u.electron / u.s
-    image = make_noise_image(shape, 'gaussian', mean=0., stddev=2., unit=unit)
-    assert image.shape == shape
-    assert image.unit == unit
-    assert_quantity_allclose(image.mean(), 0.*unit, atol=1.*unit)
-
-
-def test_make_poisson_noise():
+def test_apply_poisson_noise():
     shape = (100, 100)
     data = np.ones(shape)
-    result = make_poisson_noise(data)
+    result = apply_poisson_noise(data)
     assert result.shape == shape
     assert_allclose(result.mean(), 1., atol=1.)
 
 
-def test_make_poisson_noise_negative():
+def test_apply_poisson_noise_negative():
     """Test if negative image values raises ValueError."""
 
     with pytest.raises(ValueError):
         shape = (100, 100)
         data = np.zeros(shape) - 1.
-        make_poisson_noise(data)
+        apply_poisson_noise(data)
 
 
-def test_make_poisson_noise_unit():
+def test_make_gaussian_sources_image():
     shape = (100, 100)
-    unit = u.electron / u.s
-    data = np.ones(shape) * unit
-    result = make_poisson_noise(data)
-    assert result.shape == shape
-    assert result.unit == unit
-    assert_quantity_allclose(result.mean(), 1.*unit, atol=1.*unit)
-
-
-def test_make_gaussian_sources():
-    shape = (100, 100)
-    image = make_gaussian_sources(shape, TABLE)
+    image = make_gaussian_sources_image(shape, TABLE)
     assert image.shape == shape
     assert_allclose(image.sum(), TABLE['flux'].sum())
 
 
-def test_make_gaussian_sources_amplitude():
+def test_make_gaussian_sources_image_amplitude():
     table = TABLE.copy()
     table.remove_column('flux')
     table['amplitude'] = [1, 2, 3]
     shape = (100, 100)
-    image = make_gaussian_sources(shape, table)
+    image = make_gaussian_sources_image(shape, table)
     assert image.shape == shape
 
 
-def test_make_gaussian_sources_oversample():
+def test_make_gaussian_sources_image_oversample():
     shape = (100, 100)
-    image = make_gaussian_sources(shape, TABLE, oversample=10)
+    image = make_gaussian_sources_image(shape, TABLE, oversample=10)
     assert image.shape == shape
     assert_allclose(image.sum(), TABLE['flux'].sum())
 
 
-def test_make_gaussian_sources_parameters():
-    with pytest.raises(ValueError):
-        table = TABLE.copy()
-        table.remove_column('flux')
-        shape = (100, 100)
-        make_gaussian_sources(shape, table)
-
-
-def test_make_gaussian_sources_unit():
-    shape = (100, 100)
-    unit = u.electron / u.s
-    image = make_gaussian_sources(shape, TABLE, unit=unit)
-    assert image.shape == shape
-    assert image.unit == unit
-    assert_quantity_allclose(image.sum(), TABLE['flux'].sum()*unit)
-
-
-def test_make_random_gaussians():
+def test_make_random_gaussians_table():
     n_sources = 5
-    bounds = [0, 1]
-    table = make_random_gaussians(n_sources, bounds, bounds, bounds, bounds,
-                                  bounds)
+    param_ranges = dict([('amplitude', [500, 1000]), ('x_mean', [0, 500]),
+                         ('y_mean', [0, 300]), ('x_stddev', [1, 5]),
+                         ('y_stddev', [1, 5]), ('theta', [0, np.pi])])
+
+    table = make_random_gaussians_table(n_sources, param_ranges,
+                                        random_state=12345)
     assert len(table) == n_sources
 
 
-def test_make_random_gaussians_amplitude():
+def test_make_random_gaussians_table_flux():
     n_sources = 5
-    bounds = [0, 1]
-    table = make_random_gaussians(n_sources, bounds, bounds, bounds, bounds,
-                                  bounds, amplitude_range=bounds)
+    param_ranges = dict([('flux', [500, 1000]), ('x_mean', [0, 500]),
+                         ('y_mean', [0, 300]), ('x_stddev', [1, 5]),
+                         ('y_stddev', [1, 5]), ('theta', [0, np.pi])])
+    table = make_random_gaussians_table(n_sources, param_ranges,
+                                        random_state=12345)
+    assert 'amplitude' in table.colnames
     assert len(table) == n_sources
 
 
@@ -164,13 +133,13 @@ def test_make_100gaussians_image():
     assert_allclose(image.sum(), data_sum, rtol=1.e-6)
 
 
-def test_make_random_models():
+def test_make_random_models_table():
     model = Moffat2D(amplitude=1)
     param_ranges = {'x_0': (0, 300), 'y_0': (0, 500),
                     'gamma': (1, 3), 'alpha': (1.5, 3)}
-    source_table = make_random_models(model, 10, param_ranges)
+    source_table = make_random_models_table(10, param_ranges)
 
-    # most of the make_model_sources options are exercised in the
-    # make_gaussian_sources tests
-    image = make_model_sources((300, 500), model, source_table)
+    # most of the make_model_sources_image options are exercised in the
+    # make_gaussian_sources_image tests
+    image = make_model_sources_image((300, 500), model, source_table)
     assert image.sum() > 1

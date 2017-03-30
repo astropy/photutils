@@ -21,6 +21,10 @@ New Features
 
   - Added a ``to_sky`` method for pixel apertures. [#512]
 
+- ``photutils.datasets``
+
+  - Added new ``make_wcs`` and ``make_imagehdu`` functions. [#527]
+
 - ``photutils.segmentation``
 
   - Added a ``cmap`` method to ``SegmentationImage`` to generate a
@@ -37,6 +41,28 @@ API changes
 
   - Removed the ``pixelwise_errors`` keyword from
     ``aperture_photometry``. [#489]
+
+- ``photutils.datasets``
+
+  - The ``make_poission_noise`` function was renamed to
+    ``apply_poisson_noise``.  [#527]
+
+  - The ``make_random_gaussians`` function was renamed to
+    ``make_random_gaussians_table``.  The parameter ranges
+    must now be input as a dictionary.  [#527]
+
+  - The ``make_gaussian_sources`` function was renamed to
+    ``make_gaussian_sources_image``. [#527]
+
+  - The ``make_random_models`` function was renamed to
+    ``make_random_models_table``. [#527]
+
+  - The ``make_model_sources`` function was renamed to
+    ``make_model_sources_image``. [#527]
+
+  - The ``unit``, ``hdu``, ``wcs``, and ``wcsheader`` keywords in
+    ``photutils.datasets`` functions were removed. [#527]
+
 
 Bug Fixes
 ^^^^^^^^^

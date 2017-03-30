@@ -88,10 +88,10 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         table['theta'] = np.array([145., 20., 0., 60.]) * np.pi / 180.
 
         # make an image of the sources with Gaussian noise
-        from photutils.datasets import make_gaussian_sources
+        from photutils.datasets import make_gaussian_sources_image
         from photutils.datasets import make_noise_image
         shape = (100, 200)
-        sources = make_gaussian_sources(shape, table)
+        sources = make_gaussian_sources_image(shape, table)
         noise = make_noise_image(shape, type='gaussian', mean=0.,
                                  stddev=5., random_state=12345)
         image = sources + noise

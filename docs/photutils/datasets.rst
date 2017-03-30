@@ -6,12 +6,13 @@ Datasets (`photutils.datasets`)
 Introduction
 ------------
 
-`photutils.datasets` gives easy access to a few example datasets
-(mostly images, but also e.g. source catalogs or PSF models).
+`photutils.datasets` gives easy access to load or make a few example
+datasets.  The datasets are are mostly images, but they also include
+PSF models and a source catalog.
 
-This is useful for the Photutils documentation, tests, and benchmarks,
-but also for users that would like to try out Photutils functions or
-implement new methods for Photutils or their own scripts.
+These datasets are useful for the Photutils documentation, tests, and
+benchmarks, but also for users that would like to try out or implement
+new methods for Photutils.
 
 Functions that start with ``load_*`` load data files from disk.  Very
 small data files are bundled in the Photutils code repository and are
@@ -20,7 +21,7 @@ available from the `astropy-data`_ repository and loaded into the
 Astropy cache on the user's machine on first load.
 
 Functions that start with ``make_*`` generate simple simulated data
-(e.g. Gaussian sources on flat background with Poisson or Gaussian
+(e.g. Gaussian sources on a flat background with Poisson or Gaussian
 noise).  Note that there are other tools like `skymaker`_ that can
 simulate much more realistic astronomical images.
 
@@ -28,7 +29,8 @@ simulate much more realistic astronomical images.
 Getting Started
 ---------------
 
-To load an example image with `~photutils.datasets.load_star_image`::
+Let's load an example image of M67 with
+:func:`~photutils.datasets.load_star_image`::
 
     >>> from photutils import datasets
     >>> hdu = datasets.load_star_image()  # doctest: +REMOTE_DATA
@@ -36,8 +38,8 @@ To load an example image with `~photutils.datasets.load_star_image`::
     >>> print(hdu.data.shape)  # doctest: +REMOTE_DATA
     (1059, 1059)
 
-``hdu`` is an `astropy.io.fits.ImageHDU` object and ``hdu.data`` is a
-`numpy.array` object that you can analyse with Photutils.
+``hdu`` is a FITS `~astropy.io.fits.ImageHDU` object and ``hdu.data``
+is a `~numpy.ndarray` object.
 
 Let's plot the image:
 
@@ -46,7 +48,7 @@ Let's plot the image:
 
      from photutils import datasets
      hdu = datasets.load_star_image()
-     plt.imshow(hdu.data, origin='lower', cmap='gray')
+     plt.imshow(hdu.data, origin='lower', interpolation='nearest')
      plt.tight_layout()
      plt.show()
 
