@@ -63,6 +63,11 @@ API changes
   - The ``unit``, ``hdu``, ``wcs``, and ``wcsheader`` keywords in
     ``photutils.datasets`` functions were removed. [#527]
 
+- ``photutils.utils``
+
+  - The ``background_color`` keyword was removed from the
+    ``random_cmap`` function. [#528]
+
 
 Bug Fixes
 ^^^^^^^^^
