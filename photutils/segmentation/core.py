@@ -230,7 +230,7 @@ class SegmentationImage(object):
             raise ValueError('label "{0}" is not in the segmentation '
                              'image'.format(label))
 
-    def cmap(self, background_color='black', random_state=None):
+    def cmap(self, background_color='#000000', random_state=None):
         """
         A matplotlib colormap consisting of random (muted) colors.
 
@@ -238,10 +238,11 @@ class SegmentationImage(object):
 
         Parameters
         ----------
-        background_color : str, optional
-            The name of the background (first) color in the colormap.
-            Valid colors names are defined by
-            ``matplotlib.colors.cnames``.  The default is ``'black'``.
+        background_color : str or `None`, optional
+            A hex string in the "#rrggbb" format defining the first
+            color in the colormap.  This color will be used as the
+            background color (label = 0) when plotting the segmentation
+            image.  The default is black.
 
         random_state : int or `~numpy.random.RandomState`, optional
             The pseudo-random number generator state used for random
@@ -249,8 +250,14 @@ class SegmentationImage(object):
             ``random_state`` will generate the same colormap.
         """
 
-        return random_cmap(self.max + 1, background_color=background_color,
-                           random_state=random_state)
+        from matplotlib import colors
+
+        cmap = random_cmap(self.max + 1, random_state=random_state)
+
+        if background_color is not None:
+            cmap.colors[0] = colors.hex2color(background_color)
+
+        return cmap
 
     def outline_segments(self, mask_background=False):
         """
