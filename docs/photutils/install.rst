@@ -20,6 +20,8 @@ optional dependencies are installed:
 
 * `scikit-image`_ 0.11 or later
 
+* `scikit-learn <http://scikit-learn.org/>`_ 0.18 or later
+
 * `matplotlib <http://matplotlib.org/>`_ 1.3 or later
 
 .. warning::
