@@ -197,3 +197,66 @@ in the same group have the same aperture color:
         xypos = np.transpose([group['x_0'], group['y_0']])
         ap = CircularAperture(xypos, r=fwhm)
         ap.plot(color=cmap.colors[i])
+
+
+DBScan
+------
+
+.. plot::
+
+    from collections import OrderedDict
+    import numpy as np
+    from photutils.datasets import (make_random_gaussians_table,
+                                    make_gaussian_sources_image)
+    import matplotlib.pyplot as plt
+    from matplotlib import rcParams
+    rcParams['image.aspect'] = 1  # to get images with square pixels
+    rcParams['figure.figsize'] = (7, 7)
+
+    n_sources = 350
+    sigma_psf = 2.0
+    # use an OrderedDict to ensure reproducibility
+    params = OrderedDict([('flux', [500, 5000]),
+                          ('x_mean', [6, 250]),
+                          ('y_mean', [6, 250]),
+                          ('x_stddev', [sigma_psf, sigma_psf]),
+                          ('y_stddev', [sigma_psf, sigma_psf]),
+                          ('theta', [0, np.pi])])
+
+    starlist = make_random_gaussians_table(n_sources, params,
+                                           random_state=1234)
+
+    shape = (256, 256)
+    sim_image = make_gaussian_sources_image(shape, starlist)
+
+    starlist['x_mean'].name = 'x_0'
+    starlist['y_mean'].name = 'y_0'
+
+    from astropy.stats import gaussian_sigma_to_fwhm
+    from photutils.psf.groupstars import DBSCANGroup
+    from photutils import CircularAperture
+    from photutils.utils import random_cmap
+
+    fwhm = sigma_psf * gaussian_sigma_to_fwhm
+    group = DBSCANGroup(crit_separation=2.5*fwhm)
+    star_groups = group(starlist)
+    star_groups = star_groups.group_by('group_id')
+
+    plt.imshow(sim_image, origin='lower', interpolation='nearest',
+               cmap='Greys_r')
+
+    cmap = random_cmap(random_state=12345)
+    for i, group in enumerate(star_groups.groups):
+        xypos = np.transpose([group['x_0'], group['y_0']])
+        ap = CircularAperture(xypos, r=fwhm)
+        ap.plot(color=cmap.colors[i])
+
+
+
+
+
+Reference/API
+-------------
+
+.. automodapi:: photutils.psf.groupstars
+    :no-heading:
