@@ -1,3 +1,12 @@
+0.3.2 (2017-03-31)
+------------------
+
+General
+^^^^^^^
+
+- Fixed file permissions in the released source distribution.
+
+
 0.3.1 (2017-03-02)
 ------------------
 
