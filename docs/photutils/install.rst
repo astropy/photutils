@@ -29,8 +29,8 @@ optional dependencies are installed:
     While Photutils will import even if these dependencies are not
     installed, the functionality will be severely limited.  It is very
     strongly recommended that you install `Scipy`_ and `scikit-image`_
-    to use Photutils.  Both are easily installed via `pip`_ or
-    `conda`_.
+    to use Photutils.  Both are easily installed via `conda`_ or
+    `pip`_.
 
 
 Installing the latest released version
@@ -114,7 +114,7 @@ resource for setting up your environment to build Python packages.
     Apple developer account).
 
 
-Building and installing Manually
+Building and installing manually
 --------------------------------
 
 Photutils is being developed on `github`_.  The latest development
