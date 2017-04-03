@@ -402,6 +402,7 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
     .. plot::
         :include-source:
 
+        from collections import OrderedDict
         from astropy.modeling.models import Moffat2D
         from photutils.datasets import (make_random_models_table,
                                         make_model_sources_image)
@@ -409,11 +410,12 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
         model = Moffat2D()
         n_sources = 10
         shape = (100, 100)
-        param_ranges = {'amplitude': [100, 200],
-                        'x_0': [0, shape[1]],
-                        'y_0': [0, shape[0]],
-                        'gamma': [5, 10],
-                        'alpha': [1, 2]}
+        param_ranges = [('amplitude', [100, 200]),
+                        ('x_0', [0, shape[1]]),
+                        ('y_0', [0, shape[0]]),
+                        ('gamma', [5, 10]),
+                        ('alpha', [1, 2])]
+        param_ranges = OrderedDict(param_ranges)
         sources = make_random_models_table(n_sources, param_ranges,
                                            random_state=12345)
 
