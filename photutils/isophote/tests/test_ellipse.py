@@ -5,12 +5,13 @@ import unittest
 import numpy as np
 from astropy.io import fits
 
-from .. import build_test_data
-from ..build_test_data import DEFAULT_POS, DEFAULT_SIZE
-from ..geometry import Geometry, DEFAULT_EPS
-from ..fitter import NORMAL_FIT, TOO_MANY_FLAGGED
-from ..ellipse import Ellipse, FIXED_ELLIPSE, FAILED_FIT
-from ..isophote import Isophote, IsophoteList
+from photutils.isophote import build_test_data
+from photutils.isophote.build_test_data import DEFAULT_POS, DEFAULT_SIZE
+from photutils.isophote.geometry import Geometry, DEFAULT_EPS
+from photutils.isophote.fitter import NORMAL_FIT, TOO_MANY_FLAGGED
+from photutils.isophote.ellipse import Ellipse, FIXED_ELLIPSE, FAILED_FIT
+from photutils.isophote.isophote import Isophote, IsophoteList
+from photutils.isophote.tests.test_data import TEST_DATA
 
 
 # define an off-center position and a tilted sma
@@ -22,8 +23,6 @@ PA = 10. / 180. * np.pi
 # of Geometry. The code may eventually modify it's contents. The safe
 # bet is to build it wherever it's needed. The cost is negligible.
 OFFSET_GALAXY = build_test_data.build(x0=POS, y0=POS, pa=PA, noise=1.E-12)
-
-TEST_DATA = "data/"
 
 verb = False
 

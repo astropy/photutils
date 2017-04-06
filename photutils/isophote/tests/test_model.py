@@ -1,16 +1,17 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+from os import path
 import unittest
 
 import numpy as np
 from astropy.io import fits
 
-from ..geometry import Geometry
-from ..ellipse import Ellipse
-from ..model import build_model
-from ..build_test_data import build
+from photutils.isophote.geometry import Geometry
+from photutils.isophote.ellipse import Ellipse
+from photutils.isophote.model import build_model
+from photutils.isophote.build_test_data import build
 
-TEST_DATA = "data/"
+TEST_DATA = path.dirname(path.dirname(path.dirname(__file__))) + "/isophote/tests/data/"
 
 verb = False
 

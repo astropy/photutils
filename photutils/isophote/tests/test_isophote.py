@@ -5,10 +5,11 @@ import unittest
 import numpy as np
 from astropy.io import fits
 
-from .. import build_test_data
-from ..sample import Sample
-from ..fitter import Fitter
-from ..isophote import Isophote, IsophoteList
+from photutils.isophote import build_test_data
+from photutils.isophote.sample import Sample
+from photutils.isophote.fitter import Fitter
+from photutils.isophote.isophote import Isophote, IsophoteList
+from photutils.isophote.tests.test_data import TEST_DATA
 
 
 class TestIsophote(unittest.TestCase):
@@ -48,7 +49,7 @@ class TestIsophote(unittest.TestCase):
 
     def test_m51(self):
 
-        image = fits.open("data/M51.fits")
+        image = fits.open(TEST_DATA + "M51.fits")
         test_data = image[0].data
 
         sample = Sample(test_data, 21.44)
@@ -92,7 +93,7 @@ class TestIsophote(unittest.TestCase):
         # compares with old STSDAS task. In this task, the
         # default for the starting value of SMA is 10; it
         # fits with 20 iterations.
-        image = fits.open("data/M51.fits")
+        image = fits.open(TEST_DATA + "M51.fits")
         test_data = image[0].data
 
         sample = Sample(test_data, 10)

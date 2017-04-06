@@ -4,11 +4,10 @@ import unittest
 
 import numpy as np
 
-from .. import build_test_data
-from ..integrator import MEDIAN, MEAN, BI_LINEAR, NEAREST_NEIGHBOR
-from ..sample import Sample
-from ..isophote import Isophote
-
+from photutils.isophote import build_test_data
+from photutils.isophote.integrator import MEDIAN, MEAN, BI_LINEAR, NEAREST_NEIGHBOR
+from photutils.isophote.sample import Sample
+from photutils.isophote.isophote import Isophote
 
 test_data = build_test_data.build(background=100., i0=0., noise=10.)
 

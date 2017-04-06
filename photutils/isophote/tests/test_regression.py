@@ -8,10 +8,10 @@ from astropy.io import fits
 
 from astropy.table import Table
 
-from ..ellipse import Ellipse
-from ..integrator import BI_LINEAR, MEAN
+from photutils.isophote.ellipse import Ellipse
+from photutils.isophote.integrator import BI_LINEAR, MEAN
+from photutils.isophote.tests.test_data import TEST_DATA
 
-TEST_DATA = "data/"
 
 verb = False
 

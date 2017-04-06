@@ -5,14 +5,15 @@ import unittest
 import numpy as np
 from astropy.io import fits
 
-from .. import build_test_data
-from ..build_test_data import DEFAULT_POS
-from ..geometry import Geometry, DEFAULT_EPS
-from ..integrator import MEAN, MEDIAN
-from ..harmonics import fit_1st_and_2nd_harmonics
-from ..sample import Sample, CentralSample
-from ..isophote import Isophote
-from ..fitter import Fitter, CentralFitter
+from photutils.isophote import build_test_data
+from photutils.isophote.build_test_data import DEFAULT_POS
+from photutils.isophote.geometry import Geometry, DEFAULT_EPS
+from photutils.isophote.integrator import MEAN, MEDIAN
+from photutils.isophote.harmonics import fit_1st_and_2nd_harmonics
+from photutils.isophote.sample import Sample, CentralSample
+from photutils.isophote.isophote import Isophote
+from photutils.isophote.fitter import Fitter, CentralFitter
+from photutils.isophote.tests.test_data import TEST_DATA
 
 
 class TestFitter(unittest.TestCase):
@@ -153,7 +154,7 @@ class TestFitter(unittest.TestCase):
         self.assertEqual(isophote_m.stop_code, 0)
 
     def test_m51(self):
-        image = fits.open('data/M51.fits')
+        image = fits.open(TEST_DATA + "M51.fits")
         test_data = image[0].data
 
         #
@@ -186,7 +187,7 @@ class TestFitter(unittest.TestCase):
         self.assertAlmostEqual(isophote.intens, 155.0, 1)
 
     def test_m51_central(self):
-        image = fits.open("data/M51.fits")
+        image = fits.open(TEST_DATA + "M51.fits")
         test_data = image[0].data
 
         # this code finds central x and y offset by about 0.1 pixel wrt the

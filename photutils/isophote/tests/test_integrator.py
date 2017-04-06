@@ -5,15 +5,16 @@ import unittest
 import numpy as np
 from astropy.io import fits
 
-from ..sample import Sample
-from ..integrator import NEAREST_NEIGHBOR, BI_LINEAR, MEAN, MEDIAN
+from photutils.isophote.sample import Sample
+from photutils.isophote.integrator import NEAREST_NEIGHBOR, BI_LINEAR, MEAN, MEDIAN
+from photutils.isophote.tests.test_data import TEST_DATA
 
 
 class TestIntegrator(unittest.TestCase):
 
     def _init_test(self, integrmode=BI_LINEAR, sma=40.):
 
-        image = fits.open("data/synth_highsnr.fits")
+        image = fits.open(TEST_DATA + "synth_highsnr.fits")
         test_data = image[0].data
 
         self.sample = Sample(test_data, sma, integrmode=integrmode)

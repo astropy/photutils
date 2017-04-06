@@ -5,9 +5,9 @@ from scipy.optimize import leastsq
 
 import unittest
 
-from .. import build_test_data
-from ..sample import Sample
-from ..harmonics import fit_1st_and_2nd_harmonics, fit_upper_harmonic, first_and_2nd_harmonic_function
+from photutils.isophote import build_test_data
+from photutils.isophote.sample import Sample
+from photutils.isophote.harmonics import fit_1st_and_2nd_harmonics, fit_upper_harmonic, first_and_2nd_harmonic_function
 
 
 class TestHarmonics(unittest.TestCase):

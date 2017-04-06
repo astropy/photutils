@@ -4,7 +4,7 @@ import unittest
 
 import numpy as np
 
-from ..geometry import Geometry, normalize_angle
+from photutils.isophote.geometry import Geometry, normalize_angle
 
 
 class TestGeometry(unittest.TestCase):

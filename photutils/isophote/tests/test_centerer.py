@@ -1,14 +1,15 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+from os import path
 import unittest
 
 import numpy as np
 from astropy.io import fits
 
-from ..geometry import Geometry
-from ..centerer import Centerer
+from photutils.isophote.geometry import Geometry
+from photutils.isophote.centerer import Centerer
 
-TEST_DATA = "data/"
+TEST_DATA = path.dirname(path.dirname(path.dirname(__file__))) + "/isophote/tests/data/"
 
 
 class TestCenterer(unittest.TestCase):
