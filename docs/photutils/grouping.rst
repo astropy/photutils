@@ -222,6 +222,8 @@ than :class:`~photutils.psf.DAOGroup`.
 Here's a simple example using :class:`~photutils.psf.DBSCANGroup` with
 ``min_samples=1`` and ``metric=euclidean``.  With these parameters,
 the result is identical to the `~photutils.psf.DAOGroup` algorithm.
+Note that `scikit-learn <http://scikit-learn.org/>`_ must be installed
+to use :class:`~photutils.psf.DBSCANGroup`.
 
 .. plot::
 
