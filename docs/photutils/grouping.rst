@@ -34,10 +34,6 @@ gives intuitive reasoning to suggest that the critical separation may
 be defined as a multiple of the stellar full width at half maximum
 (FWHM).
 
-
-Grouping Sources
-^^^^^^^^^^^^^^^^
-
 Photutils provides an implementation of the DAOPHOT GROUP algorithm in
 the :class:`~photutils.psf.DAOGroup` class. Let's take a look at a
 simple example.
