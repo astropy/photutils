@@ -1,4 +1,4 @@
-Copyright (c) 2011-16, Photutils developers.
+Copyright (c) 2011-2017, Photutils developers
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
