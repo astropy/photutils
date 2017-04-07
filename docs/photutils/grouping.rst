@@ -9,6 +9,16 @@ used to separate stars into optimum groups.  The stars in each group
 are defined as those close enough together such that they need to be
 fit simultaneously, i.e. their profiles overlap.
 
+Photoutils currently provides two classes to group stars:
+
+  * :class:`~photutils.psf.DAOGroup`:  An implementation of the
+    `DAOPHOT <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_
+    GROUP algorithm.
+
+  * :class:`~photutils.psf.DBSCANGroup`:  Grouping is based on the
+    `Density-Based Spatial Clustering of Applications with Noise
+    (DBSCAN) <https://en.wikipedia.org/wiki/DBSCAN>`_ algorithm.
+
 
 DAOPHOT GROUP
 -------------
@@ -23,10 +33,6 @@ must be separated by in order to be in different groups.  Stetson
 gives intuitive reasoning to suggest that the critical separation may
 be defined as a multiple of the stellar full width at half maximum
 (FWHM).
-
-
-Grouping Sources
-^^^^^^^^^^^^^^^^
 
 Photutils provides an implementation of the DAOPHOT GROUP algorithm in
 the :class:`~photutils.psf.DAOGroup` class. Let's take a look at a
@@ -152,11 +158,17 @@ in the same group have the same aperture color:
 .. plot::
 
     from collections import OrderedDict
+
     import numpy as np
+    from astropy.stats import gaussian_sigma_to_fwhm
     from photutils.datasets import (make_random_gaussians_table,
                                     make_gaussian_sources_image)
+    from photutils.psf.groupstars import DAOGroup
+    from photutils import CircularAperture
+    from photutils.utils import random_cmap
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
+
     rcParams['image.aspect'] = 1  # to get images with square pixels
     rcParams['figure.figsize'] = (7, 7)
 
@@ -179,11 +191,6 @@ in the same group have the same aperture color:
     starlist['x_mean'].name = 'x_0'
     starlist['y_mean'].name = 'y_0'
 
-    from astropy.stats import gaussian_sigma_to_fwhm
-    from photutils.psf.groupstars import DAOGroup
-    from photutils import CircularAperture
-    from photutils.utils import random_cmap
-
     fwhm = sigma_psf * gaussian_sigma_to_fwhm
     daogroup = DAOGroup(crit_separation=2.5*fwhm)
     star_groups = daogroup(starlist)
@@ -197,3 +204,77 @@ in the same group have the same aperture color:
         xypos = np.transpose([group['x_0'], group['y_0']])
         ap = CircularAperture(xypos, r=fwhm)
         ap.plot(color=cmap.colors[i])
+
+
+DBSCANGroup
+-----------
+
+Photutils also provides a :class:`~photutils.psf.DBSCANGroup` class to
+group stars based on the `Density-Based Spatial Clustering of
+Applications with Noise (DBSCAN)
+<https://en.wikipedia.org/wiki/DBSCAN>`_ algorithm.
+:class:`~photutils.psf.DBSCANGroup` provides a more general algorithm
+than :class:`~photutils.psf.DAOGroup`.
+
+Here's a simple example using :class:`~photutils.psf.DBSCANGroup` with
+``min_samples=1`` and ``metric=euclidean``.  With these parameters,
+the result is identical to the `~photutils.psf.DAOGroup` algorithm.
+Note that `scikit-learn <http://scikit-learn.org/>`_ must be installed
+to use :class:`~photutils.psf.DBSCANGroup`.
+
+.. plot::
+
+    from collections import OrderedDict
+
+    import numpy as np
+    from astropy.stats import gaussian_sigma_to_fwhm
+    from photutils.datasets import (make_random_gaussians_table,
+                                    make_gaussian_sources_image)
+    from photutils.psf.groupstars import DBSCANGroup
+    from photutils import CircularAperture
+    from photutils.utils import random_cmap
+    import matplotlib.pyplot as plt
+    from matplotlib import rcParams
+
+    rcParams['image.aspect'] = 1  # to get images with square pixels
+    rcParams['figure.figsize'] = (7, 7)
+
+    n_sources = 350
+    sigma_psf = 2.0
+    # use an OrderedDict to ensure reproducibility
+    params = OrderedDict([('flux', [500, 5000]),
+                          ('x_mean', [6, 250]),
+                          ('y_mean', [6, 250]),
+                          ('x_stddev', [sigma_psf, sigma_psf]),
+                          ('y_stddev', [sigma_psf, sigma_psf]),
+                          ('theta', [0, np.pi])])
+
+    starlist = make_random_gaussians_table(n_sources, params,
+                                           random_state=1234)
+
+    shape = (256, 256)
+    sim_image = make_gaussian_sources_image(shape, starlist)
+
+    starlist['x_mean'].name = 'x_0'
+    starlist['y_mean'].name = 'y_0'
+
+    fwhm = sigma_psf * gaussian_sigma_to_fwhm
+    group = DBSCANGroup(crit_separation=2.5*fwhm)
+    star_groups = group(starlist)
+    star_groups = star_groups.group_by('group_id')
+
+    plt.imshow(sim_image, origin='lower', interpolation='nearest',
+               cmap='Greys_r')
+
+    cmap = random_cmap(random_state=12345)
+    for i, group in enumerate(star_groups.groups):
+        xypos = np.transpose([group['x_0'], group['y_0']])
+        ap = CircularAperture(xypos, r=fwhm)
+        ap.plot(color=cmap.colors[i])
+
+
+Reference/API
+-------------
+
+.. automodapi:: photutils.psf.groupstars
+    :no-heading:
