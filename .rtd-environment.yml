@@ -10,6 +10,7 @@ dependencies:
     - matplotlib
     - numpy
     - scikit-image
+    - scikit-learn
     - scipy
     - docutils
     - Sphinx >=1.5.1
