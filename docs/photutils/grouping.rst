@@ -158,11 +158,17 @@ in the same group have the same aperture color:
 .. plot::
 
     from collections import OrderedDict
+
     import numpy as np
+    from astropy.stats import gaussian_sigma_to_fwhm
     from photutils.datasets import (make_random_gaussians_table,
                                     make_gaussian_sources_image)
+    from photutils.psf.groupstars import DAOGroup
+    from photutils import CircularAperture
+    from photutils.utils import random_cmap
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
+
     rcParams['image.aspect'] = 1  # to get images with square pixels
     rcParams['figure.figsize'] = (7, 7)
 
@@ -184,11 +190,6 @@ in the same group have the same aperture color:
 
     starlist['x_mean'].name = 'x_0'
     starlist['y_mean'].name = 'y_0'
-
-    from astropy.stats import gaussian_sigma_to_fwhm
-    from photutils.psf.groupstars import DAOGroup
-    from photutils import CircularAperture
-    from photutils.utils import random_cmap
 
     fwhm = sigma_psf * gaussian_sigma_to_fwhm
     daogroup = DAOGroup(crit_separation=2.5*fwhm)
@@ -224,11 +225,17 @@ to use :class:`~photutils.psf.DBSCANGroup`.
 .. plot::
 
     from collections import OrderedDict
+
     import numpy as np
+    from astropy.stats import gaussian_sigma_to_fwhm
     from photutils.datasets import (make_random_gaussians_table,
                                     make_gaussian_sources_image)
+    from photutils.psf.groupstars import DBSCANGroup
+    from photutils import CircularAperture
+    from photutils.utils import random_cmap
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
+
     rcParams['image.aspect'] = 1  # to get images with square pixels
     rcParams['figure.figsize'] = (7, 7)
 
@@ -250,11 +257,6 @@ to use :class:`~photutils.psf.DBSCANGroup`.
 
     starlist['x_mean'].name = 'x_0'
     starlist['y_mean'].name = 'y_0'
-
-    from astropy.stats import gaussian_sigma_to_fwhm
-    from photutils.psf.groupstars import DBSCANGroup
-    from photutils import CircularAperture
-    from photutils.utils import random_cmap
 
     fwhm = sigma_psf * gaussian_sigma_to_fwhm
     group = DBSCANGroup(crit_separation=2.5*fwhm)
