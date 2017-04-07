@@ -9,6 +9,16 @@ used to separate stars into optimum groups.  The stars in each group
 are defined as those close enough together such that they need to be
 fit simultaneously, i.e. their profiles overlap.
 
+Photoutils currently provides two classes to group stars:
+
+  * :class:`~photutils.psf.DAOGroup`:  An implementation of the
+    `DAOPHOT <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_
+    GROUP algorithm.
+
+  * :class:`~photutils.psf.DBSCANGroup`:  Grouping is based on the
+    `Density-Based Spatial Clustering of Applications with Noise
+    (DBSCAN) <https://en.wikipedia.org/wiki/DBSCAN>`_ algorithm.
+
 
 DAOPHOT GROUP
 -------------
@@ -199,8 +209,19 @@ in the same group have the same aperture color:
         ap.plot(color=cmap.colors[i])
 
 
-DBScan
-------
+DBSCANGroup
+-----------
+
+Photutils also provides a :class:`~photutils.psf.DBSCANGroup` class to
+group stars based on the `Density-Based Spatial Clustering of
+Applications with Noise (DBSCAN)
+<https://en.wikipedia.org/wiki/DBSCAN>`_ algorithm.
+:class:`~photutils.psf.DBSCANGroup` provides a more general algorithm
+than :class:`~photutils.psf.DAOGroup`.
+
+Here's a simple example using :class:`~photutils.psf.DBSCANGroup` with
+``min_samples=1`` and ``metric=euclidean``.  With these parameters,
+the result is identical to the `~photutils.psf.DAOGroup` algorithm.
 
 .. plot::
 
@@ -250,9 +271,6 @@ DBScan
         xypos = np.transpose([group['x_0'], group['y_0']])
         ap = CircularAperture(xypos, r=fwhm)
         ap.plot(color=cmap.colors[i])
-
-
-
 
 
 Reference/API
