@@ -1,7 +1,12 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import numpy as np
-from scipy.optimize import leastsq
+
+try:
+    import scipy
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
 
 import unittest
 
@@ -13,6 +18,11 @@ from photutils.isophote.harmonics import fit_1st_and_2nd_harmonics, fit_upper_ha
 class TestHarmonics(unittest.TestCase):
 
     def test_harmonics_1(self):
+
+        if not HAS_SCIPY:
+            return
+
+        from scipy.optimize import leastsq
 
         # this is an almost as-is example taken from stackoverflow
 
