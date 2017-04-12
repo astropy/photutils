@@ -48,11 +48,11 @@ matrix:
     include:
         # Try MacOS X
         - os: osx
-          env: SETUP_CMD='test'
+          env: SETUP_CMD='test' ASTROPY_USE_SYSTEM_PYTEST=1
 
         # Do a coverage test.
         - os: linux
-          env: SETUP_CMD='test --coverage'
+          env: SETUP_CMD='test --coverage' ASTROPY_USE_SYSTEM_PYTEST=1
 
         # Check for sphinx doc build warnings - we do this first because it
         # may run for a long time
@@ -71,12 +71,12 @@ matrix:
           env: PYTHON_VERSION=2.7 ASTROPY_VERSION=development
                EVENT_TYPE='pull_request push cron'
         - os: linux
-          env: ASTROPY_VERSION=development
+          env: ASTROPY_VERSION=development ASTROPY_USE_SYSTEM_PYTEST=1
                EVENT_TYPE='pull_request push cron'
         - os: linux
           env: PYTHON_VERSION=2.7 ASTROPY_VERSION=lts
         - os: linux
-          env: ASTROPY_VERSION=lts
+          env: PYTHON_VERSION=3.5 ASTROPY_VERSION=lts
 
         # Try all python versions and Numpy versions. Since we can assume that
         # the Numpy developers have taken care of testing Numpy with different
@@ -87,7 +87,7 @@ matrix:
         - os: linux
           env: PYTHON_VERSION=3.5 NUMPY_VERSION=1.10
         - os: linux
-          env: NUMPY_VERSION=1.11
+          env: NUMPY_VERSION=1.11 ASTROPY_USE_SYSTEM_PYTEST=1
 
         # Try with optional dependencies disabled
         - os: linux
