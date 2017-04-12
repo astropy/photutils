@@ -1,0 +1,7 @@
+The raw data used in these tests lives here:
+
+https://github.com/astropy/photutils-datasets/isophote
+
+Download the astropy/photutils-datasets package and install it
+at the same level in the directories tree where the photutils
+package is stored.

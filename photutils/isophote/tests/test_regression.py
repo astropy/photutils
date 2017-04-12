@@ -10,7 +10,7 @@ from astropy.table import Table
 
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.integrator import BI_LINEAR, MEAN
-from photutils.isophote.tests.test_data import TEST_DATA
+from photutils.isophote.tests.test_data import TEST_DATA, TEST_DATA_REGRESSION
 
 
 verb = False
@@ -74,7 +74,7 @@ class TestRegression(unittest.TestCase):
 
     def _do_regression(self, name, verbose=True):
 
-        table = Table.read(TEST_DATA + name + '_table.fits')
+        table = Table.read(TEST_DATA_REGRESSION + name + '_table.fits')
         # Original code in spp won't create the right table for the 'mean'.
         # integration mode. Use the screen output at synth_table_mean.txt to
         # compare results visually.
