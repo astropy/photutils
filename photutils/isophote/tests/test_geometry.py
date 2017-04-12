@@ -1,209 +1,215 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
-import unittest
+import pytest
 
 import numpy as np
 
 from photutils.isophote.geometry import Geometry, normalize_angle
 
 
-class TestGeometry(unittest.TestCase):
+def _check_geometry(geometry):
 
-    def _check_geometry(self, geometry):
+    sma1, sma2 = geometry.bounding_ellipses()
 
-        sma1, sma2 = geometry.bounding_ellipses()
+    assert (sma1, sma2) == pytest.approx((90.0, 110.0), abs=0.01)
 
-        self.assertAlmostEqual(sma1, 90.0, 3)
-        self.assertAlmostEqual(sma2, 110.0, 3)
+    # using an arbitrary angle of 0.5 rad. This is
+    # to avoid a polar vector that sits on top of
+    # one of the ellipse's axis.
+    vertex_x, vertex_y = geometry.initialize_sector_geometry(0.6)
 
-        # using an arbitrary angle of 0.5 rad. This is
-        # to avoid a polar vector that sits on top of
-        # one of the ellipse's axis.
-        vertex_x, vertex_y = geometry.initialize_sector_geometry(0.6)
+    assert geometry.sector_angular_width == pytest.approx(0.0571, abs=0.01)
+    assert geometry.sector_area == pytest.approx(63.83, abs=0.01)
 
-        self.assertAlmostEqual(geometry.sector_angular_width, 0.0571, 2)
-        self.assertAlmostEqual(geometry.sector_area, 63.83, 2)
+    assert vertex_x[0] == pytest.approx(215.4, abs=0.1)
+    assert vertex_x[1] == pytest.approx(206.6, abs=0.1)
+    assert vertex_x[2] == pytest.approx(213.5, abs=0.1)
+    assert vertex_x[3] == pytest.approx(204.3, abs=0.1)
 
-        self.assertAlmostEqual(vertex_x[0], 215.4, 1)
-        self.assertAlmostEqual(vertex_x[1], 206.6, 1)
-        self.assertAlmostEqual(vertex_x[2], 213.5, 1)
-        self.assertAlmostEqual(vertex_x[3], 204.3, 1)
+    assert vertex_y[0] == pytest.approx(316.1, abs=0.1)
+    assert vertex_y[1] == pytest.approx(329.7, abs=0.1)
+    assert vertex_y[2] == pytest.approx(312.5, abs=0.1)
+    assert vertex_y[3] == pytest.approx(325.3, abs=0.1)
 
-        self.assertAlmostEqual(vertex_y[0], 316.1, 1)
-        self.assertAlmostEqual(vertex_y[1], 329.7, 1)
-        self.assertAlmostEqual(vertex_y[2], 312.5, 1)
-        self.assertAlmostEqual(vertex_y[3], 325.3, 1)
 
-    def test_ellipse(self):
+def test_ellipse():
 
-        # Geometrical steps
-        geometry = Geometry(255., 255., 100., 0.4, np.pi/2, 0.2, False)
+    # Geometrical steps
+    geometry = Geometry(255., 255., 100., 0.4, np.pi/2, 0.2, False)
 
-        self._check_geometry(geometry)
+    _check_geometry(geometry)
 
-        # Linear steps
-        geometry = Geometry(255., 255., 100., 0.4, np.pi/2, 20., True)
+    # Linear steps
+    geometry = Geometry(255., 255., 100., 0.4, np.pi/2, 20., True)
 
-        self._check_geometry(geometry)
+    _check_geometry(geometry)
 
-    def test_to_polar(self):
-        # trivial case of a circle centered in (0.,0.)
-        geometry = Geometry(0., 0., 100., 0.0, 0., 0.2, False)
 
-        r, p = geometry.to_polar(100., 0.)
-        self.assertAlmostEqual(r, 100., 2)
-        self.assertAlmostEqual(p, 0., 4)
+def test_to_polar():
+    # trivial case of a circle centered in (0.,0.)
+    geometry = Geometry(0., 0., 100., 0.0, 0., 0.2, False)
 
-        r, p = geometry.to_polar(0., 100.)
-        self.assertAlmostEqual(r, 100., 2)
-        self.assertAlmostEqual(p, np.pi/2., 4)
+    r, p = geometry.to_polar(100., 0.)
+    assert (r, p) == pytest.approx((100., 0.), abs=(0.1, 0.0001))
 
-        # vector with length 100. at 45 deg angle
-        r, p = geometry.to_polar(70.71, 70.71)
-        self.assertAlmostEqual(r, 100., 2)
-        self.assertAlmostEqual(p, np.pi/4., 4)
+    r, p = geometry.to_polar(0., 100.)
+    assert (r, p) == pytest.approx((100., np.pi/2.), abs=(0.1, 0.0001))
 
-        # position angle tilted 45 deg from X axis
-        geometry = Geometry(0., 0., 100., 0.0, np.pi/4., 0.2, False)
+    # vector with length 100. at 45 deg angle
+    r, p = geometry.to_polar(70.71, 70.71)
+    # these have to be tested separately. For some unknown reason, using a combined
+    # assert statement as above raises an TypeError: unorderable types: tuple() < int()
+    # assert (r, p) == pytest.approx((100., np.pi/4.), abs=(0.1, 0.0001))
+    assert r == pytest.approx(100., abs=0.1)
+    assert p == pytest.approx(np.pi/4., abs=0.0001)
 
-        r, p = geometry.to_polar(100., 0.)
-        self.assertAlmostEqual(r, 100., 2)
-        self.assertAlmostEqual(p, np.pi*7./4., 4)
+    # position angle tilted 45 deg from X axis
+    geometry = Geometry(0., 0., 100., 0.0, np.pi/4., 0.2, False)
 
-        r, p = geometry.to_polar(0., 100.)
-        self.assertAlmostEqual(r, 100., 2)
-        self.assertAlmostEqual(p, np.pi/4., 4)
+    r, p = geometry.to_polar(100., 0.)
+    assert (r, p) == pytest.approx((100., np.pi*7./4), abs=(0.1, 0.0001))
 
-        # vector with length 100. at 45 deg angle
-        r, p = geometry.to_polar(70.71, 70.71)
-        self.assertAlmostEqual(r, 100., 2)
-        self.assertAlmostEqual(p, np.pi*2., 4)
+    r, p = geometry.to_polar(0., 100.)
+    assert (r, p) == pytest.approx((100., np.pi/4.), abs=(0.1, 0.0001))
 
-    def test_area(self):
-        # circle with center at origin
-        geometry = Geometry(0., 0., 100., 0.0, 0., 0.2, False)
+    # vector with length 100. at 45 deg angle
+    r, p = geometry.to_polar(70.71, 70.71)
+    # same error as above
+    # assert (r, p) == pytest.approx((100., np.pi*2.), abs=(0.1, 0.0001))
+    assert r == pytest.approx(100., abs=0.1)
+    assert p == pytest.approx(np.pi*2., abs=0.0001)
 
-        # sector at 45 deg on circle
-        vertex_x, vertex_y = geometry.initialize_sector_geometry(45./180.*np.pi)
 
-        self.assertAlmostEqual(vertex_x[0], 65.21, 2)
-        self.assertAlmostEqual(vertex_x[1], 79.70, 2)
-        self.assertAlmostEqual(vertex_x[2], 62.03, 2)
-        self.assertAlmostEqual(vertex_x[3], 75.81, 2)
+def test_area():
+    # circle with center at origin
+    geometry = Geometry(0., 0., 100., 0.0, 0., 0.2, False)
 
-        self.assertAlmostEqual(vertex_y[0], 62.03, 2)
-        self.assertAlmostEqual(vertex_y[1], 75.81, 2)
-        self.assertAlmostEqual(vertex_y[2], 65.21, 2)
-        self.assertAlmostEqual(vertex_y[3], 79.70, 2)
+    # sector at 45 deg on circle
+    vertex_x, vertex_y = geometry.initialize_sector_geometry(45./180.*np.pi)
 
-        # sector at 0 deg on circle
-        vertex_x, vertex_y = geometry.initialize_sector_geometry(0)
+    assert vertex_x[0] == pytest.approx(65.21, abs=0.01)
+    assert vertex_x[1] == pytest.approx(79.70, abs=0.01)
+    assert vertex_x[2] == pytest.approx(62.03, abs=0.01)
+    assert vertex_x[3] == pytest.approx(75.81, abs=0.01)
 
-        self.assertAlmostEqual(vertex_x[0], 89.97, 2)
-        self.assertAlmostEqual(vertex_x[1], 109.97, 2)
-        self.assertAlmostEqual(vertex_x[2], 89.97, 2)
-        self.assertAlmostEqual(vertex_x[3], 109.97, 2)
+    assert vertex_y[0] == pytest.approx(62.03, abs=0.01)
+    assert vertex_y[1] == pytest.approx(75.81, abs=0.01)
+    assert vertex_y[2] == pytest.approx(65.21, abs=0.01)
+    assert vertex_y[3] == pytest.approx(79.70, abs=0.01)
 
-        self.assertAlmostEqual(vertex_y[0], -2.25, 2)
-        self.assertAlmostEqual(vertex_y[1], -2.75, 2)
-        self.assertAlmostEqual(vertex_y[2], 2.25, 2)
-        self.assertAlmostEqual(vertex_y[3], 2.75, 2)
+    # sector at 0 deg on circle
+    vertex_x, vertex_y = geometry.initialize_sector_geometry(0)
 
-    def test_area2(self):
-        # circle with center at 100.,100.
-        geometry = Geometry(100., 100., 100., 0.0, 0., 0.2, False)
+    assert vertex_x[0] == pytest.approx(89.97,  abs=0.01)
+    assert vertex_x[1] == pytest.approx(109.97, abs=0.01)
+    assert vertex_x[2] == pytest.approx(89.97,  abs=0.01)
+    assert vertex_x[3] == pytest.approx(109.96, abs=0.01)
 
-        # sector at 45 deg on circle
-        vertex_x, vertex_y = geometry.initialize_sector_geometry(45./180.*np.pi)
+    assert vertex_y[0] == pytest.approx(-2.25, abs=0.01)
+    assert vertex_y[1] == pytest.approx(-2.75, abs=0.01)
+    assert vertex_y[2] == pytest.approx(2.25 , abs=0.01)
+    assert vertex_y[3] == pytest.approx(2.75 , abs=0.01)
 
-        self.assertAlmostEqual(vertex_x[0], 165.21, 2)
-        self.assertAlmostEqual(vertex_x[1], 179.70, 2)
-        self.assertAlmostEqual(vertex_x[2], 162.03, 2)
-        self.assertAlmostEqual(vertex_x[3], 175.81, 2)
 
-        self.assertAlmostEqual(vertex_y[0], 162.03, 2)
-        self.assertAlmostEqual(vertex_y[1], 175.81, 2)
-        self.assertAlmostEqual(vertex_y[2], 165.21, 2)
-        self.assertAlmostEqual(vertex_y[3], 179.70, 2)
+def test_area2():
+    # circle with center at 100.,100.
+    geometry = Geometry(100., 100., 100., 0.0, 0., 0.2, False)
 
-        # sector at 225 deg on circle
-        vertex_x, vertex_y = geometry.initialize_sector_geometry(225./180.*np.pi)
+    # sector at 45 deg on circle
+    vertex_x, vertex_y = geometry.initialize_sector_geometry(45./180.*np.pi)
 
-        self.assertAlmostEqual(vertex_x[0], 34.79, 2)
-        self.assertAlmostEqual(vertex_x[1], 20.30, 2)
-        self.assertAlmostEqual(vertex_x[2], 37.97, 2)
-        self.assertAlmostEqual(vertex_x[3], 24.19, 2)
+    assert vertex_x[0] == pytest.approx(165.21, abs=0.01)
+    assert vertex_x[1] == pytest.approx(179.70, abs=0.01)
+    assert vertex_x[2] == pytest.approx(162.03, abs=0.01)
+    assert vertex_x[3] == pytest.approx(175.81, abs=0.01)
 
-        self.assertAlmostEqual(vertex_y[0], 37.97, 2)
-        self.assertAlmostEqual(vertex_y[1], 24.19, 2)
-        self.assertAlmostEqual(vertex_y[2], 34.79, 2)
-        self.assertAlmostEqual(vertex_y[3], 20.30, 2)
+    assert vertex_y[0] == pytest.approx(162.03, abs=0.01)
+    assert vertex_y[1] == pytest.approx(175.81, abs=0.01)
+    assert vertex_y[2] == pytest.approx(165.21, abs=0.01)
+    assert vertex_y[3] == pytest.approx(179.70, abs=0.01)
 
-    def test_normalize_angle(self):
-        PI = np.pi
+    # sector at 225 deg on circle
+    vertex_x, vertex_y = geometry.initialize_sector_geometry(225./180.*np.pi)
 
-        angle = normalize_angle(PI*10 + PI/5)
-        self.assertAlmostEqual(angle, PI/5, 4)
+    assert vertex_x[0] == pytest.approx(34.791,abs=0.01)
+    assert vertex_x[1] == pytest.approx(20.30, abs=0.01)
+    assert vertex_x[2] == pytest.approx(37.97, abs=0.01)
+    assert vertex_x[3] == pytest.approx(24.19, abs=0.01)
 
-        angle = normalize_angle(PI*1.3)
-        self.assertAlmostEqual(angle, PI*0.3, 4)
+    assert vertex_y[0] == pytest.approx(37.97, abs=0.01)
+    assert vertex_y[1] == pytest.approx(24.19, abs=0.01)
+    assert vertex_y[2] == pytest.approx(34.79, abs=0.01)
+    assert vertex_y[3] == pytest.approx(20.30, abs=0.01)
 
-        angle = normalize_angle(-PI*10 + PI/5)
-        self.assertAlmostEqual(angle, PI/5, 4)
 
-        angle = normalize_angle(-PI*1.3)
-        self.assertAlmostEqual(angle, PI*0.7, 4)
+def test_normalize_angle():
+    PI = np.pi
 
-        angle = normalize_angle(-PI*10.3)
-        self.assertAlmostEqual(angle, PI*0.7, 4)
+    angle = normalize_angle(PI*10 + PI/5)
+    assert angle == pytest.approx(PI/5, abs=0.0001)
 
-    def test_reset_sma(self):
-        geometry = Geometry(0., 0., 100., 0.0, 0., 0.2, False)
+    angle = normalize_angle(PI*1.3)
+    assert angle == pytest.approx(PI*0.3, abs=0.0001)
 
-        sma, step = geometry.reset_sma(0.2)
-        self.assertAlmostEqual(sma, 83.33, 2)
-        self.assertAlmostEqual(step, -0.1666, 3)
+    angle = normalize_angle(-PI*10 + PI/5)
+    assert angle == pytest.approx(PI/5, abs=0.0001)
 
-        geometry = Geometry(0., 0., 100., 0.0, 0., 20., True)
+    angle = normalize_angle(-PI*1.3)
+    assert angle == pytest.approx(PI*0.7, abs=0.0001)
 
-        sma, step = geometry.reset_sma(20.)
-        self.assertAlmostEqual(sma, 80.0, 2)
-        self.assertAlmostEqual(step, -20.0, 2)
+    angle = normalize_angle(-PI*10.3)
+    assert angle == pytest.approx(PI*0.7, abs=0.0001)
 
-    def test_update_sma(self):
-        geometry = Geometry(0., 0., 100., 0.0, 0., 0.2, False)
 
-        sma = geometry.update_sma(0.2)
-        self.assertAlmostEqual(sma, 120.0, 2)
+def test_reset_sma():
+    geometry = Geometry(0., 0., 100., 0.0, 0., 0.2, False)
 
-        geometry = Geometry(0., 0., 100., 0.0, 0., 20., True)
+    sma, step = geometry.reset_sma(0.2)
+    assert sma == pytest.approx(83.33, abs=0.01)
+    assert step == pytest.approx(-0.1666, abs=0.001)
 
-        sma = geometry.update_sma(20.)
-        self.assertAlmostEqual(sma, 120.0, 2)
+    geometry = Geometry(0., 0., 100., 0.0, 0., 20., True)
 
-    def test_polar_angle_sector_limits(self):
-        geometry = Geometry(0., 0., 100., 0.3, np.pi/4, 0.2, False)
-        geometry.initialize_sector_geometry(np.pi/3)
+    sma, step = geometry.reset_sma(20.)
+    assert sma == pytest.approx(80.0, abs=0.01)
+    assert step == pytest.approx(-20.0, abs=0.01)
 
-        phi1, phi2 = geometry.polar_angle_sector_limits()
-        self.assertAlmostEqual(phi1, 1.022198, 4)
-        self.assertAlmostEqual(phi2, 1.072198, 4)
 
-    def test_bounding_ellipses(self):
-        geometry = Geometry(0., 0., 100., 0.3, np.pi/4, 0.2, False)
+def test_update_sma():
+    geometry = Geometry(0., 0., 100., 0.0, 0., 0.2, False)
+    sma = geometry.update_sma(0.2)
+    assert sma == pytest.approx(120.0, abs=0.01)
 
-        sma1, sma2 = geometry.bounding_ellipses()
-        self.assertAlmostEqual(sma1, 90.0, 2)
-        self.assertAlmostEqual(sma2, 110.0, 2)
+    geometry = Geometry(0., 0., 100., 0.0, 0., 20., True)
+    sma = geometry.update_sma(20.)
+    assert sma == pytest.approx(120.0, abs=0.01)
 
-    def test_radius(self):
-        geometry = Geometry(0., 0., 100., 0.3, np.pi/4, 0.2, False)
 
-        r = geometry.radius(0.0)
-        self.assertAlmostEqual(r, 100.0, 2)
+def test_polar_angle_sector_limits():
+    geometry = Geometry(0., 0., 100., 0.3, np.pi/4, 0.2, False)
+    geometry.initialize_sector_geometry(np.pi/3)
 
-        r = geometry.radius(np.pi/2)
-        self.assertAlmostEqual(r, 70., 2)
+    phi1, phi2 = geometry.polar_angle_sector_limits()
+
+    assert phi1 == pytest.approx(1.022198, abs=0.0001)
+    assert phi2 == pytest.approx(1.072198, abs=0.0001)
+
+
+def test_bounding_ellipses():
+    geometry = Geometry(0., 0., 100., 0.3, np.pi/4, 0.2, False)
+
+    sma1, sma2 = geometry.bounding_ellipses()
+    assert (sma1, sma2) == pytest.approx((90.0, 110.0), abs=0.01)
+
+
+def test_radius():
+    geometry = Geometry(0., 0., 100., 0.3, np.pi/4, 0.2, False)
+
+    r = geometry.radius(0.0)
+    assert r == pytest.approx(100.0, abs=0.01)
+
+    r = geometry.radius(np.pi/2)
+    assert r == pytest.approx(70.0, abs=0.01)
 
 
 

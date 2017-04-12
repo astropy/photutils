@@ -1,6 +1,6 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
-import unittest
+import pytest
 
 import numpy as np
 from astropy.io import fits
@@ -10,115 +10,117 @@ from photutils.isophote.integrator import NEAREST_NEIGHBOR, BI_LINEAR, MEAN, MED
 from photutils.isophote.tests.test_data import TEST_DATA
 
 
-class TestIntegrator(unittest.TestCase):
+def _init_test(integrmode=BI_LINEAR, sma=40.):
 
-    def _init_test(self, integrmode=BI_LINEAR, sma=40.):
+    image = fits.open(TEST_DATA + "synth_highsnr.fits")
+    test_data = image[0].data
 
-        image = fits.open(TEST_DATA + "synth_highsnr.fits")
-        test_data = image[0].data
+    sample = Sample(test_data, sma, integrmode=integrmode)
 
-        self.sample = Sample(test_data, sma, integrmode=integrmode)
+    s = sample.extract()
 
-        s = self.sample.extract()
+    assert len(s) == 3
+    assert len(s[0]) == len(s[1])
+    assert len(s[0]) == len(s[2])
 
-        self.assertEqual(len(s), 3)
-        self.assertEqual(len(s[0]), len(s[1]))
-        self.assertEqual(len(s[0]), len(s[2]))
+    return s, sample
 
-        return s
 
-    def test_bilinear(self):
+def test_bilinear():
 
-        s = self._init_test()
+    s, sample = _init_test()
 
-        self.assertEqual(len(s[0]), 225)
+    assert len(s[0]) == 225
+    # intensities
+    assert np.mean(s[2]) == pytest.approx(200.76, abs=0.01)
+    assert np.std(s[2])  == pytest.approx(21.55,  abs=0.01)
+    # radii
+    assert np.max(s[1]) == pytest.approx(40.0, abs=0.01)
+    assert np.min(s[1]) == pytest.approx(32.0,  abs=0.01)
 
-        # intensities
-        self.assertAlmostEqual(np.mean(s[2]), 200.76, 2)
-        self.assertAlmostEqual(np.std(s[2]),  21.55, 2)
+    assert sample.total_points  == 225
+    assert sample.actual_points == 225
 
-        # radii
-        self.assertAlmostEqual(np.max(s[1]), 40.0, 2)
-        self.assertAlmostEqual(np.min(s[1]), 32.0, 2)
 
-        self.assertEqual(self.sample.total_points, 225)
-        self.assertEqual(self.sample.actual_points, 225)
+def test_bilinear_small():
 
-    def test_bilinear_small(self):
+    # small radius forces sub-pixel sampling
+    s, sample = _init_test(sma=10.)
 
-        # small radius forces sub-pixel sampling
-        s = self._init_test(sma=10.)
+    # intensities
+    assert np.mean(s[2]) == pytest.approx(1045.4, abs=0.1)
+    assert np.std(s[2])  == pytest.approx(143.0,  abs=0.1)
+    # radii
+    assert np.max(s[1]) == pytest.approx(10.0, abs=0.1)
+    assert np.min(s[1]) == pytest.approx(8.0,  abs=0.1)
 
-        # intensities
-        self.assertAlmostEqual(np.mean(s[2]), 1045.4, 1)
-        self.assertAlmostEqual(np.std(s[2]),  143.0, 1)
+    assert sample.total_points  == 57
+    assert sample.actual_points == 57
 
-        # radii
-        self.assertAlmostEqual(np.max(s[1]), 10.0, 1)
-        self.assertAlmostEqual(np.min(s[1]), 8.0, 1)
 
-        self.assertEqual(self.sample.total_points, 57)
-        self.assertEqual(self.sample.actual_points, 57)
+def test_nearest_neighbor():
 
-    def test_nearest_neighbor(self):
+    s, sample = _init_test(integrmode=NEAREST_NEIGHBOR)
 
-        s = self._init_test(integrmode=NEAREST_NEIGHBOR)
+    assert len(s[0]) == 225
+    # intensities
+    assert np.mean(s[2]) == pytest.approx(201.1, abs=0.1)
+    assert np.std(s[2])  == pytest.approx(21.8,  abs=0.1)
+    # radii
+    assert np.max(s[1]) == pytest.approx(40.0, abs=0.01)
+    assert np.min(s[1]) == pytest.approx(32.0, abs=0.01)
 
-        self.assertEqual(len(s[0]), 225)
-        # intensities
-        self.assertAlmostEqual(np.mean(s[2]), 201.1, 1)
-        self.assertAlmostEqual(np.std(s[2]),  21.8, 1)
-        # radii
-        self.assertAlmostEqual(np.max(s[1]), 40.0, 2)
-        self.assertAlmostEqual(np.min(s[1]), 32.0, 2)
+    assert sample.total_points  == 225
+    assert sample.actual_points == 225
 
-        self.assertEqual(self.sample.total_points, 225)
-        self.assertEqual(self.sample.actual_points, 225)
 
-    def test_mean(self):
+def test_mean():
 
-        s = self._init_test(integrmode=MEAN)
+    s, sample = _init_test(integrmode=MEAN)
 
-        self.assertEqual(len(s[0]), 64)
-        # intensities
-        self.assertAlmostEqual(np.mean(s[2]), 199.9, 1)
-        self.assertAlmostEqual(np.std(s[2]),  21.3, 1)
-        # radii
-        self.assertAlmostEqual(np.max(s[1]), 40.00, 2)
-        self.assertAlmostEqual(np.min(s[1]), 32.01, 2)
+    assert len(s[0]) == 64
+    # intensities
+    assert np.mean(s[2]) == pytest.approx(199.9, abs=0.1)
+    assert np.std(s[2])  == pytest.approx(21.3,  abs=0.1)
+    # radii
+    assert np.max(s[1]) == pytest.approx(40.0, abs=0.01)
+    assert np.min(s[1]) == pytest.approx(32.0, abs=0.01)
 
-        self.assertAlmostEqual(self.sample.sector_area, 12.4, 1)
-        self.assertEqual(self.sample.total_points, 64)
-        self.assertEqual(self.sample.actual_points, 64)
+    assert sample.sector_area == pytest.approx(12.4, abs=0.1)
+    assert sample.total_points  == 64
+    assert sample.actual_points == 64
 
-    def test_mean_small(self):
 
-        s = self._init_test(sma=5., integrmode=MEAN)
+def test_mean_small():
 
-        self.assertEqual(len(s[0]), 29)
-        # intensities
-        self.assertAlmostEqual(np.mean(s[2]), 2339.0, 1)
-        self.assertAlmostEqual(np.std(s[2]),  284.7, 1)
-        # radii
-        self.assertAlmostEqual(np.max(s[1]), 5.00, 2)
-        self.assertAlmostEqual(np.min(s[1]), 4.00, 2)
+    s, sample = _init_test(sma=5., integrmode=MEAN)
 
-        self.assertAlmostEqual(self.sample.sector_area, 2.0, 1)
-        self.assertEqual(self.sample.total_points, 29)
-        self.assertEqual(self.sample.actual_points, 29)
+    assert len(s[0]) == 29
+    # intensities
+    assert np.mean(s[2]) == pytest.approx(2339.0, abs=0.1)
+    assert np.std(s[2])  == pytest.approx(284.7,  abs=0.1)
+    # radii
+    assert np.max(s[1]) == pytest.approx(5.0, abs=0.01)
+    assert np.min(s[1]) == pytest.approx(4.0, abs=0.01)
 
-    def test_median(self):
+    assert sample.sector_area == pytest.approx(2.0, abs=0.1)
+    assert sample.total_points  == 29
+    assert sample.actual_points == 29
 
-        s = self._init_test(integrmode=MEDIAN)
 
-        self.assertEqual(len(s[0]), 64)
-        # intensities
-        self.assertAlmostEqual(np.mean(s[2]), 199.9, 1)
-        self.assertAlmostEqual(np.std(s[2]),  21.3, 1)
-        # radii
-        self.assertAlmostEqual(np.max(s[1]), 40.00, 2)
-        self.assertAlmostEqual(np.min(s[1]), 32.01, 2)
+def test_median():
 
-        self.assertAlmostEqual(self.sample.sector_area, 12.4, 1)
-        self.assertEqual(self.sample.total_points, 64)
-        self.assertEqual(self.sample.actual_points, 64)
+    s, sample = _init_test(integrmode=MEDIAN)
+
+    assert len(s[0]) == 64
+    # intensities
+    assert np.mean(s[2]) == pytest.approx(199.9, abs=0.1)
+    assert np.std(s[2])  == pytest.approx(21.3,  abs=0.1)
+    # radii
+    assert np.max(s[1]) == pytest.approx(40.0,  abs=0.01)
+    assert np.min(s[1]) == pytest.approx(32.01, abs=0.01)
+
+    assert sample.sector_area == pytest.approx(12.4, abs=0.1)
+    assert sample.total_points  == 64
+    assert sample.actual_points == 64
+

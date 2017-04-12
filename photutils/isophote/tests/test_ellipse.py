@@ -1,7 +1,5 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
-import unittest
-
 import numpy as np
 from astropy.io import fits
 
@@ -27,7 +25,7 @@ OFFSET_GALAXY = build_test_data.build(x0=POS, y0=POS, pa=PA, noise=1.E-12)
 verb = False
 
 
-class TestEllipse(unittest.TestCase):
+class TestEllipse(object):
 
     def test_basic(self):
         # centered, tilted galaxy.
@@ -36,16 +34,16 @@ class TestEllipse(unittest.TestCase):
         ellipse = Ellipse(test_data, verbose=verb)
         isophote_list = ellipse.fit_image(verbose=verb)
 
-        self.assertIsInstance(isophote_list, IsophoteList)
-        self.assertGreater(len(isophote_list), 1)
-        self.assertIsInstance(isophote_list[0], Isophote)
+        assert isinstance(isophote_list, IsophoteList)
+        assert len(isophote_list) > 1
+        assert isinstance(isophote_list[0], Isophote)
 
         # verify that the list is properly sorted in sem-major axis length
-        self.assertGreater(isophote_list[-1], isophote_list[0])
+        assert isophote_list[-1] > isophote_list[0]
 
         # the fit should stop where gradient looses reliability.
-        self.assertEqual(len(isophote_list), 67)
-        self.assertEqual(isophote_list[-1].stop_code, FAILED_FIT)
+        assert len(isophote_list) == 67
+        assert isophote_list[-1].stop_code == FAILED_FIT
 
     def test_fit_one_ellipse(self):
         test_data = build_test_data.build(pa=PA)
@@ -53,8 +51,8 @@ class TestEllipse(unittest.TestCase):
         ellipse = Ellipse(test_data, verbose=verb)
         isophote = ellipse.fit_isophote(40.)
 
-        self.assertIsInstance(isophote, Isophote)
-        self.assertTrue(isophote.valid)
+        assert isinstance(isophote, Isophote)
+        assert isophote.valid
 
     def test_offcenter_fail(self):
         # A first guess ellipse that is centered in the image frame.
@@ -63,7 +61,7 @@ class TestEllipse(unittest.TestCase):
         ellipse = Ellipse(OFFSET_GALAXY, verbose=verb)
         isophote_list = ellipse.fit_image(verbose=verb)
 
-        self.assertEqual(len(isophote_list), 0)
+        assert len(isophote_list) == 0
 
     def test_offcenter_fit(self):
         # A first guess ellipse that is roughly centered on the
@@ -74,8 +72,8 @@ class TestEllipse(unittest.TestCase):
 
         # the fit should stop when too many potential sample
         # points fall outside the image frame.
-        self.assertEqual(len(isophote_list), 63)
-        self.assertEqual(isophote_list[-1].stop_code, TOO_MANY_FLAGGED)
+        assert len(isophote_list) == 63
+        assert isophote_list[-1].stop_code == TOO_MANY_FLAGGED
 
     def test_offcenter_go_beyond_frame(self):
         # Same as before, but now force the fit to goo
@@ -85,11 +83,11 @@ class TestEllipse(unittest.TestCase):
         isophote_list = ellipse.fit_image(maxsma=400., verbose=verb)
 
         # the fit should go to maxsma, but with fixed geometry
-        self.assertEqual(len(isophote_list), 71)
-        self.assertEqual(isophote_list[-1].stop_code, FIXED_ELLIPSE)
+        assert len(isophote_list) == 71
+        assert isophote_list[-1].stop_code == FIXED_ELLIPSE
 
 
-class TestOnRealData(unittest.TestCase):
+class TestOnRealData(object):
 
     def test_basic(self):
         image = fits.open(TEST_DATA + "M105-S001-RGB.fits")
@@ -100,7 +98,7 @@ class TestOnRealData(unittest.TestCase):
         ellipse = Ellipse(test_data, geometry=g, verbose=verb)
         isophote_list = ellipse.fit_image(verbose=verb)
 
-        self.assertEqual(len(isophote_list), 58)
+        assert len(isophote_list) == 58
 
         # check that isophote at about sma=70 got an uneventful fit
-        self.assertEqual(isophote_list.get_closest(70.).stop_code, NORMAL_FIT)
+        assert isophote_list.get_closest(70.).stop_code == NORMAL_FIT

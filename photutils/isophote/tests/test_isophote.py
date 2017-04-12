@@ -1,6 +1,6 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
-import unittest
+import pytest
 
 import numpy as np
 from astropy.io import fits
@@ -12,7 +12,7 @@ from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.tests.test_data import TEST_DATA
 
 
-class TestIsophote(unittest.TestCase):
+class TestIsophote(object):
 
     def test_fit(self):
 
@@ -22,30 +22,30 @@ class TestIsophote(unittest.TestCase):
         fitter = Fitter(sample)
         iso = fitter.fit(maxit=400)
 
-        self.assertTrue(iso.valid)
-        self.assertTrue(iso.stop_code == 0 or iso.stop_code == 2)
+        assert iso.valid
+        assert iso.stop_code == 0 or iso.stop_code == 2
 
         # fitted values
-        self.assertLessEqual(iso.intens,        201., 2)
-        self.assertGreaterEqual(iso.intens,     199., 2)
-        self.assertLessEqual(iso.int_err,       0.0010, 2)
-        self.assertGreaterEqual(iso.int_err,    0.0009, 2)
-        self.assertLessEqual(iso.pix_stddev,    0.03, 2)
-        self.assertGreaterEqual(iso.pix_stddev, 0.02, 2)
-        self.assertLessEqual(abs(iso.grad),     4.25, 2)
-        self.assertGreaterEqual(abs(iso.grad),  4.20, 2)
+        assert iso.intens <= 201.
+        assert iso.intens >= 199.
+        assert iso.int_err <= 0.0010
+        assert iso.int_err >= 0.0009
+        assert iso.pix_stddev <= 0.03
+        assert iso.pix_stddev >= 0.02
+        assert abs(iso.grad) <= 4.25
+        assert abs(iso.grad) >= 4.20
 
         # integrals
-        self.assertLessEqual(iso.tflux_e,    1.85E6, 2)
-        self.assertGreaterEqual(iso.tflux_e, 1.82E6, 2)
-        self.assertLessEqual(iso.tflux_c,    2.025E6, 2)
-        self.assertGreaterEqual(iso.tflux_c, 2.022E6, 2)
+        assert iso.tflux_e <= 1.85E6
+        assert iso.tflux_e >= 1.82E6
+        assert iso.tflux_c <= 2.025E6
+        assert iso.tflux_c >= 2.022E6
 
         # deviations from perfect ellipticity
-        self.assertLessEqual(abs(iso.a3), 0.01, 2)
-        self.assertLessEqual(abs(iso.b3), 0.01, 2)
-        self.assertLessEqual(abs(iso.a4), 0.01, 2)
-        self.assertLessEqual(abs(iso.b4), 0.01, 2)
+        assert abs(iso.a3) <= 0.01
+        assert abs(iso.b3) <= 0.01
+        assert abs(iso.a4) <= 0.01
+        assert abs(iso.b4) <= 0.01
 
     def test_m51(self):
 
@@ -56,38 +56,38 @@ class TestIsophote(unittest.TestCase):
         fitter = Fitter(sample)
         iso = fitter.fit()
 
-        self.assertTrue(iso.valid)
-        self.assertTrue(iso.stop_code == 0 or iso.stop_code == 2)
+        assert iso.valid
+        assert iso.stop_code == 0 or iso.stop_code == 2
 
         # geometry
         g = iso.sample.geometry
-        self.assertGreaterEqual(g.x0,  257 - 1.5)   # position within 1.5 pixel
-        self.assertLessEqual(g.x0,     257 + 1.5)
-        self.assertGreaterEqual(g.y0,  259 - 1.5)
-        self.assertLessEqual(g.y0,     259 + 2.0)
-        self.assertGreaterEqual(g.eps, 0.19 - 0.05) # eps within 0.05
-        self.assertLessEqual(g.eps,    0.19 + 0.05)
-        self.assertGreaterEqual(g.pa,  0.62 - 0.05) # pa within 5 deg
-        self.assertLessEqual(g.pa,     0.62 + 0.05)
+        assert g.x0 >=  (257 - 1.5)   # position within 1.5 pixel
+        assert g.x0 <=  (257 + 1.5)
+        assert g.y0 >=  (259 - 1.5)
+        assert g.y0 <=  (259 + 2.0)
+        assert g.eps >= (0.19 - 0.05) # eps within 0.05
+        assert g.eps <= (0.19 + 0.05)
+        assert g.pa >=  (0.62 - 0.05) # pa within 5 deg
+        assert g.pa <=  (0.62 + 0.05)
 
         # fitted values
-        self.assertAlmostEqual(iso.intens,     682.9,  1)
-        self.assertAlmostEqual(iso.rms,         83.27, 2)
-        self.assertAlmostEqual(iso.int_err,      7.63, 2)
-        self.assertAlmostEqual(iso.pix_stddev, 117.8,  1)
-        self.assertAlmostEqual(iso.grad,       -36.08, 2)
+        assert iso.intens     == pytest.approx(682.9, abs=0.1)
+        assert iso.rms        == pytest.approx(83.27, abs=0.01)
+        assert iso.int_err    == pytest.approx(7.63, abs=0.01)
+        assert iso.pix_stddev == pytest.approx(117.8, abs=0.1)
+        assert iso.grad       == pytest.approx(-36.08, abs=0.1)
 
         # integrals
-        self.assertLessEqual(iso.tflux_e,    1.20E6, 2)
-        self.assertGreaterEqual(iso.tflux_e, 1.19E6, 2)
-        self.assertLessEqual(iso.tflux_c,    1.38E6, 2)
-        self.assertGreaterEqual(iso.tflux_c, 1.36E6, 2)
+        assert iso.tflux_e <= 1.20E6
+        assert iso.tflux_e >= 1.19E6
+        assert iso.tflux_c <= 1.38E6
+        assert iso.tflux_c >= 1.36E6
 
         # deviations from perfect ellipticity
-        self.assertLessEqual(abs(iso.a3), 0.05, 2)
-        self.assertLessEqual(abs(iso.b3), 0.05, 2)
-        self.assertLessEqual(abs(iso.a4), 0.05, 2)
-        self.assertLessEqual(abs(iso.b4), 0.05, 2)
+        assert abs(iso.a3) <= 0.05
+        assert abs(iso.b3) <= 0.05
+        assert abs(iso.a4) <= 0.05
+        assert abs(iso.b4) <= 0.05
 
     def test_m51_niter(self):
         # compares with old STSDAS task. In this task, the
@@ -100,10 +100,11 @@ class TestIsophote(unittest.TestCase):
         fitter = Fitter(sample)
         iso = fitter.fit()
 
-        self.assertTrue(iso.valid)
-        self.assertEqual(iso.niter, 50)
+        assert iso.valid
+        assert iso.niter == 50
 
-class TestIsophoteList(unittest.TestCase):
+
+class TestIsophoteList(object):
 
     def test_isophote_list(self):
         test_data = build_test_data.build()
@@ -116,47 +117,44 @@ class TestIsophoteList(unittest.TestCase):
         result = IsophoteList(iso_list)
 
         # make sure it can be indexed as a list.
-        self.assertIsInstance(result[0], Isophote)
+        assert isinstance(result[0], Isophote)
 
         array = np.array([])
         # make sure the important arrays contain floats.
         # especially the sma array, which is derived
         # from a property in the Isophote class.
-        self.assertEqual(type(result.sma), type(array))
-        self.assertIsInstance(result.sma[0], float)
+        assert type(result.sma) == type(array)
+        assert isinstance(result.sma[0], float)
 
-        self.assertEqual(type(result.intens), type(array))
-        self.assertIsInstance(result.intens[0], float)
+        assert type(result.intens) == type(array)
+        assert isinstance(result.intens[0], float)
 
-        self.assertEqual(type(result.rms), type(array))
-        self.assertEqual(type(result.int_err), type(array))
-        self.assertEqual(type(result.pix_stddev), type(array))
-        self.assertEqual(type(result.grad), type(array))
-        self.assertEqual(type(result.grad_error), type(array))
-        self.assertEqual(type(result.grad_r_error), type(array))
-        self.assertEqual(type(result.sarea), type(array))
-        self.assertEqual(type(result.niter), type(array))
-        self.assertEqual(type(result.ndata), type(array))
-        self.assertEqual(type(result.nflag), type(array))
-        self.assertEqual(type(result.valid), type(array))
-        self.assertEqual(type(result.stop_code), type(array))
-        self.assertEqual(type(result.tflux_c), type(array))
-        self.assertEqual(type(result.tflux_e), type(array))
-        self.assertEqual(type(result.npix_c), type(array))
-        self.assertEqual(type(result.npix_e), type(array))
-        self.assertEqual(type(result.a3), type(array))
-        self.assertEqual(type(result.a4), type(array))
-        self.assertEqual(type(result.b3), type(array))
-        self.assertEqual(type(result.b4), type(array))
+        assert type(result.rms) == type(array)
+        assert type(result.int_err) == type(array)
+        assert type(result.pix_stddev) == type(array)
+        assert type(result.grad) == type(array)
+        assert type(result.grad_error) == type(array)
+        assert type(result.grad_r_error) == type(array)
+        assert type(result.sarea) == type(array)
+        assert type(result.niter) == type(array)
+        assert type(result.ndata) == type(array)
+        assert type(result.nflag) == type(array)
+        assert type(result.valid) == type(array)
+        assert type(result.stop_code) == type(array)
+        assert type(result.tflux_c) == type(array)
+        assert type(result.tflux_e) == type(array)
+        assert type(result.npix_c) == type(array)
+        assert type(result.npix_e) == type(array)
+        assert type(result.a3) == type(array)
+        assert type(result.a4) == type(array)
+        assert type(result.b3) == type(array)
+        assert type(result.b4) == type(array)
 
         samples = result.sample
-        self.assertIsInstance(samples, list)
-        self.assertIsInstance(samples[0], Sample)
+        assert isinstance(samples, list)
+        assert isinstance(samples[0], Sample)
 
         iso = result.get_closest(13.6)
-        self.assertIsInstance(iso, Isophote)
-        self.assertEqual(iso.sma, 14.)
-
-
-
+        assert isinstance(iso, Isophote)
+        assert iso.sma == pytest.approx(14., abs=0.000001)
 
