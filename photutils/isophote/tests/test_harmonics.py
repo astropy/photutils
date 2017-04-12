@@ -2,12 +2,6 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 
 import numpy as np
 
-try:
-    import scipy
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
-
 import unittest
 
 from photutils.isophote import build_test_data
@@ -19,10 +13,10 @@ class TestHarmonics(unittest.TestCase):
 
     def test_harmonics_1(self):
 
-        if not HAS_SCIPY:
+        try:
+            from scipy.optimize import leastsq
+        except ImportError:
             return
-
-        from scipy.optimize import leastsq
 
         # this is an almost as-is example taken from stackoverflow
 
