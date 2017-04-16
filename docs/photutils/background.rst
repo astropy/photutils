@@ -87,7 +87,7 @@ deviation to estimate the background noise level give values that are
 larger than the true value of 2::
 
     >>> from astropy.stats import biweight_midvariance, mad_std
-    >>> print(biweight_midvariance(data))
+    >>> print(biweight_midvariance(data))   # doctest: +SKIP
     2.22011175104
     >>> print(mad_std(data))    # doctest: +FLOAT_CMP
     2.1443728009
