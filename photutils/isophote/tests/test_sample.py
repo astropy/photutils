@@ -28,9 +28,9 @@ def test_scatter():
     the noise rms and then compare how close the pixel std dev estimated
     at extraction matches this input noise.
     '''
-    _doit(NEAREST_NEIGHBOR, 7., 12.)
-    _doit(BI_LINEAR,        7., 12.)
-    _doit(MEAN,             7., 12.)
+    _doit(NEAREST_NEIGHBOR, 7., 15.)
+    _doit(BI_LINEAR,        7., 15.)
+    _doit(MEAN,             7., 15.)
     _doit(MEDIAN,           6., 15.) # the median is not so good at estimating rms
 
 
