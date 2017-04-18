@@ -1,12 +1,12 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import numpy as np
-from scipy.optimize import leastsq
 
 
 def _dofit(optimize_func, parameters):
     # call the least squares fitting
     # function and handle the result.
+    from scipy.optimize import leastsq
     solution = leastsq(optimize_func, parameters, full_output=True)
 
     if solution[4] > 4:
