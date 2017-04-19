@@ -11,7 +11,14 @@ from photutils.isophote.fitter import Fitter
 from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.tests.test_data import TEST_DATA
 
+try:
+    import scipy
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
 
+
+@pytest.mark.skipif('not HAS_SCIPY')
 class TestIsophote(object):
 
     def test_fit(self):

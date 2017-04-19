@@ -7,13 +7,15 @@ from photutils.isophote import build_test_data
 from photutils.isophote.sample import Sample
 from photutils.isophote.harmonics import fit_1st_and_2nd_harmonics, fit_upper_harmonic, first_and_2nd_harmonic_function
 
+try:
+    from scipy.optimize import leastsq
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
 
+
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_harmonics_1():
-
-    try:
-        from scipy.optimize import leastsq
-    except ImportError:
-        return
 
     # this is an almost as-is example taken from stackoverflow
 
@@ -42,6 +44,7 @@ def test_harmonics_1():
     assert np.std(residual) == pytest.approx(0.01, abs=0.01)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_harmonics_2():
 
     # this uses the actual functional form used for fitting ellipses
@@ -65,6 +68,7 @@ def test_harmonics_2():
     assert np.std(residual) == pytest.approx(0.015, abs=0.01)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_harmonics_3():
 
     # tests an upper harmonic fit
@@ -87,6 +91,7 @@ def test_harmonics_3():
     assert np.std(residual) == pytest.approx(0.015, abs=0.01)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_fit_sample_1():
 
     # major axis parallel to X image axis
@@ -118,6 +123,7 @@ def test_fit_sample_1():
     assert np.std(residual) == pytest.approx(0.015, abs=0.01)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_fit_sample_2():
 
     # major axis tilted 45 deg wrt X image axis
@@ -136,6 +142,7 @@ def test_fit_sample_2():
     assert np.mean(b2) == pytest.approx(-63.184,  abs=0.001)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_fit_sample_3():
 
     test_data = build_test_data.build()
@@ -154,6 +161,7 @@ def test_fit_sample_3():
     assert np.mean(b2) == pytest.approx(10.153,   abs=0.001)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_fit_sample_4():
 
     test_data = build_test_data.build()

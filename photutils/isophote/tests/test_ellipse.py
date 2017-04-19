@@ -1,5 +1,7 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+import pytest
+
 import numpy as np
 from astropy.io import fits
 
@@ -11,6 +13,11 @@ from photutils.isophote.ellipse import Ellipse, FIXED_ELLIPSE, FAILED_FIT
 from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.tests.test_data import TEST_DATA
 
+try:
+    import scipy
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
 
 # define an off-center position and a tilted sma
 POS = DEFAULT_POS + DEFAULT_SIZE / 4
@@ -25,6 +32,7 @@ OFFSET_GALAXY = build_test_data.build(x0=POS, y0=POS, pa=PA, noise=1.E-12)
 verb = False
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 class TestEllipse(object):
 
     def test_basic(self):
@@ -87,6 +95,7 @@ class TestEllipse(object):
         assert isophote_list[-1].stop_code == FIXED_ELLIPSE
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 class TestOnRealData(object):
 
     def test_basic(self):

@@ -1,6 +1,7 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import math
+import pytest
 
 import numpy as np
 from astropy.io import fits
@@ -10,6 +11,12 @@ from astropy.table import Table
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.integrator import BI_LINEAR, MEAN
 from photutils.isophote.tests.test_data import TEST_DATA, TEST_DATA_REGRESSION
+
+try:
+    import scipy
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
 
 verb = False
 
@@ -56,6 +63,7 @@ write new code that reads the standard output of 'ellipse' instead, captured fro
 screen, and use it as reference for the regression.
 '''
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_regression():
 
     integrmode = BI_LINEAR

@@ -2,7 +2,6 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 
 import sys
 import numpy as np
-from scipy.interpolate import LSQUnivariateSpline
 
 from .geometry import Geometry, PHI_MIN
 
@@ -39,6 +38,9 @@ def build_model(image, isolist, fill=0., high_harmonics=False, verbose=True):
     numpy 2-D array
         with the model image
     """
+    # local import
+    from scipy.interpolate import LSQUnivariateSpline
+
     # the target grid is spaced in 0.1 pixel intervals so as
     # to ensure no gaps will result on the output array.
     finely_spaced_sma = np.arange(isolist[0].sma, isolist[-1].sma, 0.1)

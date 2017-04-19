@@ -15,6 +15,12 @@ from photutils.isophote.isophote import Isophote
 from photutils.isophote.fitter import Fitter, CentralFitter
 from photutils.isophote.tests.test_data import TEST_DATA
 
+try:
+    import scipy
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
+
 
 def test_gradient():
 
@@ -30,6 +36,7 @@ def test_gradient():
     assert sample.sector_area == pytest.approx(2.00, abs=0.01)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_fitting_raw():
     # this test performs a raw (no Fitter), 1-step
     # correction in one single ellipse coefficient.
@@ -56,6 +63,7 @@ def test_fitting_raw():
     assert new_eps == pytest.approx(0.21, abs=0.01)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_fitting_small_radii():
 
     test_data = build_test_data.build()
@@ -69,6 +77,7 @@ def test_fitting_small_radii():
     assert isophote.ndata == 13
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_fitting_eps():
 
     test_data = build_test_data.build()
@@ -85,6 +94,7 @@ def test_fitting_eps():
     assert g.eps <= 0.21
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_fitting_pa():
 
     test_data = build_test_data.build(pa=np.pi/4, noise=0.01)
@@ -100,6 +110,7 @@ def test_fitting_pa():
     assert g.pa <= (np.pi/4 + 0.05)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_fitting_xy():
 
     pos_ = DEFAULT_POS - 5
@@ -118,6 +129,7 @@ def test_fitting_xy():
     assert g.y0 <= (pos_ + 1)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_fitting_all():
 
     # build test image that is off from the defaults
@@ -157,6 +169,7 @@ def test_fitting_all():
     assert isophote_m.stop_code == 0
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_m51():
     image = fits.open(TEST_DATA + "M51.fits")
     test_data = image[0].data
