@@ -95,6 +95,9 @@ def calc_total_error(data, bkg_error, effective_gain):
                          'units, then they all must all have units.')
 
     if use_units:
+        if data.unit != bkg_error.unit:
+            raise ValueError('data and bkg_error must have the same units.')
+
         count_units = [u.electron, u.photon]
         datagain_unit = (data * effective_gain).unit
         if datagain_unit not in count_units:
@@ -113,6 +116,12 @@ def calc_total_error(data, bkg_error, effective_gain):
         raise ValueError('effective_gain must be strictly positive '
                          'everywhere.')
 
+    # This calculation assumes that data and bkg_error have the same
+    # units.  source_variance is calculated to have units of
+    # (data.unit)**2 so that it can be added with bkg_error**2 below.  The
+    # final returned error will have units of data.unit.  np.maximum is
+    # used to ensure that negative data values do not contribute to the
+    # Poisson noise.
     if use_units:
         source_variance = np.maximum((data * data.unit) /
                                      effective_gain.value,
