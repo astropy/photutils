@@ -90,7 +90,7 @@ def calc_total_error(data, bkg_error, effective_gain):
     inputs = [data, bkg_error, effective_gain]
     has_unit = [hasattr(x, 'unit') for x in inputs]
     use_units = all(has_unit)
-    if any(has_unit) and not all(has_unit):
+    if any(has_unit) and not use_units:
         raise ValueError('If any of data, bkg_error, or effective_gain has '
                          'units, then they all must all have units.')
 
@@ -99,11 +99,12 @@ def calc_total_error(data, bkg_error, effective_gain):
             raise ValueError('data and bkg_error must have the same units.')
 
         count_units = [u.electron, u.photon]
-        datagain_unit = (data * effective_gain).unit
+        datagain_unit = data.unit * effective_gain.unit
         if datagain_unit not in count_units:
             raise u.UnitsError('(data * effective_gain) has units of "{0}", '
-                               'but it must have count units (u.electron '
-                               'or u.photon).'.format(datagain_unit))
+                               'but it must have count units (e.g. '
+                               'u.electron or u.photon).'
+                               .format(datagain_unit))
 
     if not isiterable(effective_gain):
         effective_gain = np.zeros(data.shape) + effective_gain
@@ -123,9 +124,10 @@ def calc_total_error(data, bkg_error, effective_gain):
     # used to ensure that negative data values do not contribute to the
     # Poisson noise.
     if use_units:
-        source_variance = np.maximum((data * data.unit) /
-                                     effective_gain.value,
-                                     0. * bkg_error.unit**2)
+        unit = data.unit
+        data = data.value
+        effective_gain = effective_gain.value
+        source_variance = np.maximum(data / effective_gain, 0) * unit**2
     else:
         source_variance = np.maximum(data / effective_gain, 0)
 
