@@ -72,6 +72,11 @@ API changes
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.utils``
+
+  - Added a check that ``data`` and ``bkg_error`` have the same units
+    in ``calc_total_error``. [#537]
+
 
 0.3.1 (unreleased)
 ------------------
