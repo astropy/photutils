@@ -22,9 +22,11 @@ def calc_total_error(data, bkg_error, effective_gain):
 
     bkg_error : array_like or `~astropy.units.Quantity`
         The pixel-wise Gaussian 1-sigma background-only errors of the
-        input ``data``.  ``error`` should include all sources of
+        input ``data``.  ``bkg_error`` should include all sources of
         "background" error but *exclude* the Poisson error of the
-        sources.  ``error`` must have the same shape as ``data``.
+        sources.  ``bkg_error`` must have the same shape as ``data``.
+        If ``data`` and ``bkg_error`` are `~astropy.units.Quantity`
+        objects, then they must have the same units.
 
     effective_gain : float, array-like, or `~astropy.units.Quantity`
         Ratio of counts (e.g., electrons or photons) to the units of
@@ -36,14 +38,16 @@ def calc_total_error(data, bkg_error, effective_gain):
         The total error array.  If ``data``, ``bkg_error``, and
         ``effective_gain`` are all `~astropy.units.Quantity` objects,
         then ``total_error`` will also be returned as a
-        `~astropy.units.Quantity` object.  Otherwise, a `~numpy.ndarray`
-        will be returned.
+        `~astropy.units.Quantity` object with the same units as the
+        input ``data``.  Otherwise, a `~numpy.ndarray` will be returned.
 
     Notes
     -----
-    To use units, ``data``, ``bkg_error``, and ``effective_gain`` must *all*
-    be `~astropy.units.Quantity` objects.  A `ValueError` will be raised if
-    only some of the inputs are `~astropy.units.Quantity` objects.
+    To use units, ``data``, ``bkg_error``, and ``effective_gain`` must
+    *all* be `~astropy.units.Quantity` objects.  ``data`` and
+    ``bkg_error`` must have the same units.  A `ValueError` will be
+    raised if only some of the inputs are `~astropy.units.Quantity`
+    objects or if the ``data`` and ``bkg_error`` units differ.
 
     The total error array, :math:`\\sigma_{\\mathrm{tot}}` is:
 
@@ -60,21 +64,22 @@ def calc_total_error(data, bkg_error, effective_gain):
     that this is different from `SExtractor`_, which sums the total
     variance in the segment, including pixels where :math:`I_i` is
     negative.  In such cases, `SExtractor`_ underestimates the total
-    errors.  Also note that ``data`` should be background-subtracted to
-    match SExtractor's errors.
+    errors.  Also note that SExtractor computes Poisson errors from
+    background-subtracted data, which also results in an underestimation
+    of the Poisson noise.
 
     ``effective_gain`` can either be a scalar value or a 2D image with
     the same shape as the ``data``.  A 2D image is useful with mosaic
     images that have variable depths (i.e., exposure times) across the
-    field. For example, one should use an exposure-time map as the
+    field.  For example, one should use an exposure-time map as the
     ``effective_gain`` for a variable depth mosaic image in count-rate
     units.
 
-    If your input ``data`` are in units of ADU, then ``effective_gain``
-    should represent electrons/ADU.  If your input ``data`` are in units
-    of electrons/s then ``effective_gain`` should be the exposure time
-    or an exposure time map (e.g., for mosaics with non-uniform exposure
-    times).
+    As an example, if your input ``data`` are in units of ADU, then
+    ``effective_gain`` should be in units of electrons/ADU (or
+    photons/ADU).  If your input ``data`` are in units of electrons/s
+    then ``effective_gain`` should be the exposure time or an exposure
+    time map (e.g., for mosaics with non-uniform exposure times).
 
     .. _SExtractor: http://www.astromatic.net/software/sextractor
     """
