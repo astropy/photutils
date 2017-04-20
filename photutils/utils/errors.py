@@ -22,9 +22,11 @@ def calc_total_error(data, bkg_error, effective_gain):
 
     bkg_error : array_like or `~astropy.units.Quantity`
         The pixel-wise Gaussian 1-sigma background-only errors of the
-        input ``data``.  ``error`` should include all sources of
+        input ``data``.  ``bkg_error`` should include all sources of
         "background" error but *exclude* the Poisson error of the
-        sources.  ``error`` must have the same shape as ``data``.
+        sources.  ``bkg_error`` must have the same shape as ``data``.
+        If ``data`` and ``bkg_error`` are `~astropy.units.Quantity`
+        objects, then they must have the same units.
 
     effective_gain : float, array-like, or `~astropy.units.Quantity`
         Ratio of counts (e.g., electrons or photons) to the units of
@@ -36,14 +38,16 @@ def calc_total_error(data, bkg_error, effective_gain):
         The total error array.  If ``data``, ``bkg_error``, and
         ``effective_gain`` are all `~astropy.units.Quantity` objects,
         then ``total_error`` will also be returned as a
-        `~astropy.units.Quantity` object.  Otherwise, a `~numpy.ndarray`
-        will be returned.
+        `~astropy.units.Quantity` object with the same units as the
+        input ``data``.  Otherwise, a `~numpy.ndarray` will be returned.
 
     Notes
     -----
-    To use units, ``data``, ``bkg_error``, and ``effective_gain`` must *all*
-    be `~astropy.units.Quantity` objects.  A `ValueError` will be raised if
-    only some of the inputs are `~astropy.units.Quantity` objects.
+    To use units, ``data``, ``bkg_error``, and ``effective_gain`` must
+    *all* be `~astropy.units.Quantity` objects.  ``data`` and
+    ``bkg_error`` must have the same units.  A `ValueError` will be
+    raised if only some of the inputs are `~astropy.units.Quantity`
+    objects or if the ``data`` and ``bkg_error`` units differ.
 
     The total error array, :math:`\\sigma_{\\mathrm{tot}}` is:
 
@@ -60,21 +64,22 @@ def calc_total_error(data, bkg_error, effective_gain):
     that this is different from `SExtractor`_, which sums the total
     variance in the segment, including pixels where :math:`I_i` is
     negative.  In such cases, `SExtractor`_ underestimates the total
-    errors.  Also note that ``data`` should be background-subtracted to
-    match SExtractor's errors.
+    errors.  Also note that SExtractor computes Poisson errors from
+    background-subtracted data, which also results in an underestimation
+    of the Poisson noise.
 
     ``effective_gain`` can either be a scalar value or a 2D image with
     the same shape as the ``data``.  A 2D image is useful with mosaic
     images that have variable depths (i.e., exposure times) across the
-    field. For example, one should use an exposure-time map as the
+    field.  For example, one should use an exposure-time map as the
     ``effective_gain`` for a variable depth mosaic image in count-rate
     units.
 
-    If your input ``data`` are in units of ADU, then ``effective_gain``
-    should represent electrons/ADU.  If your input ``data`` are in units
-    of electrons/s then ``effective_gain`` should be the exposure time
-    or an exposure time map (e.g., for mosaics with non-uniform exposure
-    times).
+    As an example, if your input ``data`` are in units of ADU, then
+    ``effective_gain`` should be in units of electrons/ADU (or
+    photons/ADU).  If your input ``data`` are in units of electrons/s
+    then ``effective_gain`` should be the exposure time or an exposure
+    time map (e.g., for mosaics with non-uniform exposure times).
 
     .. _SExtractor: http://www.astromatic.net/software/sextractor
     """
@@ -85,17 +90,21 @@ def calc_total_error(data, bkg_error, effective_gain):
     inputs = [data, bkg_error, effective_gain]
     has_unit = [hasattr(x, 'unit') for x in inputs]
     use_units = all(has_unit)
-    if any(has_unit) and not all(has_unit):
+    if any(has_unit) and not use_units:
         raise ValueError('If any of data, bkg_error, or effective_gain has '
                          'units, then they all must all have units.')
 
     if use_units:
+        if data.unit != bkg_error.unit:
+            raise ValueError('data and bkg_error must have the same units.')
+
         count_units = [u.electron, u.photon]
-        datagain_unit = (data * effective_gain).unit
+        datagain_unit = data.unit * effective_gain.unit
         if datagain_unit not in count_units:
             raise u.UnitsError('(data * effective_gain) has units of "{0}", '
-                               'but it must have count units (u.electron '
-                               'or u.photon).'.format(datagain_unit))
+                               'but it must have count units (e.g. '
+                               'u.electron or u.photon).'
+                               .format(datagain_unit))
 
     if not isiterable(effective_gain):
         effective_gain = np.zeros(data.shape) + effective_gain
@@ -108,10 +117,17 @@ def calc_total_error(data, bkg_error, effective_gain):
         raise ValueError('effective_gain must be strictly positive '
                          'everywhere.')
 
+    # This calculation assumes that data and bkg_error have the same
+    # units.  source_variance is calculated to have units of
+    # (data.unit)**2 so that it can be added with bkg_error**2 below.  The
+    # final returned error will have units of data.unit.  np.maximum is
+    # used to ensure that negative data values do not contribute to the
+    # Poisson noise.
     if use_units:
-        source_variance = np.maximum((data * data.unit) /
-                                     effective_gain.value,
-                                     0. * bkg_error.unit**2)
+        unit = data.unit
+        data = data.value
+        effective_gain = effective_gain.value
+        source_variance = np.maximum(data / effective_gain, 0) * unit**2
     else:
         source_variance = np.maximum(data / effective_gain, 0)
 
