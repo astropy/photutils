@@ -45,7 +45,7 @@ class Ellipse(object):
 
     Each one of the harmonic amplitudes A1, B1, A2, B2 is related to a specific
     ellipse geometric parameter, in the sense that it conveys information regarding
-    how much the current parameter value deviates from the "true" one. To compute
+    how much the parameter's current value deviates from the "true" one. To compute
     this deviation, the image's local radial gradient has to be taken into account
     too. The algorithm picks up the largest amplitude among the four, estimates the
     local gradient and computes the corresponding increment in the associated ellipse
@@ -215,7 +215,7 @@ class Ellipse(object):
             start from the maximum value either because the maximum is not known
             beforehand, depending on signal-to-noise. The sma0 value should be selected
             such that the corresponding isophote has a good signal-to-noise ratio and
-            a clear geometry.
+            a clearly defined geometry.
         minsma : float, default = 0.
             minimum value for the semi-major axis length (pixels).
         maxsma : float, default = None.

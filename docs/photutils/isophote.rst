@@ -25,7 +25,7 @@ and the image is resampled. The process is repeated until certain criteria are m
 
 See the documentation for the Ellipse class for details.
 
-Refer to the examples in the notebooks for how to start using the package.
+Refer to the examples in the notebooks in `astropy-tutorials` for how to start using the package.
 
 Refer to the API documentation below for the detailed description of each class,
 method, and parameter.
@@ -37,15 +37,15 @@ several examples on how the API is used in practice.
 Reference/API
 -------------
 
+.. automodapi:: photutils.isophote
 .. automodapi:: photutils.isophote.ellipse
-.. automodapi:: photutils.isophote.ellipse.ellipse
-.. automodapi:: photutils.isophote.ellipse.isophote
-.. automodapi:: photutils.isophote.ellipse.sample
-.. automodapi:: photutils.isophote.ellipse.fitter
-.. automodapi:: photutils.isophote.ellipse.geometry
-.. automodapi:: photutils.isophote.ellipse.integrator
-.. automodapi:: photutils.isophote.ellipse.harmonics
-.. automodapi:: photutils.isophote.ellipse.centerer
+.. automodapi:: photutils.isophote.isophote
+.. automodapi:: photutils.isophote.sample
+.. automodapi:: photutils.isophote.fitter
+.. automodapi:: photutils.isophote.geometry
+.. automodapi:: photutils.isophote.integrator
+.. automodapi:: photutils.isophote.harmonics
+.. automodapi:: photutils.isophote.centerer
 .. automodapi:: photutils.isophote.model
 
 
@@ -94,7 +94,7 @@ relate as
       Ecc  =  sqrt [ 1 -  (1 - {\epsilon})^2 ]
 
 
-**3 - How the radial gradient is estimated?**
+**3 - How is the radial gradient estimated?**
 
 The radial intensity gradient is the most critical quantity computed
 by the fitting algorithm. As can be seen from the above formulae, small
