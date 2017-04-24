@@ -156,9 +156,6 @@ class _NearestNeighborIntegrator(_Integrator):
         return False
 
 
-# sqrt(number of cells) in target pixel
-NCELL = 8
-
 class _BiLinearIntegrator(_Integrator):
 
     def integrate(self, radius, phi):
