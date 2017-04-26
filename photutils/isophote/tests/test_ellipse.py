@@ -102,12 +102,12 @@ class TestOnRealData(object):
         image = fits.open(TEST_DATA + "M105-S001-RGB.fits")
         test_data = image[0].data[0]
 
-        g = Geometry(530., 511, 50., 0.2, 20./180.*3.14)
+        g = Geometry(530., 511, 30., 0.2, 20./180.*3.14)
 
         ellipse = Ellipse(test_data, geometry=g, verbose=verb)
         isophote_list = ellipse.fit_image(verbose=verb)
 
-        assert len(isophote_list) == 58
+        assert len(isophote_list) == 57
 
         # check that isophote at about sma=70 got an uneventful fit
         assert isophote_list.get_closest(70.).stop_code == NORMAL_FIT

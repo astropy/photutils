@@ -178,7 +178,7 @@ class Ellipse(object):
         """
         self._centerer.threshold = threshold
 
-    def fit_image(self, sma0 = 10.,
+    def fit_image(self, sma0 = None,
                           minsma      = 0.,
                           maxsma      = None,
                           step        = DEFAULT_STEP,
@@ -206,7 +206,7 @@ class Ellipse(object):
 
         Parameters
         ----------
-        sma0 : float, default = 10.
+        sma0 : float, default = None.
             starting value for the semi-major axis length (pixels). This can't be
             neither the minimum or the maximum, but something in between. The
             algorithm can't start from the very center of the galaxy image because
@@ -215,7 +215,10 @@ class Ellipse(object):
             start from the maximum value either because the maximum is not known
             beforehand, depending on signal-to-noise. The sma0 value should be selected
             such that the corresponding isophote has a good signal-to-noise ratio and
-            a clearly defined geometry.
+            a clearly defined geometry. If set to None (the default), one of two actions
+            will be taken: in case an internal Geometry instance was passed to the Ellipse
+            constructor, the `sma` in that instance will be used. If no Geometry instance
+            was passed to the constructor, the default value `10.` will be used.
         minsma : float, default = 0.
             minimum value for the semi-major axis length (pixels).
         maxsma : float, default = None.
@@ -318,9 +321,18 @@ class Ellipse(object):
         if verbose:
             print_header()
 
+        # get starting sma from appropriate source: keyword parameter,
+        # internal Geometry instance, or fixed default value.
+        if not sma0:
+            if self._geometry:
+                sma = self._geometry.sma
+            else:
+                sma = 10.
+        else:
+            sma = sma0
+
         # first, go from initial sma outwards until
         # hitting one of several stopping criteria.
-        sma = sma0
         noiter = False
         first_isophote = True
         while True:
