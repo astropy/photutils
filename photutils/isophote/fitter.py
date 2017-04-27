@@ -72,7 +72,8 @@ class Fitter(object):
             If the actual number of valid data points is smaller
             than this, stop iterating and return current Isophote.
             Flagged data points are points that either lie outside
-            the image frame, or where rejected by sigma-clipping.
+            the image frame, are masked, or were rejected by
+            sigma-clipping.
         maxgerr : float, default = 0.5
             maximum acceptable relative error in the local radial
             intensity gradient. This is the main control for preventing
@@ -227,9 +228,10 @@ class Fitter(object):
             good_to_go = False
 
         # check if ellipse geometry diverged.
-        if abs(sample.geometry.eps > MAX_EPS) or \
-            sample.geometry.x0 < 1. or sample.geometry.x0 > sample.image.shape[0] or \
-            sample.geometry.y0 < 1. or sample.geometry.y0 > sample.image.shape[1]:
+        if abs(sample.geometry.eps > MAX_EPS):
+            good_to_go = False
+        if sample.geometry.x0 < 1. or sample.geometry.x0 > sample.image.shape[0] or \
+           sample.geometry.y0 < 1. or sample.geometry.y0 > sample.image.shape[1]:
             good_to_go = False
 
         # See if eps == 0 (round isophote) was crossed.
@@ -358,7 +360,12 @@ class CentralFitter(Fitter):
     Derived Fitter class, designed specifically to handle the
     case of the central pixel in the galaxy image.
     """
-    def fit(self, conver=0.05, minit=10, maxit=50, fflag=0.7, maxgerr=0.5, going_inwards=False):
+    def fit(self, conver=DEFAULT_CONVERGENCY,
+            minit=DEFAULT_MINIT,
+            maxit=DEFAULT_MAXIT,
+            fflag=DEFAULT_FFLAG,
+            maxgerr=DEFAULT_MAXGERR,
+            going_inwards=False):
         """
         Overrides the base class to perform just a simple 1-pixel
         extraction at the current x0,y0 position, using bi-linear

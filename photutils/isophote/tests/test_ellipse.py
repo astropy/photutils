@@ -94,6 +94,11 @@ class TestEllipse(object):
         assert len(isophote_list) == 71
         assert isophote_list[-1].stop_code == FIXED_ELLIPSE
 
+        # check that no zero-valued intensities were left behind
+        # in the sample arrays when sampling outside the image.
+        for iso in isophote_list:
+            assert not np.any(iso.sample.values[2] == 0)
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestOnRealData(object):

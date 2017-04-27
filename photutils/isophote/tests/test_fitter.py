@@ -204,6 +204,21 @@ def test_m51():
     assert isophote.intens == pytest.approx(155.0, abs=0.1)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_m51_outer():
+    image = fits.open(TEST_DATA + "M51.fits")
+    test_data = image[0].data
+
+    # sample taken at the outskirts of the image, so many
+    # data points lay outside the image frame. This checks
+    # for the presence of gaps in the sample arrays.
+    sample = Sample(test_data, 330., eps=0.2, position_angle=((90)/180*np.pi), integrmode='median')
+    fitter = Fitter(sample)
+    isophote = fitter.fit()
+
+    assert not np.any(isophote.sample.values[2] == 0)
+
+
 def test_m51_central():
     image = fits.open(TEST_DATA + "M51.fits")
     test_data = image[0].data

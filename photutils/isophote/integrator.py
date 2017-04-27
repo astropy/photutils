@@ -1,6 +1,7 @@
 from __future__ import division
 
 import math
+import numpy.ma as ma
 
 __all__ = ['integrators','NEAREST_NEIGHBOR','BI_LINEAR','MEAN','MEDIAN']
 
@@ -140,11 +141,10 @@ class _NearestNeighborIntegrator(_Integrator):
         # ignore data point if outside image boundaries
         if (i in self._i_range) and (j in self._j_range):
 
-            # need to handle masked pixels here
             sample = self._image[j][i]
 
-            # store results
-            self._store_results(phi, radius, sample)
+            if sample is not ma.masked:
+                self._store_results(phi, radius, sample)
 
     def get_polar_angle_step(self):
         return 1. / self._r
@@ -177,13 +177,17 @@ class _BiLinearIntegrator(_Integrator):
             qx = 1. - fx
             qy = 1. - fy
 
-            sample = self._image[j][i]     * qx * qy + \
-                     self._image[j+1][i]   * qx * fy + \
-                     self._image[j][i+1]   * fx * qy + \
-                     self._image[j+1][i+1] * fy * fx
+            if self._image[j][i]     is not ma.masked and \
+               self._image[j+1][i]   is not ma.masked and \
+               self._image[j][i+1]   is not ma.masked and \
+               self._image[j+1][i+1] is not ma.masked:
 
-            # store results
-            self._store_results(phi, radius, sample)
+                sample = self._image[j][i]     * qx * qy + \
+                         self._image[j+1][i]   * qx * fy + \
+                         self._image[j][i+1]   * fx * qy + \
+                         self._image[j+1][i+1] * fy * fx
+
+                self._store_results(phi, radius, sample)
 
     def get_polar_angle_step(self):
         return 1. / self._r
@@ -256,7 +260,8 @@ class _AreaIntegrator(_Integrator):
                         if rp < r2 and rp >= r1:
                             # update accumulator with pixel value
                             pix_value = self._image[j][i]
-                            accumulator, npix = self.accumulate(pix_value, accumulator)
+                            if pix_value is not ma.masked:
+                                accumulator, npix = self.accumulate(pix_value, accumulator)
 
             # If 6 or less pixels were sampled, get the bi-linear interpolated value instead.
             if npix in range (0,7):
@@ -266,8 +271,9 @@ class _AreaIntegrator(_Integrator):
                 # because it was reset, current value is the only one stored
                 # internally in the bi-linear integrator instance. Move it
                 # from the internal integrator to this instance.
-                sample_value = self._bi_linear_integrator._intensities[0]
-                self._store_results(phi, radius, sample_value)
+                if len(self._bi_linear_integrator._intensities) > 0:
+                    sample_value = self._bi_linear_integrator._intensities[0]
+                    self._store_results(phi, radius, sample_value)
 
             elif npix > 6:
                 sample_value = self.compute_sample_value(accumulator)

@@ -250,7 +250,8 @@ class Ellipse(object):
             If the actual number of valid data points is smaller
             than this, stop iterating and return current Isophote.
             Flagged data points are points that either lie outside
-            the image frame, or where rejected by sigma-clipping.
+            the image frame, are masked, or were rejected by
+            sigma-clipping.
         maxgerr : float, default = 0.5
             maximum acceptable relative error in the local radial
             intensity gradient. This is the main control for preventing
@@ -354,6 +355,8 @@ class Ellipse(object):
                 # guesses that are too way off to enable the fitting algorithm
                 # to find any meaningful solution.
                 if len(isophote_list) == 1:
+                    if verbose:
+                        print('No meaningful fit was possible.')
                     return IsophoteList([])
 
                 self._fix_last_isophote(isophote_list, -1)
@@ -365,7 +368,7 @@ class Ellipse(object):
                 # if two consecutive isophotes failed to fit,
                 # shut off iterative mode. Or, bail out and
                 # change to go inwards.
-                if len(isophote_list) > 1:
+                if len(isophote_list) > 2:
                     if (isophote.stop_code == FAILED_FIT and isophote_list[-2].stop_code == FAILED_FIT) \
                             or \
                         isophote.stop_code == TOO_MANY_FLAGGED:
@@ -484,7 +487,8 @@ class Ellipse(object):
             If the actual number of valid data points is smaller
             than this, stop iterating and return current Isophote.
             Flagged data points are points that either lie outside
-            the image frame, or where rejected by sigma-clipping.
+            the image frame, are masked, or were rejected by
+            sigma-clipping.
         maxgerr : float, default = 0.5
             maximum acceptable relative error in the local radial
             intensity gradient. When fitting one isophote by itself,
@@ -550,7 +554,7 @@ class Ellipse(object):
         # do the fit.
         if noniterate or (maxrit and sma > maxrit):
             isophote = self._non_iterative(sma, step, linear, geometry,
-                                           sclip, nclip)
+                                           sclip, nclip, integrmode)
         else:
             isophote = self._iterative(sma, step, linear, geometry, sclip, nclip,
                                        integrmode, conver, minit, maxit, fflag,
@@ -583,13 +587,14 @@ class Ellipse(object):
 
         return isophote
 
-    def _non_iterative(self, sma, step, linear, geometry, sclip, nclip):
+    def _non_iterative(self, sma, step, linear, geometry, sclip, nclip, integrmode):
         sample = Sample(self.image, sma,
                         astep=step,
                         sclip=sclip,
                         nclip=nclip,
                         linear_growth=linear,
-                        geometry=geometry)
+                        geometry=geometry,
+                        integrmode=integrmode)
         sample.update()
 
         # build isophote without iterating with a Fitter
