@@ -410,6 +410,9 @@ class IsophoteList(Isophote, list):
     attribute across the entire list of Isophote instances provided at constructor
     time.
 
+    The class extends the 'list' built-in, thus providing basic list behavior such
+    as slicing, appending, and support for '+' and '+=' operators.
+
     Parameters
     ----------
     iso_list : list
@@ -428,10 +431,15 @@ class IsophoteList(Isophote, list):
         self._list.__setitem__(index, value)
 
     def __getitem__(self, index):
+        if isinstance(index, slice):
+            return IsophoteList(self._list[index])
         return self._list.__getitem__(index)
 
     def __iter__(self):
         return self._list.__iter__()
+
+    def sort(self):
+        self._list.sort()
 
     def insert(self, index, value):
         self._list.insert(index, value)
