@@ -113,15 +113,18 @@ class TestIsophote(object):
 
 class TestIsophoteList(object):
 
-    def test_isophote_list(self):
+    def _build_list(self, sma0):
         test_data = build_test_data.build()
         iso_list = []
         for k in range(10):
-            sample = Sample(test_data, float(k+10.))
+            sample = Sample(test_data, float(k + sma0))
             sample.update()
             iso_list.append(Isophote(sample, k, True, 0))
-
         result = IsophoteList(iso_list)
+        return result
+
+    def test_isophote_list(self):
+        result = self._build_list(10.)
 
         # make sure it can be indexed as a list.
         assert isinstance(result[0], Isophote)
@@ -165,3 +168,57 @@ class TestIsophoteList(object):
         assert isinstance(iso, Isophote)
         assert iso.sma == pytest.approx(14., abs=0.000001)
 
+    def test_extend(self):
+
+        # the extend method shouldn't return anything,
+        # and should modify the first list in place.
+        inner_list = self._build_list(10.)
+        outer_list = self._build_list(100.)
+        dummy = inner_list.extend(outer_list)
+        assert not dummy
+        assert len(inner_list) == 20
+
+        # the __iadd__ operator should behave like the
+        # extend method.
+        inner_list = self._build_list(10.)
+        outer_list = self._build_list(100.)
+        inner_list += outer_list
+        assert len(inner_list) == 20
+
+        # the __add__ operator should create a new IsophoteList
+        # instance with the result, and should not modify
+        # the operands.
+        inner_list = self._build_list(10.)
+        outer_list = self._build_list(100.)
+        result = inner_list + outer_list
+        assert isinstance(result, IsophoteList)
+        assert len(inner_list) == 10
+        assert len(outer_list) == 10
+        assert len(result) == 20
+
+
+
+
+        # # the extend method shouldn't return anything,
+        # # and should modify the first list in place. We
+        # # exercise slicing of the first operator as well.
+        # inner_list = self._build_list(10.)
+        # sublist = inner_list[2:-2]
+        # dummy = sublist.extend(outer_list)
+        # assert not dummy
+        # assert len(sublist) == 16
+        #
+        # # try one more slice
+        # even_outer_list = self._build_list(200.)
+        # sublist.extend(even_outer_list[3:-3])
+        # assert len(sublist) == 20
+        #
+        # # the __add_ method should create a new IsophoteList
+        # # instance with the result, and should not modify
+        # # the operands. Again, we exercise slicing of the
+        # # first operator as well.
+        # sublist = inner_list[2:-2]
+        # result = sublist + outer_list
+        # assert isinstance(result, IsophoteList)
+        # assert len(sublist) == 6
+        # assert len(result) == 16

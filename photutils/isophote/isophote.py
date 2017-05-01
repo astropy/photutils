@@ -439,11 +439,17 @@ class IsophoteList(Isophote, list):
     def append(self, value):
         self.insert(len(self) + 1, value)
 
-    def __add__(self, value):
-        self.extend(value)
-
     def extend(self, value):
         self._list.extend(value._list)
+
+    def __iadd__(self, value):
+        self.extend(value)
+        return self
+
+    def __add__(self, value):
+        temp = self._list.copy() # shallow copy!
+        temp.extend(value._list)
+        return IsophoteList(temp)
 
     def get_closest(self, sma):
         """
