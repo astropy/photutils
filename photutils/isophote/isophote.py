@@ -424,9 +424,6 @@ class IsophoteList(Isophote, list):
     def __delitem__(self, index):
         self._list.__delitem__(index)
 
-    def insert(self, index, value):
-        self._list.insert(index, value)
-
     def __setitem__(self, index, value):
         self._list.__setitem__(index, value)
 
@@ -436,8 +433,17 @@ class IsophoteList(Isophote, list):
     def __iter__(self):
         return self._list.__iter__()
 
+    def insert(self, index, value):
+        self._list.insert(index, value)
+
     def append(self, value):
         self.insert(len(self) + 1, value)
+
+    def __add__(self, value):
+        self.extend(value)
+
+    def extend(self, value):
+        self._list.extend(value._list)
 
     def get_closest(self, sma):
         """
