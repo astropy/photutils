@@ -1,6 +1,7 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import numpy as np
+import numpy.ma as ma
 
 from .harmonics import fit_1st_and_2nd_harmonics, first_and_2nd_harmonic_function, fit_upper_harmonic
 
@@ -102,8 +103,8 @@ class Isophote(object):
         number of actual (extracted) data points
     nflag : int
         number of discarded data points. Data points can be discarded either
-        because they are physically outside the image frame boundaries, or
-        because they were rejected by sigma-clipping.
+        because they are physically outside the image frame boundaries,
+        because they were rejected by sigma-clipping, or they are masked.
     a3, b3, a4, b4 : float
         higher order harmonics that measure the deviations from a perfect ellipse.
         These values ar actually the raw harmonic amplitude divided by the local
@@ -190,13 +191,17 @@ class Isophote(object):
 
                 # pixel is inside circle with diameter given by sma
                 if radius <= sma:
-                    tflux_c += self.sample.image[j][i]
-                    npix_c += 1
+                    value = self.sample.image[j][i]
+                    if value is not ma.masked:
+                        tflux_c += value
+                        npix_c += 1
 
                 # pixel is inside ellipse
                 if radius <= radius_e:
-                    tflux_e += self.sample.image[j][i]
-                    npix_e += 1
+                    value = self.sample.image[j][i]
+                    if value is not ma.masked:
+                        tflux_e += value
+                        npix_e += 1
 
         return tflux_e, tflux_c, npix_e, npix_c
 

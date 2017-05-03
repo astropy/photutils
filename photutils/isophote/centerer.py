@@ -73,7 +73,8 @@ class Centerer(object):
     Parameters
     ----------
     image : np 2-D array
-        image array
+        image array. Masked arrays are not recognized here. This assumes
+        that centering should always be done on valid pixels.
     geometry : instance of Geometry
         geometry that directs the centerer to look at its X/Y
         coordinates. These are modified by the centerer algorithm.
