@@ -37,7 +37,6 @@ env:
 
     matrix:
         - PYTHON_VERSION=2.7 SETUP_CMD='egg_info'
-        - PYTHON_VERSION=3.3 SETUP_CMD='egg_info'
         - PYTHON_VERSION=3.4 SETUP_CMD='egg_info'
         - PYTHON_VERSION=3.5 SETUP_CMD='egg_info'
         - PYTHON_VERSION=3.6 SETUP_CMD='egg_info'
@@ -83,8 +82,6 @@ matrix:
         # the Numpy developers have taken care of testing Numpy with different
         # versions of Python, we can vary Python and Numpy versions at the same
         # time.
-        - os: linux
-          env: PYTHON_VERSION=3.3 NUMPY_VERSION=1.8
         - os: linux
           env: PYTHON_VERSION=3.4 NUMPY_VERSION=1.9
         - os: linux
