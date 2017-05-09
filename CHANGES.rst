@@ -4,6 +4,11 @@
 General
 ^^^^^^^
 
+- Dropped python 3.3 support. [#542]
+
+- Dropped numpy 1.8 support. Minimal required version is now numpy
+  1.9. [#542]
+
 New Features
 ^^^^^^^^^^^^
 
