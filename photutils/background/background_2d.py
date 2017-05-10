@@ -507,7 +507,7 @@ class Background2D(object):
 
         self.nboxes = self.nxboxes * self.nyboxes
 
-        # a reshaped 2D array with mesh data along the x axis
+        # a reshaped 2D masked array with mesh data along the x axis
         mesh_data = np.ma.swapaxes(data_ma.reshape(
             self.nyboxes, self.box_size[0], self.nxboxes, self.box_size[1]),
             1, 2).reshape(self.nyboxes * self.nxboxes, self.box_npixels)
@@ -675,7 +675,7 @@ class Background2D(object):
             data_sigclip = self.sigma_clip(self.mesh_data, axis=1)
         else:
             data_sigclip = self.mesh_data
-        self._data_sigclip = data_sigclip
+        self._data_sigclip = data_sigclip     # always 2D masked array
 
         self._mesh_shape = (self.nyboxes, self.nxboxes)
         self.mesh_yidx, self.mesh_xidx = np.unravel_index(self.mesh_idx,
@@ -694,6 +694,8 @@ class Background2D(object):
             bkg = self._interpolate_meshes(self.bkg1d)
             bkgrms = self._interpolate_meshes(self.bkgrms1d)
 
+        self.background_mesh_prefiltered = bkg
+        self.background_rms_mesh_prefiltered = bkgrms
         self.background_mesh = bkg
         self.background_rms_mesh = bkgrms
 
