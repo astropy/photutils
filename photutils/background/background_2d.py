@@ -505,6 +505,8 @@ class Background2D(object):
             else:
                 raise ValueError('edge_method must be "pad" or "crop"')
 
+        self.nboxes = self.nxboxes * self.nyboxes
+
         # a reshaped 2D array with mesh data along the x axis
         mesh_data = np.ma.swapaxes(data_ma.reshape(
             self.nyboxes, self.box_size[0], self.nxboxes, self.box_size[1]),
@@ -685,7 +687,7 @@ class Background2D(object):
         self.bkgrms1d = self.bkgrms_estimator(data_sigclip, axis=1)
 
         # make the 2D mesh arrays
-        if len(self.bkg1d) == (self.nxboxes * self.nyboxes):
+        if len(self.bkg1d) == self.nboxes:
             bkg = self._make_2d_array(self.bkg1d)
             bkgrms = self._make_2d_array(self.bkgrms1d)
         else:
@@ -740,7 +742,7 @@ class Background2D(object):
         The background 2D (masked) array mesh prior to any interpolation.
         """
 
-        if len(self.bkg1d) == (self.nxboxes * self.nyboxes):
+        if len(self.bkg1d) == self.nboxes:
             return self.background_mesh
         else:
             return self._make_2d_array(self.bkg1d)
@@ -751,7 +753,7 @@ class Background2D(object):
         The background RMS 2D (masked) array mesh prior to any interpolation.
         """
 
-        if len(self.bkg1d) == (self.nxboxes * self.nyboxes):
+        if len(self.bkg1d) == self.nboxes:
             return self.background_rms_mesh
         else:
             return self._make_2d_array(self.bkgrms1d)
