@@ -514,7 +514,7 @@ class Background2D(object):
 
         # first cut on rejecting meshes
         self.mesh_idx = self._select_meshes(mesh_data)
-        self.mesh_data = mesh_data[self.mesh_idx, :]
+        self._mesh_data = mesh_data[self.mesh_idx, :]
 
         return
 
@@ -672,10 +672,16 @@ class Background2D(object):
         """
 
         if self.sigma_clip is not None:
-            data_sigclip = self.sigma_clip(self.mesh_data, axis=1)
+            data_sigclip = self.sigma_clip(self._mesh_data, axis=1)
         else:
-            data_sigclip = self.mesh_data
-        self._data_sigclip = data_sigclip     # always 2D masked array
+            data_sigclip = self._mesh_data
+        del self._mesh_data
+
+        # preform mesh rejection on sigma-clipped data (i.e. for any
+        # newly-masked pixels)
+        idx = self._select_meshes(data_sigclip)
+        self.mesh_idx = self.mesh_idx[idx]    # indices for the output mesh
+        self._data_sigclip = data_sigclip[idx]    # always a 2D masked array
 
         self._mesh_shape = (self.nyboxes, self.nxboxes)
         self.mesh_yidx, self.mesh_xidx = np.unravel_index(self.mesh_idx,
@@ -683,8 +689,8 @@ class Background2D(object):
 
         # needed for background_mesh_ma and background_rms_mesh_ma
         # properties
-        self.bkg1d = self.bkg_estimator(data_sigclip, axis=1)
-        self.bkgrms1d = self.bkgrms_estimator(data_sigclip, axis=1)
+        self.bkg1d = self.bkg_estimator(self._data_sigclip, axis=1)
+        self.bkgrms1d = self.bkgrms_estimator(self._data_sigclip, axis=1)
 
         # make the 2D mesh arrays
         if len(self.bkg1d) == self.nboxes:
