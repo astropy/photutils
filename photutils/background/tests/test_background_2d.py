@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import itertools
 
 import numpy as np
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 from astropy.tests.helper import pytest
 
 from ..core import MeanBackground
@@ -93,10 +93,29 @@ class TestBackground2D(object):
         assert_allclose(b.background, DATA)
         assert_allclose(b.background_rms, BKG_RMS)
 
-        # test mask padding
+        # test edge crop with
         b2 = Background2D(data, box_size, filter_size=(1, 1), mask=mask,
-                          bkg_estimator=MeanBackground(), edge_method='pad')
+                          bkg_estimator=MeanBackground(), edge_method='crop')
         assert_allclose(b2.background, DATA)
+
+    def test_mask(self):
+        data = np.copy(DATA)
+        data[25:50, 25:50] = 100.
+        mask = np.zeros_like(DATA, dtype=np.bool)
+        mask[25:50, 25:50] = True
+        b1 = Background2D(data, (25, 25), filter_size=(1, 1), mask=None,
+                          bkg_estimator=MeanBackground())
+
+        assert_equal(b1.background_mesh, b1.background_mesh_ma)
+        assert_equal(b1.background_rms_mesh, b1.background_rms_mesh_ma)
+        assert not np.ma.is_masked(b1.mesh_nmasked)
+
+        b2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
+                          bkg_estimator=MeanBackground())
+
+        assert np.ma.count(b2.background_mesh_ma) < b2.nboxes
+        assert np.ma.count(b2.background_rms_mesh_ma) < b2.nboxes
+        assert np.ma.is_masked(b2.mesh_nmasked)
 
     def test_completely_masked(self):
         with pytest.raises(ValueError):
