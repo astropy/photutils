@@ -25,7 +25,6 @@ BKG_RMS_MESH = np.zeros((4, 4))
 PADBKG_MESH = np.ones((5, 5))
 PADBKG_RMS_MESH = np.zeros((5, 5))
 FILTER_SIZES = [(1, 1), (3, 3)]
-EDGE_METHODS = ['pad', 'crop']
 INTERPOLATORS = [BkgZoomInterpolator(), BkgIDWInterpolator()]
 
 
@@ -99,18 +98,10 @@ class TestBackground2D(object):
                           bkg_estimator=MeanBackground(), edge_method='pad')
         assert_allclose(b2.background, DATA)
 
-    @pytest.mark.parametrize('exclude_mesh_method',
-                             (['any', 'all', 'threshold']))
-    def test_exclude_mesh(self, exclude_mesh_method):
-        b = Background2D(DATA, (25, 25),
-                         exclude_mesh_method=exclude_mesh_method)
-        assert_allclose(b.background, DATA)
-
-        # test if data is completely masked
+    def test_completely_masked(self):
         with pytest.raises(ValueError):
             mask = np.ones_like(DATA, dtype=np.bool)
-            Background2D(DATA, (25, 25), mask=mask,
-                         exclude_mesh_method=exclude_mesh_method)
+            Background2D(DATA, (25, 25), mask=mask)
 
     def test_zero_padding(self):
         """Test case where padding is added only on one axis."""
@@ -162,10 +153,12 @@ class TestBackground2D(object):
         assert_allclose(b1.background, b2.background)
         assert_allclose(b1.background_rms, b2.background_rms)
 
-    def test_exclude_mesh_percentile(self):
+    def test_exclude_percentile(self):
         with pytest.raises(ValueError):
-            Background2D(DATA, (5, 5), exclude_mesh_method='threshold',
-                         exclude_mesh_percentile=101)
+            Background2D(DATA, (5, 5), exclude_percentile=-1)
+
+        with pytest.raises(ValueError):
+            Background2D(DATA, (5, 5), exclude_percentile=101)
 
     def test_mask_badshape(self):
         with pytest.raises(ValueError):
@@ -176,11 +169,6 @@ class TestBackground2D(object):
         with pytest.raises(ValueError):
             Background2D(DATA, (23, 22), filter_size=(1, 1),
                          edge_method='not_valid')
-
-    def test_invalid_exclude_mesh_method(self):
-        with pytest.raises(ValueError):
-            Background2D(DATA, (23, 22), filter_size=(1, 1),
-                         exclude_mesh_method='not_valid')
 
     def test_invalid_mesh_idx_len(self):
         with pytest.raises(ValueError):
