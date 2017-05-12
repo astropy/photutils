@@ -512,12 +512,21 @@ class Background2D(object):
         if data.shape != self.mesh_idx.shape:
             raise ValueError('data and mesh_idx must have the same shape')
 
-        data2d = np.zeros(self._mesh_shape).astype(data.dtype)
-        mask2d = np.ones(data2d.shape).astype(np.bool)
-        data2d[self.mesh_yidx, self.mesh_xidx] = data
-        mask2d[self.mesh_yidx, self.mesh_xidx] = False
+        if np.ma.is_masked(data):
+            raise ValueError('data must not be a masked array')
 
-        return np.ma.masked_array(data2d, mask=mask2d)
+        data2d = np.zeros(self._mesh_shape).astype(data.dtype)
+        data2d[self.mesh_yidx, self.mesh_xidx] = data
+
+        if len(self.mesh_idx) == self.nboxes:
+            # no meshes were masked
+            return data2d
+        else:
+            # some meshes were masked
+            mask2d = np.ones(data2d.shape).astype(np.bool)
+            mask2d[self.mesh_yidx, self.mesh_xidx] = False
+
+            return np.ma.masked_array(data2d, mask=mask2d)
 
     def _interpolate_meshes(self, data, n_neighbors=10, eps=0., power=1.,
                             reg=0.):
@@ -662,25 +671,22 @@ class Background2D(object):
                                                           self._mesh_shape)
 
         # These properties are needed later to calculate
-        # background_mesh_ma and background_rms_mesh_ma.  Note that bkg1d
-        # and bkgrms1d are masked arrays, but the mask should always be
+        # background_mesh_ma and background_rms_mesh_ma.  Note that _bkg1d
+        # and _bkgrms1d are masked arrays, but the mask should always be
         # False.
-        self.bkg1d = self.bkg_estimator(self._data_sigclip, axis=1)
-        self.bkgrms1d = self.bkgrms_estimator(self._data_sigclip, axis=1)
+        self._bkg1d = self.bkg_estimator(self._data_sigclip, axis=1)
+        self._bkgrms1d = self.bkgrms_estimator(self._data_sigclip, axis=1)
 
-        # make the unfiltered 2D mesh arrays
-        if len(self.bkg1d) == self.nboxes:
-            # these are 2D masked arrays
-            bkg = self._make_2d_array(self.bkg1d)
-            bkgrms = self._make_2d_array(self.bkgrms1d)
+        # make the unfiltered 2D mesh arrays (these are not masked)
+        if len(self._bkg1d) == self.nboxes:
+            bkg = self._make_2d_array(self._bkg1d)
+            bkgrms = self._make_2d_array(self._bkgrms1d)
         else:
-            # these are 2D ndarrays (not masked; masked regions were
-            # interpolated)
-            bkg = self._interpolate_meshes(self.bkg1d)
-            bkgrms = self._interpolate_meshes(self.bkgrms1d)
+            bkg = self._interpolate_meshes(self._bkg1d)
+            bkgrms = self._interpolate_meshes(self._bkgrms1d)
 
-        self.background_mesh_unfiltered = bkg
-        self.background_rms_mesh_unfiltered = bkgrms
+        self._background_mesh_unfiltered = bkg
+        self._background_rms_mesh_unfiltered = bkgrms
         self.background_mesh = bkg
         self.background_rms_mesh = bkgrms
 
@@ -715,9 +721,9 @@ class Background2D(object):
     @lazyproperty
     def mesh_nmasked(self):
         """
-        A 2D masked array of the number of masked pixels in each mesh.
+        A 2D (masked) array of the number of masked pixels in each mesh.
         Only meshes included in the background estimation are included.
-        Excluded meshes will be masked in the image.
+        The array is masked only if meshes were excluded.
         """
 
         return self._make_2d_array(
@@ -726,24 +732,28 @@ class Background2D(object):
     @lazyproperty
     def background_mesh_ma(self):
         """
-        The background 2D (masked) array mesh prior to any interpolation.
+        The background 2D (masked) array mesh prior to any
+        interpolation.  The array is masked only if meshes were
+        excluded.
         """
 
-        if len(self.bkg1d) == self.nboxes:
+        if len(self._bkg1d) == self.nboxes:
             return self.background_mesh
         else:
-            return self._make_2d_array(self.bkg1d)
+            return self._make_2d_array(self._bkg1d)    # masked array
 
     @lazyproperty
     def background_rms_mesh_ma(self):
         """
-        The background RMS 2D (masked) array mesh prior to any interpolation.
+        The background RMS 2D (masked) array mesh prior to any
+        interpolation.  The array is masked only if meshes were
+        excluded.
         """
 
-        if len(self.bkg1d) == self.nboxes:
+        if len(self._bkgrms1d) == self.nboxes:
             return self.background_rms_mesh
         else:
-            return self._make_2d_array(self.bkgrms1d)
+            return self._make_2d_array(self._bkgrms1d)    # masked array
 
     @lazyproperty
     def background_median(self):
