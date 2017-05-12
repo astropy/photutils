@@ -26,6 +26,11 @@ New Features
 
   - Added a ``to_sky`` method for pixel apertures. [#512]
 
+- ``photutils.background``
+
+  - Mesh rejection now also applies to pixels that are masked during
+    sigma clipping. [#544]
+
 - ``photutils.datasets``
 
   - Added new ``make_wcs`` and ``make_imagehdu`` functions. [#527]
@@ -46,6 +51,12 @@ API changes
 
   - Removed the ``pixelwise_errors`` keyword from
     ``aperture_photometry``. [#489]
+
+- ``photutils.background``
+
+  - The ``Background2D`` keywords ``exclude_mesh_method`` and
+    ``exclude_mesh_percentile`` were removed in favor of a single
+    keyword called ``exclude_percentile``. [#544]
 
 - ``photutils.datasets``
 

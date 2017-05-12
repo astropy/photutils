@@ -194,28 +194,21 @@ class Background2D(object):
         value indicates the corresponding element of ``data`` is masked.
         Masked data are excluded from calculations.
 
-    exclude_mesh_method : {'threshold', 'any', 'all'}, optional
-        The method used to determine whether to exclude a particular
-        mesh based on the number of masked pixels it contains in the
-        input (e.g. source) ``mask`` or padding mask (if
-        ``edge_method='pad'``):
-
-            * ``'threshold'``:  exclude meshes that contain greater than
-              ``exclude_mesh_percentile`` percent masked pixels.  This is
-              the default.
-            * ``'any'``:  exclude meshes that contain any masked pixels.
-            * ``'all'``:  exclude meshes that are completely masked.
-
-    exclude_mesh_percentile : float in the range of [0, 100], optional
-        The percentile of masked pixels in a mesh used as a threshold
-        for determining if the mesh is excluded.  If
-        ``exclude_mesh_method='threshold'``, then meshes that contain
-        greater than ``exclude_mesh_percentile`` percent masked pixels
-        are excluded.  This parameter is used only if
-        ``exclude_mesh_method='threshold'``.  The default is 10.  For
-        best results, ``exclude_mesh_percentile`` should be kept as low
-        as possible (i.e, as long as there are sufficient pixels for
-        reasonable statistical estimates).
+    exclude_percentile : float in the range of [0, 100], optional
+        The percentage of masked pixels in a mesh, used as a threshold
+        for determining if the mesh is excluded.  If a mesh has more
+        than ``exclude_percentile`` percent of its pixels masked then it
+        will be excluded from the low-resolution map.  Masked pixels
+        include those from the input ``mask``, those resulting from the
+        data padding (i.e. if ``edge_method='pad'``), and those
+        resulting from any sigma clipping (i.e. if ``sigma_clip`` is
+        used).  Setting ``exclude_percentile=0`` will exclude meshes
+        that have any masked pixels.  Setting ``exclude_percentile=100``
+        will only exclude meshes that are completely masked.  Note that
+        completely masked meshes are *always* excluded.  For best
+        results, ``exclude_percentile`` should be kept as low as
+        possible (as long as there are sufficient pixels for reasonable
+        statistical estimates).  The default is 10.
 
     filter_size : int or array_like (int), optional
         The window size of the 2D median filter to apply to the
@@ -288,9 +281,9 @@ class Background2D(object):
     """
 
     def __init__(self, data, box_size, mask=None,
-                 exclude_mesh_method='threshold', exclude_mesh_percentile=10.,
-                 filter_size=(3, 3), filter_threshold=None,
-                 edge_method='pad', sigma_clip=SigmaClip(sigma=3., iters=10),
+                 exclude_percentile=10., filter_size=(3, 3),
+                 filter_threshold=None, edge_method='pad',
+                 sigma_clip=SigmaClip(sigma=3., iters=10),
                  bkg_estimator=SExtractorBackground(sigma_clip=None),
                  bkgrms_estimator=StdBackgroundRMS(sigma_clip=None),
                  interpolator=BkgZoomInterpolator()):
@@ -309,14 +302,13 @@ class Background2D(object):
             if mask.shape != data.shape:
                 raise ValueError('mask and data must have the same shape')
 
-        if exclude_mesh_percentile < 0 or exclude_mesh_percentile > 100:
-            raise ValueError('exclude_mesh_percentile must be between 0 and '
-                             '100 (inclusive).')
+        if exclude_percentile < 0 or exclude_percentile > 100:
+            raise ValueError('exclude_percentile must be between 0 and 100 '
+                             '(inclusive).')
 
         self.data = data
         self.mask = mask
-        self.exclude_mesh_method = exclude_mesh_method
-        self.exclude_mesh_percentile = exclude_mesh_percentile
+        self.exclude_percentile = exclude_percentile
 
         filter_size = np.atleast_1d(filter_size)
         if len(filter_size) == 1:
@@ -417,9 +409,8 @@ class Background2D(object):
         mesh image of the meshes to use for the background
         interpolation.
 
-        The ``exclude_mesh_method`` and ``exclude_mesh_percentile``
-        keywords determine which meshes are not used for the background
-        interpolation.
+        The ``exclude_percentile`` keyword determines which meshes are
+        not used for the background interpolation.
 
         Parameters
         ----------
@@ -436,39 +427,22 @@ class Background2D(object):
         # the number of masked pixels in each mesh
         nmasked = np.ma.count_masked(data, axis=1)
 
-        if self.exclude_mesh_method == 'any':
-            # keep meshes that do not have any masked pixels
-            mesh_idx = np.where(nmasked == 0)[0]
-            if len(mesh_idx) == 0:
-                raise ValueError('All meshes contain at least one masked '
-                                 'pixel.  Please check your data or try '
-                                 'an alternate exclude_mesh_method option.')
+        # meshes that contain more than ``exclude_percentile`` percent
+        # masked pixels are excluded:
+        #   - for exclude_percentile=0, good meshes will be only where
+        #     nmasked=0
+        #   - meshes where nmasked=self.box_npixels are *always* excluded
+        #     (second conditional needed for exclude_percentile=100)
+        threshold_npixels = self.exclude_percentile / 100. * self.box_npixels
+        mesh_idx = np.where((nmasked <= threshold_npixels) &
+                            (nmasked != self.box_npixels))[0]    # good meshes
 
-        elif self.exclude_mesh_method == 'all':
-            # keep meshes that are not completely masked
-            mesh_idx = np.where((self.box_npixels - nmasked) != 0)[0]
-            if len(mesh_idx) == 0:
-                raise ValueError('All meshes are completely masked.  '
-                                 'Please check your data or try an '
-                                 'alternate exclude_mesh_method option.')
-
-        elif self.exclude_mesh_method == 'threshold':
-            # keep meshes only with at least ``exclude_mesh_percentile``
-            # unmasked pixels
-            threshold_npixels = (self.exclude_mesh_percentile / 100. *
-                                 self.box_npixels)
-            mesh_idx = np.where((self.box_npixels - nmasked) >=
-                                threshold_npixels)[0]
-            if len(mesh_idx) == 0:
-                raise ValueError('All meshes contain < {0} ({1} percent per '
-                                 'mesh) unmasked pixels.  Please check your '
-                                 'data or decrease "exclude_mesh_percentile".'
-                                 .format(threshold_npixels,
-                                         self.exclude_mesh_percentile))
-
-        else:
-            raise ValueError('exclude_mesh_method must be "any", "all", or '
-                             '"threshold".')
+        if len(mesh_idx) == 0:
+            raise ValueError('All meshes contain > {0} ({1} percent per '
+                             'mesh) masked pixels.  Please check your data '
+                             'or decrease "exclude_percentile".'
+                             .format(threshold_npixels,
+                                     self.exclude_percentile))
 
         return mesh_idx
 
@@ -505,14 +479,16 @@ class Background2D(object):
             else:
                 raise ValueError('edge_method must be "pad" or "crop"')
 
-        # a reshaped 2D array with mesh data along the x axis
+        self.nboxes = self.nxboxes * self.nyboxes
+
+        # a reshaped 2D masked array with mesh data along the x axis
         mesh_data = np.ma.swapaxes(data_ma.reshape(
             self.nyboxes, self.box_size[0], self.nxboxes, self.box_size[1]),
             1, 2).reshape(self.nyboxes * self.nxboxes, self.box_npixels)
 
         # first cut on rejecting meshes
         self.mesh_idx = self._select_meshes(mesh_data)
-        self.mesh_data = mesh_data[self.mesh_idx, :]
+        self._mesh_data = mesh_data[self.mesh_idx, :]
 
         return
 
@@ -536,12 +512,21 @@ class Background2D(object):
         if data.shape != self.mesh_idx.shape:
             raise ValueError('data and mesh_idx must have the same shape')
 
-        data2d = np.zeros(self._mesh_shape)
-        mask2d = np.ones(data2d.shape).astype(np.bool)
-        data2d[self.mesh_yidx, self.mesh_xidx] = data
-        mask2d[self.mesh_yidx, self.mesh_xidx] = False
+        if np.ma.is_masked(data):
+            raise ValueError('data must not be a masked array')
 
-        return np.ma.masked_array(data2d, mask=mask2d)
+        data2d = np.zeros(self._mesh_shape).astype(data.dtype)
+        data2d[self.mesh_yidx, self.mesh_xidx] = data
+
+        if len(self.mesh_idx) == self.nboxes:
+            # no meshes were masked
+            return data2d
+        else:
+            # some meshes were masked
+            mask2d = np.ones(data2d.shape).astype(np.bool)
+            mask2d[self.mesh_yidx, self.mesh_xidx] = False
+
+            return np.ma.masked_array(data2d, mask=mask2d)
 
     def _interpolate_meshes(self, data, n_neighbors=10, eps=0., power=1.,
                             reg=0.):
@@ -670,28 +655,38 @@ class Background2D(object):
         """
 
         if self.sigma_clip is not None:
-            data_sigclip = self.sigma_clip(self.mesh_data, axis=1)
+            data_sigclip = self.sigma_clip(self._mesh_data, axis=1)
         else:
-            data_sigclip = self.mesh_data
-        self._data_sigclip = data_sigclip
+            data_sigclip = self._mesh_data
+        del self._mesh_data
+
+        # preform mesh rejection on sigma-clipped data (i.e. for any
+        # newly-masked pixels)
+        idx = self._select_meshes(data_sigclip)
+        self.mesh_idx = self.mesh_idx[idx]    # indices for the output mesh
+        self._data_sigclip = data_sigclip[idx]    # always a 2D masked array
 
         self._mesh_shape = (self.nyboxes, self.nxboxes)
         self.mesh_yidx, self.mesh_xidx = np.unravel_index(self.mesh_idx,
                                                           self._mesh_shape)
 
-        # needed for background_mesh_ma and background_rms_mesh_ma
-        # properties
-        self.bkg1d = self.bkg_estimator(data_sigclip, axis=1)
-        self.bkgrms1d = self.bkgrms_estimator(data_sigclip, axis=1)
+        # These properties are needed later to calculate
+        # background_mesh_ma and background_rms_mesh_ma.  Note that _bkg1d
+        # and _bkgrms1d are masked arrays, but the mask should always be
+        # False.
+        self._bkg1d = self.bkg_estimator(self._data_sigclip, axis=1)
+        self._bkgrms1d = self.bkgrms_estimator(self._data_sigclip, axis=1)
 
-        # make the 2D mesh arrays
-        if len(self.bkg1d) == (self.nxboxes * self.nyboxes):
-            bkg = self._make_2d_array(self.bkg1d)
-            bkgrms = self._make_2d_array(self.bkgrms1d)
+        # make the unfiltered 2D mesh arrays (these are not masked)
+        if len(self._bkg1d) == self.nboxes:
+            bkg = self._make_2d_array(self._bkg1d)
+            bkgrms = self._make_2d_array(self._bkgrms1d)
         else:
-            bkg = self._interpolate_meshes(self.bkg1d)
-            bkgrms = self._interpolate_meshes(self.bkgrms1d)
+            bkg = self._interpolate_meshes(self._bkg1d)
+            bkgrms = self._interpolate_meshes(self._bkgrms1d)
 
+        self._background_mesh_unfiltered = bkg
+        self._background_rms_mesh_unfiltered = bkgrms
         self.background_mesh = bkg
         self.background_rms_mesh = bkgrms
 
@@ -728,33 +723,37 @@ class Background2D(object):
         """
         A 2D (masked) array of the number of masked pixels in each mesh.
         Only meshes included in the background estimation are included.
-        Excluded meshes will be masked in the image.
+        The array is masked only if meshes were excluded.
         """
 
-        return self._make_2d_array(np.ma.count_masked(self._data_sigclip,
-                                                      axis=1))
+        return self._make_2d_array(
+            np.ma.count_masked(self._data_sigclip, axis=1))
 
     @lazyproperty
     def background_mesh_ma(self):
         """
-        The background 2D (masked) array mesh prior to any interpolation.
+        The background 2D (masked) array mesh prior to any
+        interpolation.  The array is masked only if meshes were
+        excluded.
         """
 
-        if len(self.bkg1d) == (self.nxboxes * self.nyboxes):
+        if len(self._bkg1d) == self.nboxes:
             return self.background_mesh
         else:
-            return self._make_2d_array(self.bkg1d)
+            return self._make_2d_array(self._bkg1d)    # masked array
 
     @lazyproperty
     def background_rms_mesh_ma(self):
         """
-        The background RMS 2D (masked) array mesh prior to any interpolation.
+        The background RMS 2D (masked) array mesh prior to any
+        interpolation.  The array is masked only if meshes were
+        excluded.
         """
 
-        if len(self.bkg1d) == (self.nxboxes * self.nyboxes):
+        if len(self._bkgrms1d) == self.nboxes:
             return self.background_rms_mesh
         else:
-            return self._make_2d_array(self.bkgrms1d)
+            return self._make_2d_array(self._bkgrms1d)    # masked array
 
     @lazyproperty
     def background_median(self):
