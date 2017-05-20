@@ -231,10 +231,9 @@ class BasicPSFPhotometry(object):
             Table with the photometry results, i.e., centroids and
             fluxes estimations and the initial estimates used to start
             the fitting process. Uncertainties on the fitted parameters are
-            reported provided that the fitter object contains a dictionary
-            called ``fit_info`` with ``param_cov`` as key to access the
-            covariance matrix. If this dictionary is not available,
-            uncertainties columns will be filled with ``np.nan``.
+            reported as columns called ``<paramname>_unc`` provided that the
+            fitter object contains a dictionary called ``fit_info`` with
+            the key ``param_cov``, which contains the covariance matrix.
         """
 
         if self.bkg_estimator is not None:
@@ -330,14 +329,14 @@ class BasicPSFPhotometry(object):
             Residual image.
         """
 
+        result_tab = Table()
+        for param_tab_name in self._pars_to_output.keys():
+            result_tab.add_column(Column(name=param_tab_name))
+
         unc_tab = Table()
         for param, isfixed in self.psf_model.fixed.items():
             if not isfixed:
                 unc_tab.add_column(Column(name=param + "_unc"))
-
-        result_tab = Table()
-        for param_tab_name in self._pars_to_output.keys():
-            result_tab.add_column(Column(name=param_tab_name))
 
         y, x = np.indices(image.shape)
 
@@ -360,10 +359,9 @@ class BasicPSFPhotometry(object):
                                                    len(star_groups.groups[n]))
             result_tab = vstack([result_tab, param_table])
 
-            if hasattr(self.fitter, 'fit_info'):
+            if 'param_cov' in self.fitter.fit_info.keys():
                 unc_tab = vstack([unc_tab,
-                                  self._get_uncertainties(
-                                                len(star_groups.groups[n]))
+                        self._get_uncertainties(len(star_groups.groups[n]))
                                  ])
             try:
                 from astropy.nddata.utils import NoOverlapError
@@ -377,7 +375,10 @@ class BasicPSFPhotometry(object):
             except NoOverlapError:
                 pass
 
-        return hstack([result_tab, unc_tab]), image
+        if 'param_cov' in self.fitter.fit_info.keys():
+            result_tab = hstack([result_tab, unc_tab])
+
+        return result_tab, image
 
     def _define_fit_param_names(self):
         """
@@ -435,8 +436,6 @@ class BasicPSFPhotometry(object):
                                           self.fitter.fit_info['param_cov'])
                                          )[k: k + n_fit_params]
                     k = k + n_fit_params
-        else:
-            unc_tab[:] = np.nan
         return unc_tab
 
     def _model_params2table(self, fit_model, star_group_size):
@@ -637,10 +636,9 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             Table with the photometry results, i.e., centroids and
             fluxes estimations and the initial estimates used to start
             the fitting process. Uncertainties on the fitted parameters are
-            reported provided that the fitter object contains a dictionary
-            called ``fit_info`` with ``param_cov`` as key to access the
-            covariance matrix. If this dictionary is not available,
-            uncertainties columns will be filled with ``np.nan``.
+            reported as columns called ``<paramname>_unc`` provided that the
+            fitter object contains a dictionary called ``fit_info`` with
+            the key ``param_cov``, which contains the covariance matrix.
         """
 
         if init_guesses is not None:
