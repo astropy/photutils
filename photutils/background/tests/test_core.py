@@ -11,7 +11,7 @@ from ..core import (SigmaClip, MeanBackground, MedianBackground,
                     ModeEstimatorBackground, MMMBackground,
                     SExtractorBackground, BiweightLocationBackground,
                     StdBackgroundRMS, MADStdBackgroundRMS,
-                    BiweightMidvarianceBackgroundRMS)
+                    BiweightScaleBackgroundRMS)
 
 
 BKG = 0.0
@@ -26,7 +26,7 @@ BKG_CLASS0 = [MeanBackground, MedianBackground, ModeEstimatorBackground,
 BKG_CLASS = BKG_CLASS0 + [BiweightLocationBackground]
 
 RMS_CLASS = [StdBackgroundRMS, MADStdBackgroundRMS,
-             BiweightMidvarianceBackgroundRMS]
+             BiweightScaleBackgroundRMS]
 
 SIGMA_CLIP = SigmaClip(sigma=3.)
 
