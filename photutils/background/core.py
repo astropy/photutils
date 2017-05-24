@@ -12,17 +12,17 @@ import abc
 
 import numpy as np
 from astropy.extern import six
+from astropy.stats import sigma_clip, mad_std
 from astropy.utils.misc import InheritDocstrings
 
-from ..extern.sigma_clipping import sigma_clip
-from ..extern.stats import mad_std, biweight_location, biweight_midvariance
+from ..extern.biweight import biweight_location, biweight_scale
 
 
 __all__ = ['SigmaClip', 'BackgroundBase', 'BackgroundRMSBase',
            'MeanBackground', 'MedianBackground', 'ModeEstimatorBackground',
            'MMMBackground', 'SExtractorBackground',
            'BiweightLocationBackground', 'StdBackgroundRMS',
-           'MADStdBackgroundRMS', 'BiweightMidvarianceBackgroundRMS']
+           'MADStdBackgroundRMS', 'BiweightScaleBackgroundRMS']
 
 
 def _masked_median(data, axis=None):
@@ -615,10 +615,10 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
         return mad_std(data, axis=axis)
 
 
-class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase):
+class BiweightScaleBackgroundRMS(BackgroundRMSBase):
     """
     Class to calculate the background RMS in an array as the
-    (sigma-clipped) biweight midvariance.
+    (sigma-clipped) biweight scale.
 
     Parameters
     ----------
@@ -635,10 +635,10 @@ class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase):
 
     Examples
     --------
-    >>> from photutils import SigmaClip, BiweightMidvarianceBackgroundRMS
+    >>> from photutils import SigmaClip, BiweightScaleBackgroundRMS
     >>> data = np.arange(100)
     >>> sigma_clip = SigmaClip(sigma=3.)
-    >>> bkgrms = BiweightMidvarianceBackgroundRMS(sigma_clip=sigma_clip)
+    >>> bkgrms = BiweightScaleBackgroundRMS(sigma_clip=sigma_clip)
 
     The background RMS value can be calculated by using the
     `calc_background_rms` method, e.g.:
@@ -656,7 +656,7 @@ class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase):
     """
 
     def __init__(self, c=9.0, M=None, **kwargs):
-        super(BiweightMidvarianceBackgroundRMS, self).__init__(**kwargs)
+        super(BiweightScaleBackgroundRMS, self).__init__(**kwargs)
         self.c = c
         self.M = M
 
@@ -664,4 +664,4 @@ class BiweightMidvarianceBackgroundRMS(BackgroundRMSBase):
         if self.sigma_clip is not None:
             data = self.sigma_clip(data, axis=axis)
 
-        return biweight_midvariance(data, c=self.c, M=self.M, axis=axis)
+        return biweight_scale(data, c=self.c, M=self.M, axis=axis)
