@@ -58,6 +58,9 @@ API changes
     ``exclude_mesh_percentile`` were removed in favor of a single
     keyword called ``exclude_percentile``. [#544]
 
+  - Renamed ``BiweightMidvarianceBackgroundRMS`` to
+    ``BiweightScaleBackgroundRMS``. [#547]
+
 - ``photutils.datasets``
 
   - The ``make_poission_noise`` function was renamed to
