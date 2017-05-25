@@ -38,10 +38,9 @@ biased by the presence of real sources.
 
 A slightly better method involves using statistics that are robust
 against the presence of outliers, such as the biweight location for
-the background level and biweight midvariance or `median absolute
-deviation (MAD)
-<http://en.wikipedia.org/wiki/Median_absolute_deviation>`_ for the
-background noise estimation. However, for most astronomical scenes
+the background level and biweight scale or `median absolute deviation
+(MAD) <http://en.wikipedia.org/wiki/Median_absolute_deviation>`_ for
+the background noise estimation. However, for most astronomical scenes
 these methods will also be biased by the presence of astronomical
 sources in the image.
 
@@ -82,13 +81,11 @@ background level of 5::
     >>> print(biweight_location(data))
     5.1867597555
 
-Similarly, using the biweight midvariance and median absolute
-deviation to estimate the background noise level give values that are
-larger than the true value of 2::
+Similarly, using the median absolute deviation to estimate the
+background noise level gives a value that is larger than the true
+value of 2::
 
-    >>> from astropy.stats import biweight_midvariance, mad_std
-    >>> print(biweight_midvariance(data))
-    2.22011175104
+    >>> from astropy.stats import mad_std
     >>> print(mad_std(data))    # doctest: +FLOAT_CMP
     2.1443728009
 
@@ -195,7 +192,7 @@ keyword.  Photutils provides the following classes for this purpose:
 
 * `~photutils.background.StdBackgroundRMS`
 * `~photutils.background.MADStdBackgroundRMS`
-* `~photutils.background.BiweightMidvarianceBackgroundRMS`
+* `~photutils.background.BiweightScaleBackgroundRMS`
 
 For even more flexibility, users may input a custom function or
 callable object to the ``bkg_estimator`` and/or ``bkgrms_estimator``
