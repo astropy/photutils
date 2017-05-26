@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
-from astropy.tests.helper import pytest
+import pytest
 
 from ..core import detect_threshold, find_peaks
 from ...datasets import make_4gaussians_image, make_wcs

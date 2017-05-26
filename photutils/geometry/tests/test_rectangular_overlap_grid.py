@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import itertools
 
 from numpy.testing import assert_allclose
-from astropy.tests.helper import pytest
+import pytest
 
 from .. import rectangular_overlap_grid
 

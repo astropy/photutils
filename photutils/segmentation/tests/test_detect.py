@@ -4,7 +4,9 @@ from __future__ import (absolute_import, division, print_function,
 
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
-from astropy.tests.helper import pytest, catch_warnings
+import pytest
+
+from astropy.tests.helper import catch_warnings
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.convolution import Gaussian2DKernel
 from astropy.stats import gaussian_fwhm_to_sigma

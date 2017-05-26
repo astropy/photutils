@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 
 import numpy as np
 from numpy.testing import assert_allclose
-from astropy.tests.helper import pytest
+import pytest
 
 from .. import ShepardIDWInterpolator as idw
 from .. import interpolate_masked_data, mask_to_mirrored_num

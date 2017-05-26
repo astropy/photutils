@@ -2,7 +2,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from distutils.version import LooseVersion
-from astropy.tests.helper import pytest
+import pytest
 import numpy as np
 from numpy.testing import assert_allclose
 from ..windows import (HanningWindow, TukeyWindow, CosineBellWindow,

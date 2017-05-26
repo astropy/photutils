@@ -34,6 +34,7 @@ env:
         - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib'
         - CONDA_CHANNELS='astropy-ci-extras'
         - SETUP_XVFB=True
+        - ASTROPY_USE_SYSTEM_PYTEST=1
 
     matrix:
         - PYTHON_VERSION=2.7 SETUP_CMD='egg_info'
@@ -74,9 +75,9 @@ matrix:
           env: ASTROPY_VERSION=development
                EVENT_TYPE='pull_request push cron'
         - os: linux
-          env: PYTHON_VERSION=2.7 ASTROPY_VERSION=lts
+          env: PYTHON_VERSION=2.7 ASTROPY_VERSION=lts PYTEST_VERSION=2.7
         - os: linux
-          env: ASTROPY_VERSION=lts
+          env: PYTHON_VERSION=3.5 ASTROPY_VERSION=lts PYTEST_VERSION=2.7
 
         # Try all python versions and Numpy versions. Since we can assume that
         # the Numpy developers have taken care of testing Numpy with different

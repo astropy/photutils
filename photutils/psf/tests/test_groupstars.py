@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import division
 import numpy as np
-from astropy.tests.helper import pytest
+import pytest
 from numpy.testing import assert_array_equal
 from astropy.table import Table, vstack
 from ..groupstars import DAOGroup, DBSCANGroup

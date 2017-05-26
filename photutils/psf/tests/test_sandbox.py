@@ -6,7 +6,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from astropy.modeling.models import Gaussian2D
 from astropy.convolution.utils import discretize_model
 from astropy.table import Table
-from astropy.tests.helper import pytest
+import pytest
 from ..sandbox import DiscretePRF
 
 

@@ -12,11 +12,13 @@ from distutils.version import LooseVersion
 import numpy as np
 from numpy.testing import (assert_allclose, assert_array_equal,
                            assert_array_less)
+import pytest
+
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
 from astropy.nddata import NDData
 from astropy.table import Table
-from astropy.tests.helper import pytest, remote_data
+from astropy.tests.helper import remote_data
 import astropy.units as u
 from astropy.wcs.utils import pixel_to_skycoord
 

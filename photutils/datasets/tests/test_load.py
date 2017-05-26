@@ -2,7 +2,8 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-from astropy.tests.helper import pytest, remote_data
+import pytest
+from astropy.tests.helper import remote_data
 
 from .. import load, get_path
 
