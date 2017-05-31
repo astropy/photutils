@@ -26,15 +26,16 @@ class ApertureMask(object):
         box.
     """
 
-    def __init__(self, mask, bbox):
-        if mask.shape != bbox.shape:
-            raise ValueError('mask and bbox must have the same shape')
-        self.data = np.asanyarray(mask)
+    def __init__(self, data, bbox):
+        self.data = np.asanyarray(data)
+        if self.data.shape != bbox.shape:
+            raise ValueError('mask data and bounding box must have the same '
+                             'shape')
         self.bbox = bbox
 
     def __array__(self):
         """
-        Array representation of the mask array (e.g., for matplotlib).
+        Array representation of the mask data array (e.g., for matplotlib).
         """
 
         return self.data
@@ -42,7 +43,7 @@ class ApertureMask(object):
     @property
     def shape(self):
         """
-        The shape of the mask array.
+        The shape of the mask data array.
         """
 
         return self.data.shape
@@ -79,7 +80,7 @@ class ApertureMask(object):
         ymin = self.bbox.iymin
         ymax = self.bbox.iymax
 
-        if (xmin >= shape[1] or ymin >= shape[0] or xmax <= 0 or ymax <= 0):
+        if xmin >= shape[1] or ymin >= shape[0] or xmax <= 0 or ymax <= 0:
             # no overlap of the aperture with the data
             return None, None
 
