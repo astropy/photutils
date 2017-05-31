@@ -62,7 +62,7 @@ If you use Photutils, please cite the package via its Zenodo record.
 License
 -------
 
-Photutils is licensed under a 3-clause BSD style license (see the
-``licenses/LICENSE.rst`` file).
+Photutils is licensed under a 3-clause BSD style license.  Please see
+the ``LICENSE.rst`` file.
 
 .. _AstroPy: http://www.astropy.org/
