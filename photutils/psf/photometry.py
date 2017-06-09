@@ -233,7 +233,8 @@ class BasicPSFPhotometry(object):
             the fitting process. Uncertainties on the fitted parameters are
             reported as columns called ``<paramname>_unc`` provided that the
             fitter object contains a dictionary called ``fit_info`` with
-            the key ``param_cov``, which contains the covariance matrix.
+            the key ``param_cov``, which contains the covariance matrix. If
+            ``param_cov`` is not present, uncertanties are not reported.
         """
 
         if self.bkg_estimator is not None:
