@@ -230,8 +230,11 @@ class BasicPSFPhotometry(object):
         output_tab : `~astropy.table.Table` or None
             Table with the photometry results, i.e., centroids and
             fluxes estimations and the initial estimates used to start
-            the fitting process.
-            None is returned if no sources are found in ``image``.
+            the fitting process. Uncertainties on the fitted parameters are
+            reported as columns called ``<paramname>_unc`` provided that the
+            fitter object contains a dictionary called ``fit_info`` with
+            the key ``param_cov``, which contains the covariance matrix. If
+            ``param_cov`` is not present, uncertanties are not reported.
         """
 
         if self.bkg_estimator is not None:
@@ -328,15 +331,20 @@ class BasicPSFPhotometry(object):
         """
 
         result_tab = Table()
-
         for param_tab_name in self._pars_to_output.keys():
             result_tab.add_column(Column(name=param_tab_name))
+
+        unc_tab = Table()
+        for param, isfixed in self.psf_model.fixed.items():
+            if not isfixed:
+                unc_tab.add_column(Column(name=param + "_unc"))
 
         y, x = np.indices(image.shape)
 
         star_groups = star_groups.group_by('group_id')
         for n in range(len(star_groups.groups)):
-            group_psf = get_grouped_psf_model(self.psf_model, star_groups.groups[n],
+            group_psf = get_grouped_psf_model(self.psf_model,
+                                              star_groups.groups[n],
                                               self._pars_to_set)
             usepixel = np.zeros_like(image, dtype=np.bool)
 
@@ -352,6 +360,10 @@ class BasicPSFPhotometry(object):
                                                    len(star_groups.groups[n]))
             result_tab = vstack([result_tab, param_table])
 
+            if 'param_cov' in self.fitter.fit_info.keys():
+                unc_tab = vstack([unc_tab,
+                        self._get_uncertainties(len(star_groups.groups[n]))
+                                 ])
             try:
                 from astropy.nddata.utils import NoOverlapError
             except ImportError:
@@ -363,6 +375,9 @@ class BasicPSFPhotometry(object):
                                      subshape=self.fitshape)
             except NoOverlapError:
                 pass
+
+        if 'param_cov' in self.fitter.fit_info.keys():
+            result_tab = hstack([result_tab, unc_tab])
 
         return result_tab, image
 
@@ -390,6 +405,39 @@ class BasicPSFPhotometry(object):
             if p not in (xname, yname, fluxname) and not isfixed:
                 self._pars_to_set[p0] = p
                 self._pars_to_output[pfit] = p
+
+    def _get_uncertainties(self, star_group_size):
+        """
+        Retrieve uncertainties on fitted parameters from the fitter object.
+
+        Parameters
+        ----------
+        star_group_size : int
+            Number of stars in the given group.
+
+        Returns
+        -------
+        unc_tab : `~astropy.table.Table`
+            Table which contains uncertainties on the fitted parameters.
+            The uncertainties are reported as one standard deviation.
+        """
+
+        unc_tab = Table()
+        for param_name in self.psf_model.param_names:
+            if not self.psf_model.fixed[param_name]:
+                unc_tab.add_column(Column(name=param_name + "_unc",
+                                          data=np.empty(star_group_size)))
+
+        if 'param_cov' in self.fitter.fit_info.keys():
+            if self.fitter.fit_info['param_cov'] is not None:
+                k = 0
+                n_fit_params = len(unc_tab.colnames)
+                for i in range(star_group_size):
+                    unc_tab[i] = np.sqrt(np.diag(
+                                          self.fitter.fit_info['param_cov'])
+                                         )[k: k + n_fit_params]
+                    k = k + n_fit_params
+        return unc_tab
 
     def _model_params2table(self, fit_model, star_group_size):
         """
@@ -588,8 +636,10 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         output_table : `~astropy.table.Table` or None
             Table with the photometry results, i.e., centroids and
             fluxes estimations and the initial estimates used to start
-            the fitting process.
-            None is returned if no sources are found in ``image``.
+            the fitting process. Uncertainties on the fitted parameters are
+            reported as columns called ``<paramname>_unc`` provided that the
+            fitter object contains a dictionary called ``fit_info`` with
+            the key ``param_cov``, which contains the covariance matrix.
         """
 
         if init_guesses is not None:
@@ -637,7 +687,6 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             Table with the photometry results, i.e., centroids and
             fluxes estimations and the initial estimates used to start
             the fitting process.
-            None is returned if no sources are found in ``image``.
         """
 
         output_table = Table()

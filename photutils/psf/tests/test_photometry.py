@@ -140,22 +140,27 @@ def test_psf_photometry_niters(sigma_psf, sources):
     bkgrms = StdBackgroundRMS(sigma_clip)
     std = bkgrms(image)
 
-    iter_phot_obj = make_psf_photometry_objs(std, sigma_psf)[1]
-    iter_phot_obj.niters = None
+    phot_obj = make_psf_photometry_objs(std, sigma_psf)[1:3]
+    for iter_phot_obj in phot_obj:
+        iter_phot_obj.niters = None
 
-    result_tab = iter_phot_obj(image)
-    residual_image = iter_phot_obj.get_residual_image()
+        result_tab = iter_phot_obj(image)
+        residual_image = iter_phot_obj.get_residual_image()
 
-    assert_allclose(result_tab['x_fit'], sources['x_mean'], rtol=1e-1)
-    assert_allclose(result_tab['y_fit'], sources['y_mean'], rtol=1e-1)
-    assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
-    assert_array_equal(result_tab['id'], sources['id'])
-    assert_array_equal(result_tab['group_id'], sources['group_id'])
-    assert_array_equal(result_tab['iter_detected'], sources['iter_detected'])
-    assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
+        assert (result_tab['x_0_unc'] < 1.96 * sigma_psf / np.sqrt(sources['flux'])).all()
+        assert (result_tab['y_0_unc'] < 1.96 * sigma_psf / np.sqrt(sources['flux'])).all()
+        assert (result_tab['flux_unc'] < 1.96 * np.sqrt(sources['flux'])).all()
 
-    # make sure image is note overwritten
-    assert_array_equal(cp_image, image)
+        assert_allclose(result_tab['x_fit'], sources['x_mean'], rtol=1e-1)
+        assert_allclose(result_tab['y_fit'], sources['y_mean'], rtol=1e-1)
+        assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
+        assert_array_equal(result_tab['id'], sources['id'])
+        assert_array_equal(result_tab['group_id'], sources['group_id'])
+        assert_array_equal(result_tab['iter_detected'], sources['iter_detected'])
+        assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
+
+        # make sure image is note overwritten
+        assert_array_equal(cp_image, image)
 
 
 @pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GET_1_3')
@@ -190,6 +195,9 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
     for phot_proc in phot_objs:
         result_tab = phot_proc(image)
         residual_image = phot_proc.get_residual_image()
+        assert (result_tab['x_0_unc'] < 1.96 * sigma_psf / np.sqrt(sources['flux'])).all()
+        assert (result_tab['y_0_unc'] < 1.96 * sigma_psf / np.sqrt(sources['flux'])).all()
+        assert (result_tab['flux_unc'] < 1.96 * np.sqrt(sources['flux'])).all()
         assert_allclose(result_tab['x_fit'], sources['x_mean'], rtol=1e-1)
         assert_allclose(result_tab['y_fit'], sources['y_mean'], rtol=1e-1)
         assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
@@ -207,7 +215,9 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
 
         result_tab = phot_proc(image, pos)
         residual_image = phot_proc.get_residual_image()
-
+        assert not 'x_0_unc' in result_tab.colnames
+        assert not 'y_0_unc' in result_tab.colnames
+        assert (result_tab['flux_unc'] < 1.96 * np.sqrt(sources['flux'])).all()
         assert_array_equal(result_tab['x_fit'], sources['x_mean'])
         assert_array_equal(result_tab['y_fit'], sources['y_mean'])
         assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)

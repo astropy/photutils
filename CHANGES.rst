@@ -40,6 +40,12 @@ New Features
   - Added a ``cmap`` method to ``SegmentationImage`` to generate a
     random matplotlib colormap. [#513]
 
+- ``phtotutils.psf``
+
+  - Uncertainties on fitted parameters are added to the final table. [#516]
+
+  - Fitted results of any free parameter are added to the final table. [#471]
+
 
 API changes
 ^^^^^^^^^^^
