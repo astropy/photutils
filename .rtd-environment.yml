@@ -13,4 +13,4 @@ dependencies:
     - scikit-learn
     - scipy
     - docutils
-    - Sphinx >=1.5.1
+    - Sphinx >=1.5.1,<=1.5.6
