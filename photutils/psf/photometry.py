@@ -17,13 +17,7 @@ from ..background import MMMBackground, SigmaClip
 from ..detection import DAOStarFinder
 from ..extern.decorators import deprecated_renamed_argument
 from astropy.utils import minversion
-
-ASTROPY_LT_1_1 = not minversion('astropy', '1.1')
-
-if ASTROPY_LT_1_1:
-    from ..extern.nddata_compat import _overlap_slices_astropy1p1 as overlap_slices
-else:
-    from astropy.nddata.utils import overlap_slices
+from astropy.nddata.utils import overlap_slices
 
 
 __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',
