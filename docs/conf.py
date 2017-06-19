@@ -63,6 +63,8 @@ def _warn_node(self, msg, node, **kwargs):
 
 sphinx.environment.BuildEnvironment.warn_node = _warn_node
 
+plot_formats = ['png', 'hires.png', 'pdf', 'svg']
+
 # -- General configuration ----------------------------------------------------
 
 # By default, highlight as Python 3.
