@@ -1,3 +1,4 @@
+include LICENSE.rst
 include README.rst
 include CHANGES.rst
 include LONG_DESCRIPTION.rst
