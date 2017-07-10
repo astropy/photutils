@@ -61,11 +61,13 @@ matrix:
           env: PYTHON_VERSION=2.7 SETUP_CMD='build_docs -w'
                PIP_DEPENDENCIES='gwcs'
                CONDA_DEPENDENCIES='Cython scipy scikit-image scikit-learn matplotlib jupyter'
+               SPHINX_VERSION='>1.6'
         - os: linux
           env: SETUP_CMD='build_docs -w'
                PIP_DEPENDENCIES='gwcs'
                CONDA_DEPENDENCIES='Cython scipy scikit-image scikit-learn matplotlib jupyter'
                EVENT_TYPE='pull_request push cron'
+               SPHINX_VERSION='>1.6'
 
         # Now try Astropy dev and LTS versions with the latest 3.x and 2.7.
         - os: linux
