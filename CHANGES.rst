@@ -91,6 +91,12 @@ API changes
   - The ``unit``, ``hdu``, ``wcs``, and ``wcsheader`` keywords in
     ``photutils.datasets`` functions were removed. [#527]
 
+- ``photutils.psf``
+
+  - ``IterativelySubtractedPSFPhotometry`` issues a "no sources
+    detected" warning only on the first iteration, if applicable.
+    [#566]
+
 - ``photutils.utils``
 
   - The ``background_color`` keyword was removed from the
