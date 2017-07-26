@@ -250,8 +250,6 @@ class BasicPSFPhotometry(object):
         if init_guesses is not None:
             # make sure the code does not modify user's input
             init_guesses = init_guesses.copy()
-
-        if init_guesses is not None:
             if self.aperture_radius is None:
                 if 'flux_0' not in init_guesses.colnames:
                     raise ValueError('aperture_radius is None and could not be '
