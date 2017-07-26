@@ -729,7 +729,12 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             table['iter_detected'] = n*np.ones(table['x_fit'].shape, dtype=np.int32)
 
             output_table = vstack([output_table, table])
-            sources = self.finder(self._residual_image)
+
+            # do not warn if no sources are found beyond the first iteration
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', AstropyUserWarning)
+                sources = self.finder(self._residual_image)
+
             n += 1
 
         return output_table
