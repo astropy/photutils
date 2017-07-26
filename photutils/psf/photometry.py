@@ -101,7 +101,7 @@ class BasicPSFPhotometry(object):
     Notes
     -----
     Note that an ambiguity arises whenever ``finder`` and ``init_guesses``
-    (keyword argument for ``do_photometry`)` are both not ``None``. In this
+    (keyword argument for ``do_photometry``) are both not ``None``. In this
     case, ``finder`` is ignored and initial guesses are taken from
     ``init_guesses``. In addition, an warning is raised to remaind the user
     about this behavior.
