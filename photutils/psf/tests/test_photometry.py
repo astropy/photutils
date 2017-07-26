@@ -14,7 +14,6 @@ from astropy.modeling.models import Gaussian2D
 from astropy.convolution.utils import discretize_model
 from astropy.tests.helper import catch_warnings
 from astropy.utils.exceptions import AstropyUserWarning
-
 from ..groupstars import DAOGroup
 from ..models import IntegratedGaussianPRF
 from ..photometry import (DAOPhotPSFPhotometry, BasicPSFPhotometry,
@@ -24,10 +23,6 @@ from ...background import (SigmaClip, MedianBackground, StdBackgroundRMS,
                            MMMBackground)
 from ...datasets import make_gaussian_sources_image, make_noise_image
 from ...detection import DAOStarFinder
-
-
-# greather or equal than
-ASTROPY_GET_1_3 = minversion('astropy', '1.3')
 
 
 try:
@@ -124,7 +119,7 @@ sources3['group_id'] = [1] * 2
 sources3['iter_detected'] = [1, 2]
 
 
-@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GET_1_3')
+@pytest.mark.xfail('not HAS_SCIPY')
 @pytest.mark.parametrize("sigma_psf, sources", [(sigma_psfs[2], sources3)])
 def test_psf_photometry_niters(sigma_psf, sources):
     img_shape = (32, 32)
@@ -163,7 +158,7 @@ def test_psf_photometry_niters(sigma_psf, sources):
         assert_array_equal(cp_image, image)
 
 
-@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GET_1_3')
+@pytest.mark.xfail('not HAS_SCIPY')
 @pytest.mark.parametrize("sigma_psf, sources",
                          [(sigma_psfs[0], sources1),
                           (sigma_psfs[1], sources2),
@@ -236,7 +231,7 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
         phot_proc.psf_model.y_0.fixed = False
 
 
-@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GET_1_3')
+@pytest.mark.xfail('not HAS_SCIPY')
 def test_niters_errors():
     iter_phot_obj = make_psf_photometry_objs()[1]
 
@@ -253,7 +248,7 @@ def test_niters_errors():
     iter_phot_obj.niters = None
 
 
-@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GET_1_3')
+@pytest.mark.xfail('not HAS_SCIPY')
 def test_fitshape_erros():
     basic_phot_obj = make_psf_photometry_objs()[0]
 
@@ -278,7 +273,7 @@ def test_fitshape_erros():
     with pytest.raises(ValueError):
         basic_phot_obj.fitshape = (3, 3, 3)
 
-@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GET_1_3')
+@pytest.mark.xfail('not HAS_SCIPY')
 def test_aperture_radius_errors():
     basic_phot_obj = make_psf_photometry_objs()[0]
 
@@ -289,7 +284,7 @@ def test_aperture_radius_errors():
     with pytest.raises(ValueError):
         basic_phot_obj.aperture_radius = -3
 
-@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GET_1_3')
+@pytest.mark.xfail('not HAS_SCIPY')
 def test_finder_erros():
     basic_phot_obj = make_psf_photometry_objs()[0]
     iter_phot_obj = make_psf_photometry_objs()[1]
@@ -302,7 +297,7 @@ def test_finder_erros():
                 group_maker=DAOGroup(1), bkg_estimator=MMMBackground(),
                 psf_model=IntegratedGaussianPRF(1), fitshape=(11, 11))
 
-@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GET_1_3')
+@pytest.mark.xfail('not HAS_SCIPY')
 def test_finder_positions_warning():
     basic_phot_obj = make_psf_photometry_objs(sigma_psf=2)[0]
     positions = Table()
@@ -324,7 +319,7 @@ def test_finder_positions_warning():
         basic_phot_obj.finder = None
         result_tab = basic_phot_obj(image=image)
 
-@pytest.mark.xfail('not HAS_SCIPY or not ASTROPY_GET_1_3')
+@pytest.mark.xfail('not HAS_SCIPY')
 def test_aperture_radius():
     img_shape = (32, 32)
 
@@ -423,7 +418,7 @@ for x, y, flux in WIDE_INTAB:
     wide_image += discretize_model(model, (0, IMAGE_SIZE), (0, IMAGE_SIZE),
                                    mode='oversample')
 
-@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GET_1_3')
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_psf_photometry_discrete():
     """ Test psf_photometry with discrete PRF model. """
 
@@ -436,7 +431,7 @@ def test_psf_photometry_discrete():
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-6)
 
-@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GET_1_3')
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_tune_coordinates():
     """
     Test psf_photometry with discrete PRF model and coordinates that need
@@ -458,7 +453,7 @@ def test_tune_coordinates():
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
 
-@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GET_1_3')
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_psf_boundary():
     """
     Test psf_photometry with discrete PRF model at the boundary of the data.
@@ -474,7 +469,7 @@ def test_psf_boundary():
     f = basic_phot(image=image, init_guesses=intab)
     assert_allclose(f['flux_fit'], 0, atol=1e-8)
 
-@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GET_1_3')
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_aperture_radius_value_error():
     """
     Test psf_photometry with discrete PRF model at the boundary of the data.
@@ -492,7 +487,7 @@ def test_aperture_radius_value_error():
 
     assert 'aperture_radius is None' in str(err.value)
 
-@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GET_1_3')
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_psf_boundary_gaussian():
     """
     Test psf_photometry with discrete PRF model at the boundary of the data.
@@ -508,7 +503,7 @@ def test_psf_boundary_gaussian():
     f = basic_phot(image=image, init_guesses=intab)
     assert_allclose(f['flux_fit'], 0, atol=1e-8)
 
-@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GET_1_3')
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_psf_photometry_gaussian():
     """
     Test psf_photometry with Gaussian PSF model.
@@ -523,7 +518,7 @@ def test_psf_photometry_gaussian():
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
 
-@pytest.mark.skipif('not HAS_SCIPY or not ASTROPY_GET_1_3')
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_psf_fitting_data_on_edge():
     """
     No mask is input explicitly here, but source 2 is so close to the
