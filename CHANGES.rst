@@ -109,6 +109,11 @@ API changes
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.segmentation``
+
+  - Fixed ``deblend_sources`` so that it correctly deblends multiple
+    sources. [#572]
+
 - ``photutils.utils``
 
   - Added a check that ``data`` and ``bkg_error`` have the same units
