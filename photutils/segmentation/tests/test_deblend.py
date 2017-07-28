@@ -35,6 +35,8 @@ class TestDeblendSources(object):
         g2 = models.Gaussian2D(100, 35, 50, 5, 5)
         g3 = models.Gaussian2D(30, 70, 50, 5, 5)
         y, x = np.mgrid[0:100, 0:100]
+        self.x = x
+        self.y = y
         self.data = g1(x, y) + g2(x, y)
         self.data3 = self.data + g3(x, y)
         self.threshold = 10
@@ -53,6 +55,24 @@ class TestDeblendSources(object):
         assert_allclose(len(result.data[mask1]), len(result.data[mask2]))
         assert_allclose(np.sum(self.data[mask1]), np.sum(self.data[mask2]))
         assert_allclose(np.nonzero(self.segm), np.nonzero(result))
+
+    def test_deblend_multiple_sources(self):
+        g4 = models.Gaussian2D(100, 50, 15, 5, 5)
+        g5 = models.Gaussian2D(100, 35, 15, 5, 5)
+        g6 = models.Gaussian2D(100, 50, 85, 5, 5)
+        g7 = models.Gaussian2D(100, 35, 85, 5, 5)
+        x = self.x
+        y = self.y
+        data = self.data + g4(x, y) + g5(x, y) + g6(x, y) + g7(x, y)
+        segm = detect_sources(data, self.threshold, self.npixels)
+        result = deblend_sources(data, segm, self.npixels)
+        assert result.nlabels == 6
+        assert result.nlabels == len(result.slices)
+        assert result.area(1) == result.area(2)
+        assert result.area(1) == result.area(3)
+        assert result.area(1) == result.area(4)
+        assert result.area(1) == result.area(5)
+        assert result.area(1) == result.area(6)
 
     @pytest.mark.parametrize('mode', ['exponential', 'linear'])
     def test_deblend_sources_norelabel(self, mode):
