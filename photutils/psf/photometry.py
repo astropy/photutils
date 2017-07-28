@@ -5,19 +5,20 @@ from __future__ import division
 import numpy as np
 import warnings
 
-from astropy.table import Table, Column, vstack, hstack
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.stats import gaussian_sigma_to_fwhm
+from astropy.nddata.utils import overlap_slices
+from astropy.stats import gaussian_sigma_to_fwhm, SigmaClip
+from astropy.table import Table, Column, vstack, hstack
 from astropy.utils.exceptions import AstropyUserWarning
-from .funcs import subtract_psf, _extract_psf_fitting_names
+from astropy.utils import minversion
+
 from . import DAOGroup
+from .funcs import subtract_psf, _extract_psf_fitting_names
 from .models import get_grouped_psf_model
 from ..aperture import CircularAperture, aperture_photometry
-from ..background import MMMBackground, SigmaClip
+from ..background import MMMBackground
 from ..detection import DAOStarFinder
 from ..extern.decorators import deprecated_renamed_argument
-from astropy.utils import minversion
-from astropy.nddata.utils import overlap_slices
 
 
 __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',
@@ -784,7 +785,7 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
         number.
     sigma : float, optional
         Number of standard deviations used to perform sigma clip with a
-        `~photutils.SigmaClip` object.
+        `astropy.stats.SigmaClip` object.
     ratio : float, optional
         The ratio of the minor to major axis standard deviations of the
         Gaussian kernel.  ``ratio`` must be strictly positive and less

@@ -2,12 +2,13 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+import pytest
 import numpy as np
 from numpy.testing import assert_allclose
-import pytest
+from astropy.stats import SigmaClip
 
 from ...datasets.make import make_noise_image
-from ..core import (SigmaClip, MeanBackground, MedianBackground,
+from ..core import (MeanBackground, MedianBackground,
                     ModeEstimatorBackground, MMMBackground,
                     SExtractorBackground, BiweightLocationBackground,
                     StdBackgroundRMS, MADStdBackgroundRMS,

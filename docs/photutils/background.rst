@@ -200,9 +200,9 @@ keywords.
 
 By default the ``bkg_estimator`` and ``bkgrms_estimator`` are applied
 to sigma clipped data.  Sigma clipping is defined by inputting a
-:class:`~photutils.background.SigmaClip` object to the ``sigma_clip``
-keyword.  The default is to perform sigma clipping with ``sigma=3``
-and ``iters=10``.  Sigma clipping can be turned off by setting
+:class:`astropy.stats.SigmaClip` object to the ``sigma_clip`` keyword.
+The default is to perform sigma clipping with ``sigma=3`` and
+``iters=10``.  Sigma clipping can be turned off by setting
 ``sigma_clip=None``.
 
 After the background level has been determined in each of the boxes,
@@ -252,7 +252,8 @@ instance of :class:`~photutils.background.MedianBackground`.
 
 .. doctest-requires:: scipy
 
-    >>> from photutils import Background2D, SigmaClip, MedianBackground
+    >>> from astropy.stats import SigmaClip
+    >>> from photutils import Background2D, MedianBackground
     >>> sigma_clip = SigmaClip(sigma=3., iters=10)
     >>> bkg_estimator = MedianBackground()
     >>> bkg = Background2D(data2, (50, 50), filter_size=(3, 3),
@@ -284,8 +285,9 @@ Let's plot the background image:
 .. plot::
 
     import matplotlib.pyplot as plt
+    from astropy.stats import SigmaClip
     from photutils.datasets import make_100gaussians_image
-    from photutils import Background2D, SigmaClip, MedianBackground
+    from photutils import Background2D, MedianBackground
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]
@@ -307,10 +309,11 @@ and the background-subtracted image:
 .. plot::
 
     import matplotlib.pyplot as plt
+    from astropy.stats import SigmaClip
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import make_100gaussians_image
-    from photutils import Background2D, SigmaClip, MedianBackground
+    from photutils import Background2D, MedianBackground
     data = make_100gaussians_image()
     ny, nx = data.shape
     y, x = np.mgrid[:ny, :nx]

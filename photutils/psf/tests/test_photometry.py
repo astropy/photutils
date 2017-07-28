@@ -1,12 +1,12 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import division
 
+import pytest
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
-import pytest
 
 from astropy.table import Table
-from astropy.stats import gaussian_sigma_to_fwhm
+from astropy.stats import gaussian_sigma_to_fwhm, SigmaClip
 from astropy.utils import minversion
 from astropy.modeling import Parameter, Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
@@ -14,13 +14,13 @@ from astropy.modeling.models import Gaussian2D
 from astropy.convolution.utils import discretize_model
 from astropy.tests.helper import catch_warnings
 from astropy.utils.exceptions import AstropyUserWarning
+
 from ..groupstars import DAOGroup
 from ..models import IntegratedGaussianPRF
 from ..photometry import (DAOPhotPSFPhotometry, BasicPSFPhotometry,
                           IterativelySubtractedPSFPhotometry)
 from ..sandbox import DiscretePRF
-from ...background import (SigmaClip, MedianBackground, StdBackgroundRMS,
-                           MMMBackground)
+from ...background import MedianBackground, StdBackgroundRMS, MMMBackground
 from ...datasets import make_gaussian_sources_image, make_noise_image
 from ...detection import DAOStarFinder
 

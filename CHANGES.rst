@@ -70,6 +70,9 @@ API changes
   - Renamed ``BiweightMidvarianceBackgroundRMS`` to
     ``BiweightScaleBackgroundRMS``. [#547]
 
+  - Removed the ``SigmaClip`` class.  ``astropy.stats.SigmaClip`` is
+    a direct replacement. [#569]
+
 - ``photutils.datasets``
 
   - The ``make_poission_noise`` function was renamed to

@@ -10,9 +10,10 @@ from itertools import product
 
 import numpy as np
 from numpy.lib.index_tricks import index_exp
+from astropy.stats import SigmaClip
 from astropy.utils import lazyproperty
 
-from .core import SigmaClip, SExtractorBackground, StdBackgroundRMS
+from .core import SExtractorBackground, StdBackgroundRMS
 from ..utils import ShepardIDWInterpolator
 
 
@@ -235,11 +236,11 @@ class Background2D(object):
           This is the default and recommended method.
         * ``'crop'``: crop the image along the top and/or right edges.
 
-    sigma_clip : `~photutils.background.SigmaClip` instance, optional
-        A `~photutils.background.SigmaClip` object that defines the
-        sigma clipping parameters.  If `None` then no sigma clipping
-        will be performed.  The default is to perform sigma clipping
-        with ``sigma=3.`` and ``iters=10``.
+    sigma_clip : `astropy.stats.SigmaClip` instance, optional
+        A `~astropy.stats.SigmaClip` object that defines the sigma
+        clipping parameters.  If `None` then no sigma clipping will be
+        performed.  The default is to perform sigma clipping with
+        ``sigma=3.`` and ``iters=10``.
 
     bkg_estimator : callable, optional
         A callable object (a function or e.g., an instance of any
