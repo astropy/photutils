@@ -5,7 +5,7 @@ docker info
 cat << EOF | docker run -i \
                         -v ${PWD}:/photutils_src \
                         -a stdin -a stdout -a stderr \
-                        astropy/affiliated-32bit-test-env:1.6 \
+                        astropy/affiliated-32bit-test-env:1.7 \
                         bash || exit $?
 
 cd /photutils_src
