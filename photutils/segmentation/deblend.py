@@ -139,14 +139,15 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
         if source_deblended.nlabels > 1:
             # replace the original source with the deblended source
             source_mask = (source_deblended.data > 0)
-            data = segm_deblended.data
-            data[source_slice][source_mask] = (
+            segm_tmp = segm_deblended.data
+            segm_tmp[source_slice][source_mask] = (
                 source_deblended.data[source_mask] + last_label)
-            segm_deblended.data = data    # needed to call data setter
+            segm_deblended.data = segm_tmp    # needed to call data setter
             last_label += source_deblended.nlabels
 
     if relabel:
         segm_deblended.relabel_sequential()
+
     return segm_deblended
 
 
