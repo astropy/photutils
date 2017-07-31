@@ -2,7 +2,6 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from copy import deepcopy
-from distutils.version import LooseVersion
 
 import numpy as np
 from astropy.utils import lazyproperty
@@ -301,10 +300,7 @@ class SegmentationImage(object):
                [0, 0, 0, 0, 0, 0]])
         """
 
-        import skimage
-        if LooseVersion(skimage.__version__) < LooseVersion('0.11'):
-            raise ImportError('The outline_segments() function requires '
-                              'scikit-image >= 0.11')
+        # requires scikit-image >= 0.11
         from skimage.segmentation import find_boundaries
 
         outlines = self.data * find_boundaries(self.data, mode='inner')
