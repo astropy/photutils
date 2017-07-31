@@ -12,10 +12,9 @@ import abc
 
 import numpy as np
 from astropy.extern import six
-from astropy.stats import SigmaClip, biweight_location, biweight_scale
+from astropy.stats import (SigmaClip, biweight_location, biweight_scale,
+                           mad_std)
 from astropy.utils.misc import InheritDocstrings
-
-from ..extern.stats import mad_std
 
 
 __all__ = ['BackgroundBase', 'BackgroundRMSBase', 'MeanBackground',
