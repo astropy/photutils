@@ -12,6 +12,9 @@ General
 - Dropped support for astropy 1.x versions.  Minimal required version
   is now astropy 2.0. [#575]
 
+- Dropped scipy 0.15 support.  Minimal required version is now scipy
+  0.16. [#576]
+
 New Features
 ^^^^^^^^^^^^
 
