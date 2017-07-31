@@ -17,6 +17,13 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
+try:
+    import matplotlib
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
+
+
 
 DATA = np.ones((100, 100))
 BKG_RMS = np.zeros((100, 100))
@@ -194,6 +201,7 @@ class TestBackground2D(object):
             bkg = Background2D(DATA, (25, 25), filter_size=(1, 1))
             bkg._make_2d_array(np.arange(3))
 
+    @pytest.mark.skipif('not HAS_MATPLOTLIB')
     def test_plot_meshes(self):
         """
         This test should run without any errors, but there is no return
