@@ -9,8 +9,8 @@ from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import overlap_slices
 from astropy.stats import gaussian_sigma_to_fwhm, SigmaClip
 from astropy.table import Table, Column, vstack, hstack
+from astropy.utils import minversion, deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.utils import minversion
 
 from . import DAOGroup
 from .funcs import subtract_psf, _extract_psf_fitting_names
@@ -18,7 +18,6 @@ from .models import get_grouped_psf_model
 from ..aperture import CircularAperture, aperture_photometry
 from ..background import MMMBackground
 from ..detection import DAOStarFinder
-from ..extern.decorators import deprecated_renamed_argument
 
 
 __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',

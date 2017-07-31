@@ -5,11 +5,11 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import numpy as np
+from astropy.stats import sigma_clipped_stats
 from astropy.table import Column, Table
 
 from ..utils.cutouts import cutout_footprint
 from ..utils.wcs_helpers import pixel_to_icrs_coords
-from ..extern.sigma_clipping import sigma_clipped_stats
 
 
 __all__ = ['detect_threshold', 'find_peaks']

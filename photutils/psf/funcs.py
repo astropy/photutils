@@ -6,9 +6,7 @@ Models and functions for doing PSF/PRF fitting photometry on image data.
 from __future__ import division
 import numpy as np
 from astropy.table import Table
-from astropy.nddata.utils import add_array
-
-from ..extern.nddata_compat import extract_array
+from astropy.nddata.utils import add_array, extract_array
 
 
 __all__ = ['subtract_psf']

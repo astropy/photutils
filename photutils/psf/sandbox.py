@@ -12,11 +12,10 @@ import numpy as np
 from astropy.table import Table
 from astropy.modeling import Parameter, Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.nddata.utils import subpixel_indices
+from astropy.nddata.utils import subpixel_indices, extract_array
 from astropy import wcs as fitswcs
 
 from ..utils import mask_to_mirrored_num
-from ..extern.nddata_compat import extract_array
 
 
 __all__ = ['DiscretePRF', 'Reproject']
