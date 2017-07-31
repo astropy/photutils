@@ -9,6 +9,9 @@ General
 - Dropped numpy 1.8 support. Minimal required version is now numpy
   1.9. [#542]
 
+- Dropped support for astropy 1.x versions.  Minimal required version
+  is now astropy 2.0. [#575]
+
 New Features
 ^^^^^^^^^^^^
 
