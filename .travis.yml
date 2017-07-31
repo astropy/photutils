@@ -67,16 +67,18 @@ matrix:
                SPHINX_VERSION='>1.6'
 
         # Now try Astropy dev and LTS versions with the latest 3.x and 2.7.
+        # We disable LTS testing until astropy 3.0 is out, as the current
+        # stable is also the LTS
         - os: linux
           env: PYTHON_VERSION=2.7 ASTROPY_VERSION=development
                EVENT_TYPE='pull_request push cron'
         - os: linux
           env: ASTROPY_VERSION=development
                EVENT_TYPE='pull_request push cron'
-        - os: linux
-          env: PYTHON_VERSION=2.7 ASTROPY_VERSION=lts PYTEST_VERSION=2.7
-        - os: linux
-          env: PYTHON_VERSION=3.5 ASTROPY_VERSION=lts PYTEST_VERSION=2.7
+        #- os: linux
+        #  env: PYTHON_VERSION=2.7 ASTROPY_VERSION=lts PYTEST_VERSION=2.7
+        #- os: linux
+        #  env: PYTHON_VERSION=3.5 ASTROPY_VERSION=lts PYTEST_VERSION=2.7
 
         # Try all python versions and Numpy versions. Since we can assume that
         # the Numpy developers have taken care of testing Numpy with different
@@ -88,6 +90,8 @@ matrix:
           env: PYTHON_VERSION=3.5 NUMPY_VERSION=1.10
         - os: linux
           env: NUMPY_VERSION=1.11
+        - os: linux
+          env: NUMPY_VERSION=1.12
 
         # Try with optional dependencies disabled
         - os: linux
