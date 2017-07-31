@@ -11,9 +11,6 @@ from ..utils.colormaps import random_cmap
 
 __all__ = ['SegmentationImage']
 
-# outline_segments requires scikit-image >= 0.11
-__doctest_skip__ = {'SegmentationImage.outline_segments'}
-
 __doctest_requires__ = {('SegmentationImage', 'SegmentationImage.*'):
                         ['scipy', 'skimage']}
 
