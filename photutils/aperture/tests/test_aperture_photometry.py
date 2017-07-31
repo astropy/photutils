@@ -8,11 +8,10 @@ algorithms in aperture_photometry, not in the wrappers.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-from distutils.version import LooseVersion
+import pytest
 import numpy as np
 from numpy.testing import (assert_allclose, assert_array_equal,
                            assert_array_less)
-import pytest
 
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
@@ -22,16 +21,12 @@ from astropy.tests.helper import remote_data
 import astropy.units as u
 from astropy.wcs.utils import pixel_to_skycoord
 
-import astropy
-ASTROPY_LT_13 = LooseVersion(astropy.__version__) < LooseVersion('1.3')
-NUMPY_LT_12 = LooseVersion(np.__version__) < LooseVersion('1.12')
-
-from ...datasets import (get_path, make_4gaussians_image, make_wcs,
-                         make_imagehdu)
 from ..core import *
 from ..circle import *
 from ..ellipse import *
 from ..rectangle import *
+from ...datasets import (get_path, make_4gaussians_image, make_wcs,
+                         make_imagehdu)
 
 try:
     import matplotlib
@@ -666,114 +661,64 @@ def test_sky_aperture_repr():
     s = SkyCoord([1, 2], [3, 4], unit='deg')
 
     aper = SkyCircularAperture(s, r=3*u.pix)
-    if ASTROPY_LT_13 and NUMPY_LT_12:
-        a_repr = ('<SkyCircularAperture(<SkyCoord (ICRS): (ra, dec) in deg\n'
-                  '    [(1.0, 3.0), (2.0, 4.0)]>, r=3.0 pix)>')
-        a_str = ('Aperture: SkyCircularAperture\npositions: <SkyCoord '
-                 '(ICRS): (ra, dec) in deg\n    [(1.0, 3.0), (2.0, 4.0)]>\n'
-                 'r: 3.0 pix')
-    else:
-        a_repr = ('<SkyCircularAperture(<SkyCoord (ICRS): (ra, dec) in deg\n'
-                  '    [( 1.,  3.), ( 2.,  4.)]>, r=3.0 pix)>')
-        a_str = ('Aperture: SkyCircularAperture\npositions: <SkyCoord '
-                 '(ICRS): (ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\n'
-                 'r: 3.0 pix')
+    a_repr = ('<SkyCircularAperture(<SkyCoord (ICRS): (ra, dec) in deg\n'
+              '    [( 1.,  3.), ( 2.,  4.)]>, r=3.0 pix)>')
+    a_str = ('Aperture: SkyCircularAperture\npositions: <SkyCoord '
+             '(ICRS): (ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\n'
+             'r: 3.0 pix')
     assert repr(aper) == a_repr
     assert str(aper) == a_str
 
     aper = SkyCircularAnnulus(s, r_in=3.*u.pix, r_out=5*u.pix)
-    if ASTROPY_LT_13 and NUMPY_LT_12:
-        a_repr = ('<SkyCircularAnnulus(<SkyCoord (ICRS): (ra, dec) in deg\n'
-                  '    [(1.0, 3.0), (2.0, 4.0)]>, r_in=3.0 pix, r_out=5.0 '
-                  'pix)>')
-        a_str = ('Aperture: SkyCircularAnnulus\npositions: <SkyCoord '
-                 '(ICRS): (ra, dec) in deg\n    [(1.0, 3.0), (2.0, 4.0)]>\n'
-                 'r_in: 3.0 pix\nr_out: 5.0 pix')
-    else:
-        a_repr = ('<SkyCircularAnnulus(<SkyCoord (ICRS): (ra, dec) in deg\n'
-                  '    [( 1.,  3.), ( 2.,  4.)]>, r_in=3.0 pix, r_out=5.0 '
-                  'pix)>')
-        a_str = ('Aperture: SkyCircularAnnulus\npositions: <SkyCoord '
-                 '(ICRS): (ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\n'
-                 'r_in: 3.0 pix\nr_out: 5.0 pix')
+    a_repr = ('<SkyCircularAnnulus(<SkyCoord (ICRS): (ra, dec) in deg\n'
+              '    [( 1.,  3.), ( 2.,  4.)]>, r_in=3.0 pix, r_out=5.0 pix)>')
+    a_str = ('Aperture: SkyCircularAnnulus\npositions: <SkyCoord '
+             '(ICRS): (ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\n'
+             'r_in: 3.0 pix\nr_out: 5.0 pix')
     assert repr(aper) == a_repr
     assert str(aper) == a_str
 
     aper = SkyEllipticalAperture(s, a=3*u.pix, b=5*u.pix, theta=15*u.deg)
-    if ASTROPY_LT_13 and NUMPY_LT_12:
-        a_repr = ('<SkyEllipticalAperture(<SkyCoord (ICRS): (ra, dec) in '
-                  'deg\n    [(1.0, 3.0), (2.0, 4.0)]>, a=3.0 pix, b=5.0 pix,'
-                  ' theta=15.0 deg)>')
-        a_str = ('Aperture: SkyEllipticalAperture\npositions: <SkyCoord '
-                 '(ICRS): (ra, dec) in deg\n    [(1.0, 3.0), (2.0, 4.0)]>\n'
-                 'a: 3.0 pix\nb: 5.0 pix\ntheta: 15.0 deg')
-    else:
-        a_repr = ('<SkyEllipticalAperture(<SkyCoord (ICRS): (ra, dec) in '
-                  'deg\n    [( 1.,  3.), ( 2.,  4.)]>, a=3.0 pix, b=5.0 pix,'
-                  ' theta=15.0 deg)>')
-        a_str = ('Aperture: SkyEllipticalAperture\npositions: <SkyCoord '
-                 '(ICRS): (ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\n'
-                 'a: 3.0 pix\nb: 5.0 pix\ntheta: 15.0 deg')
+    a_repr = ('<SkyEllipticalAperture(<SkyCoord (ICRS): (ra, dec) in '
+              'deg\n    [( 1.,  3.), ( 2.,  4.)]>, a=3.0 pix, b=5.0 pix,'
+              ' theta=15.0 deg)>')
+    a_str = ('Aperture: SkyEllipticalAperture\npositions: <SkyCoord '
+             '(ICRS): (ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\n'
+             'a: 3.0 pix\nb: 5.0 pix\ntheta: 15.0 deg')
     assert repr(aper) == a_repr
     assert str(aper) == a_str
 
     aper = SkyEllipticalAnnulus(s, a_in=3*u.pix, a_out=5*u.pix, b_out=3*u.pix,
                                 theta=15*u.deg)
-    if ASTROPY_LT_13 and NUMPY_LT_12:
-        a_repr = ('<SkyEllipticalAnnulus(<SkyCoord (ICRS): (ra, dec) in '
-                  'deg\n    [(1.0, 3.0), (2.0, 4.0)]>, a_in=3.0 pix, '
-                  'a_out=5.0 pix, b_out=3.0 pix, theta=15.0 deg)>')
-        a_str = ('Aperture: SkyEllipticalAnnulus\npositions: <SkyCoord '
-                 '(ICRS): (ra, dec) in deg\n    [(1.0, 3.0), (2.0, 4.0)]>\n'
-                 'a_in: 3.0 pix\na_out: 5.0 pix\nb_out: 3.0 pix\n'
-                 'theta: 15.0 deg')
-    else:
-        a_repr = ('<SkyEllipticalAnnulus(<SkyCoord (ICRS): (ra, dec) in '
-                  'deg\n    [( 1.,  3.), ( 2.,  4.)]>, a_in=3.0 pix, '
-                  'a_out=5.0 pix, b_out=3.0 pix, theta=15.0 deg)>')
-        a_str = ('Aperture: SkyEllipticalAnnulus\npositions: <SkyCoord '
-                 '(ICRS): (ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\n'
-                 'a_in: 3.0 pix\na_out: 5.0 pix\nb_out: 3.0 pix\n'
-                 'theta: 15.0 deg')
+    a_repr = ('<SkyEllipticalAnnulus(<SkyCoord (ICRS): (ra, dec) in '
+              'deg\n    [( 1.,  3.), ( 2.,  4.)]>, a_in=3.0 pix, '
+              'a_out=5.0 pix, b_out=3.0 pix, theta=15.0 deg)>')
+    a_str = ('Aperture: SkyEllipticalAnnulus\npositions: <SkyCoord '
+             '(ICRS): (ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\n'
+             'a_in: 3.0 pix\na_out: 5.0 pix\nb_out: 3.0 pix\n'
+             'theta: 15.0 deg')
     assert repr(aper) == a_repr
     assert str(aper) == a_str
 
     aper = SkyRectangularAperture(s, w=3*u.pix, h=5*u.pix, theta=15*u.deg)
-    if ASTROPY_LT_13 and NUMPY_LT_12:
-        a_repr = ('<SkyRectangularAperture(<SkyCoord (ICRS): (ra, dec) in '
-                  'deg\n    [(1.0, 3.0), (2.0, 4.0)]>, w=3.0 pix, h=5.0 pix'
-                  ', theta=15.0 deg)>')
-        a_str = ('Aperture: SkyRectangularAperture\npositions: <SkyCoord '
-                 '(ICRS): (ra, dec) in deg\n    [(1.0, 3.0), (2.0, 4.0)]>\n'
-                 'w: 3.0 pix\nh: 5.0 pix\ntheta: 15.0 deg')
-    else:
-        a_repr = ('<SkyRectangularAperture(<SkyCoord (ICRS): (ra, dec) in '
-                  'deg\n    [( 1.,  3.), ( 2.,  4.)]>, w=3.0 pix, h=5.0 pix'
-                  ', theta=15.0 deg)>')
-        a_str = ('Aperture: SkyRectangularAperture\npositions: <SkyCoord '
-                 '(ICRS): (ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\n'
-                 'w: 3.0 pix\nh: 5.0 pix\ntheta: 15.0 deg')
+    a_repr = ('<SkyRectangularAperture(<SkyCoord (ICRS): (ra, dec) in '
+              'deg\n    [( 1.,  3.), ( 2.,  4.)]>, w=3.0 pix, h=5.0 pix'
+              ', theta=15.0 deg)>')
+    a_str = ('Aperture: SkyRectangularAperture\npositions: <SkyCoord '
+             '(ICRS): (ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\n'
+             'w: 3.0 pix\nh: 5.0 pix\ntheta: 15.0 deg')
     assert repr(aper) == a_repr
     assert str(aper) == a_str
 
     aper = SkyRectangularAnnulus(s, w_in=3*u.pix, w_out=3.4*u.pix,
                                  h_out=5*u.pix, theta=15*u.deg)
-    if ASTROPY_LT_13 and NUMPY_LT_12:
-        a_repr = ('<SkyRectangularAnnulus(<SkyCoord (ICRS): (ra, dec) in deg'
-                  '\n    [(1.0, 3.0), (2.0, 4.0)]>, w_in=3.0 pix, '
-                  'w_out=3.4 pix, h_out=5.0 pix, theta=15.0 deg)>')
-        a_str = ('Aperture: SkyRectangularAnnulus\npositions: <SkyCoord '
-                 '(ICRS): (ra, dec) in deg\n    [(1.0, 3.0), (2.0, 4.0)]>\n'
-                 'w_in: 3.0 pix\nw_out: 3.4 pix\nh_out: 5.0 pix\n'
-                 'theta: 15.0 deg')
-    else:
-        a_repr = ('<SkyRectangularAnnulus(<SkyCoord (ICRS): (ra, dec) in deg'
-                  '\n    [( 1.,  3.), ( 2.,  4.)]>, w_in=3.0 pix, '
-                  'w_out=3.4 pix, h_out=5.0 pix, theta=15.0 deg)>')
-        a_str = ('Aperture: SkyRectangularAnnulus\npositions: <SkyCoord '
-                 '(ICRS): (ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\n'
-                 'w_in: 3.0 pix\nw_out: 3.4 pix\nh_out: 5.0 pix\n'
-                 'theta: 15.0 deg')
+    a_repr = ('<SkyRectangularAnnulus(<SkyCoord (ICRS): (ra, dec) in deg'
+              '\n    [( 1.,  3.), ( 2.,  4.)]>, w_in=3.0 pix, '
+              'w_out=3.4 pix, h_out=5.0 pix, theta=15.0 deg)>')
+    a_str = ('Aperture: SkyRectangularAnnulus\npositions: <SkyCoord '
+             '(ICRS): (ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\n'
+             'w_in: 3.0 pix\nw_out: 3.4 pix\nh_out: 5.0 pix\n'
+             'theta: 15.0 deg')
     assert repr(aper) == a_repr
     assert str(aper) == a_str
 

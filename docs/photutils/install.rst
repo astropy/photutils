@@ -11,12 +11,12 @@ Photutils has the following strict requirements:
 
 * `Numpy <http://www.numpy.org/>`_ 1.9 or later
 
-* `Astropy`_ 1.0 or later
+* `Astropy`_ 2.0 or later
 
 Additionally, some functionality is available only if the following
 optional dependencies are installed:
 
-* `Scipy`_ 0.15 or later
+* `Scipy`_ 0.16 or later
 
 * `scikit-image`_ 0.11 or later
 

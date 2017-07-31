@@ -1,7 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-from distutils.version import LooseVersion
 
 import numpy as np
 from numpy.testing import assert_allclose
@@ -18,10 +17,6 @@ except ImportError:
 try:
     import skimage
     HAS_SKIMAGE = True
-    if LooseVersion(skimage.__version__) < LooseVersion('0.11'):
-        SKIMAGE_LT_0P11 = True
-    else:
-        SKIMAGE_LT_0P11 = False
 except ImportError:
     HAS_SKIMAGE = False
 
@@ -92,8 +87,6 @@ class TestSegmentationImage(object):
         assert_allclose(self.segm.area(labels), expected[labels])
 
     def test_outline_segments(self):
-        if SKIMAGE_LT_0P11:
-            return    # skip this test
         segm_array = np.zeros((5, 5)).astype(int)
         segm_array[1:4, 1:4] = 2
         segm = SegmentationImage(segm_array)
@@ -102,8 +95,6 @@ class TestSegmentationImage(object):
         assert_allclose(segm.outline_segments(), segm_array_ref)
 
     def test_outline_segments_masked_background(self):
-        if SKIMAGE_LT_0P11:
-            return    # skip this test
         segm_array = np.zeros((5, 5)).astype(int)
         segm_array[1:4, 1:4] = 2
         segm = SegmentationImage(segm_array)

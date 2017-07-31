@@ -22,16 +22,6 @@ __all__ = ['FittableImageModel', 'NonNormalizable',
            'prepare_psf_model', 'get_grouped_psf_model']
 
 
-try:
-    import scipy
-    HAS_SCIPY = True
-    from distutils.version import LooseVersion
-    SCIPY_VER_GE_014 = (LooseVersion(scipy.version.full_version) >=
-                        LooseVersion('0.14'))
-except ImportError:
-    HAS_SCIPY = False
-
-
 class NonNormalizable(AstropyWarning):
     """
     Used to indicate that a :py:class:`FittableImageModel` model is
@@ -466,23 +456,7 @@ class FittableImageModel(Fittable2DModel):
         yi = self._oversampling * (np.asarray(y) - y_0) + self._y_origin
 
         f = flux * self._normalization_constant
-
-        if SCIPY_VER_GE_014:
-            evaluated_model = f * self.interpolator.ev(xi, yi)
-
-        else:
-            # Flatten x and y arguments in order to evaluate in SCIPY versions
-            # earlier than 0.14.0. This essentially replicates the code
-            # in 'RectBivariateSpline.ev()' method in versions >= 0.14.0.
-            if xi.shape != yi.shape:
-                xi, yi = np.broadcast_arrays(xi, yi)
-            xi_flat = xi.ravel()
-            yi_flat = yi.ravel()
-
-            evaluated_model = f * self.interpolator.ev(xi_flat, yi_flat)
-
-            # reshape evaluated_model to the original shape of x & y arguments:
-            evaluated_model = evaluated_model.reshape(xi.shape)
+        evaluated_model = f * self.interpolator.ev(xi, yi)
 
         if self._fill_value is not None:
             # find indices of pixels that are outside the input pixel grid and
