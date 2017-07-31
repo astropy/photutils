@@ -257,7 +257,7 @@ Then let's import the required classes to set up a `~photutils.psf.IterativelySu
 
 Let's then instantiate and use the objects:
 
-.. doctest-requires:: scipy
+.. doctest-requires:: scipy, skimage
 
     >>> bkgrms = MADStdBackgroundRMS()
     >>> std = bkgrms(image)
@@ -564,7 +564,7 @@ star as well. Also, note that both of the stars have ``sigma=2.0``.
 Let's instantiate the necessary objects in order to use an
 `~photutils.psf.IterativelySubtractedPSFPhotometry` to perform photometry:
 
-.. doctest-requires:: scipy
+.. doctest-requires:: scipy, skimage
 
     >>> daogroup = DAOGroup(crit_separation=8)
     >>> mmm_bkg = MMMBackground()
@@ -582,7 +582,7 @@ Let's instantiate the necessary objects in order to use an
 
 Now, let's use the callable ``itr_phot_obj`` to perform photometry:
 
-.. doctest-requires:: scipy
+.. doctest-requires:: scipy, skimage
 
     >>> phot_results = itr_phot_obj(image)
     >>> phot_results['id', 'group_id', 'iter_detected', 'x_0', 'y_0', 'flux_0'] #doctest: +SKIP
