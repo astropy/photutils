@@ -1,20 +1,17 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-from distutils.version import LooseVersion
+
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose
+
 from ..windows import (HanningWindow, TukeyWindow, CosineBellWindow,
                        SplitCosineBellWindow, TopHatWindow)
 
 try:
     import scipy    # noqa
     HAS_SCIPY = True
-    if LooseVersion(scipy.__version__) < LooseVersion('0.16'):
-        SKIMAGE_LT_0P16 = True
-    else:
-        SKIMAGE_LT_0P16 = False
 except ImportError:
     HAS_SCIPY = False
 
@@ -48,9 +45,6 @@ def test_tukey():
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_tukey_scipy():
     """Test Tukey window against 1D scipy version."""
-
-    if SKIMAGE_LT_0P16:
-        return    # skip this test
 
     # scipy.signal.tukey was introduced in Scipy v0.16.0
     from scipy.signal import tukey
