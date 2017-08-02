@@ -18,24 +18,24 @@ def _extract_psf_fitting_names(psf):
     a model.  Returns (xname, yname, fluxname)
     """
 
-    if hasattr(psf, 'psf_xname'):
-        xname = psf.psf_xname
+    if hasattr(psf, 'xname'):
+        xname = psf.xname
     elif 'x_0' in psf.param_names:
         xname = 'x_0'
     else:
         raise ValueError('Could not determine x coordinate name for '
                          'psf_photometry.')
 
-    if hasattr(psf, 'psf_yname'):
-        yname = psf.psf_yname
+    if hasattr(psf, 'yname'):
+        yname = psf.yname
     elif 'y_0' in psf.param_names:
         yname = 'y_0'
     else:
         raise ValueError('Could not determine y coordinate name for '
                          'psf_photometry.')
 
-    if hasattr(psf, 'psf_fluxname'):
-        fluxname = psf.psf_fluxname
+    if hasattr(psf, 'fluxname'):
+        fluxname = psf.fluxname
     elif 'flux' in psf.param_names:
         fluxname = 'flux'
     else:
