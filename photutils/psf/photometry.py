@@ -457,7 +457,7 @@ class BasicPSFPhotometry(object):
             param_tab.add_column(Column(name=param_tab_name,
                                         data=np.empty(star_group_size)))
 
-        if hasattr(fit_model, 'submodel_names'):
+        if star_group_size > 1:
             for i in range(star_group_size):
                 for param_tab_name, param_name in self._pars_to_output.items():
                     param_tab[param_tab_name][i] = getattr(fit_model,
