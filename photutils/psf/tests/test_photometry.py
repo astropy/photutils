@@ -16,7 +16,7 @@ from astropy.tests.helper import catch_warnings
 from astropy.utils.exceptions import AstropyUserWarning
 
 from ..groupstars import DAOGroup
-from ..models import IntegratedGaussianPRF
+from ..models import IntegratedGaussianPRF, prepare_psf_model
 from ..photometry import (DAOPhotPSFPhotometry, BasicPSFPhotometry,
                           IterativelySubtractedPSFPhotometry)
 from ..sandbox import DiscretePRF
@@ -515,6 +515,25 @@ def test_psf_photometry_gaussian():
                             bkg_estimator=None, psf_model=psf,
                             fitshape=7)
     f = basic_phot(image=image, init_guesses=INTAB)
+    for n in ['x', 'y', 'flux']:
+        assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_psf_photometry_gaussian2():
+    """
+    Test psf_photometry with Gaussian PSF model.
+    """
+
+    psf = Gaussian2D(1. / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
+                     PSF_SIZE // 2, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
+    psf = prepare_psf_model(psf, xname='x_mean', yname='y_mean',
+                            renormalize_psf=False)
+
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                                    bkg_estimator=None, psf_model=psf,
+                                    fitshape=7)
+    f = basic_phot(image=image, init_guesses=INTAB)
+
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
 
