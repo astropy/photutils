@@ -504,6 +504,78 @@ class SourceProperties(object):
         return self.bbox[2]
 
     @lazyproperty
+    def sky_bbox_ll(self):
+        """
+        The sky coordinates of the lower-left vertex of the minimal
+        bounding box of the source segment, returned as a
+        `~astropy.coordinates.SkyCoord` object.
+
+        The bounding box encloses all of the source segment pixels in
+        their entirety, thus the vertices are at the pixel *corners*.
+        """
+
+        if self._wcs is not None:
+            return pixel_to_skycoord(self.xmin.value - 0.5,
+                                     self.ymin.value - 0.5,
+                                     self._wcs, origin=0)
+        else:
+            return None
+
+    @lazyproperty
+    def sky_bbox_ul(self):
+        """
+        The sky coordinates of the upper-left vertex of the minimal
+        bounding box of the source segment, returned as a
+        `~astropy.coordinates.SkyCoord` object.
+
+        The bounding box encloses all of the source segment pixels in
+        their entirety, thus the vertices are at the pixel *corners*.
+        """
+
+        if self._wcs is not None:
+            return pixel_to_skycoord(self.xmin.value - 0.5,
+                                     self.ymax.value + 0.5,
+                                     self._wcs, origin=0)
+        else:
+            return None
+
+    @lazyproperty
+    def sky_bbox_lr(self):
+        """
+        The sky coordinates of the lower-right vertex of the minimal
+        bounding box of the source segment, returned as a
+        `~astropy.coordinates.SkyCoord` object.
+
+        The bounding box encloses all of the source segment pixels in
+        their entirety, thus the vertices are at the pixel *corners*.
+        """
+
+        if self._wcs is not None:
+            return pixel_to_skycoord(self.xmax.value + 0.5,
+                                     self.ymin.value - 0.5,
+                                     self._wcs, origin=0)
+        else:
+            return None
+
+    @lazyproperty
+    def sky_bbox_ur(self):
+        """
+        The sky coordinates of the upper-right vertex of the minimal
+        bounding box of the source segment, returned as a
+        `~astropy.coordinates.SkyCoord` object.
+
+        The bounding box encloses all of the source segment pixels in
+        their entirety, thus the vertices are at the pixel *corners*.
+        """
+
+        if self._wcs is not None:
+            return pixel_to_skycoord(self.xmax.value + 0.5,
+                                     self.ymax.value + 0.5,
+                                     self._wcs, origin=0)
+        else:
+            return None
+
+    @lazyproperty
     def min_value(self):
         """
         The minimum pixel value of the (background-subtracted) data
