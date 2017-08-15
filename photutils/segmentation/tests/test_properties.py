@@ -74,6 +74,10 @@ class TestSourceProperties(object):
         assert props.icrs_centroid is not None
         assert props.ra_icrs_centroid is not None
         assert props.dec_icrs_centroid is not None
+        assert props.sky_bbox_ll is not None
+        assert props.sky_bbox_ul is not None
+        assert props.sky_bbox_lr is not None
+        assert props.sky_bbox_ur is not None
 
     def test_nowcs(self):
         props = SourceProperties(IMAGE, SEGM, wcs=None, label=1)
