@@ -428,7 +428,7 @@ class SourceProperties(object):
         if self._wcs is not None:
             return pixel_to_skycoord(self.xcentroid.value,
                                      self.ycentroid.value,
-                                     self._wcs, origin=1).icrs
+                                     self._wcs, origin=0).icrs
         else:
             return None
 
@@ -1298,7 +1298,7 @@ def properties_table(source_props, columns=None, exclude_columns=None):
         ycentroid = [props.ycentroid.value for props in source_props]
         if source_props[0]._wcs is not None:
             icrs_centroid = pixel_to_skycoord(
-                xcentroid, ycentroid, source_props[0]._wcs, origin=1).icrs
+                xcentroid, ycentroid, source_props[0]._wcs, origin=0).icrs
             icrs_ra = icrs_centroid.ra.degree * u.deg
             icrs_dec = icrs_centroid.dec.degree * u.deg
         else:
