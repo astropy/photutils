@@ -418,6 +418,22 @@ class SourceProperties(object):
         return self.centroid[0]
 
     @lazyproperty
+    def sky_centroid(self):
+        """
+        The sky coordinates of the centroid within the source segment,
+        returned as a `~astropy.coordinates.SkyCoord` object.
+
+        The output coordinate frame is the same as the input WCS.
+        """
+
+        if self._wcs is not None:
+            return pixel_to_skycoord(self.xcentroid.value,
+                                     self.ycentroid.value,
+                                     self._wcs, origin=0)
+        else:
+            return None
+
+    @lazyproperty
     def icrs_centroid(self):
         """
         The International Celestial Reference System (ICRS) coordinates
@@ -1268,7 +1284,8 @@ def properties_table(source_props, columns=None, exclude_columns=None):
     source_props = np.atleast_1d(source_props)
 
     # all scalar-valued properties
-    columns_all = ['id', 'xcentroid', 'ycentroid', 'ra_icrs_centroid',
+    columns_all = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
+                   'ra_icrs_centroid',
                    'dec_icrs_centroid', 'source_sum',
                    'source_sum_err', 'background_sum', 'background_mean',
                    'background_at_centroid', 'xmin', 'xmax', 'ymin', 'ymax',
