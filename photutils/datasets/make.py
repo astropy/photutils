@@ -664,15 +664,21 @@ def make_100gaussians_image(noise=True):
     return data
 
 
-def make_wcs(shape):
+def make_wcs(shape, galactic=False):
     """
-    Create a simple celestial WCS object.
+    Create a simple celestial WCS object in either the ICRS or Galactic
+    coordinate frame.
 
     Parameters
     ----------
     shape : 2-tuple of int
         The shape of the 2D array to be used with the output
         `~astropy.wcs.WCS` object.
+
+    galactic : bool, optional
+        If `True`, then the output WCS will be in the Galactic
+        coordinate frame.  If `False` (default), then the output WCS
+        will be in the ICRS coordinate frame.
 
     Returns
     -------
@@ -702,10 +708,13 @@ def make_wcs(shape):
     wcs.wcs.crpix = [shape[1] / 2, shape[0] / 2]     # 1-indexed (x, y)
     wcs.wcs.crval = [197.8925, -1.36555556]
     wcs.wcs.cunit = ['deg', 'deg']
-    wcs.wcs.radesys = 'ICRS'
     wcs.wcs.cd = [[-scale * np.cos(rho), scale * np.sin(rho)],
                   [scale * np.sin(rho), scale * np.cos(rho)]]
-    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    if not galactic:
+        wcs.wcs.radesys = 'ICRS'
+        wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    else:
+        wcs.wcs.ctype = ['GLON-CAR', 'GLAT-CAR']
 
     return wcs
 
