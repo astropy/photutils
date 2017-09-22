@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 
 import numpy as np
 import astropy.units as u
-from astropy.table import Table
+from astropy.table import QTable
 from astropy.utils import lazyproperty
 from astropy.wcs.utils import pixel_to_skycoord
 
@@ -213,10 +213,10 @@ class SourceProperties(object):
 
     def to_table(self, columns=None, exclude_columns=None):
         """
-        Create a `~astropy.table.Table` of properties.
+        Create a `~astropy.table.QTable` of properties.
 
         If ``columns`` or ``exclude_columns`` are not input, then the
-        `~astropy.table.Table` will include all scalar-valued
+        `~astropy.table.QTable` will include all scalar-valued
         properties.  Multi-dimensional properties, e.g.
         `~photutils.SourceProperties.data_cutout`, can be included in
         the ``columns`` input.
@@ -225,17 +225,17 @@ class SourceProperties(object):
         ----------
         columns : str or list of str, optional
             Names of columns, in order, to include in the output
-            `~astropy.table.Table`.  The allowed column names are any of
-            the attributes of `SourceProperties`.
+            `~astropy.table.QTable`.  The allowed column names are any
+            of the attributes of `SourceProperties`.
 
         exclude_columns : str or list of str, optional
             Names of columns to exclude from the default properties list
-            in the output `~astropy.table.Table`.  The default
+            in the output `~astropy.table.QTable`.  The default
             properties are those with scalar values.
 
         Returns
         -------
-        table : `~astropy.table.Table`
+        table : `~astropy.table.QTable`
             A single-row table of properties of the source.
         """
 
@@ -1219,11 +1219,11 @@ def source_properties(data, segment_img, error=None, mask=None,
 
 def properties_table(source_props, columns=None, exclude_columns=None):
     """
-    Construct a `~astropy.table.Table` of properties from a list of
+    Construct a `~astropy.table.QTable` of properties from a list of
     `SourceProperties` objects.
 
     If ``columns`` or ``exclude_columns`` are not input, then the
-    `~astropy.table.Table` will include all scalar-valued properties.
+    `~astropy.table.QTable` will include all scalar-valued properties.
     Multi-dimensional properties, e.g.
     `~photutils.SourceProperties.data_cutout`, can be included in the
     ``columns`` input.
@@ -1236,17 +1236,17 @@ def properties_table(source_props, columns=None, exclude_columns=None):
 
     columns : str or list of str, optional
         Names of columns, in order, to include in the output
-        `~astropy.table.Table`.  The allowed column names are any of the
-        attributes of `SourceProperties`.
+        `~astropy.table.QTable`.  The allowed column names are any of
+        the attributes of `SourceProperties`.
 
     exclude_columns : str or list of str, optional
         Names of columns to exclude from the default properties list in
-        the output `~astropy.table.Table`.  The default properties are
+        the output `~astropy.table.QTable`.  The default properties are
         those with scalar values.
 
     Returns
     -------
-    table : `~astropy.table.Table`
+    table : `~astropy.table.QTable`
         A table of properties of the segmented sources, one row per
         source.
 
@@ -1324,7 +1324,7 @@ def properties_table(source_props, columns=None, exclude_columns=None):
             icrs_dec = [None] * nprops
             icrs_centroid = [None] * nprops
 
-    props_table = Table()
+    props_table = QTable()
     for column in table_columns:
         if column == 'ra_icrs_centroid':
             props_table[column] = icrs_ra
