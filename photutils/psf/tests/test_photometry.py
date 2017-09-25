@@ -10,13 +10,13 @@ from astropy.stats import gaussian_sigma_to_fwhm, SigmaClip
 from astropy.utils import minversion
 from astropy.modeling import Parameter, Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.modeling.models import Gaussian2D
+from astropy.modeling.models import Gaussian2D, Moffat2D
 from astropy.convolution.utils import discretize_model
 from astropy.tests.helper import catch_warnings
 from astropy.utils.exceptions import AstropyUserWarning
 
 from ..groupstars import DAOGroup
-from ..models import IntegratedGaussianPRF
+from ..models import IntegratedGaussianPRF, prepare_psf_model
 from ..photometry import (DAOPhotPSFPhotometry, BasicPSFPhotometry,
                           IterativelySubtractedPSFPhotometry)
 from ..sandbox import DiscretePRF
@@ -517,6 +517,51 @@ def test_psf_photometry_gaussian():
     f = basic_phot(image=image, init_guesses=INTAB)
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
+
+@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.parametrize("renormalize_psf", (True, False))
+def test_psf_photometry_gaussian2(renormalize_psf):
+    """
+    Test psf_photometry with Gaussian PSF model from Astropy.
+    """
+
+    psf = Gaussian2D(1. / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
+                     PSF_SIZE // 2, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
+    psf = prepare_psf_model(psf, xname='x_mean', yname='y_mean',
+                            renormalize_psf=renormalize_psf)
+
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                                    bkg_estimator=None, psf_model=psf,
+                                    fitshape=7)
+    f = basic_phot(image=image, init_guesses=INTAB)
+
+    for n in ['x', 'y']:
+        assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
+    # flux error worse, because of integration scheme ?
+    assert_allclose(f['flux_0'], f['flux_fit'], rtol=1)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_psf_photometry_moffat():
+    """
+    Test psf_photometry with Moffat PSF model from Astropy.
+    """
+
+    psf = Moffat2D(1. / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
+                   PSF_SIZE // 2, 1, 1)
+    psf = prepare_psf_model(psf, xname='x_0', yname='y_0',
+                            renormalize_psf=False)
+
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                                    bkg_estimator=None, psf_model=psf,
+                                    fitshape=7)
+    f = basic_phot(image=image, init_guesses=INTAB)
+    f.pprint(max_width=-1)
+
+    for n in ['x', 'y']:
+        assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
+    # image was created with a gaussian, so flux won't match exactly
+    assert_allclose(f['flux_0'], f['flux_fit'], rtol=1)
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_psf_fitting_data_on_edge():
