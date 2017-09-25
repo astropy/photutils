@@ -12,7 +12,8 @@ from astropy.modeling.models import Moffat2D
 from .. import (make_noise_image, apply_poisson_noise,
                 make_gaussian_sources_image, make_random_gaussians_table,
                 make_4gaussians_image, make_100gaussians_image,
-                make_random_models_table, make_model_sources_image)
+                make_random_models_table, make_model_sources_image,
+                make_wcs)
 
 
 TABLE = Table()
@@ -144,3 +145,15 @@ def test_make_random_models_table():
     # make_gaussian_sources_image tests
     image = make_model_sources_image((300, 500), model, source_table)
     assert image.sum() > 1
+
+
+def test_make_wcs():
+    shape = (100, 200)
+    wcs = make_wcs(shape)
+    assert wcs._naxis1 == shape[1]
+    assert wcs._naxis2 == shape[0]
+    assert wcs.wcs.radesys == 'ICRS'
+
+    wcs = make_wcs(shape, galactic=True)
+    assert wcs.wcs.ctype[0] == 'GLON-CAR'
+    assert wcs.wcs.ctype[1] == 'GLAT-CAR'
