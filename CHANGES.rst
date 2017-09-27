@@ -100,6 +100,11 @@ API changes
   - The ``unit``, ``hdu``, ``wcs``, and ``wcsheader`` keywords in
     ``photutils.datasets`` functions were removed. [#527]
 
+- ``photutils.detection``
+
+  - The ``daofind`` and ``irafstarfinder`` functions were removed.
+    [#588]
+
 - ``photutils.psf``
 
   - ``IterativelySubtractedPSFPhotometry`` issues a "no sources
