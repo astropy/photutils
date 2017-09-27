@@ -30,7 +30,7 @@ env:
         - MAIN_CMD='python setup.py'
         - SETUP_CMD='test'
         - EVENT_TYPE='pull_request push'
-        - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib gwcs'
+        - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib'
         - CONDA_CHANNELS='astropy-ci-extras astropy'
         - SETUP_XVFB=True
         - ASTROPY_USE_SYSTEM_PYTEST=1
@@ -58,11 +58,11 @@ matrix:
         # may run for a long time
         - os: linux
           env: PYTHON_VERSION=2.7 SETUP_CMD='build_docs -w'
-               CONDA_DEPENDENCIES='Cython scipy scikit-image scikit-learn matplotlib jupyter gwcs'
+               CONDA_DEPENDENCIES='Cython scipy scikit-image scikit-learn matplotlib jupyter'
                SPHINX_VERSION='>1.6'
         - os: linux
           env: SETUP_CMD='build_docs -w'
-               CONDA_DEPENDENCIES='Cython scipy scikit-image scikit-learn matplotlib jupyter gwcs'
+               CONDA_DEPENDENCIES='Cython scipy scikit-image scikit-learn matplotlib jupyter'
                EVENT_TYPE='pull_request push cron'
                SPHINX_VERSION='>1.6'
 
