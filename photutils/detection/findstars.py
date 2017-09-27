@@ -18,7 +18,6 @@ import numpy as np
 from astropy.extern import six
 from astropy.table import Column, Table
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.utils import deprecated
 from astropy.utils.misc import InheritDocstrings
 from astropy.stats import gaussian_fwhm_to_sigma
 
@@ -26,32 +25,11 @@ from .core import find_peaks
 from ..utils.convolution import filter_data
 
 
-__all__ = ['DAOStarFinder', 'IRAFStarFinder', 'StarFinderBase',
-           'daofind', 'irafstarfind']
+__all__ = ['DAOStarFinder', 'IRAFStarFinder', 'StarFinderBase']
 
 
 class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
     pass
-
-
-@deprecated(0.3, alternative='DAOStarFinder')
-def daofind(data, threshold, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
-            sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0, sky=0.0,
-            exclude_border=False):
-    finder = DAOStarFinder(threshold, fwhm, ratio, theta, sigma_radius,
-                           sharplo, sharphi, roundlo, roundhi, sky,
-                           exclude_border)
-    return finder(data)
-
-
-@deprecated(0.3, alternative='IRAFStarFinder')
-def irafstarfind(data, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
-                 sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2,
-                 sky=None, exclude_border=False):
-    finder = IRAFStarFinder(threshold, fwhm, sigma_radius, minsep_fwhm,
-                            sharplo, sharphi, roundlo, roundhi, sky,
-                            exclude_border)
-    return finder(data)
 
 
 @six.add_metaclass(_ABCMetaAndInheritDocstrings)
