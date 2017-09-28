@@ -2,16 +2,19 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 
 import numpy as np
 
-from photutils.isophote import build_test_data
 from photutils.isophote.integrator import MEDIAN, MEAN, BI_LINEAR, NEAREST_NEIGHBOR
 from photutils.isophote.sample import Sample
 from photutils.isophote.isophote import Isophote
 
-test_data = build_test_data.build(background=100., i0=0., noise=10.)
+from .make_test_data import make_test_image
+
+
+TEST_DATA = make_test_image(background=100., i0=0., noise=10.,
+                            random_state=123)
 
 
 def _doit(integrmode, amin, amax):
-    sample = Sample(test_data, 50., astep=0.2, integrmode=integrmode)
+    sample = Sample(TEST_DATA, 50., astep=0.2, integrmode=integrmode)
     sample.update()
     iso = Isophote(sample, 0, True, 0)
 
@@ -35,7 +38,7 @@ def test_scatter():
 
 
 def test_coordinates():
-    sample = Sample(test_data, 50.)
+    sample = Sample(TEST_DATA, 50.)
     sample.update()
 
     x, y = sample.coordinates()
@@ -46,7 +49,7 @@ def test_coordinates():
 
 
 def test_sclip():
-    sample = Sample(test_data, 50., nclip=3)
+    sample = Sample(TEST_DATA, 50., nclip=3)
     sample.update()
 
     x, y = sample.coordinates()

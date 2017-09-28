@@ -3,9 +3,10 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 import pytest
 import numpy as np
 
-from photutils.isophote import build_test_data
 from photutils.isophote.sample import Sample
 from photutils.isophote.harmonics import fit_1st_and_2nd_harmonics, fit_upper_harmonic, first_and_2nd_harmonic_function
+
+from .make_test_data import make_test_image
 
 try:
     from scipy.optimize import leastsq
@@ -95,7 +96,7 @@ def test_harmonics_3():
 def test_fit_sample_1():
 
     # major axis parallel to X image axis
-    test_data = build_test_data.build()
+    test_data = make_test_image(random_state=123)
 
     sample = Sample(test_data, 40.)
     s = sample.extract()
@@ -127,7 +128,7 @@ def test_fit_sample_1():
 def test_fit_sample_2():
 
     # major axis tilted 45 deg wrt X image axis
-    test_data = build_test_data.build(pa=np.pi/4)
+    test_data = make_test_image(pa=np.pi/4, random_state=123)
 
     sample = Sample(test_data, 40., eps=0.4)
     s = sample.extract()
@@ -145,7 +146,7 @@ def test_fit_sample_2():
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_fit_sample_3():
 
-    test_data = build_test_data.build()
+    test_data = make_test_image(random_state=123)
 
     # initial guess is rounder than actual image
     sample = Sample(test_data, 40., eps=0.1)
@@ -164,7 +165,7 @@ def test_fit_sample_3():
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_fit_sample_4():
 
-    test_data = build_test_data.build()
+    test_data = make_test_image(random_state=123)
 
     # initial guess for center is offset
     sample = Sample(test_data, x0=220., y0=210., sma=40.)

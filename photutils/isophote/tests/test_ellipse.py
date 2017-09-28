@@ -5,13 +5,13 @@ import pytest
 import numpy as np
 from astropy.io import fits
 
-from photutils.isophote import build_test_data
-from photutils.isophote.build_test_data import DEFAULT_POS, DEFAULT_SIZE
 from photutils.isophote.geometry import Geometry, DEFAULT_EPS
 from photutils.isophote.fitter import NORMAL_FIT, TOO_MANY_FLAGGED
 from photutils.isophote.ellipse import Ellipse, FIXED_ELLIPSE, FAILED_FIT
 from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.tests.test_data import TEST_DATA
+
+from .make_test_data import make_test_image, DEFAULT_POS, DEFAULT_SIZE
 
 try:
     import scipy
@@ -27,7 +27,8 @@ PA = 10. / 180. * np.pi
 # to use in all tests that need it, but do not use a single instance
 # of Geometry. The code may eventually modify it's contents. The safe
 # bet is to build it wherever it's needed. The cost is negligible.
-OFFSET_GALAXY = build_test_data.build(x0=POS, y0=POS, pa=PA, noise=1.E-12)
+OFFSET_GALAXY = make_test_image(x0=POS, y0=POS, pa=PA, noise=1.e-12,
+                                random_state=123)
 
 verb = False
 
@@ -37,7 +38,7 @@ class TestEllipse(object):
 
     def test_basic(self):
         # centered, tilted galaxy.
-        test_data = build_test_data.build(pa=PA)
+        test_data = make_test_image(pa=PA, random_state=123)
 
         ellipse = Ellipse(test_data, verbose=verb)
         isophote_list = ellipse.fit_image(verbose=verb)
@@ -54,7 +55,7 @@ class TestEllipse(object):
         assert isophote_list[-1].stop_code == FAILED_FIT
 
     def test_fit_one_ellipse(self):
-        test_data = build_test_data.build(pa=PA)
+        test_data = make_test_image(pa=PA, random_state=123)
 
         ellipse = Ellipse(test_data, verbose=verb)
         isophote = ellipse.fit_isophote(40.)

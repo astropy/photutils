@@ -5,8 +5,6 @@ import pytest
 import numpy as np
 from astropy.io import fits
 
-from photutils.isophote import build_test_data
-from photutils.isophote.build_test_data import DEFAULT_POS
 from photutils.isophote.geometry import Geometry, DEFAULT_EPS
 from photutils.isophote.integrator import MEAN, MEDIAN
 from photutils.isophote.harmonics import fit_1st_and_2nd_harmonics
@@ -14,6 +12,8 @@ from photutils.isophote.sample import Sample, CentralSample
 from photutils.isophote.isophote import Isophote
 from photutils.isophote.fitter import Fitter, CentralFitter
 from photutils.isophote.tests.test_data import TEST_DATA
+
+from .make_test_data import make_test_image, DEFAULT_POS
 
 try:
     import scipy
@@ -24,7 +24,7 @@ except ImportError:
 
 def test_gradient():
 
-    test_data = build_test_data.build()
+    test_data = make_test_image(random_state=123)
 
     sample = Sample(test_data, 40.)
     sample.update()
@@ -41,7 +41,7 @@ def test_fitting_raw():
     # this test performs a raw (no Fitter), 1-step
     # correction in one single ellipse coefficient.
 
-    test_data = build_test_data.build()
+    test_data = make_test_image(random_state=123)
 
     # pick first guess ellipse that is off in just
     # one of the parameters (eps).
@@ -66,7 +66,7 @@ def test_fitting_raw():
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_fitting_small_radii():
 
-    test_data = build_test_data.build()
+    test_data = make_test_image(random_state=123)
 
     sample = Sample(test_data, 2.)
     fitter = Fitter(sample)
@@ -80,7 +80,7 @@ def test_fitting_small_radii():
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_fitting_eps():
 
-    test_data = build_test_data.build()
+    test_data = make_test_image(random_state=123)
 
     # initial guess is off in the eps parameter
     sample = Sample(test_data, 40., eps=2*DEFAULT_EPS)
@@ -97,7 +97,7 @@ def test_fitting_eps():
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_fitting_pa():
 
-    test_data = build_test_data.build(pa=np.pi/4, noise=0.01)
+    test_data = make_test_image(pa=np.pi/4, noise=0.01, random_state=123)
 
     # initial guess is off in the pa parameter
     sample = Sample(test_data, 40)
@@ -114,7 +114,7 @@ def test_fitting_pa():
 def test_fitting_xy():
 
     pos_ = DEFAULT_POS - 5
-    test_data = build_test_data.build(x0=pos_, y0=pos_)
+    test_data = make_test_image(x0=pos_, y0=pos_, random_state=123)
 
     # initial guess is off in the x0 and y0 parameters
     sample = Sample(test_data, 40)
@@ -137,7 +137,8 @@ def test_fitting_all():
     POS = DEFAULT_POS - 5
     ANGLE = np.pi / 4
     EPS = 2 * DEFAULT_EPS
-    test_data = build_test_data.build(x0=POS, y0=POS, eps=EPS, pa=ANGLE)
+    test_data = make_test_image(x0=POS, y0=POS, eps=EPS, pa=ANGLE,
+                                random_state=123)
 
     sma = 60.
 

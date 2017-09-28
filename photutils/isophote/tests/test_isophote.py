@@ -5,11 +5,12 @@ import pytest
 import numpy as np
 from astropy.io import fits
 
-from photutils.isophote import build_test_data
 from photutils.isophote.sample import Sample
 from photutils.isophote.fitter import Fitter
 from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.tests.test_data import TEST_DATA
+
+from .make_test_data import make_test_image
 
 try:
     import scipy
@@ -24,7 +25,7 @@ class TestIsophote(object):
     def test_fit(self):
 
         # low noise image, fitted perfectly by sample.
-        test_data = build_test_data.build(noise=1.E-10)
+        test_data = make_test_image(noise=1.e-10, random_state=123)
         sample = Sample(test_data, 40)
         fitter = Fitter(sample)
         iso = fitter.fit(maxit=400)
@@ -114,7 +115,7 @@ class TestIsophote(object):
 class TestIsophoteList(object):
 
     def _build_list(self, sma0):
-        test_data = build_test_data.build()
+        test_data = make_test_image(random_state=123)
         iso_list = []
         for k in range(10):
             sample = Sample(test_data, float(k + sma0))

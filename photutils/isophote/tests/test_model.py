@@ -8,8 +8,9 @@ from astropy.io import fits
 from photutils.isophote.geometry import Geometry
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.model import build_model
-from photutils.isophote.build_test_data import build
 from photutils.isophote.tests.test_data import TEST_DATA
+
+from .make_test_data import make_test_image
 
 verb = False
 
@@ -41,7 +42,8 @@ def test_model():
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_2():
-    image = build(eps=0.5, pa=np.pi/3., noise=1.e-2)
+    image = make_test_image(eps=0.5, pa=np.pi/3., noise=1.e-2,
+                           random_state=123)
 
     g = Geometry(256., 256., 10., 0.5, np.pi/3.)
     ellipse = Ellipse(image, geometry=g, verbose=verb, threshold=1.e5)
