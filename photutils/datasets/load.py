@@ -15,7 +15,7 @@ __all__ = ['get_path', 'load_spitzer_image', 'load_spitzer_catalog',
            'load_irac_psf', 'load_fermi_image', 'load_star_image']
 
 
-def get_path(filename, location='local', cache=False):
+def get_path(filename, location='local', cache=True):
     """
     Get path (location on your disk) for a given file.
 
@@ -29,7 +29,7 @@ def get_path(filename, location='local', cache=False):
         machine.
     cache : bool, optional
         Whether to cache the contents of remote URLs.  Default is
-        currently `False` because `True` will fail with Python 3.
+        `True`.
 
     Returns
     -------
