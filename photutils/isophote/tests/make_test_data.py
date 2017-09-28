@@ -5,6 +5,7 @@ import math
 import numpy as np
 from astropy.io import fits
 
+from ...datasets import make_noise_image
 from ..geometry import Geometry, DEFAULT_EPS
 
 
@@ -15,7 +16,7 @@ DEFAULT_PA = 0.
 
 def make_test_image(nx=DEFAULT_SIZE, ny=DEFAULT_SIZE, x0=None, y0=None,
                     background=100., noise=1.e-6, i0=100., sma=40.,
-                    eps=DEFAULT_EPS, pa=DEFAULT_PA):
+                    eps=DEFAULT_EPS, pa=DEFAULT_PA, random_state=None):
     """
     Make a simulated image for testing the isophot subpackage.
 
@@ -23,20 +24,24 @@ def make_test_image(nx=DEFAULT_SIZE, ny=DEFAULT_SIZE, x0=None, y0=None,
     ----------
     nx, ny : int, optional
         The image size.
-    x0, y0: int, optional
+    x0, y0 : int, optional
         The center position.  If `None`, the default is the image center.
-    background: float, optional
+    background : float, optional
         The constant background level to add to the image values.
-    noise: float, optional
+    noise : float, optional
         The standard deviation of the Gaussian noise to add to the image.
-    i0: float, optional
+    i0 : float, optional
         The surface brightness over the reference elliptical isophote.
-    sma: float, optional
+    sma : float, optional
         The semi-major axis length of the reference elliptical isophote.
-    eps: float, optional
+    eps : float, optional
         The ellipticity of the reference isophote.
-    pa: float, optional
+    pa : float, optional
         The position angle of the reference isophote.
+    random_state : int or `~numpy.random.RandomState`, optional
+        Pseudo-random number generator state used for random sampling.
+        Separate function calls with the same ``random_state`` will
+        generate the identical noise image.
 
     Returns
     -------
@@ -67,14 +72,15 @@ def make_test_image(nx=DEFAULT_SIZE, ny=DEFAULT_SIZE, x0=None, y0=None,
                                image[int(x1), int(y1 - 1)] +
                                image[int(x1), int(y1 + 1)]) / 4.
 
-    image += np.random.normal(0., noise, image.shape)
+    image += make_noise_image(image.shape, type='gaussian', mean=0.,
+                              stddev=noise, random_state=random_state)
 
     return image
 
 
 def make_fits_test_image(name, nx=512, ny=512, x0=None, y0=None,
                          background=100., noise=1.e-6, i0=100., sma=40.,
-                         eps=0.2, pa=0.):
+                         eps=0.2, pa=0., random_state=None):
     """
     Make a simulated image and write it to a FITS file.
 
@@ -82,11 +88,13 @@ def make_fits_test_image(name, nx=512, ny=512, x0=None, y0=None,
 
     Examples
     --------
-    >>> import numpy as np
-    >>> pa = np.pi / 4.
-    >>> make_fits_test_image('synth_lowsnr.fits', noise=40., pa=pa)
-    >>> make_fits_test_image('synth_highsnr.fits', noise=1.e-12, pa=pa)
-    >>> make_fits_test_image('synth.fits', pa=pa)
+    import numpy as np
+    pa = np.pi / 4.
+    make_fits_test_image('synth_lowsnr.fits', noise=40., pa=pa,
+                         random_state=123)
+    make_fits_test_image('synth_highsnr.fits', noise=1.e-12, pa=pa,
+                         random_state=123)
+    make_fits_test_image('synth.fits', pa=pa, random_state=123)
     """
 
     if not name.endswith('.fits'):
