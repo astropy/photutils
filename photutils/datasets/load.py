@@ -24,10 +24,12 @@ def get_path(filename, location='local', cache=True):
     ----------
     filename : str
         File name in the local or remote data folder.
-    location : {'local', 'remote'}
+    location : {'local', 'remote', 'photutils-datasets'}
         File location.  ``'local'`` means bundled with ``photutils``.
-        ``'remote'`` means a server or the Astropy cache on your
-        machine.
+        ``'remote'`` means the astropy data server (or the
+        photutils-datasets repo as a backup) or the Astropy cache on
+        your machine. ``'photutils-datasets'`` means the
+        photutils-datasets repo or the Astropy cache on your machine.
     cache : bool, optional
         Whether to cache the contents of remote URLs.  Default is
         `True`.
@@ -44,6 +46,9 @@ def get_path(filename, location='local', cache=True):
     >>> hdulist = fits.open(datasets.get_path('fermi_counts.fits.gz'))
     """
 
+    datasets_url = ('https://github.com/astropy/photutils-datasets/raw/'
+                    'master/data/{0}'.format(filename))
+
     if location == 'local':
         path = get_pkg_data_filename('data/' + filename)
     elif location == 'remote':    # pragma: no cover
@@ -51,9 +56,9 @@ def get_path(filename, location='local', cache=True):
             url = 'https://data.astropy.org/photometry/{0}'.format(filename)
             path = download_file(url, cache=cache)
         except (URLError, HTTPError):   # timeout or not found
-            url = ('https://github.com/astropy/photutils-datasets/raw/'
-                   'master/data/{0}'.format(filename))
-            path = download_file(url, cache=cache)
+            path = download_file(datasets_url, cache=cache)
+    elif location == 'photutils-datasets':    # pragma: no cover
+            path = download_file(datasets_url, cache=cache)
     else:
         raise ValueError('Invalid location: {0}'.format(location))
 
