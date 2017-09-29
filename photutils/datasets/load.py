@@ -5,6 +5,7 @@ Load example datasets.
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+from urllib.error import HTTPError, URLError
 
 from astropy.io import fits
 from astropy.table import Table
@@ -46,8 +47,13 @@ def get_path(filename, location='local', cache=True):
     if location == 'local':
         path = get_pkg_data_filename('data/' + filename)
     elif location == 'remote':    # pragma: no cover
-        url = 'http://data.astropy.org/photometry/{0}'.format(filename)
-        path = download_file(url, cache=cache)
+        try:
+            url = 'https://data.astropy.org/photometry/{0}'.format(filename)
+            path = download_file(url, cache=cache)
+        except (URLError, HTTPError):   # timeout or not found
+            url = ('https://github.com/astropy/photutils-datasets/raw/'
+                   'master/data/{0}'.format(filename))
+            path = download_file(url, cache=cache)
     else:
         raise ValueError('Invalid location: {0}'.format(location))
 
