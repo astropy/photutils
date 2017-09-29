@@ -1,12 +1,13 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import numpy as np
 
-from photutils.isophote.integrator import MEDIAN, MEAN, BI_LINEAR, NEAREST_NEIGHBOR
-from photutils.isophote.sample import Sample
-from photutils.isophote.isophote import Isophote
-
 from .make_test_data import make_test_image
+from ..integrator import MEDIAN, MEAN, BI_LINEAR, NEAREST_NEIGHBOR
+from ..isophote import Isophote
+from ..sample import Sample
 
 
 DATA = make_test_image(background=100., i0=0., noise=10., random_state=123)

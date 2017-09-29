@@ -1,12 +1,14 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
-import pytest
 import numpy as np
-
-from photutils.isophote.sample import Sample
-from photutils.isophote.harmonics import fit_1st_and_2nd_harmonics, fit_upper_harmonic, first_and_2nd_harmonic_function
+import pytest
 
 from .make_test_data import make_test_image
+from ..harmonics import (fit_1st_and_2nd_harmonics, fit_upper_harmonic,
+                         first_and_2nd_harmonic_function)
+from ..sample import Sample
 
 try:
     from scipy.optimize import leastsq

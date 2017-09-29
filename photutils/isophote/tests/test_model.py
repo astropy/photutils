@@ -1,25 +1,27 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
-
-import pytest
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import numpy as np
+import pytest
+
 from astropy.io import fits
 from astropy.tests.helper import remote_data
 
-from photutils.isophote.geometry import Geometry
-from photutils.isophote.ellipse import Ellipse
-from photutils.isophote.model import build_model
-
 from .make_test_data import make_test_image
+from ..ellipse import Ellipse
+from ..geometry import Geometry
+from ..model import build_model
 from ...datasets import get_path
-
-verb = False
 
 try:
     import scipy
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
+
+
+VERB = False
 
 
 @remote_data
@@ -32,9 +34,9 @@ def test_model():
     hdu.close()
 
     g = Geometry(530., 511, 10., 0.1, 10./180.*np.pi)
-    ellipse = Ellipse(data, geometry=g, verbose=verb, threshold=1.e5)
-    isophote_list = ellipse.fit_image(verbose=verb)
-    model = build_model(data, isophote_list, fill=np.mean(data[10:100,10:100]), verbose=verb)
+    ellipse = Ellipse(data, geometry=g, verbose=VERB, threshold=1.e5)
+    isophote_list = ellipse.fit_image(verbose=VERB)
+    model = build_model(data, isophote_list, fill=np.mean(data[10:100,10:100]), verbose=VERB)
 
     assert data.shape == model.shape
 
@@ -50,9 +52,9 @@ def test_2():
                            random_state=123)
 
     g = Geometry(256., 256., 10., 0.5, np.pi/3.)
-    ellipse = Ellipse(data, geometry=g, verbose=verb, threshold=1.e5)
-    isophote_list = ellipse.fit_image(verbose=verb)
-    model = build_model(data, isophote_list, fill=np.mean(data[0:50,0:50]), verbose=verb)
+    ellipse = Ellipse(data, geometry=g, verbose=VERB, threshold=1.e5)
+    isophote_list = ellipse.fit_image(verbose=VERB)
+    model = build_model(data, isophote_list, fill=np.mean(data[0:50,0:50]), verbose=VERB)
 
     assert data.shape == model.shape
 

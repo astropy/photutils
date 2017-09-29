@@ -1,12 +1,14 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+
 import math
 import numpy as np
+
 from astropy.io import fits
 
-from ...datasets import make_noise_image
 from ..geometry import Geometry, DEFAULT_EPS
+from ...datasets import make_noise_image
 
 
 DEFAULT_SIZE = 512

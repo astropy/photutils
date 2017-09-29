@@ -1,15 +1,16 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
-
-import pytest
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import numpy as np
 import numpy.ma as ma
+import pytest
+
 from astropy.io import fits
 from astropy.tests.helper import remote_data
 
-from photutils.isophote.sample import Sample
-from photutils.isophote.integrator import NEAREST_NEIGHBOR, BI_LINEAR, MEAN, MEDIAN
-
+from ..sample import Sample
+from ..integrator import NEAREST_NEIGHBOR, BI_LINEAR, MEAN, MEDIAN
 from ...datasets import get_path
 
 

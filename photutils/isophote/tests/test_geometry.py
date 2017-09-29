@@ -1,10 +1,11 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
-
-import pytest
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import numpy as np
+import pytest
 
-from photutils.isophote.geometry import Geometry, normalize_angle
+from ..geometry import Geometry, normalize_angle
 
 
 def _check_geometry(geometry):

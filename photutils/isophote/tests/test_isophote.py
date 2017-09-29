@@ -1,16 +1,17 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
-
-import pytest
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import numpy as np
+import pytest
+
 from astropy.io import fits
 from astropy.tests.helper import remote_data
 
-from photutils.isophote.sample import Sample
-from photutils.isophote.fitter import Fitter
-from photutils.isophote.isophote import Isophote, IsophoteList
-
 from .make_test_data import make_test_image
+from ..fitter import Fitter
+from ..isophote import Isophote, IsophoteList
+from ..sample import Sample
 from ...datasets import get_path
 
 try:

@@ -1,9 +1,11 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import math
 import numpy as np
 
-from photutils.isophote.geometry import PHI_MAX, PHI_MIN
+from ..geometry import PHI_MAX, PHI_MIN
 
 
 def _el_sarea (a, eps, phi, r):

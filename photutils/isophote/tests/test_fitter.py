@@ -1,19 +1,20 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
-
-import pytest
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import numpy as np
+import pytest
+
 from astropy.io import fits
 from astropy.tests.helper import remote_data
 
-from photutils.isophote.geometry import Geometry, DEFAULT_EPS
-from photutils.isophote.integrator import MEAN, MEDIAN
-from photutils.isophote.harmonics import fit_1st_and_2nd_harmonics
-from photutils.isophote.sample import Sample, CentralSample
-from photutils.isophote.isophote import Isophote
-from photutils.isophote.fitter import Fitter, CentralFitter
-
 from .make_test_data import make_test_image, DEFAULT_POS
+from ..fitter import Fitter, CentralFitter
+from ..geometry import Geometry, DEFAULT_EPS
+from ..harmonics import fit_1st_and_2nd_harmonics
+from ..integrator import MEAN, MEDIAN
+from ..isophote import Isophote
+from ..sample import Sample, CentralSample
 from ...datasets import get_path
 
 try:

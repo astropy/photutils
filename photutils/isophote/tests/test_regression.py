@@ -1,18 +1,65 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Despite being cast as a unit test, this code implements regression
+testing of the Ellipse algorithm, against results obtained by the
+stsdas$analysis/isophote task 'ellipse'.
 
-import os.path as op
+The stsdas task was run on test images and results were stored in
+tables.  The code here runs the Ellipse algorithm on the same images,
+producing a list of Isophote instances. The contents of this list then
+get compared with the contents of the corresponding table.
+
+Some quantities are compared in assert statements. These were designed
+to be executed only when the synth_highsnr.fits image is used as input.
+That way, we are mainly checking numerical differences that originate in
+the algorithms themselves, and not caused by noise. The quantities
+compared this way are:
+
+  - mean intensity: less than 1% diff. for sma > 3 pixels, 5% otherwise
+  - ellipticity: less than 1% diff. for sma > 3 pixels, 20% otherwise
+  - position angle: less than 1 deg. diff. for sma > 3 pixels, 20 deg.
+    otherwise
+  - X and Y position: less than 0.2 pixel diff.
+
+For the M51 image we have mostly good agreement with the SPP code in
+most of the parameters (mean isophotal intensity agrees within a
+fraction of 1% mostly), but every now and then the ellipticity and
+position angle of the semi-major axis may differ by a large amount from
+what the SPP code measures.  The code also stops prematurely wrt the
+larger sma values measured by the SPP code. This is caused by a
+difference in the way the gradient relative error is measured in each
+case, and suggests that the SPP code may have a bug.
+
+The not-so-good behavior observed in the case of the M51 image is to be
+expected though. This image is exactly the type of galaxy image for
+which the algorithm *wasn't* designed for. It has an almost negligible
+smooth ellipsoidal component, and a lot of lumpy spiral structure that
+causes the radial gradient computation to go berserk. On top of that,
+the ellipticity is small (roundish isophotes) throughout the image,
+causing large relative errors and instability in the fitting algorithm.
+
+For now, we can only check the bi-linear integration mode. The mean and
+median modes cannot be checked since the original 'ellipse' task has a
+bug that causes the creation of erroneous output tables. A partial
+comparison could be made if we write new code that reads the standard
+output of 'ellipse' instead, captured from screen, and use it as
+reference for the regression.
+"""
+
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
 import math
+import numpy as np
+import os.path as op
 import pytest
 
-import numpy as np
 from astropy.io import fits
+from astropy.table import Table
 from astropy.tests.helper import remote_data
 
-from astropy.table import Table
-
-from photutils.isophote.ellipse import Ellipse
-from photutils.isophote.integrator import BI_LINEAR, MEAN
-
+from ..ellipse import Ellipse
+from ..integrator import BI_LINEAR, MEAN
 from ...datasets import get_path
 
 try:
@@ -21,50 +68,9 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
-verb = False
 
-'''
-Despite being cast as a unit test, this code implements in fact
-regression testing of the Ellipse algorithm, against results obtained by
-the stsdas$analysis/isophote task 'ellipse'.
+VERB = False
 
-The stsdas task was run on test images and results were stored in tables.
-The code in here runs the Ellipse algorithm on the same images, producing
-a list of Isophote instances. The contents of this list then get compared
-with the contents of the corresponding table.
-
-Some quantities are compared in assert statements. These were designed to be
-executed only when the synth_highsnr.fits image is used as input. That way,
-we are mainly checking numerical differences that originate in the algorithms
-themselves, and not caused by noise. The quantities compared this way are:
-
-  - mean intensity: less than 1% diff. for sma > 3 pixels, 5% otherwise
-  - ellipticity: less than 1% diff. for sma > 3 pixels, 20% otherwise
-  - position angle: less than 1 deg. diff. for sma > 3 pixels, 20 deg. otherwise
-  - X and Y position: less than 0.2 pixel diff.
-
-For the M51 image we have mostly good agreement with the spp code in most
-of the parameters (mean isophotal intensity agrees within a fraction of 1%
-mostly), but every now and then the ellipticity and position angle of the
-semi-major axis may differ by a large amount from what the spp code measures.
-The code also stops prematurely wrt the larger sma values measured by the spp
-code. This is caused by a difference in the way the gradient relative error is
-measured in each case, and suggests that the spp code may have a bug.
-
-The not-so-good behavior observed in the case of the M51 image is to be expected
-though. This image is exactly the type of galaxy image for which the algorithm
-*wasn't* designed for. It has an almost negligible smooth ellipsoidal component,
-and a lot of lumpy spiral structure that causes the radial gradient computation
-to go berserk. On top of that, the ellipticity is small (roundish isophotes)
-throughout the image, causing large relative errors and instability in the fitting
-algorithm.
-
-For now, we can only check the bi-linear integration mode. The mean and median
-modes cannot be checked since the original 'ellipse' task has a bug that causes
-the creation of erroneous output tables. A partial comparison could be made if we
-write new code that reads the standard output of 'ellipse' instead, captured from
-screen, and use it as reference for the regression.
-'''
 
 @remote_data
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -78,11 +84,11 @@ def test_regression():
     # _do_regression("synth_lowsnr")
 
     # use this for nightly testing (no printouts)
-    _do_regression("synth_highsnr", integrmode, verbose=verb)
+    _do_regression("synth_highsnr", integrmode, verbose=VERB)
 
 
 @remote_data
-def _do_regression(name, integrmode, verbose=True):
+def _do_regression(name, integrmode, verbose=False):
 
 #    datafn = ('daofind_test_thresh{0:04.1f}_fwhm{1:04.1f}'
 #                  '.txt'.format(threshold, fwhm))
@@ -92,7 +98,7 @@ def _do_regression(name, integrmode, verbose=True):
     path = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
 
     table = Table.read(path)
-    # Original code in spp won't create the right table for the 'mean'.
+    # Original code in SPP won't create the right table for the 'mean'.
     # integration mode. Use the screen output at synth_table_mean.txt to
     # compare results visually.
     #

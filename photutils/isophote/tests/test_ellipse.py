@@ -1,17 +1,18 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
-
-import pytest
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import numpy as np
+import pytest
+
 from astropy.io import fits
 from astropy.tests.helper import remote_data
 
-from photutils.isophote.geometry import Geometry, DEFAULT_EPS
-from photutils.isophote.fitter import NORMAL_FIT, TOO_MANY_FLAGGED
-from photutils.isophote.ellipse import Ellipse, FIXED_ELLIPSE, FAILED_FIT
-from photutils.isophote.isophote import Isophote, IsophoteList
-
 from .make_test_data import make_test_image, DEFAULT_POS, DEFAULT_SIZE
+from ..ellipse import Ellipse, FIXED_ELLIPSE, FAILED_FIT
+from ..fitter import NORMAL_FIT, TOO_MANY_FLAGGED
+from ..geometry import Geometry, DEFAULT_EPS
+from ..isophote import Isophote, IsophoteList
 from ...datasets import get_path
 
 try:
@@ -19,6 +20,7 @@ try:
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
+
 
 # define an off-center position and a tilted sma
 POS = DEFAULT_POS + DEFAULT_SIZE / 4

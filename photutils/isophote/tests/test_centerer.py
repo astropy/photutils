@@ -1,13 +1,16 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import numpy as np
+
 from astropy.io import fits
 from astropy.tests.helper import remote_data
 
-from photutils.isophote.geometry import Geometry
-from photutils.isophote.centerer import Centerer
-
+from ..geometry import Geometry
+from ..centerer import Centerer
 from ...datasets import get_path
+
 
 @remote_data
 def test_centerer():
