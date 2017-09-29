@@ -5,25 +5,31 @@ import pytest
 import numpy as np
 import numpy.ma as ma
 from astropy.io import fits
+from astropy.tests.helper import remote_data
 
 from photutils.isophote.sample import Sample
 from photutils.isophote.integrator import NEAREST_NEIGHBOR, BI_LINEAR, MEAN, MEDIAN
-from photutils.isophote.tests.test_data import TEST_DATA
+
+from ...datasets import get_path
 
 
-def _build_image():
-    image = fits.open(TEST_DATA + "synth_highsnr.fits")
-    test_data = image[0].data
-    return test_data
+@remote_data
+class TestData(object):
+
+    def setup_class(self):
+        path = get_path('isophote/synth_highsnr.fits',
+                        location='photutils-datasets', cache=True)
+        hdu = fits.open(path)
+        self.data = hdu[0].data
+        hdu.close()
 
 
-class TestUnmasked(object):
+@remote_data
+class TestUnmasked(TestData):
 
     def _init_test(self, sma=40., integrmode=BI_LINEAR):
 
-        test_data = _build_image()
-
-        sample = Sample(test_data, sma, integrmode=integrmode)
+        sample = Sample(self.data, sma, integrmode=integrmode)
 
         s = sample.extract()
 
@@ -127,15 +133,14 @@ class TestUnmasked(object):
         assert sample.actual_points == 64
 
 
-class TestMasked(object):
+@remote_data
+class TestMasked(TestData):
 
     def _init_test(self, sma=40., integrmode=BI_LINEAR):
 
-        test_data = _build_image()
+        data = ma.masked_values(self.data, 200., atol=10.0, rtol=0.)
 
-        test_data = ma.masked_values(test_data, 200., atol=10.0, rtol=0.)
-
-        sample = Sample(test_data, sma, integrmode=integrmode)
+        sample = Sample(data, sma, integrmode=integrmode)
 
         s = sample.extract()
 

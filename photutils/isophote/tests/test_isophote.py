@@ -4,13 +4,14 @@ import pytest
 
 import numpy as np
 from astropy.io import fits
+from astropy.tests.helper import remote_data
 
 from photutils.isophote.sample import Sample
 from photutils.isophote.fitter import Fitter
 from photutils.isophote.isophote import Isophote, IsophoteList
-from photutils.isophote.tests.test_data import TEST_DATA
 
 from .make_test_data import make_test_image
+from ...datasets import get_path
 
 try:
     import scipy
@@ -19,14 +20,22 @@ except ImportError:
     HAS_SCIPY = False
 
 
+@remote_data
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestIsophote(object):
+
+    def setup_class(self):
+        path = get_path('isophote/M51.fits', location='photutils-datasets',
+                        cache=True)
+        hdu = fits.open(path)
+        self.data = hdu[0].data
+        hdu.close()
 
     def test_fit(self):
 
         # low noise image, fitted perfectly by sample.
-        test_data = make_test_image(noise=1.e-10, random_state=123)
-        sample = Sample(test_data, 40)
+        data = make_test_image(noise=1.e-10, random_state=123)
+        sample = Sample(data, 40)
         fitter = Fitter(sample)
         iso = fitter.fit(maxit=400)
 
@@ -57,10 +66,7 @@ class TestIsophote(object):
 
     def test_m51(self):
 
-        image = fits.open(TEST_DATA + "M51.fits")
-        test_data = image[0].data
-
-        sample = Sample(test_data, 21.44)
+        sample = Sample(self.data, 21.44)
         fitter = Fitter(sample)
         iso = fitter.fit()
 
@@ -101,10 +107,7 @@ class TestIsophote(object):
         # compares with old STSDAS task. In this task, the
         # default for the starting value of SMA is 10; it
         # fits with 20 iterations.
-        image = fits.open(TEST_DATA + "M51.fits")
-        test_data = image[0].data
-
-        sample = Sample(test_data, 10)
+        sample = Sample(self.data, 10)
         fitter = Fitter(sample)
         iso = fitter.fit()
 
@@ -115,10 +118,10 @@ class TestIsophote(object):
 class TestIsophoteList(object):
 
     def _build_list(self, sma0):
-        test_data = make_test_image(random_state=123)
+        data = make_test_image(random_state=123)
         iso_list = []
         for k in range(10):
-            sample = Sample(test_data, float(k + sma0))
+            sample = Sample(data, float(k + sma0))
             sample.update()
             iso_list.append(Isophote(sample, k, True, 0))
         result = IsophoteList(iso_list)

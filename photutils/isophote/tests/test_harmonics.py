@@ -96,9 +96,9 @@ def test_harmonics_3():
 def test_fit_sample_1():
 
     # major axis parallel to X image axis
-    test_data = make_test_image(random_state=123)
+    data = make_test_image(random_state=123)
 
-    sample = Sample(test_data, 40.)
+    sample = Sample(data, 40.)
     s = sample.extract()
 
     harmonics = fit_1st_and_2nd_harmonics(s[0], s[2])
@@ -128,9 +128,9 @@ def test_fit_sample_1():
 def test_fit_sample_2():
 
     # major axis tilted 45 deg wrt X image axis
-    test_data = make_test_image(pa=np.pi/4, random_state=123)
+    data = make_test_image(pa=np.pi/4, random_state=123)
 
-    sample = Sample(test_data, 40., eps=0.4)
+    sample = Sample(data, 40., eps=0.4)
     s = sample.extract()
 
     harmonics = fit_1st_and_2nd_harmonics(s[0], s[2])
@@ -146,10 +146,10 @@ def test_fit_sample_2():
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_fit_sample_3():
 
-    test_data = make_test_image(random_state=123)
+    data = make_test_image(random_state=123)
 
     # initial guess is rounder than actual image
-    sample = Sample(test_data, 40., eps=0.1)
+    sample = Sample(data, 40., eps=0.1)
     s = sample.extract()
 
     harmonics = fit_1st_and_2nd_harmonics(s[0], s[2])
@@ -165,10 +165,10 @@ def test_fit_sample_3():
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_fit_sample_4():
 
-    test_data = make_test_image(random_state=123)
+    data = make_test_image(random_state=123)
 
     # initial guess for center is offset
-    sample = Sample(test_data, x0=220., y0=210., sma=40.)
+    sample = Sample(data, x0=220., y0=210., sma=40.)
     s = sample.extract()
 
     harmonics = fit_1st_and_2nd_harmonics(s[0], s[2])

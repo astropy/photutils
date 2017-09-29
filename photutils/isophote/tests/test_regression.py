@@ -1,16 +1,19 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+import os.path as op
 import math
 import pytest
 
 import numpy as np
 from astropy.io import fits
+from astropy.tests.helper import remote_data
 
 from astropy.table import Table
 
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.integrator import BI_LINEAR, MEAN
-from photutils.isophote.tests.test_data import TEST_DATA, TEST_DATA_REGRESSION
+
+from ...datasets import get_path
 
 try:
     import scipy
@@ -63,6 +66,7 @@ write new code that reads the standard output of 'ellipse' instead, captured fro
 screen, and use it as reference for the regression.
 '''
 
+@remote_data
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_regression():
 
@@ -77,9 +81,17 @@ def test_regression():
     _do_regression("synth_highsnr", integrmode, verbose=verb)
 
 
+@remote_data
 def _do_regression(name, integrmode, verbose=True):
 
-    table = Table.read(TEST_DATA_REGRESSION + name + '_table.fits')
+#    datafn = ('daofind_test_thresh{0:04.1f}_fwhm{1:04.1f}'
+#                  '.txt'.format(threshold, fwhm))
+#        datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
+
+    filename = '{0}_table.fits'.format(name)
+    path = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
+
+    table = Table.read(path)
     # Original code in spp won't create the right table for the 'mean'.
     # integration mode. Use the screen output at synth_table_mean.txt to
     # compare results visually.
@@ -89,9 +101,13 @@ def _do_regression(name, integrmode, verbose=True):
     nrows = len(table['SMA'])
     # print(table.columns)
 
-    image = fits.open(TEST_DATA + name + ".fits")
-    test_data = image[0].data
-    ellipse = Ellipse(test_data, verbose=verbose)
+    path = get_path('isophote/{0}.fits'.format(name),
+                    location='photutils-datasets', cache=True)
+    hdu = fits.open(path)
+    data = hdu[0].data
+    hdu.close()
+
+    ellipse = Ellipse(data, verbose=verbose)
     isophote_list = ellipse.fit_image(verbose=verbose)
     # isophote_list = ellipse.fit_image(integrmode=self.integrmode, sclip=2., nclip=3)
 
