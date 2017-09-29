@@ -5,7 +5,12 @@ Load example datasets.
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-from urllib.error import HTTPError, URLError
+try:
+    # python >= 3
+    from urllib.error import HTTPError, URLError
+except:
+    # python 2
+    from urllib2 import HTTPError, URLError
 
 from astropy.io import fits
 from astropy.table import Table
