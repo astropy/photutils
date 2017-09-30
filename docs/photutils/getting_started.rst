@@ -11,7 +11,6 @@ background, calculated using the image median:
     >>> import numpy as np
     >>> from photutils import datasets
     >>> hdu = datasets.load_star_image()    # doctest: +REMOTE_DATA
-    Downloading ...
     >>> image = hdu.data[500:700, 500:700].astype(float)    # doctest: +REMOTE_DATA
     >>> image -= np.median(image)    # doctest: +REMOTE_DATA
 
