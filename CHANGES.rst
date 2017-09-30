@@ -41,6 +41,9 @@ New Features
 
   - Added new ``make_wcs`` and ``make_imagehdu`` functions. [#527]
 
+  - Added new ``show_progress`` keyword to the ``load_*`` functions.
+    [#590]
+
 - ``photutils.segmentation``
 
   - Added a ``cmap`` method to ``SegmentationImage`` to generate a

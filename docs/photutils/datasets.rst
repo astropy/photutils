@@ -34,7 +34,6 @@ Let's load an example image of M67 with
 
     >>> from photutils import datasets
     >>> hdu = datasets.load_star_image()  # doctest: +REMOTE_DATA
-    Downloading http://data.astropy.org/photometry/M6707HH.fits [Done]
     >>> print(hdu.data.shape)  # doctest: +REMOTE_DATA
     (1059, 1059)
 

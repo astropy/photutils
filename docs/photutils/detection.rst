@@ -46,7 +46,6 @@ background noise using sigma-clipped statistics::
     >>> from astropy.stats import sigma_clipped_stats
     >>> from photutils import datasets
     >>> hdu = datasets.load_star_image()    # doctest: +REMOTE_DATA
-    Downloading ...
     >>> data = hdu.data[0:400, 0:400]    # doctest: +REMOTE_DATA
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, iters=5)    # doctest: +REMOTE_DATA
     >>> print((mean, median, std))    # doctest: +REMOTE_DATA, +FLOAT_CMP
