@@ -103,6 +103,11 @@ API changes
   - The ``unit``, ``hdu``, ``wcs``, and ``wcsheader`` keywords in
     ``photutils.datasets`` functions were removed. [#527]
 
+  - ``'photutils-datasets'`` was added as an optional ``location`` in
+    the ``get_path`` function. This option is used as a fallback in
+    case the ``'remote'`` location (astropy data server) fails.
+    [#589]
+
 - ``photutils.detection``
 
   - The ``daofind`` and ``irafstarfinder`` functions were removed.
