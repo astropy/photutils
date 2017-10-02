@@ -59,7 +59,7 @@ from astropy.table import Table
 from astropy.tests.helper import remote_data
 
 from ..ellipse import Ellipse
-from ..integrator import BI_LINEAR, MEAN
+from ..integrator import BI_LINEAR
 from ...datasets import get_path
 
 try:
@@ -69,44 +69,23 @@ except ImportError:
     HAS_SCIPY = False
 
 
-VERB = False
-
-
 @remote_data
 @pytest.mark.skipif('not HAS_SCIPY')
-def test_regression():
-
-    integrmode = BI_LINEAR
-    # integrmode = MEAN # see comment below for the MEAN mode
-
-    # _do_regression("M51")
-    # _do_regression("synth")
-    # _do_regression("synth_lowsnr")
-
-    # use this for nightly testing (no printouts)
-    _do_regression("synth_highsnr", integrmode, verbose=VERB)
-
-
-@remote_data
-def _do_regression(name, integrmode, verbose=False):
-
-#    datafn = ('daofind_test_thresh{0:04.1f}_fwhm{1:04.1f}'
-#                  '.txt'.format(threshold, fwhm))
-#        datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
+# @pytest.mark.parametrize('name', ['M51', 'synth', 'synth_lowsnr',
+#                                   'synth_highsnr'])
+@pytest.mark.parametrize('name', ['synth_highsnr'])
+def test_regression(name, integrmode=BI_LINEAR, verbose=False):
+    """
+    NOTE:  The original code in SPP won't create the right table for the MEAN
+    integration moder, so use the screen output at synth_table_mean.txt to
+    compare results visually with synth_table_mean.fits.
+    """
 
     filename = '{0}_table.fits'.format(name)
     path = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
-
     table = Table.read(path)
-    # Original code in SPP won't create the right table for the 'mean'.
-    # integration mode. Use the screen output at synth_table_mean.txt to
-    # compare results visually.
-    #
-    # table = Table.read(DATA + name + '_table_mean.fits')
 
     nrows = len(table['SMA'])
-    # print(table.columns)
-
     path = get_path('isophote/{0}.fits'.format(name),
                     location='photutils-datasets', cache=True)
     hdu = fits.open(path)
@@ -115,9 +94,10 @@ def _do_regression(name, integrmode, verbose=False):
 
     ellipse = Ellipse(data, verbose=verbose)
     isophote_list = ellipse.fit_image(verbose=verbose)
-    # isophote_list = ellipse.fit_image(integrmode=self.integrmode, sclip=2., nclip=3)
+    # isophote_list = ellipse.fit_image(sclip=2., nclip=3)
 
-    format = "%5.2f  %6.1f    %8.3f %8.3f %8.3f        %9.5f  %6.2f   %6.2f %6.2f   %5.2f   %4d  %3d  %3d  %2d"
+    fmt = ("%5.2f  %6.1f    %8.3f %8.3f %8.3f        %9.5f  %6.2f   "
+           "%6.2f %6.2f   %5.2f   %4d  %3d  %3d  %2d")
 
     for row in range(nrows):
         try:
@@ -136,7 +116,8 @@ def _do_regression(name, integrmode, verbose=False):
         pa_i = iso.sample.geometry.pa if iso.sample.geometry.pa else 0.
         x0_i = iso.sample.geometry.x0
         y0_i = iso.sample.geometry.y0
-        rerr_i = iso.sample.gradient_relative_error if iso.sample.gradient_relative_error else 0.
+        rerr_i = (iso.sample.gradient_relative_error
+                  if iso.sample.gradient_relative_error else 0.)
         ndata_i = iso.ndata
         nflag_i = iso.nflag
         niter_i = iso.niter
@@ -166,8 +147,10 @@ def _do_regression(name, integrmode, verbose=False):
         # relative differences
         sma_d = (sma_i - sma_t) / sma_t * 100. if sma_t > 0. else 0.
         intens_d = (intens_i - intens_t) / intens_t * 100.
-        int_err_d = (int_err_i - int_err_t) / int_err_t * 100. if int_err_t > 0. else 0.
-        pix_stddev_d = (pix_stddev_i - pix_stddev_t) / pix_stddev_t * 100. if pix_stddev_t > 0. else 0.
+        int_err_d = ((int_err_i - int_err_t) / int_err_t * 100.
+                     if int_err_t > 0. else 0.)
+        pix_stddev_d = ((pix_stddev_i - pix_stddev_t) / pix_stddev_t * 100.
+                        if pix_stddev_t > 0. else 0.)
         rms_d = (rms_i - rms_t) / rms_t * 100. if rms_t > 0. else 0.
         ellip_d = (ellip_i - ellip_t) / ellip_t * 100.
         pa_d = pa_i - pa_t  # diff in angle is absolute
@@ -180,9 +163,15 @@ def _do_regression(name, integrmode, verbose=False):
         stop_d = 0 if stop_i == stop_t else -1
 
         if verbose:
-            print("* data "+format % (sma_i, intens_i, int_err_i, pix_stddev_i, rms_i, ellip_i, pa_i, x0_i, y0_i, rerr_i, ndata_i, nflag_i, niter_i, stop_i))
-            print("  ref  "+format % (sma_t, intens_t, int_err_t, pix_stddev_t, rms_t, ellip_t, pa_t, x0_t, y0_t, rerr_t, ndata_t, nflag_t, niter_t, stop_t))
-            print("  diff "+format % (sma_d, intens_d, int_err_d, pix_stddev_d, rms_d, ellip_d, pa_d, x0_d, y0_d, rerr_d, ndata_d, nflag_d, niter_d, stop_d))
+            print("* data " + fmt % (sma_i, intens_i, int_err_i, pix_stddev_i,
+                                     rms_i, ellip_i, pa_i, x0_i, y0_i, rerr_i,
+                                     ndata_i, nflag_i, niter_i, stop_i))
+            print("  ref  " + fmt % (sma_t, intens_t, int_err_t, pix_stddev_t,
+                                     rms_t, ellip_t, pa_t, x0_t, y0_t, rerr_t,
+                                     ndata_t, nflag_t, niter_t, stop_t))
+            print("  diff " + fmt % (sma_d, intens_d, int_err_d, pix_stddev_d,
+                                     rms_d, ellip_d, pa_d, x0_d, y0_d, rerr_d,
+                                     ndata_d, nflag_d, niter_d, stop_d))
             print()
 
         if name == "synth_highsnr" and integrmode == BI_LINEAR:
@@ -196,15 +185,11 @@ def _do_regression(name, integrmode, verbose=False):
 
             if not math.isnan(ellip_d):
                 if sma_i > 3.:
-                    assert abs(ellip_d) <= 1.   #  1%
+                    assert abs(ellip_d) <= 1.   # 1%
                 else:
-                    assert abs(ellip_d) <= 20.  #  20%
+                    assert abs(ellip_d) <= 20.  # 20%
             if not math.isnan(pa_d):
                 if sma_i > 3.:
-                    assert abs(pa_d) <= 1.      #  1 deg.
+                    assert abs(pa_d) <= 1.      # 1 deg.
                 else:
-                    assert abs(pa_d) <= 20.     #  20 deg.
-
-
-
-
+                    assert abs(pa_d) <= 20.     # 20 deg.
