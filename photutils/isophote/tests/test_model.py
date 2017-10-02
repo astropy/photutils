@@ -21,12 +21,9 @@ except ImportError:
     HAS_SCIPY = False
 
 
-VERB = False
-
-
 @remote_data
 @pytest.mark.skipif('not HAS_SCIPY')
-def test_model():
+def test_model(verbose=False):
     path = get_path('isophote/M105-S001-RGB.fits',
                     location='photutils-datasets', cache=True)
     hdu = fits.open(path)
@@ -34,33 +31,31 @@ def test_model():
     hdu.close()
 
     g = Geometry(530., 511, 10., 0.1, 10./180.*np.pi)
-    ellipse = Ellipse(data, geometry=g, verbose=VERB, threshold=1.e5)
-    isophote_list = ellipse.fit_image(verbose=VERB)
-    model = build_model(data, isophote_list, fill=np.mean(data[10:100,10:100]), verbose=VERB)
+    ellipse = Ellipse(data, geometry=g, verbose=verbose, threshold=1.e5)
+    isophote_list = ellipse.fit_image(verbose=verbose)
+    model = build_model(data, isophote_list,
+                        fill=np.mean(data[10:100, 10:100]), verbose=verbose)
 
     assert data.shape == model.shape
 
     residual = data - model
-
     assert np.mean(residual) <= 5.0
     assert np.mean(residual) >= -5.0
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-def test_2():
+def test_model_simulated_data(verbose=False):
     data = make_test_image(eps=0.5, pa=np.pi/3., noise=1.e-2,
                            random_state=123)
 
     g = Geometry(256., 256., 10., 0.5, np.pi/3.)
-    ellipse = Ellipse(data, geometry=g, verbose=VERB, threshold=1.e5)
-    isophote_list = ellipse.fit_image(verbose=VERB)
-    model = build_model(data, isophote_list, fill=np.mean(data[0:50,0:50]), verbose=VERB)
+    ellipse = Ellipse(data, geometry=g, verbose=verbose, threshold=1.e5)
+    isophote_list = ellipse.fit_image(verbose=verbose)
+    model = build_model(data, isophote_list,
+                        fill=np.mean(data[0:50, 0:50]), verbose=verbose)
 
     assert data.shape == model.shape
 
     residual = data - model
-
     assert np.mean(residual) <= 5.0
     assert np.mean(residual) >= -5.0
-
-
