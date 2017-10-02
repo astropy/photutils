@@ -33,8 +33,7 @@ class TestIsophote(object):
         hdu.close()
 
     def test_fit(self):
-
-        # low noise image, fitted perfectly by sample.
+        # low noise image, fitted perfectly by sample
         data = make_test_image(noise=1.e-10, random_state=123)
         sample = Sample(data, 40)
         fitter = Fitter(sample)
@@ -66,7 +65,6 @@ class TestIsophote(object):
         assert abs(iso.b4) <= 0.01
 
     def test_m51(self):
-
         sample = Sample(self.data, 21.44)
         fitter = Fitter(sample)
         iso = fitter.fit()
@@ -76,27 +74,27 @@ class TestIsophote(object):
 
         # geometry
         g = iso.sample.geometry
-        assert g.x0 >=  (257 - 1.5)   # position within 1.5 pixel
-        assert g.x0 <=  (257 + 1.5)
-        assert g.y0 >=  (259 - 1.5)
-        assert g.y0 <=  (259 + 2.0)
-        assert g.eps >= (0.19 - 0.05) # eps within 0.05
+        assert g.x0 >= (257 - 1.5)   # position within 1.5 pixel
+        assert g.x0 <= (257 + 1.5)
+        assert g.y0 >= (259 - 1.5)
+        assert g.y0 <= (259 + 2.0)
+        assert g.eps >= (0.19 - 0.05)  # eps within 0.05
         assert g.eps <= (0.19 + 0.05)
-        assert g.pa >=  (0.62 - 0.05) # pa within 5 deg
-        assert g.pa <=  (0.62 + 0.05)
+        assert g.pa >= (0.62 - 0.05)  # pa within 5 deg
+        assert g.pa <= (0.62 + 0.05)
 
         # fitted values
-        assert iso.intens     == pytest.approx(682.9, abs=0.1)
-        assert iso.rms        == pytest.approx(83.27, abs=0.01)
-        assert iso.int_err    == pytest.approx(7.63, abs=0.01)
+        assert iso.intens == pytest.approx(682.9, abs=0.1)
+        assert iso.rms == pytest.approx(83.27, abs=0.01)
+        assert iso.int_err == pytest.approx(7.63, abs=0.01)
         assert iso.pix_stddev == pytest.approx(117.8, abs=0.1)
-        assert iso.grad       == pytest.approx(-36.08, abs=0.1)
+        assert iso.grad == pytest.approx(-36.08, abs=0.1)
 
         # integrals
-        assert iso.tflux_e <= 1.20E6
-        assert iso.tflux_e >= 1.19E6
-        assert iso.tflux_c <= 1.38E6
-        assert iso.tflux_c >= 1.36E6
+        assert iso.tflux_e <= 1.20e6
+        assert iso.tflux_e >= 1.19e6
+        assert iso.tflux_c <= 1.38e6
+        assert iso.tflux_c >= 1.36e6
 
         # deviations from perfect ellipticity
         assert abs(iso.a3) <= 0.05
@@ -118,10 +116,17 @@ class TestIsophote(object):
 
 class TestIsophoteList(object):
 
-    def _build_list(self, sma0):
+    def setup_class(self):
         data = make_test_image(random_state=123)
+        self.slen = 5
+        self.isolist_sma10 = self.build_list(data, sma0=10., slen=self.slen)
+        self.isolist_sma100 = self.build_list(data, sma0=100., slen=self.slen)
+        self.isolist_sma200 = self.build_list(data, sma0=200., slen=self.slen)
+
+    @staticmethod
+    def build_list(data, sma0, slen=5):
         iso_list = []
-        for k in range(10):
+        for k in range(slen):
             sample = Sample(data, float(k + sma0))
             sample.update()
             iso_list.append(Isophote(sample, k, True, 0))
@@ -129,41 +134,37 @@ class TestIsophoteList(object):
         return result
 
     def test_basic_list(self):
-        result = self._build_list(10.)
-
         # make sure it can be indexed as a list.
+        result = self.isolist_sma10[:]
         assert isinstance(result[0], Isophote)
 
-        array = np.array([])
         # make sure the important arrays contain floats.
         # especially the sma array, which is derived
         # from a property in the Isophote class.
-        assert type(result.sma) == type(array)
+        assert isinstance(result.sma, np.ndarray)
         assert isinstance(result.sma[0], float)
-
-        assert type(result.intens) == type(array)
+        assert isinstance(result.intens, np.ndarray)
         assert isinstance(result.intens[0], float)
-
-        assert type(result.rms) == type(array)
-        assert type(result.int_err) == type(array)
-        assert type(result.pix_stddev) == type(array)
-        assert type(result.grad) == type(array)
-        assert type(result.grad_error) == type(array)
-        assert type(result.grad_r_error) == type(array)
-        assert type(result.sarea) == type(array)
-        assert type(result.niter) == type(array)
-        assert type(result.ndata) == type(array)
-        assert type(result.nflag) == type(array)
-        assert type(result.valid) == type(array)
-        assert type(result.stop_code) == type(array)
-        assert type(result.tflux_c) == type(array)
-        assert type(result.tflux_e) == type(array)
-        assert type(result.npix_c) == type(array)
-        assert type(result.npix_e) == type(array)
-        assert type(result.a3) == type(array)
-        assert type(result.a4) == type(array)
-        assert type(result.b3) == type(array)
-        assert type(result.b4) == type(array)
+        assert isinstance(result.rms, np.ndarray)
+        assert isinstance(result.int_err, np.ndarray)
+        assert isinstance(result.pix_stddev, np.ndarray)
+        assert isinstance(result.grad, np.ndarray)
+        assert isinstance(result.grad_error, np.ndarray)
+        assert isinstance(result.grad_r_error, np.ndarray)
+        assert isinstance(result.sarea, np.ndarray)
+        assert isinstance(result.niter, np.ndarray)
+        assert isinstance(result.ndata, np.ndarray)
+        assert isinstance(result.nflag, np.ndarray)
+        assert isinstance(result.valid, np.ndarray)
+        assert isinstance(result.stop_code, np.ndarray)
+        assert isinstance(result.tflux_c, np.ndarray)
+        assert isinstance(result.tflux_e, np.ndarray)
+        assert isinstance(result.npix_c, np.ndarray)
+        assert isinstance(result.npix_e, np.ndarray)
+        assert isinstance(result.a3, np.ndarray)
+        assert isinstance(result.a4, np.ndarray)
+        assert isinstance(result.b3, np.ndarray)
+        assert isinstance(result.b4, np.ndarray)
 
         samples = result.sample
         assert isinstance(samples, list)
@@ -174,74 +175,70 @@ class TestIsophoteList(object):
         assert iso.sma == pytest.approx(14., abs=0.000001)
 
     def test_extend(self):
-
         # the extend method shouldn't return anything,
         # and should modify the first list in place.
-        inner_list = self._build_list(10.)
-        outer_list = self._build_list(100.)
+        inner_list = self.isolist_sma10[:]
+        outer_list = self.isolist_sma100[:]
+        assert len(inner_list) == self.slen
+        assert len(outer_list) == self.slen
         dummy = inner_list.extend(outer_list)
         assert not dummy
-        assert len(inner_list) == 20
+        assert len(inner_list) == 2 * self.slen
 
         # the __iadd__ operator should behave like the
         # extend method.
-        inner_list = self._build_list(10.)
-        outer_list = self._build_list(100.)
+        inner_list = self.isolist_sma10[:]
+        outer_list = self.isolist_sma100[:]
         inner_list += outer_list
-        assert len(inner_list) == 20
+        assert len(inner_list) == 2 * self.slen
 
         # the __add__ operator should create a new IsophoteList
         # instance with the result, and should not modify
         # the operands.
-        inner_list = self._build_list(10.)
-        outer_list = self._build_list(100.)
+        inner_list = self.isolist_sma10[:]
+        outer_list = self.isolist_sma100[:]
         result = inner_list + outer_list
         assert isinstance(result, IsophoteList)
-        assert len(inner_list) == 10
-        assert len(outer_list) == 10
-        assert len(result) == 20
+        assert len(inner_list) == self.slen
+        assert len(outer_list) == self.slen
+        assert len(result) == 2 * self.slen
 
     def test_slicing(self):
-        iso_list = self._build_list(10.)
-        assert len(iso_list) == 10
-        assert len(iso_list[1:-1]) == 8
-        assert len(iso_list[2:-2]) == 6
+        iso_list = self.isolist_sma10[:]
+        assert len(iso_list) == self.slen
+        assert len(iso_list[1:-1]) == self.slen - 2
+        assert len(iso_list[2:-2]) == self.slen - 4
 
     def test_combined(self):
-
         # combine extend with slicing.
-        inner_list = self._build_list(10.)
-        outer_list = self._build_list(100.)
+        inner_list = self.isolist_sma10[:]
+        outer_list = self.isolist_sma100[:]
         sublist = inner_list[2:-2]
         dummy = sublist.extend(outer_list)
         assert not dummy
-        assert len(sublist) == 16
+        assert len(sublist) == 2*self.slen - 4
 
         # try one more slice.
-        even_outer_list = self._build_list(200.)
-        sublist.extend(even_outer_list[3:-3])
-        assert len(sublist) == 20
+        even_outer_list = self.isolist_sma200
+        sublist.extend(even_outer_list[1:-1])
+        assert len(sublist) == 2*self.slen - 4 + 3
 
         # combine __add__ with slicing.
         sublist = inner_list[2:-2]
         result = sublist + outer_list
         assert isinstance(result, IsophoteList)
-        assert len(sublist) == 6
-        assert len(result) == 16
+        assert len(sublist) == self.slen - 4
+        assert len(result) == 2*self.slen - 4
 
         result = inner_list[2:-2] + outer_list
         assert isinstance(result, IsophoteList)
-        assert len(result) == 16
+        assert len(result) == 2*self.slen - 4
 
     def test_sort(self):
-        inner_list = self._build_list(10.)
-        outer_list = self._build_list(100.)
-
+        inner_list = self.isolist_sma10[:]
+        outer_list = self.isolist_sma100[:]
         result = outer_list[2:-2] + inner_list
 
         assert result[-1].sma < result[0].sma
         result.sort()
         assert result[-1].sma > result[0].sma
-
-
-
