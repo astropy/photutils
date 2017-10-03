@@ -2,7 +2,6 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-import math
 import numpy as np
 
 from astropy.io import fits
@@ -51,28 +50,29 @@ def make_test_image(nx=DEFAULT_SIZE, ny=DEFAULT_SIZE, x0=None, y0=None,
         The resulting simulated image.
     """
 
-    image = np.zeros((ny, nx)) + background
+    if x0 is None or y0 is None:
+        xcen = nx / 2
+        ycen = ny / 2
+    else:
+        xcen = x0
+        ycen = y0
 
-    x1 = x0
-    y1 = y0
-    if not x0 or not y0:
-        x1 = nx / 2
-        y1 = ny / 2
+    g = Geometry(xcen, ycen, sma, eps, pa, 0.1, False)
 
-    g = Geometry(x1, y1, sma, eps, pa, 0.1, False)
-
+    tmp_image = np.zeros((ny, nx))
     for j in range(ny):
         for i in range(nx):
             radius, angle = g.to_polar(i, j)
             e_radius = g.radius(angle)
-            value = (lambda x: i0 * math.exp(-7.669 * (x**0.25 - 1.)))(radius / e_radius)
-            image[j, i] += value
+            tmp_image[j, i] = radius / e_radius
+
+    image = i0 * np.exp(-7.669 * (tmp_image**0.25 - 1.)) + background
 
     # central pixel is messed up; replace it with interpolated value
-    image[int(x1), int(y1)] = (image[int(x1 - 1), int(y1)] +
-                               image[int(x1 + 1), int(y1)] +
-                               image[int(x1), int(y1 - 1)] +
-                               image[int(x1), int(y1 + 1)]) / 4.
+    image[int(xcen), int(ycen)] = (image[int(xcen - 1), int(ycen)] +
+                                   image[int(xcen + 1), int(ycen)] +
+                                   image[int(xcen), int(ycen - 1)] +
+                                   image[int(xcen), int(ycen + 1)]) / 4.
 
     image += make_noise_image(image.shape, type='gaussian', mean=0.,
                               stddev=noise, random_state=random_state)
