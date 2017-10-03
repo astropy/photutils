@@ -1,11 +1,13 @@
-from __future__ import division
-
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 import copy
 
 import numpy as np
 
 from .geometry import Geometry, DEFAULT_EPS, DEFAULT_STEP, PHI_MIN
 from .integrator import integrators, BI_LINEAR
+
 
 __all__ = ['Sample']
 
@@ -18,7 +20,8 @@ class Sample(object):
     A Sample instance describes an elliptical path on the image, from which
     intensities can be extracted using a selection of integration algorithms.
 
-    The Sample instance contains a `geometry` attribute that describes its geometry.
+    The Sample instance contains a `geometry` attribute that describes
+    its geometry.
 
     Parameters
     ----------
@@ -85,8 +88,11 @@ class Sample(object):
         removed some of the points.
 
     """
-    def __init__(self, image, sma, x0=None, y0=None, astep=DEFAULT_STEP, eps=DEFAULT_EPS, position_angle=0.0,
-                 sclip=DEFAULT_SCLIP, nclip=0, linear_growth=False, integrmode=BI_LINEAR, geometry=None):
+
+    def __init__(self, image, sma, x0=None, y0=None, astep=DEFAULT_STEP,
+                 eps=DEFAULT_EPS, position_angle=0.0, sclip=DEFAULT_SCLIP,
+                 nclip=0, linear_growth=False, integrmode=BI_LINEAR,
+                 geometry=None):
         self.image = image
         self.integrmode = integrmode
 
@@ -105,7 +111,8 @@ class Sample(object):
                 _x0 = image.shape[0] / 2
                 _y0 = image.shape[1] / 2
 
-            self.geometry = Geometry(_x0, _y0, sma, eps, position_angle, astep, linear_growth)
+            self.geometry = Geometry(_x0, _y0, sma, eps, position_angle,
+                                     astep, linear_growth)
 
         # sigma-clip parameters
         self.sclip = sclip
@@ -136,6 +143,7 @@ class Sample(object):
             array containing respectively angles, radii, and
             extracted intensity values.
         """
+
         # the sample values themselves are kept cached to prevent
         # multiple calls to the integrator code.
         if self.values is not None:
@@ -166,36 +174,42 @@ class Sample(object):
         self.actual_points = 0
 
         # build integrator
-        integrator = integrators[self.integrmode](self.image, self.geometry, angles, radii, intensities)
+        integrator = integrators[self.integrmode](self.image, self.geometry,
+                                                  angles, radii, intensities)
 
         # initialize walk along elliptical path
         radius = self.geometry.initial_polar_radius
         phi = self.geometry.initial_polar_angle
 
-        # In case of an area integrator, ask the integrator to deliver a hint of how much
-        # area the sectors will have. In case of too small areas, tests showed that the
-        # area integrators (mean, median) won't perform properly. In that case, we override
-        # the caller's selection and use the bi-linear integrator regardless.
+        # In case of an area integrator, ask the integrator to deliver a
+        # hint of how much area the sectors will have. In case of too
+        # small areas, tests showed that the area integrators (mean,
+        # median) won't perform properly. In that case, we override the
+        # caller's selection and use the bi-linear integrator regardless.
         if integrator.is_area():
             integrator.integrate(radius, phi)
             area = integrator.get_sector_area()
-            # this integration that just took place messes up with the storage
-            # arrays and the constructors. We have to build a new integrator
-            # instance from scratch, even if it is the same kind as originally
-            # selected by the caller.
+            # this integration that just took place messes up with the
+            # storage arrays and the constructors. We have to build a new
+            # integrator instance from scratch, even if it is the same
+            # kind as originally selected by the caller.
             angles = []
             radii = []
             intensities = []
             if area < 1.0:
-                integrator = integrators[BI_LINEAR](self.image, self.geometry, angles, radii, intensities)
+                integrator = integrators[BI_LINEAR](self.image, self.geometry,
+                                                    angles, radii,
+                                                    intensities)
             else:
-                integrator = integrators[self.integrmode](self.image, self.geometry, angles, radii, intensities)
+                integrator = integrators[self.integrmode](self.image,
+                                                          self.geometry,
+                                                          angles, radii,
+                                                          intensities)
 
         # walk along elliptical path, integrating at specified
         # places defined by polar vector. Need to go a bit beyond
         # full circle to ensure full coverage.
         while (phi <= np.pi*2.+PHI_MIN):
-
             # do the integration at phi-radius position, and append
             # results to the angles, radii, and intensities lists.
             integrator.integrate(radius, phi)
@@ -217,22 +231,24 @@ class Sample(object):
         self.sector_area = np.mean(np.array(sector_areas))
 
         # apply sigma-clipping.
-        angles, radii, intensities = self._sigma_clip(angles, radii, intensities)
+        angles, radii, intensities = self._sigma_clip(angles, radii,
+                                                      intensities)
 
         # actual number of sampled points, after sigma-clip removed outliers.
         self.actual_points = len(angles)
 
         # pack results in 2-d array
-        result = np.array([np.array(angles), np.array(radii), np.array(intensities)])
+        result = np.array([np.array(angles), np.array(radii),
+                           np.array(intensities)])
 
         return result
 
     def _sigma_clip(self, angles, radii, intensities):
         if self.nclip > 0:
-
             for iter in range(self.nclip):
                 # do not use list.copy()! must be python2-compliant.
-                angles, radii, intensities = self._iter_sigma_clip(angles[:], radii[:], intensities[:])
+                angles, radii, intensities = self._iter_sigma_clip(
+                    angles[:], radii[:], intensities[:])
 
         return np.array(angles), np.array(radii), np.array(intensities)
 
@@ -264,10 +280,12 @@ class Sample(object):
 
     def update(self):
         """
-        Update this Sample instance. It calls `extract` to get the values
-        that match the current Geometry attribute, and then computes the
-        the mean intensity, local gradient, and other associated quantities.
+        Update this Sample instance. It calls `extract` to get the
+        values that match the current Geometry attribute, and then
+        computes the the mean intensity, local gradient, and other
+        associated quantities.
         """
+
         step = self.geometry.astep
 
         # Update the mean value first, using extraction from main sample.
@@ -285,16 +303,17 @@ class Sample(object):
         # estimate is available, guess it.
         previous_gradient = self.gradient
         if not previous_gradient:
-            previous_gradient = -0.05 # good enough, based on usage
+            previous_gradient = -0.05    # good enough, based on usage
 
         if gradient >= (previous_gradient / 3.):   # gradient is negative!
             gradient, gradient_error = self._get_gradient(2 * step)
 
-        # If still no meaningful gradient can be measured, try with previous
-        # one, slightly shallower. A factor 0.8 is not too far from what is
-        # expected from geometrical sampling steps of 10-20% and a
-        # deVaucouleurs law or an exponential disk (at least at its inner parts,
-        # r <~ 5 req). Gradient error is meaningless in this case.
+        # If still no meaningful gradient can be measured, try with
+        # previous one, slightly shallower. A factor 0.8 is not too far
+        # from what is expected from geometrical sampling steps of 10-20%
+        # and a deVaucouleurs law or an exponential disk (at least at its
+        # inner parts, r <~ 5 req). Gradient error is meaningless in this
+        # case.
         if gradient >= (previous_gradient / 3.):
             gradient = previous_gradient * 0.8
             gradient_error = None
@@ -312,9 +331,9 @@ class Sample(object):
         gradient_sample = Sample(self.image, gradient_sma,
                                  x0=self.geometry.x0, y0=self.geometry.y0,
                                  astep=self.geometry.astep,
-                                 sclip=self.sclip,
-                                 nclip=self.nclip,
-                                 eps=self.geometry.eps, position_angle=self.geometry.pa,
+                                 sclip=self.sclip, nclip=self.nclip,
+                                 eps=self.geometry.eps,
+                                 position_angle=self.geometry.pa,
                                  linear_growth=self.geometry.linear_growth,
                                  integrmode=self.integrmode)
 
@@ -326,7 +345,9 @@ class Sample(object):
         sigma = np.std(s[2])
         sigma_g = np.std(sg[2])
 
-        gradient_error  = np.sqrt(sigma**2 / len(s[2]) + sigma_g**2 / len(sg[2])) / self.geometry.sma / step
+        gradient_error = (np.sqrt(sigma**2 / len(s[2]) +
+                                  sigma_g**2 / len(sg[2])) /
+                          self.geometry.sma / step)
 
         return gradient, gradient_error
 
@@ -339,29 +360,35 @@ class Sample(object):
         1-D numpy arrays
             two arrays with the X and Y coordinates, respectively
         """
+
         angles = self.values[0]
         radii = self.values[1]
         x = np.zeros(len(angles))
         y = np.zeros(len(angles))
 
         for i in range(len(x)):
-            x[i] = radii[i] * np.cos(angles[i] + self.geometry.pa) + self.geometry.x0
-            y[i] = radii[i] * np.sin(angles[i] + self.geometry.pa) + self.geometry.y0
+            x[i] = (radii[i] * np.cos(angles[i] + self.geometry.pa) +
+                    self.geometry.x0)
+
+            y[i] = (radii[i] * np.sin(angles[i] + self.geometry.pa) +
+                    self.geometry.y0)
 
         return x, y
 
 
 class CentralSample(Sample):
     """
-    Derived Sample class, designed specifically to handle the
-    case of the central pixel in the galaxy image.
+    Derived Sample class, designed specifically to handle the case of
+    the central pixel in the galaxy image.
     """
+
     def update(self):
         """
-        Overrides base class so as to update this Sample instance
-        with the intensity integrated at the x0,y0 position using
-        bi-linear integration. The local gradient is set to None.
+        Overrides base class so as to update this Sample instance with
+        the intensity integrated at the x0,y0 position using bi-linear
+        integration. The local gradient is set to None.
         """
+
         s = self.extract()
         self.mean = s[2][0]
 
@@ -374,10 +401,12 @@ class CentralSample(Sample):
         radii = []
         intensities = []
 
-        integrator = integrators[BI_LINEAR](self.image, self.geometry, angles, radii, intensities)
+        integrator = integrators[BI_LINEAR](self.image, self.geometry,
+                                            angles, radii, intensities)
         integrator.integrate(0.0, 0.0)
 
         self.total_points = 1
         self.actual_points = 1
 
-        return np.array([np.array(angles), np.array(radii), np.array(intensities)])
+        return np.array([np.array(angles), np.array(radii),
+                         np.array(intensities)])

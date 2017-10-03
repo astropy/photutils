@@ -1,15 +1,19 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import math
-
 import numpy as np
 
 from .geometry import normalize_angle
-from .harmonics import fit_1st_and_2nd_harmonics, first_and_2nd_harmonic_function
-from .sample import Sample
+from .harmonics import (fit_1st_and_2nd_harmonics,
+                        first_and_2nd_harmonic_function)
 from .isophote import Isophote, CentralPixel
+from .sample import Sample
+
 
 __all__ = ['Fitter']
+
 
 PI2 = np.pi / 2
 MAX_EPS = 0.95
@@ -33,22 +37,18 @@ class Fitter(object):
     sample : instance of Sample
         the sample to be fitted
     """
+
     def __init__(self, sample):
         self._sample = sample
 
-    def fit(self,
-            conver        = DEFAULT_CONVERGENCY,
-            minit         = DEFAULT_MINIT,
-            maxit         = DEFAULT_MAXIT,
-            fflag         = DEFAULT_FFLAG,
-            maxgerr       = DEFAULT_MAXGERR,
-            going_inwards = False):
+    def fit(self, conver=DEFAULT_CONVERGENCY, minit=DEFAULT_MINIT,
+            maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG, maxgerr=DEFAULT_MAXGERR,
+            going_inwards=False):
         """
         Perform the actual fit, returning an Isophote instance:
 
             fitter = Fitter(sample)
             isophote = fitter.fit()
-
 
         Parameters
         ----------
@@ -113,6 +113,7 @@ class Fitter(object):
             isophote with the fitted sample plus additional fit status
             information
         """
+
         sample = self._sample
 
         # this flag signals that limiting gradient error (`maxgerr`)
@@ -128,7 +129,6 @@ class Fitter(object):
         minimum_amplitude_sample = None
 
         for iter in range(maxit):
-
             # Force the sample to compute its gradient and associated values.
             sample.update()
 
@@ -164,7 +164,8 @@ class Fitter(object):
             model = first_and_2nd_harmonic_function(values[0], coeffs)
             residual = values[2] - model
 
-            if (conver * sample.sector_area * np.std(residual)) > np.abs(largest_harmonic):
+            if ((conver * sample.sector_area * np.std(residual))
+                    > np.abs(largest_harmonic)):
                 # Got a valid solution. But before returning, ensure
                 # that a minimum of iterations has run.
                 if iter >= minit-1:
@@ -177,24 +178,27 @@ class Fitter(object):
                 # when too many data points were flagged, return the
                 # best fit sample instead of the current one.
                 minimum_amplitude_sample.update()
-                return Isophote(minimum_amplitude_sample, iter+1, True, TOO_MANY_FLAGGED)
+                return Isophote(minimum_amplitude_sample, iter+1, True,
+                                TOO_MANY_FLAGGED)
 
             # pick appropriate corrector code.
             corrector = _correctors[largest_harmonic_index]
 
-            # generate *NEW* Sample instance with corrected parameter. Note that
-            # this instance is still devoid of other information besides its geometry.
-            # It needs to be explicitly updated for computations to proceed.
-            # We have to build a new Sample instance every time because of the lazy
-            # extraction process used by Sample code. To minimize the number of
-            # calls to the area integrators, we pay a (hopefully smaller) price here,
+            # generate *NEW* Sample instance with corrected parameter.
+            # Note that this instance is still devoid of other information
+            # besides its geometry.  It needs to be explicitly updated for
+            # computations to proceed.  We have to build a new Sample
+            # instance every time because of the lazy extraction process
+            # used by Sample code. To minimize the number of calls to the
+            # area integrators, we pay a (hopefully smaller) price here,
             # by having multiple calls to the Sample constructor.
             sample = corrector.correct(sample, largest_harmonic)
             sample.update()
 
             # see if any abnormal (or unusual) conditions warrant
             # the change to non-iterative mode, or go inwards mode.
-            good_to_go, lexceed = self._is_good_to_go(sample, maxgerr, going_inwards, lexceed)
+            good_to_go, lexceed = self._is_good_to_go(sample, maxgerr,
+                                                      going_inwards, lexceed)
             if not good_to_go:
                 sample.update()
                 return Isophote(sample, iter+1, True, -1)
@@ -219,7 +223,9 @@ class Fitter(object):
 
         # check if an acceptable gradient value could be computed.
         if sample.gradient_error:
-            if not going_inwards and (sample.gradient_relative_error > maxgerr or sample.gradient >= 0.):
+            if (not going_inwards and
+                (sample.gradient_relative_error > maxgerr or
+                 sample.gradient >= 0.)):
                 if lexceed:
                     good_to_go = False
                 else:
@@ -230,8 +236,10 @@ class Fitter(object):
         # check if ellipse geometry diverged.
         if abs(sample.geometry.eps > MAX_EPS):
             good_to_go = False
-        if sample.geometry.x0 < 1. or sample.geometry.x0 > sample.image.shape[0] or \
-           sample.geometry.y0 < 1. or sample.geometry.y0 > sample.image.shape[1]:
+        if (sample.geometry.x0 < 1. or
+                sample.geometry.x0 > sample.image.shape[0] or
+                sample.geometry.y0 < 1. or
+                sample.geometry.y0 > sample.image.shape[1]):
             good_to_go = False
 
         # See if eps == 0 (round isophote) was crossed.
@@ -263,25 +271,21 @@ class _PositionCorrector(_ParameterCorrector):
         new_x0 = sample.geometry.x0 + dx
         new_y0 = sample.geometry.y0 + dy
 
-        return Sample(sample.image, sample.geometry.sma,
-                      x0=new_x0,
-                      y0=new_y0,
-                      astep=sample.geometry.astep,
-                      sclip=sample.sclip,
-                      nclip=sample.nclip,
-                      eps=sample.geometry.eps,
+        return Sample(sample.image, sample.geometry.sma, x0=new_x0, y0=new_y0,
+                      astep=sample.geometry.astep, sclip=sample.sclip,
+                      nclip=sample.nclip, eps=sample.geometry.eps,
                       position_angle=sample.geometry.pa,
                       linear_growth=sample.geometry.linear_growth,
                       integrmode=sample.integrmode)
 
+
 class _PositionCorrector_0(_PositionCorrector):
 
     def correct(self, sample, harmonic):
-
         aux = -harmonic * (1. - sample.geometry.eps) / sample.gradient
 
         dx = -aux * math.sin(sample.geometry.pa)
-        dy =  aux * math.cos(sample.geometry.pa)
+        dy = aux * math.cos(sample.geometry.pa)
 
         return self.finalize_correction(dx, dy, sample)
 
@@ -289,7 +293,6 @@ class _PositionCorrector_0(_PositionCorrector):
 class _PositionCorrector_1(_PositionCorrector):
 
     def correct(self, sample, harmonic):
-
         aux = -harmonic / sample.gradient
 
         dx = aux * math.cos(sample.geometry.pa)
@@ -301,31 +304,27 @@ class _PositionCorrector_1(_PositionCorrector):
 class _AngleCorrector(_ParameterCorrector):
 
     def correct(self, sample, harmonic):
-
         eps = sample.geometry.eps
         sma = sample.geometry.sma
         gradient = sample.gradient
 
-        correction = harmonic * 2. * (1. - eps) /  sma / gradient / ((1. - eps)**2 - 1.)
+        correction = (harmonic * 2. * (1. - eps) / sma / gradient /
+                      ((1. - eps)**2 - 1.))
 
         new_pa = normalize_angle(sample.geometry.pa + correction)
 
         return Sample(sample.image, sample.geometry.sma,
-                      x0 = sample.geometry.x0,
-                      y0 = sample.geometry.y0,
-                      astep = sample.geometry.astep,
-                      sclip=sample.sclip,
-                      nclip=sample.nclip,
-                      eps = sample.geometry.eps,
-                      position_angle = new_pa,
-                      linear_growth = sample.geometry.linear_growth,
-                      integrmode = sample.integrmode)
+                      x0=sample.geometry.x0, y0=sample.geometry.y0,
+                      astep=sample.geometry.astep, sclip=sample.sclip,
+                      nclip=sample.nclip, eps=sample.geometry.eps,
+                      position_angle=new_pa,
+                      linear_growth=sample.geometry.linear_growth,
+                      integrmode=sample.integrmode)
 
 
 class _EllipticityCorrector(_ParameterCorrector):
 
     def correct(self, sample, harmonic):
-
         eps = sample.geometry.eps
         sma = sample.geometry.sma
         gradient = sample.gradient
@@ -335,24 +334,17 @@ class _EllipticityCorrector(_ParameterCorrector):
         new_eps = min((sample.geometry.eps - correction), MAX_EPS)
 
         return Sample(sample.image, sample.geometry.sma,
-                      x0 = sample.geometry.x0,
-                      y0 = sample.geometry.y0,
-                      astep = sample.geometry.astep,
-                      sclip=sample.sclip,
-                      nclip=sample.nclip,
-                      eps = new_eps,
-                      position_angle = sample.geometry.pa,
-                      linear_growth = sample.geometry.linear_growth,
-                      integrmode = sample.integrmode)
+                      x0=sample.geometry.x0, y0=sample.geometry.y0,
+                      astep=sample.geometry.astep, sclip=sample.sclip,
+                      nclip=sample.nclip, eps=new_eps,
+                      position_angle=sample.geometry.pa,
+                      linear_growth=sample.geometry.linear_growth,
+                      integrmode=sample.integrmode)
 
 
 # instances of corrector code live here:
-
-_correctors = [_PositionCorrector_0(),
-               _PositionCorrector_1(),
-               _AngleCorrector(),
-               _EllipticityCorrector()
-]
+_correctors = [_PositionCorrector_0(), _PositionCorrector_1(),
+               _AngleCorrector(), _EllipticityCorrector()]
 
 
 class CentralFitter(Fitter):
@@ -360,11 +352,9 @@ class CentralFitter(Fitter):
     Derived Fitter class, designed specifically to handle the
     case of the central pixel in the galaxy image.
     """
-    def fit(self, conver=DEFAULT_CONVERGENCY,
-            minit=DEFAULT_MINIT,
-            maxit=DEFAULT_MAXIT,
-            fflag=DEFAULT_FFLAG,
-            maxgerr=DEFAULT_MAXGERR,
+
+    def fit(self, conver=DEFAULT_CONVERGENCY, minit=DEFAULT_MINIT,
+            maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG, maxgerr=DEFAULT_MAXGERR,
             going_inwards=False):
         """
         Overrides the base class to perform just a simple 1-pixel
@@ -381,8 +371,6 @@ class CentralFitter(Fitter):
             position. Thus, most of its attributes are hardcoded to
             None, or other default value when appropriate.
         """
+
         self._sample.update()
         return CentralPixel(self._sample)
-
-
-

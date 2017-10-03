@@ -1,9 +1,13 @@
-from __future__ import division
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import math
 import numpy.ma as ma
 
-__all__ = ['integrators','NEAREST_NEIGHBOR','BI_LINEAR','MEAN','MEDIAN']
+
+__all__ = ['integrators', 'NEAREST_NEIGHBOR', 'BI_LINEAR', 'MEAN', 'MEDIAN']
+
 
 # integration modes
 NEAREST_NEIGHBOR = 'nearest_neighbor'
@@ -27,8 +31,10 @@ class _Integrator(object):
     radii : list
         output list; contains the radius values along the elliptical path
     intensities : list
-        output list; contains the extracted intensity values along the elliptical path
+        output list; contains the extracted intensity values along the
+        elliptical path
     """
+
     def __init__(self, image, geometry, angles, radii, intensities):
         self._image = image
         self._geometry = geometry
@@ -38,7 +44,6 @@ class _Integrator(object):
         self._intensities = intensities
 
         # for bounds checking
-
         self._i_range = range(0, self._image.shape[0] - 1)
         self._j_range = range(0, self._image.shape[1] - 1)
 
@@ -57,6 +62,7 @@ class _Integrator(object):
         phi : float
             polar angle of radius vector
         """
+
         raise NotImplementedError
 
     def _reset(self):
@@ -66,6 +72,7 @@ class _Integrator(object):
         This method is for internal use and shouldn't
         be used by external callers.
         """
+
         self._angles = []
         self._radii = []
         self._intensities = []
@@ -88,6 +95,7 @@ class _Integrator(object):
         float
            the polar angle step
         """
+
         raise NotImplementedError
 
     def get_sector_area(self):
@@ -105,6 +113,7 @@ class _Integrator(object):
         float
            the sector area
         """
+
         raise NotImplementedError
 
     def is_area(self):
@@ -125,22 +134,23 @@ class _Integrator(object):
         boolean
            True if this is an area integrator, False otherwise
         """
+
         raise NotImplementedError
 
 
 class _NearestNeighborIntegrator(_Integrator):
 
     def integrate(self, radius, phi):
-
         self._r = radius
 
         # Get image coordinates of (radius, phi) pixel
-        i = int(radius * math.cos(phi + self._geometry.pa) + self._geometry.x0)
-        j = int(radius * math.sin(phi + self._geometry.pa) + self._geometry.y0)
+        i = int(radius * math.cos(phi + self._geometry.pa) +
+                self._geometry.x0)
+        j = int(radius * math.sin(phi + self._geometry.pa) +
+                self._geometry.y0)
 
         # ignore data point if outside image boundaries
         if (i in self._i_range) and (j in self._j_range):
-
             sample = self._image[j][i]
 
             if sample is not ma.masked:
@@ -159,7 +169,6 @@ class _NearestNeighborIntegrator(_Integrator):
 class _BiLinearIntegrator(_Integrator):
 
     def integrate(self, radius, phi):
-
         self._r = radius
 
         # Get image coordinates of (radius, phi) pixel
@@ -172,20 +181,19 @@ class _BiLinearIntegrator(_Integrator):
 
         # ignore data point if outside image boundaries
         if (i in self._i_range) and (j in self._j_range):
-
             # in the future, will need to handle masked pixels here
             qx = 1. - fx
             qy = 1. - fy
 
-            if self._image[j][i]     is not ma.masked and \
-               self._image[j+1][i]   is not ma.masked and \
-               self._image[j][i+1]   is not ma.masked and \
-               self._image[j+1][i+1] is not ma.masked:
+            if (self._image[j][i] is not ma.masked and
+                    self._image[j+1][i] is not ma.masked and
+                    self._image[j][i+1] is not ma.masked and
+                    self._image[j+1][i+1] is not ma.masked):
 
-                sample = self._image[j][i]     * qx * qy + \
-                         self._image[j+1][i]   * qx * fy + \
-                         self._image[j][i+1]   * fx * qy + \
-                         self._image[j+1][i+1] * fy * fx
+                sample = (self._image[j][i] * qx * qy +
+                          self._image[j + 1][i] * qx * fy +
+                          self._image[j][i + 1] * fx * qy +
+                          self._image[j + 1][i + 1] * fy * fx)
 
                 self._store_results(phi, radius, sample)
 
@@ -202,15 +210,16 @@ class _BiLinearIntegrator(_Integrator):
 class _AreaIntegrator(_Integrator):
 
     def __init__(self, image, geometry, angles, radii, intensities):
-
-        super(_AreaIntegrator, self).__init__(image, geometry, angles, radii, intensities)
+        super(_AreaIntegrator, self).__init__(image, geometry, angles, radii,
+                                              intensities)
 
         # build auxiliary bi-linear integrator to be used when
         # sector areas contain a too small number of valid pixels.
-        self._bi_linear_integrator = integrators[BI_LINEAR](image, geometry, angles, radii, intensities)
+        self._bi_linear_integrator = integrators[BI_LINEAR](image, geometry,
+                                                            angles, radii,
+                                                            intensities)
 
     def integrate(self, radius, phi):
-
         self._phi = phi
 
         # Get image coordinates of the four vertices of the elliptical sector.
@@ -241,7 +250,7 @@ class _AreaIntegrator(_Integrator):
             # Scan rectangular image area, compute sample value.
             npix = 0
             accumulator = self.initialize_accumulator()
-            for j in range(j1,j2):
+            for j in range(j1, j2):
                 for i in range(i1, i2):
                     # Check if polar coordinates of each pixel
                     # put it inside elliptical sector.
@@ -252,8 +261,11 @@ class _AreaIntegrator(_Integrator):
 
                         # check if radius is inside bounding ellipses
                         sma1, sma2 = self._geometry.bounding_ellipses()
-                        aux = (1. - self._geometry.eps) / math.sqrt(((1. - self._geometry.eps) *
-                              math.cos(phip))**2 + (math.sin(phip))**2)
+                        aux = ((1. - self._geometry.eps) /
+                               math.sqrt(((1. - self._geometry.eps) *
+                                          math.cos(phip))**2 +
+                                         (math.sin(phip))**2))
+
                         r1 = sma1 * aux
                         r2 = sma2 * aux
 
@@ -261,10 +273,12 @@ class _AreaIntegrator(_Integrator):
                             # update accumulator with pixel value
                             pix_value = self._image[j][i]
                             if pix_value is not ma.masked:
-                                accumulator, npix = self.accumulate(pix_value, accumulator)
+                                accumulator, npix = self.accumulate(
+                                    pix_value, accumulator)
 
-            # If 6 or less pixels were sampled, get the bi-linear interpolated value instead.
-            if npix in range (0,7):
+            # If 6 or less pixels were sampled, get the bi-linear
+            # interpolated value instead.
+            if npix in range(0, 7):
                 # must reset integrator to remove older samples.
                 self._bi_linear_integrator._reset()
                 self._bi_linear_integrator.integrate(radius, phi)
@@ -334,11 +348,9 @@ class _MedianIntegrator(_AreaIntegrator):
 
 
 # Specific integrator subclasses can be instantiated from here.
-
 integrators = {
     NEAREST_NEIGHBOR: _NearestNeighborIntegrator,
     BI_LINEAR: _BiLinearIntegrator,
     MEAN: _MeanIntegrator,
     MEDIAN: _MedianIntegrator
 }
-

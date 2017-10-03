@@ -1,52 +1,57 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import numpy as np
-from numpy import ma as ma
+
 
 __all__ = ['Centerer']
+
 
 DEFAULT_THRESHOLD = 0.1
 WINDOW_HALF_SIZE = 5
 
-_in_mask = [
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1],
-    [1,1,1,1,1,0,0,0,0,0,0,1,1,1,1,1],
-    [1,1,1,1,1,0,0,0,0,0,0,1,1,1,1,1],
-    [1,1,1,1,1,0,0,0,0,0,0,1,1,1,1,1],
-    [1,1,1,1,1,0,0,0,0,0,0,1,1,1,1,1],
-    [1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-]
-_out_mask = [
-    [1,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1],
-    [1,1,1,0,1,1,1,1,1,1,1,1,0,1,1,1],
-    [1,1,0,1,1,1,1,1,1,1,1,1,1,0,1,1],
-    [1,0,1,1,1,1,1,1,1,1,1,1,1,1,0,1],
-    [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
-    [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
-    [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
-    [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
-    [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
-    [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
-    [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
-    [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
-    [1,0,1,1,1,1,1,1,1,1,1,1,1,1,0,1],
-    [1,1,0,1,1,1,1,1,1,1,1,1,1,0,1,1],
-    [1,1,1,0,1,1,1,1,1,1,1,1,0,1,1,1],
-    [1,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1],
+IN_MASK = [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 ]
 
+OUT_MASK = [
+    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1],
+    [1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1],
+    [1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1],
+    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+    [1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1],
+    [1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1],
+    [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1],
+]
+
+
 class Centerer(object):
-    '''
+    """
     Object centerer.
 
     The fit algorithm has no way of finding where, in the input image frame,
@@ -85,7 +90,8 @@ class Centerer(object):
     ----------
     threshold : float
         the threshold
-    '''
+    """
+
     def __init__(self, image, geometry, verbose=True):
         self._image = image
         self._geometry = geometry
@@ -93,12 +99,14 @@ class Centerer(object):
 
         self.threshold = DEFAULT_THRESHOLD
 
-        self._mask_half_size = len(_in_mask) / 2
+        self._mask_half_size = len(IN_MASK) / 2
 
         # number of pixels in each mask
-        sz = len(_in_mask)
-        self._ones_in  = ma.masked_array(np.ones(shape=(sz,sz)), mask=_in_mask)
-        self._ones_out = ma.masked_array(np.ones(shape=(sz,sz)), mask=_out_mask)
+        sz = len(IN_MASK)
+        self._ones_in = np.ma.masked_array(np.ones(shape=(sz, sz)),
+                                           mask=IN_MASK)
+        self._ones_out = np.ma.masked_array(np.ones(shape=(sz, sz)),
+                                            mask=OUT_MASK)
 
         self._in_mask_npix = np.sum(self._ones_in)
         self._out_mask_npix = np.sum(self._ones_out)
@@ -114,15 +122,16 @@ class Centerer(object):
             object centerer threshold. To turn off the centerer, set this
             to a large value >> 1.
         """
+
         if self._verbose:
             print("Centering on object....   ", end="")
 
         # Check if center coordinates point to somewhere inside the frame.
         # If not, set then to frame center.
-        _x0 =  self._geometry.x0
-        _y0 =  self._geometry.y0
-        if _x0 is None or _x0 < 0 or _x0 >= self._image.shape[0] or \
-           _y0 is None or _y0 < 0 or _y0 >= self._image.shape[1]:
+        _x0 = self._geometry.x0
+        _y0 = self._geometry.y0
+        if (_x0 is None or _x0 < 0 or _x0 >= self._image.shape[0] or
+                _y0 is None or _y0 < 0 or _y0 >= self._image.shape[1]):
             _x0 = self._image.shape[0] / 2
             _y0 = self._image.shape[1] / 2
 
@@ -131,20 +140,24 @@ class Centerer(object):
         max_j = 0
 
         # scan all positions inside window
-        for i in range(int(_x0 - WINDOW_HALF_SIZE), int(_x0 + WINDOW_HALF_SIZE) + 1):
-            for j in range(int(_y0 - WINDOW_HALF_SIZE), int(_y0 + WINDOW_HALF_SIZE) + 1):
+        for i in range(int(_x0 - WINDOW_HALF_SIZE),
+                       int(_x0 + WINDOW_HALF_SIZE) + 1):
+            for j in range(int(_y0 - WINDOW_HALF_SIZE),
+                           int(_y0 + WINDOW_HALF_SIZE) + 1):
 
                 # ensure that it stays inside image frame
                 i1 = int(max(0, i - self._mask_half_size))
                 j1 = int(max(0, j - self._mask_half_size))
-                i2 = int(min(self._image.shape[0]-1, i + self._mask_half_size))
-                j2 = int(min(self._image.shape[1]-1, j + self._mask_half_size))
+                i2 = int(min(self._image.shape[0] - 1,
+                             i + self._mask_half_size))
+                j2 = int(min(self._image.shape[1] - 1,
+                             j + self._mask_half_size))
 
-                window = self._image[j1:j2,i1:i2]
+                window = self._image[j1:j2, i1:i2]
 
                 # averages in inner and outer regions.
-                inner = ma.masked_array(window, mask=_in_mask)
-                outer = ma.masked_array(window, mask=_out_mask)
+                inner = np.ma.masked_array(window, mask=IN_MASK)
+                outer = np.ma.masked_array(window, mask=OUT_MASK)
                 inner_avg = np.sum(inner) / self._in_mask_npix
                 outer_avg = np.sum(outer) / self._out_mask_npix
 
@@ -166,9 +179,8 @@ class Centerer(object):
             self._geometry.y0 = float(max_j)
 
             if self._verbose:
-                print("Done. Found x0 =%6.1f, y0 =%6.1f" % (self._geometry.x0, self._geometry.y0))
+                print("Done. Found x0 ={0:6.1f}, y0 ={1:6.1f}"
+                      .format(self._geometry.x0, self._geometry.y0))
         else:
             if self._verbose:
                 print("Done. Below threshold. Keeping original coordinates.")
-
-

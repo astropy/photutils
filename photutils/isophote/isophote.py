@@ -1,21 +1,27 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import numpy as np
-import numpy.ma as ma
 
-from .harmonics import fit_1st_and_2nd_harmonics, first_and_2nd_harmonic_function, fit_upper_harmonic
+from .harmonics import (fit_1st_and_2nd_harmonics,
+                        first_and_2nd_harmonic_function, fit_upper_harmonic)
 
-__all__ = ['Isophote','IsophoteList']
+
+__all__ = ['Isophote', 'IsophoteList']
 
 
 def print_header():
-    '''
-    Helper function that prints at stdout a table header to tell the user what are
-    the columns printed by the iterating algorithm.
-    '''
+    """
+    Helper function that prints at stdout a table header to tell the
+    user what are the columns printed by the iterating algorithm.
+    """
+
     print('#')
-    print('# Semi-      Isophote         Ellipticity    Position     Grad.   Data  Flag Iter. Stop')
-    print('# major        mean                           Angle        rel.                    code')
+    print('# Semi-      Isophote         Ellipticity    Position     Grad.'
+          '   Data  Flag Iter. Stop')
+    print('# major        mean                           Angle        rel.'
+          '                    code')
     print('# axis       intensity                                    error')
     print('#(pixel)                                     (degree)')
     print('#')
@@ -23,12 +29,14 @@ def print_header():
 
 class Isophote(object):
     """
-    This class is basically a container that holds the results of a single isophote fit.
-    The actual extracted sample at the given isophote (sampled intensities along the
-    elliptical path on the image) is kept as an attribute of this class. The container
-    concept helps in segregating information directly related to the sample, from
-    information that more closely relates to the fitting process, such as status codes,
-    errors for isophote parameters (as defined by the old STSDAS code), and the like.
+    This class is basically a container that holds the results of a
+    single isophote fit.  The actual extracted sample at the given
+    isophote (sampled intensities along the elliptical path on the
+    image) is kept as an attribute of this class. The container concept
+    helps in segregating information directly related to the sample,
+    from information that more closely relates to the fitting process,
+    such as status codes, errors for isophote parameters (as defined by
+    the old STSDAS code), and the like.
 
     Parameters
     ----------
@@ -41,7 +49,8 @@ class Isophote(object):
     stop_code : int
         stop code
             0. normal.
-            1. less than pre-specified fraction of the extracted data points are valid.
+            1. less than pre-specified fraction of the extracted data
+               points are valid.
             2. exceeded maximum number of iterations.
             3. singular matrix in harmonic fit, results may not be valid.
                Also signals insufficient number of data points to fit.
@@ -51,9 +60,10 @@ class Isophote(object):
                user turns off the fitting algorithm via the `maxrit`
                fitting parameter (see Ellipse class).
             5. ellipse diverged; not even the minimum number of iterations
-               could be executed. Subsequent ellipses at larger or smaller
-               semi-major axis may have the same constant geometric parameters.
-            -1. internal use.
+               could be executed. Subsequent ellipses at larger or
+               smaller semi-major axis may have the same constant
+               geometric parameters.
+           -1. internal use.
 
     Attributes
     ----------
@@ -82,7 +92,8 @@ class Isophote(object):
     y0_err : float
         error of center coordinate Y
     pix_stddev : float
-        estimate of pixel standard deviation (rms * sqrt(average sector integration area))
+        estimate of pixel standard deviation (rms * sqrt(average sector
+        integration area))
     grad : float
         local radial intensity gradient
     grad_error : float
@@ -102,17 +113,19 @@ class Isophote(object):
     ndata : int
         number of actual (extracted) data points
     nflag : int
-        number of discarded data points. Data points can be discarded either
-        because they are physically outside the image frame boundaries,
-        because they were rejected by sigma-clipping, or they are masked.
-    a3, b3, a4, b4 : float
-        higher order harmonics that measure the deviations from a perfect ellipse.
-        These values ar actually the raw harmonic amplitude divided by the local
-        radial gradient and the semi-major axis length, so they can directly be
-        compared with each other.
+        number of discarded data points. Data points can be discarded
+        either because they are physically outside the image frame
+        boundaries, because they were rejected by sigma-clipping, or
+        they are masked.
+    a3, b3, a4, b4 : float higher order harmonics that measure the
+        deviations from a perfect ellipse.  These values ar actually the
+        raw harmonic amplitude divided by the local radial gradient and
+        the semi-major axis length, so they can directly be compared
+        with each other.
     a3_err, b3_err, a4_err, b4_err : float
         errors of the a3, b3, a4, b4 attributes
     """
+
     def __init__(self, sample, niter, valid, stop_code):
         self.sample = sample
         self.niter = niter
@@ -132,13 +145,16 @@ class Isophote(object):
         self.nflag = sample.total_points - sample.actual_points
 
         # flux contained inside ellipse and circle
-        self.tflux_e, self.tflux_c, self.npix_e, self.npix_c = self._compute_fluxes()
+        (self.tflux_e, self.tflux_c, self.npix_e,
+         self.npix_c) = self._compute_fluxes()
 
         self._compute_errors()
 
         # deviations from a perfect ellipse
-        self.a3, self.b3, self.a3_err, self.b3_err = self._compute_deviations(sample, 3)
-        self.a4, self.b4, self.a4_err, self.b4_err = self._compute_deviations(sample, 4)
+        (self.a3, self.b3, self.a3_err,
+         self.b3_err) = self._compute_deviations(sample, 3)
+        (self.a4, self.b4, self.a4_err,
+         self.b4_err) = self._compute_deviations(sample, 4)
 
     @property
     def eps(self):
@@ -183,7 +199,6 @@ class Isophote(object):
         npix_c = 0
         for j in range(jmin, jmax):
             for i in range(imin, imax):
-
                 # radius of the circle and ellipse associated
                 # with the given pixel.
                 radius, angle = self.sample.geometry.to_polar(i, j)
@@ -192,14 +207,14 @@ class Isophote(object):
                 # pixel is inside circle with diameter given by sma
                 if radius <= sma:
                     value = self.sample.image[j][i]
-                    if value is not ma.masked:
+                    if value is not np.ma.masked:
                         tflux_c += value
                         npix_c += 1
 
                 # pixel is inside ellipse
                 if radius <= radius_e:
                     value = self.sample.image[j][i]
-                    if value is not ma.masked:
+                    if value is not np.ma.masked:
                         tflux_e += value
                         npix_e += 1
 
@@ -210,9 +225,11 @@ class Isophote(object):
         # amplitudes and errors for harmonic `n`. Note that we first
         # subtract the 1st and 2nd harmonics from the raw data.
         try:
-            coeffs = fit_1st_and_2nd_harmonics(self.sample.values[0], self.sample.values[2])
+            coeffs = fit_1st_and_2nd_harmonics(self.sample.values[0],
+                                               self.sample.values[2])
             coeffs = coeffs[0]
-            model = first_and_2nd_harmonic_function(self.sample.values[0], coeffs)
+            model = first_and_2nd_harmonic_function(self.sample.values[0],
+                                                    coeffs)
             residual = self.sample.values[2] - model
 
             c = fit_upper_harmonic(residual, sample.values[2], n)
@@ -220,8 +237,8 @@ class Isophote(object):
             ce = np.diagonal(covariance)
             c = c[0]
 
-            a = c[1] / self.sma /sample.gradient
-            b = c[2] / self.sma /sample.gradient
+            a = c[1] / self.sma / sample.gradient
+            b = c[2] / self.sma / sample.gradient
 
             # this comes from the old code. Likely it was based on
             # empirical experience with the STSDAS task, so we leave
@@ -231,7 +248,7 @@ class Isophote(object):
             a_err = abs(a) * np.sqrt((ce[1] / c[1])**2 + gre**2)
             b_err = abs(b) * np.sqrt((ce[2] / c[2])**2 + gre**2)
 
-        except Exception as e: # we want to catch everything
+        except Exception as e:    # we want to catch everything
             a = b = a_err = b_err = None
 
         return a, b, a_err, b_err
@@ -241,29 +258,34 @@ class Isophote(object):
         # covariance matrix of the four harmonic coefficients for
         # harmonics n=1 and n=2.
         try:
-            coeffs = fit_1st_and_2nd_harmonics(self.sample.values[0], self.sample.values[2])
+            coeffs = fit_1st_and_2nd_harmonics(self.sample.values[0],
+                                               self.sample.values[2])
             covariance = coeffs[1]
             coeffs = coeffs[0]
-            model = first_and_2nd_harmonic_function(self.sample.values[0], coeffs)
+            model = first_and_2nd_harmonic_function(self.sample.values[0],
+                                                    coeffs)
             residual_rms = np.std(self.sample.values[2] - model)
             errors = np.diagonal(covariance) * residual_rms
 
             eps = self.sample.geometry.eps
             pa = self.sample.geometry.pa
 
-            # parameter errors result from direct projection of coefficient errors.
-            # These showed to be the error estimators that best convey the errors
-            # measured in Monte Carlo experiments (see reference in ellipse help page).
+            # parameter errors result from direct projection of
+            # coefficient errors.  These showed to be the error estimators
+            # that best convey the errors measured in Monte Carlo
+            # experiments (see reference in ellipse help page).
             ea = abs(errors[2] / self.grad)
             eb = abs(errors[1] * (1. - eps) / self.grad)
             self.x0_err = np.sqrt((ea * np.cos(pa))**2 + (eb * np.sin(pa))**2)
             self.y0_err = np.sqrt((ea * np.sin(pa))**2 + (eb * np.cos(pa))**2)
-            self.ellip_err = abs (2. * errors[4] * (1. - eps) / self.sma / self.grad)
-            if (abs (eps) > np.finfo(float).resolution):
-                self.pa_err = abs(2. * errors[3] * (1. - eps) / self.sma / self.grad / (1. - (1. - eps)**2))
-            else :
+            self.ellip_err = (abs(2. * errors[4] * (1. - eps) / self.sma /
+                                  self.grad))
+            if (abs(eps) > np.finfo(float).resolution):
+                self.pa_err = (abs(2. * errors[3] * (1. - eps) / self.sma /
+                                   self.grad / (1. - (1. - eps)**2)))
+            else:
                 self.pa_err = 0.
-        except Exception as e: # we want to catch everything
+        except Exception as e:    # we want to catch everything
             self.x0_err = self.y0_err = self.pa_err = self.ellip_err = 0.
 
     def __repr__(self):
@@ -271,52 +293,47 @@ class Isophote(object):
 
     def __str__(self):
         if self.grad_r_error:
-            s = "%7.2f   %9.2f (%5.2f) % 5.3f (%5.3f) %6.2f (%4.1f)  %5.3f  %4i  %4i %4i  %4i"% (self.sample.geometry.sma,
-                                                   self.intens,
-                                                   self.int_err,
-                                                   self.sample.geometry.eps,
-                                                   self.ellip_err,
-                                                   self.sample.geometry.pa / np.pi * 180.,
-                                                   self.pa_err/ np.pi * 180.,
-                                                   self.grad_r_error,
-                                                   self.ndata,
-                                                   self.nflag,
-                                                   self.niter,
-                                                   self.stop_code)
+            s = ('{0:7.2f}   {1:9.2f} ({2:5.2f}) {3:5.3f} ({4:5.3f}) '
+                 '{5:6.2f} ({6:4.1f})  {7:5.3f}  {8:4d}  {9:4d} {10:4d}'
+                 '  {11:4d}').format(self.sample.geometry.sma, self.intens,
+                                     self.int_err, self.sample.geometry.eps,
+                                     self.ellip_err,
+                                     self.sample.geometry.pa / np.pi * 180.,
+                                     self.pa_err / np.pi * 180.,
+                                     self.grad_r_error, self.ndata,
+                                     self.nflag, self.niter, self.stop_code)
         else:
-            s = "%7.2f   %9.2f (%5.2f) % 5.3f (%5.3f) %6.2f (%4.1f)  None   %4i  %4i %4i  %4i"% (self.sample.geometry.sma,
-                                                   self.intens,
-                                                   self.int_err,
-                                                   self.sample.geometry.eps,
-                                                   self.ellip_err,
-                                                   self.sample.geometry.pa / np.pi * 180.,
-                                                   self.pa_err/ np.pi * 180.,
-                                                   self.ndata,
-                                                   self.nflag,
-                                                   self.niter,
-                                                   self.stop_code)
+            s = ('{0:7.2f}   {1:9.2f} ({2:5.2f}) {3:5.3f} ({4:5.3f}) '
+                 '{5:6.2f} ({6:4.1f})  None   {7:4d}  {8:4d} {9:4d}  {10:4d}'
+                 .format(self.sample.geometry.sma, self.intens, self.int_err,
+                         self.sample.geometry.eps, self.ellip_err,
+                         self.sample.geometry.pa / np.pi * 180.,
+                         self.pa_err / np.pi * 180., self.ndata, self.nflag,
+                         self.niter, self.stop_code))
         return s
 
     def fix_geometry(self, isophote):
         """
-        This method should be called when the fitting goes berserk and delivers
-        an isophote with bad geometry, such as with eps>1 or another meaningless
-        situation. This is not a problem in itself when fitting any given isophote,
-        but will create an error when the affected isophote is used as starting
-        guess for the next fit.
+        This method should be called when the fitting goes berserk and
+        delivers an isophote with bad geometry, such as with eps>1 or
+        another meaningless situation. This is not a problem in itself
+        when fitting any given isophote, but will create an error when
+        the affected isophote is used as starting guess for the next
+        fit.
 
-        The method will set the geometry of the affected isophote to be identical
-        with the geometry of the isophote used as input value.
+        The method will set the geometry of the affected isophote to be
+        identical with the geometry of the isophote used as input value.
 
         Parameters
         ----------
         isophote : instance of Isophote
             the isophote where to take geometry information from
         """
+
         self.sample.geometry.eps = isophote.sample.geometry.eps
-        self.sample.geometry.pa  = isophote.sample.geometry.pa
-        self.sample.geometry.x0  = isophote.sample.geometry.x0
-        self.sample.geometry.y0  = isophote.sample.geometry.y0
+        self.sample.geometry.pa = isophote.sample.geometry.pa
+        self.sample.geometry.x0 = isophote.sample.geometry.x0
+        self.sample.geometry.y0 = isophote.sample.geometry.y0
 
     def sampled_coordinates(self):
         """
@@ -328,6 +345,7 @@ class Isophote(object):
         1-D numpy arrays
             two arrays with the X and Y coordinates, respectively
         """
+
         return self.sample.coordinates()
 
     # These two methods are useful for sorting lists of instances. Note
@@ -357,6 +375,7 @@ class CentralPixel(Isophote):
     sample : instance of Sample
         the sample information
     """
+
     def __init__(self, sample):
         self.sample = sample
         self.niter = 0
@@ -392,37 +411,37 @@ class CentralPixel(Isophote):
     @property
     def eps(self):
         return 0.
+
     @property
     def pa(self):
         return 0.
-    @property
-    def x0(self):
-        return self.sample.geometry.x0
+
     @property
     def x0(self):
         return self.sample.geometry.x0
 
     def __str__(self):
-        s = "   0.00   %9.2f"% (self.intens)
-        return s
+        return '   0.00   {0:9.2f}'.format(self.intens)
 
 
 class IsophoteList(Isophote, list):
     """
-    This class is a convenience container that provides the same attributes
-    that the Isophote class offers, except that scalar attributes are replaced
-    by numpy array attributes. These arrays reflect the values of the given
-    attribute across the entire list of Isophote instances provided at constructor
-    time.
+    This class is a convenience container that provides the same
+    attributes that the Isophote class offers, except that scalar
+    attributes are replaced by numpy array attributes. These arrays
+    reflect the values of the given attribute across the entire list of
+    Isophote instances provided at constructor time.
 
-    The class extends the 'list' built-in, thus providing basic list behavior such
-    as slicing, appending, and support for '+' and '+=' operators.
+    The class extends the 'list' built-in, thus providing basic list
+    behavior such as slicing, appending, and support for '+' and '+='
+    operators.
 
     Parameters
     ----------
     iso_list : list
         a python list with Isophote instances
     """
+
     def __init__(self, iso_list):
         self._list = iso_list
 
@@ -460,7 +479,7 @@ class IsophoteList(Isophote, list):
         return self
 
     def __add__(self, value):
-        temp = self._list.copy() # shallow copy!
+        temp = self._list.copy()    # shallow copy!
         temp.extend(value._list)
         return IsophoteList(temp)
 
@@ -479,6 +498,7 @@ class IsophoteList(Isophote, list):
         Isophote instance
             the instance with the closest sma value
         """
+
         index = (np.abs(self.sma - sma)).argmin()
         return self._list[index]
 
@@ -498,104 +518,135 @@ class IsophoteList(Isophote, list):
     @property
     def sma(self):
         return self._collect_as_array('sma')
+
     @property
     def intens(self):
         return self._collect_as_array('intens')
+
     @property
     def eps(self):
         return self._collect_as_array('eps')
+
     @property
     def pa(self):
         return self._collect_as_array('pa')
+
     @property
     def x0(self):
         return self._collect_as_array('x0')
+
     @property
     def y0(self):
         return self._collect_as_array('y0')
+
     @property
     def rms(self):
         return self._collect_as_array('rms')
+
     @property
     def int_err(self):
         return self._collect_as_array('int_err')
+
     @property
     def pix_stddev(self):
         return self._collect_as_array('pix_stddev')
+
     @property
     def ellip_err(self):
         return self._collect_as_array('ellip_err')
+
     @property
     def pa_err(self):
         return self._collect_as_array('pa_err')
+
     @property
     def x0_err(self):
         return self._collect_as_array('x0_err')
+
     @property
     def y0_err(self):
         return self._collect_as_array('y0_err')
+
     @property
     def grad(self):
         return self._collect_as_array('grad')
+
     @property
     def grad_error(self):
         return self._collect_as_array('grad_error')
+
     @property
     def grad_r_error(self):
         return self._collect_as_array('grad_r_error')
+
     @property
     def sarea(self):
         return self._collect_as_array('sarea')
+
     @property
     def ndata(self):
         return self._collect_as_array('ndata')
+
     @property
     def nflag(self):
         return self._collect_as_array('nflag')
+
     @property
     def niter(self):
         return self._collect_as_array('niter')
+
     @property
     def valid(self):
         return self._collect_as_array('valid')
+
     @property
     def stop_code(self):
         return self._collect_as_array('stop_code')
+
     @property
     def tflux_e(self):
         return self._collect_as_array('tflux_e')
+
     @property
     def tflux_c(self):
         return self._collect_as_array('tflux_c')
+
     @property
     def npix_e(self):
         return self._collect_as_array('npix_e')
+
     @property
     def npix_c(self):
         return self._collect_as_array('npix_c')
+
     @property
     def a3(self):
         return self._collect_as_array('a3')
+
     @property
     def b3(self):
         return self._collect_as_array('b3')
+
     @property
     def a4(self):
         return self._collect_as_array('a4')
+
     @property
     def b4(self):
         return self._collect_as_array('b4')
+
     @property
     def a3_err(self):
         return self._collect_as_array('a3_err')
+
     @property
     def b3_err(self):
         return self._collect_as_array('b3_err')
+
     @property
     def a4_err(self):
         return self._collect_as_array('a4_err')
+
     @property
     def b4_err(self):
         return self._collect_as_array('b4_err')
-
-

@@ -1,4 +1,6 @@
-from __future__ import (absolute_import, division, print_function, unicode_literals)
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import numpy as np
 
@@ -22,7 +24,8 @@ def first_and_2nd_harmonic_function(phi, c):
     corrections for ellipse fitting. This function includes
     simultaneously both the 1st and 2nd order harmonics.
 
-    function = c[0] + c[1]*sin(phi) + c[2]*cos(phi) + c[3]*sin(2*phi) + c[4]*cos(2*phi)
+    function = c[0] + c[1]*sin(phi) + c[2]*cos(phi) + c[3]*sin(2*phi) +
+               c[4]*cos(2*phi)
 
     Parameters
     ----------
@@ -39,7 +42,9 @@ def first_and_2nd_harmonic_function(phi, c):
     float or np.array
         function value(s) at the given input angle(s)
     """
-    return c[0] + c[1]*np.sin(phi) + c[2]*np.cos(phi) + c[3]*np.sin(2*phi) + c[4]*np.cos(2*phi)
+
+    return (c[0] + c[1]*np.sin(phi) + c[2]*np.cos(phi) + c[3]*np.sin(2*phi) +
+            c[4]*np.cos(2*phi))
 
 
 def fit_1st_and_2nd_harmonics(phi, intensities):
@@ -52,16 +57,20 @@ def fit_1st_and_2nd_harmonics(phi, intensities):
     phi : np.array
         angles defined in the same way as in harmonic_function
     intensities : np.array
-        intensities measured along the elliptical path, at the angles defined in parameter `phi`
+        intensities measured along the elliptical path, at the angles
+        defined in parameter `phi`
 
     Returns
     -------
     5 float values
         fitted values for y0, a1, b1, a2, b2
     """
+
     a1 = b1 = a2 = b2 = 1.
 
-    optimize_func = lambda x: first_and_2nd_harmonic_function(phi, np.array([x[0], x[1], x[2], x[3], x[4]])) - intensities
+    def optimize_func(x):
+        return first_and_2nd_harmonic_function(
+            phi, np.array([x[0], x[1], x[2], x[3], x[4]])) - intensities
 
     return _dofit(optimize_func, [np.mean(intensities), a1, b1, a2, b2])
 
@@ -80,7 +89,8 @@ def fit_upper_harmonic(phi, intensities, order):
     phi : np.array
         angles defined in the same way as in harmonic_function
     intensities : np.array
-        intensities measured along the elliptical path, at the angles defined in parameter `phi`
+        intensities measured along the elliptical path, at the angles
+        defined in parameter `phi`
     order : int
         the order of the harmonic to be fitted.
 
@@ -89,8 +99,11 @@ def fit_upper_harmonic(phi, intensities, order):
     3 float values
         fitted values for y0, an, bn
     """
+
     an = bn = 1.
 
-    optimize_func = lambda x: x[0] + x[1]*np.sin(order*phi) + x[2]*np.cos(order*phi) - intensities
+    def optimize_func(x):
+        return (x[0] + x[1]*np.sin(order*phi) + x[2]*np.cos(order*phi) -
+                intensities)
 
     return _dofit(optimize_func, [np.mean(intensities), an, bn])
