@@ -1282,12 +1282,14 @@ def properties_table(source_props, columns=None, exclude_columns=None):
     >>> props = source_properties(image, segm)
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'source_sum']
     >>> tbl = properties_table(props, columns=columns)
+    >>> tbl['xcentroid'].info.format = '.10f'  # optional format
+    >>> tbl['ycentroid'].info.format = '.10f'  # optional format
     >>> print(tbl)
-     id     xcentroid         ycentroid      source_sum
-               pix               pix
-    --- ----------------- ------------------ ----------
-      1               0.2                0.8        5.0
-      2 2.090909090909091 2.3636363636363633       55.0
+     id  xcentroid    ycentroid   source_sum
+            pix          pix
+    --- ------------ ------------ ----------
+      1 0.2000000000 0.8000000000        5.0
+      2 2.0909090909 2.3636363636       55.0
     """
 
     if isinstance(source_props, list) and len(source_props) == 0:
