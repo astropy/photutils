@@ -9,7 +9,7 @@ import pytest
 
 from astropy.tests.helper import assert_quantity_allclose
 from astropy.modeling import models
-from astropy.table import Table
+from astropy.table import QTable
 import astropy.units as u
 from astropy.utils.misc import isiterable
 import astropy.wcs as WCS
@@ -85,10 +85,12 @@ class TestSourceProperties(object):
         props = SourceProperties(IMAGE, SEGM, label=1)
         t1 = props.to_table()
         t2 = properties_table(props)
-        assert isinstance(t1, Table)
-        assert isinstance(t2, Table)
+        assert isinstance(t1, QTable)
+        assert isinstance(t2, QTable)
         assert len(t1) == 1
-        assert t1 == t2
+        props = ['xcentroid', 'ycentroid', 'source_sum']
+        for prop in props:
+            assert t1[prop] == t2[prop]
 
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
@@ -294,14 +296,14 @@ class TestPropertiesTable(object):
     def test_properties_table(self):
         props = source_properties(IMAGE, SEGM)
         t = properties_table(props)
-        assert isinstance(t, Table)
+        assert isinstance(t, QTable)
         assert len(t) == 1
 
     def test_properties_table_include(self):
         props = source_properties(IMAGE, SEGM)
         columns = ['id', 'xcentroid']
         t = properties_table(props, columns=columns)
-        assert isinstance(t, Table)
+        assert isinstance(t, QTable)
         assert len(t) == 1
         assert t.colnames == columns
 
@@ -315,7 +317,7 @@ class TestPropertiesTable(object):
         props = source_properties(IMAGE, SEGM)
         exclude = ['id', 'xcentroid']
         t = properties_table(props, exclude_columns=exclude)
-        assert isinstance(t, Table)
+        assert isinstance(t, QTable)
         assert len(t) == 1
         with pytest.raises(KeyError):
             t['id']
