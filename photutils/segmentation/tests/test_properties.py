@@ -71,9 +71,7 @@ class TestSourceProperties(object):
                         [scale*np.sin(rho), scale*np.cos(rho)]]
         mywcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
         props = SourceProperties(IMAGE, SEGM, wcs=mywcs, label=1)
-        assert props.icrs_centroid is not None
-        assert props.ra_icrs_centroid is not None
-        assert props.dec_icrs_centroid is not None
+        assert props.sky_icrs_centroid is not None
         assert props.sky_bbox_ll is not None
         assert props.sky_bbox_ul is not None
         assert props.sky_bbox_lr is not None
@@ -81,9 +79,7 @@ class TestSourceProperties(object):
 
     def test_nowcs(self):
         props = SourceProperties(IMAGE, SEGM, wcs=None, label=1)
-        assert props.icrs_centroid is None
-        assert props.ra_icrs_centroid is None
-        assert props.dec_icrs_centroid is None
+        assert props.sky_icrs_centroid is None
 
     def test_to_table(self):
         props = SourceProperties(IMAGE, SEGM, label=1)
@@ -342,8 +338,6 @@ class TestPropertiesTable(object):
         mywcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
 
         props = source_properties(IMAGE, SEGM, wcs=mywcs)
-        columns = ['icrs_centroid', 'ra_icrs_centroid', 'dec_icrs_centroid']
+        columns = ['sky_icrs_centroid']
         t = properties_table(props, columns=columns)
-        assert t[0]['icrs_centroid'] is not None
-        assert t[0]['ra_icrs_centroid'] is not None
-        assert t[0]['dec_icrs_centroid'] is not None
+        assert t[0]['sky_icrs_centroid'] is not None

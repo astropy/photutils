@@ -449,6 +449,17 @@ class SourceProperties(object):
             return None
 
     @lazyproperty
+    @deprecated(0.4, alternative='sky_icrs_centroid')
+    def icrs_centroid(self):
+        """
+        The sky coordinates, in the International Celestial Reference
+        System (ICRS) frame, of the centroid within the source segment,
+        returned as a `~astropy.coordinates.SkyCoord` object.
+        """
+
+        return self.sky_icrs_centroid
+
+    @lazyproperty
     @deprecated(0.4, alternative='sky_icrs_centroid.ra')
     def ra_icrs_centroid(self):
         """
@@ -1309,8 +1320,8 @@ def properties_table(source_props, columns=None, exclude_columns=None):
     # than to create a SkyCoord array from a loop-generated SkyCoord
     # list.  The assumption here is that the wcs is the same for each
     # element of source_props.
-    sky_colnames = ['sky_centroid', 'sky_icrs_centroid', 'ra_icrs_centroid',
-                    'dec_icrs_centroid']
+    sky_colnames = ['sky_centroid', 'sky_icrs_centroid', 'icrs_centroid',
+                    'ra_icrs_centroid', 'dec_icrs_centroid']
     calc_skycoords = any(sky_colname in table_columns
                          for sky_colname in sky_colnames)
 
@@ -1322,11 +1333,13 @@ def properties_table(source_props, columns=None, exclude_columns=None):
             sky_centroid = pixel_to_skycoord(
                 xcentroid, ycentroid, source_props[0]._wcs, origin=0)
             sky_icrs_centroid = sky_centroid.icrs
+            icrs_centroid = sky_icrs_centroid
             ra_icrs_centroid = sky_icrs_centroid.ra.deg * u.deg
             dec_icrs_centroid = sky_icrs_centroid.dec.deg * u.deg
         else:
             nprops = len(source_props)
             sky_centroid = sky_icrs_centroid = [None] * nprops
+            icrs_centroid = [None] * nprops
             ra_icrs_centroid = dec_icrs_centroid = [None] * nprops
 
     bbox_colnames = ['sky_bbox_ll', 'sky_bbox_ul', 'sky_bbox_lr',
@@ -1361,6 +1374,12 @@ def properties_table(source_props, columns=None, exclude_columns=None):
             props_table[column] = sky_centroid
         elif column == 'sky_icrs_centroid':
             props_table[column] = sky_icrs_centroid
+        elif column == 'icrs_centroid':
+            warnings.warn('The icrs_centroid property is deprecated and '
+                          'may be removed in a future version.  Use '
+                          'sky_icrs_centroid instead',
+                          AstropyDeprecationWarning)
+            props_table[column] = icrs_centroid
         elif column == 'ra_icrs_centroid':
             warnings.warn('The ra_icrs_centroid property is deprecated and '
                           'may be removed in a future version.  Use '
