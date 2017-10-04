@@ -1272,11 +1272,11 @@ def properties_table(source_props, columns=None, exclude_columns=None):
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'source_sum']
     >>> tbl = properties_table(props, columns=columns)
     >>> print(tbl)
-     id   xcentroid     ycentroid   source_sum
-             pix           pix
-    --- ------------- ------------- ----------
-      1           0.2           0.8        5.0
-      2 2.09090909091 2.36363636364       55.0
+     id     xcentroid         ycentroid      source_sum
+               pix               pix
+    --- ----------------- ------------------ ----------
+      1               0.2                0.8        5.0
+      2 2.090909090909091 2.3636363636363633       55.0
     """
 
     if isinstance(source_props, list) and len(source_props) == 0:
