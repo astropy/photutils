@@ -59,12 +59,10 @@ def make_test_image(nx=DEFAULT_SIZE, ny=DEFAULT_SIZE, x0=None, y0=None,
 
     g = Geometry(xcen, ycen, sma, eps, pa, 0.1, False)
 
-    tmp_image = np.zeros((ny, nx))
-    for j in range(ny):
-        for i in range(nx):
-            radius, angle = g.to_polar(i, j)
-            e_radius = g.radius(angle)
-            tmp_image[j, i] = radius / e_radius
+    y, x = np.mgrid[0:ny, 0:nx]
+    radius, angle = g.to_polar(x, y)
+    e_radius = g.radius(angle)
+    tmp_image = radius / e_radius
 
     image = i0 * np.exp(-7.669 * (tmp_image**0.25 - 1.)) + background
 
