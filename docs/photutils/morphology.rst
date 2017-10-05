@@ -43,11 +43,15 @@ Then, calculate its properties:
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'semimajor_axis_sigma',
     ...            'semiminor_axis_sigma', 'orientation']
     >>> tbl = properties_table(props, columns=columns)
+    >>> tbl['xcentroid'].info.format = '.10f'  # optional format
+    >>> tbl['ycentroid'].info.format = '.10f'
+    >>> tbl['semiminor_axis_sigma'].info.format = '.10f'
+    >>> tbl['orientation'].info.format = '.10f'
     >>> print(tbl)
-     id   xcentroid     ycentroid   ... semiminor_axis_sigma  orientation
-             pix           pix      ...         pix               rad
-    --- ------------- ------------- ... -------------------- -------------
-      1 14.0225090502 16.9901801466 ...        3.69777618702 1.04943689372
+     id   xcentroid     ycentroid   ... semiminor_axis_sigma orientation
+             pix           pix      ...         pix              rad
+    --- ------------- ------------- ... -------------------- ------------
+      1 14.0225090502 16.9901801466 ...         3.6977761870 1.0494368937
 
 Now let's use the measured morphological properties to define an
 approximate isophotal ellipse for the source:

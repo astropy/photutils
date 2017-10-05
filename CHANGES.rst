@@ -49,6 +49,13 @@ New Features
   - Added a ``cmap`` method to ``SegmentationImage`` to generate a
     random matplotlib colormap. [#513]
 
+  - Added ``sky_centroid`` and ``sky_centroid_icrs`` source
+    properties. [#592]
+
+  - Added new source properties representing the sky coordinates of
+    the bounding box corner vertices (``sky_bbox_ll``, ``sky_bbox_ul``
+    ``sky_bbox_lr``, and ``sky_bbox_ur``). [#592]
+
 - ``phtotutils.psf``
 
   - Uncertainties on fitted parameters are added to the final table. [#516]
@@ -119,6 +126,14 @@ API changes
     detected" warning only on the first iteration, if applicable.
     [#566]
 
+- ``photutils.segmentation``
+
+  - The ``'icrs_centroid'``, ``'ra_icrs_centroid'``, and
+    ``'dec_icrs_centroid'`` source properties are deprecated and are no
+    longer default columns returned by ``properties_table``. [#592]
+
+  - The ``properties_table`` function now returns a ``QTable``. [#592]
+
 - ``photutils.utils``
 
   - The ``background_color`` keyword was removed from the
@@ -132,6 +147,10 @@ Bug Fixes
 
   - Fixed ``deblend_sources`` so that it correctly deblends multiple
     sources. [#572]
+
+  - Fixed a bug in calculation of the ``sky_centroid_icrs`` (and
+    deprecated ``icrs_centroid``) property where the incorrect pixel
+    origin was being passed. [#592]
 
 - ``photutils.utils``
 
