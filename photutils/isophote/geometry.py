@@ -137,8 +137,8 @@ class Geometry(object):
         """
 
         return (self.sma * (1. - self.eps) /
-                math.sqrt(((1. - self.eps) * math.cos(angle))**2 +
-                          (math.sin(angle))**2))
+                np.sqrt(((1. - self.eps) * np.cos(angle))**2 +
+                        (np.sin(angle))**2))
 
     def initialize_sector_geometry(self, phi):
         """
@@ -273,30 +273,30 @@ class Geometry(object):
             radius, angle
         """
 
-        x1 = x - self.x0
-        y1 = y - self.y0
+        x1 = np.atleast_2d(x) - self.x0
+        y1 = np.atleast_2d(y) - self.y0
 
         radius = x1**2 + y1**2
-        if radius > 0.0:
-            radius = math.sqrt(radius)
-            angle = math.asin(abs(y1) / radius)
-        else:
-            radius = 0.
-            angle = 1.
+        angle = np.ones(radius.shape)
 
-        if x1 >= 0. and y1 < 0.:
-            angle = 2*np.pi - angle
-        elif x1 < 0. and y1 >= 0.:
-            angle = np.pi - angle
-        elif x1 < 0. and y1 < 0.:
-            angle = np.pi + angle
+        imask = (radius > 0.0)
+        radius[imask] = np.sqrt(radius[imask])
+        angle[imask] = np.arcsin(np.abs(y1[imask]) / radius[imask])
+        radius[~imask] = 0.
+        angle[~imask] = 1.
+
+        idx = (x1 >= 0.) & (y1 < 0)
+        angle[idx] = 2*np.pi - angle[idx]
+        idx = (x1 < 0.) & (y1 >= 0.)
+        angle[idx] = np.pi - angle[idx]
+        idx = (x1 < 0.) & (y1 < 0.)
+        angle[idx] = np.pi + angle[idx]
 
         pa1 = self.pa
         if self.pa < 0.:
             pa1 = self.pa + 2*np.pi
         angle = angle - pa1
-        if angle < 0.:
-            angle = angle + 2*np.pi
+        angle[angle < 0] += 2*np.pi
 
         return radius, angle
 
