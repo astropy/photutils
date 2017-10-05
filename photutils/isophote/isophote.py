@@ -193,30 +193,19 @@ class Isophote(object):
         jmax = min(ysize, int(y0 + sma + 0.5) + 1)
 
         # Integrate
-        tflux_e = 0.
-        tflux_c = 0.
-        npix_e = 0
-        npix_c = 0
-        for j in range(jmin, jmax):
-            for i in range(imin, imax):
-                # radius of the circle and ellipse associated
-                # with the given pixel.
-                radius, angle = self.sample.geometry.to_polar(i, j)
-                radius_e = self.sample.geometry.radius(angle)
+        y, x = np.mgrid[jmin:jmax, imin:imax]
+        radius, angle = self.sample.geometry.to_polar(x, y)
+        radius_e = self.sample.geometry.radius(angle)
 
-                # pixel is inside circle with diameter given by sma
-                if radius <= sma:
-                    value = self.sample.image[j][i]
-                    if value is not np.ma.masked:
-                        tflux_c += value
-                        npix_c += 1
+        midx = (radius <= sma)
+        values = self.sample.image[y[midx], x[midx]]
+        tflux_c = np.ma.sum(values)
+        npix_c = np.ma.count(values)
 
-                # pixel is inside ellipse
-                if radius <= radius_e:
-                    value = self.sample.image[j][i]
-                    if value is not np.ma.masked:
-                        tflux_e += value
-                        npix_e += 1
+        midx2 = (radius <= radius_e)
+        values = self.sample.image[y[midx2], x[midx2]]
+        tflux_e = np.ma.sum(values)
+        npix_e = np.ma.count(values)
 
         return tflux_e, tflux_c, npix_e, npix_c
 
