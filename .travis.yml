@@ -6,6 +6,8 @@ language: c
 os:
     - linux
 
+stage: Initial tests
+
 # Setting sudo to false opts in to Travis-CI container-based builds.
 sudo: false
 
@@ -63,36 +65,23 @@ matrix:
     fast_finish: true
 
     include:
-        - stage: Initial tests
-          env: PYTHON_VERSION=2.7 SETUP_CMD='egg_info'
-
-        - stage: Initial tests
-          env: PYTHON_VERSION=3.4 SETUP_CMD='egg_info'
-
-        - stage: Initial tests
-          env: PYTHON_VERSION=3.5 SETUP_CMD='egg_info'
-
-        - stage: Initial tests
-          env: PYTHON_VERSION=3.6 SETUP_CMD='egg_info'
+        - env: PYTHON_VERSION=2.7 SETUP_CMD='egg_info'
+        - env: PYTHON_VERSION=3.4 SETUP_CMD='egg_info'
+        - env: PYTHON_VERSION=3.5 SETUP_CMD='egg_info'
+        - env: PYTHON_VERSION=3.6 SETUP_CMD='egg_info'
 
         # Do a PEP8/pyflakes test with flake8
-        - stage: Initial tests
-          os: linux
-          env: MAIN_CMD="flake8 photutils --count $FLAKE8_OPT" SETUP_CMD=''
+        - env: MAIN_CMD="flake8 photutils --count $FLAKE8_OPT" SETUP_CMD=''
 
-        - stage: Initial tests
-          os: linux
-          env: SETUP_CMD='test --coverage'
+        - env: SETUP_CMD='test --coverage'
 
         # Check for sphinx doc build warnings - we do this first because it
         # may run for a long time
         - stage: Test docs, astropy dev, and without optional dependencies
-          os: linux
           env: PYTHON_VERSION=2.7 SETUP_CMD='build_docs -w'
                CONDA_DEPENDENCIES='Cython scipy scikit-image scikit-learn matplotlib jupyter'
 
         - stage: Test docs, astropy dev, and without optional dependencies
-          os: linux
           env: SETUP_CMD='build_docs -w'
                CONDA_DEPENDENCIES='Cython scipy scikit-image scikit-learn matplotlib jupyter'
                EVENT_TYPE='pull_request push cron'
@@ -101,7 +90,6 @@ matrix:
         # We disable LTS testing until astropy 3.0 is out, as the current
         # stable is also the LTS
         - stage: Test docs, astropy dev, and without optional dependencies
-          os: linux
           env: ASTROPY_VERSION=development
                EVENT_TYPE='pull_request push cron'
 
@@ -111,11 +99,9 @@ matrix:
 
         # Try with optional dependencies disabled
         - stage: Test docs, astropy dev, and without optional dependencies
-          os: linux
           env: PYTHON_VERSION=2.7 CONDA_DEPENDENCIES='Cython'
 
         - stage: Test docs, astropy dev, and without optional dependencies
-          os: linux
           env: CONDA_DEPENDENCIES='Cython'
 
         # Try older python and numpy versions. Since we can assume
@@ -123,25 +109,20 @@ matrix:
         # with different versions of Python, we can vary Python and
         # Numpy versions at the same time.
         - stage: Tests with other Python/Numpy versions
-          os: linux
           env: PYTHON_VERSION=3.4 NUMPY_VERSION=1.9
                PIP_DEPENDENCIES='pytest>=3.1'
 
         - stage: Tests with other Python/Numpy versions
-          os: linux
           env: PYTHON_VERSION=3.5 NUMPY_VERSION=1.10
 
         - stage: Tests with other Python/Numpy versions
-          os: linux
           env: NUMPY_VERSION=1.11
 
         - stage: Tests with other Python/Numpy versions
-          os: linux
           env: NUMPY_VERSION=1.12
 
         # Try numpy pre-release
         - stage: Tests with other Python/Numpy versions
-          os: linux
           env: NUMPY_VERSION=prerelease
                EVENT_TYPE='pull_request push cron'
 
@@ -151,8 +132,7 @@ matrix:
           env: SETUP_CMD='test' EVENT_TYPE='cron'
 
     allow_failures:
-        - os: linux
-          env: NUMPY_VERSION=prerelease
+        - env: NUMPY_VERSION=prerelease
                EVENT_TYPE='pull_request push cron'
 
 install:
