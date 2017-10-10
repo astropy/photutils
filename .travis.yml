@@ -6,8 +6,6 @@ language: c
 os:
     - linux
 
-stage: Comprehensive tests
-
 # Setting sudo to false opts in to Travis-CI container-based builds.
 sudo: false
 
@@ -55,7 +53,8 @@ env:
 
 stages:
    - name: Initial tests
-   - name: Comprehensive tests
+   - name: Test docs, astropy dev, and without optional dependencies
+   - name: Tests with other Python/Numpy versions
    - name: Cron tests
      if: type = cron
 
@@ -87,11 +86,13 @@ matrix:
 
         # Check for sphinx doc build warnings - we do this first because it
         # may run for a long time
-        - os: linux
+        - stage: Test docs, astropy dev, and without optional dependencies
+          os: linux
           env: PYTHON_VERSION=2.7 SETUP_CMD='build_docs -w'
                CONDA_DEPENDENCIES='Cython scipy scikit-image scikit-learn matplotlib jupyter'
 
-        - os: linux
+        - stage: Test docs, astropy dev, and without optional dependencies
+          os: linux
           env: SETUP_CMD='build_docs -w'
                CONDA_DEPENDENCIES='Cython scipy scikit-image scikit-learn matplotlib jupyter'
                EVENT_TYPE='pull_request push cron'
@@ -99,36 +100,48 @@ matrix:
         # Now try Astropy dev and LTS versions with the latest Python.
         # We disable LTS testing until astropy 3.0 is out, as the current
         # stable is also the LTS
-        - os: linux
+        - stage: Test docs, astropy dev, and without optional dependencies
+          os: linux
           env: ASTROPY_VERSION=development
                EVENT_TYPE='pull_request push cron'
-        #- os: linux
-        #  env: PYTHON_VERSION=2.7 ASTROPY_VERSION=lts PYTEST_VERSION=2.7
-        #- os: linux
-        #  env: PYTHON_VERSION=3.5 ASTROPY_VERSION=lts PYTEST_VERSION=2.7
+
+        #- stage: Test docs, astropy dev, and without optional dependencies
+        #  os: linux
+        #  env: PYTHON_VERSION=3.5 ASTROPY_VERSION=lts
+
+        # Try with optional dependencies disabled
+        - stage: Test docs, astropy dev, and without optional dependencies
+          os: linux
+          env: PYTHON_VERSION=2.7 CONDA_DEPENDENCIES='Cython'
+
+        - stage: Test docs, astropy dev, and without optional dependencies
+          os: linux
+          env: CONDA_DEPENDENCIES='Cython'
 
         # Try older python and numpy versions. Since we can assume
         # that the Numpy developers have taken care of testing Numpy
         # with different versions of Python, we can vary Python and
         # Numpy versions at the same time.
-        - os: linux
+        - stage: Tests with other Python/Numpy versions
+          os: linux
           env: PYTHON_VERSION=3.4 NUMPY_VERSION=1.9
                PIP_DEPENDENCIES='pytest>=3.1'
-        - os: linux
+
+        - stage: Tests with other Python/Numpy versions
+          os: linux
           env: PYTHON_VERSION=3.5 NUMPY_VERSION=1.10
-        - os: linux
+
+        - stage: Tests with other Python/Numpy versions
+          os: linux
           env: NUMPY_VERSION=1.11
-        - os: linux
+
+        - stage: Tests with other Python/Numpy versions
+          os: linux
           env: NUMPY_VERSION=1.12
 
-        # Try with optional dependencies disabled
-        - os: linux
-          env: PYTHON_VERSION=2.7 CONDA_DEPENDENCIES='Cython'
-        - os: linux
-          env: CONDA_DEPENDENCIES='Cython'
-
         # Try numpy pre-release
-        - os: linux
+        - stage: Tests with other Python/Numpy versions
+          os: linux
           env: NUMPY_VERSION=prerelease
                EVENT_TYPE='pull_request push cron'
 
