@@ -6,6 +6,8 @@ language: c
 os:
     - linux
 
+stage: Initial tests
+
 # Setting sudo to false opts in to Travis-CI container-based builds.
 sudo: false
 
@@ -35,76 +37,103 @@ env:
         - SETUP_XVFB=True
         - ASTROPY_USE_SYSTEM_PYTEST=1
 
-    matrix:
-        - PYTHON_VERSION=2.7 SETUP_CMD='egg_info'
-        - PYTHON_VERSION=3.4 SETUP_CMD='egg_info'
-        - PYTHON_VERSION=3.5 SETUP_CMD='egg_info'
-        - PYTHON_VERSION=3.6 SETUP_CMD='egg_info'
+        # PEP8 errors/warnings:
+        # E101 - mix of tabs and spaces
+        # W191 - use of tabs
+        # W291 - trailing whitespace
+        # W292 - no newline at end of file
+        # W293 - trailing whitespace
+        # W391 - blank line at end of file
+        # E111 - 4 spaces per indentation level
+        # E112 - 4 spaces per indentation level
+        # E113 - 4 spaces per indentation level
+        # E502 - the backslash is redundant between brackets
+        # E722 - do not use bare except
+        # E901 - SyntaxError or IndentationError
+        # E902 - IOError
+        - FLAKE8_OPT="--select=E101,W191,W291,W292,W293,W391,E111,E112,E113,E502,E722,E901,E902"
+
+stages:
+   - name: Initial tests
+   - name: Test docs, astropy dev, and without optional dependencies
+   - name: Tests with other Python/Numpy versions
+   - name: Cron tests
+     if: type = cron
 
 matrix:
     # Don't wait for allowed failures
     fast_finish: true
 
     include:
-        # Try MacOS X
-        - os: osx
-          env: SETUP_CMD='test'
+        - env: PYTHON_VERSION=2.7 SETUP_CMD='egg_info'
+        - env: PYTHON_VERSION=3.4 SETUP_CMD='egg_info'
+        - env: PYTHON_VERSION=3.5 SETUP_CMD='egg_info'
+        - env: PYTHON_VERSION=3.6 SETUP_CMD='egg_info'
 
-        # Do a coverage test.
-        - os: linux
-          env: SETUP_CMD='test --coverage'
+        # Do a PEP8/pyflakes test with flake8
+        - env: MAIN_CMD="flake8 photutils --count $FLAKE8_OPT" SETUP_CMD=''
+
+        - env: SETUP_CMD='test --coverage'
 
         # Check for sphinx doc build warnings - we do this first because it
         # may run for a long time
-        - os: linux
+        - stage: Test docs, astropy dev, and without optional dependencies
           env: PYTHON_VERSION=2.7 SETUP_CMD='build_docs -w'
                CONDA_DEPENDENCIES='Cython scipy scikit-image scikit-learn matplotlib jupyter'
-               SPHINX_VERSION='>1.6'
-        - os: linux
+
+        - stage: Test docs, astropy dev, and without optional dependencies
           env: SETUP_CMD='build_docs -w'
                CONDA_DEPENDENCIES='Cython scipy scikit-image scikit-learn matplotlib jupyter'
                EVENT_TYPE='pull_request push cron'
-               SPHINX_VERSION='>1.6'
 
         # Now try Astropy dev and LTS versions with the latest Python.
         # We disable LTS testing until astropy 3.0 is out, as the current
         # stable is also the LTS
-        - os: linux
+        - stage: Test docs, astropy dev, and without optional dependencies
           env: ASTROPY_VERSION=development
                EVENT_TYPE='pull_request push cron'
-        #- os: linux
-        #  env: PYTHON_VERSION=2.7 ASTROPY_VERSION=lts PYTEST_VERSION=2.7
-        #- os: linux
-        #  env: PYTHON_VERSION=3.5 ASTROPY_VERSION=lts PYTEST_VERSION=2.7
 
-        # Try all python versions and Numpy versions. Since we can assume that
-        # the Numpy developers have taken care of testing Numpy with different
-        # versions of Python, we can vary Python and Numpy versions at the same
-        # time.
-        - os: linux
-          env: PYTHON_VERSION=3.4 NUMPY_VERSION=1.9
-               PIP_DEPENDENCIES='pytest>=3.1'
-        - os: linux
-          env: PYTHON_VERSION=3.5 NUMPY_VERSION=1.10
-        - os: linux
-          env: NUMPY_VERSION=1.11
-        - os: linux
-          env: NUMPY_VERSION=1.12
+        #- stage: Test docs, astropy dev, and without optional dependencies
+        #  os: linux
+        #  env: PYTHON_VERSION=3.5 ASTROPY_VERSION=lts
 
         # Try with optional dependencies disabled
-        - os: linux
+        - stage: Test docs, astropy dev, and without optional dependencies
           env: PYTHON_VERSION=2.7 CONDA_DEPENDENCIES='Cython'
-        - os: linux
+
+        - stage: Test docs, astropy dev, and without optional dependencies
           env: CONDA_DEPENDENCIES='Cython'
 
+        # Try older python and numpy versions. Since we can assume
+        # that the Numpy developers have taken care of testing Numpy
+        # with different versions of Python, we can vary Python and
+        # Numpy versions at the same time.
+        - stage: Tests with other Python/Numpy versions
+          env: PYTHON_VERSION=3.4 NUMPY_VERSION=1.9
+               PIP_DEPENDENCIES='pytest>=3.1'
+
+        - stage: Tests with other Python/Numpy versions
+          env: PYTHON_VERSION=3.5 NUMPY_VERSION=1.10
+
+        - stage: Tests with other Python/Numpy versions
+          env: NUMPY_VERSION=1.11
+
+        - stage: Tests with other Python/Numpy versions
+          env: NUMPY_VERSION=1.12
+
         # Try numpy pre-release
-        - os: linux
+        - stage: Tests with other Python/Numpy versions
           env: NUMPY_VERSION=prerelease
                EVENT_TYPE='pull_request push cron'
 
-        # Do a PEP8 test with pycodestyle
-        - os: linux
-          env: MAIN_CMD='pycodestyle photutils --count' SETUP_CMD=''
+        # Try MacOS X
+        - stage: Cron tests
+          os: osx
+          env: SETUP_CMD='test' EVENT_TYPE='cron'
+
+    allow_failures:
+        - env: NUMPY_VERSION=prerelease
+               EVENT_TYPE='pull_request push cron'
 
 install:
     - git clone git://github.com/astropy/ci-helpers.git
@@ -114,6 +143,6 @@ script:
    - $MAIN_CMD $SETUP_CMD
 
 after_success:
-    - if [[ $SETUP_CMD == *coverage* ]]; then
+    - if [[ $SETUP_CMD == *--coverage* ]]; then
           coveralls --rcfile='photutils/tests/coveragerc';
       fi
