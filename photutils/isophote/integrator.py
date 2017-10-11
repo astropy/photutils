@@ -6,12 +6,12 @@ import math
 import numpy.ma as ma
 
 
-__all__ = ['integrators', 'NEAREST_NEIGHBOR', 'BI_LINEAR', 'MEAN', 'MEDIAN']
+__all__ = ['integrators', 'NEAREST_NEIGHBOR', 'BILINEAR', 'MEAN', 'MEDIAN']
 
 
 # integration modes
 NEAREST_NEIGHBOR = 'nearest_neighbor'
-BI_LINEAR = 'bi-linear'
+BILINEAR = 'bilinear'
 MEAN = 'mean'
 MEDIAN = 'median'
 
@@ -125,7 +125,7 @@ class _Integrator(object):
         around the elliptical path, at a certain point on the image defined
         by a polar angle and radius values. A pixel integrator, by contrast,
         integrates over a fixed and normally small area related to a single
-        pixel on the image. An example is the bi-linear integrator, which
+        pixel on the image. An example is the bilinear integrator, which
         integrates over a small, fixed, 5-pixel area. This method checks if
         the integrator is of the first type or not.
 
@@ -213,11 +213,11 @@ class _AreaIntegrator(_Integrator):
         super(_AreaIntegrator, self).__init__(image, geometry, angles, radii,
                                               intensities)
 
-        # build auxiliary bi-linear integrator to be used when
+        # build auxiliary bilinear integrator to be used when
         # sector areas contain a too small number of valid pixels.
-        self._bi_linear_integrator = integrators[BI_LINEAR](image, geometry,
-                                                            angles, radii,
-                                                            intensities)
+        self._bilinear_integrator = integrators[BILINEAR](image, geometry,
+                                                          angles, radii,
+                                                          intensities)
 
     def integrate(self, radius, phi):
         self._phi = phi
@@ -276,17 +276,17 @@ class _AreaIntegrator(_Integrator):
                                 accumulator, npix = self.accumulate(
                                     pix_value, accumulator)
 
-            # If 6 or less pixels were sampled, get the bi-linear
+            # If 6 or less pixels were sampled, get the bilinear
             # interpolated value instead.
             if npix in range(0, 7):
                 # must reset integrator to remove older samples.
-                self._bi_linear_integrator._reset()
-                self._bi_linear_integrator.integrate(radius, phi)
+                self._bilinear_integrator._reset()
+                self._bilinear_integrator.integrate(radius, phi)
                 # because it was reset, current value is the only one stored
-                # internally in the bi-linear integrator instance. Move it
+                # internally in the bilinear integrator instance. Move it
                 # from the internal integrator to this instance.
-                if len(self._bi_linear_integrator._intensities) > 0:
-                    sample_value = self._bi_linear_integrator._intensities[0]
+                if len(self._bilinear_integrator._intensities) > 0:
+                    sample_value = self._bilinear_integrator._intensities[0]
                     self._store_results(phi, radius, sample_value)
 
             elif npix > 6:
@@ -350,7 +350,7 @@ class _MedianIntegrator(_AreaIntegrator):
 # Specific integrator subclasses can be instantiated from here.
 integrators = {
     NEAREST_NEIGHBOR: _NearestNeighborIntegrator,
-    BI_LINEAR: _BiLinearIntegrator,
+    BILINEAR: _BiLinearIntegrator,
     MEAN: _MeanIntegrator,
     MEDIAN: _MedianIntegrator
 }

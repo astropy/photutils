@@ -9,7 +9,7 @@ from .fitter import (Fitter, CentralFitter, TOO_MANY_FLAGGED,
                      DEFAULT_CONVERGENCY, DEFAULT_MINIT, DEFAULT_MAXIT,
                      DEFAULT_FFLAG, DEFAULT_MAXGERR)
 from .geometry import Geometry, DEFAULT_STEP, DEFAULT_EPS
-from .integrator import BI_LINEAR
+from .integrator import BILINEAR
 from .isophote import Isophote, IsophoteList, print_header
 from .sample import Sample, CentralSample, DEFAULT_SCLIP
 
@@ -206,7 +206,7 @@ class Ellipse(object):
                   conver=DEFAULT_CONVERGENCY, minit=DEFAULT_MINIT,
                   maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG,
                   maxgerr=DEFAULT_MAXGERR, sclip=DEFAULT_SCLIP, nclip=0,
-                  integrmode=BI_LINEAR, linear=False, maxrit=None,
+                  integrmode=BILINEAR, linear=False, maxrit=None,
                   verbose=True):
         # This parameter list is quite large and should in principle be
         # simplified by re-distributing these controls to somewhere else.
@@ -301,7 +301,7 @@ class Ellipse(object):
         nclip : int, default = 0
             number of iterations in sigma-cliping algorithm.
             If zero, ignore sigma-clip.
-        integrmode : string, default = `bi-linear`
+        integrmode : string, default = `bilinear`
             area integration mode, as defined in module integrator.py
         linear : boolean, default False
             semi-major axis growing/shrinking mode. If False, geometric
@@ -461,7 +461,7 @@ class Ellipse(object):
     def fit_isophote(self, sma, step=DEFAULT_STEP, conver=DEFAULT_CONVERGENCY,
                      minit=DEFAULT_MINIT, maxit=DEFAULT_MAXIT,
                      fflag=DEFAULT_FFLAG, maxgerr=DEFAULT_MAXGERR,
-                     sclip=DEFAULT_SCLIP, nclip=0, integrmode=BI_LINEAR,
+                     sclip=DEFAULT_SCLIP, nclip=0, integrmode=BILINEAR,
                      linear=False, maxrit=None, noniterate=False,
                      going_inwards=False, isophote_list=None):
         """
@@ -512,7 +512,7 @@ class Ellipse(object):
         nclip : int, default = 0
             number of iterations in sigma-cliping algorithm.
             If zero, ignore sigma-clip.
-        integrmode : string, default = `bi-linear`
+        integrmode : string, default = `bilinear`
             area integration mode, as defined in module integrator.py
         linear : boolean, default = False
             semi-major axis growing/shrinking mode. When fitting just

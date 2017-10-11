@@ -38,7 +38,7 @@ causes the radial gradient computation to go berserk. On top of that,
 the ellipticity is small (roundish isophotes) throughout the image,
 causing large relative errors and instability in the fitting algorithm.
 
-For now, we can only check the bi-linear integration mode. The mean and
+For now, we can only check the bilinear integration mode. The mean and
 median modes cannot be checked since the original 'ellipse' task has a
 bug that causes the creation of erroneous output tables. A partial
 comparison could be made if we write new code that reads the standard
@@ -59,7 +59,7 @@ from astropy.table import Table
 from astropy.tests.helper import remote_data
 
 from ..ellipse import Ellipse
-from ..integrator import BI_LINEAR
+from ..integrator import BILINEAR
 from ...datasets import get_path
 
 try:
@@ -74,7 +74,7 @@ except ImportError:
 # @pytest.mark.parametrize('name', ['M51', 'synth', 'synth_lowsnr',
 #                                   'synth_highsnr'])
 @pytest.mark.parametrize('name', ['synth_highsnr'])
-def test_regression(name, integrmode=BI_LINEAR, verbose=False):
+def test_regression(name, integrmode=BILINEAR, verbose=False):
     """
     NOTE:  The original code in SPP won't create the right table for the MEAN
     integration moder, so use the screen output at synth_table_mean.txt to
@@ -174,7 +174,7 @@ def test_regression(name, integrmode=BI_LINEAR, verbose=False):
                                      ndata_d, nflag_d, niter_d, stop_d))
             print()
 
-        if name == "synth_highsnr" and integrmode == BI_LINEAR:
+        if name == "synth_highsnr" and integrmode == BILINEAR:
             assert abs(x0_d) <= 0.21
             assert abs(y0_d) <= 0.21
 

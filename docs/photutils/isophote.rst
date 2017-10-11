@@ -177,9 +177,9 @@ corresponding to the current ellipse. This design decision is based on two argum
 (i) it would be difficult to include partial pixels in median computation, and (ii)
 speed.
 
-Even when the chosen integration mode is not bi-linear, the sampling algorithm resorts
+Even when the chosen integration mode is not bilinear, the sampling algorithm resorts
 to it in case the number of sampled pixels inside any given sector is less than 5. It
-was found that bi-linear mode gives smoother samples in those cases.
+was found that bilinear mode gives smoother samples in those cases.
 
 Tests performed with artificial images showed that cosmic rays and defective pixels can
 be very effectively removed from the fit by a combination of median sampling and

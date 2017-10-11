@@ -358,7 +358,7 @@ class CentralFitter(Fitter):
             going_inwards=False):
         """
         Overrides the base class to perform just a simple 1-pixel
-        extraction at the current x0,y0 position, using bi-linear
+        extraction at the current x0,y0 position, using bilinear
         interpolation.
 
         Parameters are ignored. They were added just so the method's

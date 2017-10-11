@@ -10,7 +10,7 @@ from astropy.io import fits
 from astropy.tests.helper import remote_data
 
 from ..sample import Sample
-from ..integrator import NEAREST_NEIGHBOR, BI_LINEAR, MEAN, MEDIAN
+from ..integrator import NEAREST_NEIGHBOR, BILINEAR, MEAN, MEDIAN
 from ...datasets import get_path
 
 
@@ -24,7 +24,7 @@ class TestData(object):
         self.data = hdu[0].data
         hdu.close()
 
-    def make_sample(self, masked=False, sma=40., integrmode=BI_LINEAR):
+    def make_sample(self, masked=False, sma=40., integrmode=BILINEAR):
         if masked:
             data = ma.masked_values(self.data, 200., atol=10.0, rtol=0.)
         else:
@@ -134,7 +134,7 @@ class TestUnmasked(TestData):
 class TestMasked(TestData):
 
     def test_bilinear(self):
-        s, sample = self.make_sample(masked=True, integrmode=BI_LINEAR)
+        s, sample = self.make_sample(masked=True, integrmode=BILINEAR)
 
         assert len(s[0]) == 157
         # intensities

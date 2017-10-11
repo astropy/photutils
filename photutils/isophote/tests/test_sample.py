@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from .make_test_data import make_test_image
-from ..integrator import MEDIAN, MEAN, BI_LINEAR, NEAREST_NEIGHBOR
+from ..integrator import MEDIAN, MEAN, BILINEAR, NEAREST_NEIGHBOR
 from ..isophote import Isophote
 from ..sample import Sample
 
@@ -17,7 +17,7 @@ DATA = make_test_image(background=100., i0=0., noise=10., random_state=123)
 # the median is not so good at estimating rms
 @pytest.mark.parametrize('integrmode, amin, amax',
                          [(NEAREST_NEIGHBOR, 7., 15.),
-                          (BI_LINEAR, 7., 15.),
+                          (BILINEAR, 7., 15.),
                           (MEAN, 7., 15.),
                           (MEDIAN, 6., 15.)])
 def test_scatter(integrmode, amin, amax):

@@ -6,7 +6,7 @@ import copy
 import numpy as np
 
 from .geometry import Geometry, DEFAULT_EPS, DEFAULT_STEP, PHI_MIN
-from .integrator import integrators, BI_LINEAR
+from .integrator import integrators, BILINEAR
 
 
 __all__ = ['Sample']
@@ -50,7 +50,7 @@ class Sample(object):
         number of sigma-clip interations. If 0, skip sigma-clipping.
     linear_growth : boolean, default=False
         semi-major axis growing/shrinking mode
-    integrmode : string, default=BI_LINEAR
+    integrmode : string, default=BILINEAR
         area integration mode, as defined in module integrator.py
     geometry : Geometry instance, default=None
         the geometry that describes the ellipse. This can be used in
@@ -91,7 +91,7 @@ class Sample(object):
 
     def __init__(self, image, sma, x0=None, y0=None, astep=DEFAULT_STEP,
                  eps=DEFAULT_EPS, position_angle=0.0, sclip=DEFAULT_SCLIP,
-                 nclip=0, linear_growth=False, integrmode=BI_LINEAR,
+                 nclip=0, linear_growth=False, integrmode=BILINEAR,
                  geometry=None):
         self.image = image
         self.integrmode = integrmode
@@ -185,7 +185,7 @@ class Sample(object):
         # hint of how much area the sectors will have. In case of too
         # small areas, tests showed that the area integrators (mean,
         # median) won't perform properly. In that case, we override the
-        # caller's selection and use the bi-linear integrator regardless.
+        # caller's selection and use the bilinear integrator regardless.
         if integrator.is_area():
             integrator.integrate(radius, phi)
             area = integrator.get_sector_area()
@@ -197,9 +197,8 @@ class Sample(object):
             radii = []
             intensities = []
             if area < 1.0:
-                integrator = integrators[BI_LINEAR](self.image, self.geometry,
-                                                    angles, radii,
-                                                    intensities)
+                integrator = integrators[BILINEAR](self.image, self.geometry,
+                                                   angles, radii, intensities)
             else:
                 integrator = integrators[self.integrmode](self.image,
                                                           self.geometry,
@@ -385,7 +384,7 @@ class CentralSample(Sample):
     def update(self):
         """
         Overrides base class so as to update this Sample instance with
-        the intensity integrated at the x0,y0 position using bi-linear
+        the intensity integrated at the x0,y0 position using bilinear
         integration. The local gradient is set to None.
         """
 
@@ -401,8 +400,8 @@ class CentralSample(Sample):
         radii = []
         intensities = []
 
-        integrator = integrators[BI_LINEAR](self.image, self.geometry,
-                                            angles, radii, intensities)
+        integrator = integrators[BILINEAR](self.image, self.geometry, angles,
+                                           radii, intensities)
         integrator.integrate(0.0, 0.0)
 
         self.total_points = 1
