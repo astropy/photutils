@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 
 import numpy as np
 
-from .centerer import Centerer, DEFAULT_THRESHOLD
+from .centerer import Centerer
 from .fitter import (Fitter, CentralFitter, TOO_MANY_FLAGGED,
                      DEFAULT_CONVERGENCY, DEFAULT_MINIT, DEFAULT_MAXIT,
                      DEFAULT_FFLAG, DEFAULT_MAXGERR)
@@ -174,8 +174,7 @@ class Ellipse(object):
         print object centering info
     """
 
-    def __init__(self, image, geometry=None, threshold=DEFAULT_THRESHOLD,
-                 verbose=True):
+    def __init__(self, image, geometry=None, threshold=0.1, verbose=True):
         self.image = image
 
         if geometry:

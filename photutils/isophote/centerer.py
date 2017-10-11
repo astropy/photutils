@@ -8,9 +8,6 @@ import numpy as np
 __all__ = ['Centerer']
 
 
-DEFAULT_THRESHOLD = 0.1
-WINDOW_HALF_SIZE = 5
-
 IN_MASK = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -52,54 +49,61 @@ OUT_MASK = [
 
 class Centerer(object):
     """
-    Object centerer.
+    Class to find the center of a galaxy.
 
-    The fit algorithm has no way of finding where, in the input image frame,
-    the galaxy to be measured sits in. The center X,Y coordinates need to be
-    close to the actual center for the fit to work. An "object centerer"
-    function helps to verify that the selected position can be used as starting
-    point. This function scans a 10 X 10 window centered either on the X,Y
-    coordinates in the Geometry instance passed to the constructor of the
-    Ellipse class, or, if any one of them, or both, are set to None, on the
-    input image frame center. In case a successful acquisition takes place,
-    the Geometry instance is modified in place to reflect the solution of
-    the object centerer algorithm.
-
-    In some cases the object centerer algorithm may fail, even though there
-    is enough signal-to-noise to start a fit (e.g. in objects with very high
-    ellipticity). In those cases the sensitivity of the algorithm can be
-    decreased by decreasing the value of the object centerer threshold
-    parameter.The centerer works by looking to where a quantity akin to a
-    signal-to-noise ratio is maximized within the 10 X 10 window. The
-    centerer can thus be shut off entirely by setting the threshold to
-    a large value >> 1 (meaning, no location inside the search window will
-    achieve that signal-to-noise ratio).
+    The isophote fit algorithm requires an initial guess for the galaxy
+    center (x, y) coordinates and these coordinates must be close to the
+    actual galaxy center for the isophote fit to work.  This class
+    provides an object centerer function to determine an initial guess
+    for the the galaxy center coordinates.  See the **Notes** section
+    below for more details.
 
     Parameters
     ----------
-    image : np 2-D array
-        image array. Masked arrays are not recognized here. This assumes
-        that centering should always be done on valid pixels.
-    geometry : instance of Geometry
-        geometry that directs the centerer to look at its X/Y
-        coordinates. These are modified by the centerer algorithm.
-    verbose : boolean, default True
-        print object centering info
+    image : 2D `~numpy.ndarray`
+        The image array.  Masked arrays are not recognized here. This
+        assumes that centering should always be done on valid pixels.
+    geometry : `~photutils.isophote.Geometry` instance
+        The `~photutils.isophote.Geometry` object that directs the
+        centerer to look at its (x, y) coordinates.  These coordinates
+        are modified by the centerer algorithm.
+    verbose : bool, optional
+        Whether to print object centering information.  The default is
+        `True`.
 
     Attributes
     ----------
     threshold : float
-        the threshold
+        The centerer threshold value.
+
+    Notes
+    -----
+    The centerer function scans a 10x10 window centered on the (x, y)
+    coordinates in the `~photutils.isophote.Geometry` instance passed to
+    the constructor of the `~photutils.isophote.Ellipse` class.  If any
+    of the `~photutils.isophote.Geometry` (x, y) coordinates are `None`,
+    the center of the input image frame is used.  If the center
+    acquisition is successful, the `~photutils.isophote.Geometry`
+    instance is modified in place to reflect the solution of the object
+    centerer algorithm.
+
+    In some cases the object centerer algorithm may fail even though
+    there is enough signal-to-noise to start a fit (e.g. objects with
+    very high ellipticity).  In those cases the sensitivity of the
+    algorithm can be decreased by decreasing the value of the object
+    centerer threshold parameter.  The centerer works by looking where a
+    quantity akin to a signal-to-noise ratio is maximized within the
+    10x10 window.  The centerer can thus be shut off entirely by setting
+    the threshold to a large value (i.e. >> 1; meaning no location
+    inside the search window will achieve that signal-to-noise ratio).
     """
 
     def __init__(self, image, geometry, verbose=True):
         self._image = image
         self._geometry = geometry
         self._verbose = verbose
-
-        self.threshold = DEFAULT_THRESHOLD
-
         self._mask_half_size = len(IN_MASK) / 2
+        self.threshold = None
 
         # number of pixels in each mask
         sz = len(IN_MASK)
@@ -111,17 +115,21 @@ class Centerer(object):
         self._in_mask_npix = np.sum(self._ones_in)
         self._out_mask_npix = np.sum(self._ones_out)
 
-    def center(self, threshold=DEFAULT_THRESHOLD):
+    def center(self, threshold=0.1):
         """
-        Runs the object centerer, eventually modifying in place
-        the geometry attribute.
+        Calculate the object center.
+
+        The ``._geometry`` attribute position will be modified
+        with the object center.
 
         Parameters
         ----------
-        threshold : float, default = 0.1
-            object centerer threshold. To turn off the centerer, set this
-            to a large value >> 1.
+        threshold : float, optional
+            The object centerer threshold.  To turn off the centerer,
+            set this to a large value (i.e. >> 1).  The default is 0.1.
         """
+
+        self.threshold = threshold
 
         if self._verbose:
             print("Centering on object....   ", end="")
@@ -140,10 +148,11 @@ class Centerer(object):
         max_j = 0
 
         # scan all positions inside window
-        for i in range(int(_x0 - WINDOW_HALF_SIZE),
-                       int(_x0 + WINDOW_HALF_SIZE) + 1):
-            for j in range(int(_y0 - WINDOW_HALF_SIZE),
-                           int(_y0 + WINDOW_HALF_SIZE) + 1):
+        window_half_size = 5
+        for i in range(int(_x0 - window_half_size),
+                       int(_x0 + window_half_size) + 1):
+            for j in range(int(_y0 - window_half_size),
+                           int(_y0 + window_half_size) + 1):
 
                 # ensure that it stays inside image frame
                 i1 = int(max(0, i - self._mask_half_size))
