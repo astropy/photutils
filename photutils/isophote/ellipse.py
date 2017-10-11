@@ -12,7 +12,7 @@ from .fitter import (Fitter, CentralFitter, TOO_MANY_FLAGGED,
                      DEFAULT_FFLAG, DEFAULT_MAXGERR)
 from .geometry import Geometry, DEFAULT_STEP, DEFAULT_EPS
 from .integrator import BILINEAR
-from .isophote import Isophote, IsophoteList, print_header
+from .isophote import Isophote, IsophoteList
 from .sample import Sample, CentralSample, DEFAULT_SCLIP
 
 
@@ -207,8 +207,7 @@ class Ellipse(object):
                   conver=DEFAULT_CONVERGENCY, minit=DEFAULT_MINIT,
                   maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG,
                   maxgerr=DEFAULT_MAXGERR, sclip=DEFAULT_SCLIP, nclip=0,
-                  integrmode=BILINEAR, linear=False, maxrit=None,
-                  verbose=True):
+                  integrmode=BILINEAR, linear=False, maxrit=None):
         # This parameter list is quite large and should in principle be
         # simplified by re-distributing these controls to somewhere else.
         # We keep this design though because it better mimics the flat
@@ -328,8 +327,6 @@ class Ellipse(object):
             Non-iterative mode can also be entered automatically whenever
             the ellipticity exceeds 1.0 or the ellipse center crosses the
             image boundaries.
-        verbose : boolean, default True
-            print iteration info
 
         Returns
         -------
@@ -340,9 +337,6 @@ class Ellipse(object):
 
         # multiple fitted isophotes will be stored here
         isophote_list = []
-
-        if verbose:
-            print_header()
 
         # get starting sma from appropriate source: keyword parameter,
         # internal Geometry instance, or fixed default value.
@@ -403,16 +397,12 @@ class Ellipse(object):
                             noiter = True
                         else:
                             # if no maximum sma, stop growing and change
-                            # to go inwards. Print from last kept isophote.
-                            if verbose:
-                                print(isophote)
+                            # to go inwards.
                             break
 
             # reset variable from the actual list, since the last
             # `isophote` instance may no longer be OK.
             isophote = isophote_list[-1]
-            if verbose:
-                print(isophote)
 
             # update sma. If exceeded user-defined
             # maximum, bail out from this loop.
@@ -439,8 +429,6 @@ class Ellipse(object):
             # reset variable from the actual list, since the last
             # `isophote` instance may no longer be OK.
             isophote = isophote_list[-1]
-            if verbose:
-                print(isophote)
 
             # figure out next sma; if exceeded user-defined
             # minimum, or too small, bail out from this loop
@@ -451,8 +439,6 @@ class Ellipse(object):
         # if user asked for minsma=0, extract special isophote there
         if minsma == 0.0:
             isophote = self.fit_isophote(0.0, isophote_list=isophote_list)
-            if verbose:
-                print(isophote)
 
         # sort list of isophotes according to sma
         isophote_list.sort()

@@ -1,30 +1,17 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+from collections import OrderedDict
 
 import numpy as np
+from astropy.table import QTable
+import astropy.units as u
 
 from .harmonics import (fit_1st_and_2nd_harmonics,
                         first_and_2nd_harmonic_function, fit_upper_harmonic)
 
 
 __all__ = ['Isophote', 'IsophoteList']
-
-
-def print_header():
-    """
-    Helper function that prints at stdout a table header to tell the
-    user what are the columns printed by the iterating algorithm.
-    """
-
-    print('#')
-    print('# Semi-      Isophote         Ellipticity    Position     Grad.'
-          '   Data  Flag Iter. Stop')
-    print('# major        mean                           Angle        rel.'
-          '                    code')
-    print('# axis       intensity                                    error')
-    print('#(pixel)                                     (degree)')
-    print('#')
 
 
 class Isophote(object):
@@ -348,6 +335,10 @@ class Isophote(object):
         if hasattr(other, 'sma'):
             return self.sma < other.sma
 
+    @property
+    def to_table(self):
+        return _isophote_list_to_table([self])
+
 
 class CentralPixel(Isophote):
     """
@@ -495,10 +486,7 @@ class IsophoteList(Isophote, list):
         return np.array(self._collect_as_list(attr_name), dtype=np.float64)
 
     def _collect_as_list(self, attr_name):
-        result = []
-        for k in range(len(self._list)):
-            result.append(getattr(self._list[k], attr_name))
-        return result
+        return [getattr(iso, attr_name) for iso in self._list]
 
     @property
     def sample(self):
@@ -513,48 +501,48 @@ class IsophoteList(Isophote, list):
         return self._collect_as_array('intens')
 
     @property
-    def eps(self):
-        return self._collect_as_array('eps')
-
-    @property
-    def pa(self):
-        return self._collect_as_array('pa')
-
-    @property
-    def x0(self):
-        return self._collect_as_array('x0')
-
-    @property
-    def y0(self):
-        return self._collect_as_array('y0')
-
-    @property
-    def rms(self):
-        return self._collect_as_array('rms')
-
-    @property
     def int_err(self):
         return self._collect_as_array('int_err')
 
     @property
-    def pix_stddev(self):
-        return self._collect_as_array('pix_stddev')
+    def eps(self):
+        return self._collect_as_array('eps')
 
     @property
     def ellip_err(self):
         return self._collect_as_array('ellip_err')
 
     @property
+    def pa(self):
+        return self._collect_as_array('pa')
+
+    @property
     def pa_err(self):
         return self._collect_as_array('pa_err')
+
+    @property
+    def x0(self):
+        return self._collect_as_array('x0')
 
     @property
     def x0_err(self):
         return self._collect_as_array('x0_err')
 
     @property
+    def y0(self):
+        return self._collect_as_array('y0')
+
+    @property
     def y0_err(self):
         return self._collect_as_array('y0_err')
+
+    @property
+    def rms(self):
+        return self._collect_as_array('rms')
+
+    @property
+    def pix_stddev(self):
+        return self._collect_as_array('pix_stddev')
 
     @property
     def grad(self):
@@ -639,3 +627,47 @@ class IsophoteList(Isophote, list):
     @property
     def b4_err(self):
         return self._collect_as_array('b4_err')
+
+    def to_table(self):
+        return _isophote_list_to_table(self)
+
+
+def _isophote_list_to_table(isophote_list):
+    """
+    Convert an `~photutils.isophote.IsophoteList` instance to
+    a `~astropy.table.QTable`.
+
+    Parameters
+    ----------
+    isophote_list : `~photutils.isophote.IsophoteList` instance
+        An Isophotelist instance.
+
+    Returns
+    -------
+    result : `~astropy.table.QTable`
+        An astropy QTable with the isophote paramters
+    """
+
+    properties = OrderedDict()
+    properties['sma'] = 'sma'
+    properties['intens'] = 'intens'
+    properties['int_err'] = 'intens_err'
+    properties['eps'] = 'ellipticity'
+    properties['ellip_err'] = 'ellipticity_err'
+    properties['pa'] = 'pa'
+    properties['pa_err'] = 'pa_err'
+    properties['grad_r_error'] = 'grad_rerr'
+    properties['ndata'] = 'ndata'
+    properties['nflag'] = 'flag'
+    properties['niter'] = 'niter'
+    properties['stop_code'] = 'stop_code'
+
+    isotable = QTable()
+
+    for k, v in properties.items():
+        isotable[v] = np.array([getattr(iso, k) for iso in isophote_list])
+
+        if k in ('pa', 'pa_err'):
+            isotable[v] = isotable[v] * 180. / np.pi * u.deg
+
+    return isotable
