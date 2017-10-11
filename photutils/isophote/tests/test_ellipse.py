@@ -44,7 +44,7 @@ class TestEllipse(object):
 
     def test_basic(self):
         ellipse = Ellipse(self.data, verbose=self.verbose)
-        isophote_list = ellipse.fit_image(verbose=self.verbose)
+        isophote_list = ellipse.fit_image()
 
         assert isinstance(isophote_list, IsophoteList)
         assert len(isophote_list) > 1
@@ -69,7 +69,7 @@ class TestEllipse(object):
         # This should result in failure since the real galaxy
         # image is off-center by a large offset.
         ellipse = Ellipse(OFFSET_GALAXY, verbose=self.verbose)
-        isophote_list = ellipse.fit_image(verbose=self.verbose)
+        isophote_list = ellipse.fit_image()
 
         assert len(isophote_list) == 0
 
@@ -78,7 +78,7 @@ class TestEllipse(object):
         # offset galaxy image.
         g = Geometry(POS+5, POS+5, 10., DEFAULT_EPS, PA, 0.1, self.verbose)
         ellipse = Ellipse(OFFSET_GALAXY, geometry=g, verbose=self.verbose)
-        isophote_list = ellipse.fit_image(verbose=self.verbose)
+        isophote_list = ellipse.fit_image()
 
         # the fit should stop when too many potential sample
         # points fall outside the image frame.
@@ -90,7 +90,7 @@ class TestEllipse(object):
         # beyond the image frame limits.
         g = Geometry(POS+5, POS+5, 10., DEFAULT_EPS, PA, 0.1, self.verbose)
         ellipse = Ellipse(OFFSET_GALAXY, geometry=g, verbose=self.verbose)
-        isophote_list = ellipse.fit_image(maxsma=400., verbose=self.verbose)
+        isophote_list = ellipse.fit_image(maxsma=400.)
 
         # the fit should go to maxsma, but with fixed geometry
         assert len(isophote_list) == 71
@@ -117,7 +117,7 @@ class TestEllipseOnRealData(object):
 
         verbose = False
         ellipse = Ellipse(data, geometry=g, verbose=verbose)
-        isophote_list = ellipse.fit_image(verbose=verbose)
+        isophote_list = ellipse.fit_image()
 
         assert len(isophote_list) == 57
 

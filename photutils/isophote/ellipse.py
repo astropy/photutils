@@ -1,8 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+import warnings
 
 import numpy as np
+from astropy.utils.exceptions import AstropyUserWarning
 
 from .centerer import Centerer
 from .fitter import (Fitter, CentralFitter, TOO_MANY_FLAGGED,
@@ -376,8 +378,8 @@ class Ellipse(object):
                 # the fitting algorithm to find any meaningful solution.
 
                 if len(isophote_list) == 1:
-                    if verbose:
-                        print('No meaningful fit was possible.')
+                    warnings.warn('No meaningful fit was possible.',
+                                  AstropyUserWarning)
                     return IsophoteList([])
 
                 self._fix_last_isophote(isophote_list, -1)

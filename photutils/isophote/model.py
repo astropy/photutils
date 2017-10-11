@@ -1,8 +1,8 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-import sys
 
+from astropy import log
 import numpy as np
 
 from .geometry import Geometry, PHI_MIN
@@ -50,9 +50,6 @@ def build_model(image, isolist, fill=0., high_harmonics=False, verbose=True):
     # to ensure no gaps will result on the output array.
     finely_spaced_sma = np.arange(isolist[0].sma, isolist[-1].sma, 0.1)
 
-    if verbose:
-        print("Interpolating....", end="")
-
     # interpolate ellipse parameters
 
     # End points must be discarded, but how many?
@@ -89,9 +86,6 @@ def build_model(image, isolist, fill=0., high_harmonics=False, verbose=True):
     # correct deviations cased by fluctuations in spline solution
     eps_array[np.where(eps_array < 0.)] = 0.
 
-    if verbose:
-        print("Done")
-
     result = np.zeros(shape=image.shape)
     weight = np.zeros(shape=image.shape)
 
@@ -111,8 +105,7 @@ def build_model(image, isolist, fill=0., high_harmonics=False, verbose=True):
         intens = intens_array[index]
 
         if verbose:
-            print("SMA=%5.1f" % sma0, end="\r")
-            sys.stdout.flush()
+            log.info("SMA={:5.1f}".format(sma0))
 
         # scan angles. Need to go a bit beyond full circle to ensure
         # full coverage.
@@ -166,8 +159,5 @@ def build_model(image, isolist, fill=0., high_harmonics=False, verbose=True):
 
     # fill value
     result[np.where(result == 0.)] = fill
-
-    if verbose:
-        print("\nDone")
 
     return result

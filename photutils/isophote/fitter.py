@@ -2,6 +2,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+from astropy import log
 import math
 import numpy as np
 
@@ -145,7 +146,7 @@ class Fitter(object):
             try:
                 coeffs = fit_1st_and_2nd_harmonics(values[0], values[2])
             except Exception as e:
-                print(e)
+                log.info(e)
                 return Isophote(sample, iter+1, False, 3)
 
             coeffs = coeffs[0]

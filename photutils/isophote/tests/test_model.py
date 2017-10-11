@@ -32,7 +32,7 @@ def test_model(verbose=False):
 
     g = Geometry(530., 511, 10., 0.1, 10./180.*np.pi)
     ellipse = Ellipse(data, geometry=g, verbose=verbose, threshold=1.e5)
-    isophote_list = ellipse.fit_image(verbose=verbose)
+    isophote_list = ellipse.fit_image()
     model = build_model(data, isophote_list,
                         fill=np.mean(data[10:100, 10:100]), verbose=verbose)
 
@@ -50,7 +50,7 @@ def test_model_simulated_data(verbose=False):
 
     g = Geometry(256., 256., 10., 0.5, np.pi/3.)
     ellipse = Ellipse(data, geometry=g, verbose=verbose, threshold=1.e5)
-    isophote_list = ellipse.fit_image(verbose=verbose)
+    isophote_list = ellipse.fit_image()
     model = build_model(data, isophote_list,
                         fill=np.mean(data[0:50, 0:50]), verbose=verbose)
 

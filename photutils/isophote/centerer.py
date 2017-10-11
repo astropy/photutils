@@ -3,6 +3,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import numpy as np
+from astropy import log
 
 
 __all__ = ['Centerer']
@@ -131,9 +132,6 @@ class Centerer(object):
 
         self.threshold = threshold
 
-        if self._verbose:
-            print("Centering on object....   ", end="")
-
         # Check if center coordinates point to somewhere inside the frame.
         # If not, set then to frame center.
         _x0 = self._geometry.x0
@@ -188,8 +186,9 @@ class Centerer(object):
             self._geometry.y0 = float(max_j)
 
             if self._verbose:
-                print("Done. Found x0 ={0:6.1f}, y0 ={1:6.1f}"
-                      .format(self._geometry.x0, self._geometry.y0))
+                log.info("Found center at x0 = {0:5.1f}, y0 = {1:5.1f}"
+                         .format(self._geometry.x0, self._geometry.y0))
         else:
             if self._verbose:
-                print("Done. Below threshold. Keeping original coordinates.")
+                log.info('Result is below the threshold -- keeping the '
+                         'original coordinates.')

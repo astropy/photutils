@@ -93,7 +93,7 @@ def test_regression(name, integrmode=BILINEAR, verbose=False):
     hdu.close()
 
     ellipse = Ellipse(data, verbose=verbose)
-    isophote_list = ellipse.fit_image(verbose=verbose)
+    isophote_list = ellipse.fit_image()
     # isophote_list = ellipse.fit_image(sclip=2., nclip=3)
 
     fmt = ("%5.2f  %6.1f    %8.3f %8.3f %8.3f        %9.5f  %6.2f   "
