@@ -34,20 +34,6 @@ You can also look for the test code in directory photutils/isophote/tests/ for
 several examples on how the API is used in practice.
 
 
-Reference/API
--------------
-
-.. automodapi:: photutils.isophote
-.. automodapi:: photutils.isophote.ellipse
-.. automodapi:: photutils.isophote.isophote
-.. automodapi:: photutils.isophote.sample
-.. automodapi:: photutils.isophote.fitter
-.. automodapi:: photutils.isophote.geometry
-.. automodapi:: photutils.isophote.integrator
-.. automodapi:: photutils.isophote.harmonics
-.. automodapi:: photutils.isophote.centerer
-.. automodapi:: photutils.isophote.model
-
 
 Frequently Asked Questions
 --------------------------
@@ -231,3 +217,9 @@ References
    Conference, Tucson, PASP Conference Series v.101, ed. G.H. Jacoby and J. Barnes, p.139-142.
 
 
+
+Reference/API
+-------------
+
+.. automodapi:: photutils.isophote
+    :no-heading:

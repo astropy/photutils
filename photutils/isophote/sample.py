@@ -5,58 +5,59 @@ import copy
 
 import numpy as np
 
-from .geometry import Geometry, DEFAULT_EPS, DEFAULT_STEP, PHI_MIN
-from .integrator import integrators, BILINEAR
+from .geometry import Geometry
+from .integrator import integrators
 
 
 __all__ = ['Sample']
 
 
-DEFAULT_SCLIP = 3.
-
 
 class Sample(object):
     """
-    A Sample instance describes an elliptical path on the image, from which
-    intensities can be extracted using a selection of integration algorithms.
+    A class to describe an elliptical path on an image.
 
-    The Sample instance contains a `geometry` attribute that describes
-    its geometry.
+    The ``geometry`` attribute describes the geometry of the elliptical
+    path.
+
+    The image intensities along the elliptical path can be extracted
+    using a selection of integration algorithms.
 
     Parameters
     ----------
-    image : numpy 2-d array
-        pixels
+    image : 2D `~numpy.ndarray`
+        The input image.
     sma : float
-        the semi-major axis length in pixels
-    x0 : float, default=None
-        the X coordinate of the ellipse center
-    y0 : foat, default=None
-        the Y coordinate of the ellipse center
-    astep : float, default=0.1
-        step value for growing/shrinking the semi-
-        major axis. It can be expressed either in
-        pixels (when `linear_growth`=True) or in
-        relative value (when `linear_growth=False`)
-    eps : ellipticity, default=0.2
-        ellipticity
-    pa : float, default=0.0
-        position angle of ellipse in relation to the
-        +X axis of the image array (rotating towards
-        the +Y axis).
-    sclip : float, default=3.0
-        sigma-clip value
-    nclip : int, default=0
-        number of sigma-clip interations. If 0, skip sigma-clipping.
-    linear_growth : boolean, default=False
-        semi-major axis growing/shrinking mode
-    integrmode : string, default=BILINEAR
-        area integration mode, as defined in module integrator.py
-    geometry : Geometry instance, default=None
-        the geometry that describes the ellipse. This can be used in
-        lieu of the explicit specification of parameters `sma`, `x0`,
-        `y0`, `eps`, etc. In any case, the Geometry instance
-        becomes an attribute of the Sample object.
+        The semimajor axis length in pixels.
+    x0, y0 : float, optional
+        The (x, y) coordinate of the ellipse center.
+    astep : float, optional
+        The step value for growing/shrinking the semimajor axis. It can
+        be expressed either in pixels (when ``linear_growth=True``) or
+        as a relative value (when ``linear_growth=False``).  The default
+        is 0.1.
+    eps : float, optional
+        The ellipticity of the ellipse.  The default is 0.2.
+    pa : float, optional
+        The position angle of ellipse in relation to the positive x axis
+        of the image array (rotating towards the positive y axis).  The
+        default is 0.
+    sclip : float, optional
+        The sigma-clip sigma value.  The default is 3.0.
+    nclip : int, optional
+        The number of sigma-clip interations.  Set to zero to skip
+        sigma-clipping.  The default is 0.
+    linear_growth : bool, optional
+        The semimajor axis growing/shrinking mode.  The default is
+        `False`.
+    integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, optional
+        The area integration mode.  The default is 'bilinear'.
+    geometry : `~photutils.isophote.Geometry` instance or `None`
+        The geometry that describes the ellipse. This can be used in
+        lieu of the explicit specification of parameters ``sma``,
+        ``x0``, ``y0``, ``eps``, etc.  In any case, the
+        `~photutils.isophote.Geometry` instance becomes an attribute of
+        the `~photutils.isophote.Sample` object.  The default is `None`.
 
     Attributes
     ----------
@@ -89,10 +90,9 @@ class Sample(object):
 
     """
 
-    def __init__(self, image, sma, x0=None, y0=None, astep=DEFAULT_STEP,
-                 eps=DEFAULT_EPS, position_angle=0.0, sclip=DEFAULT_SCLIP,
-                 nclip=0, linear_growth=False, integrmode=BILINEAR,
-                 geometry=None):
+    def __init__(self, image, sma, x0=None, y0=None, astep=0.1, eps=0.2,
+                 position_angle=0., sclip=3., nclip=0, linear_growth=False,
+                 integrmode='bilinear', geometry=None):
         self.image = image
         self.integrmode = integrmode
 
@@ -153,7 +153,7 @@ class Sample(object):
             self.values = s
             return s
 
-    def _extract(self):
+    def _extract(self, phi_min=0.05):
         # Here the actual sampling takes place. This is called only once
         # during the life of a Sample instance, because it's an expensive
         # calculation. This method should not be called from external code.
@@ -208,7 +208,7 @@ class Sample(object):
         # walk along elliptical path, integrating at specified
         # places defined by polar vector. Need to go a bit beyond
         # full circle to ensure full coverage.
-        while (phi <= np.pi*2.+PHI_MIN):
+        while (phi <= np.pi*2. + phi_min):
             # do the integration at phi-radius position, and append
             # results to the angles, radii, and intensities lists.
             integrator.integrate(radius, phi)

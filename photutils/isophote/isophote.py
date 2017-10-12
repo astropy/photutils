@@ -42,20 +42,20 @@ class Isophote(object):
             3. singular matrix in harmonic fit, results may not be valid.
                Also signals insufficient number of data points to fit.
             4. small or wrong gradient, or ellipse diverged. Subsequent
-               ellipses at larger or smaller semi-major axis may have the
+               ellipses at larger or smaller semimajor axis may have the
                same constant geometric parameters. It's also used when the
                user turns off the fitting algorithm via the `maxrit`
                fitting parameter (see Ellipse class).
             5. ellipse diverged; not even the minimum number of iterations
                could be executed. Subsequent ellipses at larger or
-               smaller semi-major axis may have the same constant
+               smaller semimajor axis may have the same constant
                geometric parameters.
            -1. internal use.
 
     Attributes
     ----------
     sma : float
-        semi-major axis length (pixels)
+        semimajor axis length (pixels)
     intens : float
         mean intensity value along the elliptical path
     eps : float
@@ -107,7 +107,7 @@ class Isophote(object):
     a3, b3, a4, b4 : float higher order harmonics that measure the
         deviations from a perfect ellipse.  These values ar actually the
         raw harmonic amplitude divided by the local radial gradient and
-        the semi-major axis length, so they can directly be compared
+        the semimajor axis length, so they can directly be compared
         with each other.
     a3_err, b3_err, a4_err, b4_err : float
         errors of the a3, b3, a4, b4 attributes
@@ -161,9 +161,9 @@ class Isophote(object):
 
     def _compute_fluxes(self):
         # Compute integrated flux inside ellipse, as well as inside
-        # circle defined by semi-major axis. Pixels in a square section
+        # circle defined by semimajor axis. Pixels in a square section
         # enclosing circle are scanned; the distance of each pixel to
-        # the isophote center is compared both with the semi-major axis
+        # the isophote center is compared both with the semimajor axis
         # length and with the length of the ellipse radius vector, and
         # integrals are updated if the pixel distance is smaller.
 
@@ -465,13 +465,13 @@ class IsophoteList(Isophote, list):
 
     def get_closest(self, sma):
         """
-        Returns the Isophote instance that has the closest semi-major
+        Returns the Isophote instance that has the closest semimajor
         axis length to the passed parameter
 
         Parameters
         ----------
         sma : float
-            a value for the semi-major axis length
+            a value for the semimajor axis length
 
         Returns
         -------

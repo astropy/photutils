@@ -14,6 +14,7 @@ from .sample import Sample
 
 
 __all__ = ['Fitter']
+__doctest_skip__ = ['Fitter.fit']
 
 
 PI2 = np.pi / 2
@@ -22,7 +23,7 @@ MIN_EPS = 0.05
 TOO_MANY_FLAGGED = 1
 NORMAL_FIT = 0
 
-DEFAULT_CONVERGENCY = 0.05
+DEFAULT_CONVERGENCE = 0.05
 DEFAULT_MINIT = 10
 DEFAULT_MAXIT = 50
 DEFAULT_FFLAG = 0.7
@@ -31,88 +32,97 @@ DEFAULT_MAXGERR = 0.5
 
 class Fitter(object):
     """
-    The main fitter class.
+    Class to fit ellipses.
 
     Parameters
     ----------
-    sample : instance of Sample
-        the sample to be fitted
+    sample : `~photutils.isophote.Sample` instance
+        The sample data to be fitted.
     """
 
     def __init__(self, sample):
         self._sample = sample
 
-    def fit(self, conver=DEFAULT_CONVERGENCY, minit=DEFAULT_MINIT,
+    def fit(self, conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,
             maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG, maxgerr=DEFAULT_MAXGERR,
             going_inwards=False):
         """
-        Perform the actual fit, returning an Isophote instance:
-
-            fitter = Fitter(sample)
-            isophote = fitter.fit()
+        Fit an elliptical isophote.
 
         Parameters
         ----------
-        conver : float, default = 0.05
-            main convergency criterion. Iterations stop when the
+        conver : float, optional
+            The main convergence criterion. Iterations stop when the
             largest harmonic amplitude becomes smaller (in absolute
-            value) than `conver` times the harmonic fit rms.
-        minit : int, default = 10
-            minimum number of iterations to perform. A minimum of 10
-            iterations guarantees that, on average, 2 iterations will
-            be available for fitting each independent parameter (the
-            four harmonic amplitudes and the intensity level). In the
-            first isophote, the minimum number of iterations is 2 * `minit`,
-            to ensure that, even departing from not-so-good initial values,
-            the algorithm has a better chance to converge to a sensible
-            solution.
-        maxit : int, default = 50
-            maximum number of iterations to perform
-        fflag : float, default = 0.7
-            acceptable fraction of flagged data points in sample.
-            If the actual number of valid data points is smaller
-            than this, stop iterating and return current Isophote.
-            Flagged data points are points that either lie outside
-            the image frame, are masked, or were rejected by
-            sigma-clipping.
-        maxgerr : float, default = 0.5
-            maximum acceptable relative error in the local radial
+            value) than ``conver`` times the harmonic fit rms.  The
+            default is 0.05.
+        minit : int, optional
+            The minimum number of iterations to perform. A minimum of 10
+            (the default) iterations guarantees that, on average, 2
+            iterations will be available for fitting each independent
+            parameter (the four harmonic amplitudes and the intensity
+            level). For the first isophote, the minimum number of
+            iterations is 2 * ``minit`` to ensure that, even departing
+            from not-so-good initial values, the algorithm has a better
+            chance to converge to a sensible solution.
+        maxit : int, optional
+            The maximum number of iterations to perform.  The default is
+            50.
+        fflag : float, optional
+            The acceptable fraction of flagged data points in the
+            sample.  If the actual fraction of valid data points is
+            smaller than this, the iterations will stop and the current
+            `~photutils.isophote.Isophote` will be returned.  Flagged
+            data points are points that either lie outside the image
+            frame, are masked, or were rejected by sigma-clipping.  The
+            default is 0.7.
+        maxgerr : float, optional
+            The maximum acceptable relative error in the local radial
             intensity gradient. This is the main control for preventing
-            ellipses to grow to regions of too low signal-to-noise ratio.
-            It specifies the maximum acceptable relative error in the
-            local radial intensity gradient. Experiments (see paper
-            [2] quoted in the FAQ) showed that the fitting precision
-            relates to that relative error. The usual behavior of the
-            gradient relative error is to increase with semi-major axis,
-            being larger in outer, fainter regions of a galaxy image.
-            In the current implementation, the `maxgerr` criterion is
-            triggered only when two consecutive isophotes exceed the
-            value specified in the parameter. This prevents premature
-            stopping caused by contamination such as stars and HII
-            regions.
-            A number of actions may happen when the current gradient
-            error exceeds `maxgerr` (or becomes non-significant and is
-            set to None) in the process of increasing semi-major axis
-            length. If the maximum semi-major axis specified by parameter
-            `maxsma` is set to None, semi-major axis grow is stopped and
-            the algorithm proceeds inwards to the galaxy image center. If
-            `maxsma` is set to some finite value, and this value is larger
-            than the current semi-major axis length, the algorithm enters
-            non-iterative mode and proceeds outwards until reaching `.maxsma`.
-        going_inwards : boolean, default = False
-            defines the sense of SMA growth. This is used by the Ellipse
-            class for defining stopping criteria that depend on the gradient
-            relative error. When fitting just one isophote, this parameter
-            is used only by the code that defines the details of how
-            elliptical arc segments ("sectors") are extracted from the image,
-            when using area extraction modes (see parameter `integrmode` in
-            the Sample class).
+            ellipses to grow to regions of too low signal-to-noise
+            ratio.  It specifies the maximum acceptable relative error
+            in the local radial intensity gradient.  `Busko (1996; ASPC
+            101, 139)
+            <http://adsabs.harvard.edu/abs/1996ASPC..101..139B>`_ showed
+            that the fitting precision relates to that relative error.
+            The usual behavior of the gradient relative error is to
+            increase with semimajor axis, being larger in outer, fainter
+            regions of a galaxy image.  In the current implementation,
+            the ``maxgerr`` criterion is triggered only when two
+            consecutive isophotes exceed the value specified by the
+            parameter. This prevents premature stopping caused by
+            contamination such as stars and HII regions.
+
+            A number of actions may happen when the gradient error
+            exceeds ``maxgerr`` (or becomes non-significant and is set
+            to `None`).  If the maximum semimajor axis specified by
+            ``maxsma`` is set to `None`, semimajor axis growth is
+            stopped and the algorithm proceeds inwards to the galaxy
+            center. If ``maxsma`` is set to some finite value, and this
+            value is larger than the current semimajor axis length, the
+            algorithm enters non-iterative mode and proceeds outwards
+            until reaching ``maxsma``.  The default is 0.5.
+        going_inwards : bool, optional
+            Parameter to define the sense of SMA growth. When fitting
+            just one isophote, this parameter is used only by the code
+            that defines the details of how elliptical arc segments
+            ("sectors") are extracted from the image, when using area
+            extraction modes (see the ``integrmode`` parameter in the
+            `~photutils.isophote.Sample` class).  The default is
+            `False`.
 
         Returns
         -------
-        instance of Isophote
-            isophote with the fitted sample plus additional fit status
-            information
+        result : `~photutils.isophote.Isophote` instance
+            The fitted isophote, which also contains fit status
+            information.
+
+        Examples
+        --------
+        >>> from photutils.isophote import Sample, Fitter
+        >>> sample = Sample(data, sma=10.)
+        >>> fitter = Fitter(sample)
+        >>> isophote = fitter.fit()
         """
 
         sample = self._sample
@@ -197,10 +207,11 @@ class Fitter(object):
             sample.update()
 
             # see if any abnormal (or unusual) conditions warrant
-            # the change to non-iterative mode, or go inwards mode.
-            good_to_go, lexceed = self._is_good_to_go(sample, maxgerr,
-                                                      going_inwards, lexceed)
-            if not good_to_go:
+            # the change to non-iterative mode, or go-inwards mode.
+            proceed, lexceed = self._check_conditions(
+                sample, maxgerr, going_inwards, lexceed)
+
+            if not proceed:
                 sample.update()
                 return Isophote(sample, iter+1, True, -1)
 
@@ -210,8 +221,8 @@ class Fitter(object):
         minimum_amplitude_sample.update()
         return Isophote(minimum_amplitude_sample, maxit, True, 2)
 
-    def _is_good_to_go(self, sample, maxgerr, going_inwards, lexceed):
-        good_to_go = True
+    def _check_conditions(self, sample, maxgerr, going_inwards, lexceed):
+        proceed = True
 
         # If center wandered more than allowed, put it back
         # in place and signal the end of iterative mode.
@@ -220,7 +231,7 @@ class Fitter(object):
         #         sample.geometry.x0 -= dx
         #         sample.geometry.y0 -= dy
         #         STOP(al) = ST_NONITERATE
-        #         good_to_go = False
+        #         proceed = False
 
         # check if an acceptable gradient value could be computed.
         if sample.gradient_error:
@@ -228,23 +239,23 @@ class Fitter(object):
                 (sample.gradient_relative_error > maxgerr or
                  sample.gradient >= 0.)):
                 if lexceed:
-                    good_to_go = False
+                    proceed = False
                 else:
                     lexceed = True
         else:
-            good_to_go = False
+            proceed = False
 
         # check if ellipse geometry diverged.
         if abs(sample.geometry.eps > MAX_EPS):
-            good_to_go = False
+            proceed = False
         if (sample.geometry.x0 < 1. or
                 sample.geometry.x0 > sample.image.shape[0] or
                 sample.geometry.y0 < 1. or
                 sample.geometry.y0 > sample.image.shape[1]):
-            good_to_go = False
+            proceed = False
 
         # See if eps == 0 (round isophote) was crossed.
-        # If so, fix it but still good_to_go to go.
+        # If so, fix it but still proceed
         if sample.geometry.eps < 0.:
             sample.geometry.eps = min(-sample.geometry.eps, MAX_EPS)
             if sample.geometry.pa < PI2:
@@ -253,11 +264,11 @@ class Fitter(object):
                 sample.geometry.pa -= PI2
 
         # If ellipse is an exact circle, computations will diverge.
-        # Make it slightly flat, but still good to go.
+        # Make it slightly flat, but still proceed
         if sample.geometry.eps == 0.0:
             sample.geometry.eps = MIN_EPS
 
-        return good_to_go, lexceed
+        return proceed, lexceed
 
 
 class _ParameterCorrector(object):
@@ -350,27 +361,29 @@ _correctors = [_PositionCorrector_0(), _PositionCorrector_1(),
 
 class CentralFitter(Fitter):
     """
-    Derived Fitter class, designed specifically to handle the
-    case of the central pixel in the galaxy image.
+    Specialized Fitter class, designed specifically to handle the case
+    of the central pixel in the galaxy image.
     """
 
-    def fit(self, conver=DEFAULT_CONVERGENCY, minit=DEFAULT_MINIT,
+    def fit(self, conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,
             maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG, maxgerr=DEFAULT_MAXGERR,
             going_inwards=False):
         """
-        Overrides the base class to perform just a simple 1-pixel
-        extraction at the current x0,y0 position, using bilinear
-        interpolation.
+        Perform just a simple 1-pixel extraction at the current (x0, y0)
+        position using bilinear interpolation.
 
-        Parameters are ignored. They were added just so the method's
-        signature matches the superclass' and my IDE doesn't complain.
+        The input parameters are ignored, but included simple to match
+        the calling signature of the parent class.
 
-        :return: instance of the CentralPixel class.
-            For convenience, the CentralPixel class inherits from
-            the Isophote class, although it's not really a true
-            isophote but just a single intensity value at the central
-            position. Thus, most of its attributes are hardcoded to
-            None, or other default value when appropriate.
+        Returns
+        -------
+        result : `~photutils.isophote.CentralPixel` instance
+            The central pixel value.  For convenience, the
+            `~photutils.isophote.CentralPixel` class inherits from the
+            `~photutils.isophote.Isophote` class, although it's not
+            really a true isophote but just a single intensity value at
+            the central position.  Thus, most of its attributes are
+            hardcoded to `None` or other default value when appropriate.
         """
 
         self._sample.update()

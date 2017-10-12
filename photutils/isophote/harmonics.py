@@ -32,7 +32,7 @@ def first_and_2nd_harmonic_function(phi, c):
     phi : float or np.array
         angle(s) along the elliptical path, going towards the +Y axis,
         starting coincident with the position angle. That is, the
-        angles are defined from the semi-major axis that lies in
+        angles are defined from the semimajor axis that lies in
         the +X quadrant.
     c : np array of shape (5)
         containing the five harmonic coefficients
@@ -79,7 +79,7 @@ def fit_upper_harmonic(phi, intensities, order):
     """
     Fits upper harmonic function to a set of angle,intensity pairs.
     With `order` set to 3 or 4, the resulting amplitudes, divided
-    by the semi-major axis length and local gradient, measure the
+    by the semimajor axis length and local gradient, measure the
     deviations from perfect ellipticity.
 
     function = y0 + c[0]*sin(order*phi) + c[1]*cos(order*phi)

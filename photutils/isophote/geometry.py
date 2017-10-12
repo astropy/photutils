@@ -77,11 +77,11 @@ class Geometry(object):
     y0 : float
         center coordinate in pixels along image column
     sma : float
-        semi-major axis in pixels
+        semimajor axis in pixels
     eps : ellipticity
         ellipticity
     pa : float, units radians
-        position angle of semi-major axis in relation to the +X axis of
+        position angle of semimajor axis in relation to the +X axis of
         the image array (rotating towards the +Y axis). Position angles
         are defined in the range 0 < PA <= np.pi. Avoid using as starting
         position angle `pa0 = 0.`, since the fit algorithm may not work
@@ -90,11 +90,11 @@ class Geometry(object):
         and forth between successive isophotes, by amounts close to 180
         degrees.
     astep : float, default = 0.1
-        step value for growing/shrinking the semi-major axis. It can be
+        step value for growing/shrinking the semimajor axis. It can be
         expressed either in pixels (when `linear_growth`=True) or in relative
         value (when `linear_growth=False`)
     linear_growth : boolean, default = False
-        semi-major axis growing/shrinking mode
+        semimajor axis growing/shrinking mode
     """
 
     def __init__(self, x0, y0, sma, eps, pa, astep=DEFAULT_STEP,
@@ -212,7 +212,7 @@ class Geometry(object):
 
     def bounding_ellipses(self):
         """
-        Compute the semi-major axis of the two ellipses that bound
+        Compute the semimajor axis of the two ellipses that bound
         the annulus where integrations take place.
 
         Returns
@@ -257,7 +257,7 @@ class Geometry(object):
         0 < phi  < 2*PI
 
         Note that radius can be anything; solution is not tied
-        to the semi-major axis length, but to the center position
+        to the semimajor axis length, but to the center position
         and tilt angle only.
 
         Parameters
@@ -302,7 +302,7 @@ class Geometry(object):
 
     def update_sma(self, step):
         """
-        Return an updated value for the semi-major axis, given the
+        Return an updated value for the semimajor axis, given the
         current value and the updating step value. The step value must
         be managed by the caller so as to support both modes: grow
         outwards, and shrink inwards.
@@ -315,7 +315,7 @@ class Geometry(object):
         Returns
         -------
         float
-            the new semi-major axis length
+            the new semimajor axis length
         """
 
         if self.linear_growth:
@@ -327,7 +327,7 @@ class Geometry(object):
     def reset_sma(self, step):
         """
         This method should be used whenever one wants to switch the
-        direction of semi-major axis growth, from outwards to inwards.
+        direction of semimajor axis growth, from outwards to inwards.
 
         Parameters
         ----------
@@ -337,8 +337,8 @@ class Geometry(object):
         Returns
         -------
         2 floats
-            the new semi-major axis length and the new step value to
-            initiate the semi-major axis length shrink inwards. This
+            the new semimajor axis length and the new step value to
+            initiate the semimajor axis length shrink inwards. This
             is the step value that should be used when calling method
             update_sma.
         """
