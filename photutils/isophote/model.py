@@ -5,7 +5,7 @@ from __future__ import (absolute_import, division, print_function,
 from astropy import log
 import numpy as np
 
-from .geometry import Geometry, PHI_MIN
+from .geometry import Geometry
 
 
 def build_model(image, isolist, fill=0., high_harmonics=False, verbose=True):
@@ -111,7 +111,7 @@ def build_model(image, isolist, fill=0., high_harmonics=False, verbose=True):
         # full coverage.
         r = sma0
         phi = 0.
-        while (phi <= 2*np.pi + PHI_MIN):
+        while (phi <= 2*np.pi + geometry._phi_min):
             # we might want to add the third and fourth harmonics
             # to the basic isophotal intensity.
             harm = 0.
@@ -148,7 +148,7 @@ def build_model(image, isolist, fill=0., high_harmonics=False, verbose=True):
                 weight[j + 1, i + 1] += fy * fx
 
                 # step towards next pixel on ellipse
-                phi = max((phi + 0.75 / r), PHI_MIN)
+                phi = max((phi + 0.75 / r), geometry._phi_min)
                 r = geometry.radius(phi)
 
     # zero weight values must be set to 1.

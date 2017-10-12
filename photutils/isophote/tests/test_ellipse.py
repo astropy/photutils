@@ -11,7 +11,7 @@ from astropy.tests.helper import remote_data
 from .make_test_data import make_test_image, DEFAULT_POS, DEFAULT_SIZE
 from ..ellipse import Ellipse, FIXED_ELLIPSE, FAILED_FIT
 from ..fitter import NORMAL_FIT, TOO_MANY_FLAGGED
-from ..geometry import Geometry, DEFAULT_EPS
+from ..geometry import Geometry
 from ..isophote import Isophote, IsophoteList
 from ...datasets import get_path
 
@@ -76,7 +76,7 @@ class TestEllipse(object):
     def test_offcenter_fit(self):
         # A first guess ellipse that is roughly centered on the
         # offset galaxy image.
-        g = Geometry(POS+5, POS+5, 10., DEFAULT_EPS, PA, 0.1, self.verbose)
+        g = Geometry(POS+5, POS+5, 10., eps=0.2, pa=PA, astep=0.1)
         ellipse = Ellipse(OFFSET_GALAXY, geometry=g, verbose=self.verbose)
         isophote_list = ellipse.fit_image()
 
@@ -88,7 +88,7 @@ class TestEllipse(object):
     def test_offcenter_go_beyond_frame(self):
         # Same as before, but now force the fit to goo
         # beyond the image frame limits.
-        g = Geometry(POS+5, POS+5, 10., DEFAULT_EPS, PA, 0.1, self.verbose)
+        g = Geometry(POS+5, POS+5, 10., eps=0.2, pa=PA, astep=0.1)
         ellipse = Ellipse(OFFSET_GALAXY, geometry=g, verbose=self.verbose)
         isophote_list = ellipse.fit_image(maxsma=400.)
 

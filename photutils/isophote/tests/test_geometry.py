@@ -5,7 +5,7 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 import pytest
 
-from ..geometry import Geometry, normalize_angle
+from ..geometry import Geometry
 
 
 @pytest.mark.parametrize('astep, linear_growth', [(0.2, False), (20., True)])
@@ -130,25 +130,6 @@ def test_area2():
     assert vertex_y[1] == pytest.approx(24.19, abs=0.01)
     assert vertex_y[2] == pytest.approx(34.79, abs=0.01)
     assert vertex_y[3] == pytest.approx(20.30, abs=0.01)
-
-
-def test_normalize_angle():
-    PI = np.pi
-
-    angle = normalize_angle(PI*10 + PI/5)
-    assert angle == pytest.approx(PI/5, abs=0.0001)
-
-    angle = normalize_angle(PI*1.3)
-    assert angle == pytest.approx(PI*0.3, abs=0.0001)
-
-    angle = normalize_angle(-PI*10 + PI/5)
-    assert angle == pytest.approx(PI/5, abs=0.0001)
-
-    angle = normalize_angle(-PI*1.3)
-    assert angle == pytest.approx(PI*0.7, abs=0.0001)
-
-    angle = normalize_angle(-PI*10.3)
-    assert angle == pytest.approx(PI*0.7, abs=0.0001)
 
 
 def test_reset_sma():

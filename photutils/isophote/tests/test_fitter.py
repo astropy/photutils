@@ -10,7 +10,7 @@ from astropy.tests.helper import remote_data
 
 from .make_test_data import make_test_image, DEFAULT_POS
 from ..fitter import Fitter, CentralFitter
-from ..geometry import Geometry, DEFAULT_EPS
+from ..geometry import Geometry
 from ..harmonics import fit_first_and_second_harmonics
 from ..integrator import MEAN
 from ..isophote import Isophote
@@ -48,7 +48,7 @@ def test_fitting_raw():
 
     # pick first guess ellipse that is off in just
     # one of the parameters (eps).
-    sample = Sample(DATA, 40., eps=2*DEFAULT_EPS)
+    sample = Sample(DATA, 40., eps=2*0.2)
     sample.update()
     s = sample.extract()
 
@@ -81,7 +81,7 @@ def test_fitting_small_radii():
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_fitting_eps():
     # initial guess is off in the eps parameter
-    sample = Sample(DATA, 40., eps=2*DEFAULT_EPS)
+    sample = Sample(DATA, 40., eps=2*0.2)
     fitter = Fitter(sample)
     isophote = fitter.fit()
 
@@ -128,7 +128,7 @@ def test_fitting_all():
     # assumed by the Sample constructor.
     POS = DEFAULT_POS - 5
     ANGLE = np.pi / 4
-    EPS = 2 * DEFAULT_EPS
+    EPS = 2 * 0.2
     data = make_test_image(x0=POS, y0=POS, eps=EPS, pa=ANGLE,
                            random_state=123)
     sma = 60.

@@ -6,47 +6,14 @@ import math
 import numpy as np
 
 
-__all__ = ['Geometry', 'normalize_angle']
+__all__ = ['Geometry']
 
 
-DEFAULT_EPS = 0.2
-DEFAULT_STEP = 0.1
-
-# limits for sector angular width
-PHI_MAX = 0.2
-PHI_MIN = 0.05
-
-
-def normalize_angle(angle):
-    """
-    Restore angle to valid range (0 - PI).
-
-    Parameters
-    ----------
-    angle : float
-         the angle
-
-    Returns
-    -------
-    float
-         the input angle expressed in the range (0 - PI)
-    """
-
-    while angle > np.pi*2:
-        angle -= np.pi*2
-    if angle > np.pi:
-        angle -= np.pi
-    while angle < -np.pi*2:
-        angle += np.pi
-    if angle < -np.pi:
-        angle += np.pi
-    if angle < 0.:
-        angle += np.pi
-    return angle
-
-
-# utility function used in the computation of elliptical sector areas.
 def _area(sma, eps, phi, r):
+    """
+    Compute elliptical sector area.
+    """
+
     aux = r * math.cos(phi) / sma
     signal = aux / abs(aux)
     if abs(aux) >= 1.:
@@ -56,49 +23,50 @@ def _area(sma, eps, phi, r):
 
 class Geometry(object):
     """
-    This is basically a container that allows storage of all parameters
-    associated with a given ellipse's geometry.
+    Container class to store parameters for the geometry of an ellipse.
 
     Parameters that describe the relationship of a given ellipse with
     other associated ellipses are also encapsulated in this container.
-    These associated ellipses may include e.g. the two (inner and outer)
-    bounding ellipses that are used to build sectors along the elliptical
-    path. These sectors are used as areas for integrating pixel values,
-    when area integration mode (mean or median) is used.
+    These associated ellipses may include, e.g., the two (inner and
+    outer) bounding ellipses that are used to build sectors along the
+    elliptical path. These sectors are used as areas for integrating
+    pixel values, when the area integration mode (mean or median) is
+    used.
 
-    The Geometry object also keeps track of *where* in the ellipse we are,
-    when performing an 'extract' operation. This is mostly relevant when
-    using an area integration mode (as opposed to a pixel integration mode)
+    This class also keeps track of where in the ellipse we are when
+    performing an 'extract' operation. This is mostly relevant when
+    using an area integration mode (as opposed to a pixel integration
+    mode)
 
     Parameters
     ----------
-    x0 : float
-        center coordinate in pixels along image row
-    y0 : float
-        center coordinate in pixels along image column
+    x0, y0 : float
+        The center pixel coordinate of the ellipse.
     sma : float
-        semimajor axis in pixels
+        The semimajor axis of the ellipse in pixels.
     eps : ellipticity
-        ellipticity
-    pa : float, units radians
-        position angle of semimajor axis in relation to the +X axis of
-        the image array (rotating towards the +Y axis). Position angles
-        are defined in the range 0 < PA <= np.pi. Avoid using as starting
-        position angle `pa0 = 0.`, since the fit algorithm may not work
-        properly. When the ellipses are such that position angles are near
-        either extreme of the range, noise can make the solution jump back
-        and forth between successive isophotes, by amounts close to 180
+        The ellipticity of the ellipse.
+    pa : float
+        The position angle (in radians) of the semimajor axis in
+        relation to the postive x axis of the image array (rotating
+        towards the positive y axis). Position angles are defined in the
+        range :math:`0 < PA <= \\pi`. Avoid using as starting position
+        angle of 0., since the fit algorithm may not work properly. When
+        the ellipses are such that position angles are near either
+        extreme of the range, noise can make the solution jump back and
+        forth between successive isophotes, by amounts close to 180
         degrees.
-    astep : float, default = 0.1
-        step value for growing/shrinking the semimajor axis. It can be
-        expressed either in pixels (when `linear_growth`=True) or in relative
-        value (when `linear_growth=False`)
-    linear_growth : boolean, default = False
-        semimajor axis growing/shrinking mode
+    astep : float, optional
+        The step value for growing/shrinking the semimajor axis. It can
+        be expressed either in pixels (when ``linear_growth=True``) or
+        as a relative value (when ``linear_growth=False``).  The default
+        is 0.1.
+    linear_growth : bool, optional
+        The semimajor axis growing/shrinking mode.  The default is
+        `False`.
     """
 
-    def __init__(self, x0, y0, sma, eps, pa, astep=DEFAULT_STEP,
-                 linear_growth=False):
+    def __init__(self, x0, y0, sma, eps, pa, astep=0.1, linear_growth=False):
         self.x0 = x0
         self.y0 = y0
         self.sma = sma
@@ -108,7 +76,11 @@ class Geometry(object):
         self.astep = astep
         self.linear_growth = linear_growth
 
-        # variables used in the calculation of the sector angular width.
+        # limits for sector angular width
+        self._phi_min = 0.05
+        self._phi_max = 0.2
+
+        # variables used in the calculation of the sector angular width
         sma1, sma2 = self.bounding_ellipses()
         inner_sma = min((sma2 - sma1), 3.)
         self._area_factor = (sma2 - sma1) * inner_sma
@@ -116,24 +88,23 @@ class Geometry(object):
         # sma can eventually be zero!
         if self.sma > 0.:
             self.sector_angular_width = max(min((inner_sma / self.sma),
-                                                PHI_MAX), PHI_MIN)
+                                                self._phi_max), self._phi_min)
             self.initial_polar_angle = self.sector_angular_width / 2.
-
             self.initial_polar_radius = self.radius(self.initial_polar_angle)
 
     def radius(self, angle):
         """
-        Given a polar angle, return the corresponding polar radius.
+        Calculate the polar radius for a given polar angle.
 
         Parameters
         ----------
         angle : float
-            polar angle (radians)
+            The polar angle (radians).
 
         Returns
         -------
-        float
-            polar radius (pixels)
+        radius : float
+            The polar radius (pixels).
         """
 
         return (self.sma * (1. - self.eps) /
@@ -143,23 +114,25 @@ class Geometry(object):
     def initialize_sector_geometry(self, phi):
         """
         Initialize geometry attributes associated with an elliptical
-        sector at polar angle `phi`.
+        sector at the given polar angle ``phi``.
 
-        Computes:
-         - the four vertices that define the elliptical sector on the
-           pixel array.
-         - sector area (in attribute self.sector_area)
-         - sector angular width (in attribute self.sector_angular_width)
+        This function computes:
+
+        * the four vertices that define the elliptical sector on the
+          pixel array.
+        * the sector area (saved in the ``sector_area`` attribute)
+        * the sector angular width (saved in ``sector_angular_width``
+          attribute)
 
         Parameters
         ----------
         phi : float
-            polar angle (radians) where the sector is located.
+            The polar angle (radians) where the sector is located.
 
         Returns
         -------
-        tuple with two 1-D np arrays
-            with the X and Y coordinates of each vertex.
+        x, y : 1D `~numpy.ndarray`
+            The x and y coordinates of each vertex as 1D arrays.
         """
 
         # These polar radii bound the region between the inner
@@ -192,34 +165,33 @@ class Geometry(object):
         # angular width of sector. It is calculated such that the sectors
         # come out with roughly constant area along the ellipse.
         self.sector_angular_width = max(min((self._area_factor / (r3 - r4) /
-                                             r4), PHI_MAX), PHI_MIN)
+                                             r4), self._phi_max),
+                                        self._phi_min)
 
         # compute the 4 vertices that define the elliptical sector.
         vertex_x = np.zeros(shape=4, dtype=float)
         vertex_y = np.zeros(shape=4, dtype=float)
 
         # vertices are labelled in counterclockwise sequence
-        vertex_x[0] = r1 * math.cos(self._phi1 + self.pa) + self.x0
-        vertex_y[0] = r1 * math.sin(self._phi1 + self.pa) + self.y0
-        vertex_x[1] = r2 * math.cos(self._phi1 + self.pa) + self.x0
-        vertex_y[1] = r2 * math.sin(self._phi1 + self.pa) + self.y0
-        vertex_x[2] = r4 * math.cos(self._phi2 + self.pa) + self.x0
-        vertex_y[2] = r4 * math.sin(self._phi2 + self.pa) + self.y0
-        vertex_x[3] = r3 * math.cos(self._phi2 + self.pa) + self.x0
-        vertex_y[3] = r3 * math.sin(self._phi2 + self.pa) + self.y0
+        vertex_x[0:2] = np.array([r1, r2]) * math.cos(self._phi1 + self.pa)
+        vertex_x[2:4] = np.array([r4, r3]) * math.cos(self._phi2 + self.pa)
+        vertex_y[0:2] = np.array([r1, r2]) * math.sin(self._phi1 + self.pa)
+        vertex_y[2:4] = np.array([r4, r3]) * math.sin(self._phi2 + self.pa)
+        vertex_x += self.x0
+        vertex_y += self.y0
 
         return vertex_x, vertex_y
 
     def bounding_ellipses(self):
         """
-        Compute the semimajor axis of the two ellipses that bound
-        the annulus where integrations take place.
+        Compute the semimajor axis of the two ellipses that bound the
+        annulus where integrations take place.
 
         Returns
         -------
-        tuple
-            with two floats - the smaller and larger values of
-            SMA that define the annulus  bounding ellipses
+        sma1, sma2 : float
+            The smaller and larger values of semimajor axis length that
+            define the annulus bounding ellipses.
         """
 
         if (self.linear_growth):
@@ -233,44 +205,48 @@ class Geometry(object):
 
     def polar_angle_sector_limits(self):
         """
-        Returns the two polar angles that bound the sector.
+        Return the two polar angles that bound the sector.
 
-        The two bounding polar angles only become available after
-        calling method initialize_sector_geometry(phi).
+        The two bounding polar angles become available only after
+        calling the
+        :meth:`~photutils.isophote.Geometry.initialize_sector_geometry`
+        method.
 
         Returns
         -------
-        tuple
-            with two floats - the smaller and larger values of
-            polar angle that bound the current sector
+        phi1, phi2 : float
+            The smaller and larger values of polar angle that bound the
+            current sector.
         """
 
         return self._phi1, self._phi2
 
     def to_polar(self, x, y):
         """
-        Given x,y coordinates on image grid, returns radius
-        and polar angle on ellipse coordinate system. Takes
-        care of different definitions for pa and phi:
+        Return the radius and polar angle in the ellipse coordinate
+        system given (x, y) pixel image coordinates.
 
-        -PI < pa < PI
-        0 < phi  < 2*PI
+        This function takes care of the different definitions for
+        position angle (PA) and polar angle (phi):
 
-        Note that radius can be anything; solution is not tied
-        to the semimajor axis length, but to the center position
-        and tilt angle only.
+        .. math::
+            -\\pi < PA < \\pi
+
+            0 < phi < 2 \\pi
+
+        Note that radius can be anything.  The solution is not tied to
+        the semimajor axis length, but to the center position and tilt
+        angle.
 
         Parameters
         ----------
-        x : float
-            image coordinate
-        y : float
-            image coordinate
+        x, y : float
+            The (x, y) image coordinates.
 
         Returns
         -------
-        2 floats
-            radius, angle
+        radius, angle : float
+            The ellipse radius and polar angle.
         """
 
         x1 = np.atleast_2d(x) - self.x0
@@ -302,20 +278,21 @@ class Geometry(object):
 
     def update_sma(self, step):
         """
-        Return an updated value for the semimajor axis, given the
-        current value and the updating step value. The step value must
-        be managed by the caller so as to support both modes: grow
-        outwards, and shrink inwards.
+        Calculate an updated value for the semimajor axis, given the
+        current value and the step value.
+
+        The step value must be managed by the caller to support both
+        modes: grow outwards and shrink inwards.
 
         Parameters
         ----------
         step : float
-            the step value
+            The step value.
 
         Returns
         -------
-        float
-            the new semimajor axis length
+        sma : float
+            The new semimajor axis length.
         """
 
         if self.linear_growth:
@@ -326,21 +303,21 @@ class Geometry(object):
 
     def reset_sma(self, step):
         """
-        This method should be used whenever one wants to switch the
-        direction of semimajor axis growth, from outwards to inwards.
+        Change the direction of semimajor axis growth, from outwards to
+        inwards.
 
         Parameters
         ----------
         step : float
-            the current step value
+            The current step value.
 
         Returns
         -------
-        2 floats
-            the new semimajor axis length and the new step value to
-            initiate the semimajor axis length shrink inwards. This
-            is the step value that should be used when calling method
-            update_sma.
+        sma, new_step : float
+            The new semimajor axis length and the new step value to
+            initiate the shrinking of the semimajor axis length. This is
+            the step value that should be used when calling the
+            :meth:`~photutils.isophote.Geometry.update_sma` method.
         """
 
         if self.linear_growth:

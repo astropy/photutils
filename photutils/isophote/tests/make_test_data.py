@@ -6,7 +6,7 @@ import numpy as np
 
 from astropy.io import fits
 
-from ..geometry import Geometry, DEFAULT_EPS
+from ..geometry import Geometry
 from ...datasets import make_noise_image
 
 
@@ -17,7 +17,7 @@ DEFAULT_PA = 0.
 
 def make_test_image(nx=DEFAULT_SIZE, ny=DEFAULT_SIZE, x0=None, y0=None,
                     background=100., noise=1.e-6, i0=100., sma=40.,
-                    eps=DEFAULT_EPS, pa=DEFAULT_PA, random_state=None):
+                    eps=0.2, pa=DEFAULT_PA, random_state=None):
     """
     Make a simulated image for testing the isophot subpackage.
 

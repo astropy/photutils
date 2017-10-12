@@ -5,8 +5,6 @@ from __future__ import (absolute_import, division, print_function,
 import math
 import numpy as np
 
-from ..geometry import PHI_MAX, PHI_MIN
-
 
 def sector_area(a, eps, phi, r):
     aux = r * np.cos(phi) / a
@@ -16,7 +14,7 @@ def sector_area(a, eps, phi, r):
     return (abs(a ** 2 * (1. - eps) / 2. * math.acos(aux)))
 
 
-def test_angles():
+def test_angles(phi_min=0.05, phi_max=0.2):
     a = 40.
     astep = 1.1
     eps = 0.1
@@ -28,7 +26,7 @@ def test_angles():
     r4 = a1
     aux = min((a2 - a1), 3.)
     sarea = (a2 - a1) * aux
-    dphi = max(min((aux / a), PHI_MAX), PHI_MIN)
+    dphi = max(min((aux / a), phi_max), phi_min)
     phi = dphi / 2.
     phi2 = phi - dphi / 2.
     aux = 1. - eps
@@ -52,7 +50,7 @@ def test_angles():
         area = abs((sa3 - sa2) - (sa4 - sa1))
 
         # Compute step to next sector and its angular span
-        dphi = max(min((sarea / (r3 - r4) / r4), PHI_MAX), PHI_MIN)
+        dphi = max(min((sarea / (r3 - r4) / r4), phi_max), phi_min)
         phistep = dphi / 2. + phi2 - phi
 
         ncount += 1

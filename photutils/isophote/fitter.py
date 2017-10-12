@@ -6,7 +6,6 @@ from astropy import log
 import math
 import numpy as np
 
-from .geometry import normalize_angle
 from .harmonics import (fit_first_and_second_harmonics,
                         first_and_second_harmonic_function)
 from .isophote import Isophote, CentralPixel
@@ -323,7 +322,8 @@ class _AngleCorrector(_ParameterCorrector):
         correction = (harmonic * 2. * (1. - eps) / sma / gradient /
                       ((1. - eps)**2 - 1.))
 
-        new_pa = normalize_angle(sample.geometry.pa + correction)
+        # '% np.pi' to make angle lie between 0 and np.pi radians
+        new_pa = (sample.geometry.pa + correction) % np.pi
 
         return Sample(sample.image, sample.geometry.sma,
                       x0=sample.geometry.x0, y0=sample.geometry.y0,

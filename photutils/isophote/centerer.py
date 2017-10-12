@@ -120,8 +120,9 @@ class Centerer(object):
         """
         Calculate the object center.
 
-        The ``._geometry`` attribute position will be modified
-        with the object center.
+        The (x, y) position of the `~photutils.isophote.Geometry`
+        instance (located in the ``_geometry`` attribute) will be
+        modified with the object center.
 
         Parameters
         ----------

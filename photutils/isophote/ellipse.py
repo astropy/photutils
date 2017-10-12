@@ -10,7 +10,7 @@ from .centerer import Centerer
 from .fitter import (Fitter, CentralFitter, TOO_MANY_FLAGGED,
                      DEFAULT_CONVERGENCE, DEFAULT_MINIT, DEFAULT_MAXIT,
                      DEFAULT_FFLAG, DEFAULT_MAXGERR)
-from .geometry import Geometry, DEFAULT_STEP, DEFAULT_EPS
+from .geometry import Geometry
 from .integrator import BILINEAR
 from .isophote import Isophote, IsophoteList
 from .sample import Sample, CentralSample
@@ -189,7 +189,7 @@ class Ellipse(object):
         else:
             _x0 = image.shape[0] / 2
             _y0 = image.shape[1] / 2
-            self._geometry = Geometry(_x0, _y0, 10., DEFAULT_EPS, np.pi/2)
+            self._geometry = Geometry(_x0, _y0, 10., eps=0.2, pa=np.pi/2)
 
         # run object centerer
         self._centerer = Centerer(image, self._geometry, verbose)
@@ -207,7 +207,7 @@ class Ellipse(object):
 
         self._centerer.threshold = threshold
 
-    def fit_image(self, sma0=None, minsma=0., maxsma=None, step=DEFAULT_STEP,
+    def fit_image(self, sma0=None, minsma=0., maxsma=None, step=0.1,
                   conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,
                   maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG,
                   maxgerr=DEFAULT_MAXGERR, sclip=3., nclip=0,
@@ -460,7 +460,7 @@ class Ellipse(object):
 
         return IsophoteList(isophote_list)
 
-    def fit_isophote(self, sma, step=DEFAULT_STEP, conver=DEFAULT_CONVERGENCE,
+    def fit_isophote(self, sma, step=0.1, conver=DEFAULT_CONVERGENCE,
                      minit=DEFAULT_MINIT, maxit=DEFAULT_MAXIT,
                      fflag=DEFAULT_FFLAG, maxgerr=DEFAULT_MAXGERR,
                      sclip=3., nclip=0, integrmode=BILINEAR,
