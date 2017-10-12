@@ -112,7 +112,7 @@ def build_model(image, isolist, fill=0., high_harmonics=False, verbose=True):
         r = sma0
         phi = 0.
         while (phi <= 2*np.pi + PHI_MIN):
-            # we might want to add the 3rd and 4th harmonics
+            # we might want to add the third and fourth harmonics
             # to the basic isophotal intensity.
             harm = 0.
             if high_harmonics:

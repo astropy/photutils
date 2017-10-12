@@ -7,8 +7,9 @@ import numpy as np
 from astropy.table import QTable
 import astropy.units as u
 
-from .harmonics import (fit_1st_and_2nd_harmonics,
-                        first_and_2nd_harmonic_function, fit_upper_harmonic)
+from .harmonics import (fit_first_and_second_harmonics,
+                        first_and_second_harmonic_function,
+                        fit_upper_harmonic)
 
 
 __all__ = ['Isophote', 'IsophoteList']
@@ -199,13 +200,13 @@ class Isophote(object):
     def _compute_deviations(self, sample, n):
         # compute deviations from a perfect ellipse, based on the
         # amplitudes and errors for harmonic `n`. Note that we first
-        # subtract the 1st and 2nd harmonics from the raw data.
+        # subtract the first and second harmonics from the raw data.
         try:
-            coeffs = fit_1st_and_2nd_harmonics(self.sample.values[0],
-                                               self.sample.values[2])
+            coeffs = fit_first_and_second_harmonics(self.sample.values[0],
+                                                    self.sample.values[2])
             coeffs = coeffs[0]
-            model = first_and_2nd_harmonic_function(self.sample.values[0],
-                                                    coeffs)
+            model = first_and_second_harmonic_function(self.sample.values[0],
+                                                       coeffs)
             residual = self.sample.values[2] - model
 
             c = fit_upper_harmonic(residual, sample.values[2], n)
@@ -234,12 +235,12 @@ class Isophote(object):
         # covariance matrix of the four harmonic coefficients for
         # harmonics n=1 and n=2.
         try:
-            coeffs = fit_1st_and_2nd_harmonics(self.sample.values[0],
-                                               self.sample.values[2])
+            coeffs = fit_first_and_second_harmonics(self.sample.values[0],
+                                                    self.sample.values[2])
             covariance = coeffs[1]
             coeffs = coeffs[0]
-            model = first_and_2nd_harmonic_function(self.sample.values[0],
-                                                    coeffs)
+            model = first_and_second_harmonic_function(self.sample.values[0],
+                                                       coeffs)
             residual_rms = np.std(self.sample.values[2] - model)
             errors = np.diagonal(covariance) * residual_rms
 

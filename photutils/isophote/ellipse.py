@@ -122,10 +122,11 @@ class Ellipse(object):
     Errors in intensity and local gradient are obtained directly from
     the rms scatter of intensity data along the fitted ellipse. Ellipse
     geometry errors are obtained from the errors in the coefficients of
-    the 1st and 2nd simultaneous harmonic fit. 3rd and 4th harmonic
-    amplitude errors are obtained in the same way, but only after the
-    1st and 2nd harmonics are subtracted from the raw data.  For more
-    details, see the error analysis in `Busko (1996; ASPC 101, 139)
+    the first and second simultaneous harmonic fit. Third and fourth
+    harmonic amplitude errors are obtained in the same way, but only
+    after the first and second harmonics are subtracted from the raw
+    data.  For more details, see the error analysis in `Busko (1996;
+    ASPC 101, 139)
     <http://adsabs.harvard.edu/abs/1996ASPC..101..139B>`_.
 
     After fitting the ellipse that corresponds to a given value of the

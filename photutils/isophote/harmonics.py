@@ -5,7 +5,11 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 
 
-def _dofit(optimize_func, parameters):
+__all__ = ['first_and_second_harmonic_function',
+           'fit_first_and_second_harmonics', 'fit_upper_harmonic']
+
+
+def _least_squares_fit(optimize_func, parameters):
     # call the least squares fitting
     # function and handle the result.
     from scipy.optimize import leastsq
@@ -18,86 +22,108 @@ def _dofit(optimize_func, parameters):
     return (solution[0], solution[1])
 
 
-def first_and_2nd_harmonic_function(phi, c):
+def first_and_second_harmonic_function(phi, c):
     """
-    Computes harmonic function used to calculate the
-    corrections for ellipse fitting. This function includes
-    simultaneously both the 1st and 2nd order harmonics.
+    Compute the harmonic function value used to calculate the
+    corrections for ellipse fitting.
 
-    function = c[0] + c[1]*sin(phi) + c[2]*cos(phi) + c[3]*sin(2*phi) +
-               c[4]*cos(2*phi)
+    This function includes simultaneously both the first and second
+    order harmonics:
+
+    .. math::
+
+        f(phi) = c[0] + c[1]*\\sin(phi) + c[2]*\\cos(phi) +
+                 c[3]*\\sin(2*phi) + c[4]*\\cos(2*phi)
 
     Parameters
     ----------
-    phi : float or np.array
-        angle(s) along the elliptical path, going towards the +Y axis,
-        starting coincident with the position angle. That is, the
+    phi : float or `~numpy.ndarray`
+        The angle(s) along the elliptical path, going towards the positive
+        y axis, starting coincident with the position angle. That is, the
         angles are defined from the semimajor axis that lies in
-        the +X quadrant.
-    c : np array of shape (5)
-        containing the five harmonic coefficients
+        the positive x quadrant.
+    c : `~numpy.ndarray of shape (5,)
+        Array containing the five harmonic coefficients.
 
     Returns
     -------
-    float or np.array
-        function value(s) at the given input angle(s)
+    result : float or `~numpy.ndarray`
+        The function value(s) at the given input angle(s).
     """
 
     return (c[0] + c[1]*np.sin(phi) + c[2]*np.cos(phi) + c[3]*np.sin(2*phi) +
             c[4]*np.cos(2*phi))
 
 
-def fit_1st_and_2nd_harmonics(phi, intensities):
+def fit_first_and_second_harmonics(phi, intensities):
     """
-    Fits 1st and 2nd harmonic function to a set of angle,intensity pairs.
-    This is used to compute the corrections for ellipse fitting.
+    Fit the first and second harmonic function values to a set of
+    (angle, intensity) pairs.
+
+    This function is used to compute corrections for ellipse fitting:
+
+    .. math::
+
+        f(phi) = y0 + a1*\\sin(phi) + b1*\\cos(phi) + a2*\\sin(2*phi) +
+                 b2*\\cos(2*phi)
 
     Parameters
     ----------
-    phi : np.array
-        angles defined in the same way as in harmonic_function
-    intensities : np.array
-        intensities measured along the elliptical path, at the angles
-        defined in parameter `phi`
+    phi : float or `~numpy.ndarray`
+        The angle(s) along the elliptical path, going towards the positive
+        y axis, starting coincident with the position angle. That is, the
+        angles are defined from the semimajor axis that lies in
+        the positive x quadrant.
+    intensities : `~numpy.ndarray`
+        The intensities measured along the elliptical path, at the
+        angles defined by the ``phi`` parameter.
 
     Returns
     -------
-    5 float values
-        fitted values for y0, a1, b1, a2, b2
+    y0, a1, b1, a2, b2 : float
+        The fitted harmonic coefficent values.
     """
 
     a1 = b1 = a2 = b2 = 1.
 
     def optimize_func(x):
-        return first_and_2nd_harmonic_function(
+        return first_and_second_harmonic_function(
             phi, np.array([x[0], x[1], x[2], x[3], x[4]])) - intensities
 
-    return _dofit(optimize_func, [np.mean(intensities), a1, b1, a2, b2])
+    return _least_squares_fit(optimize_func, [np.mean(intensities), a1, b1,
+                                              a2, b2])
 
 
 def fit_upper_harmonic(phi, intensities, order):
     """
-    Fits upper harmonic function to a set of angle,intensity pairs.
-    With `order` set to 3 or 4, the resulting amplitudes, divided
-    by the semimajor axis length and local gradient, measure the
-    deviations from perfect ellipticity.
+    Fit upper harmonic function to a set of (angle, intensity) pairs.
 
-    function = y0 + c[0]*sin(order*phi) + c[1]*cos(order*phi)
+    With ``order`` set to 3 or 4, the resulting amplitudes, divided by
+    the semimajor axis length and local gradient, measure the deviations
+    from perfect ellipticity.
+
+    The harmonic function that is fit is:
+
+    .. math::
+        y(phi, order) = y0 + An*\\sin(order*phi) + Bn*\\cos(order*phi)
 
     Parameters
     ----------
-    phi : np.array
-        angles defined in the same way as in harmonic_function
-    intensities : np.array
-        intensities measured along the elliptical path, at the angles
-        defined in parameter `phi`
+    phi : float or `~numpy.ndarray`
+        The angle(s) along the elliptical path, going towards the positive
+        y axis, starting coincident with the position angle. That is, the
+        angles are defined from the semimajor axis that lies in
+        the positive x quadrant.
+    intensities : `~numpy.ndarray`
+        The intensities measured along the elliptical path, at the
+        angles defined by the ``phi`` parameter.
     order : int
-        the order of the harmonic to be fitted.
+        The order of the harmonic to be fitted.
 
     Returns
     -------
-    3 float values
-        fitted values for y0, an, bn
+    y0, An, Bn : float
+        The fitted harmonic values.
     """
 
     an = bn = 1.
@@ -106,4 +132,4 @@ def fit_upper_harmonic(phi, intensities, order):
         return (x[0] + x[1]*np.sin(order*phi) + x[2]*np.cos(order*phi) -
                 intensities)
 
-    return _dofit(optimize_func, [np.mean(intensities), an, bn])
+    return _least_squares_fit(optimize_func, [np.mean(intensities), an, bn])

@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 
 from .make_test_data import make_test_image
-from ..harmonics import (fit_1st_and_2nd_harmonics, fit_upper_harmonic,
-                         first_and_2nd_harmonic_function)
+from ..harmonics import (fit_first_and_second_harmonics, fit_upper_harmonic,
+                         first_and_second_harmonic_function)
 from ..sample import Sample
 
 try:
@@ -63,7 +63,7 @@ def test_harmonics_2():
     data = (y0_0 + a1_0*np.sin(E) + b1_0*np.cos(E) + a2_0*np.sin(2*E) +
             b2_0*np.cos(2*E) + 0.01*np.random.randn(N))
 
-    harmonics = fit_1st_and_2nd_harmonics(E, data)
+    harmonics = fit_first_and_second_harmonics(E, data)
     y0, a1, b1, a2, b2 = harmonics[0]
     data_fit = (y0 + a1*np.sin(E) + b1*np.cos(E) + a2*np.sin(2*E) +
                 b2*np.cos(2*E) + 0.01*np.random.randn(N))
@@ -109,7 +109,7 @@ class TestFitSamples(object):
         sample = Sample(self.data1, 40.)
         s = sample.extract()
 
-        harmonics = fit_1st_and_2nd_harmonics(s[0], s[2])
+        harmonics = fit_first_and_second_harmonics(s[0], s[2])
         y0, a1, b1, a2, b2 = harmonics[0]
 
         assert np.mean(y0) == pytest.approx(200.019, abs=0.001)
@@ -119,7 +119,7 @@ class TestFitSamples(object):
         assert np.mean(b2) == pytest.approx(-0.00911, abs=0.001)
 
         # check that harmonics subtract nicely
-        model = first_and_2nd_harmonic_function(
+        model = first_and_second_harmonic_function(
             s[0], np.array([y0, a1, b1, a2, b2]))
         residual = s[2] - model
 
@@ -131,7 +131,7 @@ class TestFitSamples(object):
         sample = Sample(self.data1, 40., eps=0.1)
         s = sample.extract()
 
-        harmonics = fit_1st_and_2nd_harmonics(s[0], s[2])
+        harmonics = fit_first_and_second_harmonics(s[0], s[2])
         y0, a1, b1, a2, b2 = harmonics[0]
 
         assert np.mean(y0) == pytest.approx(188.686, abs=0.001)
@@ -145,7 +145,7 @@ class TestFitSamples(object):
         sample = Sample(self.data1, x0=220., y0=210., sma=40.)
         s = sample.extract()
 
-        harmonics = fit_1st_and_2nd_harmonics(s[0], s[2])
+        harmonics = fit_first_and_second_harmonics(s[0], s[2])
         y0, a1, b1, a2, b2 = harmonics[0]
 
         assert np.mean(y0) == pytest.approx(152.660, abs=0.001)
@@ -158,7 +158,7 @@ class TestFitSamples(object):
         sample = Sample(self.data2, 40., eps=0.4)
         s = sample.extract()
 
-        harmonics = fit_1st_and_2nd_harmonics(s[0], s[2])
+        harmonics = fit_first_and_second_harmonics(s[0], s[2])
         y0, a1, b1, a2, b2 = harmonics[0]
 
         assert np.mean(y0) == pytest.approx(245.102, abs=0.001)

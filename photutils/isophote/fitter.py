@@ -7,8 +7,8 @@ import math
 import numpy as np
 
 from .geometry import normalize_angle
-from .harmonics import (fit_1st_and_2nd_harmonics,
-                        first_and_2nd_harmonic_function)
+from .harmonics import (fit_first_and_second_harmonics,
+                        first_and_second_harmonic_function)
 from .isophote import Isophote, CentralPixel
 from .sample import Sample
 
@@ -154,7 +154,7 @@ class Fitter(object):
             # a fatal error; terminate immediately with sample
             # marked as invalid.
             try:
-                coeffs = fit_1st_and_2nd_harmonics(values[0], values[2])
+                coeffs = fit_first_and_second_harmonics(values[0], values[2])
             except Exception as e:
                 log.info(e)
                 return Isophote(sample, iter+1, False, 3)
@@ -172,7 +172,7 @@ class Fitter(object):
                 minimum_amplitude_sample = sample
 
             # check if converged
-            model = first_and_2nd_harmonic_function(values[0], coeffs)
+            model = first_and_second_harmonic_function(values[0], coeffs)
             residual = values[2] - model
 
             if ((conver * sample.sector_area * np.std(residual))

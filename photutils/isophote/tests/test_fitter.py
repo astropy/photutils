@@ -11,7 +11,7 @@ from astropy.tests.helper import remote_data
 from .make_test_data import make_test_image, DEFAULT_POS
 from ..fitter import Fitter, CentralFitter
 from ..geometry import Geometry, DEFAULT_EPS
-from ..harmonics import fit_1st_and_2nd_harmonics
+from ..harmonics import fit_first_and_second_harmonics
 from ..integrator import MEAN
 from ..isophote import Isophote
 from ..sample import Sample, CentralSample
@@ -52,7 +52,7 @@ def test_fitting_raw():
     sample.update()
     s = sample.extract()
 
-    harmonics = fit_1st_and_2nd_harmonics(s[0], s[2])
+    harmonics = fit_first_and_second_harmonics(s[0], s[2])
     y0, a1, b1, a2, b2 = harmonics[0]
 
     # when eps is off, b2 is the largest (in absolute value).

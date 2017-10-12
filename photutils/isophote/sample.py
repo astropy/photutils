@@ -197,8 +197,8 @@ class Sample(object):
             radii = []
             intensities = []
             if area < 1.0:
-                integrator = integrators[BILINEAR](self.image, self.geometry,
-                                                   angles, radii, intensities)
+                integrator = integrators['bilinear'](
+                    self.image, self.geometry, angles, radii, intensities)
             else:
                 integrator = integrators[self.integrmode](self.image,
                                                           self.geometry,
@@ -400,8 +400,8 @@ class CentralSample(Sample):
         radii = []
         intensities = []
 
-        integrator = integrators[BILINEAR](self.image, self.geometry, angles,
-                                           radii, intensities)
+        integrator = integrators['bilinear'](self.image, self.geometry,
+                                             angles, radii, intensities)
         integrator.integrate(0.0, 0.0)
 
         self.total_points = 1
