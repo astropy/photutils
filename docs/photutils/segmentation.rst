@@ -354,12 +354,12 @@ labels in the segmentation image:
 
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> props = source_properties(data, segm, labels=labels)
-    >>> tbl = properties_table(props)
-    >>> tbl['xcentroid'].info.format = '.10f'  # optional format
-    >>> tbl['ycentroid'].info.format = '.10f'
-    >>> tbl['cxy'].info.format = '.10f'
-    >>> tbl['cyy'].info.format = '.10f'
-    >>> print(tbl)
+    >>> tbl2 = properties_table(props)
+    >>> tbl2['xcentroid'].info.format = '.10f'  # optional format
+    >>> tbl2['ycentroid'].info.format = '.10f'
+    >>> tbl2['cxy'].info.format = '.10f'
+    >>> tbl2['cyy'].info.format = '.10f'
+    >>> print(tbl2)
      id   xcentroid      ycentroid    ...      cxy          cyy
              pix            pix       ...    1 / pix2     1 / pix2
     --- -------------- -------------- ... ------------- ------------
@@ -381,11 +381,11 @@ properties can also be specified (or excluded) in the
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> props = source_properties(data, segm, labels=labels)
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'source_sum', 'area']
-    >>> tbl = properties_table(props, columns=columns)
-    >>> tbl['xcentroid'].info.format = '.10f'  # optional format
-    >>> tbl['ycentroid'].info.format = '.10f'
-    >>> tbl['source_sum'].info.format = '.10f'
-    >>> print(tbl)
+    >>> tbl3 = properties_table(props, columns=columns)
+    >>> tbl3['xcentroid'].info.format = '.10f'  # optional format
+    >>> tbl3['ycentroid'].info.format = '.10f'
+    >>> tbl3['source_sum'].info.format = '.10f'
+    >>> print(tbl3)
      id   xcentroid      ycentroid      source_sum   area
              pix            pix                      pix2
     --- -------------- -------------- -------------- ----
@@ -421,11 +421,11 @@ properties for each source will also be calculated:
     ...                            background=bkg.background)
     >>> columns = ['id', 'background_at_centroid', 'background_mean',
     ...            'background_sum']
-    >>> tbl = properties_table(props, columns=columns)
-    >>> tbl['background_at_centroid'].info.format = '.10f'  # optional format
-    >>> tbl['background_mean'].info.format = '.10f'
-    >>> tbl['background_sum'].info.format = '.10f'
-    >>> print(tbl)
+    >>> tbl4 = properties_table(props, columns=columns)
+    >>> tbl4['background_at_centroid'].info.format = '.10f'  # optional format
+    >>> tbl4['background_mean'].info.format = '.10f'
+    >>> tbl4['background_sum'].info.format = '.10f'
+    >>> print(tbl4)
      id background_at_centroid background_mean background_sum
     --- ---------------------- --------------- --------------
       1           5.2020326493    5.2021208257 140.4572622937
@@ -468,10 +468,10 @@ we set it to 500 seconds):
     >>> props = source_properties(data, segm, labels=labels, error=error)
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'source_sum',
     ...            'source_sum_err']
-    >>> tbl = properties_table(props, columns=columns)
-    >>> tbl['xcentroid'].info.format = '.10f'  # optional format
-    >>> tbl['ycentroid'].info.format = '.10f'
-    >>> print(tbl)
+    >>> tbl5 = properties_table(props, columns=columns)
+    >>> tbl5['xcentroid'].info.format = '.10f'  # optional format
+    >>> tbl5['ycentroid'].info.format = '.10f'
+    >>> print(tbl5)
      id   xcentroid      ycentroid      source_sum  source_sum_err
              pix            pix
     --- -------------- -------------- ------------- --------------
