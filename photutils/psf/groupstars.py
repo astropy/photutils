@@ -3,8 +3,9 @@
 
 from __future__ import division
 import abc
+
+import six
 import numpy as np
-from astropy.extern import six
 from astropy.table import Column
 
 

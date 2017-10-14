@@ -10,8 +10,8 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import abc
 
+import six
 import numpy as np
-from astropy.extern import six
 from astropy.stats import (SigmaClip, biweight_location, biweight_scale,
                            mad_std)
 from astropy.utils.misc import InheritDocstrings

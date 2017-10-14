@@ -14,8 +14,8 @@ import warnings
 import math
 import abc
 
+import six
 import numpy as np
-from astropy.extern import six
 from astropy.table import Column, Table
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils.misc import InheritDocstrings
