@@ -15,6 +15,8 @@ General
 - Dropped scipy 0.15 support.  Minimal required version is now scipy
   0.16. [#576]
 
+- Explicitly require six as dependency. [#601]
+
 New Features
 ^^^^^^^^^^^^
 
