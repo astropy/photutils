@@ -13,6 +13,8 @@ Photutils has the following strict requirements:
 
 * `Astropy`_ 2.0 or later
 
+* `six <https://pythonhosted.org/six/>`_
+
 Additionally, some functionality is available only if the following
 optional dependencies are installed:
 

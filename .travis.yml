@@ -32,7 +32,7 @@ env:
         - MAIN_CMD='python setup.py'
         - SETUP_CMD='test'
         - EVENT_TYPE='pull_request push'
-        - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib'
+        - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib six'
         - CONDA_CHANNELS='astropy-ci-extras astropy'
         - SETUP_XVFB=True
         - ASTROPY_USE_SYSTEM_PYTEST=1
@@ -99,10 +99,10 @@ matrix:
 
         # Try with optional dependencies disabled
         - stage: Test docs, astropy dev, and without optional dependencies
-          env: PYTHON_VERSION=2.7 CONDA_DEPENDENCIES='Cython'
+          env: PYTHON_VERSION=2.7 CONDA_DEPENDENCIES='Cython six'
 
         - stage: Test docs, astropy dev, and without optional dependencies
-          env: CONDA_DEPENDENCIES='Cython'
+          env: CONDA_DEPENDENCIES='Cython six'
 
         # Try older python and numpy versions. Since we can assume
         # that the Numpy developers have taken care of testing Numpy

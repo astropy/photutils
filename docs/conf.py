@@ -27,6 +27,7 @@
 
 import datetime
 import os
+import six
 import sys
 
 try:
@@ -40,7 +41,6 @@ except ImportError:
 
 # Load all of the global Astropy configuration
 from astropy_helpers.sphinx.conf import *
-from astropy.extern import six
 
 # Get configuration information from setup.cfg
 try:

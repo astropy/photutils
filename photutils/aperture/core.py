@@ -6,9 +6,9 @@ import copy
 import warnings
 from collections import OrderedDict
 
+import six
 import numpy as np
 from astropy.coordinates import SkyCoord
-from astropy.extern import six
 from astropy.io import fits
 from astropy.nddata import support_nddata
 from astropy.table import QTable
