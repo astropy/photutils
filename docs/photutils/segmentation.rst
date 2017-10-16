@@ -423,8 +423,8 @@ properties for each source will also be calculated:
     ...            'background_sum']
     >>> tbl4 = properties_table(props, columns=columns)
     >>> tbl4['background_at_centroid'].info.format = '.10f'  # optional format
-    >>> tbl4['background_mean'].info.format = '.10f'
-    >>> tbl4['background_sum'].info.format = '.10f'
+    >>> tbl4['background_mean'].info.format = '{:.10f}'
+    >>> tbl4['background_sum'].info.format = '{:.10f}'
     >>> print(tbl4)
      id background_at_centroid background_mean background_sum
     --- ---------------------- --------------- --------------
