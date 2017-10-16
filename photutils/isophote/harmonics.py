@@ -42,7 +42,7 @@ def first_and_second_harmonic_function(phi, c):
         y axis, starting coincident with the position angle. That is, the
         angles are defined from the semimajor axis that lies in
         the positive x quadrant.
-    c : `~numpy.ndarray of shape (5,)
+    c : `~numpy.ndarray` of shape (5,)
         Array containing the five harmonic coefficients.
 
     Returns

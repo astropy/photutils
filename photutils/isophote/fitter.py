@@ -361,8 +361,8 @@ _correctors = [_PositionCorrector_0(), _PositionCorrector_1(),
 
 class CentralFitter(Fitter):
     """
-    Specialized Fitter class, designed specifically to handle the case
-    of the central pixel in the galaxy image.
+    A special Fitter class to handle the case of the central pixel in
+    the galaxy image.
     """
 
     def fit(self, conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,

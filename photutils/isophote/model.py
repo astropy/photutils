@@ -2,46 +2,46 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-from astropy import log
 import numpy as np
 
 from .geometry import Geometry
 
 
-def build_model(image, isolist, fill=0., high_harmonics=False, verbose=True):
+def build_model(image, isolist, fill=0., high_harmonics=False):
     """
-    Builds model galaxy image from isophote list.
+    Build a model galaxy image from a list of isophotes.
 
-    The algorithm scans the input list, and, for each  ellipse in there,
-    fills up the output image array with the corresponding isophotal
-    intensity. Pixels in the target array are in general only partially
-    covered by the isophote "pixel"; the algorithm takes care of this
-    partial pixel coverage, by keeping track of how much intensity was
-    added to each pixel by storing the partial area information in an
-    auxiliary array.  The information in this array is then used to
-    normalize the pixel intensities.
+    For each ellipse in the input isophote list the algorithm fills the
+    output image array with the corresponding isophotal intensity.
+    Pixels in the output array are in general only partially covered by
+    the isophote "pixel".  The algorithm takes care of this partial
+    pixel coverage by keeping track of how much intensity was added to
+    each pixel by storing the partial area information in an auxiliary
+    array.  The information in this array is then used to normalize the
+    pixel intensities.
 
     Parameters
     ----------
-    image : numpy 2-d array
-        input image where the `isolist` parameter was derived. This array
-        must be the same shape as the array used to generate  the isophote
-        list, so coordinates will match.
-    isolist : IsophoteList instance
-        the list created by class Ellipse
-    fill : float, default = 0.
-        constant value to fill empty pixels. If an output pixel got no
-        contribution whatsoever from any isophote, it is assigned this
-        value.
-    high_harmonics : boolean, default False
-        add higher harmonics (A3,B3,A4,B4) to result?
-    verbose : boolean, default True
-        print info
+    image : 2D `~numpy.ndarray`
+        The input image from which the ``isolist`` parameter was
+        derived.  This array must be the same shape as the array used to
+        generate the ``isolist`` list so the coordinates will match.
+    isolist : `~photutils.isophote.IsophoteList` instance
+        The isophote list created by the `~photutils.isophote.Ellipse`
+        class.
+    fill : float, optional
+        The constant value to fill empty pixels. If an output pixel has
+        no contribution from any isophote, it will be assigned this
+        value.  The default is 0.
+    high_harmonics : bool, optional
+        Whether to add the higher-order harmonics (i.e. ``a3``, ``b3``,
+        ``a4``, and ``b4``; see `~photutils.isophote.Isophote` for
+        details) to the result.
 
     Returns
     -------
-    numpy 2-D array
-        with the model image
+    result : 2D `~numpy.ndarray`
+        The image with the model galaxy.
     """
 
     from scipy.interpolate import LSQUnivariateSpline
@@ -103,9 +103,6 @@ def build_model(image, isolist, fill=0., high_harmonics=False, verbose=True):
         geometry = Geometry(x0, y0, sma0, eps, pa)
 
         intens = intens_array[index]
-
-        if verbose:
-            log.info("SMA={:5.1f}".format(sma0))
 
         # scan angles. Need to go a bit beyond full circle to ensure
         # full coverage.
