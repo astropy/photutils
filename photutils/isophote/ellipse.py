@@ -19,10 +19,6 @@ from .sample import Sample, CentralSample
 __all__ = ['Ellipse']
 
 
-FIXED_ELLIPSE = 4
-FAILED_FIT = 5
-
-
 class Ellipse(object):
     """
     Class to fit elliptical isophotes to a galaxy image.
@@ -401,8 +397,8 @@ class Ellipse(object):
                 # shut off iterative mode. Or, bail out and
                 # change to go inwards.
                 if len(isophote_list) > 2:
-                    if ((isophote.stop_code == FAILED_FIT
-                         and isophote_list[-2].stop_code == FAILED_FIT)
+                    if ((isophote.stop_code == 5
+                         and isophote_list[-2].stop_code == 5)
                             or isophote.stop_code == TOO_MANY_FLAGGED):
                         if maxsma and maxsma > isophote.sma:
                             # if a maximum sma value was provided by
@@ -616,8 +612,8 @@ class Ellipse(object):
                         integrmode=integrmode)
         sample.update()
 
-        # build isophote without iterating with a Fitter
-        isophote = Isophote(sample, 0, True, FIXED_ELLIPSE)
+        # build isophote without iterating with a Fitter (stop_code=4)
+        isophote = Isophote(sample, 0, True, stop_code=4)
 
         return isophote
 
@@ -637,8 +633,7 @@ class Ellipse(object):
 
             # we take the opportunity to change an eventual
             # negative stop code to its' positive equivalent.
-            code = (FAILED_FIT if isophote.stop_code < 0
-                    else isophote.stop_code)
+            code = (5 if isophote.stop_code < 0 else isophote.stop_code)
 
             # build new instance so it can have its attributes
             # populated from the updated sample attributes.

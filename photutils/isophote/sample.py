@@ -12,16 +12,15 @@ from .integrator import integrators
 __all__ = ['Sample']
 
 
-
 class Sample(object):
     """
-    A class to describe an elliptical path on an image.
-
-    The ``geometry`` attribute describes the geometry of the elliptical
-    path.
+    Class to sample image data along an elliptical path.
 
     The image intensities along the elliptical path can be extracted
     using a selection of integration algorithms.
+
+    The ``geometry`` attribute describes the geometry of the elliptical
+    path.
 
     Parameters
     ----------
@@ -61,33 +60,31 @@ class Sample(object):
 
     Attributes
     ----------
-    values : 2-d numpy array
-        sampled values as a 2-d numpy array with the following structure:
-            values[0] = 1-d array with angles
-            values[1] = 1-d array with radii
-            values[2] = 1-d array with intensity
+    values : 2D `~numpy.ndarray`
+        The sampled values as a 2D array, where the rows contain the
+        angles, radii, and extracted intensity values, respectively.
     mean : float
-        the mean intensity along the elliptical path
+        The mean intensity along the elliptical path.
+    geometry : `~photutils.isophote.Geometry` instance
+        The geometry of the elliptical path.
     gradient : float
-        the local radial intensity gradient
+        The local radial intensity gradient.
     gradient_error : float
-        the error associated with the local radial intensity gradient
+        The error associated with the local radial intensity gradient.
     gradient_relative_error : float
-        the relative error associated with the local radial intensity gradient
+        The relative error associated with the local radial intensity
+        gradient.
     sector_area : float
-        the average area of the sectors along the
-        elliptical path where the sample values
-        were integrated from.
+        The average area of the sectors along the elliptical path from
+        which the sample values were integrated.
     total_points : int
-        the total number of sample values that would
-        cover the entire elliptical path
+        The total number of sample values that would cover the entire
+        elliptical path.
     actual_points : int
-        the actual number of sample values that were
-        taken from the image. It can be smaller than
-        total_points when the ellipse encompasses
-        regions outside the image, or when sigma-clipping
+        The actual number of sample values that were taken from the
+        image. It can be smaller than ``total_points`` when the ellipse
+        encompasses regions outside the image, or when sigma-clipping
         removed some of the points.
-
     """
 
     def __init__(self, image, sma, x0=None, y0=None, astep=0.1, eps=0.2,
@@ -98,7 +95,7 @@ class Sample(object):
 
         if geometry:
             # when the geometry is inherited from somewhere else,
-            # its `sma` attribute must be replaced by the value
+            # its sma attribute must be replaced by the value
             # explicitly passed to the constructor.
             self.geometry = copy.deepcopy(geometry)
             self.geometry.sma = sma
@@ -134,14 +131,14 @@ class Sample(object):
 
     def extract(self):
         """
-        Build sample by scanning elliptical path over image array
+        Extract sample data by scanning an elliptical path over the
+        image array.
 
         Returns
         -------
-        numpy 2-d array
-            contains three elements. Each element is a 1-d
-            array containing respectively angles, radii, and
-            extracted intensity values.
+        result : 2D `~numpy.ndarray`
+            The rows of the array contain the angles, radii, and
+            extracted intensity values, respectively.
         """
 
         # the sample values themselves are kept cached to prevent
@@ -279,10 +276,12 @@ class Sample(object):
 
     def update(self):
         """
-        Update this Sample instance. It calls `extract` to get the
-        values that match the current Geometry attribute, and then
-        computes the the mean intensity, local gradient, and other
-        associated quantities.
+        Update this `~photutils.isophote.Sample` instance.
+
+        This method calls the :meth:`~photutils.isophote.Sample.extract`
+        method to get the values that match the current ``geometry``
+        attribute, and then computes the the mean intensity, local
+        gradient, and other associated quantities.
         """
 
         step = self.geometry.astep
@@ -352,12 +351,13 @@ class Sample(object):
 
     def coordinates(self):
         """
-        Returns the X-Y coordinates associated with each sampled point.
+        Return the (x, y) coordinates associated with each sampled
+        point.
 
         Returns
         -------
-        1-D numpy arrays
-            two arrays with the X and Y coordinates, respectively
+        x, y : 1D `~numpy.ndarray`
+            The x and y coordinate arrays.
         """
 
         angles = self.values[0]
@@ -377,15 +377,15 @@ class Sample(object):
 
 class CentralSample(Sample):
     """
-    Derived Sample class, designed specifically to handle the case of
-    the central pixel in the galaxy image.
+    A `~photutils.isophote.Sample` subclass designed to handle the
+    special case of the central pixel in the galaxy image.
     """
 
     def update(self):
         """
-        Overrides base class so as to update this Sample instance with
-        the intensity integrated at the x0,y0 position using bilinear
-        integration. The local gradient is set to None.
+        Update this `~photutils.isophote.Sample` instance with the
+        intensity integrated at the (x0, y0) center position using
+        bilinear integration. The local gradient is set to `None`.
         """
 
         s = self.extract()

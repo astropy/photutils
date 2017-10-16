@@ -9,7 +9,7 @@ from astropy.io import fits
 from astropy.tests.helper import remote_data
 
 from .make_test_data import make_test_image, DEFAULT_POS, DEFAULT_SIZE
-from ..ellipse import Ellipse, FIXED_ELLIPSE, FAILED_FIT
+from ..ellipse import Ellipse
 from ..fitter import NORMAL_FIT, TOO_MANY_FLAGGED
 from ..geometry import Geometry
 from ..isophote import Isophote, IsophoteList
@@ -55,7 +55,7 @@ class TestEllipse(object):
 
         # the fit should stop where gradient looses reliability.
         assert len(isophote_list) == 67
-        assert isophote_list[-1].stop_code == FAILED_FIT
+        assert isophote_list[-1].stop_code == 5
 
     def test_fit_one_ellipse(self):
         ellipse = Ellipse(self.data, verbose=self.verbose)
@@ -94,7 +94,7 @@ class TestEllipse(object):
 
         # the fit should go to maxsma, but with fixed geometry
         assert len(isophote_list) == 71
-        assert isophote_list[-1].stop_code == FIXED_ELLIPSE
+        assert isophote_list[-1].stop_code == 4
 
         # check that no zero-valued intensities were left behind
         # in the sample arrays when sampling outside the image.
