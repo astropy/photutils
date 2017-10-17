@@ -6,7 +6,6 @@ import warnings
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
-from .centerer import IsophoteCenterer
 from .fitter import (EllipseFitter, CentralEllipseFitter,
                      DEFAULT_CONVERGENCE, DEFAULT_MINIT, DEFAULT_MAXIT,
                      DEFAULT_FFLAG, DEFAULT_MAXGERR)
@@ -49,8 +48,6 @@ class Ellipse(object):
         successfully, the (x, y) coordinates in the ``geometry``
         attribute (an `~photutils.isophote.EllipseGeometry` instance)
         are modified in place.  The default is 0.1
-    verbose : bool, optional Whether to print the object centering
-        information.  The default is `True`.
 
     Notes
     -----
@@ -177,7 +174,7 @@ class Ellipse(object):
     converge to any acceptable solution.
     """
 
-    def __init__(self, image, geometry=None, threshold=0.1, verbose=True):
+    def __init__(self, image, geometry=None, threshold=0.1):
         self.image = image
 
         if geometry is not None:
@@ -187,10 +184,6 @@ class Ellipse(object):
             _y0 = image.shape[1] / 2
             self._geometry = EllipseGeometry(_x0, _y0, 10., eps=0.2,
                                              pa=np.pi/2)
-
-        # run object centerer
-        self._centerer = IsophoteCenterer(image, self._geometry, verbose)
-        self._centerer.center(threshold)
 
     def set_threshold(self, threshold):
         """
@@ -202,7 +195,7 @@ class Ellipse(object):
             The new threshold value to use.
         """
 
-        self._centerer.threshold = threshold
+        self._geometry.centerer_threshold = threshold
 
     def fit_image(self, sma0=None, minsma=0., maxsma=None, step=0.1,
                   conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,

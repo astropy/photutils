@@ -39,10 +39,22 @@ class TestEllipse(object):
     def setup_class(self):
         # centered, tilted galaxy.
         self.data = make_test_image(pa=PA, random_state=123)
-        self.verbose = False
+
+    @remote_data
+    def test_find_center(self):
+        path = get_path('isophote/M51.fits', location='photutils-datasets',
+                        cache=True)
+        hdu = fits.open(path)
+        data = hdu[0].data
+        hdu.close()
+
+        geometry = EllipseGeometry(252, 253, 10., 0.2, np.pi/2)
+        geometry.find_center(data)
+        assert geometry.x0 == 257.
+        assert geometry.y0 == 258.
 
     def test_basic(self):
-        ellipse = Ellipse(self.data, verbose=self.verbose)
+        ellipse = Ellipse(self.data)
         isophote_list = ellipse.fit_image()
 
         assert isinstance(isophote_list, IsophoteList)
@@ -57,7 +69,7 @@ class TestEllipse(object):
         assert isophote_list[-1].stop_code == 5
 
     def test_fit_one_ellipse(self):
-        ellipse = Ellipse(self.data, verbose=self.verbose)
+        ellipse = Ellipse(self.data)
         isophote = ellipse.fit_isophote(40.)
 
         assert isinstance(isophote, Isophote)
@@ -67,7 +79,7 @@ class TestEllipse(object):
         # A first guess ellipse that is centered in the image frame.
         # This should result in failure since the real galaxy
         # image is off-center by a large offset.
-        ellipse = Ellipse(OFFSET_GALAXY, verbose=self.verbose)
+        ellipse = Ellipse(OFFSET_GALAXY)
         isophote_list = ellipse.fit_image()
 
         assert len(isophote_list) == 0
@@ -76,7 +88,7 @@ class TestEllipse(object):
         # A first guess ellipse that is roughly centered on the
         # offset galaxy image.
         g = EllipseGeometry(POS+5, POS+5, 10., eps=0.2, pa=PA, astep=0.1)
-        ellipse = Ellipse(OFFSET_GALAXY, geometry=g, verbose=self.verbose)
+        ellipse = Ellipse(OFFSET_GALAXY, geometry=g)
         isophote_list = ellipse.fit_image()
 
         # the fit should stop when too many potential sample
@@ -88,7 +100,7 @@ class TestEllipse(object):
         # Same as before, but now force the fit to goo
         # beyond the image frame limits.
         g = EllipseGeometry(POS+5, POS+5, 10., eps=0.2, pa=PA, astep=0.1)
-        ellipse = Ellipse(OFFSET_GALAXY, geometry=g, verbose=self.verbose)
+        ellipse = Ellipse(OFFSET_GALAXY, geometry=g)
         isophote_list = ellipse.fit_image(maxsma=400.)
 
         # the fit should go to maxsma, but with fixed geometry
@@ -114,8 +126,7 @@ class TestEllipseOnRealData(object):
 
         g = EllipseGeometry(530., 511, 30., 0.2, 20./180.*3.14)
 
-        verbose = False
-        ellipse = Ellipse(data, geometry=g, verbose=verbose)
+        ellipse = Ellipse(data, geometry=g)
         isophote_list = ellipse.fit_image()
 
         assert len(isophote_list) == 57

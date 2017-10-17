@@ -92,7 +92,7 @@ def test_regression(name, integrmode=BILINEAR, verbose=False):
     data = hdu[0].data
     hdu.close()
 
-    ellipse = Ellipse(data, verbose=verbose)
+    ellipse = Ellipse(data)
     isophote_list = ellipse.fit_image()
     # isophote_list = ellipse.fit_image(sclip=2., nclip=3)
 

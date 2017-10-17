@@ -4,7 +4,6 @@ This subpackage contains tools for fitting elliptical isophotes to
 galaxy images.
 """
 
-from .centerer import *
 from .ellipse import *
 from .fitter import *
 from .geometry import *
