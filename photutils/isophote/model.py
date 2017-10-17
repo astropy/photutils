@@ -10,7 +10,7 @@ from .geometry import EllipseGeometry
 __all__ = ['build_ellipse_model']
 
 
-def build_ellipse_model(image, isolist, fill=0., high_harmonics=False):
+def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
     """
     Build an elliptical model galaxy image from a list of isophotes.
 
@@ -25,10 +25,9 @@ def build_ellipse_model(image, isolist, fill=0., high_harmonics=False):
 
     Parameters
     ----------
-    image : 2D `~numpy.ndarray`
-        The input image from which the ``isolist`` parameter was
-        derived.  This array must be the same shape as the array used to
-        generate the ``isolist`` list so the coordinates will match.
+    shape : 2-tuple
+        The (ny, nx) shape of the array used to generate the input
+        ``isolist``.
     isolist : `~photutils.isophote.IsophoteList` instance
         The isophote list created by the `~photutils.isophote.Ellipse`
         class.
@@ -89,8 +88,8 @@ def build_ellipse_model(image, isolist, fill=0., high_harmonics=False):
     # correct deviations cased by fluctuations in spline solution
     eps_array[np.where(eps_array < 0.)] = 0.
 
-    result = np.zeros(shape=image.shape)
-    weight = np.zeros(shape=image.shape)
+    result = np.zeros(shape=shape)
+    weight = np.zeros(shape=shape)
 
     eps_array[np.where(eps_array < 0.)] = 0.05
 
@@ -128,8 +127,7 @@ def build_ellipse_model(image, isolist, fill=0., high_harmonics=False):
             j = int(y)
 
             # if outside image boundaries, ignore.
-            if (i > 0 and i < image.shape[0]-1 and j > 0 and
-                    j < image.shape[1] - 1):
+            if (i > 0 and i < shape[0]-1 and j > 0 and j < shape[1] - 1):
                 # get fractional deviations relative to target array
                 fx = x - float(i)
                 fy = y - float(j)
