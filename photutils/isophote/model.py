@@ -4,12 +4,15 @@ from __future__ import (absolute_import, division, print_function,
 
 import numpy as np
 
-from .geometry import Geometry
+from .geometry import EllipseGeometry
 
 
-def build_model(image, isolist, fill=0., high_harmonics=False):
+__all__ = ['build_ellipse_model']
+
+
+def build_ellipse_model(image, isolist, fill=0., high_harmonics=False):
     """
-    Build a model galaxy image from a list of isophotes.
+    Build an elliptical model galaxy image from a list of isophotes.
 
     For each ellipse in the input isophote list the algorithm fills the
     output image array with the corresponding isophotal intensity.
@@ -100,7 +103,7 @@ def build_model(image, isolist, fill=0., high_harmonics=False):
         pa = pa_array[index]
         x0 = x0_array[index]
         y0 = y0_array[index]
-        geometry = Geometry(x0, y0, sma0, eps, pa)
+        geometry = EllipseGeometry(x0, y0, sma0, eps, pa)
 
         intens = intens_array[index]
 

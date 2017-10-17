@@ -9,9 +9,9 @@ from astropy.io import fits
 from astropy.tests.helper import remote_data
 
 from .make_test_data import make_test_image
-from ..fitter import Fitter
+from ..fitter import EllipseFitter
 from ..isophote import Isophote, IsophoteList
-from ..sample import Sample
+from ..sample import EllipseSample
 from ...datasets import get_path
 
 try:
@@ -35,8 +35,8 @@ class TestIsophote(object):
     def test_fit(self):
         # low noise image, fitted perfectly by sample
         data = make_test_image(noise=1.e-10, random_state=123)
-        sample = Sample(data, 40)
-        fitter = Fitter(sample)
+        sample = EllipseSample(data, 40)
+        fitter = EllipseFitter(sample)
         iso = fitter.fit(maxit=400)
 
         assert iso.valid
@@ -65,8 +65,8 @@ class TestIsophote(object):
         assert abs(iso.b4) <= 0.01
 
     def test_m51(self):
-        sample = Sample(self.data, 21.44)
-        fitter = Fitter(sample)
+        sample = EllipseSample(self.data, 21.44)
+        fitter = EllipseFitter(sample)
         iso = fitter.fit()
 
         assert iso.valid
@@ -106,8 +106,8 @@ class TestIsophote(object):
         # compares with old STSDAS task. In this task, the
         # default for the starting value of SMA is 10; it
         # fits with 20 iterations.
-        sample = Sample(self.data, 10)
-        fitter = Fitter(sample)
+        sample = EllipseSample(self.data, 10)
+        fitter = EllipseFitter(sample)
         iso = fitter.fit()
 
         assert iso.valid
@@ -127,7 +127,7 @@ class TestIsophoteList(object):
     def build_list(data, sma0, slen=5):
         iso_list = []
         for k in range(slen):
-            sample = Sample(data, float(k + sma0))
+            sample = EllipseSample(data, float(k + sma0))
             sample.update()
             iso_list.append(Isophote(sample, k, True, 0))
         result = IsophoteList(iso_list)
@@ -168,7 +168,7 @@ class TestIsophoteList(object):
 
         samples = result.sample
         assert isinstance(samples, list)
-        assert isinstance(samples[0], Sample)
+        assert isinstance(samples[0], EllipseSample)
 
         iso = result.get_closest(13.6)
         assert isinstance(iso, Isophote)

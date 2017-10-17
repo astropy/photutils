@@ -8,10 +8,9 @@ import pytest
 from astropy.io import fits
 from astropy.tests.helper import remote_data
 
-from .make_test_data import make_test_image, DEFAULT_POS, DEFAULT_SIZE
+from .make_test_data import make_test_image
 from ..ellipse import Ellipse
-from ..fitter import NORMAL_FIT, TOO_MANY_FLAGGED
-from ..geometry import Geometry
+from ..geometry import EllipseGeometry
 from ..isophote import Isophote, IsophoteList
 from ...datasets import get_path
 
@@ -23,12 +22,12 @@ except ImportError:
 
 
 # define an off-center position and a tilted sma
-POS = DEFAULT_POS + DEFAULT_SIZE / 4
+POS = 384
 PA = 10. / 180. * np.pi
 
-# build off-center test data. It's fine to have a single np array
-# to use in all tests that need it, but do not use a single instance
-# of Geometry. The code may eventually modify it's contents. The safe
+# build off-center test data. It's fine to have a single np array to use
+# in all tests that need it, but do not use a single instance of
+# EllipseGeometry. The code may eventually modify it's contents. The safe
 # bet is to build it wherever it's needed. The cost is negligible.
 OFFSET_GALAXY = make_test_image(x0=POS, y0=POS, pa=PA, noise=1.e-12,
                                 random_state=123)
@@ -76,19 +75,19 @@ class TestEllipse(object):
     def test_offcenter_fit(self):
         # A first guess ellipse that is roughly centered on the
         # offset galaxy image.
-        g = Geometry(POS+5, POS+5, 10., eps=0.2, pa=PA, astep=0.1)
+        g = EllipseGeometry(POS+5, POS+5, 10., eps=0.2, pa=PA, astep=0.1)
         ellipse = Ellipse(OFFSET_GALAXY, geometry=g, verbose=self.verbose)
         isophote_list = ellipse.fit_image()
 
         # the fit should stop when too many potential sample
         # points fall outside the image frame.
         assert len(isophote_list) == 63
-        assert isophote_list[-1].stop_code == TOO_MANY_FLAGGED
+        assert isophote_list[-1].stop_code == 1
 
     def test_offcenter_go_beyond_frame(self):
         # Same as before, but now force the fit to goo
         # beyond the image frame limits.
-        g = Geometry(POS+5, POS+5, 10., eps=0.2, pa=PA, astep=0.1)
+        g = EllipseGeometry(POS+5, POS+5, 10., eps=0.2, pa=PA, astep=0.1)
         ellipse = Ellipse(OFFSET_GALAXY, geometry=g, verbose=self.verbose)
         isophote_list = ellipse.fit_image(maxsma=400.)
 
@@ -113,7 +112,7 @@ class TestEllipseOnRealData(object):
         data = hdu[0].data[0]
         hdu.close()
 
-        g = Geometry(530., 511, 30., 0.2, 20./180.*3.14)
+        g = EllipseGeometry(530., 511, 30., 0.2, 20./180.*3.14)
 
         verbose = False
         ellipse = Ellipse(data, geometry=g, verbose=verbose)
@@ -122,4 +121,4 @@ class TestEllipseOnRealData(object):
         assert len(isophote_list) == 57
 
         # check that isophote at about sma=70 got an uneventful fit
-        assert isophote_list.get_closest(70.).stop_code == NORMAL_FIT
+        assert isophote_list.get_closest(70.).stop_code == 0

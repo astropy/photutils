@@ -8,7 +8,7 @@ import pytest
 from .make_test_data import make_test_image
 from ..integrator import MEDIAN, MEAN, BILINEAR, NEAREST_NEIGHBOR
 from ..isophote import Isophote
-from ..sample import Sample
+from ..sample import EllipseSample
 
 
 DATA = make_test_image(background=100., i0=0., noise=10., random_state=123)
@@ -30,7 +30,7 @@ def test_scatter(integrmode, amin, amax):
     at extraction matches this input noise.
     """
 
-    sample = Sample(DATA, 50., astep=0.2, integrmode=integrmode)
+    sample = EllipseSample(DATA, 50., astep=0.2, integrmode=integrmode)
     sample.update()
     iso = Isophote(sample, 0, True, 0)
 
@@ -39,7 +39,7 @@ def test_scatter(integrmode, amin, amax):
 
 
 def test_coordinates():
-    sample = Sample(DATA, 50.)
+    sample = EllipseSample(DATA, 50.)
     sample.update()
     x, y = sample.coordinates()
 
@@ -48,7 +48,7 @@ def test_coordinates():
 
 
 def test_sclip():
-    sample = Sample(DATA, 50., nclip=3)
+    sample = EllipseSample(DATA, 50., nclip=3)
     sample.update()
     x, y = sample.coordinates()
 

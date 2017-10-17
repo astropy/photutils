@@ -28,7 +28,7 @@ class Isophote(object):
 
     Parameters
     ----------
-    sample : `~photutils.isophote.Sample` instance
+    sample : `~photutils.isophote.EllipseSample` instance
         The sample information.
     niter : int
         The number of iterations used to fit the isophote.
@@ -351,7 +351,7 @@ class CentralPixel(Isophote):
 
     Parameters
     ----------
-    sample : `~photutils.utils.Sample` instance
+    sample : `~photutils.utils.EllipseSample` instance
         The sample information.
     """
 
@@ -488,7 +488,9 @@ class IsophoteList(Isophote, list):
 
     @property
     def sample(self):
-        """The isophote `~photutils.isophote.Sample` information."""
+        """
+        The isophote `~photutils.isophote.EllipseSample` information.
+        """
         return self._collect_as_list('sample')
 
     @property

@@ -8,7 +8,7 @@ import pytest
 from .make_test_data import make_test_image
 from ..harmonics import (fit_first_and_second_harmonics, fit_upper_harmonic,
                          first_and_second_harmonic_function)
-from ..sample import Sample
+from ..sample import EllipseSample
 
 try:
     from scipy.optimize import leastsq
@@ -97,7 +97,7 @@ def test_harmonics_3():
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestFitSamples(object):
+class TestFitEllipseSamples(object):
     def setup_class(self):
         # major axis parallel to X image axis
         self.data1 = make_test_image(random_state=123)
@@ -105,8 +105,8 @@ class TestFitSamples(object):
         # major axis tilted 45 deg wrt X image axis
         self.data2 = make_test_image(pa=np.pi/4, random_state=123)
 
-    def test_fit_sample_1(self):
-        sample = Sample(self.data1, 40.)
+    def test_fit_ellipsesample_1(self):
+        sample = EllipseSample(self.data1, 40.)
         s = sample.extract()
 
         harmonics = fit_first_and_second_harmonics(s[0], s[2])
@@ -126,9 +126,9 @@ class TestFitSamples(object):
         assert np.mean(residual) == pytest.approx(0.00, abs=0.001)
         assert np.std(residual) == pytest.approx(0.015, abs=0.01)
 
-    def test_fit_sample_2(self):
+    def test_fit_ellipsesample_2(self):
         # initial guess is rounder than actual image
-        sample = Sample(self.data1, 40., eps=0.1)
+        sample = EllipseSample(self.data1, 40., eps=0.1)
         s = sample.extract()
 
         harmonics = fit_first_and_second_harmonics(s[0], s[2])
@@ -140,9 +140,9 @@ class TestFitSamples(object):
         assert np.mean(a2) == pytest.approx(-0.000215, abs=0.001)
         assert np.mean(b2) == pytest.approx(10.153, abs=0.001)
 
-    def test_fit_sample_3(self):
+    def test_fit_ellipsesample_3(self):
         # initial guess for center is offset
-        sample = Sample(self.data1, x0=220., y0=210., sma=40.)
+        sample = EllipseSample(self.data1, x0=220., y0=210., sma=40.)
         s = sample.extract()
 
         harmonics = fit_first_and_second_harmonics(s[0], s[2])
@@ -154,8 +154,8 @@ class TestFitSamples(object):
         assert np.mean(a2) == pytest.approx(33.036, abs=0.001)
         assert np.mean(b2) == pytest.approx(-14.306, abs=0.001)
 
-    def test_fit_sample_4(self):
-        sample = Sample(self.data2, 40., eps=0.4)
+    def test_fit_ellipsesample_4(self):
+        sample = EllipseSample(self.data2, 40., eps=0.4)
         s = sample.extract()
 
         harmonics = fit_first_and_second_harmonics(s[0], s[2])

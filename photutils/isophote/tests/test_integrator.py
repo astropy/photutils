@@ -9,7 +9,7 @@ import pytest
 from astropy.io import fits
 from astropy.tests.helper import remote_data
 
-from ..sample import Sample
+from ..sample import EllipseSample
 from ..integrator import NEAREST_NEIGHBOR, BILINEAR, MEAN, MEDIAN
 from ...datasets import get_path
 
@@ -29,7 +29,7 @@ class TestData(object):
             data = ma.masked_values(self.data, 200., atol=10.0, rtol=0.)
         else:
             data = self.data
-        sample = Sample(data, sma, integrmode=integrmode)
+        sample = EllipseSample(data, sma, integrmode=integrmode)
         s = sample.extract()
 
         assert len(s) == 3

@@ -7,8 +7,8 @@ import numpy as np
 from astropy.io import fits
 from astropy.tests.helper import remote_data
 
-from ..geometry import Geometry
-from ..centerer import Centerer
+from ..centerer import IsophoteCenterer
+from ..geometry import EllipseGeometry
 from ...datasets import get_path
 
 
@@ -20,8 +20,8 @@ def test_centerer():
     data = hdu[0].data
     hdu.close()
 
-    geometry = Geometry(252, 253, 10., 0.2, np.pi/2)
-    centerer = Centerer(data, geometry, False)
+    geometry = EllipseGeometry(252, 253, 10., 0.2, np.pi/2)
+    centerer = IsophoteCenterer(data, geometry, False)
     centerer.center()
 
     assert geometry.x0 == 257.

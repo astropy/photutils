@@ -9,18 +9,16 @@ import numpy as np
 from .harmonics import (fit_first_and_second_harmonics,
                         first_and_second_harmonic_function)
 from .isophote import Isophote, CentralPixel
-from .sample import Sample
+from .sample import EllipseSample
 
 
-__all__ = ['Fitter']
-__doctest_skip__ = ['Fitter.fit']
+__all__ = ['EllipseFitter']
+__doctest_skip__ = ['EllipseFitter.fit']
 
 
 PI2 = np.pi / 2
 MAX_EPS = 0.95
 MIN_EPS = 0.05
-TOO_MANY_FLAGGED = 1
-NORMAL_FIT = 0
 
 DEFAULT_CONVERGENCE = 0.05
 DEFAULT_MINIT = 10
@@ -29,13 +27,13 @@ DEFAULT_FFLAG = 0.7
 DEFAULT_MAXGERR = 0.5
 
 
-class Fitter(object):
+class EllipseFitter(object):
     """
     Class to fit ellipses.
 
     Parameters
     ----------
-    sample : `~photutils.isophote.Sample` instance
+    sample : `~photutils.isophote.EllipseSample` instance
         The sample data to be fitted.
     """
 
@@ -107,7 +105,7 @@ class Fitter(object):
             that defines the details of how elliptical arc segments
             ("sectors") are extracted from the image, when using area
             extraction modes (see the ``integrmode`` parameter in the
-            `~photutils.isophote.Sample` class).  The default is
+            `~photutils.isophote.EllipseSample` class).  The default is
             `False`.
 
         Returns
@@ -118,9 +116,9 @@ class Fitter(object):
 
         Examples
         --------
-        >>> from photutils.isophote import Sample, Fitter
-        >>> sample = Sample(data, sma=10.)
-        >>> fitter = Fitter(sample)
+        >>> from photutils.isophote import EllipseSample, EllipseFitter
+        >>> sample = EllipseSample(data, sma=10.)
+        >>> fitter = EllipseFitter(sample)
         >>> isophote = fitter.fit()
         """
 
@@ -180,7 +178,7 @@ class Fitter(object):
                 # that a minimum of iterations has run.
                 if iter >= minit-1:
                     sample.update()
-                    return Isophote(sample, iter+1, True, NORMAL_FIT)
+                    return Isophote(sample, iter+1, True, 0)
 
             # it may not have converged yet, but the sample contains too
             # many invalid data points: return.
@@ -188,20 +186,20 @@ class Fitter(object):
                 # when too many data points were flagged, return the
                 # best fit sample instead of the current one.
                 minimum_amplitude_sample.update()
-                return Isophote(minimum_amplitude_sample, iter+1, True,
-                                TOO_MANY_FLAGGED)
+                return Isophote(minimum_amplitude_sample, iter+1, True, 1)
 
             # pick appropriate corrector code.
             corrector = _correctors[largest_harmonic_index]
 
-            # generate *NEW* Sample instance with corrected parameter.
-            # Note that this instance is still devoid of other information
-            # besides its geometry.  It needs to be explicitly updated for
-            # computations to proceed.  We have to build a new Sample
-            # instance every time because of the lazy extraction process
-            # used by Sample code. To minimize the number of calls to the
-            # area integrators, we pay a (hopefully smaller) price here,
-            # by having multiple calls to the Sample constructor.
+            # generate *NEW* EllipseSample instance with corrected
+            # parameter.  Note that this instance is still devoid of other
+            # information besides its geometry.  It needs to be explicitly
+            # updated for computations to proceed.  We have to build a new
+            # EllipseSample instance every time because of the lazy
+            # extraction process used by EllipseSample code. To minimize
+            # the number of calls to the area integrators, we pay a
+            # (hopefully smaller) price here, by having multiple calls to
+            # the EllipseSample constructor.
             sample = corrector.correct(sample, largest_harmonic)
             sample.update()
 
@@ -282,12 +280,13 @@ class _PositionCorrector(_ParameterCorrector):
         new_x0 = sample.geometry.x0 + dx
         new_y0 = sample.geometry.y0 + dy
 
-        return Sample(sample.image, sample.geometry.sma, x0=new_x0, y0=new_y0,
-                      astep=sample.geometry.astep, sclip=sample.sclip,
-                      nclip=sample.nclip, eps=sample.geometry.eps,
-                      position_angle=sample.geometry.pa,
-                      linear_growth=sample.geometry.linear_growth,
-                      integrmode=sample.integrmode)
+        return EllipseSample(sample.image, sample.geometry.sma, x0=new_x0,
+                             y0=new_y0, astep=sample.geometry.astep,
+                             sclip=sample.sclip, nclip=sample.nclip,
+                             eps=sample.geometry.eps,
+                             position_angle=sample.geometry.pa,
+                             linear_growth=sample.geometry.linear_growth,
+                             integrmode=sample.integrmode)
 
 
 class _PositionCorrector_0(_PositionCorrector):
@@ -325,13 +324,13 @@ class _AngleCorrector(_ParameterCorrector):
         # '% np.pi' to make angle lie between 0 and np.pi radians
         new_pa = (sample.geometry.pa + correction) % np.pi
 
-        return Sample(sample.image, sample.geometry.sma,
-                      x0=sample.geometry.x0, y0=sample.geometry.y0,
-                      astep=sample.geometry.astep, sclip=sample.sclip,
-                      nclip=sample.nclip, eps=sample.geometry.eps,
-                      position_angle=new_pa,
-                      linear_growth=sample.geometry.linear_growth,
-                      integrmode=sample.integrmode)
+        return EllipseSample(sample.image, sample.geometry.sma,
+                             x0=sample.geometry.x0, y0=sample.geometry.y0,
+                             astep=sample.geometry.astep, sclip=sample.sclip,
+                             nclip=sample.nclip, eps=sample.geometry.eps,
+                             position_angle=new_pa,
+                             linear_growth=sample.geometry.linear_growth,
+                             integrmode=sample.integrmode)
 
 
 class _EllipticityCorrector(_ParameterCorrector):
@@ -345,13 +344,13 @@ class _EllipticityCorrector(_ParameterCorrector):
 
         new_eps = min((sample.geometry.eps - correction), MAX_EPS)
 
-        return Sample(sample.image, sample.geometry.sma,
-                      x0=sample.geometry.x0, y0=sample.geometry.y0,
-                      astep=sample.geometry.astep, sclip=sample.sclip,
-                      nclip=sample.nclip, eps=new_eps,
-                      position_angle=sample.geometry.pa,
-                      linear_growth=sample.geometry.linear_growth,
-                      integrmode=sample.integrmode)
+        return EllipseSample(sample.image, sample.geometry.sma,
+                             x0=sample.geometry.x0, y0=sample.geometry.y0,
+                             astep=sample.geometry.astep, sclip=sample.sclip,
+                             nclip=sample.nclip, eps=new_eps,
+                             position_angle=sample.geometry.pa,
+                             linear_growth=sample.geometry.linear_growth,
+                             integrmode=sample.integrmode)
 
 
 # instances of corrector code live here:
@@ -359,7 +358,7 @@ _correctors = [_PositionCorrector_0(), _PositionCorrector_1(),
                _AngleCorrector(), _EllipticityCorrector()]
 
 
-class CentralFitter(Fitter):
+class CentralEllipseFitter(EllipseFitter):
     """
     A special Fitter class to handle the case of the central pixel in
     the galaxy image.
@@ -377,12 +376,12 @@ class CentralFitter(Fitter):
 
         Returns
         -------
-        result : `~photutils.isophote.CentralPixel` instance
+        result : `~photutils.isophote.CentralEllipsePixel` instance
             The central pixel value.  For convenience, the
-            `~photutils.isophote.CentralPixel` class inherits from the
-            `~photutils.isophote.Isophote` class, although it's not
-            really a true isophote but just a single intensity value at
-            the central position.  Thus, most of its attributes are
+            `~photutils.isophote.CentralEllipsePixel` class inherits
+            from the `~photutils.isophote.Isophote` class, although it's
+            not really a true isophote but just a single intensity value
+            at the central position.  Thus, most of its attributes are
             hardcoded to `None` or other default value when appropriate.
         """
 

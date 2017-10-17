@@ -5,14 +5,14 @@ import copy
 
 import numpy as np
 
-from .geometry import Geometry
+from .geometry import EllipseGeometry
 from .integrator import integrators
 
 
-__all__ = ['Sample']
+__all__ = ['EllipseSample']
 
 
-class Sample(object):
+class EllipseSample(object):
     """
     Class to sample image data along an elliptical path.
 
@@ -51,12 +51,13 @@ class Sample(object):
         `False`.
     integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, optional
         The area integration mode.  The default is 'bilinear'.
-    geometry : `~photutils.isophote.Geometry` instance or `None`
+    geometry : `~photutils.isophote.EllipseGeometry` instance or `None`
         The geometry that describes the ellipse. This can be used in
         lieu of the explicit specification of parameters ``sma``,
         ``x0``, ``y0``, ``eps``, etc.  In any case, the
-        `~photutils.isophote.Geometry` instance becomes an attribute of
-        the `~photutils.isophote.Sample` object.  The default is `None`.
+        `~photutils.isophote.EllipseGeometry` instance becomes an
+        attribute of the `~photutils.isophote.EllipseSample` object.
+        The default is `None`.
 
     Attributes
     ----------
@@ -65,7 +66,7 @@ class Sample(object):
         angles, radii, and extracted intensity values, respectively.
     mean : float
         The mean intensity along the elliptical path.
-    geometry : `~photutils.isophote.Geometry` instance
+    geometry : `~photutils.isophote.EllipseGeometry` instance
         The geometry of the elliptical path.
     gradient : float
         The local radial intensity gradient.
@@ -108,8 +109,9 @@ class Sample(object):
                 _x0 = image.shape[0] / 2
                 _y0 = image.shape[1] / 2
 
-            self.geometry = Geometry(_x0, _y0, sma, eps, position_angle,
-                                     astep, linear_growth)
+            self.geometry = EllipseGeometry(_x0, _y0, sma, eps,
+                                            position_angle, astep,
+                                            linear_growth)
 
         # sigma-clip parameters
         self.sclip = sclip
@@ -152,8 +154,9 @@ class Sample(object):
 
     def _extract(self, phi_min=0.05):
         # Here the actual sampling takes place. This is called only once
-        # during the life of a Sample instance, because it's an expensive
-        # calculation. This method should not be called from external code.
+        # during the life of an EllipseSample instance, because it's an
+        # expensive calculation. This method should not be called from
+        # external code.
         # If one wants to force it to re-run, then do:
         #
         #   sample.values = None
@@ -276,12 +279,13 @@ class Sample(object):
 
     def update(self):
         """
-        Update this `~photutils.isophote.Sample` instance.
+        Update this `~photutils.isophote.EllipseSample` instance.
 
-        This method calls the :meth:`~photutils.isophote.Sample.extract`
-        method to get the values that match the current ``geometry``
-        attribute, and then computes the the mean intensity, local
-        gradient, and other associated quantities.
+        This method calls the
+        :meth:`~photutils.isophote.EllipseSample.extract` method to get
+        the values that match the current ``geometry`` attribute, and
+        then computes the the mean intensity, local gradient, and other
+        associated quantities.
         """
 
         step = self.geometry.astep
@@ -326,14 +330,13 @@ class Sample(object):
     def _get_gradient(self, step):
         gradient_sma = (1. + step) * self.geometry.sma
 
-        gradient_sample = Sample(self.image, gradient_sma,
-                                 x0=self.geometry.x0, y0=self.geometry.y0,
-                                 astep=self.geometry.astep,
-                                 sclip=self.sclip, nclip=self.nclip,
-                                 eps=self.geometry.eps,
-                                 position_angle=self.geometry.pa,
-                                 linear_growth=self.geometry.linear_growth,
-                                 integrmode=self.integrmode)
+        gradient_sample = EllipseSample(
+            self.image, gradient_sma, x0=self.geometry.x0,
+            y0=self.geometry.y0, astep=self.geometry.astep, sclip=self.sclip,
+            nclip=self.nclip, eps=self.geometry.eps,
+            position_angle=self.geometry.pa,
+            linear_growth=self.geometry.linear_growth,
+            integrmode=self.integrmode)
 
         sg = gradient_sample.extract()
         mean_g = np.mean(sg[2])
@@ -375,16 +378,16 @@ class Sample(object):
         return x, y
 
 
-class CentralSample(Sample):
+class CentralEllipseSample(EllipseSample):
     """
-    A `~photutils.isophote.Sample` subclass designed to handle the
-    special case of the central pixel in the galaxy image.
+    An `~photutils.isophote.EllipseSample` subclass designed to handle
+    the special case of the central pixel in the galaxy image.
     """
 
     def update(self):
         """
-        Update this `~photutils.isophote.Sample` instance with the
-        intensity integrated at the (x0, y0) center position using
+        Update this `~photutils.isophote.EllipseSample` instance with
+        the intensity integrated at the (x0, y0) center position using
         bilinear integration. The local gradient is set to `None`.
         """
 

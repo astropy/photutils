@@ -6,20 +6,15 @@ import numpy as np
 
 from astropy.io import fits
 
-from ..geometry import Geometry
+from ..geometry import EllipseGeometry
 from ...datasets import make_noise_image
 
 
-DEFAULT_SIZE = 512
-DEFAULT_POS = int(DEFAULT_SIZE / 2)
-DEFAULT_PA = 0.
-
-
-def make_test_image(nx=DEFAULT_SIZE, ny=DEFAULT_SIZE, x0=None, y0=None,
+def make_test_image(nx=512, ny=512, x0=None, y0=None,
                     background=100., noise=1.e-6, i0=100., sma=40.,
-                    eps=0.2, pa=DEFAULT_PA, random_state=None):
+                    eps=0.2, pa=0., random_state=None):
     """
-    Make a simulated image for testing the isophot subpackage.
+    Make a simulated image for testing the isophote subpackage.
 
     Parameters
     ----------
@@ -57,7 +52,7 @@ def make_test_image(nx=DEFAULT_SIZE, ny=DEFAULT_SIZE, x0=None, y0=None,
         xcen = x0
         ycen = y0
 
-    g = Geometry(xcen, ycen, sma, eps, pa, 0.1, False)
+    g = EllipseGeometry(xcen, ycen, sma, eps, pa, 0.1, False)
 
     y, x = np.mgrid[0:ny, 0:nx]
     radius, angle = g.to_polar(x, y)

@@ -6,7 +6,7 @@ import math
 import numpy as np
 
 
-__all__ = ['Geometry']
+__all__ = ['EllipseGeometry']
 
 
 def _area(sma, eps, phi, r):
@@ -21,7 +21,7 @@ def _area(sma, eps, phi, r):
     return abs(sma**2 * (1.-eps) / 2. * math.acos(aux))
 
 
-class Geometry(object):
+class EllipseGeometry(object):
     """
     Container class to store parameters for the geometry of an ellipse.
 
@@ -209,7 +209,7 @@ class Geometry(object):
 
         The two bounding polar angles become available only after
         calling the
-        :meth:`~photutils.isophote.Geometry.initialize_sector_geometry`
+        :meth:`~photutils.isophote.EllipseGeometry.initialize_sector_geometry`
         method.
 
         Returns
@@ -317,7 +317,8 @@ class Geometry(object):
             The new semimajor axis length and the new step value to
             initiate the shrinking of the semimajor axis length. This is
             the step value that should be used when calling the
-            :meth:`~photutils.isophote.Geometry.update_sma` method.
+            :meth:`~photutils.isophote.EllipseGeometry.update_sma`
+            method.
         """
 
         if self.linear_growth:

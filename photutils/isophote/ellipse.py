@@ -6,14 +6,14 @@ import warnings
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
-from .centerer import Centerer
-from .fitter import (Fitter, CentralFitter, TOO_MANY_FLAGGED,
+from .centerer import IsophoteCenterer
+from .fitter import (EllipseFitter, CentralEllipseFitter,
                      DEFAULT_CONVERGENCE, DEFAULT_MINIT, DEFAULT_MAXIT,
                      DEFAULT_FFLAG, DEFAULT_MAXGERR)
-from .geometry import Geometry
+from .geometry import EllipseGeometry
 from .integrator import BILINEAR
 from .isophote import Isophote, IsophoteList
-from .sample import Sample, CentralSample
+from .sample import EllipseSample, CentralEllipseSample
 
 
 __all__ = ['Ellipse']
@@ -32,11 +32,12 @@ class Ellipse(object):
     ----------
     image : 2D `~numpy.ndarray`
         The image array.
-    geometry : `~photutils.isophote.Geometry` instance or `None`, optional
+    geometry : `~photutils.isophote.EllipseGeometry` instance or `None`, optional
         The optional geometry that describes the first ellipse to be
-        fitted.  If `None`, a default `~photutils.isophote.Geometry`
-        instance is created centered on the image frame with ellipticity
-        of 0.2 and a position angle of 90 degrees.
+        fitted.  If `None`, a default
+        `~photutils.isophote.EllipseGeometry` instance is created
+        centered on the image frame with ellipticity of 0.2 and a
+        position angle of 90 degrees.
     threshold : float, optional
         The threshold for the object centerer algorithm. By lowering
         this value the object centerer becomes less strict, in the sense
@@ -45,12 +46,11 @@ class Ellipse(object):
         either the geometry information supplied by the ``geometry``
         parameter is used as is, or the fit algorithm will terminate
         prematurely. Note that once the object centerer runs
-        successfully, the (x, y) coordinates in the
-        `~photutils.isophote.Geometry` instance are modified in place.
-        The default is 0.1
-    verbose : bool, optional
-        Whether to print the object centering information.  The default
-        is `True`.
+        successfully, the (x, y) coordinates in the ``geometry``
+        attribute (an `~photutils.isophote.EllipseGeometry` instance)
+        are modified in place.  The default is 0.1
+    verbose : bool, optional Whether to print the object centering
+        information.  The default is `True`.
 
     Notes
     -----
@@ -151,12 +151,12 @@ class Ellipse(object):
     work. An "object centerer" function helps to verify that the
     selected position can be used as starting point. This function scans
     a 10x10 window centered either on the (x, y) coordinates in the
-    `~photutils.isophote.Geometry` instance passed to the constructor of
-    the `~photutils.isophote.Ellipse` class, or, if any one of them, or
-    both, are set to None, on the input image frame center. In case a
-    successful acquisition takes place, the
-    `~photutils.isophote.Geometry` instance is modified in place to
-    reflect the solution of the object centerer algorithm.
+    `~photutils.isophote.EllipseGeometry` instance passed to the
+    constructor of the `~photutils.isophote.Ellipse` class, or, if any
+    one of them, or both, are set to `None`, on the input image frame
+    center. In case a successful acquisition takes place, the
+    `~photutils.isophote.EllipseGeometry` instance is modified in place
+    to reflect the solution of the object centerer algorithm.
 
     In some cases the object centerer algorithm may fail, even though
     there is enough signal-to-noise to start a fit (e.g. in objects with
@@ -185,10 +185,11 @@ class Ellipse(object):
         else:
             _x0 = image.shape[0] / 2
             _y0 = image.shape[1] / 2
-            self._geometry = Geometry(_x0, _y0, 10., eps=0.2, pa=np.pi/2)
+            self._geometry = EllipseGeometry(_x0, _y0, 10., eps=0.2,
+                                             pa=np.pi/2)
 
         # run object centerer
-        self._centerer = Centerer(image, self._geometry, verbose)
+        self._centerer = IsophoteCenterer(image, self._geometry, verbose)
         self._centerer.center(threshold)
 
     def set_threshold(self, threshold):
@@ -235,10 +236,10 @@ class Ellipse(object):
             that the corresponding isophote has a good signal-to-noise
             ratio and a clearly defined geometry. If set to `None` (the
             default), one of two actions will be taken:  if a
-            `~photutils.isophote.Geometry` instance was input to the
-            `~photutils.isophote.Ellipse` constructor, its ``sma`` value
-            will be used.  Otherwise, a default value of 10. will be
-            used.
+            `~photutils.isophote.EllipseGeometry` instance was input to
+            the `~photutils.isophote.Ellipse` constructor, its ``sma``
+            value will be used.  Otherwise, a default value of 10. will
+            be used.
         minsma : float, optional
             The minimum value for the semimajor axis length (pixels).
             The default is 0.
@@ -350,7 +351,7 @@ class Ellipse(object):
         isophote_list = []
 
         # get starting sma from appropriate source: keyword parameter,
-        # internal Geometry instance, or fixed default value.
+        # internal EllipseGeometry instance, or fixed default value.
         if not sma0:
             if self._geometry:
                 sma = self._geometry.sma
@@ -375,8 +376,7 @@ class Ellipse(object):
                                          isophote_list=isophote_list)
 
             # check for failed fit.
-            if (isophote.stop_code < 0 or
-                    isophote.stop_code == TOO_MANY_FLAGGED):
+            if (isophote.stop_code < 0 or isophote.stop_code == 1):
                 # in case the fit failed right at the outset, return an
                 # empty list. This is the usual case when the user
                 # provides initial guesses that are too way off to enable
@@ -397,9 +397,9 @@ class Ellipse(object):
                 # shut off iterative mode. Or, bail out and
                 # change to go inwards.
                 if len(isophote_list) > 2:
-                    if ((isophote.stop_code == 5
-                         and isophote_list[-2].stop_code == 5)
-                            or isophote.stop_code == TOO_MANY_FLAGGED):
+                    if ((isophote.stop_code == 5 and
+                         isophote_list[-2].stop_code == 5)
+                            or isophote.stop_code == 1):
                         if maxsma and maxsma > isophote.sma:
                             # if a maximum sma value was provided by
                             # user, and the current sma is smaller than
@@ -591,14 +591,14 @@ class Ellipse(object):
                    going_inwards=False):
         if sma > 0.:
             # iterative fitter
-            sample = Sample(self.image, sma, astep=step, sclip=sclip,
-                            nclip=nclip, linear_growth=linear,
-                            geometry=geometry, integrmode=integrmode)
-            fitter = Fitter(sample)
+            sample = EllipseSample(self.image, sma, astep=step, sclip=sclip,
+                                   nclip=nclip, linear_growth=linear,
+                                   geometry=geometry, integrmode=integrmode)
+            fitter = EllipseFitter(sample)
         else:
             # sma == 0 requires special handling
-            sample = CentralSample(self.image, 0.0, geometry=geometry)
-            fitter = CentralFitter(sample)
+            sample = CentralEllipseSample(self.image, 0.0, geometry=geometry)
+            fitter = CentralEllipseFitter(sample)
 
         isophote = fitter.fit(conver, minit, maxit, fflag, maxgerr,
                               going_inwards)
@@ -607,12 +607,12 @@ class Ellipse(object):
 
     def _non_iterative(self, sma, step, linear, geometry, sclip, nclip,
                        integrmode):
-        sample = Sample(self.image, sma, astep=step, sclip=sclip, nclip=nclip,
-                        linear_growth=linear, geometry=geometry,
-                        integrmode=integrmode)
+        sample = EllipseSample(self.image, sma, astep=step, sclip=sclip,
+                               nclip=nclip, linear_growth=linear,
+                               geometry=geometry, integrmode=integrmode)
         sample.update()
 
-        # build isophote without iterating with a Fitter (stop_code=4)
+        # build isophote without iterating with an EllipseFitter
         isophote = Isophote(sample, 0, True, stop_code=4)
 
         return isophote

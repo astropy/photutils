@@ -5,12 +5,13 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 import pytest
 
-from ..geometry import Geometry
+from ..geometry import EllipseGeometry
 
 
 @pytest.mark.parametrize('astep, linear_growth', [(0.2, False), (20., True)])
 def test_geometry(astep, linear_growth):
-    geometry = Geometry(255., 255., 100., 0.4, np.pi/2, astep, linear_growth)
+    geometry = EllipseGeometry(255., 255., 100., 0.4, np.pi/2, astep,
+                               linear_growth)
 
     sma1, sma2 = geometry.bounding_ellipses()
     assert (sma1, sma2) == pytest.approx((90.0, 110.0), abs=0.01)
@@ -35,7 +36,7 @@ def test_geometry(astep, linear_growth):
 
 def test_to_polar():
     # trivial case of a circle centered in (0.,0.)
-    geometry = Geometry(0., 0., 100., 0.0, 0., 0.2, False)
+    geometry = EllipseGeometry(0., 0., 100., 0.0, 0., 0.2, False)
 
     r, p = geometry.to_polar(100., 0.)
     assert (r, p) == pytest.approx((100., 0.), abs=(0.1, 0.0001))
@@ -54,7 +55,7 @@ def test_to_polar():
     assert p == pytest.approx(np.pi/4., abs=0.0001)
 
     # position angle tilted 45 deg from X axis
-    geometry = Geometry(0., 0., 100., 0.0, np.pi/4., 0.2, False)
+    geometry = EllipseGeometry(0., 0., 100., 0.0, np.pi/4., 0.2, False)
 
     r, p = geometry.to_polar(100., 0.)
     assert (r, p) == pytest.approx((100., np.pi*7./4), abs=(0.1, 0.0001))
@@ -72,7 +73,7 @@ def test_to_polar():
 
 def test_area():
     # circle with center at origin
-    geometry = Geometry(0., 0., 100., 0.0, 0., 0.2, False)
+    geometry = EllipseGeometry(0., 0., 100., 0.0, 0., 0.2, False)
 
     # sector at 45 deg on circle
     vertex_x, vertex_y = geometry.initialize_sector_geometry(45./180.*np.pi)
@@ -103,7 +104,7 @@ def test_area():
 
 def test_area2():
     # circle with center at 100.,100.
-    geometry = Geometry(100., 100., 100., 0.0, 0., 0.2, False)
+    geometry = EllipseGeometry(100., 100., 100., 0.0, 0., 0.2, False)
 
     # sector at 45 deg on circle
     vertex_x, vertex_y = geometry.initialize_sector_geometry(45./180.*np.pi)
@@ -133,29 +134,29 @@ def test_area2():
 
 
 def test_reset_sma():
-    geometry = Geometry(0., 0., 100., 0.0, 0., 0.2, False)
+    geometry = EllipseGeometry(0., 0., 100., 0.0, 0., 0.2, False)
     sma, step = geometry.reset_sma(0.2)
     assert sma == pytest.approx(83.33, abs=0.01)
     assert step == pytest.approx(-0.1666, abs=0.001)
 
-    geometry = Geometry(0., 0., 100., 0.0, 0., 20., True)
+    geometry = EllipseGeometry(0., 0., 100., 0.0, 0., 20., True)
     sma, step = geometry.reset_sma(20.)
     assert sma == pytest.approx(80.0, abs=0.01)
     assert step == pytest.approx(-20.0, abs=0.01)
 
 
 def test_update_sma():
-    geometry = Geometry(0., 0., 100., 0.0, 0., 0.2, False)
+    geometry = EllipseGeometry(0., 0., 100., 0.0, 0., 0.2, False)
     sma = geometry.update_sma(0.2)
     assert sma == pytest.approx(120.0, abs=0.01)
 
-    geometry = Geometry(0., 0., 100., 0.0, 0., 20., True)
+    geometry = EllipseGeometry(0., 0., 100., 0.0, 0., 20., True)
     sma = geometry.update_sma(20.)
     assert sma == pytest.approx(120.0, abs=0.01)
 
 
 def test_polar_angle_sector_limits():
-    geometry = Geometry(0., 0., 100., 0.3, np.pi/4, 0.2, False)
+    geometry = EllipseGeometry(0., 0., 100., 0.3, np.pi/4, 0.2, False)
     geometry.initialize_sector_geometry(np.pi/3)
     phi1, phi2 = geometry.polar_angle_sector_limits()
 
@@ -164,13 +165,13 @@ def test_polar_angle_sector_limits():
 
 
 def test_bounding_ellipses():
-    geometry = Geometry(0., 0., 100., 0.3, np.pi/4, 0.2, False)
+    geometry = EllipseGeometry(0., 0., 100., 0.3, np.pi/4, 0.2, False)
     sma1, sma2 = geometry.bounding_ellipses()
     assert (sma1, sma2) == pytest.approx((90.0, 110.0), abs=0.01)
 
 
 def test_radius():
-    geometry = Geometry(0., 0., 100., 0.3, np.pi/4, 0.2, False)
+    geometry = EllipseGeometry(0., 0., 100., 0.3, np.pi/4, 0.2, False)
     r = geometry.radius(0.0)
     assert r == pytest.approx(100.0, abs=0.01)
 

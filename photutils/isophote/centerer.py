@@ -6,7 +6,7 @@ import numpy as np
 from astropy import log
 
 
-__all__ = ['Centerer']
+__all__ = ['IsophoteCenterer']
 
 
 IN_MASK = [
@@ -48,7 +48,7 @@ OUT_MASK = [
 ]
 
 
-class Centerer(object):
+class IsophoteCenterer(object):
     """
     Class to find the center of a galaxy.
 
@@ -64,10 +64,10 @@ class Centerer(object):
     image : 2D `~numpy.ndarray`
         The image array.  Masked arrays are not recognized here. This
         assumes that centering should always be done on valid pixels.
-    geometry : `~photutils.isophote.Geometry` instance
-        The `~photutils.isophote.Geometry` object that directs the
-        centerer to look at its (x, y) coordinates.  These coordinates
-        are modified by the centerer algorithm.
+    geometry : `~photutils.isophote.EllipseGeometry` instance
+        The `~photutils.isophote.EllipseGeometry` object that directs
+        the centerer to look at its (x, y) coordinates.  These
+        coordinates are modified by the centerer algorithm.
     verbose : bool, optional
         Whether to print object centering information.  The default is
         `True`.
@@ -80,13 +80,13 @@ class Centerer(object):
     Notes
     -----
     The centerer function scans a 10x10 window centered on the (x, y)
-    coordinates in the `~photutils.isophote.Geometry` instance passed to
-    the constructor of the `~photutils.isophote.Ellipse` class.  If any
-    of the `~photutils.isophote.Geometry` (x, y) coordinates are `None`,
-    the center of the input image frame is used.  If the center
-    acquisition is successful, the `~photutils.isophote.Geometry`
-    instance is modified in place to reflect the solution of the object
-    centerer algorithm.
+    coordinates in the `~photutils.isophote.EllipseGeometry` instance
+    passed to the constructor of the `~photutils.isophote.Ellipse`
+    class.  If any of the `~photutils.isophote.EllipseGeometry` (x, y)
+    coordinates are `None`, the center of the input image frame is used.
+    If the center acquisition is successful, the
+    `~photutils.isophote.EllipseGeometry` instance is modified in place
+    to reflect the solution of the object centerer algorithm.
 
     In some cases the object centerer algorithm may fail even though
     there is enough signal-to-noise to start a fit (e.g. objects with
@@ -120,7 +120,7 @@ class Centerer(object):
         """
         Calculate the object center.
 
-        The (x, y) position of the `~photutils.isophote.Geometry`
+        The (x, y) position of the `~photutils.isophote.EllipseGeometry`
         instance (located in the ``_geometry`` attribute) will be
         modified with the object center.
 

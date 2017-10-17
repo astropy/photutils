@@ -22,9 +22,9 @@ class _Integrator(object):
 
     Parameters
     ----------
-    image : 2-d numpy array
-         image array
-    geometry : Geometry instance
+    image : 2D `~numpy.ndarray`
+         The image array.
+    geometry : `~photutils.isophote.EllipseGeometry` instance
         object that encapsulates geometry information about current ellipse
     angles : list
         output list; contains the angle values along the elliptical path
