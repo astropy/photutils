@@ -437,6 +437,11 @@ class IsophoteList(Isophote, list):
             return IsophoteList(self._list[index])
         return self._list.__getitem__(index)
 
+    # need to override this method for py2.7 in derived list classes
+    # even though it has been deprecated since py2.0
+    def __getslice__(self, i, j):
+        return self.__getitem__(slice(i, j))
+
     def __iter__(self):
         return self._list.__iter__()
 
@@ -457,7 +462,7 @@ class IsophoteList(Isophote, list):
         return self
 
     def __add__(self, value):
-        temp = self._list.copy()    # shallow copy!
+        temp = self._list[:]    # shallow copy
         temp.extend(value._list)
         return IsophoteList(temp)
 
