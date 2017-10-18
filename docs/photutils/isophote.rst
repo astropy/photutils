@@ -3,219 +3,242 @@ Elliptical isophote analysis (`photutils.isophote`)
 
 Introduction
 ------------
-The `isophote` package replaces the analysis/isophote package formerly found in
-the STSDAS software.
+The `~photutils.isophote` package provides tools to fit elliptical
+isophotes to a galaxy image.  The isophotes in the image are measured
+using an iterative method described by `Jedrzejewski (1987; MNRAS 226,
+747) <http://adsabs.harvard.edu/abs/1987MNRAS.226..747J>`_.  See the
+documentation of the :class:`~photutils.isophote.Ellipse` class for
+details about the algorithm.  Please also see the :ref:`isophote-faq`.
 
-The core of the package is the `ellipse` analysis algorithm. It is designed to
-fit elliptical isophotes to galaxy images.
+Getting Started
+---------------
 
-The image is measured using an iterative method described in [1]_. Each isophote
-is fitted at a pre-defined, fixed semi-major axis length. The algorithm starts from
-a first guess ellipse. The image is sampled along that elliptical path, producing a
-1-dimensional function that describes the dependency of the intensity (pixel value)
-with the polar angle. The harmonic content of this function is decomposed by
-least-squares fitting to an harmonic function that includes first and second harmonics.
+For this example, let's create a simple simulated galaxy image::
 
-Each one of the harmonic amplitudes that result from this fit is related to a specific
-ellipse geometric parameter, in the sense that it conveys information regarding how
-much the current parameter value deviates from the "true" one. At each iteration,
-the largest amplitude among the fitted values is selected and used to compute the
-corresponding increment in the associated ellipse parameter. That parameter is updated,
-and the image is resampled. The process is repeated until certain criteria are met.
+    >>> import numpy as np
+    >>> from astropy.modeling.models import Gaussian2D
+    >>> from photutils.datasets import make_noise_image
+    >>> g = Gaussian2D(100., 75, 75, 20, 12, theta=40.*np.pi/180.)
+    >>> ny = nx = 150
+    >>> y, x = np.mgrid[0:ny, 0:nx]
+    >>> noise = make_noise_image((ny, nx), type='gaussian', mean=0.,
+    ...                          stddev=2., random_state=12345)
+    >>> data = g(x, y) + noise
 
-See the documentation for the Ellipse class for details.
+.. plot::
 
-Refer to the examples in the notebooks in `astropy-tutorials` for how to start using the package.
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from astropy.modeling.models import Gaussian2D
+    from photutils.datasets import make_noise_image
+    g = Gaussian2D(100., 75, 75, 20, 12, theta=40.*np.pi/180.)
+    ny = nx = 150
+    y, x = np.mgrid[0:ny, 0:nx]
+    noise = make_noise_image((ny, nx), type='gaussian', mean=0.,
+                             stddev=2., random_state=12345)
+    data = g(x, y) + noise
+    plt.imshow(data)
 
-Refer to the API documentation below for the detailed description of each class,
-method, and parameter.
+We must provide the elliptical isophote fitter with an initial ellipse
+to be fitted.  This ellipse geometry is defined with the
+`~photutils.isophote.EllipseGeometry` class.  Here we'll define an
+initial ellipse whose position angle is offset from the data::
 
-You can also look for the test code in directory photutils/isophote/tests/ for
-several examples on how the API is used in practice.
+    >>> from photutils.isophote import EllipseGeometry
+    >>> geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
+    ...                            pa=20.*np.pi/180.)
+
+Let's show this initial ellipse guess:
+
+.. doctest-skip::
+
+    >>> import matplotlib.pyplot as plt
+    >>> from photutils import EllipticalAperture
+    >>> aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
+    ...                            geometry.sma*(1 - geometry.eps),
+    ...                            geometry.pa)
+    >>> plt.imshow(data)
+    >>> aper.plot(color='white')
+
+.. plot::
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from astropy.modeling.models import Gaussian2D
+    from photutils.datasets import make_noise_image
+    from photutils.isophote import EllipseGeometry
+    from photutils import EllipticalAperture
+
+    g = Gaussian2D(100., 75, 75, 20, 12, theta=40.*np.pi/180.)
+    ny = nx = 150
+    y, x = np.mgrid[0:ny, 0:nx]
+    noise = make_noise_image((ny, nx), type='gaussian', mean=0.,
+                             stddev=2., random_state=12345)
+    data = g(x, y) + noise
+
+    geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
+                               pa=20.*np.pi/180.)
+    aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
+                               geometry.sma*(1 - geometry.eps), geometry.pa)
+    plt.imshow(data)
+    aper.plot(color='white')
+
+Next, we create an instance of the `~photutils.isophote.Ellipse`
+class, inputting the data to be fitted and the initial ellipse
+geometry object::
+
+    >>> from photutils.isophote import Ellipse
+    >>> ellipse = Ellipse(data, geometry)
+
+To perform the elliptical isophote fit, we run the
+:meth:`~photutils.isophote.Ellipse.fit_image` method::
+
+    >>> isolist = ellipse.fit_image()
+
+The result is a list of isophotes as an
+`~photutils.isophote.IsophoteList` object, whose attributes are the
+fit values for each `~photutils.isophote.Isophote` sorted by the
+semimajor axis length.  Let's print the fit position angles
+(radians)::
+
+    >>> print(isolist.pa)    # doctest: +FLOAT_CMP
+    [ 0.          0.16838914  0.18453378  0.20310945  0.22534975  0.25007781
+      0.28377499  0.32494582  0.38589202  0.40480013  0.39527698  0.38448771
+      0.40207495  0.40207495  0.28201524  0.28201524  0.19889817  0.1364335
+      0.1364335   0.13405719  0.17848892  0.25687327  0.35750355  0.64882699
+      0.72489435  0.91472008  0.94219702  0.87393299  0.82572916  0.7886367
+      0.75523282  0.7125274   0.70481612  0.7120097   0.71250791  0.69707669
+      0.7004807   0.70709823  0.69808124  0.68621341  0.69437566  0.70548293
+      0.70427021  0.69978326  0.70410887  0.69532744  0.69440413  0.70062534
+      0.68614488  0.7177538   0.7177538   0.7029571   0.7029571   0.7029571 ]
+
+We can also show the isophote values as a table, which is again sorted
+by the semimajor axis length (``sma``)::
+
+    >>> print(isolist.to_table())    # doctest: +SKIP
+         sma            intens        intens_err   ... flag niter stop_code
+                                                   ...
+    -------------- --------------- --------------- ... ---- ----- ---------
+               0.0   102.237692914             0.0 ...    0     0         0
+    0.534697261283   101.212218041 0.0280377938856 ...    0    10         0
+    0.588166987411   101.095404456  0.027821598428 ...    0    10         0
+    0.646983686152   100.971770355 0.0272405762608 ...    0    10         0
+    0.711682054767   100.842254551 0.0262991125932 ...    0    10         0
+               ...             ...             ... ...  ...   ...       ...
+      51.874849202   3.44800874483 0.0881592058138 ...    0    50         2
+     57.0623341222   1.64031530995 0.0913122295433 ...    0    50         2
+     62.7685675344  0.692631010404 0.0786846787635 ...    0    32         0
+     69.0454242879  0.294659388337 0.0681758007533 ...    0     8         5
+     75.9499667166 0.0534892334515 0.0692483210903 ...    0     2         5
+    Length = 54 rows
+
+Let's plot the ellipticity, position angle, and the center x and y
+position as a function of the semimajor axis length:
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    from astropy.modeling.models import Gaussian2D
+    from photutils.datasets import make_noise_image
+    from photutils.isophote import EllipseGeometry, Ellipse
+
+    g = Gaussian2D(100., 75, 75, 20, 12, theta=40.*np.pi/180.)
+    ny = nx = 150
+    y, x = np.mgrid[0:ny, 0:nx]
+    noise = make_noise_image((ny, nx), type='gaussian', mean=0.,
+                             stddev=2., random_state=12345)
+    data = g(x, y) + noise
+    geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
+                               pa=20.*np.pi/180.)
+    ellipse = Ellipse(data, geometry)
+    isolist = ellipse.fit_image()
+
+    plt.figure(figsize=(8, 8))
+    plt.subplots_adjust(hspace=0.35, wspace=0.35)
+
+    plt.subplot(2, 2, 1)
+    plt.errorbar(isolist.sma, isolist.eps, yerr=isolist.ellip_err,
+                 fmt='o', markersize=4)
+    plt.xlabel('Semimajor Axis Length (pix)')
+    plt.ylabel('Ellipticity')
+
+    plt.subplot(2, 2, 2)
+    plt.errorbar(isolist.sma, isolist.pa/np.pi*180.,
+                 yerr=isolist.pa_err/np.pi* 80., fmt='o', markersize=4)
+    plt.xlabel('Semimajor Axis Length (pix)')
+    plt.ylabel('PA (deg)')
+
+    plt.subplot(2, 2, 3)
+    plt.errorbar(isolist.sma, isolist.x0, yerr=isolist.x0_err, fmt='o',
+                 markersize=4)
+    plt.xlabel('Semimajor Axis Length (pix)')
+    plt.ylabel('x0')
+
+    plt.subplot(2, 2, 4)
+    plt.errorbar(isolist.sma, isolist.y0, yerr=isolist.y0_err, fmt='o',
+                 markersize=4)
+    plt.xlabel('Semimajor Axis Length (pix)')
+    plt.ylabel('y0')
+
+We can build an elliptical model image from the
+`~photutils.isophote.IsophoteList` object using the
+:func:`~photutils.isophote.build_ellipse_model` function ( NOTE: this
+function requires `scipy <http://www.scipy.org/>`_):
+
+.. doctest-requires:: scipy
+
+    >>> from photutils.isophote import build_ellipse_model
+    >>> model_image = build_ellipse_model(data.shape, isolist)
+    >>> residual = data - model_image
+
+Finally, let's plot the original data, overplotted with some of the
+isophotes, the elliptical model image, and the residual image:
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    from astropy.modeling.models import Gaussian2D
+    from photutils.datasets import make_noise_image
+    from photutils.isophote import EllipseGeometry, Ellipse
+    from photutils.isophote import build_ellipse_model
+
+    g = Gaussian2D(100., 75, 75, 20, 12, theta=40.*np.pi/180.)
+    ny = nx = 150
+    y, x = np.mgrid[0:ny, 0:nx]
+    noise = make_noise_image((ny, nx), type='gaussian', mean=0.,
+                             stddev=2., random_state=12345)
+    data = g(x, y) + noise
+    geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
+                               pa=20.*np.pi/180.)
+    ellipse = Ellipse(data, geometry)
+    isolist = ellipse.fit_image()
+
+    model_image = build_ellipse_model(data.shape, isolist)
+    residual = data - model_image
+
+    fig, (ax1, ax2, ax3) = plt.subplots(figsize=(14, 5), nrows=1, ncols=3)
+    fig.subplots_adjust(left=0.04, right=0.98, bottom=0.02, top=0.98)
+    ax1.imshow(data)
+    ax1.set_title('Data')
+
+    smas = np.linspace(10, 50, 5)
+    for sma in smas:
+        iso = isolist.get_closest(sma)
+        x, y, = iso.sampled_coordinates()
+        ax1.plot(x, y, color='white')
+
+    ax2.imshow(model_image)
+    ax2.set_title('Ellipse Model')
+
+    ax3.imshow(residual)
+    ax3.set_title('Residual')
 
 
+Additional Example Notebooks (online)
+-------------------------------------
 
-Frequently Asked Questions
---------------------------
-
-
-**1 - What are the basic equations relating harmonic amplitudes to geometrical parameter updates?**
-
-The basic elliptical isophote fitting algorithm, as described in reference [1]_, computes
-corrections for the current ellipse's geometrical parameters by essentially "projecting"
-the fitted harmonic amplitudes onto the image plane:
-
-.. math::
-
-    {\delta}_{X0} = \frac {-B_{1}} {I'}
-
-.. math::
-
-    {\delta}_{Y0} = \frac {-A_{1} (1 - {\epsilon})} {I'}
-
-.. math::
-
-    {\delta}_{\epsilon} = \frac {-2 B_{2} (1 - {\epsilon})} {I' a}
-
-.. math::
-
-    {\delta}_{\Theta} = \frac {2 A_{2} (1 - {\epsilon})} {I' a [(1 - {\epsilon}) ^ 2 - 1 ]}
-
-
-**2 - Why use "ellipticity" instead of the canonical ellipse eccentricity?**
-
-The main reason is that ellipticity, defined as
-
-.. math::
-
-      {\epsilon} =  1  -  \frac{b}{a}
-
-better relates with the visual "flattening" of an ellipse. It is easy, by looking to a
-flattened circle, to guess its ellipticity as, say, 0.1. The same ellipse has, however,
-an eccentricity of 0.44, which is not obvious from its visual aspect. The quantities
-relate as
-
-.. math::
-
-      Ecc  =  sqrt [ 1 -  (1 - {\epsilon})^2 ]
-
-
-**3 - How is the radial gradient estimated?**
-
-The radial intensity gradient is the most critical quantity computed
-by the fitting algorithm. As can be seen from the above formulae, small
-I' values lead to large values for the correction terms. Thus, I' errors
-may lead to large fluctuations in these terms, when I' itself is small.
-This happens usually at the fainter, outer regions of galaxy images.
-It was found by numerical experiments [2]_ that the precision to which a
-given ellipse can be fitted is related to the relative error in the local
-radial gradient.
-
-Because of the gradient's critical role, the algorithm has a number of
-features to allow its estimation even under difficult conditions. The default
-gradient computation, the one used at first by the algorithm when it starts to
-fit a new isophote, is based on the extraction of two intensity samples: #1 at
-the current ellipse position, and #2 at a similar ellipse with a 10% larger
-semi-major axis.
-
-If the gradient so estimated is not meaningful, the algorithm extracts another
-#2 sample, this time using a 20% larger radius. In this context, meaningful
-gradient means "shallower", but still close to within a factor 3 from the
-previous isophote's gradient estimate.
-
-If still no meaningful gradient can be measured, the algorithm uses the value
-measured at the last fitted isophote, but decreased (in absolute value) by a
-factor 0.8. This factor is roughly what is expected from semi-major axis
-geometrical sampling steps of 10 - 20 % and a deVaucouleurs law or an
-exponential disk in its inner region (r <~ 5 req). When using the last
-isophote's gradient as estimator for the current one, the current gradient
-error cannot be computed and is set to None.
-
-As a last resort, if no previous gradient estimate is available, the
-algorithm just guesses the current value by setting it to be (minus) 10%
-of the mean intensity at sample #1. This case usually happens only at
-the first isophote fitted by the algorithm.
-
-The use of approximate gradient estimators may seem in contradiction with
-the fact that isophote fitting errors depend on gradient error, as well as
-with the fact that the algorithm itself is so sensitive to the gradient
-value. The rationale behind the use of approximate estimators, however, is
-based on the fact that the gradient value is used only to compute increments,
-not the ellipse parameters themselves. Approximate estimators are useful
-along the first steps in the iteration sequence, in particular when local
-image contamination (stars, defects, etc.) might make it difficult to find
-the correct path towards the solution. At convergency, however, if the
-gradient is still not well determined, the subsequent error computations,
-and the algorithm's behavior from that point on, will take the fact into account
-properly. For instance, the 3rd and 4th harmonic amplitude errors depend
-on the gradient relative error, and if this is not computable at the
-current isophote, the algorithm uses a reasonable estimate (80% of the value at
-the last successful isophote) in order to generate sensible estimates for
-those harmonic errors.
-
-
-**4 - How are errors estimated?**
-
-Most parameters computed directly at each isophote have their errors computed
-by standard error propagation. Errors in the ellipse geometry parameters, on
-the other hand, cannot be estimated in the same way, since these parameters
-are not computed directly but result from a number of updates from a starting
-guess value. An error analysis based on numerical experiments [2]_ showed that
-the best error estimators for these geometrical parameters can be found by
-simply "projecting" the harmonic amplitude errors that come from the least-squares
-covariance matrix by the same formulae in **Question 1** above used to "project"
-the associated parameter updates. In other words, errors for ellipse center,
-ellipticity and position angle are computed by the same formulae as in
-**Question 1**, but replacing the least-squares amplitudes by their errors. This
-is empirical and difficult to justify in terms of any theoretical error analysis,
-but showed in practice to produce sensible error estimators.
-
-
-**5 - How is the image sampled?**
-
-When sampling is done using elliptical sectors (mean or median modes), the
-algorithm described in [1]_ uses an elaborate, high-precision scheme to take into
-account partial pixels that lie along elliptical sector boundaries. In the
-current implementation of the `ellipse` algorithm, this method was not implemented.
-Instead, pixels at sector boundaries are either fully included or discarded, depending
-on the precise position of their centers in relation to the elliptical geometric locus
-corresponding to the current ellipse. This design decision is based on two arguments:
-(i) it would be difficult to include partial pixels in median computation, and (ii)
-speed.
-
-Even when the chosen integration mode is not bilinear, the sampling algorithm resorts
-to it in case the number of sampled pixels inside any given sector is less than 5. It
-was found that bilinear mode gives smoother samples in those cases.
-
-Tests performed with artificial images showed that cosmic rays and defective pixels can
-be very effectively removed from the fit by a combination of median sampling and
-sigma-clipping.
-
-
-**6 - How reliable are the fluxes computed by the `ellipse` algorithm?**
-
-The integrated fluxes and areas computed by `ellipse` where checked against results
-produced by the `noao.digiphot.apphot` tasks `phot` and `polyphot`, using artificial
-images. Quantities computed by `ellipse` match the reference ones within < 0.1 % in
-all tested cases.
-
-
-**7 - How does the object locator works?**
-
-Before starting the main fitting loop, the algorithm runs an "object locator" routine
-around the specified or assumed object coordinates, to check if minimal conditions for
-starting a reasonable fit are met. This routine performs a scan over a 10 X 10 pixel
-window centered on the input object coordinates. At each scan position, it extracts
-two concentric, roughly circular samples with radii 4 and 8 pixels. It computes a
-signal-to-noise-like criterion using the intensity averages and standard deviations
-at each annulus
-
-.. math::
-
-    c = \frac{f_{1} - f_{2}}{{\sqrt{\sigma_{1}^{2} + \sigma_{2}^{2}}}}
-
-
-and locates the pixel inside the scanned window where this criterion is a maximum. If the
-criterion so computed exceeds a given threshold, it assumes that a suitable object was
-detected at that position.
-
-The default threshold value is set to 0.1. This value, and the annuli and window sizes
-currently used, were found by trial and error using a number of both artificial and real galaxy
-images. It was found that very flattened galaxy images (ellipticity ~ 0.7) cannot be detected
-by such a simple algorithm. By increasing the threshold value the object locator becomes more
-strict, in the sense that it will not detect faint objects. To turn the object locator, set
-the threshold to a value >> 1. This will prevent it from modifying whatever values for the
-center coordinates were given to the `ellipse` algorithm.
-
-
-References
-----------
-
-.. [1] JEDRZEJEWSKI, R., 1987, Mon. Not. R. Astr. Soc., 226, 747.
-
-.. [2] BUSKO, I., 1996, Proceedings of the Fifth Astronomical Data Analysis Software and Systems
-   Conference, Tucson, PASP Conference Series v.101, ed. G.H. Jacoby and J. Barnes, p.139-142.
-
+Additional example notebooks showing examples with real data and
+advanced usage are available online:
 
 
 Reference/API
@@ -223,3 +246,9 @@ Reference/API
 
 .. automodapi:: photutils.isophote
     :no-heading:
+
+
+.. toctree::
+    :hidden:
+
+    isophote_faq.rst
