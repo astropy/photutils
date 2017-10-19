@@ -51,6 +51,7 @@ User Documentation
     photutils/aperture.rst
     photutils/psf.rst
     photutils/psf_matching.rst
+    photutils/psf_building.rst
     photutils/segmentation.rst
     photutils/centroids.rst
     photutils/morphology.rst
