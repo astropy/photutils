@@ -1,4 +1,4 @@
-Elliptical isophote analysis (`photutils.isophote`)
+Elliptical Isophote Analysis (`photutils.isophote`)
 ===================================================
 
 Introduction
