@@ -1,4 +1,4 @@
-Elliptical isophote analysis (`photutils.isophote`)
+Elliptical Isophote Analysis (`photutils.isophote`)
 ===================================================
 
 Introduction
@@ -37,7 +37,7 @@ For this example, let's create a simple simulated galaxy image::
     noise = make_noise_image((ny, nx), type='gaussian', mean=0.,
                              stddev=2., random_state=12345)
     data = g(x, y) + noise
-    plt.imshow(data)
+    plt.imshow(data, origin='lower')
 
 We must provide the elliptical isophote fitter with an initial ellipse
 to be fitted.  This ellipse geometry is defined with the
@@ -57,7 +57,7 @@ Let's show this initial ellipse guess:
     >>> aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
     ...                            geometry.sma*(1 - geometry.eps),
     ...                            geometry.pa)
-    >>> plt.imshow(data)
+    >>> plt.imshow(data, origin='lower')
     >>> aper.plot(color='white')
 
 .. plot::
@@ -80,7 +80,7 @@ Let's show this initial ellipse guess:
                                pa=20.*np.pi/180.)
     aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
                                geometry.sma*(1 - geometry.eps), geometry.pa)
-    plt.imshow(data)
+    plt.imshow(data, origin='lower')
     aper.plot(color='white')
 
 Next, we create an instance of the `~photutils.isophote.Ellipse`
@@ -224,7 +224,7 @@ isophotes, the elliptical model image, and the residual image:
 
     fig, (ax1, ax2, ax3) = plt.subplots(figsize=(14, 5), nrows=1, ncols=3)
     fig.subplots_adjust(left=0.04, right=0.98, bottom=0.02, top=0.98)
-    ax1.imshow(data)
+    ax1.imshow(data, origin='lower')
     ax1.set_title('Data')
 
     smas = np.linspace(10, 50, 5)
@@ -233,10 +233,10 @@ isophotes, the elliptical model image, and the residual image:
         x, y, = iso.sampled_coordinates()
         ax1.plot(x, y, color='white')
 
-    ax2.imshow(model_image)
+    ax2.imshow(model_image, origin='lower')
     ax2.set_title('Ellipse Model')
 
-    ax3.imshow(residual)
+    ax3.imshow(residual, origin='lower')
     ax3.set_title('Residual')
 
 
@@ -245,6 +245,14 @@ Additional Example Notebooks (online)
 
 Additional example notebooks showing examples with real data and
 advanced usage are available online:
+
+* `Basic example of the Ellipse fitting tool <https://github.com/astropy/photutils-datasets/blob/master/notebooks/isophote/isophote_example1.ipynb>`_
+
+* `Running Ellipse with sigma-clipping <https://github.com/astropy/photutils-datasets/blob/master/notebooks/isophote/isophote_example2.ipynb>`_
+
+* `Building an image model from results obtained by Ellipse fitting <https://github.com/astropy/photutils-datasets/blob/master/notebooks/isophote/isophote_example3.ipynb>`_
+
+* `Advanced Ellipse example: multi-band photometry and masked arrays <https://github.com/astropy/photutils-datasets/blob/master/notebooks/isophote/isophote_example4.ipynb>`_
 
 
 Reference/API

@@ -54,8 +54,8 @@ User Documentation
     photutils/segmentation.rst
     photutils/centroids.rst
     photutils/morphology.rst
-    photutils/geometry.rst
     photutils/isophote.rst
+    photutils/geometry.rst
     photutils/datasets.rst
     photutils/utils.rst
 
