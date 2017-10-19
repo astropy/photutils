@@ -1,2 +1,7 @@
 # photutils.morphology
 py:class photutils.morphology.CompoundModel1
+
+# list disappeared from Python 2.7 intersphinx inventory
+# https://bugs.python.org/issue30882
+py:obj list
+py:class list

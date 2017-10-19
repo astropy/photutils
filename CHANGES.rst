@@ -46,6 +46,11 @@ New Features
   - Added new ``show_progress`` keyword to the ``load_*`` functions.
     [#590]
 
+- ``photutils.isophote``
+
+  - Added a new ``photutils.isophote`` subpackage to provide tools to
+    fit elliptical isophotes to a galaxy image. [#532, #603]
+
 - ``photutils.segmentation``
 
   - Added a ``cmap`` method to ``SegmentationImage`` to generate a
