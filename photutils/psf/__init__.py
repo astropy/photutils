@@ -8,5 +8,5 @@ from .funcs import *
 from .groupstars import *
 from .matching import *
 from .models import *
-from .groupstars import *
+from .utils import *
 from .photometry import *
