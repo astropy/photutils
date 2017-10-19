@@ -200,19 +200,25 @@ class Isophote(object):
         jmax = min(ysize, int(y0 + sma + 0.5) + 1)
 
         # Integrate
-        y, x = np.mgrid[jmin:jmax, imin:imax]
-        radius, angle = self.sample.geometry.to_polar(x, y)
-        radius_e = self.sample.geometry.radius(angle)
+        if (jmax-jmin > 1) and (imax-imin) > 1:
+            y, x = np.mgrid[jmin:jmax, imin:imax]
+            radius, angle = self.sample.geometry.to_polar(x, y)
+            radius_e = self.sample.geometry.radius(angle)
 
-        midx = (radius <= sma)
-        values = self.sample.image[y[midx], x[midx]]
-        tflux_c = np.ma.sum(values)
-        npix_c = np.ma.count(values)
+            midx = (radius <= sma)
+            values = self.sample.image[y[midx], x[midx]]
+            tflux_c = np.ma.sum(values)
+            npix_c = np.ma.count(values)
 
-        midx2 = (radius <= radius_e)
-        values = self.sample.image[y[midx2], x[midx2]]
-        tflux_e = np.ma.sum(values)
-        npix_e = np.ma.count(values)
+            midx2 = (radius <= radius_e)
+            values = self.sample.image[y[midx2], x[midx2]]
+            tflux_e = np.ma.sum(values)
+            npix_e = np.ma.count(values)
+        else:
+            tflux_e = 0.
+            tflux_c = 0.
+            npix_e = 0
+            npix_c = 0
 
         return tflux_e, tflux_c, npix_e, npix_c
 
