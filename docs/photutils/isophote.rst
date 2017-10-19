@@ -246,6 +246,14 @@ Additional Example Notebooks (online)
 Additional example notebooks showing examples with real data and
 advanced usage are available online:
 
+* `Basic example of the Ellipse fitting tool <https://github.com/astropy/photutils-datasets/blob/master/notebooks/isophote/isophote_example1.ipynb>`_
+
+* `Running Ellipse with sigma-clipping <https://github.com/astropy/photutils-datasets/blob/master/notebooks/isophote/isophote_example2.ipynb>`_
+
+* `Building an image model from results obtained by Ellipse fitting <https://github.com/astropy/photutils-datasets/blob/master/notebooks/isophote/isophote_example3.ipynb>`_
+
+* `Advanced Ellipse example: multi-band photometry and masked arrays <https://github.com/astropy/photutils-datasets/blob/master/notebooks/isophote/isophote_example4.ipynb>`_
+
 
 Reference/API
 -------------
