@@ -16,11 +16,12 @@ from .core import SegmentationImage
 from ..utils.convolution import filter_data
 
 
-__all__ = ['SourceProperties', 'source_properties', 'properties_table']
+__all__ = ['SourceProperties', 'source_properties', 'SourceCatalog',
+           'properties_table']
 
 __doctest_requires__ = {('SourceProperties', 'SourceProperties.*',
-                         'source_properties', 'properties_table'):
-                        ['scipy', 'skimage']}
+                         'SourceCatalog', 'source_properties',
+                         'properties_table'): ['scipy', 'skimage']}
 
 
 class SourceProperties(object):
@@ -1225,7 +1226,240 @@ def source_properties(data, segment_img, error=None, mask=None,
             data, segment_img, label, filtered_data=filtered_data,
             error=error, mask=mask, background=background, wcs=wcs))
 
-    return sources_props
+    return SourceCatalog(sources_props, wcs=wcs)
+
+
+class SourceCatalog(object):
+    """
+    Class to hold source catalogs.
+    """
+
+    def __init__(self, properties_list, wcs=None):
+        if properties_list is None:
+            self._data = []
+        elif isinstance(properties_list, SourceProperties):
+            self._data = [properties_list]
+        elif isinstance(properties_list, list):
+            self._data = properties_list
+        else:
+            raise ValueError('invalid input.')
+
+        self.wcs = wcs
+        self._cache = {}
+
+    def __len__(self):
+        return len(self._data)
+
+    def __getitem__(self, index):
+        return self._data[index]
+
+    def __getslice__(self, i, j):
+        return self.__getitem__(slice(i, j))
+
+    def __delitem__(self, index):
+        del self._data[index]
+
+    def __iter__(self):
+        for i in self._data:
+            yield i
+
+    def __getattr__(self, attr):
+        exclude = ['sky_centroid', 'sky_centroid_icrs', 'icrs_centroid',
+                   'ra_icrs_centroid', 'dec_icrs_centroid', 'sky_bbox_ll',
+                   'sky_bbox_ul', 'sky_bbox_lr', 'sky_bbox_ur']
+        if attr not in exclude:
+            if not attr in self._cache:
+                values = [getattr(p, attr) for p in self._data]
+
+                if isinstance(values[0], u.Quantity):
+                    # turn list of Quantities into a Quantity array
+                    values = u.Quantity(values)
+                if isinstance(values[0], SkyCoord):   # failsafe
+                    # turn list of SkyCoord into a SkyCoord array
+                    values = SkyCoord(values)
+
+                self._cache[attr] = values
+
+            return self._cache[attr]
+
+    @lazyproperty
+    def sky_centroid(self):
+        if self.wcs is not None:
+            # For a large catalog, it's much faster to calculate world
+            # coordinates using the complete list of (x, y) instead of
+            # looping through the individual (x, y).  It's also much
+            # faster to recalculate the world coordinates than to create a
+            # SkyCoord array from a loop-generated SkyCoord list.  The
+            # assumption here is that the wcs is the same for each
+            # SourceProperties instance.
+            return pixel_to_skycoord(self.xcentroid, self.ycentroid,
+                                     self.wcs, origin=0)
+        else:
+            return None
+
+    @lazyproperty
+    def sky_centroid_icrs(self):
+        if self.wcs is not None:
+            return self.sky_centroid.icrs
+        else:
+            return None
+
+    @lazyproperty
+    @deprecated(0.4, alternative='sky_centroid_icrs')
+    def icrs_centroid(self):
+        if self.wcs is not None:
+            return self.sky_centroid_icrs
+        else:
+            return None
+
+    @lazyproperty
+    @deprecated(0.4, alternative='sky_centroid_icrs.ra')
+    def ra_icrs_centroid(self):
+        if self.wcs is not None:
+            return self.sky_centroid_icrs.ra.deg * u.deg
+        else:
+            return None
+
+    @lazyproperty
+    @deprecated(0.4, alternative='sky_centroid_icrs.dec')
+    def dec_icrs_centroid(self):
+        if self.wcs is not None:
+            return self.sky_centroid_icrs.dec.deg * u.deg
+        else:
+            return None
+
+    @lazyproperty
+    def sky_bbox_ll(self):
+        if self.wcs is not None:
+            return pixel_to_skycoord(self.xmin.value - 0.5,
+                                     self.ymin.value - 0.5,
+                                     self.wcs, origin=0)
+        else:
+            return None
+
+    @lazyproperty
+    def sky_bbox_ul(self):
+        if self.wcs is not None:
+            return pixel_to_skycoord(self.xmin.value - 0.5,
+                                     self.ymin.value + 0.5,
+                                     self.wcs, origin=0)
+        else:
+            return None
+
+    @lazyproperty
+    def sky_bbox_lr(self):
+        if self.wcs is not None:
+            return pixel_to_skycoord(self.xmin.value + 0.5,
+                                     self.ymin.value - 0.5,
+                                     self.wcs, origin=0)
+        else:
+            return None
+
+    @lazyproperty
+    def sky_bbox_ur(self):
+        if self.wcs is not None:
+            return pixel_to_skycoord(self.xmin.value + 0.5,
+                                     self.ymin.value + 0.5,
+                                     self.wcs, origin=0)
+        else:
+            return None
+
+    def to_table(self, columns=None, exclude_columns=None):
+        """
+        Construct a `~astropy.table.QTable` of source properties from a
+        `SourceCatalog` object.
+
+        If ``columns`` or ``exclude_columns`` are not input, then the
+        `~astropy.table.QTable` will include most scalar-valued source
+        properties.  Multi-dimensional properties, e.g.
+        `~photutils.SourceProperties.data_cutout`, can be included in
+        the ``columns`` input, but they will not be preserved when
+        writing the table to a file.  This is a limitation of
+        multi-dimensional columns in astropy tables.
+
+        Parameters
+        ----------
+        columns : str or list of str, optional
+            Names of columns, in order, to include in the output
+            `~astropy.table.QTable`.  The allowed column names are any
+            of the attributes of `SourceProperties`.
+
+        exclude_columns : str or list of str, optional
+            Names of columns to exclude from the default properties list
+            in the output `~astropy.table.QTable`.  The default
+            properties are those with scalar values:
+
+            'id', 'xcentroid', 'ycentroid', 'sky_centroid', 'sky_centroid_icrs',
+            'source_sum', 'source_sum_err', 'background_sum', 'background_mean',
+            'background_at_centroid', 'xmin', 'xmax', 'ymin', 'ymax', 'min_value',
+            'max_value', 'minval_xpos', 'minval_ypos', 'maxval_xpos', 'maxval_ypos',
+            'area', 'equivalent_radius', 'perimeter', 'semimajor_axis_sigma',
+            'semiminor_axis_sigma', 'eccentricity', 'orientation', 'ellipticity',
+            'elongation', 'covar_sigx2', 'covar_sigxy', 'covar_sigy2', 'cxx',
+            'cxy', 'cyy'
+
+        Returns
+        -------
+        table : `~astropy.table.QTable`
+            A table of source properties with one row per source.
+
+        See Also
+        --------
+        SegmentationImage, SourceProperties, source_properties, detect_sources
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from photutils import source_properties, properties_table
+        >>> image = np.arange(16.).reshape(4, 4)
+        >>> print(image)
+        [[  0.   1.   2.   3.]
+        [  4.   5.   6.   7.]
+        [  8.   9.  10.  11.]
+        [ 12.  13.  14.  15.]]
+        >>> segm = SegmentationImage([[1, 1, 0, 0],
+        ...                           [1, 0, 0, 2],
+        ...                           [0, 0, 2, 2],
+        ...                           [0, 2, 2, 0]])
+        >>> cat = source_properties(image, segm)
+        >>> columns = ['id', 'xcentroid', 'ycentroid', 'source_sum']
+        >>> tbl = cat.to_table(columns=columns)
+        >>> tbl['xcentroid'].info.format = '.10f'  # optional format
+        >>> tbl['ycentroid'].info.format = '.10f'  # optional format
+        >>> print(tbl)
+        id  xcentroid    ycentroid   source_sum
+                pix          pix
+        --- ------------ ------------ ----------
+        1 0.2000000000 0.8000000000        5.0
+        2 2.0909090909 2.3636363636       55.0
+        """
+
+        # all scalar-valued properties
+        columns_all = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
+                    'sky_centroid_icrs', 'source_sum',
+                    'source_sum_err', 'background_sum', 'background_mean',
+                    'background_at_centroid', 'xmin', 'xmax', 'ymin', 'ymax',
+                    'min_value', 'max_value', 'minval_xpos', 'minval_ypos',
+                    'maxval_xpos', 'maxval_ypos', 'area', 'equivalent_radius',
+                    'perimeter', 'semimajor_axis_sigma',
+                    'semiminor_axis_sigma', 'eccentricity', 'orientation',
+                    'ellipticity', 'elongation', 'covar_sigx2',
+                    'covar_sigxy', 'covar_sigy2', 'cxx', 'cxy', 'cyy']
+
+        table_columns = None
+        if exclude_columns is not None:
+            table_columns = [s for s in columns_all
+                             if s not in exclude_columns]
+        if columns is not None:
+            table_columns = np.atleast_1d(columns)
+        if table_columns is None:
+            table_columns = columns_all
+
+        tbl = QTable()
+        for column in table_columns:
+            tbl[column] = getattr(self, column)
+
+        return tbl
 
 
 def properties_table(source_props, columns=None, exclude_columns=None):
@@ -1264,32 +1498,6 @@ def properties_table(source_props, columns=None, exclude_columns=None):
     See Also
     --------
     SegmentationImage, SourceProperties, source_properties, detect_sources
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from photutils import source_properties, properties_table
-    >>> image = np.arange(16.).reshape(4, 4)
-    >>> print(image)
-    [[  0.   1.   2.   3.]
-     [  4.   5.   6.   7.]
-     [  8.   9.  10.  11.]
-     [ 12.  13.  14.  15.]]
-    >>> segm = SegmentationImage([[1, 1, 0, 0],
-    ...                           [1, 0, 0, 2],
-    ...                           [0, 0, 2, 2],
-    ...                           [0, 2, 2, 0]])
-    >>> props = source_properties(image, segm)
-    >>> columns = ['id', 'xcentroid', 'ycentroid', 'source_sum']
-    >>> tbl = properties_table(props, columns=columns)
-    >>> tbl['xcentroid'].info.format = '.10f'  # optional format
-    >>> tbl['ycentroid'].info.format = '.10f'  # optional format
-    >>> print(tbl)
-     id  xcentroid    ycentroid   source_sum
-            pix          pix
-    --- ------------ ------------ ----------
-      1 0.2000000000 0.8000000000        5.0
-      2 2.0909090909 2.3636363636       55.0
     """
 
     if isinstance(source_props, list) and len(source_props) == 0:
@@ -1316,12 +1524,12 @@ def properties_table(source_props, columns=None, exclude_columns=None):
     if table_columns is None:
         table_columns = columns_all
 
-    # It's *much* faster to calculate world coordinates using the
-    # complete list of (x, y) instead of looping through the individual
-    # (x, y).  It's also much faster to recalculate world coordindates
-    # than to create a SkyCoord array from a loop-generated SkyCoord
-    # list.  The assumption here is that the wcs is the same for each
-    # element of source_props.
+    # For a large catalog, it's much faster to calculate world
+    # coordinates using the complete list of (x, y) instead of looping
+    # through the individual (x, y).  It's also much faster to recalculate
+    # world coordinates than to create a SkyCoord array from a
+    # loop-generated SkyCoord list.  The assumption here is that the wcs
+    # is the same for each element of source_props.
     sky_colnames = ['sky_centroid', 'sky_centroid_icrs', 'icrs_centroid',
                     'ra_icrs_centroid', 'dec_icrs_centroid']
     calc_skycoords = any(sky_colname in table_columns
