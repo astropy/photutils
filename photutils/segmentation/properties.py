@@ -242,8 +242,8 @@ class SourceProperties(object):
             A single-row table of properties of the source.
         """
 
-        return properties_table(self, columns=columns,
-                                exclude_columns=exclude_columns)
+        return _properties_table(self, columns=columns,
+                                 exclude_columns=exclude_columns)
 
     @lazyproperty
     def _cutout_segment_bool(self):
@@ -1155,8 +1155,7 @@ def source_properties(data, segment_img, error=None, mask=None,
 
     See Also
     --------
-    SegmentationImage, SourceProperties, properties_table,
-    detect_sources
+    SegmentationImage, SourceProperties, detect_sources
 
     Examples
     --------
@@ -1268,7 +1267,7 @@ class SourceCatalog(object):
                    'ra_icrs_centroid', 'dec_icrs_centroid', 'sky_bbox_ll',
                    'sky_bbox_ul', 'sky_bbox_lr', 'sky_bbox_ur']
         if attr not in exclude:
-            if not attr in self._cache:
+            if attr not in self._cache:
                 values = [getattr(p, attr) for p in self._data]
 
                 if isinstance(values[0], u.Quantity):
@@ -1389,14 +1388,16 @@ class SourceCatalog(object):
             in the output `~astropy.table.QTable`.  The default
             properties are those with scalar values:
 
-            'id', 'xcentroid', 'ycentroid', 'sky_centroid', 'sky_centroid_icrs',
-            'source_sum', 'source_sum_err', 'background_sum', 'background_mean',
-            'background_at_centroid', 'xmin', 'xmax', 'ymin', 'ymax', 'min_value',
-            'max_value', 'minval_xpos', 'minval_ypos', 'maxval_xpos', 'maxval_ypos',
-            'area', 'equivalent_radius', 'perimeter', 'semimajor_axis_sigma',
-            'semiminor_axis_sigma', 'eccentricity', 'orientation', 'ellipticity',
-            'elongation', 'covar_sigx2', 'covar_sigxy', 'covar_sigy2', 'cxx',
-            'cxy', 'cyy'
+            'id', 'xcentroid', 'ycentroid', 'sky_centroid',
+            'sky_centroid_icrs', 'source_sum', 'source_sum_err',
+            'background_sum', 'background_mean',
+            'background_at_centroid', 'xmin', 'xmax', 'ymin', 'ymax',
+            'min_value', 'max_value', 'minval_xpos', 'minval_ypos',
+            'maxval_xpos', 'maxval_ypos', 'area', 'equivalent_radius',
+            'perimeter', 'semimajor_axis_sigma', 'semiminor_axis_sigma',
+            'eccentricity', 'orientation', 'ellipticity', 'elongation',
+            'covar_sigx2', 'covar_sigxy', 'covar_sigy2', 'cxx', 'cxy',
+            'cyy'
 
         Returns
         -------
@@ -1410,7 +1411,7 @@ class SourceCatalog(object):
         Examples
         --------
         >>> import numpy as np
-        >>> from photutils import source_properties, properties_table
+        >>> from photutils import source_properties
         >>> image = np.arange(16.).reshape(4, 4)
         >>> print(image)
         [[  0.   1.   2.   3.]
@@ -1434,34 +1435,55 @@ class SourceCatalog(object):
         2 2.0909090909 2.3636363636       55.0
         """
 
-        # all scalar-valued properties
-        columns_all = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
-                    'sky_centroid_icrs', 'source_sum',
-                    'source_sum_err', 'background_sum', 'background_mean',
-                    'background_at_centroid', 'xmin', 'xmax', 'ymin', 'ymax',
-                    'min_value', 'max_value', 'minval_xpos', 'minval_ypos',
-                    'maxval_xpos', 'maxval_ypos', 'area', 'equivalent_radius',
-                    'perimeter', 'semimajor_axis_sigma',
-                    'semiminor_axis_sigma', 'eccentricity', 'orientation',
-                    'ellipticity', 'elongation', 'covar_sigx2',
-                    'covar_sigxy', 'covar_sigy2', 'cxx', 'cxy', 'cyy']
-
-        table_columns = None
-        if exclude_columns is not None:
-            table_columns = [s for s in columns_all
-                             if s not in exclude_columns]
-        if columns is not None:
-            table_columns = np.atleast_1d(columns)
-        if table_columns is None:
-            table_columns = columns_all
-
-        tbl = QTable()
-        for column in table_columns:
-            tbl[column] = getattr(self, column)
-
-        return tbl
+        return _properties_table(self, columns=columns,
+                                 exclude_columns=exclude_columns)
 
 
+def _properties_table(obj, columns=None, exclude_columns=None):
+
+    if isinstance(obj, SourceCatalog) and len(obj) == 0:
+        raise ValueError('SourceCatalog contains no sources.')
+
+    # all scalar-valued properties
+    columns_all = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
+                   'sky_centroid_icrs', 'source_sum', 'source_sum_err',
+                   'background_sum', 'background_mean',
+                   'background_at_centroid', 'xmin', 'xmax', 'ymin',
+                   'ymax', 'min_value', 'max_value', 'minval_xpos',
+                   'minval_ypos', 'maxval_xpos', 'maxval_ypos', 'area',
+                   'equivalent_radius', 'perimeter',
+                   'semimajor_axis_sigma', 'semiminor_axis_sigma',
+                   'eccentricity', 'orientation', 'ellipticity',
+                   'elongation', 'covar_sigx2', 'covar_sigxy',
+                   'covar_sigy2', 'cxx', 'cxy', 'cyy']
+
+    table_columns = None
+    if exclude_columns is not None:
+        table_columns = [s for s in columns_all if s not in exclude_columns]
+    if columns is not None:
+        table_columns = np.atleast_1d(columns)
+    if table_columns is None:
+        table_columns = columns_all
+
+    tbl = QTable()
+    for column in table_columns:
+        values = getattr(obj, column)
+
+        if isinstance(obj, SourceProperties):
+            values = np.atleast_1d(values)
+            if isinstance(values[0], u.Quantity):
+                # turn list of Quantities into a Quantity array
+                values = u.Quantity(values)
+            if isinstance(values[0], SkyCoord):   # failsafe
+                # turn list of SkyCoord into a SkyCoord array
+                values = SkyCoord(values)
+
+        tbl[column] = values
+
+    return tbl
+
+
+@deprecated(0.4, alternative='SourceCatalog.to_table()')
 def properties_table(source_props, columns=None, exclude_columns=None):
     """
     Construct a `~astropy.table.QTable` of properties from a list of
@@ -1500,7 +1522,9 @@ def properties_table(source_props, columns=None, exclude_columns=None):
     SegmentationImage, SourceProperties, source_properties, detect_sources
     """
 
-    if isinstance(source_props, list) and len(source_props) == 0:
+    if ((isinstance(source_props, list) or
+             isinstance(source_props, SourceCatalog)) and
+            len(source_props) == 0):
         raise ValueError('source_props is an empty list')
     source_props = np.atleast_1d(source_props)
 
@@ -1616,6 +1640,7 @@ def properties_table(source_props, columns=None, exclude_columns=None):
                 # turn list of Quantities into a Quantity array
                 values = u.Quantity(values)
             if isinstance(values[0], SkyCoord):   # failsafe
+                # turn list of SkyCoord into a SkyCoord array
                 values = SkyCoord(values)
 
             props_table[column] = values
