@@ -1234,9 +1234,7 @@ class SourceCatalog(object):
     """
 
     def __init__(self, properties_list, wcs=None):
-        if properties_list is None:
-            self._data = []
-        elif isinstance(properties_list, SourceProperties):
+        if isinstance(properties_list, SourceProperties):
             self._data = [properties_list]
         elif isinstance(properties_list, list):
             self._data = properties_list
@@ -1252,6 +1250,7 @@ class SourceCatalog(object):
     def __getitem__(self, index):
         return self._data[index]
 
+    # python 2 only
     def __getslice__(self, i, j):
         return self.__getitem__(slice(i, j))
 
@@ -1273,7 +1272,7 @@ class SourceCatalog(object):
                 if isinstance(values[0], u.Quantity):
                     # turn list of Quantities into a Quantity array
                     values = u.Quantity(values)
-                if isinstance(values[0], SkyCoord):   # failsafe
+                if isinstance(values[0], SkyCoord):   # pragma: no cover
                     # turn list of SkyCoord into a SkyCoord array
                     values = SkyCoord(values)
 
@@ -1474,9 +1473,12 @@ def _properties_table(obj, columns=None, exclude_columns=None):
             if isinstance(values[0], u.Quantity):
                 # turn list of Quantities into a Quantity array
                 values = u.Quantity(values)
-            if isinstance(values[0], SkyCoord):   # failsafe
+            if isinstance(values[0], SkyCoord):   # pragma: no cover
                 # turn list of SkyCoord into a SkyCoord array
                 values = SkyCoord(values)
+
+        if isinstance(obj, SourceCatalog) and values is None:
+            values = [None] * len(obj)
 
         tbl[column] = values
 
@@ -1639,7 +1641,7 @@ def properties_table(source_props, columns=None, exclude_columns=None):
             if isinstance(values[0], u.Quantity):
                 # turn list of Quantities into a Quantity array
                 values = u.Quantity(values)
-            if isinstance(values[0], SkyCoord):   # failsafe
+            if isinstance(values[0], SkyCoord):   # pragma: no cover
                 # turn list of SkyCoord into a SkyCoord array
                 values = SkyCoord(values)
 
