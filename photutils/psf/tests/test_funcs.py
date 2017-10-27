@@ -10,7 +10,7 @@ from .. import subtract_psf
 from ..sandbox import DiscretePRF
 
 try:
-    import scipy
+    import scipy    # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
@@ -40,6 +40,7 @@ for x, y, flux in INTAB:
                        x, y, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
     image += discretize_model(model, (0, IMAGE_SIZE), (0, IMAGE_SIZE),
                               mode='oversample')
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_subtract_psf():

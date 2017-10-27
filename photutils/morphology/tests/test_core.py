@@ -9,7 +9,7 @@ import pytest
 from ..core import data_properties
 
 try:
-    import skimage
+    import skimage    # noqa
     HAS_SKIMAGE = True
 except ImportError:
     HAS_SKIMAGE = False

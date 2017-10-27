@@ -11,7 +11,7 @@ from ..harmonics import (fit_first_and_second_harmonics, fit_upper_harmonic,
 from ..sample import EllipseSample
 
 try:
-    from scipy.optimize import leastsq
+    from scipy.optimize import leastsq    # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

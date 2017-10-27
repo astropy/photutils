@@ -54,177 +54,177 @@ c = OrderedDict()
 
 name = "Small data, single small aperture"
 c[name] = {}
-c[name]['dims']     = (20, 20)
-c[name]['pos']      = (10., 10.)
-c[name]['circ']     = (5.,)
+c[name]['dims'] = (20, 20)
+c[name]['pos'] = (10., 10.)
+c[name]['circ'] = (5.,)
 c[name]['circ_ann'] = (5., 6.)
-c[name]['elli']     = (5., 2., 0.5)
+c[name]['elli'] = (5., 2., 0.5)
 c[name]['elli_ann'] = (2., 5., 4., 0.5)
-c[name]['iter']     = 1000
-c[name]['multiap']  = False
+c[name]['iter'] = 1000
+c[name]['multiap'] = False
 c[name]['multipos'] = False
 c[name]['error'] = False
 
 name = "Small data with error, single small aperture"
 c[name] = {}
-c[name]['dims']     = (20, 20)
-c[name]['pos']      = (10., 10.)
-c[name]['circ']     = (5.,)
+c[name]['dims'] = (20, 20)
+c[name]['pos'] = (10., 10.)
+c[name]['circ'] = (5.,)
 c[name]['circ_ann'] = (5., 6.)
-c[name]['elli']     = (5., 2., 0.5)
+c[name]['elli'] = (5., 2., 0.5)
 c[name]['elli_ann'] = (2., 5., 4., 0.5)
-c[name]['iter']     = 1000
-c[name]['multiap']  = False
+c[name]['iter'] = 1000
+c[name]['multiap'] = False
 c[name]['multipos'] = False
 c[name]['error'] = True
 
 name = "Big data, single small aperture"
 c[name] = {}
-c[name]['dims']     = (1000, 1000)
-c[name]['pos']      = (500., 500.)
-c[name]['circ']     = (5.,)
+c[name]['dims'] = (1000, 1000)
+c[name]['pos'] = (500., 500.)
+c[name]['circ'] = (5.,)
 c[name]['circ_ann'] = (5., 6.)
-c[name]['elli']     = (5., 2., 0.5)
+c[name]['elli'] = (5., 2., 0.5)
 c[name]['elli_ann'] = (2., 5., 4., 0.5)
-c[name]['iter']     = 1000
-c[name]['multiap']  = False
+c[name]['iter'] = 1000
+c[name]['multiap'] = False
 c[name]['multipos'] = False
 c[name]['error'] = False
 
 name = "Big data with error, single small aperture"
 c[name] = {}
-c[name]['dims']     = (1000, 1000)
-c[name]['pos']      = (500., 500.)
-c[name]['circ']     = (5.,)
+c[name]['dims'] = (1000, 1000)
+c[name]['pos'] = (500., 500.)
+c[name]['circ'] = (5.,)
 c[name]['circ_ann'] = (5., 6.)
-c[name]['elli']     = (5., 2., 0.5)
+c[name]['elli'] = (5., 2., 0.5)
 c[name]['elli_ann'] = (2., 5., 4., 0.5)
-c[name]['iter']     = 1000
-c[name]['multiap']  = False
+c[name]['iter'] = 1000
+c[name]['multiap'] = False
 c[name]['multipos'] = False
 c[name]['error'] = True
 
 name = "Big data, single big aperture"
 c[name] = {}
-c[name]['dims']     = (1000, 1000)
-c[name]['pos']      = (500., 500.)
-c[name]['circ']     = (50.,)
+c[name]['dims'] = (1000, 1000)
+c[name]['pos'] = (500., 500.)
+c[name]['circ'] = (50.,)
 c[name]['circ_ann'] = (50., 60.)
-c[name]['elli']     = (50., 20., 0.5)
+c[name]['elli'] = (50., 20., 0.5)
 c[name]['elli_ann'] = (20., 50., 40., 0.5)
-c[name]['iter']     = 10
-c[name]['multiap']  = False
+c[name]['iter'] = 10
+c[name]['multiap'] = False
 c[name]['multipos'] = False
 c[name]['error'] = False
 
 name = "Big data with error, single big aperture"
 c[name] = {}
-c[name]['dims']     = (1000, 1000)
-c[name]['pos']      = (500., 500.)
-c[name]['circ']     = (50.,)
+c[name]['dims'] = (1000, 1000)
+c[name]['pos'] = (500., 500.)
+c[name]['circ'] = (50.,)
 c[name]['circ_ann'] = (50., 60.)
-c[name]['elli']     = (50., 20., 0.5)
+c[name]['elli'] = (50., 20., 0.5)
 c[name]['elli_ann'] = (20., 50., 40., 0.5)
-c[name]['iter']     = 10
-c[name]['multiap']  = False
+c[name]['iter'] = 10
+c[name]['multiap'] = False
 c[name]['multipos'] = False
 c[name]['error'] = True
 
 name = "Small data, multiple small apertures"
 c[name] = {}
-c[name]['dims']     = (20, 20)
-c[name]['pos']      = (zip(np.random.uniform(5., 15., 1000), np.random.uniform(5., 15., 1000)))
-c[name]['circ']     = (5.,)
+c[name]['dims'] = (20, 20)
+c[name]['pos'] = (zip(np.random.uniform(5., 15., 1000), np.random.uniform(5., 15., 1000)))
+c[name]['circ'] = (5.,)
 c[name]['circ_ann'] = (5., 6.)
-c[name]['elli']     = (5., 2., 0.5)
+c[name]['elli'] = (5., 2., 0.5)
 c[name]['elli_ann'] = (2., 5., 4., 0.5)
-c[name]['iter']     = 1
-c[name]['multiap']  = False
+c[name]['iter'] = 1
+c[name]['multiap'] = False
 c[name]['multipos'] = True
 c[name]['error'] = False
 
 name = "Small data with error, multiple small apertures"
 c[name] = {}
-c[name]['dims']     = (20, 20)
-c[name]['pos']      = (zip(np.random.uniform(5., 15., 1000), np.random.uniform(5., 15., 1000)))
-c[name]['circ']     = (5.,)
+c[name]['dims'] = (20, 20)
+c[name]['pos'] = (zip(np.random.uniform(5., 15., 1000), np.random.uniform(5., 15., 1000)))
+c[name]['circ'] = (5.,)
 c[name]['circ_ann'] = (5., 6.)
-c[name]['elli']     = (5., 2., 0.5)
+c[name]['elli'] = (5., 2., 0.5)
 c[name]['elli_ann'] = (2., 5., 4., 0.5)
-c[name]['iter']     = 1
-c[name]['multiap']  = False
+c[name]['iter'] = 1
+c[name]['multiap'] = False
 c[name]['multipos'] = True
 c[name]['error'] = True
 
 name = "Big data, multiple small apertures"
 c[name] = {}
-c[name]['dims']     = (1000, 1000)
-c[name]['pos']      = (zip(np.random.uniform(250., 750., 1000), np.random.uniform(250., 750., 1000)))
-c[name]['circ']     = (5.,)
+c[name]['dims'] = (1000, 1000)
+c[name]['pos'] = (zip(np.random.uniform(250., 750., 1000), np.random.uniform(250., 750., 1000)))
+c[name]['circ'] = (5.,)
 c[name]['circ_ann'] = (5., 6.)
-c[name]['elli']     = (5., 2., 0.5)
+c[name]['elli'] = (5., 2., 0.5)
 c[name]['elli_ann'] = (2., 5., 4., 0.5)
-c[name]['iter']     = 1
-c[name]['multiap']  = False
+c[name]['iter'] = 1
+c[name]['multiap'] = False
 c[name]['multipos'] = True
 c[name]['error'] = False
 
 name = "Big data with error, multiple small apertures"
 c[name] = {}
-c[name]['dims']     = (1000, 1000)
-c[name]['pos']      = (zip(np.random.uniform(250., 750., 1000), np.random.uniform(250., 750., 1000)))
-c[name]['circ']     = (5.,)
+c[name]['dims'] = (1000, 1000)
+c[name]['pos'] = (zip(np.random.uniform(250., 750., 1000), np.random.uniform(250., 750., 1000)))
+c[name]['circ'] = (5.,)
 c[name]['circ_ann'] = (5., 6.)
-c[name]['elli']     = (5., 2., 0.5)
+c[name]['elli'] = (5., 2., 0.5)
 c[name]['elli_ann'] = (2., 5., 4., 0.5)
-c[name]['iter']     = 1
-c[name]['multiap']  = False
+c[name]['iter'] = 1
+c[name]['multiap'] = False
 c[name]['multipos'] = True
 c[name]['error'] = True
 
 name = "Big data, multiple small apertures, multiple per object"
 c[name] = {}
-c[name]['dims']     = (1000, 1000)
-c[name]['pos']      = (zip(np.random.uniform(250., 750., 1000), np.random.uniform(250., 750., 1000)))
-c[name]['circ']     = (np.linspace(1., 10., 10).reshape((10, 1)),)
-c[name]['iter']     = 1
-c[name]['multiap']  = True
+c[name]['dims'] = (1000, 1000)
+c[name]['pos'] = (zip(np.random.uniform(250., 750., 1000), np.random.uniform(250., 750., 1000)))
+c[name]['circ'] = (np.linspace(1., 10., 10).reshape((10, 1)),)
+c[name]['iter'] = 1
+c[name]['multiap'] = True
 c[name]['multipos'] = True
 c[name]['error'] = False
 
 name = "Big data with error, multiple small apertures, multiple per object"
 c[name] = {}
-c[name]['dims']     = (1000, 1000)
-c[name]['pos']      = (zip(np.random.uniform(250., 750., 1000), np.random.uniform(250., 750., 1000)))
-c[name]['circ']     = (np.linspace(1., 10., 10).reshape((10, 1)),)
-c[name]['iter']     = 1
-c[name]['multiap']  = True
+c[name]['dims'] = (1000, 1000)
+c[name]['pos'] = (zip(np.random.uniform(250., 750., 1000), np.random.uniform(250., 750., 1000)))
+c[name]['circ'] = (np.linspace(1., 10., 10).reshape((10, 1)),)
+c[name]['iter'] = 1
+c[name]['multiap'] = True
 c[name]['multipos'] = True
 c[name]['error'] = True
 
 name = "Big data, multiple big apertures"
 c[name] = {}
-c[name]['dims']     = (1000, 1000)
-c[name]['pos']      = (zip(np.random.uniform(250., 750., 100), np.random.uniform(250., 750., 100)))
-c[name]['circ']     = (50.,)
+c[name]['dims'] = (1000, 1000)
+c[name]['pos'] = (zip(np.random.uniform(250., 750., 100), np.random.uniform(250., 750., 100)))
+c[name]['circ'] = (50.,)
 c[name]['circ_ann'] = (50., 60.)
-c[name]['elli']     = (50., 20., 0.5)
+c[name]['elli'] = (50., 20., 0.5)
 c[name]['elli_ann'] = (20., 50., 40., 0.5)
-c[name]['iter']     = 1
-c[name]['multiap']  = False
+c[name]['iter'] = 1
+c[name]['multiap'] = False
 c[name]['multipos'] = True
 c[name]['error'] = False
 
 name = "Big data with error, multiple big apertures"
 c[name] = {}
-c[name]['dims']     = (1000, 1000)
-c[name]['pos']      = (zip(np.random.uniform(250., 750., 100), np.random.uniform(250., 750., 100)))
-c[name]['circ']     = (50.,)
+c[name]['dims'] = (1000, 1000)
+c[name]['pos'] = (zip(np.random.uniform(250., 750., 100), np.random.uniform(250., 750., 100)))
+c[name]['circ'] = (50.,)
 c[name]['circ_ann'] = (50., 60.)
-c[name]['elli']     = (50., 20., 0.5)
+c[name]['elli'] = (50., 20., 0.5)
 c[name]['elli_ann'] = (20., 50., 40., 0.5)
-c[name]['iter']     = 1
-c[name]['multiap']  = False
+c[name]['iter'] = 1
+c[name]['multiap'] = False
 c[name]['multipos'] = True
 c[name]['error'] = True
 
@@ -268,7 +268,6 @@ if not args.show:
     print("=" * 79)
 
     for name in names_to_run:
-
         # Initialize results container for this benchmark
         results[name] = OrderedDict()
         for t in functions_to_run:
@@ -295,7 +294,8 @@ if not args.show:
 
         for t in functions_to_run:
 
-            if t not in c[name]: continue
+            if t not in c[name]:
+                continue
             print("{0} ".format(t))
 
             for subpixels in [1, 5, 10, 'exact']:
@@ -377,7 +377,8 @@ if args.show:
 
         for t in functions_to_run:
             for label, result in results.iteritems():
-                if t not in result[name]: continue
+                if t not in result[name]:
+                    continue
                 print("{0}s {1}s".format(t, label))
                 for subpixels in [1, 5, 10, 'exact']:
                     time_sec = result[name][t][subpixels]

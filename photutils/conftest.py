@@ -2,20 +2,20 @@
 # by importing them here in conftest.py they are discoverable by py.test
 # no matter how it is invoked within the source tree.
 
-from astropy.tests.pytest_plugins import *
+from astropy.tests.pytest_plugins import *    # noqa
 
 # Uncomment the following line to treat all DeprecationWarnings as
 # exceptions
-enable_deprecations_as_exceptions()
+enable_deprecations_as_exceptions()    # noqa
 
 # Uncomment and customize the following lines to add/remove entries from
 # the list of packages for which version numbers are displayed when running
 # the tests. Making it pass for KeyError is essential in some cases when
 # the package uses other astropy affiliated packages.
 try:
-    PYTEST_HEADER_MODULES['Astropy'] = 'astropy'
-    PYTEST_HEADER_MODULES['scikit-image'] = 'skimage'
-    del PYTEST_HEADER_MODULES['h5py']
+    PYTEST_HEADER_MODULES['Astropy'] = 'astropy'    # noqa
+    PYTEST_HEADER_MODULES['scikit-image'] = 'skimage'    # noqa
+    del PYTEST_HEADER_MODULES['h5py']    # noqa
 except (NameError, KeyError):  # NameError is needed to support Astropy < 1.0
     pass
 
@@ -33,6 +33,6 @@ except ImportError:
 
 try:
     packagename = os.path.basename(os.path.dirname(__file__))
-    TESTED_VERSIONS[packagename] = version
+    TESTED_VERSIONS[packagename] = version    # noqa
 except NameError:   # Needed to support Astropy <= 1.0.0
     pass

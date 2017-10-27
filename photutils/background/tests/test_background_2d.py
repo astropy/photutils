@@ -12,17 +12,16 @@ from ..background_2d import (BkgZoomInterpolator, BkgIDWInterpolator,
                              Background2D)
 
 try:
-    import scipy
+    import scipy    # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
 
 try:
-    import matplotlib
+    import matplotlib    # noqa
     HAS_MATPLOTLIB = True
 except ImportError:
     HAS_MATPLOTLIB = False
-
 
 
 DATA = np.ones((100, 100))

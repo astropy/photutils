@@ -720,7 +720,7 @@ def _prepare_photometry_input(data, error, mask, wcs, unit):
     if wcs is None:
         try:
             wcs = WCS(header)
-        except:
+        except Exception:
             # A valid WCS was not found in the header.  Let the calling
             # application raise an exception if it needs a WCS.
             pass

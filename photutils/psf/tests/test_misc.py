@@ -12,7 +12,7 @@ from astropy.table import Table
 from .. import IntegratedGaussianPRF, prepare_psf_model, get_grouped_psf_model
 
 try:
-    import scipy
+    import scipy    # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
@@ -146,8 +146,9 @@ def test_psf_adapter(moffimg, prepkwargs, tols):
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_get_grouped_psf_model():
     igp = IntegratedGaussianPRF(sigma=1.2)
-    tab = Table(names=['x_0', 'y_0', 'flux_0'], data=[[1, 2], [3, 4], [0.5, 1]])
-    pars_to_set = {'x_0':'x_0', 'y_0':'y_0', 'flux_0':'flux'}
+    tab = Table(names=['x_0', 'y_0', 'flux_0'],
+                data=[[1, 2], [3, 4], [0.5, 1]])
+    pars_to_set = {'x_0': 'x_0', 'y_0': 'y_0', 'flux_0': 'flux'}
 
     gpsf = get_grouped_psf_model(igp, tab, pars_to_set)
 

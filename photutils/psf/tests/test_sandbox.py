@@ -2,7 +2,6 @@
 from __future__ import division
 import numpy as np
 from numpy.testing import assert_allclose
-from astropy.utils.exceptions import AstropyUserWarning
 from astropy.modeling.models import Gaussian2D
 from astropy.convolution.utils import discretize_model
 from astropy.table import Table
@@ -100,11 +99,12 @@ def test_create_prf_flux():
 
 def test_create_prf_excessive_subsampling():
     """
-    Check if a helpful error is raised if the subsampling parameter is too high.
+    Check if a helpful error is raised if the subsampling parameter is
+    too high.
     """
+
     with pytest.raises(ValueError) as exc:
-        prf = DiscretePRF.create_from_image(image,
-                                            list(INTAB['x_0', 'y_0'].as_array()),
-                                            PSF_SIZE,
-                                            subsampling=999)
+        DiscretePRF.create_from_image(image,
+                                      list(INTAB['x_0', 'y_0'].as_array()),
+                                      PSF_SIZE, subsampling=999)
     assert('subsampling' in exc.value.args[0])

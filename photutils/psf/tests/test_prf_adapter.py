@@ -8,7 +8,7 @@ from astropy.modeling.models import Moffat2D
 
 
 try:
-    HAS_SCIPY = True
+    HAS_SCIPY = True    # noqa
 except ImportError:
     HAS_SCIPY = False
 

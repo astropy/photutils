@@ -3,11 +3,11 @@
 General-purpose utility functions.
 """
 
-from .check_random_state import *
-from .colormaps import *
-from .convolution import *
-from .cutouts import *
-from .errors import *
-from .interpolation import *
-from .misc import *
-from .stats import *
+from .check_random_state import *    # noqa
+from .colormaps import *             # noqa
+from .convolution import *           # noqa
+from .cutouts import *               # noqa
+from .errors import *                # noqa
+from .interpolation import *         # noqa
+from .misc import *                  # noqa
+from .stats import *                 # noqa
