@@ -9,12 +9,7 @@ import copy
 
 import numpy as np
 from astropy.modeling import models, Parameter, Fittable2DModel
-from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.nddata.utils import subpixel_indices, extract_array
-from astropy.table import Table
 from astropy.utils.exceptions import AstropyWarning
-
-from ..utils import mask_to_mirrored_num
 
 
 __all__ = ['FittableImageModel', 'NonNormalizable',
@@ -237,7 +232,7 @@ class FittableImageModel(Fittable2DModel):
         """
         try:
             value = float(value)
-        except:
+        except ValueError:
             raise ValueError('Oversampling factor must be a scalar')
         if value <= 0:
             raise ValueError('Oversampling factor must be greater than 0')

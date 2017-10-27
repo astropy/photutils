@@ -8,7 +8,7 @@ from __future__ import (absolute_import, division, print_function,
 try:
     # python >= 3
     from urllib.error import HTTPError, URLError
-except:
+except ImportError:
     # python 2
     from urllib2 import HTTPError, URLError
 

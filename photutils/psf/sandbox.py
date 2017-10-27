@@ -311,7 +311,6 @@ class Reproject(object):
         Whether to use 0- or 1-based pixel coordinates.
     """
 
-
     def __init__(self, wcs_original, wcs_rectified):
         self.wcs_original = wcs_original
         self.wcs_rectified = wcs_rectified

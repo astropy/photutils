@@ -10,7 +10,7 @@ from ..bounding_box import BoundingBox
 try:
     import matplotlib    # noqa
     HAS_MATPLOTLIB = True
-except:
+except ImportError:
     HAS_MATPLOTLIB = False
 
 
