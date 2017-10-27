@@ -201,14 +201,15 @@ source segments effectively represent the isophotal footprint of each
 source and the resulting photometry is effectively isophotal
 photometry.
 
-:func:`~photutils.segmentation.source_properties` returns a list of
-:class:`~photutils.segmentation.SourceProperties` objects, one for
-each segmented source (or a specified subset of sources).  An Astropy
-`~astropy.table.Table` of source properties can be generated using the
-:func:`~photutils.segmentation.properties_table` function.  Please see
-:class:`~photutils.segmentation.SourceProperties` for the list of the
-many properties that are calculated for each source.  More properties
-are likely to be added in the future.
+:func:`~photutils.segmentation.source_properties` returns a
+:class:`~photutils.SourceCatalog` object, which effectively acts like
+a list of :class:`~photutils.segmentation.SourceProperties` objects,
+one for each segmented source (or a specified subset of sources).  An
+Astropy `~astropy.table.QTable` of source properties can be generated
+using the :meth:`~photutils.SourceCatalog.to_table` method.  Please
+see :class:`~photutils.segmentation.SourceProperties` for the list of
+the many properties that are calculated for each source.  More
+properties are likely to be added in the future.
 
 Let's detect sources and measure their properties in a synthetic
 image.  For this example, we will use the
@@ -252,9 +253,9 @@ segmentation image with the minimum number of inputs to
 
 .. doctest-requires:: scipy, skimage
 
-    >>> from photutils import source_properties, properties_table
-    >>> props = source_properties(data, segm)
-    >>> tbl = properties_table(props)
+    >>> from photutils import source_properties
+    >>> cat = source_properties(data, segm)
+    >>> tbl = cat.to_table()
     >>> tbl['xcentroid'].info.format = '.10f'  # optional format
     >>> tbl['ycentroid'].info.format = '.10f'
     >>> tbl['cxy'].info.format = '.10f'
@@ -281,16 +282,15 @@ isophotal ellipses for each source:
 
 .. doctest-requires:: scipy, skimage
 
-    >>> from photutils import source_properties, properties_table
-    >>> from photutils import EllipticalAperture
-    >>> props = source_properties(data, segm)
+    >>> from photutils import source_properties, EllipticalAperture
+    >>> cat = source_properties(data, segm)
     >>> r = 3.    # approximate isophotal extent
     >>> apertures = []
-    >>> for prop in props:
-    ...     position = (prop.xcentroid.value, prop.ycentroid.value)
-    ...     a = prop.semimajor_axis_sigma.value * r
-    ...     b = prop.semiminor_axis_sigma.value * r
-    ...     theta = prop.orientation.value
+    >>> for obj in cat:
+    ...     position = (obj.xcentroid.value, obj.ycentroid.value)
+    ...     a = obj.semimajor_axis_sigma.value * r
+    ...     b = obj.semiminor_axis_sigma.value * r
+    ...     theta = obj.orientation.value
     ...     apertures.append(EllipticalAperture(position, a, b, theta=theta))
 
 Now let's plot the results:
@@ -320,7 +320,7 @@ Now let's plot the results:
     from photutils.datasets import make_100gaussians_image
     from photutils import Background2D, MedianBackground
     from photutils import detect_threshold, detect_sources
-    from photutils import source_properties, properties_table
+    from photutils import source_properties
     from photutils import EllipticalAperture
     data = make_100gaussians_image()
     bkg_estimator = MedianBackground()
@@ -331,13 +331,13 @@ Now let's plot the results:
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     kernel.normalize()
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
-    props = source_properties(data, segm)
+    cat = source_properties(data, segm)
     apertures = []
-    for prop in props:
-        position = (prop.xcentroid.value, prop.ycentroid.value)
-        a = prop.semimajor_axis_sigma.value * 3.
-        b = prop.semiminor_axis_sigma.value * 3.
-        theta = prop.orientation.value
+    for obj in cat:
+        position = (obj.xcentroid.value, obj.ycentroid.value)
+        a = obj.semimajor_axis_sigma.value * 3.
+        b = obj.semiminor_axis_sigma.value * 3.
+        theta = obj.orientation.value
         apertures.append(EllipticalAperture(position, a, b, theta=theta))
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
@@ -353,8 +353,8 @@ labels in the segmentation image:
 .. doctest-requires:: scipy, skimage
 
     >>> labels = [1, 5, 20, 50, 75, 80]
-    >>> props = source_properties(data, segm, labels=labels)
-    >>> tbl2 = properties_table(props)
+    >>> cat = source_properties(data, segm, labels=labels)
+    >>> tbl2 = cat.to_table()
     >>> tbl2['xcentroid'].info.format = '.10f'  # optional format
     >>> tbl2['ycentroid'].info.format = '.10f'
     >>> tbl2['cxy'].info.format = '.10f'
@@ -370,18 +370,18 @@ labels in the segmentation image:
      75  32.1762188270 241.1584869458 ...  0.1968605940 0.6011670347
      80 355.6148340498 252.1422532191 ...  0.1785980510 0.4003324922
 
-By default, :func:`~photutils.segmentation.properties_table` will
-include all scalar-valued properties from
+By default, the :meth:`~photutils.SourceCatalog.to_table` method will
+include most scalar-valued properties from
 :class:`~photutils.segmentation.SourceProperties`, but a subset of
 properties can also be specified (or excluded) in the
-`~astropy.table.Table`:
+`~astropy.table.QTable`:
 
 .. doctest-requires:: scipy, skimage
 
     >>> labels = [1, 5, 20, 50, 75, 80]
-    >>> props = source_properties(data, segm, labels=labels)
+    >>> cat = source_properties(data, segm, labels=labels)
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'source_sum', 'area']
-    >>> tbl3 = properties_table(props, columns=columns)
+    >>> tbl3 = cat.to_table(columns=columns)
     >>> tbl3['xcentroid'].info.format = '.10f'  # optional format
     >>> tbl3['ycentroid'].info.format = '.10f'
     >>> tbl3['source_sum'].info.format = '.10f'
@@ -398,9 +398,8 @@ properties can also be specified (or excluded) in the
 
 A `~astropy.wcs.WCS` transformation can also be input to
 :func:`~photutils.segmentation.source_properties` via the ``wcs``
-keyword, in which case the International Celestial Reference System
-(ICRS) Right Ascension and Declination coordinates at the source
-centroids will be returned.
+keyword, in which case the sky coordinates at the source centroids
+will be returned.
 
 
 Background Properties
@@ -417,11 +416,11 @@ properties for each source will also be calculated:
 .. doctest-requires:: scipy, skimage
 
     >>> labels = [1, 5, 20, 50, 75, 80]
-    >>> props = source_properties(data, segm, labels=labels,
-    ...                            background=bkg.background)
+    >>> cat = source_properties(data, segm, labels=labels,
+    ...                         background=bkg.background)
     >>> columns = ['id', 'background_at_centroid', 'background_mean',
     ...            'background_sum']
-    >>> tbl4 = properties_table(props, columns=columns)
+    >>> tbl4 = cat.to_table(columns=columns)
     >>> tbl4['background_at_centroid'].info.format = '.10f'  # optional format
     >>> tbl4['background_mean'].info.format = '{:.10f}'
     >>> tbl4['background_sum'].info.format = '{:.10f}'
@@ -465,10 +464,10 @@ we set it to 500 seconds):
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> effective_gain = 500.
     >>> error = calc_total_error(data, bkg.background_rms, effective_gain)
-    >>> props = source_properties(data, segm, labels=labels, error=error)
+    >>> cat = source_properties(data, segm, labels=labels, error=error)
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'source_sum',
     ...            'source_sum_err']
-    >>> tbl5 = properties_table(props, columns=columns)
+    >>> tbl5 = cat.to_table(columns=columns)
     >>> tbl5['xcentroid'].info.format = '.10f'  # optional format
     >>> tbl5['ycentroid'].info.format = '.10f'
     >>> print(tbl5)
