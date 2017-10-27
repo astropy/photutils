@@ -20,7 +20,7 @@ __all__ = ['SourceProperties', 'source_properties', 'SourceCatalog',
            'properties_table']
 
 __doctest_requires__ = {('SourceProperties', 'SourceProperties.*',
-                         'SourceCatalog', 'source_properties',
+                         'SourceCatalog', 'SourceCatalog.*', 'source_properties',
                          'properties_table'): ['scipy', 'skimage']}
 
 
