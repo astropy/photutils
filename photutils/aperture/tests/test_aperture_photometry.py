@@ -21,10 +21,13 @@ from astropy.tests.helper import remote_data
 import astropy.units as u
 from astropy.wcs.utils import pixel_to_skycoord
 
-from ..core import *
-from ..circle import *
-from ..ellipse import *
-from ..rectangle import *
+from ..core import aperture_photometry
+from ..circle import (CircularAperture, CircularAnnulus, SkyCircularAperture,
+                      SkyCircularAnnulus)
+from ..ellipse import (EllipticalAperture, EllipticalAnnulus,
+                       SkyEllipticalAperture, SkyEllipticalAnnulus)
+from ..rectangle import (RectangularAperture, RectangularAnnulus,
+                         SkyRectangularAperture, SkyRectangularAnnulus)
 from ...datasets import (get_path, make_4gaussians_image, make_wcs,
                          make_imagehdu)
 

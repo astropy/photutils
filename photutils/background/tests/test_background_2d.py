@@ -24,7 +24,6 @@ except ImportError:
     HAS_MATPLOTLIB = False
 
 
-
 DATA = np.ones((100, 100))
 BKG_RMS = np.zeros((100, 100))
 BKG_MESH = np.ones((4, 4))

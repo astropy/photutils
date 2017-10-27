@@ -9,10 +9,8 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from astropy.tests.helper import catch_warnings
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from ..findstars import DAOStarFinder, IRAFStarFinder
 from ...datasets import make_100gaussians_image
