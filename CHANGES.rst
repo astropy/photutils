@@ -63,6 +63,12 @@ New Features
     the bounding box corner vertices (``sky_bbox_ll``, ``sky_bbox_ul``
     ``sky_bbox_lr``, and ``sky_bbox_ur``). [#592]
 
+  - Added new ``SourceCatalog`` class to hold the list of
+    ``SourceProperties``. [#608]
+
+  - The ``properties_table`` function is now deprecated.  Use the
+    ``SourceCatalog.to_table()`` method instead. [#608]
+
 - ``phtotutils.psf``
 
   - Uncertainties on fitted parameters are added to the final table. [#516]
