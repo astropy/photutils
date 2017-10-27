@@ -6,7 +6,7 @@ from astropy.tests.pytest_plugins import *    # noqa
 
 # Uncomment the following line to treat all DeprecationWarnings as
 # exceptions
-enable_deprecations_as_exceptions()    # noqa
+# enable_deprecations_as_exceptions()    # noqa
 
 # Uncomment and customize the following lines to add/remove entries from
 # the list of packages for which version numbers are displayed when running
