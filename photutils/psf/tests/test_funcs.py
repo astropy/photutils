@@ -41,6 +41,7 @@ for x, y, flux in INTAB:
     image += discretize_model(model, (0, IMAGE_SIZE), (0, IMAGE_SIZE),
                               mode='oversample')
 
+
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_subtract_psf():
     """Test subtract_psf."""

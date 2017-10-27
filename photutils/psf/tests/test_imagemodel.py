@@ -45,11 +45,12 @@ def test_image_model():
 def test_image_model_oversampling():
     gm = Gaussian2D(x_stddev=3, y_stddev=3)
 
-    osa = 3  #oversampling factor
+    osa = 3  # oversampling factor
     xg, yg = np.mgrid[-3:3.00001:(1/osa), -3:3.00001:(1/osa)]
 
     im = gm(xg, yg)
-    assert im.shape[0] > 7  # should be obvious, but at least ensures the test is right
+    # should be obvious, but at least ensures the test is right:
+    assert im.shape[0] > 7
     imod_oversampled = FittableImageModel(im, oversampling=osa)
 
     assert np.allclose(imod_oversampled(0, 0), gm(0, 0))
@@ -61,18 +62,21 @@ def test_image_model_oversampling():
     imod_wrongsampled = FittableImageModel(im)
 
     # now make sure that all *fails* without the oversampling
-    assert np.allclose(imod_wrongsampled(0, 0), gm(0, 0))  # except for at the origin
+    # except for at the origin
+    assert np.allclose(imod_wrongsampled(0, 0), gm(0, 0))
     assert not np.allclose(imod_wrongsampled(1, 1), gm(1, 1))
     assert not np.allclose(imod_wrongsampled(-2, 1), gm(-2, 1))
-    assert not np.allclose(imod_wrongsampled(0.5, 0.5), gm(0.5, 0.5), rtol=.001)
-    assert not np.allclose(imod_wrongsampled(-0.5, 1.75), gm(-0.5, 1.75), rtol=.001)
+    assert not np.allclose(imod_wrongsampled(0.5, 0.5), gm(0.5, 0.5),
+                           rtol=.001)
+    assert not np.allclose(imod_wrongsampled(-0.5, 1.75), gm(-0.5, 1.75),
+                           rtol=.001)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_centering_oversampled():
     gm = Gaussian2D(x_stddev=2, y_stddev=3)
 
-    osa = 3  #oversampling factor
+    osa = 3  # oversampling factor
     xg, yg = np.mgrid[-3:3.00001:(1/osa), -3:3.00001:(1/osa)]
 
     imod_oversampled = FittableImageModel(gm(xg, yg), oversampling=osa)

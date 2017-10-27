@@ -7,7 +7,6 @@ from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 
 from astropy.table import Table
 from astropy.stats import gaussian_sigma_to_fwhm, SigmaClip
-from astropy.utils import minversion
 from astropy.modeling import Parameter, Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling.models import Gaussian2D, Moffat2D
@@ -20,7 +19,7 @@ from ..models import IntegratedGaussianPRF, prepare_psf_model
 from ..photometry import (DAOPhotPSFPhotometry, BasicPSFPhotometry,
                           IterativelySubtractedPSFPhotometry)
 from ..sandbox import DiscretePRF
-from ...background import MedianBackground, StdBackgroundRMS, MMMBackground
+from ...background import StdBackgroundRMS, MMMBackground
 from ...datasets import make_gaussian_sources_image, make_noise_image
 from ...detection import DAOStarFinder
 
@@ -41,8 +40,6 @@ def make_psf_photometry_objs(std=1, sigma_psf=1):
     daofind = DAOStarFinder(threshold=5.0*std,
                             fwhm=sigma_psf*gaussian_sigma_to_fwhm)
     daogroup = DAOGroup(1.5*sigma_psf*gaussian_sigma_to_fwhm)
-    sigma_clip = SigmaClip(sigma=3.)
-    median_bkg = MedianBackground(sigma_clip)
     threshold = 5. * std
     fwhm = sigma_psf * gaussian_sigma_to_fwhm
     crit_separation = 1.5 * sigma_psf * gaussian_sigma_to_fwhm
@@ -142,16 +139,20 @@ def test_psf_photometry_niters(sigma_psf, sources):
         result_tab = iter_phot_obj(image)
         residual_image = iter_phot_obj.get_residual_image()
 
-        assert (result_tab['x_0_unc'] < 1.96 * sigma_psf / np.sqrt(sources['flux'])).all()
-        assert (result_tab['y_0_unc'] < 1.96 * sigma_psf / np.sqrt(sources['flux'])).all()
-        assert (result_tab['flux_unc'] < 1.96 * np.sqrt(sources['flux'])).all()
+        assert (result_tab['x_0_unc'] < 1.96 * sigma_psf /
+                np.sqrt(sources['flux'])).all()
+        assert (result_tab['y_0_unc'] < 1.96 * sigma_psf /
+                np.sqrt(sources['flux'])).all()
+        assert (result_tab['flux_unc'] < 1.96 *
+                np.sqrt(sources['flux'])).all()
 
         assert_allclose(result_tab['x_fit'], sources['x_mean'], rtol=1e-1)
         assert_allclose(result_tab['y_fit'], sources['y_mean'], rtol=1e-1)
         assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
         assert_array_equal(result_tab['id'], sources['id'])
         assert_array_equal(result_tab['group_id'], sources['group_id'])
-        assert_array_equal(result_tab['iter_detected'], sources['iter_detected'])
+        assert_array_equal(result_tab['iter_detected'],
+                           sources['iter_detected'])
         assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
 
         # make sure image is note overwritten
@@ -164,8 +165,10 @@ def test_psf_photometry_niters(sigma_psf, sources):
                           (sigma_psfs[1], sources2),
                           # these ensure that the test *fails* if the model
                           # PSFs are the wrong shape
-                          pytest.param(sigma_psfs[0]/1.2, sources1, marks=pytest.mark.xfail()),
-                          pytest.param(sigma_psfs[1]*1.2, sources2, marks=pytest.mark.xfail())])
+                          pytest.param(sigma_psfs[0]/1.2, sources1,
+                                       marks=pytest.mark.xfail()),
+                          pytest.param(sigma_psfs[1]*1.2, sources2,
+                                       marks=pytest.mark.xfail())])
 def test_psf_photometry_oneiter(sigma_psf, sources):
     """
     Tests in an image with a group of two overlapped stars and an
@@ -190,9 +193,12 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
     for phot_proc in phot_objs:
         result_tab = phot_proc(image)
         residual_image = phot_proc.get_residual_image()
-        assert (result_tab['x_0_unc'] < 1.96 * sigma_psf / np.sqrt(sources['flux'])).all()
-        assert (result_tab['y_0_unc'] < 1.96 * sigma_psf / np.sqrt(sources['flux'])).all()
-        assert (result_tab['flux_unc'] < 1.96 * np.sqrt(sources['flux'])).all()
+        assert (result_tab['x_0_unc'] < 1.96 * sigma_psf /
+                np.sqrt(sources['flux'])).all()
+        assert (result_tab['y_0_unc'] < 1.96 * sigma_psf /
+                np.sqrt(sources['flux'])).all()
+        assert (result_tab['flux_unc'] < 1.96 *
+                np.sqrt(sources['flux'])).all()
         assert_allclose(result_tab['x_fit'], sources['x_mean'], rtol=1e-1)
         assert_allclose(result_tab['y_fit'], sources['y_mean'], rtol=1e-1)
         assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
@@ -210,9 +216,10 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
 
         result_tab = phot_proc(image, pos)
         residual_image = phot_proc.get_residual_image()
-        assert not 'x_0_unc' in result_tab.colnames
-        assert not 'y_0_unc' in result_tab.colnames
-        assert (result_tab['flux_unc'] < 1.96 * np.sqrt(sources['flux'])).all()
+        assert 'x_0_unc' not in result_tab.colnames
+        assert 'y_0_unc' not in result_tab.colnames
+        assert (result_tab['flux_unc'] < 1.96 *
+                np.sqrt(sources['flux'])).all()
         assert_array_equal(result_tab['x_fit'], sources['x_mean'])
         assert_array_equal(result_tab['y_fit'], sources['y_mean'])
         assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
@@ -273,6 +280,7 @@ def test_fitshape_erros():
     with pytest.raises(ValueError):
         basic_phot_obj.fitshape = (3, 3, 3)
 
+
 @pytest.mark.xfail('not HAS_SCIPY')
 def test_aperture_radius_errors():
     basic_phot_obj = make_psf_photometry_objs()[0]
@@ -284,18 +292,20 @@ def test_aperture_radius_errors():
     with pytest.raises(ValueError):
         basic_phot_obj.aperture_radius = -3
 
+
 @pytest.mark.xfail('not HAS_SCIPY')
 def test_finder_erros():
-    basic_phot_obj = make_psf_photometry_objs()[0]
     iter_phot_obj = make_psf_photometry_objs()[1]
 
     with pytest.raises(ValueError):
         iter_phot_obj.finder = None
 
     with pytest.raises(ValueError):
-        iter_phot_obj = IterativelySubtractedPSFPhotometry(finder=None,
-                group_maker=DAOGroup(1), bkg_estimator=MMMBackground(),
-                psf_model=IntegratedGaussianPRF(1), fitshape=(11, 11))
+        iter_phot_obj = IterativelySubtractedPSFPhotometry(
+            finder=None, group_maker=DAOGroup(1),
+            bkg_estimator=MMMBackground(),
+            psf_model=IntegratedGaussianPRF(1), fitshape=(11, 11))
+
 
 @pytest.mark.xfail('not HAS_SCIPY')
 def test_finder_positions_warning():
@@ -319,6 +329,7 @@ def test_finder_positions_warning():
         basic_phot_obj.finder = None
         result_tab = basic_phot_obj(image=image)
 
+
 @pytest.mark.xfail('not HAS_SCIPY')
 def test_aperture_radius():
     img_shape = (32, 32)
@@ -332,6 +343,7 @@ def test_aperture_radius():
                               stddev=2., random_state=1))
 
     basic_phot_obj = make_psf_photometry_objs()[0]
+
     # test that aperture radius is properly set whenever the PSF model has
     # a `fwhm` attribute
     class PSFModelWithFWHM(Fittable2DModel):
@@ -348,8 +360,7 @@ def test_aperture_radius():
 
     psf_model = PSFModelWithFWHM()
     basic_phot_obj.psf_model = psf_model
-    result_tab = basic_phot_obj(image)
-
+    basic_phot_obj(image)
     assert_equal(basic_phot_obj.aperture_radius, psf_model.fwhm.value)
 
 
@@ -359,11 +370,13 @@ PARS_TO_SET_1 = PARS_TO_SET_0.copy()
 PARS_TO_SET_1['sigma_0'] = 'sigma'
 PARS_TO_OUTPUT_1 = PARS_TO_OUTPUT_0.copy()
 PARS_TO_OUTPUT_1['sigma_fit'] = 'sigma'
+
+
 @pytest.mark.parametrize("actual_pars_to_set, actual_pars_to_output,"
-                         "is_sigma_fixed",[(PARS_TO_SET_0, PARS_TO_OUTPUT_0,
-                                            True),
-                                           (PARS_TO_SET_1, PARS_TO_OUTPUT_1,
-                                            False)])
+                         "is_sigma_fixed", [(PARS_TO_SET_0, PARS_TO_OUTPUT_0,
+                                             True),
+                                            (PARS_TO_SET_1, PARS_TO_OUTPUT_1,
+                                             False)])
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_define_fit_param_names(actual_pars_to_set, actual_pars_to_output,
                                 is_sigma_fixed):
@@ -418,6 +431,7 @@ for x, y, flux in WIDE_INTAB:
     wide_image += discretize_model(model, (0, IMAGE_SIZE), (0, IMAGE_SIZE),
                                    mode='oversample')
 
+
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_psf_photometry_discrete():
     """ Test psf_photometry with discrete PRF model. """
@@ -430,6 +444,7 @@ def test_psf_photometry_discrete():
 
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-6)
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_tune_coordinates():
@@ -446,12 +461,13 @@ def test_tune_coordinates():
     intab['x_0'] += 0.3
 
     basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
-                                bkg_estimator=None, psf_model=prf,
-                                fitshape=7)
+                                    bkg_estimator=None, psf_model=prf,
+                                    fitshape=7)
 
     f = basic_phot(image=image, init_guesses=intab)
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_psf_boundary():
@@ -462,12 +478,13 @@ def test_psf_boundary():
     prf = DiscretePRF(test_psf, subsampling=1)
 
     basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
-                            bkg_estimator=None, psf_model=prf,
-                            fitshape=7, aperture_radius=5.5)
+                                    bkg_estimator=None, psf_model=prf,
+                                    fitshape=7, aperture_radius=5.5)
 
     intab = Table(data=[[1], [1]], names=['x_0', 'y_0'])
     f = basic_phot(image=image, init_guesses=intab)
     assert_allclose(f['flux_fit'], 0, atol=1e-8)
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_aperture_radius_value_error():
@@ -478,14 +495,15 @@ def test_aperture_radius_value_error():
     prf = DiscretePRF(test_psf, subsampling=1)
 
     basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
-                            bkg_estimator=None, psf_model=prf,
-                            fitshape=7)
+                                    bkg_estimator=None, psf_model=prf,
+                                    fitshape=7)
 
     intab = Table(data=[[1], [1]], names=['x_0', 'y_0'])
     with pytest.raises(ValueError) as err:
-        f = basic_phot(image=image, init_guesses=intab)
+        basic_phot(image=image, init_guesses=intab)
 
     assert 'aperture_radius is None' in str(err.value)
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_psf_boundary_gaussian():
@@ -496,12 +514,13 @@ def test_psf_boundary_gaussian():
     psf = IntegratedGaussianPRF(GAUSSIAN_WIDTH)
 
     basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
-                            bkg_estimator=None, psf_model=psf,
-                            fitshape=7)
+                                    bkg_estimator=None, psf_model=psf,
+                                    fitshape=7)
 
     intab = Table(data=[[1], [1]], names=['x_0', 'y_0'])
     f = basic_phot(image=image, init_guesses=intab)
     assert_allclose(f['flux_fit'], 0, atol=1e-8)
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_psf_photometry_gaussian():
@@ -512,11 +531,12 @@ def test_psf_photometry_gaussian():
     psf = IntegratedGaussianPRF(sigma=GAUSSIAN_WIDTH)
 
     basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
-                            bkg_estimator=None, psf_model=psf,
-                            fitshape=7)
+                                    bkg_estimator=None, psf_model=psf,
+                                    fitshape=7)
     f = basic_phot(image=image, init_guesses=INTAB)
     for n in ['x', 'y', 'flux']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize("renormalize_psf", (True, False))
@@ -563,6 +583,7 @@ def test_psf_photometry_moffat():
     # image was created with a gaussian, so flux won't match exactly
     assert_allclose(f['flux_0'], f['flux_fit'], rtol=1)
 
+
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_psf_fitting_data_on_edge():
     """
@@ -573,8 +594,8 @@ def test_psf_fitting_data_on_edge():
     psf_guess = IntegratedGaussianPRF(flux=1, sigma=WIDE_GAUSSIAN_WIDTH)
     psf_guess.flux.fixed = psf_guess.x_0.fixed = psf_guess.y_0.fixed = False
     basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
-                            bkg_estimator=None, psf_model=psf_guess,
-                            fitshape=7)
+                                    bkg_estimator=None, psf_model=psf_guess,
+                                    fitshape=7)
 
     outtab = basic_phot(image=wide_image, init_guesses=WIDE_INTAB)
 
