@@ -8,7 +8,7 @@ import pytest
 from ..bounding_box import BoundingBox
 
 try:
-    import matplotlib
+    import matplotlib    # noqa
     HAS_MATPLOTLIB = True
 except:
     HAS_MATPLOTLIB = False

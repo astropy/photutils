@@ -12,7 +12,7 @@ from ..core import (centroid_com, centroid_1dg, centroid_2dg,
                     gaussian1d_moments, fit_2dgaussian)
 
 try:
-    import skimage
+    import skimage    # noqa
     HAS_SKIMAGE = True
 except ImportError:
     HAS_SKIMAGE = False

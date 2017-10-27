@@ -29,7 +29,7 @@ from ...datasets import (get_path, make_4gaussians_image, make_wcs,
                          make_imagehdu)
 
 try:
-    import matplotlib
+    import matplotlib    # noqa
     HAS_MATPLOTLIB = True
 except ImportError:
     HAS_MATPLOTLIB = False

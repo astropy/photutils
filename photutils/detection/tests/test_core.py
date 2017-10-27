@@ -10,13 +10,13 @@ from ..core import detect_threshold, find_peaks
 from ...datasets import make_4gaussians_image, make_wcs
 
 try:
-    import scipy
+    import scipy    # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
 
 try:
-    import skimage
+    import skimage    # noqa
     HAS_SKIMAGE = True
 except ImportError:
     HAS_SKIMAGE = False

@@ -7,7 +7,7 @@ from astropy.table import Table, vstack
 from ..groupstars import DAOGroup, DBSCANGroup
 
 try:
-    import sklearn.cluster
+    import sklearn.cluster    # noqa
     HAS_SKLEARN = True
 except ImportError:
     HAS_SKLEARN = False

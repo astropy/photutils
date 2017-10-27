@@ -8,7 +8,7 @@ import pytest
 from ..colormaps import random_cmap
 
 try:
-    import matplotlib
+    import matplotlib    # noqa
     HAS_MATPLOTLIB = True
 except ImportError:
     HAS_MATPLOTLIB = False

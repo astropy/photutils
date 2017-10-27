@@ -12,7 +12,7 @@ from astropy.table import Table
 from .. import IntegratedGaussianPRF, prepare_psf_model, get_grouped_psf_model
 
 try:
-    import scipy
+    import scipy    # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

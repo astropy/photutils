@@ -18,7 +18,7 @@ from ..sample import EllipseSample, CentralEllipseSample
 from ...datasets import get_path
 
 try:
-    import scipy
+    import scipy    # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

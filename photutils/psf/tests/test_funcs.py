@@ -10,7 +10,7 @@ from .. import subtract_psf
 from ..sandbox import DiscretePRF
 
 try:
-    import scipy
+    import scipy    # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
