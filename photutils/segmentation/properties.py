@@ -1525,9 +1525,9 @@ def properties_table(source_props, columns=None, exclude_columns=None):
     """
 
     if ((isinstance(source_props, list) or
-             isinstance(source_props, SourceCatalog)) and
-            len(source_props) == 0):
-        raise ValueError('source_props is an empty list')
+         isinstance(source_props, SourceCatalog)) and len(source_props) == 0):
+            raise ValueError('source_props is an empty list')
+
     source_props = np.atleast_1d(source_props)
 
     # all scalar-valued properties

@@ -14,8 +14,8 @@ import astropy.units as u
 from astropy.utils.misc import isiterable
 import astropy.wcs as WCS
 
-from ..properties import (SourceProperties, source_properties, properties_table,
-                          SourceCatalog)
+from ..properties import (SourceProperties, source_properties,
+                          SourceCatalog, properties_table)
 
 try:
     import scipy    # noqa
@@ -310,6 +310,7 @@ class TestSourceCatalog(object):
         cat = source_properties(IMAGE, SEGM)
         cat2 = SourceCatalog(cat[0])
         assert len(cat) == 1
+        assert len(cat2) == 1
 
         with pytest.raises(ValueError):
             SourceCatalog('a')
@@ -332,7 +333,7 @@ class TestSourceCatalog(object):
         cat = source_properties(IMAGE, SEGM)
         columns = ['idzz', 'xcentroidzz']
         with pytest.raises(AttributeError):
-           cat.to_table(columns=columns)
+            cat.to_table(columns=columns)
 
     def test_table_exclude(self):
         cat = source_properties(IMAGE, SEGM)
@@ -371,6 +372,7 @@ class TestSourceCatalog(object):
         t = cat.to_table(columns=columns)
         assert t[0]['sky_centroid'] is None
         assert t.colnames == columns
+
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
