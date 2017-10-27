@@ -38,11 +38,11 @@ Then, calculate its properties:
 
 .. doctest-requires:: scipy, skimage
 
-    >>> from photutils import data_properties, properties_table
-    >>> props = data_properties(data)
+    >>> from photutils import data_properties
+    >>> cat = data_properties(data)
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'semimajor_axis_sigma',
     ...            'semiminor_axis_sigma', 'orientation']
-    >>> tbl = properties_table(props, columns=columns)
+    >>> tbl = cat.to_table(columns=columns)
     >>> tbl['xcentroid'].info.format = '.10f'  # optional format
     >>> tbl['ycentroid'].info.format = '.10f'
     >>> tbl['semiminor_axis_sigma'].info.format = '.10f'
@@ -58,12 +58,12 @@ approximate isophotal ellipse for the source:
 
 .. doctest-skip::
 
-    >>> from photutils import properties_table, EllipticalAperture
-    >>> position = (props.xcentroid.value, props.ycentroid.value)
+    >>> from photutils import EllipticalAperture
+    >>> position = (cat.xcentroid.value, cat.ycentroid.value)
     >>> r = 3.0    # approximate isophotal extent
-    >>> a = props.semimajor_axis_sigma.value * r
-    >>> b = props.semiminor_axis_sigma.value * r
-    >>> theta = props.orientation.value
+    >>> a = cat.semimajor_axis_sigma.value * r
+    >>> b = cat.semiminor_axis_sigma.value * r
+    >>> theta = cat.orientation.value
     >>> apertures = EllipticalAperture(position, a, b, theta=theta)
     >>> plt.imshow(data, origin='lower', cmap='viridis',
     ...            interpolation='nearest')
@@ -72,19 +72,19 @@ approximate isophotal ellipse for the source:
 .. plot::
 
     import matplotlib.pyplot as plt
-    from photutils import data_properties, properties_table, EllipticalAperture
+    from photutils import data_properties, EllipticalAperture
     from photutils.datasets import make_4gaussians_image
 
     data = make_4gaussians_image()[43:79, 76:104]    # extract single object
-    props = data_properties(data)
+    cat = data_properties(data)
     columns = ['id', 'xcentroid', 'ycentroid', 'semimajor_axis_sigma',
                'semiminor_axis_sigma', 'orientation']
-    tbl = properties_table(props, columns=columns)
+    tbl = cat.to_table(columns=columns)
     r = 2.5    # approximate isophotal extent
-    position = (props.xcentroid.value, props.ycentroid.value)
-    a = props.semimajor_axis_sigma.value * r
-    b = props.semiminor_axis_sigma.value * r
-    theta = props.orientation.value
+    position = (cat.xcentroid.value, cat.ycentroid.value)
+    a = cat.semimajor_axis_sigma.value * r
+    b = cat.semiminor_axis_sigma.value * r
+    theta = cat.orientation.value
     apertures = EllipticalAperture(position, a, b, theta=theta)
     plt.imshow(data, origin='lower', cmap='viridis', interpolation='nearest')
     apertures.plot(color='#d62728')
