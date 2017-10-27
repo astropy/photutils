@@ -4,4 +4,4 @@ This subpackage contains tools for centroiding objects in an
 astronomical image.
 """
 
-from .core import *
+from .core import *    # noqa

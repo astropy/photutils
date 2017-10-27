@@ -4,5 +4,5 @@ This subpackage contains modules and packages for identifying sources in
 an astronomical image.
 """
 
-from .core import *
-from .findstars import *
+from .core import *         # noqa
+from .findstars import *    # noqa

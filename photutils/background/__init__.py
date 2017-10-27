@@ -4,5 +4,5 @@ This subpackage contains modules and packages for background and
 background rms estimation.
 """
 
-from .core import *
-from .background_2d import *
+from .core import *             # noqa
+from .background_2d import *    # noqa

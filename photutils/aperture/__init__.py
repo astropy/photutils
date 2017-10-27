@@ -4,9 +4,9 @@ This subpackage contains modules and packages for identifying sources in
 an astronomical image.
 """
 
-from .bounding_box import *
-from .circle import *
-from .core import *
-from .ellipse import *
-from .mask import *
-from .rectangle import *
+from .bounding_box import *    # noqa
+from .circle import *          # noqa
+from .core import *            # noqa
+from .ellipse import *         # noqa
+from .mask import *            # noqa
+from .rectangle import *       # noqa

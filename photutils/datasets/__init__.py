@@ -3,5 +3,5 @@
 Load or make datasets for examples and tests.
 """
 
-from .load import *
-from .make import *
+from .load import *    # noqa
+from .make import *    # noqa
