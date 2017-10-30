@@ -33,9 +33,9 @@ Photutils at a glance
 .. toctree::
     :maxdepth: 1
 
-    photutils/install.rst
-    photutils/overview.rst
-    photutils/getting_started.rst
+    install.rst
+    overview.rst
+    getting_started.rst
     changelog
 
 
@@ -45,24 +45,24 @@ User Documentation
 .. toctree::
     :maxdepth: 1
 
-    photutils/background.rst
-    photutils/detection.rst
-    photutils/grouping.rst
-    photutils/aperture.rst
-    photutils/psf.rst
-    photutils/psf_matching.rst
-    photutils/segmentation.rst
-    photutils/centroids.rst
-    photutils/morphology.rst
-    photutils/isophote.rst
-    photutils/geometry.rst
-    photutils/datasets.rst
-    photutils/utils.rst
+    background.rst
+    detection.rst
+    grouping.rst
+    aperture.rst
+    psf.rst
+    psf_matching.rst
+    segmentation.rst
+    centroids.rst
+    morphology.rst
+    isophote.rst
+    geometry.rst
+    datasets.rst
+    utils.rst
 
 .. toctree::
     :maxdepth: 1
 
-    photutils/high-level_API.rst
+    high-level_API.rst
 
 .. note::
 
