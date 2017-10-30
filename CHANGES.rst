@@ -152,6 +152,7 @@ API changes
   - The ``background_color`` keyword was removed from the
     ``random_cmap`` function. [#528]
 
+  - Deprecated unused ``interpolate_masked_data()``. [#526, #611]
 
 Bug Fixes
 ^^^^^^^^^

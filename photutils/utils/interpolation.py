@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import warnings
 
 import numpy as np
+from astropy.utils.decorators import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 
 
@@ -285,6 +286,7 @@ class ShepardIDWInterpolator(object):
             return interp_values
 
 
+@deprecated('0.4')
 def interpolate_masked_data(data, mask, error=None, background=None):
     """
     Interpolate over masked pixels in data and optional error or
