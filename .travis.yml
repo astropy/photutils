@@ -91,7 +91,6 @@ matrix:
         # stable is also the LTS
         - stage: Test docs, astropy dev, and without optional dependencies
           env: ASTROPY_VERSION=development
-               PIP_DEPENDENCIES='pytest-astropy'
                EVENT_TYPE='pull_request push cron'
 
         #- stage: Test docs, astropy dev, and without optional dependencies
