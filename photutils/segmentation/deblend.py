@@ -224,8 +224,11 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
         raise ValueError('Invalid connectivity={0}.  '
                          'Options are 4 or 8'.format(connectivity))
 
+    # Work on a copy of the data to avoid modifying the input image
+    data = data.copy()
     segm_mask = (segment_img.data > 0)
     source_values = data[segm_mask]
+    data[~segm_mask] = 0
     source_min = np.min(source_values)
     source_max = np.max(source_values)
     if source_min == source_max:
