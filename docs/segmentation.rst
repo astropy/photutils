@@ -355,20 +355,21 @@ labels in the segmentation image:
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> cat = source_properties(data, segm, labels=labels)
     >>> tbl2 = cat.to_table()
-    >>> tbl2['xcentroid'].info.format = '.10f'  # optional format
-    >>> tbl2['ycentroid'].info.format = '.10f'
-    >>> tbl2['cxy'].info.format = '.10f'
-    >>> tbl2['cyy'].info.format = '.10f'
+    >>> tbl2['xcentroid'].info.format = '.2f'  # optional format
+    >>> tbl2['ycentroid'].info.format = '.2f'
+    >>> tbl2['cxx'].info.format = '.2f'
+    >>> tbl2['cxy'].info.format = '.2f'
+    >>> tbl2['cyy'].info.format = '.2f'
     >>> print(tbl2)
-     id   xcentroid      ycentroid    ...      cxy          cyy
-             pix            pix       ...    1 / pix2     1 / pix2
-    --- -------------- -------------- ... ------------- ------------
-      1 235.1877193594   1.0991961528 ... -0.1920746278 1.2174907202
-      5 258.1927719916  11.9617673653 ...  0.0443061873 0.3218333804
-     20 347.1775610058  66.5509575226 ...  0.1152773914 0.3595643546
-     50 380.7968731993 174.4185137066 ... -1.0305829129 1.2769245589
-     75  32.1762188270 241.1584869458 ...  0.1968605940 0.6011670347
-     80 355.6148340498 252.1422532191 ...  0.1785980510 0.4003324922
+     id xcentroid ycentroid sky_centroid ...   cxx      cxy      cyy
+           pix       pix                 ... 1 / pix2 1 / pix2 1 / pix2
+    --- --------- --------- ------------ ... -------- -------- --------
+      1    235.19      1.10         None ...     0.23    -0.19     1.22
+      5    258.19     11.96         None ...     0.73     0.04     0.32
+     20    347.18     66.55         None ...     0.47     0.12     0.36
+     50    380.80    174.42         None ...     1.36    -1.03     1.28
+     75     32.18    241.16         None ...     0.34     0.20     0.60
+     80    355.61    252.14         None ...     0.32     0.18     0.40
 
 By default, the :meth:`~photutils.SourceCatalog.to_table` method will
 include most scalar-valued properties from
@@ -382,19 +383,19 @@ properties can also be specified (or excluded) in the
     >>> cat = source_properties(data, segm, labels=labels)
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'source_sum', 'area']
     >>> tbl3 = cat.to_table(columns=columns)
-    >>> tbl3['xcentroid'].info.format = '.10f'  # optional format
-    >>> tbl3['ycentroid'].info.format = '.10f'
-    >>> tbl3['source_sum'].info.format = '.10f'
+    >>> tbl3['xcentroid'].info.format = '.4f'  # optional format
+    >>> tbl3['ycentroid'].info.format = '.4f'
+    >>> tbl3['source_sum'].info.format = '.4f'
     >>> print(tbl3)
-     id   xcentroid      ycentroid      source_sum   area
-             pix            pix                      pix2
-    --- -------------- -------------- -------------- ----
-      1 235.1877193594   1.0991961528 496.6356232064 27.0
-      5 258.1927719916  11.9617673653 347.6113420724 25.0
-     20 347.1775610058  66.5509575226 415.9925696777 31.0
-     50 380.7968731993 174.4185137066 145.7264175178 11.0
-     75  32.1762188270 241.1584869458 398.4114037113 29.0
-     80 355.6148340498 252.1422532191 906.4226000367 45.0
+     id xcentroid ycentroid source_sum area
+           pix       pix               pix2
+    --- --------- --------- ---------- ----
+      1  235.1877    1.0992   496.6356 27.0
+      5  258.1928   11.9618   347.6113 25.0
+     20  347.1776   66.5510   415.9926 31.0
+     50  380.7969  174.4185   145.7264 11.0
+     75   32.1762  241.1585   398.4114 29.0
+     80  355.6148  252.1423   906.4226 45.0
 
 A `~astropy.wcs.WCS` transformation can also be input to
 :func:`~photutils.segmentation.source_properties` via the ``wcs``
@@ -421,7 +422,7 @@ properties for each source will also be calculated:
     >>> columns = ['id', 'background_at_centroid', 'background_mean',
     ...            'background_sum']
     >>> tbl4 = cat.to_table(columns=columns)
-    >>> tbl4['background_at_centroid'].info.format = '.10f'  # optional format
+    >>> tbl4['background_at_centroid'].info.format = '{:.10f}'  # optional format
     >>> tbl4['background_mean'].info.format = '{:.10f}'
     >>> tbl4['background_sum'].info.format = '{:.10f}'
     >>> print(tbl4)
@@ -468,18 +469,18 @@ we set it to 500 seconds):
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'source_sum',
     ...            'source_sum_err']
     >>> tbl5 = cat.to_table(columns=columns)
-    >>> tbl5['xcentroid'].info.format = '.10f'  # optional format
-    >>> tbl5['ycentroid'].info.format = '.10f'
+    >>> tbl5['xcentroid'].info.format = '{:.4f}'  # optional format
+    >>> tbl5['ycentroid'].info.format = '{:.4f}'
     >>> print(tbl5)
-     id   xcentroid      ycentroid      source_sum  source_sum_err
-             pix            pix
-    --- -------------- -------------- ------------- --------------
-      1 235.1877193594   1.0991961528 496.635623206  11.0788667038
-      5 258.1927719916  11.9617673653 347.611342072   10.723068215
-     20 347.1775610058  66.5509575226 415.992569678  12.1782078398
-     50 380.7968731993 174.4185137066 145.726417518  7.29536295106
-     75  32.1762188270 241.1584869458 398.411403711   11.553412812
-     80 355.6148340498 252.1422532191 906.422600037  13.7686828317
+     id xcentroid ycentroid   source_sum  source_sum_err
+           pix       pix
+    --- --------- --------- ------------- --------------
+      1  235.1877    1.0992 496.635623206  11.0788667038
+      5  258.1928   11.9618 347.611342072   10.723068215
+     20  347.1776   66.5510 415.992569678  12.1782078398
+     50  380.7969  174.4185 145.726417518  7.29536295106
+     75   32.1762  241.1585 398.411403711   11.553412812
+     80  355.6148  252.1423 906.422600037  13.7686828317
 
 `~photutils.segmentation.SourceProperties.source_sum` and
 `~photutils.segmentation.SourceProperties.source_sum_err` are the
