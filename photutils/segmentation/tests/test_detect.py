@@ -135,6 +135,10 @@ class TestDetectSources(object):
         segm2 = detect_sources(data, 1., 1., mask=mask)
         assert segm2.areas[1] == segm1.areas[1] - mask.sum()
 
+    def test_mask_shape(self):
+        with pytest.raises(ValueError):
+            detect_sources(self.data, 1., 1., mask=np.ones((5, 5)))
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestMakeSourceMask(object):
