@@ -1,7 +1,12 @@
 0.5 (unreleased)
 ----------------
 
-- No changes yet
+New Features
+^^^^^^^^^^^^
+
+- ``photutils.segmentation``
+
+  - Added a ``mask`` keyword to the ``detect_sources`` function. [#621]
 
 
 0.4 (2017-10-30)
