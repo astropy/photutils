@@ -91,7 +91,7 @@ class BasicPSFPhotometry(object):
     aperture_radius : float or None
         The radius (in units of pixels) used to compute initial
         estimates for the fluxes of sources. If ``None``, one FWHM will
-        be used if it can be determined from the ```psf_model``.
+        be used if it can be determined from the ``psf_model``.
 
     Notes
     -----
