@@ -252,9 +252,10 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
 
     # create top-down tree of local peaks
     segm_tree = []
+    mask = ~segm_mask
     for level in thresholds[::-1]:
         segm_tmp = detect_sources(data, level, npixels=npixels,
-                                  connectivity=connectivity)
+                                  connectivity=connectivity, mask=mask)
         if segm_tmp.nlabels >= 2:
             fluxes = []
             for i in segm_tmp.labels:

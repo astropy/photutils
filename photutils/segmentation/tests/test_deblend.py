@@ -74,6 +74,18 @@ class TestDeblendSources(object):
         assert result.area(1) == result.area(5)
         assert result.area(1) == result.area(6)
 
+    def test_deblend_multiple_sources_with_neighbor(self):
+        g1 = models.Gaussian2D(100, 50, 50, 20, 5, theta=45)
+        g2 = models.Gaussian2D(100, 35, 50, 5, 5)
+        g3 = models.Gaussian2D(100, 60, 20, 5, 5)
+
+        x = self.x
+        y = self.y
+        data = (g1 + g2 + g3)(x, y)
+        segm = detect_sources(data, self.threshold, self.npixels)
+        result = deblend_sources(data, segm, self.npixels)
+        assert result.nlabels == 3
+
     @pytest.mark.parametrize('mode', ['exponential', 'linear'])
     def test_deblend_sources_norelabel(self, mode):
         result = deblend_sources(self.data, self.segm, self.npixels,

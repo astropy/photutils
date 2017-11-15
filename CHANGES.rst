@@ -1,3 +1,14 @@
+0.4.1 (unreleased)
+------------------
+
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.segmentation``
+
+  - Fix ``deblend_sources`` when other sources are in the neighborhood. [#617]
+
+
 0.4 (2017-10-30)
 ----------------
 
