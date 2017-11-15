@@ -159,6 +159,19 @@ class TestDetectSources(object):
             assert ('The kernel is not normalized.'
                     in str(warning_lines[0].message))
 
+    def test_mask(self):
+        data = np.zeros((11, 11))
+        data[3:8, 3:8] = 5.
+        mask = np.zeros_like(data, dtype=bool)
+        mask[4:6, 4:6] = True
+        segm1 = detect_sources(data, 1., 1.)
+        segm2 = detect_sources(data, 1., 1., mask=mask)
+        assert segm2.areas[1] == segm1.areas[1] - mask.sum()
+
+    def test_mask_shape(self):
+        with pytest.raises(ValueError):
+            detect_sources(self.data, 1., 1., mask=np.ones((5, 5)))
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestMakeSourceMask(object):

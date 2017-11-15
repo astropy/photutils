@@ -12,21 +12,14 @@ Bug Fixes
 - ``photutils.segmentation``
 
   - Fixed ``deblend_sources`` when other sources are in the
-    neighborhood. [#617]
+    neighborhood, using a new ``mask`` keyword to the
+    ``detect_sources`` function. [#617, #621]
 
   - Fixed ``source_properties`` to handle the case where the data
     contain one or more NaNs. [#658]
 
   - Fixed an issue with ``deblend_sources`` where sources were not
     deblended where the data contain one or more NaNs. [#658]
-
-
-Other Changes and Additions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-- ``photutils.isophote``
-
-  - Corrected the units for isophote ``sarea`` in the documentation. [#657]
 
 
 0.4 (2017-10-30)
