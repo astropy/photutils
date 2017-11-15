@@ -15,7 +15,7 @@ __all__ = ['detect_sources', 'make_source_mask']
 
 
 def detect_sources(data, threshold, npixels, filter_kernel=None,
-                   connectivity=8):
+                   connectivity=8, mask=None):
     """
     Detect sources above a specified threshold value in an image and
     return a `~photutils.segmentation.SegmentationImage` object.
@@ -23,6 +23,8 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
     Detected sources must have ``npixels`` connected pixels that are
     each greater than the ``threshold`` value.  If the filtering option
     is used, then the ``threshold`` is applied to the filtered image.
+    The input ``mask`` can be used to mask pixels in the input data.
+    Masked pixels will not be included in any source.
 
     This function does not deblend overlapping sources.  First use this
     function to detect sources followed by
@@ -56,6 +58,11 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         (default).  4-connected pixels touch along their edges.
         8-connected pixels touch along their edges or corners.  For
         reference, SExtractor uses 8-connected pixels.
+
+    mask : array_like (bool)
+        A boolean mask, with the same shape as the input ``data``, where
+        `True` values indicate masked pixels.  Masked pixels will not be
+        included in any source.
 
     Returns
     -------
@@ -121,6 +128,12 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
 
     image = (filter_data(data, filter_kernel, mode='constant', fill_value=0.0,
                          check_normalization=True) > threshold)
+
+    if mask is not None:
+        if mask.shape != image.shape:
+            raise ValueError('mask must have the same shape as the input '
+                             'image.')
+        image &= ~mask
 
     if connectivity == 4:
         selem = ndimage.generate_binary_structure(2, 1)
