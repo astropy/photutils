@@ -494,7 +494,7 @@ just the flux and center positions. While a more realistic use case might be
 fitting sky backgrounds, or shape parameters of galaxies, here we use the
 ``sigma`` parameter in `~photutils.psf.IntegratedGaussianPRF` as the simplest
 possible example of this feature. (For actual PSF photometry of stars you would
-*not* want to do this, because you the shape of the PSF should be set by bright
+*not* want to do this, because the shape of the PSF should be set by bright
 stars or an optical model and held fixed when fitting.)
 
 First, let us instantiate a PSF model object:
