@@ -673,7 +673,7 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
     yname : str or None
         The name of the ``psfmodel`` parameter that corresponds to the
         y-axis center of the PSF.  If None, the model will be assumed to
-        be centered at x=0, and a new parameter will be added for the
+        be centered at y=0, and a new parameter will be added for the
         offset.
     fluxname : str or None
         The name of the ``psfmodel`` parameter that corresponds to the
