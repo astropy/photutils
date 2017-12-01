@@ -1,7 +1,8 @@
-:orphan:
+SceneMaker
+==========
 
-BlockClassName
-==============
+This object is not currently in the block diagram, as it represents a step
+beyond the "baseline" PSF fitting machinery.
 
 [Link to code if it exists]
 

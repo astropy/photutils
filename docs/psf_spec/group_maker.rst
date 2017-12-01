@@ -1,7 +1,5 @@
-:orphan:
-
-BlockClassName
-==============
+GroupMaker
+==========
 
 [Link to code if it exists]
 

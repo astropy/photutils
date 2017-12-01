@@ -1,7 +1,5 @@
-:orphan:
-
-BlockClassName
-==============
+PsfModel
+========
 
 [Link to code if it exists]
 

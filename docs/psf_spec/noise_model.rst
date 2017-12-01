@@ -1,7 +1,5 @@
-:orphan:
-
-BlockClassName
-==============
+NoiseModel
+==========
 
 [Link to code if it exists]
 

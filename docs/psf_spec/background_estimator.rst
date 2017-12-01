@@ -1,7 +1,5 @@
-:orphan:
-
-BlockClassName
-==============
+BackgroundEstimator
+===================
 
 [Link to code if it exists]
 

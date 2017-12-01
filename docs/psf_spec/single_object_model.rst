@@ -1,7 +1,5 @@
-:orphan:
-
-BlockClassName
-==============
+SingleObjectModel
+=================
 
 [Link to code if it exists]
 
