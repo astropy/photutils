@@ -147,6 +147,8 @@ to customize any stage of the photometry process.  This makes the machinery very
 flexible, while still providing a "batteries included" approach with a default
 implementation that's suitable for many use cases.
 
+There is also a specification of the block diagrams at :doc:`psf_spec/index`
+
 Basic Usage
 ^^^^^^^^^^^
 
