@@ -1,7 +1,13 @@
 PsfModel
 ========
 
-[Link to code if it exists]
+EJT: the PSF models in the current ``photutils.psf`` are not explicitly
+defined as a specific class, but any 2D model (inputs: x,y, output: flux) can
+be considered a PSF Model.  The `~photutils.psf.PRFAdapter` class is the
+clearest application specific example, however, and demonstrates the required
+convention for *names* of the PSF model's parameters.  Hopefully that class can
+be used *directly* as this block, as it is meant to wrap any arbitrary other
+models to make it compatible with the machinery. 
 
 A single sentence summarizing this block.
 

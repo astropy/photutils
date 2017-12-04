@@ -1,7 +1,7 @@
 CullerAndEnder
 ==============
 
-[Link to code if it exists]
+EJT: No currently existing code in `photutils`.
 
 A single sentence summarizing this block.
 

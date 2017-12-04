@@ -1,7 +1,14 @@
 SingleObjectModel
 =================
 
-[Link to code if it exists]
+EJT: This does not exist in the current `photutils.psf` model, because there is not
+an explicit separate single object model.  Instead the psf_model is used
+directly, as the "single object model" is implicitly a delta function.  To
+maintain backwards-compatibility, the new ``SingleObjectModel`` will need to
+default to the "point source" object model, and behave the same as the current
+behavior of a model with shape parameters is provided as the "psf model".  But
+arguable that is *not* the desired behavior in the "new" paradigm that combines
+the `SceneMaker`and the `SingleObjectModel`. 
 
 A single sentence summarizing this block.
 

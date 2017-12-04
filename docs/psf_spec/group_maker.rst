@@ -1,7 +1,8 @@
 GroupMaker
 ==========
 
-[Link to code if it exists]
+EJT: Documented as the `__call__` method of ``GroupStarsBase`` - see
+https://photutils.readthedocs.io/en/stable/api/photutils.psf.groupstars.GroupStarsBase.html
 
 A single sentence summarizing this block.
 

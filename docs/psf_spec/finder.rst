@@ -1,7 +1,9 @@
 ObjectFinder
 ============
 
-[Link to code if it exists]
+EJT: Existing code documented at
+https://photutils.readthedocs.io/en/stable/api/photutils.detection.StarFinderBase.html
+- see the ``find_stars`` function for the basic API.
 
 A single sentence summarizing this block.
 
