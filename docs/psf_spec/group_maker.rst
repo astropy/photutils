@@ -3,6 +3,9 @@ GroupMaker
 
 EJT: Documented as the `__call__` method of ``GroupStarsBase`` - see
 https://photutils.readthedocs.io/en/stable/api/photutils.psf.groupstars.GroupStarsBase.html
+It'll be substantial work to re-design the photometry loops if this is changed
+in a backwards-incompatible manner, but of course that's possible if there's a
+good reason for it.
 
 A single sentence summarizing this block.
 
@@ -59,3 +62,12 @@ Returns
 
 first_return : type
     Description ...
+
+
+Example Usage
+-------------
+
+An example of *using* the block should be provided.  This needs to be after a
+``::`` in the rst and indented::
+
+    print("This is example code")

@@ -7,7 +7,7 @@ be considered a PSF Model.  The `~photutils.psf.PRFAdapter` class is the
 clearest application specific example, however, and demonstrates the required
 convention for *names* of the PSF model's parameters.  Hopefully that class can
 be used *directly* as this block, as it is meant to wrap any arbitrary other
-models to make it compatible with the machinery. 
+models to make it compatible with the machinery.
 
 A single sentence summarizing this block.
 
@@ -64,3 +64,12 @@ Returns
 
 first_return : type
     Description ...
+
+
+Example Usage
+-------------
+
+An example of *using* the block should be provided.  This needs to be after a
+``::`` in the rst and indented::
+
+    print("This is example code")

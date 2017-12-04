@@ -60,3 +60,12 @@ Returns
 
 first_return : type
     Description ...
+
+
+Example Usage
+-------------
+
+An example of *using* the block should be provided.  This needs to be after a
+``::`` in the rst and indented::
+
+    print("This is example code")
