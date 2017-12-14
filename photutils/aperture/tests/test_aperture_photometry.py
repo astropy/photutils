@@ -509,8 +509,7 @@ def test_basic_circular_aperture_photometry_unit():
 
     table1 = aperture_photometry(data1, CircularAperture(position, radius),
                                  unit=unit)
-    table2 = aperture_photometry(data2, CircularAperture(position, radius),
-                                 unit=unit)
+    table2 = aperture_photometry(data2, CircularAperture(position, radius))
 
     assert_allclose(table1['aperture_sum'].value, true_flux)
     assert_allclose(table2['aperture_sum'].value, true_flux)
