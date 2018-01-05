@@ -42,7 +42,7 @@ class GroupStarsBase(object):
 
 class DAOGroup(GroupStarsBase):
     """
-    This is class implements the DAOGROUP algorithm presented by
+    This class implements the DAOGROUP algorithm presented by
     Stetson (1987).
 
     The method ``group_stars`` divides an entire starlist into sets of
