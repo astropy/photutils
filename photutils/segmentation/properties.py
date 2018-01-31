@@ -1162,11 +1162,11 @@ def source_properties(data, segment_img, error=None, mask=None,
     >>> import numpy as np
     >>> from photutils import SegmentationImage, source_properties
     >>> image = np.arange(16.).reshape(4, 4)
-    >>> print(image)
-    [[  0.   1.   2.   3.]
-     [  4.   5.   6.   7.]
-     [  8.   9.  10.  11.]
-     [ 12.  13.  14.  15.]]
+    >>> print(image)  # doctest: +SKIP
+    [[ 0.  1.  2.  3.]
+     [ 4.  5.  6.  7.]
+     [ 8.  9. 10. 11.]
+     [12. 13. 14. 15.]]
     >>> segm = SegmentationImage([[1, 1, 0, 0],
     ...                           [1, 0, 0, 2],
     ...                           [0, 0, 2, 2],
@@ -1412,11 +1412,11 @@ class SourceCatalog(object):
         >>> import numpy as np
         >>> from photutils import source_properties
         >>> image = np.arange(16.).reshape(4, 4)
-        >>> print(image)
-        [[  0.   1.   2.   3.]
-        [  4.   5.   6.   7.]
-        [  8.   9.  10.  11.]
-        [ 12.  13.  14.  15.]]
+        >>> print(image)  # doctest: +SKIP
+        [[ 0.  1.  2.  3.]
+         [ 4.  5.  6.  7.]
+         [ 8.  9. 10. 11.]
+         [12. 13. 14. 15.]]
         >>> segm = SegmentationImage([[1, 1, 0, 0],
         ...                           [1, 0, 0, 2],
         ...                           [0, 0, 2, 2],
