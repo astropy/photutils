@@ -1179,11 +1179,11 @@ def source_properties(data, segment_img, error=None, mask=None,
     >>> props[0].id    # id corresponds to segment label number
     1
     >>> props[0].centroid    # doctest: +FLOAT_CMP
-    <Quantity [ 0.8, 0.2] pix>
+    <Quantity [0.8, 0.2] pix>
     >>> props[0].source_sum    # doctest: +FLOAT_CMP
     5.0
     >>> props[0].area    # doctest: +FLOAT_CMP
-    <Quantity 3.0 pix2>
+    <Quantity 3. pix2>
     >>> props[0].max_value    # doctest: +FLOAT_CMP
     4.0
 
@@ -1193,11 +1193,11 @@ def source_properties(data, segment_img, error=None, mask=None,
     >>> props[1].id    # id corresponds to segment label number
     2
     >>> props[1].centroid    # doctest: +FLOAT_CMP
-    <Quantity [ 2.36363636, 2.09090909] pix>
+    <Quantity [2.36363636, 2.09090909] pix>
     >>> props[1].perimeter    # doctest: +FLOAT_CMP
-    <Quantity 5.414213562373095 pix>
+    <Quantity 5.41421356 pix>
     >>> props[1].orientation    # doctest: +FLOAT_CMP
-    <Quantity -0.7417593069227176 rad>
+    <Quantity -0.74175931 rad>
     """
 
     if not isinstance(segment_img, SegmentationImage):
