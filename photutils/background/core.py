@@ -477,14 +477,14 @@ class StdBackgroundRMS(BackgroundRMSBase):
 
     >>> bkgrms_value = bkgrms.calc_background_rms(data)
     >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
-    28.866070047722118
+    28.86607004772212
 
     Alternatively, the background RMS value can be calculated by calling
     the class instance as a function, e.g.:
 
     >>> bkgrms_value = bkgrms(data)
     >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
-    28.866070047722118
+    28.86607004772212
     """
 
     def calc_background_rms(self, data, axis=None):
@@ -531,14 +531,14 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
 
     >>> bkgrms_value = bkgrms.calc_background_rms(data)
     >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
-    37.065055462640053
+    37.06505546264005
 
     Alternatively, the background RMS value can be calculated by calling
     the class instance as a function, e.g.:
 
     >>> bkgrms_value = bkgrms(data)
     >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
-    37.065055462640053
+    37.06505546264005
     """
 
     def calc_background_rms(self, data, axis=None):
@@ -580,14 +580,14 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
 
     >>> bkgrms_value = bkgrms.calc_background_rms(data)
     >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
-    30.094338485893392
+    30.09433848589339
 
     Alternatively, the background RMS value can be calculated by calling
     the class instance as a function, e.g.:
 
     >>> bkgrms_value = bkgrms(data)
     >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
-    30.094338485893392
+    30.09433848589339
     """
 
     def __init__(self, c=9.0, M=None, **kwargs):
