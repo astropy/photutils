@@ -143,19 +143,20 @@ sigma above the background and a separated by at least 2 pixels:
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     >>> threshold = median + (10.0 * std)
     >>> tbl = find_peaks(data, threshold, box_size=5)
+    >>> tbl['peak_value'].info.format = '%.8g'  # for consistent table output
     >>> print(tbl[:10])    # print only the first 10 peaks
-    x_peak y_peak   peak_value
-    ------ ------ -------------
-       233      0 27.4778521972
-       236      1  27.339519624
-       289     22 35.8532759965
-       442     31 30.2399941373
-         1     40 35.5482863002
-        89     59 41.2190469279
-         7     70 33.2880647048
-       258     75 26.5624808518
-       463     80 28.7588206692
-       182     93 38.0885687202
+    x_peak y_peak peak_value
+    ------ ------ ----------
+       233      0  27.477852
+       236      1   27.33952
+       289     22  35.853276
+       442     31  30.239994
+         1     40  35.548286
+        89     59  41.219047
+         7     70  33.288065
+       258     75  26.562481
+       463     80  28.758821
+       182     93  38.088569
 
 And let's plot the location of the detected peaks in the image:
 
