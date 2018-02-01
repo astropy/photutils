@@ -19,9 +19,8 @@ from astropy.nddata import NDData
 from astropy.table import Table
 from astropy.tests.helper import remote_data
 import astropy.units as u
-from astropy.utils.compat import NUMPY_LT_1_14
+from astropy.utils import minversion
 from astropy.wcs.utils import pixel_to_skycoord
-
 
 from ..core import aperture_photometry
 from ..circle import (CircularAperture, CircularAnnulus, SkyCircularAperture,
@@ -39,6 +38,7 @@ try:
 except ImportError:
     HAS_MATPLOTLIB = False
 
+NUMPY_LT_1_14 = not minversion('numpy', '1.14dev')
 
 APERTURE_CL = [CircularAperture,
                CircularAnnulus,
@@ -46,7 +46,6 @@ APERTURE_CL = [CircularAperture,
                EllipticalAnnulus,
                RectangularAperture,
                RectangularAnnulus]
-
 
 TEST_APERTURES = list(zip(APERTURE_CL, ((3.,), (3., 5.),
                                         (3., 5., 1.), (3., 5., 4., 1.),
