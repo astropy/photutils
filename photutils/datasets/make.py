@@ -214,14 +214,16 @@ def make_random_models_table(n_sources, param_ranges, random_state=None):
     >>> param_ranges = OrderedDict(param_ranges)
     >>> sources = make_random_models_table(n_sources, param_ranges,
     ...                                    random_state=12345)
+    >>> for col in sources.colnames:
+    ...     sources[col].info.format = '%.8g'  # for consistent table output
     >>> print(sources)
-      amplitude       x_mean        y_mean    ...    y_stddev       theta
-    ------------- ------------- ------------- ... ------------- --------------
-    964.808046409  297.77235149 224.314442781 ... 3.56990131158  2.29238586176
-    658.187777291 482.257259868 288.392020822 ... 3.86981448325  3.12278892062
-    591.959405839 326.588548436 2.51648938247 ... 2.87039602888  2.12646148032
-    602.280139277 374.453318767 31.9333130093 ... 2.30233871016  2.48444221236
-    783.862514541 326.784935426 89.6111141308 ... 2.75857842354 0.536942976674
+    amplitude   x_mean    y_mean   x_stddev  y_stddev   theta
+    --------- --------- --------- --------- --------- ----------
+    964.80805 297.77235 224.31444 3.6256447 3.5699013  2.2923859
+    658.18778 482.25726 288.39202 4.2392502 3.8698145  3.1227889
+    591.95941 326.58855 2.5164894 4.4887037  2.870396  2.1264615
+    602.28014 374.45332 31.933313 4.8585904 2.3023387  2.4844422
+    783.86251 326.78494 89.611114 3.8947414 2.7585784 0.53694298
     """
 
     prng = check_random_state(random_state)
@@ -302,14 +304,16 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
     >>> param_ranges = OrderedDict(param_ranges)
     >>> sources = make_random_gaussians_table(n_sources, param_ranges,
     ...                                       random_state=12345)
+    >>> for col in sources.colnames:
+    ...     sources[col].info.format = '%.8g'  # for consistent table output
     >>> print(sources)
-      amplitude       x_mean        y_mean    ...    y_stddev       theta
-    ------------- ------------- ------------- ... ------------- --------------
-    964.808046409  297.77235149 224.314442781 ... 3.56990131158  2.29238586176
-    658.187777291 482.257259868 288.392020822 ... 3.86981448325  3.12278892062
-    591.959405839 326.588548436 2.51648938247 ... 2.87039602888  2.12646148032
-    602.280139277 374.453318767 31.9333130093 ... 2.30233871016  2.48444221236
-    783.862514541 326.784935426 89.6111141308 ... 2.75857842354 0.536942976674
+    amplitude   x_mean    y_mean   x_stddev  y_stddev   theta
+    --------- --------- --------- --------- --------- ----------
+    964.80805 297.77235 224.31444 3.6256447 3.5699013  2.2923859
+    658.18778 482.25726 288.39202 4.2392502 3.8698145  3.1227889
+    591.95941 326.58855 2.5164894 4.4887037  2.870396  2.1264615
+    602.28014 374.45332 31.933313 4.8585904 2.3023387  2.4844422
+    783.86251 326.78494 89.611114 3.8947414 2.7585784 0.53694298
 
     To specifying the flux range instead of the amplitude range:
 
@@ -322,14 +326,16 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
     >>> param_ranges = OrderedDict(param_ranges)
     >>> sources = make_random_gaussians_table(n_sources, param_ranges,
     ...                                       random_state=12345)
+    >>> for col in sources.colnames:
+    ...     sources[col].info.format = '%.8g'  # for consistent table output
     >>> print(sources)
-        flux         x_mean        y_mean    ...     theta        amplitude
-    ------------- ------------- ------------- ... -------------- -------------
-    964.808046409  297.77235149 224.314442781 ...  2.29238586176 11.8636845806
-    658.187777291 482.257259868 288.392020822 ...  3.12278892062 6.38543882684
-    591.959405839 326.588548436 2.51648938247 ...  2.12646148032 7.31222089567
-    602.280139277 374.453318767 31.9333130093 ...  2.48444221236 8.56917814506
-    783.862514541 326.784935426 89.6111141308 ... 0.536942976674 11.6117069638
+       flux     x_mean    y_mean   x_stddev  y_stddev   theta    amplitude
+    --------- --------- --------- --------- --------- ---------- ---------
+    964.80805 297.77235 224.31444 3.6256447 3.5699013  2.2923859 11.863685
+    658.18778 482.25726 288.39202 4.2392502 3.8698145  3.1227889 6.3854388
+    591.95941 326.58855 2.5164894 4.4887037  2.870396  2.1264615 7.3122209
+    602.28014 374.45332 31.933313 4.8585904 2.3023387  2.4844422 8.5691781
+    783.86251 326.78494 89.611114 3.8947414 2.7585784 0.53694298 11.611707
 
     Note that in this case the output table contains both a flux and
     amplitude column.  The flux column will be ignored when generating
@@ -694,10 +700,10 @@ def make_wcs(shape, galactic=False):
     >>> from photutils.datasets import make_wcs
     >>> shape = (100, 100)
     >>> wcs = make_wcs(shape)
-    >>> print(wcs.wcs.crpix)
-    [ 50.  50.]
-    >>> print(wcs.wcs.crval)
-    [ 197.8925       -1.36555556]
+    >>> print(wcs.wcs.crpix)  # doctest: +FLOAT_CMP
+    [50. 50.]
+    >>> print(wcs.wcs.crval)  # doctest: +FLOAT_CMP
+    [197.8925      -1.36555556]
     """
 
     wcs = WCS(naxis=2)

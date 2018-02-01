@@ -76,18 +76,18 @@ background level of 5::
 
     >>> import numpy as np
     >>> from astropy.stats import biweight_location
-    >>> print(np.median(data))
-    5.2255295184
-    >>> print(biweight_location(data))
-    5.1867597555
+    >>> print(np.median(data))  # doctest: +FLOAT_CMP
+    5.225529518399048
+    >>> print(biweight_location(data))  # doctest: +FLOAT_CMP
+    5.186759755495727
 
 Similarly, using the median absolute deviation to estimate the
 background noise level gives a value that is larger than the true
 value of 2::
 
     >>> from astropy.stats import mad_std
-    >>> print(mad_std(data))    # doctest: +FLOAT_CMP
-    2.1443728009
+    >>> print(mad_std(data))  # doctest: +FLOAT_CMP
+    2.1443760096598914
 
 
 Sigma Clipping Sources
@@ -103,8 +103,8 @@ levels::
 
     >>> from astropy.stats import sigma_clipped_stats
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, iters=5)
-    >>> print((mean, median, std))    # doctest: +FLOAT_CMP
-    (5.1991386516217908, 5.1555874333582912, 2.0942752121329691)
+    >>> print((mean, median, std))  # doctest: +FLOAT_CMP
+    (5.199138651621793, 5.155587433358291, 2.094275212132969)
 
 
 Masking Sources
@@ -132,8 +132,8 @@ source detections and dilate using a 11x11 box:
     >>> from photutils import make_source_mask
     >>> mask = make_source_mask(data, snr=2, npixels=5, dilate_size=11)
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, mask=mask)
-    >>> print((mean, median, std))    # doctest: +FLOAT_CMP
-    (5.0010134754755695, 5.0005849056043763, 1.970887100626572)
+    >>> print((mean, median, std))  # doctest: +FLOAT_CMP
+    (5.001013475475569, 5.000584905604376, 1.970887100626572)
 
 Of course, the source detection and masking procedure can be iterated
 further.  Even with one iteration we are within 0.02% of the true
@@ -229,7 +229,7 @@ background gradient to the image defined above::
     >>> y, x = np.mgrid[:ny, :nx]
     >>> gradient =  x * y / 5000.
     >>> data2 = data + gradient
-    >>> plt.imshow(data2, norm=norm, origin='lower', cmap='Greys_r')    # doctest: +SKIP
+    >>> plt.imshow(data2, norm=norm, origin='lower', cmap='Greys_r')  # doctest: +SKIP
 
 .. plot::
 
@@ -271,10 +271,10 @@ attributes, respectively:
 
 .. doctest-requires:: scipy
 
-    >>> print(bkg.background_median)
-    10.8219978626
-    >>> print(bkg.background_rms_median)
-    2.29882053968
+    >>> print(bkg.background_median)  # doctest: +FLOAT_CMP
+    10.821997862561792
+    >>> print(bkg.background_rms_median)  # doctest: +FLOAT_CMP
+    2.298820539683762
 
 Let's plot the background image:
 
@@ -348,8 +348,8 @@ Let's create such an image and plot it (NOTE: this example requires
 
     >>> from scipy.ndimage import rotate
     >>> data3 = rotate(data2, -45.)
-    >>> norm = ImageNormalize(stretch=SqrtStretch())    # doctest: +SKIP
-    >>> plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm)    # doctest: +SKIP
+    >>> norm = ImageNormalize(stretch=SqrtStretch())  # doctest: +SKIP
+    >>> plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm)  # doctest: +SKIP
 
 .. plot::
 
@@ -386,8 +386,8 @@ apply the coverage mask to the returned background image:
 .. doctest-requires:: scipy
 
     >>> back3 = bkg3.background * ~mask
-    >>> norm = ImageNormalize(stretch=SqrtStretch())    # doctest: +SKIP
-    >>> plt.imshow(back3, origin='lower', cmap='Greys_r', norm=norm)    # doctest: +SKIP
+    >>> norm = ImageNormalize(stretch=SqrtStretch())  # doctest: +SKIP
+    >>> plt.imshow(back3, origin='lower', cmap='Greys_r', norm=norm)  # doctest: +SKIP
 
 .. plot::
 

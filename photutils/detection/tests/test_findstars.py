@@ -46,8 +46,10 @@ class TestDAOStarFinder(object):
                   '.txt'.format(threshold, fwhm))
         datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
         t_ref = Table.read(datafn, format='ascii')
-        assert_allclose(np.array(t).astype(np.float),
-                        np.array(t_ref).astype(np.float))
+
+        assert t.colnames == t_ref.colnames
+        for col in t.colnames:
+            assert_allclose(t[col], t_ref[col])
 
     def test_daofind_include_border(self):
         starfinder = DAOStarFinder(threshold=10, fwhm=2, sigma_radius=1.5,
@@ -100,8 +102,10 @@ class TestIRAFStarFinder(object):
                   '.txt'.format(threshold, fwhm))
         datafn = op.join(op.dirname(op.abspath(__file__)), 'data', datafn)
         t_ref = Table.read(datafn, format='ascii')
-        assert_allclose(np.array(t).astype(np.float),
-                        np.array(t_ref).astype(np.float))
+
+        assert t.colnames == t_ref.colnames
+        for col in t.colnames:
+            assert_allclose(t[col], t_ref[col])
 
     def test_irafstarfind_nosources(self):
         data = np.ones((3, 3))
