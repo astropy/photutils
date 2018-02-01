@@ -160,7 +160,7 @@ by a factor of 5 (``subpixels=5``) in each dimension::
 
     >>> phot_table = aperture_photometry(data, apertures, method='subpixel',
     ...                                  subpixels=5)
-    >>> print(phot_table)
+    >>> print(phot_table)  # doctest: +SKIP
      id xcenter ycenter aperture_sum
           pix     pix
     --- ------- ------- ------------
@@ -299,7 +299,7 @@ background times the circular aperture area::
     >>> final_sum = phot_table['aperture_sum_0'] - bkg_sum
     >>> phot_table['residual_aperture_sum'] = final_sum
     >>> phot_table['residual_aperture_sum'].info.format = '%.8g'  # for consistent table output
-    >>> print(phot_table['residual_aperture_sum'])
+    >>> print(phot_table['residual_aperture_sum'])  # doctest: +SKIP
     residual_aperture_sum
     ---------------------
            -7.1054274e-15
