@@ -121,6 +121,9 @@ matrix:
         - stage: Tests with other Python/Numpy versions
           env: NUMPY_VERSION=1.12
 
+        - stage: Tests with other Python/Numpy versions
+          env: NUMPY_VERSION=1.13
+
         # Try numpy pre-release
         - stage: Tests with other Python/Numpy versions
           env: NUMPY_VERSION=prerelease
