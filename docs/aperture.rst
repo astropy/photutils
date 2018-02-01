@@ -122,12 +122,13 @@ with the data and the apertures::
     >>> from photutils import aperture_photometry
     >>> data = np.ones((100, 100))
     >>> phot_table = aperture_photometry(data, apertures)
-    >>> print(phot_table)    # doctest: +SKIP
-     id xcenter ycenter  aperture_sum
+    >>> phot_table['aperture_sum'].info.format = '%.8g'  # for consistent table output
+    >>> print(phot_table)
+     id xcenter ycenter aperture_sum
           pix     pix
-    --- ------- ------- -------------
-      1    30.0    30.0 28.2743338823
-      2    40.0    40.0 28.2743338823
+    --- ------- ------- ------------
+      1    30.0    30.0    28.274334
+      2    40.0    40.0    28.274334
 
 This function returns the results of the photometry in an Astropy
 `~astropy.table.QTable`.  In this example, the table has four columns,
@@ -159,7 +160,7 @@ by a factor of 5 (``subpixels=5``) in each dimension::
 
     >>> phot_table = aperture_photometry(data, apertures, method='subpixel',
     ...                                  subpixels=5)
-    >>> print(phot_table)    # doctest: +SKIP
+    >>> print(phot_table)
      id xcenter ycenter aperture_sum
           pix     pix
     --- ------- ------- ------------
@@ -192,12 +193,14 @@ Suppose that we wish to use three circular apertures, with radii of 3,
     >>> radii = [3., 4., 5.]
     >>> apertures = [CircularAperture(positions, r=r) for r in radii]
     >>> phot_table = aperture_photometry(data, apertures)
-    >>> print(phot_table)    # doctest: +SKIP
+    >>> for col in phot_table.colnames:
+    ...     phot_table[col].info.format = '%.8g'  # for consistent table output
+    >>> print(phot_table)
      id xcenter ycenter aperture_sum_0 aperture_sum_1 aperture_sum_2
           pix     pix
     --- ------- ------- -------------- -------------- --------------
-      1    30.0    30.0  28.2743338823  50.2654824574  78.5398163397
-      2    40.0    40.0  28.2743338823  50.2654824574  78.5398163397
+      1      30      30      28.274334      50.265482      78.539816
+      2      40      40      28.274334      50.265482      78.539816
 
 For multiple apertures, the output table column names are appended
 with the ``positions`` index.
@@ -212,12 +215,14 @@ specify ``a``, ``b``, and ``theta``::
     >>> theta = np.pi / 4.
     >>> apertures = EllipticalAperture(positions, a, b, theta)
     >>> phot_table = aperture_photometry(data, apertures)
-    >>> print(phot_table)    # doctest: +SKIP
-     id xcenter ycenter  aperture_sum
+    >>> for col in phot_table.colnames:
+    ...     phot_table[col].info.format = '%.8g'  # for consistent table output
+    >>> print(phot_table)
+     id xcenter ycenter aperture_sum
           pix     pix
-    --- ------- ------- -------------
-      1    30.0    30.0 47.1238898038
-      2    40.0    40.0 47.1238898038
+    --- ------- ------- ------------
+      1      30      30     47.12389
+      2      40      40     47.12389
 
 Again, for multiple apertures one should input a list of aperture
 objects, each with identical positions::
@@ -228,12 +233,14 @@ objects, each with identical positions::
     >>> apertures = [EllipticalAperture(positions, a=ai, b=bi, theta=theta)
     ...              for (ai, bi) in zip(a, b)]
     >>> phot_table = aperture_photometry(data, apertures)
-    >>> print(phot_table)    # doctest: +SKIP
+    >>> for col in phot_table.colnames:
+    ...     phot_table[col].info.format = '%.8g'  # for consistent table output
+    >>> print(phot_table)
      id xcenter ycenter aperture_sum_0 aperture_sum_1 aperture_sum_2
           pix     pix
     --- ------- ------- -------------- -------------- --------------
-      1    30.0    30.0  47.1238898038  75.3982236862  109.955742876
-      2    40.0    40.0  47.1238898038  75.3982236862  109.955742876
+      1      30      30       47.12389      75.398224      109.95574
+      2      40      40       47.12389      75.398224      109.95574
 
 
 Background Subtraction
@@ -267,12 +274,14 @@ We then perform the photometry in both apertures::
 
     >>> apers = [apertures, annulus_apertures]
     >>> phot_table = aperture_photometry(data, apers)
-    >>> print(phot_table)    # doctest: +SKIP
+    >>> for col in phot_table.colnames:
+    ...     phot_table[col].info.format = '%.8g'  # for consistent table output
+    >>> print(phot_table)
      id xcenter ycenter aperture_sum_0 aperture_sum_1
           pix     pix
     --- ------- ------- -------------- --------------
-      1    30.0    30.0  28.2743338823  87.9645943005
-      2    40.0    40.0  28.2743338823  87.9645943005
+      1      30      30      28.274334      87.964594
+      2      40      40      28.274334      87.964594
 
 Note that we cannot simply subtract the aperture sums because the
 apertures have different areas.
@@ -289,11 +298,12 @@ background times the circular aperture area::
     >>> bkg_sum = bkg_mean * apertures.area()
     >>> final_sum = phot_table['aperture_sum_0'] - bkg_sum
     >>> phot_table['residual_aperture_sum'] = final_sum
-    >>> print(phot_table['residual_aperture_sum'])    # doctest: +FLOAT_CMP
+    >>> phot_table['residual_aperture_sum'].info.format = '%.8g'  # for consistent table output
+    >>> print(phot_table['residual_aperture_sum'])
     residual_aperture_sum
     ---------------------
-        -7.1054273576e-15
-        -7.1054273576e-15
+           -7.1054274e-15
+           -7.1054274e-15
 
 The result here should be zero because all of the data values are 1.0
 (the tiny difference from 0.0 is due to numerical precision).
@@ -316,12 +326,14 @@ pixel's value and saved it in the array ``error``::
 
     >>> error = 0.1 * data
     >>> phot_table = aperture_photometry(data, apertures, error=error)
-    >>> print(phot_table)    # doctest: +SKIP
-     id xcenter ycenter  aperture_sum aperture_sum_err
+    >>> for col in phot_table.colnames:
+    ...     phot_table[col].info.format = '%.8g'  # for consistent table output
+    >>> print(phot_table)
+     id xcenter ycenter aperture_sum aperture_sum_err
           pix     pix
-    --- ------- ------- ------------- ----------------
-      1    30.0    30.0 28.2743338823   0.531736155272
-      2    40.0    40.0 28.2743338823   0.531736155272
+    --- ------- ------- ------------ ----------------
+      1      30      30    28.274334       0.53173616
+      2      40      40    28.274334       0.53173616
 
 ``'aperture_sum_err'`` values are given by:
 
@@ -363,18 +375,20 @@ photometry by providing an image mask via the ``mask`` keyword::
     >>> data[2, 2] = 100.   # bad pixel
     >>> mask[2, 2] = True
     >>> t1 = aperture_photometry(data, aperture, mask=mask)
-    >>> print(t1['aperture_sum'])    # doctest: +FLOAT_CMP
-     aperture_sum
-     -------------
-     11.5663706144
+    >>> t1['aperture_sum'].info.format = '%.8g'  # for consistent table output
+    >>> print(t1['aperture_sum'])
+    aperture_sum
+    ------------
+       11.566371
 
 The result is very different if a ``mask`` image is not provided::
 
     >>> t2 = aperture_photometry(data, aperture)
-    >>> print(t2['aperture_sum'])    # doctest: +FLOAT_CMP
+    >>> t2['aperture_sum'].info.format = '%.8g'  # for consistent table output
+    >>> print(t2['aperture_sum'])
     aperture_sum
-    -------------
-    111.566370614
+    ------------
+       111.56637
 
 
 Aperture Photometry Using Sky Coordinates

@@ -95,15 +95,15 @@ class ShepardIDWInterpolator(object):
         >>> f(0.4)    # doctest: +FLOAT_CMP
         0.38862424043228855
         >>> np.sin(0.4)   # doctest: +FLOAT_CMP
-        0.38941834230865052
+        0.3894183423086505
 
         >>> xi = np.random.random(4)
-        >>> xi
-        array([ 0.51312815,  0.66662455,  0.10590849,  0.13089495])
-        >>> f(xi)    # doctest: +FLOAT_CMP
-        array([ 0.49086423,  0.62647862,  0.1056854 ,  0.13048335])
-        >>> np.sin(xi)
-        array([ 0.49090493,  0.6183367 ,  0.10571061,  0.13052149])
+        >>> xi  # doctest: +FLOAT_CMP
+        array([0.51312815, 0.66662455, 0.10590849, 0.13089495])
+        >>> f(xi)  # doctest: +FLOAT_CMP
+        array([0.49086423, 0.62647862, 0.1056854 , 0.13048335])
+        >>> np.sin(xi)  # doctest: +FLOAT_CMP
+        array([0.49090493, 0.6183367 , 0.10571061, 0.13052149])
 
     NOTE: In the last example, ``xi`` may be a ``Nx1`` array instead of
     a 1D vector.
@@ -113,10 +113,10 @@ class ShepardIDWInterpolator(object):
         >>> pos = np.random.rand(1000, 2)
         >>> val = np.sin(pos[:, 0] + pos[:, 1])
         >>> f = idw(pos, val)
-        >>> f([0.5, 0.6])     # doctest: +FLOAT_CMP
-        0.89312649587405657
-        >>> np.sin(0.5 + 0.6)
-        0.89120736006143542
+        >>> f([0.5, 0.6])  # doctest: +FLOAT_CMP
+        0.8931264958740567
+        >>> np.sin(0.5 + 0.6)  # doctest: +FLOAT_CMP
+        0.8912073600614354
     """
 
     def __init__(self, coordinates, values, weights=None, leafsize=10):

@@ -471,16 +471,18 @@ we set it to 500 seconds):
     >>> tbl5 = cat.to_table(columns=columns)
     >>> tbl5['xcentroid'].info.format = '{:.4f}'  # optional format
     >>> tbl5['ycentroid'].info.format = '{:.4f}'
+    >>> for col in tbl5.colnames:
+    ...     tbl5[col].info.format = '%.8g'  # for consistent table output
     >>> print(tbl5)
-     id xcentroid ycentroid   source_sum  source_sum_err
+     id xcentroid ycentroid source_sum source_sum_err
            pix       pix
-    --- --------- --------- ------------- --------------
-      1  235.1877    1.0992 496.635623206  11.0788667038
-      5  258.1928   11.9618 347.611342072   10.723068215
-     20  347.1776   66.5510 415.992569678  12.1782078398
-     50  380.7969  174.4185 145.726417518  7.29536295106
-     75   32.1762  241.1585 398.411403711   11.553412812
-     80  355.6148  252.1423 906.422600037  13.7686828317
+    --- --------- --------- ---------- --------------
+      1 235.18772 1.0991962  496.63562      11.078867
+      5 258.19277 11.961767  347.61134      10.723068
+     20 347.17756 66.550958  415.99257      12.178208
+     50 380.79687 174.41851  145.72642       7.295363
+     75 32.176219 241.15849   398.4114      11.553413
+     80 355.61483 252.14225   906.4226      13.768683
 
 `~photutils.segmentation.SourceProperties.source_sum` and
 `~photutils.segmentation.SourceProperties.source_sum_err` are the
