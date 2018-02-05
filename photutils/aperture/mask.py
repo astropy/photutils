@@ -178,6 +178,8 @@ class ApertureMask(object):
         """
 
         data = np.asanyarray(data)
+        if data.ndim != 2:
+            raise ValueError('data must be a 2D array.')
 
         partial_overlap = False
         if self.bbox.ixmin < 0 or self.bbox.iymin < 0:
