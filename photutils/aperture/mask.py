@@ -94,6 +94,23 @@ class ApertureMask(object):
 
         return slices_large, slices_small
 
+    def _to_image_partial_overlap(self, image):
+        """
+        Return an image of the mask in a 2D array, where the mask
+        is not fully within the image (i.e. partial or no overlap).
+        """
+
+        # find the overlap of the mask on the output image shape
+        slices_large, slices_small = self._overlap_slices(image.shape)
+
+        if slices_small is None:
+            return None    # no overlap
+
+        # insert the mask into the output image
+        image[slices_large] = self.data[slices_small]
+
+        return image
+
     def to_image(self, shape):
         """
         Return an image of the mask in a 2D array of the given shape,
@@ -113,20 +130,17 @@ class ApertureMask(object):
         if len(shape) != 2:
             raise ValueError('input shape must have 2 elements.')
 
-        mask = np.zeros(shape)
+        image = np.zeros(shape)
+
+        if self.bbox.ixmin < 0 or self.bbox.iymin < 0:
+            return self._to_image_partial_overlap(image)
 
         try:
-            mask[self.bbox.slices] = self.data
+            image[self.bbox.slices] = self.data
         except ValueError:    # partial or no overlap
-            slices_large, slices_small = self._overlap_slices(shape)
+            image = self._to_image_partial_overlap(image)
 
-            if slices_small is None:
-                return None    # no overlap
-
-            mask = np.zeros(shape)
-            mask[slices_large] = self.data[slices_small]
-
-        return mask
+        return image
 
     def cutout(self, data, fill_value=0.):
         """
