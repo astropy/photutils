@@ -142,19 +142,29 @@ class ApertureMask(object):
 
         return image
 
-    def cutout(self, data, fill_value=0.):
+    def cutout(self, data, fill_value=0., copy=False):
         """
         Create a cutout from the input data over the mask bounding box,
         taking any edge effects into account.
 
         Parameters
         ----------
-        data : array_like or `~astropy.units.Quantity`
+        data : array_like
             A 2D array on which to apply the aperture mask.
 
         fill_value : float, optional
             The value is used to fill pixels where the aperture mask
             does not overlap with the input ``data``.  The default is 0.
+
+        copy : bool, optional
+            If `True` then the returned cutout array will always be hold
+            a copy of the input ``data``.  If `False` and the mask is
+            fully within the input ``data``, then the returned cutout
+            array will be a view into the input ``data``.  In cases
+            where the mask partially overlaps or has no overlap with the
+            input ``data``, the returned cutout array will always hold a
+            copy of the input ``data`` (i.e. this keyword has no
+            effect).
 
         Returns
         -------
@@ -176,7 +186,10 @@ class ApertureMask(object):
         if not partial_overlap:
             # try this for speed -- the result may still be a partial
             # overlap, in which case the next block will be triggered
-            cutout = data[self.bbox.slices]
+            if copy:
+                cutout = np.copy(data[self.bbox.slices])
+            else:
+                cutout = data[self.bbox.slices]
 
         if partial_overlap or (cutout.shape != self.shape):
             slices_large, slices_small = self._overlap_slices(data.shape)
@@ -184,6 +197,7 @@ class ApertureMask(object):
             if slices_small is None:
                 return None    # no overlap
 
+            # cutout is a copy
             cutout = np.zeros(self.shape, dtype=data.dtype)
             cutout[:] = fill_value
             cutout[slices_small] = data[slices_large]
