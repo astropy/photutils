@@ -154,9 +154,17 @@ class ApertureMask(object):
         """
 
         data = np.asanyarray(data)
-        cutout = data[self.bbox.slices]
 
-        if cutout.shape != self.shape:
+        partial_overlap = False
+        if self.bbox.ixmin < 0 or self.bbox.iymin < 0:
+            partial_overlap = True
+
+        if not partial_overlap:
+            # try this for speed -- the result may still be a partial
+            # overlap, in which case the next block will be triggered
+            cutout = data[self.bbox.slices]
+
+        if partial_overlap or (cutout.shape != self.shape):
             slices_large, slices_small = self._overlap_slices(data.shape)
 
             if slices_small is None:
