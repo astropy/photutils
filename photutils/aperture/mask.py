@@ -94,6 +94,23 @@ class ApertureMask(object):
 
         return slices_large, slices_small
 
+    def _to_image_partial_overlap(self, image):
+        """
+        Return an image of the mask in a 2D array, where the mask
+        is not fully within the image (i.e. partial or no overlap).
+        """
+
+        # find the overlap of the mask on the output image shape
+        slices_large, slices_small = self._overlap_slices(image.shape)
+
+        if slices_small is None:
+            return None    # no overlap
+
+        # insert the mask into the output image
+        image[slices_large] = self.data[slices_small]
+
+        return image
+
     def to_image(self, shape):
         """
         Return an image of the mask in a 2D array of the given shape,
@@ -113,34 +130,41 @@ class ApertureMask(object):
         if len(shape) != 2:
             raise ValueError('input shape must have 2 elements.')
 
-        mask = np.zeros(shape)
+        image = np.zeros(shape)
+
+        if self.bbox.ixmin < 0 or self.bbox.iymin < 0:
+            return self._to_image_partial_overlap(image)
 
         try:
-            mask[self.bbox.slices] = self.data
+            image[self.bbox.slices] = self.data
         except ValueError:    # partial or no overlap
-            slices_large, slices_small = self._overlap_slices(shape)
+            image = self._to_image_partial_overlap(image)
 
-            if slices_small is None:
-                return None    # no overlap
+        return image
 
-            mask = np.zeros(shape)
-            mask[slices_large] = self.data[slices_small]
-
-        return mask
-
-    def cutout(self, data, fill_value=0.):
+    def cutout(self, data, fill_value=0., copy=False):
         """
         Create a cutout from the input data over the mask bounding box,
         taking any edge effects into account.
 
         Parameters
         ----------
-        data : array_like or `~astropy.units.Quantity`
+        data : array_like
             A 2D array on which to apply the aperture mask.
 
         fill_value : float, optional
             The value is used to fill pixels where the aperture mask
             does not overlap with the input ``data``.  The default is 0.
+
+        copy : bool, optional
+            If `True` then the returned cutout array will always be hold
+            a copy of the input ``data``.  If `False` and the mask is
+            fully within the input ``data``, then the returned cutout
+            array will be a view into the input ``data``.  In cases
+            where the mask partially overlaps or has no overlap with the
+            input ``data``, the returned cutout array will always hold a
+            copy of the input ``data`` (i.e. this keyword has no
+            effect).
 
         Returns
         -------
@@ -154,14 +178,28 @@ class ApertureMask(object):
         """
 
         data = np.asanyarray(data)
-        cutout = data[self.bbox.slices]
+        if data.ndim != 2:
+            raise ValueError('data must be a 2D array.')
 
-        if cutout.shape != self.shape:
+        partial_overlap = False
+        if self.bbox.ixmin < 0 or self.bbox.iymin < 0:
+            partial_overlap = True
+
+        if not partial_overlap:
+            # try this for speed -- the result may still be a partial
+            # overlap, in which case the next block will be triggered
+            if copy:
+                cutout = np.copy(data[self.bbox.slices])
+            else:
+                cutout = data[self.bbox.slices]
+
+        if partial_overlap or (cutout.shape != self.shape):
             slices_large, slices_small = self._overlap_slices(data.shape)
 
             if slices_small is None:
                 return None    # no overlap
 
+            # cutout is a copy
             cutout = np.zeros(self.shape, dtype=data.dtype)
             cutout[:] = fill_value
             cutout[slices_small] = data[slices_large]
@@ -198,4 +236,8 @@ class ApertureMask(object):
             input ``data``.
         """
 
-        return self.cutout(data, fill_value=fill_value) * self.data
+        cutout = self.cutout(data, fill_value=fill_value)
+        if cutout is None:
+            return None
+        else:
+            return cutout * self.data
