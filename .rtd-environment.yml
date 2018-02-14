@@ -4,6 +4,7 @@ channels:
     - astropy
 
 dependencies:
+    - python>=3
     - astropy
     - Cython
     - jupyter
@@ -13,4 +14,4 @@ dependencies:
     - scikit-learn
     - scipy
     - docutils
-    - Sphinx >=1.5.1,<=1.5.6
+    - Sphinx
