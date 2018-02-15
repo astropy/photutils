@@ -245,12 +245,9 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         plot_positions, ax, kwargs = self._prepare_plot(
             origin, indices, ax, fill, **kwargs)
 
-        resolution = 20
         for position in plot_positions:
-            patch_inner = mpatches.CirclePolygon(position, self.r_in,
-                                                 resolution=resolution)
-            patch_outer = mpatches.CirclePolygon(position, self.r_out,
-                                                 resolution=resolution)
+            patch_inner = mpatches.Circle(position, self.r_in)
+            patch_outer = mpatches.Circle(position, self.r_out)
             path = self._make_annulus_path(patch_inner, patch_outer)
             patch = mpatches.PathPatch(path, **kwargs)
             ax.add_patch(patch)
