@@ -630,6 +630,7 @@ class SourceProperties(object):
         minimum pixel value of the (background-subtracted) data.
         """
 
+        # NOTE:  Quantity converts this to float
         return np.argwhere(self.data_cutout_ma == self.min_value)[0] * u.pix
 
     @lazyproperty
@@ -639,6 +640,7 @@ class SourceProperties(object):
         maximum pixel value of the (background-subtracted) data.
         """
 
+        # NOTE:  Quantity converts this to float
         return np.argwhere(self.data_cutout_ma == self.max_value)[0] * u.pix
 
     @lazyproperty
