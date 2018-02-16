@@ -14,7 +14,7 @@ __all__ = ['EPSFFitter', 'EPSFBuilder']
 
 
 class EPSFFitter(object):
-    def __init__(self, psf, psf_fit_box=5, fitter=LevMarLSQFitter,
+    def __init__(self, psf, psf_fit_box=5, fitter=LevMarLSQFitter(),
                  residuals=False, **kwargs):
         self.psf = psf
         self.psf_fit_box = psf_fit_box
@@ -46,8 +46,16 @@ class EPSFBuilder(object):
         self.sigma_clip = sigma_clip
         self.smoothing_kernel = smoothing_kernel
         self.fitter = fitter
+
+        max_iters = int(max_iters)
+        if max_iters < 0:
+            raise ValueErro('max_iters must be non-negative.')
         self.max_iters = max_iters
+
+        if accuracy <= 0.0:
+            raise ValueError('accuracy must be a positive number.')
         self.accuracy = accuracy
+
         self.epsf = epsf
 
     def __call__(self, data, star_table):
@@ -202,16 +210,14 @@ class EPSFBuilder(object):
         Iteratively build the psf.
         """
 
-        nmax = int(max_iter)
-        if nmax < 0:
-            raise ValueError("'max_iter' must be non-negative")
-        if accuracy <= 0.0:
-            raise ValueError("'accuracy' must be a positive number")
-        acc2 = accuracy**2
+        self._extract_stars(data, star_table, common_catalog=None,
+                            extract_size=11, recenter=False,
+                            peak_fit_box=5, peak_search_box='fitbox',
+                            catmap={'x': 'x', 'y': 'y', 'lon': 'lon',
+                                    'lat': 'lat', 'weight': 'weight',
+                                    'id': 'id'}, cat_name_kwd='name',
+                            image_name_kwd='name')
 
-        # initialize fitter (if needed):
-        if isinstance(fitter, type):
-            fitter = fitter()
 
         # get all stars including linked stars as a flat list:
         all_stars = []
