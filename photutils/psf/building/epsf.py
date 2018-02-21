@@ -6,27 +6,12 @@ Tools to build an ePSF.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-from astropy.modeling.fitting import LevMarLSQFitter
+import numpy as np
+
 from astropy.stats import SigmaClip
 
 
-__all__ = ['EPSFFitter', 'EPSFBuilder']
-
-
-class EPSFFitter(object):
-    def __init__(self, psf, psf_fit_box=5, fitter=LevMarLSQFitter(),
-                 residuals=False, **kwargs):
-        self.psf = psf
-        self.psf_fit_box = psf_fit_box
-        self.fitter = fitter
-        self.residuals = residuals
-        self.fitter_kwargs = kwargs
-
-    def __call__(self, data, psf, star_table):
-        return self.fit_psf(data, psf, star_table)
-
-    def fit_psf(self, data, psf, star_table):
-        pass
+__all__ = ['EPSFBuilder']
 
 
 class EPSFBuilder(object):
