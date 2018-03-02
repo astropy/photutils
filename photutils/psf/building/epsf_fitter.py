@@ -25,10 +25,43 @@ def _calc_res(psf, star):
     return (star.data - star.flux * (ovx * ovy) * psfval)
 
 
+def compute_residuals(psf, stars):
+    """
+    Register the ``psf`` to intput ``stars`` and compute the difference.
+
+    Parameters
+    ----------
+    psf : FittableImageModel2D
+        Model of the PSF.
+
+    stars : Star, list of Star
+        A single :py:class:`~psfutils.catalogs.Star` object or a list of stars
+        for which resuduals need to be computed.
+
+    Returns
+    -------
+    res : numpy.ndarray, list of numpy.ndarray
+        A list of `numpy.ndarray` of residuals when input is a list of
+        :py:class:`~psfutils.catalogs.Star` objects and a single
+        `numpy.ndarray` when input is a single
+        :py:class:`~psfutils.catalogs.Star` object.
+
+    """
+    if isinstance(stars, Star):
+        res = _calc_res(psf, star)
+        return res
+
+    else:
+        res = []
+        for s in stars:
+            res.append(_calc_res(psf, s))
+
+    return res
+
+
 class EPSFFitter(object):
-    def __init__(self, psf, psf_fit_box=5, fitter=LevMarLSQFitter(),
+    def __init__(self, psf_fit_box=5, fitter=LevMarLSQFitter(),
                  residuals=False, **kwargs):
-        self.psf = psf
         self.psf_fit_box = psf_fit_box
         self.fitter = fitter
         self.residuals = residuals
