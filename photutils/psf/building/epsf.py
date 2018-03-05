@@ -7,8 +7,10 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import numpy as np
-
 from astropy.stats import SigmaClip
+from astropy.table import Table
+
+from .epsf_fitter import EPSFFitter, compute_residuals
 
 
 __all__ = ['EPSFBuilder']
@@ -33,23 +35,23 @@ class EPSFBuilder(object):
         self.fitter = fitter
 
         max_iters = int(max_iters)
-        if max_iters < 0:
-            raise ValueErro('max_iters must be non-negative.')
+        if max_iters <= 0:
+            raise ValueError('max_iters must be a positive number.')
         self.max_iters = max_iters
 
         if accuracy <= 0.0:
             raise ValueError('accuracy must be a positive number.')
-        self.accuracy = accuracy
+        self.accuracy2 = accuracy**2
 
         self.epsf = epsf
 
-    def __call__(self, data, star_table):
-        return self.build_psf(data, star_table)
+    def __call__(self, data, stars):
+        return self.build_psf(data, stars)
 
     def _build_psf_step(self, psf=None):
         if len(stars) < 1:
-            raise ValueError("'stars' must be a list containing at least one "
-                            "'Star' object.")
+            raise ValueError('stars must be a list containing at least '
+                             'one Star object.')
 
         if psf is None:
             psf = init_psf(stars)
@@ -189,102 +191,209 @@ class EPSFBuilder(object):
 
         return ePSF
 
-
-    def build_psf(self, data, star_table):
+    def build_psf(self, data, stars, psf=None):
         """
         Iteratively build the psf.
         """
 
-        self._extract_stars(data, star_table, common_catalog=None,
-                            extract_size=11, recenter=False,
-                            peak_fit_box=5, peak_search_box='fitbox',
-                            catmap={'x': 'x', 'y': 'y', 'lon': 'lon',
-                                    'lat': 'lat', 'weight': 'weight',
-                                    'id': 'id'}, cat_name_kwd='name',
-                            image_name_kwd='name')
+        if isinstance(stars, Table):
+            self.stars = self._extract_stars(
+                data, stars, common_catalog=None, extract_size=11,
+                recenter=False, peak_fit_box=5, peak_search_box='fitbox',
+                catmap={'x': 'x', 'y': 'y', 'lon': 'lon', 'lat': 'lat',
+                        'weight': 'weight', 'id': 'id'}, cat_name_kwd='name',
+                image_name_kwd='name')
+        else:
+            # TODO: check if stars is a list of Stars
+            self.stars = stars
 
-
-        # get all stars including linked stars as a flat list:
+        # get all stars (including linked stars) as a flat list
         all_stars = []
-        for s in stars:
+        for s in self.stars:
             all_stars += s.get_linked_list()
+        nstars = len(all_stars)
 
-        # create an array of star centers:
-        prev_centers = np.asarray([s.center for s in stars], dtype=np.float)
+        # create an array of star centers
+        prev_centers = np.array([s.center for s in stars], dtype=np.float)
 
-        # initialize array for detection of scillatory behavior:
-        oscillatory = np.zeros((len(all_stars), ), dtype=np.bool)
-        prev_failed = np.zeros((len(all_stars), ), dtype=np.bool)
+        # initialize array for detection of oscillatory behavior
+        oscillatory = np.zeros(nstars, dtype=bool)
+        prev_failed = np.zeros(nstars, dtype=bool)
+        dxy = np.zeros((nstars, 2), dtype=np.float)
 
-        niter = -1
-        eps2 = 2.0 * acc2
-        dxy = np.zeros((len(all_stars), 2), dtype=np.float)
+        iter_num = 0
+        eps2 = 2.0 * self.accuracy2
+        while (iter_num < self.max_iters and np.amax(eps2) >= self.accuracy2
+               and not np.all(oscillatory)):
+            iter_num += 1
 
+            # build/improve the PSF
+            psf = self._build_psf_step(psf=psf)
 
-        while niter < nmax and np.amax(eps2) >= acc2 and not np.all(oscillatory):
-            niter += 1
+            # fit the new PSF to the stars to find improved centers
+            stars = self.fitter(stars, psf)
 
-            # improved PSF:
-            psf = build_psf(
-                stars=stars,
-                psf=psf,
-                peak_fit_box=peak_fit_box,
-                peak_search_box=peak_search_box,
-                recenter_accuracy=recenter_accuracy,
-                recenter_nmax=recenter_nmax,
-                ignore_badfit_stars=ignore_badfit_stars,
-                stat=stat,
-                nclip=nclip,
-                lsig=lsig,
-                usig=usig,
-                ker=ker
-            )
-
-            # improved fit of the PSF to stars:
-            stars = fit_stars(
-                stars=stars,
-                psf=psf,
-                psf_fit_box=psf_fit_box,
-                fitter=fitter,
-                fitter_kwargs=fitter_kwargs,
-                residuals=False
-            )
-
-            # get all stars including linked stars as a flat list:
+            # get all stars (including linked stars) as a flat list
             all_stars = []
             for s in stars:
                 all_stars += s.get_linked_list()
 
-            # create an array of star centers at this iteration:
-            centers = np.asarray([s.center for s in stars], dtype=np.float)
+            # create an array of star centers at this iteration
+            centers = np.array([s.center for s in stars], dtype=np.float)
 
             # detect oscillatory behavior
             failed = np.array([s.fit_error_status > 0 for s in stars],
-                            dtype=np.bool)
-            if niter > 2:  # allow a few iterations at the beginning
-                oscillatory = np.logical_and(prev_failed, np.logical_not(failed))
+                              dtype=np.bool)
+
+            # exclude oscillatory stars after 3 iterations
+            if iter_num > 3:
+                oscillatory = np.logical_and(prev_failed,
+                                             np.logical_not(failed))
                 for s, osc in zip(stars, oscillatory):
                     s.ignore = bool(osc)
                 prev_failed = failed
 
-            # check termination criterion:
+            # check termination criterion
             good_mask = np.logical_not(np.logical_or(failed, oscillatory))
             dxy = centers - prev_centers
             mdxy = dxy[good_mask]
             eps2 = np.sum(mdxy * mdxy, axis=1, dtype=np.float64)
             prev_centers = centers
 
-        # compute residuals:
-        if residuals:
-            res = compute_residuals(psf, all_stars)
-        else:
-            res = len(all_stars) * [None]
+        # TODO: make compute_residuals a method of Stars
+        # compute residuals
+        #if residuals:
+        #    res = compute_residuals(psf, all_stars)
+        #else:
+        #    res = len(all_stars) * [None]
+        #
+        #for s, r in zip(all_stars, res):
+        #    s.fit_residual = r
 
-        for s, r in zip(all_stars, res):
-            s.fit_residual = r
-
-        # assign coordinate residuals of the iterative process:
+        # assign coordinate residuals of the iterative process
         for s, (dx, dy) in zip(all_stars, dxy):
             s.iter_fit_eps = (float(dx), float(dy))
 
-        return (psf, stars, niter)
+        # TODO: return iter_num as Stars attribute
+        return psf, stars
+
+
+def init_psf(stars, shape=None, oversampling=4.0, pixel_scale=None,
+             psf_cls=PSF2DModel, **kwargs):
+    """
+    Parameters
+    ----------
+    stars : Star, list of Star
+        A list of :py:class:`~psfutils.catalogs.Star` objects
+        containing image data of star cutouts that are used to "build" a PSF.
+
+    psf : PSF2DModel, type, None, optional
+        An existing approximation to the PSF which needs to be recomputed
+        using new ``stars`` (with new parameters for center and flux)
+        or a class indicating the type of the ``psf`` object to be created
+        (preferebly a subclass of :py:class:`PSF2DModel`).
+        If `psf` is `None`, a new ``psf`` will be computed using
+        :py:class:`PSF2DModel`.
+
+    shape : tuple, optional
+        Numpy-style shape of the output PSF. If shape is not specified (i.e.,
+        it is set to `None`), the shape will be derived from the sizes of the
+        input star models. This is ignored if `psf` is not `None`.
+
+    oversampling : float, tuple of float, list of (float, tuple of float), \
+optional
+        Oversampling factor of the PSF relative to star. It indicates how many
+        times a pixel in the star's image should be sampled when creating PSF.
+        If a single number is provided, that value will be used for both
+        ``X`` and ``Y`` axes and for all stars. When a tuple is provided,
+        first number will indicate oversampling along the ``X`` axis and the
+        second number will indicate oversampling along the ``Y`` axis. It is
+        also possible to have individualized oversampling factors for each star
+        by providing a list of integers or tuples of integers.
+
+    """
+    # check parameters:
+    if pixel_scale is None and oversampling is None:
+        raise ValueError(
+            "'oversampling' and 'pixel_scale' cannot be 'None' together. "
+            "At least one of these two parameters must be provided."
+        )
+
+    # get all stars including linked stars as a flat list:
+    all_stars = []
+    for s in stars:
+        all_stars += s.get_linked_list()
+
+    # find pixel scale:
+    if pixel_scale is None:
+        ovx, ovy = _parse_tuple_pars(oversampling, name='oversampling',
+                                     dtype=float)
+
+        # compute PSF's pixel scale as the smallest scale of the stars
+        # divided by the requested oversampling factor:
+        pscale_x, pscale_y = all_stars[0].pixel_scale
+        for s in all_stars[1:]:
+            px, py = s.pixel_scale
+            if px < pscale_x:
+                pscale_x = px
+            if py < pscale_y:
+                pscale_y = py
+
+        pscale_x /= ovx
+        pscale_y /= ovy
+
+    else:
+        pscale_x, pscale_y = _parse_tuple_pars(pixel_scale, name='pixel_scale',
+                                               dtype=float)
+
+    # if shape is None, find the minimal shape that will include input star's
+    # data:
+    if shape is None:
+        w = np.array([((s.x_center + 0.5) * s.pixel_scale[0] / pscale_x,
+                       (s.nx - s.x_center - 0.5) * s.pixel_scale[0] / pscale_x)
+                      for s in all_stars])
+        h = np.array([((s.y_center + 0.5) * s.pixel_scale[1] / pscale_y,
+                       (s.ny - s.y_center - 0.5) * s.pixel_scale[1] / pscale_y)
+                      for s in all_stars])
+
+        # size of the PSF in the input image pixels
+        # (the image with min(pixel_scale)):
+        nx = int(np.ceil(np.amax(w / ovx + 0.5)))
+        ny = int(np.ceil(np.amax(h / ovy + 0.5)))
+
+        # account for a maximum error of 1 pix in the initial star coordinates:
+        nx += 2
+        ny += 2
+
+        # convert to oversampled pixels:
+        nx = int(np.ceil(np.amax(nx * ovx + 0.5)))
+        ny = int(np.ceil(np.amax(ny * ovy + 0.5)))
+
+        # we prefer odd sized images
+        nx += 1 - nx % 2
+        ny += 1 - ny % 2
+        shape = (ny, nx)
+
+    else:
+        (ny, nx) = _parse_tuple_pars(shape, name='shape', dtype=int)
+
+    # center of the output grid:
+    cx = (nx - 1) / 2.0
+    cy = (ny - 1) / 2.0
+
+    with warnings.catch_warnings(record=False):
+        warnings.simplefilter("ignore", NonNormalizable)
+
+        # filter out parameters set by us:
+        kwargs = copy.deepcopy(kwargs)
+        for kw in ['data', 'origin', 'normalize', 'pixel_scale']:
+            if kw in kwargs:
+                del kwargs[kw]
+
+        data = np.zeros((ny, nx), dtype=np.float)
+        psf = psf_cls(
+            data=data, origin=(cx, cy), normalize=True,
+            pixel_scale=(pscale_x, pscale_y), **kwargs
+        )
+
+    return psf
