@@ -426,3 +426,134 @@ class FittableImageModel2D(Fittable2DModel):
             evaluated_model[invalid] = self._fill_value
 
         return evaluated_model
+
+
+class PSF2DModel(FittableImageModel2D):
+    """ A subclass of `~psfutils.models.FittableImageModel2D` that adds the
+    ``pixel_scale`` attribute so that oversampling factor can be computed from
+    scales of stars.
+
+    .. note::
+
+        If this class is subclassed in order to override the
+        :py:func:`~psfutils.FittableImageModel2D.compute_interpolator()`
+        method of the :py:class:`psfutils.FittableImageModel2D` class, then,
+        depending on the properties of the new interpolator, one may need
+        to override the :py:func:`~psfutils.FittableImageModel2D.evaluate`
+        method as well. In particular, it is important that a custom
+        interpolator's evaluation function accepts 2D `~numpy.ndarray`
+        for coordinate arguments.
+
+    """
+    def __init__(self, data, flux=1.0, x_0=0, y_0=0, origin=None,
+                 normalize=True, correction_factor=1.0, fill_value=0.0,
+                 ikwargs={}, pixel_scale=1, peak_fit_box=5,
+                 peak_search_box=None, recenter_accuracy=1.0e-4,
+                 recenter_nmax=1000):
+        """
+        :py:class:`PSF2DModel`'s initializer has almost the same parameters
+        as the :py:class:`psfutils.FittableImageModel2D` initializer.
+        Therefore here we document only the differences.
+
+        Parameters
+        ----------
+        pixel_scale : float, optional
+            Pixel scale (in arbitrary units) of model's image. Either a single
+            floating point value or a 1D iterable of length at least 2
+            (x-scale, y-scale) can be provided.
+
+        """
+        super(PSF2DModel, self).__init__(
+            data=data,
+            flux=flux,
+            x_0=x_0,
+            y_0=y_0,
+            origin=origin,
+            normalize=normalize,
+            correction_factor=correction_factor,
+            fill_value=fill_value,
+            ikwargs=ikwargs
+        )
+        self._pixscale = pixel_scale
+
+    @property
+    def pixel_scale(self):
+        """ Set/Get pixel scale (in arbitrary units). Either a single floating
+        point value or a 1D iterable of length at least 2 (x-scale, y-scale)
+        can be provided. When getting pixel scale, a tuple of two values is
+        returned with a pixel scale for each axis.
+
+        """
+        return self._pixscale
+
+    @pixel_scale.setter
+    def pixel_scale(self, pixel_scale):
+        if hasattr(pixel_scale, '__iter__'):
+            if len(pixel_scale) != 2:
+                raise TypeError("Parameter 'pixel_scale' must be either a "
+                                "scalar or an iterable with two elements.")
+            self._pixscale = (float(pixel_scale[0]), float(pixel_scale[1]))
+        else:
+            self._pixscale = (float(pixel_scale), float(pixel_scale))
+
+    def make_similar_from_data(self, data, origin=None):
+        """
+        This method creates a new model initialized with the same
+        settings as the current object except for the ``origin`` and
+        model parameters from input data.
+
+        **IMPORTANT:** Model parameters of the new model will be set to default
+        values.
+
+        This method may need to be overriden in a subclass to take into account
+        additional settings that may be present in subclass' initializer.
+
+
+        Parameters
+        ----------
+        data : numpy.ndarray
+            Array containing 2D image.
+
+        origin : tuple, None, optional
+            A reference point in the input image ``data`` array. See
+            :py:class:`~PSF2DModel` for more details.
+
+            The *only difference* here is the behavior when ``origin``
+            is `None`. In this case:
+
+            * if input ``data`` has the same shape as the shape as the
+              current object, then origin will be set to the same value as in
+              the current object;
+
+            * if input ``data`` has a shape different from the shape of the
+              current object, then the origin of the new object will be set
+              at the center of the image array.
+
+
+        Returns
+        -------
+        new_model : PSF2DModel
+            A new `PSF2DModel` constructed from new data using
+            same settings as the current object except for ``origin``
+            and model parameters.
+
+        """
+        data = np.asarray(data, dtype=np.float64)
+
+        if data.shape == self.shape:
+            origin = self.origin
+
+        new_model = PSF2DModel(
+            data=data,
+            flux=self.flux.default,
+            x_0=self.x_0.default,
+            y_0=self.y_0.default,
+            normalize=self.normalization_status != 2,
+            correction_factor=self.correction_factor,
+            origin=origin,
+            fill_value=self.fill_value,
+            ikwargs=self.interpolator_kwargs,
+            pixel_scale=self._pixscale
+        )
+
+        return new_model
