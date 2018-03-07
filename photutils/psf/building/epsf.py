@@ -12,8 +12,9 @@ import numpy as np
 from astropy.stats import SigmaClip
 from astropy.table import Table
 
+from .centroid import find_peak
 from .epsf_fitter import EPSFFitter, compute_residuals
-from .models import NonNormalizable, FittableImageModel2D
+from .models import NonNormalizable, PSF2DModel
 from .utils import (py2round, interpolate_missing_data, _pixstat, _smoothPSF,
                     _parse_tuple_pars)
 
@@ -60,8 +61,8 @@ class EPSFBuilder(object):
 
         self.epsf = epsf
 
-    def __call__(self, data, stars):
-        return self.build_psf(data, stars)
+    def __call__(self, stars):
+        return self.build_psf(stars)
 
     def _build_psf_step(self, stars, psf=None):
         if len(stars) < 1:
@@ -198,21 +199,23 @@ class EPSFBuilder(object):
 
         return ePSF
 
-    def build_psf(self, data, stars, psf=None):
+    def build_psf(self, stars, psf=None):
         """
         Iteratively build the psf.
         """
 
-        if isinstance(stars, Table):
-            self.stars = self._extract_stars(
-                data, stars, common_catalog=None, extract_size=11,
-                recenter=False, peak_fit_box=5, peak_search_box='fitbox',
-                catmap={'x': 'x', 'y': 'y', 'lon': 'lon', 'lat': 'lat',
-                        'weight': 'weight', 'id': 'id'}, cat_name_kwd='name',
-                image_name_kwd='name')
-        else:
-            # TODO: check if stars is a list of Stars
-            self.stars = stars
+        #if isinstance(stars, Table):
+        #    self.stars = self._extract_stars(
+        #        data, stars, common_catalog=None, extract_size=11,
+        #        recenter=False, peak_fit_box=5, peak_search_box='fitbox',
+        #        catmap={'x': 'x', 'y': 'y', 'lon': 'lon', 'lat': 'lat',
+        #                'weight': 'weight', 'id': 'id'}, cat_name_kwd='name',
+        #        image_name_kwd='name')
+        #else:
+        #    # TODO: check if stars is a list of Stars
+        #    self.stars = stars
+
+        self.stars = stars
 
         # get all stars (including linked stars) as a flat list
         all_stars = []
