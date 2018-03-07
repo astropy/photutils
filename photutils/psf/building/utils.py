@@ -5,6 +5,9 @@ from __future__ import (absolute_import, division, print_function,
 import logging
 import numpy as np
 from scipy import interpolate
+from scipy.stats import sigmaclip
+from astropy.stats import SigmaClip
+from astropy.convolution import convolve, Kernel
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler(level=logging.INFO))
@@ -125,11 +128,16 @@ def interpolate_missing_data(data, method, mask=None, const_fillval=0.0):
     return idata
 
 
-def _pixstat(data, stat='mean', nclip=0, lsig=3.0, usig=3.0, default=np.nan):
-    if nclip > 0:
-        if lsig is None or usig is None:
-            raise ValueError("When 'nclip' > 0 neither 'lsig' nor 'usig' "
-                             "may be None")
+def _pixstat(data, stat='mean',
+             sigma_clip=SigmaClip(sigma_lower=3., sigma_upper=3.),
+             default=np.nan):
+
+    nclip = 0
+    #if nclip > 0:
+    #    if lsig is None or usig is None:
+    #        raise ValueError("When 'nclip' > 0 neither 'lsig' nor 'usig' "
+    #                         "may be None")
+
     data = np.ravel(data)
     nd, = data.shape
 
@@ -146,6 +154,11 @@ def _pixstat(data, stat='mean', nclip=0, lsig=3.0, usig=3.0, default=np.nan):
         s = np.std(data, dtype=np.float64)
 
     i = np.ones(nd, dtype=np.bool)
+
+
+    low = sigma_clip.sigma_lower
+    high = sigma_clip.sigma_upper
+    #data_clipped = sigmaclip(data, low=low, high=high)
 
     for x in range(nclip):
         m_prev = m
@@ -174,12 +187,16 @@ def _pixstat(data, stat='mean', nclip=0, lsig=3.0, usig=3.0, default=np.nan):
 
     if stat == 'mean':
         return m
+        #return np.mean(data_clipped)
     elif stat == 'median':
         return np.median(data[i])
+        #return np.median(data_clipped)
     elif stat == 'pmode1':
         return (2.5 * np.median(data[i]) - 1.5 * m)
+        #return (2.5 * np.median(data_clipped) - 1.5 * np.mean(data_clipped))
     elif stat == 'pmode2':
         return (3.0 * np.median(data[i]) - 2.0 * m)
+        #return (3.0 * np.median(data_clipped) - 2.0 * np.mean(data_clipped))
     else:
         raise ValueError("Unsupported 'stat' value")
 

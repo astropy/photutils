@@ -156,7 +156,7 @@ class EPSFBuilder(object):
         ePSF = psf.make_similar_from_data(psfdata)
         ePSF.fill_value = 0.0
 
-        for iteration in range(self.recenter_max_niters):
+        for iteration in range(self.recenter_max_iters):
             # find peak location:
             peak_x, peak_y = find_peak(psfdata, xmax=cx, ymax=cy,
                                        peak_fit_box=self.peak_fit_box,

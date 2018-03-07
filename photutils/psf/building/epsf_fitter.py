@@ -67,11 +67,11 @@ class EPSFFitter(object):
         self.residuals = residuals
         self.fitter_kwargs = kwargs
 
-    def __call__(self, data, psf, star_table):
-        return self.fit_psf(data, psf, star_table)
+    def __call__(self, stars, psf):
+        return self.fit_psf(stars, psf)
 
-    def fit_psf(self, data, psf, star_table):
-        pass
+    def fit_psf(self, stars, psf):
+        return fit_stars(stars, psf)
 
 
 def fit_stars(stars, psf, psf_fit_box=5, fitter=LevMarLSQFitter(),
