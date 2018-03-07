@@ -5,12 +5,17 @@ Tools to build an ePSF.
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+import copy
+import warnings
 
 import numpy as np
 from astropy.stats import SigmaClip
 from astropy.table import Table
 
 from .epsf_fitter import EPSFFitter, compute_residuals
+from .models import NonNormalizable, FittableImageModel2D
+from .utils import (py2round, interpolate_missing_data, _pixstat, _smoothPSF,
+                    _parse_tuple_pars)
 
 
 __all__ = ['EPSFBuilder']
@@ -26,8 +31,18 @@ class EPSFBuilder(object):
 
         self.peak_fit_box = peak_fit_box
         self.peak_search_box = peak_search_box
+
+        recenter_accuracy = float(recenter_accuracy)
+        if recenter_accuracy <= 0.0:
+            raise ValueError('recenter_accuracy must be a strictly positive '
+                             'number.')
         self.recenter_accuracy = recenter_accuracy
+
+        recenter_max_iters = int(recenter_max_iters)
+        if recenter_max_iters <= 0:
+            raise ValueError('recenter_max_iters must be a positive integer.')
         self.recenter_max_iters = recenter_max_iters
+
         self.ignore_badfit_stars = ignore_badfit_stars
         self.stat = stat
         self.sigma_clip = sigma_clip
@@ -48,7 +63,7 @@ class EPSFBuilder(object):
     def __call__(self, data, stars):
         return self.build_psf(data, stars)
 
-    def _build_psf_step(self, psf=None):
+    def _build_psf_step(self, stars, psf=None):
         if len(stars) < 1:
             raise ValueError('stars must be a list containing at least '
                              'one Star object.')
@@ -60,21 +75,11 @@ class EPSFBuilder(object):
         else:
             psf = copy.deepcopy(psf)
 
-        recenter_accuracy = float(recenter_accuracy)
-        if recenter_accuracy <= 0.0:
-            raise ValueError("Re-center accuracy must be a strictly positive "
-                            "number.")
-
-        recenter_nmax = int(recenter_nmax)
-        if recenter_nmax < 0:
-            raise ValueError("Maximum number of re-recntering iterations must be "
-                            "a non-negative integer number.")
-
         cx, cy = psf.origin
         ny, nx = psf.shape
         pscale_x, pscale_y = psf.pixel_scale
 
-        # get all stars including linked stars as a flat list:
+        # get all stars including linked stars as a flat list
         all_stars = []
         for s in stars:
             all_stars += s.get_linked_list()
@@ -88,30 +93,31 @@ class EPSFBuilder(object):
             if s.ignore:
                 continue
 
-            if ignore_badfit_stars and s.fit_error_status is not None and \
-            s.fit_error_status > 0:
+            if (self.ignore_badfit_stars and
+                    s.fit_error_status is not None and
+                    s.fit_error_status > 0):
                 continue
 
             pixlist = s.centered_plist(normalized=True)
 
-            # evaluate previous PSF model at star pixel location in the PSF grid:
+            # evaluate previous PSF model at star pixel location in
+            # the PSF grid
             ovx = s.pixel_scale[0] / pscale_x
             ovy = s.pixel_scale[1] / pscale_y
             x = ovx * (pixlist[:, 0])
             y = ovy * (pixlist[:, 1])
-            old_model_vals = psf.evaluate(x=x, y=y, flux=1.0, x_0=0.0, y_0=0.0)
+            old_model_vals = psf.evaluate(x=x, y=y, flux=1.0, x_0=0.0,
+                                          y_0=0.0)
 
             # find integer location of star pixels in the PSF grid
             # and compute residuals
             ix = py2round(x + cx).astype(np.int)
             iy = py2round(y + cy).astype(np.int)
             pv = pixlist[:, 2] / (ovx * ovy) - old_model_vals
-            m = np.logical_and(
-                np.logical_and(ix >= 0, ix < nx),
-                np.logical_and(iy >= 0, iy < ny)
-            )
+            m = np.logical_and(np.logical_and(ix >= 0, ix < nx),
+                               np.logical_and(iy >= 0, iy < ny))
 
-            # add all pixel values to the corresponding accumulator:
+            # add all pixel values to the corresponding accumulator
             for i, j, v in zip(ix[m], iy[m], pv[m]):
                 apsf[j][i].append(v)
 
@@ -120,17 +126,16 @@ class EPSFBuilder(object):
 
         for i in range(nx):
             for j in range(ny):
-                psfdata[j, i] = _pixstat(
-                    apsf[j][i], stat=stat, nclip=nclip, lsig=lsig, usig=usig,
-                    default=np.nan
-                )
+                psfdata[j, i] = _pixstat(apsf[j][i], stat=self.stat,
+                                         sigma_clip=self.sigma_clip,
+                                         default=np.nan)
 
         mask = np.isfinite(psfdata)
         if not np.all(mask):
             # fill in the "holes" (=np.nan) using interpolation
             # I. using cubic spline for inner holes
             psfdata = interpolate_missing_data(psfdata, method='cubic',
-                                            mask=mask)
+                                               mask=mask)
 
             # II. we fill outer points with zeros
             mask = np.isfinite(psfdata)
@@ -140,46 +145,48 @@ class EPSFBuilder(object):
         psfdata += norm_psf_data
 
         # apply a smoothing kernel to the PSF:
-        psfdata = _smoothPSF(psfdata, ker)
+        psfdata = _smoothPSF(psfdata, self.smoothing_kernel)
 
         shift_x = 0
         shift_y = 0
-        peak_eps2 = recenter_accuracy**2
+        peak_eps2 = self.recenter_accuracy**2
         eps2_prev = None
         y, x = np.indices(psfdata.shape, dtype=np.float)
         ePSF = psf.make_similar_from_data(psfdata)
         ePSF.fill_value = 0.0
 
-        for iteration in range(recenter_nmax):
+        for iteration in range(self.recenter_max_niters):
             # find peak location:
-            peak_x, peak_y = find_peak(
-                psfdata, xmax=cx, ymax=cy, peak_fit_box=peak_fit_box,
-                peak_search_box=peak_search_box, mask=None
-            )
+            peak_x, peak_y = find_peak(psfdata, xmax=cx, ymax=cy,
+                                       peak_fit_box=self.peak_fit_box,
+                                       peak_search_box=self.peak_search_box,
+                                       mask=None)
 
             dx = cx - peak_x
             dy = cy - peak_y
 
             eps2 = dx**2 + dy**2
-            if (eps2_prev is not None and eps2 > eps2_prev) or eps2 < peak_eps2:
+            if ((eps2_prev is not None and eps2 > eps2_prev)
+                    or eps2 < peak_eps2):
                 break
             eps2_prev = eps2
 
             shift_x += dx
             shift_y += dy
 
-            # Resample PSF data to a shifted grid such that the pick of the PSF is
-            # at expected position.
+            # Resample PSF data to a shifted grid such that the pick of
+            # the PSF is at expected position
             psfdata = ePSF.evaluate(x=x, y=y, flux=1.0,
                                     x_0=shift_x + cx, y_0=shift_y + cy)
 
-        # apply final shifts and fill in any missing data:
+        # apply final shifts and fill in any missing data
         if shift_x != 0.0 or shift_y != 0.0:
             ePSF.fill_value = np.nan
             psfdata = ePSF.evaluate(x=x, y=y, flux=1.0,
                                     x_0=shift_x + cx, y_0=shift_y + cy)
 
-            # fill in the "holes" (=np.nan) using 0 (no contribution to the flux):
+            # fill in the "holes" (=np.nan) using 0 (no contribution to
+            # the flux)
             mask = np.isfinite(psfdata)
             psfdata[np.logical_not(mask)] = 0.0
 
@@ -228,7 +235,7 @@ class EPSFBuilder(object):
             iter_num += 1
 
             # build/improve the PSF
-            psf = self._build_psf_step(psf=psf)
+            psf = self._build_psf_step(stars, psf=psf)
 
             # fit the new PSF to the stars to find improved centers
             stars = self.fitter(stars, psf)

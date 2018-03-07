@@ -13,6 +13,23 @@ log.addHandler(logging.NullHandler(level=logging.INFO))
 __all__ = ['py2round', 'interpolate_missing_data']
 
 
+_kernel_quar = np.array(
+    [[+0.041632, -0.080816, 0.078368, -0.080816, +0.041632],
+     [-0.080816, -0.019592, 0.200816, -0.019592, -0.080816],
+     [+0.078368, +0.200816, 0.441632, +0.200816, +0.078368],
+     [-0.080816, -0.019592, 0.200816, -0.019592, -0.080816],
+     [+0.041632, -0.080816, 0.078368, -0.080816, +0.041632]]
+)
+
+_kernel_quad = np.array(
+    [[-0.07428311, 0.01142786, 0.03999952, 0.01142786, -0.07428311],
+     [+0.01142786, 0.09714283, 0.12571449, 0.09714283, +0.01142786],
+     [+0.03999952, 0.12571449, 0.15428215, 0.12571449, +0.03999952],
+     [+0.01142786, 0.09714283, 0.12571449, 0.09714283, +0.01142786],
+     [-0.07428311, 0.01142786, 0.03999952, 0.01142786, -0.07428311]]
+)
+
+
 def py2round(x):
     """
     This function returns a rounded up value of the argument, similar
@@ -106,3 +123,116 @@ def interpolate_missing_data(data, method, mask=None, const_fillval=0.0):
     idata[imask] = interpol(xynan)
 
     return idata
+
+
+def _pixstat(data, stat='mean', nclip=0, lsig=3.0, usig=3.0, default=np.nan):
+    if nclip > 0:
+        if lsig is None or usig is None:
+            raise ValueError("When 'nclip' > 0 neither 'lsig' nor 'usig' "
+                             "may be None")
+    data = np.ravel(data)
+    nd, = data.shape
+
+    if nd == 0:
+        return default
+
+    m = np.mean(data, dtype=np.float64)
+
+    if nd == 1:
+        return m
+
+    need_std = (stat != 'mean' or nclip > 0)
+    if need_std:
+        s = np.std(data, dtype=np.float64)
+
+    i = np.ones(nd, dtype=np.bool)
+
+    for x in range(nclip):
+        m_prev = m
+        s_prev = s
+        nd_prev = nd
+
+        # sigma clipping:
+        lval = m - lsig * s
+        uval = m + usig * s
+        i = ((data >= lval) & (data <= uval))
+        d = data[i]
+        nd, = d.shape
+        if nd < 1:
+            # return statistics based on previous iteration
+            break
+
+        m = np.mean(d, dtype=np.float64)
+        s = np.std(d, dtype=np.float64)
+
+        if nd == nd_prev:
+            # NOTE: we could also add m == m_prev and s == s_prev
+            # NOTE: a more rigurous check would be needed to see if
+            #       index array 'i' did not change but that would be too slow
+            #       and the current check is very likely good enough.
+            break
+
+    if stat == 'mean':
+        return m
+    elif stat == 'median':
+        return np.median(data[i])
+    elif stat == 'pmode1':
+        return (2.5 * np.median(data[i]) - 1.5 * m)
+    elif stat == 'pmode2':
+        return (3.0 * np.median(data[i]) - 2.0 * m)
+    else:
+        raise ValueError("Unsupported 'stat' value")
+
+
+def _smoothPSF(psf, kernel):
+    if kernel is None:
+        return psf
+    if kernel == 'quad':
+        ker = _kernel_quad
+    elif kernel == 'quar':
+        ker = _kernel_quar
+    elif isinstance(kernel, np.ndarray) or isinstance(kernel, Kernel):
+        ker = kernel
+    else:
+        raise TypeError("Unsupported kernel.")
+
+    spsf = convolve(psf, ker)
+
+    return spsf
+
+
+def _parse_tuple_pars(par, default=None, name='', dtype=None,
+                      check_positive=True):
+    if par is None:
+        par = default
+
+    if hasattr(par, '__iter__'):
+        if len(par) != 2:
+            raise TypeError("Parameter '{:s}' must be either a scalar or an "
+                            "iterable with two elements.".format(name))
+        px = par[0]
+        py = par[1]
+    elif par is None:
+        return (None, None)
+    else:
+        px = par
+        py = par
+
+    if dtype is not None or check_positive:
+        try:
+            pxf = dtype(px)
+            pyf = dtype(px)
+        except TypeError:
+            raise TypeError("Parameter '{:s}' must be a number or a tuple of "
+                            "numbers.".format(name))
+
+        if dtype is not None:
+            px = pxf
+            py = pyf
+
+        if check_positive and (pxf <= 0 or pyf <= 0):
+            raise TypeError("Parameter '{:s}' must be a strictly positive "
+                            "number or a tuple of strictly positive numbers."
+                            .format(name))
+
+    return (px, py)
