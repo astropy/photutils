@@ -808,84 +808,61 @@ class Weights(UnknownUncertainty):
         return 'weights'
 
 
-def extract_stars(images, catalogs, common_catalog=None, extract_size=11,
-                  recenter=False, peak_fit_box=5, peak_search_box='fitbox',
-                  catmap={'x': 'x', 'y': 'y',
-                          'lon': 'lon', 'lat': 'lat',
-                          'weight': 'weight', 'id': 'id'},
-                  cat_name_kwd='name', image_name_kwd='name'):
-    """Extracts sub-images centered on stars from a catalog.
-
-    Given input catalogs of source coordinates in an image, and corrsponding
-    images, this function extracts small sub-images centered
-    on source coordinates from input catalogs. These sub-images are re-packaged
-    as discrete 2D fittable models.
-
-    ``common_catalog`` provides world coordinates of sources that need to be
-    extracted from *all* input images. For each source coordinate in this
-    catalog only one `Star` object is returned (extracted from one of the
-    input images) and the `Star` objects correesponding to the same star in
-    other images are *linked* to the first (returned) `Star`.
+def extract_stars(data, catalogs, box_size=11):
+    """
+    Extract cutout images centered on stars defined in the input
+    catalog(s).
 
     Parameters
     ----------
-    images : astropy.nddata.NDData, list of astropy.nddata.NDData
-        A :py:class:`~astropy.nddata.NDData` container or a list of
-        :py:class:`~astropy.nddata.NDData` containers. If input ``catalog``
-        contains only world coordinates of the sources or if
-        ``common_catalog`` is provided, then ``image`` must contain a valid
-        ``wcs`` attribute.
+    data : `~astropy.nddata.NDData`, list of `~astropy.nddata.NDData`
+        A `~astropy.nddata.NDData` object or a list of
+        `~astropy.nddata.NDData` objects containing the 2D image(s) from
+        which to extract the stars.  If the input ``catalogs`` contain
+        only the sky coordinates of the stars then each of the
+        `~astropy.nddata.NDData` objects must have a valid ``wcs``
+        attribute.
 
-    catalogs : astropy.table.Table, list of astropy.table.Table
-        A catalog or list of catalogs of sources to be "extracted" from the
-        input image(s). It must be a (a list of)
-        :py:class:`~astropy.table.Table` catalog(s) containing image
-        (or world) coordinates of the sources to be extracted. If input
-        ``catalogs`` contains only world coordinates of the sources, then
-        each image in ``images`` must contain a valid ``wcs`` attribute.
-        The number of input catalogs must match the number of input images.
+    catalogs : `~astropy.table.Table`, list of `~astropy.table.Table`
+        A catalog or list of catalogs of sources to be extracted from
+        the input ``data``.
 
-        Optionally, catalog may contain the following columns (all other
-        columns will be ignored):
+        If a list of catalogs is input, they are assumed to correspond
+        to the list of `~astropy.nddata.NDData` objects input in
+        ``data`` (i.e. a separate source catalog for each 2D image).
+        For multiple input catalogs, the center of each source can be
+        defined either in pixel coordinates (in ``x`` and ``y`` columns)
+        or sky coordinates (in a ``skycoord`` column containing a
+        `~astropy.coordinates.SkyCoord` object).  If both are specified,
+        then the pixel coordinates will be used.
 
-        - ``weight``: weight to be assigned to a star. This weight,
-          for example, can be used for computing weighted world coordinates
-          of a group of linked stars.
+        If a single source catalog is input, then these sources will be
+        extracted from every 2D image in the input ``data``.  In this
+        case, the sky coordinates for each source must be specified as a
+        `~astropy.coordinates.SkyCoord` object contained in a column
+        called ``skycoord``.  Each `~astropy.nddata.NDData` object in
+        the input ``data`` must also have a valid ``wcs`` attribute.
 
-        - ``id``: name/ID of the star. If this column is not present in the
-          catalog then each extracted star's ``id`` attribute will be set
-          to the row number (first row being 1).
+        Optionally, each catalog may also contain an ``id`` column
+        representing the ID/name of stars.  If this column is not
+        present then the extracted stars will be given an ``id`` number
+        corresponding the the table row number (starting at 1).
 
-    common_catalog : astropy.table.Table
-        A catalog of sources to be "extracted" from **all** input images. It
-        must be a :py:class:`~astropy.table.Table` catalog containing *world*
-        coordinates of the sources to be extracted. When ``common_catalog``
-        is provided, input ``images`` must contain a valid ``wcs`` attribute.
-        This catalog is used to create "linked" `Star` objects: all linked
-        `Star` correspond to the same star on the sky and this information can
-        be used to impose additional constrain on star coordinates when
-        building a PSF (see :py:meth:`~Star.constrain_linked_centers` for
-        more details).
+        A single source catalog may optionally contain a ``weight``
+        column.  If present, this relative weighting will be used when
+        computing the weighted position for linked stars (i.e. identical
+        stars in different images).
 
-        Optionally, catalog may contain the following columns (all other
-        columns will be ignored):
+        Any other columns presents in the input ``catalogs`` will be
+        ignored.
 
-        - ``weight``: weight to be assigned to a star. This weight,
-          for example, can be used for computing weighted world coordinates
-          of a group of linked stars.
+    box_size : int or array_like (int)
+        The extraction box size along each axis.  If ``box_size`` is a
+        scalar then a square box of size ``box_size`` will be used.  If
+        ``box_size`` has two elements, they should be in ``(ny, nx)``
+        order.
 
-        - ``id``: name/ID of the star. If this column is not present in the
-          catalog then each extracted star's ``id`` attribute will be set
-          to the row number (first row being 1).
 
-    extract_size : int, tuple, numpy.ndarray, optional
-        Indicates the size of the extraction region for each source. If a
-        single number is provided, then a square extraction region with sides
-        of length ``extract_size`` will be used for each source. A tuple can be
-        used to indicate a rectangular extraction region (for all sources)
-        with different sides along ``X-`` and ``Y-`` axes. Alternatively, a
-        2D array of size ``Nx2`` can be used to indicate a different extraction
-        box size for each source.
 
     recenter : bool, optional
         Indicates that a new source position should be estimated by fitting a
