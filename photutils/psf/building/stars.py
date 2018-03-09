@@ -53,7 +53,63 @@ class Stars(object):
     def __getattr__(self, attr):
         return [getattr(p, attr) for p in self._data]
 
+    #def flatten(self):
+    #    pass
 
+    def constrain_linked_centers(self, ignore_badfit_stars=True):
+        """ Constrains the coordinates of star centers (in image coordinates).
+
+        This is achieved by constraining star centers of all linked stars to
+        correspond to a single sky coordinate obtained by computing weighted
+        mean of world coorinates (before constraining) of star centers of
+        linked stars.
+
+        Parameters
+        ----------
+
+        ignore_badfit_stars : bool, optional
+            Do not use stars that have fit error status >0 or that have
+            ``ignore`` attribute set to ``True`` in computing mean
+            world coordinate.
+
+        """
+        # first, check that this star is linked to other stars:
+        if self.next is None and self.prev is None:
+            return  # nothing to do
+
+        # second, select only those linked stars that have a valid WCS:
+        stars = [s for s in self.get_linked_list() if s.wcs is not None]
+        if len(stars) < 2:
+            return  # nothing to do
+
+        # find centers of the stars in world coordinates:
+
+        w = np.asarray(
+            [s.wcs.all_pix2world(s.x_abs_center, s.y_abs_center, 0) +
+             [s.star_weight]
+             for s in stars if (ignore_badfit_stars and
+                                ((s.fit_error_status is not None and
+                                  s.fit_error_status > 0) or s.ignore))
+             ]
+        )
+
+        lon = w[:, 0]
+        lat = w[:, 1]
+
+        # compute mean cartesian coordinates:
+        wt = w[:, 2] / np.sum(w[:, 2], dtype=np.float64)
+        xm = (wt * np.cos(lat) * np.cos(lon)).sum(dtype=np.float)
+        ym = (wt * np.cos(lat) * np.sin(lon)).sum(dtype=np.float)
+        zm = (wt * np.sin(lat)).sum(dtype=np.float)
+
+        # convert cartesian coordinates back to spherical:
+        hyp = np.hypot(xm, ym)
+        lon = np.arctan2(ym, xm)
+        lat = np.arctan2(zm, hyp)
+
+        # compute new centers:
+        for s in stars:
+            s.abs_center = list(map(float, s.wcs.all_world2pix(lon, lat, 0)))
 
 
 
@@ -170,7 +226,7 @@ optional
                  peak_fit_box=5, peak_search_box='fitbox',
                  blc=(0, 0), wcs=None, meta={}):
 
-        self.data = data
+        self._data = data
         self.weights = weights  # we must set weights ASAP to have a valid mask
         self.peak_fit_box = peak_fit_box
         self.peak_search_box = peak_search_box
@@ -597,211 +653,6 @@ tuple of int, None, optional
         plist[:, 3] = self._w
         return plist
 
-    @property
-    def is_linked(self):
-        """ Check if this star is linked to other stars. """
-        return (self._next is None and self._prev is None)
-
-    @property
-    def prev(self):
-        """ Get/Set previous (i.e., to the left) linked star. """
-        return self._prev
-
-    @prev.setter
-    def prev(self, new_previous):
-        if new_previous is not None:
-            ll1 = set(self.get_linked_list_right())
-            ll2 = set(new_previous.get_linked_list_left())
-            if not ll1.isdisjoint(ll2):
-                raise ValueError("New node or one of its linked nodes is "
-                                 "already a member of the linked list.")
-            new_previous._next = self
-        if self._prev is not None:
-            self._prev._next = None
-        self._prev = new_previous
-
-    @property
-    def next(self):
-        """ Get/Set next (i.e., to the right) linked star. """
-        return self._next
-
-    @next.setter
-    def next(self, new_next):
-        if new_next is not None:
-            ll1 = set(self.get_linked_list_left())
-            ll2 = set(new_next.get_linked_list_right())
-            if not ll1.isdisjoint(ll2):
-                raise ValueError("New node or one of its linked nodes is "
-                                 "already a member of the linked list.")
-            new_next._prev = self
-        if self._next is not None:
-            self._next._prev = None
-        self._next = new_next
-
-    @property
-    def last(self):
-        """ Get last (i.e., furthest away to the right) linked star. """
-        node = self
-        while node.next is not None:
-            node = node.next
-        return node
-
-    @property
-    def first(self):
-        """ Get first (i.e., furthest away to the left) linked star. """
-        node = self
-        while node.prev is not None:
-            node = node.prev
-        return node
-
-    def remove_this_node(self):
-        """ Remove this node (star) from the linked list. """
-        prev = self.prev
-        next = self.next
-        self.prev = None
-        self.next = None
-        if prev is not None:
-            prev.next = next
-        if next is not None:
-            next.prev = prev
-
-    def append_first(self, node):
-        """ Append ``node`` to the left of the first node in the list. """
-        if node is None:
-            return
-
-        ll1 = set(self.get_linked_list())
-        ll2 = set(node.get_linked_list_left())
-        if not ll1.isdisjoint(ll2):
-            raise ValueError("New node or one of its linked nodes is "
-                             "already a member of the linked list.")
-
-        first = self.first
-        first._prev = node
-        node._next = first
-
-    def append_last(self, node):
-        """ Append ``node`` to the right of the last node in the list. """
-        if node is None:
-            return
-
-        ll1 = set(self.get_linked_list())
-        ll2 = set(node.get_linked_list_right())
-        if not ll1.isdisjoint(ll2):
-            raise ValueError("New node or one of its linked nodes is "
-                             "already a member of the linked list.")
-
-        last = self.last
-        last._next = node
-        node._prev = last
-
-    def insert_prev(self, new_previous):
-        """ Insert ``node`` between this star and previous left star. """
-        if new_previous is None:
-            raise TypeError("New previous node must be a valid Star object.")
-        if new_next in self.get_linked_list():
-            raise ValueError("New node already a member of the linked list.")
-        new_previous.remove_this_node()
-        new_previous._next = self
-        new_previous._prev = self._prev
-        if self._prev is not None:
-            self._prev._next = new_previous
-        self._prev = new_previous
-
-    def insert_next(self, new_next):
-        """ Insert ``node`` between this star and previous right star. """
-        if new_next is None:
-            raise TypeError("New next node must be a valid Star object.")
-        if new_next in self.get_linked_list():
-            raise ValueError("New node already a member of the linked list.")
-        new_next.remove_this_node()
-        new_next._prev = self
-        new_next._next = self._next
-        if self._next is not None:
-            self._next._prev = new_next
-        self._next = new_next
-
-    def get_linked_list(self):
-        """ Get a list of all linked stars. """
-        node = self.first
-        nodes = [node]
-        while node.next is not None:
-            node = node.next
-            nodes.append(node)
-        return nodes
-
-    def get_linked_list_left(self):
-        """ Get a list of all linked to the left stars including self. """
-        node = self
-        nodes = [node]
-        while node.prev is not None:
-            node = node.prev
-            nodes.append(node)
-        return nodes
-
-    def get_linked_list_right(self):
-        """ Get a list of all linked to the right stars including self. """
-        node = self
-        nodes = [node]
-        while node.next is not None:
-            node = node.next
-            nodes.append(node)
-        return nodes
-
-    def constrain_linked_centers(self, ignore_badfit_stars=True):
-        """ Constrains the coordinates of star centers (in image coordinates).
-
-        This is achieved by constraining star centers of all linked stars to
-        correspond to a single sky coordinate obtained by computing weighted
-        mean of world coorinates (before constraining) of star centers of
-        linked stars.
-
-        Parameters
-        ----------
-
-        ignore_badfit_stars : bool, optional
-            Do not use stars that have fit error status >0 or that have
-            ``ignore`` attribute set to ``True`` in computing mean
-            world coordinate.
-
-        """
-        # first, check that this star is linked to other stars:
-        if self.next is None and self.prev is None:
-            return  # nothing to do
-
-        # second, select only those linked stars that have a valid WCS:
-        stars = [s for s in self.get_linked_list() if s.wcs is not None]
-        if len(stars) < 2:
-            return  # nothing to do
-
-        # find centers of the stars in world coordinates:
-
-        w = np.asarray(
-            [s.wcs.all_pix2world(s.x_abs_center, s.y_abs_center, 0) +
-             [s.star_weight]
-             for s in stars if (ignore_badfit_stars and
-                                ((s.fit_error_status is not None and
-                                  s.fit_error_status > 0) or s.ignore))
-             ]
-        )
-
-        lon = w[:, 0]
-        lat = w[:, 1]
-
-        # compute mean cartesian coordinates:
-        wt = w[:, 2] / np.sum(w[:, 2], dtype=np.float64)
-        xm = (wt * np.cos(lat) * np.cos(lon)).sum(dtype=np.float)
-        ym = (wt * np.cos(lat) * np.sin(lon)).sum(dtype=np.float)
-        zm = (wt * np.sin(lat)).sum(dtype=np.float)
-
-        # convert cartesian coordinates back to spherical:
-        hyp = np.hypot(xm, ym)
-        lon = np.arctan2(ym, xm)
-        lat = np.arctan2(zm, hyp)
-
-        # compute new centers:
-        for s in stars:
-            s.abs_center = list(map(float, s.wcs.all_world2pix(lon, lat, 0)))
 
     @property
     def fit_residual(self):
@@ -955,20 +806,6 @@ class Weights(UnknownUncertainty):
     @property
     def uncertainty_type(self):
         return 'weights'
-
-
-
-def expand_starlist(stars):
-    """ Get a list of all stars including "hidden" linked stars. """
-
-    if not hasattr(stars, '__iter__'):
-        stars = [stars]
-
-    expanded_starlist = []
-    for s in stars:
-        expanded_starlist += s.get_linked_list()
-
-    return expanded_starlist
 
 
 def extract_stars(images, catalogs, common_catalog=None, extract_size=11,
