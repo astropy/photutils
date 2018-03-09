@@ -201,7 +201,7 @@ optional
             # we need at least 6 points to fit a 2D quadratic polynomial
             return coord
     try:
-        c = np.linalg.lstsq(v, d)[0]
+        c = np.linalg.lstsq(v, d, rcond=None)[0]
     except LinAlgError:
         if auto_expand_search:
             return find_peak(image_data, xmax=None, ymax=None,
