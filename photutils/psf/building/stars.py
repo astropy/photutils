@@ -809,6 +809,7 @@ class Weights(UnknownUncertainty):
 
 
 def extract_stars(data, catalogs, box_size=11):
+    #recenter, peak_fit_box, peak_search_box
     """
     Extract cutout images centered on stars defined in the input
     catalog(s).
@@ -825,7 +826,9 @@ def extract_stars(data, catalogs, box_size=11):
 
     catalogs : `~astropy.table.Table`, list of `~astropy.table.Table`
         A catalog or list of catalogs of sources to be extracted from
-        the input ``data``.
+        the input ``data``.  To link stars in multiple images as a
+        single source, you must use a single source catalog where the
+        positions defined in sky coordinates.
 
         If a list of catalogs is input, they are assumed to correspond
         to the list of `~astropy.nddata.NDData` objects input in
@@ -856,13 +859,11 @@ def extract_stars(data, catalogs, box_size=11):
         Any other columns presents in the input ``catalogs`` will be
         ignored.
 
-    box_size : int or array_like (int)
+    box_size : int or array_like (int), optional
         The extraction box size along each axis.  If ``box_size`` is a
         scalar then a square box of size ``box_size`` will be used.  If
         ``box_size`` has two elements, they should be in ``(ny, nx)``
         order.
-
-
 
     recenter : bool, optional
         Indicates that a new source position should be estimated by fitting a
@@ -884,8 +885,7 @@ def extract_stars(data, catalogs, box_size=11):
         value indicates the width of the box and the second value indicates
         the height of the box.
 
-    peak_search_box :  str {'all', 'off', 'fitbox'}, int, tuple of int, None,\
-optional
+    peak_search_box :  str {'all', 'off', 'fitbox'}, int, tuple of int, None, optional
         Size (in pixels) of the box around the center of the input star
         to be used for brute-force search of the maximum value pixel. This
         search is performed before quadratic fitting in order to improve
@@ -900,142 +900,76 @@ optional
         the brute-force search is performed in the same box as
         ``peak_fit_box``.
 
-    catmap : dict, optional
-        A `dict` that provides mapping between source's ``x``, ``y``,
-        ``longitude``, ``latitude``, ``weight``, and ``id`` and the
-        corresponding column names in a :py:class:`~astropy.table.Table`
-        catalog. This parameter is ignored if input catalog is a
-        :py:class:`~numpy.ndarray`.
-
-    cat_name_kwd : str, optional
-        Keyword name that identifies catalog name in its ``meta`` attribute
-        when input catalog is a :py:class:`~astropy.table.Table`. This
-        parameter is ignored if input catalog is a :py:class:`~numpy.ndarray`.
-        If catalog does not contain name in its meta, then ``catalog_name``
-        attribute of the returned stars will be set to 'Unknown'.
-
-    image_name_kwd : str, optional
-        Keyword name that identifies image name in its ``meta`` attribute
-        when input image is a :py:class:`~astropy.nddata.NDData`. This
-        parameter is ignored if input catalog is a :py:class:`~numpy.ndarray`.
-        If image does not contain name in its meta, then ``image_name``
-        attribute of the returned stars will be set to 'Unknown'.
-
     Returns
     -------
-    starlist : list of Star
-        A list of :py:class:`Star` objects one for each source in the catalog
-        that is within the input image(s).
-
+    starlist : `Stars` instance
+        A `Stars` instance containing the extracted stars.
     """
-    # first, check that input catalog column map contains required keywords
-    # and if not - set them to defaults:
-    loncol = catmap.get('lon', 'lon')
-    latcol = catmap.get('lat', 'lat')
 
-    # make sure the number of catalogs matches the number of catalogs provided:
-    if isinstance(images, NDData):
-        images = [images]
+    if isinstance(data, NDData):
+        data = [data]
 
-        if isinstance(catalogs, Table):
-            catalogs = [catalogs]
-        elif not isinstance(catalogs[0], Table):
-            raise TypeError("Unsupported catalog type. ")
+    if isinstance(catalogs, Table):
+        catalogs = [catalogs]
+
+    for im in data:
+        if not isinstance(im, NDData):
+            raise ValueError('data must be a single or list of NDData '
+                             'objects.')
+
+    for cat in catalogs:
+        if not isinstance(cat, Table):
+            raise ValueError('catalogs must be a single or list of Table '
+                             'objects.')
+
+    if len(catalogs) == 1:
+        if 'skycoord' not in catalogs[0].colnames:
+            raise ValueError('When inputting a single catalog, it must '
+                             'have a "skycoord" column.')
+
+        if any([im.wcs is None for im in data]):
+            raise ValueError('When inputting a single catalog, each NDData '
+                             'object must have a wcs attribute.')
 
     else:
-        if hasattr(images, '__iter__'):
-            for i in images:
-                if not isinstance(i, NDData):
-                    raise ValueError("'images' must be a list of 'NDData' "
-                                     "objects or a single 'NDData' object.")
+        for cat in catalogs:
+            if (('x' not in cat.colnames or 'y' not in cat.colnames) and
+                ('skycoord' not in cat.colnames)):
+                    raise ValueError('When inputting multiple catalogs, '
+                                     'each one must have a "x" and "y" '
+                                     'column or a "skycoord" column.')
 
-        else:
-            raise ValueError("'images' must be a list of 'NDData' objects or "
-                             "a single 'NDData' object.")
+        if len(data) != len(catalogs):
+            raise ValueError('When inputting multiple catalogs, the number '
+                             'of catalogs must match the number of input '
+                             'images.')
 
-        if not hasattr(catalogs, '__iter__') or len(images) != len(catalogs):
-            raise ValueError("Number of catalogs must match the number of "
-                             "input images")
+    if len(catalogs) == 1:
+        stars = []
+        for im in data:
+            stars.append(_extract_stars(im, catalogs[0], boxsize=boxsize))
+            #recenter, peak_fit_box, peak_search_box
 
-        for i in catalogs:
-            if not isinstance(i, Table):
-                raise ValueError("'catalogs' must be a list of 'Table' "
-                                 "objects.")
+        # transpose the list of lists to associate linked stars
+        stars = list(map(list, zip(*stars)))
 
-    if common_catalog is not None:
-        # check to see that at least some images have valid WCS
-        # if 'common_catalog' is provided:
-        if not any([i.wcs is not None for i in images]):
-            raise ValueError("At least one of the images must have a valid "
-                             "WCS when 'common_catalog' is provided.")
+        # remove 'None' stars (i.e. no overlap in one or more images)
+        # and handle case of only one "linked" star
+        stars_out = []
+        for star in stars:
+            st = [i for i in star if i is not None]
+            if len(st) == 0:
+                continue    # no overlap in any image
+            elif len(st) == 1:
+                st = st[0]    # one one star, so cannot be linked
+            stars_out.append(st)
+    else:
+        stars_out = []
+        for im, cat in zip(data, catalogs):
+            stars_out.append(_extract_stars(im, cat, boxsize=boxsize)
+            #recenter, peak_fit_box, peak_search_box
 
-        # check that common_catalog has world coordinates:
-        colnames = common_catalog.colnames
-        if loncol not in colnames or latcol not in colnames:
-            raise ValueError("Source coordinates in 'common_catalog' must be "
-                             "world coordinates.")
-
-    # extract stars from individual image catalogs:
-    stars = []
-    for image, catalog in zip(images, catalogs):
-        stars += sim_extract_stars(
-            image=image,
-            catalog=catalog,
-            extract_size=extract_size,
-            peak_fit_box=peak_fit_box,
-            peak_search_box=peak_search_box,
-            recenter=recenter,
-            catmap=catmap,
-            cat_name_kwd=cat_name_kwd,
-            image_name_kwd=image_name_kwd,
-            _ignored_as_None=False
-        )
-
-    if common_catalog is None:
-        return stars
-
-    # extract stars from "common_catalog" producing linked stars:
-    linked_stars = []
-    for image in images:
-        if image.wcs is None:
-            continue
-        linked_stars.append(
-            sim_extract_stars(
-                image=image,
-                catalog=catalog,
-                extract_size=extract_size,
-                peak_fit_box=peak_fit_box,
-                peak_search_box=peak_search_box,
-                recenter=recenter,
-                catmap=catmap,
-                cat_name_kwd=cat_name_kwd,
-                image_name_kwd=image_name_kwd,
-                _ignored_as_None=True
-            )
-        )
-
-    if len(linked_stars) == 1:  # special case (for performance)
-        stars += [s for s in linked_stars[0] if s is not None]
-        return stars
-
-    nlink = len(linked_stars)
-    nstar = len(linked_stars[0])
-    for k in range(nstar):
-        lst = []
-        for l in range(nlink):
-            s = linked_stars[l][k]
-            if s is not None:
-                lst.append(s)
-
-        if len(lst) == 0:
-            continue
-
-        s = lst[0]
-        sp = s
-        for si in lst[1:]:
-            sp.next = si
-            sp = si
-        stars.append(s)
+    return Stars(stars_out)
 
 
 def sim_extract_stars(image, catalog, extract_size=11, recenter=False,
