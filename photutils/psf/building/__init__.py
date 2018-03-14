@@ -4,8 +4,12 @@ This subpackage contains modules and packages to build point spread
 functions.
 """
 
-from .catalogs import *
+from .catalogs import *    # noqa
 from .centroid import *
+from .core import *
+from .epsf import *
+from .epsf_fitter import *
 from .models import *
 from .psf import *
+from .stars import *
 from .utils import *
