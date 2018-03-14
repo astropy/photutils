@@ -20,7 +20,7 @@ __all__ = ['Stars', 'Star', 'extract_stars']
 
 class Stars(object):
     """
-    Class to hold `Star` objects.
+    Class to hold a list of `Star` objects.
     """
 
     def __init__(self, stars_list):
@@ -33,6 +33,9 @@ class Stars(object):
 
     def __len__(self):
         return len(self._data)
+
+    def __getitem__(self, index):
+        return self._data[index]
 
     # needed for python 2
     def __getslice__(self, i, j):
@@ -47,9 +50,6 @@ class Stars(object):
 
     def __getattr__(self, attr):
         return [getattr(p, attr) for p in self._data]
-
-    #def flatten(self):
-    #    pass
 
     def constrain_linked_centers(self, ignore_badfit_stars=True):
         """ Constrains the coordinates of star centers (in image coordinates).
@@ -109,28 +109,40 @@ class Stars(object):
 
 class Star(object):
     """
-    A class for holding information about a star cutout from 2D images such as
-    its coordinates, WCS, pixel scale, location of the cutout in the original
-    image, fit information (if, e.g., a PSF was fit to the star), etc.
-
-    In addition, it provides a mechanism of linking multiple stars together
-    for the purpose of computing their average position on the sky and
-    converting these world coordinate to the image coordinates of the linked
-    stars.
-
+    A class to hold a 2D cutout image and associated metadata of a star.
 
     Parameters
     ----------
+    data : `~numpy.ndarray`
+        A 2D cutout image of a single star/source.
 
-    data : numpy.ndarray
-        A cutout (sub-image) from a 2D image containing image of a single star.
+    weights : `~numpy.ndarray` or `None`, optional
+        A 2D array of the weights associated with the input ``data``.
 
-    weights : numpy.ndarray, None, optional
-        Weights associated with each pixel in the ``data``.
+    center : tuple of two floats or `None`, optional
+        The ``(x, y)`` position of the star's center with respect to the
+        input ``data`` array.  If `None`, then the center will be set to
+        the center of input ``data`` array.  One can use the
+        :meth:`~Star.recenter` method to further refine the center
+        position.
 
-    star_weight : float, optional
-        Weight of the star. This can be used, e.g., to compute weighted average
-        of the world coordinates of linked stars.
+    origin : tuple of two int, optional
+        The ``(x, y)`` index of the origin (bottom-left corner) pixel of
+        the input cutout array with respect to the original array from
+        which the cutout was extracted.  This can be used to convert
+        positions within the cutout image to positions in the original
+        image.  The ``origin`` and ``wcs`` must both be input for linked
+        stars (i.e. the same star extracted from different images).
+
+    wcs : `~astropy.wcs.WCS` or None, optional
+        A WCS object associated with the *original* image from which the
+        cutout array was extracted.  It should *not* be a WCS object
+        associated with the input cutout ``data`` array.  The ``origin``
+        and ``wcs`` must both be input for linked stars (i.e. the same
+        star extracted from different images).
+
+    id : int, str, or `None`, optional
+        An identification number or label for the star.
 
     flux: float, None
         Fitted flux or initial estimate of the flux.
@@ -138,117 +150,32 @@ class Star(object):
     pixel_scale : float, str {'wcs'}, optional
         Pixel scale. When pixel_scale is 'wcs', pixel scale will be inferred
         from the ``wcs`` argument (which *must* be provided in this case).
-
-    center : tuple of two float, None, optional
-        Position of the center of the star in input ``data`` array. When
-        ``center`` is `None`, center will be set at at the coordinates of the
-        detected peak of intensity.
-
-    recenter : bool, optional
-        Indicates that a new source position should be estimated by fitting a
-        quadratic polynomial to pixels around the star's center
-        (either provided by ``center`` or by performing a brute-search of
-        the peak pixel value within a specified search box - see
-        ``peak_search_box`` parameter for more details). This may be useful if
-        the position of the center of the star is not very accurate.
-
-        .. note::
-            Keep in mind that the results of finding star's peak position
-            may be sub-optimal on undersampled images. However, this
-            method of peak finding (fitting a quadratic 2D polynomial)
-            is used only at this stage of determining the PSF (i.e., at the
-            stage of extracting star cutouts) and
-            the iterative process of refining PSF uses PSF fitting to stars at
-            all subsequent stages.
-
-    peak_fit_box : int, tuple of int, optional
-        Size (in pixels) of the box around the center of the star (or around
-        stars' peak if peak was searched for - see ``peak_search_box`` for
-        more details) to be used for quadratic fitting from which peak location
-        is computed. If a single integer number is provided, then it is assumed
-        that fitting box is a square with sides of length given by
-        ``peak_fit_box``. If a tuple of two values is provided, then first
-        value indicates the width of the box and the second value indicates
-        the height of the box.
-
-    peak_search_box :  str {'all', 'off', 'fitbox'}, int, tuple of int, None,\
-optional
-        Size (in pixels) of the box around the center of the input star
-        to be used for brute-force search of the maximum value pixel. This
-        search is performed before quadratic fitting in order to improve
-        the original estimate of the peak location. If a single integer
-        number is provided, then it is assumed that search box is a square
-        with sides of length given by ``peak_fit_box``. If a tuple of two
-        values is provided, then first value indicates the width of the box
-        and the second value indicates the height of the box. ``'off'`` or
-        `None` turns off brute-force search of the maximum. When
-        ``peak_search_box`` is ``'all'`` then the entire cutout of the
-        star is searched for maximum and when it is set to ``'fitbox'`` then
-        the brute-force search is performed in the same box as
-        ``peak_fit_box``.
-
-    origin : tuple of two int
-        Position (``x``, ``y``) of the bottom-left corner of star's cutout
-        in the original image. This is useful for recovering star' position
-        in the original image from which star's cutout was extracted.
-
-    wcs : astropy.wcs.WCS, None, optional
-        :py:class:`~astropy.wcs.WCS` of the *original* image from which star's
-        cutout was extracted.
-
-    meta : dict-like, optional
-        Additional meta information about the star.
-
-
-    Attributes
-    ----------
-    image_name : str
-        Name of the image from which star's cutout was extracted.
-        Default: 'Unknown'.
-
-    catalog_name : str
-        Name of the catalog that provided the coordinates of the source.
-        Default: 'Unknown'.
-
-    id : int, str, None
-        Some identification of the source in the catalog. Default: `None`.
     """
 
-    def __init__(self, data, weights=None, star_weight=1.0,
-                 flux=None, pixel_scale=1, center=None, recenter=False,
-                 peak_fit_box=5, peak_search_box='fitbox',
-                 origin=(0, 0), wcs=None, meta={}, id=None):
+    def __init__(self, data, weights=None, center=None, origin=(0, 0),
+                 wcs=None, id=None, flux=None, pixel_scale=1):
 
         self._data = data
-        self.weights = weights  # we must set weights ASAP to have a valid mask
-        self.peak_fit_box = peak_fit_box
-        self.peak_search_box = peak_search_box
-        self.pixel_scale = pixel_scale
-        self.star_weight = star_weight
 
-        # set/compute star's flux:
-        self.flux = flux
+        if weights is not None:
+            if weights.shape != data.shape:
+                raise ValueError('weights must have the same shape as the '
+                                 'input data array.')
+        self._weights = weights
 
-        # set input image related parameters:
-        self._ny, self._nx = data.shape
-
-        # center of the "star" in 'data' grid:
+        if center is None:
+            center = ((data.shape[1] - 1) / 2.), (data.shape[0] - 1) / 2.))
         self.center = center
-        if center is not None and recenter:
-            self.refine_center(peak_fit_box=peak_fit_box,
-                               peak_search_box=peak_search_box)
 
-        # coordinate of the bottom-left pixel of input 'data' in the original
-        # image from which 'data' have been "cut-out"
         self.origin = origin
+        self.wcs = wcs
+        self.id = id
+        self.flux = flux
+        self.pixel_scale = pixel_scale
 
-        self._wcs = wcs
-        self._meta = meta
+        self.shape = self._data.shape
 
-        self._prev = None
-        self._next = None
-
-        # fit information:
+        # TODO: fit information:
         self._fit_residual = None
         self._fit_info = None
         self._fit_error_status = None
@@ -256,31 +183,27 @@ optional
         self._iter_fit_eps = None
         self._ignore = False
 
-        # useful info: ids, names, etc.
-        self.image_name = 'Unknown'
-        self.catalog_name = 'Unknown'
-        self.id = id
+    def __array__(self):
+        """
+        Array representation of the mask data array (e.g., for
+        matplotlib).
+        """
+
+        return self._data
 
     @property
     def data(self):
-        """
-        Get star's image data.
+        """The 2D cutout image."""
 
-        """
         return self._data
 
     @property
     def weights(self):
-        """
-        Get effective weights of image data.
+        """The 2D weights array."""
 
-        When setting weights, :py:class:`numpy.ndarray` or `None` may be used.
-        Effective weights of star's data are computed by setting elements of
-        the input ``weights`` array that correspond to invalid image data
-        (such as `~numpy.nan`, `~numpy.inf`, etc.) to 0.
-
-        """
         return self._weights
+
+
 
     @weights.setter
     def weights(self, weights):
@@ -305,18 +228,6 @@ optional
             self._has_bad_data = True
 
         self._x, self._y, self._v, self._w = self._compute_data_vectors()
-
-    @property
-    def star_weight(self):
-        """ Get/Set star's weight. """
-        return self._star_weight
-
-    @star_weight.setter
-    def star_weight(self, star_weight):
-        star_weight = float(star_weight)
-        if star_weight <= 0.0:
-            raise ValueError("Star's weight must be a strictly positive "
-                             "number.")
 
     @property
     def mask(self):
@@ -493,6 +404,53 @@ optional
 
         Parameters
         ----------
+    recenter : bool, optional
+        Indicates that a new source position should be estimated by fitting a
+        quadratic polynomial to pixels around the star's center
+        (either provided by ``center`` or by performing a brute-search of
+        the peak pixel value within a specified search box - see
+        ``peak_search_box`` parameter for more details). This may be useful if
+        the position of the center of the star is not very accurate.
+
+        .. note::
+            Keep in mind that the results of finding star's peak position
+            may be sub-optimal on undersampled images. However, this
+            method of peak finding (fitting a quadratic 2D polynomial)
+            is used only at this stage of determining the PSF (i.e., at the
+            stage of extracting star cutouts) and
+            the iterative process of refining PSF uses PSF fitting to stars at
+            all subsequent stages.
+
+    peak_fit_box : int, tuple of int, optional
+        Size (in pixels) of the box around the center of the star (or around
+        stars' peak if peak was searched for - see ``peak_search_box`` for
+        more details) to be used for quadratic fitting from which peak location
+        is computed. If a single integer number is provided, then it is assumed
+        that fitting box is a square with sides of length given by
+        ``peak_fit_box``. If a tuple of two values is provided, then first
+        value indicates the width of the box and the second value indicates
+        the height of the box.
+
+    peak_search_box :  str {'all', 'off', 'fitbox'}, int, tuple of int, None,\
+optional
+        Size (in pixels) of the box around the center of the input star
+        to be used for brute-force search of the maximum value pixel. This
+        search is performed before quadratic fitting in order to improve
+        the original estimate of the peak location. If a single integer
+        number is provided, then it is assumed that search box is a square
+        with sides of length given by ``peak_fit_box``. If a tuple of two
+        values is provided, then first value indicates the width of the box
+        and the second value indicates the height of the box. ``'off'`` or
+        `None` turns off brute-force search of the maximum. When
+        ``peak_search_box`` is ``'all'`` then the entire cutout of the
+        star is searched for maximum and when it is set to ``'fitbox'`` then
+        the brute-force search is performed in the same box as
+        ``peak_fit_box``.
+
+
+
+
+
         **kwargs : dict-like, optional
             Additional optional keyword arguments. When present, these
             arguments override values set in a `Star` object when it was
@@ -788,16 +746,6 @@ tuple of int, None, optional
     @peak_search_box.setter
     def peak_search_box(self, peak_search_box):
         self._peak_search_box = peak_search_box
-
-
-class Weights(UnknownUncertainty):
-    """ Convenience class for defining weights to be used
-    with `~astropy.nddata.NDData` input images.
-
-    """
-    @property
-    def uncertainty_type(self):
-        return 'weights'
 
 
 def extract_stars(data, catalogs, box_size=11, recenter=False):
