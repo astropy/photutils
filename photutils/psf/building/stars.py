@@ -10,7 +10,9 @@ from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
                                   NoOverlapError)
 from astropy import wcs
 from astropy.wcs.utils import skycoord_to_pixel
+from astropy.utils import lazyproperty
 
+from ...aperture import BoundingBox
 from .centroid import find_peak
 from .utils import interpolate_missing_data
 
@@ -134,7 +136,7 @@ class Star(object):
         image.  The ``origin`` and ``wcs`` must both be input for linked
         stars (i.e. the same star extracted from different images).
 
-    wcs : `~astropy.wcs.WCS` or None, optional
+    wcs_original : `~astropy.wcs.WCS` or None, optional
         A WCS object associated with the *original* image from which the
         cutout array was extracted.  It should *not* be a WCS object
         associated with the input cutout ``data`` array.  The ``origin``
@@ -153,7 +155,7 @@ class Star(object):
     """
 
     def __init__(self, data, weights=None, center=None, origin=(0, 0),
-                 wcs=None, id=None, flux=None, pixel_scale=1):
+                 wcs_original=None, id=None, flux=None, pixel_scale=1):
 
         self._data = data
 
@@ -164,11 +166,11 @@ class Star(object):
         self._weights = weights
 
         if center is None:
-            center = ((data.shape[1] - 1) / 2.), (data.shape[0] - 1) / 2.))
+            center = ((data.shape[1] - 1) / 2., (data.shape[0] - 1) / 2.)
         self.center = center
 
         self.origin = origin
-        self.wcs = wcs
+        self.wcs_original = wcs_original
         self.id = id
         self.flux = flux
         self.pixel_scale = pixel_scale
@@ -190,6 +192,16 @@ class Star(object):
         """
 
         return self._data
+
+    @lazyproperty
+    def bbox_original(self):
+        """
+        The minimal `~photutils.aperture.BoundingBox` for cutout region
+        with respect to the original image.
+        """
+
+        return BoundingBox(self.origin[0], self.origin[0] + self.shape[0],
+                           self.origin[1], self.origin[1] + self.shape[1])
 
     @property
     def data(self):
@@ -239,50 +251,50 @@ class Star(object):
         """
         return self._mask
 
-    @property
-    def flux(self):
-        """
-        Set/get fitted flux. Setting flux to `None` will set the flux
-        to the sum of the values of all data pixels.
+    #@property
+    #def flux(self):
+    #    """
+    #    Set/get fitted flux. Setting flux to `None` will set the flux
+    #    to the sum of the values of all data pixels.
 
-        .. note::
-            If ``data`` contains invalid values (i.e., not finite or for which
-            ``weights`` == 0), those pixels are first interpolated over using
-            a cubic spline if possible, and when they cannot be interpolated
-            over using a spline, they are interpolated using nearest-neighbor
-            interpolation.
+    #    .. note::
+    #        If ``data`` contains invalid values (i.e., not finite or for which
+    #        ``weights`` == 0), those pixels are first interpolated over using
+    #        a cubic spline if possible, and when they cannot be interpolated
+    #        over using a spline, they are interpolated using nearest-neighbor
+    #        interpolation.
+#
+#        """
+#        return self._flux
 
-        """
-        return self._flux
-
-    @flux.setter
-    def flux(self, flux):
-        if flux is None:
-            # compute flux so that sum(data)/flux = 1:
-            if self._has_bad_data:
-                # fill in missing data so as to better estimate "total"
-                # (within image data) flux of the star:
-                idata = interpolate_missing_data(self._data, method='cubic',
-                                                 mask=self._mask)
-                idata = interpolate_missing_data(idata, method='nearest',
-                                                 mask=self._mask)
-                self._flux = np.abs(np.sum(idata, dtype=np.float64))
-
-            else:
-                self._flux = np.abs(np.sum(self._data, dtype=np.float64))
-
-            if not np.isfinite(self._flux):
-                self._flux = 1.0
-
-        else:
-            if not np.isfinite(flux):
-                raise ValueError("'flux' must be a finite number.")
-            self._flux = float(flux)
-
-    @property
-    def shape(self):
-        """ Numpy style tuple of dimensions of the data array (ny, nx). """
-        return self._data.shape
+#    #@flux.setter
+#    def __zflux(self, flux):
+#        if flux is None:
+#            # compute flux so that sum(data)/flux = 1:
+#            if self._has_bad_data:
+#                # fill in missing data so as to better estimate "total"
+#                # (within image data) flux of the star:
+#                idata = interpolate_missing_data(self._data, method='cubic',
+#                                                 mask=self._mask)
+#                idata = interpolate_missing_data(idata, method='nearest',
+#                                                 mask=self._mask)
+#                self._flux = np.abs(np.sum(idata, dtype=np.float64))
+#
+#            else:
+#                self._flux = np.abs(np.sum(self._data, dtype=np.float64))
+#
+#            if not np.isfinite(self._flux):
+#                self._flux = 1.0
+#
+#        else:
+#            if not np.isfinite(flux):
+#                raise ValueError("'flux' must be a finite number.")
+#            self._flux = float(flux)
+#
+#    @property
+#    def shape(self):
+#        """ Numpy style tuple of dimensions of the data array (ny, nx). """
+#        return self._data.shape
 
     @property
     def nx(self):
@@ -955,7 +967,7 @@ def _extract_stars(data, catalog, box_size=11, recenter=False):
 
         origin = (large_slc[1].start, large_slc[0].start)
         star = Star(cutout, weights_cutout, center=(xcen, ycen),
-                    recenter=False, origin=origin, wcs=data.wcs, id=idi)
+                    origin=origin, wcs_original=data.wcs, id=idi)
 
         stars.append(star)
 
