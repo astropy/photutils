@@ -217,7 +217,7 @@ optional
     def __init__(self, data, weights=None, star_weight=1.0,
                  flux=None, pixel_scale=1, center=None, recenter=False,
                  peak_fit_box=5, peak_search_box='fitbox',
-                 origin=(0, 0), wcs=None, meta={}):
+                 origin=(0, 0), wcs=None, meta={}, id=None):
 
         self._data = data
         self.weights = weights  # we must set weights ASAP to have a valid mask
@@ -259,7 +259,7 @@ optional
         # useful info: ids, names, etc.
         self.image_name = 'Unknown'
         self.catalog_name = 'Unknown'
-        self.id = None
+        self.id = id
 
     @property
     def data(self):
@@ -955,12 +955,12 @@ def _extract_stars(data, catalog, box_size=11, recenter=False):
     if box_size[0] < min_size or box_size[1] < min_size:
         raise ValueError('box_size must be >= {} for x and y'
                          .format(min_size))
-    shape = box_size.reverse()
+    shape = box_size[::-1]
 
     if 'id' in colnames:
-        idnums = catalog['id']
+        ids = catalog['id']
     else:
-        idnums = np.arange(len(catalog), dtype=np.int) + 1
+        ids = np.arange(len(catalog), dtype=np.int) + 1
 
     if data.uncertainty is None:
         weights = np.ones_like(data.data)
@@ -977,14 +977,15 @@ def _extract_stars(data, catalog, box_size=11, recenter=False):
         weights[data.mask] = 0.
 
     stars = []
-    for xcen, ycen, idnum in zip(xcens, ycens, idnums):
+    for xcen, ycen, idi in zip(xcens, ycens, ids):
         try:
             large_slc, small_slc = overlap_slices(data.data.shape, shape,
                                                   (ycen, xcen), mode='strict')
             cutout = data.data[large_slc]
             weights_cutout = weights[large_slc]
         except (PartialOverlapError, NoOverlapError):
-            return None
+            stars.append(None)
+            continue
 
         if recenter:
             mask = (weights_cutout > 0.0)
@@ -1002,11 +1003,11 @@ def _extract_stars(data, catalog, box_size=11, recenter=False):
                 cutout = data.data[large_slc]
                 weights_cutout = weights[large_slc]
             except (PartialOverlapError, NoOverlapError):
-                return None
+                stars.append(None)
 
         origin = (large_slc[1].start, large_slc[0].start)
         star = Star(cutout, weights_cutout, center=(xcen, ycen),
-                    recenter=False, origin=origin, wcs=data.wcs, id=id)
+                    recenter=False, origin=origin, wcs=data.wcs, id=idi)
 
         stars.append(star)
 
