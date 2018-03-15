@@ -493,48 +493,6 @@ tuple of int, None, optional
             peak_fit_box=fbox, peak_search_box=sbox, mask=self.mask
         )
 
-    @property
-    def blc(self):
-        """
-        A tuple of ``x`` and ``y`` coordinates of the bottom-left corner of the
-        star data relative to the origin of the original image from which
-        the star was extracted.
-
-        """
-        return self._blc
-
-    @blc.setter
-    def blc(self, blc):
-        if hasattr(blc, '__iter__') and len(blc) == 2:
-            self._blc = tuple(np.asarray(blc).tolist())
-        else:
-            raise TypeError("Parameter 'blc' must be an iterable with two "
-                            "elements.")
-
-    @property
-    def wcs(self):
-        """ Get the wcs object attached to the `Star`. """
-        return self._wcs
-
-    @property
-    def meta(self):
-        """
-        Get/Set the meta object attached to the `Star`. Meta object must
-        be a `dict`. When setting meta to `None`, an empty `dict` will be
-        assigned to the `Star` object.
-
-        """
-        return self._meta
-
-    @meta.setter
-    def meta(self, meta):
-        if meta is None:
-            self._meta = {}
-        elif not isinstance(meta, dict):
-            raise TypeError("'meta' must be a dictionary or 'None'.")
-        else:
-            self._meta = meta
-
     def _compute_data_vectors(self):
         y, x = np.indices(self._data.shape)
         x = x[self._mask].ravel()
@@ -760,7 +718,7 @@ tuple of int, None, optional
         self._peak_search_box = peak_search_box
 
 
-def extract_stars(data, catalogs, box_size=11, recenter=False):
+def extract_stars(data, catalogs, size=11, recenter=False):
     """
     Extract cutout images centered on stars defined in the input
     catalog(s).
@@ -804,11 +762,10 @@ def extract_stars(data, catalogs, box_size=11, recenter=False):
         other columns presents in the input ``catalogs`` will be
         ignored.
 
-    box_size : int or array_like (int), optional
-        The extraction box size along each axis.  If ``box_size`` is a
-        scalar then a square box of size ``box_size`` will be used.  If
-        ``box_size`` has two elements, they should be in ``(ny, nx)``
-        order.
+    size : int or array_like (int), optional
+        The extraction box size along each axis.  If ``size`` is a
+        scalar then a square box of size ``size`` will be used.  If
+        ``size`` has two elements, they should be in ``(ny, nx)`` order.
 
     recenter : bool, optional
         Whether to estimate a new source position within the extracted
@@ -860,7 +817,7 @@ def extract_stars(data, catalogs, box_size=11, recenter=False):
     if len(catalogs) == 1:
         stars = []
         for im in data:
-            stars.append(_extract_stars(im, catalogs[0], box_size=box_size,
+            stars.append(_extract_stars(im, catalogs[0], size=size,
                                         recenter=recenter))
 
         # transpose the list of lists to associate linked stars
@@ -879,13 +836,13 @@ def extract_stars(data, catalogs, box_size=11, recenter=False):
     else:
         stars_out = []
         for im, cat in zip(data, catalogs):
-            stars_out.append(_extract_stars(im, cat, box_size=box_size,
+            stars_out.append(_extract_stars(im, cat, size=size,
                                             recenter=recenter))
 
     return Stars(stars_out)
 
 
-def _extract_stars(data, catalog, box_size=11, recenter=False):
+def _extract_stars(data, catalog, size=11, recenter=False):
     """
     Extract cutout images from a single image centered on stars defined
     in the single input catalog.
@@ -908,14 +865,13 @@ def _extract_stars(data, catalog, box_size=11, recenter=False):
         xcens = catalog['x'].data.astype(np.float)
         ycens = catalog['y'].data.astype(np.float)
 
-    box_size = np.atleast_1d(box_size)
-    if len(box_size) == 1:
-        box_size = np.repeat(box_size, 2)
+    size = np.atleast_1d(size)
+    if len(size) == 1:
+        size = np.repeat(size, 2)
     min_size = 3
-    if box_size[0] < min_size or box_size[1] < min_size:
-        raise ValueError('box_size must be >= {} for x and y'
-                         .format(min_size))
-    shape = box_size[::-1]
+    if size[0] < min_size or size[1] < min_size:
+        raise ValueError('size must be >= {} for x and y'.format(min_size))
+    shape = size[::-1]
 
     if 'id' in colnames:
         ids = catalog['id']
