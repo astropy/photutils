@@ -51,7 +51,10 @@ class Stars(object):
             yield i
 
     def __getattr__(self, attr):
-        return [getattr(p, attr) for p in self._data]
+        if attr == 'data':
+            return None
+        else:
+            return [getattr(p, attr) for p in self._data]
 
     def constrain_linked_centers(self, ignore_badfit_stars=True):
         """ Constrains the coordinates of star centers (in image coordinates).
@@ -305,6 +308,11 @@ class Star(object):
     def ny(self):
         """ Number of rows in the data array. """
         return self._ny
+
+    # TODO
+    #@property
+    #def skycoord(self):
+    #    return None
 
     @property
     def center(self):
@@ -739,16 +747,18 @@ def extract_stars(data, catalogs, size=11, recenter=False):
         single source, you must use a single source catalog where the
         positions defined in sky coordinates.
 
-        If a list of catalogs is input, they are assumed to correspond
-        to the list of `~astropy.nddata.NDData` objects input in
-        ``data`` (i.e. a separate source catalog for each 2D image).
-        For multiple input catalogs, the center of each source can be
-        defined either in pixel coordinates (in ``x`` and ``y`` columns)
-        or sky coordinates (in a ``skycoord`` column containing a
+        If a list of catalogs is input (or a single catalog with a
+        single `~astropy.nddata.NDData` object), they are assumed to
+        correspond to the list of `~astropy.nddata.NDData` objects input
+        in ``data`` (i.e. a separate source catalog for each 2D image).
+        For this case, the center of each source can be defined either
+        in pixel coordinates (in ``x`` and ``y`` columns) or sky
+        coordinates (in a ``skycoord`` column containing a
         `~astropy.coordinates.SkyCoord` object).  If both are specified,
         then the pixel coordinates will be used.
 
-        If a single source catalog is input, then these sources will be
+        If a single source catalog is input with multiple
+        `~astropy.nddata.NDData` objects, then these sources will be
         extracted from every 2D image in the input ``data``.  In this
         case, the sky coordinates for each source must be specified as a
         `~astropy.coordinates.SkyCoord` object contained in a column
@@ -793,21 +803,29 @@ def extract_stars(data, catalogs, size=11, recenter=False):
             raise ValueError('catalogs must be a single or list of Table '
                              'objects.')
 
-    if len(catalogs) == 1:
+    if len(catalogs) == 1 and len(data) > 1:
         if 'skycoord' not in catalogs[0].colnames:
-            raise ValueError('When inputting a single catalog, it must '
-                             'have a "skycoord" column.')
+            raise ValueError('When inputting a single catalog with multiple '
+                             'NDData objects, the catalog must have a '
+                             '"skycoord" column.')
 
         if any([im.wcs is None for im in data]):
-            raise ValueError('When inputting a single catalog, each NDData '
-                             'object must have a wcs attribute.')
+            raise ValueError('When inputting a single catalog with multiple '
+                             'NDData objects, each NDData object must have '
+                             'a wcs attribute.')
     else:
         for cat in catalogs:
-            if (('x' not in cat.colnames or 'y' not in cat.colnames) and
-                    ('skycoord' not in cat.colnames)):
-                raise ValueError('When inputting multiple catalogs, '
-                                 'each one must have a "x" and "y" '
-                                 'column or a "skycoord" column.')
+            if 'x' not in cat.colnames or 'y' not in cat.colnames:
+                if 'skycoord' not in cat.colnames:
+                    raise ValueError('When inputting multiple catalogs, '
+                                    'each one must have a "x" and "y" '
+                                    'column or a "skycoord" column.')
+                else:
+                    if any([im.wcs is None for im in data]):
+                        raise ValueError('When inputting catalog(s) with '
+                                         'only skycoord positions, each '
+                                         'NDData object must have a wcs '
+                                         'attribute.')
 
         if len(data) != len(catalogs):
             raise ValueError('When inputting multiple catalogs, the number '
@@ -871,7 +889,7 @@ def _extract_stars(data, catalog, size=11, recenter=False):
     min_size = 3
     if size[0] < min_size or size[1] < min_size:
         raise ValueError('size must be >= {} for x and y'.format(min_size))
-    shape = size[::-1]
+    cutout_shape = size[::-1]
 
     if 'id' in colnames:
         ids = catalog['id']
@@ -895,7 +913,8 @@ def _extract_stars(data, catalog, size=11, recenter=False):
     stars = []
     for xcen, ycen, idi in zip(xcens, ycens, ids):
         try:
-            large_slc, small_slc = overlap_slices(data.data.shape, shape,
+            large_slc, small_slc = overlap_slices(data.data.shape,
+                                                  cutout_shape,
                                                   (ycen, xcen), mode='strict')
             cutout = data.data[large_slc]
             weights_cutout = weights[large_slc]
@@ -908,12 +927,14 @@ def _extract_stars(data, catalog, size=11, recenter=False):
 
             x0 = xcen - large_slc[1].start
             y0 = ycen - large_slc[0].start
-            xnew, ynew = find_peak(cutout, x0, y0, mask=mask)
-            xcen = np.int(xnew + large_slc[1].start + 0.5)
-            ycen = np.int(ynew + large_slc[0].start + 0.5)
+            xnew, ynew = find_peak(cutout, x0, y0, mask=mask,
+                                   peak_fit_box=5, peak_search_box='fitbox')
+            xcen = xnew + large_slc[1].start
+            ycen = ynew + large_slc[0].start
 
             try:
-                large_slc, small_slc = overlap_slices(data.data.shape, shape,
+                large_slc, small_slc = overlap_slices(data.data.shape,
+                                                      cutout_shape,
                                                       (ycen, xcen),
                                                       mode='strict')
                 cutout = data.data[large_slc]
@@ -922,7 +943,8 @@ def _extract_stars(data, catalog, size=11, recenter=False):
                 stars.append(None)
 
         origin = (large_slc[1].start, large_slc[0].start)
-        star = Star(cutout, weights_cutout, center=(xcen, ycen),
+        center_cutout = (xcen - origin[0], ycen - origin[1])
+        star = Star(cutout, weights_cutout, center=center_cutout,
                     origin=origin, wcs_original=data.wcs, id=idi)
 
         stars.append(star)
