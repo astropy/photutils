@@ -121,8 +121,8 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
 
 
 def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
-               border_width=None, npeaks=np.inf, subpixel=False, error=None,
-               wcs=None):
+               border_width=None, npeaks=np.inf, centroid_func=None,
+               subpixel=False, error=None, wcs=None):
     """
     Find local peaks in an image that are above above a specified
     threshold value.
@@ -138,6 +138,11 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     there will be only one peak pixel per local region.  Thus, the
     defined region effectively imposes a minimum separation between
     peaks (unless there are identical peaks within the region).
+
+    If ``centroid_func`` is input, then it will be used to calculate a
+    centroid within a cutout of the specified ``box_size`` or
+    ``footprint`` centered on each peak.  In this case, the centroid
+    will also be returned in the output table.
 
     When using subpixel precision (``subpixel=True``), then a cutout of
     the specified ``box_size`` or ``footprint`` will be taken centered
@@ -260,7 +265,20 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         table.add_column(Column(icrs_dec_peak, name='icrs_dec_peak'), index=3)
 
     # perform centroiding
-    if subpixel:
+    if centroid_func is not None:
+        from ..centroids import centroid_sources  # prevents circular import
+
+        if not callable(centroid_func):
+            raise ValueError('centroid_func must be a callable object')
+
+        x_centroids, y_centroids = centroid_sources(
+            data, x_peaks, y_peaks, box_size=box_size,
+            footprint=footprint, error=error, mask=mask,
+            centroid_func=centroid_func)
+
+        table['x_centroid'] = x_centroids
+        table['y_centroid'] = y_centroids
+    elif subpixel:
         from ..centroids import fit_2dgaussian    # prevents circular import
 
         x_centroid, y_centroid = [], []
@@ -283,15 +301,15 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
 
         table['x_centroid'] = x_centroid
         table['y_centroid'] = y_centroid
-        table['fit_peak_value'] = fit_peak_value
+        table['fit_peak_value'] = fit_peak_values
 
-        if wcs is not None:
-            icrs_ra_centroid, icrs_dec_centroid = pixel_to_icrs_coords(
-                x_centroid, y_centroid, wcs)
-            idx = table.colnames.index('y_centroid')
-            table.add_column(Column(icrs_ra_centroid,
-                                    name='icrs_ra_centroid'), index=idx+1)
-            table.add_column(Column(icrs_dec_centroid,
-                                    name='icrs_dec_centroid'), index=idx+2)
+    if (centroid_func is not None or subpixel) and wcs is not None:
+        icrs_ra_centroid, icrs_dec_centroid = pixel_to_icrs_coords(
+            x_centroid, y_centroid, wcs)
+        idx = table.colnames.index('y_centroid')
+        table.add_column(Column(icrs_ra_centroid,
+                                name='icrs_ra_centroid'), index=idx+1)
+        table.add_column(Column(icrs_dec_centroid,
+                                name='icrs_dec_centroid'), index=idx+2)
 
     return table
