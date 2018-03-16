@@ -368,6 +368,64 @@ def centroid_2dg(data, error=None, mask=None):
 
 def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
                      error=None, mask=None, centroid_func=centroid_com):
+    """
+    Calculate the centroid of sources at the defined positions.
+
+    A cutout image centered on each input position will be used to
+    calculate the centroid position.  The cutout image is defined either
+    using the ``box_size`` or ``footprint`` keyword.  The ``footprint``
+    keyword can be used to create a non-rectangular cutout image.
+
+    Parameters
+    ----------
+    data : array_like
+        The 2D array of the image.
+
+    xpos, ypos : float or array-like of float
+        The initial ``x`` and ``y`` pixel position(s) of the center
+        position.  A cutout image centered on this position be used to
+        calculate the centroid.
+
+    box_size : int or array-like of int, optional
+        The size of the cutout image along each axis.  If ``box_size``
+        is a number, then a square cutout of ``box_size`` will be
+        created.  If ``box_size`` has two elements, they should be in
+        ``(ny, nx)`` order.
+
+    footprint : `~numpy.ndarray` of bools, optional
+        A 2D boolean array where `True` values describe the local
+        footprint region to cutout.  ``footprint`` can be used to create
+        a non-rectangular cutout image, in which case the input ``xpos``
+        and ``ypos`` represent the center of the minimal bounding box
+        for the input ``footprint``.  ``box_size=(n, m)`` is equivalent
+        to ``footprint=np.ones((n, m))``.  Either ``box_size`` or
+        ``footprint`` must be defined.  If they are both defined, then
+        ``footprint`` overrides ``box_size``.
+
+    mask : array_like, bool, optional
+        A 2D boolean array with the same shape as ``data``, where a
+        `True` value indicates the corresponding element of ``data`` is
+        masked.  ``mask`` will be used only if supported by the input
+        ``centroid_func``.
+
+    error : array_like, optional
+        The 2D array of the 1-sigma errors of the input ``data``.
+        ``error`` must have the same shape as ``data``.  ``error` will
+        be used only if supported by the input ``centroid_func``.
+
+    centroid_func : callable, optional
+        A callable object (e.g. function or class) that is used to
+        calculate the centroid of a 2D array.  The ``centroid_func``
+        must accept a 2D `~numpy.ndarray` and optionally have ``mask``
+        and ``error`` keywords.  The callable object must return a tuple
+        of 1D `~numpy.ndarray`, representing the x and y centroids.  The
+        default is `~photutils.centroid.centroid_com`.
+
+    Returns
+    -------
+    xcentroid, ycentroid : `~numpy.ndarray`
+        The ``x`` and ``y`` pixel position(s) of the centroids.
+    """
 
     xpos = np.atleast_1d(xpos)
     ypos = np.atleast_1d(ypos)
