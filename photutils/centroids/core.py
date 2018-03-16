@@ -6,6 +6,7 @@ properties.
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+import inspect
 import warnings
 
 import numpy as np
@@ -13,13 +14,15 @@ from astropy.modeling import Fittable2DModel, Parameter
 from astropy.modeling.models import (Gaussian1D, Gaussian2D, Const1D,
                                      Const2D, CONSTRAINTS_DOC)
 from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.nddata.utils import overlap_slices
 from astropy.utils.exceptions import AstropyUserWarning
 
 from ..morphology import data_properties
 
 
 __all__ = ['GaussianConst2D', 'centroid_com', 'gaussian1d_moments',
-           'fit_2dgaussian', 'centroid_1dg', 'centroid_2dg']
+           'fit_2dgaussian', 'centroid_1dg', 'centroid_2dg',
+           'centroid_sources']
 
 
 class _GaussianConst1D(Const1D + Gaussian1D):
@@ -361,3 +364,68 @@ def centroid_2dg(data, error=None, mask=None):
     gfit = fit_2dgaussian(data, error=error, mask=mask)
 
     return np.array([gfit.x_mean.value, gfit.y_mean.value])
+
+
+def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
+                     error=None, mask=None, centroid_func=centroid_com):
+
+    xpos = np.atleast_1d(xpos)
+    ypos = np.atleast_1d(ypos)
+    if xpos.ndim != 1:
+        raise ValueError('xpos must be a 1D array.')
+    if ypos.ndim != 1:
+        raise ValueError('ypos must be a 1D array.')
+
+    if footprint is None:
+        if box_size is None:
+            raise ValueError('box_size or footprint must be defined.')
+        else:
+            box_size = np.atleast_1d(box_size)
+            if len(box_size) == 1:
+                box_size = np.repeat(box_size, 2)
+            if len(box_size) != 2:
+                raise ValueError('box_size must have 1 or 2 elements.')
+
+        footprint = np.ones(box_size, dtype=bool)
+    else:
+        footprint = np.asanyarray(footprint, dtype=bool)
+        if footprint.ndim != 2:
+            raise ValueError('footprint must be a 2D array.')
+
+    use_error = False
+    spec = inspect.getfullargspec(centroid_func)
+    if 'error' in spec.args:
+        use_error = True
+
+    xcentroids = []
+    ycentroids = []
+    for xp, yp in zip(xpos, ypos):
+        slices_large, slices_small = overlap_slices(data.shape,
+                                                    footprint.shape, (yp, xp))
+        data_cutout = data[slices_large]
+
+        mask_cutout = None
+        if mask is not None:
+            mask_cutout = mask[slices_large]
+
+        footprint_mask = ~footprint
+        # trim footprint mask if partial overlap on the data
+        footprint_mask = footprint_mask[slices_small]
+
+        if mask_cutout is None:
+            mask_cutout = footprint_mask
+        else:
+            # combine the input mask and footprint mask
+            mask_cutout = np.logical_or(mask_cutout, footprint_mask)
+
+        if error is not None and use_error:
+            error_cutout = error[slices_large]
+            xcen, ycen = centroid_func(data_cutout, mask=mask_cutout,
+                                       error=error_cutout)
+        else:
+            xcen, ycen = centroid_func(data_cutout, mask=mask_cutout)
+
+        xcentroids.append(xcen + slices_large[1].start)
+        ycentroids.append(ycen + slices_large[0].start)
+
+    return np.array(xcentroids), np.array(ycentroids)
