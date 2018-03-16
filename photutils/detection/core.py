@@ -248,6 +248,18 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         y_peaks = y_peaks[idx]
         peak_values = peak_values[idx]
 
+    # construct the output Table
+    colnames = ['x_peak', 'y_peak', 'peak_value']
+    coldata = [x_peaks, y_peaks, peak_values]
+    table = Table(coldata, names=colnames)
+
+    if wcs is not None:
+        icrs_ra_peak, icrs_dec_peak = pixel_to_icrs_coords(x_peaks, y_peaks,
+                                                           wcs)
+        table.add_column(Column(icrs_ra_peak, name='icrs_ra_peak'), index=2)
+        table.add_column(Column(icrs_dec_peak, name='icrs_dec_peak'), index=3)
+
+    # perform centroiding
     if subpixel:
         from ..centroids import fit_2dgaussian    # prevents circular import
 
@@ -269,23 +281,11 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
             y_centroid.append(y_cen)
             fit_peak_values.append(fit_peak_value)
 
-        columns = (x_peaks, y_peaks, peak_values, x_centroid, y_centroid,
-                   fit_peak_values)
-        names = ('x_peak', 'y_peak', 'peak_value', 'x_centroid', 'y_centroid',
-                 'fit_peak_value')
-    else:
-        columns = (x_peaks, y_peaks, peak_values)
-        names = ('x_peak', 'y_peak', 'peak_value')
+        table['x_centroid'] = x_centroid
+        table['y_centroid'] = y_centroid
+        table['fit_peak_value'] = fit_peak_value
 
-    table = Table(columns, names=names)
-
-    if wcs is not None:
-        icrs_ra_peak, icrs_dec_peak = pixel_to_icrs_coords(x_peaks, y_peaks,
-                                                           wcs)
-        table.add_column(Column(icrs_ra_peak, name='icrs_ra_peak'), index=2)
-        table.add_column(Column(icrs_dec_peak, name='icrs_dec_peak'), index=3)
-
-        if subpixel:
+        if wcs is not None:
             icrs_ra_centroid, icrs_dec_centroid = pixel_to_icrs_coords(
                 x_centroid, y_centroid, wcs)
             idx = table.colnames.index('y_centroid')
