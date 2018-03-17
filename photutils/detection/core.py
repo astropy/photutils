@@ -3,10 +3,12 @@
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+import warnings
 
 import numpy as np
 from astropy.stats import sigma_clipped_stats
 from astropy.table import Column, Table
+from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from ..utils.cutouts import cutout_footprint
 from ..utils.wcs_helpers import pixel_to_icrs_coords
@@ -144,6 +146,7 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     ``footprint`` centered on each peak.  In this case, the centroid
     will also be returned in the output table.
 
+    Note the ``subpixel`` keyword is now deprecated.
     When using subpixel precision (``subpixel=True``), then a cutout of
     the specified ``box_size`` or ``footprint`` will be taken centered
     on each peak and fit with a 2D Gaussian (plus a constant).  In this
@@ -190,7 +193,15 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         detected peaks exceeds ``npeaks``, the peaks with the highest
         peak intensities will be returned.
 
+    centroid_func : callable
+        A callable object (e.g. function or class) that is used to
+        calculate the centroid of a 2D array.  The ``centroid_func``
+        must accept a 2D `~numpy.ndarray` and optionally have ``mask``
+        and ``error`` keywords.  The callable object must return a tuple
+        of 1D `~numpy.ndarray`, representing the x and y centroids.
+
     subpixel : bool, optional
+        This keyword is deprecated.
         If `True`, then a cutout of the specified ``box_size`` or
         ``footprint`` will be taken centered on each peak and fit with a
         2D Gaussian (plus a constant).  In this case, the fitted local
@@ -199,8 +210,8 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
 
     error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
-        ``error`` is used only to weight the 2D Gaussian fit performed
-        when ``subpixel=True``.
+        ``error`` is used only with the ``centroid_func`` or when
+        ``subpixel=True`` (deprecated).
 
     wcs : `~astropy.wcs.WCS`
         The WCS transformation to use to convert from pixel coordinates
@@ -212,8 +223,10 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     -------
     output : `~astropy.table.Table`
         A table containing the x and y pixel location of the peaks and
-        their values.  If ``subpixel=True``, then the table will also
-        contain the local centroid and fitted peak value.
+        their values.  If ``centroid_func`` is input, then the table
+        will also contain the centroid position.  If ``subpixel=True``
+        (deprecated), then the table will also contain the local
+        centroid and fitted peak value.
     """
 
     from scipy import ndimage
@@ -280,6 +293,11 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         table['y_centroid'] = y_centroids
     elif subpixel:
         from ..centroids import fit_2dgaussian    # prevents circular import
+
+        warnings.warn('The subpixel keyword is deprecated and will be '
+                      'removed in a future version.  The centroid_func '
+                      'keyword can be used to calculate centroid positions.',
+                      AstropyDeprecationWarning)
 
         x_centroid, y_centroid = [], []
         fit_peak_values = []
