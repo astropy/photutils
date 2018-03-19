@@ -5,11 +5,13 @@ import collections
 
 import numpy as np
 from astropy.nddata.utils import overlap_slices
+from astropy.utils import deprecated
 
 
 __all__ = ['cutout_footprint']
 
 
+@deprecated(0.5)
 def cutout_footprint(data, position, box_size=3, footprint=None, mask=None,
                      error=None):
     """
