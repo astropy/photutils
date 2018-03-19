@@ -7,11 +7,11 @@ import warnings
 
 import numpy as np
 from astropy.stats import sigma_clipped_stats
-from astropy.table import Column, Table
+from astropy.table import Table
 from astropy.utils.exceptions import AstropyDeprecationWarning
+from astropy.wcs.utils import pixel_to_skycoord
 
 from ..utils.cutouts import cutout_footprint
-from ..utils.wcs_helpers import pixel_to_icrs_coords
 
 
 __all__ = ['detect_threshold', 'find_peaks']
@@ -213,10 +213,9 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         when ``subpixel=True`` (deprecated).
 
     wcs : `~astropy.wcs.WCS`
-        The WCS transformation to use to convert from pixel coordinates
-        to ICRS world coordinates.  If `None`, then the world
-        coordinates will not be returned in the output
-        `~astropy.table.Table`.
+        The WCS transformation to use to convert from pixel to sky
+        coordinates.  If `None`, then the sky coordinates will not be
+        returned in the output `~astropy.table.Table`.
 
     Returns
     -------
@@ -271,10 +270,8 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     table = Table(coldata, names=colnames)
 
     if wcs is not None:
-        icrs_ra_peak, icrs_dec_peak = pixel_to_icrs_coords(x_peaks, y_peaks,
-                                                           wcs)
-        table.add_column(Column(icrs_ra_peak, name='icrs_ra_peak'), index=2)
-        table.add_column(Column(icrs_dec_peak, name='icrs_dec_peak'), index=3)
+        skycoord_peaks = pixel_to_skycoord(x_peaks, y_peaks, wcs, origin=0)
+        table.add_column(skycoord_peaks, name='skycoord_peak', index=2)
 
     if centroid_func is not None and subpixel:
         raise ValueError('centroid_func and subpixel (deprecated) cannot '
@@ -302,7 +299,7 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
                       'keyword can be used to calculate centroid positions.',
                       AstropyDeprecationWarning)
 
-        x_centroid, y_centroid = [], []
+        x_centroids, y_centroids = [], []
         fit_peak_values = []
         for (y_peak, x_peak) in zip(y_peaks, x_peaks):
             rdata, rmask, rerror, slc = cutout_footprint(
@@ -316,21 +313,19 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
                 y_cen = slc[0].start + gaussian_fit.y_mean.value
                 fit_peak_value = (gaussian_fit.constant.value +
                                   gaussian_fit.amplitude.value)
-            x_centroid.append(x_cen)
-            y_centroid.append(y_cen)
+            x_centroids.append(x_cen)
+            y_centroids.append(y_cen)
             fit_peak_values.append(fit_peak_value)
 
-        table['x_centroid'] = x_centroid
-        table['y_centroid'] = y_centroid
+        table['x_centroid'] = x_centroids
+        table['y_centroid'] = y_centroids
         table['fit_peak_value'] = fit_peak_values
 
     if (centroid_func is not None or subpixel) and wcs is not None:
-        icrs_ra_centroid, icrs_dec_centroid = pixel_to_icrs_coords(
-            x_centroid, y_centroid, wcs)
+        skycoord_centroids = pixel_to_skycoord(x_centroids, y_centroids, wcs,
+                                               origin=0)
         idx = table.colnames.index('y_centroid')
-        table.add_column(Column(icrs_ra_centroid,
-                                name='icrs_ra_centroid'), index=idx+1)
-        table.add_column(Column(icrs_dec_centroid,
-                                name='icrs_dec_centroid'), index=idx+2)
+        table.add_column(skycoord_centroids, name='skycoord_centroid',
+                         index=idx+1)
 
     return table
