@@ -405,8 +405,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
     mask : array_like, bool, optional
         A 2D boolean array with the same shape as ``data``, where a
         `True` value indicates the corresponding element of ``data`` is
-        masked.  ``mask`` will be used only if supported by the input
-        ``centroid_func``.
+        masked.
 
     error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
@@ -416,10 +415,11 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
     centroid_func : callable, optional
         A callable object (e.g. function or class) that is used to
         calculate the centroid of a 2D array.  The ``centroid_func``
-        must accept a 2D `~numpy.ndarray` and optionally have ``mask``
-        and ``error`` keywords.  The callable object must return a tuple
-        of 1D `~numpy.ndarray`, representing the x and y centroids.  The
-        default is `~photutils.centroid.centroid_com`.
+        must accept a 2D `~numpy.ndarray`, have a ``mask`` keyword and
+        optionally an ``error`` keyword.  The callable object must
+        return a tuple of two 1D `~numpy.ndarray`\s, representing the x
+        and y centroids.  The default is
+        `~photutils.centroid.centroid_com`.
 
     Returns
     -------
@@ -452,6 +452,9 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
 
     use_error = False
     spec = inspect.getfullargspec(centroid_func)
+    if 'mask' not in spec.args:
+        raise ValueError('The input "centroid_func" must have a "mask" '
+                         'keyword.')
     if 'error' in spec.args:
         use_error = True
 
