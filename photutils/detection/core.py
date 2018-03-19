@@ -130,28 +130,20 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     threshold value.
 
     Peaks are the maxima above the ``threshold`` within a local region.
-    The regions are defined by either the ``box_size`` or ``footprint``
-    parameters.  ``box_size`` defines the local region around each pixel
-    as a square box.  ``footprint`` is a boolean array where `True`
-    values specify the region shape.
+    The local regions are defined by either the ``box_size`` or
+    ``footprint`` parameters.  ``box_size`` defines the local region
+    around each pixel as a square box.  ``footprint`` is a boolean array
+    where `True` values specify the region shape.
 
     If multiple pixels within a local region have identical intensities,
     then the coordinates of all such pixels are returned.  Otherwise,
     there will be only one peak pixel per local region.  Thus, the
     defined region effectively imposes a minimum separation between
-    peaks (unless there are identical peaks within the region).
+    peaks unless there are identical peaks within the region.
 
     If ``centroid_func`` is input, then it will be used to calculate a
-    centroid within a cutout of the specified ``box_size`` or
-    ``footprint`` centered on each peak.  In this case, the centroid
-    will also be returned in the output table.
-
-    Note the ``subpixel`` keyword is now deprecated.
-    When using subpixel precision (``subpixel=True``), then a cutout of
-    the specified ``box_size`` or ``footprint`` will be taken centered
-    on each peak and fit with a 2D Gaussian (plus a constant).  In this
-    case, the fitted local centroid and peak value (the Gaussian
-    amplitude plus the background constant) will also be returned in the
+    centroid within the defined local region centered on each detected
+    peak pixel.  In this case, the centroid will also be returned in the
     output table.
 
     Parameters
@@ -193,25 +185,32 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         detected peaks exceeds ``npeaks``, the peaks with the highest
         peak intensities will be returned.
 
-    centroid_func : callable
+    centroid_func : callable, optional
         A callable object (e.g. function or class) that is used to
         calculate the centroid of a 2D array.  The ``centroid_func``
-        must accept a 2D `~numpy.ndarray` and optionally have ``mask``
-        and ``error`` keywords.  The callable object must return a tuple
-        of 1D `~numpy.ndarray`, representing the x and y centroids.
+        must accept a 2D `~numpy.ndarray`, have a ``mask`` keyword, and
+        optionally an ``error`` keyword.  The callable object must
+        return a tuple of two 1D `~numpy.ndarray`\s, representing the x
+        and y centroids, respectively.
 
     subpixel : bool, optional
-        This keyword is deprecated.
-        If `True`, then a cutout of the specified ``box_size`` or
-        ``footprint`` will be taken centered on each peak and fit with a
-        2D Gaussian (plus a constant).  In this case, the fitted local
-        centroid and peak value (the Gaussian amplitude plus the
-        background constant) will also be returned in the output table.
+        .. warning::
+
+            Note the ``subpixel`` keyword is now deprecated.  To get the
+            same centroid values, use the ``centroid_func`` keyword with the
+            `~photutils.centroids.centroid_2dg` function.
+
+            If `True`, then a cutout of the specified ``box_size`` or
+            ``footprint`` will be taken centered on each peak and fit
+            with a 2D Gaussian (plus a constant).  In this case, the
+            fitted local centroid and peak value (the Gaussian amplitude
+            plus the background constant) will also be returned in the
+            output table.
 
     error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
-        ``error`` is used only with the ``centroid_func`` or when
-        ``subpixel=True`` (deprecated).
+        ``error`` is used only with the ``centroid_func`` keyword or
+        when ``subpixel=True`` (deprecated).
 
     wcs : `~astropy.wcs.WCS`
         The WCS transformation to use to convert from pixel coordinates
@@ -276,6 +275,10 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
                                                            wcs)
         table.add_column(Column(icrs_ra_peak, name='icrs_ra_peak'), index=2)
         table.add_column(Column(icrs_dec_peak, name='icrs_dec_peak'), index=3)
+
+    if centroid_func is not None and subpixel:
+        raise ValueError('centroid_func and subpixel (deprecated) cannot '
+                         'be both used.')
 
     # perform centroiding
     if centroid_func is not None:
