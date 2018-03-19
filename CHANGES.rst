@@ -4,9 +4,31 @@
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.centroid``
+
+  - Added a ``centroid_sources`` function to calculate centroid of
+    many sources in a single image. [#656]
+
+- ``photutils.detection``
+
+  - Added a ``centroid_func`` keyword to ``find_peaks``.  The
+    ``subpixels`` keyword is now deprecated. [#656]
+
+  - The ``find_peaks`` function now returns ``SkyCoord`` objects in
+    the table instead of separate RA and Dec. columns. [#656]
+
 - ``photutils.segmentation``
 
   - Added a ``mask`` keyword to the ``detect_sources`` function. [#621]
+
+- ``photutils.utils``
+
+  - Deprecated the ``cutout_footprint`` function. [#656]
+
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.segmentation``
 
   - Fix ``deblend_sources`` when other sources are in the neighborhood. [#617]
 
