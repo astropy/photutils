@@ -7,6 +7,7 @@ properties.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import inspect
+import sys
 import warnings
 
 import numpy as np
@@ -451,7 +452,11 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
             raise ValueError('footprint must be a 2D array.')
 
     use_error = False
-    spec = inspect.getfullargspec(centroid_func)
+    if sys.version_info[0] <= 2:
+        spec = inspect.getargspec(centroid_func)
+    else:
+        spec = inspect.getfullargspec(centroid_func)
+
     if 'mask' not in spec.args:
         raise ValueError('The input "centroid_func" must have a "mask" '
                          'keyword.')
