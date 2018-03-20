@@ -419,7 +419,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         optionally an ``error`` keyword.  The callable object must
         return a tuple of two 1D `~numpy.ndarray`\s, representing the x
         and y centroids.  The default is
-        `~photutils.centroid.centroid_com`.
+        `~photutils.centroids.centroid_com`.
 
     Returns
     -------
