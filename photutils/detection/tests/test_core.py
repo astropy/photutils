@@ -7,6 +7,7 @@ from numpy.testing import assert_array_equal, assert_allclose
 import pytest
 
 from ..core import detect_threshold, find_peaks
+from ...centroids import centroid_com
 from ...datasets import make_4gaussians_image, make_wcs
 
 try:
@@ -194,13 +195,23 @@ class TestFindPeaks(object):
         tbl2 = find_peaks(PEAKDATA, 0.1, box_size=5.5)
         assert_array_equal(tbl1, tbl2)
 
+    def test_centroid_func_callable(self):
+        """Test that centroid_func is callable."""
+
+        with pytest.raises(ValueError):
+            find_peaks(PEAKDATA, 0.1, box_size=2, centroid_func=True)
+
     def test_wcs(self):
         """Test with WCS."""
 
         data = make_4gaussians_image()
         wcs = make_wcs(data.shape)
+        cols = ['skycoord_peak', 'skycoord_centroid']
+
+        tbl = find_peaks(data, 100, wcs=wcs, centroid_func=centroid_com)
+        for col in cols:
+            assert col in tbl.colnames
+
         tbl = find_peaks(data, 100, wcs=wcs, subpixel=True)
-        cols = ['icrs_ra_peak', 'icrs_dec_peak', 'icrs_ra_centroid',
-                'icrs_dec_centroid']
         for col in cols:
             assert col in tbl.colnames

@@ -3,13 +3,15 @@
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+import warnings
 
 import numpy as np
 from astropy.stats import sigma_clipped_stats
-from astropy.table import Column, Table
+from astropy.table import Table
+from astropy.utils.exceptions import AstropyDeprecationWarning
+from astropy.wcs.utils import pixel_to_skycoord
 
 from ..utils.cutouts import cutout_footprint
-from ..utils.wcs_helpers import pixel_to_icrs_coords
 
 
 __all__ = ['detect_threshold', 'find_peaks']
@@ -121,29 +123,27 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
 
 
 def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
-               border_width=None, npeaks=np.inf, subpixel=False, error=None,
-               wcs=None):
+               border_width=None, npeaks=np.inf, centroid_func=None,
+               subpixel=False, error=None, wcs=None):
     """
     Find local peaks in an image that are above above a specified
     threshold value.
 
     Peaks are the maxima above the ``threshold`` within a local region.
-    The regions are defined by either the ``box_size`` or ``footprint``
-    parameters.  ``box_size`` defines the local region around each pixel
-    as a square box.  ``footprint`` is a boolean array where `True`
-    values specify the region shape.
+    The local regions are defined by either the ``box_size`` or
+    ``footprint`` parameters.  ``box_size`` defines the local region
+    around each pixel as a square box.  ``footprint`` is a boolean array
+    where `True` values specify the region shape.
 
     If multiple pixels within a local region have identical intensities,
     then the coordinates of all such pixels are returned.  Otherwise,
     there will be only one peak pixel per local region.  Thus, the
     defined region effectively imposes a minimum separation between
-    peaks (unless there are identical peaks within the region).
+    peaks unless there are identical peaks within the region.
 
-    When using subpixel precision (``subpixel=True``), then a cutout of
-    the specified ``box_size`` or ``footprint`` will be taken centered
-    on each peak and fit with a 2D Gaussian (plus a constant).  In this
-    case, the fitted local centroid and peak value (the Gaussian
-    amplitude plus the background constant) will also be returned in the
+    If ``centroid_func`` is input, then it will be used to calculate a
+    centroid within the defined local region centered on each detected
+    peak pixel.  In this case, the centroid will also be returned in the
     output table.
 
     Parameters
@@ -185,30 +185,46 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         detected peaks exceeds ``npeaks``, the peaks with the highest
         peak intensities will be returned.
 
+    centroid_func : callable, optional
+        A callable object (e.g. function or class) that is used to
+        calculate the centroid of a 2D array.  The ``centroid_func``
+        must accept a 2D `~numpy.ndarray`, have a ``mask`` keyword, and
+        optionally an ``error`` keyword.  The callable object must
+        return a tuple of two 1D `~numpy.ndarray`\s, representing the x
+        and y centroids, respectively.
+
     subpixel : bool, optional
-        If `True`, then a cutout of the specified ``box_size`` or
-        ``footprint`` will be taken centered on each peak and fit with a
-        2D Gaussian (plus a constant).  In this case, the fitted local
-        centroid and peak value (the Gaussian amplitude plus the
-        background constant) will also be returned in the output table.
+        .. warning::
+
+            Note the ``subpixel`` keyword is now deprecated.  To get the
+            same centroid values, use the ``centroid_func`` keyword with the
+            `~photutils.centroids.centroid_2dg` function.
+
+            If `True`, then a cutout of the specified ``box_size`` or
+            ``footprint`` will be taken centered on each peak and fit
+            with a 2D Gaussian (plus a constant).  In this case, the
+            fitted local centroid and peak value (the Gaussian amplitude
+            plus the background constant) will also be returned in the
+            output table.
 
     error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
-        ``error`` is used only to weight the 2D Gaussian fit performed
-        when ``subpixel=True``.
+        ``error`` is used only with the ``centroid_func`` keyword or
+        when ``subpixel=True`` (deprecated).
 
     wcs : `~astropy.wcs.WCS`
-        The WCS transformation to use to convert from pixel coordinates
-        to ICRS world coordinates.  If `None`, then the world
-        coordinates will not be returned in the output
-        `~astropy.table.Table`.
+        The WCS transformation to use to convert from pixel to sky
+        coordinates.  If `None`, then the sky coordinates will not be
+        returned in the output `~astropy.table.Table`.
 
     Returns
     -------
     output : `~astropy.table.Table`
         A table containing the x and y pixel location of the peaks and
-        their values.  If ``subpixel=True``, then the table will also
-        contain the local centroid and fitted peak value.
+        their values.  If ``centroid_func`` is input, then the table
+        will also contain the centroid position.  If ``subpixel=True``
+        (deprecated), then the table will also contain the local
+        centroid and fitted peak value.
     """
 
     from scipy import ndimage
@@ -248,10 +264,42 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         y_peaks = y_peaks[idx]
         peak_values = peak_values[idx]
 
-    if subpixel:
+    # construct the output Table
+    colnames = ['x_peak', 'y_peak', 'peak_value']
+    coldata = [x_peaks, y_peaks, peak_values]
+    table = Table(coldata, names=colnames)
+
+    if wcs is not None:
+        skycoord_peaks = pixel_to_skycoord(x_peaks, y_peaks, wcs, origin=0)
+        table.add_column(skycoord_peaks, name='skycoord_peak', index=2)
+
+    if centroid_func is not None and subpixel:
+        raise ValueError('centroid_func and subpixel (deprecated) cannot '
+                         'be both used.')
+
+    # perform centroiding
+    if centroid_func is not None:
+        from ..centroids import centroid_sources  # prevents circular import
+
+        if not callable(centroid_func):
+            raise ValueError('centroid_func must be a callable object')
+
+        x_centroids, y_centroids = centroid_sources(
+            data, x_peaks, y_peaks, box_size=box_size,
+            footprint=footprint, error=error, mask=mask,
+            centroid_func=centroid_func)
+
+        table['x_centroid'] = x_centroids
+        table['y_centroid'] = y_centroids
+    elif subpixel:
         from ..centroids import fit_2dgaussian    # prevents circular import
 
-        x_centroid, y_centroid = [], []
+        warnings.warn('The subpixel keyword is deprecated and will be '
+                      'removed in a future version.  The centroid_func '
+                      'keyword can be used to calculate centroid positions.',
+                      AstropyDeprecationWarning)
+
+        x_centroids, y_centroids = [], []
         fit_peak_values = []
         for (y_peak, x_peak) in zip(y_peaks, x_peaks):
             rdata, rmask, rerror, slc = cutout_footprint(
@@ -265,33 +313,19 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
                 y_cen = slc[0].start + gaussian_fit.y_mean.value
                 fit_peak_value = (gaussian_fit.constant.value +
                                   gaussian_fit.amplitude.value)
-            x_centroid.append(x_cen)
-            y_centroid.append(y_cen)
+            x_centroids.append(x_cen)
+            y_centroids.append(y_cen)
             fit_peak_values.append(fit_peak_value)
 
-        columns = (x_peaks, y_peaks, peak_values, x_centroid, y_centroid,
-                   fit_peak_values)
-        names = ('x_peak', 'y_peak', 'peak_value', 'x_centroid', 'y_centroid',
-                 'fit_peak_value')
-    else:
-        columns = (x_peaks, y_peaks, peak_values)
-        names = ('x_peak', 'y_peak', 'peak_value')
+        table['x_centroid'] = x_centroids
+        table['y_centroid'] = y_centroids
+        table['fit_peak_value'] = fit_peak_values
 
-    table = Table(columns, names=names)
-
-    if wcs is not None:
-        icrs_ra_peak, icrs_dec_peak = pixel_to_icrs_coords(x_peaks, y_peaks,
-                                                           wcs)
-        table.add_column(Column(icrs_ra_peak, name='icrs_ra_peak'), index=2)
-        table.add_column(Column(icrs_dec_peak, name='icrs_dec_peak'), index=3)
-
-        if subpixel:
-            icrs_ra_centroid, icrs_dec_centroid = pixel_to_icrs_coords(
-                x_centroid, y_centroid, wcs)
-            idx = table.colnames.index('y_centroid')
-            table.add_column(Column(icrs_ra_centroid,
-                                    name='icrs_ra_centroid'), index=idx+1)
-            table.add_column(Column(icrs_dec_centroid,
-                                    name='icrs_dec_centroid'), index=idx+2)
+    if (centroid_func is not None or subpixel) and wcs is not None:
+        skycoord_centroids = pixel_to_skycoord(x_centroids, y_centroids, wcs,
+                                               origin=0)
+        idx = table.colnames.index('y_centroid')
+        table.add_column(skycoord_centroids, name='skycoord_centroid',
+                         index=idx+1)
 
     return table
