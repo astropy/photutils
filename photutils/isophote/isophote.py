@@ -91,7 +91,7 @@ class Isophote(object):
         The total number of valid pixels inside a circle with the same
         ``sma`` as the ellipse.
     sarea : float
-        The average sector area on the isophote (pixel).
+        The average sector area on the isophote (pixel**2).
     ndata : int
         The number of extracted data points.
     nflag : int
@@ -597,7 +597,7 @@ class IsophoteList(Isophote, list):
 
     @property
     def sarea(self):
-        """The average sector area on the isophote (pixel)."""
+        """The average sector area on the isophote (pixel**2)."""
         return self._collect_as_array('sarea')
 
     @property
