@@ -9,6 +9,14 @@ Bug Fixes
   - Fix ``deblend_sources`` when other sources are in the neighborhood. [#617]
 
 
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- ``photutils.isophote``
+
+  - Corrected the units for isophote ``sarea`` in the documentation. [#657]
+
+
 0.4 (2017-10-30)
 ----------------
 
