@@ -28,7 +28,6 @@ class SegmentationImage(object):
     """
 
     def __init__(self, data):
-
         self.data = np.asanyarray(data, dtype=np.int)
 
     @property
@@ -44,10 +43,18 @@ class SegmentationImage(object):
         if np.min(value) < 0:
             raise ValueError('The segmentation image cannot contain '
                              'negative integers.')
+
+        if '_data' in self.__dict__:
+            # needed only when data is reassigned, not on init
+            self._reset_lazy_properties()
+
         self._data = value
-        # be sure to delete any lazy properties to reset their values.
-        del (self.data_masked, self.shape, self.labels, self.nlabels,
-             self.max, self.slices, self.areas, self.is_sequential)
+
+    def _reset_lazy_properties(self):
+        """Reset all lazy properties."""
+        for key, value in self.__class__.__dict__.items():
+            if isinstance(value, lazyproperty):
+                self.__dict__.pop(key, None)
 
     @property
     def array(self):
@@ -111,6 +118,7 @@ class SegmentationImage(object):
         array([1, 3, 4, 5, 7])
         """
 
+        # np.unique also sorts elements
         return np.unique(data[data != 0])
 
     @lazyproperty
