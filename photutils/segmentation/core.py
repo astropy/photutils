@@ -9,10 +9,33 @@ from astropy.utils import lazyproperty, deprecated
 from ..utils.colormaps import random_cmap
 
 
-__all__ = ['SegmentationImage']
+__all__ = ['SourceSegment', 'SegmentationImage']
 
 __doctest_requires__ = {('SegmentationImage', 'SegmentationImage.*'):
                         ['scipy', 'skimage']}
+
+
+class SourceSegment(object):
+    """
+    Class for a single labeled region within a segmentation image.
+
+    Parameters
+    ----------
+    label : int
+        The source segment label number.
+
+    slices : tuple of two slices
+        A tuple of two slices representing the minimal box that contains
+        the labeled region.
+
+    area : float
+        The area of the source segment in pixels**2.
+    """
+
+    def __init__(self, label, slices, area):
+        self.label = label
+        self.slices = slices
+        self.area = area
 
 
 class SegmentationImage(object):
@@ -29,6 +52,49 @@ class SegmentationImage(object):
 
     def __init__(self, data):
         self.data = np.asanyarray(data, dtype=np.int)
+
+    @lazyproperty
+    def source_segments(self):
+        """
+        A list of `SourceSegment` objects.
+
+        The returned list has a length equal to 1 plus the maximum label
+        number.  If a label number is missing from the segmentation
+        image, then `None` is returned instead of a `SourceSegment`
+        object.
+        """
+
+        if not hasattr(self, '_source_segments'):
+            self._create_source_segments()
+        return self._source_segments
+
+    def __getitem__(self, index):
+        return self.source_segments[index]
+
+    # python 2 only
+    def __getslice__(self, i, j):
+        return self.__getitem__(slice(i, j))
+
+    def __iter__(self):
+        for i in self.source_segments:
+            yield i
+
+    def _create_source_segments(self):
+        """Create a list of `SourceSegment` objects."""
+
+        # zero label (for the background)
+        slc0 = 0
+        source_segms = [SourceSegment(0, slc0, self.areas[0])]
+
+        for i, slc in enumerate(self.slices):
+            label = i + 1
+            if slc is None:
+                source_segms.append(None)
+            else:
+                source_segms.append(SourceSegment(label, slc,
+                                                  self.areas[label]))
+
+        self._source_segments = source_segms
 
     @property
     def data(self):
