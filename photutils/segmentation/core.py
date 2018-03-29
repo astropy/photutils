@@ -258,10 +258,15 @@ class SegmentationImage(object):
         return self.areas[labels]
 
     @lazyproperty
+    @deprecated(0.5, alternative='is_consecutive')
     def is_sequential(self):
+        return self.is_consecutive  # pragma: no cover
+
+    @lazyproperty
+    def is_consecutive(self):
         """
         Determine whether or not the non-zero labels in the segmenation
-        image are sequential (with no missing values).
+        image are consecutive (i.e. no missing values).
         """
 
         if (self.labels[-1] - self.labels[0] + 1) == self.nlabels:
@@ -272,8 +277,6 @@ class SegmentationImage(object):
     def copy(self):
         """
         Return a deep copy of this class instance.
-
-        Deep copy is used so that all attributes and values are copied.
         """
 
         return deepcopy(self)
