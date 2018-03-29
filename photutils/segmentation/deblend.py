@@ -87,7 +87,7 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
 
     relabel : bool
         If `True` (default), then the segmentation image will be
-        relabeled such that the labels are in sequential order starting
+        relabeled such that the labels are in consecutive order starting
         from 1.
 
     Returns
@@ -146,7 +146,7 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
             last_label += source_deblended.nlabels
 
     if relabel:
-        segm_deblended.relabel_sequential()
+        segm_deblended.relabel_consecutive()
 
     return segm_deblended
 

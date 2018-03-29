@@ -432,9 +432,13 @@ class SegmentationImage(object):
             data[np.where(data == label)] = new_label
             self.data = data     # needed to call the data setter
 
+    @deprecated(0.5, alternative='relabel_consecutive()')
     def relabel_sequential(self, start_label=1):
+        return self.relabel_consecutive(start_label=start_label)  # pragma: no cover
+
+    def relabel_consecutive(self, start_label=1):
         """
-        Relabel the label numbers sequentially, such that there are no
+        Relabel the label numbers consecutively, such that there are no
         missing label numbers (up to the maximum label number).
 
         Parameters
@@ -452,7 +456,7 @@ class SegmentationImage(object):
         ...                           [7, 0, 0, 0, 0, 5],
         ...                           [7, 7, 0, 5, 5, 5],
         ...                           [7, 7, 0, 0, 5, 5]])
-        >>> segm.relabel_sequential()
+        >>> segm.relabel_consecutive()
         >>> segm.data
         array([[1, 1, 0, 0, 3, 3],
                [0, 0, 0, 0, 0, 3],
@@ -465,7 +469,7 @@ class SegmentationImage(object):
         if start_label <= 0:
             raise ValueError('start_label must be > 0.')
 
-        if self.is_sequential and (self.labels[0] == start_label):
+        if self.is_consecutive and (self.labels[0] == start_label):
             return
 
         forward_map = np.zeros(self.max_label + 1, dtype=np.int)
@@ -484,7 +488,7 @@ class SegmentationImage(object):
 
         relabel : bool, optional
             If `True`, then the segmentation image will be relabeled
-            such that the labels are in sequential order starting from
+            such that the labels are in consecutive order starting from
             1.
 
         Examples
@@ -537,7 +541,7 @@ class SegmentationImage(object):
 
         relabel : bool, optional
             If `True`, then the segmentation image will be relabeled
-            such that the labels are in sequential order starting from
+            such that the labels are in consecutive order starting from
             1.
 
         Examples
@@ -576,7 +580,7 @@ class SegmentationImage(object):
 
         self.relabel(labels, new_label=0)
         if relabel:
-            self.relabel_sequential()
+            self.relabel_consecutive()
 
     def remove_border_labels(self, border_width, partial_overlap=True,
                              relabel=False):
@@ -598,7 +602,7 @@ class SegmentationImage(object):
 
         relabel : bool, optional
             If `True`, then the segmentation image will be relabeled
-            such that the labels are in sequential order starting from
+            such that the labels are in consecutive order starting from
             1.
 
         Examples
@@ -667,7 +671,7 @@ class SegmentationImage(object):
 
         relabel : bool, optional
             If `True`, then the segmentation image will be relabeled
-            such that the labels are in sequential order starting from
+            such that the labels are in consecutive order starting from
             1.
 
         Examples
