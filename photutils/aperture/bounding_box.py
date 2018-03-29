@@ -231,3 +231,29 @@ class BoundingBox(object):
         h, w = self.shape
 
         return RectangularAperture(xypos, w=w, h=h, theta=0.)
+
+    def plot(self, origin=(0, 0), ax=None, fill=False, **kwargs):
+        """
+        Plot the `BoundingBox` on a matplotlib `~matplotlib.axes.Axes`
+        instance.
+
+        Parameters
+        ----------
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        ax : `matplotlib.axes.Axes` instance, optional
+            If `None`, then the current `~matplotlib.axes.Axes` instance
+            is used.
+
+        fill : bool, optional
+            Set whether to fill the aperture patch.  The default is
+            `False`.
+
+        kwargs
+            Any keyword arguments accepted by `matplotlib.patches.Patch`.
+        """
+
+        aper = self.to_aperture()
+        aper.plot(origin=origin, ax=ax, fill=fill, **kwargs)
