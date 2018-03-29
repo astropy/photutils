@@ -73,8 +73,8 @@ class TestSegmentationImage(object):
     def test_nlabels(self):
         assert self.segm.nlabels == 5
 
-    def test_max(self):
-        assert self.segm.max == 7
+    def test_max_label(self):
+        assert self.segm.max_label == 7
 
     def test_areas(self):
         expected = np.array([18, 2, 0, 2, 3, 6, 0, 5])
