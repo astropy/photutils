@@ -231,7 +231,8 @@ class SegmentationImage(object):
 
         return np.bincount(self.data.ravel())
 
-    def area(self, labels):
+    @deprecated(0.5, alternative='areas[labels]')
+    def area(self, labels):  # pragma: no cover
         """
         The areas (in pixel**2) of the regions for the input labels.
 
