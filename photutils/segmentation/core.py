@@ -139,7 +139,12 @@ class SegmentationImage(object):
         return self._data
 
     @lazyproperty
+    @deprecated(0.5, alternative='data_ma')
     def data_masked(self):
+        return self.data_ma  # pragma: no cover
+
+    @lazyproperty
+    def data_ma(self):
         """
         A `~numpy.ma.MaskedArray` version of the segmentation image
         where the background (label = 0) has been masked.
