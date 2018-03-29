@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 from copy import deepcopy
 
 import numpy as np
-from astropy.utils import lazyproperty
+from astropy.utils import lazyproperty, deprecated
 
 from ..utils.colormaps import random_cmap
 
@@ -142,10 +142,15 @@ class SegmentationImage(object):
         return len(self.labels)
 
     @lazyproperty
+    @deprecated(0.5, alternative='max_label')
     def max(self):
+        return self.max_label  # pragma: no cover
+
+    @lazyproperty
+    def max_label(self):
         """The maximum non-zero label in the segmentation image."""
 
-        return np.max(self.data)
+        return np.max(self.labels)
 
     @lazyproperty
     def slices(self):
@@ -256,7 +261,7 @@ class SegmentationImage(object):
 
         from matplotlib import colors
 
-        cmap = random_cmap(self.max + 1, random_state=random_state)
+        cmap = random_cmap(self.max_label + 1, random_state=random_state)
 
         if background_color is not None:
             cmap.colors[0] = colors.hex2color(background_color)
@@ -388,7 +393,7 @@ class SegmentationImage(object):
         if self.is_sequential and (self.labels[0] == start_label):
             return
 
-        forward_map = np.zeros(self.max + 1, dtype=np.int)
+        forward_map = np.zeros(self.max_label + 1, dtype=np.int)
         forward_map[self.labels] = np.arange(self.nlabels) + start_label
         self.data = forward_map[self.data]
 

@@ -115,7 +115,7 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
 
     data = filter_data(data, filter_kernel, mode='constant', fill_value=0.0)
 
-    last_label = segment_img.max
+    last_label = segment_img.max_label
     segm_deblended = deepcopy(segment_img)
     for label in labels:
         segment_img.check_label(label)
