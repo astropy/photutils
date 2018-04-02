@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 
 import numpy as np
 import numpy.ma as ma
-import pytest
+from numpy.testing import assert_allclose
 
 from astropy.io import fits
 from astropy.tests.helper import remote_data
@@ -47,11 +47,11 @@ class TestUnmasked(TestData):
 
         assert len(s[0]) == 225
         # intensities
-        assert np.mean(s[2]) == pytest.approx(200.76, abs=0.01)
-        assert np.std(s[2]) == pytest.approx(21.55, abs=0.01)
+        assert_allclose(np.mean(s[2]), 200.76, atol=0.01)
+        assert_allclose(np.std(s[2]), 21.55, atol=0.01)
         # radii
-        assert np.max(s[1]) == pytest.approx(40.0, abs=0.01)
-        assert np.min(s[1]) == pytest.approx(32.0, abs=0.01)
+        assert_allclose(np.max(s[1]), 40.0, atol=0.01)
+        assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
         assert sample.total_points == 225
         assert sample.actual_points == 225
@@ -61,11 +61,11 @@ class TestUnmasked(TestData):
         s, sample = self.make_sample(sma=10.)
 
         # intensities
-        assert np.mean(s[2]) == pytest.approx(1045.4, abs=0.1)
-        assert np.std(s[2]) == pytest.approx(143.0, abs=0.1)
+        assert_allclose(np.mean(s[2]), 1045.4, atol=0.1)
+        assert_allclose(np.std(s[2]), 143.0, atol=0.1)
         # radii
-        assert np.max(s[1]) == pytest.approx(10.0, abs=0.1)
-        assert np.min(s[1]) == pytest.approx(8.0, abs=0.1)
+        assert_allclose(np.max(s[1]), 10.0, atol=0.1)
+        assert_allclose(np.min(s[1]), 8.0, atol=0.1)
 
         assert sample.total_points == 57
         assert sample.actual_points == 57
@@ -75,11 +75,11 @@ class TestUnmasked(TestData):
 
         assert len(s[0]) == 225
         # intensities
-        assert np.mean(s[2]) == pytest.approx(201.1, abs=0.1)
-        assert np.std(s[2]) == pytest.approx(21.8, abs=0.1)
+        assert_allclose(np.mean(s[2]), 201.1, atol=0.1)
+        assert_allclose(np.std(s[2]), 21.8, atol=0.1)
         # radii
-        assert np.max(s[1]) == pytest.approx(40.0, abs=0.01)
-        assert np.min(s[1]) == pytest.approx(32.0, abs=0.01)
+        assert_allclose(np.max(s[1]), 40.0, atol=0.01)
+        assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
         assert sample.total_points == 225
         assert sample.actual_points == 225
@@ -89,13 +89,13 @@ class TestUnmasked(TestData):
 
         assert len(s[0]) == 64
         # intensities
-        assert np.mean(s[2]) == pytest.approx(199.9, abs=0.1)
-        assert np.std(s[2]) == pytest.approx(21.3, abs=0.1)
+        assert_allclose(np.mean(s[2]), 199.9, atol=0.1)
+        assert_allclose(np.std(s[2]), 21.3, atol=0.1)
         # radii
-        assert np.max(s[1]) == pytest.approx(40.0, abs=0.01)
-        assert np.min(s[1]) == pytest.approx(32.0, abs=0.01)
+        assert_allclose(np.max(s[1]), 40.0, atol=0.01)
+        assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
-        assert sample.sector_area == pytest.approx(12.4, abs=0.1)
+        assert_allclose(sample.sector_area, 12.4, atol=0.1)
         assert sample.total_points == 64
         assert sample.actual_points == 64
 
@@ -104,13 +104,13 @@ class TestUnmasked(TestData):
 
         assert len(s[0]) == 29
         # intensities
-        assert np.mean(s[2]) == pytest.approx(2339.0, abs=0.1)
-        assert np.std(s[2]) == pytest.approx(284.7, abs=0.1)
+        assert_allclose(np.mean(s[2]), 2339.0, atol=0.1)
+        assert_allclose(np.std(s[2]), 284.7, atol=0.1)
         # radii
-        assert np.max(s[1]) == pytest.approx(5.0, abs=0.01)
-        assert np.min(s[1]) == pytest.approx(4.0, abs=0.01)
+        assert_allclose(np.max(s[1]), 5.0, atol=0.01)
+        assert_allclose(np.min(s[1]), 4.0, atol=0.01)
 
-        assert sample.sector_area == pytest.approx(2.0, abs=0.1)
+        assert_allclose(sample.sector_area, 2.0, atol=0.1)
         assert sample.total_points == 29
         assert sample.actual_points == 29
 
@@ -119,13 +119,13 @@ class TestUnmasked(TestData):
 
         assert len(s[0]) == 64
         # intensities
-        assert np.mean(s[2]) == pytest.approx(199.9, abs=0.1)
-        assert np.std(s[2]) == pytest.approx(21.3, abs=0.1)
+        assert_allclose(np.mean(s[2]), 199.9, atol=0.1)
+        assert_allclose(np.std(s[2]), 21.3, atol=0.1)
         # radii
-        assert np.max(s[1]) == pytest.approx(40.0, abs=0.01)
-        assert np.min(s[1]) == pytest.approx(32.01, abs=0.01)
+        assert_allclose(np.max(s[1]), 40.0, atol=0.01)
+        assert_allclose(np.min(s[1]), 32.01, atol=0.01)
 
-        assert sample.sector_area == pytest.approx(12.4, abs=0.1)
+        assert_allclose(sample.sector_area, 12.4, atol=0.1)
         assert sample.total_points == 64
         assert sample.actual_points == 64
 
@@ -138,11 +138,11 @@ class TestMasked(TestData):
 
         assert len(s[0]) == 157
         # intensities
-        assert np.mean(s[2]) == pytest.approx(201.52, abs=0.01)
-        assert np.std(s[2]) == pytest.approx(25.21, abs=0.01)
+        assert_allclose(np.mean(s[2]), 201.52, atol=0.01)
+        assert_allclose(np.std(s[2]), 25.21, atol=0.01)
         # radii
-        assert np.max(s[1]) == pytest.approx(40.0, abs=0.01)
-        assert np.min(s[1]) == pytest.approx(32.0, abs=0.01)
+        assert_allclose(np.max(s[1]), 40.0, atol=0.01)
+        assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
         assert sample.total_points == 225
         assert sample.actual_points == 157
@@ -152,12 +152,12 @@ class TestMasked(TestData):
 
         assert len(s[0]) == 51
         # intensities
-        assert np.mean(s[2]) == pytest.approx(199.9, abs=0.1)
-        assert np.std(s[2]) == pytest.approx(24.12, abs=0.1)
+        assert_allclose(np.mean(s[2]), 199.9, atol=0.1)
+        assert_allclose(np.std(s[2]), 24.12, atol=0.1)
         # radii
-        assert np.max(s[1]) == pytest.approx(40.0, abs=0.01)
-        assert np.min(s[1]) == pytest.approx(32.0, abs=0.01)
+        assert_allclose(np.max(s[1]), 40.0, atol=0.01)
+        assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
-        assert sample.sector_area == pytest.approx(12.4, abs=0.1)
+        assert_allclose(sample.sector_area, 12.4, atol=0.1)
         assert sample.total_points == 64
         assert sample.actual_points == 51

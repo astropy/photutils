@@ -3,6 +3,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import numpy as np
+from numpy.testing import assert_allclose
 import pytest
 
 from astropy.io import fits
@@ -32,12 +33,11 @@ def test_gradient():
     sample = EllipseSample(DATA, 40.)
     sample.update()
 
-    assert sample.mean == pytest.approx(200.02, abs=0.01)
-    assert sample.gradient == pytest.approx(-4.222, abs=0.001)
-    assert sample.gradient_error == pytest.approx(0.0003, abs=0.0001)
-    assert sample.gradient_relative_error == pytest.approx(7.45e-05,
-                                                           abs=1.e-5)
-    assert sample.sector_area == pytest.approx(2.00, abs=0.01)
+    assert_allclose(sample.mean, 200.02, atol=0.01)
+    assert_allclose(sample.gradient, -4.222, atol=0.001)
+    assert_allclose(sample.gradient_error, 0.0003, atol=0.0001)
+    assert_allclose(sample.gradient_relative_error, 7.45e-05, atol=1.e-5)
+    assert_allclose(sample.sector_area, 2.00, atol=0.01)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -66,7 +66,7 @@ def test_fitting_raw():
     new_eps = sample.geometry.eps - correction
 
     # got closer to test data (eps=0.2)
-    assert new_eps == pytest.approx(0.21, abs=0.01)
+    assert_allclose(new_eps, 0.21, atol=0.01)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -191,7 +191,7 @@ class TestM51(object):
         isophote = fitter.fit()
 
         assert isophote.ndata == 119
-        assert isophote.intens == pytest.approx(685.4, abs=0.1)
+        assert_allclose(isophote.intens, 685.4, atol=0.1)
 
         # last sample taken by the original code, before turning inwards.
         sample = EllipseSample(self.data, 61.16, eps=0.219,
@@ -200,7 +200,7 @@ class TestM51(object):
         isophote = fitter.fit()
 
         assert isophote.ndata == 382
-        assert isophote.intens == pytest.approx(155.0, abs=0.1)
+        assert_allclose(isophote.intens, 155.0, atol=0.1)
 
     def test_m51_outer(self):
         # sample taken at the outskirts of the image, so many
