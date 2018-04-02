@@ -226,8 +226,8 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
 
     segm_mask = (segment_img.data > 0)
     source_values = data[segm_mask]
-    source_min = np.min(source_values)
-    source_max = np.max(source_values)
+    source_min = np.nanmin(source_values)
+    source_max = np.nanmax(source_values)
     if source_min == source_max:
         return segment_img     # no deblending
     if source_min < 0:
@@ -235,7 +235,7 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
                       'deblending mode to "linear"'.format(
                           segment_img.labels[0]), AstropyUserWarning)
         mode = 'linear'
-    source_sum = float(np.sum(source_values))
+    source_sum = float(np.nansum(source_values))
 
     steps = np.arange(1., nlevels + 1)
     if mode == 'exponential':
@@ -259,7 +259,7 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
         if segm_tmp.nlabels >= 2:
             fluxes = []
             for i in segm_tmp.labels:
-                fluxes.append(np.sum(data[segm_tmp == i]))
+                fluxes.append(np.nansum(data[segm_tmp == i]))
             idx = np.where((np.array(fluxes) / source_sum) >= contrast)[0]
             if len(idx >= 2):
                 segm_tree.append(segm_tmp)

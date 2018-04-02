@@ -6,7 +6,14 @@ Bug Fixes
 
 - ``photutils.segmentation``
 
-  - Fix ``deblend_sources`` when other sources are in the neighborhood. [#617]
+  - Fixed ``deblend_sources`` when other sources are in the
+    neighborhood. [#617]
+
+  - Fixed ``source_properties`` to handle the case where the data
+    contain one or more NaNs. [#658]
+
+  - Fixed an issue with ``deblend_sources`` where sources were not
+    deblended where the data contain one or more NaNs. [#658]
 
 
 Other Changes and Additions
