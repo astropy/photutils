@@ -14,8 +14,8 @@ import astropy.units as u
 from astropy.utils.misc import isiterable
 import astropy.wcs as WCS
 
-from ..properties import (SourceProperties, source_properties,
-                          SourceCatalog, properties_table)
+from ..properties import (SegmentationImage, SourceProperties,
+                          source_properties, SourceCatalog, properties_table)
 
 try:
     import scipy    # noqa
@@ -289,6 +289,18 @@ class TestSourcePropertiesFunction(object):
         keys = ['semimajor_axis_sigma', 'semiminor_axis_sigma']
         for key in keys:
             assert p1[key] != p2[key]
+
+    def test_data_nan(self):
+        """Test case when data contains NaNs within a segment."""
+
+        data = np.ones((20, 20))
+        data[2, 2] = np.nan
+        segm = np.zeros((20, 20)).astype(int)
+        segm[1:5, 1:5] = 1
+        segm[7:15, 7:15] = 2
+        segm = SegmentationImage(segm)
+        props = source_properties(data, segm)
+        assert_quantity_allclose(props.minval_xpos, [1, 7]*u.pix)
 
 
 @pytest.mark.skipif('not HAS_SKIMAGE')

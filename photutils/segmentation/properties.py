@@ -612,7 +612,7 @@ class SourceProperties(object):
         within the source segment.
         """
 
-        return np.min(self.values)
+        return np.nanmin(self.values)
 
     @lazyproperty
     def max_value(self):
@@ -621,7 +621,7 @@ class SourceProperties(object):
         within the source segment.
         """
 
-        return np.max(self.values)
+        return np.nanmax(self.values)
 
     @lazyproperty
     def minval_cutout_pos(self):
@@ -984,8 +984,8 @@ class SourceProperties(object):
         non-masked pixels in the source segment.
         """
 
-        return np.sum(np.ma.masked_array(self._data[self._slice],
-                                         mask=self._cutout_total_mask))
+        return np.nansum(np.ma.masked_array(self._data[self._slice],
+                                            mask=self._cutout_total_mask))
 
     @lazyproperty
     def source_sum_err(self):
@@ -1008,7 +1008,7 @@ class SourceProperties(object):
         if self._error is not None:
             # power doesn't work here, see astropy #2968
             # return np.sqrt(np.sum(self.error_cutout_ma**2))
-            return np.sqrt(np.sum(
+            return np.sqrt(np.nansum(
                 np.ma.masked_array(self.error_cutout_ma.data**2,
                                    mask=self.error_cutout_ma.mask)))
         else:

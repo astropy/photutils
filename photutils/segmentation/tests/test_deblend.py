@@ -164,3 +164,14 @@ class TestDeblendSources(object):
         assert segm_deblend.nlabels == 1
         with pytest.raises(ValueError):
             deblend_sources(data, segm, npixels=1, connectivity=4)
+
+    def test_data_nan(self):
+        """
+        Test that deblending occurs even if the data within a segment
+        contains one or more NaNs.  Regression test for #658.
+        """
+
+        data = self.data.copy()
+        data[50, 50] = np.nan
+        segm2 = deblend_sources(data, self.segm, 5)
+        assert segm2.nlabels == 2
