@@ -225,9 +225,18 @@ class SegmentationImage(object):
 
     @lazyproperty
     def slices(self):
-        """The minimal bounding box slices for each labeled region."""
+        """
+        A list of tuples, where each tuple contains two slices
+        representing the minimal box that contains the labeled region.
+
+        The list starts with the *non-zero* label.  The returned list
+        has a length equal to the maximum label number.  If a label
+        number is missing, then `None` is returned for that list element
+        instead of a slice.
+        """
 
         from scipy.ndimage import find_objects
+
         return find_objects(self._data)
 
     @lazyproperty
