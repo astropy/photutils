@@ -82,17 +82,12 @@ class SegmentationImage(object):
     def _create_source_segments(self):
         """Create a list of `SourceSegment` objects."""
 
-        # zero label (for the background)
-        slc0 = 0
-        source_segms = [SourceSegment(0, slc0, self.areas[0])]
-
+        source_segms = []
         for i, slc in enumerate(self.slices):
-            label = i + 1
             if slc is None:
                 source_segms.append(None)
             else:
-                source_segms.append(SourceSegment(label, slc,
-                                                  self.areas[label]))
+                source_segms.append(SourceSegment(i+1, slc, self.areas[i]))
 
         self._source_segments = source_segms
 
@@ -241,11 +236,19 @@ class SegmentationImage(object):
 
     @lazyproperty
     def areas(self):
-        """The areas (in pixel**2) of all labeled regions."""
+        """
+        A 1D array of areas (in pixel**2) of the non-zero labeled
+        regions.
 
-        return np.bincount(self.data.ravel())
+        The `~numpy.ndarray` starts with the *non-zero* label The
+        returned array has a length equal to the maximum label number.
+        If a label number is missing, then 0 is returned for that array
+        element.
+        """
 
-    @deprecated(0.5, alternative='areas[labels]')
+        return np.bincount(self.data.ravel())[1:]
+
+    @deprecated(0.5, alternative='areas[labels-1]')
     def area(self, labels):  # pragma: no cover
         """
         The areas (in pixel**2) of the regions for the input labels.
@@ -264,7 +267,7 @@ class SegmentationImage(object):
         labels = np.atleast_1d(labels)
         for label in labels:
             self.check_label(label, allow_zero=True)
-        return self.areas[labels]
+        return self.areas[labels - 1]
 
     @lazyproperty
     @deprecated(0.5, alternative='is_consecutive')
