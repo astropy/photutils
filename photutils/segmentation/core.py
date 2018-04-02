@@ -148,18 +148,27 @@ class SegmentationImage(object):
 
     @lazyproperty
     def areas(self):
-        """The areas (in pixel**2) of all labeled regions."""
+        """
+        A 1D array of areas (in pixel**2) of the non-zero labeled
+        regions.
 
-        return np.bincount(self.data.ravel())
+        The `~numpy.ndarray` starts with the *non-zero* label The
+        returned array has a length equal to the maximum label number.
+        If a label number is missing, then 0 is returned for that array
+        element.
+        """
 
-    def area(self, labels):
+        return np.bincount(self.data.ravel())[1:]
+
+    def area(self, labels):  # pragma: no cover
         """
         The areas (in pixel**2) of the regions for the input labels.
 
         Parameters
         ----------
         labels : int, array-like (1D, int)
-            The label(s) for which to return areas.
+            The label(s) for which to return areas.  The label must not
+            be zero.
 
         Returns
         -------
@@ -169,8 +178,8 @@ class SegmentationImage(object):
 
         labels = np.atleast_1d(labels)
         for label in labels:
-            self.check_label(label, allow_zero=True)
-        return self.areas[labels]
+            self.check_label(label, allow_zero=False)
+        return self.areas[labels - 1]
 
     @lazyproperty
     def is_sequential(self):
