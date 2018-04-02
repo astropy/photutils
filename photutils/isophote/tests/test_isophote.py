@@ -3,6 +3,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import numpy as np
+from numpy.testing import assert_allclose
 import pytest
 
 from astropy.io import fits
@@ -84,11 +85,11 @@ class TestIsophote(object):
         assert g.pa <= (0.62 + 0.05)
 
         # fitted values
-        assert iso.intens == pytest.approx(682.9, abs=0.1)
-        assert iso.rms == pytest.approx(83.27, abs=0.01)
-        assert iso.int_err == pytest.approx(7.63, abs=0.01)
-        assert iso.pix_stddev == pytest.approx(117.8, abs=0.1)
-        assert iso.grad == pytest.approx(-36.08, abs=0.1)
+        assert_allclose(iso.intens, 682.9, atol=0.1)
+        assert_allclose(iso.rms, 83.27, atol=0.01)
+        assert_allclose(iso.int_err, 7.63, atol=0.01)
+        assert_allclose(iso.pix_stddev, 117.8, atol=0.1)
+        assert_allclose(iso.grad, -36.08, atol=0.1)
 
         # integrals
         assert iso.tflux_e <= 1.20e6
@@ -172,7 +173,7 @@ class TestIsophoteList(object):
 
         iso = result.get_closest(13.6)
         assert isinstance(iso, Isophote)
-        assert iso.sma == pytest.approx(14., abs=0.000001)
+        assert_allclose(iso.sma, 14., atol=1e-6)
 
     def test_extend(self):
         # the extend method shouldn't return anything,
