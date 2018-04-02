@@ -68,11 +68,11 @@ class TestDeblendSources(object):
         result = deblend_sources(data, segm, self.npixels)
         assert result.nlabels == 6
         assert result.nlabels == len(result.slices)
-        assert result.area(1) == result.area(2)
-        assert result.area(1) == result.area(3)
-        assert result.area(1) == result.area(4)
-        assert result.area(1) == result.area(5)
-        assert result.area(1) == result.area(6)
+        assert result.areas[0] == result.areas[1]
+        assert result.areas[0] == result.areas[2]
+        assert result.areas[0] == result.areas[3]
+        assert result.areas[0] == result.areas[4]
+        assert result.areas[0] == result.areas[5]
 
     def test_deblend_multiple_sources_with_neighbor(self):
         g1 = models.Gaussian2D(100, 50, 50, 20, 5, theta=45)

@@ -77,14 +77,14 @@ class TestSegmentationImage(object):
         assert self.segm.max == 7
 
     def test_areas(self):
-        expected = np.array([18, 2, 0, 2, 3, 6, 0, 5])
+        expected = np.array([2, 0, 2, 3, 6, 0, 5])
         assert_allclose(self.segm.areas, expected)
 
     def test_area(self):
-        expected = np.array([18, 2, 0, 2, 3, 6, 0, 5])
-        assert self.segm.area(0) == expected[0]
+        expected = np.array([2, 0, 2, 3, 6, 0, 5])
         labels = [3, 1, 4]
-        assert_allclose(self.segm.area(labels), expected[labels])
+        idx = np.array(labels) - 1
+        assert_allclose(self.segm.areas[idx], expected[idx])
 
     def test_outline_segments(self):
         segm_array = np.zeros((5, 5)).astype(int)
