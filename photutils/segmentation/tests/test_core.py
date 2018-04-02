@@ -86,6 +86,11 @@ class TestSegmentationImage(object):
         idx = np.array(labels) - 1
         assert_allclose(self.segm.areas[idx], expected[idx])
 
+    def test_cmap(self):
+        cmap = self.segm.cmap()
+        assert len(cmap.colors) == (self.segm.max_label + 1)
+        assert_allclose(cmap.colors[0], [0, 0, 0])
+
     def test_outline_segments(self):
         segm_array = np.zeros((5, 5)).astype(int)
         segm_array[1:4, 1:4] = 2
