@@ -62,10 +62,10 @@ class TestSegmentationImage(object):
         with pytest.raises(ValueError):
             self.segm.check_label(2)
 
-    def test_data_masked(self):
-        assert isinstance(self.segm.data_masked, np.ma.MaskedArray)
-        assert np.ma.count(self.segm.data_masked) == 18
-        assert np.ma.count_masked(self.segm.data_masked) == 18
+    def test_data_ma(self):
+        assert isinstance(self.segm.data_ma, np.ma.MaskedArray)
+        assert np.ma.count(self.segm.data_ma) == 18
+        assert np.ma.count_masked(self.segm.data_ma) == 18
 
     def test_labels(self):
         assert_allclose(self.segm.labels, [1, 3, 4, 5, 7])
