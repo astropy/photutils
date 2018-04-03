@@ -261,7 +261,7 @@ class SegmentationImage(object):
 
         Parameters
         ----------
-        labels : int, array-like (1D, int)
+        labels : int, 1D array-like (int)
             The label(s) for which to return areas.
 
         Returns
@@ -271,8 +271,8 @@ class SegmentationImage(object):
         """
 
         labels = np.atleast_1d(labels)
-        for label in labels:
-            self.check_label(label, allow_zero=True)
+        self.check_labels(labels)
+
         return self.areas[labels - 1]
 
     @lazyproperty
@@ -310,6 +310,38 @@ class SegmentationImage(object):
 
         return deepcopy(self)
 
+    def check_labels(self, labels):
+        """
+        Check that the input label(s) are valid label numbers within the
+        segmentation image.
+
+        Parameters
+        ----------
+        labels : int, 1D array-like (int)
+            The label(s) to check.
+
+        Raises
+        ------
+        ValueError
+            If any input ``labels`` are invalid.
+        """
+
+        labels = np.atleast_1d(labels)
+        bad_labels = set()
+
+        # check for positive label numbers
+        idx = np.where(labels <= 0)[0]
+        if len(idx) > 0:
+            bad_labels.update(labels[idx])
+
+        # check if label is in the segmentation image
+        bad_labels.update(np.setdiff1d(labels, self.labels))
+
+        bad_labels = tuple(bad_labels)
+        if len(bad_labels) > 0:
+            raise ValueError('labels {} are invalid'.format(bad_labels))
+
+    @deprecated(0.5, alternative='check_labels')
     def check_label(self, label, allow_zero=False):
         """
         Check for a valid label label number within the segmentation

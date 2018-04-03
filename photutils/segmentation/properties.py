@@ -20,8 +20,9 @@ __all__ = ['SourceProperties', 'source_properties', 'SourceCatalog',
            'properties_table']
 
 __doctest_requires__ = {('SourceProperties', 'SourceProperties.*',
-                         'SourceCatalog', 'SourceCatalog.*', 'source_properties',
-                         'properties_table'): ['scipy', 'skimage']}
+                         'SourceCatalog', 'SourceCatalog.*',
+                         'source_properties', 'properties_table'):
+                        ['scipy', 'skimage']}
 
 
 class SourceProperties(object):
@@ -167,7 +168,7 @@ class SourceProperties(object):
         self._error = error    # total error; 2D array
         self._background = background    # 2D array
 
-        segment_img.check_label(label)
+        segment_img.check_labels(label)
         self.label = label
         self._slice = segment_img.slices[label - 1]
         self._segment_img = segment_img

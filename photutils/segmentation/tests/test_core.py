@@ -50,17 +50,16 @@ class TestSegmentationImage(object):
         with pytest.raises(ValueError):
             SegmentationImage(data)
 
-    def test_zero_label(self):
+    @pytest.mark.parametrize('label', [0, -1, 2])
+    def test_invalid_label(self, label):
+        # test with scalar labels
         with pytest.raises(ValueError):
-            self.segm.check_label(0)
+            self.segm.check_labels(label)
 
-    def test_negative_label(self):
+    def test_invalid_label_array(self):
+        # test with array of labels
         with pytest.raises(ValueError):
-            self.segm.check_label(-1)
-
-    def test_invalid_label(self):
-        with pytest.raises(ValueError):
-            self.segm.check_label(2)
+            self.segm.check_labels([0, -1, 2])
 
     def test_data_ma(self):
         assert isinstance(self.segm.data_ma, np.ma.MaskedArray)
