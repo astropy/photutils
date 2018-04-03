@@ -76,6 +76,9 @@ class TestSegmentationImage(object):
     def test_max_label(self):
         assert self.segm.max_label == 7
 
+    def test_missing_labels(self):
+        assert_allclose(self.segm.missing_labels, [2, 6])
+
     def test_areas(self):
         expected = np.array([2, 0, 2, 3, 6, 0, 5])
         assert_allclose(self.segm.areas, expected)

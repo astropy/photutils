@@ -286,6 +286,17 @@ class SegmentationImage(object):
         else:
             return False
 
+    @lazyproperty
+    def missing_labels(self):
+        """
+        A 1D `~numpy.ndarray` of the sorted non-zero labels that are
+        missing in the consecutive sequence from zero to the maximum
+        label number.
+        """
+
+        return np.array(sorted(set(range(0, self.max_label + 1)).
+                               difference(np.insert(self.labels, 0, 0))))
+
     def copy(self):
         """
         Return a deep copy of this class instance.
