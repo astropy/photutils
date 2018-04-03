@@ -8,7 +8,8 @@ import astropy.units as u
 from astropy.coordinates import SkyCoord
 from astropy.table import QTable
 from astropy.utils import deprecated, lazyproperty
-from astropy.utils.exceptions import AstropyDeprecationWarning
+from astropy.utils.exceptions import (AstropyUserWarning,
+                                      AstropyDeprecationWarning)
 from astropy.wcs.utils import pixel_to_skycoord
 
 
@@ -1223,7 +1224,10 @@ def source_properties(data, segment_img, error=None, mask=None,
     sources_props = []
     for label in labels:
         if label not in segment_img.labels:
-            continue      # skip invalid labels (without warnings)
+            warnings.warn('label {} is not in the segmentation image.'
+                          .format(label), AstropyUserWarning)
+            continue  # skip invalid labels
+
         sources_props.append(SourceProperties(
             data, segment_img, label, filtered_data=filtered_data,
             error=error, mask=mask, background=background, wcs=wcs))
