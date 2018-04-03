@@ -126,7 +126,7 @@ class TestSegmentationImage(object):
         assert segm.nlabels == len(segm.slices) - segm.slices.count(None)
 
     @pytest.mark.parametrize('start_label', [1, 5])
-    def test_relabel_sequential(self, start_label):
+    def test_relabel_consecutive(self, start_label):
         segm = SegmentationImage(self.data)
         ref_data = np.array([[1, 1, 0, 0, 3, 3],
                              [0, 0, 0, 0, 0, 3],
@@ -135,19 +135,19 @@ class TestSegmentationImage(object):
                              [5, 5, 0, 4, 4, 4],
                              [5, 5, 0, 0, 4, 4]])
         ref_data[ref_data != 0] += (start_label - 1)
-        segm.relabel_sequential(start_label=start_label)
+        segm.relabel_consecutive(start_label=start_label)
         assert_allclose(segm.data, ref_data)
 
-        # relabel_sequential should do nothing if already sequential
-        segm.relabel_sequential(start_label=start_label)
+        # relabel_consecutive should do nothing if already consecutive
+        segm.relabel_consecutive(start_label=start_label)
         assert_allclose(segm.data, ref_data)
         assert segm.nlabels == len(segm.slices) - segm.slices.count(None)
 
     @pytest.mark.parametrize('start_label', [0, -1])
-    def test_relabel_sequential_start_invalid(self, start_label):
+    def test_relabel_consecutive_start_invalid(self, start_label):
         with pytest.raises(ValueError):
             segm = SegmentationImage(self.data)
-            segm.relabel_sequential(start_label=start_label)
+            segm.relabel_consecutive(start_label=start_label)
 
     def test_keep_labels(self):
         ref_data = np.array([[0, 0, 0, 0, 0, 0],
