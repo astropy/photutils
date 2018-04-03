@@ -6,6 +6,7 @@ from copy import deepcopy
 import numpy as np
 from astropy.utils import lazyproperty, deprecated
 
+from ..aperture import BoundingBox
 from ..utils.colormaps import random_cmap
 
 
@@ -36,6 +37,11 @@ class SourceSegment(object):
         self.label = label
         self.slices = slices
         self.area = area
+
+    @lazyproperty
+    def bbox(self):
+        return BoundingBox(self.slices[1].start, self.slices[1].stop,
+                           self.slices[0].start, self.slices[0].stop)
 
 
 class SegmentationImage(object):
