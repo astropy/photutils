@@ -386,7 +386,7 @@ class SegmentationImage(object):
             raise ValueError('labels {} are invalid'.format(bad_labels))
 
     @deprecated(0.5, alternative='check_labels')
-    def check_label(self, label, allow_zero=False):
+    def check_label(self, label, allow_zero=False):  # pragma: no cover
         """
         Check for a valid label label number within the segmentation
         image.

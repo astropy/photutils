@@ -453,7 +453,7 @@ class SourceProperties(object):
 
     @lazyproperty
     @deprecated(0.4, alternative='sky_centroid_icrs')
-    def icrs_centroid(self):
+    def icrs_centroid(self):  # pragma: no cover
         """
         The sky coordinates, in the International Celestial Reference
         System (ICRS) frame, of the centroid within the source segment,
@@ -464,7 +464,7 @@ class SourceProperties(object):
 
     @lazyproperty
     @deprecated(0.4, alternative='sky_centroid_icrs.ra')
-    def ra_icrs_centroid(self):
+    def ra_icrs_centroid(self):  # pragma: no cover
         """
         The ICRS Right Ascension coordinate (in degrees) of the centroid
         within the source segment.
@@ -477,7 +477,7 @@ class SourceProperties(object):
 
     @lazyproperty
     @deprecated(0.4, alternative='sky_centroid_icrs.dec')
-    def dec_icrs_centroid(self):
+    def dec_icrs_centroid(self):  # pragma: no cover
         """
         The ICRS Declination coordinate (in degrees) of the centroid
         within the source segment.
@@ -1311,7 +1311,7 @@ class SourceCatalog(object):
 
     @lazyproperty
     @deprecated(0.4, alternative='sky_centroid_icrs')
-    def icrs_centroid(self):
+    def icrs_centroid(self):  # pragma: no cover
         if self.wcs is not None:
             return self.sky_centroid_icrs
         else:
@@ -1319,7 +1319,7 @@ class SourceCatalog(object):
 
     @lazyproperty
     @deprecated(0.4, alternative='sky_centroid_icrs.ra')
-    def ra_icrs_centroid(self):
+    def ra_icrs_centroid(self):  # pragma: no cover
         if self.wcs is not None:
             return self.sky_centroid_icrs.ra.deg * u.deg
         else:
@@ -1327,7 +1327,7 @@ class SourceCatalog(object):
 
     @lazyproperty
     @deprecated(0.4, alternative='sky_centroid_icrs.dec')
-    def dec_icrs_centroid(self):
+    def dec_icrs_centroid(self):  # pragma: no cover
         if self.wcs is not None:
             return self.sky_centroid_icrs.dec.deg * u.deg
         else:
@@ -1493,7 +1493,7 @@ def _properties_table(obj, columns=None, exclude_columns=None):
 
 
 @deprecated(0.4, alternative='SourceCatalog.to_table()')
-def properties_table(source_props, columns=None, exclude_columns=None):
+def properties_table(source_props, columns=None, exclude_columns=None):  # pragma: no cover
     """
     Construct a `~astropy.table.QTable` of properties from a list of
     `SourceProperties` objects.

@@ -6,7 +6,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from ..core import SegmentationImage
+from ..core import Segment, SegmentationImage
 
 try:
     import scipy    # noqa
@@ -66,6 +66,27 @@ class TestSegmentationImage(object):
         assert np.ma.count(self.segm.data_ma) == 18
         assert np.ma.count_masked(self.segm.data_ma) == 18
 
+    def test_segments(self):
+        assert isinstance(self.segm[0], Segment)
+        assert self.segm[4].area == self.segm.areas[4]
+        assert self.segm[4].slices == self.segm.slices[4]
+        assert self.segm[3].bbox.slices == self.segm[3].slices
+        assert self.segm[1] is None
+        assert self.segm[5] is None
+
+        for i, segment in enumerate(self.segm):
+            if segment is not None:
+                assert segment.label == (i + 1)
+
+    def test_segment_cutouts(self):
+        assert_allclose(self.segm[4].cutout.shape, (3, 3))
+        assert_allclose(self.segm[4].cutout_ma.shape, (3, 3))
+        assert np.ma.is_masked(self.segm[4].cutout_ma)
+
+    def test_segment_make_cutout_input(self):
+        with pytest.raises(ValueError):
+            self.segm[0].make_cutout(np.arange(10))
+
     def test_labels(self):
         assert_allclose(self.segm.labels, [1, 3, 4, 5, 7])
 
@@ -75,18 +96,22 @@ class TestSegmentationImage(object):
     def test_max_label(self):
         assert self.segm.max_label == 7
 
-    def test_missing_labels(self):
-        assert_allclose(self.segm.missing_labels, [2, 6])
-
     def test_areas(self):
         expected = np.array([2, 0, 2, 3, 6, 0, 5])
         assert_allclose(self.segm.areas, expected)
 
-    def test_area(self):
-        expected = np.array([2, 0, 2, 3, 6, 0, 5])
-        labels = [3, 1, 4]
-        idx = np.array(labels) - 1
-        assert_allclose(self.segm.areas[idx], expected[idx])
+    def test_is_consecutive(self):
+        assert self.segm.is_consecutive is False
+
+    def test_missing_labels(self):
+        assert_allclose(self.segm.missing_labels, [2, 6])
+
+    def test_check_labels(self):
+        with pytest.raises(ValueError):
+            self.segm.check_labels([2])
+
+        with pytest.raises(ValueError):
+            self.segm.check_labels([2, 6])
 
     def test_cmap(self):
         cmap = self.segm.cmap()
