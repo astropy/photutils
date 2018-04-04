@@ -33,7 +33,8 @@ class SourceSegment(object):
         The area of the source segment in pixels**2.
     """
 
-    def __init__(self, label, slices, area):
+    def __init__(self, data, label, slices, area):
+        self._data = data
         self.label = label
         self.slices = slices
         self.area = area
@@ -42,6 +43,55 @@ class SourceSegment(object):
     def bbox(self):
         return BoundingBox(self.slices[1].start, self.slices[1].stop,
                            self.slices[0].start, self.slices[0].stop)
+
+    def make_cutout(self, data, masked_array=False):
+        """
+        Create a (masked) cutout array from the input ``data`` using the
+        minimal bounding box of the source segment (labeled region).
+
+        Parameters
+        ----------
+        data : 2D array-like
+            The data array from which to create the masked cutout array.
+            ``data`` must have the same shape as the segmentation image.
+
+        masked_array : bool, optional
+            If `True` then a `~numpy.ma.MaskedArray` will be created
+            where the mask is `True` for pixels outside of the source
+            segment (labeled region).  If `False`, then a
+            `~numpy.ndarray` will be generated.
+
+        Returns
+        -------
+        result : 2D `~numpy.ndarray` or 2D `~numpy.ma.MaskedArray`
+            The 2D cutout array or masked array.
+        """
+
+        data = np.asanyarray(data)
+        if data.shape != self._data.shape:
+            raise ValueError('data must have the same shape as the '
+                             'segmentation image.')
+
+        if masked_array:
+            mask = (self._data[self.slices] != self.label)
+            return np.ma.masked_array(data[self.slices], mask=mask)
+        else:
+            return data[self.slices]
+
+    @lazyproperty
+    def cutout(self):
+        """Cutout image of the source segment."""
+
+        return self.make_cutout(self._data, masked_array=False)
+
+    @lazyproperty
+    def cutout_ma(self):
+        """
+        Cutout masked array image of the source segment, where pixel
+        outside of the labeled region are masked.
+        """
+
+        return self.make_cutout(self._data, masked_array=True)
 
 
 class SegmentationImage(object):
@@ -93,7 +143,8 @@ class SegmentationImage(object):
             if slc is None:
                 source_segms.append(None)
             else:
-                source_segms.append(SourceSegment(i+1, slc, self.areas[i]))
+                source_segms.append(
+                    SourceSegment(self.data, i+1, slc, self.areas[i]))
 
         self._source_segments = source_segms
 
