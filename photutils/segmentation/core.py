@@ -10,27 +10,28 @@ from ..aperture import BoundingBox
 from ..utils.colormaps import random_cmap
 
 
-__all__ = ['SourceSegment', 'SegmentationImage']
+__all__ = ['Segment', 'SegmentationImage']
 
 __doctest_requires__ = {('SegmentationImage', 'SegmentationImage.*'):
                         ['scipy', 'skimage']}
 
 
-class SourceSegment(object):
+class Segment(object):
     """
-    Class for a single labeled region within a segmentation image.
+    Class for a single labeled region (segment) within a segmentation
+    image.
 
     Parameters
     ----------
     label : int
-        The source segment label number.
+        The segment label number.
 
     slices : tuple of two slices
         A tuple of two slices representing the minimal box that contains
         the labeled region.
 
     area : float
-        The area of the source segment in pixels**2.
+        The area of the segment in pixels**2.
     """
 
     def __init__(self, data, label, slices, area):
@@ -47,7 +48,7 @@ class SourceSegment(object):
     def make_cutout(self, data, masked_array=False):
         """
         Create a (masked) cutout array from the input ``data`` using the
-        minimal bounding box of the source segment (labeled region).
+        minimal bounding box of the segment (labeled region).
 
         Parameters
         ----------
@@ -57,9 +58,9 @@ class SourceSegment(object):
 
         masked_array : bool, optional
             If `True` then a `~numpy.ma.MaskedArray` will be created
-            where the mask is `True` for pixels outside of the source
-            segment (labeled region).  If `False`, then a
-            `~numpy.ndarray` will be generated.
+            where the mask is `True` for pixels outside of the segment
+            (labeled region).  If `False`, then a `~numpy.ndarray` will
+            be generated.
 
         Returns
         -------
@@ -80,15 +81,15 @@ class SourceSegment(object):
 
     @lazyproperty
     def cutout(self):
-        """Cutout image of the source segment."""
+        """Cutout image of the segment."""
 
         return self.make_cutout(self._data, masked_array=False)
 
     @lazyproperty
     def cutout_ma(self):
         """
-        Cutout masked array image of the source segment, where pixel
-        outside of the labeled region are masked.
+        Cutout masked array image of the segment, where pixels outside
+        of the labeled region are masked.
         """
 
         return self.make_cutout(self._data, masked_array=True)
@@ -101,45 +102,44 @@ class SegmentationImage(object):
     Parameters
     ----------
     data : array_like (int)
-        A 2D segmentation image where sources are labeled by different
-        positive integer values.  A value of zero is reserved for the
-        background.
+        A 2D segmentation image where source regions are labeled by
+        different positive integer values.  A value of zero is reserved
+        for the background.
     """
 
     def __init__(self, data):
         self.data = np.asanyarray(data, dtype=np.int)
 
     def __getitem__(self, index):
-        return self.source_segments[index]
+        return self.segments[index]
 
     # python 2 only
     def __getslice__(self, i, j):
         return self.__getitem__(slice(i, j))
 
     def __iter__(self):
-        for i in self.source_segments:
+        for i in self.segments:
             yield i
 
     @lazyproperty
-    def source_segments(self):
+    def segments(self):
         """
-        A list of `SourceSegment` objects.
+        A list of `Segment` objects.
 
         The list starts with the *non-zero* label.  The returned list
         has a length equal to the maximum label number.  If a label
         number is missing from the segmentation image, then `None` is
-        returned instead of a `SourceSegment` object.
+        returned instead of a `Segment` object.
         """
 
-        source_segms = []
+        segments = []
         for i, slc in enumerate(self.slices):
             if slc is None:
-                source_segms.append(None)
+                segments.append(None)
             else:
-                source_segms.append(
-                    SourceSegment(self.data, i+1, slc, self.areas[i]))
+                segments.append(Segment(self.data, i+1, slc, self.areas[i]))
 
-        return source_segms
+        return segments
 
     @property
     def data(self):
@@ -206,7 +206,7 @@ class SegmentationImage(object):
         Parameters
         ----------
         data : array_like (int)
-            A 2D segmentation image where sources are labeled by
+            A 2D segmentation image where source regions are labeled by
             different positive integer values.  A value of zero is
             reserved for the background.
 
@@ -217,9 +217,9 @@ class SegmentationImage(object):
 
         Notes
         -----
-        This is a separate static method so it can be used on masked
-        versions of the segmentation image (cf.
-        ``~photutils.SegmentationImage.remove_masked_labels``.
+        This is a separate static method so it can be used in
+        :meth:`remove_masked_labels` on a masked version of the
+        segmentation image.
 
         Examples
         --------
@@ -769,10 +769,10 @@ class SegmentationImage(object):
             pixels.
 
         partial_overlap : bool, optional
-            If this is set to `True` (the default), a segment that
-            partially extends into a masked region will also be removed.
-            Segments that are completely within a masked region are
-            always removed.
+            If this is set to `True` (default), a segment that partially
+            extends into a masked region will also be removed.  Segments
+            that are completely within a masked region are always
+            removed.
 
         relabel : bool, optional
             If `True`, then the segmentation image will be relabeled
