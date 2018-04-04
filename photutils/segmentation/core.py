@@ -109,21 +109,6 @@ class SegmentationImage(object):
     def __init__(self, data):
         self.data = np.asanyarray(data, dtype=np.int)
 
-    @lazyproperty
-    def source_segments(self):
-        """
-        A list of `SourceSegment` objects.
-
-        The returned list has a length equal to 1 plus the maximum label
-        number.  If a label number is missing from the segmentation
-        image, then `None` is returned instead of a `SourceSegment`
-        object.
-        """
-
-        if not hasattr(self, '_source_segments'):
-            self._create_source_segments()
-        return self._source_segments
-
     def __getitem__(self, index):
         return self.source_segments[index]
 
@@ -135,8 +120,16 @@ class SegmentationImage(object):
         for i in self.source_segments:
             yield i
 
-    def _create_source_segments(self):
-        """Create a list of `SourceSegment` objects."""
+    @lazyproperty
+    def source_segments(self):
+        """
+        A list of `SourceSegment` objects.
+
+        The list starts with the *non-zero* label.  The returned list
+        has a length equal to the maximum label number.  If a label
+        number is missing from the segmentation image, then `None` is
+        returned instead of a `SourceSegment` object.
+        """
 
         source_segms = []
         for i, slc in enumerate(self.slices):
@@ -146,7 +139,7 @@ class SegmentationImage(object):
                 source_segms.append(
                     SourceSegment(self.data, i+1, slc, self.areas[i]))
 
-        self._source_segments = source_segms
+        return source_segms
 
     @property
     def data(self):
