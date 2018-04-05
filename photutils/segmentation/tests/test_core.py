@@ -67,6 +67,7 @@ class TestSegmentationImage(object):
 
     def test_segments(self):
         assert isinstance(self.segm[0], Segment)
+        assert_allclose(self.segm[0].data, self.segm[0].__array__())
         assert self.segm[4].area == self.segm.areas[4]
         assert self.segm[4].slices == self.segm.slices[4]
         assert self.segm[3].bbox.slices == self.segm[3].slices
@@ -77,9 +78,9 @@ class TestSegmentationImage(object):
             if segment is not None:
                 assert segment.label == (i + 1)
 
-    def test_segment_cutout(self):
-        assert_allclose(self.segm[4].cutout.shape, (3, 3))
-        assert_allclose(np.unique(self.segm[4].cutout), [0, 5])
+    def test_segment_data(self):
+        assert_allclose(self.segm[4].data.shape, (3, 3))
+        assert_allclose(np.unique(self.segm[4].data), [0, 5])
 
     def test_segment_mask_cutout(self):
         cutout = self.segm[4].make_cutout(self.data, masked_array=False)

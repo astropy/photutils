@@ -23,6 +23,11 @@ class Segment(object):
 
     Parameters
     ----------
+    segment_img : 2D int `~numpy.ndarray`
+        A 2D segmentation image where source regions are labeled by
+        different positive integer values.  A value of zero is reserved
+        for the background.
+
     label : int
         The segment label number.
 
@@ -34,11 +39,32 @@ class Segment(object):
         The area of the segment in pixels**2.
     """
 
-    def __init__(self, data, label, slices, area):
-        self._data = data
+    def __init__(self, segment_img, label, slices, area):
+        self._segment_img = segment_img
         self.label = label
         self.slices = slices
         self.area = area
+
+    @lazyproperty
+    def data(self):
+        """
+        Cutout image of the segment, where pixels outside of the labeled
+        region are set to zero (i.e. neighboring segments within the
+        rectangular cutout image are not shown).
+        """
+
+        cutout = np.copy(self._segment_img[self.slices])
+        cutout[cutout != self.label] = 0
+
+        return cutout
+
+    def __array__(self):
+        """
+        Array representation of the labeled region (e.g., for
+        matplotlib).
+        """
+
+        return self.data
 
     @lazyproperty
     def bbox(self):
@@ -69,27 +95,15 @@ class Segment(object):
         """
 
         data = np.asanyarray(data)
-        if data.shape != self._data.shape:
+        if data.shape != self._segment_img.shape:
             raise ValueError('data must have the same shape as the '
                              'segmentation image.')
 
         if masked_array:
-            mask = (self._data[self.slices] != self.label)
+            mask = (self._segment_img[self.slices] != self.label)
             return np.ma.masked_array(data[self.slices], mask=mask)
         else:
             return data[self.slices]
-
-    @lazyproperty
-    def cutout(self):
-        """
-        Cutout image of the segment, where pixels in other segments are
-        set to zero.
-        """
-
-        cutout = np.copy(self._data[self.slices])
-        cutout[cutout != self.label] = 0
-
-        return cutout
 
 
 class SegmentationImage(object):
