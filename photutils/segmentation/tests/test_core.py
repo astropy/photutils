@@ -78,10 +78,18 @@ class TestSegmentationImage(object):
             if segment is not None:
                 assert segment.label == (i + 1)
 
-    def test_segment_cutouts(self):
+    def test_segment_cutout(self):
         assert_allclose(self.segm[4].cutout.shape, (3, 3))
-        assert_allclose(self.segm[4].cutout_ma.shape, (3, 3))
-        assert np.ma.is_masked(self.segm[4].cutout_ma)
+        assert_allclose(np.unique(self.segm[4].cutout), [0, 5])
+
+    def test_segment_mask_cutout(self):
+        cutout = self.segm[4].make_cutout(self.data, masked_array=False)
+        assert not np.ma.is_masked(cutout)
+        assert_allclose(cutout.shape, (3, 3))
+
+        cutout = self.segm[4].make_cutout(self.data, masked_array=True)
+        assert np.ma.is_masked(cutout)
+        assert_allclose(cutout.shape, (3, 3))
 
     def test_segment_make_cutout_input(self):
         with pytest.raises(ValueError):

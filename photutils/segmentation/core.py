@@ -81,18 +81,15 @@ class Segment(object):
 
     @lazyproperty
     def cutout(self):
-        """Cutout image of the segment."""
-
-        return self.make_cutout(self._data, masked_array=False)
-
-    @lazyproperty
-    def cutout_ma(self):
         """
-        Cutout masked array image of the segment, where pixels outside
-        of the labeled region are masked.
+        Cutout image of the segment, where pixels in other segments are
+        set to zero.
         """
 
-        return self.make_cutout(self._data, masked_array=True)
+        cutout = np.copy(self._data[self.slices])
+        cutout[cutout != self.label] = 0
+
+        return cutout
 
 
 class SegmentationImage(object):
