@@ -78,11 +78,18 @@ class TestSegmentationImage(object):
             if segment is not None:
                 assert segment.label == (i + 1)
 
+    def test_segment_repr_str(self):
+        assert repr(self.segm[0]) == str(self.segm[0])
+
+        props = ['label', 'slices', 'bbox', 'area']
+        for prop in props:
+            assert '{}:'.format(prop) in repr(self.segm[0])
+
     def test_segment_data(self):
         assert_allclose(self.segm[4].data.shape, (3, 3))
         assert_allclose(np.unique(self.segm[4].data), [0, 5])
 
-    def test_segment_mask_cutout(self):
+    def test_segment_make_cutout(self):
         cutout = self.segm[4].make_cutout(self.data, masked_array=False)
         assert not np.ma.is_masked(cutout)
         assert_allclose(cutout.shape, (3, 3))

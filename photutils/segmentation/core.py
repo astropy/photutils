@@ -45,6 +45,21 @@ class Segment(object):
         self.slices = slices
         self.area = area
 
+    def __str__(self):
+        cls_name = '<{0}.{1}>'.format(self.__class__.__module__,
+                                      self.__class__.__name__)
+
+        cls_info = []
+        params = ['label', 'slices', 'bbox', 'area']
+        for param in params:
+            cls_info.append((param, getattr(self, param)))
+        fmt = ['{0}: {1}'.format(key, val) for key, val in cls_info]
+
+        return '{}\n'.format(cls_name) + '\n'.join(fmt)
+
+    def __repr__(self):
+        return self.__str__()
+
     @lazyproperty
     def data(self):
         """
