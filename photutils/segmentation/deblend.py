@@ -27,11 +27,6 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
     order to deblend sources, they must be separated enough such that
     there is a saddle between them.
 
-    .. note::
-        This function is experimental.  Please report any issues on the
-        `Photutils GitHub issue tracker
-        <https://github.com/astropy/photutils/issues>`_
-
     Parameters
     ----------
     data : array_like
