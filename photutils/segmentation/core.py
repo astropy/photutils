@@ -164,14 +164,6 @@ class SegmentationImage(object):
             if isinstance(value, lazyproperty):
                 self.__dict__.pop(key, None)
 
-    @property
-    def array(self):
-        """
-        The 2D segmentation image.
-        """
-
-        return self._data
-
     def __array__(self):
         """
         Array representation of the segmentation image (e.g., for

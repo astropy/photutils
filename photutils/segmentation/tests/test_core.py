@@ -34,7 +34,6 @@ class TestSegmentationImage(object):
         self.segm = SegmentationImage(self.data)
 
     def test_array(self):
-        assert_allclose(self.segm.data, self.segm.array)
         assert_allclose(self.segm.data, self.segm.__array__())
 
     def test_copy(self):
