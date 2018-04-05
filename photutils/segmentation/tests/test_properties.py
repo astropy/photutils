@@ -81,6 +81,10 @@ class TestSourceProperties(object):
     def test_nowcs(self):
         props = SourceProperties(IMAGE, SEGM, wcs=None, label=1)
         assert props.sky_centroid_icrs is None
+        assert props.sky_bbox_ll is None
+        assert props.sky_bbox_ul is None
+        assert props.sky_bbox_lr is None
+        assert props.sky_bbox_ur is None
 
     def test_to_table(self):
         props = SourceProperties(IMAGE, SEGM, label=1)
@@ -175,13 +179,19 @@ class TestSourcePropertiesFunction(object):
         for shape in shapes:
             assert shape == (4, 4)
 
-    def test_properties_background_notNone(self):
+    def test_properties_background_notnone(self):
         value = 1.
         props = source_properties(IMAGE, SEGM, background=value)
         assert props[0].background_mean == value
         assert_allclose(props[0].background_at_centroid, value)
 
-    def test_properties_error_background_None(self):
+    def test_properties_background_units(self):
+        value = 1. * u.uJy
+        props = source_properties(IMAGE, SEGM, background=value)
+        assert props[0].background_mean == value
+        assert_allclose(props[0].background_at_centroid, value)
+
+    def test_properties_error_background_none(self):
         props = source_properties(IMAGE, SEGM)
         assert props[0].background_cutout_ma is None
         assert props[0].error_cutout_ma is None
@@ -237,6 +247,14 @@ class TestSourcePropertiesFunction(object):
         for prop in proplist:
             assert np.isnan(getattr(props[0], prop))
 
+    def test_scalar_error(self):
+        error_value = 2.5
+        error = np.ones_like(IMAGE) * error_value
+        props = source_properties(IMAGE, SEGM, error=error_value)
+        props2 = source_properties(IMAGE, SEGM, error)
+        assert_quantity_allclose(props.source_sum, props2.source_sum)
+        assert_quantity_allclose(props.source_sum_err, props2.source_sum_err)
+
     def test_mask(self):
         data = np.zeros((3, 3))
         data[0, 1] = 1.
@@ -249,6 +267,14 @@ class TestSourcePropertiesFunction(object):
         assert_allclose(props[0].ycentroid.value, 1)
         assert_allclose(props[0].source_sum, 1)
         assert_allclose(props[0].area.value, 1)
+
+    def test_mask_nomask(self):
+        props = source_properties(IMAGE, SEGM, mask=np.ma.nomask)
+        mask = np.zeros(IMAGE.shape).astype(bool)
+        props2 = source_properties(IMAGE, SEGM, mask=mask)
+        assert_allclose(props.xcentroid.value, props2.xcentroid.value)
+        assert_allclose(props.ycentroid.value, props2.ycentroid.value)
+        assert_quantity_allclose(props.source_sum, props2.source_sum)
 
     def test_single_pixel_segment(self):
         segm = np.zeros_like(SEGM)

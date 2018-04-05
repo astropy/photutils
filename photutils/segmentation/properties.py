@@ -1052,6 +1052,9 @@ class SourceProperties(object):
             value = map_coordinates(self._background,
                                     [[self.ycentroid.value],
                                      [self.xcentroid.value]])[0]
+
+            # map_coordinates works if self._background is a Quantity, but
+            # the returned value is a numpy array (without units)
             if isinstance(self._background, u.Quantity):
                 value *= self._background.unit
 
