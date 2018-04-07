@@ -52,6 +52,39 @@ class TestDetectSources(object):
         segm = detect_sources(self.data, threshold=0.9, npixels=5)
         assert_array_equal(segm.data, self.ref1)
 
+    def test_npixels(self):
+        """
+        Test removal of sources whose size is less than npixels.
+        Regression tests for #663.
+        """
+
+        data = np.zeros((8, 8))
+        data[0:4, 0] = 1
+        data[0, 0:4] = 1
+        data[3, 3:] = 2
+        data[3:, 3] = 2
+
+        segm = detect_sources(data, 0, npixels=8)
+        assert(segm.nlabels == 1)
+        segm = detect_sources(data, 0, npixels=9)
+        assert(segm.nlabels == 1)
+
+        data = np.zeros((8, 8))
+        data[0:4, 0] = 1
+        data[0, 0:4] = 1
+        data[3, 2:] = 2
+        data[3:, 2] = 2
+        data[5:, 3] = 2
+
+        npixels = np.arange(9, 14)
+        for npixels in np.arange(9, 14):
+            segm = detect_sources(data, 0, npixels=npixels)
+            assert(segm.nlabels == 1)
+            assert(segm.areas[1] == 13)
+
+        segm = detect_sources(data, 0, npixels=14)
+        assert(segm.nlabels == 0)
+
     def test_zerothresh(self):
         """Test detection with zero threshold."""
 
