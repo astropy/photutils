@@ -80,7 +80,7 @@ class TestDetectSources(object):
         for npixels in np.arange(9, 14):
             segm = detect_sources(data, 0, npixels=npixels)
             assert(segm.nlabels == 1)
-            assert(segm.areas[1] == 13)
+            assert(segm.areas[0] == 13)
 
         segm = detect_sources(data, 0, npixels=14)
         assert(segm.nlabels == 0)
