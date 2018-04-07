@@ -28,6 +28,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.detection``
+
+  - Fixed an issue in ``detect_sources`` where in some cases sources
+    with a size less than ``npixels`` could be returned. [#663]
+
 - ``photutils.segmentation``
 
   - Fixed ``deblend_sources`` when other sources are in the
