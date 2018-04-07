@@ -6,7 +6,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from ..core import SegmentationImage
+from ..core import Segment, SegmentationImage
 
 try:
     import scipy    # noqa
@@ -34,7 +34,6 @@ class TestSegmentationImage(object):
         self.segm = SegmentationImage(self.data)
 
     def test_array(self):
-        assert_allclose(self.segm.data, self.segm.array)
         assert_allclose(self.segm.data, self.segm.__array__())
 
     def test_copy(self):
@@ -50,22 +49,58 @@ class TestSegmentationImage(object):
         with pytest.raises(ValueError):
             SegmentationImage(data)
 
-    def test_zero_label(self):
+    @pytest.mark.parametrize('label', [0, -1, 2])
+    def test_invalid_label(self, label):
+        # test with scalar labels
         with pytest.raises(ValueError):
-            self.segm.check_label(0)
+            self.segm.check_labels(label)
 
-    def test_negative_label(self):
+    def test_invalid_label_array(self):
+        # test with array of labels
         with pytest.raises(ValueError):
-            self.segm.check_label(-1)
+            self.segm.check_labels([0, -1, 2])
 
-    def test_invalid_label(self):
+    def test_data_ma(self):
+        assert isinstance(self.segm.data_ma, np.ma.MaskedArray)
+        assert np.ma.count(self.segm.data_ma) == 18
+        assert np.ma.count_masked(self.segm.data_ma) == 18
+
+    def test_segments(self):
+        assert isinstance(self.segm[0], Segment)
+        assert_allclose(self.segm[0].data, self.segm[0].__array__())
+        assert self.segm[4].area == self.segm.areas[4]
+        assert self.segm[4].slices == self.segm.slices[4]
+        assert self.segm[3].bbox.slices == self.segm[3].slices
+        assert self.segm[1] is None
+        assert self.segm[5] is None
+
+        for i, segment in enumerate(self.segm):
+            if segment is not None:
+                assert segment.label == (i + 1)
+
+    def test_segment_repr_str(self):
+        assert repr(self.segm[0]) == str(self.segm[0])
+
+        props = ['label', 'slices', 'bbox', 'area']
+        for prop in props:
+            assert '{}:'.format(prop) in repr(self.segm[0])
+
+    def test_segment_data(self):
+        assert_allclose(self.segm[4].data.shape, (3, 3))
+        assert_allclose(np.unique(self.segm[4].data), [0, 5])
+
+    def test_segment_make_cutout(self):
+        cutout = self.segm[4].make_cutout(self.data, masked_array=False)
+        assert not np.ma.is_masked(cutout)
+        assert_allclose(cutout.shape, (3, 3))
+
+        cutout = self.segm[4].make_cutout(self.data, masked_array=True)
+        assert np.ma.is_masked(cutout)
+        assert_allclose(cutout.shape, (3, 3))
+
+    def test_segment_make_cutout_input(self):
         with pytest.raises(ValueError):
-            self.segm.check_label(2)
-
-    def test_data_masked(self):
-        assert isinstance(self.segm.data_masked, np.ma.MaskedArray)
-        assert np.ma.count(self.segm.data_masked) == 18
-        assert np.ma.count_masked(self.segm.data_masked) == 18
+            self.segm[0].make_cutout(np.arange(10))
 
     def test_labels(self):
         assert_allclose(self.segm.labels, [1, 3, 4, 5, 7])
@@ -73,18 +108,30 @@ class TestSegmentationImage(object):
     def test_nlabels(self):
         assert self.segm.nlabels == 5
 
-    def test_max(self):
-        assert self.segm.max == 7
+    def test_max_label(self):
+        assert self.segm.max_label == 7
 
     def test_areas(self):
-        expected = np.array([18, 2, 0, 2, 3, 6, 0, 5])
+        expected = np.array([2, 0, 2, 3, 6, 0, 5])
         assert_allclose(self.segm.areas, expected)
 
-    def test_area(self):
-        expected = np.array([18, 2, 0, 2, 3, 6, 0, 5])
-        assert self.segm.area(0) == expected[0]
-        labels = [3, 1, 4]
-        assert_allclose(self.segm.area(labels), expected[labels])
+    def test_is_consecutive(self):
+        assert self.segm.is_consecutive is False
+
+    def test_missing_labels(self):
+        assert_allclose(self.segm.missing_labels, [2, 6])
+
+    def test_check_labels(self):
+        with pytest.raises(ValueError):
+            self.segm.check_labels([2])
+
+        with pytest.raises(ValueError):
+            self.segm.check_labels([2, 6])
+
+    def test_cmap(self):
+        cmap = self.segm.cmap()
+        assert len(cmap.colors) == (self.segm.max_label + 1)
+        assert_allclose(cmap.colors[0], [0, 0, 0])
 
     def test_outline_segments(self):
         segm_array = np.zeros((5, 5)).astype(int)
@@ -118,7 +165,7 @@ class TestSegmentationImage(object):
         assert segm.nlabels == len(segm.slices) - segm.slices.count(None)
 
     @pytest.mark.parametrize('start_label', [1, 5])
-    def test_relabel_sequential(self, start_label):
+    def test_relabel_consecutive(self, start_label):
         segm = SegmentationImage(self.data)
         ref_data = np.array([[1, 1, 0, 0, 3, 3],
                              [0, 0, 0, 0, 0, 3],
@@ -127,19 +174,19 @@ class TestSegmentationImage(object):
                              [5, 5, 0, 4, 4, 4],
                              [5, 5, 0, 0, 4, 4]])
         ref_data[ref_data != 0] += (start_label - 1)
-        segm.relabel_sequential(start_label=start_label)
+        segm.relabel_consecutive(start_label=start_label)
         assert_allclose(segm.data, ref_data)
 
-        # relabel_sequential should do nothing if already sequential
-        segm.relabel_sequential(start_label=start_label)
+        # relabel_consecutive should do nothing if already consecutive
+        segm.relabel_consecutive(start_label=start_label)
         assert_allclose(segm.data, ref_data)
         assert segm.nlabels == len(segm.slices) - segm.slices.count(None)
 
     @pytest.mark.parametrize('start_label', [0, -1])
-    def test_relabel_sequential_start_invalid(self, start_label):
+    def test_relabel_consecutive_start_invalid(self, start_label):
         with pytest.raises(ValueError):
             segm = SegmentationImage(self.data)
-            segm.relabel_sequential(start_label=start_label)
+            segm.relabel_consecutive(start_label=start_label)
 
     def test_keep_labels(self):
         ref_data = np.array([[0, 0, 0, 0, 0, 0],

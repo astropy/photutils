@@ -27,11 +27,6 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
     order to deblend sources, they must be separated enough such that
     there is a saddle between them.
 
-    .. note::
-        This function is experimental.  Please report any issues on the
-        `Photutils GitHub issue tracker
-        <https://github.com/astropy/photutils/issues>`_
-
     Parameters
     ----------
     data : array_like
@@ -71,23 +66,24 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
         ``contrast`` must be between 0 and 1, inclusive.  If ``contrast
         = 0`` then every local peak will be made a separate object
         (maximum deblending).  If ``contrast = 1`` then no deblending
-        will occur.  The default is 0.001, which will deblend sources with
-        a magnitude differences of about 7.5.
+        will occur.  The default is 0.001, which will deblend sources
+        with a magnitude difference of about 7.5.
 
     mode : {'exponential', 'linear'}, optional
         The mode used in defining the spacing between the
-        multi-thresholding levels (see the ``nlevels`` keyword).
+        multi-thresholding levels (see the ``nlevels`` keyword).  The
+        default is 'exponential'.
 
-    connectivity : {4, 8}, optional
+    connectivity : {8, 4}, optional
         The type of pixel connectivity used in determining how pixels
-        are grouped into a detected source.  The options are 4 or 8
-        (default).  4-connected pixels touch along their edges.
-        8-connected pixels touch along their edges or corners.  For
-        reference, SExtractor uses 8-connected pixels.
+        are grouped into a detected source.  The options are 8 (default)
+        or 4.  8-connected pixels touch along their edges or corners.
+        4-connected pixels touch along their edges.  For reference,
+        SExtractor uses 8-connected pixels.
 
     relabel : bool
         If `True` (default), then the segmentation image will be
-        relabeled such that the labels are in sequential order starting
+        relabeled such that the labels are in consecutive order starting
         from 1.
 
     Returns
@@ -112,13 +108,13 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
     if labels is None:
         labels = segment_img.labels
     labels = np.atleast_1d(labels)
+    segment_img.check_labels(labels)
 
     data = filter_data(data, filter_kernel, mode='constant', fill_value=0.0)
 
-    last_label = segment_img.max
+    last_label = segment_img.max_label
     segm_deblended = deepcopy(segment_img)
     for label in labels:
-        segment_img.check_label(label)
         source_slice = segment_img.slices[label - 1]
         source_data = data[source_slice]
         source_segm = SegmentationImage(np.copy(
@@ -146,7 +142,7 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
             last_label += source_deblended.nlabels
 
     if relabel:
-        segm_deblended.relabel_sequential()
+        segm_deblended.relabel_consecutive()
 
     return segm_deblended
 

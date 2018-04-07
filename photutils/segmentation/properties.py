@@ -8,7 +8,8 @@ import astropy.units as u
 from astropy.coordinates import SkyCoord
 from astropy.table import QTable
 from astropy.utils import deprecated, lazyproperty
-from astropy.utils.exceptions import AstropyDeprecationWarning
+from astropy.utils.exceptions import (AstropyUserWarning,
+                                      AstropyDeprecationWarning)
 from astropy.wcs.utils import pixel_to_skycoord
 
 
@@ -20,8 +21,9 @@ __all__ = ['SourceProperties', 'source_properties', 'SourceCatalog',
            'properties_table']
 
 __doctest_requires__ = {('SourceProperties', 'SourceProperties.*',
-                         'SourceCatalog', 'SourceCatalog.*', 'source_properties',
-                         'properties_table'): ['scipy', 'skimage']}
+                         'SourceCatalog', 'SourceCatalog.*',
+                         'source_properties', 'properties_table'):
+                        ['scipy', 'skimage']}
 
 
 class SourceProperties(object):
@@ -167,7 +169,7 @@ class SourceProperties(object):
         self._error = error    # total error; 2D array
         self._background = background    # 2D array
 
-        segment_img.check_label(label)
+        segment_img.check_labels(label)
         self.label = label
         self._slice = segment_img.slices[label - 1]
         self._segment_img = segment_img
@@ -451,7 +453,7 @@ class SourceProperties(object):
 
     @lazyproperty
     @deprecated(0.4, alternative='sky_centroid_icrs')
-    def icrs_centroid(self):
+    def icrs_centroid(self):  # pragma: no cover
         """
         The sky coordinates, in the International Celestial Reference
         System (ICRS) frame, of the centroid within the source segment,
@@ -462,7 +464,7 @@ class SourceProperties(object):
 
     @lazyproperty
     @deprecated(0.4, alternative='sky_centroid_icrs.ra')
-    def ra_icrs_centroid(self):
+    def ra_icrs_centroid(self):  # pragma: no cover
         """
         The ICRS Right Ascension coordinate (in degrees) of the centroid
         within the source segment.
@@ -475,7 +477,7 @@ class SourceProperties(object):
 
     @lazyproperty
     @deprecated(0.4, alternative='sky_centroid_icrs.dec')
-    def dec_icrs_centroid(self):
+    def dec_icrs_centroid(self):  # pragma: no cover
         """
         The ICRS Declination coordinate (in degrees) of the centroid
         within the source segment.
@@ -630,6 +632,7 @@ class SourceProperties(object):
         minimum pixel value of the (background-subtracted) data.
         """
 
+        # NOTE:  Quantity converts this to float
         return np.argwhere(self.data_cutout_ma == self.min_value)[0] * u.pix
 
     @lazyproperty
@@ -639,6 +642,7 @@ class SourceProperties(object):
         maximum pixel value of the (background-subtracted) data.
         """
 
+        # NOTE:  Quantity converts this to float
         return np.argwhere(self.data_cutout_ma == self.max_value)[0] * u.pix
 
     @lazyproperty
@@ -1048,6 +1052,9 @@ class SourceProperties(object):
             value = map_coordinates(self._background,
                                     [[self.ycentroid.value],
                                      [self.xcentroid.value]])[0]
+
+            # map_coordinates works if self._background is a Quantity, but
+            # the returned value is a numpy array (without units)
             if isinstance(self._background, u.Quantity):
                 value *= self._background.unit
 
@@ -1220,7 +1227,10 @@ def source_properties(data, segment_img, error=None, mask=None,
     sources_props = []
     for label in labels:
         if label not in segment_img.labels:
-            continue      # skip invalid labels (without warnings)
+            warnings.warn('label {} is not in the segmentation image.'
+                          .format(label), AstropyUserWarning)
+            continue  # skip invalid labels
+
         sources_props.append(SourceProperties(
             data, segment_img, label, filtered_data=filtered_data,
             error=error, mask=mask, background=background, wcs=wcs))
@@ -1304,7 +1314,7 @@ class SourceCatalog(object):
 
     @lazyproperty
     @deprecated(0.4, alternative='sky_centroid_icrs')
-    def icrs_centroid(self):
+    def icrs_centroid(self):  # pragma: no cover
         if self.wcs is not None:
             return self.sky_centroid_icrs
         else:
@@ -1312,7 +1322,7 @@ class SourceCatalog(object):
 
     @lazyproperty
     @deprecated(0.4, alternative='sky_centroid_icrs.ra')
-    def ra_icrs_centroid(self):
+    def ra_icrs_centroid(self):  # pragma: no cover
         if self.wcs is not None:
             return self.sky_centroid_icrs.ra.deg * u.deg
         else:
@@ -1320,7 +1330,7 @@ class SourceCatalog(object):
 
     @lazyproperty
     @deprecated(0.4, alternative='sky_centroid_icrs.dec')
-    def dec_icrs_centroid(self):
+    def dec_icrs_centroid(self):  # pragma: no cover
         if self.wcs is not None:
             return self.sky_centroid_icrs.dec.deg * u.deg
         else:
@@ -1486,7 +1496,7 @@ def _properties_table(obj, columns=None, exclude_columns=None):
 
 
 @deprecated(0.4, alternative='SourceCatalog.to_table()')
-def properties_table(source_props, columns=None, exclude_columns=None):
+def properties_table(source_props, columns=None, exclude_columns=None):  # pragma: no cover
     """
     Construct a `~astropy.table.QTable` of properties from a list of
     `SourceProperties` objects.

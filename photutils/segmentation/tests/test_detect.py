@@ -80,7 +80,7 @@ class TestDetectSources(object):
         for npixels in np.arange(9, 14):
             segm = detect_sources(data, 0, npixels=npixels)
             assert(segm.nlabels == 1)
-            assert(segm.areas[1] == 13)
+            assert(segm.areas[0] == 13)
 
         segm = detect_sources(data, 0, npixels=14)
         assert(segm.nlabels == 0)
@@ -166,7 +166,7 @@ class TestDetectSources(object):
         mask[4:6, 4:6] = True
         segm1 = detect_sources(data, 1., 1.)
         segm2 = detect_sources(data, 1., 1., mask=mask)
-        assert segm2.areas[1] == segm1.areas[1] - mask.sum()
+        assert segm2.areas[0] == segm1.areas[0] - mask.sum()
 
     def test_mask_shape(self):
         with pytest.raises(ValueError):

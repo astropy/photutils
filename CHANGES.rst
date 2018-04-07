@@ -4,6 +4,10 @@
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Added ``plot`` and ``to_aperture`` methods to ``BoundingBox``. [#662]
+
 - ``photutils.centroid``
 
   - Added a ``centroid_sources`` function to calculate centroid of
@@ -20,6 +24,31 @@ New Features
 - ``photutils.segmentation``
 
   - Added a ``mask`` keyword to the ``detect_sources`` function. [#621]
+
+  - Renamed ``SegmentationImage`` ``max`` attribute to ``max_label``.
+    ``max`` is deprecated. [#662]
+
+  - Added a ``Segment`` class to hold the cutout image and properties
+    of single labeled region (source segment). [#662]
+
+  - Deprecated the ``SegmentationImage`` ``area`` method.  Instead use
+    the ``areas`` attribute. [#662]
+
+  - Renamed ``SegmentationImage`` ``data_masked`` attribute to
+    ``data_ma``.  ``data_masked`` is deprecated. [#662]
+
+  - Renamed ``SegmentationImage`` ``is_sequential`` attribute to
+    ``is_consecutive``.  ``is_sequential`` is deprecated. [#662]
+
+  - Renamed ``SegmentationImage`` ``relabel_sequential`` attribute to
+    ``relabel_consecutive``.  ``relabel_sequential`` is deprecated.
+    [#662]
+
+  - Added a ``missing_labels`` property to ``SegmentationImage``.
+    [#662]
+
+  - Added a ``check_labels`` method to ``SegmentationImage``.  The
+    ``check_label`` method is deprecated. [#662]
 
 - ``photutils.utils``
 
@@ -44,6 +73,8 @@ Bug Fixes
   - Fixed an issue with ``deblend_sources`` where sources were not
     deblended where the data contain one or more NaNs. [#658]
 
+  - Fixed the ``SegmentationImage`` ``areas`` attribute to not include
+    the zero (background) label. [#662]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
