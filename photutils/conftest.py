@@ -13,9 +13,12 @@ from astropy.tests.pytest_plugins import *    # noqa
 # the tests. Making it pass for KeyError is essential in some cases when
 # the package uses other astropy affiliated packages.
 try:
+    PYTEST_HEADER_MODULES['Cython'] = 'Cython'    # noqa
     PYTEST_HEADER_MODULES['Astropy'] = 'astropy'    # noqa
     PYTEST_HEADER_MODULES['scikit-image'] = 'skimage'    # noqa
+    PYTEST_HEADER_MODULES['scikit-learn'] = 'sklearn'    # noqa
     del PYTEST_HEADER_MODULES['h5py']    # noqa
+    del PYTEST_HEADER_MODULES['Pandas']    # noqa
 except (NameError, KeyError):  # NameError is needed to support Astropy < 1.0
     pass
 
