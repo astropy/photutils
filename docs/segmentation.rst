@@ -141,7 +141,7 @@ In the example above, overlapping sources are detected as single
 sources.  Separating those sources requires a deblending procedure,
 such as a multi-thresholding technique used by `SExtractor
 <http://www.astromatic.net/software/sextractor>`_.  Photutils provides
-an :func:`~photutils.segmentation.deblend_sources` function that
+a :func:`~photutils.segmentation.deblend_sources` function that
 deblends sources uses a combination of multi-thresholding and
 `watershed segmentation
 <https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_.  Note
@@ -150,8 +150,8 @@ that there is a saddle between them.
 
 The amount of deblending can be controlled with the two
 :func:`~photutils.segmentation.deblend_sources` keywords ``nlevels``
-and ``constrast``.  ``nlevels`` is the number of multi-thresholding
-levels to use.  ``constrast`` is the fraction of the total source flux
+and ``contrast``.  ``nlevels`` is the number of multi-thresholding
+levels to use.  ``contrast`` is the fraction of the total source flux
 that a local peak must have to be considered as a separate object.
 
 Here's a simple example of source deblending:
@@ -221,11 +221,12 @@ Let's plot one of the deblended sources:
 
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(10, 3.5))
     slc = (slice(49, 78), slice(0, 24))
-    ax1.imshow(data[slc])
+    ax1.imshow(data[slc], origin='lower')
     ax1.set_title('Data')
-    ax2.imshow(segm.data[slc], cmap=segm.cmap(random_state=123))
+    ax2.imshow(segm.data[slc], origin='lower',
+               cmap=segm.cmap(random_state=123))
     ax2.set_title('Original Segment')
-    ax3.imshow(segm_deblend.data[slc],
+    ax3.imshow(segm_deblend.data[slc], origin='lower',
                cmap=segm_deblend.cmap(random_state=123))
     ax3.set_title('Deblended Segments')
     plt.tight_layout()
