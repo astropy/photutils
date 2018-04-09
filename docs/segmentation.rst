@@ -135,12 +135,18 @@ In the example above, overlapping sources are detected as single
 sources.  Separating those sources requires a deblending procedure,
 such as a multi-thresholding technique used by `SExtractor
 <http://www.astromatic.net/software/sextractor>`_.  Photutils provides
-an experimental :func:`~photutils.segmentation.deblend_sources`
-function that deblends sources uses a combination of
-multi-thresholding and `watershed segmentation
+a :func:`~photutils.segmentation.deblend_sources` function that
+deblends sources uses a combination of multi-thresholding and
+`watershed segmentation
 <https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_.  Note
 that in order to deblend sources, they must be separated enough such
 that there is a saddle between them.
+
+The amount of deblending can be controlled with the two
+:func:`~photutils.segmentation.deblend_sources` keywords ``nlevels``
+and ``contrast``.  ``nlevels`` is the number of multi-thresholding
+levels to use.  ``contrast`` is the fraction of the total source flux
+that a local peak must have to be considered as a separate object.
 
 Here's a simple example of source deblending:
 
@@ -156,7 +162,66 @@ by :func:`~photutils.segmentation.detect_sources`.  Note that the
 ``npixels`` and ``filter_kernel`` input values should match those used
 in :func:`~photutils.segmentation.detect_sources`.  The result is a
 :class:`~photutils.segmentation.SegmentationImage` object containing
-the deblended segmentation image.
+the deblended segmentation image:
+
+.. plot::
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from astropy.stats import gaussian_fwhm_to_sigma
+    from astropy.convolution import Gaussian2DKernel
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
+    from photutils.datasets import make_100gaussians_image
+    from photutils import detect_threshold, detect_sources, deblend_sources
+
+    data = make_100gaussians_image()
+    threshold = detect_threshold(data, snr=2.)
+    sigma = 3.0 * gaussian_fwhm_to_sigma    # FWHM = 3.
+    kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
+    kernel.normalize()
+    segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
+    segm_deblend = deblend_sources(data, segm, npixels=5, filter_kernel=kernel)
+
+    norm = ImageNormalize(stretch=SqrtStretch())
+    fig, ax = plt.subplots(1, 1, figsize=(10, 6.5))
+    ax.imshow(segm_deblend, origin='lower',
+              cmap=segm_deblend.cmap(random_state=12345))
+    ax.set_title('Deblended Segmentation Image')
+    plt.tight_layout()
+
+Let's plot one of the deblended sources:
+
+.. plot::
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from astropy.stats import gaussian_fwhm_to_sigma
+    from astropy.convolution import Gaussian2DKernel
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
+    from photutils.datasets import make_100gaussians_image
+    from photutils import detect_threshold, detect_sources, deblend_sources
+
+    data = make_100gaussians_image()
+    threshold = detect_threshold(data, snr=2.)
+    sigma = 3.0 * gaussian_fwhm_to_sigma    # FWHM = 3.
+    kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
+    kernel.normalize()
+    segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
+    segm_deblend = deblend_sources(data, segm, npixels=5, filter_kernel=kernel)
+
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(10, 3.5))
+    slc = (slice(49, 78), slice(0, 24))
+    ax1.imshow(data[slc], origin='lower')
+    ax1.set_title('Data')
+    ax2.imshow(segm.data[slc], origin='lower',
+               cmap=segm.cmap(random_state=123))
+    ax2.set_title('Original Segment')
+    ax3.imshow(segm_deblend.data[slc], origin='lower',
+               cmap=segm_deblend.cmap(random_state=123))
+    ax3.set_title('Deblended Segments')
+    plt.tight_layout()
 
 
 Modifying a Segmentation Image
