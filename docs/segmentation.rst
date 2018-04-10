@@ -219,8 +219,8 @@ Let's plot one of the deblended sources:
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
     segm_deblend = deblend_sources(data, segm, npixels=5, filter_kernel=kernel)
 
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(10, 3.5))
-    slc = (slice(49, 78), slice(0, 24))
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(10, 4))
+    slc = (slice(273, 297), slice(425, 444))
     ax1.imshow(data[slc], origin='lower')
     ax1.set_title('Data')
     ax2.imshow(segm.data[slc], origin='lower',
