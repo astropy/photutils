@@ -211,8 +211,8 @@ Let's plot one of the deblended sources:
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
     segm_deblend = deblend_sources(data, segm, npixels=5, filter_kernel=kernel)
 
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(10, 3.5))
-    slc = (slice(49, 78), slice(0, 24))
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(10, 4))
+    slc = (slice(273, 297), slice(425, 444))
     ax1.imshow(data[slc], origin='lower')
     ax1.set_title('Data')
     ax2.imshow(segm.data[slc], origin='lower',
@@ -308,7 +308,12 @@ thresholding:
     >>> sigma = 2.0 * gaussian_fwhm_to_sigma    # FWHM = 2.
     >>> kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     >>> kernel.normalize()
-    >>> segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
+    >>> npixels = 5
+    >>> segm = detect_sources(data, threshold, npixels=npixels,
+    ...                       filter_kernel=kernel)
+    >>> segm_deblend = deblend_sources(data, segm, npixels=npixels,
+    ...                                filter_kernel=kernel, nlevels=32,
+    ...                                contrast=0.001)
 
 The result is a :class:`~photutils.segmentation.SegmentationImage`
 where sources are labeled by different positive integer values.  Now
@@ -319,28 +324,29 @@ segmentation image with the minimum number of inputs to
 .. doctest-requires:: scipy, skimage
 
     >>> from photutils import source_properties
-    >>> cat = source_properties(data, segm)
+    >>> cat = source_properties(data, segm_deblend)
     >>> tbl = cat.to_table()
-    >>> tbl['xcentroid'].info.format = '.10f'  # optional format
-    >>> tbl['ycentroid'].info.format = '.10f'
-    >>> tbl['cxy'].info.format = '.10f'
-    >>> tbl['cyy'].info.format = '.10f'
+    >>> tbl['xcentroid'].info.format = '.2f'  # optional format
+    >>> tbl['ycentroid'].info.format = '.2f'
+    >>> tbl['cxx'].info.format = '.2f'
+    >>> tbl['cxy'].info.format = '.2f'
+    >>> tbl['cyy'].info.format = '.2f'
     >>> print(tbl)
-     id   xcentroid      ycentroid    ...      cxy          cyy
-             pix            pix       ...    1 / pix2     1 / pix2
-    --- -------------- -------------- ... ------------- ------------
-      1 235.1877193594   1.0991961528 ... -0.1920746278 1.2174907202
-      2 494.1399411137   5.7704424681 ... -0.5417755959 1.0244063365
-      3 207.3757266577  10.0753101977 ...  0.7764083298 0.4650609454
-      4 364.6895486330  10.8904591886 ... -0.5478887625 0.3040810336
-      5 258.1927719916  11.9617673653 ...  0.0443061873 0.3218333804
-    ...            ...            ... ...           ...          ...
-     82  74.4566900469 259.8333035016 ...  0.4789130934 0.5657327432
-     83  82.5392499545 267.7189336671 ...  0.0675912618 0.2448815867
-     84 477.6743849969 267.8914460476 ... -0.0214056255 0.3919147600
-     85 139.7637841053 275.0413983586 ...  0.2329325365 0.3523911744
-     86 434.0406656782 285.6070270358 ... -0.0607421731 0.0555135558
-    Length = 86 rows
+     id xcentroid ycentroid sky_centroid ...   cxx      cxy      cyy
+           pix       pix                 ... 1 / pix2 1 / pix2 1 / pix2
+    --- --------- --------- ------------ ... -------- -------- --------
+      1    235.22      1.25         None ...     0.17    -0.20     0.99
+      2    493.82      5.77         None ...     0.16    -0.32     0.61
+      3    207.30     10.02         None ...     0.37     0.49     0.30
+      4    364.75     11.13         None ...     0.39    -0.33     0.18
+      5    258.37     11.77         None ...     0.37     0.15     0.16
+    ...       ...       ...          ... ...      ...      ...      ...
+     92    427.01    147.45         None ...     0.26    -0.07     0.12
+     93    426.60    211.14         None ...     0.67     0.24     0.35
+     94    419.79    216.68         None ...     0.17    -0.19     0.27
+     95    433.91    280.73         None ...     0.52    -0.83     0.49
+     96    434.11    288.90         None ...     0.18    -0.19     0.30
+    Length = 96 rows
 
 Let's use the measured morphological properties to define approximate
 isophotal ellipses for each source:
@@ -348,7 +354,7 @@ isophotal ellipses for each source:
 .. doctest-requires:: scipy, skimage
 
     >>> from photutils import source_properties, EllipticalAperture
-    >>> cat = source_properties(data, segm)
+    >>> cat = source_properties(data, segm_deblend)
     >>> r = 3.    # approximate isophotal extent
     >>> apertures = []
     >>> for obj in cat:
@@ -369,7 +375,10 @@ Now let's plot the results:
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
     >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    >>> ax2.imshow(segm, origin='lower', cmap=segm.cmap(random_state=12345))
+    >>> ax1.set_title('Data')
+    >>> ax2.imshow(segm_deblend, origin='lower',
+    ...            cmap=segm_deblend.cmap(random_state=12345))
+    >>> ax2.set_title('Segmentation Image')
     >>> for aperture in apertures:
     ...     aperture.plot(color='blue', lw=1.5, alpha=0.5, ax=ax1)
     ...     aperture.plot(color='white', lw=1.5, alpha=1.0, ax=ax2)
@@ -384,7 +393,7 @@ Now let's plot the results:
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import make_100gaussians_image
     from photutils import Background2D, MedianBackground
-    from photutils import detect_threshold, detect_sources
+    from photutils import detect_threshold, detect_sources, deblend_sources
     from photutils import source_properties
     from photutils import EllipticalAperture
     data = make_100gaussians_image()
@@ -395,8 +404,14 @@ Now let's plot the results:
     sigma = 2.0 * gaussian_fwhm_to_sigma    # FWHM = 2.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     kernel.normalize()
-    segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
-    cat = source_properties(data, segm)
+    npixels = 5
+    segm = detect_sources(data, threshold, npixels=npixels,
+                          filter_kernel=kernel)
+    segm_deblend = deblend_sources(data, segm, npixels=npixels,
+                                   filter_kernel=kernel, nlevels=32,
+                                   contrast=0.001)
+    cat = source_properties(data, segm_deblend)
+    r = 3.    # approximate isophotal extent
     apertures = []
     for obj in cat:
         position = (obj.xcentroid.value, obj.ycentroid.value)
@@ -407,7 +422,10 @@ Now let's plot the results:
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
-    ax2.imshow(segm, origin='lower', cmap=segm.cmap(random_state=12345))
+    ax1.set_title('Data')
+    ax2.imshow(segm_deblend, origin='lower',
+               cmap=segm_deblend.cmap(random_state=12345))
+    ax2.set_title('Segmentation Image')
     for aperture in apertures:
         aperture.plot(color='blue', lw=1.5, alpha=0.5, ax=ax1)
         aperture.plot(color='white', lw=1.5, alpha=1.0, ax=ax2)
@@ -418,7 +436,7 @@ labels in the segmentation image:
 .. doctest-requires:: scipy, skimage
 
     >>> labels = [1, 5, 20, 50, 75, 80]
-    >>> cat = source_properties(data, segm, labels=labels)
+    >>> cat = source_properties(data, segm_deblend, labels=labels)
     >>> tbl2 = cat.to_table()
     >>> tbl2['xcentroid'].info.format = '.2f'  # optional format
     >>> tbl2['ycentroid'].info.format = '.2f'
@@ -429,12 +447,12 @@ labels in the segmentation image:
      id xcentroid ycentroid sky_centroid ...   cxx      cxy      cyy
            pix       pix                 ... 1 / pix2 1 / pix2 1 / pix2
     --- --------- --------- ------------ ... -------- -------- --------
-      1    235.19      1.10         None ...     0.23    -0.19     1.22
-      5    258.19     11.96         None ...     0.73     0.04     0.32
-     20    347.18     66.55         None ...     0.47     0.12     0.36
-     50    380.80    174.42         None ...     1.36    -1.03     1.28
-     75     32.18    241.16         None ...     0.34     0.20     0.60
-     80    355.61    252.14         None ...     0.32     0.18     0.40
+      1    235.22      1.25         None ...     0.17    -0.20     0.99
+      5    258.37     11.77         None ...     0.37     0.15     0.16
+     20    347.00     66.94         None ...     0.15    -0.01     0.21
+     50    145.06    168.55         None ...     0.66     0.05     0.71
+     75    301.86    239.25         None ...     0.47    -0.05     0.28
+     80     43.20    250.01         None ...     0.18    -0.08     0.34
 
 By default, the :meth:`~photutils.SourceCatalog.to_table` method will
 include most scalar-valued properties from
@@ -445,7 +463,7 @@ properties can also be specified (or excluded) in the
 .. doctest-requires:: scipy, skimage
 
     >>> labels = [1, 5, 20, 50, 75, 80]
-    >>> cat = source_properties(data, segm, labels=labels)
+    >>> cat = source_properties(data, segm_deblend, labels=labels)
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'source_sum', 'area']
     >>> tbl3 = cat.to_table(columns=columns)
     >>> tbl3['xcentroid'].info.format = '.4f'  # optional format
@@ -455,12 +473,12 @@ properties can also be specified (or excluded) in the
      id xcentroid ycentroid source_sum area
            pix       pix               pix2
     --- --------- --------- ---------- ----
-      1  235.1877    1.0992   496.6356 27.0
-      5  258.1928   11.9618   347.6113 25.0
-     20  347.1776   66.5510   415.9926 31.0
-     50  380.7969  174.4185   145.7264 11.0
-     75   32.1762  241.1585   398.4114 29.0
-     80  355.6148  252.1423   906.4226 45.0
+      1  235.2160    1.2457   594.2193 36.0
+      5  258.3710   11.7694   684.7155 58.0
+     20  346.9998   66.9428   864.9778 73.0
+     50  145.0591  168.5496   885.9582 33.0
+     75  301.8641  239.2534   391.1656 36.0
+     80   43.2023  250.0100   627.6727 55.0
 
 A `~astropy.wcs.WCS` transformation can also be input to
 :func:`~photutils.segmentation.source_properties` via the ``wcs``
@@ -482,7 +500,7 @@ properties for each source will also be calculated:
 .. doctest-requires:: scipy, skimage
 
     >>> labels = [1, 5, 20, 50, 75, 80]
-    >>> cat = source_properties(data, segm, labels=labels,
+    >>> cat = source_properties(data, segm_deblend, labels=labels,
     ...                         background=bkg.background)
     >>> columns = ['id', 'background_at_centroid', 'background_mean',
     ...            'background_sum']
@@ -493,13 +511,12 @@ properties for each source will also be calculated:
     >>> print(tbl4)
      id background_at_centroid background_mean background_sum
     --- ---------------------- --------------- --------------
-      1           5.2020326493    5.2021208257 140.4572622937
-      5           5.2137810422    5.2137801450 130.3445036251
-     20           5.2788524399    5.2787718244 163.6419265556
-     50           5.1986504100    5.1986157424  57.1847731664
-     75           5.2106279087    5.2106057357 151.1075663349
-     80           5.1249167847    5.1250208080 230.6259363620
-
+      1           5.2020410556    5.2021662094 187.2779835383
+      5           5.2140028193    5.2139893924 302.4113847608
+     20           5.2787978012    5.2785772173 385.3361368595
+     50           5.1896627086    5.1895516008 171.2552028270
+     75           5.1409594224    5.1408425626 185.0703322539
+     80           5.2109825281    5.2108402505 286.5962137759
 
 Photometric Errors
 ^^^^^^^^^^^^^^^^^^
@@ -530,7 +547,7 @@ we set it to 500 seconds):
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> effective_gain = 500.
     >>> error = calc_total_error(data, bkg.background_rms, effective_gain)
-    >>> cat = source_properties(data, segm, labels=labels, error=error)
+    >>> cat = source_properties(data, segm_deblend, labels=labels, error=error)
     >>> columns = ['id', 'xcentroid', 'ycentroid', 'source_sum',
     ...            'source_sum_err']
     >>> tbl5 = cat.to_table(columns=columns)
@@ -542,17 +559,12 @@ we set it to 500 seconds):
      id xcentroid ycentroid source_sum source_sum_err
            pix       pix
     --- --------- --------- ---------- --------------
-      1 235.18772 1.0991962  496.63562      11.078867
-      5 258.19277 11.961767  347.61134      10.723068
-     20 347.17756 66.550958  415.99257      12.178208
-     50 380.79687 174.41851  145.72642       7.295363
-     75 32.176219 241.15849   398.4114      11.553413
-     80 355.61483 252.14225   906.4226      13.768683
-
-`~photutils.segmentation.SourceProperties.source_sum` and
-`~photutils.segmentation.SourceProperties.source_sum_err` are the
-instrumental flux and propagated flux error within the source
-segments.
+      1 235.21604 1.2457344  594.21933      12.787658
+      5 258.37099 11.769376  684.71547      16.326605
+     20 346.99975 66.942777  864.97776      18.677809
+     50 145.05911 168.54961   885.9582      11.908449
+     75 301.86414 239.25337  391.16559      12.080326
+     80 43.202278 250.00997  627.67268      15.812197
 
 
 Pixel Masking
