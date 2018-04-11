@@ -215,3 +215,27 @@ class TestFindPeaks(object):
         tbl = find_peaks(data, 100, wcs=wcs, subpixel=True)
         for col in cols:
             assert col in tbl.colnames
+
+    def test_no_peaks(self):
+        """Test for empty output table when no peaks are found."""
+
+        data = make_4gaussians_image()
+        wcs = make_wcs(data.shape)
+
+        tbl = find_peaks(data, 100000)
+        assert len(tbl) == 0
+
+        tbl = find_peaks(data, 100000, centroid_func=centroid_com)
+        assert len(tbl) == 0
+
+        tbl = find_peaks(data, 100000, subpixel=True)
+        assert len(tbl) == 0
+
+        tbl = find_peaks(data, 100000, wcs=wcs)
+        assert len(tbl) == 0
+
+        tbl = find_peaks(data, 100000, wcs=wcs, centroid_func=centroid_com)
+        assert len(tbl) == 0
+
+        tbl = find_peaks(data, 100000, wcs=wcs, subpixel=True)
+        assert len(tbl) == 0
