@@ -7,8 +7,9 @@ import warnings
 
 import numpy as np
 from astropy.stats import sigma_clipped_stats
-from astropy.table import Table, Column
-from astropy.utils.exceptions import AstropyDeprecationWarning
+from astropy.table import Table
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 from astropy.wcs.utils import pixel_to_skycoord
 
 from ..utils.cutouts import cutout_footprint
@@ -258,11 +259,16 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     y_peaks, x_peaks = peak_goodmask.nonzero()
     peak_values = data[y_peaks, x_peaks]
 
-    if len(x_peaks) > npeaks:
+    nxpeaks = len(x_peaks)
+    if nxpeaks > npeaks:
         idx = np.argsort(peak_values)[::-1][:npeaks]
         x_peaks = x_peaks[idx]
         y_peaks = y_peaks[idx]
         peak_values = peak_values[idx]
+
+    if nxpeaks == 0:
+        warnings.warn('No local peaks were found.', AstropyUserWarning)
+        return Table()  # empty table
 
     # construct the output Table
     colnames = ['x_peak', 'y_peak', 'peak_value']
@@ -270,17 +276,12 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     table = Table(coldata, names=colnames)
 
     if wcs is not None:
-        if len(x_peaks) == 0:
-            skycoord_peaks = Column([])  # add_column fails with "[]"
-        else:
-            skycoord_peaks = pixel_to_skycoord(x_peaks, y_peaks, wcs,
-                                               origin=0)
-
+        skycoord_peaks = pixel_to_skycoord(x_peaks, y_peaks, wcs, origin=0)
         table.add_column(skycoord_peaks, name='skycoord_peak', index=2)
 
     if centroid_func is not None and subpixel:
         raise ValueError('centroid_func and subpixel (deprecated) cannot '
-                         'be both used.')
+                         'both be used.')
 
     # perform centroiding
     if centroid_func is not None:
@@ -302,42 +303,33 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
                       'keyword can be used to calculate centroid positions.',
                       AstropyDeprecationWarning)
 
-        if len(x_peaks) == 0:
-            table['x_centroid'] = []
-            table['y_centroid'] = []
-            table['fit_peak_value'] = []
-        else:
-            from ..centroids import fit_2dgaussian  # prevents circular import
+        from ..centroids import fit_2dgaussian  # prevents circular import
 
-            x_centroids, y_centroids = [], []
-            fit_peak_values = []
-            for (y_peak, x_peak) in zip(y_peaks, x_peaks):
-                rdata, rmask, rerror, slc = cutout_footprint(
-                    data, (x_peak, y_peak), box_size=box_size,
-                    footprint=footprint, mask=mask, error=error)
-                gaussian_fit = fit_2dgaussian(rdata, mask=rmask, error=rerror)
-                if gaussian_fit is None:
-                    x_cen, y_cen, fit_peak_value = np.nan, np.nan, np.nan
-                else:
-                    x_cen = slc[1].start + gaussian_fit.x_mean.value
-                    y_cen = slc[0].start + gaussian_fit.y_mean.value
-                    fit_peak_value = (gaussian_fit.constant.value +
-                                    gaussian_fit.amplitude.value)
-                x_centroids.append(x_cen)
-                y_centroids.append(y_cen)
-                fit_peak_values.append(fit_peak_value)
+        x_centroids, y_centroids = [], []
+        fit_peak_values = []
+        for (y_peak, x_peak) in zip(y_peaks, x_peaks):
+            rdata, rmask, rerror, slc = cutout_footprint(
+                data, (x_peak, y_peak), box_size=box_size,
+                footprint=footprint, mask=mask, error=error)
+            gaussian_fit = fit_2dgaussian(rdata, mask=rmask, error=rerror)
+            if gaussian_fit is None:
+                x_cen, y_cen, fit_peak_value = np.nan, np.nan, np.nan
+            else:
+                x_cen = slc[1].start + gaussian_fit.x_mean.value
+                y_cen = slc[0].start + gaussian_fit.y_mean.value
+                fit_peak_value = (gaussian_fit.constant.value +
+                                  gaussian_fit.amplitude.value)
+            x_centroids.append(x_cen)
+            y_centroids.append(y_cen)
+            fit_peak_values.append(fit_peak_value)
 
-            table['x_centroid'] = x_centroids
-            table['y_centroid'] = y_centroids
-            table['fit_peak_value'] = fit_peak_values
+        table['x_centroid'] = x_centroids
+        table['y_centroid'] = y_centroids
+        table['fit_peak_value'] = fit_peak_values
 
     if (centroid_func is not None or subpixel) and wcs is not None:
-        if len(x_peaks) == 0:
-            skycoord_centroids = Column([])
-        else:
-            skycoord_centroids = pixel_to_skycoord(x_centroids, y_centroids,
-                                                   wcs, origin=0)
-
+        skycoord_centroids = pixel_to_skycoord(x_centroids, y_centroids,
+                                               wcs, origin=0)
         idx = table.colnames.index('y_centroid')
         table.add_column(skycoord_centroids, name='skycoord_centroid',
                          index=idx+1)
