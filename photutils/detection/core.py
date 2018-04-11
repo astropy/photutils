@@ -292,34 +292,39 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         table['x_centroid'] = x_centroids
         table['y_centroid'] = y_centroids
     elif subpixel:
-        from ..centroids import fit_2dgaussian    # prevents circular import
-
         warnings.warn('The subpixel keyword is deprecated and will be '
                       'removed in a future version.  The centroid_func '
                       'keyword can be used to calculate centroid positions.',
                       AstropyDeprecationWarning)
 
-        x_centroids, y_centroids = [], []
-        fit_peak_values = []
-        for (y_peak, x_peak) in zip(y_peaks, x_peaks):
-            rdata, rmask, rerror, slc = cutout_footprint(
-                data, (x_peak, y_peak), box_size=box_size,
-                footprint=footprint, mask=mask, error=error)
-            gaussian_fit = fit_2dgaussian(rdata, mask=rmask, error=rerror)
-            if gaussian_fit is None:
-                x_cen, y_cen, fit_peak_value = np.nan, np.nan, np.nan
-            else:
-                x_cen = slc[1].start + gaussian_fit.x_mean.value
-                y_cen = slc[0].start + gaussian_fit.y_mean.value
-                fit_peak_value = (gaussian_fit.constant.value +
-                                  gaussian_fit.amplitude.value)
-            x_centroids.append(x_cen)
-            y_centroids.append(y_cen)
-            fit_peak_values.append(fit_peak_value)
+        if len(x_peaks) == 0:
+            table['x_centroid'] = []
+            table['y_centroid'] = []
+            table['fit_peak_value'] = []
+        else:
+            from ..centroids import fit_2dgaussian  # prevents circular import
 
-        table['x_centroid'] = x_centroids
-        table['y_centroid'] = y_centroids
-        table['fit_peak_value'] = fit_peak_values
+            x_centroids, y_centroids = [], []
+            fit_peak_values = []
+            for (y_peak, x_peak) in zip(y_peaks, x_peaks):
+                rdata, rmask, rerror, slc = cutout_footprint(
+                    data, (x_peak, y_peak), box_size=box_size,
+                    footprint=footprint, mask=mask, error=error)
+                gaussian_fit = fit_2dgaussian(rdata, mask=rmask, error=rerror)
+                if gaussian_fit is None:
+                    x_cen, y_cen, fit_peak_value = np.nan, np.nan, np.nan
+                else:
+                    x_cen = slc[1].start + gaussian_fit.x_mean.value
+                    y_cen = slc[0].start + gaussian_fit.y_mean.value
+                    fit_peak_value = (gaussian_fit.constant.value +
+                                    gaussian_fit.amplitude.value)
+                x_centroids.append(x_cen)
+                y_centroids.append(y_cen)
+                fit_peak_values.append(fit_peak_value)
+
+            table['x_centroid'] = x_centroids
+            table['y_centroid'] = y_centroids
+            table['fit_peak_value'] = fit_peak_values
 
     if (centroid_func is not None or subpixel) and wcs is not None:
         skycoord_centroids = pixel_to_skycoord(x_centroids, y_centroids, wcs,
