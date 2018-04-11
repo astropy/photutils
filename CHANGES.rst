@@ -21,6 +21,9 @@ New Features
   - The ``find_peaks`` function now returns ``SkyCoord`` objects in
     the table instead of separate RA and Dec. columns. [#656]
 
+  - The ``find_peaks`` function now returns an empty Table and issues
+    a warning when no peaks are found. [#668]
+
 - ``photutils.segmentation``
 
   - Added a ``mask`` keyword to the ``detect_sources`` function. [#621]
