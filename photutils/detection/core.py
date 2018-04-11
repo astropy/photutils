@@ -3,10 +3,12 @@
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+import warnings
 
 import numpy as np
 from astropy.stats import sigma_clipped_stats
 from astropy.table import Column, Table
+from astropy.utils.exceptions import AstropyUserWarning
 
 from ..utils.cutouts import cutout_footprint
 from ..utils.wcs_helpers import pixel_to_icrs_coords
@@ -242,11 +244,16 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     y_peaks, x_peaks = peak_goodmask.nonzero()
     peak_values = data[y_peaks, x_peaks]
 
-    if len(x_peaks) > npeaks:
+    nxpeaks = len(x_peaks)
+    if nxpeaks > npeaks:
         idx = np.argsort(peak_values)[::-1][:npeaks]
         x_peaks = x_peaks[idx]
         y_peaks = y_peaks[idx]
         peak_values = peak_values[idx]
+
+    if nxpeaks == 0:
+        warnings.warn('No local peaks were found.', AstropyUserWarning)
+        return Table()  # empty table
 
     if subpixel:
         from ..centroids import fit_2dgaussian    # prevents circular import
