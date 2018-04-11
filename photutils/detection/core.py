@@ -7,7 +7,7 @@ import warnings
 
 import numpy as np
 from astropy.stats import sigma_clipped_stats
-from astropy.table import Table
+from astropy.table import Table, Column
 from astropy.utils.exceptions import AstropyDeprecationWarning
 from astropy.wcs.utils import pixel_to_skycoord
 
@@ -270,7 +270,12 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     table = Table(coldata, names=colnames)
 
     if wcs is not None:
-        skycoord_peaks = pixel_to_skycoord(x_peaks, y_peaks, wcs, origin=0)
+        if len(x_peaks) == 0:
+            skycoord_peaks = Column([])  # add_column fails with "[]"
+        else:
+            skycoord_peaks = pixel_to_skycoord(x_peaks, y_peaks, wcs,
+                                               origin=0)
+
         table.add_column(skycoord_peaks, name='skycoord_peak', index=2)
 
     if centroid_func is not None and subpixel:
@@ -327,8 +332,12 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
             table['fit_peak_value'] = fit_peak_values
 
     if (centroid_func is not None or subpixel) and wcs is not None:
-        skycoord_centroids = pixel_to_skycoord(x_centroids, y_centroids, wcs,
-                                               origin=0)
+        if len(x_peaks) == 0:
+            skycoord_centroids = Column([])
+        else:
+            skycoord_centroids = pixel_to_skycoord(x_centroids, y_centroids,
+                                                   wcs, origin=0)
+
         idx = table.colnames.index('y_centroid')
         table.add_column(skycoord_centroids, name='skycoord_centroid',
                          index=idx+1)
