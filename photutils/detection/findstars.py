@@ -212,8 +212,8 @@ class DAOStarFinder(StarFinderBase):
         self.exclude_border = exclude_border
 
     def find_stars(self, data):
-        daofind_kernel = _FindObjKernel(self.fwhm, self.ratio, self.theta,
-                                        self.sigma_radius)
+        daofind_kernel = _StarFinderKernel(self.fwhm, self.ratio, self.theta,
+                                           self.sigma_radius)
         self.threshold *= daofind_kernel.relerr
         objs = _findobjs(data, self.threshold, daofind_kernel,
                          exclude_border=self.exclude_border)
@@ -306,8 +306,8 @@ class IRAFStarFinder(StarFinderBase):
         self.exclude_border = exclude_border
 
     def find_stars(self, data):
-        starfind_kernel = _FindObjKernel(self.fwhm, ratio=1.0, theta=0.0,
-                                         sigma_radius=self.sigma_radius)
+        starfind_kernel = _StarFinderKernel(self.fwhm, ratio=1.0, theta=0.0,
+                                            sigma_radius=self.sigma_radius)
         min_separation = max(2, int((self.fwhm * self.minsep_fwhm) + 0.5))
         objs = _findobjs(data, self.threshold, starfind_kernel,
                          min_separation=min_separation,
@@ -346,7 +346,7 @@ def _findobjs(data, threshold, kernel, min_separation=None,
         ``daofind`` or ``irafstarfind``.  It should be multiplied by the
         kernel relerr.
 
-    kernel : `_FindObjKernel`
+    kernel : `_StarFinderKernel`
         The convolution kernel.  The dimensions should match those of
         the cutouts.  The kernel should be normalized to zero sum.
 
@@ -457,7 +457,7 @@ def _irafstarfind_properties(imgcutouts, kernel, sky=None):
         A list of `_ImgCutout` objects containing the image cutout for
         each source.
 
-    kernel : `_FindObjKernel`
+    kernel : `_StarFinderKernel`
         The convolution kernel.  The dimensions should match those of
         the cutouts.  ``kernel.gkernel`` should have a peak pixel value
         of 1.0 and not contain any masked pixels.
@@ -505,7 +505,7 @@ def _irafstarfind_moments(imgcutout, kernel, sky):
     imgcutout : `_ImgCutout`
         The image cutout for a single detected source.
 
-    kernel : `_FindObjKernel`
+    kernel : `_StarFinderKernel`
         The convolution kernel.  The dimensions should match those of
         ``imgcutout``.  ``kernel.gkernel`` should have a peak pixel
         value of 1.0 and not contain any masked pixels.
@@ -565,7 +565,7 @@ def _daofind_properties(imgcutouts, threshold, kernel, sky=0.0):
     threshold : float
         The absolute image value above which to select sources.
 
-    kernel : `_FindObjKernel`
+    kernel : `_StarFinderKernel`
         The convolution kernel.  The dimensions should match those of
         the objects in ``imgcutouts``.  ``kernel.gkernel`` should have a
         peak pixel value of 1.0 and not contain any masked pixels.
@@ -650,7 +650,7 @@ def _daofind_centroid_roundness(obj, kernel):
     obj : array_like
         The 2D array of the source cutout.
 
-    kernel : `_FindObjKernel`
+    kernel : `_StarFinderKernel`
         The convolution kernel.  The dimensions should match those of
         ``obj``.  ``kernel.gkernel`` should have a peak pixel value of
         1.0 and not contain any masked pixels.
@@ -683,7 +683,7 @@ def _daofind_centroidfit(obj, kernel, axis):
     obj : array_like
         The 2D array of the source cutout.
 
-    kernel : `_FindObjKernel`
+    kernel : `_StarFinderKernel`
         The convolution kernel.  The dimensions should match those of
         ``obj``.  ``kernel.gkernel`` should have a peak pixel value of
         1.0 and not contain any masked pixels.
@@ -792,7 +792,7 @@ class _ImgCutout(object):
         return yr + self.y0, xr + self.x0
 
 
-class _FindObjKernel(object):
+class _StarFinderKernel(object):
     """
     Calculate a 2D Gaussian density enhancement kernel.  This kernel has
     negative wings and sums to zero.  It is used by both `DAOStarFinder`
