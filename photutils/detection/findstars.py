@@ -16,10 +16,11 @@ import abc
 
 import six
 import numpy as np
+from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.table import Column, Table
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils.misc import InheritDocstrings
-from astropy.stats import gaussian_fwhm_to_sigma
+from astropy.utils import lazyproperty
 
 from .core import find_peaks
 from ..utils.convolution import filter_data
@@ -373,27 +374,24 @@ def _findobjs(data, threshold, kernel, min_separation=None,
 
     from scipy import ndimage
 
-    x_kernradius = kernel.kern.shape[1] // 2
-    y_kernradius = kernel.kern.shape[0] // 2
-
     if not exclude_border:
         # create a larger image padded by zeros
-        ysize = int(data.shape[0] + (2. * y_kernradius))
-        xsize = int(data.shape[1] + (2. * x_kernradius))
+        ysize = int(data.shape[0] + (2. * kernel.yradius))
+        xsize = int(data.shape[1] + (2. * kernel.xradius))
         data_padded = np.zeros((ysize, xsize))
-        data_padded[y_kernradius:y_kernradius + data.shape[0],
-                    x_kernradius:x_kernradius + data.shape[1]] = data
+        data_padded[kernel.yradius:kernel.yradius + data.shape[0],
+                    kernel.xradius:kernel.xradius + data.shape[1]] = data
         data = data_padded
 
-    convolved_data = filter_data(data, kernel.kern, mode='constant',
+    convolved_data = filter_data(data, kernel.data, mode='constant',
                                  fill_value=0.0, check_normalization=False)
 
     if not exclude_border:
         # keep border=0 in convolved data
-        convolved_data[:y_kernradius, :] = 0.
-        convolved_data[-y_kernradius:, :] = 0.
-        convolved_data[:, :x_kernradius] = 0.
-        convolved_data[:, -x_kernradius:] = 0.
+        convolved_data[:kernel.yradius, :] = 0.
+        convolved_data[-kernel.yradius:, :] = 0.
+        convolved_data[:, :kernel.xradius] = 0.
+        convolved_data[:, -kernel.xradius:] = 0.
 
     selem = ndimage.generate_binary_structure(2, 2)
     object_labels, nobjects = ndimage.label(convolved_data > threshold,
@@ -427,10 +425,10 @@ def _findobjs(data, threshold, kernel, min_separation=None,
     for (ypeak, xpeak) in coords:
         # now extract the object from the data, centered on the peak
         # pixel in the convolved image, with the same size as the kernel
-        x0 = xpeak - x_kernradius
-        x1 = xpeak + x_kernradius + 1
-        y0 = ypeak - y_kernradius
-        y1 = ypeak + y_kernradius + 1
+        x0 = xpeak - kernel.xradius
+        x1 = xpeak + kernel.xradius + 1
+        y0 = ypeak - kernel.yradius
+        y1 = ypeak + kernel.yradius + 1
         if x0 < 0 or x1 > data.shape[1]:
             continue    # pragma: no cover (isolated continue is never tested)
         if y0 < 0 or y1 > data.shape[0]:
@@ -439,9 +437,10 @@ def _findobjs(data, threshold, kernel, min_separation=None,
         object_convolved_data = convolved_data[y0:y1, x0:x1].copy()
         if not exclude_border:
             # correct for image padding
-            x0 -= x_kernradius
-            y0 -= y_kernradius
-        imgcutout = _ImgCutout(object_data, object_convolved_data, x0, y0)
+            x0 -= kernel.xradius
+            y0 -= kernel.yradius
+        imgcutout = _ImgCutout(object_data, object_convolved_data, x0, y0,
+                               xpeak, ypeak)
         objects.append(imgcutout)
     return objects
 
@@ -459,8 +458,7 @@ def _irafstarfind_properties(imgcutouts, kernel, sky=None):
 
     kernel : `_StarFinderKernel`
         The convolution kernel.  The dimensions should match those of
-        the cutouts.  ``kernel.gkernel`` should have a peak pixel value
-        of 1.0 and not contain any masked pixels.
+        the cutouts.
 
     sky : float, optional
         The absolute sky level.  If sky is ``None``, then a local sky
@@ -507,8 +505,7 @@ def _irafstarfind_moments(imgcutout, kernel, sky):
 
     kernel : `_StarFinderKernel`
         The convolution kernel.  The dimensions should match those of
-        ``imgcutout``.  ``kernel.gkernel`` should have a peak pixel
-        value of 1.0 and not contain any masked pixels.
+        ``imgcutout``.
 
     sky : float
         The local sky level around the source.
@@ -567,8 +564,7 @@ def _daofind_properties(imgcutouts, threshold, kernel, sky=0.0):
 
     kernel : `_StarFinderKernel`
         The convolution kernel.  The dimensions should match those of
-        the objects in ``imgcutouts``.  ``kernel.gkernel`` should have a
-        peak pixel value of 1.0 and not contain any masked pixels.
+        the objects in ``imgcutouts``.
 
     sky : float, optional
         The local sky level around the source.  ``sky`` is used only to
@@ -583,21 +579,21 @@ def _daofind_properties(imgcutouts, threshold, kernel, sky=0.0):
     """
 
     result = defaultdict(list)
-    ykcen, xkcen = kernel.center
+
     for imgcutout in imgcutouts:
         convobj = imgcutout.convdata.copy()
-        convobj[ykcen, xkcen] = 0.0
-        q1 = convobj[0:ykcen+1, xkcen+1:]
-        q2 = convobj[0:ykcen, 0:xkcen+1]
-        q3 = convobj[ykcen:, 0:xkcen]
-        q4 = convobj[ykcen+1:, xkcen:]
+        convobj[kernel.yc, kernel.xc] = 0.0
+        q1 = convobj[0:kernel.yc+1, kernel.xc+1:]
+        q2 = convobj[0:kernel.yc, 0:kernel.xc+1]
+        q3 = convobj[kernel.yc:, 0:kernel.xc]
+        q4 = convobj[kernel.yc+1:, kernel.xc:]
         sum2 = -q1.sum() + q2.sum() - q3.sum() + q4.sum()
         sum4 = np.abs(convobj).sum()
         result['roundness1'].append(2.0 * sum2 / sum4)
 
         obj = imgcutout.data
-        objpeak = obj[ykcen, xkcen]
-        convpeak = imgcutout.convdata[ykcen, xkcen]
+        objpeak = obj[kernel.yc, kernel.xc]
+        convpeak = imgcutout.convdata[kernel.yc, kernel.xc]
         npts = kernel.mask.sum()
         obj_masked = obj * kernel.mask
         objmean = (obj_masked.sum() - objpeak) / (npts - 1)   # exclude peak
@@ -652,8 +648,7 @@ def _daofind_centroid_roundness(obj, kernel):
 
     kernel : `_StarFinderKernel`
         The convolution kernel.  The dimensions should match those of
-        ``obj``.  ``kernel.gkernel`` should have a peak pixel value of
-        1.0 and not contain any masked pixels.
+        ``obj``.
 
     Returns
     -------
@@ -685,8 +680,7 @@ def _daofind_centroidfit(obj, kernel, axis):
 
     kernel : `_StarFinderKernel`
         The convolution kernel.  The dimensions should match those of
-        ``obj``.  ``kernel.gkernel`` should have a peak pixel value of
-        1.0 and not contain any masked pixels.
+        ``obj``.
 
     axis : {0, 1}
         The axis for which the centroid is computed:
@@ -708,28 +702,26 @@ def _daofind_centroidfit(obj, kernel, axis):
 
     # define a triangular weighting function, peaked in the middle
     # and equal to one at the edge
-    nyk, nxk = kernel.shape
-    ykrad, xkrad = kernel.center
-    ywtd, xwtd = np.mgrid[0:nyk, 0:nxk]
-    xwt = xkrad - abs(xwtd - xkrad) + 1.0
-    ywt = ykrad - abs(ywtd - ykrad) + 1.0
+    ywtd, xwtd = np.mgrid[0:kernel.ny, 0:kernel.nx]
+    xwt = kernel.xradius - abs(xwtd - kernel.xradius) + 1.0
+    ywt = kernel.yradius - abs(ywtd - kernel.yradius) + 1.0
     if axis == 0:
         wt = xwt[0]
         wts = ywt
-        ksize = nxk
+        ksize = kernel.nx
         kernel_sigma = kernel.xsigma
         krad = ksize // 2
         sumdx_vec = krad - np.arange(ksize)
     elif axis == 1:
         wt = ywt.T[0]
         wts = xwt
-        ksize = nyk
+        ksize = kernel.ny
         kernel_sigma = kernel.ysigma
         krad = ksize // 2
         sumdx_vec = np.arange(ksize) - krad
     n = wt.sum()
 
-    sg = (kernel.gkernel * wts).sum(axis)
+    sg = (kernel.gaussian_kernel_unmasked * wts).sum(axis)
     sumg = (wt * sg).sum()
     sumg2 = (wt * sg**2).sum()
     vec = krad - np.arange(ksize)
@@ -742,7 +734,8 @@ def _daofind_centroidfit(obj, kernel, axis):
     sumgd = (wt * sg * sd).sum()
     sddgdx = (wt * sd * dgdx).sum()
     sumdx = (wt * sd * sumdx_vec).sum()
-    # linear least-squares fit (data = sky + hx*gkernel) to find amplitudes
+    # linear least-squares fit (data = sky + hx*gaussian_kernel_nomask)
+    # to find amplitudes
     denom = (n*sumg2 - sumg**2)
     hx = (n*sumgd - sumg*sumd) / denom
     # sky = (sumg2*sumd - sumg*sumgd) / denom
@@ -794,9 +787,10 @@ class _ImgCutout(object):
 
 class _StarFinderKernel(object):
     """
-    Calculate a 2D Gaussian density enhancement kernel.  This kernel has
-    negative wings and sums to zero.  It is used by both `DAOStarFinder`
-    and `IRAFStarFinder`.
+    Class to calculate a 2D Gaussian density enhancement kernel.
+
+    The kernel has negative wings and sums to zero.  It is used by both
+    `DAOStarFinder` and `IRAFStarFinder`.
 
     Parameters
     ----------
@@ -820,11 +814,15 @@ class _StarFinderKernel(object):
         (standard deviation) [``1 sigma = FWHM /
         2.0*sqrt(2.0*log(2.0))``].  The default is 1.5.
 
+    normalize_zerosum : bool, optional
+        Whether to normalize the Gaussian kernel to have zero sum,
+        constructing construct a density-enhancement kernel.  The
+        default is `True`.
+
     Notes
     -----
-    The object attributes include the dimensions of the elliptical
-    kernel and the coefficients of a 2D elliptical Gaussian function
-    expressed as:
+    The attributes include the dimensions of the elliptical kernel and
+    the coefficients of a 2D elliptical Gaussian function expressed as:
 
         ``f(x,y) = A * exp(-g(x,y))``
 
@@ -837,83 +835,83 @@ class _StarFinderKernel(object):
     .. [1] http://en.wikipedia.org/wiki/Gaussian_function
     """
 
-    def __init__(self, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5):
+    def __init__(self, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
+                 normalize_zerosum=True):
+
         if fwhm < 0:
-            raise ValueError('fwhm must be positive, '
-                             'got fwhm={0}'.format(fwhm))
+            raise ValueError('fwhm must be positive.')
+
         if ratio <= 0 or ratio > 1:
             raise ValueError('ratio must be positive and less or equal '
-                             'than 1, got ratio={0}'.format(ratio))
+                             'than 1.')
+
         if sigma_radius <= 0:
-            raise ValueError('sigma_radius must be positive, got '
-                             'sigma_radius={0}'.format(sigma_radius))
+            raise ValueError('sigma_radius must be positive.')
+
         self.fwhm = fwhm
-        self.sigma_radius = sigma_radius
         self.ratio = ratio
         self.theta = theta
-        self.theta_radians = np.deg2rad(self.theta)
+        self.sigma_radius = sigma_radius
         self.xsigma = self.fwhm * gaussian_fwhm_to_sigma
         self.ysigma = self.xsigma * self.ratio
-        self.a = None
-        self.b = None
-        self.c = None
-        self.f = None
-        self.nx = None
-        self.ny = None
-        self.xc = None
-        self.yc = None
-        self.circrad = None
-        self.ellrad = None
-        self.gkernel = None
-        self.mask = None
-        self.npts = None
-        self.kern = None
-        self.relerr = None
-        self.set_gausspars()
-        self.mk_kern()
 
-    @property
-    def shape(self):
-        return self.kern.shape
-
-    @property
-    def center(self):
-        """Index of the kernel center."""
-        return [size // 2 for size in self.kern.shape]
-
-    def set_gausspars(self):
+        theta_radians = np.deg2rad(self.theta)
+        cost = np.cos(theta_radians)
+        sint = np.sin(theta_radians)
         xsigma2 = self.xsigma**2
         ysigma2 = self.ysigma**2
-        cost = np.cos(self.theta_radians)
-        sint = np.sin(self.theta_radians)
+
         self.a = (cost**2 / (2.0 * xsigma2)) + (sint**2 / (2.0 * ysigma2))
-        self.b = 0.5 * cost * sint * (1.0/xsigma2 - 1.0/ysigma2)    # CCW
+        # CCW
+        self.b = 0.5 * cost * sint * ((1.0 / xsigma2) - (1.0 / ysigma2))
         self.c = (sint**2 / (2.0 * xsigma2)) + (cost**2 / (2.0 * ysigma2))
+
         # find the extent of an ellipse with radius = sigma_radius*sigma;
         # solve for the horizontal and vertical tangents of an ellipse
         # defined by g(x,y) = f
         self.f = self.sigma_radius**2 / 2.0
-        denom = self.a*self.c - self.b**2
-        self.nx = 2 * int(max(2, math.sqrt(self.c*self.f / denom))) + 1
-        self.ny = 2 * int(max(2, math.sqrt(self.a*self.f / denom))) + 1
-        return
+        denom = (self.a * self.c) - self.b**2
+        self.nx = 2 * int(max(2, math.sqrt(self.c * self.f / denom))) + 1
+        self.ny = 2 * int(max(2, math.sqrt(self.a * self.f / denom))) + 1
 
-    def mk_kern(self):
+        self.xradius = self.nx // 2
+        self.yradius = self.ny // 2
+
+        # define the kernel on a 2D grid
         yy, xx = np.mgrid[0:self.ny, 0:self.nx]
         self.xc = self.nx // 2
         self.yc = self.ny // 2
-        self.circrad = np.sqrt((xx-self.xc)**2 + (yy-self.yc)**2)
-        self.ellrad = (self.a*(xx-self.xc)**2 +
-                       2.0*self.b*(xx-self.xc)*(yy-self.yc) +
-                       self.c*(yy-self.yc)**2)
-        self.gkernel = np.exp(-self.ellrad)
-        self.mask = np.where((self.ellrad <= self.f) |
-                             (self.circrad <= 2.0), 1, 0).astype(np.int16)
-        self.npts = self.mask.sum()
-        self.kern = self.gkernel * self.mask
-        # normalize the kernel to zero sum (denom = variance * npts)
-        denom = ((self.kern**2).sum() - (self.kern.sum()**2 / self.npts))
+
+        self.circular_radius = np.sqrt((xx - self.xc)**2 + (yy - self.yc)**2)
+        self.elliptical_radius = (self.a * (xx - self.xc)**2 +
+                                  2.0 * self.b * (xx - self.xc) *
+                                  (yy - self.yc) +
+                                  self.c * (yy - self.yc)**2)
+
+        self.mask = np.where(
+            (self.elliptical_radius <= self.f) |
+            (self.circular_radius <= 2.0), 1, 0).astype(np.int)
+        self.npixels = self.mask.sum()
+
+        # NOTE: the central (peak) pixel of gaussian_kernel has a value of 1.
+        self.gaussian_kernel_unmasked = np.exp(-self.elliptical_radius)
+        self.gaussian_kernel = self.gaussian_kernel_unmasked * self.mask
+
+        # denom = variance * npixels
+        denom = ((self.gaussian_kernel**2).sum() -
+                 (self.gaussian_kernel.sum()**2 / self.npixels))
         self.relerr = 1.0 / np.sqrt(denom)
-        self.kern = (((self.kern - (self.kern.sum() / self.npts)) / denom) *
-                     self.mask)
+
+        # normalize the kernel to zero sum
+        if normalize_zerosum:
+            self.data = ((self.gaussian_kernel -
+                          (self.gaussian_kernel.sum() / self.npixels)) /
+                         denom) * self.mask
+        else:
+            self.data = self.gaussian_kernel
+
         return
+
+    @lazyproperty
+    def shape(self):
+        return self.data.shape
