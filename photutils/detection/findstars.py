@@ -235,6 +235,7 @@ class DAOStarFinder(StarFinderBase):
         if len(tbl) == 0:
             warnings.warn('Sources were found, but none pass the sharpness '
                           'and roundness criteria.', AstropyUserWarning)
+
         return tbl
 
 
@@ -327,6 +328,7 @@ class IRAFStarFinder(StarFinderBase):
         if len(tbl) == 0:
             warnings.warn('Sources were found, but none pass the sharpness '
                           'and roundness criteria.', AstropyUserWarning)
+
         return tbl
 
 
@@ -442,6 +444,7 @@ def _findobjs(data, threshold, kernel, min_separation=None,
         imgcutout = _ImgCutout(object_data, object_convolved_data, x0, y0,
                                xpeak, ypeak)
         objects.append(imgcutout)
+
     return objects
 
 
@@ -490,6 +493,7 @@ def _irafstarfind_properties(imgcutouts, kernel, sky=None):
         for name in names:
             result[name] = []
     table = Table(result, names=names)
+
     return table
 
 
@@ -545,6 +549,7 @@ def _irafstarfind_moments(imgcutout, kernel, sky):
     result['pa'] = pa
     result['xcentroid'] += imgcutout.x0
     result['ycentroid'] += imgcutout.y0
+
     return result
 
 
@@ -622,6 +627,7 @@ def _daofind_properties(imgcutouts, threshold, kernel, sky=0.0):
         for name in names:
             result[name] = []
     table = Table(result, names=names)
+
     return table
 
 
@@ -665,6 +671,7 @@ def _daofind_centroid_roundness(obj, kernel):
     dx, hx = _daofind_centroidfit(obj, kernel, axis=0)
     dy, hy = _daofind_centroidfit(obj, kernel, axis=1)
     g_roundness = 2.0 * (hx - hy) / (hx + hy)
+
     return dx, dy, g_roundness
 
 
@@ -750,30 +757,37 @@ def _daofind_centroidfit(obj, kernel, axis):
             dx = float(sumdx / sumd)
             if abs(dx) > hsize:
                 dx = 0.0
+
     return dx, hx
 
 
 class _ImgCutout(object):
-    """Class to hold image cutouts."""
-    def __init__(self, data, convdata, x0, y0):
-        """
-        Parameters
-        ----------
-        data : array_like
-            The cutout 2D image from the input unconvolved 2D image.
+    """
+    Class to hold image cutouts.
 
-        convdata : array_like
-            The cutout 2D image from the convolved 2D image.
+    Parameters
+    ----------
+    data : array_like
+        The cutout 2D image from the input unconvolved 2D image.
 
-        x0, y0 : float
-            Image coordinates of the lower left pixel of the cutout region.
-            The pixel origin is (0, 0).
-        """
+    convdata : array_like
+        The cutout 2D image from the convolved 2D image.
 
+    x0, y0 : float
+        The (x, y) pixel coordinates of the lower-left pixel of the
+        cutout region.
+
+    xpeak, ypeak : float
+        The (x, y) pixel coordinates of the peak pixel.
+    """
+
+    def __init__(self, data, convdata, x0, y0, xpeak, ypeak):
         self.data = data
         self.convdata = convdata
         self.x0 = x0
         self.y0 = y0
+        self.xpeak = xpeak
+        self.ypeak = ypeak
 
     @property
     def radius(self):
@@ -914,4 +928,6 @@ class _StarFinderKernel(object):
 
     @lazyproperty
     def shape(self):
+        """The shape of the 2D kernel array."""
+
         return self.data.shape
