@@ -220,6 +220,10 @@ class DAOStarFinder(StarFinderBase):
                          exclude_border=self.exclude_border)
         tbl = _daofind_properties(objs, self.threshold, daofind_kernel,
                                   self.sky)
+
+        # names = ['xcentroid', 'ycentroid', 'sharpness', 'roundness1',
+        #          'roundness2', 'npix', 'sky', 'peak', 'flux', 'mag']
+
         if len(objs) == 0:
             warnings.warn('No sources were found.', AstropyUserWarning)
             return tbl     # empty table
@@ -446,6 +450,212 @@ def _findobjs(data, threshold, kernel, min_separation=None,
         objects.append(imgcutout)
 
     return objects
+
+
+def _star_properties(star_cutouts, kernel, sky=None):
+    props = []
+    for star_cutout in star_cutouts:
+        props.append(_StarProperties(star_cutout, kernel, sky))
+
+    return props
+
+
+class _StarProperties(object):
+    """
+    data : _ImgCutout
+    """
+
+    def __init__(self, star_cutout, kernel, sky=None):
+        if not isinstance(star_cutout, _ImgCutout):
+            raise ValueError('data must be an _ImgCutout object')
+
+        if star_cutout.data.shape != kernel.shape:
+            raise ValueError('cutout and kernel must have the same shape')
+
+        self.cutout = star_cutout
+        self.kernel = kernel
+        self.sky = sky    # DAOFIND uses sky=0
+
+        self.data = star_cutout.data
+        self.data_masked = star_cutout.data_masked
+        self.npixels = star_cutout.npixels    # unmasked pixels
+        self.nx = star_cutout.nx
+        self.ny = star_cutout.ny
+        self.xcenter = star_cutout.xcenter
+        self.ycenter = star_cutout.ycenter
+
+    @lazyproperty
+    def data_peak(self):
+        return self.data[self.ycenter, self.xcenter]
+
+    @lazyproperty
+    def conv_peak(self):
+        return self.cutout.convdata[self.ycenter, self.xcenter]
+
+    @lazyproperty
+    def roundness1(self):
+        # set the central (peak) pixel to zero
+        cutout_conv = self.cutout.convdata.copy()
+        cutout_conv[self.ycenter, self.xcenter] = 0.0
+
+        # calculate the four roundness quadrants
+        quad1 = cutout_conv[0:self.ycenter + 1, self.xcenter + 1:]
+        quad2 = cutout_conv[0:self.ycenter, 0:self.xcenter + 1]
+        quad3 = cutout_conv[self.ycenter:, 0:self.xcenter]
+        quad4 = cutout_conv[self.ycenter + 1:, self.xcenter:]
+
+        sum2 = -quad1.sum() + quad2.sum() - quad3.sum() + quad4.sum()
+        if sum2 == 0:
+            return 0.
+
+        sum4 = np.abs(cutout_conv).sum()
+        if sum4 <= 0:
+            return None
+
+        return 2.0 * sum2 / sum4
+
+    @lazyproperty
+    def sharpness(self):
+        npixels = self.npixels - 1    # exclude the peak pixel
+        data_mean = (np.sum(self.data_masked) - self.data_peak) / npixels
+
+        return (self.data_peak - data_mean) / self.conv_peak
+
+    def daofind_marginal_fit(self, axis=0):
+        # define triangular weighting functions along each axis, peaked
+        # in the middle and equal to one at the edge
+        x = self.xcenter - np.abs(np.arange(self.nx) - self.xcenter) + 1
+        y = self.ycenter - np.abs(np.arange(self.ny) - self.ycenter) + 1
+        xwt, ywt = np.meshgrid(x, y)
+
+        if axis == 0:    # marginal distributions along x axis
+            wt = xwt[0]    # 1D
+            wts = ywt    # 2D
+            size = self.nx
+            center = self.xcenter
+            sigma = self.kernel.xsigma
+        elif axis == 1:    # marginal distributions along y axis
+            wt = np.transpose(ywt)[0]    # 1D
+            wts = xwt    # 2D
+            size = self.ny
+            center = self.ycenter
+            sigma = self.kernel.ysigma
+
+        # compute marginal sums for given axis
+        wt_sum = np.sum(wt)
+        dx = center - np.arange(size)
+
+        # weighted marginal sums
+        kern_sum_1d = np.sum(self.kernel.data * wts, axis=axis)
+        kern_sum = np.sum(kern_sum_1d * wt)
+        kern2_sum = np.sum(kern_sum_1d**2 * wt)
+
+        dkern_dx = kern_sum_1d * dx
+        dkern_dx_sum = np.sum(dkern_dx * wt)
+        dkern_dx2_sum = np.sum(dkern_dx**2 * wt)
+        kern_dkern_dx_sum = np.sum(kern_sum_1d * dkern_dx * wt)
+
+        data_sum_1d = np.sum(self.data * wts, axis=axis)
+        data_sum = np.sum(data_sum_1d * wt)
+        data_kern_sum = np.sum(data_sum_1d * kern_sum_1d * wt)
+        data_dkern_dx_sum = np.sum(data_sum_1d * dkern_dx * wt)
+        data_dx_sum = np.sum(data_sum_1d * dx * wt)
+
+        # perform linear least-squares fit (where data = sky + hx*kernel)
+        # to find the amplitude (hx)
+        # reject the star if the fit amplitude is not positive
+        hx_numer = data_kern_sum - (data_sum * kern_sum) / wt_sum
+        if hx_numer <= 0.:
+            return None, None
+
+        hx_denom = kern2_sum - (kern_sum**2 / wt_sum)
+        if hx_denom <= 0.:
+            return None, None
+
+        # compute fit amplitude
+        hx = hx_numer / hx_denom
+        # sky = (data_sum - (hx * kern_sum)) / wt_sum
+
+        # compute centroid shift
+        dx = ((kern_dkern_dx_sum -
+               (data_dkern_dx_sum - dkern_dx_sum*data_sum)) /
+              (hx * dkern_dx2_sum / sigma**2))
+
+        hsize = size / 2.
+        if abs(dx) > hsize:
+            if data_sum == 0.:
+                dx = 0.0
+            else:
+                dx = data_dx_sum / data_sum
+                if abs(dx) > hsize:
+                    dx = 0.0
+
+        return dx, hx
+
+    @lazyproperty
+    def dx_hx(self):
+        dx, hx = self.daofind_marginal_fit(axis=0)
+        return dx, hx
+
+    @lazyproperty
+    def dy_hy(self):
+        dy, hy = self.daofind_marginal_fit(axis=1)
+        return dy, hy
+
+    @lazyproperty
+    def dx(self):
+        return self.dx_hx[0]
+
+    @lazyproperty
+    def dy(self):
+        return self.dy_hy[0]
+
+    @lazyproperty
+    def xcentroid(self):
+        return self.xcenter + self.dx
+
+    @lazyproperty
+    def ycentroid(self):
+        return self.ycenter + self.dy
+
+    @lazyproperty
+    def hx(self):
+        return self.dx_hx[1]
+
+    @lazyproperty
+    def hy(self):
+        return self.dy_hy[1]
+
+    @lazyproperty
+    def roundness2(self):
+        if self.hx <= 0. or self.hy <= 0.:
+            return None
+        else:
+            return 2.0 * (self.hx - self.hy) / (self.hx + self.hy)
+
+    @lazyproperty
+    def peak(self):
+        return self.data_peak - self.sky
+
+    @lazyproperty
+    def npix(self):
+        """
+        The total number of pixels in the rectangular cutout image.
+        """
+
+        return self.data.size
+
+    @lazyproperty
+    def flux(self):
+        return ((self.conv_peak / self.data.threshold) -
+                (self.sky * self.npix))
+
+    @lazyproperty
+    def mag(self):
+        if self.flux <= 0:
+            return np.nan
+        else:
+            return -2.5 * np.log10(self.flux)
 
 
 def _irafstarfind_properties(imgcutouts, kernel, sky=None):
@@ -781,13 +991,23 @@ class _ImgCutout(object):
         The (x, y) pixel coordinates of the peak pixel.
     """
 
-    def __init__(self, data, convdata, x0, y0, xpeak, ypeak):
+    def __init__(self, data, convdata, kernel, x0, y0, xpeak, ypeak):
+        self.shape = data.shape
+        self.nx = self.shape[1]
+        self.ny = self.shape[0]
         self.data = data
         self.convdata = convdata
         self.x0 = x0
         self.y0 = y0
         self.xpeak = xpeak
         self.ypeak = ypeak
+        self.xcenter = xpeak
+        self.ycenter = ypeak
+        self.mask = kernel.mask   # kernel mask
+
+    @lazyproperty
+    def data_masked(self):
+        return self.data * self.mask
 
     @property
     def radius(self):
