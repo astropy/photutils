@@ -385,8 +385,8 @@ def _find_stars(data, threshold, kernel, min_separation=None,
 
     Returns
     -------
-    objects : list of `_ImgCutout`
-        A list of `_ImgCutout` objects containing the image cutout for
+    objects : list of `_StarCutout`
+        A list of `_StarCutout` objects containing the image cutout for
         each source.
 
 
@@ -418,9 +418,10 @@ def _find_stars(data, threshold, kernel, min_separation=None,
     selem = ndimage.generate_binary_structure(2, 2)
     object_labels, nobjects = ndimage.label(convolved_data > threshold,
                                             structure=selem)
-    objects = []
+
+    star_cutouts = []
     if nobjects == 0:
-        return objects
+        return star_cutouts
 
     # find object peaks in the convolved data
     if local_peaks:
@@ -451,39 +452,41 @@ def _find_stars(data, threshold, kernel, min_separation=None,
         x1 = xpeak + kernel.xradius + 1
         y0 = ypeak - kernel.yradius
         y1 = ypeak + kernel.yradius + 1
+
         if x0 < 0 or x1 > data.shape[1]:
-            continue    # pragma: no cover (isolated continue is never tested)
+            continue    # pragma: no cover
         if y0 < 0 or y1 > data.shape[0]:
-            continue    # pragma: no cover (isolated continue is never tested)
-        object_data = data[y0:y1, x0:x1]
-        object_convolved_data = convolved_data[y0:y1, x0:x1].copy()
+            continue    # pragma: no cover
+
+        slices = (slice(y0, y1), slice(x0, x1))
+        data_cutout = data[slices]
+        #convdata_cutout = convolved_data[slices].copy()
+        convdata_cutout = convolved_data[slices]
+
         if not exclude_border:
             # correct for image padding
             x0 -= kernel.xradius
+            x1 -= kernel.xradius
+            xpeak -= kernel.xradius
             y0 -= kernel.yradius
-        imgcutout = _ImgCutout(object_data, object_convolved_data, kernel,
-                               x0, y0, xpeak, ypeak, threshold)
-        objects.append(imgcutout)
+            y1 -= kernel.yradius
+            ypeak -= kernel.yradius
+            slices = (slice(y0, y1), slice(x0, x1))
 
-    return objects
+        star_cutouts.append(_StarCutout(data_cutout, convdata_cutout, slices,
+                                        xpeak, ypeak, kernel, threshold))
 
-
-def _star_properties(star_cutouts, kernel, sky=None):
-    props = []
-    for star_cutout in star_cutouts:
-        props.append(_StarProperties(star_cutout, kernel, sky))
-
-    return props
+    return star_cutouts
 
 
 class _StarProperties(object):
     """
-    data : _ImgCutout
+    data : _StarCutout
     """
 
     def __init__(self, star_cutout, kernel, sky=None):
-        if not isinstance(star_cutout, _ImgCutout):
-            raise ValueError('data must be an _ImgCutout object')
+        if not isinstance(star_cutout, _StarCutout):
+            raise ValueError('data must be an _StarCutout object')
 
         if star_cutout.data.shape != kernel.shape:
             raise ValueError('cutout and kernel must have the same shape')
@@ -497,8 +500,8 @@ class _StarProperties(object):
         self.npixels = star_cutout.npixels    # unmasked pixels
         self.nx = star_cutout.nx
         self.ny = star_cutout.ny
-        self.xcenter = int((self.nx - 1) / 2)
-        self.ycenter = int((self.ny - 1) / 2)
+        self.xcenter = star_cutout.cutout_xcenter
+        self.ycenter = star_cutout.cutout_ycenter
 
     @lazyproperty
     def data_peak(self):
@@ -550,19 +553,22 @@ class _StarProperties(object):
             size = self.nx
             center = self.xcenter
             sigma = self.kernel.xsigma
+            dxx = center - np.arange(size)
         elif axis == 1:    # marginal distributions along y axis
             wt = np.transpose(ywt)[0]    # 1D
             wts = xwt    # 2D
             size = self.ny
             center = self.ycenter
             sigma = self.kernel.ysigma
+            dxx = np.arange(size) - center
 
         # compute marginal sums for given axis
         wt_sum = np.sum(wt)
         dx = center - np.arange(size)
 
         # weighted marginal sums
-        kern_sum_1d = np.sum(self.kernel.data * wts, axis=axis)
+        kern_sum_1d = np.sum(self.kernel.gaussian_kernel_unmasked * wts,
+                             axis=axis)
         kern_sum = np.sum(kern_sum_1d * wt)
         kern2_sum = np.sum(kern_sum_1d**2 * wt)
 
@@ -575,7 +581,7 @@ class _StarProperties(object):
         data_sum = np.sum(data_sum_1d * wt)
         data_kern_sum = np.sum(data_sum_1d * kern_sum_1d * wt)
         data_dkern_dx_sum = np.sum(data_sum_1d * dkern_dx * wt)
-        data_dx_sum = np.sum(data_sum_1d * dx * wt)
+        data_dx_sum = np.sum(data_sum_1d * dxx * wt)
 
         # perform linear least-squares fit (where data = sky + hx*kernel)
         # to find the amplitude (hx)
@@ -610,13 +616,11 @@ class _StarProperties(object):
 
     @lazyproperty
     def dx_hx(self):
-        dx, hx = self.daofind_marginal_fit(axis=0)
-        return dx, hx
+        return self.daofind_marginal_fit(axis=0)
 
     @lazyproperty
     def dy_hy(self):
-        dy, hy = self.daofind_marginal_fit(axis=1)
-        return dy, hy
+        return self.daofind_marginal_fit(axis=1)
 
     @lazyproperty
     def dx(self):
@@ -628,11 +632,11 @@ class _StarProperties(object):
 
     @lazyproperty
     def xcentroid(self):
-        return self.xcenter + self.dx
+        return self.cutout.xpeak + self.dx
 
     @lazyproperty
     def ycentroid(self):
-        return self.ycenter + self.dy
+        return self.cutout.ypeak + self.dy
 
     @lazyproperty
     def hx(self):
@@ -681,8 +685,8 @@ def _irafstarfind_properties(imgcutouts, kernel, sky=None):
 
     Parameters
     ----------
-    imgcutouts : list of `_ImgCutout`
-        A list of `_ImgCutout` objects containing the image cutout for
+    imgcutouts : list of `_StarCutout`
+        A list of `_StarCutout` objects containing the image cutout for
         each source.
 
     kernel : `_StarFinderKernel`
@@ -730,7 +734,7 @@ def _irafstarfind_moments(imgcutout, kernel, sky):
 
     Parameters
     ----------
-    imgcutout : `_ImgCutout`
+    imgcutout : `_StarCutout`
         The image cutout for a single detected source.
 
     kernel : `_StarFinderKernel`
@@ -773,8 +777,8 @@ def _irafstarfind_moments(imgcutout, kernel, sky):
     if pa < 0.0:
         pa += 180.0
     result['pa'] = pa
-    result['xcentroid'] += imgcutout.x0
-    result['ycentroid'] += imgcutout.y0
+    result['xcentroid'] += imgcutout.xorigin
+    result['ycentroid'] += imgcutout.yorigin
 
     return result
 
@@ -786,8 +790,8 @@ def _daofind_properties(imgcutouts, threshold, kernel, sky=0.0):
 
     Parameters
     ----------
-    imgcutouts : list of `_ImgCutout`
-        A list of `_ImgCutout` objects containing the image cutout for
+    imgcutouts : list of `_StarCutout`
+        A list of `_StarCutout` objects containing the image cutout for
         each source.
 
     threshold : float
@@ -987,9 +991,9 @@ def _daofind_centroidfit(obj, kernel, axis):
     return dx, hx
 
 
-class _ImgCutout(object):
+class _StarCutout(object):
     """
-    Class to hold image cutouts.
+    Class to hold 2D image cutouts of stars.
 
     Parameters
     ----------
@@ -1007,35 +1011,29 @@ class _ImgCutout(object):
         The (x, y) pixel coordinates of the peak pixel.
     """
 
-    def __init__(self, data, convdata, kernel, x0, y0, xpeak, ypeak,
+    def __init__(self, data, convdata, slices, xpeak, ypeak, kernel,
                  threshold):
-        self.shape = data.shape
-        self.nx = self.shape[1]
-        self.ny = self.shape[0]
+
         self.data = data
         self.convdata = convdata
-        self.x0 = x0
-        self.y0 = y0
+        self.slices = slices
         self.xpeak = xpeak
         self.ypeak = ypeak
-        self.xcenter = xpeak
-        self.ycenter = ypeak
-        self.mask = kernel.mask   # kernel mask
-        self.npixels = kernel.npixels
+        self.kernel = kernel
         self.threshold = threshold
 
-    @lazyproperty
-    def data_masked(self):
-        return self.data * self.mask
+        self.shape = data.shape
+        self.nx = self.shape[1]    # always odd
+        self.ny = self.shape[0]    # always odd
+        self.cutout_xcenter = int(self.nx // 2)
+        self.cutout_ycenter = int(self.ny // 2)
 
-    @property
-    def radius(self):
-        return [size // 2 for size in self.data.shape]
+        self.xorigin = self.slices[1].start    # in original image
+        self.yorigin = self.slices[0].start    # in original image
 
-    @property
-    def center(self):
-        yr, xr = self.radius
-        return yr + self.y0, xr + self.x0
+        self.mask = kernel.mask    # kernel mask
+        self.npixels = kernel.npixels    # unmasked pixels
+        self.data_masked = self.data * self.mask
 
 
 class _StarFinderKernel(object):
@@ -1124,17 +1122,16 @@ class _StarFinderKernel(object):
         # defined by g(x,y) = f
         self.f = self.sigma_radius**2 / 2.0
         denom = (self.a * self.c) - self.b**2
+
+        # nx and ny are always odd
         self.nx = 2 * int(max(2, math.sqrt(self.c * self.f / denom))) + 1
         self.ny = 2 * int(max(2, math.sqrt(self.a * self.f / denom))) + 1
 
-        self.xradius = self.nx // 2
-        self.yradius = self.ny // 2
+        self.xc = self.xradius = self.nx // 2
+        self.yc = self.yradius = self.ny // 2
 
         # define the kernel on a 2D grid
         yy, xx = np.mgrid[0:self.ny, 0:self.nx]
-        self.xc = self.nx // 2
-        self.yc = self.ny // 2
-
         self.circular_radius = np.sqrt((xx - self.xc)**2 + (yy - self.yc)**2)
         self.elliptical_radius = (self.a * (xx - self.xc)**2 +
                                   2.0 * self.b * (xx - self.xc) *
@@ -1163,10 +1160,6 @@ class _StarFinderKernel(object):
         else:
             self.data = self.gaussian_kernel
 
+        self.shape = self.data.shape
+
         return
-
-    @lazyproperty
-    def shape(self):
-        """The shape of the 2D kernel array."""
-
-        return self.data.shape
