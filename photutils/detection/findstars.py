@@ -212,35 +212,51 @@ class DAOStarFinder(StarFinderBase):
         self.sky = sky
         self.exclude_border = exclude_border
 
+        self.kernel = _StarFinderKernel(self.fwhm, self.ratio, self.theta,
+                                        self.sigma_radius)
+        self.threshold_eff = self.threshold * self.kernel.relerr
+
     def find_stars(self, data):
-        daofind_kernel = _StarFinderKernel(self.fwhm, self.ratio, self.theta,
-                                           self.sigma_radius)
-        self.threshold *= daofind_kernel.relerr
-        objs = _findobjs(data, self.threshold, daofind_kernel,
-                         exclude_border=self.exclude_border)
-        tbl = _daofind_properties(objs, self.threshold, daofind_kernel,
-                                  self.sky)
+        star_cutouts = _find_stars(data, self.threshold_eff, self.kernel,
+                                   exclude_border=self.exclude_border)
 
-        # names = ['xcentroid', 'ycentroid', 'sharpness', 'roundness1',
-        #          'roundness2', 'npix', 'sky', 'peak', 'flux', 'mag']
-
-        if len(objs) == 0:
+        if len(star_cutouts) == 0:
             warnings.warn('No sources were found.', AstropyUserWarning)
-            return tbl     # empty table
-        table_mask = ((tbl['sharpness'] > self.sharplo) &
-                      (tbl['sharpness'] < self.sharphi) &
-                      (tbl['roundness1'] > self.roundlo) &
-                      (tbl['roundness1'] < self.roundhi) &
-                      (tbl['roundness2'] > self.roundlo) &
-                      (tbl['roundness2'] < self.roundhi))
-        tbl = tbl[table_mask]
-        idcol = Column(name='id', data=np.arange(len(tbl)) + 1)
-        tbl.add_column(idcol, 0)
-        if len(tbl) == 0:
+            return Table()
+
+        star_props = []
+        for star_cutout in star_cutouts:
+            props = _StarProperties(star_cutout, self.kernel, self.sky)
+
+            if (props.sharpness <= self.sharplo or
+                    props.sharpness >= self.sharphi):
+                continue
+
+            if (props.roundness1 <= self.roundlo or
+                    props.roundness1 >= self.roundhi):
+                continue
+
+            if (props.roundness2 <= self.roundlo or
+                    props.roundness2 >= self.roundhi):
+                continue
+
+            star_props.append(props)
+
+        nstars = len(star_props)
+        if nstars == 0:
             warnings.warn('Sources were found, but none pass the sharpness '
                           'and roundness criteria.', AstropyUserWarning)
+            return Table()
 
-        return tbl
+        table = Table()
+        table['id'] = np.arange(nstars) + 1
+
+        columns = ['xcentroid', 'ycentroid', 'sharpness', 'roundness1',
+                   'roundness2', 'npix', 'sky', 'peak', 'flux', 'mag']
+        for column in columns:
+            table[column] = [getattr(props, column) for props in star_props]
+
+        return table
 
 
 class IRAFStarFinder(StarFinderBase):
@@ -315,9 +331,9 @@ class IRAFStarFinder(StarFinderBase):
         starfind_kernel = _StarFinderKernel(self.fwhm, ratio=1.0, theta=0.0,
                                             sigma_radius=self.sigma_radius)
         min_separation = max(2, int((self.fwhm * self.minsep_fwhm) + 0.5))
-        objs = _findobjs(data, self.threshold, starfind_kernel,
-                         min_separation=min_separation,
-                         exclude_border=self.exclude_border)
+        objs = _find_stars(data, self.threshold, starfind_kernel,
+                           min_separation=min_separation,
+                           exclude_border=self.exclude_border)
         tbl = _irafstarfind_properties(objs, starfind_kernel, self.sky)
         if len(objs) == 0:
             warnings.warn('No sources were found.', AstropyUserWarning)
@@ -336,8 +352,8 @@ class IRAFStarFinder(StarFinderBase):
         return tbl
 
 
-def _findobjs(data, threshold, kernel, min_separation=None,
-              exclude_border=False, local_peaks=True):
+def _find_stars(data, threshold, kernel, min_separation=None,
+                exclude_border=False, local_peaks=True):
     """
     Find sources in an image by convolving the image with the input
     kernel and selecting connected pixels above a given threshold.
@@ -445,8 +461,8 @@ def _findobjs(data, threshold, kernel, min_separation=None,
             # correct for image padding
             x0 -= kernel.xradius
             y0 -= kernel.yradius
-        imgcutout = _ImgCutout(object_data, object_convolved_data, x0, y0,
-                               xpeak, ypeak)
+        imgcutout = _ImgCutout(object_data, object_convolved_data, kernel,
+                               x0, y0, xpeak, ypeak, threshold)
         objects.append(imgcutout)
 
     return objects
@@ -481,8 +497,8 @@ class _StarProperties(object):
         self.npixels = star_cutout.npixels    # unmasked pixels
         self.nx = star_cutout.nx
         self.ny = star_cutout.ny
-        self.xcenter = star_cutout.xcenter
-        self.ycenter = star_cutout.ycenter
+        self.xcenter = int((self.nx - 1) / 2)
+        self.ycenter = int((self.ny - 1) / 2)
 
     @lazyproperty
     def data_peak(self):
@@ -565,12 +581,12 @@ class _StarProperties(object):
         # to find the amplitude (hx)
         # reject the star if the fit amplitude is not positive
         hx_numer = data_kern_sum - (data_sum * kern_sum) / wt_sum
-        if hx_numer <= 0.:
-            return None, None
+        #if hx_numer <= 0.:
+        #    return np.nan, np.nan
 
         hx_denom = kern2_sum - (kern_sum**2 / wt_sum)
-        if hx_denom <= 0.:
-            return None, None
+        #if hx_denom <= 0.:
+        #    return np.nan, np.nan
 
         # compute fit amplitude
         hx = hx_numer / hx_denom
@@ -628,8 +644,8 @@ class _StarProperties(object):
 
     @lazyproperty
     def roundness2(self):
-        if self.hx <= 0. or self.hy <= 0.:
-            return None
+        if np.isnan(self.hx) or np.isnan(self.hy):
+            return np.nan
         else:
             return 2.0 * (self.hx - self.hy) / (self.hx + self.hy)
 
@@ -647,7 +663,7 @@ class _StarProperties(object):
 
     @lazyproperty
     def flux(self):
-        return ((self.conv_peak / self.data.threshold) -
+        return ((self.conv_peak / self.cutout.threshold) -
                 (self.sky * self.npix))
 
     @lazyproperty
@@ -991,7 +1007,8 @@ class _ImgCutout(object):
         The (x, y) pixel coordinates of the peak pixel.
     """
 
-    def __init__(self, data, convdata, kernel, x0, y0, xpeak, ypeak):
+    def __init__(self, data, convdata, kernel, x0, y0, xpeak, ypeak,
+                 threshold):
         self.shape = data.shape
         self.nx = self.shape[1]
         self.ny = self.shape[0]
@@ -1004,6 +1021,8 @@ class _ImgCutout(object):
         self.xcenter = xpeak
         self.ycenter = ypeak
         self.mask = kernel.mask   # kernel mask
+        self.npixels = kernel.npixels
+        self.threshold = threshold
 
     @lazyproperty
     def data_masked(self):
