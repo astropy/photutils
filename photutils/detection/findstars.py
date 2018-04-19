@@ -17,10 +17,10 @@ import abc
 import six
 import numpy as np
 from astropy.stats import gaussian_fwhm_to_sigma
-from astropy.table import Column, Table
+from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.utils.misc import InheritDocstrings
 from astropy.utils import lazyproperty
+from astropy.utils.misc import InheritDocstrings
 
 from .core import find_peaks
 from ..utils.convolution import filter_data
@@ -327,29 +327,54 @@ class IRAFStarFinder(StarFinderBase):
         self.sky = sky
         self.exclude_border = exclude_border
 
+        self.min_separation = max(2, int((self.fwhm * self.minsep_fwhm) +
+                                         0.5))
+        self.kernel = _StarFinderKernel(self.fwhm, ratio=1.0, theta=0.0,
+                                        sigma_radius=self.sigma_radius)
+
     def find_stars(self, data):
-        starfind_kernel = _StarFinderKernel(self.fwhm, ratio=1.0, theta=0.0,
-                                            sigma_radius=self.sigma_radius)
-        min_separation = max(2, int((self.fwhm * self.minsep_fwhm) + 0.5))
-        objs = _find_stars(data, self.threshold, starfind_kernel,
-                           min_separation=min_separation,
-                           exclude_border=self.exclude_border)
-        tbl = _irafstarfind_properties(objs, starfind_kernel, self.sky)
-        if len(objs) == 0:
+        star_cutouts = _find_stars(data, self.threshold, self.kernel,
+                                   min_separation=self.min_separation,
+                                   exclude_border=self.exclude_border)
+
+        if len(star_cutouts) == 0:
             warnings.warn('No sources were found.', AstropyUserWarning)
-            return tbl     # empty table
-        table_mask = ((tbl['sharpness'] > self.sharplo) &
-                      (tbl['sharpness'] < self.sharphi) &
-                      (tbl['roundness'] > self.roundlo) &
-                      (tbl['roundness'] < self.roundhi))
-        tbl = tbl[table_mask]
-        idcol = Column(name='id', data=np.arange(len(tbl)) + 1)
-        tbl.add_column(idcol, 0)
-        if len(tbl) == 0:
+            return Table()
+
+        star_props = []
+        for star_cutout in star_cutouts:
+            props = _IRAFStarFind_Properties(star_cutout, self.kernel,
+                                             self.sky)
+
+            # star cutout needs more than one non-zero value
+            if np.count_nonzero(props.data) <= 1:
+                continue
+
+            if (props.sharpness <= self.sharplo or
+                    props.sharpness >= self.sharphi):
+                continue
+
+            if (props.roundness <= self.roundlo or
+                    props.roundness >= self.roundhi):
+                continue
+
+            star_props.append(props)
+
+        nstars = len(star_props)
+        if nstars == 0:
             warnings.warn('Sources were found, but none pass the sharpness '
                           'and roundness criteria.', AstropyUserWarning)
+            return Table()
 
-        return tbl
+        table = Table()
+        table['id'] = np.arange(nstars) + 1
+
+        columns = ['xcentroid', 'ycentroid', 'fwhm', 'sharpness', 'roundness',
+                   'pa', 'npix', 'sky', 'peak', 'flux', 'mag']
+        for column in columns:
+            table[column] = [getattr(props, column) for props in star_props]
+
+        return table
 
 
 def _find_stars(data, threshold, kernel, min_separation=None,
@@ -690,22 +715,30 @@ class _IRAFStarFind_Properties(object):
         if star_cutout.data.shape != kernel.shape:
             raise ValueError('cutout and kernel must have the same shape')
 
-        self.star = star_cutout
+        self.cutout = star_cutout
         self.kernel = kernel
-        self.sky = sky
+
+        if sky is None:
+            skymask = ~self.kernel.mask.astype(np.bool)   # 1=sky, 0=obj
+            nsky = np.count_nonzero(skymask)
+            if nsky == 0:
+                mean_sky = (np.max(self.cutout.data) -
+                            np.max(self.cutout.convdata))
+            else:
+                mean_sky = np.sum(self.cutout.data * skymask) / nsky
+            self.sky = mean_sky
+        else:
+            self.sky = sky
 
     @lazyproperty
     def data(self):
-        cutout = np.array((self.star_cutout.data - self.sky) * self.mask)
+        cutout = np.array((self.cutout.data - self.sky) * self.cutout.mask)
         # IRAF starfind discards negative pixels
         cutout = np.where(cutout > 0, cutout, 0)
 
-        if np.count_nonzero(cutout) <= 1:
-            raise ValueError('Star cutout needs more than one non-zero '
-                             'value.')
-
         return cutout
 
+    @lazyproperty
     def moments(self):
         from skimage.measure import moments
 
