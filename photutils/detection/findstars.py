@@ -226,7 +226,7 @@ class DAOStarFinder(StarFinderBase):
 
         star_props = []
         for star_cutout in star_cutouts:
-            props = _StarProperties(star_cutout, self.kernel, self.sky)
+            props = _DAOFind_Properties(star_cutout, self.kernel, self.sky)
 
             if (props.sharpness <= self.sharplo or
                     props.sharpness >= self.sharphi):
@@ -479,7 +479,7 @@ def _find_stars(data, threshold, kernel, min_separation=None,
     return star_cutouts
 
 
-class _StarProperties(object):
+class _DAOFind_Properties(object):
     """
     data : _StarCutout
     """
@@ -676,6 +676,114 @@ class _StarProperties(object):
             return np.nan
         else:
             return -2.5 * np.log10(self.flux)
+
+
+class _IRAFStarFind_Properties(object):
+    """
+    data : _StarCutout
+    """
+
+    def __init__(self, star_cutout, kernel, sky=None):
+        if not isinstance(star_cutout, _StarCutout):
+            raise ValueError('data must be an _StarCutout object')
+
+        if star_cutout.data.shape != kernel.shape:
+            raise ValueError('cutout and kernel must have the same shape')
+
+        self.star = star_cutout
+        self.kernel = kernel
+        self.sky = sky
+
+    @lazyproperty
+    def data(self):
+        cutout = np.array((self.star_cutout.data - self.sky) * self.mask)
+        # IRAF starfind discards negative pixels
+        cutout = np.where(cutout > 0, cutout, 0)
+
+        if np.count_nonzero(cutout) <= 1:
+            raise ValueError('Star cutout needs more than one non-zero '
+                             'value.')
+
+        return cutout
+
+    def moments(self):
+        from skimage.measure import moments
+
+        return moments(self.data, 1)
+
+    @lazyproperty
+    def cutout_xcentroid(self):
+        return self.moments[1, 0] / self.moments[0, 0]
+
+    @lazyproperty
+    def cutout_ycentroid(self):
+        return self.moments[0, 1] / self.moments[0, 0]
+
+    @lazyproperty
+    def xcentroid(self):
+        return self.cutout_xcentroid + self.cutout.xorigin
+
+    @lazyproperty
+    def ycentroid(self):
+        return self.cutout_ycentroid + self.cutout.yorigin
+
+    @lazyproperty
+    def npix(self):
+        return np.count_nonzero(self.data)
+
+    @lazyproperty
+    def sky(self):
+        return self.sky
+
+    @lazyproperty
+    def peak(self):
+        return np.max(self.data)
+
+    @lazyproperty
+    def flux(self):
+        return np.sum(self.data)
+
+    @lazyproperty
+    def mag(self):
+        return -2.5 * np.log10(self.flux)
+
+    @lazyproperty
+    def moments_central(self):
+        from skimage.measure import moments_central
+
+        return (moments_central(self.data, self.cutout_ycentroid,
+                                self.cutout_xcentroid, 2) /
+                self.moments[0, 0])
+
+    @lazyproperty
+    def mu_sum(self):
+        return self.moments_central[2, 0] + self.moments_central[0, 2]
+
+    @lazyproperty
+    def mu_diff(self):
+        return self.moments_central[2, 0] - self.moments_central[0, 2]
+
+    @lazyproperty
+    def fwhm(self):
+        return 2.0 * np.sqrt(np.log(2.0) * self.mu_sum)
+
+    @lazyproperty
+    def sharpness(self):
+        return self.fwhm / self.kernel.fwhm
+
+    @lazyproperty
+    def roundness(self):
+        return np.sqrt(self.mu_diff**2 +
+                       4.0 * self.moments_central[1, 1]**2) / self.mu_sum
+
+    @lazyproperty
+    def pa(self):
+        pa = np.rad2deg(0.5 * np.arctan2(2.0 * self.moments_central[1, 1],
+                                         self.mu_diff))
+        if pa < 0.:
+            pa += 180.
+
+        return pa
 
 
 def _irafstarfind_properties(imgcutouts, kernel, sky=None):
