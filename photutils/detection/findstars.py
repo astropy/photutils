@@ -171,16 +171,25 @@ class _StarCutout(object):
     convdata : array_like
         The cutout 2D image from the convolved 2D image.
 
-    x0, y0 : float
-        The (x, y) pixel coordinates of the lower-left pixel of the
-        cutout region.
+    slices : tuple of two slices
+        A tuple of two slices representing the minimal box of the cutout
+        from the original image.
 
     xpeak, ypeak : float
         The (x, y) pixel coordinates of the peak pixel.
+
+    kernel : `_StarFinderKernel`
+        The convolution kernel.  The shape of the kernel must match that
+        of the input ``data``.
+
+    threshold_eff : float
+        The absolute image value above which to select sources.  This
+        threshold should be the threshold value input to the star finder
+        class multiplied by the kernel relerr.
     """
 
     def __init__(self, data, convdata, slices, xpeak, ypeak, kernel,
-                 threshold):
+                 threshold_eff):
 
         self.data = data
         self.convdata = convdata
@@ -188,7 +197,7 @@ class _StarCutout(object):
         self.xpeak = xpeak
         self.ypeak = ypeak
         self.kernel = kernel
-        self.threshold = threshold
+        self.threshold_eff = threshold_eff
 
         self.shape = data.shape
         self.nx = self.shape[1]    # always odd
@@ -448,7 +457,7 @@ class _DAOFind_Properties(object):
 
     @lazyproperty
     def flux(self):
-        return ((self.conv_peak / self.cutout.threshold) -
+        return ((self.conv_peak / self.cutout.threshold_eff) -
                 (self.sky * self.npix))
 
     @lazyproperty
@@ -590,14 +599,10 @@ class _IRAFStarFind_Properties(object):
         return pa
 
 
-def _find_stars(data, kernel, threshold, min_separation=None,
+def _find_stars(data, kernel, threshold_eff, min_separation=None,
                 exclude_border=False):
     """
     Find stars in an image.
-
-
-    sources in an image by convolving the image with the input
-    kernel and selecting connected pixels above a given threshold.
 
     Parameters
     ----------
@@ -607,10 +612,10 @@ def _find_stars(data, kernel, threshold, min_separation=None,
     kernel : `_StarFinderKernel`
         The convolution kernel.
 
-    threshold : float
+    threshold_eff : float
         The absolute image value above which to select sources.  This
-        threshold should be the threshold value input to the star finder
-        class mulitipled by the kernel relerr.
+        threshold should be the threshold input to the star finder class
+        multiplied by the kernel relerr.
 
     exclude_border : bool, optional
         Deprecated.
@@ -653,7 +658,7 @@ def _find_stars(data, kernel, threshold, min_separation=None,
         convolved_data[:, -kernel.xradius:] = 0.
 
     selem = ndimage.generate_binary_structure(2, 2)
-    object_labels, nobjects = ndimage.label(convolved_data > threshold,
+    object_labels, nobjects = ndimage.label(convolved_data > threshold_eff,
                                             structure=selem)
 
     star_cutouts = []
@@ -667,7 +672,7 @@ def _find_stars(data, kernel, threshold, min_separation=None,
     else:
         from skimage.morphology import disk
         footprint = disk(min_separation)
-    tbl = find_peaks(convolved_data, threshold, footprint=footprint)
+    tbl = find_peaks(convolved_data, threshold_eff, footprint=footprint)
     coords = np.transpose([tbl['y_peak'], tbl['x_peak']])
 
     for (ypeak, xpeak) in coords:
@@ -699,7 +704,7 @@ def _find_stars(data, kernel, threshold, min_separation=None,
             slices = (slice(y0, y1), slice(x0, x1))
 
         star_cutouts.append(_StarCutout(data_cutout, convdata_cutout, slices,
-                                        xpeak, ypeak, kernel, threshold))
+                                        xpeak, ypeak, kernel, threshold_eff))
 
     return star_cutouts
 
@@ -719,65 +724,6 @@ class StarFinderBase(object):
 
     @abc.abstractmethod
     def find_stars(self, data):
-        """
-        Find stars in an astronomical image.
-
-        Parameters
-        ----------
-        data : array_like
-            The 2D image array.
-
-        Returns
-        -------
-        table : `~astropy.table.Table`
-            A table of found objects with the following parameters:
-
-            * ``id``: unique object identification number.
-            * ``xcentroid, ycentroid``: object centroid.
-            * ``sharpness``: object sharpness.
-            * ``roundness1``: object roundness based on symmetry.
-            * ``roundness2``: object roundness based on marginal Gaussian
-              fits.
-            * ``npix``: number of pixels in the Gaussian kernel.
-            * ``sky``: the input ``sky`` parameter.
-            * ``peak``: the peak, sky-subtracted, pixel value of the object.
-            * ``flux``: the object flux calculated as the peak density in
-              the convolved image divided by the detection threshold.  This
-              derivation matches that of `DAOFIND`_ if ``sky`` is 0.0.
-            * ``mag``: the object instrumental magnitude calculated as
-              ``-2.5 * log10(flux)``.  The derivation matches that of
-              `DAOFIND`_ if ``sky`` is 0.0.
-
-        Notes
-        -----
-        For the convolution step, this routine sets pixels beyond the
-        image borders to 0.0.  The equivalent parameters in IRAF's
-        `starfind`_ are ``boundary='constant'`` and ``constant=0.0``.
-
-        IRAF's `starfind`_ uses ``hwhmpsf``, ``fradius``, and ``sepmin``
-        as input parameters.  The equivalent input values for
-        `~photutils.detection.IRAFStarFinder` are:
-
-        * ``fwhm = hwhmpsf * 2``
-        * ``sigma_radius = fradius * sqrt(2.0*log(2.0))``
-        * ``minsep_fwhm = 0.5 * sepmin``
-
-        The main differences between
-        `~photutils.detection.DAOStarFinder` and
-        `~photutils.detection.IRAFStarFinder` are:
-
-        * `~photutils.detection.IRAFStarFinder` always uses a 2D
-          circular Gaussian kernel, while
-          `~photutils.detection.DAOStarFinder` can use an elliptical
-          Gaussian kernel.
-
-        * `~photutils.detection.IRAFStarFinder` calculates the objects'
-          centroid, roundness, and sharpness using image moments.
-
-        .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
-        .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
-        """
-
         raise NotImplementedError
 
 
@@ -820,35 +766,45 @@ class DAOStarFinder(StarFinderBase):
     ----------
     threshold : float
         The absolute image value above which to select sources.
+
     fwhm : float
         The full-width half-maximum (FWHM) of the major axis of the
         Gaussian kernel in units of pixels.
+
     ratio : float, optional
         The ratio of the minor to major axis standard deviations of the
         Gaussian kernel.  ``ratio`` must be strictly positive and less
         than or equal to 1.0.  The default is 1.0 (i.e., a circular
         Gaussian kernel).
+
     theta : float, optional
         The position angle (in degrees) of the major axis of the
         Gaussian kernel measured counter-clockwise from the positive x
         axis.
+
     sigma_radius : float, optional
         The truncation radius of the Gaussian kernel in units of sigma
         (standard deviation) [``1 sigma = FWHM /
         (2.0*sqrt(2.0*log(2.0)))``].
+
     sharplo : float, optional
         The lower bound on sharpness for object detection.
+
     sharphi : float, optional
         The upper bound on sharpness for object detection.
+
     roundlo : float, optional
         The lower bound on roundness for object detection.
+
     roundhi : float, optional
         The upper bound on roundness for object detection.
+
     sky : float, optional
         The background sky level of the image.  Setting ``sky`` affects
         only the output values of the object ``peak``, ``flux``, and
         ``mag`` values.  The default is 0.0, which should be used to
         replicate the results from `DAOFIND`_.
+
     exclude_border : bool, optional
         Deprecated.
         Set to `True` to exclude sources found within half the size of
@@ -864,6 +820,17 @@ class DAOStarFinder(StarFinderBase):
     For the convolution step, this routine sets pixels beyond the image
     borders to 0.0.  The equivalent parameters in `DAOFIND`_ are
     ``boundary='constant'`` and ``constant=0.0``.
+
+    The main differences between `~photutils.detection.DAOStarFinder`
+    and `~photutils.detection.IRAFStarFinder` are:
+
+    * `~photutils.detection.IRAFStarFinder` always uses a 2D
+      circular Gaussian kernel, while
+      `~photutils.detection.DAOStarFinder` can use an elliptical
+      Gaussian kernel.
+
+    * `~photutils.detection.IRAFStarFinder` calculates the objects'
+      centroid, roundness, and sharpness using image moments.
 
     References
     ----------
@@ -894,6 +861,39 @@ class DAOStarFinder(StarFinderBase):
         self.threshold_eff = self.threshold * self.kernel.relerr
 
     def find_stars(self, data):
+        """
+        Find stars in an astronomical image.
+
+        Parameters
+        ----------
+        data : array_like
+            The 2D image array.
+
+        Returns
+        -------
+        table : `~astropy.table.Table`
+            A table of found stars with the following parameters:
+
+            * ``id``: unique object identification number.
+            * ``xcentroid, ycentroid``: object centroid.
+            * ``sharpness``: object sharpness.
+            * ``roundness1``: object roundness based on symmetry.
+            * ``roundness2``: object roundness based on marginal Gaussian
+              fits.
+            * ``npix``: the total number of pixels in the Gaussian kernel
+              array.
+            * ``sky``: the input ``sky`` parameter.
+            * ``peak``: the peak, sky-subtracted, pixel value of the object.
+            * ``flux``: the object flux calculated as the peak density in
+              the convolved image divided by the detection threshold.  This
+              derivation matches that of `DAOFIND`_ if ``sky`` is 0.0.
+            * ``mag``: the object instrumental magnitude calculated as
+              ``-2.5 * log10(flux)``.  The derivation matches that of
+              `DAOFIND`_ if ``sky`` is 0.0.
+
+        .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
+        """
+
         star_cutouts = _find_stars(data, self.kernel, self.threshold_eff,
                                    exclude_border=self.exclude_border)
 
@@ -950,35 +950,69 @@ class IRAFStarFinder(StarFinderBase):
     ----------
     threshold : float
         The absolute image value above which to select sources.
+
     fwhm : float
         The full-width half-maximum (FWHM) of the 2D circular Gaussian
         kernel in units of pixels.
+
     minsep_fwhm : float, optional
         The minimum separation for detected objects in units of
         ``fwhm``.
+
     sigma_radius : float, optional
         The truncation radius of the Gaussian kernel in units of sigma
         (standard deviation) [``1 sigma = FWHM /
         2.0*sqrt(2.0*log(2.0))``].
+
     sharplo : float, optional
         The lower bound on sharpness for object detection.
+
     sharphi : float, optional
         The upper bound on sharpness for object detection.
+
     roundlo : float, optional
         The lower bound on roundness for object detection.
+
     roundhi : float, optional
         The upper bound on roundness for object detection.
+
     sky : float, optional
         The background sky level of the image.  Inputing a ``sky`` value
         will override the background sky estimate.  Setting ``sky``
         affects only the output values of the object ``peak``, ``flux``,
         and ``mag`` values.  The default is ``None``, which means the
         sky value will be estimated using the `starfind`_ method.
+
     exclude_border : bool, optional
         Deprecated.
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders.  The default is
         `False`, which is the mode used by `starfind`_.
+
+    Notes
+    -----
+    For the convolution step, this routine sets pixels beyond the image
+    borders to 0.0.  The equivalent parameters in IRAF's `starfind`_ are
+    ``boundary='constant'`` and ``constant=0.0``.
+
+    IRAF's `starfind`_ uses ``hwhmpsf``, ``fradius``, and ``sepmin`` as
+    input parameters.  The equivalent input values for
+    `IRAFStarFinder` are:
+
+    * ``fwhm = hwhmpsf * 2``
+    * ``sigma_radius = fradius * sqrt(2.0*log(2.0))``
+    * ``minsep_fwhm = 0.5 * sepmin``
+
+    The main differences between `~photutils.detection.DAOStarFinder`
+    and `~photutils.detection.IRAFStarFinder` are:
+
+    * `~photutils.detection.IRAFStarFinder` always uses a 2D
+      circular Gaussian kernel, while
+      `~photutils.detection.DAOStarFinder` can use an elliptical
+      Gaussian kernel.
+
+    * `~photutils.detection.IRAFStarFinder` calculates the objects'
+      centroid, roundness, and sharpness using image moments.
 
     See Also
     --------
@@ -1012,6 +1046,36 @@ class IRAFStarFinder(StarFinderBase):
                                         sigma_radius=self.sigma_radius)
 
     def find_stars(self, data):
+        """
+        Find stars in an astronomical image.
+
+        Parameters
+        ----------
+        data : array_like
+            The 2D image array.
+
+        Returns
+        -------
+        table : `~astropy.table.Table`
+            A table of found objects with the following parameters:
+
+            * ``id``: unique object identification number.
+            * ``xcentroid, ycentroid``: object centroid.
+            * ``fwhm``: object FWHM.
+            * ``sharpness``: object sharpness.
+            * ``roundness``: object roundness.
+            * ``pa``: object position angle (degrees counter clockwise from
+              the positive x axis).
+            * ``npix``: the total number of (positive) unmasked pixels.
+            * ``sky``: the local ``sky`` value.
+            * ``peak``: the peak, sky-subtracted, pixel value of the object.
+            * ``flux``: the object instrumental flux.
+            * ``mag``: the object instrumental magnitude calculated as
+              ``-2.5 * log10(flux)``.
+
+        .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
+        """
+
         star_cutouts = _find_stars(data, self.kernel, self.threshold,
                                    min_separation=self.min_separation,
                                    exclude_border=self.exclude_border)
