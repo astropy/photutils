@@ -17,7 +17,8 @@ import six
 import numpy as np
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.table import Table
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyUserWarning,
+                                      AstropyDeprecationWarning)
 from astropy.utils import lazyproperty
 from astropy.utils.misc import InheritDocstrings
 
@@ -612,6 +613,7 @@ def _find_stars(data, kernel, threshold, min_separation=None,
         class mulitipled by the kernel relerr.
 
     exclude_border : bool, optional
+        Deprecated.
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders.  The default is
         `False`, which is the mode used by IRAF's `DAOFIND`_ and
@@ -626,6 +628,11 @@ def _find_stars(data, kernel, threshold, min_separation=None,
     .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
     .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
     """
+
+    if exclude_border:
+        warnings.warn('The exclude_border keyword is deprecated and will be '
+                      'removed in a future version.',
+                      AstropyDeprecationWarning)
 
     from scipy import ndimage
 
@@ -846,6 +853,7 @@ class DAOStarFinder(StarFinderBase):
         ``mag`` values.  The default is 0.0, which should be used to
         replicate the results from `DAOFIND`_.
     exclude_border : bool, optional
+        Deprecated.
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders.  The default is
         `False`, which is the mode used by `DAOFIND`_.
@@ -970,6 +978,7 @@ class IRAFStarFinder(StarFinderBase):
         and ``mag`` values.  The default is ``None``, which means the
         sky value will be estimated using the `starfind`_ method.
     exclude_border : bool, optional
+        Deprecated.
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders.  The default is
         `False`, which is the mode used by `starfind`_.
