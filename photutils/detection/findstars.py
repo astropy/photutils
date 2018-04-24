@@ -590,7 +590,7 @@ class _IRAFStarFind_Properties(object):
 
 
 def _find_stars(data, kernel, threshold, min_separation=None,
-                exclude_border=False, local_peaks=True):
+                exclude_border=False):
     """
     Find stars in an image.
 
@@ -616,11 +616,6 @@ def _find_stars(data, kernel, threshold, min_separation=None,
         the convolution kernel from the image borders.  The default is
         `False`, which is the mode used by IRAF's `DAOFIND`_ and
         `starfind`_ tasks.
-
-    local_peaks : bool, optional
-        Set to `True` to match the `DAOFIND`_ method of finding local
-        peaks.  If `False`, then only one peak per thresholded segment
-        will be used.
 
     Returns
     -------
@@ -662,26 +657,14 @@ def _find_stars(data, kernel, threshold, min_separation=None,
         return star_cutouts
 
     # find object peaks in the convolved data
-    if local_peaks:
-        # footprint overrides min_separation in find_peaks
-        if min_separation is None:   # daofind
-            footprint = kernel.mask.astype(np.bool)
-        else:
-            from skimage.morphology import disk
-            footprint = disk(min_separation)
-        tbl = find_peaks(convolved_data, threshold, footprint=footprint)
-        coords = np.transpose([tbl['y_peak'], tbl['x_peak']])
+    # footprint overrides min_separation in find_peaks
+    if min_separation is None:   # daofind
+        footprint = kernel.mask.astype(np.bool)
     else:
-        object_slices = ndimage.find_objects(object_labels)
-        coords = []
-        for object_slice in object_slices:
-            # thresholded_object is not the same size as the kernel
-            thresholded_object = convolved_data[object_slice]
-            ypeak, xpeak = np.unravel_index(thresholded_object.argmax(),
-                                            thresholded_object.shape)
-            xpeak += object_slice[1].start
-            ypeak += object_slice[0].start
-            coords.append((ypeak, xpeak))
+        from skimage.morphology import disk
+        footprint = disk(min_separation)
+    tbl = find_peaks(convolved_data, threshold, footprint=footprint)
+    coords = np.transpose([tbl['y_peak'], tbl['x_peak']])
 
     for (ypeak, xpeak) in coords:
         # now extract the object from the data, centered on the peak
