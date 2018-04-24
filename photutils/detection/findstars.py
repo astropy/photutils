@@ -1,15 +1,14 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module implements classes, called Finders, for detecting stars in
-an astronomical image. The convention is that all Finders are subclasses
-of an abstract class called ``StarFinderBase``.  Each Finder class
-should define a method called ``find_stars`` that finds stars in an
-image.
+This module implements classes for detecting stars in an astronomical
+image. The convention is that all star-finding classes are subclasses of
+an abstract base class called ``StarFinderBase``.  Each star-finding
+class should define a method called ``find_stars`` that finds stars in
+an image.
 """
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-from collections import defaultdict
 import warnings
 import math
 import abc
@@ -26,7 +25,623 @@ from .core import find_peaks
 from ..utils.convolution import filter_data
 
 
-__all__ = ['DAOStarFinder', 'IRAFStarFinder', 'StarFinderBase']
+__all__ = ['StarFinderBase', 'DAOStarFinder', 'IRAFStarFinder']
+
+
+class _StarFinderKernel(object):
+    """
+    Class to calculate a 2D Gaussian density enhancement kernel.
+
+    The kernel has negative wings and sums to zero.  It is used by both
+    `DAOStarFinder` and `IRAFStarFinder`.
+
+    Parameters
+    ----------
+    fwhm : float
+        The full-width half-maximum (FWHM) of the major axis of the
+        Gaussian kernel in units of pixels.
+
+    ratio : float, optional
+        The ratio of the minor to major axis standard deviations of the
+        Gaussian kernel.  ``ratio`` must be strictly positive and less
+        than or equal to 1.0.  The default is 1.0 (i.e., a circular
+        Gaussian kernel).
+
+    theta : float, optional
+        The position angle (in degrees) of the major axis of the
+        Gaussian kernel measured counter-clockwise from the positive x
+        axis.
+
+    sigma_radius : float, optional
+        The truncation radius of the Gaussian kernel in units of sigma
+        (standard deviation) [``1 sigma = FWHM /
+        2.0*sqrt(2.0*log(2.0))``].  The default is 1.5.
+
+    normalize_zerosum : bool, optional
+        Whether to normalize the Gaussian kernel to have zero sum,
+        constructing construct a density-enhancement kernel.  The
+        default is `True`.
+
+    Notes
+    -----
+    The attributes include the dimensions of the elliptical kernel and
+    the coefficients of a 2D elliptical Gaussian function expressed as:
+
+        ``f(x,y) = A * exp(-g(x,y))``
+
+        where
+
+        ``g(x,y) = a*(x-x0)**2 + 2*b*(x-x0)*(y-y0) + c*(y-y0)**2``
+
+    References
+    ----------
+    .. [1] http://en.wikipedia.org/wiki/Gaussian_function
+    """
+
+    def __init__(self, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
+                 normalize_zerosum=True):
+
+        if fwhm < 0:
+            raise ValueError('fwhm must be positive.')
+
+        if ratio <= 0 or ratio > 1:
+            raise ValueError('ratio must be positive and less or equal '
+                             'than 1.')
+
+        if sigma_radius <= 0:
+            raise ValueError('sigma_radius must be positive.')
+
+        self.fwhm = fwhm
+        self.ratio = ratio
+        self.theta = theta
+        self.sigma_radius = sigma_radius
+        self.xsigma = self.fwhm * gaussian_fwhm_to_sigma
+        self.ysigma = self.xsigma * self.ratio
+
+        theta_radians = np.deg2rad(self.theta)
+        cost = np.cos(theta_radians)
+        sint = np.sin(theta_radians)
+        xsigma2 = self.xsigma**2
+        ysigma2 = self.ysigma**2
+
+        self.a = (cost**2 / (2.0 * xsigma2)) + (sint**2 / (2.0 * ysigma2))
+        # CCW
+        self.b = 0.5 * cost * sint * ((1.0 / xsigma2) - (1.0 / ysigma2))
+        self.c = (sint**2 / (2.0 * xsigma2)) + (cost**2 / (2.0 * ysigma2))
+
+        # find the extent of an ellipse with radius = sigma_radius*sigma;
+        # solve for the horizontal and vertical tangents of an ellipse
+        # defined by g(x,y) = f
+        self.f = self.sigma_radius**2 / 2.0
+        denom = (self.a * self.c) - self.b**2
+
+        # nx and ny are always odd
+        self.nx = 2 * int(max(2, math.sqrt(self.c * self.f / denom))) + 1
+        self.ny = 2 * int(max(2, math.sqrt(self.a * self.f / denom))) + 1
+
+        self.xc = self.xradius = self.nx // 2
+        self.yc = self.yradius = self.ny // 2
+
+        # define the kernel on a 2D grid
+        yy, xx = np.mgrid[0:self.ny, 0:self.nx]
+        self.circular_radius = np.sqrt((xx - self.xc)**2 + (yy - self.yc)**2)
+        self.elliptical_radius = (self.a * (xx - self.xc)**2 +
+                                  2.0 * self.b * (xx - self.xc) *
+                                  (yy - self.yc) +
+                                  self.c * (yy - self.yc)**2)
+
+        self.mask = np.where(
+            (self.elliptical_radius <= self.f) |
+            (self.circular_radius <= 2.0), 1, 0).astype(np.int)
+        self.npixels = self.mask.sum()
+
+        # NOTE: the central (peak) pixel of gaussian_kernel has a value of 1.
+        self.gaussian_kernel_unmasked = np.exp(-self.elliptical_radius)
+        self.gaussian_kernel = self.gaussian_kernel_unmasked * self.mask
+
+        # denom = variance * npixels
+        denom = ((self.gaussian_kernel**2).sum() -
+                 (self.gaussian_kernel.sum()**2 / self.npixels))
+        self.relerr = 1.0 / np.sqrt(denom)
+
+        # normalize the kernel to zero sum
+        if normalize_zerosum:
+            self.data = ((self.gaussian_kernel -
+                          (self.gaussian_kernel.sum() / self.npixels)) /
+                         denom) * self.mask
+        else:
+            self.data = self.gaussian_kernel
+
+        self.shape = self.data.shape
+
+        return
+
+
+class _StarCutout(object):
+    """
+    Class to hold 2D image cutouts of stars.
+
+    Parameters
+    ----------
+    data : array_like
+        The cutout 2D image from the input unconvolved 2D image.
+
+    convdata : array_like
+        The cutout 2D image from the convolved 2D image.
+
+    x0, y0 : float
+        The (x, y) pixel coordinates of the lower-left pixel of the
+        cutout region.
+
+    xpeak, ypeak : float
+        The (x, y) pixel coordinates of the peak pixel.
+    """
+
+    def __init__(self, data, convdata, slices, xpeak, ypeak, kernel,
+                 threshold):
+
+        self.data = data
+        self.convdata = convdata
+        self.slices = slices
+        self.xpeak = xpeak
+        self.ypeak = ypeak
+        self.kernel = kernel
+        self.threshold = threshold
+
+        self.shape = data.shape
+        self.nx = self.shape[1]    # always odd
+        self.ny = self.shape[0]    # always odd
+        self.cutout_xcenter = int(self.nx // 2)
+        self.cutout_ycenter = int(self.ny // 2)
+
+        self.xorigin = self.slices[1].start    # in original image
+        self.yorigin = self.slices[0].start    # in original image
+
+        self.mask = kernel.mask    # kernel mask
+        self.npixels = kernel.npixels    # unmasked pixels
+        self.data_masked = self.data * self.mask
+
+
+class _DAOFind_Properties(object):
+    """
+    data : _StarCutout
+    """
+
+    def __init__(self, star_cutout, kernel, sky=None):
+        if not isinstance(star_cutout, _StarCutout):
+            raise ValueError('data must be an _StarCutout object')
+
+        if star_cutout.data.shape != kernel.shape:
+            raise ValueError('cutout and kernel must have the same shape')
+
+        self.cutout = star_cutout
+        self.kernel = kernel
+        self.sky = sky    # DAOFIND uses sky=0
+
+        self.data = star_cutout.data
+        self.data_masked = star_cutout.data_masked
+        self.npixels = star_cutout.npixels    # unmasked pixels
+        self.nx = star_cutout.nx
+        self.ny = star_cutout.ny
+        self.xcenter = star_cutout.cutout_xcenter
+        self.ycenter = star_cutout.cutout_ycenter
+
+    @lazyproperty
+    def data_peak(self):
+        return self.data[self.ycenter, self.xcenter]
+
+    @lazyproperty
+    def conv_peak(self):
+        return self.cutout.convdata[self.ycenter, self.xcenter]
+
+    @lazyproperty
+    def roundness1(self):
+        # set the central (peak) pixel to zero
+        cutout_conv = self.cutout.convdata.copy()
+        cutout_conv[self.ycenter, self.xcenter] = 0.0
+
+        # calculate the four roundness quadrants
+        quad1 = cutout_conv[0:self.ycenter + 1, self.xcenter + 1:]
+        quad2 = cutout_conv[0:self.ycenter, 0:self.xcenter + 1]
+        quad3 = cutout_conv[self.ycenter:, 0:self.xcenter]
+        quad4 = cutout_conv[self.ycenter + 1:, self.xcenter:]
+
+        sum2 = -quad1.sum() + quad2.sum() - quad3.sum() + quad4.sum()
+        if sum2 == 0:
+            return 0.
+
+        sum4 = np.abs(cutout_conv).sum()
+        if sum4 <= 0:
+            return None
+
+        return 2.0 * sum2 / sum4
+
+    @lazyproperty
+    def sharpness(self):
+        npixels = self.npixels - 1    # exclude the peak pixel
+        data_mean = (np.sum(self.data_masked) - self.data_peak) / npixels
+
+        return (self.data_peak - data_mean) / self.conv_peak
+
+    def daofind_marginal_fit(self, axis=0):
+        # define triangular weighting functions along each axis, peaked
+        # in the middle and equal to one at the edge
+        x = self.xcenter - np.abs(np.arange(self.nx) - self.xcenter) + 1
+        y = self.ycenter - np.abs(np.arange(self.ny) - self.ycenter) + 1
+        xwt, ywt = np.meshgrid(x, y)
+
+        if axis == 0:    # marginal distributions along x axis
+            wt = xwt[0]    # 1D
+            wts = ywt    # 2D
+            size = self.nx
+            center = self.xcenter
+            sigma = self.kernel.xsigma
+            dxx = center - np.arange(size)
+        elif axis == 1:    # marginal distributions along y axis
+            wt = np.transpose(ywt)[0]    # 1D
+            wts = xwt    # 2D
+            size = self.ny
+            center = self.ycenter
+            sigma = self.kernel.ysigma
+            dxx = np.arange(size) - center
+
+        # compute marginal sums for given axis
+        wt_sum = np.sum(wt)
+        dx = center - np.arange(size)
+
+        # weighted marginal sums
+        kern_sum_1d = np.sum(self.kernel.gaussian_kernel_unmasked * wts,
+                             axis=axis)
+        kern_sum = np.sum(kern_sum_1d * wt)
+        kern2_sum = np.sum(kern_sum_1d**2 * wt)
+
+        dkern_dx = kern_sum_1d * dx
+        dkern_dx_sum = np.sum(dkern_dx * wt)
+        dkern_dx2_sum = np.sum(dkern_dx**2 * wt)
+        kern_dkern_dx_sum = np.sum(kern_sum_1d * dkern_dx * wt)
+
+        data_sum_1d = np.sum(self.data * wts, axis=axis)
+        data_sum = np.sum(data_sum_1d * wt)
+        data_kern_sum = np.sum(data_sum_1d * kern_sum_1d * wt)
+        data_dkern_dx_sum = np.sum(data_sum_1d * dkern_dx * wt)
+        data_dx_sum = np.sum(data_sum_1d * dxx * wt)
+
+        # perform linear least-squares fit (where data = sky + hx*kernel)
+        # to find the amplitude (hx)
+        # reject the star if the fit amplitude is not positive
+        hx_numer = data_kern_sum - (data_sum * kern_sum) / wt_sum
+        #if hx_numer <= 0.:
+        #    return np.nan, np.nan
+
+        hx_denom = kern2_sum - (kern_sum**2 / wt_sum)
+        #if hx_denom <= 0.:
+        #    return np.nan, np.nan
+
+        # compute fit amplitude
+        hx = hx_numer / hx_denom
+        # sky = (data_sum - (hx * kern_sum)) / wt_sum
+
+        # compute centroid shift
+        dx = ((kern_dkern_dx_sum -
+               (data_dkern_dx_sum - dkern_dx_sum*data_sum)) /
+              (hx * dkern_dx2_sum / sigma**2))
+
+        hsize = size / 2.
+        if abs(dx) > hsize:
+            if data_sum == 0.:
+                dx = 0.0
+            else:
+                dx = data_dx_sum / data_sum
+                if abs(dx) > hsize:
+                    dx = 0.0
+
+        return dx, hx
+
+    @lazyproperty
+    def dx_hx(self):
+        return self.daofind_marginal_fit(axis=0)
+
+    @lazyproperty
+    def dy_hy(self):
+        return self.daofind_marginal_fit(axis=1)
+
+    @lazyproperty
+    def dx(self):
+        return self.dx_hx[0]
+
+    @lazyproperty
+    def dy(self):
+        return self.dy_hy[0]
+
+    @lazyproperty
+    def xcentroid(self):
+        return self.cutout.xpeak + self.dx
+
+    @lazyproperty
+    def ycentroid(self):
+        return self.cutout.ypeak + self.dy
+
+    @lazyproperty
+    def hx(self):
+        return self.dx_hx[1]
+
+    @lazyproperty
+    def hy(self):
+        return self.dy_hy[1]
+
+    @lazyproperty
+    def roundness2(self):
+        if np.isnan(self.hx) or np.isnan(self.hy):
+            return np.nan
+        else:
+            return 2.0 * (self.hx - self.hy) / (self.hx + self.hy)
+
+    @lazyproperty
+    def peak(self):
+        return self.data_peak - self.sky
+
+    @lazyproperty
+    def npix(self):
+        """
+        The total number of pixels in the rectangular cutout image.
+        """
+
+        return self.data.size
+
+    @lazyproperty
+    def flux(self):
+        return ((self.conv_peak / self.cutout.threshold) -
+                (self.sky * self.npix))
+
+    @lazyproperty
+    def mag(self):
+        if self.flux <= 0:
+            return np.nan
+        else:
+            return -2.5 * np.log10(self.flux)
+
+
+class _IRAFStarFind_Properties(object):
+    """
+    data : _StarCutout
+    """
+
+    def __init__(self, star_cutout, kernel, sky=None):
+        if not isinstance(star_cutout, _StarCutout):
+            raise ValueError('data must be an _StarCutout object')
+
+        if star_cutout.data.shape != kernel.shape:
+            raise ValueError('cutout and kernel must have the same shape')
+
+        self.cutout = star_cutout
+        self.kernel = kernel
+
+        if sky is None:
+            skymask = ~self.kernel.mask.astype(np.bool)   # 1=sky, 0=obj
+            nsky = np.count_nonzero(skymask)
+            if nsky == 0:
+                mean_sky = (np.max(self.cutout.data) -
+                            np.max(self.cutout.convdata))
+            else:
+                mean_sky = np.sum(self.cutout.data * skymask) / nsky
+            self.sky = mean_sky
+        else:
+            self.sky = sky
+
+    @lazyproperty
+    def data(self):
+        cutout = np.array((self.cutout.data - self.sky) * self.cutout.mask)
+        # IRAF starfind discards negative pixels
+        cutout = np.where(cutout > 0, cutout, 0)
+
+        return cutout
+
+    @lazyproperty
+    def moments(self):
+        from skimage.measure import moments
+
+        return moments(self.data, 1)
+
+    @lazyproperty
+    def cutout_xcentroid(self):
+        return self.moments[1, 0] / self.moments[0, 0]
+
+    @lazyproperty
+    def cutout_ycentroid(self):
+        return self.moments[0, 1] / self.moments[0, 0]
+
+    @lazyproperty
+    def xcentroid(self):
+        return self.cutout_xcentroid + self.cutout.xorigin
+
+    @lazyproperty
+    def ycentroid(self):
+        return self.cutout_ycentroid + self.cutout.yorigin
+
+    @lazyproperty
+    def npix(self):
+        return np.count_nonzero(self.data)
+
+    @lazyproperty
+    def sky(self):
+        return self.sky
+
+    @lazyproperty
+    def peak(self):
+        return np.max(self.data)
+
+    @lazyproperty
+    def flux(self):
+        return np.sum(self.data)
+
+    @lazyproperty
+    def mag(self):
+        return -2.5 * np.log10(self.flux)
+
+    @lazyproperty
+    def moments_central(self):
+        from skimage.measure import moments_central
+
+        return (moments_central(self.data, self.cutout_ycentroid,
+                                self.cutout_xcentroid, 2) /
+                self.moments[0, 0])
+
+    @lazyproperty
+    def mu_sum(self):
+        return self.moments_central[2, 0] + self.moments_central[0, 2]
+
+    @lazyproperty
+    def mu_diff(self):
+        return self.moments_central[2, 0] - self.moments_central[0, 2]
+
+    @lazyproperty
+    def fwhm(self):
+        return 2.0 * np.sqrt(np.log(2.0) * self.mu_sum)
+
+    @lazyproperty
+    def sharpness(self):
+        return self.fwhm / self.kernel.fwhm
+
+    @lazyproperty
+    def roundness(self):
+        return np.sqrt(self.mu_diff**2 +
+                       4.0 * self.moments_central[1, 1]**2) / self.mu_sum
+
+    @lazyproperty
+    def pa(self):
+        pa = np.rad2deg(0.5 * np.arctan2(2.0 * self.moments_central[1, 1],
+                                         self.mu_diff))
+        if pa < 0.:
+            pa += 180.
+
+        return pa
+
+
+def _find_stars(data, threshold, kernel, min_separation=None,
+                exclude_border=False, local_peaks=True):
+    """
+    Find sources in an image by convolving the image with the input
+    kernel and selecting connected pixels above a given threshold.
+
+    Parameters
+    ----------
+    data : array_like
+        The 2D array of the image.
+
+    threshold : float
+        The absolute image value above which to select sources.  Note
+        that this threshold is not the same threshold input to
+        ``daofind`` or ``irafstarfind``.  It should be multiplied by the
+        kernel relerr.
+
+    kernel : `_StarFinderKernel`
+        The convolution kernel.  The dimensions should match those of
+        the cutouts.  The kernel should be normalized to zero sum.
+
+    exclude_border : bool, optional
+        Set to `True` to exclude sources found within half the size of
+        the convolution kernel from the image borders.  The default is
+        `False`, which is the mode used by `DAOFIND`_ and `starfind`_.
+
+    local_peaks : bool, optional
+        Set to `True` to exactly match the `DAOFIND`_ method of finding
+        local peaks.  If `False`, then only one peak per thresholded
+        segment will be used.
+
+    Returns
+    -------
+    objects : list of `_StarCutout`
+        A list of `_StarCutout` objects containing the image cutout for
+        each source.
+
+
+    .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
+    .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
+    """
+
+    from scipy import ndimage
+
+    if not exclude_border:
+        # create a larger image padded by zeros
+        ysize = int(data.shape[0] + (2. * kernel.yradius))
+        xsize = int(data.shape[1] + (2. * kernel.xradius))
+        data_padded = np.zeros((ysize, xsize))
+        data_padded[kernel.yradius:kernel.yradius + data.shape[0],
+                    kernel.xradius:kernel.xradius + data.shape[1]] = data
+        data = data_padded
+
+    convolved_data = filter_data(data, kernel.data, mode='constant',
+                                 fill_value=0.0, check_normalization=False)
+
+    if not exclude_border:
+        # keep border=0 in convolved data
+        convolved_data[:kernel.yradius, :] = 0.
+        convolved_data[-kernel.yradius:, :] = 0.
+        convolved_data[:, :kernel.xradius] = 0.
+        convolved_data[:, -kernel.xradius:] = 0.
+
+    selem = ndimage.generate_binary_structure(2, 2)
+    object_labels, nobjects = ndimage.label(convolved_data > threshold,
+                                            structure=selem)
+
+    star_cutouts = []
+    if nobjects == 0:
+        return star_cutouts
+
+    # find object peaks in the convolved data
+    if local_peaks:
+        # footprint overrides min_separation in find_peaks
+        if min_separation is None:   # daofind
+            footprint = kernel.mask.astype(np.bool)
+        else:
+            from skimage.morphology import disk
+            footprint = disk(min_separation)
+        tbl = find_peaks(convolved_data, threshold, footprint=footprint)
+        coords = np.transpose([tbl['y_peak'], tbl['x_peak']])
+    else:
+        object_slices = ndimage.find_objects(object_labels)
+        coords = []
+        for object_slice in object_slices:
+            # thresholded_object is not the same size as the kernel
+            thresholded_object = convolved_data[object_slice]
+            ypeak, xpeak = np.unravel_index(thresholded_object.argmax(),
+                                            thresholded_object.shape)
+            xpeak += object_slice[1].start
+            ypeak += object_slice[0].start
+            coords.append((ypeak, xpeak))
+
+    for (ypeak, xpeak) in coords:
+        # now extract the object from the data, centered on the peak
+        # pixel in the convolved image, with the same size as the kernel
+        x0 = xpeak - kernel.xradius
+        x1 = xpeak + kernel.xradius + 1
+        y0 = ypeak - kernel.yradius
+        y1 = ypeak + kernel.yradius + 1
+
+        if x0 < 0 or x1 > data.shape[1]:
+            continue    # pragma: no cover
+        if y0 < 0 or y1 > data.shape[0]:
+            continue    # pragma: no cover
+
+        slices = (slice(y0, y1), slice(x0, x1))
+        data_cutout = data[slices]
+        #convdata_cutout = convolved_data[slices].copy()
+        convdata_cutout = convolved_data[slices]
+
+        if not exclude_border:
+            # correct for image padding
+            x0 -= kernel.xradius
+            x1 -= kernel.xradius
+            xpeak -= kernel.xradius
+            y0 -= kernel.yradius
+            y1 -= kernel.yradius
+            ypeak -= kernel.yradius
+            slices = (slice(y0, y1), slice(x0, x1))
+
+        star_cutouts.append(_StarCutout(data_cutout, convdata_cutout, slices,
+                                        xpeak, ypeak, kernel, threshold))
+
+    return star_cutouts
 
 
 class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
@@ -375,619 +990,3 @@ class IRAFStarFinder(StarFinderBase):
             table[column] = [getattr(props, column) for props in star_props]
 
         return table
-
-
-def _find_stars(data, threshold, kernel, min_separation=None,
-                exclude_border=False, local_peaks=True):
-    """
-    Find sources in an image by convolving the image with the input
-    kernel and selecting connected pixels above a given threshold.
-
-    Parameters
-    ----------
-    data : array_like
-        The 2D array of the image.
-
-    threshold : float
-        The absolute image value above which to select sources.  Note
-        that this threshold is not the same threshold input to
-        ``daofind`` or ``irafstarfind``.  It should be multiplied by the
-        kernel relerr.
-
-    kernel : `_StarFinderKernel`
-        The convolution kernel.  The dimensions should match those of
-        the cutouts.  The kernel should be normalized to zero sum.
-
-    exclude_border : bool, optional
-        Set to `True` to exclude sources found within half the size of
-        the convolution kernel from the image borders.  The default is
-        `False`, which is the mode used by `DAOFIND`_ and `starfind`_.
-
-    local_peaks : bool, optional
-        Set to `True` to exactly match the `DAOFIND`_ method of finding
-        local peaks.  If `False`, then only one peak per thresholded
-        segment will be used.
-
-    Returns
-    -------
-    objects : list of `_StarCutout`
-        A list of `_StarCutout` objects containing the image cutout for
-        each source.
-
-
-    .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
-    .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
-    """
-
-    from scipy import ndimage
-
-    if not exclude_border:
-        # create a larger image padded by zeros
-        ysize = int(data.shape[0] + (2. * kernel.yradius))
-        xsize = int(data.shape[1] + (2. * kernel.xradius))
-        data_padded = np.zeros((ysize, xsize))
-        data_padded[kernel.yradius:kernel.yradius + data.shape[0],
-                    kernel.xradius:kernel.xradius + data.shape[1]] = data
-        data = data_padded
-
-    convolved_data = filter_data(data, kernel.data, mode='constant',
-                                 fill_value=0.0, check_normalization=False)
-
-    if not exclude_border:
-        # keep border=0 in convolved data
-        convolved_data[:kernel.yradius, :] = 0.
-        convolved_data[-kernel.yradius:, :] = 0.
-        convolved_data[:, :kernel.xradius] = 0.
-        convolved_data[:, -kernel.xradius:] = 0.
-
-    selem = ndimage.generate_binary_structure(2, 2)
-    object_labels, nobjects = ndimage.label(convolved_data > threshold,
-                                            structure=selem)
-
-    star_cutouts = []
-    if nobjects == 0:
-        return star_cutouts
-
-    # find object peaks in the convolved data
-    if local_peaks:
-        # footprint overrides min_separation in find_peaks
-        if min_separation is None:   # daofind
-            footprint = kernel.mask.astype(np.bool)
-        else:
-            from skimage.morphology import disk
-            footprint = disk(min_separation)
-        tbl = find_peaks(convolved_data, threshold, footprint=footprint)
-        coords = np.transpose([tbl['y_peak'], tbl['x_peak']])
-    else:
-        object_slices = ndimage.find_objects(object_labels)
-        coords = []
-        for object_slice in object_slices:
-            # thresholded_object is not the same size as the kernel
-            thresholded_object = convolved_data[object_slice]
-            ypeak, xpeak = np.unravel_index(thresholded_object.argmax(),
-                                            thresholded_object.shape)
-            xpeak += object_slice[1].start
-            ypeak += object_slice[0].start
-            coords.append((ypeak, xpeak))
-
-    for (ypeak, xpeak) in coords:
-        # now extract the object from the data, centered on the peak
-        # pixel in the convolved image, with the same size as the kernel
-        x0 = xpeak - kernel.xradius
-        x1 = xpeak + kernel.xradius + 1
-        y0 = ypeak - kernel.yradius
-        y1 = ypeak + kernel.yradius + 1
-
-        if x0 < 0 or x1 > data.shape[1]:
-            continue    # pragma: no cover
-        if y0 < 0 or y1 > data.shape[0]:
-            continue    # pragma: no cover
-
-        slices = (slice(y0, y1), slice(x0, x1))
-        data_cutout = data[slices]
-        #convdata_cutout = convolved_data[slices].copy()
-        convdata_cutout = convolved_data[slices]
-
-        if not exclude_border:
-            # correct for image padding
-            x0 -= kernel.xradius
-            x1 -= kernel.xradius
-            xpeak -= kernel.xradius
-            y0 -= kernel.yradius
-            y1 -= kernel.yradius
-            ypeak -= kernel.yradius
-            slices = (slice(y0, y1), slice(x0, x1))
-
-        star_cutouts.append(_StarCutout(data_cutout, convdata_cutout, slices,
-                                        xpeak, ypeak, kernel, threshold))
-
-    return star_cutouts
-
-
-class _DAOFind_Properties(object):
-    """
-    data : _StarCutout
-    """
-
-    def __init__(self, star_cutout, kernel, sky=None):
-        if not isinstance(star_cutout, _StarCutout):
-            raise ValueError('data must be an _StarCutout object')
-
-        if star_cutout.data.shape != kernel.shape:
-            raise ValueError('cutout and kernel must have the same shape')
-
-        self.cutout = star_cutout
-        self.kernel = kernel
-        self.sky = sky    # DAOFIND uses sky=0
-
-        self.data = star_cutout.data
-        self.data_masked = star_cutout.data_masked
-        self.npixels = star_cutout.npixels    # unmasked pixels
-        self.nx = star_cutout.nx
-        self.ny = star_cutout.ny
-        self.xcenter = star_cutout.cutout_xcenter
-        self.ycenter = star_cutout.cutout_ycenter
-
-    @lazyproperty
-    def data_peak(self):
-        return self.data[self.ycenter, self.xcenter]
-
-    @lazyproperty
-    def conv_peak(self):
-        return self.cutout.convdata[self.ycenter, self.xcenter]
-
-    @lazyproperty
-    def roundness1(self):
-        # set the central (peak) pixel to zero
-        cutout_conv = self.cutout.convdata.copy()
-        cutout_conv[self.ycenter, self.xcenter] = 0.0
-
-        # calculate the four roundness quadrants
-        quad1 = cutout_conv[0:self.ycenter + 1, self.xcenter + 1:]
-        quad2 = cutout_conv[0:self.ycenter, 0:self.xcenter + 1]
-        quad3 = cutout_conv[self.ycenter:, 0:self.xcenter]
-        quad4 = cutout_conv[self.ycenter + 1:, self.xcenter:]
-
-        sum2 = -quad1.sum() + quad2.sum() - quad3.sum() + quad4.sum()
-        if sum2 == 0:
-            return 0.
-
-        sum4 = np.abs(cutout_conv).sum()
-        if sum4 <= 0:
-            return None
-
-        return 2.0 * sum2 / sum4
-
-    @lazyproperty
-    def sharpness(self):
-        npixels = self.npixels - 1    # exclude the peak pixel
-        data_mean = (np.sum(self.data_masked) - self.data_peak) / npixels
-
-        return (self.data_peak - data_mean) / self.conv_peak
-
-    def daofind_marginal_fit(self, axis=0):
-        # define triangular weighting functions along each axis, peaked
-        # in the middle and equal to one at the edge
-        x = self.xcenter - np.abs(np.arange(self.nx) - self.xcenter) + 1
-        y = self.ycenter - np.abs(np.arange(self.ny) - self.ycenter) + 1
-        xwt, ywt = np.meshgrid(x, y)
-
-        if axis == 0:    # marginal distributions along x axis
-            wt = xwt[0]    # 1D
-            wts = ywt    # 2D
-            size = self.nx
-            center = self.xcenter
-            sigma = self.kernel.xsigma
-            dxx = center - np.arange(size)
-        elif axis == 1:    # marginal distributions along y axis
-            wt = np.transpose(ywt)[0]    # 1D
-            wts = xwt    # 2D
-            size = self.ny
-            center = self.ycenter
-            sigma = self.kernel.ysigma
-            dxx = np.arange(size) - center
-
-        # compute marginal sums for given axis
-        wt_sum = np.sum(wt)
-        dx = center - np.arange(size)
-
-        # weighted marginal sums
-        kern_sum_1d = np.sum(self.kernel.gaussian_kernel_unmasked * wts,
-                             axis=axis)
-        kern_sum = np.sum(kern_sum_1d * wt)
-        kern2_sum = np.sum(kern_sum_1d**2 * wt)
-
-        dkern_dx = kern_sum_1d * dx
-        dkern_dx_sum = np.sum(dkern_dx * wt)
-        dkern_dx2_sum = np.sum(dkern_dx**2 * wt)
-        kern_dkern_dx_sum = np.sum(kern_sum_1d * dkern_dx * wt)
-
-        data_sum_1d = np.sum(self.data * wts, axis=axis)
-        data_sum = np.sum(data_sum_1d * wt)
-        data_kern_sum = np.sum(data_sum_1d * kern_sum_1d * wt)
-        data_dkern_dx_sum = np.sum(data_sum_1d * dkern_dx * wt)
-        data_dx_sum = np.sum(data_sum_1d * dxx * wt)
-
-        # perform linear least-squares fit (where data = sky + hx*kernel)
-        # to find the amplitude (hx)
-        # reject the star if the fit amplitude is not positive
-        hx_numer = data_kern_sum - (data_sum * kern_sum) / wt_sum
-        #if hx_numer <= 0.:
-        #    return np.nan, np.nan
-
-        hx_denom = kern2_sum - (kern_sum**2 / wt_sum)
-        #if hx_denom <= 0.:
-        #    return np.nan, np.nan
-
-        # compute fit amplitude
-        hx = hx_numer / hx_denom
-        # sky = (data_sum - (hx * kern_sum)) / wt_sum
-
-        # compute centroid shift
-        dx = ((kern_dkern_dx_sum -
-               (data_dkern_dx_sum - dkern_dx_sum*data_sum)) /
-              (hx * dkern_dx2_sum / sigma**2))
-
-        hsize = size / 2.
-        if abs(dx) > hsize:
-            if data_sum == 0.:
-                dx = 0.0
-            else:
-                dx = data_dx_sum / data_sum
-                if abs(dx) > hsize:
-                    dx = 0.0
-
-        return dx, hx
-
-    @lazyproperty
-    def dx_hx(self):
-        return self.daofind_marginal_fit(axis=0)
-
-    @lazyproperty
-    def dy_hy(self):
-        return self.daofind_marginal_fit(axis=1)
-
-    @lazyproperty
-    def dx(self):
-        return self.dx_hx[0]
-
-    @lazyproperty
-    def dy(self):
-        return self.dy_hy[0]
-
-    @lazyproperty
-    def xcentroid(self):
-        return self.cutout.xpeak + self.dx
-
-    @lazyproperty
-    def ycentroid(self):
-        return self.cutout.ypeak + self.dy
-
-    @lazyproperty
-    def hx(self):
-        return self.dx_hx[1]
-
-    @lazyproperty
-    def hy(self):
-        return self.dy_hy[1]
-
-    @lazyproperty
-    def roundness2(self):
-        if np.isnan(self.hx) or np.isnan(self.hy):
-            return np.nan
-        else:
-            return 2.0 * (self.hx - self.hy) / (self.hx + self.hy)
-
-    @lazyproperty
-    def peak(self):
-        return self.data_peak - self.sky
-
-    @lazyproperty
-    def npix(self):
-        """
-        The total number of pixels in the rectangular cutout image.
-        """
-
-        return self.data.size
-
-    @lazyproperty
-    def flux(self):
-        return ((self.conv_peak / self.cutout.threshold) -
-                (self.sky * self.npix))
-
-    @lazyproperty
-    def mag(self):
-        if self.flux <= 0:
-            return np.nan
-        else:
-            return -2.5 * np.log10(self.flux)
-
-
-class _IRAFStarFind_Properties(object):
-    """
-    data : _StarCutout
-    """
-
-    def __init__(self, star_cutout, kernel, sky=None):
-        if not isinstance(star_cutout, _StarCutout):
-            raise ValueError('data must be an _StarCutout object')
-
-        if star_cutout.data.shape != kernel.shape:
-            raise ValueError('cutout and kernel must have the same shape')
-
-        self.cutout = star_cutout
-        self.kernel = kernel
-
-        if sky is None:
-            skymask = ~self.kernel.mask.astype(np.bool)   # 1=sky, 0=obj
-            nsky = np.count_nonzero(skymask)
-            if nsky == 0:
-                mean_sky = (np.max(self.cutout.data) -
-                            np.max(self.cutout.convdata))
-            else:
-                mean_sky = np.sum(self.cutout.data * skymask) / nsky
-            self.sky = mean_sky
-        else:
-            self.sky = sky
-
-    @lazyproperty
-    def data(self):
-        cutout = np.array((self.cutout.data - self.sky) * self.cutout.mask)
-        # IRAF starfind discards negative pixels
-        cutout = np.where(cutout > 0, cutout, 0)
-
-        return cutout
-
-    @lazyproperty
-    def moments(self):
-        from skimage.measure import moments
-
-        return moments(self.data, 1)
-
-    @lazyproperty
-    def cutout_xcentroid(self):
-        return self.moments[1, 0] / self.moments[0, 0]
-
-    @lazyproperty
-    def cutout_ycentroid(self):
-        return self.moments[0, 1] / self.moments[0, 0]
-
-    @lazyproperty
-    def xcentroid(self):
-        return self.cutout_xcentroid + self.cutout.xorigin
-
-    @lazyproperty
-    def ycentroid(self):
-        return self.cutout_ycentroid + self.cutout.yorigin
-
-    @lazyproperty
-    def npix(self):
-        return np.count_nonzero(self.data)
-
-    @lazyproperty
-    def sky(self):
-        return self.sky
-
-    @lazyproperty
-    def peak(self):
-        return np.max(self.data)
-
-    @lazyproperty
-    def flux(self):
-        return np.sum(self.data)
-
-    @lazyproperty
-    def mag(self):
-        return -2.5 * np.log10(self.flux)
-
-    @lazyproperty
-    def moments_central(self):
-        from skimage.measure import moments_central
-
-        return (moments_central(self.data, self.cutout_ycentroid,
-                                self.cutout_xcentroid, 2) /
-                self.moments[0, 0])
-
-    @lazyproperty
-    def mu_sum(self):
-        return self.moments_central[2, 0] + self.moments_central[0, 2]
-
-    @lazyproperty
-    def mu_diff(self):
-        return self.moments_central[2, 0] - self.moments_central[0, 2]
-
-    @lazyproperty
-    def fwhm(self):
-        return 2.0 * np.sqrt(np.log(2.0) * self.mu_sum)
-
-    @lazyproperty
-    def sharpness(self):
-        return self.fwhm / self.kernel.fwhm
-
-    @lazyproperty
-    def roundness(self):
-        return np.sqrt(self.mu_diff**2 +
-                       4.0 * self.moments_central[1, 1]**2) / self.mu_sum
-
-    @lazyproperty
-    def pa(self):
-        pa = np.rad2deg(0.5 * np.arctan2(2.0 * self.moments_central[1, 1],
-                                         self.mu_diff))
-        if pa < 0.:
-            pa += 180.
-
-        return pa
-
-
-class _StarCutout(object):
-    """
-    Class to hold 2D image cutouts of stars.
-
-    Parameters
-    ----------
-    data : array_like
-        The cutout 2D image from the input unconvolved 2D image.
-
-    convdata : array_like
-        The cutout 2D image from the convolved 2D image.
-
-    x0, y0 : float
-        The (x, y) pixel coordinates of the lower-left pixel of the
-        cutout region.
-
-    xpeak, ypeak : float
-        The (x, y) pixel coordinates of the peak pixel.
-    """
-
-    def __init__(self, data, convdata, slices, xpeak, ypeak, kernel,
-                 threshold):
-
-        self.data = data
-        self.convdata = convdata
-        self.slices = slices
-        self.xpeak = xpeak
-        self.ypeak = ypeak
-        self.kernel = kernel
-        self.threshold = threshold
-
-        self.shape = data.shape
-        self.nx = self.shape[1]    # always odd
-        self.ny = self.shape[0]    # always odd
-        self.cutout_xcenter = int(self.nx // 2)
-        self.cutout_ycenter = int(self.ny // 2)
-
-        self.xorigin = self.slices[1].start    # in original image
-        self.yorigin = self.slices[0].start    # in original image
-
-        self.mask = kernel.mask    # kernel mask
-        self.npixels = kernel.npixels    # unmasked pixels
-        self.data_masked = self.data * self.mask
-
-
-class _StarFinderKernel(object):
-    """
-    Class to calculate a 2D Gaussian density enhancement kernel.
-
-    The kernel has negative wings and sums to zero.  It is used by both
-    `DAOStarFinder` and `IRAFStarFinder`.
-
-    Parameters
-    ----------
-    fwhm : float
-        The full-width half-maximum (FWHM) of the major axis of the
-        Gaussian kernel in units of pixels.
-
-    ratio : float, optional
-        The ratio of the minor to major axis standard deviations of the
-        Gaussian kernel.  ``ratio`` must be strictly positive and less
-        than or equal to 1.0.  The default is 1.0 (i.e., a circular
-        Gaussian kernel).
-
-    theta : float, optional
-        The position angle (in degrees) of the major axis of the
-        Gaussian kernel measured counter-clockwise from the positive x
-        axis.
-
-    sigma_radius : float, optional
-        The truncation radius of the Gaussian kernel in units of sigma
-        (standard deviation) [``1 sigma = FWHM /
-        2.0*sqrt(2.0*log(2.0))``].  The default is 1.5.
-
-    normalize_zerosum : bool, optional
-        Whether to normalize the Gaussian kernel to have zero sum,
-        constructing construct a density-enhancement kernel.  The
-        default is `True`.
-
-    Notes
-    -----
-    The attributes include the dimensions of the elliptical kernel and
-    the coefficients of a 2D elliptical Gaussian function expressed as:
-
-        ``f(x,y) = A * exp(-g(x,y))``
-
-        where
-
-        ``g(x,y) = a*(x-x0)**2 + 2*b*(x-x0)*(y-y0) + c*(y-y0)**2``
-
-    References
-    ----------
-    .. [1] http://en.wikipedia.org/wiki/Gaussian_function
-    """
-
-    def __init__(self, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
-                 normalize_zerosum=True):
-
-        if fwhm < 0:
-            raise ValueError('fwhm must be positive.')
-
-        if ratio <= 0 or ratio > 1:
-            raise ValueError('ratio must be positive and less or equal '
-                             'than 1.')
-
-        if sigma_radius <= 0:
-            raise ValueError('sigma_radius must be positive.')
-
-        self.fwhm = fwhm
-        self.ratio = ratio
-        self.theta = theta
-        self.sigma_radius = sigma_radius
-        self.xsigma = self.fwhm * gaussian_fwhm_to_sigma
-        self.ysigma = self.xsigma * self.ratio
-
-        theta_radians = np.deg2rad(self.theta)
-        cost = np.cos(theta_radians)
-        sint = np.sin(theta_radians)
-        xsigma2 = self.xsigma**2
-        ysigma2 = self.ysigma**2
-
-        self.a = (cost**2 / (2.0 * xsigma2)) + (sint**2 / (2.0 * ysigma2))
-        # CCW
-        self.b = 0.5 * cost * sint * ((1.0 / xsigma2) - (1.0 / ysigma2))
-        self.c = (sint**2 / (2.0 * xsigma2)) + (cost**2 / (2.0 * ysigma2))
-
-        # find the extent of an ellipse with radius = sigma_radius*sigma;
-        # solve for the horizontal and vertical tangents of an ellipse
-        # defined by g(x,y) = f
-        self.f = self.sigma_radius**2 / 2.0
-        denom = (self.a * self.c) - self.b**2
-
-        # nx and ny are always odd
-        self.nx = 2 * int(max(2, math.sqrt(self.c * self.f / denom))) + 1
-        self.ny = 2 * int(max(2, math.sqrt(self.a * self.f / denom))) + 1
-
-        self.xc = self.xradius = self.nx // 2
-        self.yc = self.yradius = self.ny // 2
-
-        # define the kernel on a 2D grid
-        yy, xx = np.mgrid[0:self.ny, 0:self.nx]
-        self.circular_radius = np.sqrt((xx - self.xc)**2 + (yy - self.yc)**2)
-        self.elliptical_radius = (self.a * (xx - self.xc)**2 +
-                                  2.0 * self.b * (xx - self.xc) *
-                                  (yy - self.yc) +
-                                  self.c * (yy - self.yc)**2)
-
-        self.mask = np.where(
-            (self.elliptical_radius <= self.f) |
-            (self.circular_radius <= 2.0), 1, 0).astype(np.int)
-        self.npixels = self.mask.sum()
-
-        # NOTE: the central (peak) pixel of gaussian_kernel has a value of 1.
-        self.gaussian_kernel_unmasked = np.exp(-self.elliptical_radius)
-        self.gaussian_kernel = self.gaussian_kernel_unmasked * self.mask
-
-        # denom = variance * npixels
-        denom = ((self.gaussian_kernel**2).sum() -
-                 (self.gaussian_kernel.sum()**2 / self.npixels))
-        self.relerr = 1.0 / np.sqrt(denom)
-
-        # normalize the kernel to zero sum
-        if normalize_zerosum:
-            self.data = ((self.gaussian_kernel -
-                          (self.gaussian_kernel.sum() / self.npixels)) /
-                         denom) * self.mask
-        else:
-            self.data = self.gaussian_kernel
-
-        self.shape = self.data.shape
-
-        return
