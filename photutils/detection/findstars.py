@@ -366,12 +366,12 @@ class _DAOFind_Properties(object):
         # to find the amplitude (hx)
         # reject the star if the fit amplitude is not positive
         hx_numer = data_kern_sum - (data_sum * kern_sum) / wt_sum
-        #if hx_numer <= 0.:
-        #    return np.nan, np.nan
+        if hx_numer <= 0.:
+            return np.nan, np.nan
 
         hx_denom = kern2_sum - (kern_sum**2 / wt_sum)
-        #if hx_denom <= 0.:
-        #    return np.nan, np.nan
+        if hx_denom <= 0.:
+            return np.nan, np.nan
 
         # compute fit amplitude
         hx = hx_numer / hx_denom
@@ -690,7 +690,6 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
 
         slices = (slice(y0, y1), slice(x0, x1))
         data_cutout = data[slices]
-        #convdata_cutout = convolved_data[slices].copy()
         convdata_cutout = convolved_data[slices]
 
         if not exclude_border:
@@ -904,6 +903,9 @@ class DAOStarFinder(StarFinderBase):
         star_props = []
         for star_cutout in star_cutouts:
             props = _DAOFind_Properties(star_cutout, self.kernel, self.sky)
+
+            if np.isnan(props.dx_hx).any() or np.isnan(props.dy_hy).any():
+                continue
 
             if (props.sharpness <= self.sharplo or
                     props.sharpness >= self.sharphi):
