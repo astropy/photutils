@@ -637,13 +637,10 @@ def _find_stars(data, kernel, threshold, min_separation=None,
     from scipy import ndimage
 
     if not exclude_border:
-        # create a larger image padded by zeros
-        ysize = int(data.shape[0] + (2. * kernel.yradius))
-        xsize = int(data.shape[1] + (2. * kernel.xradius))
-        data_padded = np.zeros((ysize, xsize))
-        data_padded[kernel.yradius:kernel.yradius + data.shape[0],
-                    kernel.xradius:kernel.xradius + data.shape[1]] = data
-        data = data_padded
+        ypad = kernel.yradius
+        xpad = kernel.xradius
+        pad = ((ypad, ypad), (xpad, xpad))
+        data = np.pad(data, pad, 'constant', constant_values=0.)
 
     convolved_data = filter_data(data, kernel.data, mode='constant',
                                  fill_value=0.0, check_normalization=False)
@@ -695,9 +692,9 @@ def _find_stars(data, kernel, threshold, min_separation=None,
             # correct for image padding
             x0 -= kernel.xradius
             x1 -= kernel.xradius
-            xpeak -= kernel.xradius
             y0 -= kernel.yradius
             y1 -= kernel.yradius
+            xpeak -= kernel.xradius
             ypeak -= kernel.yradius
             slices = (slice(y0, y1), slice(x0, x1))
 
