@@ -89,6 +89,18 @@ class TestDAOStarFinder(object):
         t = starfinder(data)
         assert not np.isfinite(t['mag'])
 
+    def test_daofind_negative_fit_peak(self):
+        """
+        Regression test that sources with negative fit peaks (i.e.
+        hx/hy<=0) are excluded.
+        """
+
+        starfinder = DAOStarFinder(threshold=7., fwhm=1.5, roundlo=-np.inf,
+                                   roundhi=np.inf, sharplo=-np.inf,
+                                   sharphi=np.inf)
+        t = starfinder(DATA)
+        assert len(t) == 102
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.skipif('not HAS_SKIMAGE')
