@@ -645,7 +645,10 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
         ypad = kernel.yradius
         xpad = kernel.xradius
         pad = ((ypad, ypad), (xpad, xpad))
-        data = np.pad(data, pad, 'constant', constant_values=0.)
+        # mode must be a string for numpy < 0.11
+        # (see https://github.com/numpy/numpy/issues/7112)
+        mode = str('constant')
+        data = np.pad(data, pad, mode=mode, constant_values=[0.])
 
     convolved_data = filter_data(data, kernel.data, mode='constant',
                                  fill_value=0.0, check_normalization=False)
