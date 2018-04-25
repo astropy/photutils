@@ -6,13 +6,15 @@ import numpy as np
 import pytest
 
 from astropy.io import fits
+from astropy.modeling.models import Gaussian2D
 from astropy.tests.helper import remote_data
 
 from .make_test_data import make_test_image
 from ..ellipse import Ellipse
 from ..geometry import EllipseGeometry
 from ..isophote import Isophote, IsophoteList
-from ...datasets import get_path
+from ...datasets import get_path, make_noise_image
+
 
 try:
     import scipy    # noqa
@@ -111,6 +113,20 @@ class TestEllipse(object):
         # in the sample arrays when sampling outside the image.
         for iso in isophote_list:
             assert not np.any(iso.sample.values[2] == 0)
+
+    def test_ellipse_shape(self):
+        """Regression test for #670/673."""
+
+        ny = 500
+        nx = 150
+        g = Gaussian2D(100., nx / 2., ny / 2., 20, 12, theta=40.*np.pi/180.)
+        y, x = np.mgrid[0:ny, 0:nx]
+        noise = make_noise_image((ny, nx), type='gaussian', mean=0.,
+                                 stddev=2., random_state=12345)
+        data = g(x, y) + noise
+        ellipse = Ellipse(data)    # estimates initial center
+        isolist = ellipse.fit_image()
+        assert len(isolist) == 54
 
 
 @remote_data

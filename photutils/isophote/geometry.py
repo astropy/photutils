@@ -200,10 +200,10 @@ class EllipseGeometry(object):
         shape = image.shape
         _x0 = self.x0
         _y0 = self.y0
-        if (_x0 is None or _x0 < 0 or _x0 >= shape[0] or _y0 is None or
-                _y0 < 0 or _y0 >= shape[1]):
-            _x0 = shape[0] / 2
-            _y0 = shape[1] / 2
+        if (_x0 is None or _x0 < 0 or _x0 >= shape[1] or _y0 is None or
+                _y0 < 0 or _y0 >= shape[0]):
+            _x0 = shape[1] / 2
+            _y0 = shape[0] / 2
 
         max_fom = 0.
         max_i = 0
@@ -219,8 +219,8 @@ class EllipseGeometry(object):
                 # ensure that it stays inside image frame
                 i1 = int(max(0, i - self._centerer_mask_half_size))
                 j1 = int(max(0, j - self._centerer_mask_half_size))
-                i2 = int(min(shape[0] - 1, i + self._centerer_mask_half_size))
-                j2 = int(min(shape[1] - 1, j + self._centerer_mask_half_size))
+                i2 = int(min(shape[1] - 1, i + self._centerer_mask_half_size))
+                j2 = int(min(shape[0] - 1, j + self._centerer_mask_half_size))
 
                 window = image[j1:j2, i1:i2]
 

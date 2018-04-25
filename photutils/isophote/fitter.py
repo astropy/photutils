@@ -246,9 +246,9 @@ class EllipseFitter(object):
         if abs(sample.geometry.eps > MAX_EPS):
             proceed = False
         if (sample.geometry.x0 < 1. or
-                sample.geometry.x0 > sample.image.shape[0] or
+                sample.geometry.x0 > sample.image.shape[1] or
                 sample.geometry.y0 < 1. or
-                sample.geometry.y0 > sample.image.shape[1]):
+                sample.geometry.y0 > sample.image.shape[0]):
             proceed = False
 
         # See if eps == 0 (round isophote) was crossed.
