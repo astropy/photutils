@@ -9,6 +9,9 @@ Bug Fixes
   - Fixed an issue in ``detect_sources`` where in some cases sources
     with a size less than ``npixels`` could be returned. [#663]
 
+  - Fixed an issue in ``DAOStarFinder`` where in some cases a few too
+    many sources could be returned. [#671]
+
 - ``photutils.segmentation``
 
   - Fixed ``deblend_sources`` when other sources are in the
