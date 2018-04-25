@@ -127,7 +127,7 @@ def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
             j = int(y)
 
             # if outside image boundaries, ignore.
-            if (i > 0 and i < shape[0]-1 and j > 0 and j < shape[1] - 1):
+            if (i > 0 and i < shape[1] - 1 and j > 0 and j < shape[0] - 1):
                 # get fractional deviations relative to target array
                 fx = x - float(i)
                 fy = y - float(j)

@@ -180,8 +180,8 @@ class Ellipse(object):
         if geometry is not None:
             self._geometry = geometry
         else:
-            _x0 = image.shape[0] / 2
-            _y0 = image.shape[1] / 2
+            _x0 = image.shape[1] / 2
+            _y0 = image.shape[0] / 2
             self._geometry = EllipseGeometry(_x0, _y0, 10., eps=0.2,
                                              pa=np.pi/2)
 

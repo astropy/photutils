@@ -106,8 +106,8 @@ class EllipseSample(object):
             _x0 = x0
             _y0 = y0
             if not _x0 or not _y0:
-                _x0 = image.shape[0] / 2
-                _y0 = image.shape[1] / 2
+                _x0 = image.shape[1] / 2
+                _y0 = image.shape[0] / 2
 
             self.geometry = EllipseGeometry(_x0, _y0, sma, eps,
                                             position_angle, astep,

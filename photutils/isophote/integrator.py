@@ -44,8 +44,8 @@ class _Integrator(object):
         self._intensities = intensities
 
         # for bounds checking
-        self._i_range = range(0, self._image.shape[0] - 1)
-        self._j_range = range(0, self._image.shape[1] - 1)
+        self._i_range = range(0, self._image.shape[1] - 1)
+        self._j_range = range(0, self._image.shape[0] - 1)
 
     def integrate(self, radius, phi):
         """
