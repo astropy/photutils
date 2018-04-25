@@ -24,6 +24,9 @@ New Features
   - The ``find_peaks`` function now returns an empty Table and issues
     a warning when no peaks are found. [#668]
 
+  - The ``exclude_border`` keyword in ``DAOStarFinder`` and
+    ``IRAFStarFinder`` is deprecated. F[#671]
+
 - ``photutils.segmentation``
 
   - Added a ``mask`` keyword to the ``detect_sources`` function. [#621]
@@ -64,6 +67,9 @@ Bug Fixes
 
   - Fixed an issue in ``detect_sources`` where in some cases sources
     with a size less than ``npixels`` could be returned. [#663]
+
+  - Fixed an issue in ``DAOStarFinder`` where in some cases a few too
+    many sources could be returned. [#671]
 
 - ``photutils.segmentation``
 
