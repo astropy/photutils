@@ -122,6 +122,7 @@ Photutils also includes a :func:`~photutils.detection.find_peaks`
 function to find local peaks in an image that are above a specified
 threshold value. Peaks are the local maxima above a specified
 threshold that are separated by a specified minimum number of pixels.
+
 By default, the returned pixel coordinates are always integer-valued
 (i.e., no centroiding is performed, only the peak pixel is
 identified).  However, :func:`~photutils.detection.find_peaks` may be
@@ -130,12 +131,12 @@ the optional argument ``subpixel`` is set to `True`.
 
 :func:`~photutils.detection.find_peaks` supports a number of
 additional options, including searching for peaks only within a
-segmentation image or a specified footprint.  Please see the
+specified footprint.  Please see the
 :func:`~photutils.detection.find_peaks` documentation for more
 options.
 
-As simple example, let's find the local peaks in an image that are 10
-sigma above the background and a separated by at least 2 pixels:
+As simple example, let's find the local peaks in an image that are 5
+sigma above the background and a separated by at least 5 pixels:
 
 .. doctest-requires:: skimage
 
@@ -144,54 +145,55 @@ sigma above the background and a separated by at least 2 pixels:
     >>> from photutils import find_peaks
     >>> data = make_100gaussians_image()
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
-    >>> threshold = median + (10.0 * std)
-    >>> tbl = find_peaks(data, threshold, box_size=5)
+    >>> threshold = median + (5. * std)
+    >>> tbl = find_peaks(data, threshold, box_size=11)
     >>> tbl['peak_value'].info.format = '%.8g'  # for consistent table output
     >>> print(tbl[:10])    # print only the first 10 peaks
     x_peak y_peak peak_value
     ------ ------ ----------
        233      0  27.477852
-       236      1   27.33952
+       493      6  20.404769
+       207     11  24.075798
+       258     12  17.395025
+       366     12  18.729726
        289     22  35.853276
+       380     29  19.261986
        442     31  30.239994
-         1     40  35.548286
-        89     59  41.219047
-         7     70  33.288065
-       258     75  26.562481
-       463     80  28.758821
-       182     93  38.088569
+       359     36  19.771626
+       471     38   25.45583
 
 And let's plot the location of the detected peaks in the image:
 
 .. doctest-skip::
 
     >>> import matplotlib.pyplot as plt
-    >>> from astropy.visualization import SqrtStretch
+    >>> from astropy.visualization import simple_norm
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
-    >>> norm = ImageNormalize(stretch=SqrtStretch())
+    >>> positions = (tbl['x_peak'], tbl['y_peak'])
+    >>> apertures = CircularAperture(positions, r=5.)
+    >>> norm = simple_norm(data, 'sqrt', percent=99.9)
     >>> plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm)
-    >>> plt.plot(tbl['x_peak'], tbl['y_peak'], ls='none', color='cyan',
-    ...          marker='+', ms=10, lw=1.5)
+    >>> apertures.plot(color='#0547f9', lw=1.5)
     >>> plt.xlim(0, data.shape[1]-1)
     >>> plt.ylim(0, data.shape[0]-1)
 
 .. plot::
 
     from astropy.stats import sigma_clipped_stats
+    from photutils import find_peaks, CircularAperture
     from photutils.datasets import make_100gaussians_image
-    from photutils import find_peaks
     data = make_100gaussians_image()
     mean, median, std = sigma_clipped_stats(data, sigma=3.0)
-    threshold = median + (10.0 * std)
-    tbl = find_peaks(data, threshold, box_size=5)
+    threshold = median + (5.0 * std)
+    tbl = find_peaks(data, threshold, box_size=11)
 
     import matplotlib.pyplot as plt
-    from astropy.visualization import SqrtStretch
-    from astropy.visualization.mpl_normalize import ImageNormalize
-    norm = ImageNormalize(stretch=SqrtStretch())
+    from astropy.visualization import simple_norm
+    positions = (tbl['x_peak'], tbl['y_peak'])
+    apertures = CircularAperture(positions, r=5.)
+    norm = simple_norm(data, 'sqrt', percent=99.9)
     plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm)
-    plt.plot(tbl['x_peak'], tbl['y_peak'], ls='none', color='cyan',
-             marker='+', ms=10, lw=1.5)
+    apertures.plot(color='#0547f9', lw=1.5)
     plt.xlim(0, data.shape[1]-1)
     plt.ylim(0, data.shape[0]-1)
 
