@@ -71,6 +71,12 @@ Bug Fixes
   - Fixed an issue in ``DAOStarFinder`` where in some cases a few too
     many sources could be returned. [#671]
 
+- ``photutils.isophote``
+
+  - Fixed a bug where isophote fitting would fail when the initial
+    center was not specified for an image with an elongated aspect
+    ratio. [#673]
+
 - ``photutils.segmentation``
 
   - Fixed ``deblend_sources`` when other sources are in the
