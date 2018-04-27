@@ -17,102 +17,10 @@ from .centroid import find_peak
 from .utils import interpolate_missing_data
 
 
-__all__ = ['Stars', 'Star', 'extract_stars']
+__all__ = ['PSFStar', 'PSFStars', 'extract_stars']
 
 
-class Stars(object):
-    """
-    Class to hold a list of `Star` objects.
-    """
-
-    def __init__(self, stars_list):
-        if isinstance(stars_list, Star):
-            self._data = [Star]
-        elif isinstance(stars_list, list):
-            self._data = stars_list
-        else:
-            raise ValueError('invalid input.')
-
-    def __len__(self):
-        return len(self._data)
-
-    def __getitem__(self, index):
-        return self._data[index]
-
-    # needed for python 2
-    def __getslice__(self, i, j):
-        return self.__getitem__(slice(i, j))
-
-    def __delitem__(self, index):
-        del self._data[index]
-
-    def __iter__(self):
-        for i in self._data:
-            yield i
-
-    def __getattr__(self, attr):
-        if attr == 'data':
-            return None
-        else:
-            return [getattr(p, attr) for p in self._data]
-
-    def constrain_linked_centers(self, ignore_badfit_stars=True):
-        """ Constrains the coordinates of star centers (in image coordinates).
-
-        This is achieved by constraining star centers of all linked stars to
-        correspond to a single sky coordinate obtained by computing weighted
-        mean of world coorinates (before constraining) of star centers of
-        linked stars.
-
-        Parameters
-        ----------
-
-        ignore_badfit_stars : bool, optional
-            Do not use stars that have fit error status >0 or that have
-            ``ignore`` attribute set to ``True`` in computing mean
-            world coordinate.
-
-        """
-        # first, check that this star is linked to other stars:
-        if self.next is None and self.prev is None:
-            return  # nothing to do
-
-        # second, select only those linked stars that have a valid WCS:
-        stars = [s for s in self.get_linked_list() if s.wcs is not None]
-        if len(stars) < 2:
-            return  # nothing to do
-
-        # find centers of the stars in world coordinates:
-
-        w = np.asarray(
-            [s.wcs.all_pix2world(s.x_abs_center, s.y_abs_center, 0) +
-             [s.star_weight]
-             for s in stars if (ignore_badfit_stars and
-                                ((s.fit_error_status is not None and
-                                  s.fit_error_status > 0) or s.ignore))
-             ]
-        )
-
-        lon = w[:, 0]
-        lat = w[:, 1]
-
-        # compute mean cartesian coordinates:
-        wt = w[:, 2] / np.sum(w[:, 2], dtype=np.float64)
-        xm = (wt * np.cos(lat) * np.cos(lon)).sum(dtype=np.float)
-        ym = (wt * np.cos(lat) * np.sin(lon)).sum(dtype=np.float)
-        zm = (wt * np.sin(lat)).sum(dtype=np.float)
-
-        # convert cartesian coordinates back to spherical:
-        hyp = np.hypot(xm, ym)
-        lon = np.arctan2(ym, xm)
-        lat = np.arctan2(zm, hyp)
-
-        # compute new centers:
-        for s in stars:
-            s.abs_center = list(map(float, s.wcs.all_world2pix(lon, lat, 0)))
-
-
-class Star(object):
+class PSFStar(object):
     """
     A class to hold a 2D cutout image and associated metadata of a star.
 
@@ -724,6 +632,100 @@ tuple of int, None, optional
     @peak_search_box.setter
     def peak_search_box(self, peak_search_box):
         self._peak_search_box = peak_search_box
+
+
+class PSFStars(object):
+    """
+    Class to hold a list of `Star` objects.
+    """
+
+    def __init__(self, stars_list):
+        if isinstance(stars_list, PSFStar):
+            self._data = [stars_list]
+        elif isinstance(stars_list, list):
+            self._data = stars_list
+        else:
+            raise ValueError('stars_list must be a list of PSFStar objects '
+                             'or a single PSFStar object.')
+
+    def __len__(self):
+        return len(self._data)
+
+    def __getitem__(self, index):
+        return self._data[index]
+
+    # needed for python 2
+    def __getslice__(self, i, j):
+        return self.__getitem__(slice(i, j))
+
+    def __delitem__(self, index):
+        del self._data[index]
+
+    def __iter__(self):
+        for i in self._data:
+            yield i
+
+    def __getattr__(self, attr):
+        if attr == 'data':
+            return None
+        else:
+            return [getattr(p, attr) for p in self._data]
+
+    def constrain_linked_centers(self, ignore_badfit_stars=True):
+        """ Constrains the coordinates of star centers (in image coordinates).
+
+        This is achieved by constraining star centers of all linked stars to
+        correspond to a single sky coordinate obtained by computing weighted
+        mean of world coorinates (before constraining) of star centers of
+        linked stars.
+
+        Parameters
+        ----------
+
+        ignore_badfit_stars : bool, optional
+            Do not use stars that have fit error status >0 or that have
+            ``ignore`` attribute set to ``True`` in computing mean
+            world coordinate.
+
+        """
+        # first, check that this star is linked to other stars:
+        if self.next is None and self.prev is None:
+            return  # nothing to do
+
+        # second, select only those linked stars that have a valid WCS:
+        stars = [s for s in self.get_linked_list() if s.wcs is not None]
+        if len(stars) < 2:
+            return  # nothing to do
+
+        # find centers of the stars in world coordinates:
+
+        w = np.asarray(
+            [s.wcs.all_pix2world(s.x_abs_center, s.y_abs_center, 0) +
+             [s.star_weight]
+             for s in stars if (ignore_badfit_stars and
+                                ((s.fit_error_status is not None and
+                                  s.fit_error_status > 0) or s.ignore))
+             ]
+        )
+
+        lon = w[:, 0]
+        lat = w[:, 1]
+
+        # compute mean cartesian coordinates:
+        wt = w[:, 2] / np.sum(w[:, 2], dtype=np.float64)
+        xm = (wt * np.cos(lat) * np.cos(lon)).sum(dtype=np.float)
+        ym = (wt * np.cos(lat) * np.sin(lon)).sum(dtype=np.float)
+        zm = (wt * np.sin(lat)).sum(dtype=np.float)
+
+        # convert cartesian coordinates back to spherical:
+        hyp = np.hypot(xm, ym)
+        lon = np.arctan2(ym, xm)
+        lat = np.arctan2(zm, hyp)
+
+        # compute new centers:
+        for s in stars:
+            s.abs_center = list(map(float, s.wcs.all_world2pix(lon, lat, 0)))
+
 
 
 def extract_stars(data, catalogs, size=11, recenter=False):
