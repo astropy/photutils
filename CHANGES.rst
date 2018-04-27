@@ -8,6 +8,9 @@ New Features
 
   - Added ``plot`` and ``to_aperture`` methods to ``BoundingBox``. [#662]
 
+  - Added default theta value for elliptical and rectangular
+    apertures. [#674]
+
 - ``photutils.centroid``
 
   - Added a ``centroid_sources`` function to calculate centroid of
