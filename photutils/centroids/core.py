@@ -410,7 +410,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
 
     error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
-        ``error`` must have the same shape as ``data``.  ``error` will
+        ``error`` must have the same shape as ``data``.  ``error`` will
         be used only if supported by the input ``centroid_func``.
 
     centroid_func : callable, optional
