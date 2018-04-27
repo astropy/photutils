@@ -4,9 +4,11 @@ from __future__ import (absolute_import, division, print_function,
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose
+from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling.models import Gaussian2D
+
 from ..fourier import resize_psf, create_matching_kernel
-from ..windows import TopHatWindow
+from ..windows import SplitCosineBellWindow
 
 try:
     import scipy    # noqa
@@ -24,20 +26,26 @@ def test_resize_psf():
 
 def test_create_matching_kernel():
     """Test with noiseless 2D Gaussians."""
-    y, x = np.mgrid[0:101, 0:101]
-    gm1 = Gaussian2D(100, 50, 50, 3, 3)
-    gm2 = Gaussian2D(100, 50, 50, 4, 4)
-    gm3 = Gaussian2D(100, 50, 50, 5, 5)
+
+    size = 25
+    cen = (size - 1) / 2.
+    y, x = np.mgrid[0:size, 0:size]
+    std1 = 3.
+    std2 = 5.
+    gm1 = Gaussian2D(1., cen, cen, std1, std1)
+    gm2 = Gaussian2D(1., cen, cen, std2, std2)
     g1 = gm1(x, y)
     g2 = gm2(x, y)
-    g3 = gm3(x, y)
     g1 /= g1.sum()
     g2 /= g2.sum()
-    g3 /= g3.sum()
 
-    window = TopHatWindow(32./101)
-    k = create_matching_kernel(g1, g3, window=window)
-    assert_allclose(k, g3, atol=1.e-2)
+    window = SplitCosineBellWindow(0.0, 0.2)
+    k = create_matching_kernel(g1, g2, window=window)
+
+    fitter = LevMarLSQFitter()
+    gfit = fitter(gm1, x, y, k)
+    assert_allclose(gfit.x_stddev, gfit.y_stddev)
+    assert_allclose(gfit.x_stddev, np.sqrt(std2**2 - std1**2), 0.06)
 
 
 def test_create_matching_kernel_shapes():
