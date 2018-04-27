@@ -11,5 +11,5 @@ from .epsf import *
 from .epsf_fitter import *
 from .models import *
 from .psf import *
-from .stars import *
+from .psfstars import *
 from .utils import *

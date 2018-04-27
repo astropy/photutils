@@ -34,10 +34,11 @@ class PSFStar(object):
 
     center : tuple of two floats or `None`, optional
         The ``(x, y)`` position of the star's center with respect to the
-        input ``data`` array.  If `None`, then the center will be set to
-        the center of input ``data`` array.  One can use the
-        :meth:`~Star.recenter` method to further refine the center
-        position.
+        input ``data`` array.  If `None`, then the center of of the
+        input ``data`` array will be used.
+
+        TODO: One can use the :meth:`~Star.recenter` method to further
+        refine the center position.
 
     origin : tuple of two int, optional
         The ``(x, y)`` index of the origin (bottom-left corner) pixel of
@@ -57,10 +58,10 @@ class PSFStar(object):
     id : int, str, or `None`, optional
         An identification number or label for the star.
 
-    flux: float, None
+    todo_flux: float, None
         Fitted flux or initial estimate of the flux.
 
-    pixel_scale : float, str {'wcs'}, optional
+    todo_pixel_scale : float, str {'wcs'}, optional
         Pixel scale. When pixel_scale is 'wcs', pixel scale will be inferred
         from the ``wcs`` argument (which *must* be provided in this case).
     """
@@ -104,16 +105,6 @@ class PSFStar(object):
 
         return self._data
 
-    @lazyproperty
-    def bbox_original(self):
-        """
-        The minimal `~photutils.aperture.BoundingBox` for cutout region
-        with respect to the original image.
-        """
-
-        return BoundingBox(self.origin[0], self.origin[0] + self.shape[0],
-                           self.origin[1], self.origin[1] + self.shape[1])
-
     @property
     def data(self):
         """The 2D cutout image."""
@@ -125,8 +116,6 @@ class PSFStar(object):
         """The 2D weights array."""
 
         return self._weights
-
-
 
     @weights.setter
     def weights(self, weights):
@@ -161,6 +150,20 @@ class PSFStar(object):
 
         """
         return self._mask
+
+
+    @lazyproperty
+    def bbox(self):
+        """
+        The minimal `~photutils.aperture.BoundingBox` for cutout region
+        with respect to the original image.
+        """
+
+        return BoundingBox(self.origin[0], self.origin[0] + self.shape[0],
+                           self.origin[1], self.origin[1] + self.shape[1])
+
+
+
 
     #@property
     #def flux(self):
@@ -636,7 +639,7 @@ tuple of int, None, optional
 
 class PSFStars(object):
     """
-    Class to hold a list of `Star` objects.
+    Class to hold a list of `PSFStar` objects.
     """
 
     def __init__(self, stars_list):
@@ -666,18 +669,17 @@ class PSFStars(object):
             yield i
 
     def __getattr__(self, attr):
-        if attr == 'data':
-            return None
-        else:
-            return [getattr(p, attr) for p in self._data]
+        return [getattr(p, attr) for p in self._data]
 
-    def constrain_linked_centers(self, ignore_badfit_stars=True):
-        """ Constrains the coordinates of star centers (in image coordinates).
+    def todo_constrain_linked_centers(self, ignore_badfit_stars=True):
+        """
+        Constrains the coordinates of star centers (in image
+        coordinates).
 
-        This is achieved by constraining star centers of all linked stars to
-        correspond to a single sky coordinate obtained by computing weighted
-        mean of world coorinates (before constraining) of star centers of
-        linked stars.
+        This is achieved by constraining star centers of all linked
+        stars to correspond to a single sky coordinate obtained by
+        computing weighted mean of world coorinates (before
+        constraining) of star centers of linked stars.
 
         Parameters
         ----------
@@ -727,21 +729,20 @@ class PSFStars(object):
             s.abs_center = list(map(float, s.wcs.all_world2pix(lon, lat, 0)))
 
 
-
-def extract_stars(data, catalogs, size=11, recenter=False):
+def extract_stars(data, catalogs, size=(11, 11)):
     """
     Extract cutout images centered on stars defined in the input
     catalog(s).
 
     Parameters
     ----------
-    data : `~astropy.nddata.NDData`, list of `~astropy.nddata.NDData`
+    data : `~astropy.nddata.NDData` or list of `~astropy.nddata.NDData`
         A `~astropy.nddata.NDData` object or a list of
         `~astropy.nddata.NDData` objects containing the 2D image(s) from
         which to extract the stars.  If the input ``catalogs`` contain
-        only the sky coordinates of the stars then each of the
-        `~astropy.nddata.NDData` objects must have a valid ``wcs``
-        attribute.
+        only the sky coordinates (i.e. not the pixel coordinates) of the
+        stars then each of the `~astropy.nddata.NDData` objects must
+        have a valid ``wcs`` attribute.
 
     catalogs : `~astropy.table.Table`, list of `~astropy.table.Table`
         A catalog or list of catalogs of sources to be extracted from
@@ -771,22 +772,18 @@ def extract_stars(data, catalogs, size=11, recenter=False):
         representing the ID/name of stars.  If this column is not
         present then the extracted stars will be given an ``id`` number
         corresponding the the table row number (starting at 1).  Any
-        other columns presents in the input ``catalogs`` will be
-        ignored.
+        other columns present in the input ``catalogs`` will be ignored.
 
     size : int or array_like (int), optional
         The extraction box size along each axis.  If ``size`` is a
         scalar then a square box of size ``size`` will be used.  If
         ``size`` has two elements, they should be in ``(ny, nx)`` order.
-
-    recenter : bool, optional
-        Whether to estimate a new source position within the extracted
-        box.
+        The size must be greater than or equal to 3 pixel for both axes.
 
     Returns
     -------
-    starlist : `Stars` instance
-        A `Stars` instance containing the extracted stars.
+    psfstars : `PSFStars` instance
+        A `PSFStars` instance containing the extracted stars.
     """
 
     if isinstance(data, NDData):
@@ -795,8 +792,8 @@ def extract_stars(data, catalogs, size=11, recenter=False):
     if isinstance(catalogs, Table):
         catalogs = [catalogs]
 
-    for im in data:
-        if not isinstance(im, NDData):
+    for img in data:
+        if not isinstance(img, NDData):
             raise ValueError('data must be a single or list of NDData '
                              'objects.')
 
@@ -811,7 +808,7 @@ def extract_stars(data, catalogs, size=11, recenter=False):
                              'NDData objects, the catalog must have a '
                              '"skycoord" column.')
 
-        if any([im.wcs is None for im in data]):
+        if any([img.wcs is None for img in data]):
             raise ValueError('When inputting a single catalog with multiple '
                              'NDData objects, each NDData object must have '
                              'a wcs attribute.')
@@ -820,10 +817,10 @@ def extract_stars(data, catalogs, size=11, recenter=False):
             if 'x' not in cat.colnames or 'y' not in cat.colnames:
                 if 'skycoord' not in cat.colnames:
                     raise ValueError('When inputting multiple catalogs, '
-                                    'each one must have a "x" and "y" '
-                                    'column or a "skycoord" column.')
+                                     'each one must have a "x" and "y" '
+                                     'column or a "skycoord" column.')
                 else:
-                    if any([im.wcs is None for im in data]):
+                    if any([img.wcs is None for img in data]):
                         raise ValueError('When inputting catalog(s) with '
                                          'only skycoord positions, each '
                                          'NDData object must have a wcs '
@@ -834,11 +831,18 @@ def extract_stars(data, catalogs, size=11, recenter=False):
                              'of catalogs must match the number of input '
                              'images.')
 
+    size = np.atleast_1d(size)
+    if len(size) == 1:
+        size = np.repeat(size, 2)
+
+    min_size = 3
+    if size[0] < min_size or size[1] < min_size:
+        raise ValueError('size must be >= {} for x and y'.format(min_size))
+
     if len(catalogs) == 1:
         stars = []
-        for im in data:
-            stars.append(_extract_stars(im, catalogs[0], size=size,
-                                        recenter=recenter))
+        for img in data:
+            stars.append(_extract_stars(img, catalogs[0], size=size))
 
         # transpose the list of lists to associate linked stars
         stars = list(map(list, zip(*stars)))
@@ -847,51 +851,37 @@ def extract_stars(data, catalogs, size=11, recenter=False):
         # images) and handle the case of only one "linked" star
         stars_out = []
         for star in stars:
-            st = [i for i in star if i is not None]
-            if len(st) == 0:
+            good_stars = [i for i in star if i is not None]
+            if len(good_stars) == 0:
                 continue    # no overlap in any image
-            elif len(st) == 1:
-                st = st[0]    # only one star, so cannot be linked
-            stars_out.append(st)
+            elif len(good_stars) == 1:
+                good_stars = good_stars[0]  # only one star, cannot be linked
+            stars_out.append(good_stars)
     else:
         stars_out = []
-        for im, cat in zip(data, catalogs):
-            stars_out.append(_extract_stars(im, cat, size=size,
-                                            recenter=recenter))
+        for img, cat in zip(data, catalogs):
+            stars_out.append(_extract_stars(img, cat, size=size))
 
-    return Stars(stars_out)
+    return PSFStars(stars_out)
 
 
-def _extract_stars(data, catalog, size=11, recenter=False):
+def _extract_stars(data, catalog, size=(11, 11)):
     """
     Extract cutout images from a single image centered on stars defined
     in the single input catalog.
+
+    Parameters
+    ----------
+    size : tuple of two int, optional
     """
 
     colnames = catalog.colnames
     if 'x' not in colnames or 'y' not in colnames:
-        if 'skycoord' not in colnames:
-            raise ValueError('catalog does not contain required source '
-                             'sky coordinates.')
-
-        if data.wcs is None:
-            raise ValueError('When the source catalog contains sky '
-                             'coordinates, the data object must have a '
-                             'valid wcs attribute.')
-
-        xcens, ycens = skycoord_to_pixel(catalog['skycoord'], data.wcs,
-                                         origin=0, mode='all')
+        xcenters, ycenters = skycoord_to_pixel(catalog['skycoord'], data.wcs,
+                                               origin=0, mode='all')
     else:
-        xcens = catalog['x'].data.astype(np.float)
-        ycens = catalog['y'].data.astype(np.float)
-
-    size = np.atleast_1d(size)
-    if len(size) == 1:
-        size = np.repeat(size, 2)
-    min_size = 3
-    if size[0] < min_size or size[1] < min_size:
-        raise ValueError('size must be >= {} for x and y'.format(min_size))
-    cutout_shape = size[::-1]
+        xcenters = catalog['x'].data.astype(np.float)
+        ycenters = catalog['y'].data.astype(np.float)
 
     if 'id' in colnames:
         ids = catalog['id']
@@ -913,41 +903,21 @@ def _extract_stars(data, catalog, size=11, recenter=False):
         weights[data.mask] = 0.
 
     stars = []
-    for xcen, ycen, idi in zip(xcens, ycens, ids):
+    for xcenter, ycenter, obj_id in zip(xcenters, ycenters, ids):
         try:
-            large_slc, small_slc = overlap_slices(data.data.shape,
-                                                  cutout_shape,
-                                                  (ycen, xcen), mode='strict')
-            cutout = data.data[large_slc]
+            large_slc, small_slc = overlap_slices(data.data.shape, size,
+                                                  (ycenter, xcenter),
+                                                  mode='strict')
+            data_cutout = data.data[large_slc]
             weights_cutout = weights[large_slc]
         except (PartialOverlapError, NoOverlapError):
             stars.append(None)
             continue
 
-        if recenter:
-            mask = (weights_cutout > 0.0)
-
-            x0 = xcen - large_slc[1].start
-            y0 = ycen - large_slc[0].start
-            xnew, ynew = find_peak(cutout, x0, y0, mask=mask,
-                                   peak_fit_box=5, peak_search_box='fitbox')
-            xcen = xnew + large_slc[1].start
-            ycen = ynew + large_slc[0].start
-
-            try:
-                large_slc, small_slc = overlap_slices(data.data.shape,
-                                                      cutout_shape,
-                                                      (ycen, xcen),
-                                                      mode='strict')
-                cutout = data.data[large_slc]
-                weights_cutout = weights[large_slc]
-            except (PartialOverlapError, NoOverlapError):
-                stars.append(None)
-
         origin = (large_slc[1].start, large_slc[0].start)
-        center_cutout = (xcen - origin[0], ycen - origin[1])
-        star = Star(cutout, weights_cutout, center=center_cutout,
-                    origin=origin, wcs_original=data.wcs, id=idi)
+        center_cutout = (xcenter - origin[0], ycenter - origin[1])
+        star = PSFStar(data_cutout, weights_cutout, center=center_cutout,
+                       origin=origin, wcs_original=data.wcs, id=obj_id)
 
         stars.append(star)
 
