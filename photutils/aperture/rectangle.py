@@ -5,6 +5,7 @@ import math
 
 import numpy as np
 from astropy.coordinates import SkyCoord
+import astropy.units as u
 
 from .core import PixelAperture, SkyAperture
 from .bounding_box import BoundingBox
@@ -127,10 +128,10 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         The full height of the aperture.  For ``theta=0`` the height
         side is along the ``y`` axis.
 
-    theta : float
+    theta : float, optional
         The rotation angle in radians of the width (``w``) side from the
         positive ``x`` axis.  The rotation angle increases
-        counterclockwise.
+        counterclockwise.  The default is 0.
 
     Raises
     ------
@@ -138,7 +139,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         If either width (``w``) or height (``h``) is negative.
     """
 
-    def __init__(self, positions, w, h, theta):
+    def __init__(self, positions, w, h, theta=0.):
         if w < 0 or h < 0:
             raise ValueError("'w' and 'h' must be nonnegative.")
 
@@ -258,10 +259,10 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
         For ``theta=0`` the height side is along the ``y`` axis.
 
-    theta : float
+    theta : float, optional
         The rotation angle in radians of the width side from the
         positive ``x`` axis.  The rotation angle increases
-        counterclockwise.
+        counterclockwise.  The default is 0.
 
     Raises
     ------
@@ -274,7 +275,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         (``h_out``) is negative.
     """
 
-    def __init__(self, positions, w_in, w_out, h_out, theta):
+    def __init__(self, positions, w_in, w_out, h_out, theta=0.):
         if not (w_out > w_in):
             raise ValueError("'w_out' must be greater than 'w_in'")
         if w_in < 0 or h_out < 0:
@@ -396,13 +397,14 @@ class SkyRectangularAperture(SkyAperture):
         units.  For ``theta=0`` the height side is along the East-West
         axis.
 
-    theta : `~astropy.units.Quantity`
+    theta : `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the width side.  For a
         right-handed world coordinate system, the position angle
-        increases counterclockwise from North (PA=0).
+        increases counterclockwise from North (PA=0).  The default is 0
+        degrees.
     """
 
-    def __init__(self, positions, w, h, theta):
+    def __init__(self, positions, w, h, theta=0.*u.deg):
         if isinstance(positions, SkyCoord):
             self.positions = positions
         else:
@@ -475,13 +477,14 @@ class SkyRectangularAnnulus(SkyAperture):
 
         For ``theta=0`` the height side is along the East-West axis.
 
-    theta : `~astropy.units.Quantity`
+    theta : `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the width side.  For a
         right-handed world coordinate system, the position angle
-        increases counterclockwise from North (PA=0).
+        increases counterclockwise from North (PA=0).  The default is 0
+        degrees.
     """
 
-    def __init__(self, positions, w_in, w_out, h_out, theta):
+    def __init__(self, positions, w_in, w_out, h_out, theta=0.*u.deg):
         if isinstance(positions, SkyCoord):
             self.positions = positions
         else:
