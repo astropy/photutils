@@ -24,6 +24,7 @@ def test_resize_psf():
     assert psf2.shape == (10, 10)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_create_matching_kernel():
     """Test with noiseless 2D Gaussians."""
 
