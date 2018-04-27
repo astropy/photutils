@@ -80,8 +80,9 @@ def create_matching_kernel(source_psf, target_psf, window=None):
         The output matching kernel is normalized such that it sums to 1.
     """
 
-    source_psf = np.asanyarray(source_psf)
-    target_psf = np.asanyarray(target_psf)
+    # inputs are copied so that they are not changed when normalizing
+    source_psf = np.copy(np.asanyarray(source_psf))
+    target_psf = np.copy(np.asanyarray(target_psf))
 
     if source_psf.shape != target_psf.shape:
         raise ValueError('source_psf and target_psf must have the same shape '
