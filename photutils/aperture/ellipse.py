@@ -5,6 +5,7 @@ import math
 
 import numpy as np
 from astropy.coordinates import SkyCoord
+import astropy.units as u
 
 from .core import PixelAperture, SkyAperture
 from .bounding_box import BoundingBox
@@ -123,10 +124,10 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
     b : float
         The semiminor axis.
 
-    theta : float
+    theta : float, optional
         The rotation angle in radians of the semimajor axis from the
         positive ``x`` axis.  The rotation angle increases
-        counterclockwise.
+        counterclockwise.  The default is 0.
 
     Raises
     ------
@@ -134,7 +135,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         If either axis (``a`` or ``b``) is negative.
     """
 
-    def __init__(self, positions, a, b, theta):
+    def __init__(self, positions, a, b, theta=0.):
         if a < 0 or b < 0:
             raise ValueError("'a' and 'b' must be non-negative.")
 
@@ -241,10 +242,10 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
             .. math:: b_{in} = b_{out}
                 \\left(\\frac{a_{in}}{a_{out}}\\right)
 
-    theta : float
+    theta : float, optional
         The rotation angle in radians of the semimajor axis from the
         positive ``x`` axis.  The rotation angle increases
-        counterclockwise.
+        counterclockwise.  The default is 0.
 
     Raises
     ------
@@ -257,7 +258,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         axis (``b_out``) is negative.
     """
 
-    def __init__(self, positions, a_in, a_out, b_out, theta):
+    def __init__(self, positions, a_in, a_out, b_out, theta=0.):
         if not (a_out > a_in):
             raise ValueError('"a_out" must be greater than "a_in".')
         if a_in < 0 or b_out < 0:
@@ -356,13 +357,14 @@ class SkyEllipticalAperture(SkyAperture):
     b : `~astropy.units.Quantity`
         The semiminor axis, either in angular or pixel units.
 
-    theta : `~astropy.units.Quantity`
+    theta : `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the semimajor axis.
         For a right-handed world coordinate system, the position angle
-        increases counterclockwise from North (PA=0).
+        increases counterclockwise from North (PA=0).  The default is 0
+        degrees.
     """
 
-    def __init__(self, positions, a, b, theta):
+    def __init__(self, positions, a, b, theta=0.*u.deg):
         if isinstance(positions, SkyCoord):
             self.positions = positions
         else:
@@ -429,13 +431,14 @@ class SkyEllipticalAnnulus(SkyAperture):
             .. math:: b_{in} = b_{out}
                 \\left(\\frac{a_{in}}{a_{out}}\\right)
 
-    theta : `~astropy.units.Quantity`
+    theta : `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the semimajor axis.
         For a right-handed world coordinate system, the position angle
-        increases counterclockwise from North (PA=0).
+        increases counterclockwise from North (PA=0).  The default is 0
+        degrees.
     """
 
-    def __init__(self, positions, a_in, a_out, b_out, theta):
+    def __init__(self, positions, a_in, a_out, b_out, theta=0.*u.deg):
         if isinstance(positions, SkyCoord):
             self.positions = positions
         else:
