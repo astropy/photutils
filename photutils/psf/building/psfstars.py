@@ -17,7 +17,7 @@ from .centroid import find_peak
 from .utils import interpolate_missing_data
 
 
-__all__ = ['PSFStar', 'PSFStars', 'extract_stars']
+__all__ = ['PSFStar', 'LinkedPSFStar', 'PSFStars', 'extract_stars']
 
 
 class PSFStar(object):
@@ -671,6 +671,49 @@ class PSFStars(object):
     def __getattr__(self, attr):
         return [getattr(p, attr) for p in self._data]
 
+    @lazyproperty
+    def all_psfstars(self):
+        """
+        A list of all `PSFStar` objects, including linked stars, as a
+        flat list.
+        """
+
+        # assumes only a single level of lists
+        psf_stars = []
+        for item in self._data:
+            if isinstance(item, LinkedPSFStar):
+                psf_stars.extend(item.all_psfstars)
+            elif isinstance(item, list):
+                psf_stars.extend(item)
+            else:
+                psf_stars.append(item)
+
+        return psf_stars
+
+    @lazyproperty
+    def n_stars(self):
+        """The number of stars."""
+
+        return len(self._data)
+
+    @lazyproperty
+    def n_psfstars(self):
+        """The number of `PSFStar` objects, including linked stars."""
+
+        return len(self.all_psfstars)
+
+    def get_centers(self):
+        centers = []
+        #for star in self._data:
+        #    if star.
+        #    zzzzzz
+        pass
+
+
+class LinkedPSFStar(PSFStars):
+    def __init__(self, stars_list):
+        super(LinkedPSFStar, self).__init__(stars_list)
+
     def todo_constrain_linked_centers(self, ignore_badfit_stars=True):
         """
         Constrains the coordinates of star centers (in image
@@ -839,12 +882,13 @@ def extract_stars(data, catalogs, size=(11, 11)):
     if size[0] < min_size or size[1] < min_size:
         raise ValueError('size must be >= {} for x and y'.format(min_size))
 
-    if len(catalogs) == 1:
+    if len(catalogs) == 1:    # may included linked stars
         stars = []
+        # stars is a list of lists, one list of stars in each image
         for img in data:
             stars.append(_extract_stars(img, catalogs[0], size=size))
 
-        # transpose the list of lists to associate linked stars
+        # transpose the list of lists, to associate linked stars
         stars = list(map(list, zip(*stars)))
 
         # remove 'None' stars (i.e. no or partial overlap in one or more
@@ -856,8 +900,11 @@ def extract_stars(data, catalogs, size=(11, 11)):
                 continue    # no overlap in any image
             elif len(good_stars) == 1:
                 good_stars = good_stars[0]  # only one star, cannot be linked
+            else:
+                good_stars = LinkedPSFStar(good_stars)
+
             stars_out.append(good_stars)
-    else:
+    else:    # no linked stars
         stars_out = []
         for img, cat in zip(data, catalogs):
             stars_out.append(_extract_stars(img, cat, size=size))
