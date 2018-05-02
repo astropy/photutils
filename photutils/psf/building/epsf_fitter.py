@@ -9,6 +9,7 @@ import numpy as np
 
 from astropy.modeling.fitting import LevMarLSQFitter
 
+from .psfstars import PSFStar, LinkedPSFStar, PSFStars
 from .utils import py2round
 
 
@@ -19,8 +20,8 @@ def _calc_res(psf, star):
     ovx = star.pixel_scale[0] / psf.pixel_scale[0]
     ovy = star.pixel_scale[1] / psf.pixel_scale[1]
     gy, gx = np.indices((star.ny, star.nx), dtype=np.float)
-    gx = ovx * (gx - star.x_center)
-    gy = ovy * (gy - star.y_center)
+    gx = ovx * (gx - star.center[0])
+    gy = ovy * (gy - star.center[1])
     psfval = psf.evaluate(gx, gy, flux=1.0, x_0=0.0, y_0=0.0)
     return (star.data - star.flux * (ovx * ovy) * psfval)
 
@@ -67,14 +68,14 @@ class EPSFFitter(object):
         self.residuals = residuals
         self.fitter_kwargs = kwargs
 
-    def __call__(self, stars, psf):
-        return self.fit_psf(stars, psf)
+    def __call__(self, psf, psf_stars):
+        return self.fit_psf(psf, psf_stars)
 
-    def fit_psf(self, stars, psf):
-        return fit_stars(stars, psf)
+    def fit_psf(self, psf, psf_stars):
+        return fit_stars(psf, psf_stars)
 
 
-def fit_stars(stars, psf, psf_fit_box=5, fitter=LevMarLSQFitter(),
+def fit_stars(psf, psf_stars, psf_fit_box=5, fitter=LevMarLSQFitter(),
               fitter_kwargs={}, residuals=False):
     """
     Fit a PSF model to stars.
@@ -131,20 +132,16 @@ def fit_stars(stars, psf, psf_fit_box=5, fitter=LevMarLSQFitter(),
         flux otherwise.
 
     """
-    if not hasattr(stars, '__iter__'):
-        stars = [stars]
 
-    if len(stars) == 0:
+    if len(psf_stars) == 0:
         return []
 
     # get all stars including linked stars as a flat list:
-    all_stars = []
-    for s in stars:
-        all_stars += s.get_linked_list()
+    all_stars = psf_stars.all_psfstars
 
     # analize psf_fit_box:
-    snx = [s.nx for s in all_stars]
-    sny = [s.ny for s in all_stars]
+    snx = [s.shape[1] for s in all_stars]
+    sny = [s.shape[0] for s in all_stars]
     minfbx = min(snx)
     minfby = min(sny)
 
@@ -173,12 +170,6 @@ def fit_stars(stars, psf, psf_fit_box=5, fitter=LevMarLSQFitter(),
     # perform fitting for each star:
     fitted_stars = []
 
-    # initialize fitter (if needed):
-    if isinstance(fitter, type):
-        fit = fitter()
-    else:
-        fit = fitter
-
     # remove fitter's keyword arguments that we set ourselves:
     rem_kwd = ['x', 'y', 'z', 'weights']
     fitter_kwargs = copy.deepcopy(fitter_kwargs)
@@ -186,38 +177,30 @@ def fit_stars(stars, psf, psf_fit_box=5, fitter=LevMarLSQFitter(),
         if k in fitter_kwargs:
             del fitter_kwargs[k]
 
-    fitter_has_fit_info = hasattr(fit, 'fit_info')
+    fitter_has_fit_info = hasattr(fitter, 'fit_info')
 
     # make a copy of the original PSF:
     psf = psf.copy()
 
-    for st in stars:
-        cst = _fit_star(st, psf, fit, fitter_kwargs,
-                        fitter_has_fit_info, residuals,
-                        width, height, igx, igy)
+    for st in psf_stars:
 
-        # also fit stars linked to the left:
-        lnks = st.prev
-        while lnks is not None:
-            lnkcst = _fit_star(lnks, psf, fit, fitter_kwargs,
-                               fitter_has_fit_info, residuals,
-                               width, height, igx, igy)
-            cst.append_first(lnkcst)
-            lnks = lnks.prev
+        if isinstance(st, PSFStar):
+            cst = _fit_star(st, psf, fitter, fitter_kwargs,
+                            fitter_has_fit_info, residuals,
+                            width, height, igx, igy)
+            # cst = PSFStar
+        elif ininstance(st, LinkedPSFStar):
+            cst = _fit_star(st, psf, fitter, fitter_kwargs,
+                            fitter_has_fit_info, residuals,
+                            width, height, igx, igy)
+            #cst.constrain_linked_centers(ignore_badfit_stars=True)
+            # cst = LinkedPSFStar
+        else:
+            raise ValueError('invalid psf_star type')
 
-        # ... and fit stars linked to the right:
-        lnks = st.next
-        while lnks is not None:
-            lnkcst = _fit_star(lnks, psf, fit, fitter_kwargs,
-                               fitter_has_fit_info, residuals,
-                               width, height, igx, igy)
-            cst.append_last(lnkcst)
-            lnks = lnks.next
-
-        cst.constrain_linked_centers(ignore_badfit_stars=True)
         fitted_stars.append(cst)
 
-    return fitted_stars
+    return PSFStars(fitted_stars)
 
 
 def _fit_star(star, psf, fit, fit_kwargs, fitter_has_fit_info, residuals,
@@ -230,8 +213,8 @@ def _fit_star(star, psf, fit, fit_kwargs, fitter_has_fit_info, residuals,
     ovy = star.pixel_scale[1] / psf.pixel_scale[1]
     ny, nx = star.shape
 
-    rxc = int(py2round(star.x_center))
-    ryc = int(py2round(star.y_center))
+    rxc = int(py2round(star.center[0]))
+    ryc = int(py2round(star.center[1]))
 
     x1 = rxc - (width - 1) // 2
     x2 = x1 + width
@@ -279,7 +262,7 @@ def _fit_star(star, psf, fit, fit_kwargs, fitter_has_fit_info, residuals,
         fitted_psf = psf
         warnings.warn("Source with coordinates ({}, {}) is being ignored "
                       "because its center is outside the image."
-                      .format(star.x_center, star.y_center))
+                      .format(star.center[0], star.center[1]))
 
     elif (i2 - i1) < 3 or (j2 - j1) < 3:
         # star's center is too close to the edge of the star's image:
@@ -288,12 +271,13 @@ def _fit_star(star, psf, fit, fit_kwargs, fitter_has_fit_info, residuals,
         fitted_psf = psf
         warnings.warn("Source with coordinates ({}, {}) is being ignored "
                       "because there are too few pixels available around "
-                      "its center pixel.".format(star.x_center, star.y_center))
+                      "its center pixel.".format(star.center[0],
+                                                 star.center[1]))
 
     else:
         # define PSF sampling grid:
-        gx = (igx[j1:j2, i1:i2] - (star.x_center - x1)) * ovx
-        gy = (igy[j1:j2, i1:i2] - (star.y_center - y1)) * ovy
+        gx = (igx[j1:j2, i1:i2] - (star.center[0] - x1)) * ovx
+        gy = (igy[j1:j2, i1:i2] - (star.center[1] - y1)) * ovy
 
         # fit PSF to the star:
         scaled_data = star.data[y1:y2, x1:x2] / (ovx * ovy)
@@ -321,8 +305,15 @@ def _fit_star(star, psf, fit, fit_kwargs, fitter_has_fit_info, residuals,
 
     # compute correction to the star's position and flux:
     cst = copy.deepcopy(star)
-    cst.x_center += fitted_psf.x_0.value / ovx
-    cst.y_center += fitted_psf.y_0.value / ovy
+    #cst.x_center += fitted_psf.x_0.value / ovx
+    #cst.y_center += fitted_psf.y_0.value / ovy
+
+    x_center = cst.center[0] + fitted_psf.x_0.value / ovx
+    y_center = cst.center[1] + fitted_psf.y_0.value / ovy
+    cst.center = (x_center, y_center)
+
+
+
 
     # set "measured" star's flux based on fitted ePSF:
     cst.flux = fitted_psf.flux.value

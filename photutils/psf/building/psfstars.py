@@ -69,33 +69,54 @@ class PSFStar(object):
     def __init__(self, data, weights=None, center=None, origin=(0, 0),
                  wcs_original=None, id=None, flux=None, pixel_scale=1):
 
-        self._data = data
+        self._data = np.asanyarray(data)
+        self.shape = self._data.shape
 
         if weights is not None:
             if weights.shape != data.shape:
                 raise ValueError('weights must have the same shape as the '
                                  'input data array.')
-        self._weights = weights
+            self.weights = np.asanyarray(weights, dtype=np.float).copy()
+        else:
+            self.weights = np.ones_like(self._data, dtype=np.float)
+
+        self.mask = (self.weights <= 0.)
+
+        # mask out invalid image data
+        invalid_data = np.logical_not(np.isfinite(self._data))
+        if np.any(invalid_data):
+            self.weights[invalid_data] = 0.
+            self.mask[invalid_data] = True
 
         if center is None:
-            center = ((data.shape[1] - 1) / 2., (data.shape[0] - 1) / 2.)
+            center = np.array((data.shape[1] - 1) / 2.,
+                              (data.shape[0] - 1) / 2.)
         self.center = center
 
         self.origin = origin
         self.wcs_original = wcs_original
         self.id = id
+
+        if flux is None:
+            # compute flux so that sum(data)/flux = 1:
+            if np.any(self.mask):
+                # fill in missing data to better estimate the total flux
+                data_interp = interpolate_missing_data(self.data,
+                                                       method='cubic',
+                                                       mask=self.mask)
+                data_interp = interpolate_missing_data(data_interp,
+                                                       method='nearest',
+                                                       mask=self.mask)
+                flux = np.sum(data_interp, dtype=np.float64)
+
+            else:
+                flux = np.sum(self.data, dtype=np.float64)
         self.flux = flux
+
         self.pixel_scale = pixel_scale
 
-        self.shape = self._data.shape
-
-        # TODO: fit information:
-        self._fit_residual = None
-        self._fit_info = None
-        self._fit_error_status = None
-        self._iter_fit_status = None
-        self._iter_fit_eps = None
-        self._ignore = False
+        # TODO
+        self._fit_failed = False
 
     def __array__(self):
         """
@@ -111,46 +132,38 @@ class PSFStar(object):
 
         return self._data
 
-    @property
-    def weights(self):
-        """The 2D weights array."""
+    @lazyproperty
+    def _xy_idx(self):
+        yidx, xidx = np.indices(self._data.shape)
+        return xidx[~self.mask].ravel(), yidx[~self.mask].ravel()
 
-        return self._weights
+    @lazyproperty
+    def _xidx(self):
+        return self._xy_idx[0]
 
-    @weights.setter
-    def weights(self, weights):
-        if weights is not None:
-            if weights.shape != self._data.shape:
-                raise ValueError("'data' and 'weights' arrays must have "
-                                 "identical shapes.")
-            self._weights = np.array(weights, dtype=np.float, copy=True)
-            self._mask = self.weights > 0.0
-            self._has_bad_data = True
-
-        else:
-            self._weights = np.ones_like(self._data, dtype=np.float)
-            self._mask = np.ones_like(self._data, dtype=np.bool)
-            self._has_bad_data = False
-
-        # mask out invalid image data:
-        invalid_data = np.logical_not(np.isfinite(self._data))
-        if np.any(invalid_data):
-            self._mask[invalid_data] = False
-            self._weights[invalid_data] = 0.0
-            self._has_bad_data = True
-
-        self._x, self._y, self._v, self._w = self._compute_data_vectors()
+    @lazyproperty
+    def _yidx(self):
+        return self._xy_idx[1]
 
     @property
-    def mask(self):
-        """
-        Effective mask indicating which pixels are "valid" (True) and
-        which pixels are "defective" (False). Effective mask is computed
-        as ``weights>0``.
+    def _xidx_centered(self):
+        return self._xy_idx[0] - self.center[0]
 
-        """
-        return self._mask
+    @property
+    def _yidx_centered(self):
+        return self._xy_idx[1] - self.center[1]
 
+    @lazyproperty
+    def _data_values(self):
+        return self.data[~self.mask].ravel()
+
+    @lazyproperty
+    def _data_values_normalized(self):
+        return self._data_values / self.flux
+
+    @lazyproperty
+    def _weight_values(self):
+        return self.weights[~self.mask].ravel()
 
     @lazyproperty
     def bbox(self):
@@ -204,77 +217,10 @@ class PSFStar(object):
 #            if not np.isfinite(flux):
 #                raise ValueError("'flux' must be a finite number.")
 #            self._flux = float(flux)
-#
-#    @property
-#    def shape(self):
-#        """ Numpy style tuple of dimensions of the data array (ny, nx). """
-#        return self._data.shape
+
 
     @property
-    def nx(self):
-        """ Number of columns in the data array. """
-        return self._nx
-
-    @property
-    def ny(self):
-        """ Number of rows in the data array. """
-        return self._ny
-
-    # TODO
-    #@property
-    #def skycoord(self):
-    #    return None
-
-    @property
-    def center(self):
-        """
-        A tuple of ``x`` and ``y`` coordinates of the center of the star
-        in terms of pixels of star's image cutout.
-
-        When setting the center of the image data, a tuple of two `int` or
-        `float` may be used. If `center` is set to `None`, the center will be
-        derived by looking for a peak near the position of the maximum
-        value in the data.
-
-        """
-        return (self._cx, self._cy)
-
-    @center.setter
-    def center(self, center):
-        if center is None:
-            self._cx, self._cy = find_peak(
-                self._data, xmax=None, ymax=None,
-                peak_fit_box=self._peak_fit_box, peak_search_box=None,
-                mask=self.mask
-            )
-
-        elif hasattr(center, '__iter__') and len(center) == 2:
-            self._cx, self._cy = center
-
-        else:
-            raise TypeError("Parameter 'center' must be either None or an "
-                            "iterable with two elements.")
-
-    @property
-    def x_center(self):
-        """ X-coordinate of the center. """
-        return self._cx
-
-    @x_center.setter
-    def x_center(self, x_center):
-        self._cx = x_center
-
-    @property
-    def y_center(self):
-        """ Y-coordinate of the center. """
-        return self._cy
-
-    @y_center.setter
-    def y_center(self, y_center):
-        self._cy = y_center
-
-    @property
-    def abs_center(self):
+    def center_original(self):
         """
         A tuple of ``x`` and ``y`` coordinates of the center of the star
         relative to the center of the coordinate system (not relative to BLC
@@ -289,45 +235,11 @@ class PSFStar(object):
         re-computed using the current value of the ``blc``.
 
         """
-        return (self._cx + self._blc[0], self._cy + self._blc[1])
 
-    @abs_center.setter
-    def abs_center(self, abs_center):
-        if abs_center is None:
-            self.center = None
-            return
-        self._cx = abs_center[0] - self._blc[0]
-        self._cy = abs_center[1] - self._blc[1]
+        return (self.center[0] + self.origin[0],
+                self.center[1] + self.origin[1])
 
-    @property
-    def x_abs_center(self):
-        """
-        Get/set absolute X-coordinate of the center (including BLC).
-        When setting absolute coordinate, the (relative) center of the star is
-        re-computed using the current value of the ``blc``.
-
-        """
-        return self._cx + self._blc[0]
-
-    @x_abs_center.setter
-    def x_abs_center(self, x_abs_center):
-        self._cx = x_abs_center - self._blc[0]
-
-    @property
-    def y_abs_center(self):
-        """
-        Get/set absolute Y-coordinate of the center (including BLC).
-        When setting absolute coordinate, the (relative) center of the star is
-        re-computed using the current value of the ``blc``.
-
-        """
-        return self._cy + self._blc[1]
-
-    @y_abs_center.setter
-    def y_abs_center(self, y_abs_center):
-        self._cy = y_abs_center - self._blc[1]
-
-    def refine_center(self, **kwargs):
+    def zz_refine_center(self, **kwargs):
         """
         Improve star center by finding the maximum of a quadratic
         polynomial fitted to data in a square window of width ``peak_fit_box``
@@ -412,189 +324,17 @@ tuple of int, None, optional
             peak_fit_box=fbox, peak_search_box=sbox, mask=self.mask
         )
 
-    def _compute_data_vectors(self):
-        y, x = np.indices(self._data.shape)
-        x = x[self._mask].ravel()
-        y = y[self._mask].ravel()
-        v = self._data[self._mask].ravel()
-        w = self._weights[self._mask].ravel()
-        return(x, y, v, w)
-
-    def centered_plist(self, normalized=True):
-        """
-        Return a list of coordinates, data values, and weights of *valid*
-        pixels in input data.
-
-        Parameters
-        ----------
-
-        normalized : bool, optional
-            Normalize image data values by ``flux``.
-
-        Returns
-        -------
-
-        plist : numpy.ndarray
-            A `numpy.ndarray` of shape ``Nx4`` where ``N`` is the number of
-            valid pixels (``weights`` > 0 and ``numpy.isfinite(data)``)
-            in image data. The first two columns contain ``x`` and ``y``
-            coordinates of the *valid* pixels relative to the center of the
-            star. The third column contains (normalized) pixel values.
-            The last column contains weight associated with pixel values.
-
-        """
-        plist = np.empty((self._x.shape[0], 4), dtype=np.float)
-        plist[:, 0] = self._x - self._cx
-        plist[:, 1] = self._y - self._cy
-        if normalized:
-            plist[:, 2] = self._v / self.flux
-        else:
-            plist[:, 2] = self._v
-        plist[:, 3] = self._w
-        return plist
-
-    def absolute_plist(self, normalized=True):
-        """
-        Return a list of absolute coordinates in the original image from
-        which star's cutout was obtained, data values, and weights of *valid*
-        pixels in input data.
-
-        .. note::
-            Use `abs_center` to retrieve the center of the star in "absolute"
-            coordinates.
-
-        Parameters
-        ----------
-
-        normalized : bool, optional
-            Normalize image data values by ``flux``.
-
-        Returns
-        -------
-
-        plist : numpy.ndarray
-            A `numpy.ndarray` of shape ``Nx4`` where N is the number of valid
-            pixels (``weights`` > 0 and ``numpy.isfinite(data)``) in image
-            data. The first two columns contain ``x`` and ``y`` coordinates
-            of the *valid* pixels in the original image from which star's
-            cutout was obtained. The third column contains (normalized)
-            pixel values. The last column contains weights associated with
-            pixel values.
-
-        """
-        plist = np.empty((self._x.shape[0], 4), dtype=np.float)
-        x0, y0 = self.blc
-        plist[:, 0] = self._x - self._cx + x0
-        plist[:, 1] = self._y - self._cy + y0
-        if normalized:
-            plist[:, 2] = self._v / self.flux
-        else:
-            plist[:, 2] = self._v
-        plist[:, 3] = self._w
-        return plist
-
-    @property
-    def fit_residual(self):
-        """
-        Set/Get fit residual. It must be either a `None` or
-        a `~numpy.ndarray` object of the same shape as data. This attribute
-        is intended to hold the residual of the fit of a PSF to this
-        `Star` object.
-
-        """
-        return self._fit_residual
-
-    @fit_residual.setter
-    def fit_residual(self, fit_residual):
-        if fit_residual is None:
-            self._fit_residual = None
-        else:
-            fit_residual = np.asarray(fit_residual)
-            if fit_residual.shape != self.shape:
-                raise ValueError("'fit_residual' must be 'None' or a 2D array "
-                                 "of the same shape as this Star's data.")
-            self._fit_residual = fit_residual
-
-    @property
-    def fit_info(self):
-        """
-        Set/Get the results of the PSF fit. This attribute is intended to
-        store any kind of fit information as returned by the fitter.
-
-        """
-        return self._fit_info
-
-    @fit_info.setter
-    def fit_info(self, fit_info):
-        self._fit_info = fit_info
-
-    @property
-    def fit_error_status(self):
-        """
-        Set/Get PSF fit error status. The value of `None` indicates that
-        the fit has not been performed and the value of 0 indicates that the
-        fit was successful.
-
-        """
-        return self._fit_error_status
-
-    @fit_error_status.setter
-    def fit_error_status(self, fit_error_status):
-        self._fit_error_status = fit_error_status
-
-    @property
-    def iter_fit_status(self):
-        """
-        Set/Get PSF fit error status. The value of `None` indicates that
-        the fit has not been performed and the value of 0 indicates that the
-        fit was successful.
-
-        """
-        return self._iter_fit_status
-
-    @iter_fit_status.setter
-    def iter_fit_status(self, iter_fit_status):
-        self._iter_fit_status = iter_fit_status
-
-    @property
-    def iter_fit_eps(self):
-        """
-        Set/Get PSF fit error status. The value of `None` indicates that
-        the fit has not been performed and the value of 0 indicates that the
-        fit was successful.
-
-        """
-        return self._iter_fit_eps
-
-    @iter_fit_eps.setter
-    def iter_fit_eps(self, iter_fit_eps):
-        self._iter_fit_eps = iter_fit_eps
-
-    @property
-    def ignore(self):
-        """
-        Set/Get 'ignore' attribute that indicates whether this star
-        should be used when constructing a PSF (`True` - use this star,
-        `False` - ignore this star).
-
-        """
-        return self._ignore
-
-    @ignore.setter
-    def ignore(self, ignore):
-        self._ignore = ignore
-
     @property
     def pixel_scale(self):
         """
-        Set/Get pixel scale (in arbitrary units). Pixel scale of the star
-        can be used in conjunction with pixel scale of a PSF to determine
-        PSF's oversampling factor. Either a single floating point value or
-        a 1D iterable of length at least 2 (x-scale, y-scale) can be provided.
-        When getting pixel scale, a tuple of two values is returned with a
-        pixel scale for each axis.
-
+        Set/Get pixel scale (in arbitrary units). Pixel scale of the
+        star can be used in conjunction with pixel scale of a PSF to
+        determine PSF's oversampling factor. Either a single floating
+        point value or a 1D iterable of length at least 2 (x-scale,
+        y-scale) can be provided.  When getting pixel scale, a tuple of
+        two values is returned with a pixel scale for each axis.
         """
+
         return self._pixscale
 
     @pixel_scale.setter
@@ -615,26 +355,9 @@ tuple of int, None, optional
         else:
             self._pixscale = (float(pixel_scale), float(pixel_scale))
 
-    @property
-    def peak_fit_box(self):
-        """ Set/Get ``peak_fit_box`` property. See `Star` for more details. """
-        return self._peak_fit_box
-
-    @peak_fit_box.setter
-    def peak_fit_box(self, peak_fit_box):
-        self._peak_fit_box = peak_fit_box
-
-    @property
-    def peak_search_box(self):
-        """
-        Set/Get ``peak_search_box`` property. See `Star` for more details.
-
-        """
-        return self._peak_search_box
-
-    @peak_search_box.setter
-    def peak_search_box(self, peak_search_box):
-        self._peak_search_box = peak_search_box
+    # TODO
+    #def compute_residuals(self, psf_stars):
+    #    return 2D array of (cutout - best-fit PSF)
 
 
 class PSFStars(object):
@@ -669,7 +392,10 @@ class PSFStars(object):
             yield i
 
     def __getattr__(self, attr):
-        return [getattr(p, attr) for p in self._data]
+        if attr is 'center':
+            return np.array([getattr(p, attr) for p in self._data])
+        else:
+            return [getattr(p, attr) for p in self._data]
 
     @lazyproperty
     def all_psfstars(self):

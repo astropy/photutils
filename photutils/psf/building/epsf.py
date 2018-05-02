@@ -23,12 +23,20 @@ __all__ = ['EPSFBuilder']
 
 
 class EPSFBuilder(object):
+    """
+    Class to build the ePSF.
+
+    Parameters
+    ----------
+        # NOTE: center_accuracy_sq applies to each star
+    """
+
     def __init__(self, peak_fit_box=5, peak_search_box='fitbox',
                  recenter_accuracy=1.0e-4, recenter_max_iters=1000,
-                 ignore_badfit_stars=True, stat='median',
+                 stat='median',
                  sigma_clip=SigmaClip(sigma=3., iters=10),
                  smoothing_kernel='quar', fitter=EPSFFitter(residuals=True),
-                 max_iters=50, accuracy=1e-4, epsf=None):
+                 max_iters=50, center_accuracy=1.0e-4, epsf=None):
 
         self.peak_fit_box = peak_fit_box
         self.peak_search_box = peak_search_box
@@ -44,7 +52,6 @@ class EPSFBuilder(object):
             raise ValueError('recenter_max_iters must be a positive integer.')
         self.recenter_max_iters = recenter_max_iters
 
-        self.ignore_badfit_stars = ignore_badfit_stars
         self.stat = stat
         self.sigma_clip = sigma_clip
         self.smoothing_kernel = smoothing_kernel
@@ -55,24 +62,22 @@ class EPSFBuilder(object):
             raise ValueError('max_iters must be a positive number.')
         self.max_iters = max_iters
 
-        if accuracy <= 0.0:
-            raise ValueError('accuracy must be a positive number.')
-        self.accuracy2 = accuracy**2
+        if center_accuracy <= 0.0:
+            raise ValueError('center_accuracy must be a positive number.')
+        self.center_accuracy_sq = center_accuracy**2
 
         self.epsf = epsf
 
-    def __call__(self, stars):
-        return self.build_psf(stars)
+    def __call__(self, psfstars):
+        return self.build_psf(psfstars)
 
-    def _build_psf_step(self, stars, psf=None):
-        if len(stars) < 1:
-            raise ValueError('stars must be a list containing at least '
-                             'one Star object.')
+    def _build_psf_step(self, psf_stars, psf=None):
+        if len(psf_stars) < 1:
+            raise ValueError('psf_stars must contain at least one PSFStar '
+                             'or LinkedPSFStar object.')
 
         if psf is None:
-            psf = init_psf(stars)
-        elif isinstance(psf, type):
-            psf = init_psf(stars, psf_cls=psf)
+            psf = init_psf(psf_stars)
         else:
             psf = copy.deepcopy(psf)
 
@@ -80,33 +85,21 @@ class EPSFBuilder(object):
         ny, nx = psf.shape
         pscale_x, pscale_y = psf.pixel_scale
 
-        # get all stars including linked stars as a flat list
-        all_stars = []
-        for s in stars:
-            all_stars += s.get_linked_list()
-
         # allocate "accumulator" array (to store transformed PSFs):
         apsf = [[[] for k in range(nx)] for k in range(ny)]
 
         norm_psf_data = psf.normalized_data
 
-        for s in all_stars:
-            if s.ignore:
+        for psf_star in psf_stars.all_psfstars:
+            if psf_star._fit_failed:
                 continue
-
-            if (self.ignore_badfit_stars and
-                    s.fit_error_status is not None and
-                    s.fit_error_status > 0):
-                continue
-
-            pixlist = s.centered_plist(normalized=True)
 
             # evaluate previous PSF model at star pixel location in
             # the PSF grid
-            ovx = s.pixel_scale[0] / pscale_x
-            ovy = s.pixel_scale[1] / pscale_y
-            x = ovx * (pixlist[:, 0])
-            y = ovy * (pixlist[:, 1])
+            ovx = psf_star.pixel_scale[0] / pscale_x
+            ovy = psf_star.pixel_scale[1] / pscale_y
+            x = ovx * psf_star._xidx_centered
+            y = ovy * psf_star._yidx_centered
             old_model_vals = psf.evaluate(x=x, y=y, flux=1.0, x_0=0.0,
                                           y_0=0.0)
 
@@ -114,7 +107,8 @@ class EPSFBuilder(object):
             # and compute residuals
             ix = py2round(x + cx).astype(np.int)
             iy = py2round(y + cy).astype(np.int)
-            pv = pixlist[:, 2] / (ovx * ovy) - old_model_vals
+            pv = (psf_star._data_values_normalized / (ovx * ovy) -
+                  old_model_vals)
             m = np.logical_and(np.logical_and(ix >= 0, ix < nx),
                                np.logical_and(iy >= 0, iy < ny))
 
@@ -150,8 +144,8 @@ class EPSFBuilder(object):
 
         shift_x = 0
         shift_y = 0
-        peak_eps2 = self.recenter_accuracy**2
-        eps2_prev = None
+        peak_eps_sq = self.recenter_accuracy**2
+        eps_sq_prev = None
         y, x = np.indices(psfdata.shape, dtype=np.float)
         ePSF = psf.make_similar_from_data(psfdata)
         ePSF.fill_value = 0.0
@@ -166,11 +160,11 @@ class EPSFBuilder(object):
             dx = cx - peak_x
             dy = cy - peak_y
 
-            eps2 = dx**2 + dy**2
-            if ((eps2_prev is not None and eps2 > eps2_prev)
-                    or eps2 < peak_eps2):
+            eps_sq = dx**2 + dy**2
+            if ((eps_sq_prev is not None and eps_sq > eps_sq_prev)
+                    or eps_sq < peak_eps_sq):
                 break
-            eps2_prev = eps2
+            eps_sq_prev = eps_sq
 
             shift_x += dx
             shift_y += dy
@@ -199,96 +193,73 @@ class EPSFBuilder(object):
 
         return ePSF
 
-    def build_psf(self, stars, psf=None):
+    def build_psf(self, psf_stars, psf=None):
         """
-        Iteratively build the psf.
+        Iteratively build the PSF.
+
+        Parameters
+        ----------
+        psf_stars : `PSFStars` object
+
+        psf : `FittableImageModel2D` or `None`, optional
+
+        Returns
+        -------
+        psf : `FittableImageModel2D`
+            The constructed ePSF.
+
+        psf_stars : `PSFStars` object
+            The PSF stars with updated centers and fluxes from
+            fitting the ``psf``.
         """
 
-        #if isinstance(stars, Table):
-        #    self.stars = self._extract_stars(
-        #        data, stars, common_catalog=None, extract_size=11,
-        #        recenter=False, peak_fit_box=5, peak_search_box='fitbox',
-        #        catmap={'x': 'x', 'y': 'y', 'lon': 'lon', 'lat': 'lat',
-        #                'weight': 'weight', 'id': 'id'}, cat_name_kwd='name',
-        #        image_name_kwd='name')
-        #else:
-        #    # TODO: check if stars is a list of Stars
-        #    self.stars = stars
-
-        self.stars = stars
-
-        # get all stars (including linked stars) as a flat list
-        all_stars = []
-        for s in self.stars:
-            all_stars += s.get_linked_list()
-        nstars = len(all_stars)
-
-        # create an array of star centers
-        prev_centers = np.array([s.center for s in stars], dtype=np.float)
-
-        # initialize array for detection of oscillatory behavior
-        oscillatory = np.zeros(nstars, dtype=bool)
-        prev_failed = np.zeros(nstars, dtype=bool)
-        dxy = np.zeros((nstars, 2), dtype=np.float)
+        self.psf_stars = psf_stars
 
         iter_num = 0
-        eps2 = 2.0 * self.accuracy2
-        while (iter_num < self.max_iters and np.amax(eps2) >= self.accuracy2
-               and not np.all(oscillatory)):
+        center_dist_sq = self.center_accuracy_sq + 1
+        centers = psf_stars.center
+        nstars = psf_stars.n_psfstars
+        fit_failed = np.zeros(nstars, dtype=bool)
+        dx_dy = np.zeros((nstars, 2), dtype=np.float)
+
+        while (iter_num < self.max_iters and
+                np.max(center_dist_sq) >= self.center_accuracy_sq and
+                not np.all(fit_failed)):
+
             iter_num += 1
 
+            print('iter_num', iter_num)
+            print(psf_stars)
+
             # build/improve the PSF
-            psf = self._build_psf_step(stars, psf=psf)
+            psf = self._build_psf_step(psf_stars, psf=psf)
 
-            # fit the new PSF to the stars to find improved centers
-            stars = self.fitter(stars, psf)
+            # fit the new PSF to the psf_stars to find improved centers
+            psf_stars = self.fitter(psf, psf_stars)
 
-            # get all stars (including linked stars) as a flat list
-            all_stars = []
-            for s in stars:
-                all_stars += s.get_linked_list()
+            print(psf_stars)
 
-            # create an array of star centers at this iteration
-            centers = np.array([s.center for s in stars], dtype=np.float)
+            # find all psf stars where the fit failed
+            fit_failed = np.array([psf_star.fit_error_status > 0
+                                   for psf_star in psf_stars.all_psfstars])
 
-            # detect oscillatory behavior
-            failed = np.array([s.fit_error_status > 0 for s in stars],
-                              dtype=np.bool)
+            # permanently exclude fitting any psf star where the fit
+            # fails after 3 iterations
+            if iter_num > 3 and np.any(fit_failed):
+                #for (psf_star, failed) in zip(psf_stars.all_psfstars,
+                #                              fit_failed_new):
+                #    psf_star.fit_failed = failed
+                psf_stars.all_psfstars[fit_failed].fit_failed = True
 
-            # exclude oscillatory stars after 3 iterations
-            if iter_num > 3:
-                oscillatory = np.logical_and(prev_failed,
-                                             np.logical_not(failed))
-                for s, osc in zip(stars, oscillatory):
-                    s.ignore = bool(osc)
-                prev_failed = failed
+            dx_dy = psf_stars.center - centers
+            dx_dy = dx_dy[np.logical_not(fit_failed)]
+            center_dist_sq = np.sum(dx_dy * dx_dy, axis=1, dtype=np.float64)
+            centers = psf_stars.center
 
-            # check termination criterion
-            good_mask = np.logical_not(np.logical_or(failed, oscillatory))
-            dxy = centers - prev_centers
-            mdxy = dxy[good_mask]
-            eps2 = np.sum(mdxy * mdxy, axis=1, dtype=np.float64)
-            prev_centers = centers
-
-        # TODO: make compute_residuals a method of Stars
-        # compute residuals
-        #if residuals:
-        #    res = compute_residuals(psf, all_stars)
-        #else:
-        #    res = len(all_stars) * [None]
-        #
-        #for s, r in zip(all_stars, res):
-        #    s.fit_residual = r
-
-        # assign coordinate residuals of the iterative process
-        for s, (dx, dy) in zip(all_stars, dxy):
-            s.iter_fit_eps = (float(dx), float(dy))
-
-        # TODO: return iter_num as Stars attribute
-        return psf, stars
+        return psf, psf_stars
 
 
-def init_psf(stars, shape=None, oversampling=4.0, pixel_scale=None,
+def init_psf(psf_stars, shape=None, oversampling=4.0, pixel_scale=None,
              psf_cls=PSF2DModel, **kwargs):
     """
     Parameters
@@ -329,11 +300,6 @@ optional
             "At least one of these two parameters must be provided."
         )
 
-    # get all stars including linked stars as a flat list:
-    all_stars = []
-    for s in stars:
-        all_stars += s.get_linked_list()
-
     # find pixel scale:
     if pixel_scale is None:
         ovx, ovy = _parse_tuple_pars(oversampling, name='oversampling',
@@ -341,9 +307,9 @@ optional
 
         # compute PSF's pixel scale as the smallest scale of the stars
         # divided by the requested oversampling factor:
-        pscale_x, pscale_y = all_stars[0].pixel_scale
-        for s in all_stars[1:]:
-            px, py = s.pixel_scale
+        pscale_x, pscale_y = psf_stars.all_psfstars[0].pixel_scale
+        for psf_star in psf_stars.all_psfstars[1:]:
+            px, py = psf_star.pixel_scale
             if px < pscale_x:
                 pscale_x = px
             if py < pscale_y:
@@ -359,23 +325,28 @@ optional
     # if shape is None, find the minimal shape that will include input star's
     # data:
     if shape is None:
-        w = np.array([((s.x_center + 0.5) * s.pixel_scale[0] / pscale_x,
-                       (s.nx - s.x_center - 0.5) * s.pixel_scale[0] / pscale_x)
-                      for s in all_stars])
-        h = np.array([((s.y_center + 0.5) * s.pixel_scale[1] / pscale_y,
-                       (s.ny - s.y_center - 0.5) * s.pixel_scale[1] / pscale_y)
-                      for s in all_stars])
+        for psf_star in psf_stars.all_psfstars:
+            w = np.array([((psf_star.center[0] + 0.5) *
+                           psf_star.pixel_scale[0] / pscale_x,
+                           (psf_star.shape[1] - psf_star.center[0] - 0.5) *
+                           psf_star.pixel_scale[0] / pscale_x)])
+
+            h = np.array([((psf_star.center[1] + 0.5) *
+                           psf_star.pixel_scale[1] / pscale_y,
+                           (psf_star.shape[0] - psf_star.center[1] - 0.5) *
+                           psf_star.pixel_scale[1] / pscale_y)])
 
         # size of the PSF in the input image pixels
-        # (the image with min(pixel_scale)):
+        # (the image with min(pixel_scale))
         nx = int(np.ceil(np.amax(w / ovx + 0.5)))
         ny = int(np.ceil(np.amax(h / ovy + 0.5)))
 
-        # account for a maximum error of 1 pix in the initial star coordinates:
+        # account for a maximum error of 1 pix in the initial star
+        # coordinates
         nx += 2
         ny += 2
 
-        # convert to oversampled pixels:
+        # convert to oversampled pixels
         nx = int(np.ceil(np.amax(nx * ovx + 0.5)))
         ny = int(np.ceil(np.amax(ny * ovy + 0.5)))
 
