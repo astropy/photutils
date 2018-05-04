@@ -218,7 +218,7 @@ class EPSFBuilder(object):
         iter_num = 0
         center_dist_sq = self.center_accuracy_sq + 1
         centers = psf_stars.cutout_center
-        nstars = psf_stars.n_psfstars
+        nstars = psf_stars.npsfstars
         fit_failed = np.zeros(nstars, dtype=bool)
         dx_dy = np.zeros((nstars, 2), dtype=np.float)
 

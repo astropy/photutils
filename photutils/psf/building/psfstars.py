@@ -14,7 +14,7 @@ from ...aperture import BoundingBox
 from .utils import interpolate_missing_data
 
 
-__all__ = ['PSFStar', 'LinkedPSFStar', 'PSFStars', 'extract_stars']
+__all__ = ['PSFStar', 'PSFStars', 'LinkedPSFStar', 'extract_stars']
 
 
 class PSFStar(object):
@@ -264,17 +264,23 @@ class PSFStar(object):
 
 class PSFStars(object):
     """
-    Class to hold a list of `PSFStar` objects.
+    Class to hold a list of `PSFStar` and/or `LinkedPSFStar` objects.
+
+    Parameters
+    ----------
+    star_list : list of `PSFStar` or `LinkedPSFStar` objects
+        A list of `PSFStar` and/or `LinkedPSFStar` objects.
     """
 
     def __init__(self, stars_list):
-        if isinstance(stars_list, PSFStar):
+        if (isinstance(stars_list, PSFStar) or
+                isinstance(stars_list, LinkedPSFStar)):
             self._data = [stars_list]
         elif isinstance(stars_list, list):
             self._data = stars_list
         else:
-            raise ValueError('stars_list must be a list of PSFStar objects '
-                             'or a single PSFStar object.')
+            raise ValueError('stars_list must be a list of PSFStar and/or '
+                             'LinkedPSFStar objects.')
 
     def __len__(self):
         return len(self._data)
@@ -294,19 +300,19 @@ class PSFStars(object):
             yield i
 
     def __getattr__(self, attr):
-        if attr is 'cutout_center':
-            return np.array([getattr(p, attr) for p in self._data])
+        if attr in ['cutout_center', 'center', 'flux']:
+            return np.array([getattr(star, attr) for star in self._data])
         else:
-            return [getattr(p, attr) for p in self._data]
+            return [getattr(star, attr) for star in self._data]
 
     @lazyproperty
     def all_psfstars(self):
         """
-        A list of all `PSFStar` objects, including linked stars, as a
+        A list of all `PSFStar` objects stored in this object, including
+        those that comprise linked stars (i.e. `LinkedPSFStar`), as a
         flat list.
         """
 
-        # assumes only a single level of lists
         psf_stars = []
         for item in self._data:
             if isinstance(item, LinkedPSFStar):
@@ -319,90 +325,96 @@ class PSFStars(object):
         return psf_stars
 
     @lazyproperty
-    def n_stars(self):
-        """The number of stars."""
+    def nstars(self):
+        """
+        The total number of stars.
+
+        A linked star represents a single star.
+        """
 
         return len(self._data)
 
     @lazyproperty
-    def n_psfstars(self):
-        """The number of `PSFStar` objects, including linked stars."""
+    def npsfstars(self):
+        """
+        The total number of `PSFStar` objects, including all the linked
+        stars within `LinkedPSFStar`.
+        """
 
         return len(self.all_psfstars)
 
-    def get_centers(self):
-        centers = []
-        #for star in self._data:
-        #    if star.
-        pass
-
 
 class LinkedPSFStar(PSFStars):
+    """
+    A class to hold a list of `PSFStar` objects for linked stars.
+
+    Linked stars are `PSFStar` cutouts from different images that
+    represent the same physical star.  When building the PSF, linked
+    stars are constrained to have the same sky coordinates.
+
+    Parameters
+    ----------
+    star_list : list of `PSFStar` objects
+        A list of `PSFStar` objects for the same physical star.  Each
+        `PSFStar` object must have a valid ``wcs_large`` attribute to
+        convert between pixel and sky coordinates.
+    """
+
     def __init__(self, stars_list):
+        for star in stars_list:
+            if not isinstance(star, PSFStar):
+                return ValueError('stars_list must contain only PSFStar '
+                                  'objects.')
+            if star.wcs_large is None:
+                return ValueError('Each PSFStar object must have a valid '
+                                  'wcs_large attribute.')
+
         super(LinkedPSFStar, self).__init__(stars_list)
 
-    def todo_constrain_linked_centers(self, ignore_badfit_stars=True):
+    def constrain_centers(self):
         """
-        Constrains the coordinates of star centers (in image
-        coordinates).
+        Constrain the centers of linked PSFStar objects (i.e. the same
+        physical star) to have the same sky coordinate.
 
-        This is achieved by constraining star centers of all linked
-        stars to correspond to a single sky coordinate obtained by
-        computing weighted mean of world coorinates (before
-        constraining) of star centers of linked stars.
-
-        Parameters
-        ----------
-
-        ignore_badfit_stars : bool, optional
-            Do not use stars that have fit error status >0 or that have
-            ``ignore`` attribute set to ``True`` in computing mean
-            world coordinate.
-
+        The single sky coordinate is calculated as the mean of sky
+        coordinates of the linked stars.
         """
-        # first, check that this star is linked to other stars:
-        if self.next is None and self.prev is None:
-            return  # nothing to do
 
-        # second, select only those linked stars that have a valid WCS:
-        stars = [s for s in self.get_linked_list() if s.wcs is not None]
-        if len(stars) < 2:
-            return  # nothing to do
+        if len(self._data) < 2:   # no linked stars
+            return
 
-        # find centers of the stars in world coordinates:
+        good_stars = self._data[np.logical_not(self._excluded_from_fit)]
 
-        w = np.asarray(
-            [s.wcs.all_pix2world(s.x_abs_center, s.y_abs_center, 0) +
-             [s.star_weight]
-             for s in stars if (ignore_badfit_stars and
-                                ((s.fit_error_status is not None and
-                                  s.fit_error_status > 0) or s.ignore))
-             ]
-        )
+        coords = []
+        for star in good_stars:
+            coords.append(star.wcs_large.all_pix2world(self.center[0],
+                                                       self.center[1], 0))
 
-        lon = w[:, 0]
-        lat = w[:, 1]
+        # compute mean cartesian coordinates
+        lon, lat = np.transpose(coords)
+        x_mean = np.mean(np.cos(lat) * np.cos(lon))
+        y_mean = np.mean(np.cos(lat) * np.sin(lon))
+        z_mean = np.mean(np.sin(lat))
 
-        # compute mean cartesian coordinates:
-        wt = w[:, 2] / np.sum(w[:, 2], dtype=np.float64)
-        xm = (wt * np.cos(lat) * np.cos(lon)).sum(dtype=np.float)
-        ym = (wt * np.cos(lat) * np.sin(lon)).sum(dtype=np.float)
-        zm = (wt * np.sin(lat)).sum(dtype=np.float)
+        # convert mean cartesian coordinates back to spherical
+        hypot = np.hypot(x_mean, y_mean)
+        lon = np.arctan2(y_mean, x_mean)
+        lat = np.arctan2(z_mean, hypot)
 
-        # convert cartesian coordinates back to spherical:
-        hyp = np.hypot(xm, ym)
-        lon = np.arctan2(ym, xm)
-        lat = np.arctan2(zm, hyp)
-
-        # compute new centers:
-        for s in stars:
-            s.abs_center = list(map(float, s.wcs.all_world2pix(lon, lat, 0)))
+        # convert mean sky coordinates back to center pixel coordinates
+        # for each star
+        for star in good_stars:
+            center = np.array(star.wcs_large.all_world2pix(lon, lat, 0))
+            star.cutout_center = center - star.origin
 
 
 def extract_stars(data, catalogs, size=(11, 11)):
     """
     Extract cutout images centered on stars defined in the input
     catalog(s).
+
+    Stars where the cutout array bounds partially or completely lie
+    outside of the input ``data`` image will not be extracted.
 
     Parameters
     ----------
@@ -546,7 +558,31 @@ def _extract_stars(data, catalog, size=(11, 11)):
 
     Parameters
     ----------
-    size : tuple of two int, optional
+    data : `~astropy.nddata.NDData`
+        A `~astropy.nddata.NDData` object containing the 2D image from
+        which to extract the stars.  If the input ``catalog`` contains
+        only the sky coordinates (i.e. not the pixel coordinates) of the
+        stars then the `~astropy.nddata.NDData` object must have a valid
+        ``wcs`` attribute.
+
+    catalogs : `~astropy.table.Table`
+        A single catalog of sources to be extracted from the input
+        ``data``.  The center of each source can be defined either in
+        pixel coordinates (in ``x`` and ``y`` columns) or sky
+        coordinates (in a ``skycoord`` column containing a
+        `~astropy.coordinates.SkyCoord` object).  If both are specified,
+        then the pixel coordinates will be used.
+
+    size : int or array_like (int), optional
+        The extraction box size along each axis.  If ``size`` is a
+        scalar then a square box of size ``size`` will be used.  If
+        ``size`` has two elements, they should be in ``(ny, nx)`` order.
+        The size must be greater than or equal to 3 pixel for both axes.
+
+    Returns
+    -------
+    stars : list of `PSFStar` objects
+        A list of `PSFStar` instances containing the extracted stars.
     """
 
     colnames = catalog.colnames
