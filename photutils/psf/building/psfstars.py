@@ -188,9 +188,38 @@ class PSFStar(object):
 
         return flux
 
-    # TODO
-    #def compute_residuals(self, psf_stars):
-    #    return 2D array of (cutout - best-fit PSF)
+    def register_psf(self, psf):
+        """
+        Register and scale (in flux) the input ``psf`` to the star.
+
+        Parameters
+        ----------
+        psf : `PSF2DModel`
+            The point-spread function (PSF).
+        """
+
+        x_oversamp = self.pixel_scale[0] / psf.pixel_scale[0]
+        y_oversamp = self.pixel_scale[1] / psf.pixel_scale[1]
+
+        yy, xx = np.indices(self.shape, dtype=np.float)
+        xx = x_oversamp * (xx - self.cutout_center[0])
+        yy = y_oversamp * (yy - self.cutout_center[1])
+
+        return (self.flux * x_oversamp * y_oversamp *
+                psf.evaluate(xx, yy, flux=1.0, x_0=0.0, y_0=0.0))
+
+    def compute_residual_image(self, psf):
+        """
+        Compute the residual image of the data minus the
+        registered/scaled PSF.
+
+        Parameters
+        ----------
+        psf : `PSF2DModel`
+            The point-spread function (PSF).
+        """
+
+        return self.data - self.register_psf(psf)
 
     @lazyproperty
     def _xy_idx(self):
