@@ -91,7 +91,7 @@ class EPSFBuilder(object):
         norm_psf_data = psf.normalized_data
 
         for psf_star in psf_stars.all_psfstars:
-            if psf_star._fit_failed:
+            if psf_star._excluded_from_fit:
                 continue
 
             # evaluate previous PSF model at star pixel location in
@@ -217,7 +217,7 @@ class EPSFBuilder(object):
 
         iter_num = 0
         center_dist_sq = self.center_accuracy_sq + 1
-        centers = psf_stars.center
+        centers = psf_stars.cutout_center
         nstars = psf_stars.n_psfstars
         fit_failed = np.zeros(nstars, dtype=bool)
         dx_dy = np.zeros((nstars, 2), dtype=np.float)
@@ -249,12 +249,12 @@ class EPSFBuilder(object):
                 #for (psf_star, failed) in zip(psf_stars.all_psfstars,
                 #                              fit_failed_new):
                 #    psf_star.fit_failed = failed
-                psf_stars.all_psfstars[fit_failed].fit_failed = True
+                psf_stars.all_psfstars[fit_failed]._excluded_from_fit = True
 
-            dx_dy = psf_stars.center - centers
+            dx_dy = psf_stars.cutout_center - centers
             dx_dy = dx_dy[np.logical_not(fit_failed)]
             center_dist_sq = np.sum(dx_dy * dx_dy, axis=1, dtype=np.float64)
-            centers = psf_stars.center
+            centers = psf_stars.cutout_center
 
         return psf, psf_stars
 
@@ -326,15 +326,15 @@ optional
     # data:
     if shape is None:
         for psf_star in psf_stars.all_psfstars:
-            w = np.array([((psf_star.center[0] + 0.5) *
+            w = np.array([((psf_star.cutout_center[0] + 0.5) *
                            psf_star.pixel_scale[0] / pscale_x,
-                           (psf_star.shape[1] - psf_star.center[0] - 0.5) *
-                           psf_star.pixel_scale[0] / pscale_x)])
+                           (psf_star.shape[1] - psf_star.cutout_center[0] -
+                            0.5) * psf_star.pixel_scale[0] / pscale_x)])
 
-            h = np.array([((psf_star.center[1] + 0.5) *
+            h = np.array([((psf_star.cutout_center[1] + 0.5) *
                            psf_star.pixel_scale[1] / pscale_y,
-                           (psf_star.shape[0] - psf_star.center[1] - 0.5) *
-                           psf_star.pixel_scale[1] / pscale_y)])
+                           (psf_star.shape[0] - psf_star.cutout_center[1] -
+                            0.5) * psf_star.pixel_scale[1] / pscale_y)])
 
         # size of the PSF in the input image pixels
         # (the image with min(pixel_scale))

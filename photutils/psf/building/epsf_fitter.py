@@ -20,8 +20,8 @@ def _calc_res(psf, star):
     ovx = star.pixel_scale[0] / psf.pixel_scale[0]
     ovy = star.pixel_scale[1] / psf.pixel_scale[1]
     gy, gx = np.indices((star.ny, star.nx), dtype=np.float)
-    gx = ovx * (gx - star.center[0])
-    gy = ovy * (gy - star.center[1])
+    gx = ovx * (gx - star.cutout_center[0])
+    gy = ovy * (gy - star.cutout_center[1])
     psfval = psf.evaluate(gx, gy, flux=1.0, x_0=0.0, y_0=0.0)
     return (star.data - star.flux * (ovx * ovy) * psfval)
 
@@ -213,8 +213,8 @@ def _fit_star(star, psf, fit, fit_kwargs, fitter_has_fit_info, residuals,
     ovy = star.pixel_scale[1] / psf.pixel_scale[1]
     ny, nx = star.shape
 
-    rxc = int(py2round(star.center[0]))
-    ryc = int(py2round(star.center[1]))
+    rxc = int(py2round(star.cutout_center[0]))
+    ryc = int(py2round(star.cutout_center[1]))
 
     x1 = rxc - (width - 1) // 2
     x2 = x1 + width
@@ -262,7 +262,7 @@ def _fit_star(star, psf, fit, fit_kwargs, fitter_has_fit_info, residuals,
         fitted_psf = psf
         warnings.warn("Source with coordinates ({}, {}) is being ignored "
                       "because its center is outside the image."
-                      .format(star.center[0], star.center[1]))
+                      .format(star.cutout_center[0], star.cutout_center[1]))
 
     elif (i2 - i1) < 3 or (j2 - j1) < 3:
         # star's center is too close to the edge of the star's image:
@@ -271,13 +271,13 @@ def _fit_star(star, psf, fit, fit_kwargs, fitter_has_fit_info, residuals,
         fitted_psf = psf
         warnings.warn("Source with coordinates ({}, {}) is being ignored "
                       "because there are too few pixels available around "
-                      "its center pixel.".format(star.center[0],
-                                                 star.center[1]))
+                      "its center pixel.".format(star.cutout_center[0],
+                                                 star.cutout_center[1]))
 
     else:
         # define PSF sampling grid:
-        gx = (igx[j1:j2, i1:i2] - (star.center[0] - x1)) * ovx
-        gy = (igy[j1:j2, i1:i2] - (star.center[1] - y1)) * ovy
+        gx = (igx[j1:j2, i1:i2] - (star.cutout_center[0] - x1)) * ovx
+        gy = (igy[j1:j2, i1:i2] - (star.cutout_center[1] - y1)) * ovy
 
         # fit PSF to the star:
         scaled_data = star.data[y1:y2, x1:x2] / (ovx * ovy)
@@ -308,9 +308,9 @@ def _fit_star(star, psf, fit, fit_kwargs, fitter_has_fit_info, residuals,
     #cst.x_center += fitted_psf.x_0.value / ovx
     #cst.y_center += fitted_psf.y_0.value / ovy
 
-    x_center = cst.center[0] + fitted_psf.x_0.value / ovx
-    y_center = cst.center[1] + fitted_psf.y_0.value / ovy
-    cst.center = (x_center, y_center)
+    x_center = cst.cutout_center[0] + fitted_psf.x_0.value / ovx
+    y_center = cst.cutout_center[1] + fitted_psf.y_0.value / ovy
+    cst.cutout_center = (x_center, y_center)
 
 
 

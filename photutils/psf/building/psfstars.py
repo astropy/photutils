@@ -1,19 +1,16 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-
 import warnings
+
 import numpy as np
-from astropy.table import Table
 from astropy.nddata import NDData
-from astropy.nddata.nddata import UnknownUncertainty
 from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
                                   NoOverlapError)
-from astropy import wcs
-from astropy.wcs.utils import skycoord_to_pixel
+from astropy.table import Table
 from astropy.utils import lazyproperty
+from astropy.wcs.utils import skycoord_to_pixel
 
 from ...aperture import BoundingBox
-from .centroid import find_peak
 from .utils import interpolate_missing_data
 
 
@@ -27,47 +24,50 @@ class PSFStar(object):
     Parameters
     ----------
     data : `~numpy.ndarray`
-        A 2D cutout image of a single star/source.
+        A 2D cutout image of a single star.
 
     weights : `~numpy.ndarray` or `None`, optional
         A 2D array of the weights associated with the input ``data``.
 
-    center : tuple of two floats or `None`, optional
+    cutout_center : tuple of two floats or `None`, optional
         The ``(x, y)`` position of the star's center with respect to the
-        input ``data`` array.  If `None`, then the center of of the
-        input ``data`` array will be used.
-
-        TODO: One can use the :meth:`~Star.recenter` method to further
-        refine the center position.
+        input cutout ``data`` array.  If `None`, then the center of of
+        the input cutout ``data`` array will be used.
 
     origin : tuple of two int, optional
         The ``(x, y)`` index of the origin (bottom-left corner) pixel of
         the input cutout array with respect to the original array from
         which the cutout was extracted.  This can be used to convert
         positions within the cutout image to positions in the original
-        image.  The ``origin`` and ``wcs`` must both be input for linked
-        stars (i.e. the same star extracted from different images).
+        image.  ``origin`` and ``wcs_large`` must both be input for a
+        linked star (a single star extracted from different images).
 
-    wcs_original : `~astropy.wcs.WCS` or None, optional
-        A WCS object associated with the *original* image from which the
-        cutout array was extracted.  It should *not* be a WCS object
-        associated with the input cutout ``data`` array.  The ``origin``
-        and ``wcs`` must both be input for linked stars (i.e. the same
-        star extracted from different images).
+    wcs_large : `~astropy.wcs.WCS` or None, optional
+        A WCS object associated with the large image from which the
+        cutout array was extracted.  It should not be the WCS object of
+        the input cutout ``data`` array.  ``origin`` and ``wcs_large``
+        must both be input for a linked star (a single star extracted
+        from different images).
 
-    id : int, str, or `None`, optional
-        An identification number or label for the star.
+    id_label : int, str, or `None`, optional
+        An optional identification number or label for the star.
 
-    todo_flux: float, None
-        Fitted flux or initial estimate of the flux.
-
-    todo_pixel_scale : float, str {'wcs'}, optional
-        Pixel scale. When pixel_scale is 'wcs', pixel scale will be inferred
-        from the ``wcs`` argument (which *must* be provided in this case).
+    pixel_scale : float or tuple of two floats, optional
+        The pixel scale (in arbitrary units) of the input ``data``.
+        ``pixel_scale`` can either be a single float or tuple of two
+        floats of the form ``(x_pixscale, y_pixscale)``.  If
+        ``pixel_scale`` is a scalar then the pixel scale will be the
+        same for both the x and y axes.  The star ``pixel_scale`` is
+        used in conjunction with the PSF pixel scale or oversampling
+        factor when building and fitting the PSF.  The ratio of the
+        star-to-PSF pixel scales represents the PSF oversampling factor.
+        ``pixel_scale`` allows for building (and fitting) a PSF using
+        images of stars with different pixel scales (e.g. velocity
+        aberrations).
     """
 
-    def __init__(self, data, weights=None, center=None, origin=(0, 0),
-                 wcs_original=None, id=None, flux=None, pixel_scale=1):
+    def __init__(self, data, weights=None, cutout_center=None, origin=(0, 0),
+                 wcs_large=None, id_label=None, pixel_scale=1.):
 
         self._data = np.asanyarray(data)
         self.shape = self._data.shape
@@ -88,35 +88,19 @@ class PSFStar(object):
             self.weights[invalid_data] = 0.
             self.mask[invalid_data] = True
 
-        if center is None:
-            center = np.array((data.shape[1] - 1) / 2.,
-                              (data.shape[0] - 1) / 2.)
-        self.center = center
+        self._cutout_center = cutout_center
+        self.origin = np.asarray(origin)
+        self.wcs_large = wcs_large
+        self.id_label = id_label
 
-        self.origin = origin
-        self.wcs_original = wcs_original
-        self.id = id
-
-        if flux is None:
-            # compute flux so that sum(data)/flux = 1:
-            if np.any(self.mask):
-                # fill in missing data to better estimate the total flux
-                data_interp = interpolate_missing_data(self.data,
-                                                       method='cubic',
-                                                       mask=self.mask)
-                data_interp = interpolate_missing_data(data_interp,
-                                                       method='nearest',
-                                                       mask=self.mask)
-                flux = np.sum(data_interp, dtype=np.float64)
-
-            else:
-                flux = np.sum(self.data, dtype=np.float64)
-        self.flux = flux
-
+        pixel_scale = np.atleast_1d(pixel_scale)
+        if len(pixel_scale) == 1:
+            pixel_scale = np.repeat(pixel_scale, 2)
         self.pixel_scale = pixel_scale
 
-        # TODO
-        self._fit_failed = False
+        self.flux = self.estimate_flux()
+
+        self._excluded_from_fit = False
 
     def __array__(self):
         """
@@ -132,232 +116,150 @@ class PSFStar(object):
 
         return self._data
 
+    @property
+    def cutout_center(self):
+        """
+        A `~numpy.ndarray` of the ``(x, y)`` position of the star's
+        center with respect to the input cutout ``data`` array.
+        """
+
+        return self._cutout_center
+
+    @cutout_center.setter
+    def cutout_center(self, value):
+        if value is None:
+            value = ((self.shape[1] - 1) / 2., (self.shape[0] - 1) / 2.)
+        else:
+            if len(value) != 2:
+                raise ValueError('The "cutout_center" attribute must have '
+                                 'two elements in (x, y) form.')
+
+        self._cutout_center = np.asarray(value)
+
+    @property
+    def center(self):
+        """
+        A `~numpy.ndarray` of the ``(x, y)`` position of the star's
+        center in the original (large) image (not the cutout image).
+        """
+
+        return (self.cutout_center + self.origin)
+
+    @lazyproperty
+    def slices(self):
+        """
+        A tuple of two slices representing the cutout region with
+        respect to the original (large) image.
+        """
+
+        return (slice(self.origin[1], self.origin[1] + self.shape[1]),
+                slice(self.origin[0], self.origin[0] + self.shape[0]))
+
+    @lazyproperty
+    def bbox(self):
+        """
+        The minimal `~photutils.aperture.BoundingBox` for the cutout
+        region with respect to the original (large) image.
+        """
+
+        return BoundingBox(self.slices[1].start, self.slices[1].stop,
+                           self.slices[0].start, self.slices[0].stop)
+
+    def estimate_flux(self):
+        """
+        Estimate the star's flux by summing values in the input cutout
+        array.
+
+        Missing data is filled in by interpolation to better estimate
+        the total flux.
+        """
+
+        if np.any(self.mask):
+            data_interp = interpolate_missing_data(self.data,
+                                                   method='cubic',
+                                                   mask=self.mask)
+            data_interp = interpolate_missing_data(data_interp,
+                                                   method='nearest',
+                                                   mask=self.mask)
+            flux = np.sum(data_interp, dtype=np.float64)
+
+        else:
+            flux = np.sum(self.data, dtype=np.float64)
+
+        return flux
+
+    # TODO
+    #def compute_residuals(self, psf_stars):
+    #    return 2D array of (cutout - best-fit PSF)
+
     @lazyproperty
     def _xy_idx(self):
+        """
+        1D arrays of x and y indices of unmasked pixels in the cutout
+        reference frame.
+        """
+
         yidx, xidx = np.indices(self._data.shape)
         return xidx[~self.mask].ravel(), yidx[~self.mask].ravel()
 
     @lazyproperty
     def _xidx(self):
+        """
+        1D arrays of x indices of unmasked pixels in the cutout
+        reference frame.
+        """
+
         return self._xy_idx[0]
 
     @lazyproperty
     def _yidx(self):
+        """
+        1D arrays of y indices of unmasked pixels in the cutout
+        reference frame.
+        """
+
         return self._xy_idx[1]
 
     @property
     def _xidx_centered(self):
-        return self._xy_idx[0] - self.center[0]
+        """
+        1D array of x indices of unmasked pixels, with respect to the
+        star center, in the cutout reference frame.
+        """
+
+        return self._xy_idx[0] - self.cutout_center[0]
 
     @property
     def _yidx_centered(self):
-        return self._xy_idx[1] - self.center[1]
+        """
+        1D array of y indices of unmasked pixels, with respect to the
+        star center, in the cutout reference frame.
+        """
+
+        return self._xy_idx[1] - self.cutout_center[1]
 
     @lazyproperty
     def _data_values(self):
+        """1D array of unmasked cutout data values."""
+
         return self.data[~self.mask].ravel()
 
     @lazyproperty
     def _data_values_normalized(self):
+        """
+        1D array of unmasked cutout data values, normalized by the
+        star's total flux.
+        """
+
         return self._data_values / self.flux
 
     @lazyproperty
     def _weight_values(self):
+        """
+        1D array of unmasked weight values.
+        """
+
         return self.weights[~self.mask].ravel()
-
-    @lazyproperty
-    def bbox(self):
-        """
-        The minimal `~photutils.aperture.BoundingBox` for cutout region
-        with respect to the original image.
-        """
-
-        return BoundingBox(self.origin[0], self.origin[0] + self.shape[0],
-                           self.origin[1], self.origin[1] + self.shape[1])
-
-
-
-
-    #@property
-    #def flux(self):
-    #    """
-    #    Set/get fitted flux. Setting flux to `None` will set the flux
-    #    to the sum of the values of all data pixels.
-
-    #    .. note::
-    #        If ``data`` contains invalid values (i.e., not finite or for which
-    #        ``weights`` == 0), those pixels are first interpolated over using
-    #        a cubic spline if possible, and when they cannot be interpolated
-    #        over using a spline, they are interpolated using nearest-neighbor
-    #        interpolation.
-#
-#        """
-#        return self._flux
-
-#    #@flux.setter
-#    def __zflux(self, flux):
-#        if flux is None:
-#            # compute flux so that sum(data)/flux = 1:
-#            if self._has_bad_data:
-#                # fill in missing data so as to better estimate "total"
-#                # (within image data) flux of the star:
-#                idata = interpolate_missing_data(self._data, method='cubic',
-#                                                 mask=self._mask)
-#                idata = interpolate_missing_data(idata, method='nearest',
-#                                                 mask=self._mask)
-#                self._flux = np.abs(np.sum(idata, dtype=np.float64))
-#
-#            else:
-#                self._flux = np.abs(np.sum(self._data, dtype=np.float64))
-#
-#            if not np.isfinite(self._flux):
-#                self._flux = 1.0
-#
-#        else:
-#            if not np.isfinite(flux):
-#                raise ValueError("'flux' must be a finite number.")
-#            self._flux = float(flux)
-
-
-    @property
-    def center_original(self):
-        """
-        A tuple of ``x`` and ``y`` coordinates of the center of the star
-        relative to the center of the coordinate system (not relative to BLC
-        as returned by the ``center``).
-
-        When setting the center of the image data, a tuple of two `int` or
-        `float` may be used. If ``center`` is set to `None`, the center will be
-        derived by looking for a peak near the position of the maximum
-        value in the data.
-
-        When setting absolute coordinates, the (relative) center of the star is
-        re-computed using the current value of the ``blc``.
-
-        """
-
-        return (self.center[0] + self.origin[0],
-                self.center[1] + self.origin[1])
-
-    def zz_refine_center(self, **kwargs):
-        """
-        Improve star center by finding the maximum of a quadratic
-        polynomial fitted to data in a square window of width ``peak_fit_box``
-        near currently defined star's center.
-
-        Parameters
-        ----------
-    recenter : bool, optional
-        Indicates that a new source position should be estimated by fitting a
-        quadratic polynomial to pixels around the star's center
-        (either provided by ``center`` or by performing a brute-search of
-        the peak pixel value within a specified search box - see
-        ``peak_search_box`` parameter for more details). This may be useful if
-        the position of the center of the star is not very accurate.
-
-        .. note::
-            Keep in mind that the results of finding star's peak position
-            may be sub-optimal on undersampled images. However, this
-            method of peak finding (fitting a quadratic 2D polynomial)
-            is used only at this stage of determining the PSF (i.e., at the
-            stage of extracting star cutouts) and
-            the iterative process of refining PSF uses PSF fitting to stars at
-            all subsequent stages.
-
-    peak_fit_box : int, tuple of int, optional
-        Size (in pixels) of the box around the center of the star (or around
-        stars' peak if peak was searched for - see ``peak_search_box`` for
-        more details) to be used for quadratic fitting from which peak location
-        is computed. If a single integer number is provided, then it is assumed
-        that fitting box is a square with sides of length given by
-        ``peak_fit_box``. If a tuple of two values is provided, then first
-        value indicates the width of the box and the second value indicates
-        the height of the box.
-
-    peak_search_box :  str {'all', 'off', 'fitbox'}, int, tuple of int, None,\
-optional
-        Size (in pixels) of the box around the center of the input star
-        to be used for brute-force search of the maximum value pixel. This
-        search is performed before quadratic fitting in order to improve
-        the original estimate of the peak location. If a single integer
-        number is provided, then it is assumed that search box is a square
-        with sides of length given by ``peak_fit_box``. If a tuple of two
-        values is provided, then first value indicates the width of the box
-        and the second value indicates the height of the box. ``'off'`` or
-        `None` turns off brute-force search of the maximum. When
-        ``peak_search_box`` is ``'all'`` then the entire cutout of the
-        star is searched for maximum and when it is set to ``'fitbox'`` then
-        the brute-force search is performed in the same box as
-        ``peak_fit_box``.
-
-
-
-
-
-        **kwargs : dict-like, optional
-            Additional optional keyword arguments. When present, these
-            arguments override values set in a `Star` object when it was
-            itnitialized.
-
-            Possible values are:
-
-            - **peak_fit_box** : int, tuple of int, optional
-              Size (in pixels) of the box around the center of the star
-              used for quadratic fitting based on which peak location
-              is computed. See `Star` for more details.
-
-            - **peak_search_box** : str {'all', 'off', 'fitbox'}, int, \
-tuple of int, None, optional
-              Size (in pixels) of the box around the center of the input star
-              to be used for brute-force search of the maximum value pixel.
-              See `Star` for more details.
-        """
-        fbox = kwargs.pop('peak_fit_box', self.peak_fit_box)
-        sbox = kwargs.pop('peak_search_box', self.peak_search_box)
-
-        if len(kwargs) > 0:
-            print("Unrecognized keyword arguments to 'refine_center' "
-                  "will be ignored.")
-
-        self._cx, self._cy = find_peak(
-            self._data, self._cx, self._cy,
-            peak_fit_box=fbox, peak_search_box=sbox, mask=self.mask
-        )
-
-    @property
-    def pixel_scale(self):
-        """
-        Set/Get pixel scale (in arbitrary units). Pixel scale of the
-        star can be used in conjunction with pixel scale of a PSF to
-        determine PSF's oversampling factor. Either a single floating
-        point value or a 1D iterable of length at least 2 (x-scale,
-        y-scale) can be provided.  When getting pixel scale, a tuple of
-        two values is returned with a pixel scale for each axis.
-        """
-
-        return self._pixscale
-
-    @pixel_scale.setter
-    def pixel_scale(self, pixel_scale):
-        if pixel_scale == 'wcs':
-            if wcs:
-                pixel_scale = wcs.utils.proj_plane_pixel_scales(wcs)
-
-            else:
-                raise ValueError("'wcs' attribute not set.")
-
-        if hasattr(pixel_scale, '__iter__'):
-            if len(pixel_scale) != 2:
-                raise TypeError("Parameter 'pixel_scale' must be either a "
-                                "scalar or an iterable with two elements.")
-            self._pixscale = (float(pixel_scale[0]), float(pixel_scale[1]))
-
-        else:
-            self._pixscale = (float(pixel_scale), float(pixel_scale))
-
-    # TODO
-    #def compute_residuals(self, psf_stars):
-    #    return 2D array of (cutout - best-fit PSF)
 
 
 class PSFStars(object):
@@ -392,7 +294,7 @@ class PSFStars(object):
             yield i
 
     def __getattr__(self, attr):
-        if attr is 'center':
+        if attr is 'cutout_center':
             return np.array([getattr(p, attr) for p in self._data])
         else:
             return [getattr(p, attr) for p in self._data]
@@ -432,7 +334,6 @@ class PSFStars(object):
         centers = []
         #for star in self._data:
         #    if star.
-        #    zzzzzz
         pass
 
 
@@ -688,9 +589,10 @@ def _extract_stars(data, catalog, size=(11, 11)):
             continue
 
         origin = (large_slc[1].start, large_slc[0].start)
-        center_cutout = (xcenter - origin[0], ycenter - origin[1])
-        star = PSFStar(data_cutout, weights_cutout, center=center_cutout,
-                       origin=origin, wcs_original=data.wcs, id=obj_id)
+        cutout_center = (xcenter - origin[0], ycenter - origin[1])
+        star = PSFStar(data_cutout, weights_cutout,
+                       cutout_center=cutout_center, origin=origin,
+                       wcs_large=data.wcs, id_label=obj_id)
 
         stars.append(star)
 
