@@ -53,7 +53,7 @@ class PSFStar(object):
         An optional identification number or label for the star.
 
     pixel_scale : float or tuple of two floats, optional
-        The pixel scale (in arbitrary units) of the input ``data``.
+        The pixel scale (in arbitrary units) of the input ``data``.  The
         ``pixel_scale`` can either be a single float or tuple of two
         floats of the form ``(x_pixscale, y_pixscale)``.  If
         ``pixel_scale`` is a scalar then the pixel scale will be the
@@ -96,7 +96,7 @@ class PSFStar(object):
         pixel_scale = np.atleast_1d(pixel_scale)
         if len(pixel_scale) == 1:
             pixel_scale = np.repeat(pixel_scale, 2)
-        self.pixel_scale = pixel_scale
+        self.pixel_scale = pixel_scale  # ndarray
 
         self.flux = self.estimate_flux()
 
@@ -329,7 +329,7 @@ class PSFStars(object):
             yield i
 
     def __getattr__(self, attr):
-        if attr in ['cutout_center', 'center', 'flux']:
+        if attr in ['cutout_center', 'center', 'pixel_scale', 'flux']:
             return np.array([getattr(star, attr) for star in self._data])
         else:
             return [getattr(star, attr) for star in self._data]
@@ -371,6 +371,26 @@ class PSFStars(object):
         """
 
         return len(self.all_psfstars)
+
+    @lazyproperty
+    def _min_pixel_scale(self):
+        """
+        The minimum x and y pixel scale of all the PSFStars (including
+        linked stars).
+        """
+
+        return np.min([star.pixel_scale for star in self.all_psfstars],
+                      axis=0)
+
+    @lazyproperty
+    def _max_shape(self):
+        """
+        The maximum x and y shapes of all the PSFStars (including linked
+        stars).
+        """
+
+        return np.max([star.shape for star in self.all_psfstars],
+                      axis=0)
 
 
 class LinkedPSFStar(PSFStars):
