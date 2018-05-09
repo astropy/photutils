@@ -6,17 +6,14 @@ Tools to build an ePSF.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import copy
-import warnings
 
 import numpy as np
 from astropy.stats import SigmaClip
-from astropy.table import Table
 
 from .centroid import find_peak
-from .epsf_fitter import EPSFFitter, compute_residuals
-from .models import NonNormalizable, PSF2DModel
-from .utils import (py2round, interpolate_missing_data, _pixstat, _smoothPSF,
-                    _parse_tuple_pars)
+from .epsf_fitter import EPSFFitter
+from .models import PSF2DModel
+from .utils import py2round, interpolate_missing_data, _pixstat, _smoothPSF
 
 
 __all__ = ['EPSFBuilder']
@@ -29,6 +26,10 @@ class EPSFBuilder(object):
     Parameters
     ----------
         # NOTE: center_accuracy_sq applies to each star
+
+    oversampling : float, optional
+        Determines the output ePSF pixel scale, relative to PSFstar cutout
+        data.
     """
 
     def __init__(self, peak_fit_box=5, peak_search_box='fitbox',
@@ -36,7 +37,8 @@ class EPSFBuilder(object):
                  stat='median',
                  sigma_clip=SigmaClip(sigma=3., iters=10),
                  smoothing_kernel='quar', fitter=EPSFFitter(residuals=True),
-                 max_iters=50, center_accuracy=1.0e-4, epsf=None):
+                 max_iters=50, center_accuracy=1.0e-4, epsf=None,
+                 epsf_shape=None, oversampling=4.):
 
         self.peak_fit_box = peak_fit_box
         self.peak_search_box = peak_search_box
@@ -67,20 +69,35 @@ class EPSFBuilder(object):
         self.center_accuracy_sq = center_accuracy**2
 
         self.epsf = epsf
+        self.epsf_shape = epsf_shape
+        self.oversampling = oversampling
 
     def __call__(self, psfstars):
         return self.build_psf(psfstars)
 
     def _build_psf_step(self, psf_stars, psf=None):
+        """
+        A single iteration of improving a PSF.
+
+        Parameters
+        ----------
+        psf_stars : `PSFStars` object
+        """
+
         if len(psf_stars) < 1:
             raise ValueError('psf_stars must contain at least one PSFStar '
                              'or LinkedPSFStar object.')
 
         if psf is None:
-            psf = init_psf(psf_stars)
+            # create an initial PSF (array of zeros)
+            psf = _create_initial_psf(psf_stars,
+                                      oversampling=self.oversampling,
+                                      shape=self.epsf_shape)
         else:
+            # improve the input PSF
             psf = copy.deepcopy(psf)
 
+        #TODO
         cx, cy = psf.origin
         ny, nx = psf.shape
         pscale_x, pscale_y = psf.pixel_scale
@@ -213,10 +230,8 @@ class EPSFBuilder(object):
             fitting the ``psf``.
         """
 
-        self.psf_stars = psf_stars
-
         iter_num = 0
-        center_dist_sq = self.center_accuracy_sq + 1
+        center_dist_sq = self.center_accuracy_sq + 1.
         centers = psf_stars.cutout_center
         nstars = psf_stars.npsfstars
         fit_failed = np.zeros(nstars, dtype=bool)
@@ -228,16 +243,11 @@ class EPSFBuilder(object):
 
             iter_num += 1
 
-            print('iter_num', iter_num)
-            print(psf_stars)
-
             # build/improve the PSF
             psf = self._build_psf_step(psf_stars, psf=psf)
 
             # fit the new PSF to the psf_stars to find improved centers
             psf_stars = self.fitter(psf, psf_stars)
-
-            print(psf_stars)
 
             # find all psf stars where the fit failed
             fit_failed = np.array([psf_star.fit_error_status > 0
@@ -246,9 +256,6 @@ class EPSFBuilder(object):
             # permanently exclude fitting any psf star where the fit
             # fails after 3 iterations
             if iter_num > 3 and np.any(fit_failed):
-                #for (psf_star, failed) in zip(psf_stars.all_psfstars,
-                #                              fit_failed_new):
-                #    psf_star.fit_failed = failed
                 psf_stars.all_psfstars[fit_failed]._excluded_from_fit = True
 
             dx_dy = psf_stars.cutout_center - centers
@@ -259,122 +266,94 @@ class EPSFBuilder(object):
         return psf, psf_stars
 
 
-def init_psf(psf_stars, shape=None, oversampling=4.0, pixel_scale=None,
-             psf_cls=PSF2DModel, **kwargs):
+def _create_initial_psf(psf_stars, pixel_scale=None, oversampling=None,
+                        shape=None):
     """
+    Create an initial `PSF2DModel` object.
+
+    The initial PSF data are all zeros.  The PSF pixel scale is
+    determined either from the input ``pixel_scale`` or ``oversampling``
+    keyword.
+
+    If ``shape`` is not input, the shape of the PSF data array is
+    determined from the shape of the input ``psf_stars`` and the
+    oversampling factor (derived from the ratio of the ``psf_star``
+    pixel scale to the PSF pixel scale).  The output PSF will always
+    have odd sizes along both axes.
+
     Parameters
     ----------
-    stars : Star, list of Star
-        A list of :py:class:`~psfutils.catalogs.Star` objects
-        containing image data of star cutouts that are used to "build" a PSF.
+    psf_stars : `PSFStars` object
+        The PSF stars used to build the PSF.
 
-    psf : PSF2DModel, type, None, optional
-        An existing approximation to the PSF which needs to be recomputed
-        using new ``stars`` (with new parameters for center and flux)
-        or a class indicating the type of the ``psf`` object to be created
-        (preferebly a subclass of :py:class:`PSF2DModel`).
-        If `psf` is `None`, a new ``psf`` will be computed using
-        :py:class:`PSF2DModel`.
+    pixel_scale : float or tuple of two floats, optional
+        The pixel scale (in arbitrary units) of the output PSF.  The
+        ``pixel_scale`` can either be a single float or tuple of two
+        floats of the form ``(x_pixscale, y_pixscale)``.  If
+        ``pixel_scale`` is a scalar then the pixel scale will be the
+        same for both the x and y axes.  The PSF ``pixel_scale`` is used
+        in conjunction with the star pixel scale when building and
+        fitting the PSF.  This allows for building (and fitting) a PSF
+        using images of stars with different pixel scales (e.g. velocity
+        aberrations).  Either ``oversampling`` or ``pixel_scale`` must
+        be input.  If both are input, ``pixel_scale`` will override the
+        input ``oversampling``.
+
+    oversampling : float or tuple of two floats, optional
+        The oversampling factor(s) of the PSF relative to the input
+        ``psf_stars`` along the x and y axes.  The ``oversampling`` can
+        either be a single float or a tuple of two floats of the form
+        ``(x_oversamp, y_oversamp)``.  If ``oversampling`` is a scalar
+        then the oversampling will be the same for both the x and y
+        axes.  Either ``oversampling`` or ``pixel_scale`` must be input.
+        If both are input, ``oversampling`` will be ignored.
 
     shape : tuple, optional
-        Numpy-style shape of the output PSF. If shape is not specified (i.e.,
-        it is set to `None`), the shape will be derived from the sizes of the
-        input star models. This is ignored if `psf` is not `None`.
+        The shape of the output PSF.  If the ``shape`` is not input, it
+        will be derived from the sizes of the input ``psf_stars`` and
+        the PSF oversampling factor.  The output PSF will always have
+        odd sizes along both axes.
 
-    oversampling : float, tuple of float, list of (float, tuple of float), \
-optional
-        Oversampling factor of the PSF relative to star. It indicates how many
-        times a pixel in the star's image should be sampled when creating PSF.
-        If a single number is provided, that value will be used for both
-        ``X`` and ``Y`` axes and for all stars. When a tuple is provided,
-        first number will indicate oversampling along the ``X`` axis and the
-        second number will indicate oversampling along the ``Y`` axis. It is
-        also possible to have individualized oversampling factors for each star
-        by providing a list of integers or tuples of integers.
-
+    Returns
+    -------
+    psf : `PSF2DModel`
+        The initial PSF model.
     """
-    # check parameters:
+
     if pixel_scale is None and oversampling is None:
-        raise ValueError(
-            "'oversampling' and 'pixel_scale' cannot be 'None' together. "
-            "At least one of these two parameters must be provided."
-        )
+        raise ValueError('Either pixel_scale or oversampling must be input.')
 
-    # find pixel scale:
-    if pixel_scale is None:
-        ovx, ovy = _parse_tuple_pars(oversampling, name='oversampling',
-                                     dtype=float)
+    # define the PSF pixel scale
+    if pixel_scale is not None:
+        pixel_scale = np.atleast_1d(pixel_scale).astype(float)
+        if len(pixel_scale) == 1:
+            pixel_scale = np.repeat(pixel_scale, 2)
 
-        # compute PSF's pixel scale as the smallest scale of the stars
-        # divided by the requested oversampling factor:
-        pscale_x, pscale_y = psf_stars.all_psfstars[0].pixel_scale
-        for psf_star in psf_stars.all_psfstars[1:]:
-            px, py = psf_star.pixel_scale
-            if px < pscale_x:
-                pscale_x = px
-            if py < pscale_y:
-                pscale_y = py
-
-        pscale_x /= ovx
-        pscale_y /= ovy
-
+        oversampling = (psf_stars._min_pixel_scale[0] / pixel_scale[0],
+                        psf_stars._min_pixel_scale[1] / pixel_scale[1])
     else:
-        pscale_x, pscale_y = _parse_tuple_pars(pixel_scale, name='pixel_scale',
-                                               dtype=float)
+        oversampling = np.atleast_1d(oversampling).astype(float)
+        if len(oversampling) == 1:
+            oversampling = np.repeat(oversampling, 2)
 
-    # if shape is None, find the minimal shape that will include input star's
-    # data:
-    if shape is None:
-        for psf_star in psf_stars.all_psfstars:
-            w = np.array([((psf_star.cutout_center[0] + 0.5) *
-                           psf_star.pixel_scale[0] / pscale_x,
-                           (psf_star.shape[1] - psf_star.cutout_center[0] -
-                            0.5) * psf_star.pixel_scale[0] / pscale_x)])
+        pixel_scale = (psf_stars._min_pixel_scale[0] / oversampling[0],
+                       psf_stars._min_pixel_scale[1] / oversampling[1])
 
-            h = np.array([((psf_star.cutout_center[1] + 0.5) *
-                           psf_star.pixel_scale[1] / pscale_y,
-                           (psf_star.shape[0] - psf_star.cutout_center[1] -
-                            0.5) * psf_star.pixel_scale[1] / pscale_y)])
-
-        # size of the PSF in the input image pixels
-        # (the image with min(pixel_scale))
-        nx = int(np.ceil(np.amax(w / ovx + 0.5)))
-        ny = int(np.ceil(np.amax(h / ovy + 0.5)))
-
-        # account for a maximum error of 1 pix in the initial star
-        # coordinates
-        nx += 2
-        ny += 2
-
-        # convert to oversampled pixels
-        nx = int(np.ceil(np.amax(nx * ovx + 0.5)))
-        ny = int(np.ceil(np.amax(ny * ovy + 0.5)))
-
-        # we prefer odd sized images
-        nx += 1 - nx % 2
-        ny += 1 - ny % 2
-        shape = (ny, nx)
-
+    # define the PSF shape
+    if shape is not None:
+        shape = np.atleast_1d(shape).astype(int)
+        if len(shape) == 1:
+            shape = np.repeat(shape, 2)
     else:
-        (ny, nx) = _parse_tuple_pars(shape, name='shape', dtype=int)
+        x_shape = np.int(np.ceil(psf_stars._max_shape[0] * oversampling[1]))
+        y_shape = np.int(np.ceil(psf_stars._max_shape[1] * oversampling[0]))
+        shape = np.array((y_shape, x_shape))
 
-    # center of the output grid:
-    cx = (nx - 1) / 2.0
-    cy = (ny - 1) / 2.0
+    shape = [(i + 1) for i in shape if i % 2 == 0]   # ensure odd sizes
 
-    with warnings.catch_warnings(record=False):
-        warnings.simplefilter("ignore", NonNormalizable)
+    xcenter = (shape[1] - 1) / 2.
+    ycenter = (shape[0] - 1) / 2.
+    data = np.zeros(shape, dtype=np.float)
 
-        # filter out parameters set by us:
-        kwargs = copy.deepcopy(kwargs)
-        for kw in ['data', 'origin', 'normalize', 'pixel_scale']:
-            if kw in kwargs:
-                del kwargs[kw]
-
-        data = np.zeros((ny, nx), dtype=np.float)
-        psf = psf_cls(
-            data=data, origin=(cx, cy), normalize=True,
-            pixel_scale=(pscale_x, pscale_y), **kwargs
-        )
-
-    return psf
+    return PSF2DModel(data=data, origin=(xcenter, ycenter), normalize=False,
+                      pixel_scale=pixel_scale)

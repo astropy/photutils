@@ -196,6 +196,11 @@ class PSFStar(object):
         ----------
         psf : `PSF2DModel`
             The point-spread function (PSF).
+
+        Returns
+        -------
+        data : `~numpy.ndarray`
+            A 2D array of the registered/scaled PSF.
         """
 
         x_oversamp = self.pixel_scale[0] / psf.pixel_scale[0]
@@ -210,13 +215,18 @@ class PSFStar(object):
 
     def compute_residual_image(self, psf):
         """
-        Compute the residual image of the data minus the
+        Compute the residual image of the star data minus the
         registered/scaled PSF.
 
         Parameters
         ----------
         psf : `PSF2DModel`
             The point-spread function (PSF).
+
+        Returns
+        -------
+        data : `~numpy.ndarray`
+            A 2D array of the residual image.
         """
 
         return self.data - self.register_psf(psf)
@@ -358,7 +368,7 @@ class PSFStars(object):
         """
         The total number of stars.
 
-        A linked star represents a single star.
+        A linked star is counted only once.
         """
 
         return len(self._data)
@@ -367,7 +377,8 @@ class PSFStars(object):
     def npsfstars(self):
         """
         The total number of `PSFStar` objects, including all the linked
-        stars within `LinkedPSFStar`.
+        stars within `LinkedPSFStar`.  Each linked star is included in
+        the count.
         """
 
         return len(self.all_psfstars)
@@ -375,7 +386,7 @@ class PSFStars(object):
     @lazyproperty
     def _min_pixel_scale(self):
         """
-        The minimum x and y pixel scale of all the PSFStars (including
+        The minimum x and y pixel scale of all the `PSFStar`s (including
         linked stars).
         """
 
@@ -385,8 +396,8 @@ class PSFStars(object):
     @lazyproperty
     def _max_shape(self):
         """
-        The maximum x and y shapes of all the PSFStars (including linked
-        stars).
+        The maximum x and y shapes of all the `PSFStar`s (including
+        linked stars).
         """
 
         return np.max([star.shape for star in self.all_psfstars],
