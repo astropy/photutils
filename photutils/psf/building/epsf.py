@@ -256,7 +256,9 @@ class EPSFBuilder(object):
             # permanently exclude fitting any psf star where the fit
             # fails after 3 iterations
             if iter_num > 3 and np.any(fit_failed):
-                psf_stars.all_psfstars[fit_failed]._excluded_from_fit = True
+                idx = fit_failed.nonzero()[0]
+                for i in idx:
+                    psf_stars.all_psfstars[i]._excluded_from_fit = True
 
             dx_dy = psf_stars.cutout_center - centers
             dx_dy = dx_dy[np.logical_not(fit_failed)]
