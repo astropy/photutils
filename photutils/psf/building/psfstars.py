@@ -339,7 +339,8 @@ class PSFStars(object):
             yield i
 
     def __getattr__(self, attr):
-        if attr in ['cutout_center', 'center', 'pixel_scale', 'flux']:
+        if attr in ['cutout_center', 'center', 'pixel_scale', 'flux',
+                    '_excluded_from_fit']:
             return np.array([getattr(star, attr) for star in self._data])
         else:
             return [getattr(star, attr) for star in self._data]
@@ -356,15 +357,30 @@ class PSFStars(object):
         for item in self._data:
             if isinstance(item, LinkedPSFStar):
                 psf_stars.extend(item.all_psfstars)
-            elif isinstance(item, list):
-                psf_stars.extend(item)
             else:
                 psf_stars.append(item)
 
         return psf_stars
 
+    @property
+    def all_good_psfstars(self):
+        """
+        A list of all `PSFStar` objects stored in this object that have
+        not been excluded from fitting, including those that comprise
+        linked stars (i.e. `LinkedPSFStar`), as a flat list.
+        """
+
+        psf_stars = []
+        for psf_star in self.all_psfstars:
+            if psf_star._excluded_from_fit:
+                continue
+            else:
+                psf_stars.append(psf_star)
+
+        return psf_stars
+
     @lazyproperty
-    def nstars(self):
+    def n_stars(self):
         """
         The total number of stars.
 
@@ -374,7 +390,7 @@ class PSFStars(object):
         return len(self._data)
 
     @lazyproperty
-    def npsfstars(self):
+    def n_psfstars(self):
         """
         The total number of `PSFStar` objects, including all the linked
         stars within `LinkedPSFStar`.  Each linked star is included in
@@ -382,6 +398,17 @@ class PSFStars(object):
         """
 
         return len(self.all_psfstars)
+
+    @property
+    def n_good_psfstars(self):
+        """
+        The total number of `PSFStar` objects, including all the linked
+        stars within `LinkedPSFStar`, that have not been excluded from
+        fitting.  Each non-excluded linked star is included in the
+        count.
+        """
+
+        return np.count_nonzero(~self._excluded_from_fit)
 
     @lazyproperty
     def _min_pixel_scale(self):
