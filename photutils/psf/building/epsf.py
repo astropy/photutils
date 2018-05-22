@@ -6,6 +6,7 @@ Tools to build an ePSF.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import copy
+import warnings
 
 import numpy as np
 from astropy.stats import SigmaClip
@@ -13,7 +14,7 @@ from astropy.stats import SigmaClip
 from .centroid import find_peak
 from .epsf_fitter import EPSFFitter
 from .models import PSF2DModel
-from .utils import py2round, interpolate_missing_data, _pixstat, _smoothPSF
+from .utils import interpolate_missing_data, _smoothPSF
 
 
 __all__ = ['EPSFBuilder']
@@ -34,8 +35,6 @@ class EPSFBuilder(object):
 
     def __init__(self, peak_fit_box=5, peak_search_box='fitbox',
                  recenter_accuracy=1.0e-4, recenter_max_iters=1000,
-                 stat='median',
-                 sigma_clip=SigmaClip(sigma=3., iters=10),
                  smoothing_kernel='quar', fitter=EPSFFitter(residuals=True),
                  max_iters=50, center_accuracy=1.0e-4, epsf=None,
                  epsf_shape=None, oversampling=4.):
@@ -54,8 +53,6 @@ class EPSFBuilder(object):
             raise ValueError('recenter_max_iters must be a positive integer.')
         self.recenter_max_iters = recenter_max_iters
 
-        self.stat = stat
-        self.sigma_clip = sigma_clip
         self.smoothing_kernel = smoothing_kernel
         self.fitter = fitter
 
@@ -75,6 +72,83 @@ class EPSFBuilder(object):
     def __call__(self, psfstars):
         return self.build_psf(psfstars)
 
+    def _resample_residual(self, psf_star, psf):
+        """
+        Resample a single PSF star to the (oversampled) grid of the
+        input PSF.
+
+        Parameters
+        ----------
+        psf_star : `PSFStar` object
+            A single PSF star object to be resampled.
+
+        psf : `PSF2DModel` object, optional
+            The PSF model.
+
+        Returns
+        -------
+        image : 2D `~numpy.ndarray`
+            A 2D image containing the resampled PSF star image.  The
+            image contains NaNs where there is no data.
+        """
+
+        # find the integer index of PSFStar pixels in the oversampled
+        # PSF grid
+        x_oversamp = psf_star.pixel_scale[0] / psf.pixel_scale[0]
+        y_oversamp = psf_star.pixel_scale[1] / psf.pixel_scale[1]
+        x = x_oversamp * psf_star._xidx_centered
+        y = y_oversamp * psf_star._yidx_centered
+        psf_xcenter, psf_ycenter = psf.origin
+        xidx = _py2intround(x + psf_xcenter).astype(np.int)
+        yidx = _py2intround(y + psf_ycenter).astype(np.int)
+
+        ny, nx = psf.shape
+        mask = np.logical_and(np.logical_and(xidx >= 0, xidx < nx),
+                              np.logical_and(yidx >= 0, yidx < ny))
+        xidx = xidx[mask]
+        yidx = yidx[mask]
+
+        # Compute the normalized residual image by subtracting the
+        # normalized PSF model from the normalized PSF star at the
+        # location of the PSF star in the undersampled grid.  Then,
+        # reample the normalized residual image in the oversampled
+        # PSF grid
+        # ((star_data_norm - (psf.eval(flux=1, ...) * xov * yov)) /
+        #  (xov * yov)) = ((star_data_norm / (xov * yov)) -
+        #                  psf.eval(flux=1, ...))
+        stardata = ((psf_star._data_values_normalized /
+                     (x_oversamp * y_oversamp)) -
+                    psf.evaluate(x=x, y=y, flux=1.0, x_0=0.0, y_0=0.0))
+
+        resampled_img = np.full(psf.shape, np.nan)
+        resampled_img[yidx, xidx] = stardata[mask]
+
+        return resampled_img
+
+    def _resample_residuals(self, psf_stars, psf):
+        """
+        Resample PSF stars to the (oversampled) grid of the input PSF.
+
+        Parameters
+        ----------
+        psf_stars : `PSFStars` object
+            The PSF stars used to build the PSF.
+
+        psf : `PSF2DModel` object, optional
+            The PSF model.
+
+        Returns
+        -------
+        star_imgs : 3D `~numpy.ndarray`
+            A 3D cube containing the resampled PSF star images.
+        """
+
+        star_imgs = np.zeros((psf_stars.n_good_psfstars, *psf.shape))
+        for i, psf_star in enumerate(psf_stars.all_good_psfstars):
+            star_imgs[i, :, :] = self._resample_residual(psf_star, psf)
+
+        return star_imgs
+
     def _build_psf_step(self, psf_stars, psf=None):
         """
         A single iteration of improving a PSF.
@@ -82,6 +156,16 @@ class EPSFBuilder(object):
         Parameters
         ----------
         psf_stars : `PSFStars` object
+            The PSF stars used to build the PSF.
+
+        psf : `PSF2DModel` object, optional
+            The initial PSF model.  If not input, then the PSF will be
+            built from scratch.
+
+        Returns
+        -------
+        psf : `PSF2DModel` object
+            The improved PSF.
         """
 
         if len(psf_stars) < 1:
@@ -97,79 +181,47 @@ class EPSFBuilder(object):
             # improve the input PSF
             psf = copy.deepcopy(psf)
 
-        #TODO
-        cx, cy = psf.origin
-        ny, nx = psf.shape
-        pscale_x, pscale_y = psf.pixel_scale
+        # compute a 3D stack of 2D residual images
+        residuals = self._resample_residuals(psf_stars, psf)
 
-        # allocate "accumulator" array (to store transformed PSFs):
-        apsf = [[[] for k in range(nx)] for k in range(ny)]
+        # compute the sigma-clipped median along the 3D stack
+        # TODO: allow custom SigmaClip/statistic class
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            sigclip = SigmaClip(sigma=3., cenfunc=np.ma.median, iters=10)
+            residuals = sigclip(residuals, axis=0)
+            residuals = np.ma.median(residuals, axis=0)
+            residuals = residuals.filled(np.nan)
 
-        norm_psf_data = psf.normalized_data
-
-        for psf_star in psf_stars.all_psfstars:
-            if psf_star._excluded_from_fit:
-                continue
-
-            # evaluate previous PSF model at star pixel location in
-            # the PSF grid
-            ovx = psf_star.pixel_scale[0] / pscale_x
-            ovy = psf_star.pixel_scale[1] / pscale_y
-            x = ovx * psf_star._xidx_centered
-            y = ovy * psf_star._yidx_centered
-            old_model_vals = psf.evaluate(x=x, y=y, flux=1.0, x_0=0.0,
-                                          y_0=0.0)
-
-            # find integer location of star pixels in the PSF grid
-            # and compute residuals
-            ix = py2round(x + cx).astype(np.int)
-            iy = py2round(y + cy).astype(np.int)
-            pv = (psf_star._data_values_normalized / (ovx * ovy) -
-                  old_model_vals)
-            m = np.logical_and(np.logical_and(ix >= 0, ix < nx),
-                               np.logical_and(iy >= 0, iy < ny))
-
-            # add all pixel values to the corresponding accumulator
-            for i, j, v in zip(ix[m], iy[m], pv[m]):
-                apsf[j][i].append(v)
-
-        psfdata = np.empty((ny, nx), dtype=np.float)
-        psfdata.fill(np.nan)
-
-        for i in range(nx):
-            for j in range(ny):
-                psfdata[j, i] = _pixstat(apsf[j][i], stat=self.stat,
-                                         sigma_clip=self.sigma_clip,
-                                         default=np.nan)
-
-        mask = np.isfinite(psfdata)
+        mask = np.isfinite(residuals)
         if not np.all(mask):
             # fill in the "holes" (=np.nan) using interpolation
             # I. using cubic spline for inner holes
-            psfdata = interpolate_missing_data(psfdata, method='cubic',
-                                               mask=mask)
+            residuals = interpolate_missing_data(residuals, method='cubic',
+                                                 mask=mask)
 
             # II. we fill outer points with zeros
-            mask = np.isfinite(psfdata)
-            psfdata[np.logical_not(mask)] = 0.0
+            mask = np.isfinite(residuals)
+            residuals[np.logical_not(mask)] = 0.0
 
-        # add residuals to old PSF data:
-        psfdata += norm_psf_data
+        # add the residuals to the previous PSF image
+        new_psf = psf.normalized_data + residuals
 
-        # apply a smoothing kernel to the PSF:
-        psfdata = _smoothPSF(psfdata, self.smoothing_kernel)
+        # apply a smoothing kernel to the PSF
+        new_psf = _smoothPSF(new_psf, self.smoothing_kernel)
 
         shift_x = 0
         shift_y = 0
         peak_eps_sq = self.recenter_accuracy**2
         eps_sq_prev = None
-        y, x = np.indices(psfdata.shape, dtype=np.float)
-        ePSF = psf.make_similar_from_data(psfdata)
+        y, x = np.indices(new_psf.shape, dtype=np.float)
+        ePSF = psf.make_similar_from_data(new_psf)
         ePSF.fill_value = 0.0
 
+        cx, cy = psf.origin
         for iteration in range(self.recenter_max_iters):
             # find peak location:
-            peak_x, peak_y = find_peak(psfdata, xmax=cx, ymax=cy,
+            peak_x, peak_y = find_peak(new_psf, xmax=cx, ymax=cy,
                                        peak_fit_box=self.peak_fit_box,
                                        peak_search_box=self.peak_search_box,
                                        mask=None)
@@ -188,60 +240,68 @@ class EPSFBuilder(object):
 
             # Resample PSF data to a shifted grid such that the pick of
             # the PSF is at expected position
-            psfdata = ePSF.evaluate(x=x, y=y, flux=1.0,
-                                    x_0=shift_x + cx, y_0=shift_y + cy)
+            new_psf = ePSF.evaluate(x=x, y=y, flux=1.0, x_0=shift_x + cx,
+                                    y_0=shift_y + cy)
 
         # apply final shifts and fill in any missing data
         if shift_x != 0.0 or shift_y != 0.0:
             ePSF.fill_value = np.nan
-            psfdata = ePSF.evaluate(x=x, y=y, flux=1.0,
-                                    x_0=shift_x + cx, y_0=shift_y + cy)
+            new_psf = ePSF.evaluate(x=x, y=y, flux=1.0, x_0=shift_x + cx,
+                                    y_0=shift_y + cy)
 
             # fill in the "holes" (=np.nan) using 0 (no contribution to
             # the flux)
-            mask = np.isfinite(psfdata)
-            psfdata[np.logical_not(mask)] = 0.0
+            mask = np.isfinite(new_psf)
+            new_psf[np.logical_not(mask)] = 0.0
 
-        norm = np.abs(np.sum(psfdata, dtype=np.float64))
-        psfdata /= norm
+        norm = np.abs(np.sum(new_psf, dtype=np.float64))
+        new_psf /= norm
 
         # Create ePSF model and return:
-        ePSF = psf.make_similar_from_data(psfdata)
+        ePSF = psf.make_similar_from_data(new_psf)
 
         return ePSF
 
-    def build_psf(self, psf_stars, psf=None):
+    def build_psf(self, psf_stars, init_psf=None):
         """
-        Iteratively build the PSF.
+        Iteratively build a PSF from star cutouts.
+
+        If the optional ``psf`` is input, then it will be used as the
+        initial PSF.
 
         Parameters
         ----------
         psf_stars : `PSFStars` object
+            The PSF stars used to build the PSF.
 
-        psf : `FittableImageModel2D` or `None`, optional
+        init_psf : `PSF2DModel` object, optional
+            The initial PSF model.  If not input, then the PSF will be
+            built from scratch.
 
         Returns
         -------
-        psf : `FittableImageModel2D`
-            The constructed ePSF.
+        psf : `PSF2DModel` object
+            The constructed PSF.
 
-        psf_stars : `PSFStars` object
-            The PSF stars with updated centers and fluxes from
-            fitting the ``psf``.
+        fit_psf_stars : `PSFStars` object
+            The input PSF stars with updated centers and fluxes derived
+            by fitting the output ``psf``.
         """
 
         iter_num = 0
         center_dist_sq = self.center_accuracy_sq + 1.
         centers = psf_stars.cutout_center
-        nstars = psf_stars.npsfstars
-        fit_failed = np.zeros(nstars, dtype=bool)
-        dx_dy = np.zeros((nstars, 2), dtype=np.float)
+        n_stars = psf_stars.n_psfstars
+        fit_failed = np.zeros(n_stars, dtype=bool)
+        dx_dy = np.zeros((n_stars, 2), dtype=np.float)
+        psf = init_psf
 
         while (iter_num < self.max_iters and
                 np.max(center_dist_sq) >= self.center_accuracy_sq and
                 not np.all(fit_failed)):
 
             iter_num += 1
+            print('iter', iter_num)
 
             # build/improve the PSF
             psf = self._build_psf_step(psf_stars, psf=psf)
@@ -359,3 +419,19 @@ def _create_initial_psf(psf_stars, pixel_scale=None, oversampling=None,
 
     return PSF2DModel(data=data, origin=(xcenter, ycenter), normalize=False,
                       pixel_scale=pixel_scale)
+
+
+def _py2intround(a):
+    """
+    Round the input to the nearest integer (returned as a float).
+
+    If two integers are equally close, rounding is done away from 0.
+    """
+
+    data = np.asanyarray(a)
+    value = np.where(data >= 0, np.floor(data + 0.5), np.ceil(data - 0.5))
+
+    if not hasattr(a, '__iter__'):
+        value = float(value)
+
+    return value
