@@ -10,11 +10,11 @@ import warnings
 
 import numpy as np
 from astropy.stats import SigmaClip
+from astropy.utils.exceptions import AstropyUserWarning
 
 from .centroid import find_peak
 from .epsf_fitter import EPSFFitter
 from .models import PSF2DModel
-from .utils import _smoothPSF
 
 
 __all__ = ['EPSFBuilder']
@@ -31,12 +31,17 @@ class EPSFBuilder(object):
     oversampling : float, optional
         Determines the output ePSF pixel scale, relative to PSFstar cutout
         data.
+
+    smoothing_kernel : {'quadratic', 'quartic'} or 2D `~numpy.ndarray`
+        The smoothing kernel to apply.  The predefined kernels
+        ``'quadratic'`` and ``'quartic'`` or a 2D array can be input.
     """
 
     def __init__(self, peak_fit_box=5, peak_search_box='fitbox',
                  recenter_accuracy=1.0e-4, recenter_max_iters=1000,
-                 smoothing_kernel='quar', fitter=EPSFFitter(residuals=True),
-                 max_iters=50, center_accuracy=1.0e-4, epsf=None,
+                 smoothing_kernel='quartic',
+                 fitter=EPSFFitter(residuals=True), max_iters=50,
+                 center_accuracy=1.0e-4, epsf=None,
                  epsf_shape=None, oversampling=4.):
 
         self.peak_fit_box = peak_fit_box
@@ -206,6 +211,103 @@ class EPSFBuilder(object):
 
         return data_interp
 
+    def _smooth_psf(self, psf_data):
+        """
+        Smooth the PSF array by convolving it with a kernel.
+
+        Parameters
+        ----------
+        psf_data : 2D `~numpy.ndarray`
+            A 2D array containing the PSF image.
+
+        Returns
+        -------
+        result : 2D `~numpy.ndarray`
+            The smoothed (convolved) PSF data.
+        """
+
+        from scipy.ndimage import convolve
+
+        if self.smoothing_kernel == 'quadratic':
+            kernel = np.array(
+                [[-0.07428311, 0.01142786, 0.03999952, 0.01142786,
+                  -0.07428311],
+                 [+0.01142786, 0.09714283, 0.12571449, 0.09714283,
+                  +0.01142786],
+                 [+0.03999952, 0.12571449, 0.15428215, 0.12571449,
+                  +0.03999952],
+                 [+0.01142786, 0.09714283, 0.12571449, 0.09714283,
+                  +0.01142786],
+                 [-0.07428311, 0.01142786, 0.03999952, 0.01142786,
+                  -0.07428311]])
+
+        elif self.smoothing_kernel == 'quartic':
+            kernel = np.array(
+                [[+0.041632, -0.080816, 0.078368, -0.080816, +0.041632],
+                 [-0.080816, -0.019592, 0.200816, -0.019592, -0.080816],
+                 [+0.078368, +0.200816, 0.441632, +0.200816, +0.078368],
+                 [-0.080816, -0.019592, 0.200816, -0.019592, -0.080816],
+                 [+0.041632, -0.080816, 0.078368, -0.080816, +0.041632]])
+
+        elif isinstance(self.smoothing_kernel, np.ndarray):
+            kernel = self.kernel
+
+        else:
+            raise TypeError("Unsupported kernel.")
+
+        return convolve(psf_data, kernel)
+
+    def _recenter_psf(self, psf_data, psf):
+        """
+        Recenter the PSF.
+        """
+
+        shift_x = 0
+        shift_y = 0
+        peak_eps_sq = self.recenter_accuracy**2
+        eps_sq_prev = None
+        y, x = np.indices(psf_data.shape, dtype=np.float)
+
+        ePSF = psf.make_similar_from_data(psf_data)
+        ePSF.fill_value = 0.0
+
+        cx, cy = psf.origin
+        for iteration in range(self.recenter_max_iters):
+            # find peak location:
+            peak_x, peak_y = find_peak(psf_data, xmax=cx, ymax=cy,
+                                       peak_fit_box=self.peak_fit_box,
+                                       peak_search_box=self.peak_search_box,
+                                       mask=None)
+
+            dx = cx - peak_x
+            dy = cy - peak_y
+
+            eps_sq = dx**2 + dy**2
+            if ((eps_sq_prev is not None and eps_sq > eps_sq_prev)
+                    or eps_sq < peak_eps_sq):
+                break
+            eps_sq_prev = eps_sq
+
+            shift_x += dx
+            shift_y += dy
+
+            # Resample PSF data to a shifted grid such that the pick of
+            # the PSF is at expected position
+            psf_data = ePSF.evaluate(x=x, y=y, flux=1.0, x_0=shift_x + cx,
+                                     y_0=shift_y + cy)
+
+        # apply final shifts and fill in any missing data
+        if shift_x != 0.0 or shift_y != 0.0:
+            ePSF.fill_value = np.nan
+            psf_data = ePSF.evaluate(x=x, y=y, flux=1.0, x_0=shift_x + cx,
+                                     y_0=shift_y + cy)
+
+            # fill in the "holes" (=np.nan) using 0 (no contribution to
+            # the flux)
+            psf_data[~np.isfinite(psf_data)] = 0.
+
+        return psf_data
+
     def _build_psf_step(self, psf_stars, psf=None):
         """
         A single iteration of improving a PSF.
@@ -244,12 +346,14 @@ class EPSFBuilder(object):
         # compute the sigma-clipped median along the 3D stack
         # TODO: allow custom SigmaClip/statistic class
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=RuntimeWarning)
+            warnings.simplefilter('ignore', category=RuntimeWarning)
+            warnings.simplefilter('ignore', category=AstropyUserWarning)
             sigclip = SigmaClip(sigma=3., cenfunc=np.ma.median, iters=10)
             residuals = sigclip(residuals, axis=0)
             residuals = np.ma.median(residuals, axis=0)
             residuals = residuals.filled(np.nan)
 
+        # interpolate any missing data (np.nan)
         mask = ~np.isfinite(residuals)
         if np.any(mask):
             residuals = self._interpolate_missing_data(residuals, mask,
@@ -261,52 +365,11 @@ class EPSFBuilder(object):
         # add the residuals to the previous PSF image
         new_psf = psf.normalized_data + residuals
 
-        # apply a smoothing kernel to the PSF
-        new_psf = _smoothPSF(new_psf, self.smoothing_kernel)
+        # smooth the PSF
+        new_psf = self._smooth_psf(new_psf)
 
-        shift_x = 0
-        shift_y = 0
-        peak_eps_sq = self.recenter_accuracy**2
-        eps_sq_prev = None
-        y, x = np.indices(new_psf.shape, dtype=np.float)
-        ePSF = psf.make_similar_from_data(new_psf)
-        ePSF.fill_value = 0.0
-
-        cx, cy = psf.origin
-        for iteration in range(self.recenter_max_iters):
-            # find peak location:
-            peak_x, peak_y = find_peak(new_psf, xmax=cx, ymax=cy,
-                                       peak_fit_box=self.peak_fit_box,
-                                       peak_search_box=self.peak_search_box,
-                                       mask=None)
-
-            dx = cx - peak_x
-            dy = cy - peak_y
-
-            eps_sq = dx**2 + dy**2
-            if ((eps_sq_prev is not None and eps_sq > eps_sq_prev)
-                    or eps_sq < peak_eps_sq):
-                break
-            eps_sq_prev = eps_sq
-
-            shift_x += dx
-            shift_y += dy
-
-            # Resample PSF data to a shifted grid such that the pick of
-            # the PSF is at expected position
-            new_psf = ePSF.evaluate(x=x, y=y, flux=1.0, x_0=shift_x + cx,
-                                    y_0=shift_y + cy)
-
-        # apply final shifts and fill in any missing data
-        if shift_x != 0.0 or shift_y != 0.0:
-            ePSF.fill_value = np.nan
-            new_psf = ePSF.evaluate(x=x, y=y, flux=1.0, x_0=shift_x + cx,
-                                    y_0=shift_y + cy)
-
-            # fill in the "holes" (=np.nan) using 0 (no contribution to
-            # the flux)
-            mask = np.isfinite(new_psf)
-            new_psf[np.logical_not(mask)] = 0.0
+        # recenter the PSF
+        new_psf = self._recenter_psf(new_psf, psf)
 
         norm = np.abs(np.sum(new_psf, dtype=np.float64))
         new_psf /= norm
