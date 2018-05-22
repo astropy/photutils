@@ -14,7 +14,7 @@ from astropy.stats import SigmaClip
 from .centroid import find_peak
 from .epsf_fitter import EPSFFitter
 from .models import PSF2DModel
-from .utils import interpolate_missing_data, _smoothPSF
+from .utils import _smoothPSF
 
 
 __all__ = ['EPSFBuilder']
@@ -149,6 +149,63 @@ class EPSFBuilder(object):
 
         return star_imgs
 
+    @staticmethod
+    def _interpolate_missing_data(data, mask, method='cubic'):
+        """
+        Interpolate missing data as identified by the ``mask`` keyword.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            An array containing the 2D image.
+
+        mask : 2D bool `~numpy.ndarray`
+            A 2D booleen mask array with the same shape as the input
+            ``data``, where a `True` value indicates the corresponding
+            element of ``data`` is masked.  The masked data points are
+            those that will be interpolated.
+
+        method : {'cubic', 'nearest'}, optional
+            The method of used to "interpolate" the  missing data:
+
+            - ``'cubic'``:  Masked data are interpolated using 2D cubic
+              splines.  This is the default.
+
+            - ``'nearest'``:  Masked data are interpolated using
+              nearest-neighbor interpolation.
+
+        Returns
+        -------
+        data_interp : 2D `~numpy.ndarray`
+            The resulting interpolated 2D image.
+        """
+
+        from scipy import interpolate
+
+        data_interp = np.array(data, copy=True)
+
+        if len(data_interp.shape) != 2:
+            raise ValueError('data must be a 2D array.')
+
+        if mask.shape != data.shape:
+            raise ValueError('mask and data must have the same shape.')
+
+        y, x = np.indices(data_interp.shape)
+        xy = np.dstack((x[~mask].ravel(), y[~mask].ravel()))[0]
+        z = data_interp[~mask].ravel()
+
+        if method == 'nearest':
+            interpol = interpolate.NearestNDInterpolator(xy, z)
+        elif method == 'cubic':
+            interpol = interpolate.CloughTocher2DInterpolator(xy, z)
+        else:
+            raise ValueError('Unsupported interpolation method.')
+
+        xy_missing = np.dstack((x[mask].ravel(), y[mask].ravel()))[0]
+        data_interp[mask] = interpol(xy_missing)
+
+        return data_interp
+
     def _build_psf_step(self, psf_stars, psf=None):
         """
         A single iteration of improving a PSF.
@@ -193,16 +250,13 @@ class EPSFBuilder(object):
             residuals = np.ma.median(residuals, axis=0)
             residuals = residuals.filled(np.nan)
 
-        mask = np.isfinite(residuals)
-        if not np.all(mask):
-            # fill in the "holes" (=np.nan) using interpolation
-            # I. using cubic spline for inner holes
-            residuals = interpolate_missing_data(residuals, method='cubic',
-                                                 mask=mask)
+        mask = ~np.isfinite(residuals)
+        if np.any(mask):
+            residuals = self._interpolate_missing_data(residuals, mask,
+                                                       method='cubic')
 
-            # II. we fill outer points with zeros
-            mask = np.isfinite(residuals)
-            residuals[np.logical_not(mask)] = 0.0
+            # fill any remaining nans (outer points) with zeros
+            residuals[~np.isfinite(residuals)] = 0.
 
         # add the residuals to the previous PSF image
         new_psf = psf.normalized_data + residuals
