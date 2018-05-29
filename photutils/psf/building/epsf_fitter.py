@@ -8,7 +8,6 @@ import warnings
 import numpy as np
 from astropy.modeling.fitting import LevMarLSQFitter
 
-from .epsf import _py2intround
 from .psfstars import PSFStar, LinkedPSFStar, PSFStars
 
 
@@ -65,28 +64,29 @@ class EPSFFitter(object):
         flux otherwise.
     """
 
-    def __init__(self, psf, fitter=LevMarLSQFitter(), psf_fit_box=5,
+    def __init__(self, fitter=LevMarLSQFitter(), psf_fit_box=5,
                  **kwargs):
-        self.psf = psf
         self.fitter = fitter
         self.psf_fit_box = psf_fit_box
         self.fitter_kwargs = kwargs
 
-    def __call__(self, psf_stars):
-        return self.fit_psf(psf_stars)
+    def __call__(self, psf, psf_stars):
+        return self.fit_psf(psf, psf_stars)
 
-    def _fit_star(self, star, psf, fit, fit_kwargs, fitter_has_fit_info,
+    def _fit_star(self, psf, star, fit, fit_kwargs, fitter_has_fit_info,
                   width, height, igx, igy):
         # NOTE: input PSF may be modified by this function. Make a copy if
         #       it is important to preserve input model.
+
+        from .epsf import _py2intround
 
         err = 0
         ovx = star.pixel_scale[0] / psf.pixel_scale[0]
         ovy = star.pixel_scale[1] / psf.pixel_scale[1]
         ny, nx = star.shape
 
-        rxc = int(_py2intround(star.cutout_center[0]))
-        ryc = int(_py2intround(star.cutout_center[1]))
+        rxc = _py2intround(star.cutout_center[0])
+        ryc = _py2intround(star.cutout_center[1])
 
         x1 = rxc - (width - 1) // 2
         x2 = x1 + width
@@ -193,7 +193,9 @@ class EPSFFitter(object):
 
         return cst
 
-    def fit_psf(self, psf_stars):
+    def fit_psf(self, psf, psf_stars):
+        from .epsf import _py2intround
+
         if len(psf_stars) == 0:
             return []
 
@@ -207,26 +209,31 @@ class EPSFFitter(object):
         minfby = min(sny)
 
         psf_fit_box = np.copy(self.psf_fit_box)
-        if psf_fit_box is None:
+        if psf_fit_box is not None:
+            psf_fit_box = np.atleast_1d(psf_fit_box).astype(int)
+            if len(psf_fit_box) == 1:
+                psf_fit_box = np.repeat(psf_fit_box, 2)
+        else:
             # use full grid defined by stars' data size:
             psf_fit_box = (minfbx, minfby)
 
-        elif hasattr(psf_fit_box, '__iter__'):
-            if len(psf_fit_box) != 2:
-                raise ValueError("'psf_fit_box' must be a tuple of two "
-                                 "integers, a single integer, or None")
 
-            psf_fit_box = (min(minfbx, psf_fit_box[0]),
-                           min(minfby, psf_fit_box[0]))
-
-        else:
-            psf_fit_box = min(minfbx, minfby, psf_fit_box)
-            psf_fit_box = (psf_fit_box, psf_fit_box)
+        #elif hasattr(psf_fit_box, '__iter__'):
+        #    if len(psf_fit_box) != 2:
+        #        raise ValueError("'psf_fit_box' must be a tuple of two "
+        #                         "integers, a single integer, or None")
+#
+#            psf_fit_box = (min(minfbx, psf_fit_box[0]),
+#                           min(minfby, psf_fit_box[0]))
+#
+#        else:
+#            psf_fit_box = min(minfbx, minfby, psf_fit_box)
+#            psf_fit_box = (psf_fit_box, psf_fit_box)
 
         # create grid for fitting box (in stars' grid units):
         width, height = psf_fit_box
-        width = int(_py2intround(width))
-        height = int(_py2intround(height))
+        width = _py2intround(width)
+        height = _py2intround(height)
         igy, igx = np.indices((height, width), dtype=np.float)
 
         # perform fitting for each star:
@@ -242,17 +249,17 @@ class EPSFFitter(object):
         fitter_has_fit_info = hasattr(self.fitter, 'fit_info')
 
         # make a copy of the original PSF:
-        psf = self.psf.copy()
+        psf = psf.copy()
 
         for st in psf_stars:
 
             if isinstance(st, PSFStar):
-                cst = self._fit_star(st, psf, self.fitter, fitter_kwargs,
+                cst = self._fit_star(psf, st, self.fitter, fitter_kwargs,
                                      fitter_has_fit_info,
                                      width, height, igx, igy)
                 # cst = PSFStar
             elif isinstance(st, LinkedPSFStar):
-                cst = self._fit_star(st, psf, self.fitter, fitter_kwargs,
+                cst = self._fit_star(psf, st, self.fitter, fitter_kwargs,
                                      fitter_has_fit_info,
                                      width, height, igx, igy)
                 #cst.constrain_linked_centers(ignore_badfit_stars=True)
