@@ -89,54 +89,54 @@ class EPSFBuilder(object):
     """
 
     def __init__(self, pixel_scale=None, oversampling=4., shape=None,
-                 peak_fit_box=(5, 5),
-                 recenter_accuracy=1.0e-4, recenter_maxiters=1000,
-                 smoothing_kernel='quartic',
-                 fitter=EPSFFitter(), maxiters=50,
-                 center_accuracy=1.0e-4, epsf=None):
+                 centering_boxsize=(5, 5), smoothing_kernel='quartic',
+                 fitter=EPSFFitter(), center_accuracy=1.0e-3, maxiters=25):
 
         if pixel_scale is None and oversampling is None:
             raise ValueError('Either pixel_scale or oversampling must be '
                              'input.')
 
-        self.pixel_scale = pixel_scale
+        self.pixel_scale = self._init_img_params(pixel_scale)
+        if oversampling <= 0.0:
+            raise ValueError('oversampling must be a positive number.')
         self.oversampling = oversampling
-        self.shape = shape
+        self.shape = self._init_img_params(shape)
 
-        self.peak_fit_box = peak_fit_box
-
-        recenter_accuracy = float(recenter_accuracy)
-        if recenter_accuracy <= 0.0:
-            raise ValueError('recenter_accuracy must be a strictly positive '
-                             'number.')
-        self.recenter_accuracy = recenter_accuracy
-
-        recenter_maxiters = int(recenter_maxiters)
-        if recenter_maxiters <= 0:
-            raise ValueError('recenter_maxiters must be a positive integer.')
-        self.recenter_maxiters = recenter_maxiters
-
+        self.centering_boxsize = self._init_img_params(centering_boxsize)
         self.smoothing_kernel = smoothing_kernel
         self.fitter = fitter
+
+        if center_accuracy <= 0.0:
+            raise ValueError('center_accuracy must be a positive number.')
+        self.center_accuracy_sq = center_accuracy**2
 
         maxiters = int(maxiters)
         if maxiters <= 0:
             raise ValueError('maxiters must be a positive number.')
         self.maxiters = maxiters
 
-        if center_accuracy <= 0.0:
-            raise ValueError('center_accuracy must be a positive number.')
-        self.center_accuracy_sq = center_accuracy**2
-
-        self.epsf = epsf
-
+        # store some data during each PSF build iteration
         self._nfit_failed = []
         self._center_dist_sq = []
         self._max_center_dist_sq = []
-        self._psfs = []
+        self._psf = []
 
     def __call__(self, psfstars):
         return self.build_psf(psfstars)
+
+    @staticmethod
+    def _init_img_params(param):
+        """
+        Initialize 2D image-type parameters that can accept either a
+        single or two values.
+        """
+
+        if param is not None:
+            param = np.atleast_1d(param)
+            if len(param) == 1:
+                param = np.repeat(param, 2)
+
+        return param
 
     def _create_initial_psf(self, psf_stars):
         """
@@ -411,7 +411,12 @@ class EPSFBuilder(object):
 
         shift_x = 0
         shift_y = 0
-        peak_eps_sq = self.recenter_accuracy**2
+
+
+        recenter_accuracy=1.0e-4
+        recenter_maxiters=1000
+
+        peak_eps_sq = recenter_accuracy**2
         eps_sq_prev = None
         y, x = np.indices(psf_data.shape, dtype=np.float)
 
@@ -419,7 +424,7 @@ class EPSFBuilder(object):
         ePSF.fill_value = 0.0
 
         cx, cy = psf.origin
-        for iteration in range(self.recenter_maxiters):
+        for iteration in range(recenter_maxiters):
             # find peak location:
             peak_x, peak_y = _find_peak(psf_data, xmax=cx, ymax=cy,
                                         peak_fit_box=self.peak_fit_box,
