@@ -194,7 +194,7 @@ class PSFStar(object):
 
         Parameters
         ----------
-        psf : `PSF2DModel`
+        psf : `EPSFModel`
             The point-spread function (PSF).
 
         Returns
@@ -220,7 +220,7 @@ class PSFStar(object):
 
         Parameters
         ----------
-        psf : `PSF2DModel`
+        psf : `EPSFModel`
             The point-spread function (PSF).
 
         Returns

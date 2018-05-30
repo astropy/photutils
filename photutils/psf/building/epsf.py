@@ -13,7 +13,7 @@ from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
 
 from .epsf_fitter import EPSFFitter
-from .models import PSF2DModel
+from .models import EPSFModel
 
 
 __all__ = ['EPSFBuilder']
@@ -140,7 +140,7 @@ class EPSFBuilder(object):
 
     def _create_initial_psf(self, psf_stars):
         """
-        Create an initial `PSF2DModel` object.
+        Create an initial `EPSFModel` object.
 
         The initial PSF data are all zeros.  The PSF pixel scale is
         determined either from the ``pixel_scale`` or ``oversampling``
@@ -159,7 +159,7 @@ class EPSFBuilder(object):
 
         Returns
         -------
-        psf : `PSF2DModel`
+        psf : `EPSFModel`
             The initial PSF model.
         """
 
@@ -205,8 +205,8 @@ class EPSFBuilder(object):
         xcenter = (shape[1] - 1) / 2.
         ycenter = (shape[0] - 1) / 2.
 
-        return PSF2DModel(data=data, origin=(xcenter, ycenter),
-                          normalize=False, pixel_scale=pixel_scale)
+        return EPSFModel(data=data, origin=(xcenter, ycenter),
+                         normalize=False, pixel_scale=pixel_scale)
 
     def _resample_residual(self, psf_star, psf):
         """
@@ -223,7 +223,7 @@ class EPSFBuilder(object):
         psf_star : `PSFStar` object
             A single PSF star object.
 
-        psf : `PSF2DModel` object, optional
+        psf : `EPSFModel` object, optional
             The PSF model.
 
         Returns
@@ -273,7 +273,7 @@ class EPSFBuilder(object):
         psf_stars : `PSFStars` object
             The PSF stars used to build the PSF.
 
-        psf : `PSF2DModel` object, optional
+        psf : `EPSFModel` object, optional
             The PSF model.
 
         Returns
@@ -427,7 +427,7 @@ class EPSFBuilder(object):
         for iteration in range(recenter_maxiters):
             # find peak location:
             peak_x, peak_y = _find_peak(psf_data, xmax=cx, ymax=cy,
-                                        peak_fit_box=self.peak_fit_box,
+                                        peak_fit_box=self.centering_boxsize,
                                         peak_search_box='fitbox',
                                         mask=None)
 
@@ -469,13 +469,13 @@ class EPSFBuilder(object):
         psf_stars : `PSFStars` object
             The PSF stars used to build the PSF.
 
-        psf : `PSF2DModel` object, optional
+        psf : `EPSFModel` object, optional
             The initial PSF model.  If not input, then the PSF will be
             built from scratch.
 
         Returns
         -------
-        psf : `PSF2DModel` object
+        psf : `EPSFModel` object
             The improved PSF.
         """
 
@@ -528,8 +528,8 @@ class EPSFBuilder(object):
         xcenter = (new_psf.shape[1] - 1) / 2.
         ycenter = (new_psf.shape[0] - 1) / 2.
 
-        return PSF2DModel(data=new_psf, origin=(xcenter, ycenter),
-                          normalize=False, pixel_scale=psf.pixel_scale)
+        return EPSFModel(data=new_psf, origin=(xcenter, ycenter),
+                         normalize=False, pixel_scale=psf.pixel_scale)
 
     def build_psf(self, psf_stars, init_psf=None):
         """
@@ -543,13 +543,13 @@ class EPSFBuilder(object):
         psf_stars : `PSFStars` object
             The PSF stars used to build the PSF.
 
-        init_psf : `PSF2DModel` object, optional
+        init_psf : `EPSFModel` object, optional
             The initial PSF model.  If not input, then the PSF will be
             built from scratch.
 
         Returns
         -------
-        psf : `PSF2DModel` object
+        psf : `EPSFModel` object
             The constructed PSF.
 
         fit_psf_stars : `PSFStars` object
@@ -597,7 +597,7 @@ class EPSFBuilder(object):
             self._nfit_failed.append(np.count_nonzero(fit_failed))
             self._center_dist_sq.append(center_dist_sq)
             self._max_center_dist_sq.append(np.max(center_dist_sq))
-            self._psfs.append(psf)
+            self._psf.append(psf)
 
         return psf, psf_stars
 

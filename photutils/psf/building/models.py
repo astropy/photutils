@@ -428,7 +428,7 @@ class FittableImageModel2D(Fittable2DModel):
         return evaluated_model
 
 
-class PSF2DModel(FittableImageModel2D):
+class EPSFModel(FittableImageModel2D):
     """ A subclass of `~psfutils.models.FittableImageModel2D` that adds the
     ``pixel_scale`` attribute so that oversampling factor can be computed from
     scales of stars.
@@ -451,7 +451,7 @@ class PSF2DModel(FittableImageModel2D):
                  peak_search_box=None, recenter_accuracy=1.0e-4,
                  recenter_nmax=1000):
         """
-        :py:class:`PSF2DModel`'s initializer has almost the same parameters
+        :py:class:`EPSFModel`'s initializer has almost the same parameters
         as the :py:class:`psfutils.FittableImageModel2D` initializer.
         Therefore here we document only the differences.
 
@@ -463,7 +463,7 @@ class PSF2DModel(FittableImageModel2D):
             (x-scale, y-scale) can be provided.
 
         """
-        super(PSF2DModel, self).__init__(
+        super(EPSFModel, self).__init__(
             data=data,
             flux=flux,
             x_0=x_0,
@@ -516,7 +516,7 @@ class PSF2DModel(FittableImageModel2D):
 
         origin : tuple, None, optional
             A reference point in the input image ``data`` array. See
-            :py:class:`~PSF2DModel` for more details.
+            :py:class:`~EPSFModel` for more details.
 
             The *only difference* here is the behavior when ``origin``
             is `None`. In this case:
@@ -532,8 +532,8 @@ class PSF2DModel(FittableImageModel2D):
 
         Returns
         -------
-        new_model : PSF2DModel
-            A new `PSF2DModel` constructed from new data using
+        new_model : EPSFModel
+            A new `EPSFModel` constructed from new data using
             same settings as the current object except for ``origin``
             and model parameters.
 
@@ -543,7 +543,7 @@ class PSF2DModel(FittableImageModel2D):
         if data.shape == self.shape:
             origin = self.origin
 
-        new_model = PSF2DModel(
+        new_model = EPSFModel(
             data=data,
             flux=self.flux.default,
             x_0=self.x_0.default,

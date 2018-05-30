@@ -30,9 +30,9 @@ class EPSFFitter(object):
         Fitting procedure relies on correct coordinates of the center of the
         PSF and as close as possible to the correct center positions of stars.
         Star positions are derived from ``x_0`` and ``y_0`` parameters of the
-        `PSF2DModel` model.
+        `EPSFModel` model.
 
-    psf : PSF2DModel
+    psf : `EPSFModel`
         A PSF model to be fitted to the stars.
 
     psf_fit_box : int, tuple of int, None, optional
