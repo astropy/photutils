@@ -130,6 +130,11 @@ class EPSFBuilder(object):
 
         self.epsf = epsf
 
+        self._nfit_failed = []
+        self._center_dist_sq = []
+        self._max_center_dist_sq = []
+        self._psfs = []
+
     def __call__(self, psfstars):
         return self.build_psf(psfstars)
 
@@ -511,13 +516,15 @@ class EPSFBuilder(object):
         # recenter the PSF
         new_psf = self._recenter_psf(new_psf, psf)
 
-        norm = np.abs(np.sum(new_psf, dtype=np.float64))
-        new_psf /= norm
+        # normalize the PSF data
+        new_psf /= np.sum(new_psf, dtype=np.float64)
 
-        # Create ePSF model and return:
-        ePSF = psf.make_similar_from_data(new_psf)
+        # return the new PSF object
+        xcenter = (new_psf.shape[1] - 1) / 2.
+        ycenter = (new_psf.shape[0] - 1) / 2.
 
-        return ePSF
+        return PSF2DModel(data=new_psf, origin=(xcenter, ycenter),
+                          normalize=False, pixel_scale=psf.pixel_scale)
 
     def build_psf(self, psf_stars, init_psf=None):
         """
@@ -581,6 +588,11 @@ class EPSFBuilder(object):
             dx_dy = dx_dy[np.logical_not(fit_failed)]
             center_dist_sq = np.sum(dx_dy * dx_dy, axis=1, dtype=np.float64)
             centers = psf_stars.cutout_center
+
+            self._nfit_failed.append(np.count_nonzero(fit_failed))
+            self._center_dist_sq.append(center_dist_sq)
+            self._max_center_dist_sq.append(np.max(center_dist_sq))
+            self._psfs.append(psf)
 
         return psf, psf_stars
 
