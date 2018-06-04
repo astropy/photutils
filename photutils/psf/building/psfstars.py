@@ -11,7 +11,6 @@ from astropy.utils import lazyproperty
 from astropy.wcs.utils import skycoord_to_pixel
 
 from ...aperture import BoundingBox
-from .utils import interpolate_missing_data
 
 
 __all__ = ['PSFStar', 'PSFStars', 'LinkedPSFStar', 'extract_stars']
@@ -174,13 +173,14 @@ class PSFStar(object):
         the total flux.
         """
 
+        from .epsf import _interpolate_missing_data
+
         if np.any(self.mask):
-            data_interp = interpolate_missing_data(self.data,
-                                                   method='cubic',
-                                                   mask=self.mask)
-            data_interp = interpolate_missing_data(data_interp,
-                                                   method='nearest',
-                                                   mask=self.mask)
+            data_interp = _interpolate_missing_data(self.data, method='cubic',
+                                                    mask=self.mask)
+            data_interp = _interpolate_missing_data(data_interp,
+                                                    method='nearest',
+                                                    mask=self.mask)
             flux = np.sum(data_interp, dtype=np.float64)
 
         else:

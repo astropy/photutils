@@ -19,23 +19,6 @@ from ..models import EPSFModel
 __all__ = ['EPSFBuilder']
 
 
-def _py2intround(a):
-    """
-    Round the input to the nearest integer.
-
-    If two integers are equally close, rounding is done away from 0.
-    """
-
-    data = np.asanyarray(a)
-    value = np.where(data >= 0, np.floor(data + 0.5),
-                     np.ceil(data - 0.5)).astype(int)
-
-    if not hasattr(a, '__iter__'):
-        value = np.asscalar(value)
-
-    return value
-
-
 class EPSFBuilder(object):
     """
     Class to build an empirical effective PSF (ePSF).
@@ -73,14 +56,14 @@ class EPSFBuilder(object):
         axis, it will be made odd by adding one.  The output PSF will
         always have odd sizes along both axes to ensure a central pixel.
 
-    centering_boxsize : float or tuple of two floats, optional
-
     smoothing_kernel : {'quartic', 'quadratic'}, 2D `~numpy.ndarray`, or `None`
         The smoothing kernel to apply to the PSF.  The predefined
         kernels ``'quartic'`` and ``'quadratic'`` have been optimized
         for PSF oversampling factors close to 4.  Alternatively, a
         custom 2D array can be input.  If `None` then no smoothing will
         be performed.  The default is ``'quartic'``.
+
+    recentering_boxsize : float or tuple of two floats, optional
 
     fitter : object, optional
 
@@ -92,7 +75,7 @@ class EPSFBuilder(object):
     """
 
     def __init__(self, pixel_scale=None, oversampling=4., shape=None,
-                 centering_boxsize=(5, 5), smoothing_kernel='quartic',
+                 smoothing_kernel='quartic', recentering_boxsize=(5, 5),
                  fitter=EPSFFitter(), center_accuracy=1.0e-3, maxiters=10):
 
         if pixel_scale is None and oversampling is None:
@@ -107,8 +90,8 @@ class EPSFBuilder(object):
         if self.shape is not None:
             self.shape = self.shape.astype(int)
 
-        self.centering_boxsize = self._init_img_params(centering_boxsize)
-        self.centering_boxsize = self.centering_boxsize.astype(int)
+        self.recentering_boxsize = self._init_img_params(recentering_boxsize)
+        self.recentering_boxsize = self.recentering_boxsize.astype(int)
 
         self.smoothing_kernel = smoothing_kernel
         self.fitter = fitter
@@ -295,63 +278,6 @@ class EPSFBuilder(object):
 
         return star_imgs
 
-    @staticmethod
-    def _interpolate_missing_data(data, mask, method='cubic'):
-        """
-        Interpolate missing data as identified by the ``mask`` keyword.
-
-        Parameters
-        ----------
-        data : 2D `~numpy.ndarray`
-            An array containing the 2D image.
-
-        mask : 2D bool `~numpy.ndarray`
-            A 2D booleen mask array with the same shape as the input
-            ``data``, where a `True` value indicates the corresponding
-            element of ``data`` is masked.  The masked data points are
-            those that will be interpolated.
-
-        method : {'cubic', 'nearest'}, optional
-            The method of used to "interpolate" the  missing data:
-
-            * ``'cubic'``:  Masked data are interpolated using 2D cubic
-              splines.  This is the default.
-
-            * ``'nearest'``:  Masked data are interpolated using
-              nearest-neighbor interpolation.
-
-        Returns
-        -------
-        data_interp : 2D `~numpy.ndarray`
-            The interpolated 2D image.
-        """
-
-        from scipy import interpolate
-
-        data_interp = np.array(data, copy=True)
-
-        if len(data_interp.shape) != 2:
-            raise ValueError('data must be a 2D array.')
-
-        if mask.shape != data.shape:
-            raise ValueError('mask and data must have the same shape.')
-
-        y, x = np.indices(data_interp.shape)
-        xy = np.dstack((x[~mask].ravel(), y[~mask].ravel()))[0]
-        z = data_interp[~mask].ravel()
-
-        if method == 'nearest':
-            interpol = interpolate.NearestNDInterpolator(xy, z)
-        elif method == 'cubic':
-            interpol = interpolate.CloughTocher2DInterpolator(xy, z)
-        else:
-            raise ValueError('Unsupported interpolation method.')
-
-        xy_missing = np.dstack((x[mask].ravel(), y[mask].ravel()))[0]
-        data_interp[mask] = interpol(xy_missing)
-
-        return data_interp
-
     def _smooth_psf(self, psf_data):
         """
         Smooth the PSF array by convolving it with a kernel.
@@ -458,7 +384,7 @@ class EPSFBuilder(object):
             # find peak location
             xcenter_new, ycenter_new = _find_peak(
                 psf_data, xmax=xcenter, ymax=ycenter,
-                peak_fit_box=self.centering_boxsize, peak_search_box='fitbox',
+                peak_fit_box=self.recentering_boxsize, peak_search_box='fitbox',
                 mask=None)
 
             dx = xcenter - xcenter_new
@@ -534,8 +460,8 @@ class EPSFBuilder(object):
         # interpolate any missing data (np.nan)
         mask = ~np.isfinite(residuals)
         if np.any(mask):
-            residuals = self._interpolate_missing_data(residuals, mask,
-                                                       method='cubic')
+            residuals = _interpolate_missing_data(residuals, mask,
+                                                  method='cubic')
 
             # fill any remaining nans (outer points) with zeros
             residuals[~np.isfinite(residuals)] = 0.
@@ -856,3 +782,77 @@ def _find_peak(data, xmax=None, ymax=None, peak_fit_box=5,
                            peak_fit_box=(wx, wy), mask=mask)
 
     return coord
+
+
+def _py2intround(a):
+    """
+    Round the input to the nearest integer.
+
+    If two integers are equally close, rounding is done away from 0.
+    """
+
+    data = np.asanyarray(a)
+    value = np.where(data >= 0, np.floor(data + 0.5),
+                     np.ceil(data - 0.5)).astype(int)
+
+    if not hasattr(a, '__iter__'):
+        value = np.asscalar(value)
+
+    return value
+
+
+def _interpolate_missing_data(data, mask, method='cubic'):
+    """
+    Interpolate missing data as identified by the ``mask`` keyword.
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray`
+        An array containing the 2D image.
+
+    mask : 2D bool `~numpy.ndarray`
+        A 2D booleen mask array with the same shape as the input
+        ``data``, where a `True` value indicates the corresponding
+        element of ``data`` is masked.  The masked data points are
+        those that will be interpolated.
+
+    method : {'cubic', 'nearest'}, optional
+        The method of used to "interpolate" the  missing data:
+
+        * ``'cubic'``:  Masked data are interpolated using 2D cubic
+            splines.  This is the default.
+
+        * ``'nearest'``:  Masked data are interpolated using
+            nearest-neighbor interpolation.
+
+    Returns
+    -------
+    data_interp : 2D `~numpy.ndarray`
+        The interpolated 2D image.
+    """
+
+    from scipy import interpolate
+
+    data_interp = np.array(data, copy=True)
+
+    if len(data_interp.shape) != 2:
+        raise ValueError('data must be a 2D array.')
+
+    if mask.shape != data.shape:
+        raise ValueError('mask and data must have the same shape.')
+
+    y, x = np.indices(data_interp.shape)
+    xy = np.dstack((x[~mask].ravel(), y[~mask].ravel()))[0]
+    z = data_interp[~mask].ravel()
+
+    if method == 'nearest':
+        interpol = interpolate.NearestNDInterpolator(xy, z)
+    elif method == 'cubic':
+        interpol = interpolate.CloughTocher2DInterpolator(xy, z)
+    else:
+        raise ValueError('Unsupported interpolation method.')
+
+    xy_missing = np.dstack((x[mask].ravel(), y[mask].ravel()))[0]
+    data_interp[mask] = interpol(xy_missing)
+
+    return data_interp
