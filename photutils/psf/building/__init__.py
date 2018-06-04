@@ -6,5 +6,4 @@ functions.
 
 from .epsf import *
 from .epsf_fitter import *
-from .models import *
 from .psfstars import *

@@ -13,7 +13,7 @@ from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
 
 from .epsf_fitter import EPSFFitter
-from .models import EPSFModel
+from ..models import EPSFModel
 
 
 __all__ = ['EPSFBuilder']
