@@ -66,8 +66,8 @@ class EPSFBuilder(object):
         scale.  Either ``oversampling`` or ``pixel_scale`` must be
         input.  If both are input, ``oversampling`` will be ignored.
 
-    shape : float or tuple of two floats, optional
-        The shape of the output PSF.  If the ``shape`` is not input, it
+    shape : float, tuple of two floats, or `None`, optional
+        The shape of the output PSF.  If the ``shape`` is no `None`, it
         will be derived from the sizes of the input ``psf_stars`` and
         the PSF oversampling factor.  If the size is even along any
         axis, it will be made odd by adding one.  The output PSF will
@@ -103,7 +103,9 @@ class EPSFBuilder(object):
         if oversampling <= 0.0:
             raise ValueError('oversampling must be a positive number.')
         self.oversampling = oversampling
-        self.shape = self._init_img_params(shape).astype(int)
+        self.shape = self._init_img_params(shape)
+        if self.shape is not None:
+            self.shape = self.shape.astype(int)
 
         self.centering_boxsize = self._init_img_params(centering_boxsize)
         self.centering_boxsize = self.centering_boxsize.astype(int)
