@@ -384,8 +384,8 @@ class EPSFBuilder(object):
             # find peak location
             xcenter_new, ycenter_new = _find_peak(
                 psf_data, xmax=xcenter, ymax=ycenter,
-                peak_fit_box=self.recentering_boxsize, peak_search_box='fitbox',
-                mask=None)
+                peak_fit_box=self.recentering_boxsize,
+                peak_search_box='fitbox', mask=None)
 
             dx = xcenter - xcenter_new
             dy = ycenter - ycenter_new
@@ -533,7 +533,7 @@ class EPSFBuilder(object):
             psf_stars = self.fitter(psf, psf_stars)
 
             # find all psf stars where the fit failed
-            fit_failed = np.array([psf_star.fit_error_status > 0
+            fit_failed = np.array([psf_star._fit_error_status > 0
                                    for psf_star in psf_stars.all_psfstars])
 
             # permanently exclude fitting any psf star where the fit

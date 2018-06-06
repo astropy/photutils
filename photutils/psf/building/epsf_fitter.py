@@ -1,5 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import copy
@@ -7,6 +6,9 @@ import warnings
 
 import numpy as np
 from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
+                                  NoOverlapError)
+from astropy.utils.exceptions import AstropyUserWarning
 
 from .psfstars import PSFStar, LinkedPSFStar, PSFStars
 
@@ -16,257 +18,216 @@ __all__ = ['EPSFFitter']
 
 class EPSFFitter(object):
     """
-    Fit a PSF model to stars.
-
-    .. note::
-        When models in ``stars`` contain weights, a weighted fit of the PSF to
-        the stars will be performed.
+    Class to fit an ePSF model to stars.
 
     Parameters
     ----------
-    stars : Star, list of Star
-        A list of :py:class:`~psfutils.catalogs.Star` objects
-        containing image data of star cutouts to which the PSF must be fitted.
-        Fitting procedure relies on correct coordinates of the center of the
-        PSF and as close as possible to the correct center positions of stars.
-        Star positions are derived from ``x_0`` and ``y_0`` parameters of the
-        `EPSFModel` model.
+    fitter : `astropy.modeling.fitting.Fitter`, optional
+        A :py:class:`~astropy.modeling.fitting.Fitter` object.  The
+        default is `~astropy.modeling.fitting.LevMarLSQFitter`.
 
-    psf : `EPSFModel`
-        A PSF model to be fitted to the stars.
-
-    psf_fit_box : int, tuple of int, None, optional
-        The size of the innermost box centered on stars center to be used for
-        PSF fitting. This allows using only a small number of central pixels
-        of the star for fitting processed thus ignoring wings. A tuple of
-        two integers can be used to indicate separate sizes of the fitting
-        box for ``X-`` and ``Y-`` axes. When ``psf_fit_box`` is `None`, the
-        entire star's image will be used for fitting.
-
-    fitter : astropy.modeling.fitting.Fitter, optional
-        A :py:class:`~astropy.modeling.fitting.Fitter`-subclassed fitter
-        class or initialized object.
+    fit_boxsize : int, tuple of int, or `None`, optional
+        The size (in pixels) of the box centered on the star to be used
+        for PSF fitting.  This allows using only a small number of
+        central pixels of the star (i.e. where the star is brightest)
+        for fitting.  If ``fit_boxsize`` is a scalar then a square box
+        of size ``fit_boxsize`` will be used.  If ``fit_boxsize`` has
+        two elements, they should be in ``(ny, nx)`` order.  The size
+        must be greater than or equal to 3 pixels for both axes.  If
+        `None`, the fitter will use the entire star image.  The default
+        is 5.
 
     fitter_kwargs : dict-like, optional
-        Additional optional keyword arguments to be passed directly to
-        fitter's ``__call__()`` method.
-
-    Returns
-    -------
-    fitted_stars : list of FittableImageModel2D
-        A list of `~psfutils.models.FittableImageModel2D` of stars with model
-        parameters `~psfutils.models.FittableImageModel2D.x_0` and
-        `~psfutils.models.FittableImageModel2D.y_0` set to 0 and
-        `~psfutils.models.FittableImageModel2D.origin` will show fitted
-        center of the star. If `update_flux` was `True`, the
-        `~psfutils.models.FittableImageModel2D.flux`
-        model parameter will contain fitted flux and the original star's
-        flux otherwise.
+        Any keyword arguments to be passed directly to the
+        ``__call__()`` method of the input ``fitter``.
     """
 
-    def __init__(self, fitter=LevMarLSQFitter(), psf_fit_box=5,
-                 **kwargs):
+    def __init__(self, fitter=LevMarLSQFitter(), fit_boxsize=5,
+                 **fitter_kwargs):
+
         self.fitter = fitter
-        self.psf_fit_box = psf_fit_box
-        self.fitter_kwargs = kwargs
+        self.fitter_has_fit_info = hasattr(self.fitter, 'fit_info')
+
+        if fit_boxsize is not None:
+            fit_boxsize = np.atleast_1d(fit_boxsize).astype(int)
+            if len(fit_boxsize) == 1:
+                fit_boxsize = np.repeat(fit_boxsize, 2)
+
+            min_size = 3
+            if any([size < min_size for size in fit_boxsize]):
+                raise ValueError('size must be >= {} for x and y'.
+                                 format(min_size))
+
+        self.fit_boxsize = fit_boxsize
+
+        # remove fitter keyword arguments that we set ourselves
+        remove_kwargs = ['x', 'y', 'z', 'weights']
+        fitter_kwargs = copy.deepcopy(fitter_kwargs)
+        for kwarg in remove_kwargs:
+            if kwarg in fitter_kwargs:
+                del fitter_kwargs[kwarg]
+        self.fitter_kwargs = fitter_kwargs
 
     def __call__(self, psf, psf_stars):
-        return self.fit_psf(psf, psf_stars)
+        """
+        Fit an ePSF model to stars.
 
-    def _fit_star(self, psf, star, fit, fit_kwargs, fitter_has_fit_info,
-                  width, height, igx, igy):
-        # NOTE: input PSF may be modified by this function. Make a copy if
-        #       it is important to preserve input model.
+        Parameters
+        ----------
+        psf : `EPSFModel`
+            A PSF model to be fitted to the stars.
 
-        from .epsf import _py2intround
+        psf_stars : `PSFStars` object
+            The PSF stars to be fit.
 
-        err = 0
-        ovx = star.pixel_scale[0] / psf.pixel_scale[0]
-        ovy = star.pixel_scale[1] / psf.pixel_scale[1]
-        ny, nx = star.shape
+        stars : Star, list of Star
+            A list of :py:class:`~psfutils.catalogs.Star` objects
+            containing image data of star cutouts to which the PSF must
+            be fitted.  Fitting procedure relies on correct coordinates
+            of the center of the PSF and as close as possible to the
+            correct center positions of stars.  Star positions are
+            derived from ``x_0`` and ``y_0`` parameters of the
+            `EPSFModel` model.
 
-        rxc = _py2intround(star.cutout_center[0])
-        ryc = _py2intround(star.cutout_center[1])
+            When models in ``stars`` contain weights, a weighted fit of
+            the PSF to the stars will be performed.
 
-        x1 = rxc - (width - 1) // 2
-        x2 = x1 + width
-        y1 = ryc - (height - 1) // 2
-        y2 = y1 + height
 
-        # check boundaries of the fitting box:
-        if x1 < 0:
-            i1 = -x1
-            x1 = 0
-
-        else:
-            i1 = 0
-
-        if x2 > nx:
-            i2 = width - (x2 - nx)
-            x2 = nx
-
-        else:
-            i2 = width
-
-        if y1 < 0:
-            j1 = -y1
-            y1 = 0
-
-        else:
-            j1 = 0
-
-        if y2 > ny:
-            j2 = height - (y2 - ny)
-            y2 = ny
-
-        else:
-            j2 = height
-
-        # initial guess for fitted flux and shifts:
-        psf.flux = star.flux
-        psf.x_0 = 0.0
-        psf.y_0 = 0.0
-
-        if rxc < 0 or rxc > (nx - 1) or ryc < 0 or ryc > (ny - 1):
-            # star's center is outside the extraction box
-            err = 1
-            fit_info = None
-            fitted_psf = psf
-            warnings.warn("Source with coordinates ({}, {}) is being ignored "
-                          "because its center is outside the image."
-                          .format(star.cutout_center[0],
-                                  star.cutout_center[1]))
-
-        elif (i2 - i1) < 3 or (j2 - j1) < 3:
-            # star's center is too close to the edge of the star's image:
-            err = 2
-            fit_info = None
-            fitted_psf = psf
-            warnings.warn("Source with coordinates ({}, {}) is being ignored "
-                          "because there are too few pixels available around "
-                          "its center pixel.".format(star.cutout_center[0],
-                                                     star.cutout_center[1]))
-
-        else:
-            # define PSF sampling grid:
-            gx = (igx[j1:j2, i1:i2] - (star.cutout_center[0] - x1)) * ovx
-            gy = (igy[j1:j2, i1:i2] - (star.cutout_center[1] - y1)) * ovy
-
-            # fit PSF to the star:
-            scaled_data = star.data[y1:y2, x1:x2] / (ovx * ovy)
-            if star.weights is None:
-                # a separate treatment for the case when fitters
-                # do not support weights (star's models must not have
-                # weights set in such cases)
-                fitted_psf = fit(model=psf, x=gx, y=gy, z=scaled_data,
-                                 **fit_kwargs)
-
-            else:
-                wght = star.weights[y1:y2, x1:x2]
-                fitted_psf = fit(model=psf, x=gx, y=gy, z=scaled_data,
-                                 weights=wght, **fit_kwargs)
-
-            if fitter_has_fit_info:
-                # TODO: this treatment of fit info (fit error info) may not be
-                # compatible with other fitters. This code may need revising.
-                fit_info = fit.fit_info
-                if 'ierr' in fit_info and fit_info['ierr'] not in [1, 2, 3, 4]:
-                    err = 3
-
-            else:
-                fit_info = None
-
-        # compute correction to the star's position and flux:
-        cst = copy.deepcopy(star)
-        #cst.x_center += fitted_psf.x_0.value / ovx
-        #cst.y_center += fitted_psf.y_0.value / ovy
-
-        x_center = cst.cutout_center[0] + fitted_psf.x_0.value / ovx
-        y_center = cst.cutout_center[1] + fitted_psf.y_0.value / ovy
-        cst.cutout_center = (x_center, y_center)
-
-        # set "measured" star's flux based on fitted ePSF:
-        cst.flux = fitted_psf.flux.value
-
-        cst.fit_info = fit_info
-        cst.fit_error_status = err
-
-        return cst
-
-    def fit_psf(self, psf, psf_stars):
-        from .epsf import _py2intround
+        Returns
+        -------
+        fitted_stars : list of FittableImageModel2D
+            A list of `~psfutils.models.FittableImageModel2D` of stars
+            with model parameters
+            `~psfutils.models.FittableImageModel2D.x_0` and
+            `~psfutils.models.FittableImageModel2D.y_0` set to 0 and
+            `~psfutils.models.FittableImageModel2D.origin` will show
+            fitted center of the star. If `update_flux` was `True`, the
+            `~psfutils.models.FittableImageModel2D.flux` model parameter
+            will contain fitted flux and the original star's flux
+            otherwise.
+        """
 
         if len(psf_stars) == 0:
             return []
 
-        # get all stars including linked stars as a flat list:
-        all_stars = psf_stars.all_psfstars
-
-        # analize psf_fit_box:
-        snx = [s.shape[1] for s in all_stars]
-        sny = [s.shape[0] for s in all_stars]
-        minfbx = min(snx)
-        minfby = min(sny)
-
-        psf_fit_box = np.copy(self.psf_fit_box)
-        if psf_fit_box is not None:
-            psf_fit_box = np.atleast_1d(psf_fit_box).astype(int)
-            if len(psf_fit_box) == 1:
-                psf_fit_box = np.repeat(psf_fit_box, 2)
-        else:
-            # use full grid defined by stars' data size:
-            psf_fit_box = (minfbx, minfby)
-
-
-        #elif hasattr(psf_fit_box, '__iter__'):
-        #    if len(psf_fit_box) != 2:
-        #        raise ValueError("'psf_fit_box' must be a tuple of two "
-        #                         "integers, a single integer, or None")
-#
-#            psf_fit_box = (min(minfbx, psf_fit_box[0]),
-#                           min(minfby, psf_fit_box[0]))
-#
-#        else:
-#            psf_fit_box = min(minfbx, minfby, psf_fit_box)
-#            psf_fit_box = (psf_fit_box, psf_fit_box)
-
-        # create grid for fitting box (in stars' grid units):
-        width, height = psf_fit_box
-        width = _py2intround(width)
-        height = _py2intround(height)
-        igy, igx = np.indices((height, width), dtype=np.float)
-
-        # perform fitting for each star:
-        fitted_stars = []
-
-        # remove fitter's keyword arguments that we set ourselves:
-        rem_kwd = ['x', 'y', 'z', 'weights']
-        fitter_kwargs = copy.deepcopy(self.fitter_kwargs)
-        for k in rem_kwd:
-            if k in fitter_kwargs:
-                del fitter_kwargs[k]
-
-        fitter_has_fit_info = hasattr(self.fitter, 'fit_info')
-
-        # make a copy of the original PSF:
+        # make a copy of the input PSF
         psf = psf.copy()
 
-        for st in psf_stars:
+        # perform the fit
+        fitted_stars = []
+        for psf_star in psf_stars:
+            if isinstance(psf_star, PSFStar):
+                fitted_star = self._fit_star(psf, psf_star, self.fitter,
+                                             self.fitter_kwargs,
+                                             self.fitter_has_fit_info,
+                                             self.fit_boxsize)
 
-            if isinstance(st, PSFStar):
-                cst = self._fit_star(psf, st, self.fitter, fitter_kwargs,
-                                     fitter_has_fit_info,
-                                     width, height, igx, igy)
-                # cst = PSFStar
-            elif isinstance(st, LinkedPSFStar):
-                cst = self._fit_star(psf, st, self.fitter, fitter_kwargs,
-                                     fitter_has_fit_info,
-                                     width, height, igx, igy)
-                #cst.constrain_linked_centers(ignore_badfit_stars=True)
-                # cst = LinkedPSFStar
+            elif isinstance(psf_star, LinkedPSFStar):
+                fitted_star = []
+                for linked_star in LinkedPSFStar:
+                    fitted_star.append(
+                        self._fit_star(psf, linked_star, self.fitter,
+                                       self.fitter_kwargs,
+                                       self.fitter_has_fit_info,
+                                       self.fit_boxsize))
+
+                fitted_star = LinkedPSFStar(fitted_star)
+                fitted_star.constrain_centers()
+
             else:
-                raise ValueError('invalid psf_star type')
+                raise ValueError('invalid star type in psf_stars')
 
-            fitted_stars.append(cst)
+            fitted_stars.append(fitted_star)
 
         return PSFStars(fitted_stars)
+
+    def _fit_star(self, psf, psf_star, fitter, fitter_kwargs,
+                  fitter_has_fit_info, fit_boxsize):
+        """
+        Fit a single star with a PSF model.
+
+        The input ``psf`` will generally be modified by fitting routine
+        in this function.  Make a copy if it is important to preserve
+        the input ``psf`` model.
+        """
+
+        if fit_boxsize is not None:
+            try:
+                xcenter, ycenter = psf_star.cutout_center
+                large_slc, small_slc = overlap_slices(psf_star.shape,
+                                                      fit_boxsize,
+                                                      (ycenter, xcenter),
+                                                      mode='strict')
+            except (PartialOverlapError, NoOverlapError):
+                warnings.warn('The star at ({0}, {1}) is being ignored '
+                              'because its fitting region extends beyond '
+                              'the image.'.format(psf_star.center[0],
+                                                  psf_star.center[1]),
+                              AstropyUserWarning)
+
+                psf_star = copy.deepcopy(psf_star)
+                psf_star._fit_error_status = 1
+
+                return psf_star
+
+            data = psf_star.data[large_slc]
+            weights = psf_star.weights[large_slc]
+
+            # define the origin of the fitting region
+            x0 = large_slc[1].start
+            y0 = large_slc[0].start
+        else:
+            data = psf_star.data
+            weights = psf_star.weights
+
+            # define the origin of the fitting region
+            x0 = 0
+            y0 = 0
+
+        x_oversamp = psf_star.pixel_scale[0] / psf.pixel_scale[0]
+        y_oversamp = psf_star.pixel_scale[1] / psf.pixel_scale[1]
+        scaled_data = data / (x_oversamp * y_oversamp)
+
+        # define positions in the PSF oversampled grid
+        yy, xx = np.indices(data.shape, dtype=np.float)
+        xx = (xx - (psf_star.cutout_center[0] - x0)) * x_oversamp
+        yy = (yy - (psf_star.cutout_center[1] - y0)) * y_oversamp
+
+        # define the initial guesses for fitted flux and shifts
+        psf.flux = psf_star.flux
+        psf.x_0 = 0.0
+        psf.y_0 = 0.0
+
+        try:
+            fitted_psf = fitter(model=psf, x=xx, y=yy, z=scaled_data,
+                                weights=weights, **fitter_kwargs)
+        except TypeError:
+            # fitter doesn't support weights
+            fitted_psf = fitter(model=psf, x=xx, y=yy, z=scaled_data,
+                                **fitter_kwargs)
+
+        fit_error_status = 0
+        if fitter_has_fit_info:
+            fit_info = copy.copy(fitter.fit_info)
+
+            if 'ierr' in fit_info and fit_info['ierr'] not in [1, 2, 3, 4]:
+                fit_error_status = 2    # fit solution was not found
+        else:
+            fit_info = None
+
+        # compute the star's fitted position
+        x_center = (psf_star.cutout_center[0] +
+                    (fitted_psf.x_0.value / x_oversamp))
+        y_center = (psf_star.cutout_center[1] +
+                    (fitted_psf.y_0.value / y_oversamp))
+
+        psf_star = copy.deepcopy(psf_star)
+        psf_star.cutout_center = (x_center, y_center)
+
+        # set the star's flux to the ePSF-fitted flux
+        psf_star.flux = fitted_psf.flux.value
+
+        psf_star._fit_info = fit_info
+        psf_star._fit_error_status = fit_error_status
+
+        return psf_star
