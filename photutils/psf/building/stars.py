@@ -1,4 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tools to extract cutouts of stars and data structures to hold the
+cutouts for fitting and building ePSFs.
+"""
+
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import warnings
@@ -14,10 +19,10 @@ from astropy.wcs.utils import skycoord_to_pixel
 from ...aperture import BoundingBox
 
 
-__all__ = ['PSFStar', 'PSFStars', 'LinkedPSFStar', 'extract_stars']
+__all__ = ['Star', 'Stars', 'LinkedStar', 'extract_stars']
 
 
-class PSFStar(object):
+class Star(object):
     """
     A class to hold a 2D cutout image and associated metadata of a star.
 
@@ -58,12 +63,12 @@ class PSFStar(object):
         floats of the form ``(x_pixscale, y_pixscale)``.  If
         ``pixel_scale`` is a scalar then the pixel scale will be the
         same for both the x and y axes.  The star ``pixel_scale`` is
-        used in conjunction with the PSF pixel scale or oversampling
-        factor when building and fitting the PSF.  The ratio of the
-        star-to-PSF pixel scales represents the PSF oversampling factor.
-        ``pixel_scale`` allows for building (and fitting) a PSF using
-        images of stars with different pixel scales (e.g. velocity
-        aberrations).
+        used in conjunction with the ePSF pixel scale or oversampling
+        factor when building and fitting the ePSF.  The ratio of the
+        star-to-ePSF pixel scales represents the ePSF oversampling
+        factor.  ``pixel_scale`` allows for building (and fitting) an
+        ePSF using images of stars with different pixel scales (e.g.
+        velocity aberrations).
     """
 
     def __init__(self, data, weights=None, cutout_center=None, origin=(0, 0),
@@ -102,7 +107,6 @@ class PSFStar(object):
 
         self._excluded_from_fit = False
         self._fitinfo = None
-
 
     def __array__(self):
         """
@@ -191,40 +195,40 @@ class PSFStar(object):
 
         return flux
 
-    def register_psf(self, psf):
+    def register_epsf(self, epsf):
         """
-        Register and scale (in flux) the input ``psf`` to the star.
+        Register and scale (in flux) the input ``epsf`` to the star.
 
         Parameters
         ----------
-        psf : `EPSFModel`
-            The point-spread function (PSF).
+        epsf : `EPSFModel`
+            The ePSF to register.
 
         Returns
         -------
         data : `~numpy.ndarray`
-            A 2D array of the registered/scaled PSF.
+            A 2D array of the registered/scaled ePSF.
         """
 
-        x_oversamp = self.pixel_scale[0] / psf.pixel_scale[0]
-        y_oversamp = self.pixel_scale[1] / psf.pixel_scale[1]
+        x_oversamp = self.pixel_scale[0] / epsf.pixel_scale[0]
+        y_oversamp = self.pixel_scale[1] / epsf.pixel_scale[1]
 
         yy, xx = np.indices(self.shape, dtype=np.float)
         xx = x_oversamp * (xx - self.cutout_center[0])
         yy = y_oversamp * (yy - self.cutout_center[1])
 
         return (self.flux * x_oversamp * y_oversamp *
-                psf.evaluate(xx, yy, flux=1.0, x_0=0.0, y_0=0.0))
+                epsf.evaluate(xx, yy, flux=1.0, x_0=0.0, y_0=0.0))
 
-    def compute_residual_image(self, psf):
+    def compute_residual_image(self, epsf):
         """
         Compute the residual image of the star data minus the
-        registered/scaled PSF.
+        registered/scaled ePSF.
 
         Parameters
         ----------
-        psf : `EPSFModel`
-            The point-spread function (PSF).
+        epsf : `EPSFModel`
+            The ePSF to subtract.
 
         Returns
         -------
@@ -232,7 +236,7 @@ class PSFStar(object):
             A 2D array of the residual image.
         """
 
-        return self.data - self.register_psf(psf)
+        return self.data - self.register_epsf(epsf)
 
     @lazyproperty
     def _xy_idx(self):
@@ -304,25 +308,25 @@ class PSFStar(object):
         return self.weights[~self.mask].ravel()
 
 
-class PSFStars(object):
+class Stars(object):
     """
-    Class to hold a list of `PSFStar` and/or `LinkedPSFStar` objects.
+    Class to hold a list of `Star` and/or `LinkedStar` objects.
 
     Parameters
     ----------
-    star_list : list of `PSFStar` or `LinkedPSFStar` objects
-        A list of `PSFStar` and/or `LinkedPSFStar` objects.
+    star_list : list of `Star` or `LinkedStar` objects
+        A list of `Star` and/or `LinkedStar` objects.
     """
 
     def __init__(self, stars_list):
-        if (isinstance(stars_list, PSFStar) or
-                isinstance(stars_list, LinkedPSFStar)):
+        if (isinstance(stars_list, Star) or
+                isinstance(stars_list, LinkedStar)):
             self._data = [stars_list]
         elif isinstance(stars_list, list):
             self._data = stars_list
         else:
-            raise ValueError('stars_list must be a list of PSFStar and/or '
-                             'LinkedPSFStar objects.')
+            raise ValueError('stars_list must be a list of Star and/or '
+                             'LinkedStar objects.')
 
     def __len__(self):
         return len(self._data)
@@ -349,38 +353,38 @@ class PSFStars(object):
             return [getattr(star, attr) for star in self._data]
 
     @lazyproperty
-    def all_psfstars(self):
+    def all_stars(self):
         """
-        A list of all `PSFStar` objects stored in this object, including
-        those that comprise linked stars (i.e. `LinkedPSFStar`), as a
-        flat list.
+        A list of all `Star` objects stored in this object, including
+        those that comprise linked stars (i.e. `LinkedStar`), as a flat
+        list.
         """
 
-        psf_stars = []
+        stars = []
         for item in self._data:
-            if isinstance(item, LinkedPSFStar):
-                psf_stars.extend(item.all_psfstars)
+            if isinstance(item, LinkedStar):
+                stars.extend(item.all_stars)
             else:
-                psf_stars.append(item)
+                stars.append(item)
 
-        return psf_stars
+        return stars
 
     @property
-    def all_good_psfstars(self):
+    def all_good_stars(self):
         """
-        A list of all `PSFStar` objects stored in this object that have
-        not been excluded from fitting, including those that comprise
-        linked stars (i.e. `LinkedPSFStar`), as a flat list.
+        A list of all `Star` objects stored in this object that have not
+        been excluded from fitting, including those that comprise linked
+        stars (i.e. `LinkedStar`), as a flat list.
         """
 
-        psf_stars = []
-        for psf_star in self.all_psfstars:
-            if psf_star._excluded_from_fit:
+        stars = []
+        for star in self.all_stars:
+            if star._excluded_from_fit:
                 continue
             else:
-                psf_stars.append(psf_star)
+                stars.append(star)
 
-        return psf_stars
+        return stars
 
     @lazyproperty
     def n_stars(self):
@@ -393,20 +397,20 @@ class PSFStars(object):
         return len(self._data)
 
     @lazyproperty
-    def n_psfstars(self):
+    def n_all_stars(self):
         """
-        The total number of `PSFStar` objects, including all the linked
-        stars within `LinkedPSFStar`.  Each linked star is included in
-        the count.
+        The total number of `Star` objects, including all the linked
+        stars within `LinkedStar`.  Each linked star is included in the
+        count.
         """
 
-        return len(self.all_psfstars)
+        return len(self.all_stars)
 
     @property
-    def n_good_psfstars(self):
+    def n_good_stars(self):
         """
-        The total number of `PSFStar` objects, including all the linked
-        stars within `LinkedPSFStar`, that have not been excluded from
+        The total number of `Star` objects, including all the linked
+        stars within `LinkedStar`, that have not been excluded from
         fitting.  Each non-excluded linked star is included in the
         count.
         """
@@ -416,54 +420,54 @@ class PSFStars(object):
     @lazyproperty
     def _min_pixel_scale(self):
         """
-        The minimum x and y pixel scale of all the `PSFStar`s (including
-        linked stars).
+        The minimum x and y pixel scale of all the `Star` objects
+        (including linked stars).
         """
 
-        return np.min([star.pixel_scale for star in self.all_psfstars],
+        return np.min([star.pixel_scale for star in self.all_stars],
                       axis=0)
 
     @lazyproperty
     def _max_shape(self):
         """
-        The maximum x and y shapes of all the `PSFStar`s (including
-        linked stars).
+        The maximum x and y shapes of all the `Star`s (including linked
+        stars).
         """
 
-        return np.max([star.shape for star in self.all_psfstars],
+        return np.max([star.shape for star in self.all_stars],
                       axis=0)
 
 
-class LinkedPSFStar(PSFStars):
+class LinkedStar(Stars):
     """
-    A class to hold a list of `PSFStar` objects for linked stars.
+    A class to hold a list of `Star` objects for linked stars.
 
-    Linked stars are `PSFStar` cutouts from different images that
-    represent the same physical star.  When building the PSF, linked
-    stars are constrained to have the same sky coordinates.
+    Linked stars are `Star` cutouts from different images that represent
+    the same physical star.  When building the ePSF, linked stars are
+    constrained to have the same sky coordinates.
 
     Parameters
     ----------
-    star_list : list of `PSFStar` objects
-        A list of `PSFStar` objects for the same physical star.  Each
-        `PSFStar` object must have a valid ``wcs_large`` attribute to
+    star_list : list of `Star` objects
+        A list of `Star` objects for the same physical star.  Each
+        `Star` object must have a valid ``wcs_large`` attribute to
         convert between pixel and sky coordinates.
     """
 
     def __init__(self, stars_list):
         for star in stars_list:
-            if not isinstance(star, PSFStar):
-                return ValueError('stars_list must contain only PSFStar '
+            if not isinstance(star, Star):
+                return ValueError('stars_list must contain only Star '
                                   'objects.')
             if star.wcs_large is None:
-                return ValueError('Each PSFStar object must have a valid '
+                return ValueError('Each Star object must have a valid '
                                   'wcs_large attribute.')
 
-        super(LinkedPSFStar, self).__init__(stars_list)
+        super(LinkedStar, self).__init__(stars_list)
 
     def constrain_centers(self):
         """
-        Constrain the centers of linked PSFStar objects (i.e. the same
+        Constrain the centers of linked `Star` objects (i.e. the same
         physical star) to have the same sky coordinate.
 
         The single sky coordinate is calculated as the mean of sky
@@ -554,8 +558,8 @@ def extract_stars(data, catalogs, size=(11, 11)):
 
     Returns
     -------
-    psfstars : `PSFStars` instance
-        A `PSFStars` instance containing the extracted stars.
+    stars : `Stars` instance
+        A `Stars` instance containing the extracted stars.
     """
 
     if isinstance(data, NDData):
@@ -630,7 +634,7 @@ def extract_stars(data, catalogs, size=(11, 11)):
             elif len(good_stars) == 1:
                 good_stars = good_stars[0]  # only one star, cannot be linked
             else:
-                good_stars = LinkedPSFStar(good_stars)
+                good_stars = LinkedStar(good_stars)
 
             stars_out.append(good_stars)
     else:    # no linked stars
@@ -638,7 +642,7 @@ def extract_stars(data, catalogs, size=(11, 11)):
         for img, cat in zip(data, catalogs):
             stars_out.append(_extract_stars(img, cat, size=size))
 
-    return PSFStars(stars_out)
+    return Stars(stars_out)
 
 
 def _extract_stars(data, catalog, size=(11, 11)):
@@ -671,8 +675,8 @@ def _extract_stars(data, catalog, size=(11, 11)):
 
     Returns
     -------
-    stars : list of `PSFStar` objects
-        A list of `PSFStar` instances containing the extracted stars.
+    stars : list of `Star` objects
+        A list of `Star` instances containing the extracted stars.
     """
 
     colnames = catalog.colnames
@@ -716,9 +720,8 @@ def _extract_stars(data, catalog, size=(11, 11)):
 
         origin = (large_slc[1].start, large_slc[0].start)
         cutout_center = (xcenter - origin[0], ycenter - origin[1])
-        star = PSFStar(data_cutout, weights_cutout,
-                       cutout_center=cutout_center, origin=origin,
-                       wcs_large=data.wcs, id_label=obj_id)
+        star = Star(data_cutout, weights_cutout, cutout_center=cutout_center,
+                    origin=origin, wcs_large=data.wcs, id_label=obj_id)
 
         stars.append(star)
 

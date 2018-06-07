@@ -5,4 +5,4 @@ functions.
 """
 
 from .epsf import *
-from .psfstars import *
+from .stars import *

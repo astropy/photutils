@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tools to build and fit an empirical effective PSF (ePSF).
+Tools to build and fit an effective PSF (ePSF) based on Anderson and
+King (2000; PASP 112, 1360).
 """
 
 from __future__ import (absolute_import, division, print_function,
@@ -15,7 +16,7 @@ from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
 from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
 
-from .psfstars import PSFStar, LinkedPSFStar, PSFStars
+from .stars import Star, LinkedStar, Stars
 from ..models import EPSFModel
 
 
@@ -24,7 +25,7 @@ __all__ = ['EPSFFitter', 'EPSFBuilder']
 
 class EPSFFitter(object):
     """
-    Class to fit an ePSF model to stars.
+    Class to fit an ePSF model to one or more stars.
 
     Parameters
     ----------
@@ -34,7 +35,7 @@ class EPSFFitter(object):
 
     fit_boxsize : int, tuple of int, or `None`, optional
         The size (in pixels) of the box centered on the star to be used
-        for PSF fitting.  This allows using only a small number of
+        for ePSF fitting.  This allows using only a small number of
         central pixels of the star (i.e. where the star is brightest)
         for fitting.  If ``fit_boxsize`` is a scalar then a square box
         of size ``fit_boxsize`` will be used.  If ``fit_boxsize`` has
@@ -44,8 +45,9 @@ class EPSFFitter(object):
         is 5.
 
     fitter_kwargs : dict-like, optional
-        Any keyword arguments to be passed directly to the
-        ``__call__()`` method of the input ``fitter``.
+        Any additional keyword arguments (except ``x``, ``y``, ``z``, or
+        ``weights``) to be passed directly to the ``__call__()`` method
+        of the input ``fitter``.
     """
 
     def __init__(self, fitter=LevMarLSQFitter(), fit_boxsize=5,
@@ -61,12 +63,12 @@ class EPSFFitter(object):
 
             min_size = 3
             if any([size < min_size for size in fit_boxsize]):
-                raise ValueError('size must be >= {} for x and y'.
-                                 format(min_size))
+                raise ValueError('size must be >= {} for x and y'
+                                 .format(min_size))
 
         self.fit_boxsize = fit_boxsize
 
-        # remove fitter keyword arguments that we set ourselves
+        # remove any fitter keyword arguments that we need to set
         remove_kwargs = ['x', 'y', 'z', 'weights']
         fitter_kwargs = copy.deepcopy(fitter_kwargs)
         for kwarg in remove_kwargs:
@@ -74,143 +76,132 @@ class EPSFFitter(object):
                 del fitter_kwargs[kwarg]
         self.fitter_kwargs = fitter_kwargs
 
-    def __call__(self, psf, psf_stars):
+    def __call__(self, epsf, stars):
         """
         Fit an ePSF model to stars.
 
         Parameters
         ----------
-        psf : `EPSFModel`
-            A PSF model to be fitted to the stars.
+        epsf : `EPSFModel`
+            An ePSF model to be fitted to the stars.
 
-        psf_stars : `PSFStars` object
-            The PSF stars to be fit.
-
-        stars : Star, list of Star
-            A list of :py:class:`~psfutils.catalogs.Star` objects
-            containing image data of star cutouts to which the PSF must
-            be fitted.  Fitting procedure relies on correct coordinates
-            of the center of the PSF and as close as possible to the
-            correct center positions of stars.  Star positions are
-            derived from ``x_0`` and ``y_0`` parameters of the
-            `EPSFModel` model.
-
-            When models in ``stars`` contain weights, a weighted fit of
-            the PSF to the stars will be performed.
-
+        stars : `Stars` object
+            The stars to be fit.  The center coordinates for each star
+            should be as close as possible to actual centers.  For stars
+            than contain weights, a weighted fit of the ePSF to the star
+            will be performed.
 
         Returns
         -------
-        fitted_stars : list of FittableImageModel2D
-            A list of `~psfutils.models.FittableImageModel2D` of stars
-            with model parameters
-            `~psfutils.models.FittableImageModel2D.x_0` and
-            `~psfutils.models.FittableImageModel2D.y_0` set to 0 and
-            `~psfutils.models.FittableImageModel2D.origin` will show
-            fitted center of the star. If `update_flux` was `True`, the
-            `~psfutils.models.FittableImageModel2D.flux` model parameter
-            will contain fitted flux and the original star's flux
-            otherwise.
+        fitted_stars : `Stars` object
+            The fitted stars.  The ePSF-fitted center position and flux
+            are stored in the ``center`` (or ``cutout_center`` relative
+            to the cutout image) and ``flux`` attributes.
         """
 
-        if len(psf_stars) == 0:
-            return []
+        if len(stars) == 0:
+            return stars
 
-        # make a copy of the input PSF
-        psf = psf.copy()
+        if not isinstance(epsf, EPSFModel):
+            raise TypeError('The input epsf must be an EPSFModel.')
+
+        # make a copy of the input ePSF
+        epsf = epsf.copy()
 
         # perform the fit
         fitted_stars = []
-        for psf_star in psf_stars:
-            if isinstance(psf_star, PSFStar):
-                fitted_star = self._fit_star(psf, psf_star, self.fitter,
+        for star in stars:
+            if isinstance(star, Star):
+                fitted_star = self._fit_star(epsf, star, self.fitter,
                                              self.fitter_kwargs,
                                              self.fitter_has_fit_info,
                                              self.fit_boxsize)
 
-            elif isinstance(psf_star, LinkedPSFStar):
+            elif isinstance(star, LinkedStar):
                 fitted_star = []
-                for linked_star in LinkedPSFStar:
+                for linked_star in LinkedStar:
                     fitted_star.append(
-                        self._fit_star(psf, linked_star, self.fitter,
+                        self._fit_star(epsf, linked_star, self.fitter,
                                        self.fitter_kwargs,
                                        self.fitter_has_fit_info,
                                        self.fit_boxsize))
 
-                fitted_star = LinkedPSFStar(fitted_star)
+                fitted_star = LinkedStar(fitted_star)
                 fitted_star.constrain_centers()
 
             else:
-                raise ValueError('invalid star type in psf_stars')
+                raise TypeError('stars must contain only Star and/or '
+                                'LinkedStar objects.')
 
             fitted_stars.append(fitted_star)
 
-        return PSFStars(fitted_stars)
+        return Stars(fitted_stars)
 
-    def _fit_star(self, psf, psf_star, fitter, fitter_kwargs,
+    def _fit_star(self, epsf, star, fitter, fitter_kwargs,
                   fitter_has_fit_info, fit_boxsize):
         """
-        Fit a single star with a PSF model.
+        Fit an ePSF model to a single star.
 
-        The input ``psf`` will generally be modified by fitting routine
-        in this function.  Make a copy if it is important to preserve
-        the input ``psf`` model.
+        The input ``epsf`` will usually be modified by fitting routine
+        in this function.  Make a copy before calling this function if
+        the original is needed.
         """
 
         if fit_boxsize is not None:
             try:
-                xcenter, ycenter = psf_star.cutout_center
-                large_slc, small_slc = overlap_slices(psf_star.shape,
+                xcenter, ycenter = star.cutout_center
+                large_slc, small_slc = overlap_slices(star.shape,
                                                       fit_boxsize,
                                                       (ycenter, xcenter),
                                                       mode='strict')
             except (PartialOverlapError, NoOverlapError):
                 warnings.warn('The star at ({0}, {1}) is being ignored '
                               'because its fitting region extends beyond '
-                              'the image.'.format(psf_star.center[0],
-                                                  psf_star.center[1]),
+                              'the image.'.format(star.center[0],
+                                                  star.center[1]),
                               AstropyUserWarning)
 
-                psf_star = copy.deepcopy(psf_star)
-                psf_star._fit_error_status = 1
+                star = copy.deepcopy(star)
+                star._fit_error_status = 1
 
-                return psf_star
+                return star
 
-            data = psf_star.data[large_slc]
-            weights = psf_star.weights[large_slc]
+            data = star.data[large_slc]
+            weights = star.weights[large_slc]
 
             # define the origin of the fitting region
             x0 = large_slc[1].start
             y0 = large_slc[0].start
         else:
-            data = psf_star.data
-            weights = psf_star.weights
+            # use the entire cutout image
+            data = star.data
+            weights = star.weights
 
             # define the origin of the fitting region
             x0 = 0
             y0 = 0
 
-        x_oversamp = psf_star.pixel_scale[0] / psf.pixel_scale[0]
-        y_oversamp = psf_star.pixel_scale[1] / psf.pixel_scale[1]
+        x_oversamp = star.pixel_scale[0] / epsf.pixel_scale[0]
+        y_oversamp = star.pixel_scale[1] / epsf.pixel_scale[1]
         scaled_data = data / (x_oversamp * y_oversamp)
 
-        # define positions in the PSF oversampled grid
+        # define positions in the ePSF oversampled grid
         yy, xx = np.indices(data.shape, dtype=np.float)
-        xx = (xx - (psf_star.cutout_center[0] - x0)) * x_oversamp
-        yy = (yy - (psf_star.cutout_center[1] - y0)) * y_oversamp
+        xx = (xx - (star.cutout_center[0] - x0)) * x_oversamp
+        yy = (yy - (star.cutout_center[1] - y0)) * y_oversamp
 
         # define the initial guesses for fitted flux and shifts
-        psf.flux = psf_star.flux
-        psf.x_0 = 0.0
-        psf.y_0 = 0.0
+        epsf.flux = star.flux
+        epsf.x_0 = 0.0
+        epsf.y_0 = 0.0
 
         try:
-            fitted_psf = fitter(model=psf, x=xx, y=yy, z=scaled_data,
-                                weights=weights, **fitter_kwargs)
+            fitted_epsf = fitter(model=epsf, x=xx, y=yy, z=scaled_data,
+                                 weights=weights, **fitter_kwargs)
         except TypeError:
             # fitter doesn't support weights
-            fitted_psf = fitter(model=psf, x=xx, y=yy, z=scaled_data,
-                                **fitter_kwargs)
+            fitted_epsf = fitter(model=epsf, x=xx, y=yy, z=scaled_data,
+                                 **fitter_kwargs)
 
         fit_error_status = 0
         if fitter_has_fit_info:
@@ -222,64 +213,68 @@ class EPSFFitter(object):
             fit_info = None
 
         # compute the star's fitted position
-        x_center = (psf_star.cutout_center[0] +
-                    (fitted_psf.x_0.value / x_oversamp))
-        y_center = (psf_star.cutout_center[1] +
-                    (fitted_psf.y_0.value / y_oversamp))
+        x_center = (star.cutout_center[0] +
+                    (fitted_epsf.x_0.value / x_oversamp))
+        y_center = (star.cutout_center[1] +
+                    (fitted_epsf.y_0.value / y_oversamp))
 
-        psf_star = copy.deepcopy(psf_star)
-        psf_star.cutout_center = (x_center, y_center)
+        star = copy.deepcopy(star)
+        star.cutout_center = (x_center, y_center)
 
         # set the star's flux to the ePSF-fitted flux
-        psf_star.flux = fitted_psf.flux.value
+        star.flux = fitted_epsf.flux.value
 
-        psf_star._fit_info = fit_info
-        psf_star._fit_error_status = fit_error_status
+        star._fit_info = fit_info
+        star._fit_error_status = fit_error_status
 
-        return psf_star
+        return star
 
 
 class EPSFBuilder(object):
     """
-    Class to build an empirical effective PSF (ePSF).
+    Class to build an effective PSF (ePSF).
+
+    See `Anderson and King (2000; PASP 112, 1360)
+    <http://adsabs.harvard.edu/abs/2000PASP..112.1360A>`_ for details.
 
     Parameters
     ----------
     pixel_scale : float or tuple of two floats, optional
-        The pixel scale (in arbitrary units) of the output PSF.  The
+        The pixel scale (in arbitrary units) of the output ePSF.  The
         ``pixel_scale`` can either be a single float or tuple of two
         floats of the form ``(x_pixscale, y_pixscale)``.  If
         ``pixel_scale`` is a scalar then the pixel scale will be the
-        same for both the x and y axes.  The PSF ``pixel_scale`` is used
-        in conjunction with the star pixel scale when building and
-        fitting the PSF.  This allows for building (and fitting) a PSF
+        same for both the x and y axes.  The ePSF ``pixel_scale`` is
+        used in conjunction with the star pixel scale when building and
+        fitting the ePSF.  This allows for building (and fitting) a ePSF
         using images of stars with different pixel scales (e.g. velocity
         aberrations).  Either ``oversampling`` or ``pixel_scale`` must
         be input.  If both are input, ``pixel_scale`` will override the
         input ``oversampling``.
 
     oversampling : float or tuple of two floats, optional
-        The oversampling factor(s) of the PSF relative to the input
-        ``psf_stars`` along the x and y axes.  The ``oversampling`` can
+        The oversampling factor(s) of the ePSF relative to the input
+        ``stars`` along the x and y axes.  The ``oversampling`` can
         either be a single float or a tuple of two floats of the form
         ``(x_oversamp, y_oversamp)``.  If ``oversampling`` is a scalar
         then the oversampling will be the same for both the x and y
         axes.  The ``oversampling`` factor will be used with the minimum
-        pixel scale of all input PSF stars to calculate the PSF pixel
+        pixel scale of all input stars to calculate the ePSF pixel
         scale.  Either ``oversampling`` or ``pixel_scale`` must be
         input.  If both are input, ``oversampling`` will be ignored.
 
     shape : float, tuple of two floats, or `None`, optional
-        The shape of the output PSF.  If the ``shape`` is no `None`, it
-        will be derived from the sizes of the input ``psf_stars`` and
-        the PSF oversampling factor.  If the size is even along any
-        axis, it will be made odd by adding one.  The output PSF will
-        always have odd sizes along both axes to ensure a central pixel.
+        The shape of the output ePSF.  If the ``shape`` is no `None`, it
+        will be derived from the sizes of the input ``stars`` and the
+        ePSF oversampling factor.  If the size is even along any axis,
+        it will be made odd by adding one.  The output ePSF will always
+        have odd sizes along both axes to ensure a well-defined central
+        pixel.
 
     smoothing_kernel : {'quartic', 'quadratic'}, 2D `~numpy.ndarray`, or `None`
-        The smoothing kernel to apply to the PSF.  The predefined
+        The smoothing kernel to apply to the ePSF.  The predefined
         kernels ``'quartic'`` and ``'quadratic'`` have been optimized
-        for PSF oversampling factors close to 4.  Alternatively, a
+        for ePSF oversampling factors close to 4.  Alternatively, a
         custom 2D array can be input.  If `None` then no smoothing will
         be performed.  The default is ``'quartic'``.
 
@@ -325,14 +320,14 @@ class EPSFBuilder(object):
             raise ValueError('maxiters must be a positive number.')
         self.maxiters = maxiters
 
-        # store some data during each PSF build iteration
+        # store some data during each ePSF build iteration
         self._nfit_failed = []
         self._center_dist_sq = []
         self._max_center_dist_sq = []
-        self._psf = []
+        self._epsf = []
 
-    def __call__(self, psfstars):
-        return self.build_psf(psfstars)
+    def __call__(self, stars):
+        return self.build_epsf(stars)
 
     @staticmethod
     def _init_img_params(param):
@@ -348,29 +343,29 @@ class EPSFBuilder(object):
 
         return param
 
-    def _create_initial_psf(self, psf_stars):
+    def _create_initial_epsf(self, stars):
         """
         Create an initial `EPSFModel` object.
 
-        The initial PSF data are all zeros.  The PSF pixel scale is
+        The initial ePSF data are all zeros.  The ePSF pixel scale is
         determined either from the ``pixel_scale`` or ``oversampling``
         values.
 
-        If ``shape`` is not specified, the shape of the PSF data array
-        is determined from the shape of the input ``psf_stars`` and the
+        If ``shape`` is not specified, the shape of the ePSF data array
+        is determined from the shape of the input ``stars`` and the
         oversampling factor.  If the size is even along any axis, it
-        will be made odd by adding one.  The output PSF will always have
-        odd sizes along both axes to ensure a central pixel.
+        will be made odd by adding one.  The output ePSF will always
+        have odd sizes along both axes to ensure a central pixel.
 
         Parameters
         ----------
-        psf_stars : `PSFStars` object
-            The PSF stars used to build the PSF.
+        stars : `Stars` object
+            The stars used to build the ePSF.
 
         Returns
         -------
-        psf : `EPSFModel`
-            The initial PSF model.
+        epsf : `EPSFModel`
+            The initial ePSF model.
         """
 
         pixel_scale = self.pixel_scale
@@ -381,31 +376,31 @@ class EPSFBuilder(object):
             raise ValueError('Either pixel_scale or oversampling must be '
                              'input.')
 
-        # define the PSF pixel scale
+        # define the ePSF pixel scale
         if pixel_scale is not None:
             pixel_scale = np.atleast_1d(pixel_scale).astype(float)
             if len(pixel_scale) == 1:
                 pixel_scale = np.repeat(pixel_scale, 2)
 
-            oversampling = (psf_stars._min_pixel_scale[0] / pixel_scale[0],
-                            psf_stars._min_pixel_scale[1] / pixel_scale[1])
+            oversampling = (stars._min_pixel_scale[0] / pixel_scale[0],
+                            stars._min_pixel_scale[1] / pixel_scale[1])
         else:
             oversampling = np.atleast_1d(oversampling).astype(float)
             if len(oversampling) == 1:
                 oversampling = np.repeat(oversampling, 2)
 
-            pixel_scale = (psf_stars._min_pixel_scale[0] / oversampling[0],
-                           psf_stars._min_pixel_scale[1] / oversampling[1])
+            pixel_scale = (stars._min_pixel_scale[0] / oversampling[0],
+                           stars._min_pixel_scale[1] / oversampling[1])
 
-        # define the PSF shape
+        # define the ePSF shape
         if shape is not None:
             shape = np.atleast_1d(shape).astype(int)
             if len(shape) == 1:
                 shape = np.repeat(shape, 2)
         else:
-            x_shape = np.int(np.ceil(psf_stars._max_shape[0] *
+            x_shape = np.int(np.ceil(stars._max_shape[0] *
                                      oversampling[1]))
-            y_shape = np.int(np.ceil(psf_stars._max_shape[1] *
+            y_shape = np.int(np.ceil(stars._max_shape[1] *
                                      oversampling[0]))
             shape = np.array((y_shape, x_shape))
 
@@ -418,23 +413,24 @@ class EPSFBuilder(object):
         return EPSFModel(data=data, origin=(xcenter, ycenter),
                          normalize=False, pixel_scale=pixel_scale)
 
-    def _resample_residual(self, psf_star, psf):
+    def _resample_residual(self, star, epsf):
         """
-        Compute a normalized residual image in the oversampled PSF grid.
+        Compute a normalized residual image in the oversampled ePSF
+        grid.
 
         A normalized residual image is calculated by subtracting the
-        normalized PSF model from the normalized PSF star at the
-        location of the PSF star in the undersampled grid.  The
-        normalized residual image is then resampled from the
-        undersampled PSF star grid to the oversampled PSF grid.
+        normalized ePSF model from the normalized star at the location
+        of the star in the undersampled grid.  The normalized residual
+        image is then resampled from the undersampled star grid to the
+        oversampled ePSF grid.
 
         Parameters
         ----------
-        psf_star : `PSFStar` object
-            A single PSF star object.
+        star : `Star` object
+            A single star object.
 
-        psf : `EPSFModel` object, optional
-            The PSF model.
+        epsf : `EPSFModel` object
+            The ePSF model.
 
         Returns
         -------
@@ -443,48 +439,47 @@ class EPSFBuilder(object):
             image contains NaNs where there is no data.
         """
 
-        # find the integer index of PSFStar pixels in the oversampled
-        # PSF grid
-        x_oversamp = psf_star.pixel_scale[0] / psf.pixel_scale[0]
-        y_oversamp = psf_star.pixel_scale[1] / psf.pixel_scale[1]
-        x = x_oversamp * psf_star._xidx_centered
-        y = y_oversamp * psf_star._yidx_centered
-        psf_xcenter, psf_ycenter = psf.origin
-        xidx = _py2intround(x + psf_xcenter)
-        yidx = _py2intround(y + psf_ycenter)
+        # find the integer index of Star pixels in the oversampled
+        # ePSF grid
+        x_oversamp = star.pixel_scale[0] / epsf.pixel_scale[0]
+        y_oversamp = star.pixel_scale[1] / epsf.pixel_scale[1]
+        x = x_oversamp * star._xidx_centered
+        y = y_oversamp * star._yidx_centered
+        epsf_xcenter, epsf_ycenter = epsf.origin
+        xidx = _py2intround(x + epsf_xcenter)
+        yidx = _py2intround(y + epsf_ycenter)
 
-        mask = np.logical_and(np.logical_and(xidx >= 0, xidx < psf.shape[1]),
-                              np.logical_and(yidx >= 0, yidx < psf.shape[0]))
+        mask = np.logical_and(np.logical_and(xidx >= 0, xidx < epsf.shape[1]),
+                              np.logical_and(yidx >= 0, yidx < epsf.shape[0]))
         xidx = xidx[mask]
         yidx = yidx[mask]
 
         # Compute the normalized residual image by subtracting the
-        # normalized PSF model from the normalized PSF star at the
-        # location of the PSF star in the undersampled grid.  Then,
-        # resample the normalized residual image in the oversampled
-        # PSF grid.
-        # [(star - (psf * xov * yov)) / (xov * yov)]
-        # --> [(star / (xov * yov)) - psf]
-        stardata = ((psf_star._data_values_normalized /
+        # normalized ePSF model from the normalized star at the location
+        # of the star in the undersampled grid.  Then, resample the
+        # normalized residual image in the oversampled ePSF grid.
+        # [(star - (epsf * xov * yov)) / (xov * yov)]
+        # --> [(star / (xov * yov)) - epsf]
+        stardata = ((star._data_values_normalized /
                      (x_oversamp * y_oversamp)) -
-                    psf.evaluate(x=x, y=y, flux=1.0, x_0=0.0, y_0=0.0))
+                    epsf.evaluate(x=x, y=y, flux=1.0, x_0=0.0, y_0=0.0))
 
-        resampled_img = np.full(psf.shape, np.nan)
+        resampled_img = np.full(epsf.shape, np.nan)
         resampled_img[yidx, xidx] = stardata[mask]
 
         return resampled_img
 
-    def _resample_residuals(self, psf_stars, psf):
+    def _resample_residuals(self, stars, epsf):
         """
-        Compute normalized residual images for all the input PSF stars.
+        Compute normalized residual images for all the input stars.
 
         Parameters
         ----------
-        psf_stars : `PSFStars` object
-            The PSF stars used to build the PSF.
+        stars : `Stars` object
+            The stars used to build the ePSF.
 
-        psf : `EPSFModel` object, optional
-            The PSF model.
+        epsf : `EPSFModel` object
+            The ePSF model.
 
         Returns
         -------
@@ -492,25 +487,25 @@ class EPSFBuilder(object):
             A 3D cube containing the resampled residual images.
         """
 
-        star_imgs = np.zeros((psf_stars.n_good_psfstars, *psf.shape))
-        for i, psf_star in enumerate(psf_stars.all_good_psfstars):
-            star_imgs[i, :, :] = self._resample_residual(psf_star, psf)
+        star_imgs = np.zeros((stars.n_good_stars, *epsf.shape))
+        for i, star in enumerate(stars.all_good_stars):
+            star_imgs[i, :, :] = self._resample_residual(star, epsf)
 
         return star_imgs
 
-    def _smooth_psf(self, psf_data):
+    def _smooth_epsf(self, epsf_data):
         """
-        Smooth the PSF array by convolving it with a kernel.
+        Smooth the ePSF array by convolving it with a kernel.
 
         Parameters
         ----------
-        psf_data : 2D `~numpy.ndarray`
-            A 2D array containing the PSF image.
+        epsf_data : 2D `~numpy.ndarray`
+            A 2D array containing the ePSF image.
 
         Returns
         -------
         result : 2D `~numpy.ndarray`
-            The smoothed (convolved) PSF data.
+            The smoothed (convolved) ePSF data.
         """
 
         from scipy.ndimage import convolve
@@ -555,22 +550,22 @@ class EPSFBuilder(object):
         else:
             raise TypeError("Unsupported kernel.")
 
-        return convolve(psf_data, kernel)
+        return convolve(epsf_data, kernel)
 
-    def _recenter_psf(self, psf_data, psf, maxiters=20,
-                      center_accuracy_sq=1.0e-8):
+    def _recenter_epsf(self, epsf_data, epsf, maxiters=20,
+                       center_accuracy_sq=1.0e-8):
 
         """
-        Calculate the center of the PSF data and shift the data so the
-        PSF center is at the center of the PSF data array.
+        Calculate the center of the ePSF data and shift the data so the
+        ePSF center is at the center of the ePSF data array.
 
         Parameters
         ----------
-        psf_data : 2D `~numpy.ndarray`
-            A 2D array containing the PSF image.
+        epsf_data : 2D `~numpy.ndarray`
+            A 2D array containing the ePSF image.
 
-        psf : `EPSFModel` object
-            The PSF model.
+        epsf : `EPSFModel` object
+            The ePSF model.
 
         maxiters : int, optional
             The maximum number of recentering iterations to perform.
@@ -581,15 +576,15 @@ class EPSFBuilder(object):
         Returns
         -------
         result : 2D `~numpy.ndarray`
-            The recentered PSF data.
+            The recentered ePSF data.
         """
 
-        y, x = np.indices(psf_data.shape, dtype=np.float)
-        psf = EPSFModel(data=psf_data, origin=psf.origin, normalize=False,
-                        pixel_scale=psf.pixel_scale)
-        psf.fill_value = 0.0
+        y, x = np.indices(epsf_data.shape, dtype=np.float)
+        epsf = EPSFModel(data=epsf_data, origin=epsf.origin, normalize=False,
+                         pixel_scale=epsf.pixel_scale)
+        epsf.fill_value = 0.0
 
-        xcenter, ycenter = psf.origin
+        xcenter, ycenter = epsf.origin
         dx_total = 0
         dy_total = 0
 
@@ -603,7 +598,7 @@ class EPSFBuilder(object):
 
             # find peak location
             xcenter_new, ycenter_new = _find_peak(
-                psf_data, xmax=xcenter, ymax=ycenter,
+                epsf_data, xmax=xcenter, ymax=ycenter,
                 peak_fit_box=self.recentering_boxsize,
                 peak_search_box='fitbox', mask=None)
 
@@ -614,58 +609,58 @@ class EPSFBuilder(object):
                 break
             center_dist_sq_prev = center_dist_sq
 
-            # Resample the PSF data to a shifted grid to place the peak
+            # Resample the ePSF data to a shifted grid to place the peak
             # in the central pixel.  The shift is always performed on the
-            # input psf_data.
-            dx_total += dx    # accumulated shifts for the input psf_data
+            # input epsf_data.
+            dx_total += dx    # accumulated shifts for the input epsf_data
             dy_total += dy
-            psf_data = psf.evaluate(x=x, y=y, flux=1.0,
-                                    x_0=xcenter + dx_total,
-                                    y_0=ycenter + dy_total)
+            epsf_data = epsf.evaluate(x=x, y=y, flux=1.0,
+                                      x_0=xcenter + dx_total,
+                                      y_0=ycenter + dy_total)
 
         # fill in any missing data due to shifts (missing data should be
         # only on the edges)
         if dx_total != 0. or dy_total != 0.:
-            psf.fill_value = np.nan
-            psf_data = psf.evaluate(x=x, y=y, flux=1.0,
-                                    x_0=xcenter + dx_total,
-                                    y_0=ycenter + dy_total)
-            psf_data[~np.isfinite(psf_data)] = 0.
+            epsf.fill_value = np.nan
+            epsf_data = epsf.evaluate(x=x, y=y, flux=1.0,
+                                      x_0=xcenter + dx_total,
+                                      y_0=ycenter + dy_total)
+            epsf_data[~np.isfinite(epsf_data)] = 0.
 
-        return psf_data
+        return epsf_data
 
-    def _build_psf_step(self, psf_stars, psf=None):
+    def _build_epsf_step(self, stars, epsf=None):
         """
-        A single iteration of improving a PSF.
+        A single iteration of improving an ePSF.
 
         Parameters
         ----------
-        psf_stars : `PSFStars` object
-            The PSF stars used to build the PSF.
+        stars : `Stars` object
+            The stars used to build the ePSF.
 
-        psf : `EPSFModel` object, optional
-            The initial PSF model.  If not input, then the PSF will be
+        epsf : `EPSFModel` object, optional
+            The initial ePSF model.  If not input, then the ePSF will be
             built from scratch.
 
         Returns
         -------
-        psf : `EPSFModel` object
-            The improved PSF.
+        epsf : `EPSFModel` object
+            The improved ePSF.
         """
 
-        if len(psf_stars) < 1:
-            raise ValueError('psf_stars must contain at least one PSFStar '
-                             'or LinkedPSFStar object.')
+        if len(stars) < 1:
+            raise ValueError('stars must contain at least one Star or '
+                             'LinkedStar object.')
 
-        if psf is None:
-            # create an initial PSF (array of zeros)
-            psf = self._create_initial_psf(psf_stars)
+        if epsf is None:
+            # create an initial ePSF (array of zeros)
+            epsf = self._create_initial_epsf(stars)
         else:
-            # improve the input PSF
-            psf = copy.deepcopy(psf)
+            # improve the input ePSF
+            epsf = copy.deepcopy(epsf)
 
         # compute a 3D stack of 2D residual images
-        residuals = self._resample_residuals(psf_stars, psf)
+        residuals = self._resample_residuals(stars, epsf)
 
         # compute the sigma-clipped median along the 3D stack
         # TODO: allow custom SigmaClip/statistic class
@@ -686,58 +681,58 @@ class EPSFBuilder(object):
             # fill any remaining nans (outer points) with zeros
             residuals[~np.isfinite(residuals)] = 0.
 
-        # add the residuals to the previous PSF image
-        new_psf = psf.normalized_data + residuals
+        # add the residuals to the previous ePSF image
+        new_epsf = epsf.normalized_data + residuals
 
-        # smooth the PSF
-        new_psf = self._smooth_psf(new_psf)
+        # smooth the ePSF
+        new_epsf = self._smooth_epsf(new_epsf)
 
-        # recenter the PSF
-        new_psf = self._recenter_psf(new_psf, psf)
+        # recenter the ePSF
+        new_epsf = self._recenter_epsf(new_epsf, epsf)
 
-        # normalize the PSF data
-        new_psf /= np.sum(new_psf, dtype=np.float64)
+        # normalize the ePSF data
+        new_epsf /= np.sum(new_epsf, dtype=np.float64)
 
-        # return the new PSF object
-        xcenter = (new_psf.shape[1] - 1) / 2.
-        ycenter = (new_psf.shape[0] - 1) / 2.
+        # return the new ePSF object
+        xcenter = (new_epsf.shape[1] - 1) / 2.
+        ycenter = (new_epsf.shape[0] - 1) / 2.
 
-        return EPSFModel(data=new_psf, origin=(xcenter, ycenter),
-                         normalize=False, pixel_scale=psf.pixel_scale)
+        return EPSFModel(data=new_epsf, origin=(xcenter, ycenter),
+                         normalize=False, pixel_scale=epsf.pixel_scale)
 
-    def build_psf(self, psf_stars, init_psf=None):
+    def build_epsf(self, stars, init_epsf=None):
         """
-        Iteratively build a PSF from star cutouts.
+        Iteratively build an ePSF from star cutouts.
 
-        If the optional ``psf`` is input, then it will be used as the
-        initial PSF.
+        If the optional ``init_epsf`` is input, then it will be used as
+        the initial ePSF.
 
         Parameters
         ----------
-        psf_stars : `PSFStars` object
-            The PSF stars used to build the PSF.
+        stars : `Stars` object
+            The stars used to build the ePSF.
 
-        init_psf : `EPSFModel` object, optional
-            The initial PSF model.  If not input, then the PSF will be
+        init_epsf : `EPSFModel` object, optional
+            The initial ePSF model.  If not input, then the ePSF will be
             built from scratch.
 
         Returns
         -------
-        psf : `EPSFModel` object
-            The constructed PSF.
+        epsf : `EPSFModel` object
+            The constructed ePSF.
 
-        fit_psf_stars : `PSFStars` object
-            The input PSF stars with updated centers and fluxes derived
-            from fitting the output ``psf``.
+        fitted_stars : `Stars` object
+            The input stars with updated centers and fluxes derived
+            from fitting the output ``epsf``.
         """
 
         iter_num = 0
         center_dist_sq = self.center_accuracy_sq + 1.
-        centers = psf_stars.cutout_center
-        n_stars = psf_stars.n_psfstars
+        centers = stars.cutout_center
+        n_stars = stars.n_stars
         fit_failed = np.zeros(n_stars, dtype=bool)
         dx_dy = np.zeros((n_stars, 2), dtype=np.float)
-        psf = init_psf
+        epsf = init_epsf
 
         while (iter_num < self.maxiters and
                 np.max(center_dist_sq) >= self.center_accuracy_sq and
@@ -746,40 +741,40 @@ class EPSFBuilder(object):
             iter_num += 1
             print('iter', iter_num)
 
-            # build/improve the PSF
-            psf = self._build_psf_step(psf_stars, psf=psf)
+            # build/improve the ePSF
+            epsf = self._build_epsf_step(stars, epsf=epsf)
 
-            # fit the new PSF to the psf_stars to find improved centers
+            # fit the new ePSF to the stars to find improved centers
             with warnings.catch_warnings():
-                # do not warn on the first iteration (the initial PSF
-                # model is simply an array of ones) unless ``psf_init`` is
-                # input
+                # do not warn on the first iteration (the initial ePSF
+                # model is simply an array of ones unless ``epsf_init``
+                # is input)
                 if iter_num == 1:
                     warnings.simplefilter('ignore', AstropyUserWarning)
-                psf_stars = self.fitter(psf, psf_stars)
+                stars = self.fitter(epsf, stars)
 
-            # find all psf stars where the fit failed
-            fit_failed = np.array([psf_star._fit_error_status > 0
-                                   for psf_star in psf_stars.all_psfstars])
+            # find all stars where the fit failed
+            fit_failed = np.array([star._fit_error_status > 0
+                                   for star in stars.all_stars])
 
-            # permanently exclude fitting any psf star where the fit
-            # fails after 3 iterations
+            # permanently exclude fitting any star where the fit fails
+            # after 3 iterations
             if iter_num > 3 and np.any(fit_failed):
                 idx = fit_failed.nonzero()[0]
                 for i in idx:
-                    psf_stars.all_psfstars[i]._excluded_from_fit = True
+                    stars.all_stars[i]._excluded_from_fit = True
 
-            dx_dy = psf_stars.cutout_center - centers
+            dx_dy = stars.cutout_center - centers
             dx_dy = dx_dy[np.logical_not(fit_failed)]
             center_dist_sq = np.sum(dx_dy * dx_dy, axis=1, dtype=np.float64)
-            centers = psf_stars.cutout_center
+            centers = stars.cutout_center
 
             self._nfit_failed.append(np.count_nonzero(fit_failed))
             self._center_dist_sq.append(center_dist_sq)
             self._max_center_dist_sq.append(np.max(center_dist_sq))
-            self._psf.append(psf)
+            self._epsf.append(epsf)
 
-        return psf, psf_stars
+        return epsf, stars
 
 
 def _find_peak(data, xmax=None, ymax=None, peak_fit_box=5,
