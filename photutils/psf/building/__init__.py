@@ -5,5 +5,4 @@ functions.
 """
 
 from .epsf import *
-from .epsf_fitter import *
 from .psfstars import *
