@@ -746,10 +746,11 @@ class EPSFBuilder(object):
 
             # fit the new ePSF to the stars to find improved centers
             with warnings.catch_warnings():
-                # do not warn on the first iteration (the initial ePSF
-                # model is simply an array of ones unless ``epsf_init``
-                # is input)
-                if iter_num == 1:
+                # do not warn on the first iteration unless maxiters=1.
+                # Note that the initial ePSF model is simply an array of
+                # ones unless ``epsf_init`` is input, thus the first
+                # fit may not converge
+                if self.maxiters > 1 and iter_num == 1:
                     warnings.simplefilter('ignore', AstropyUserWarning)
                 stars = self.fitter(epsf, stars)
 
