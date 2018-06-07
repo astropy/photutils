@@ -530,7 +530,13 @@ class EPSFBuilder(object):
             psf = self._build_psf_step(psf_stars, psf=psf)
 
             # fit the new PSF to the psf_stars to find improved centers
-            psf_stars = self.fitter(psf, psf_stars)
+            with warnings.catch_warnings():
+                # do not warn on the first iteration (the initial PSF
+                # model is simply an array of ones) unless ``psf_init`` is
+                # input
+                if iter_num == 1:
+                    warnings.simplefilter('ignore', AstropyUserWarning)
+                psf_stars = self.fitter(psf, psf_stars)
 
             # find all psf stars where the fit failed
             fit_failed = np.array([psf_star._fit_error_status > 0
