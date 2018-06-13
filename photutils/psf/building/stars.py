@@ -681,8 +681,11 @@ def extract_stars(data, catalogs, size=(11, 11)):
         # remove 'None' stars (i.e. no or partial overlap in one or more
         # images) and handle the case of only one "linked" star
         stars_out = []
+        n_input = len(catalogs[0]) * len(data)
+        n_extracted = 0
         for star in stars:
             good_stars = [i for i in star if i is not None]
+            n_extracted += len(good_stars)
             if len(good_stars) == 0:
                 continue    # no overlap in any image
             elif len(good_stars) == 1:
@@ -694,7 +697,17 @@ def extract_stars(data, catalogs, size=(11, 11)):
     else:    # no linked stars
         stars_out = []
         for img, cat in zip(data, catalogs):
-            stars_out.append(_extract_stars(img, cat, size=size))
+            stars_out.extend(_extract_stars(img, cat, size=size))
+
+        n_input = len(stars_out)
+        stars_out = [star for star in stars_out if star is not None]
+        n_extracted = len(stars_out)
+
+    n_excluded = n_input - n_extracted
+    if n_excluded > 0:
+        warnings.warn('{} star(s) were not extracted because their cutout '
+                      'region extended beyond the input image.'
+                      .format(n_excluded), AstropyUserWarning)
 
     return Stars(stars_out)
 
