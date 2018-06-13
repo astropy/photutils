@@ -14,6 +14,7 @@ from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
                                   NoOverlapError)
 from astropy.table import Table
 from astropy.utils import lazyproperty
+from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import skycoord_to_pixel
 
 from ...aperture import BoundingBox
@@ -509,6 +510,9 @@ class LinkedStar(Stars):
         Constrain the centers of linked `Star` objects (i.e. the same
         physical star) to have the same sky coordinate.
 
+        Only `Star` objects that have not been excluded during the ePSF
+        build process will be used to constrain the centers.
+
         The single sky coordinate is calculated as the mean of sky
         coordinates of the linked stars.
         """
@@ -517,6 +521,12 @@ class LinkedStar(Stars):
             return
 
         idx = np.logical_not(self._excluded_from_fit).nonzero()[0]
+        if len(idx) == 0:
+            warnings.warn('Cannot constrain centers of linked stars because '
+                          'all the stars have been excluded during the ePSF '
+                          'build process.', AstropyUserWarning)
+            return
+
         good_stars = [self._data[i] for i in idx]
 
         coords = []
@@ -744,7 +754,8 @@ def _extract_stars(data, catalog, size=(11, 11)):
         else:
             warnings.warn('The data uncertainty attribute has an unsupported '
                           'type.  Only uncertainty_type="weights" can be '
-                          'used to set weights.  Weights will be set to 1.')
+                          'used to set weights.  Weights will be set to 1.',
+                          AstropyUserWarning)
             weights = np.ones_like(data.data)
 
     if data.mask is not None:
