@@ -352,6 +352,44 @@ class Stars(object):
         else:
             return [getattr(star, attr) for star in self._data]
 
+    def _getattr_flat(self, attr):
+        values = []
+        for item in self._data:
+            if isinstance(item, LinkedStar):
+                values.extend(getattr(item, attr))
+            else:
+                values.append(getattr(item, attr))
+
+        return np.array(values)
+
+    @property
+    def cutout_center_flat(self):
+        """
+        A `~numpy.ndarray` of the ``(x, y)`` position of all the
+        stars' centers (including linked stars) with respect to the
+        input cutout ``data`` array, as a 2D array (``n_all_stars`` x
+        2).
+
+        Note that when `Stars` contains any `LinkedStar`, the
+        `~Stars.cutout_center` attribute will be a nested 3D array.
+        """
+
+        return self._getattr_flat('cutout_center')
+
+    @property
+    def center_flat(self):
+        """
+        A `~numpy.ndarray` of the ``(x, y)`` position of all the stars'
+        centers (including linked stars) with respect to the original
+        (large) image (not the cutout image) as a 2D array
+        (``n_all_stars`` x 2).
+
+        Note that when `Stars` contains any `LinkedStar`, the
+        `~Stars.center` attribute will be a nested 3D array.
+        """
+
+        return self._getattr_flat('center')
+
     @lazyproperty
     def all_stars(self):
         """
@@ -415,7 +453,8 @@ class Stars(object):
         count.
         """
 
-        return np.count_nonzero(~self._excluded_from_fit)
+        # return np.count_nonzero(~self._excluded_from_fit.ravel())
+        return len(self.all_good_stars)
 
     @lazyproperty
     def _min_pixel_scale(self):
@@ -477,15 +516,18 @@ class LinkedStar(Stars):
         if len(self._data) < 2:   # no linked stars
             return
 
-        good_stars = self._data[np.logical_not(self._excluded_from_fit)]
+        idx = np.logical_not(self._excluded_from_fit).nonzero()[0]
+        good_stars = [self._data[i] for i in idx]
 
         coords = []
         for star in good_stars:
-            coords.append(star.wcs_large.all_pix2world(self.center[0],
-                                                       self.center[1], 0))
+            coords.append(star.wcs_large.all_pix2world(star.center[0],
+                                                       star.center[1], 0))
 
         # compute mean cartesian coordinates
         lon, lat = np.transpose(coords)
+        lon *= np.pi / 180.
+        lat *= np.pi / 180.
         x_mean = np.mean(np.cos(lat) * np.cos(lon))
         y_mean = np.mean(np.cos(lat) * np.sin(lon))
         z_mean = np.mean(np.sin(lat))
@@ -494,6 +536,8 @@ class LinkedStar(Stars):
         hypot = np.hypot(x_mean, y_mean)
         lon = np.arctan2(y_mean, x_mean)
         lat = np.arctan2(z_mean, hypot)
+        lon *= 180. / np.pi
+        lat *= 180. / np.pi
 
         # convert mean sky coordinates back to center pixel coordinates
         # for each star

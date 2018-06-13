@@ -119,7 +119,7 @@ class EPSFFitter(object):
 
             elif isinstance(star, LinkedStar):
                 fitted_star = []
-                for linked_star in LinkedStar:
+                for linked_star in star:
                     fitted_star.append(
                         self._fit_star(epsf, linked_star, self.fitter,
                                        self.fitter_kwargs,
@@ -728,7 +728,7 @@ class EPSFBuilder(object):
 
         iter_num = 0
         center_dist_sq = self.center_accuracy_sq + 1.
-        centers = stars.cutout_center
+        centers = stars.cutout_center_flat
         n_stars = stars.n_stars
         fit_failed = np.zeros(n_stars, dtype=bool)
         dx_dy = np.zeros((n_stars, 2), dtype=np.float)
@@ -765,10 +765,10 @@ class EPSFBuilder(object):
                 for i in idx:
                     stars.all_stars[i]._excluded_from_fit = True
 
-            dx_dy = stars.cutout_center - centers
+            dx_dy = stars.cutout_center_flat - centers
             dx_dy = dx_dy[np.logical_not(fit_failed)]
             center_dist_sq = np.sum(dx_dy * dx_dy, axis=1, dtype=np.float64)
-            centers = stars.cutout_center
+            centers = stars.cutout_center_flat
 
             self._nfit_failed.append(np.count_nonzero(fit_failed))
             self._center_dist_sq.append(center_dist_sq)
