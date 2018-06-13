@@ -155,10 +155,10 @@ class EPSFFitter(object):
                                                       (ycenter, xcenter),
                                                       mode='strict')
             except (PartialOverlapError, NoOverlapError):
-                warnings.warn('The star at ({0}, {1}) is being ignored '
-                              'because its fitting region extends beyond '
-                              'the image.'.format(star.center[0],
-                                                  star.center[1]),
+                warnings.warn('The star at ({0}, {1}) cannot be fit because '
+                              'its fitting region extends beyond the star '
+                              'cutout image.'.format(star.center[0],
+                                                     star.center[1]),
                               AstropyUserWarning)
 
                 star = copy.deepcopy(star)
@@ -745,18 +745,13 @@ class EPSFBuilder(object):
             epsf = self._build_epsf_step(stars, epsf=epsf)
 
             # fit the new ePSF to the stars to find improved centers
-            with warnings.catch_warnings():
-                # do not warn on the first iteration unless maxiters=1.
-                # Note that the initial ePSF model is simply an array of
-                # ones unless ``epsf_init`` is input, thus the first
-                # fit may not converge
-                if self.maxiters > 1 and iter_num == 1:
-                    warnings.simplefilter('ignore', AstropyUserWarning)
-                stars = self.fitter(epsf, stars)
+            stars = self.fitter(epsf, stars)
 
             # find all stars where the fit failed
             fit_failed = np.array([star._fit_error_status > 0
                                    for star in stars.all_stars])
+            if np.all(fit_failed):
+                raise ValueError('The ePSF fitting failed for all stars.')
 
             # permanently exclude fitting any star where the fit fails
             # after 3 iterations
