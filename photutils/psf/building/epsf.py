@@ -325,6 +325,9 @@ class EPSFBuilder(object):
         self._center_dist_sq = []
         self._max_center_dist_sq = []
         self._epsf = []
+        self._residuals = []
+        self._residuals_sigclip = []
+        self._residuals_interp = []
 
     def __call__(self, stars):
         return self.build_epsf(stars)
@@ -662,6 +665,8 @@ class EPSFBuilder(object):
         # compute a 3D stack of 2D residual images
         residuals = self._resample_residuals(stars, epsf)
 
+        self._residuals.append(residuals)
+
         # compute the sigma-clipped median along the 3D stack
         # TODO: allow custom SigmaClip/statistic class
         with warnings.catch_warnings():
@@ -672,6 +677,8 @@ class EPSFBuilder(object):
             residuals = np.ma.median(residuals, axis=0)
             residuals = residuals.filled(np.nan)
 
+        self._residuals_sigclip.append(residuals)
+
         # interpolate any missing data (np.nan)
         mask = ~np.isfinite(residuals)
         if np.any(mask):
@@ -680,6 +687,8 @@ class EPSFBuilder(object):
 
             # fill any remaining nans (outer points) with zeros
             residuals[~np.isfinite(residuals)] = 0.
+
+        self._residuals_interp.append(residuals)
 
         # add the residuals to the previous ePSF image
         new_epsf = epsf.normalized_data + residuals
