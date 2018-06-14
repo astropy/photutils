@@ -597,6 +597,7 @@ def extract_stars(data, catalogs, size=(11, 11)):
         `~astropy.coordinates.SkyCoord` object contained in a column
         called ``skycoord``.  Each `~astropy.nddata.NDData` object in
         the input ``data`` must also have a valid ``wcs`` attribute.
+        Pixel coordinates (in ``x`` and ``y`` columns) will be ignored.
 
         Optionally, each catalog may also contain an ``id`` column
         representing the ID/name of stars.  If this column is not
@@ -670,10 +671,15 @@ def extract_stars(data, catalogs, size=(11, 11)):
         raise ValueError('size must be >= {} for x and y'.format(min_size))
 
     if len(catalogs) == 1:    # may included linked stars
+        use_xy = True
+        if len(data) > 1:
+            use_xy = False    # linked stars require skycoord positions
+
         stars = []
         # stars is a list of lists, one list of stars in each image
         for img in data:
-            stars.append(_extract_stars(img, catalogs[0], size=size))
+            stars.append(_extract_stars(img, catalogs[0], size=size,
+                                        use_xy=use_xy))
 
         # transpose the list of lists, to associate linked stars
         stars = list(map(list, zip(*stars)))
@@ -697,7 +703,7 @@ def extract_stars(data, catalogs, size=(11, 11)):
     else:    # no linked stars
         stars_out = []
         for img, cat in zip(data, catalogs):
-            stars_out.extend(_extract_stars(img, cat, size=size))
+            stars_out.extend(_extract_stars(img, cat, size=size, use_xy=True))
 
         n_input = len(stars_out)
         stars_out = [star for star in stars_out if star is not None]
@@ -712,7 +718,7 @@ def extract_stars(data, catalogs, size=(11, 11)):
     return Stars(stars_out)
 
 
-def _extract_stars(data, catalog, size=(11, 11)):
+def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
     """
     Extract cutout images from a single image centered on stars defined
     in the single input catalog.
@@ -732,13 +738,21 @@ def _extract_stars(data, catalog, size=(11, 11)):
         pixel coordinates (in ``x`` and ``y`` columns) or sky
         coordinates (in a ``skycoord`` column containing a
         `~astropy.coordinates.SkyCoord` object).  If both are specified,
-        then the pixel coordinates will be used.
+        then the value of the ``use_xy`` keyword determines which
+        coordinates will be used.
 
     size : int or array_like (int), optional
         The extraction box size along each axis.  If ``size`` is a
         scalar then a square box of size ``size`` will be used.  If
         ``size`` has two elements, they should be in ``(ny, nx)`` order.
         The size must be greater than or equal to 3 pixel for both axes.
+
+    use_xy : bool, optional
+        Whether to use the ``x`` and ``y`` pixel positions when both
+        pixel and sky coordinates are present in the input catalog
+        table.  If `False` then sky coordinates are used instead of
+        pixel coordinates (e.g. for linked stars).  The default is
+        `True`.
 
     Returns
     -------
@@ -747,7 +761,7 @@ def _extract_stars(data, catalog, size=(11, 11)):
     """
 
     colnames = catalog.colnames
-    if 'x' not in colnames or 'y' not in colnames:
+    if ('x' not in colnames or 'y' not in colnames) or not use_xy:
         xcenters, ycenters = skycoord_to_pixel(catalog['skycoord'], data.wcs,
                                                origin=0, mode='all')
     else:
