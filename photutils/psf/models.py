@@ -436,7 +436,7 @@ class FittableImageModel(Fittable2DModel):
         x = np.arange(self._nx, dtype=np.float)
         y = np.arange(self._ny, dtype=np.float)
         self.interpolator = RectBivariateSpline(
-            x, y, self._data.T, kx=degx, ky=degx, s=smoothness
+            x, y, self._data.T, kx=degx, ky=degy, s=smoothness
         )
 
         self._store_interpolator_kwargs(ikwargs)
