@@ -621,15 +621,6 @@ class EPSFBuilder(object):
                                       x_0=xcenter + dx_total,
                                       y_0=ycenter + dy_total)
 
-        # fill in any missing data due to shifts (missing data should be
-        # only on the edges)
-        if dx_total != 0. or dy_total != 0.:
-            epsf.fill_value = np.nan
-            epsf_data = epsf.evaluate(x=x, y=y, flux=1.0,
-                                      x_0=xcenter + dx_total,
-                                      y_0=ycenter + dy_total)
-            epsf_data[~np.isfinite(epsf_data)] = 0.
-
         return epsf_data
 
     def _build_epsf_step(self, stars, epsf=None):
