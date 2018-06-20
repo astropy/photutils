@@ -6,3 +6,5 @@ a separate source tree. Note that this package is distinct from the /cextern
 directory of the source code distribution, as that directory only contains C
 extension code.
 """
+
+from .sigma_clipping import *
