@@ -13,11 +13,17 @@ import numpy as np
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
                                   NoOverlapError)
-from astropy.stats import SigmaClip
+from ...extern import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
 
 from .stars import Star, LinkedStar, Stars
 from ..models import EPSFModel
+
+try:
+    import bottleneck  # pylint: disable=W0611
+    HAS_BOTTLENECK = True
+except ImportError:
+    HAS_BOTTLENECK = False
 
 
 __all__ = ['EPSFFitter', 'EPSFBuilder']
@@ -319,6 +325,10 @@ class EPSFBuilder(object):
         if maxiters <= 0:
             raise ValueError('maxiters must be a positive number.')
         self.maxiters = maxiters
+
+        # TODO: allow custom SigmaClip object after faster SigmaClip
+        # is available in astropy (>=3.1)
+        self.sigclip = SigmaClip(sigma=3., cenfunc='median', maxiters=10)
 
         # store some data during each ePSF build iteration
         self._nfit_failed = []
@@ -659,14 +669,15 @@ class EPSFBuilder(object):
         self._residuals.append(residuals)
 
         # compute the sigma-clipped median along the 3D stack
-        # TODO: allow custom SigmaClip/statistic class
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)
             warnings.simplefilter('ignore', category=AstropyUserWarning)
-            sigclip = SigmaClip(sigma=3., cenfunc=np.ma.median, iters=10)
-            residuals = sigclip(residuals, axis=0)
-            residuals = np.ma.median(residuals, axis=0)
-            residuals = residuals.filled(np.nan)
+            residuals = self.sigclip(residuals, axis=0, masked=False,
+                                     return_bounds=False)
+            if HAS_BOTTLENECK:
+                residuals = bottleneck.nanmedian(residuals, axis=0)
+            else:
+                residuals = np.nanmedian(residuals, axis=0)
 
         self._residuals_sigclip.append(residuals)
 
