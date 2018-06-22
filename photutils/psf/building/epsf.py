@@ -756,7 +756,13 @@ class EPSFBuilder(object):
             epsf = self._build_epsf_step(stars, epsf=epsf)
 
             # fit the new ePSF to the stars to find improved centers
-            stars = self.fitter(epsf, stars)
+            # we catch fit warnings here -- stars with unsuccessful fits
+            # are excluded from the ePSF build process
+            with warnings.catch_warnings():
+                message = '.*The fit may be unsuccessful;.*'
+                warnings.filterwarnings('ignore', message=message,
+                                        category=AstropyUserWarning)
+                stars = self.fitter(epsf, stars)
 
             # find all stars where the fit failed
             fit_failed = np.array([star._fit_error_status > 0
