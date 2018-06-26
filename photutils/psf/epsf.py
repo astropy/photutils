@@ -15,11 +15,11 @@ import numpy as np
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
                                   NoOverlapError)
-from ...extern import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
 
-from .stars import Star, LinkedStar, Stars
-from ..models import EPSFModel
+from .epsf_stars import Star, LinkedStar, Stars
+from .models import EPSFModel
+from ..extern import SigmaClip
 
 try:
     import bottleneck  # pylint: disable=W0611

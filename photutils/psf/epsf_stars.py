@@ -17,7 +17,7 @@ from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import skycoord_to_pixel
 
-from ...aperture import BoundingBox
+from ..aperture import BoundingBox
 
 
 __all__ = ['Star', 'Stars', 'LinkedStar', 'extract_stars']
