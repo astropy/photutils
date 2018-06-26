@@ -7,6 +7,8 @@ King (2000; PASP 112, 1360).
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import copy
+import sys
+import time
 import warnings
 
 import numpy as np
@@ -744,13 +746,24 @@ class EPSFBuilder(object):
         fit_failed = np.zeros(n_stars, dtype=bool)
         dx_dy = np.zeros((n_stars, 2), dtype=np.float)
         epsf = init_epsf
+        dt = 0.
 
         while (iter_num < self.maxiters and
                 np.max(center_dist_sq) >= self.center_accuracy_sq and
                 not np.all(fit_failed)):
 
+            t_start = time.time()
             iter_num += 1
-            print('iter', iter_num)
+
+            # python 3 only
+            if sys.version_info[2] >= 3:
+                if iter_num == 1:
+                    dt_str = ' [? s/iter]'
+                else:
+                    dt_str = ' [{:.1f} s/iter]'.format(dt)
+
+                print('PROGRESS: iteration {0:d} (of max {1}){2}'
+                      .format(iter_num, self.maxiters, dt_str), end='\r')
 
             # build/improve the ePSF
             epsf = self._build_epsf_step(stars, epsf=epsf)
@@ -786,6 +799,8 @@ class EPSFBuilder(object):
             self._center_dist_sq.append(center_dist_sq)
             self._max_center_dist_sq.append(np.max(center_dist_sq))
             self._epsf.append(epsf)
+
+            dt = time.time() - t_start
 
         return epsf, stars
 
