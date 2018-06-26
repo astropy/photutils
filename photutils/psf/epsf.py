@@ -103,8 +103,8 @@ class EPSFFitter(object):
         -------
         fitted_stars : `Stars` object
             The fitted stars.  The ePSF-fitted center position and flux
-            are stored in the ``center`` (or ``cutout_center`` relative
-            to the cutout image) and ``flux`` attributes.
+            are stored in the ``center`` (and ``cutout_center``) and
+            ``flux`` attributes.
         """
 
         if len(stars) == 0:
@@ -150,9 +150,9 @@ class EPSFFitter(object):
         """
         Fit an ePSF model to a single star.
 
-        The input ``epsf`` will usually be modified by fitting routine
-        in this function.  Make a copy before calling this function if
-        the original is needed.
+        The input ``epsf`` will usually be modified by the fitting
+        routine in this function.  Make a copy before calling this
+        function if the original is needed.
         """
 
         if fit_boxsize is not None:
@@ -280,8 +280,8 @@ class EPSFBuilder(object):
         input.  If both are input, ``oversampling`` will be ignored.
 
     shape : float, tuple of two floats, or `None`, optional
-        The shape of the output ePSF.  If the ``shape`` is no `None`, it
-        will be derived from the sizes of the input ``stars`` and the
+        The shape of the output ePSF.  If the ``shape`` is not `None`,
+        it will be derived from the sizes of the input ``stars`` and the
         ePSF oversampling factor.  If the size is even along any axis,
         it will be made odd by adding one.  The output ePSF will always
         have odd sizes along both axes to ensure a well-defined central
@@ -295,14 +295,32 @@ class EPSFBuilder(object):
         be performed.  The default is ``'quartic'``.
 
     recentering_boxsize : float or tuple of two floats, optional
+        The size (in pixels) of the box around the initial estimate of
+        the ePSF maximum value to be used for quadratic fitting from
+        which a new ePSF center location is computed during each build
+        iteration.  If a single integer number is provided, then it is
+        assumed that fitting box is a square with sides of length given
+        by ``peak_fit_box``. If a tuple of two values is provided, then
+        first value indicates the width of the box and the second value
+        indicates the height of the box.  The default is 5.
 
-    fitter : object, optional
+    fitter : `EPSFFitter` object, optional
+        A `EPSFFitter` object use to fit the ePSF to stars.  The default
+        fitter used by `EPSFFitter` is
+        `~astropy.modeling.fitting.LevMarLSQFitter`.  See the
+        `EPSFFitter` documentation its options.
 
     center_accuracy : float, optional
-        All stars must meet this accuracy for the loop to exit.
+        The desired accuracy for the centers of stars.  The building
+        iterations will stop if the centers of all the stars change by
+        less than ``center_accuracy`` pixels between iterations.  All
+        stars must meet this condition for the loop to exit.  The
+        default is 1.0e-3.
 
     maxiters : int, optional
-        The maximum number of iterations to perform.  The default is 10.
+        The maximum number of iterations to perform.  If the
+        ``center_accuracy`` is met, then the iterations will stop prior
+        to ``maxiters``.  The default is 10.
     """
 
     def __init__(self, pixel_scale=None, oversampling=4., shape=None,
@@ -538,7 +556,10 @@ class EPSFBuilder(object):
 
         from scipy.ndimage import convolve
 
-        if self.smoothing_kernel == 'quartic':
+        if self.smoothing_kernel is None:
+            return epsf_data
+
+        elif self.smoothing_kernel == 'quartic':
             # from Polynomial2D fit with degree=4 to 5x5 array of
             # zeros with 1. at the center
             # Polynomial2D(4, c0_0=0.04163265, c1_0=-0.76326531,
@@ -576,13 +597,12 @@ class EPSFBuilder(object):
             kernel = self.kernel
 
         else:
-            raise TypeError("Unsupported kernel.")
+            raise TypeError('Unsupported kernel.')
 
         return convolve(epsf_data, kernel)
 
     def _recenter_epsf(self, epsf_data, epsf, maxiters=20,
                        center_accuracy_sq=1.0e-8):
-
         """
         Calculate the center of the ePSF data and shift the data so the
         ePSF center is at the center of the ePSF data array.
@@ -597,9 +617,14 @@ class EPSFBuilder(object):
 
         maxiters : int, optional
             The maximum number of recentering iterations to perform.
+            The default is 20.
 
         center_accuracy_sq : float, optional
-            TODO
+            The desired squared accuracy for the centers of stars.  The
+            building iterations will stop if the centers of all the
+            stars change by less than ``sqrt(center_accuracy_sq)``
+            pixels between iterations.  All stars must meet this
+            condition for the loop to exit.  The default is 1.0e-8.
 
         Returns
         -------
@@ -666,7 +691,7 @@ class EPSFBuilder(object):
         Returns
         -------
         epsf : `EPSFModel` object
-            The improved ePSF.
+            The updated ePSF.
         """
 
         if len(stars) < 1:
@@ -732,9 +757,6 @@ class EPSFBuilder(object):
     def build_epsf(self, stars, init_epsf=None):
         """
         Iteratively build an ePSF from star cutouts.
-
-        If the optional ``init_epsf`` is input, then it will be used as
-        the initial ePSF.
 
         Parameters
         ----------
@@ -890,9 +912,9 @@ def _find_peak(data, xmax=None, ymax=None, peak_fit_box=5,
             maximum is performed in the entire input array.
 
     mask : bool `~numpy.ndarray`, optional
-        A 2D boolean mask array indicating "good" pixels in the input
-        ``data`` (`True`) and "bad" pixels (`False`). If not provided
-        all pixels in ``data`` will be used for fitting.
+        A 2D boolean mask array indicating good pixels in the input
+        ``data`` (`True`) and bad pixels (`False`). If not provided all
+        pixels in ``data`` will be used for fitting.
 
     Returns
     -------
@@ -1082,7 +1104,7 @@ def _interpolate_missing_data(data, mask, method='cubic'):
         those that will be interpolated.
 
     method : {'cubic', 'nearest'}, optional
-        The method of used to "interpolate" the  missing data:
+        The method of used to interpolate the missing data:
 
         * ``'cubic'``:  Masked data are interpolated using 2D cubic
             splines.  This is the default.
