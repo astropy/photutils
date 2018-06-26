@@ -203,6 +203,14 @@ class EPSFFitter(object):
         epsf.x_0 = 0.0
         epsf.y_0 = 0.0
 
+        # The oversampling factor is used in the FittableImageModel
+        # evaluate method (which is use when fitting).  We do not want
+        # to use oversampling here because it has been set by the ratio
+        # of the ePSF and Star pixel scales.  This allows for
+        # oversampling factors that differ between stars and also for
+        # the factor to be different along the x and y axes.
+        epsf._oversampling = 1.
+
         try:
             fitted_epsf = fitter(model=epsf, x=xx, y=yy, z=scaled_data,
                                  weights=weights, **fitter_kwargs)
@@ -425,8 +433,12 @@ class EPSFBuilder(object):
         xcenter = (shape[1] - 1) / 2.
         ycenter = (shape[0] - 1) / 2.
 
+        # FittableImageModel requires a scalar oversampling factor
+        oversampling = np.mean(oversampling)
+
         return EPSFModel(data=data, origin=(xcenter, ycenter),
-                         normalize=False, pixel_scale=pixel_scale)
+                         normalize=False, oversampling=oversampling,
+                         pixel_scale=pixel_scale)
 
     def _resample_residual(self, star, epsf):
         """
@@ -477,7 +489,8 @@ class EPSFBuilder(object):
         # --> [(star / (xov * yov)) - epsf]
         stardata = ((star._data_values_normalized /
                      (x_oversamp * y_oversamp)) -
-                    epsf.evaluate(x=x, y=y, flux=1.0, x_0=0.0, y_0=0.0))
+                    epsf.evaluate(x=x, y=y, flux=1.0, x_0=0.0, y_0=0.0,
+                                  use_oversampling=False))
 
         resampled_img = np.full(epsf.shape, np.nan)
         resampled_img[yidx, xidx] = stardata[mask]
@@ -596,6 +609,7 @@ class EPSFBuilder(object):
 
         y, x = np.indices(epsf_data.shape, dtype=np.float)
         epsf = EPSFModel(data=epsf_data, origin=epsf.origin, normalize=False,
+                         oversampling=epsf.oversampling,
                          pixel_scale=epsf.pixel_scale)
         epsf.fill_value = 0.0
 
@@ -631,7 +645,8 @@ class EPSFBuilder(object):
             dy_total += dy
             epsf_data = epsf.evaluate(x=x, y=y, flux=1.0,
                                       x_0=xcenter + dx_total,
-                                      y_0=ycenter + dy_total)
+                                      y_0=ycenter + dy_total,
+                                      use_oversampling=False)
 
         return epsf_data
 
@@ -711,7 +726,8 @@ class EPSFBuilder(object):
         ycenter = (new_epsf.shape[0] - 1) / 2.
 
         return EPSFModel(data=new_epsf, origin=(xcenter, ycenter),
-                         normalize=False, pixel_scale=epsf.pixel_scale)
+                         normalize=False, oversampling=epsf.oversampling,
+                         pixel_scale=epsf.pixel_scale)
 
     def build_epsf(self, stars, init_epsf=None):
         """
