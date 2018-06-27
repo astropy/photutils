@@ -321,11 +321,16 @@ class EPSFBuilder(object):
         The maximum number of iterations to perform.  If the
         ``center_accuracy`` is met, then the iterations will stop prior
         to ``maxiters``.  The default is 10.
+
+    progress_bar : bool, option
+        Whether to print the progress bar during the build iterations.
+        The default is `True`.
     """
 
     def __init__(self, pixel_scale=None, oversampling=4., shape=None,
                  smoothing_kernel='quartic', recentering_boxsize=(5, 5),
-                 fitter=EPSFFitter(), center_accuracy=1.0e-3, maxiters=10):
+                 fitter=EPSFFitter(), center_accuracy=1.0e-3, maxiters=10,
+                 progress_bar=True):
 
         if pixel_scale is None and oversampling is None:
             raise ValueError('Either pixel_scale or oversampling must be '
@@ -353,6 +358,8 @@ class EPSFBuilder(object):
         if maxiters <= 0:
             raise ValueError('maxiters must be a positive number.')
         self.maxiters = maxiters
+
+        self.progress_bar = progress_bar
 
         # TODO: allow custom SigmaClip object after faster SigmaClip
         # is available in astropy (>=3.1)
@@ -794,7 +801,7 @@ class EPSFBuilder(object):
             iter_num += 1
 
             # python 3 only
-            if sys.version_info[2] >= 3:
+            if self.progress_bar and sys.version_info[2] >= 3:
                 if iter_num == 1:
                     dt_str = ' [? s/iter]'
                 else:
