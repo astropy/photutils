@@ -11,12 +11,6 @@ import pytest
 from ..core import (centroid_com, centroid_1dg, centroid_2dg,
                     gaussian1d_moments, fit_2dgaussian)
 
-try:
-    import skimage    # noqa
-    HAS_SKIMAGE = True
-except ImportError:
-    HAS_SKIMAGE = False
-
 
 XCS = [25.7]
 YCS = [26.2]
@@ -32,7 +26,6 @@ DATA[1, 1] = 2.
 @pytest.mark.parametrize(
     ('xc_ref', 'yc_ref', 'x_stddev', 'y_stddev', 'theta'),
     list(itertools.product(XCS, YCS, XSTDDEVS, YSTDDEVS, THETAS)))
-@pytest.mark.skipif('not HAS_SKIMAGE')
 def test_centroids(xc_ref, yc_ref, x_stddev, y_stddev, theta):
     model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=x_stddev,
                        y_stddev=y_stddev, theta=theta)
@@ -52,7 +45,6 @@ def test_centroids(xc_ref, yc_ref, x_stddev, y_stddev, theta):
 @pytest.mark.parametrize(
     ('xc_ref', 'yc_ref', 'x_stddev', 'y_stddev', 'theta'),
     list(itertools.product(XCS, YCS, XSTDDEVS, YSTDDEVS, THETAS)))
-@pytest.mark.skipif('not HAS_SKIMAGE')
 def test_centroids_witherror(xc_ref, yc_ref, x_stddev, y_stddev, theta):
     model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=x_stddev,
                        y_stddev=y_stddev, theta=theta)
@@ -67,7 +59,6 @@ def test_centroids_witherror(xc_ref, yc_ref, x_stddev, y_stddev, theta):
     assert_allclose([xc_ref, yc_ref], [xc3, yc3], rtol=0, atol=1.e-3)
 
 
-@pytest.mark.skipif('not HAS_SKIMAGE')
 def test_centroids_withmask():
     xc_ref, yc_ref = 24.7, 25.2
     model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
@@ -87,7 +78,6 @@ def test_centroids_withmask():
     assert_allclose([xc3, yc3], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
 
 
-@pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.parametrize('use_mask', [True, False])
 def test_centroids_nan_withmask(use_mask):
     xc_ref, yc_ref = 24.7, 25.2
@@ -112,7 +102,6 @@ def test_centroids_nan_withmask(use_mask):
     assert_allclose([xc3, yc3], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
 
 
-@pytest.mark.skipif('not HAS_SKIMAGE')
 def test_centroid_com_mask():
     """Test centroid_com with and without an image_mask."""
 
@@ -124,7 +113,6 @@ def test_centroid_com_mask():
     assert_allclose([0.5, 0.0], centroid_mask, rtol=0, atol=1.e-6)
 
 
-@pytest.mark.skipif('not HAS_SKIMAGE')
 def test_invalid_mask_shape():
     """
     Test if ValueError raises if mask shape doesn't match data
@@ -147,7 +135,6 @@ def test_invalid_mask_shape():
         gaussian1d_moments(data, mask=mask)
 
 
-@pytest.mark.skipif('not HAS_SKIMAGE')
 def test_invalid_error_shape():
     """
     Test if ValueError raises if error shape doesn't match data
