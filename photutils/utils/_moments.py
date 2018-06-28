@@ -44,7 +44,7 @@ def _moments_central(data, center=None, order=1):
     ypowers = (indices[0] - center[1]) ** np.arange(order + 1)
     xpowers = np.transpose(indices[1] - center[0]) ** np.arange(order + 1)
 
-    return np.dot(np.transpose(xpowers), np.dot(data, ypowers))
+    return np.dot(np.dot(np.transpose(ypowers), data), xpowers)
 
 
 def _moments(data, order=1):
