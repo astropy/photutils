@@ -5,6 +5,8 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 cimport numpy as np
 
+from Polygon import Polygon
+
 
 __all__ = ['rectangular_overlap_grid']
 
@@ -69,10 +71,6 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
     # Define output array
     cdef np.ndarray[DTYPE_t, ndim=2] frac = np.zeros([ny, nx], dtype=DTYPE)
 
-    if use_exact == 1:
-        raise NotImplementedError("Exact mode has not been implemented for "
-                                  "rectangular apertures")
-
     # Find the width of each element in x and y
     dx = (xmax - xmin) / nx
     dy = (ymax - ymin) / ny
@@ -86,9 +84,13 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
         for j in range(ny):
             pymin = ymin + j * dy
             pymax = pymin + dy
-            frac[j, i] = rectangular_overlap_single_subpixel(
-                pxmin, pymin, pxmax, pymax, width, height, theta,
-                subpixels)
+            if use_exact:
+                frac[j, i] = rectangular_overlap_single_exact(
+                    pxmin, pymin, pxmax, pymax, width, height, theta)
+            else:
+                frac[j, i] = rectangular_overlap_single_subpixel(
+                    pxmin, pymin, pxmax, pymax, width, height, theta,
+                    subpixels)
 
     return frac
 
@@ -130,3 +132,34 @@ cdef double rectangular_overlap_single_subpixel(double x0, double y0,
                 frac += 1.
 
     return frac / (subpixels * subpixels)
+
+
+
+cdef double rectangular_overlap_single_exact(double x0, double y0,
+                                             double x1, double y1,
+                                             double width, double height,
+                                             double theta):
+    """
+    Return the fraction of overlap between a rectangle and a single pixel with
+    given extent.
+    """
+
+    cdef double half_width, half_height
+
+    half_width = width / 2.
+    half_height = height / 2.
+
+    slit = Polygon(
+        ((-half_width, -half_height), ( half_width, -half_height),
+         ( half_width,  half_height), (-half_width,  half_height)))
+    pixel = Polygon(
+        ((x0, y0), (x1, y0), (x1, y1), (x0, y1)))
+
+    # Transform into frame of rotated rectangle
+    # If the rectangular aperture has centre (0, 0) and position angle `theta`
+    # (counterclockwise from the x-axis), then the slit has been obtained by
+    # rotating the aperture clockwise by `theta` (i.e. -theta) around (0, 0).
+    # We apply the same to the pixel.
+    pixel.rotate(-theta, 0., 0.)
+
+    return (slit & pixel).area()

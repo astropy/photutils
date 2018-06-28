@@ -112,13 +112,6 @@ class PixelAperture(Aperture):
         if mode not in ('center', 'subpixel', 'exact'):
             raise ValueError('Invalid mask mode: {0}'.format(mode))
 
-        if rectangle and mode == 'exact':
-            warnings.warn('The "exact" method is not yet implemented for '
-                          'rectangular apertures -- using "subpixel" method '
-                          'with "subpixels=32"', AstropyUserWarning)
-            mode = 'subpixel'
-            subpixels = 32
-
         if mode == 'subpixels':
             if not isinstance(subpixels, int) or subpixels <= 0:
                 raise ValueError('subpixels must be a strictly positive '
@@ -192,8 +185,7 @@ class PixelAperture(Aperture):
         ----------
         method : {'exact', 'center', 'subpixel'}, optional
             The method used to determine the overlap of the aperture on
-            the pixel grid.  Not all options are available for all
-            aperture types.  Note that the more precise methods are
+            the pixel grid.  Note that the more precise methods are
             generally slower.  The following methods are available:
 
                 * ``'exact'`` (default):
@@ -240,8 +232,7 @@ class PixelAperture(Aperture):
         ----------
         method : {'exact', 'center', 'subpixel'}, optional
             The method used to determine the overlap of the aperture on
-            the pixel grid.  Not all options are available for all
-            aperture types.  Note that the more precise methods are
+            the pixel grid. Note that the more precise methods are
             generally slower.  The following methods are available:
 
                 * ``'exact'`` (default):
@@ -332,8 +323,7 @@ class PixelAperture(Aperture):
 
         method : {'exact', 'center', 'subpixel'}, optional
             The method used to determine the overlap of the aperture on
-            the pixel grid.  Not all options are available for all
-            aperture types.  Note that the more precise methods are
+            the pixel grid.  Note that the more precise methods are
             generally slower.  The following methods are available:
 
                 * ``'exact'`` (default):
@@ -393,21 +383,22 @@ class PixelAperture(Aperture):
 
         aperture_sums = []
         aperture_sum_errs = []
+        output_shape = (1,) if data.ndim==2 else data.shape[0]
         for mask in self.to_mask(method=method, subpixels=subpixels):
             data_cutout = mask.cutout(data)
 
             if data_cutout is None:
-                aperture_sums.append(np.nan)
+                aperture_sums.append(np.repeat(np.nan, output_shape))
             else:
-                aperture_sums.append(np.sum(data_cutout * mask.data))
+                aperture_sums.append(np.sum(data_cutout * mask.data, axis=(-2,-1)))
 
             if error is not None:
                 error_cutout = mask.cutout(error)
 
                 if error_cutout is None:
-                    aperture_sum_errs.append(np.nan)
+                    aperture_sum_errs.append(np.repeat(np.nan, output_shape))
                 else:
-                    aperture_var = np.sum(error_cutout ** 2 * mask.data)
+                    aperture_var = np.sum(error_cutout ** 2 * mask.data, axis=(-2,-1))
                     aperture_sum_errs.append(np.sqrt(aperture_var))
 
         # handle Quantity objects and input units
@@ -726,8 +717,8 @@ def _prepare_photometry_input(data, error, mask, wcs, unit):
             pass
 
     data = np.asanyarray(data)
-    if data.ndim != 2:
-        raise ValueError('data must be a 2D array.')
+    if (data.ndim != 2) and (data.ndim !=3):
+        raise ValueError('data must be a 2D or 3D array.')
 
     if unit is not None:
         unit = u.Unit(unit, parse_strict='warn')
@@ -807,8 +798,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
     method : {'exact', 'center', 'subpixel'}, optional
         The method used to determine the overlap of the aperture on the
-        pixel grid.  Not all options are available for all aperture
-        types.  Note that the more precise methods are generally slower.
+        pixel grid.  Note that the more precise methods are generally slower.
         The following methods are available:
 
             * ``'exact'`` (default):

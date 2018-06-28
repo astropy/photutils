@@ -31,8 +31,7 @@ class CircularMaskMixin(object):
         ----------
         method : {'exact', 'center', 'subpixel'}, optional
             The method used to determine the overlap of the aperture on
-            the pixel grid.  Not all options are available for all
-            aperture types.  Note that the more precise methods are
+            the pixel grid. Note that the more precise methods are
             generally slower.  The following methods are available:
 
                 * ``'exact'`` (default):

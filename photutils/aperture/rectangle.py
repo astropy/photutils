@@ -34,8 +34,7 @@ class RectangularMaskMixin(object):
         ----------
         method : {'exact', 'center', 'subpixel'}, optional
             The method used to determine the overlap of the aperture on
-            the pixel grid.  Not all options are available for all
-            aperture types.  Note that the more precise methods are
+            the pixel grid. Note that the more precise methods are
             generally slower.  The following methods are available:
 
                 * ``'exact'`` (default):
@@ -87,13 +86,13 @@ class RectangularMaskMixin(object):
             ny, nx = bbox.shape
             mask = rectangular_overlap_grid(edges[0], edges[1], edges[2],
                                             edges[3], nx, ny, w, h,
-                                            self.theta, 0, subpixels)
+                                            self.theta, use_exact, subpixels)
 
             # subtract the inner circle for an annulus
             if hasattr(self, 'w_in'):
                 mask -= rectangular_overlap_grid(edges[0], edges[1], edges[2],
                                                  edges[3], nx, ny, self.w_in,
-                                                 h_in, self.theta, 0,
+                                                 h_in, self.theta, use_exact,
                                                  subpixels)
 
             masks.append(ApertureMask(mask, bbox))
