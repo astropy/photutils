@@ -16,6 +16,9 @@ New Features
   - Added a ``centroid_sources`` function to calculate centroid of
     many sources in a single image. [#656]
 
+  - An n-dimensional array can now be input into the ``centroid_com``
+    function. [#685]
+
 - ``photutils.detection``
 
   - Added a ``centroid_func`` keyword to ``find_peaks``.  The
