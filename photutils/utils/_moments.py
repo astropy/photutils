@@ -30,7 +30,7 @@ def _moments_central(data, center=None, order=1):
         The central image moments.
     """
 
-    data = np.asarray(data)
+    data = np.asarray(data).astype(float)
 
     if data.ndim != 2:
         raise ValueError('data must be a 2D array.')

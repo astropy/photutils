@@ -290,7 +290,7 @@ class SourceProperties(object):
         return self.make_cutout(self._data, masked_array=True)
 
     @lazyproperty
-    def _data_cutout_maskzeroed_double(self):
+    def _data_cutout_maskzeroed(self):
         """
         A 2D cutout from the (background-subtracted) (filtered) data,
         where pixels outside of the source segment and masked pixels are
@@ -299,9 +299,7 @@ class SourceProperties(object):
         Invalid values (e.g. NaNs or infs) are set to zero.  Negative
         data values are also set to zero because negative pixels
         (especially at large radii) can result in image moments that
-        result in negative variances.  The cutout image is double
-        precision, which is required for scikit-image's Cython-based
-        moment functions.
+        result in negative variances.
         """
 
         cutout = self.make_cutout(self._filtered_data, masked_array=False)
@@ -357,7 +355,7 @@ class SourceProperties(object):
     def moments(self):
         """Spatial moments up to 3rd order of the source."""
 
-        return _moments(self._data_cutout_maskzeroed_double, order=3)
+        return _moments(self._data_cutout_maskzeroed, order=3)
 
     @lazyproperty
     def moments_central(self):
@@ -367,7 +365,7 @@ class SourceProperties(object):
         """
 
         ycentroid, xcentroid = self.cutout_centroid.value
-        return _moments_central(self._data_cutout_maskzeroed_double,
+        return _moments_central(self._data_cutout_maskzeroed,
                                 center=(xcentroid, ycentroid), order=3)
 
     @lazyproperty

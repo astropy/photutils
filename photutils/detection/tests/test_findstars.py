@@ -21,12 +21,6 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
-try:
-    import skimage    # noqa
-    HAS_SKIMAGE = True
-except ImportError:
-    HAS_SKIMAGE = False
-
 
 DATA = make_100gaussians_image()
 THRESHOLDS = [8.0, 10.0]
@@ -35,7 +29,6 @@ warnings.simplefilter('always', AstropyUserWarning)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-@pytest.mark.skipif('not HAS_SKIMAGE')
 class TestDAOStarFinder(object):
     @pytest.mark.parametrize(('threshold', 'fwhm'),
                              list(itertools.product(THRESHOLDS, FWHMS)))
@@ -103,7 +96,6 @@ class TestDAOStarFinder(object):
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-@pytest.mark.skipif('not HAS_SKIMAGE')
 class TestIRAFStarFinder(object):
     @pytest.mark.parametrize(('threshold', 'fwhm'),
                              list(itertools.product(THRESHOLDS, FWHMS)))
