@@ -12,6 +12,14 @@ from ..core import (centroid_com, centroid_1dg, centroid_2dg,
                     gaussian1d_moments, fit_2dgaussian)
 
 
+try:
+    # the fitting routines in astropy use scipy.optimize
+    import scipy    # noqa
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
+
+
 XCS = [25.7]
 YCS = [26.2]
 XSTDDEVS = [3.2, 4.0]
@@ -23,6 +31,7 @@ DATA[1, 0:2] = 1.
 DATA[1, 1] = 2.
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize(
     ('xc_ref', 'yc_ref', 'x_stddev', 'y_stddev', 'theta'),
     list(itertools.product(XCS, YCS, XSTDDEVS, YSTDDEVS, THETAS)))
@@ -42,6 +51,7 @@ def test_centroids(xc_ref, yc_ref, x_stddev, y_stddev, theta):
     assert_allclose([xc_ref, yc_ref], [xc3, yc3], rtol=0, atol=1.e-3)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize(
     ('xc_ref', 'yc_ref', 'x_stddev', 'y_stddev', 'theta'),
     list(itertools.product(XCS, YCS, XSTDDEVS, YSTDDEVS, THETAS)))
@@ -59,6 +69,7 @@ def test_centroids_witherror(xc_ref, yc_ref, x_stddev, y_stddev, theta):
     assert_allclose([xc_ref, yc_ref], [xc3, yc3], rtol=0, atol=1.e-3)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_centroids_withmask():
     xc_ref, yc_ref = 24.7, 25.2
     model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
@@ -78,6 +89,7 @@ def test_centroids_withmask():
     assert_allclose([xc3, yc3], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize('use_mask', [True, False])
 def test_centroids_nan_withmask(use_mask):
     xc_ref, yc_ref = 24.7, 25.2
@@ -113,6 +125,7 @@ def test_centroid_com_mask():
     assert_allclose([0.5, 0.0], centroid_mask, rtol=0, atol=1.e-6)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_invalid_mask_shape():
     """
     Test if ValueError raises if mask shape doesn't match data
@@ -135,6 +148,7 @@ def test_invalid_mask_shape():
         gaussian1d_moments(data, mask=mask)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_invalid_error_shape():
     """
     Test if ValueError raises if error shape doesn't match data
@@ -170,6 +184,7 @@ def test_gaussian1d_moments():
     assert_allclose(result, desired, rtol=0, atol=1.e-6)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_fit2dgaussian_dof():
     data = np.ones((2, 2))
     with pytest.raises(ValueError):
