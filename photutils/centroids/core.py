@@ -15,8 +15,6 @@ from astropy.modeling.models import (Gaussian1D, Gaussian2D, Const1D,
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.utils.exceptions import AstropyUserWarning
 
-from ..morphology import data_properties
-
 
 __all__ = ['GaussianConst2D', 'centroid_com', 'gaussian1d_moments',
            'fit_2dgaussian', 'centroid_1dg', 'centroid_2dg']
@@ -77,8 +75,8 @@ GaussianConst2D.__doc__ += CONSTRAINTS_DOC
 
 def centroid_com(data, mask=None):
     """
-    Calculate the centroid of a 2D array as its "center of mass"
-    determined from image moments.
+    Calculate the centroid of an n-dimensional array as its "center of
+    mass" determined from moments.
 
     Invalid values (e.g. NaNs or infs) in the ``data`` array are
     automatically masked.
@@ -86,7 +84,7 @@ def centroid_com(data, mask=None):
     Parameters
     ----------
     data : array_like
-        The 2D array of the image.
+        The input n-dimensional array.
 
     mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
@@ -95,36 +93,30 @@ def centroid_com(data, mask=None):
     Returns
     -------
     centroid : `~numpy.ndarray`
-        The ``x, y`` coordinates of the centroid.
+        The coordinates of the centroid in pixel order (e.g. ``(x, y)``
+        or ``(x, y, z)``), not numpy axis order.
     """
 
-    from skimage.measure import moments
-
-    data = np.ma.asanyarray(data)
+    data = data.astype(np.float)
 
     if mask is not None and mask is not np.ma.nomask:
-        mask = np.asanyarray(mask)
+        mask = np.asarray(mask)
         if data.shape != mask.shape:
             raise ValueError('data and mask must have the same shape.')
-        data.mask |= mask
+        data[mask] = 0.
 
-    if np.any(~np.isfinite(data)):
-        data = np.ma.masked_invalid(data)
+    badidx = ~np.isfinite(data)
+    if np.any(badidx):
         warnings.warn('Input data contains input values (e.g. NaNs or infs), '
                       'which were automatically masked.', AstropyUserWarning)
+        data[badidx] = 0.
 
-    # Convert the data to a float64 (double) `numpy.ndarray`,
-    # which is required for input to `skimage.measure.moments`.
-    # Masked values are set to zero.
-    data = data.astype(np.float)
-    data.fill_value = 0.
-    data = data.filled()
+    total = np.sum(data)
+    indices = np.ogrid[[slice(0, i) for i in data.shape]]
 
-    m = moments(data, 1)
-    xcen = m[1, 0] / m[0, 0]
-    ycen = m[0, 1] / m[0, 0]
-
-    return np.array([xcen, ycen])
+    # note the output array is reversed to give (x, y) order
+    return np.array([np.sum(indices[axis] * data) / total
+                     for axis in range(data.ndim)])[::-1]
 
 
 def gaussian1d_moments(data, mask=None):
@@ -199,6 +191,8 @@ def fit_2dgaussian(data, error=None, mask=None):
     result : A `GaussianConst2D` model instance.
         The best-fitting Gaussian 2D model.
     """
+
+    from ..morphology import data_properties  # prevent circular imports
 
     data = np.ma.asanyarray(data)
 

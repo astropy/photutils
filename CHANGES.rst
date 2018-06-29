@@ -1,6 +1,22 @@
 0.4.1 (unreleased)
 ------------------
 
+General
+^^^^^^^
+
+- Fixed (x, y) ordering issues when using ``scikit-image`` > 0.14.
+  [#685]
+
+
+API Changes
+^^^^^^^^^^^
+
+- ``photutils.centroids``
+
+  - An n-dimensional array can now be input into the ``centroid_com``
+    function. [#685]
+
+
 Bug Fixes
 ^^^^^^^^^
 

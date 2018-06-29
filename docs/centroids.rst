@@ -34,8 +34,6 @@ subtract the background)::
     >>> from photutils import centroid_com, centroid_1dg, centroid_2dg
     >>> data = make_4gaussians_image()[43:79, 76:104]
 
-.. doctest-requires:: skimage
-
     >>> x1, y1 = centroid_com(data)
     >>> print((x1, y1))    # doctest: +FLOAT_CMP
     (13.93157998341213, 17.051234441067088)
@@ -46,7 +44,7 @@ subtract the background)::
     >>> print((x2, y2))    # doctest: +FLOAT_CMP
     (14.040352707371396, 16.962306463644801)
 
-.. doctest-requires:: scipy, skimage
+.. doctest-requires:: scipy
 
     >>> x3, y3 = centroid_2dg(data)
     >>> print((x3, y3))    # doctest: +FLOAT_CMP
