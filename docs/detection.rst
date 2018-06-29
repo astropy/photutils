@@ -136,7 +136,9 @@ specified footprint.  Please see the
 options.
 
 As simple example, let's find the local peaks in an image that are 5
-sigma above the background and a separated by at least 5 pixels::
+sigma above the background and a separated by at least 5 pixels:
+
+.. doctest-requires:: scipy
 
     >>> from astropy.stats import sigma_clipped_stats
     >>> from photutils.datasets import make_100gaussians_image
