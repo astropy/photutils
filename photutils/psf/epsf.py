@@ -452,7 +452,8 @@ class EPSFBuilder(object):
                                      oversampling[0]))
             shape = np.array((y_shape, x_shape))
 
-        shape = [(i + 1) for i in shape if i % 2 == 0]   # ensure odd sizes
+        # ensure odd sizes
+        shape = [(i + 1) if i % 2 == 0 else i for i in shape]
 
         data = np.zeros(shape, dtype=np.float)
         xcenter = (shape[1] - 1) / 2.
