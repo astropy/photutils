@@ -20,12 +20,6 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
-try:
-    import skimage    # noqa
-    HAS_SKIMAGE = True
-except ImportError:
-    HAS_SKIMAGE = False
-
 
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestDetectSources(object):

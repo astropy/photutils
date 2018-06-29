@@ -16,13 +16,6 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
-try:
-    import skimage    # noqa
-    HAS_SKIMAGE = True
-except ImportError:
-    HAS_SKIMAGE = False
-
-
 DATA = np.array([[0, 1, 0], [0, 2, 0], [0, 0, 0]]).astype(np.float)
 REF1 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
 
@@ -122,7 +115,6 @@ class TestDetectThreshold(object):
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-@pytest.mark.skipif('not HAS_SKIMAGE')
 class TestFindPeaks(object):
     def test_box_size(self):
         """Test with box_size."""

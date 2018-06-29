@@ -24,6 +24,7 @@ from astropy.utils.misc import InheritDocstrings
 
 from .core import find_peaks
 from ..utils.convolution import filter_data
+from ..utils._moments import _moments, _moments_central
 
 
 __all__ = ['StarFinderBase', 'DAOStarFinder', 'IRAFStarFinder']
@@ -520,17 +521,15 @@ class _IRAFStarFind_Properties(object):
 
     @lazyproperty
     def moments(self):
-        from skimage.measure import moments
-
-        return moments(self.data, 1)
+        return _moments(self.data, order=1)
 
     @lazyproperty
     def cutout_xcentroid(self):
-        return self.moments[1, 0] / self.moments[0, 0]
+        return self.moments[0, 1] / self.moments[0, 0]
 
     @lazyproperty
     def cutout_ycentroid(self):
-        return self.moments[0, 1] / self.moments[0, 0]
+        return self.moments[1, 0] / self.moments[0, 0]
 
     @lazyproperty
     def xcentroid(self):
@@ -562,19 +561,17 @@ class _IRAFStarFind_Properties(object):
 
     @lazyproperty
     def moments_central(self):
-        from skimage.measure import moments_central
-
-        return (moments_central(self.data, self.cutout_ycentroid,
-                                self.cutout_xcentroid, 2) /
-                self.moments[0, 0])
+        return _moments_central(
+            self.data, (self.cutout_xcentroid, self.cutout_ycentroid),
+            order=2) / self.moments[0, 0]
 
     @lazyproperty
     def mu_sum(self):
-        return self.moments_central[2, 0] + self.moments_central[0, 2]
+        return self.moments_central[0, 2] + self.moments_central[2, 0]
 
     @lazyproperty
     def mu_diff(self):
-        return self.moments_central[2, 0] - self.moments_central[0, 2]
+        return self.moments_central[0, 2] - self.moments_central[2, 0]
 
     @lazyproperty
     def fwhm(self):
@@ -673,8 +670,11 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
     if min_separation is None:   # daofind
         footprint = kernel.mask.astype(np.bool)
     else:
-        from skimage.morphology import disk
-        footprint = disk(min_separation)
+        # define a circular footprint
+        idx = np.arange(-min_separation, min_separation + 1)
+        xx, yy = np.meshgrid(idx, idx)
+        footprint = np.array((xx**2 + yy**2) <= min_separation**2, dtype=int)
+
     tbl = find_peaks(convolved_data, threshold_eff, footprint=footprint)
     coords = np.transpose([tbl['y_peak'], tbl['x_peak']])
 
