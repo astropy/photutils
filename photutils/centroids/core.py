@@ -18,8 +18,6 @@ from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import overlap_slices
 from astropy.utils.exceptions import AstropyUserWarning
 
-from ..morphology import data_properties
-
 
 __all__ = ['GaussianConst2D', 'centroid_com', 'gaussian1d_moments',
            'fit_2dgaussian', 'centroid_1dg', 'centroid_2dg',
@@ -197,6 +195,8 @@ def fit_2dgaussian(data, error=None, mask=None):
     result : A `GaussianConst2D` model instance.
         The best-fitting Gaussian 2D model.
     """
+
+    from ..morphology import data_properties  # prevent circular imports
 
     data = np.ma.asanyarray(data)
 
