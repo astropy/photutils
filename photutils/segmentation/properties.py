@@ -15,6 +15,7 @@ from astropy.wcs.utils import pixel_to_skycoord
 
 from .core import SegmentationImage
 from ..utils.convolution import filter_data
+from ..utils._moments import _moments, _moments_central
 
 
 __all__ = ['SourceProperties', 'source_properties', 'SourceCatalog',
@@ -356,8 +357,7 @@ class SourceProperties(object):
     def moments(self):
         """Spatial moments up to 3rd order of the source."""
 
-        from skimage.measure import moments
-        return moments(self._data_cutout_maskzeroed_double, 3)
+        return _moments(self._data_cutout_maskzeroed_double, order=3)
 
     @lazyproperty
     def moments_central(self):
@@ -366,10 +366,9 @@ class SourceProperties(object):
         order.
         """
 
-        from skimage.measure import moments_central
         ycentroid, xcentroid = self.cutout_centroid.value
-        return moments_central(self._data_cutout_maskzeroed_double,
-                               ycentroid, xcentroid, 3)
+        return _moments_central(self._data_cutout_maskzeroed_double,
+                                center=(xcentroid, ycentroid), order=3)
 
     @lazyproperty
     def id(self):
@@ -389,8 +388,8 @@ class SourceProperties(object):
 
         m = self.moments
         if m[0, 0] != 0:
-            ycentroid = m[0, 1] / m[0, 0]
-            xcentroid = m[1, 0] / m[0, 0]
+            ycentroid = m[1, 0] / m[0, 0]
+            xcentroid = m[0, 1] / m[0, 0]
             return (ycentroid, xcentroid) * u.pix
         else:
             return (np.nan, np.nan) * u.pix
@@ -734,9 +733,9 @@ class SourceProperties(object):
         """
 
         mu = self.moments_central
-        a = mu[2, 0]
+        a = mu[0, 2]
         b = -mu[1, 1]
-        c = mu[0, 2]
+        c = mu[2, 0]
         return np.array([[a, b], [b, c]]) * u.pix**2
 
     @lazyproperty
@@ -750,7 +749,7 @@ class SourceProperties(object):
         if mu[0, 0] != 0:
             m = mu / mu[0, 0]
             covariance = self._check_covariance(
-                np.array([[m[2, 0], m[1, 1]], [m[1, 1], m[0, 2]]]))
+                np.array([[m[0, 2], m[1, 1]], [m[1, 1], m[2, 0]]]))
             return covariance * u.pix**2
         else:
             return np.empty((2, 2)) * np.nan * u.pix**2
