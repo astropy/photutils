@@ -189,9 +189,9 @@ class ApertureMask(object):
             # try this for speed -- the result may still be a partial
             # overlap, in which case the next block will be triggered
             if copy:
-                cutout = np.copy(data[(...,)+self.bbox.slices])
+                cutout = np.copy(data[(Ellipsis,)+self.bbox.slices])
             else:
-                cutout = data[(...,)+self.bbox.slices]
+                cutout = data[(Ellipsis,)+self.bbox.slices]
 
         if partial_overlap or (cutout.shape[-2:] != self.shape):
             slices_large, slices_small = self._overlap_slices(data.shape[-2:])
@@ -203,7 +203,7 @@ class ApertureMask(object):
             output_shape = self.shape if data.ndim==2 else (data.shape[0],)+self.shape
             cutout = np.zeros(output_shape, dtype=data.dtype)
             cutout[:] = fill_value
-            cutout[(...,)+slices_small] = data[(...,)+slices_large]
+            cutout[(Ellipsis,)+slices_small] = data[(Ellipsis,)+slices_large]
 
             if isinstance(data, u.Quantity):
                 cutout = u.Quantity(cutout, unit=data.unit)
