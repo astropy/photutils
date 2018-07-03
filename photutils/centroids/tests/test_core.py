@@ -90,6 +90,18 @@ def test_centroids_withmask():
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
+def test_centroids_withmask_nonbool():
+    data = np.arange(16).reshape(4, 4)
+    mask = np.zeros(data.shape)
+    mask[0:2, :] = 1
+    mask2 = np.array(mask, dtype=bool)
+
+    xc1, yc1 = centroid_com(data, mask=mask)
+    xc2, yc2 = centroid_com(data, mask=mask2)
+    assert_allclose([xc1, yc1], [xc2, yc2])
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize('use_mask', [True, False])
 def test_centroids_nan_withmask(use_mask):
     xc_ref, yc_ref = 24.7, 25.2
