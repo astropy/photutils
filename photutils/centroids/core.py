@@ -100,7 +100,7 @@ def centroid_com(data, mask=None):
     data = data.astype(np.float)
 
     if mask is not None and mask is not np.ma.nomask:
-        mask = np.asarray(mask)
+        mask = np.asarray(mask, dtype=bool)
         if data.shape != mask.shape:
             raise ValueError('data and mask must have the same shape.')
         data[mask] = 0.
