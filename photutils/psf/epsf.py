@@ -609,8 +609,23 @@ class EPSFBuilder(object):
 
         return convolve(epsf_data, kernel)
 
+    class CentroidQuadraticFit:
+        def __init__(self, maxiters=20, center_accuracy_sq=1.0e-8):
+            self.maxiters = maxiters
+            self.center_accuracy_sq = center_accuracy_sq
+
+        def __call__(self, data):
+            pass
+
+            # find peak location
+            xcenter_new, ycenter_new = _find_peak(
+                epsf_data, xmax=xcenter, ymax=ycenter,
+                peak_fit_box=self.recentering_boxsize,
+                peak_search_box='fitbox', mask=None)
+
+
     def _recenter_epsf(self, epsf_data, epsf, maxiters=20,
-                       center_accuracy_sq=1.0e-8):
+                       center_accuracy=1.0e-4, func=CentroidQuadraticFit):
         """
         Calculate the center of the ePSF data and shift the data so the
         ePSF center is at the center of the ePSF data array.
@@ -627,12 +642,11 @@ class EPSFBuilder(object):
             The maximum number of recentering iterations to perform.
             The default is 20.
 
-        center_accuracy_sq : float, optional
-            The desired squared accuracy for the centers of stars.  The
-            building iterations will stop if the centers of all the
-            stars change by less than ``sqrt(center_accuracy_sq)``
-            pixels between iterations.  All stars must meet this
-            condition for the loop to exit.  The default is 1.0e-8.
+        center_accuracy : float, optional
+            The desired accuracy for the centers of stars.  The building
+            iterations will stop if the center of the ePSF changes by
+            less than ``center_accuracy`` pixels between iterations.
+            The default is 1.0e-4.
 
         Returns
         -------
@@ -640,17 +654,21 @@ class EPSFBuilder(object):
             The recentered ePSF data.
         """
 
-        y, x = np.indices(epsf_data.shape, dtype=np.float)
+        # Define an EPSFModel for the input data.  This EPSFModel will be
+        # used to evaluate the model on a shifted pixel grid to place the
+        # centroid at the array center.
         epsf = EPSFModel(data=epsf_data, origin=epsf.origin, normalize=False,
                          oversampling=epsf.oversampling,
                          pixel_scale=epsf.pixel_scale)
         epsf.fill_value = 0.0
-
         xcenter, ycenter = epsf.origin
+
         dx_total = 0
         dy_total = 0
+        y, x = np.indices(epsf_data.shape, dtype=np.float)
 
         iter_num = 0
+        center_accuracy_sq = center_accuracy ** 2
         center_dist_sq = center_accuracy_sq + 1.e6
         center_dist_sq_prev = center_dist_sq + 1
         while (iter_num < maxiters and
@@ -658,11 +676,9 @@ class EPSFBuilder(object):
 
             iter_num += 1
 
-            # find peak location
-            xcenter_new, ycenter_new = _find_peak(
-                epsf_data, xmax=xcenter, ymax=ycenter,
-                peak_fit_box=self.recentering_boxsize,
-                peak_search_box='fitbox', mask=None)
+            # find new center position
+            mask = ~np.isfinite(epsf_data)
+            xcenter_new, ycenter_new = func(epsf_data, mask=mask)
 
             dx = xcenter - xcenter_new
             dy = ycenter - ycenter_new
@@ -671,9 +687,9 @@ class EPSFBuilder(object):
                 break
             center_dist_sq_prev = center_dist_sq
 
-            # Resample the ePSF data to a shifted grid to place the peak
-            # in the central pixel.  The shift is always performed on the
-            # input epsf_data.
+            # Resample the ePSF data to a shifted grid to place the
+            # centroid in the center of the central pixel.  The shift is
+            # always performed on the input epsf_data.
             dx_total += dx    # accumulated shifts for the input epsf_data
             dy_total += dy
             epsf_data = epsf.evaluate(x=x, y=y, flux=1.0,
@@ -749,7 +765,8 @@ class EPSFBuilder(object):
         new_epsf = self._smooth_epsf(new_epsf)
 
         # recenter the ePSF
-        new_epsf = self._recenter_epsf(new_epsf, epsf)
+        new_epsf = self._recenter_epsf(new_epsf, epsf, maxiters=20,
+                                       center_accuracy=1.0e-4)
 
         # normalize the ePSF data
         new_epsf /= np.sum(new_epsf, dtype=np.float64)
