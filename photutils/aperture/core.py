@@ -384,12 +384,12 @@ class PixelAperture(Aperture):
             mask = np.asanyarray(mask)
 
             data = copy.deepcopy(data)    # do not modify input data
-            data[mask] = 0
+            data[np.where(mask)] = 0
 
             if error is not None:
                 # do not modify input data
                 error = copy.deepcopy(np.asanyarray(error))
-                error[mask] = 0.
+                error[np.where(mask)] = 0.
 
         aperture_sums = []
         aperture_sum_errs = []
