@@ -19,6 +19,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from .epsf_stars import Star, LinkedStar, Stars
 from .models import EPSFModel
+from ..centroids import centroid_com
 from ..extern import SigmaClip
 
 try:
@@ -294,15 +295,24 @@ class EPSFBuilder(object):
         custom 2D array can be input.  If `None` then no smoothing will
         be performed.  The default is ``'quartic'``.
 
+    recentering_func : callable, optional
+        A callable object (e.g. function or class) that is used to
+        calculate the centroid of a 2D array.  The callable must accept
+        a 2D `~numpy.ndarray`, have a ``mask`` keyword and optionally an
+        ``error`` keyword.  The callable object must return a tuple of
+        two 1D `~numpy.ndarray`\s, representing the x and y centroids.
+        The default is `~photutils.centroids.centroid_com`.
+
     recentering_boxsize : float or tuple of two floats, optional
-        The size (in pixels) of the box around the initial estimate of
-        the ePSF maximum value to be used for quadratic fitting from
-        which a new ePSF center location is computed during each build
-        iteration.  If a single integer number is provided, then it is
-        assumed that fitting box is a square with sides of length given
-        by ``peak_fit_box``. If a tuple of two values is provided, then
-        first value indicates the width of the box and the second value
-        indicates the height of the box.  The default is 5.
+        The size (in pixels) of the box used to calculate the centroid
+        of the ePSF during each build iteration.  If a single integer
+        number is provided, then a square box will be used.  If two
+        values are provided, then they should be in ``(ny, nx)`` order.
+        The default is 5.
+
+    recentering_maxiters : int, optional
+        The maximum number of recentering iterations to perform during
+        each ePSF build iteration.  The default is 20.
 
     fitter : `EPSFFitter` object, optional
         A `EPSFFitter` object use to fit the ePSF to stars.  The default
@@ -328,7 +338,8 @@ class EPSFBuilder(object):
     """
 
     def __init__(self, pixel_scale=None, oversampling=4., shape=None,
-                 smoothing_kernel='quartic', recentering_boxsize=(5, 5),
+                 smoothing_kernel='quartic', recentering_func=centroid_com,
+                 recentering_boxsize=(5, 5), recentering_maxiters=20,
                  fitter=EPSFFitter(), center_accuracy=1.0e-3, maxiters=10,
                  progress_bar=True):
 
@@ -344,8 +355,10 @@ class EPSFBuilder(object):
         if self.shape is not None:
             self.shape = self.shape.astype(int)
 
+        self.recentering_func = recentering_func
         self.recentering_boxsize = self._init_img_params(recentering_boxsize)
         self.recentering_boxsize = self.recentering_boxsize.astype(int)
+        self.recentering_maxiters = recentering_maxiters
 
         self.smoothing_kernel = smoothing_kernel
         self.fitter = fitter
@@ -609,23 +622,8 @@ class EPSFBuilder(object):
 
         return convolve(epsf_data, kernel)
 
-    class CentroidQuadraticFit:
-        def __init__(self, maxiters=20, center_accuracy_sq=1.0e-8):
-            self.maxiters = maxiters
-            self.center_accuracy_sq = center_accuracy_sq
-
-        def __call__(self, data):
-            pass
-
-            # find peak location
-            xcenter_new, ycenter_new = _find_peak(
-                epsf_data, xmax=xcenter, ymax=ycenter,
-                peak_fit_box=self.recentering_boxsize,
-                peak_search_box='fitbox', mask=None)
-
-
-    def _recenter_epsf(self, epsf_data, epsf, maxiters=20,
-                       center_accuracy=1.0e-4, func=CentroidQuadraticFit):
+    def _recenter_epsf(self, epsf_data, epsf, centroid_func=centroid_com,
+                       box_size=5, maxiters=20, center_accuracy=1.0e-4):
         """
         Calculate the center of the ePSF data and shift the data so the
         ePSF center is at the center of the ePSF data array.
@@ -637,6 +635,22 @@ class EPSFBuilder(object):
 
         epsf : `EPSFModel` object
             The ePSF model.
+
+        centroid_func : callable, optional
+            A callable object (e.g. function or class) that is used to
+            calculate the centroid of a 2D array.  The callable must
+            accept a 2D `~numpy.ndarray`, have a ``mask`` keyword and
+            optionally an ``error`` keyword.  The callable object must
+            return a tuple of two 1D `~numpy.ndarray`\s, representing
+            the x and y centroids.  The default is
+            `~photutils.centroids.centroid_com`.
+
+        recentering_boxsize : float or tuple of two floats, optional
+            The size (in pixels) of the box used to calculate the
+            centroid of the ePSF during each build iteration.  If a
+            single integer number is provided, then a square box will be
+            used.  If two values are provided, then they should be in
+            ``(ny, nx)`` order.  The default is 5.
 
         maxiters : int, optional
             The maximum number of recentering iterations to perform.
@@ -676,10 +690,20 @@ class EPSFBuilder(object):
 
             iter_num += 1
 
-            # find new center position
-            mask = ~np.isfinite(epsf_data)
-            xcenter_new, ycenter_new = func(epsf_data, mask=mask)
+            # extract a cutout from the ePSF
+            print(epsf_data.shape, box_size)
+            slices_large, slices_small = overlap_slices(epsf_data.shape,
+                                                        box_size,
+                                                        (ycenter, xcenter))
+            epsf_cutout = epsf_data[slices_large]
+            mask = ~np.isfinite(epsf_cutout)
 
+            # find a new center position
+            xcenter_new, ycenter_new = centroid_func(epsf_cutout, mask=mask)
+            xcenter_new += slices_large[1].start
+            ycenter_new += slices_large[0].start
+
+            # calculate the shift
             dx = xcenter - xcenter_new
             dy = ycenter - ycenter_new
             center_dist_sq = dx**2 + dy**2
@@ -765,7 +789,10 @@ class EPSFBuilder(object):
         new_epsf = self._smooth_epsf(new_epsf)
 
         # recenter the ePSF
-        new_epsf = self._recenter_epsf(new_epsf, epsf, maxiters=20,
+        new_epsf = self._recenter_epsf(new_epsf, epsf,
+                                       centroid_func=self.recentering_func,
+                                       box_size=self.recentering_boxsize,
+                                       maxiters=self.recentering_maxiters,
                                        center_accuracy=1.0e-4)
 
         # normalize the ePSF data
@@ -866,6 +893,22 @@ class EPSFBuilder(object):
             dt = time.time() - t_start
 
         return epsf, stars
+
+
+class CentroidQuadraticFit(object):
+    def __init__(self, peak_fit_box=5, peak_search_box='fitbox', mask=None):
+        self.peak_fit_box = peak_fit_box
+        self.peak_search_box = peak_search_box
+        self.mask = mask
+
+    def __call__(self, data):
+        pass
+
+        # find peak location
+        #xcenter_new, ycenter_new = _find_peak(
+        #    epsf_data, xmax=xcenter, ymax=ycenter,
+        #    peak_fit_box=self.recentering_boxsize,
+        #    peak_search_box='fitbox', mask=None)
 
 
 def _find_peak(data, xmax=None, ymax=None, peak_fit_box=5,
