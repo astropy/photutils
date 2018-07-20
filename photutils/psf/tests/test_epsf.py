@@ -69,6 +69,19 @@ class TestEPSFBuild(object):
         assert isinstance(stars[0], Star)
         assert stars[0].data.shape == (size, size)
 
+    def test_extract_stars_inputs(self):
+        with pytest.raises(ValueError):
+            extract_stars(np.ones(3), self.init_stars)
+
+        with pytest.raises(ValueError):
+            extract_stars(self.nddata, [(1, 1), (2, 2), (3, 3)])
+
+        with pytest.raises(ValueError):
+            extract_stars(self.nddata, [self.init_stars, self.init_stars])
+
+        with pytest.raises(ValueError):
+            extract_stars([self.nddata, self.nddata], self.init_stars)
+
     def test_epsf_build(self):
         size = 25
         oversampling = 4.
