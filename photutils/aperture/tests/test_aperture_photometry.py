@@ -883,3 +883,21 @@ def test_to_sky_pixel():
     assert_allclose(ap.w_out, ap2.w_out)
     assert_allclose(ap.h_out, ap2.h_out)
     assert_allclose(ap.theta, ap2.theta)
+
+
+def test_position_units():
+    """Regression test for unit check."""
+    pos = (10, 10) * u.pix
+    pos = np.sqrt(pos**2)
+    ap = CircularAperture(pos, r=3.)
+    assert_allclose(ap.positions, np.array([[10, 10]]))
+
+
+def test_radius_units():
+    """Regression test for unit check."""
+    pos = SkyCoord(10, 10, unit='deg')
+    r = 3.*u.pix
+    r = np.sqrt(r**2)
+    ap = SkyCircularAperture(pos, r=r)
+    assert ap.r.value == 3.0
+    assert ap.r.unit == u.pix
