@@ -69,6 +69,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Fixed a bug where quantity inputs to the aperture classes would
+    sometimes fail. [#693]
+
 - ``photutils.detection``
 
   - Fixed an issue in ``detect_sources`` where in some cases sources
