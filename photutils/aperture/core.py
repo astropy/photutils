@@ -81,7 +81,7 @@ class PixelAperture(Aperture):
     @staticmethod
     def _sanitize_positions(positions):
         if isinstance(positions, u.Quantity):
-            if positions.unit is u.pixel:
+            if positions.unit == u.pixel:
                 positions = np.atleast_2d(positions.value)
             else:
                 raise u.UnitsError('positions should be in pixel units')
