@@ -17,8 +17,7 @@ import six
 import numpy as np
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.table import Table
-from astropy.utils.exceptions import (AstropyUserWarning,
-                                      AstropyDeprecationWarning)
+from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils import lazyproperty
 from astropy.utils.misc import InheritDocstrings
 
@@ -615,7 +614,6 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
         multiplied by the kernel relerr.
 
     exclude_border : bool, optional
-        Deprecated.
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders.  The default is
         `False`, which is the mode used by IRAF's `DAOFIND`_ and
@@ -631,42 +629,20 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
     .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
     """
 
-    if exclude_border:
-        warnings.warn('The exclude_border keyword is deprecated and will be '
-                      'removed in a future version.',
-                      AstropyDeprecationWarning)
-
     from scipy import ndimage
-
-    if not exclude_border:
-        ypad = kernel.yradius
-        xpad = kernel.xradius
-        pad = ((ypad, ypad), (xpad, xpad))
-        # mode must be a string for numpy < 0.11
-        # (see https://github.com/numpy/numpy/issues/7112)
-        mode = str('constant')
-        data = np.pad(data, pad, mode=mode, constant_values=[0.])
 
     convolved_data = filter_data(data, kernel.data, mode='constant',
                                  fill_value=0.0, check_normalization=False)
 
-    if not exclude_border:
-        # keep border=0 in convolved data
-        convolved_data[:kernel.yradius, :] = 0.
-        convolved_data[-kernel.yradius:, :] = 0.
-        convolved_data[:, :kernel.xradius] = 0.
-        convolved_data[:, -kernel.xradius:] = 0.
+    #selem = ndimage.generate_binary_structure(2, 2)
+    #object_labels, nobjects = ndimage.label(convolved_data > threshold_eff,
+    #                                        structure=selem)
 
-    selem = ndimage.generate_binary_structure(2, 2)
-    object_labels, nobjects = ndimage.label(convolved_data > threshold_eff,
-                                            structure=selem)
+    #star_cutouts = []
+    #if nobjects == 0:
+    #    return star_cutouts
 
-    star_cutouts = []
-    if nobjects == 0:
-        return star_cutouts
-
-    # find object peaks in the convolved data
-    # footprint overrides min_separation in find_peaks
+    # define a local footprint for the peak finder
     if min_separation is None:   # daofind
         footprint = kernel.mask.astype(np.bool)
     else:
@@ -675,9 +651,27 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
         xx, yy = np.meshgrid(idx, idx)
         footprint = np.array((xx**2 + yy**2) <= min_separation**2, dtype=int)
 
+    # pad the data and convolved image by the kernel x/y radius to allow
+    # for detections near the edges
+    if not exclude_border:
+        ypad = kernel.yradius
+        xpad = kernel.xradius
+        pad = ((ypad, ypad), (xpad, xpad))
+        # mode must be a string for numpy < 0.11
+        # (see https://github.com/numpy/numpy/issues/7112)
+        mode = str('constant')
+        data = np.pad(data, pad, mode=mode, constant_values=[0.])
+        convolved_data = np.pad(convolved_data, pad, mode=mode,
+                                constant_values=[0.])
+
+    # find local peaks in the convolved data
     tbl = find_peaks(convolved_data, threshold_eff, footprint=footprint)
+    if len(tbl) == 0:
+        return []
+
     coords = np.transpose([tbl['y_peak'], tbl['x_peak']])
 
+    star_cutouts = []
     for (ypeak, xpeak) in coords:
         # now extract the object from the data, centered on the peak
         # pixel in the convolved image, with the same size as the kernel
@@ -695,8 +689,8 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
         data_cutout = data[slices]
         convdata_cutout = convolved_data[slices]
 
+        # correct pixel values for the previous image padding
         if not exclude_border:
-            # correct for image padding
             x0 -= kernel.xradius
             x1 -= kernel.xradius
             y0 -= kernel.yradius
@@ -808,7 +802,6 @@ class DAOStarFinder(StarFinderBase):
         replicate the results from `DAOFIND`_.
 
     exclude_border : bool, optional
-        Deprecated.
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders.  The default is
         `False`, which is the mode used by `DAOFIND`_.
@@ -898,6 +891,7 @@ class DAOStarFinder(StarFinderBase):
 
         star_cutouts = _find_stars(data, self.kernel, self.threshold_eff,
                                    exclude_border=self.exclude_border)
+        self.star_cutouts = star_cutouts
 
         if len(star_cutouts) == 0:
             warnings.warn('No sources were found.', AstropyUserWarning)
@@ -989,7 +983,6 @@ class IRAFStarFinder(StarFinderBase):
         sky value will be estimated using the `starfind`_ method.
 
     exclude_border : bool, optional
-        Deprecated.
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders.  The default is
         `False`, which is the mode used by `starfind`_.
