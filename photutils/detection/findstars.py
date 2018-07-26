@@ -629,18 +629,8 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
     .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
     """
 
-    from scipy import ndimage
-
     convolved_data = filter_data(data, kernel.data, mode='constant',
                                  fill_value=0.0, check_normalization=False)
-
-    #selem = ndimage.generate_binary_structure(2, 2)
-    #object_labels, nobjects = ndimage.label(convolved_data > threshold_eff,
-    #                                        structure=selem)
-
-    #star_cutouts = []
-    #if nobjects == 0:
-    #    return star_cutouts
 
     # define a local footprint for the peak finder
     if min_separation is None:   # daofind
