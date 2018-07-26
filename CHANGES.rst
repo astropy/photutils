@@ -16,6 +16,11 @@ API Changes
   - An n-dimensional array can now be input into the ``centroid_com``
     function. [#685]
 
+- ``photutils.detection``
+
+  - The ``find_peaks`` function now returns an empty Table and issues
+    a warning when no peaks are found. [#668]
+
 
 Bug Fixes
 ^^^^^^^^^
