@@ -1,3 +1,5 @@
+.. _build-epsf:
+
 The Effective Point Spread Function (ePSF)
 ==========================================
 

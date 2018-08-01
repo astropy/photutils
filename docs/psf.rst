@@ -29,6 +29,13 @@ being fit.  We take this road, using "PSF photometry" as shorthand for the
 general approach.
 
 
+Building an effective PSF (ePSF)
+--------------------------------
+
+Please see :ref:`build-epsf` for documentation on how to build
+an ePSF.
+
+
 PSF Photometry
 --------------
 
