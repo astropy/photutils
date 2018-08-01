@@ -19,6 +19,11 @@ New Features
   - An n-dimensional array can now be input into the ``centroid_com``
     function. [#685]
 
+- ``photutils.datasets``
+
+  - Added a ``load_simulated_hst_star_image`` function to load a
+    simulated HST WFC3/IR F160W image of stars. [#695]
+
 - ``photutils.detection``
 
   - Added a ``centroid_func`` keyword to ``find_peaks``.  The
@@ -29,6 +34,16 @@ New Features
 
   - The ``find_peaks`` function now returns an empty Table and issues
     a warning when no peaks are found. [#668]
+
+- ``photutils.psf``
+
+  - Added tools to build and fit an effective PSF (``EPSFBuilder`` and
+  ``EPSFFitter``). [#695]
+
+  - Added ``extract_stars`` function to extract cutouts of stars used
+    to build an ePSF. [#695]
+
+  - Added ``EPSFModel`` class to hold a fittable ePSF model. [#695]
 
 - ``photutils.segmentation``
 
