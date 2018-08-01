@@ -2,742 +2,270 @@ The Effective Point Spread Function (ePSF)
 ==========================================
 
 The instrumental PSF is a combination of many factors that are
-generally difficult to model.  Anderson and King (2000) showed that
-accurate stellar photometry and astrometry can be derived by modeling
-the net PSF, which they call the effective PSF (ePSF).  The ePSF is an
-empirical model describing what fraction of a star's light will land
-in a particular pixel.  The constructed ePSF is typically oversampled
-with respect to the detector pixels.
+generally difficult to model.  `Anderson and King (2000; PASP 112,
+1360) <http://adsabs.harvard.edu/abs/2000PASP..112.1360A>`_ showed
+that accurate stellar photometry and astrometry can be derived by
+modeling the net PSF, which they call the effective PSF (ePSF).  The
+ePSF is an empirical model describing what fraction of a star's light
+will land in a particular pixel.  The constructed ePSF is typically
+oversampled with respect to the detector pixels.
 
 
 Building an ePSF
 ----------------
 
 Photutils provides tools for building an ePSF following the
-presciption of Anderson and King (2000).  The process involves
-iterating between the ePSF itself and the stars used to build it.
+prescription of `Anderson and King (2000; PASP 112, 1360)
+<http://adsabs.harvard.edu/abs/2000PASP..112.1360A>`_ The process
+involves iterating between the ePSF itself and the stars used to build
+it.
 
 To begin, we must first define a sample of stars used to build the
-ePSF.  Ideally these stars should be bright (highest S/N) and isolated
-(to prevent contamination from nearby stars).  One may use the
-star-finding tools in Photutils (e.g.
-:class:`~photutils.detection.DAOStarFinder` or
-:class:`~phoutils.detection.IRAFStarFinder`) to identify an initial
-sample of stars.  However, the step of creating a good sample of stars
-will also likely require visual inspection to ensure stars are
-sufficiently isolated and of good quality (e.g. no cosmic rays,
-detector artifacts, etc.).
-
-Let's start by loading a simulated HST/WFC3 image in the F160W band:
-
-
-[SHOW IMG]
-
-This simulated image contains XX simulated stars.
-
-For this example, we'll use the :func:`~photutils.detection.find_peaks` function to identify the stars and their initial positions.  We will not use the centroiding option in find_peaks to simulate the effect of having imperfect initial guesses for the positions of the stars.
-
-[SHOW IMG with detections]
-
-
-We'll select the brightest stars.
-
-In this simulated image, the stars are sufficiently separated that we do not need to exclude any stars due to crowding.
-
-
-Now we need to extract cutouts of the stars.
-extract_cutouts needs NDData objects and catalog
-
-explain many options
-
-
-
-With the star cutouts in hand, we are ready to construct the ePSF.
-The :class:`~photutils.psf.epsf.EPSFBuilder` class is
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-This step will like
-
-
-
-
-
-
-
-
-
-
-
-The
-
-
-
-
-
-
-Photutils provides a modular set of tools to perform PSF photometry for
-different science cases. These are implemented as separate classes to do
-sub-tasks of PSF photometry. It also provides high-level classes that connect
-these pieces together. In particular, it contains an implementation of the
-DAOPHOT algorithm (`~photutils.psf.DAOPhotPSFPhotometry`) proposed by
-`Stetson in his seminal paper <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_
-for crowded-field stellar photometry.
-
-The DAOPHOT algorithm consists in applying the loop FIND, GROUP, NSTAR,
-SUBTRACT, FIND until no more stars are detected or a given number of
-iterations is reached. Basically, `~photutils.psf.DAOPhotPSFPhotometry` works
-as follows. The first step is to estimate the sky background. For this task,
-photutils provides several classes to compute scalar and 2D backgrounds, see
-`~photutils.background` for details. The next step is to find an initial
-estimate of the positions of potential sources.
-This can be accomplished by using source detection algorithms,
-which are implemented in `~photutils.detection`.
-
-After finding sources one would apply a clustering algorithm in order to label
-the sources according to groups. Usually, those groups are formed by a
-distance criterion, which is the case of the grouping algorithm proposed
-by Stetson. In `~photutils.psf.DAOGroup`, we provide an implementation of
-that algorithm. In addition, `~photutils.psf.DBSCANGroup` can also be used to
-group sources with more complex distance criteria. The reason behind the
-construction of groups is illustrated as follows: imagine that one would like
-to fit 300 stars and the model for each star has three parameters to be
-fitted. If one constructs a single model to fit the 300 stars simultaneously,
-then the optimization algorithm will have to search for the solution in a 900
-dimensional space, which is computationally expensive and error-prone. Reducing the
-stars in groups effectively reduces the dimension of the parameter space,
-which facilitates the optimization process.
-
-Provided that the groups are available, the next step is to fit the sources
-simultaneously for each group. This task can be done using an astropy
-fitter, for instance, `~astropy.modeling.fitting.LevMarLSQFitter`.
-
-After sources are fitted, they are subtracted from the given image
-and, after fitting all sources, the residual image is analyzed by the finding
-routine again in order to check if there exist any source which has not been
-detected previously. This process goes on until no more sources are identified
-by the finding routine.
-
-.. note::
-    It is important to note the conventions on the column names of the
-    input/output astropy Tables which are passed along to the source detection
-    and photometry objects. For instance, all source detection
-    objects should output a table with columns named as ``xcentroid`` and
-    ``ycentroid`` (check `~photutils.detection`). On the other hand,
-    `~photutils.psf.DAOGroup` expects columns named as ``x_0`` and ``y_0``,
-    which represents the initial guesses on the sources' centroids.
-    Finally, the output of the fitting process shows columns named as
-    ``x_fit``, ``y_fit``, ``flux_fit`` for the optimum values and
-    ``x_0``, ``y_0``, ``flux_0`` for the initial guesses.
-    Although this convention implies that the columns have to be renamed
-    along the process, it has the advantage of clarity so that one can
-    keep track and easily differentiate where input/outputs came from.
-
-
-High-Level Structure
-^^^^^^^^^^^^^^^^^^^^
-
-Photutils provides three classes to perform PSF Photometry:
-`~photutils.psf.BasicPSFPhotometry`, `~photutils.psf.IterativelySubtractedPSFPhotometry`,
-and `~photutils.psf.DAOPhotPSFPhotometry`.  Together these provide the core
-workflow to make photometric measurements given an appropriate PSF (or other)
-model.
-
-`~photutils.psf.BasicPSFPhotometry` implements the minimum tools for
-model-fitting photometry. At its core, this involves finding sources in an
-image, grouping overlapping sources into a single model, fitting the model to the
-sources, and subtracting the models from the image.  In DAOPHOT parlance, this
-is essentially running the "FIND, GROUP, NSTAR, SUBTRACT" once. Because it is
-only a single cycle of that sequence, this class should be used when the degree
-of crowdedness of the field is not very high, for instance, when most stars are
-separated by a distance no less than one FWHM and their brightness are
-relatively uniform.  It is critical to understand, though, that
-`~photutils.psf.BasicPSFPhotometry` does not actually contain the functionality
-to *do* all these steps - that is provided by other objects (or can be
-user-written) functions.  Rather it provides the framework and data structures
-in which these operations run.  Because of this,
-`~photutils.psf.BasicPSFPhotometry` is particularly useful for build more
-complex workflows, as all of the stages can be turned on or off or
-replaced with different implementations as the user desires.
-
-`~photutils.psf.IterativelySubtractedPSFPhotometry` is similar to
-`~photutils.psf.BasicPSFPhotometry`, but it adds a parameter called
-``n_iters`` which is the number of iterations for which the loop
-"FIND, GROUP, NSTAR, SUBTRACT, FIND..." will be performed. This class enables
-photometry in a scenario where there exists significant overlap between stars
-that are of quite different brightness. For instance, the detection algorithm
-may not be able to detect a faint and bright star very close together in the
-first iteration, but they will be detected in the next iteration after the
-brighter stars have been fit and subtracted.  Like
-`~photutils.psf.BasicPSFPhotometry`, it does not include implementations of the
-stages of this process, but it provides the structure in which those stages run.
-
-`~photutils.psf.DAOPhotPSFPhotometry` is a special case of
-`~photutils.psf.IterativelySubtractedPSFPhotometry`. Unlike
-`~photutils.psf.IterativelySubtractedPSFPhotometry` and
-`~photutils.psf.BasicPSFPhotometry`, the class includes specific implementations
-of the stages of the photometric measurements, tuned to reproduce the algorithms
-used for the DAOPHOT code. Specifically, the ``finder``,
-``group_maker``, ``bkg_estimator`` attributes are set to the
-`~photutils.detection.DAOStarFinder`, `~photutils.psf.DAOGroup`, and
-`~photutils.background.MMMBackground`, respectively. Therefore, users need to
-input the parameters of those classes to set up a
-`~photutils.psf.DAOPhotPSFPhotometry` object, rather than providing objects to
-do these stages (which is what the other classes require).
-
-Those classes and all of the classes they *use* for the steps in the
-photometry process can always be replaced by user-supplied functions if you wish
-to customize any stage of the photometry process.  This makes the machinery very
-flexible, while still providing a "batteries included" approach with a default
-implementation that's suitable for many use cases.
-
-Basic Usage
-^^^^^^^^^^^
-
-The basic usage of, e.g., `~photutils.psf.IterativelySubtractedPSFPhotometry` is
-as follows:
-
-.. doctest-skip::
-
-    >>> # create an IterativelySubtractedPSFPhotometry object
-    >>> from photutils.psf import IterativelySubtractedPSFPhotometry
-    >>> my_photometry = IterativelySubtractedPSFPhotometry(
-    ...     finder=my_finder, group_maker=my_group_maker,
-    ...     bkg_estimator=my_bkg_estimator, psf_model=my_psf_model,
-    ...     fitter=my_fitter, niters=3, fitshape=(7,7))
-    >>> # get photometry results
-    >>> photometry_results = my_photometry(image=my_image)
-    >>> # get residual image
-    >>> residual_image = my_photometry.get_residual_image()
-
-Where ``my_finder``, ``my_group_maker``, and ``my_bkg_estimator`` may be any
-suitable class or callable function. This approach allows one to customize every
-part of the photometry process provided that their input/output are compatible
-with the input/ouput expected by `~photutils.psf.IterativelySubtractedPSFPhotometry`.
-`photutils.psf` provides all the necessary classes to reproduce the DAOPHOT
-algorithm, but any individual part of that algorithm can be swapped for a
-user-defined function.  See the API documentation for precise details on what
-these classes or functions should look like.
-
-Performing PSF Photometry
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Let's take a look at a simple example with simulated stars whose PSF is
-assumed to be Gaussian.
-
-First let's create an image with four overlapping stars::
-
-    >>> import numpy as np
-    >>> from astropy.table import Table
-    >>> from photutils.datasets import (make_random_gaussians_table,
-    ...                                 make_noise_image,
-    ...                                 make_gaussian_sources_image)
-    >>> sigma_psf = 2.0
-    >>> sources = Table()
-    >>> sources['flux'] = [700, 800, 700, 800]
-    >>> sources['x_mean'] = [12, 17, 12, 17]
-    >>> sources['y_mean'] = [15, 15, 20, 20]
-    >>> sources['x_stddev'] = sigma_psf*np.ones(4)
-    >>> sources['y_stddev'] = sources['x_stddev']
-    >>> sources['theta'] = [0, 0, 0, 0]
-    >>> sources['id'] = [1, 2, 3, 4]
-    >>> tshape = (32, 32)
-    >>> image = (make_gaussian_sources_image(tshape, sources) +
-    ...          make_noise_image(tshape, type='poisson', mean=6.,
-    ...                           random_state=1) +
-    ...          make_noise_image(tshape, type='gaussian', mean=0.,
-    ...                           stddev=2., random_state=1))
-
-.. doctest-requires:: matplotlib
-
-    >>> from matplotlib import rcParams
-    >>> rcParams['font.size'] = 13
-    >>> import matplotlib.pyplot as plt
-    >>> plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
-    ...            origin='lower') # doctest: +SKIP
-    >>> plt.title('Simulated data') # doctest: +SKIP
-    >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04) # doctest: +SKIP
-
-.. plot::
-
-    import numpy as np
-    from astropy.table import Table
-    from photutils.datasets import (make_random_gaussians_table,
-                                    make_noise_image,
-                                    make_gaussian_sources_image)
-
-    sigma_psf = 2.0
-    sources = Table()
-    sources['flux'] = [700, 800, 700, 800]
-    sources['x_mean'] = [12, 17, 12, 17]
-    sources['y_mean'] = [15, 15, 20, 20]
-    sources['x_stddev'] = sigma_psf*np.ones(4)
-    sources['y_stddev'] = sources['x_stddev']
-    sources['theta'] = [0, 0, 0, 0]
-    sources['id'] = [1, 2, 3, 4]
-    tshape = (32, 32)
-    image = (make_gaussian_sources_image(tshape, sources) +
-             make_noise_image(tshape, type='poisson', mean=6.,
-                              random_state=1) +
-             make_noise_image(tshape, type='gaussian', mean=0.,
-                              stddev=2., random_state=1))
-
-    from matplotlib import rcParams
-    rcParams['font.size'] = 13
-    import matplotlib.pyplot as plt
-
-    plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
-               origin='lower')
-    plt.title('Simulated data')
-    plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
-
-Then let's import the required classes to set up a `~photutils.psf.IterativelySubtractedPSFPhotometry` object::
-
-    >>> from photutils.detection import IRAFStarFinder
-    >>> from photutils.psf import IntegratedGaussianPRF, DAOGroup
-    >>> from photutils.background import MMMBackground, MADStdBackgroundRMS
-    >>> from astropy.modeling.fitting import LevMarLSQFitter
-    >>> from astropy.stats import gaussian_sigma_to_fwhm
-
-Let's then instantiate and use the objects:
-
-.. doctest-requires:: scipy, skimage
-
-    >>> bkgrms = MADStdBackgroundRMS()
-    >>> std = bkgrms(image)
-    >>> iraffind = IRAFStarFinder(threshold=3.5*std,
-    ...                           fwhm=sigma_psf*gaussian_sigma_to_fwhm,
-    ...                           minsep_fwhm=0.01, roundhi=5.0, roundlo=-5.0,
-    ...                           sharplo=0.0, sharphi=2.0)
-    >>> daogroup = DAOGroup(2.0*sigma_psf*gaussian_sigma_to_fwhm)
-    >>> mmm_bkg = MMMBackground()
-    >>> fitter = LevMarLSQFitter()
-    >>> psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
-    >>> from photutils.psf import IterativelySubtractedPSFPhotometry
-    >>> photometry = IterativelySubtractedPSFPhotometry(finder=iraffind,
-    ...                                                 group_maker=daogroup,
-    ...                                                 bkg_estimator=mmm_bkg,
-    ...                                                 psf_model=psf_model,
-    ...                                                 fitter=LevMarLSQFitter(),
-    ...                                                 niters=1, fitshape=(11,11))
-    >>> result_tab = photometry(image=image)
-    >>> residual_image = photometry.get_residual_image()
-
-Note that the parameters values for the finder class, i.e.,
-`~photutils.detection.IRAFStarFinder`, are completely chosen in an arbitrary
-manner and optimum values do vary according to the data.
-
-As mentioned before, the way to actually do the photometry is by using
-``photometry`` as a function-like call.
-
-It's worth noting that ``image`` does not need to be background subtracted.
-The subtraction is done during the photometry process with the attribute
-``bkg`` that was used to set up ``photometry``.
-
-Now, let's compare the simulated and the residual images:
-
-.. doctest-skip::
-
-    >>> plt.subplot(1, 2, 1)
-    >>> plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
-                   origin='lower')
-    >>> plt.title('Simulated data')
-    >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
-    >>> plt.subplot(1 ,2, 2)
-    >>> plt.imshow(residual_image, cmap='viridis', aspect=1,
-    ...            interpolation='nearest', origin='lower')
-    >>> plt.title('Residual Image')
-    >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
-    >>> plt.show()
-
-.. plot::
-
-    import numpy as np
-    from photutils.datasets import (make_random_gaussians_table,
-                                    make_noise_image,
-                                    make_gaussian_sources_image)
-    from astropy.table import Table
-
-    sigma_psf = 2.0
-    sources = Table()
-    sources['flux'] = [700, 800, 700, 800]
-    sources['x_mean'] = [12, 17, 12, 17]
-    sources['y_mean'] = [15, 15, 20, 20]
-    sources['x_stddev'] = sigma_psf*np.ones(4)
-    sources['y_stddev'] = sources['x_stddev']
-    sources['theta'] = [0, 0, 0, 0]
-    sources['id'] = [1, 2, 3, 4]
-    tshape = (32, 32)
-    image = (make_gaussian_sources_image(tshape, sources) +
-             make_noise_image(tshape, type='poisson', mean=6.,
-                              random_state=1) +
-             make_noise_image(tshape, type='gaussian', mean=0.,
-                              stddev=2., random_state=1))
-
-    from photutils.detection import IRAFStarFinder
-    from photutils.psf import IntegratedGaussianPRF, DAOGroup
-    from photutils.background import MMMBackground, MADStdBackgroundRMS
-    from astropy.modeling.fitting import LevMarLSQFitter
-    from astropy.stats import gaussian_sigma_to_fwhm
-
-    bkgrms = MADStdBackgroundRMS()
-    std = bkgrms(image)
-    iraffind = IRAFStarFinder(threshold=3.5*std,
-                              fwhm=sigma_psf*gaussian_sigma_to_fwhm,
-                              minsep_fwhm=0.01, roundhi=5.0, roundlo=-5.0,
-                              sharplo=0.0, sharphi=2.0)
-    daogroup = DAOGroup(2.0*sigma_psf*gaussian_sigma_to_fwhm)
-    mmm_bkg = MMMBackground()
-    psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
-    fitter = LevMarLSQFitter()
-
-    from photutils.psf import IterativelySubtractedPSFPhotometry
-
-    photometry = IterativelySubtractedPSFPhotometry(finder=iraffind,
-                                                    group_maker=daogroup,
-                                                    bkg_estimator=mmm_bkg,
-                                                    psf_model=psf_model,
-                                                    fitter=LevMarLSQFitter(),
-                                                    niters=1, fitshape=(11,11))
-    result_tab = photometry(image=image)
-    residual_image = photometry.get_residual_image()
-
-    from matplotlib import rcParams
-    rcParams['font.size'] = 13
-    import matplotlib.pyplot as plt
-
-    plt.subplot(1, 2, 1)
-    plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
-               origin='lower')
-    plt.title('Simulated data')
-    plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
-    plt.subplot(1 ,2, 2)
-    plt.imshow(residual_image, cmap='viridis', aspect=1,
-               interpolation='nearest', origin='lower')
-    plt.title('Residual Image')
-    plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
-    plt.show()
-
-Performing PSF Photometry with Fixed Centroids
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-In case that the centroids positions of the stars are known a priori, then
-they can be held fixed during the fitting process and the optimizer will
-only consider flux as a variable. To do that, one has to set the ``fixed``
-attribute for the centroid parameters in ``psf`` as ``True``.
-
-Consider the previous example after the line
-``psf_model = IntegratedGaussianPRF(sigma=sigma_psf)``:
-
-.. doctest-skip::
-
-    >>> psf_model.x_0.fixed = True
-    >>> psf_model.y_0.fixed = True
-    >>> pos = Table(names=['x_0', 'y_0'], data=[sources['x_mean'],
-    ...                                         sources['y_mean']])
-
-.. doctest-skip::
-
-    >>> photometry = BasicPSFPhotometry(group_maker=daogroup,
-    ...                                 bkg_estimator=mmm_bkg,
-    ...                                 psf_model=psf_model,
-    ...                                 fitter=LevMarLSQFitter(),
-    ...                                 fitshape=(11,11))
-    >>> result_tab = photometry(image=image, init_guesses=pos)
-    >>> residual_image = photometry.get_residual_image()
-
-.. doctest-skip::
-
-    >>> plt.subplot(1, 2, 1)
-    >>> plt.imshow(image, cmap='viridis', aspect=1,
-    ...            interpolation='nearest', origin='lower')
-    >>> plt.title('Simulated data')
-    >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
-    >>> plt.subplot(1 ,2, 2)
-    >>> plt.imshow(residual_image, cmap='viridis', aspect=1,
-    ...            interpolation='nearest', origin='lower')
-    >>> plt.title('Residual Image')
-    >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
-
-.. plot::
-
-    import numpy as np
-    from photutils.datasets import (make_random_gaussians_table,
-                                    make_noise_image,
-                                    make_gaussian_sources_image)
-    from astropy.table import Table
-
-    sigma_psf = 2.0
-    sources = Table()
-    sources['flux'] = [700, 800, 700, 800]
-    sources['x_mean'] = [12, 17, 12, 17]
-    sources['y_mean'] = [15, 15, 20, 20]
-    sources['x_stddev'] = sigma_psf*np.ones(4)
-    sources['y_stddev'] = sources['x_stddev']
-    sources['theta'] = [0, 0, 0, 0]
-    sources['id'] = [1, 2, 3, 4]
-    tshape = (32, 32)
-    image = (make_gaussian_sources_image(tshape, sources) +
-             make_noise_image(tshape, type='poisson', mean=6.,
-                              random_state=1) +
-             make_noise_image(tshape, type='gaussian', mean=0.,
-                              stddev=2., random_state=1))
-
-    from photutils.detection import IRAFStarFinder
-    from photutils.psf import IntegratedGaussianPRF, DAOGroup
-    from photutils.background import MMMBackground, MADStdBackgroundRMS
-    from astropy.modeling.fitting import LevMarLSQFitter
-    from astropy.stats import gaussian_sigma_to_fwhm
-
-    bkgrms = MADStdBackgroundRMS()
-    std = bkgrms(image)
-    daogroup = DAOGroup(2.0*sigma_psf*gaussian_sigma_to_fwhm)
-    mmm_bkg = MMMBackground()
-    psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
-
-    psf_model.x_0.fixed = True
-    psf_model.y_0.fixed = True
-
-    pos = Table(names=['x_0', 'y_0'], data=[sources['x_mean'],
-                                            sources['y_mean']])
-
-    fitter = LevMarLSQFitter()
-
-    from photutils.psf import BasicPSFPhotometry
-
-    photometry = BasicPSFPhotometry(group_maker=daogroup,
-                                    bkg_estimator=mmm_bkg,
-                                    psf_model=psf_model,
-                                    fitter=LevMarLSQFitter(),
-                                    fitshape=(11,11))
-
-    result_tab = photometry(image=image, init_guesses=pos)
-    residual_image = photometry.get_residual_image()
-
-    from matplotlib import rcParams
-    import matplotlib.pyplot as plt
-    rcParams['font.size'] = 13
-
-    plt.subplot(1, 2, 1)
-    plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
-               origin='lower')
-    plt.title('Simulated data')
-    plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
-    plt.subplot(1 ,2, 2)
-    plt.imshow(residual_image, cmap='viridis', aspect=1,
-               interpolation='nearest', origin='lower')
-    plt.title('Residual Image')
-    plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)
-    plt.show()
-
-Fitting additional parameters
------------------------------
-
-The PSF photometry classes can also be used to fit more model parameters than
-just the flux and center positions. While a more realistic use case might be
-fitting sky backgrounds, or shape parameters of galaxies, here we use the
-``sigma`` parameter in `~photutils.psf.IntegratedGaussianPRF` as the simplest
-possible example of this feature. (For actual PSF photometry of stars you would
-*not* want to do this, because the shape of the PSF should be set by bright
-stars or an optical model and held fixed when fitting.)
-
-First, let us instantiate a PSF model object:
-
-.. doctest-skip::
-
-    >>> gaussian_prf = IntegratedGaussianPRF()
-
-The attribute ``fixed`` for the ``sigma`` parameter is set to ``True`` by
-default, i.e., ``sigma`` is not considered during the fitting process.
-Let's first change this behavior:
-
-.. doctest-skip::
-
-    >>> gaussian_prf.sigma.fixed = False
-
-In addition, we need to indicate the initial guess which will be used in during
-the fitting process. By the default, the initial guess is taken as the default
-value of ``sigma``, but we can change that by doing:
-
-.. doctest-skip::
-
-    >>> gaussian_prf.sigma.value = 2.05
-
-Now, let's create a simulated image which has a brighter star and one
-overlapping fainter companion so that the detection algorithm won't be
-able to identify it, and hence we should use
-`~photutils.psf.IterativelySubtractedPSFPhotometry` to measure the fainter
-star as well. Also, note that both of the stars have ``sigma=2.0``.
+ePSF.  Ideally these stars should be bright (high S/N) and isolated to
+prevent contamination from nearby stars.  One may use the star-finding
+tools in Photutils (e.g.  :class:`~photutils.detection.DAOStarFinder`
+or :class:`~photutils.detection.IRAFStarFinder`) to identify an
+initial sample of stars.  However, the step of creating a good sample
+of stars will also likely require visual inspection and manual
+selection to ensure stars are sufficiently isolated and of good
+quality (e.g. no cosmic rays, detector artifacts, etc.).
+
+Let's start by loading a simulated HST/WFC3 image in the F160W band::
+
+    >>> from photutils import datasets
+    >>> hdu = datasets.load_simulated_hst_star_image()
+    >>> data = hdu.data
+
+The simulated image does not contain any background or noise, so let's add
+those to the image::
+
+    >>> from photutils.datasets import make_noise_image
+    >>> data +=  make_noise_image(data.shape, type='gaussian', mean=10.,
+    ...                           stddev=5., random_state=12345)
+
+Let's show the image:
 
 .. plot::
     :include-source:
 
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from matplotlib.colors import LogNorm
-    from photutils.datasets import (make_random_gaussians_table,
-                                    make_noise_image,
-                                    make_gaussian_sources_image)
-    from photutils.psf import (IterativelySubtractedPSFPhotometry,
-                               BasicPSFPhotometry)
-    from photutils import MMMBackground
-    from photutils.psf import IntegratedGaussianPRF, DAOGroup
-    from photutils.detection import DAOStarFinder
-    from photutils.detection import IRAFStarFinder
-    from astropy.table import Table
-    from astropy.modeling.fitting import LevMarLSQFitter
+    from astropy.visualization import simple_norm
+    from photutils import datasets
+    from photutils.datasets import make_noise_image
 
-    sources = Table()
-    sources['flux'] = [10000, 1000]
-    sources['x_mean'] = [18, 9]
-    sources['y_mean'] = [17, 21]
-    sources['x_stddev'] = [2] * 2
-    sources['y_stddev'] = sources['x_stddev']
-    sources['theta'] = [0] * 2
-    tshape = (32, 32)
-    image = (make_gaussian_sources_image(tshape, sources) +
-             make_noise_image(tshape, type='poisson', mean=6.,
-                              random_state=1) +
-             make_noise_image(tshape, type='gaussian', mean=0.,
-                              stddev=2., random_state=1))
+    hdu = datasets.load_simulated_hst_star_image()
+    data = hdu.data
+    data +=  make_noise_image(data.shape, type='gaussian', mean=10.,
+                              stddev=5., random_state=12345)
+    norm = simple_norm(data, 'sqrt', percent=99.)
+    plt.imshow(data, norm=norm, origin='lower')
 
-    vmin, vmax = np.percentile(image, [5, 95])
-    plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
-               origin='lower', norm=LogNorm(vmin=vmin, vmax=vmax))
+For this example we'll use the :func:`~photutils.detection.find_peaks`
+function to identify the stars and their initial positions.  We will
+not use the centroiding option in
+:func:`~photutils.detection.find_peaks` to simulate the effect of
+having imperfect initial guesses for the positions of the stars.  Here we
+set the detection threshold value to 500.0 to select only the brightest
+stars::
 
-Let's instantiate the necessary objects in order to use an
-`~photutils.psf.IterativelySubtractedPSFPhotometry` to perform photometry:
+    >>> from photutils import find_peaks
+    >>> peaks_tbl = find_peaks(data, threshold=500.)
+    >>> print(peaks_tbl)
+    x_peak y_peak     peak_value
+    ------ ------ ------------------
+    849      2 1061.7749907788038
+    182      4 1705.7658863068036
+    324      4  3005.175770828445
+    100      9  1133.769984732254
+    824      9  1295.080072753199
+    ...    ...                ...
+    751    992  791.8933770917844
+    114    994 1575.0261294740424
+    299    994  646.1186290286255
+    207    998  2791.327415926119
+    691    999  2608.301830395167
+    Length = 429 rows
 
-.. doctest-requires:: scipy, skimage
+Note that the stars are sufficiently separated in the simulated image
+that we do not need to exclude any stars due to crowding.  In practice
+this step will require some manual inspection and selection.
 
-    >>> daogroup = DAOGroup(crit_separation=8)
-    >>> mmm_bkg = MMMBackground()
-    >>> iraffind = IRAFStarFinder(threshold=2.5*mmm_bkg(image), fwhm=4.5)
-    >>> fitter = LevMarLSQFitter()
-    >>> gaussian_prf = IntegratedGaussianPRF(sigma=2.05)
-    >>> gaussian_prf.sigma.fixed = False
-    >>> itr_phot_obj = IterativelySubtractedPSFPhotometry(finder=iraffind,
-    ...                                                   group_maker=daogroup,
-    ...                                                   bkg_estimator=mmm_bkg,
-    ...                                                   psf_model=psf_model,
-    ...                                                   fitter=fitter,
-    ...                                                   fitshape=(11, 11),
-    ...                                                   niters=2)
+Next, we need to extract cutouts of the stars using the
+:func:`~photutils.psf.extract_stars` function.  This function requires
+a table of star positions either in pixel or sky coordinates.  For
+this example we are using the pixel coordinates, which need to be in
+table columns called simply ``x`` and ``y``.  Let's create that
+table::
 
-Now, let's use the callable ``itr_phot_obj`` to perform photometry:
+    >>> from astropy.table import Table
+    >>> stars_tbl = Table()
+    >>> stars_tbl['x'] = peaks_tbl['x_peak']
+    >>> stars_tbl['y'] = peaks_tbl['y_peak']
 
-.. doctest-requires:: scipy, skimage
+The star cutouts from which we build the ePSF must have the background
+subtracted.  Here we'll use the sigma-clipped median value as the
+background level.  If the background in the image varies across the
+image, one should use more sophisticated methods (e.g.
+`~photutils.background.Background2D`).
 
-    >>> phot_results = itr_phot_obj(image)
-    >>> phot_results['id', 'group_id', 'iter_detected', 'x_0', 'y_0', 'flux_0'] #doctest: +SKIP
-         id group_id iter_detected      x_0           y_0          flux_0
-        --- -------- ------------- ------------- ------------- -------------
-          1        1             1 18.0045935148 17.0060558543 9437.07321281
-          1        1             2 9.06141447183 21.0680052846 977.163727416
-    >>> phot_results['sigma_0', 'sigma_fit', 'x_fit', 'y_fit', 'flux_fit'] #doctest: +SKIP
-        sigma_0   sigma_fit       x_fit         y_fit        flux_fit
-        ------- ------------- ------------- ------------- -------------
-           2.05 1.98092026939 17.9995106906 17.0039419384 10016.4470148
-           2.05 1.98516037471 9.12116345703 21.0599164498 1036.79115883
+Let's subtract the background from the image::
 
-We can see that ``sigma_0`` (the initial guess for ``sigma``) was assigned
-to the value we used when creating the PSF model.
+    >>> from astropy.stats import sigma_clipped_stats
+    >>> mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.,
+    ...                                                     iters=None)
+    >>> data -= median_val
 
-Let's take a look at the residual image::
+The :func:`~photutils.psf.extract_stars` function requires the input
+data as an `~astropy.nddata.NDData` object.  An
+`~astropy.nddata.NDData` object is easy to create from our data
+array::
 
-    >>> plt.imshow(itr_phot_obj.get_residual_image(), cmap='viridis',
-    ... aspect=1, interpolation='nearest', origin='lower') #doctest: +SKIP
+    >>> from astropy.nddata import NDData
+    >>> nddata = NDData(data=data)
+
+We are now ready to create our star cutouts using the
+:func:`~photutils.psf.extract_stars` function.  For this simple
+example we are extracting stars from a single image using a single
+catalog.  The :func:`~photutils.psf.extract_stars` can also extract
+stars from multiple images using a separate catalog for each image or
+a single catalog.  When using a single catalog, the star positions
+must be in sky coordinates (as `~astropy.coordinates.SkyCoord`
+objects) and the `~astropy.nddata.NDData` objects must contain valid
+`~astropy.wcs.WCS` objects.  In the case of using multiple images
+(i.e. dithered images) and a single catalog, the same physical star
+will be "linked" across images, meaning it will be constrained to have
+the same sky coordinate in each input image.
+
+Let's extract 25 x 25 pixel cutouts of our selected stars::
+
+    >>> from photutils.psf import extract_stars
+    >>> stars = extract_stars(nddata, stars_tbl, size=25)
+
+The function returns a `~photutils.psf.Stars` object containing the
+cutouts of our selected stars.  The function extracted 403 stars, from
+which we'll build our ePSF.  Let's show the first 25 of them::
+
+    >>> nrows = 5
+    >>> ncols = 5
+    >>> fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 20),
+    ...                        squeeze=True)
+    >>> ax = ax.ravel()
+    >>> for i in range(nrows*ncols):
+    >>>     norm = simple_norm(stars[i], 'log', percent=99.)
+    >>>     ax[i].imshow(stars[i], norm=norm, origin='lower')
 
 .. plot::
 
-    from photutils.datasets import (make_random_gaussians_table,
-                                    make_noise_image,
-                                    make_gaussian_sources_image)
-    import matplotlib.pyplot as plt
-    from photutils.psf import (IterativelySubtractedPSFPhotometry,
-                               BasicPSFPhotometry)
-    from astropy.stats import gaussian_sigma_to_fwhm
+    from astropy.visualization import simple_norm
+    from photutils import datasets
+
+    hdu = datasets.load_simulated_hst_star_image()
+    data = hdu.data
+    from photutils.datasets import make_noise_image
+    data +=  make_noise_image(data.shape, type='gaussian', mean=10.,
+                              stddev=5., random_state=12345)
+
+    from photutils import find_peaks
+    peaks_tbl = find_peaks(data, threshold=500.)
+
     from astropy.table import Table
-    from photutils import MMMBackground
-    from photutils.psf import IntegratedGaussianPRF, DAOGroup
-    from photutils.detection import DAOStarFinder
-    from astropy.modeling.fitting import LevMarLSQFitter
-    from photutils.detection import IRAFStarFinder
+    stars_tbl = Table()
+    stars_tbl['x'] = peaks_tbl['x_peak']
+    stars_tbl['y'] = peaks_tbl['y_peak']
 
-    sources = Table()
-    sources['flux'] = [10000, 1000]
-    sources['x_mean'] = [18, 9]
-    sources['y_mean'] = [17, 21]
-    sources['x_stddev'] = [2] * 2
-    sources['y_stddev'] = sources['x_stddev']
-    sources['theta'] = [0] * 2
-    tshape = (32, 32)
-    image = (make_gaussian_sources_image(tshape, sources) +
-             make_noise_image(tshape, type='poisson', mean=6.,
-                              random_state=1) +
-             make_noise_image(tshape, type='gaussian', mean=0.,
-                              stddev=2., random_state=1))
+    from astropy.stats import sigma_clipped_stats
+    mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.,
+                                                        iters=None)
+    data -= median_val
 
-    daogroup = DAOGroup(crit_separation=8)
-    mmm_bkg = MMMBackground()
-    psf_model = IntegratedGaussianPRF(sigma=2.05)
-    iraffind = IRAFStarFinder(threshold=2.5*mmm_bkg(image),
-                              fwhm=4.5)
-    fitter = LevMarLSQFitter()
-    psf_model.sigma.fixed = False
+    from astropy.nddata import NDData
+    nddata = NDData(data=data)
 
-    itr_phot_obj = IterativelySubtractedPSFPhotometry(
-        finder=iraffind, group_maker=daogroup, bkg_estimator=mmm_bkg,
-        psf_model=psf_model, fitter=fitter, fitshape=(11, 11), niters=2)
+    from photutils.psf import extract_stars
+    stars = extract_stars(nddata, stars_tbl, size=25)
 
-    phot_results_itr = itr_phot_obj(image)
-    plt.imshow(itr_phot_obj.get_residual_image(), cmap='viridis', aspect=1,
-            interpolation='nearest', origin='lower')
+    nrows = 5
+    ncols = 5
+    fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 20),
+                           squeeze=True)
+    ax = ax.ravel()
+    for i in range(nrows*ncols):
+        norm = simple_norm(stars[i], 'log', percent=99.)
+        ax[i].imshow(stars[i], norm=norm, origin='lower')
 
+With the star cutouts in hand, we are ready to construct the ePSF with
+the :class:`~photutils.psf.EPSFBuilder` class.  We'll create an ePSF
+with an oversampling factor of 4.0.  Here we limit the maximum number
+of iterations to 3 (to limit it's run time), but in practice one
+should use about 10 or more iterations.  The
+:class:`~photutils.psf.EPSFBuilder` class has many other options to
+control the ePSF build process, including changing the centering
+function, the smoothing kernel, and the centering accuracy.  Please
+see the :class:`~photutils.psf.EPSFBuilder` documentation for further
+details.
 
-Additional Example Notebooks (online)
--------------------------------------
+We first initialize an :class:`~photutils.psf.EPSFBuilder` instance
+with our desired parameters and then input the cutouts of our selected
+stars to the instance::
 
-* `PSF photometry on artificial Gaussian stars in crowded fields <https://github.com/astropy/photutils-datasets/blob/master/notebooks/ArtificialCrowdedFieldPSFPhotometry.ipynb>`_
-* `PSF photometry on artificial Gaussian stars <https://github.com/astropy/photutils-datasets/blob/master/notebooks/GaussianPSFPhot.ipynb>`_
-* `PSF/PRF Photometry on Spitzer Data <https://github.com/astropy/photutils-datasets/blob/master/notebooks/PSFPhotometrySpitzer.ipynb>`_
+    >>> from photutils import EPSFBuilder
+    >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
+    ...                            progress_bar=False)
+    >>> epsf, fitted_stars = epsf_builder(stars)
 
+The returned values are the ePSF, as an
+:class:`~photutils.psf.EPSFModel` object, and our input stars fitted
+with the constructed ePSF, as a new :class:`~photutils.psf.Stars`
+object with fitted star positions and fluxes.
 
-References
-----------
+Finally, let's show the constructed ePSF::
 
-`Spitzer PSF vs. PRF
-<http://irsa.ipac.caltech.edu/data/SPITZER/docs/files/spitzer/PRF_vs_PSF.pdf>`_
+    >>> norm = simple_norm(epsf.data, 'log', percent=99.)
+    >>> plt.imshow(epsf.data, norm=norm)
+    >>> plt.colorbar()
 
-`Kepler PSF calibration
-<http://keplerscience.arc.nasa.gov/CalibrationPSF.shtml>`_
+.. plot::
 
-`The Kepler Pixel Response Function
-<http://adsabs.harvard.edu/abs/2010ApJ...713L..97B>`_
+    from astropy.visualization import simple_norm
+    from photutils import datasets
 
-`Stetson, Astronomical Society of the Pacific, Publications, (ISSN 0004-6280),
-vol. 99, March 1987, p. 191-222. <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_
+    hdu = datasets.load_simulated_hst_star_image()
+    data = hdu.data
+    from photutils.datasets import make_noise_image
+    data +=  make_noise_image(data.shape, type='gaussian', mean=10.,
+                              stddev=5., random_state=12345)
 
-Reference/API
--------------
+    from photutils import find_peaks
+    peaks_tbl = find_peaks(data, threshold=500.)
 
-.. automodapi:: photutils.psf
-    :no-heading:
+    from astropy.table import Table
+    stars_tbl = Table()
+    stars_tbl['x'] = peaks_tbl['x_peak']
+    stars_tbl['y'] = peaks_tbl['y_peak']
 
+    from astropy.stats import sigma_clipped_stats
+    mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.,
+                                                        iters=None)
+    data -= median_val
 
-.. automodapi:: photutils.psf.sandbox
+    from astropy.nddata import NDData
+    nddata = NDData(data=data)
+
+    from photutils.psf import extract_stars
+    stars = extract_stars(nddata, stars_tbl, size=25)
+
+    from photutils import EPSFBuilder
+    epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
+                               progress_bar=False)
+    epsf, fitted_stars = epsf_builder(stars)
+
+    norm = simple_norm(epsf.data, 'log', percent=99.)
+    plt.imshow(epsf.data, norm=norm)
+    plt.colorbar()
+
+The :class:`~photutils.psf.EPSFModel` object is a subclass of
+:class:`~photutils.psf.FittableImageModel`, thus it can be used as a
+the PSF model for the `PSF-fitting machinery in Photutils
+<http://photutils.readthedocs.io/en/latest/psf.html>`_ (i.e.
+`~photutils.psf.BasicPSFPhotometry`,
+`~photutils.psf.IterativelySubtractedPSFPhotometry`, or
+`~photutils.psf.DAOPhotPSFPhotometry`).
