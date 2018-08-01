@@ -554,7 +554,8 @@ class EPSFBuilder(object):
             A 3D cube containing the resampled residual images.
         """
 
-        star_imgs = np.zeros((stars.n_good_stars, *epsf.shape))
+        shape = (stars.n_good_stars, epsf.shape[0], epsf.shape[1])
+        star_imgs = np.zeros(shape)
         for i, star in enumerate(stars.all_good_stars):
             star_imgs[i, :, :] = self._resample_residual(star, epsf)
 
