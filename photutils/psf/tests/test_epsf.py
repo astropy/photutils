@@ -5,21 +5,28 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
-from scipy.spatial import cKDTree
 
-from astropy.modeling.models import Gaussian2D
 from astropy.nddata import NDData
 from astropy.table import Table
 
-from ..epsf import EPSFBuilder, EPSFFitter
+from ..epsf import EPSFBuilder
 from ..epsf_stars import extract_stars, Star, Stars
 from ...centroids import gaussian1d_moments
 from ...datasets import make_gaussian_sources_image
-from ...detection import find_peaks
+
+try:
+    import scipy    # noqa
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 class TestEPSFBuild(object):
     def setup_class(self):
+
+        from scipy.spatial import cKDTree
+
         shape = (500, 500)
 
         # define random star positions
