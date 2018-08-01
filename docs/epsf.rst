@@ -1,7 +1,10 @@
 .. _build-epsf:
 
-The Effective Point Spread Function (ePSF)
-==========================================
+Building an effective Point Spread Function (ePSF)
+==================================================
+
+The ePSF
+--------
 
 The instrumental PSF is a combination of many factors that are
 generally difficult to model.  `Anderson and King (2000; PASP 112,
