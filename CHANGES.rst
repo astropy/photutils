@@ -38,7 +38,7 @@ New Features
 - ``photutils.psf``
 
   - Added tools to build and fit an effective PSF (``EPSFBuilder`` and
-  ``EPSFFitter``). [#695]
+    ``EPSFFitter``). [#695]
 
   - Added ``extract_stars`` function to extract cutouts of stars used
     to build an ePSF. [#695]
