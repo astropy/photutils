@@ -372,7 +372,7 @@ class Stars(object):
         2).
 
         Note that when `Stars` contains any `LinkedStar`, the
-        `~Stars.cutout_center` attribute will be a nested 3D array.
+        ``cutout_center`` attribute will be a nested 3D array.
         """
 
         return self._getattr_flat('cutout_center')
@@ -385,8 +385,8 @@ class Stars(object):
         (large) image (not the cutout image) as a 2D array
         (``n_all_stars`` x 2).
 
-        Note that when `Stars` contains any `LinkedStar`, the
-        `~Stars.center` attribute will be a nested 3D array.
+        Note that when `Stars` contains any `LinkedStar`, the ``center``
+        attribute will be a nested 3D array.
         """
 
         return self._getattr_flat('center')

@@ -482,10 +482,10 @@ class EPSFModel(FittableImageModel):
     A subclass of `FittableImageModel` that adds a ``pixel_scale``
     attribute.
 
-    The ``pixel_scale`` can be used in conjunction with the `PSFStar`
-    pixel scale when fitting (and building) the PSF.  This allows
-    fitting (and building) a PSF using images of stars with different
-    pixel scales.
+    The ``pixel_scale`` can be used in conjunction with the
+    `~photutils.psf.Star` pixel scale when fitting (and building) the
+    PSF.  This allows fitting (and building) a PSF using images of stars
+    with different pixel scales.
 
     `EPSFModel` has the same parameters as `FittableImageModel` with the
     addition of a single parameter listed below.
