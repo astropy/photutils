@@ -79,6 +79,7 @@ matrix:
         # Check for Sphinx doc build warnings
         - stage: Comprehensive tests
           env: SETUP_CMD='build_docs -w'
+               PIP_DEPENDENCIES='sphinx-astropy'
                EVENT_TYPE='push pull_request cron'
 
         # Test with optional dependencies disabled
