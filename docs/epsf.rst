@@ -244,7 +244,7 @@ Finally, let's show the constructed ePSF:
     >>> import matplotlib.pyplot as plt
     >>> from astropy.visualization import simple_norm
     >>> norm = simple_norm(epsf.data, 'log', percent=99.)
-    >>> plt.imshow(epsf.data, norm=norm)
+    >>> plt.imshow(epsf.data, norm=norm, origin='lower')
     >>> plt.colorbar()
 
 .. plot::
@@ -284,7 +284,7 @@ Finally, let's show the constructed ePSF:
 
     import matplotlib.pyplot as plt
     norm = simple_norm(epsf.data, 'log', percent=99.)
-    plt.imshow(epsf.data, norm=norm)
+    plt.imshow(epsf.data, norm=norm, origin='lower')
     plt.colorbar()
 
 The :class:`~photutils.psf.EPSFModel` object is a subclass of
