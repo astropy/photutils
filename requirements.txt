@@ -1,0 +1,7 @@
+Cython
+matplotlib
+numpy
+scipy
+scikit-image
+scikit-learn
+Sphinx
