@@ -101,7 +101,9 @@ Next, we need to extract cutouts of the stars using the
 a table of star positions either in pixel or sky coordinates.  For
 this example we are using the pixel coordinates, which need to be in
 table columns called simply ``x`` and ``y``.  Let's create that
-table::
+table:
+
+.. doctest-requires:: scipy
 
     >>> from astropy.table import Table
     >>> stars_tbl = Table()
@@ -142,14 +144,18 @@ objects) and the `~astropy.nddata.NDData` objects must contain valid
 will be "linked" across images, meaning it will be constrained to have
 the same sky coordinate in each input image.
 
-Let's extract 25 x 25 pixel cutouts of our selected stars::
+Let's extract 25 x 25 pixel cutouts of our selected stars:
+
+.. doctest-requires:: scipy
 
     >>> from photutils.psf import extract_stars
     >>> stars = extract_stars(nddata, stars_tbl, size=25)
 
 The function returns a `~photutils.psf.Stars` object containing the
 cutouts of our selected stars.  The function extracted 403 stars, from
-which we'll build our ePSF.  Let's show the first 25 of them::
+which we'll build our ePSF.  Let's show the first 25 of them:
+
+.. doctest-requires:: scipy
 
     >>> nrows = 5
     >>> ncols = 5
@@ -212,7 +218,9 @@ details.
 
 We first initialize an :class:`~photutils.psf.EPSFBuilder` instance
 with our desired parameters and then input the cutouts of our selected
-stars to the instance::
+stars to the instance:
+
+.. doctest-requires:: scipy
 
     >>> from photutils import EPSFBuilder
     >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
@@ -224,7 +232,9 @@ The returned values are the ePSF, as an
 with the constructed ePSF, as a new :class:`~photutils.psf.Stars`
 object with fitted star positions and fluxes.
 
-Finally, let's show the constructed ePSF::
+Finally, let's show the constructed ePSF:
+
+.. doctest-requires:: scipy
 
     >>> norm = simple_norm(epsf.data, 'log', percent=99.)
     >>> plt.imshow(epsf.data, norm=norm)
