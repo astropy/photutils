@@ -27,10 +27,10 @@ from astropy.tests.helper import enable_deprecations_as_exceptions
 ##     warnings_to_ignore_by_pyver={(MAJOR, MINOR): ['Message to ignore']}
 # enable_deprecations_as_exceptions()
 
-## Uncomment and customize the following lines to add/remove entries from
-## the list of packages for which version numbers are displayed when running
-## the tests. Making it pass for KeyError is essential in some cases when
-## the package uses other astropy affiliated packages.
+# Uncomment and customize the following lines to add/remove entries from
+# the list of packages for which version numbers are displayed when running
+# the tests. Making it pass for KeyError is essential in some cases when
+# the package uses other astropy affiliated packages.
 try:
     PYTEST_HEADER_MODULES['Cython'] = 'Cython'    # noqa
     PYTEST_HEADER_MODULES['Astropy'] = 'astropy'    # noqa
@@ -41,13 +41,13 @@ try:
 except (NameError, KeyError):  # NameError is needed to support Astropy < 1.0
     pass
 
-## Uncomment the following lines to display the version number of the
-## package rather than the version number of Astropy in the top line when
-## running the tests.
+# Uncomment the following lines to display the version number of the
+# package rather than the version number of Astropy in the top line when
+# running the tests.
 import os
 
-## This is to figure out the package version, rather than
-## using Astropy's
+# This is to figure out the package version, rather than
+# using Astropy's
 try:
     from .version import version
 except ImportError:

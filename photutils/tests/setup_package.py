@@ -3,9 +3,9 @@
 # If this package has test data in the tests/data directory, add them to
 # the paths here - see commented example
 paths = ['coveragerc',
-#         os.path.join('data', '*fits')
+         # os.path.join('data', '*fits'),
          ]
 
+
 def get_package_data():
-    return {
-        _ASTROPY_PACKAGE_NAME_ + '.tests': paths}  # noqa
+    return {_ASTROPY_PACKAGE_NAME_ + '.tests': paths}  # noqa

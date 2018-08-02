@@ -29,7 +29,7 @@ if (sys.version_info <
     sys.exit(1)
 
 # Import ah_bootstrap after the python version validation
-import ah_bootstrap
+import ah_bootstrap  # noqa
 from setuptools import setup
 
 import builtins
