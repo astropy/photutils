@@ -7,11 +7,10 @@ dependencies:
     - python>=3
     - astropy
     - Cython
-    - jupyter
     - matplotlib
     - numpy
+    - scipy
     - scikit-image
     - scikit-learn
-    - scipy
     - docutils
     - Sphinx
