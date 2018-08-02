@@ -70,7 +70,9 @@ not use the centroiding option in
 :func:`~photutils.detection.find_peaks` to simulate the effect of
 having imperfect initial guesses for the positions of the stars.  Here we
 set the detection threshold value to 500.0 to select only the brightest
-stars::
+stars:
+
+.. doctest-requires:: scipy
 
     >>> from photutils import find_peaks
     >>> peaks_tbl = find_peaks(data, threshold=500.)
