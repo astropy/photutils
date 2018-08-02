@@ -63,7 +63,7 @@ Let's show the image:
     data +=  make_noise_image(data.shape, type='gaussian', mean=10.,
                               stddev=5., random_state=12345)
     norm = simple_norm(data, 'sqrt', percent=99.)
-    plt.imshow(data, norm=norm, origin='lower')
+    plt.imshow(data, norm=norm, origin='lower', cmap='viridis')
 
 For this example we'll use the :func:`~photutils.detection.find_peaks`
 function to identify the stars and their initial positions.  We will
@@ -168,7 +168,7 @@ which we'll build our ePSF.  Let's show the first 25 of them:
     >>> ax = ax.ravel()
     >>> for i in range(nrows*ncols):
     ...     norm = simple_norm(stars[i], 'log', percent=99.)
-    ...     ax[i].imshow(stars[i], norm=norm, origin='lower')
+    ...     ax[i].imshow(stars[i], norm=norm, origin='lower', cmap='viridis')
 
 .. plot::
 
@@ -208,7 +208,7 @@ which we'll build our ePSF.  Let's show the first 25 of them:
     ax = ax.ravel()
     for i in range(nrows*ncols):
         norm = simple_norm(stars[i], 'log', percent=99.)
-        ax[i].imshow(stars[i], norm=norm, origin='lower')
+        ax[i].imshow(stars[i], norm=norm, origin='lower', cmap='viridis')
 
 With the star cutouts in hand, we are ready to construct the ePSF with
 the :class:`~photutils.psf.EPSFBuilder` class.  We'll create an ePSF
@@ -244,7 +244,7 @@ Finally, let's show the constructed ePSF:
     >>> import matplotlib.pyplot as plt
     >>> from astropy.visualization import simple_norm
     >>> norm = simple_norm(epsf.data, 'log', percent=99.)
-    >>> plt.imshow(epsf.data, norm=norm, origin='lower')
+    >>> plt.imshow(epsf.data, norm=norm, origin='lower', cmap='viridis')
     >>> plt.colorbar()
 
 .. plot::
@@ -284,7 +284,7 @@ Finally, let's show the constructed ePSF:
 
     import matplotlib.pyplot as plt
     norm = simple_norm(epsf.data, 'log', percent=99.)
-    plt.imshow(epsf.data, norm=norm, origin='lower')
+    plt.imshow(epsf.data, norm=norm, origin='lower', cmap='viridis')
     plt.colorbar()
 
 The :class:`~photutils.psf.EPSFModel` object is a subclass of
