@@ -26,7 +26,7 @@ env:
         # The following versions are the 'default' for tests, unless
         # overridden underneath. They are defined here in order to save having
         # to repeat them for all configurations.
-        - PYTHON_VERSION=3.7
+        - PYTHON_VERSION=3.6
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
         - CONDA_CHANNELS='astropy-ci-extras astropy'
@@ -91,17 +91,19 @@ matrix:
                EVENT_TYPE='pull_request push cron'
 
         # Test with Astropy LTS version and the latest Python
-        # NOTE:  currently disabled because Astropy stable is also the LTS
-        #- stage: Comprehensive tests
-        #  env: ASTROPY_VERSION=lts
-        #       EVENT_TYPE='pull_request push cron'
+        - stage: Comprehensive tests
+          env: ASTROPY_VERSION=lts
+               EVENT_TYPE='pull_request push cron'
 
-        # Test with older Python and numpy versions
+        # Test with other Python and numpy versions
+        - stage: Comprehensive tests
+          env: PYTHON_VERSION=3.7
+
         - stage: Comprehensive tests
           env: PYTHON_VERSION=3.5 NUMPY_VERSION=1.10
 
         - stage: Comprehensive tests
-          env: PYTHON_VERSION=3.6 NUMPY_VERSION=1.11
+          env: NUMPY_VERSION=1.11
 
         - stage: Comprehensive tests
           env: NUMPY_VERSION=1.12
