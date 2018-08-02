@@ -50,6 +50,7 @@ User Documentation
     grouping.rst
     aperture.rst
     psf.rst
+    epsf.rst
     psf_matching.rst
     segmentation.rst
     centroids.rst

@@ -12,9 +12,9 @@ from astropy.modeling import models, Parameter, Fittable2DModel
 from astropy.utils.exceptions import AstropyWarning
 
 
-__all__ = ['FittableImageModel', 'NonNormalizable',
-           'IntegratedGaussianPRF', 'PRFAdapter',
-           'prepare_psf_model', 'get_grouped_psf_model']
+__all__ = ['NonNormalizable', 'FittableImageModel', 'EPSFModel',
+           'IntegratedGaussianPRF', 'PRFAdapter', 'prepare_psf_model',
+           'get_grouped_psf_model']
 
 
 class NonNormalizable(AstropyWarning):
@@ -441,14 +441,28 @@ class FittableImageModel(Fittable2DModel):
 
         self._store_interpolator_kwargs(ikwargs)
 
-    def evaluate(self, x, y, flux, x_0, y_0):
+    def evaluate(self, x, y, flux, x_0, y_0, use_oversampling=True):
         """
         Evaluate the model on some input variables and provided model
         parameters.
 
+        Parameters
+        ----------
+        use_oversampling : bool, optional
+            Whether to use the oversampling factor to calculate the
+            model pixel indices.  The default is `True`, which means the
+            input indices will be multipled by this factor.
         """
-        xi = self._oversampling * (np.asarray(x) - x_0) + self._x_origin
-        yi = self._oversampling * (np.asarray(y) - y_0) + self._y_origin
+
+        if use_oversampling:
+            xi = self._oversampling * (np.asarray(x) - x_0)
+            yi = self._oversampling * (np.asarray(y) - y_0)
+        else:
+            xi = np.asarray(x) - x_0
+            yi = np.asarray(y) - y_0
+
+        xi += self._x_origin
+        yi += self._y_origin
 
         f = flux * self._normalization_constant
         evaluated_model = f * self.interpolator.ev(xi, yi)
@@ -461,6 +475,78 @@ class FittableImageModel(Fittable2DModel):
             evaluated_model[invalid] = self._fill_value
 
         return evaluated_model
+
+
+class EPSFModel(FittableImageModel):
+    """
+    A subclass of `FittableImageModel` that adds a ``pixel_scale``
+    attribute.
+
+    The ``pixel_scale`` can be used in conjunction with the
+    `~photutils.psf.Star` pixel scale when fitting (and building) the
+    PSF.  This allows fitting (and building) a PSF using images of stars
+    with different pixel scales.
+
+    `EPSFModel` has the same parameters as `FittableImageModel` with the
+    addition of a single parameter listed below.
+
+    Parameters
+    ----------
+    pixel_scale : float, tuple of two floats or `None`, optional
+        The pixel scale (in arbitrary units) of the ePSF.  The
+        ``pixel_scale`` can either be a single float or tuple of two
+        floats of the form ``(x_pixscale, y_pixscale)``.  If
+        ``pixel_scale`` is a scalar then the pixel scale will be the
+        same for both the x and y axes.  The default is `None`, which
+        means it will be set to the inverse of the ``oversampling``
+        factor.
+
+        The ePSF ``pixel_scale`` is used only when building the ePSF and
+        when fitting the ePSF to `Star` objects with `EPSFFitter`.  In
+        those cases, the ``pixel_scale`` is used in conjunction with the
+        `Star` pixel scale when building and fitting the ePSF.  This
+        allows for building (and fitting) a ePSF using images of stars
+        with different pixel scales (e.g. velocity aberrations).  The
+        ``oversampling`` factor is ignored in these cases.
+
+        If you are not using `EPSFBuilder` or `EPSFFitter`, then you
+        must set the ``oversampling`` factor.  The ``pixel_scale`` will
+        be ignored.
+    """
+
+    def __init__(self, data, flux=1.0, x_0=0, y_0=0, normalize=True,
+                 normalization_correction=1.0, origin=None, oversampling=1.,
+                 pixel_scale=None, fill_value=0., ikwargs={}):
+
+        if pixel_scale is None:
+            pixel_scale = 1. / oversampling
+
+        super(EPSFModel, self).__init__(
+            data=data, flux=flux, x_0=x_0, y_0=y_0, normalize=normalize,
+            normalization_correction=normalization_correction, origin=origin,
+            oversampling=oversampling, fill_value=fill_value, ikwargs=ikwargs)
+
+        self._pixel_scale = pixel_scale
+
+    @property
+    def pixel_scale(self):
+        """
+        The ``(x, y)`` pixel scale (in arbitrary units) of the PSF.
+        """
+
+        return self._pixel_scale
+
+    @pixel_scale.setter
+    def pixel_scale(self, pixel_scale):
+        if pixel_scale is not None:
+            pixel_scale = np.atleast_1d(pixel_scale)
+            if len(pixel_scale) == 1:
+                pixel_scale = np.repeat(pixel_scale, 2).astype(float)
+            elif len(pixel_scale) > 2:
+                raise ValueError('pixel_scale must be a scalar or tuple '
+                                 'of two floats.')
+
+        self._pixel_scale = pixel_scale
 
 
 class IntegratedGaussianPRF(Fittable2DModel):
