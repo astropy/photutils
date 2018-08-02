@@ -5,4 +5,4 @@ python:
 # Don't build any extra formats
 formats: []
 
-requirements_file: requirements-docs.txt
+requirements_file: requirements.txt
