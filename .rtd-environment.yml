@@ -14,3 +14,4 @@ dependencies:
     - scikit-learn
     - docutils
     - Sphinx
+    - nomkl
