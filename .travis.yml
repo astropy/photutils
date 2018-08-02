@@ -29,13 +29,13 @@ env:
         - PYTHON_VERSION=3.6
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
+        - CONDA_CHANNELS='astropy-ci-extras astropy'
+        - CONDA_DEPENDENCIES='Cython scipy scikit-image scikit-learn matplotlib'
+        - CONDA_REQUIRED_DEPENDENCIES='Cython'
         - MAIN_CMD='python setup.py'
         - SETUP_CMD='test'
-        - EVENT_TYPE='pull_request push'
-        - CONDA_DEPENDENCIES='Cython scipy scikit-image matplotlib six'
-        - CONDA_CHANNELS='astropy-ci-extras astropy'
+        - EVENT_TYPE='push pull_request'
         - SETUP_XVFB=True
-        - ASTROPY_USE_SYSTEM_PYTEST=1
 
         # PEP8 errors/warnings:
         # E101 - mix of tabs and spaces
@@ -55,8 +55,7 @@ env:
 
 stages:
    - name: Initial tests
-   - name: Test docs, astropy dev, and without optional dependencies
-   - name: Tests with other Python/Numpy versions
+   - name: Comprehensive tests
    - name: Cron tests
      if: type = cron
 
@@ -65,78 +64,66 @@ matrix:
     fast_finish: true
 
     include:
-        - env: PYTHON_VERSION=2.7 SETUP_CMD='egg_info'
-        - env: PYTHON_VERSION=3.4 SETUP_CMD='egg_info'
         - env: PYTHON_VERSION=3.5 SETUP_CMD='egg_info'
         - env: PYTHON_VERSION=3.6 SETUP_CMD='egg_info'
+        - env: PYTHON_VERSION=3.7 SETUP_CMD='egg_info'
 
-        # Do a PEP8/pyflakes test with flake8
+        # PEP8/pyflakes test with flake8
         - env: MAIN_CMD="flake8 photutils --count $FLAKE8_OPT" SETUP_CMD=''
 
-        - env: SETUP_CMD='test --coverage'
+        # All tests (with remote data) and coverage checks with the
+        # latest Python version.  The duration of the slowest 50 tests
+        # will also be listed.
+        - env: SETUP_CMD='test --coverage --remote-data=astropy -a "--durations=50"'
 
-        # Check for sphinx doc build warnings - we do this first because it
-        # may run for a long time
-        - stage: Test docs, astropy dev, and without optional dependencies
-          env: PYTHON_VERSION=2.7 SETUP_CMD='build_docs -w'
-               CONDA_DEPENDENCIES='Cython scipy scikit-image scikit-learn matplotlib jupyter'
-
-        - stage: Test docs, astropy dev, and without optional dependencies
+        # Check for Sphinx doc build warnings
+        - stage: Comprehensive tests
           env: SETUP_CMD='build_docs -w'
-               CONDA_DEPENDENCIES='Cython scipy scikit-image scikit-learn matplotlib jupyter'
-               EVENT_TYPE='pull_request push cron'
+               EVENT_TYPE='push pull_request cron'
 
-        # Now try Astropy dev and LTS versions with the latest Python.
-        # We disable LTS testing until astropy 3.0 is out, as the current
-        # stable is also the LTS
-        - stage: Test docs, astropy dev, and without optional dependencies
+        # Test with optional dependencies disabled
+        - stage: Comprehensive tests
+          env: CONDA_DEPENDENCIES=$CONDA_REQUIRED_DEPENDENCIES
+
+        # Test with Astropy dev version and the latest Python
+        - stage: Comprehensive tests
           env: ASTROPY_VERSION=development
                EVENT_TYPE='pull_request push cron'
 
-        #- stage: Test docs, astropy dev, and without optional dependencies
-        #  os: linux
-        #  env: PYTHON_VERSION=3.5 ASTROPY_VERSION=lts
-
-        # Try with optional dependencies disabled
-        - stage: Test docs, astropy dev, and without optional dependencies
-          env: PYTHON_VERSION=2.7 CONDA_DEPENDENCIES='Cython six'
-
-        - stage: Test docs, astropy dev, and without optional dependencies
-          env: CONDA_DEPENDENCIES='Cython six'
-
-        # Try older python and numpy versions. Since we can assume
-        # that the Numpy developers have taken care of testing Numpy
-        # with different versions of Python, we can vary Python and
-        # Numpy versions at the same time.
-        - stage: Tests with other Python/Numpy versions
-          env: PYTHON_VERSION=3.4 NUMPY_VERSION=1.9
-               PIP_DEPENDENCIES='pytest>=3.1,<3.7'
-
-        - stage: Tests with other Python/Numpy versions
-          env: PYTHON_VERSION=3.5 NUMPY_VERSION=1.10
-
-        - stage: Tests with other Python/Numpy versions
-          env: NUMPY_VERSION=1.11
-
-        - stage: Tests with other Python/Numpy versions
-          env: NUMPY_VERSION=1.12
-
-        - stage: Tests with other Python/Numpy versions
-          env: NUMPY_VERSION=1.13
-
-        # Try numpy pre-release
-        - stage: Tests with other Python/Numpy versions
-          env: NUMPY_VERSION=prerelease
+        # Test with Astropy LTS version and the latest Python
+        - stage: Comprehensive tests
+          env: ASTROPY_VERSION=lts
                EVENT_TYPE='pull_request push cron'
 
-        # Try MacOS X
+        # Test with other Python and numpy versions
+        - stage: Comprehensive tests
+          env: PYTHON_VERSION=3.7
+
+        - stage: Comprehensive tests
+          env: PYTHON_VERSION=3.5 NUMPY_VERSION=1.10
+
+        - stage: Comprehensive tests
+          env: NUMPY_VERSION=1.11
+
+        - stage: Comprehensive tests
+          env: NUMPY_VERSION=1.12
+
+        - stage: Comprehensive tests
+          env: NUMPY_VERSION=1.13
+
+        # Test with numpy pre-release version
+        - stage: Comprehensive tests
+          env: NUMPY_VERSION=prerelease
+               EVENT_TYPE='push pull_request cron'
+
+        # Test with MacOS X
         - stage: Cron tests
           os: osx
           env: SETUP_CMD='test' EVENT_TYPE='cron'
 
     allow_failures:
         - env: NUMPY_VERSION=prerelease
-               EVENT_TYPE='pull_request push cron'
+               EVENT_TYPE='push pull_request cron'
 
 install:
     - git clone git://github.com/astropy/ci-helpers.git
