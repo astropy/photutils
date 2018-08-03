@@ -1,6 +1,6 @@
 astropy
 Cython
-matplotlib
+matplotlib>=2.2
 numpy
 scipy
 scikit-image
