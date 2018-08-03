@@ -25,18 +25,41 @@ class GroupStarsBase(metaclass=_ABCMetaAndInheritDocstrings):
         Parameters
         ----------
         starlist : `~astropy.table.Table`
-            List of star positions. Columns named as ``x_0`` and ``y_0``,
-            which corresponds to the centroid coordinates of the sources,
-            must be provided.
+            List of star positions. Columns named as ``x_0`` and
+            ``y_0``, which corresponds to the centroid coordinates of
+            the sources, must be provided.
 
         Returns
         -------
         group_starlist : `~astropy.table.Table`
-            ``starlist`` with an additional column named ``group_id`` whose
-            unique values represent groups of mutually overlapping stars.
+            ``starlist`` with an additional column named ``group_id``
+            whose unique values represent groups of mutually overlapping
+            stars.
         """
 
         return self.group_stars(starlist)
+
+    @abc.abstractmethod
+    def group_stars(self, starlist):
+        """
+        Classify stars into groups.
+
+        Parameters
+        ----------
+        starlist : `~astropy.table.Table`
+            List of star positions. Columns named as ``x_0`` and
+            ``y_0``, which corresponds to the centroid coordinates of
+            the sources, must be provided.
+
+        Returns
+        -------
+        group_starlist : `~astropy.table.Table`
+            ``starlist`` with an additional column named ``group_id``
+            whose unique values represent groups of mutually overlapping
+            stars.
+        """
+
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
 class DAOGroup(GroupStarsBase):
@@ -91,23 +114,6 @@ class DAOGroup(GroupStarsBase):
             self._crit_separation = crit_separation
 
     def group_stars(self, starlist):
-        """
-        Classify stars into groups.
-
-        Parameters
-        ----------
-        starlist : `~astropy.table.Table`
-            List of star positions. Columns named as ``x_0`` and
-            ``y_0``, which corresponds to the centroid coordinates of
-            the sources, must be provided.
-
-        Returns
-        -------
-        group_starlist : `~astropy.table.Table`
-            ``starlist`` with an additional column named ``group_id`` whose
-            unique values represent groups of mutually overlapping stars.
-        """
-
         cstarlist = starlist.copy()
 
         if 'id' not in cstarlist.colnames:
@@ -218,24 +224,6 @@ class DBSCANGroup(GroupStarsBase):
         self.leaf_size = leaf_size
 
     def group_stars(self, starlist):
-        """
-        Classify stars into groups.
-
-        Parameters
-        ----------
-        starlist : `~astropy.table.Table`
-            List of star positions. Columns named as ``x_0`` and
-            ``y_0``, which corresponds to the centroid coordinates of
-            the sources, must be provided.
-
-        Returns
-        -------
-        group_starlist : `~astropy.table.Table`
-            ``starlist`` with an additional column named ``group_id``
-            whose unique values represent groups of mutually overlapping
-            stars.
-        """
-
         from sklearn.cluster import DBSCAN
 
         cstarlist = starlist.copy()
