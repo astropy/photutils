@@ -1,5 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import division
+
 import numpy as np
 from numpy.testing import assert_allclose
 from astropy.modeling.models import Gaussian2D

@@ -1,7 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """Module which provides classes to perform source grouping."""
 
-from __future__ import division
 import abc
 
 import six

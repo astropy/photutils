@@ -3,7 +3,6 @@
 Models and functions for doing PSF/PRF fitting photometry on image data.
 """
 
-from __future__ import division
 import numpy as np
 from astropy.table import Table
 from astropy.nddata.utils import add_array, extract_array

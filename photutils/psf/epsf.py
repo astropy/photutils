@@ -4,8 +4,6 @@ Tools to build and fit an effective PSF (ePSF) based on Anderson and
 King (2000; PASP 112, 1360).
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 import copy
 import sys
 import time

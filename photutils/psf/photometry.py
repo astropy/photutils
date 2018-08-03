@@ -1,7 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """Module which provides classes to perform PSF Photometry"""
 
-from __future__ import division
 import numpy as np
 import warnings
 

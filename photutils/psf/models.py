@@ -3,7 +3,6 @@
 Models for doing PSF/PRF fitting photometry on image data.
 """
 
-from __future__ import division
 import warnings
 import copy
 

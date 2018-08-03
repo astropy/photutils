@@ -2,7 +2,7 @@
 """
 Window (or tapering) functions for matching PSFs using Fourier methods.
 """
-from __future__ import division
+
 import numpy as np
 
 

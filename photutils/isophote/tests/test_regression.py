@@ -46,9 +46,6 @@ output of 'ellipse' instead, captured from screen, and use it as
 reference for the regression.
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
 import math
 import numpy as np
 import os.path as op

@@ -4,8 +4,6 @@ This module defines background classes to estimate the 2D background and
 background RMS in a 2D image.
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 from itertools import product
 
 import numpy as np

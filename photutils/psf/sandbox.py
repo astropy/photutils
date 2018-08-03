@@ -5,9 +5,6 @@ for prime-time (i.e., is not considered a stable public API), but is
 included either for experimentation or as legacy code.
 """
 
-from __future__ import (absolute_import, unicode_literals, division,
-                        print_function)
-
 import numpy as np
 from astropy.table import Table
 from astropy.modeling import Parameter, Fittable2DModel

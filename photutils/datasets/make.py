@@ -3,9 +3,6 @@
 Make example datasets.
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
 from collections import OrderedDict
 import numpy as np
 from astropy.convolution import discretize_model

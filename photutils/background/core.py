@@ -6,8 +6,6 @@ These classes were designed as part of an object-oriented interface for
 the tools in the PSF subpackage.
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 import abc
 
 import six

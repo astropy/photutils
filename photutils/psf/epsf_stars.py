@@ -4,8 +4,6 @@ Tools to extract cutouts of stars and data structures to hold the
 cutouts for fitting and building ePSFs.
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 import warnings
 
 import numpy as np
