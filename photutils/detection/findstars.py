@@ -702,7 +702,21 @@ class StarFinderBase(metaclass=_ABCMetaAndInheritDocstrings):
 
     @abc.abstractmethod
     def find_stars(self, data):
-        raise NotImplementedError
+        """
+        Find stars in an astronomical image.
+
+        Parameters
+        ----------
+        data : array_like
+            The 2D image array.
+
+        Returns
+        -------
+        table : `~astropy.table.Table`
+            A table of found stars.
+        """
+
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
 class DAOStarFinder(StarFinderBase):

@@ -135,8 +135,7 @@ class PixelAperture(Aperture):
         for each position, for the aperture.
         """
 
-        raise NotImplementedError('Needs to be implemented in a '
-                                  'PixelAperture subclass.')
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
     @property
     def _centered_edges(self):
@@ -169,8 +168,7 @@ class PixelAperture(Aperture):
             The aperture area.
         """
 
-        raise NotImplementedError('Needs to be implemented in a '
-                                  'PixelAperture subclass.')
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
     def mask_area(self, method='exact', subpixels=5):
         """
@@ -268,8 +266,7 @@ class PixelAperture(Aperture):
             A list of aperture mask objects.
         """
 
-        raise NotImplementedError('Needs to be implemented in a '
-                                  'PixelAperture subclass.')
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
     @staticmethod
     def _prepare_photometry_output(_list, unit=None):
@@ -523,8 +520,7 @@ class PixelAperture(Aperture):
             Any keyword arguments accepted by `matplotlib.patches.Patch`.
         """
 
-        raise NotImplementedError('Needs to be implemented in a '
-                                  'PixelAperture subclass.')
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
     def _to_sky_params(self, wcs, mode='all'):
         """
@@ -592,8 +588,7 @@ class PixelAperture(Aperture):
             A `SkyAperture` object.
         """
 
-        raise NotImplementedError('Needs to be implemented in a '
-                                  'PixelAperture subclass.')
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
 class SkyAperture(Aperture):
@@ -672,8 +667,7 @@ class SkyAperture(Aperture):
             A `PixelAperture` object.
         """
 
-        raise NotImplementedError('Needs to be implemented in a '
-                                  'SkyAperture subclass.')
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
 def _prepare_photometry_input(data, error, mask, wcs, unit):

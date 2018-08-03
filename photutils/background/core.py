@@ -95,6 +95,8 @@ class BackgroundBase(metaclass=_ABCMetaAndInheritDocstrings):
             `~numpy.ma.MaskedArray` will be returned.
         """
 
+        raise NotImplementedError('Needs to be implemented in a subclass.')
+
 
 class BackgroundRMSBase(metaclass=_ABCMetaAndInheritDocstrings):
     """
@@ -135,6 +137,8 @@ class BackgroundRMSBase(metaclass=_ABCMetaAndInheritDocstrings):
             then a scalar will be returned, otherwise a
             `~numpy.ma.MaskedArray` will be returned.
         """
+
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
 class MeanBackground(BackgroundBase):
