@@ -8,11 +8,11 @@ the tools in the PSF subpackage.
 
 import abc
 
-import six
 import numpy as np
 from astropy.stats import (SigmaClip, biweight_location, biweight_scale,
                            mad_std)
-from astropy.utils.misc import InheritDocstrings
+
+from ..utils.misc import _ABCMetaAndInheritDocstrings
 
 
 __all__ = ['BackgroundBase', 'BackgroundRMSBase', 'MeanBackground',
@@ -55,12 +55,7 @@ def _masked_median(data, axis=None):
     return _median
 
 
-class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
-    pass
-
-
-@six.add_metaclass(_ABCMetaAndInheritDocstrings)
-class BackgroundBase(object):
+class BackgroundBase(metaclass=_ABCMetaAndInheritDocstrings):
     """
     Base class for classes that estimate scalar background values.
 
@@ -101,8 +96,7 @@ class BackgroundBase(object):
         """
 
 
-@six.add_metaclass(_ABCMetaAndInheritDocstrings)
-class BackgroundRMSBase(object):
+class BackgroundRMSBase(metaclass=_ABCMetaAndInheritDocstrings):
     """
     Base class for classes that estimate scalar background RMS values.
 

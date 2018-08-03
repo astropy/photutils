@@ -5,7 +5,6 @@ import copy
 import warnings
 from collections import OrderedDict
 
-import six
 import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
@@ -13,24 +12,19 @@ from astropy.nddata import support_nddata
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.utils.misc import InheritDocstrings
 from astropy.wcs import WCS
 from astropy.wcs.utils import (skycoord_to_pixel, pixel_to_skycoord,
                                wcs_to_celestial_frame)
 
 from ..utils import get_version_info
+from ..utils.misc import _ABCMetaAndInheritDocstrings
 from ..utils.wcs_helpers import pixel_scale_angle_at_skycoord
 
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture', 'aperture_photometry']
 
 
-class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
-    pass
-
-
-@six.add_metaclass(_ABCMetaAndInheritDocstrings)
-class Aperture(object):
+class Aperture(metaclass=_ABCMetaAndInheritDocstrings):
     """
     Abstract base class for all apertures.
     """

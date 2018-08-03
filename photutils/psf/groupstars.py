@@ -3,16 +3,16 @@
 
 import abc
 
-import six
 import numpy as np
 from astropy.table import Column
+
+from ..utils.misc import _ABCMetaAndInheritDocstrings
 
 
 __all__ = ['DAOGroup', 'DBSCANGroup', 'GroupStarsBase']
 
 
-@six.add_metaclass(abc.ABCMeta)
-class GroupStarsBase(object):
+class GroupStarsBase(metaclass=_ABCMetaAndInheritDocstrings):
     """
     This base class provides the basic interface for subclasses that
     are capable of classifying stars in groups.

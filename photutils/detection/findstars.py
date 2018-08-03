@@ -11,17 +11,16 @@ import abc
 import math
 import warnings
 
-import six
 import numpy as np
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils import lazyproperty
-from astropy.utils.misc import InheritDocstrings
 
 from .core import find_peaks
-from ..utils.convolution import filter_data
 from ..utils._moments import _moments, _moments_central
+from ..utils.convolution import filter_data
+from ..utils.misc import _ABCMetaAndInheritDocstrings
 
 
 __all__ = ['StarFinderBase', 'DAOStarFinder', 'IRAFStarFinder']
@@ -693,12 +692,7 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
     return star_cutouts
 
 
-class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
-    pass
-
-
-@six.add_metaclass(_ABCMetaAndInheritDocstrings)
-class StarFinderBase(object):
+class StarFinderBase(metaclass=_ABCMetaAndInheritDocstrings):
     """
     Abstract base class for star finders.
     """
