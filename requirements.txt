@@ -2,6 +2,7 @@ astropy
 Cython
 matplotlib>=2.2
 numpy
+setuptools>=39.0
 scipy
 scikit-image
 scikit-learn
