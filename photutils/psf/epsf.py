@@ -843,8 +843,7 @@ class EPSFBuilder(object):
             t_start = time.time()
             iter_num += 1
 
-            # python 3 only
-            if self.progress_bar and sys.version_info[2] >= 3:
+            if self.progress_bar:
                 if iter_num == 1:
                     dt_str = ' [? s/iter]'
                 else:
