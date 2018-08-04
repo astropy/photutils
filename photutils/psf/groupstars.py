@@ -237,7 +237,7 @@ class DBSCANGroup(GroupStarsBase):
                              'sequence starting from 1. ' +
                              'Got {}'.format(cstarlist['id']))
 
-        pos_stars = list(zip(cstarlist['x_0'], cstarlist['y_0']))
+        pos_stars = np.transpose((cstarlist['x_0'], cstarlist['y_0']))
         dbscan = DBSCAN(eps=self.crit_separation,
                         min_samples=self.min_samples, metric=self.metric,
                         algorithm=self.algorithm, leaf_size=self.leaf_size)

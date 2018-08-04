@@ -89,6 +89,7 @@ class PixelAperture(Aperture):
                                     .format(positions))
         elif isinstance(positions, zip):
             # This is needed for zip to work seamlessly in Python 3
+            # (e.g. positions = zip(xpos, ypos))
             positions = np.atleast_2d(list(positions))
         else:
             raise TypeError('List or array of (x, y) pixel coordinates '
