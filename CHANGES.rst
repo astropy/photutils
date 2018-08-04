@@ -1,6 +1,21 @@
 0.5 (unreleased)
 ----------------
 
+General
+^^^^^^^
+
+- Versions of Python <3.5 are no longer supported. [#702, #703]
+
+- Versions of Numpy <1.10 are no longer supported. [#697, #703]
+
+- Versions of Pytest <3.1 are no longer supported. [#702]
+
+- ``pytest-astropy`` is now required to run the test suite. [#702, #703]
+
+- The documentation build now uses the Sphinx configuration from
+  ``sphinx-astropy`` rather than from ``astropy-helpers``. [#702]
+
+
 New Features
 ^^^^^^^^^^^^
 
