@@ -3,12 +3,7 @@
 Load example datasets.
 """
 
-try:
-    # python >= 3
-    from urllib.error import HTTPError, URLError
-except ImportError:
-    # python 2
-    from urllib2 import HTTPError, URLError
+from urllib.error import HTTPError, URLError
 
 from astropy.io import fits
 from astropy.table import Table
