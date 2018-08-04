@@ -28,7 +28,7 @@ warnings.simplefilter('always', AstropyUserWarning)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestDAOStarFinder(object):
+class TestDAOStarFinder:
     @pytest.mark.parametrize(('threshold', 'fwhm'),
                              list(itertools.product(THRESHOLDS, FWHMS)))
     def test_daofind(self, threshold, fwhm):
@@ -95,7 +95,7 @@ class TestDAOStarFinder(object):
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestIRAFStarFinder(object):
+class TestIRAFStarFinder:
     @pytest.mark.parametrize(('threshold', 'fwhm'),
                              list(itertools.product(THRESHOLDS, FWHMS)))
     def test_irafstarfind(self, threshold, fwhm):

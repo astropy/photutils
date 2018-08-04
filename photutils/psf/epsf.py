@@ -30,15 +30,15 @@ except ImportError:
 __all__ = ['EPSFFitter', 'EPSFBuilder']
 
 
-class EPSFFitter(object):
+class EPSFFitter:
     """
     Class to fit an ePSF model to one or more stars.
 
     Parameters
     ----------
     fitter : `astropy.modeling.fitting.Fitter`, optional
-        A :py:class:`~astropy.modeling.fitting.Fitter` object.  The
-        default is `~astropy.modeling.fitting.LevMarLSQFitter`.
+        A `~astropy.modeling.fitting.Fitter` object.  The default is
+        `~astropy.modeling.fitting.LevMarLSQFitter`.
 
     fit_boxsize : int, tuple of int, or `None`, optional
         The size (in pixels) of the box centered on the star to be used
@@ -245,7 +245,7 @@ class EPSFFitter(object):
         return star
 
 
-class EPSFBuilder(object):
+class EPSFBuilder:
     """
     Class to build an effective PSF (ePSF).
 

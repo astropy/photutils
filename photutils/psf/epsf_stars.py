@@ -21,7 +21,7 @@ from ..aperture import BoundingBox
 __all__ = ['Star', 'Stars', 'LinkedStar', 'extract_stars']
 
 
-class Star(object):
+class Star:
     """
     A class to hold a 2D cutout image and associated metadata of a star.
 
@@ -307,7 +307,7 @@ class Star(object):
         return self.weights[~self.mask].ravel()
 
 
-class Stars(object):
+class Stars:
     """
     Class to hold a list of `Star` and/or `LinkedStar` objects.
 

@@ -20,7 +20,7 @@ except ImportError:
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestDetectSources(object):
+class TestDetectSources:
     def setup_class(self):
         self.data = np.array([[0, 1, 0], [0, 2, 0],
                               [0, 0, 0]]).astype(np.float)
@@ -166,7 +166,7 @@ class TestDetectSources(object):
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestMakeSourceMask(object):
+class TestMakeSourceMask:
     def setup_class(self):
         self.data = make_4gaussians_image()
 

@@ -20,7 +20,7 @@ except ImportError:
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestEPSFBuild(object):
+class TestEPSFBuild:
     def setup_class(self):
 
         from scipy.spatial import cKDTree

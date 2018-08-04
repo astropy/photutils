@@ -11,7 +11,7 @@ from .integrator import integrators
 __all__ = ['EllipseSample']
 
 
-class EllipseSample(object):
+class EllipseSample:
     """
     Class to sample image data along an elliptical path.
 

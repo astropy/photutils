@@ -25,7 +25,7 @@ DEFAULT_FFLAG = 0.7
 DEFAULT_MAXGERR = 0.5
 
 
-class EllipseFitter(object):
+class EllipseFitter:
     """
     Class to fit ellipses.
 
@@ -266,7 +266,7 @@ class EllipseFitter(object):
         return proceed, lexceed
 
 
-class _ParameterCorrector(object):
+class _ParameterCorrector:
 
     def correct(self, sample, harmonic):
         raise NotImplementedError

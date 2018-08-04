@@ -22,7 +22,7 @@ PEAKREF1 = np.array([[0, 0], [2, 2]])
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestDetectThreshold(object):
+class TestDetectThreshold:
     def test_snr(self):
         """Test basic snr."""
 
@@ -113,7 +113,7 @@ class TestDetectThreshold(object):
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestFindPeaks(object):
+class TestFindPeaks:
     def test_box_size(self):
         """Test with box_size."""
 

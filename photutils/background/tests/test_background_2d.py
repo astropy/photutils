@@ -34,7 +34,7 @@ INTERPOLATORS = [BkgZoomInterpolator(), BkgIDWInterpolator()]
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestBackground2D(object):
+class TestBackground2D:
     @pytest.mark.parametrize(('filter_size', 'interpolator'),
                              list(itertools.product(FILTER_SIZES,
                                                     INTERPOLATORS)))

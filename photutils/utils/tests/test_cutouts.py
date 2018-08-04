@@ -18,7 +18,7 @@ DATA[1, 0:2] = 1.
 DATA[1, 1] = 2.
 
 
-class TestCutoutFootprint(object):
+class TestCutoutFootprint:
     def test_dataonly(self):
         data = np.ones((5, 5))
         position = (2, 2)

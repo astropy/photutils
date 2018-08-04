@@ -18,7 +18,7 @@ __all__ = ['RectangularMaskMixin', 'RectangularAperture',
            'SkyRectangularAnnulus']
 
 
-class RectangularMaskMixin(object):
+class RectangularMaskMixin:
     """
     Mixin class to create masks for rectangular or rectangular-annulus
     aperture objects.

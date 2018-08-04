@@ -14,7 +14,7 @@ MEAN = 'mean'
 MEDIAN = 'median'
 
 
-class _Integrator(object):
+class _Integrator:
     """
     Base class that supports different kinds of pixel integration methods.
 

@@ -22,8 +22,7 @@ except ImportError:
 
 @remote_data
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestIsophote(object):
-
+class TestIsophote:
     def setup_class(self):
         path = get_path('isophote/M51.fits', location='photutils-datasets',
                         cache=True)
@@ -113,8 +112,7 @@ class TestIsophote(object):
         assert iso.niter == 50
 
 
-class TestIsophoteList(object):
-
+class TestIsophoteList:
     def setup_class(self):
         data = make_test_image(random_state=123)
         self.slen = 5

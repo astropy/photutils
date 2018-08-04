@@ -102,7 +102,7 @@ def test_aperture_pixel_positions():
     assert_allclose(pos3_pairs, ap3.positions)
 
 
-class BaseTestAperturePhotometry(object):
+class BaseTestAperturePhotometry:
 
     def test_scalar_error(self):
         # Scalar error
@@ -294,7 +294,7 @@ class TestMaskedSkipCircular(BaseTestAperturePhotometry):
         self.true_flux = self.area - 1
 
 
-class BaseTestDifferentData(object):
+class BaseTestDifferentData:
 
     def test_basic_circular_aperture_photometry(self):
         aperture = CircularAperture(self.position, self.radius)

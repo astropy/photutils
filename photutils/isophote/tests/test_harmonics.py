@@ -96,7 +96,7 @@ def test_harmonics_3():
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestFitEllipseSamples(object):
+class TestFitEllipseSamples:
     def setup_class(self):
         # major axis parallel to X image axis
         self.data1 = make_test_image(random_state=123)

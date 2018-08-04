@@ -21,7 +21,7 @@ except ImportError:
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestSegmentationImage(object):
+class TestSegmentationImage:
     def setup_class(self):
         self.data = [[1, 1, 0, 0, 4, 4],
                      [0, 0, 0, 0, 0, 4],

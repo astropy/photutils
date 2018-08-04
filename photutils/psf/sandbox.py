@@ -293,7 +293,7 @@ class DiscretePRF(Fittable2DModel):
         return cls(prf_model, subsampling=subsampling)
 
 
-class Reproject(object):
+class Reproject:
     """
     Class to reproject pixel coordinates between unrectified and
     rectified images.

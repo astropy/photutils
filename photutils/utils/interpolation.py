@@ -13,7 +13,7 @@ __all__ = ['ShepardIDWInterpolator', 'interpolate_masked_data',
 __doctest_requires__ = {('ShepardIDWInterpolator'): ['scipy']}
 
 
-class ShepardIDWInterpolator(object):
+class ShepardIDWInterpolator:
     """
     Class to perform Inverse Distance Weighted (IDW) interpolation.
 

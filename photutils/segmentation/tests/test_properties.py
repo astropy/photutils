@@ -46,7 +46,7 @@ BACKGRD_VALS = [None, 0., 1., 3.5]
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestSourceProperties(object):
+class TestSourceProperties:
     def test_segment_shape(self):
         with pytest.raises(ValueError):
             SourceProperties(IMAGE, np.zeros((2, 2)), label=1)
@@ -99,7 +99,7 @@ class TestSourceProperties(object):
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestSourcePropertiesFunctionInputs(object):
+class TestSourcePropertiesFunctionInputs:
     def test_segment_shape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
@@ -131,7 +131,7 @@ class TestSourcePropertiesFunctionInputs(object):
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestSourcePropertiesFunction(object):
+class TestSourcePropertiesFunction:
     def test_properties(self):
         props = source_properties(IMAGE, SEGM)
         assert props[0].id == 1
@@ -330,7 +330,7 @@ class TestSourcePropertiesFunction(object):
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestSourceCatalog(object):
+class TestSourceCatalog:
     def test_basic(self):
         segm = np.zeros(IMAGE.shape)
         x = y = np.arange(0, 100, 10)
@@ -413,7 +413,7 @@ class TestSourceCatalog(object):
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestPropertiesTable(object):
+class TestPropertiesTable:
     def test_properties_table(self):
         props = source_properties(IMAGE, SEGM)
         t = properties_table(props)

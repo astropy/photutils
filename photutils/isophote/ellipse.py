@@ -17,7 +17,7 @@ from .sample import EllipseSample, CentralEllipseSample
 __all__ = ['Ellipse']
 
 
-class Ellipse(object):
+class Ellipse:
     """
     Class to fit elliptical isophotes to a galaxy image.
 

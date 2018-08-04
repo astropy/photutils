@@ -15,7 +15,7 @@ __doctest_requires__ = {('SegmentationImage', 'SegmentationImage.*'):
                         ['scipy', 'skimage']}
 
 
-class Segment(object):
+class Segment:
     """
     Class for a single labeled region (segment) within a segmentation
     image.
@@ -120,7 +120,7 @@ class Segment(object):
             return data[self.slices]
 
 
-class SegmentationImage(object):
+class SegmentationImage:
     """
     Class for a segmentation image.
 

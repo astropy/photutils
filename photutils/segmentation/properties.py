@@ -26,7 +26,7 @@ __doctest_requires__ = {('SourceProperties', 'SourceProperties.*',
                         ['scipy', 'skimage']}
 
 
-class SourceProperties(object):
+class SourceProperties:
     """
     Class to calculate photometry and morphological properties of a
     single labeled source.
@@ -1234,7 +1234,7 @@ def source_properties(data, segment_img, error=None, mask=None,
     return SourceCatalog(sources_props, wcs=wcs)
 
 
-class SourceCatalog(object):
+class SourceCatalog:
     """
     Class to hold source catalogs.
     """

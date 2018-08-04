@@ -17,7 +17,7 @@ __all__ = ['EllipticalMaskMixin', 'EllipticalAperture', 'EllipticalAnnulus',
            'SkyEllipticalAperture', 'SkyEllipticalAnnulus']
 
 
-class EllipticalMaskMixin(object):
+class EllipticalMaskMixin:
     """
     Mixin class to create masks for elliptical and elliptical-annulus
     aperture objects.

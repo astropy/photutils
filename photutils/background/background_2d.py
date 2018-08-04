@@ -20,7 +20,7 @@ __all__ = ['BkgZoomInterpolator', 'BkgIDWInterpolator', 'Background2D']
 __doctest_requires__ = {('BkgZoomInterpolator', 'Background2D'): ['scipy']}
 
 
-class BkgZoomInterpolator(object):
+class BkgZoomInterpolator:
     """
     This class generates full-sized background and background RMS images
     from lower-resolution mesh images using the `~scipy.ndimage.zoom`
@@ -96,7 +96,7 @@ class BkgZoomInterpolator(object):
                         cval=self.cval)
 
 
-class BkgIDWInterpolator(object):
+class BkgIDWInterpolator:
     """
     This class generates full-sized background and background RMS images
     from lower-resolution mesh images using inverse-distance weighting
@@ -161,7 +161,7 @@ class BkgIDWInterpolator(object):
         return data.reshape(bkg2d_obj.data.shape)
 
 
-class Background2D(object):
+class Background2D:
     """
     Class to estimate a 2D background and background RMS noise in an
     image.

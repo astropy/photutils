@@ -14,7 +14,7 @@ from .harmonics import (fit_first_and_second_harmonics,
 __all__ = ['Isophote', 'IsophoteList']
 
 
-class Isophote(object):
+class Isophote:
     """
     Container class to store the results of single isophote fit.
 

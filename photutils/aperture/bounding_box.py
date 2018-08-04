@@ -7,7 +7,7 @@ from astropy.io.fits.util import _is_int
 __all__ = ['BoundingBox']
 
 
-class BoundingBox(object):
+class BoundingBox:
     """
     A rectangular bounding box in integer (not float) pixel indices.
 

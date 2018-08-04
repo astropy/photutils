@@ -26,7 +26,7 @@ from ..utils.misc import _ABCMetaAndInheritDocstrings
 __all__ = ['StarFinderBase', 'DAOStarFinder', 'IRAFStarFinder']
 
 
-class _StarFinderKernel(object):
+class _StarFinderKernel:
     """
     Class to calculate a 2D Gaussian density enhancement kernel.
 
@@ -155,7 +155,7 @@ class _StarFinderKernel(object):
         return
 
 
-class _StarCutout(object):
+class _StarCutout:
     """
     Class to hold a 2D image cutout of a single star for the star finder
     classes.
@@ -210,7 +210,7 @@ class _StarCutout(object):
         self.data_masked = self.data * self.mask
 
 
-class _DAOFind_Properties(object):
+class _DAOFind_Properties:
     """
     Class to calculate the properties of each detected star, as defined
     by `DAOFIND`_.
@@ -465,7 +465,7 @@ class _DAOFind_Properties(object):
             return -2.5 * np.log10(self.flux)
 
 
-class _IRAFStarFind_Properties(object):
+class _IRAFStarFind_Properties:
     """
     Class to calculate the properties of each detected star, as defined
     by IRAF's ``starfind`` task.

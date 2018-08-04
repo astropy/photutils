@@ -23,7 +23,7 @@ __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',
            'DAOPhotPSFPhotometry']
 
 
-class BasicPSFPhotometry(object):
+class BasicPSFPhotometry:
     """
     This class implements a PSF photometry algorithm that can find
     sources in an image, group overlapping sources into a single model,

@@ -27,7 +27,7 @@ except ImportError:
 
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.skipif('not HAS_SKIMAGE')
-class TestDeblendSources(object):
+class TestDeblendSources:
     def setup_class(self):
         g1 = models.Gaussian2D(100, 50, 50, 5, 5)
         g2 = models.Gaussian2D(100, 35, 50, 5, 5)

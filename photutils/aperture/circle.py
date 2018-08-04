@@ -15,7 +15,7 @@ __all__ = ['CircularMaskMixin', 'CircularAperture', 'CircularAnnulus',
            'SkyCircularAperture', 'SkyCircularAnnulus']
 
 
-class CircularMaskMixin(object):
+class CircularMaskMixin:
     """
     Mixin class to create masks for circular and circular-annulus
     aperture objects.

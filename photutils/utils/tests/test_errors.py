@@ -19,7 +19,7 @@ BACKGROUND = np.ones(SHAPE)
 WRONG_SHAPE = np.ones((2, 2))
 
 
-class TestCalculateTotalError(object):
+class TestCalculateTotalError:
     def test_error_shape(self):
         with pytest.raises(ValueError):
             calc_total_error(DATA, WRONG_SHAPE, EFFGAIN)

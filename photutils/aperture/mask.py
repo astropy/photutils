@@ -7,7 +7,7 @@ import astropy.units as u
 __all__ = ['ApertureMask']
 
 
-class ApertureMask(object):
+class ApertureMask:
     """
     Class for an aperture mask.
 

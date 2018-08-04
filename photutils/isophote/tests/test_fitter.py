@@ -161,7 +161,7 @@ def test_fitting_all():
 
 @remote_data
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestM51(object):
+class TestM51:
     def setup_class(self):
         path = get_path('isophote/M51.fits', location='photutils-datasets',
                         cache=True)
