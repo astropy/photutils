@@ -138,10 +138,6 @@ class SegmentationImage(object):
     def __getitem__(self, index):
         return self.segments[index]
 
-    # python 2 only
-    def __getslice__(self, i, j):
-        return self.__getitem__(slice(i, j))
-
     def __iter__(self):
         for i in self.segments:
             yield i

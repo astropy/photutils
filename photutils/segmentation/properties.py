@@ -1256,10 +1256,6 @@ class SourceCatalog(object):
     def __getitem__(self, index):
         return self._data[index]
 
-    # python 2 only
-    def __getslice__(self, i, j):
-        return self.__getitem__(slice(i, j))
-
     def __delitem__(self, index):
         del self._data[index]
 
