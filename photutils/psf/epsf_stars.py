@@ -4,8 +4,6 @@ Tools to extract cutouts of stars and data structures to hold the
 cutouts for fitting and building ePSFs.
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 import warnings
 
 import numpy as np
@@ -23,7 +21,7 @@ from ..aperture import BoundingBox
 __all__ = ['Star', 'Stars', 'LinkedStar', 'extract_stars']
 
 
-class Star(object):
+class Star:
     """
     A class to hold a 2D cutout image and associated metadata of a star.
 
@@ -309,7 +307,7 @@ class Star(object):
         return self.weights[~self.mask].ravel()
 
 
-class Stars(object):
+class Stars:
     """
     Class to hold a list of `Star` and/or `LinkedStar` objects.
 
@@ -334,10 +332,6 @@ class Stars(object):
 
     def __getitem__(self, index):
         return self._data[index]
-
-    # needed for python 2
-    def __getslice__(self, i, j):
-        return self.__getitem__(slice(i, j))
 
     def __delitem__(self, index):
         del self._data[index]
@@ -503,7 +497,7 @@ class LinkedStar(Stars):
                 return ValueError('Each Star object must have a valid '
                                   'wcs_large attribute.')
 
-        super(LinkedStar, self).__init__(stars_list)
+        super().__init__(stars_list)
 
     def constrain_centers(self):
         """

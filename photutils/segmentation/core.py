@@ -1,6 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
 from copy import deepcopy
 
 import numpy as np
@@ -16,7 +15,7 @@ __doctest_requires__ = {('SegmentationImage', 'SegmentationImage.*'):
                         ['scipy', 'skimage']}
 
 
-class Segment(object):
+class Segment:
     """
     Class for a single labeled region (segment) within a segmentation
     image.
@@ -121,7 +120,7 @@ class Segment(object):
             return data[self.slices]
 
 
-class SegmentationImage(object):
+class SegmentationImage:
     """
     Class for a segmentation image.
 
@@ -138,10 +137,6 @@ class SegmentationImage(object):
 
     def __getitem__(self, index):
         return self.segments[index]
-
-    # python 2 only
-    def __getslice__(self, i, j):
-        return self.__getitem__(slice(i, j))
 
     def __iter__(self):
         for i in self.segments:

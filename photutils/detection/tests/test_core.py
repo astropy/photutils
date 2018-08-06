@@ -1,6 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
@@ -24,7 +22,7 @@ PEAKREF1 = np.array([[0, 0], [2, 2]])
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestDetectThreshold(object):
+class TestDetectThreshold:
     def test_snr(self):
         """Test basic snr."""
 
@@ -115,7 +113,7 @@ class TestDetectThreshold(object):
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestFindPeaks(object):
+class TestFindPeaks:
     def test_box_size(self):
         """Test with box_size."""
 

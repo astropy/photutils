@@ -1,6 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
 import warnings
 
 import numpy as np
@@ -14,7 +13,7 @@ __all__ = ['ShepardIDWInterpolator', 'interpolate_masked_data',
 __doctest_requires__ = {('ShepardIDWInterpolator'): ['scipy']}
 
 
-class ShepardIDWInterpolator(object):
+class ShepardIDWInterpolator:
     """
     Class to perform Inverse Distance Weighted (IDW) interpolation.
 

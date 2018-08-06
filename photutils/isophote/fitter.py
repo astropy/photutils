@@ -1,6 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
 from astropy import log
 import math
@@ -27,7 +25,7 @@ DEFAULT_FFLAG = 0.7
 DEFAULT_MAXGERR = 0.5
 
 
-class EllipseFitter(object):
+class EllipseFitter:
     """
     Class to fit ellipses.
 
@@ -268,7 +266,7 @@ class EllipseFitter(object):
         return proceed, lexceed
 
 
-class _ParameterCorrector(object):
+class _ParameterCorrector:
 
     def correct(self, sample, harmonic):
         raise NotImplementedError

@@ -7,29 +7,26 @@ class should define a method called ``find_stars`` that finds stars in
 an image.
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-import warnings
-import math
 import abc
+import math
+import warnings
 
-import six
 import numpy as np
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils import lazyproperty
-from astropy.utils.misc import InheritDocstrings
 
 from .core import find_peaks
-from ..utils.convolution import filter_data
 from ..utils._moments import _moments, _moments_central
+from ..utils.convolution import filter_data
+from ..utils.misc import _ABCMetaAndInheritDocstrings
 
 
 __all__ = ['StarFinderBase', 'DAOStarFinder', 'IRAFStarFinder']
 
 
-class _StarFinderKernel(object):
+class _StarFinderKernel:
     """
     Class to calculate a 2D Gaussian density enhancement kernel.
 
@@ -158,7 +155,7 @@ class _StarFinderKernel(object):
         return
 
 
-class _StarCutout(object):
+class _StarCutout:
     """
     Class to hold a 2D image cutout of a single star for the star finder
     classes.
@@ -213,7 +210,7 @@ class _StarCutout(object):
         self.data_masked = self.data * self.mask
 
 
-class _DAOFind_Properties(object):
+class _DAOFind_Properties:
     """
     Class to calculate the properties of each detected star, as defined
     by `DAOFIND`_.
@@ -468,7 +465,7 @@ class _DAOFind_Properties(object):
             return -2.5 * np.log10(self.flux)
 
 
-class _IRAFStarFind_Properties(object):
+class _IRAFStarFind_Properties:
     """
     Class to calculate the properties of each detected star, as defined
     by IRAF's ``starfind`` task.
@@ -695,12 +692,7 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
     return star_cutouts
 
 
-class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
-    pass
-
-
-@six.add_metaclass(_ABCMetaAndInheritDocstrings)
-class StarFinderBase(object):
+class StarFinderBase(metaclass=_ABCMetaAndInheritDocstrings):
     """
     Abstract base class for star finders.
     """
@@ -710,7 +702,21 @@ class StarFinderBase(object):
 
     @abc.abstractmethod
     def find_stars(self, data):
-        raise NotImplementedError
+        """
+        Find stars in an astronomical image.
+
+        Parameters
+        ----------
+        data : array_like
+            The 2D image array.
+
+        Returns
+        -------
+        table : `~astropy.table.Table`
+            A table of found stars.
+        """
+
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
 class DAOStarFinder(StarFinderBase):

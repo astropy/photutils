@@ -4,9 +4,6 @@ Functions for measuring morphological properties of objects in an
 astronomical image using image moments.
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
 import numpy as np
 
 

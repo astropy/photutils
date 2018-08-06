@@ -1,6 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
 from collections import OrderedDict
 
 import numpy as np
@@ -15,7 +14,7 @@ from .harmonics import (fit_first_and_second_harmonics,
 __all__ = ['Isophote', 'IsophoteList']
 
 
-class Isophote(object):
+class Isophote:
     """
     Container class to store the results of single isophote fit.
 
@@ -141,8 +140,7 @@ class Isophote(object):
          self.b4_err) = self._compute_deviations(sample, 4)
 
     # This method is useful for sorting lists of instances. Note
-    # that __lt__ is the python3 way of supporting sorting. This might
-    # not work under python2.
+    # that __lt__ is the python3 way of supporting sorting.
     def __lt__(self, other):
         if hasattr(other, 'sma'):
             return self.sma < other.sma
@@ -442,11 +440,6 @@ class IsophoteList(Isophote, list):
         if isinstance(index, slice):
             return IsophoteList(self._list[index])
         return self._list.__getitem__(index)
-
-    # need to override this method for py2.7 in derived list classes
-    # even though it has been deprecated since py2.0
-    def __getslice__(self, i, j):
-        return self.__getitem__(slice(i, j))
 
     def __iter__(self):
         return self._list.__iter__()

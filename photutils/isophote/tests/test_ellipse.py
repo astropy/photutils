@@ -1,6 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
 import numpy as np
 import pytest
@@ -36,8 +34,7 @@ OFFSET_GALAXY = make_test_image(x0=POS, y0=POS, pa=PA, noise=1.e-12,
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestEllipse(object):
-
+class TestEllipse:
     def setup_class(self):
         # centered, tilted galaxy.
         self.data = make_test_image(pa=PA, random_state=123)
@@ -131,8 +128,7 @@ class TestEllipse(object):
 
 @remote_data
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestEllipseOnRealData(object):
-
+class TestEllipseOnRealData:
     def test_basic(self):
         path = get_path('isophote/M105-S001-RGB.fits',
                         location='photutils-datasets', cache=True)

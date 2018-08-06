@@ -6,15 +6,13 @@ These classes were designed as part of an object-oriented interface for
 the tools in the PSF subpackage.
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 import abc
 
-import six
 import numpy as np
 from astropy.stats import (SigmaClip, biweight_location, biweight_scale,
                            mad_std)
-from astropy.utils.misc import InheritDocstrings
+
+from ..utils.misc import _ABCMetaAndInheritDocstrings
 
 
 __all__ = ['BackgroundBase', 'BackgroundRMSBase', 'MeanBackground',
@@ -57,12 +55,7 @@ def _masked_median(data, axis=None):
     return _median
 
 
-class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
-    pass
-
-
-@six.add_metaclass(_ABCMetaAndInheritDocstrings)
-class BackgroundBase(object):
+class BackgroundBase(metaclass=_ABCMetaAndInheritDocstrings):
     """
     Base class for classes that estimate scalar background values.
 
@@ -102,9 +95,10 @@ class BackgroundBase(object):
             `~numpy.ma.MaskedArray` will be returned.
         """
 
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
-@six.add_metaclass(_ABCMetaAndInheritDocstrings)
-class BackgroundRMSBase(object):
+
+class BackgroundRMSBase(metaclass=_ABCMetaAndInheritDocstrings):
     """
     Base class for classes that estimate scalar background RMS values.
 
@@ -143,6 +137,8 @@ class BackgroundRMSBase(object):
             then a scalar will be returned, otherwise a
             `~numpy.ma.MaskedArray` will be returned.
         """
+
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
 class MeanBackground(BackgroundBase):
@@ -273,7 +269,7 @@ class ModeEstimatorBackground(BackgroundBase):
     """
 
     def __init__(self, median_factor=3., mean_factor=2., **kwargs):
-        super(ModeEstimatorBackground, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.median_factor = median_factor
         self.mean_factor = mean_factor
 
@@ -327,7 +323,7 @@ class MMMBackground(ModeEstimatorBackground):
     def __init__(self, **kwargs):
         kwargs['median_factor'] = 3.
         kwargs['mean_factor'] = 2.
-        super(MMMBackground, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
 
 class SExtractorBackground(BackgroundBase):
@@ -440,7 +436,7 @@ class BiweightLocationBackground(BackgroundBase):
     """
 
     def __init__(self, c=6, M=None, **kwargs):
-        super(BiweightLocationBackground, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.c = c
         self.M = M
 
@@ -591,7 +587,7 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
     """
 
     def __init__(self, c=9.0, M=None, **kwargs):
-        super(BiweightScaleBackgroundRMS, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.c = c
         self.M = M
 

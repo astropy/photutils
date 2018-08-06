@@ -1,6 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
 import numpy as np
 from numpy.testing import assert_allclose
@@ -163,7 +161,7 @@ def test_fitting_all():
 
 @remote_data
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestM51(object):
+class TestM51:
     def setup_class(self):
         path = get_path('isophote/M51.fits', location='photutils-datasets',
                         cache=True)

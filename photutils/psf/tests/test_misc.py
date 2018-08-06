@@ -4,7 +4,6 @@ Miscellaneous tests for psf functionality that doesn't have another obvious
 place to go
 """
 
-from __future__ import division
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest

@@ -1,10 +1,8 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
 import warnings
 
 import numpy as np
-import six
 
 from astropy.utils import isiterable
 from astropy.utils.decorators import deprecated_renamed_argument
@@ -224,7 +222,7 @@ class SigmaClip:
         return '\n'.join(lines)
 
     def _parse_cenfunc(self, cenfunc):
-        if isinstance(cenfunc, six.string_types):
+        if isinstance(cenfunc, str):
             if cenfunc == 'median':
                 if HAS_BOTTLENECK:
                     cenfunc = _nanmedian
@@ -243,7 +241,7 @@ class SigmaClip:
         return cenfunc
 
     def _parse_stdfunc(self, stdfunc):
-        if isinstance(stdfunc, six.string_types):
+        if isinstance(stdfunc, str):
             if stdfunc != 'std':
                 raise ValueError('{} is an invalid stdfunc.'.format(stdfunc))
 

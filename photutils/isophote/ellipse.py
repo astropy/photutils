@@ -1,6 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
 import warnings
 
 import numpy as np
@@ -18,7 +17,7 @@ from .sample import EllipseSample, CentralEllipseSample
 __all__ = ['Ellipse']
 
 
-class Ellipse(object):
+class Ellipse:
     """
     Class to fit elliptical isophotes to a galaxy image.
 

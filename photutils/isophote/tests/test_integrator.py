@@ -1,6 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
 import numpy as np
 import numpy.ma as ma
@@ -15,8 +13,7 @@ from ...datasets import get_path
 
 
 @remote_data
-class TestData(object):
-
+class TestData:
     def setup_class(self):
         path = get_path('isophote/synth_highsnr.fits',
                         location='photutils-datasets', cache=True)
@@ -41,7 +38,6 @@ class TestData(object):
 
 @remote_data
 class TestUnmasked(TestData):
-
     def test_bilinear(self):
         s, sample = self.make_sample()
 
@@ -132,7 +128,6 @@ class TestUnmasked(TestData):
 
 @remote_data
 class TestMasked(TestData):
-
     def test_bilinear(self):
         s, sample = self.make_sample(masked=True, integrmode=BILINEAR)
 

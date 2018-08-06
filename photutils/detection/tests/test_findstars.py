@@ -1,6 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
 import os.path as op
 import itertools
 import warnings
@@ -29,7 +28,7 @@ warnings.simplefilter('always', AstropyUserWarning)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestDAOStarFinder(object):
+class TestDAOStarFinder:
     @pytest.mark.parametrize(('threshold', 'fwhm'),
                              list(itertools.product(THRESHOLDS, FWHMS)))
     def test_daofind(self, threshold, fwhm):
@@ -96,7 +95,7 @@ class TestDAOStarFinder(object):
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestIRAFStarFinder(object):
+class TestIRAFStarFinder:
     @pytest.mark.parametrize(('threshold', 'fwhm'),
                              list(itertools.product(THRESHOLDS, FWHMS)))
     def test_irafstarfind(self, threshold, fwhm):

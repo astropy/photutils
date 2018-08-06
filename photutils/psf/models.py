@@ -3,7 +3,6 @@
 Models for doing PSF/PRF fitting photometry on image data.
 """
 
-from __future__ import division
 import warnings
 import copy
 
@@ -151,7 +150,7 @@ class FittableImageModel(Fittable2DModel):
 
         self._compute_normalization(normalize)
 
-        super(FittableImageModel, self).__init__(flux, x_0, y_0)
+        super().__init__(flux, x_0, y_0)
 
         # initialize interpolator:
         self.compute_interpolator(ikwargs)
@@ -521,7 +520,7 @@ class EPSFModel(FittableImageModel):
         if pixel_scale is None:
             pixel_scale = 1. / oversampling
 
-        super(EPSFModel, self).__init__(
+        super().__init__(
             data=data, flux=flux, x_0=x_0, y_0=y_0, normalize=normalize,
             normalization_correction=normalization_correction, origin=origin,
             oversampling=oversampling, fill_value=fill_value, ikwargs=ikwargs)
@@ -620,9 +619,8 @@ class IntegratedGaussianPRF(Fittable2DModel):
             from scipy.special import erf
             self.__class__._erf = erf
 
-        super(IntegratedGaussianPRF, self).__init__(n_models=1, sigma=sigma,
-                                                    x_0=x_0, y_0=y_0,
-                                                    flux=flux, **kwargs)
+        super().__init__(n_models=1, sigma=sigma, x_0=x_0, y_0=y_0, flux=flux,
+                         **kwargs)
 
     def evaluate(self, x, y, flux, x_0, y_0, sigma):
         """Model function Gaussian PSF model."""
@@ -698,8 +696,7 @@ class PRFAdapter(Fittable2DModel):
         # used in the future to expose how the integration happens
         self._dblquadkwargs = {}
 
-        super(PRFAdapter, self).__init__(n_models=1, x_0=x_0, y_0=y_0,
-                                         flux=flux, **kwargs)
+        super().__init__(n_models=1, x_0=x_0, y_0=y_0, flux=flux, **kwargs)
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """The evaluation function for PRFAdapter."""

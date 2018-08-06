@@ -4,8 +4,6 @@ Tools to build and fit an effective PSF (ePSF) based on Anderson and
 King (2000; PASP 112, 1360).
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 import copy
 import sys
 import time
@@ -32,15 +30,15 @@ except ImportError:
 __all__ = ['EPSFFitter', 'EPSFBuilder']
 
 
-class EPSFFitter(object):
+class EPSFFitter:
     """
     Class to fit an ePSF model to one or more stars.
 
     Parameters
     ----------
     fitter : `astropy.modeling.fitting.Fitter`, optional
-        A :py:class:`~astropy.modeling.fitting.Fitter` object.  The
-        default is `~astropy.modeling.fitting.LevMarLSQFitter`.
+        A `~astropy.modeling.fitting.Fitter` object.  The default is
+        `~astropy.modeling.fitting.LevMarLSQFitter`.
 
     fit_boxsize : int, tuple of int, or `None`, optional
         The size (in pixels) of the box centered on the star to be used
@@ -247,7 +245,7 @@ class EPSFFitter(object):
         return star
 
 
-class EPSFBuilder(object):
+class EPSFBuilder:
     """
     Class to build an effective PSF (ePSF).
 
@@ -845,8 +843,7 @@ class EPSFBuilder(object):
             t_start = time.time()
             iter_num += 1
 
-            # python 3 only
-            if self.progress_bar and sys.version_info[2] >= 3:
+            if self.progress_bar:
                 if iter_num == 1:
                     dt_str = ' [? s/iter]'
                 else:

@@ -1,6 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
 import itertools
 
 import numpy as np
@@ -35,7 +34,7 @@ INTERPOLATORS = [BkgZoomInterpolator(), BkgIDWInterpolator()]
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestBackground2D(object):
+class TestBackground2D:
     @pytest.mark.parametrize(('filter_size', 'interpolator'),
                              list(itertools.product(FILTER_SIZES,
                                                     INTERPOLATORS)))

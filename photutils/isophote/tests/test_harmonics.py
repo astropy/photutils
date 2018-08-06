@@ -1,6 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
 import numpy as np
 from numpy.testing import assert_allclose
@@ -98,7 +96,7 @@ def test_harmonics_3():
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestFitEllipseSamples(object):
+class TestFitEllipseSamples:
     def setup_class(self):
         # major axis parallel to X image axis
         self.data1 = make_test_image(random_state=123)

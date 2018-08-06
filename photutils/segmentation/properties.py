@@ -1,6 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
 import warnings
 
 import numpy as np
@@ -27,7 +26,7 @@ __doctest_requires__ = {('SourceProperties', 'SourceProperties.*',
                         ['scipy', 'skimage']}
 
 
-class SourceProperties(object):
+class SourceProperties:
     """
     Class to calculate photometry and morphological properties of a
     single labeled source.
@@ -1235,7 +1234,7 @@ def source_properties(data, segment_img, error=None, mask=None,
     return SourceCatalog(sources_props, wcs=wcs)
 
 
-class SourceCatalog(object):
+class SourceCatalog:
     """
     Class to hold source catalogs.
     """
@@ -1256,10 +1255,6 @@ class SourceCatalog(object):
 
     def __getitem__(self, index):
         return self._data[index]
-
-    # python 2 only
-    def __getslice__(self, i, j):
-        return self.__getitem__(slice(i, j))
 
     def __delitem__(self, index):
         del self._data[index]

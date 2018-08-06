@@ -1,6 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
 import numpy as np
 from numpy.testing import assert_allclose
@@ -20,7 +18,7 @@ DATA[1, 0:2] = 1.
 DATA[1, 1] = 2.
 
 
-class TestCutoutFootprint(object):
+class TestCutoutFootprint:
     def test_dataonly(self):
         data = np.ones((5, 5))
         position = (2, 2)

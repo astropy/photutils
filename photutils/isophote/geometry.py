@@ -1,6 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
 import math
 import numpy as np
@@ -61,7 +59,7 @@ def _area(sma, eps, phi, r):
     return abs(sma**2 * (1.-eps) / 2. * math.acos(aux))
 
 
-class EllipseGeometry(object):
+class EllipseGeometry:
     """
     Container class to store parameters for the geometry of an ellipse.
 

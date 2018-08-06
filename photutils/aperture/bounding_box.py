@@ -1,6 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
 import numpy as np
 from astropy.io.fits.util import _is_int
@@ -9,7 +7,7 @@ from astropy.io.fits.util import _is_int
 __all__ = ['BoundingBox']
 
 
-class BoundingBox(object):
+class BoundingBox:
     """
     A rectangular bounding box in integer (not float) pixel indices.
 

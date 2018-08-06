@@ -1,6 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
 import math
 
 import numpy as np
@@ -18,7 +17,7 @@ __all__ = ['EllipticalMaskMixin', 'EllipticalAperture', 'EllipticalAnnulus',
            'SkyEllipticalAperture', 'SkyEllipticalAnnulus']
 
 
-class EllipticalMaskMixin(object):
+class EllipticalMaskMixin:
     """
     Mixin class to create masks for elliptical and elliptical-annulus
     aperture objects.
