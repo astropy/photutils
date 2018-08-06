@@ -497,7 +497,7 @@ class LinkedStar(Stars):
                 return ValueError('Each Star object must have a valid '
                                   'wcs_large attribute.')
 
-        super(LinkedStar, self).__init__(stars_list)
+        super().__init__(stars_list)
 
     def constrain_centers(self):
         """

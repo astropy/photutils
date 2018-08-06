@@ -352,7 +352,7 @@ def test_aperture_radius():
         fwhm = Parameter(default=5)
 
         def __init__(self, fwhm=fwhm.default):
-            super(PSFModelWithFWHM, self).__init__(fwhm=fwhm)
+            super().__init__(fwhm=fwhm)
 
         def evaluate(self, x, y, x_0, y_0, flux, fwhm):
             return flux / (fwhm * (x - x_0)**2 * (y - y_0)**2)

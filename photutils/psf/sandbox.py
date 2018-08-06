@@ -91,8 +91,8 @@ class DiscretePRF(Fittable2DModel):
         x_0 = 0
         y_0 = 0
         flux = 1
-        super(DiscretePRF, self).__init__(n_models=1, x_0=x_0, y_0=y_0,
-                                          flux=flux, **constraints)
+        super().__init__(n_models=1, x_0=x_0, y_0=y_0, flux=flux,
+                         **constraints)
         self.fitter = LevMarLSQFitter()
 
     @property

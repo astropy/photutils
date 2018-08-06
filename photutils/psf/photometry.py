@@ -563,9 +563,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                  finder, fitter=LevMarLSQFitter(), niters=3,
                  aperture_radius=None):
 
-        super(IterativelySubtractedPSFPhotometry, self).__init__(
-            group_maker, bkg_estimator, psf_model, fitshape, finder, fitter,
-            aperture_radius)
+        super().__init__(group_maker, bkg_estimator, psf_model, fitshape,
+                         finder, fitter, aperture_radius)
         self.niters = niters
 
     @property
@@ -644,8 +643,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         """
 
         if init_guesses is not None:
-            table = super(IterativelySubtractedPSFPhotometry,
-                          self).do_photometry(image, init_guesses)
+            table = super().do_photometry(image, init_guesses)
             table['iter_detected'] = np.ones(table['x_fit'].shape,
                                              dtype=np.int32)
 
@@ -724,9 +722,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                                      np.ones(len(sources)))))
 
             star_groups = self.group_maker(init_guess_tab)
-            table, self._residual_image = super(
-                IterativelySubtractedPSFPhotometry, self).nstar(
-                    self._residual_image, star_groups)
+            table, self._residual_image = super().nstar(
+                self._residual_image, star_groups)
 
             star_groups = star_groups.group_by('group_id')
             table = hstack([star_groups, table])
@@ -878,7 +875,7 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
                                sharplo=self.sharplo, sharphi=self.sharphi,
                                roundlo=self.roundlo, roundhi=self.roundhi)
 
-        super(DAOPhotPSFPhotometry, self).__init__(
-            group_maker=group_maker, bkg_estimator=bkg_estimator,
-            psf_model=psf_model, fitshape=fitshape, finder=finder,
-            fitter=fitter, niters=niters, aperture_radius=aperture_radius)
+        super().__init__(group_maker=group_maker, bkg_estimator=bkg_estimator,
+                         psf_model=psf_model, fitshape=fitshape,
+                         finder=finder, fitter=fitter, niters=niters,
+                         aperture_radius=aperture_radius)

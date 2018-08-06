@@ -208,8 +208,7 @@ class _BiLinearIntegrator(_Integrator):
 class _AreaIntegrator(_Integrator):
 
     def __init__(self, image, geometry, angles, radii, intensities):
-        super(_AreaIntegrator, self).__init__(image, geometry, angles, radii,
-                                              intensities)
+        super().__init__(image, geometry, angles, radii, intensities)
 
         # build auxiliary bilinear integrator to be used when
         # sector areas contain a too small number of valid pixels.

@@ -269,7 +269,7 @@ class ModeEstimatorBackground(BackgroundBase):
     """
 
     def __init__(self, median_factor=3., mean_factor=2., **kwargs):
-        super(ModeEstimatorBackground, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.median_factor = median_factor
         self.mean_factor = mean_factor
 
@@ -323,7 +323,7 @@ class MMMBackground(ModeEstimatorBackground):
     def __init__(self, **kwargs):
         kwargs['median_factor'] = 3.
         kwargs['mean_factor'] = 2.
-        super(MMMBackground, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
 
 class SExtractorBackground(BackgroundBase):
@@ -436,7 +436,7 @@ class BiweightLocationBackground(BackgroundBase):
     """
 
     def __init__(self, c=6, M=None, **kwargs):
-        super(BiweightLocationBackground, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.c = c
         self.M = M
 
@@ -587,7 +587,7 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
     """
 
     def __init__(self, c=9.0, M=None, **kwargs):
-        super(BiweightScaleBackgroundRMS, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.c = c
         self.M = M
 
