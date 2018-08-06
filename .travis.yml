@@ -77,14 +77,12 @@ matrix:
         - env: SETUP_CMD='test --coverage --remote-data=astropy -a "--durations=50"'
 
         # Check for Sphinx doc build warnings
-        - stage: Comprehensive tests
-          env: SETUP_CMD='build_docs -w'
+        - env: SETUP_CMD='build_docs -w'
                PIP_DEPENDENCIES='sphinx-astropy'
                EVENT_TYPE='push pull_request cron'
 
         # Test with optional dependencies disabled
-        - stage: Comprehensive tests
-          env: CONDA_DEPENDENCIES=$CONDA_REQUIRED_DEPENDENCIES
+        - env: CONDA_DEPENDENCIES=$CONDA_REQUIRED_DEPENDENCIES
 
         # Test with Astropy dev version and the latest Python
         - stage: Comprehensive tests
