@@ -11,6 +11,7 @@ environment:
                         # of 32 bit and 64 bit builds are needed, move this
                         # to the matrix section.
       CONDA_DEPENDENCIES: "Cython scipy jinja2 scikit-image matplotlib six"
+      PIP_DEPENDENCIES: "pytest>3.1<3.7"
 
 
   matrix:
@@ -30,6 +31,7 @@ install:
     - "powershell ci-helpers/appveyor/install-miniconda.ps1"
     - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
     - "activate test"
+    - 'conda install -n test "pytest<3.7"'
 
 # Not a .NET project, we build the package in the install step instead
 build: false
