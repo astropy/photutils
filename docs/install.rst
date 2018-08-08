@@ -7,7 +7,7 @@ Requirements
 
 Photutils has the following strict requirements:
 
-* `Python <http://www.python.org/>`_ 2.7, 3.4, 3.5 or 3.6
+* `Python <http://www.python.org/>`_ 2.7, 3.4 or later
 
 * `Numpy <http://www.numpy.org/>`_ 1.9 or later
 
@@ -28,11 +28,11 @@ optional dependencies are installed:
 
 .. warning::
 
-    While Photutils will import even if these dependencies are not
-    installed, the functionality will be severely limited.  It is very
-    strongly recommended that you install `Scipy`_ and `scikit-image`_
-    to use Photutils.  Both are easily installed via `conda`_ or
-    `pip`_.
+    While Photutils will import even if these optional dependencies
+    are not installed, the functionality will be severely limited.  It
+    is very strongly recommended that you install `Scipy`_ and
+    `scikit-image`_ to use Photutils.  Both are easily installed via
+    `conda`_ or `pip`_.
 
 
 Installing the latest released version
@@ -54,14 +54,11 @@ channel <https://anaconda.org/astropy>`_::
 Using pip
 ---------
 
-To install using `pip`_, simply run::
+Before you can install Photutils using `pip`_, you will need to
+install a C compiler (e.g. ``gcc`` or ``clang``).  After you have
+installed a C compiler, simply run::
 
     pip install --no-deps photutils
-
-.. note::
-
-    You will need a C compiler (e.g. ``gcc`` or ``clang``) to be
-    installed for the installation to succeed.
 
 .. note::
 
