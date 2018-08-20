@@ -195,8 +195,9 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     subpixel : bool, optional
         .. warning::
 
-            Note the ``subpixel`` keyword is now deprecated.  To get the
-            same centroid values, use the ``centroid_func`` keyword with the
+            Note the ``subpixel`` keyword is now deprecated (since
+            v0.5).  To get the same centroid values, use the
+            ``centroid_func`` keyword with the
             `~photutils.centroids.centroid_2dg` function.
 
             If `True`, then a cutout of the specified ``box_size`` or
@@ -209,7 +210,7 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
         ``error`` is used only with the ``centroid_func`` keyword or
-        when ``subpixel=True`` (deprecated).
+        when ``subpixel=True`` (deprecated since v0.5).
 
     wcs : `~astropy.wcs.WCS`
         The WCS transformation to use to convert from pixel to sky
