@@ -54,4 +54,5 @@ distribute-*.tar.gz
 .DS_Store
 
 # Pytest
-v/
+.pytest_cache
+v
