@@ -222,19 +222,19 @@ class TestFindPeaks:
         wcs = make_wcs(data.shape)
 
         tbl = find_peaks(data, 100000)
-        assert len(tbl) == 0
+        assert tbl == Table()
 
         tbl = find_peaks(data, 100000, centroid_func=centroid_com)
-        assert len(tbl) == 0
+        assert tbl == Table()
 
         tbl = find_peaks(data, 100000, subpixel=True)
-        assert len(tbl) == 0
+        assert tbl == Table()
 
         tbl = find_peaks(data, 100000, wcs=wcs)
-        assert len(tbl) == 0
+        assert tbl == Table()
 
         tbl = find_peaks(data, 100000, wcs=wcs, centroid_func=centroid_com)
-        assert len(tbl) == 0
+        assert tbl == Table()
 
         tbl = find_peaks(data, 100000, wcs=wcs, subpixel=True)
-        assert len(tbl) == 0
+        assert tbl == Table()
