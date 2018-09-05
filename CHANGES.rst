@@ -1,7 +1,14 @@
 0.6 (unreleased)
 ----------------
 
-- No changes yet
+API changes
+^^^^^^^^^^^
+
+- ``photutils.detection``
+
+  - The ``find_peaks`` function now returns an empty
+    ``astropy.table.Table`` instead of an empty list if the input data
+    is an array of constant values.  [#709]
 
 
 0.5 (2018-08-06)
