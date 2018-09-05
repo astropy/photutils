@@ -4,6 +4,8 @@ import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 import pytest
 
+from astropy.table import Table
+
 from ..core import detect_threshold, find_peaks
 from ...centroids import centroid_com
 from ...datasets import make_4gaussians_image, make_wcs
@@ -206,6 +208,13 @@ class TestFindPeaks:
         for col in cols:
             assert col in tbl.colnames
 
+    def test_constant_array(self):
+        """Test for empty output table when data is constant."""
+
+        data = np.ones((10, 10))
+        tbl = find_peaks(data, 0.)
+        assert tbl == Table()
+
     def test_no_peaks(self):
         """Test for empty output table when no peaks are found."""
 
@@ -213,19 +222,19 @@ class TestFindPeaks:
         wcs = make_wcs(data.shape)
 
         tbl = find_peaks(data, 100000)
-        assert len(tbl) == 0
+        assert tbl == Table()
 
         tbl = find_peaks(data, 100000, centroid_func=centroid_com)
-        assert len(tbl) == 0
+        assert tbl == Table()
 
         tbl = find_peaks(data, 100000, subpixel=True)
-        assert len(tbl) == 0
+        assert tbl == Table()
 
         tbl = find_peaks(data, 100000, wcs=wcs)
-        assert len(tbl) == 0
+        assert tbl == Table()
 
         tbl = find_peaks(data, 100000, wcs=wcs, centroid_func=centroid_com)
-        assert len(tbl) == 0
+        assert tbl == Table()
 
         tbl = find_peaks(data, 100000, wcs=wcs, subpixel=True)
-        assert len(tbl) == 0
+        assert tbl == Table()
