@@ -223,13 +223,16 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         their values.  If ``centroid_func`` is input, then the table
         will also contain the centroid position.  If ``subpixel=True``
         (deprecated), then the table will also contain the local
-        centroid and fitted peak value.
+        centroid and fitted peak value.  If no peaks are found then an
+        empty table is returned.
     """
 
     from scipy import ndimage
 
     if np.all(data == data.flat[0]):
-        return []
+        warnings.warn('Input data is constant. No local peaks can be found.',
+                      AstropyUserWarning)
+        return Table()  # empty table
 
     if footprint is not None:
         data_max = ndimage.maximum_filter(data, footprint=footprint,
