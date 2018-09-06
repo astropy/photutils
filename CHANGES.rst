@@ -8,7 +8,10 @@ API changes
 
   - The ``find_peaks`` function now returns an empty
     ``astropy.table.Table`` instead of an empty list if the input data
-    is an array of constant values.  [#709]
+    is an array of constant values. [#709]
+
+  - The ``find_peaks`` function will no longer issue a RuntimeWarning
+    if the input data contains NaNs. [#712]
 
 
 0.5 (2018-08-06)
