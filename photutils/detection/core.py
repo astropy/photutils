@@ -228,19 +228,25 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         empty table is returned.
     """
 
-    from scipy import ndimage
+    from scipy.ndimage import maximum_filter
 
     if np.all(data == data.flat[0]):
         warnings.warn('Input data is constant. No local peaks can be found.',
                       AstropyUserWarning)
         return Table()  # empty table
 
+    # remove NaN values to avoid runtime warnings
+    nan_mask = np.isnan(data)
+    if np.any(nan_mask):
+        data = np.copy(data)  # ndarray
+        data[nan_mask] = np.nanmin(data)
+
     if footprint is not None:
-        data_max = ndimage.maximum_filter(data, footprint=footprint,
-                                          mode='constant', cval=0.0)
+        data_max = maximum_filter(data, footprint=footprint, mode='constant',
+                                  cval=0.0)
     else:
-        data_max = ndimage.maximum_filter(data, size=box_size,
-                                          mode='constant', cval=0.0)
+        data_max = maximum_filter(data, size=box_size, mode='constant',
+                                  cval=0.0)
 
     peak_goodmask = (data == data_max)    # good pixels are True
 
