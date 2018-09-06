@@ -8,7 +8,6 @@ from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import overlap_slices
 from astropy.stats import gaussian_sigma_to_fwhm, SigmaClip
 from astropy.table import Table, Column, vstack, hstack
-from astropy.utils import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
 from . import DAOGroup
@@ -179,7 +178,6 @@ class BasicPSFPhotometry:
 
         return self._residual_image
 
-    @deprecated_renamed_argument('positions', 'init_guesses', '0.4')
     def __call__(self, image, init_guesses=None):
         """
         Performs PSF photometry. See `do_photometry` for more details
@@ -188,7 +186,6 @@ class BasicPSFPhotometry:
 
         return self.do_photometry(image, init_guesses)
 
-    @deprecated_renamed_argument('positions', 'init_guesses', '0.4')
     def do_photometry(self, image, init_guesses=None):
         """
         Perform PSF photometry in ``image``.
@@ -599,7 +596,6 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         else:
             self._finder = value
 
-    @deprecated_renamed_argument('positions', 'init_guesses', '0.4')
     def do_photometry(self, image, init_guesses=None):
         """
         Perform PSF photometry in ``image``.
