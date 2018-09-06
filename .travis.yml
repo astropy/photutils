@@ -64,8 +64,6 @@ matrix:
     fast_finish: true
 
     include:
-        - env: PYTHON_VERSION=3.5 SETUP_CMD='egg_info'
-        - env: PYTHON_VERSION=3.6 SETUP_CMD='egg_info'
         - env: PYTHON_VERSION=3.7 SETUP_CMD='egg_info'
 
         # PEP8/pyflakes test with flake8
@@ -75,6 +73,7 @@ matrix:
         # latest Python version.  The duration of the slowest 50 tests
         # will also be listed.
         - env: SETUP_CMD='test --coverage --remote-data=astropy -a "--durations=50"'
+               NUMPY_VERSION=1.14
 
         # Check for Sphinx doc build warnings
         - env: SETUP_CMD='build_docs -w'
@@ -93,6 +92,7 @@ matrix:
         - stage: Comprehensive tests
           env: ASTROPY_VERSION=lts
                EVENT_TYPE='pull_request push cron'
+               NUMPY_VERSION=1.13
 
         # Test with other Python and numpy versions
         - stage: Comprehensive tests
@@ -106,9 +106,6 @@ matrix:
 
         - stage: Comprehensive tests
           env: NUMPY_VERSION=1.12
-
-        - stage: Comprehensive tests
-          env: NUMPY_VERSION=1.13
 
         # Test with numpy pre-release version
         - stage: Comprehensive tests
