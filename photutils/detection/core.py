@@ -230,6 +230,8 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
 
     from scipy.ndimage import maximum_filter
 
+    data = np.asanyarray(data)
+
     if np.all(data == data.flat[0]):
         warnings.warn('Input data is constant. No local peaks can be found.',
                       AstropyUserWarning)
