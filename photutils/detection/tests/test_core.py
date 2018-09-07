@@ -3,6 +3,7 @@
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 import pytest
+import warnings
 
 from astropy.table import Table
 
@@ -238,3 +239,13 @@ class TestFindPeaks:
 
         tbl = find_peaks(data, 100000, wcs=wcs, subpixel=True)
         assert tbl == Table()
+
+    def test_data_nans(self):
+        """Test that data with NaNs does not issue Runtime warning."""
+
+        data = np.copy(PEAKDATA)
+        data[1, 1] = np.nan
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings('error')
+            find_peaks(data, 0.)
