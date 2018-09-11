@@ -595,6 +595,15 @@ class EPSFBuilder:
                  [-0.080816, -0.019592, 0.200816, -0.019592, -0.080816],
                  [+0.041632, -0.080816, 0.078368, -0.080816, +0.041632]])
 
+            if not 3.5 < self.oversampling < 4.5:
+                warnings.warn('A quartic smoothing_kernel was requested, but'
+                              'oversampling is set to {}.  This kernel is '
+                              'only meant for use with an oversampling near 4, '
+                              'so photometry may be compromised. A different '
+                              'smoothing kernel is '
+                              'recommended'.format(self.oversampling),
+                              AstropyUserWarning)
+
         elif self.smoothing_kernel == 'quadratic':
             # from Polynomial2D fit with degree=2 to 5x5 array of
             # zeros with 1. at the center
@@ -612,6 +621,15 @@ class EPSFBuilder:
                   +0.01142786],
                  [-0.07428311, 0.01142786, 0.03999952, 0.01142786,
                   -0.07428311]])
+
+            if not 3.5 < self.oversampling < 4.5:
+                warnings.warn('A quadratic smoothing_kernel was requested, but'
+                              'oversampling is set to {}.  This kernel is '
+                              'only meant for use with an oversampling near 4, '
+                              'so photometry may be compromised. A different '
+                              'smoothing kernel is '
+                              'recommended'.format(self.oversampling),
+                              AstropyUserWarning)
 
         elif isinstance(self.smoothing_kernel, np.ndarray):
             kernel = self.kernel
