@@ -14,7 +14,7 @@ from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
                                   NoOverlapError)
 from astropy.utils.exceptions import AstropyUserWarning
 from .epsf_stars import EPSFStar, LinkedEPSFStar, EPSFStars
-from .models import EPSFModel, EPSFModel2
+from .models import EPSFModel
 from ..centroids import centroid_com
 from ..extern import SigmaClip
 
@@ -418,7 +418,7 @@ class EPSFBuilder:
         xcenter = (shape[1] - 1) / 2.
         ycenter = (shape[0] - 1) / 2.
 
-        return EPSFModel2(data=data, origin=(xcenter, ycenter),
+        return EPSFModel(data=data, origin=(xcenter, ycenter),
                          normalize=False, oversampling=oversampling)
 
     def _resample_residual(self, star, epsf):

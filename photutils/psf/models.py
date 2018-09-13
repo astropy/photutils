@@ -11,7 +11,7 @@ from astropy.modeling import models, Parameter, Fittable2DModel
 from astropy.utils.exceptions import AstropyWarning
 
 
-__all__ = ['NonNormalizable', 'FittableImageModel', 'EPSFModel', 'EPSFModel2',
+__all__ = ['NonNormalizable', 'FittableImageModel', 'EPSFModel',
            'IntegratedGaussianPRF', 'PRFAdapter', 'prepare_psf_model',
            'get_grouped_psf_model']
 
@@ -489,34 +489,6 @@ class EPSFModel(Fittable2DModel):
         A reference point in the input image ``data`` array. When origin is
         `None`, origin will be set at the middle of the image array.
 
-
-    normalize : bool, optional
-        Indicates whether or not the model should be build on normalized
-        input image data. If true, then the normalization constant (*N*) is
-        computed so that
-
-        .. math::
-            N \\cdot C \\cdot \\Sigma_{i,j}D_{i,j} = 1,
-
-        where *N* is the normalization constant, *C* is correction factor
-        given by the parameter ``normalization_correction``, and
-        :math:`D_{i,j}` are the elements of the input image ``data`` array.
-
-    normalization_correction : float, optional
-        A strictly positive number that represents correction that needs to
-        be applied to model's data normalization (see *C* in the equation
-        in the comments to ``normalize`` for more details).
-
-        A possible application for this parameter is to account for aperture
-        correction. Assuming model's data represent a PSF to be fitted to
-        some target star, we set ``normalization_correction`` to the aperture
-        correction that needs to be applied to the model. That is,
-        ``normalization_correction`` in this case should be set to the
-        ratio between the total flux of the PSF (including flux outside model's
-        data) to the flux of model's data.
-        Then, best fitted value of the `flux` model
-        parameter will represent an aperture-corrected flux of the target star.
-
     fill_value : float, optional
         The value to be returned by the `evaluate` or
         ``astropy.modeling.Model.__call__`` methods
@@ -538,18 +510,13 @@ class EPSFModel(Fittable2DModel):
                     'evaluated.', default=0.0)
 
     def __init__(self, data, x_0=x_0.default, y_0=y_0.default,
-                 normalize=False, normalization_correction=1.0,
-                 origin=None, oversampling=1, fill_value=0.0, ikwargs={}):
+                 origin=None, oversampling=1, fill_value=0.0, norm_radius=5.5, ikwargs={}):
         self._fill_value = fill_value
         self._img_norm = None
-        self._normalization_status = 0 if normalize else 2
+        self._normalization_status = 0
+        self._norm_radius = norm_radius
         self._store_interpolator_kwargs(ikwargs)
         self._set_oversampling(oversampling)
-
-        if normalization_correction <= 0:
-            raise ValueError("'normalization_correction' must be strictly "
-                             "positive.")
-        self._normalization_correction = normalization_correction
 
         self._data = np.array(data, copy=True, dtype=np.float64)
 
@@ -565,72 +532,53 @@ class EPSFModel(Fittable2DModel):
         # set the origin of the coordinate system in image's pixel grid:
         self.origin = origin
 
-        self._compute_normalization(normalize)
+        self._compute_normalization()
 
         super().__init__(x_0, y_0)
 
         # initialize interpolator:
         self.compute_interpolator(ikwargs)
 
-    def _compute_raw_image_norm(self, data):
+    def _compute_raw_image_norm(self, data, R):
         """
-        Helper function that computes the uncorrected inverse normalization
-        factor of input image data. This quantity is computed as the
-        *sum of all pixel values*.
-
-        .. note::
-            This function is intended to be overriden in a subclass if one
-            desires to change the way the normalization factor is computed.
-
+        Helper function that computes the normalization of input image data. 
+        This quantity is computed as the sum of all undersampled integetr pixel
+        values within R pixels of the center of the ePSF.
         """
-        return np.sum(self._data, dtype=np.float64)
 
-    def _compute_normalization(self, normalize):
+        # First need the indices of each axis at the oversampled resolution;
+        # if oversampling = 4 then x = [0, 0.25, 0.5, 0.75, ...]
+        x = np.arange(self._nx, dtype=np.float64) / self.oversampling
+        y = np.arange(self._ny, dtype=np.float64) / self.oversampling
+        # Take indices where the undersampled grid is an integer -- i.e., the
+        # actual undersampled grid -- and find the cut where 
+        # sqrt(dx**2 + dy**2) <= R
+        x_0, y_0 = self.origin
+        cut = (((x.reshape(-1, 1) - x_0)**2 + (y.reshape(1, -1) - y_0)**2 
+               <= R**2) & (x % 1.0 == 0) & (y % 1.0 == 0))
+        data = self._data
+
+        return np.sum(data[cut], dtype=np.float64)
+
+    def _compute_normalization(self):
         """
         Helper function that computes (corrected) normalization factor
-        of the original image data. This quantity is computed as the
-        inverse "raw image norm" (or total "flux" of model's image)
-        corrected by the ``normalization_correction``:
-
-        .. math::
-            N = 1/(\\Phi * C),
-
-        where :math:`\\Phi` is the "total flux" of model's image as
-        computed by `_compute_raw_image_norm` and *C* is the
-        normalization correction factor. :math:`\\Phi` is computed only
-        once if it has not been previously computed. Otherwise, the
-        existing (stored) value of :math:`\\Phi` is not modified as
-        :py:class:`FittableImageModel` does not allow image data to be
-        modified after the object is created.
-
-        .. note::
-            Normally, this function should not be called by the
-            end-user. It is intended to be overriden in a subclass if
-            one desires to change the way the normalization factor is
-            computed.
+        of the original image data. For the ePSF this is defined as the
+        sum over the inner N (default=5.5) pixels of the non-oversampled
+        image. Will re-normalize the data to the value calculated.
         """
 
-        self._normalization_constant = 1.0 / self._normalization_correction
+        if self._img_norm is None:
+            self._img_norm = self._compute_raw_image_norm(self._data)
 
-        if normalize:
-            # compute normalization constant so that
-            # N*C*sum(data) = 1:
-            if self._img_norm is None:
-                self._img_norm = self._compute_raw_image_norm(self._data)
-
-            if self._img_norm != 0.0 and np.isfinite(self._img_norm):
-                self._normalization_constant /= self._img_norm
-                self._normalization_status = 0
-
-            else:
-                self._normalization_constant = 1.0
-                self._normalization_status = 1
-                warnings.warn("Overflow encountered while computing "
-                              "normalization constant. Normalization "
-                              "constant will be set to 1.", NonNormalizable)
-
+        if self._img_norm != 0.0 and np.isfinite(self._img_norm):
+            self._data /= self._img_norm
+            self._normalization_status = 0
         else:
-            self._normalization_status = 2
+            self._normalization_status = 1
+            warnings.warn("Overflow encountered while computing "
+                          "normalization constant. Normalization "
+                          "constant will be set to 1.", NonNormalizable)
 
     @property
     def oversampling(self):
@@ -653,18 +601,8 @@ class EPSFModel(Fittable2DModel):
 
     @property
     def data(self):
-        """ Get ePSF oversampled grid values. """
+        """ Get ePSF oversampled grid values of the ePSF. """
         return self._data
-
-    @property
-    def normalized_data(self):
-        """ Get normalized and/or intensity-corrected image data. """
-        return (self._normalization_constant * self._data)
-
-    @property
-    def normalization_constant(self):
-        """ Get normalization constant. """
-        return self._normalization_constant
 
     @property
     def normalization_status(self):
@@ -674,35 +612,9 @@ class EPSFModel(Fittable2DModel):
         - 0: **Performed**. Model has been successfuly normalized at
           user's request.
         - 1: **Failed**. Attempt to normalize has failed.
-        - 2: **NotRequested**. User did not request model to be normalized.
 
         """
         return self._normalization_status
-
-    @property
-    def normalization_correction(self):
-        """
-        Set/Get flux correction factor.
-
-        .. note::
-            When setting correction factor, model's flux will be adjusted
-            accordingly such that if this model was a good fit to some target
-            image before, then it will remain a good fit after correction
-            factor change.
-
-        """
-        return self._normalization_correction
-
-    @normalization_correction.setter
-    def normalization_correction(self, normalization_correction):
-        old_cf = self._normalization_correction
-        self._normalization_correction = normalization_correction
-        self._compute_normalization(normalize=self._normalization_status != 2)
-
-        # adjust model's flux so that if this model was a good fit to some
-        # target image, then it will remain a good fit after correction factor
-        # change:
-        self.flux *= normalization_correction / old_cf
 
     @property
     def shape(self):
@@ -848,8 +760,7 @@ class EPSFModel(Fittable2DModel):
         x = np.arange(self._nx, dtype=np.float)
         y = np.arange(self._ny, dtype=np.float)
         self.interpolator = RectBivariateSpline(
-            x, y, self._data.T, kx=degx, ky=degy, s=smoothness
-        )
+            x, y, self._data.T, kx=degx, ky=degy, s=smoothness)
 
         self._store_interpolator_kwargs(ikwargs)
 
@@ -876,9 +787,8 @@ class EPSFModel(Fittable2DModel):
         xi += self._x_origin
         yi += self._y_origin
 
-        f = flux * self._normalization_constant
-        evaluated_model = f * self.interpolator.ev(xi, yi)
-
+        evaluated_model = flux * self.interpolator.ev(xi, yi)
+        # TODO: check the evaluation of the interpolated data
         if self._fill_value is not None:
             # find indices of pixels that are outside the input pixel grid and
             # set these pixels to the 'fill_value':
