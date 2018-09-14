@@ -398,6 +398,21 @@ class TestSourceCatalog:
         assert t[0]['sky_centroid'] is not None
         assert t.colnames == columns
 
+        obj = cat[0]
+        row = t[0]
+        assert_quantity_allclose(obj.sky_bbox_ll.ra, row['sky_bbox_ll'].ra)
+        assert_quantity_allclose(obj.sky_bbox_ll.dec, row['sky_bbox_ll'].dec)
+
+        assert_quantity_allclose(obj.sky_bbox_ul.ra, row['sky_bbox_ul'].ra)
+        assert_quantity_allclose(obj.sky_bbox_ul.dec, row['sky_bbox_ul'].dec)
+
+        assert_quantity_allclose(obj.sky_bbox_lr.ra, row['sky_bbox_lr'].ra)
+        assert_quantity_allclose(obj.sky_bbox_lr.dec, row['sky_bbox_lr'].dec)
+
+        assert_quantity_allclose(obj.sky_bbox_ur.ra, row['sky_bbox_ur'].ra)
+        assert_quantity_allclose(obj.sky_bbox_ur.dec, row['sky_bbox_ur'].dec)
+
+    def test_table_no_wcs(self):
         cat = source_properties(IMAGE, SEGM)
         columns = ['sky_centroid', 'sky_centroid_icrs', 'icrs_centroid',
                    'ra_icrs_centroid', 'dec_icrs_centroid', 'sky_bbox_ll',
