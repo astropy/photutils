@@ -15,7 +15,10 @@ from astropy.modeling.models import (Gaussian1D, Gaussian2D, Const1D,
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import overlap_slices
 from astropy.utils.exceptions import AstropyUserWarning
-from ..psf import _interpolate_missing_data
+try:
+    from ..psf import _interpolate_missing_data
+except ImportError:
+    pass
 
 
 __all__ = ['GaussianConst2D', 'centroid_com', 'gaussian1d_moments',
@@ -486,7 +489,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
     return np.array(xcentroids), np.array(ycentroids)
 
 
-def centroid_shift_epsf(data, mask=None, x=None, y=None, oversampling=4, shift_val=0.5):
+def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
     """
     Calculate the centroid shift of a 2-dimensional symmetric image by computing
     the shift based on the asymmetry between f(x, N) and f(x, -N), along with the
@@ -505,27 +508,18 @@ def centroid_shift_epsf(data, mask=None, x=None, y=None, oversampling=4, shift_v
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
 
-    x : array-like, optional
-        The x values of the ``data'' array, in the undersampled units. Used to 
-        evaulate pixel values at +/-shift_val.
-
-    y : array-like, optional
-        The y values of the ``data'' array, in the undersampled units. Used to 
-        evaulate pixel values at +/-shift_val.
-
     oversampling : float, optional
         The oversampling rate the image is evaluated at. Used to construct x and y
         from data shape if x and y are not supplied.
 
     shift_val : float, optional
         The undersampled value at which to compute the shifts. Default is half a
-        pixel.
+        pixel. If supplied, must be a strictly positive number.
 
     Returns
     -------
-    centroid : `~numpy.ndarray`
-        The coordinates of the centroid in pixel order (e.g. ``(x, y)``
-        or ``(x, y, z)``), not numpy axis order.
+    centroid : tuple of floats
+        The (x, y) coordinates of the centroid in pixel order.
     """
 
     data = data.astype(np.float)
@@ -533,10 +527,11 @@ def centroid_shift_epsf(data, mask=None, x=None, y=None, oversampling=4, shift_v
     if mask is not None and mask is not np.ma.nomask:
         mask = np.asarray(mask, dtype=bool)
         if data.shape != mask.shape:
-            raise ValueError('data and mask must have the same shape.')
+            raise ValueError('Data and mask must have the same shape.')
         data[mask] = 0.
 
-
+    if shift_val <= 0:
+        raise ValueError('Shift_val must be a positive number.')
 
     badidx = ~np.isfinite(data)
     if np.any(badidx):
@@ -548,6 +543,41 @@ def centroid_shift_epsf(data, mask=None, x=None, y=None, oversampling=4, shift_v
         # data[y_badidx, x_badidx] = np.sumnan(d) / np.count_nonzero(np.isfinite(d))
         data = _interpolate_missing_data(data, badidx)
 
-    
-    
-    return x_new, y_new
+
+    if oversampling is None:
+        raise ValueError('Oversampling must be supplied.')
+
+    # Assume the center of the ePSF is the middle of an odd-sized grid.
+    x_0 = int((data.shape[1] - 1) / 2)
+    y_0 = int((data.shape[0] - 1) / 2)
+    x_shiftidx = np.around((shift_val * oversampling)).astype(int)
+    y_shiftidx = np.around((shift_val * oversampling)).astype(int)
+    # In Anderson & King (2000) notation this is psi_E(0.5, 0.0) and values used to 
+    # compute derivatives.
+    psi_pos_x = data[y_0, x_0 + x_shiftidx]
+    psi_pos_x_m1 = data[y_0, x_0 + x_shiftidx - 1]
+    psi_pos_x_p1 = data[y_0, x_0 + x_shiftidx + 1]
+    dpsi_pos_x = (psi_pos_x_p1 - psi_pos_x_m1) / 2.
+    # psi_E(-0.5, 0.0) and derivative components.
+    psi_neg_x = data[y_0, x_0 - x_shiftidx]
+    psi_neg_x_m1 = data[y_0, x_0 - x_shiftidx - 1]
+    psi_neg_x_p1 = data[y_0, x_0 - x_shiftidx + 1]
+    dpsi_neg_x = (psi_neg_x_p1 - psi_neg_x_m1) / 2.
+
+    x_shift = (psi_pos_x - psi_neg_x) / (dpsi_pos_x - dpsi_neg_x)
+
+    # psi_E(0.0, 0.5) and derivatives.
+    psi_pos_y = data[y_0 + y_shiftidx, x_0]
+    psi_pos_y_m1 = data[y_0 + y_shiftidx - 1, x_0]
+    psi_pos_y_p1 = data[y_0 + y_shiftidx + 1, x_0]
+    dpsi_pos_y = (psi_pos_y_p1 - psi_pos_y_m1) / 2.
+    # psi_E(0.0, -0.5) and derivative components.
+    psi_neg_y = data[y_0 - y_shiftidx, x_0]
+    psi_neg_y_m1 = data[y_0 - y_shiftidx - 1, x_0]
+    psi_neg_y_p1 = data[y_0 - y_shiftidx + 1, x_0]
+    dpsi_neg_y = (psi_neg_y_p1 - psi_neg_y_m1) / 2.
+
+    y_shift = (psi_pos_y - psi_neg_y) / (dpsi_pos_y - dpsi_neg_y)
+
+
+    return x_0+x_shift, y_0+y_shift

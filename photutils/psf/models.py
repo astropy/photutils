@@ -495,6 +495,15 @@ class EPSFModel(Fittable2DModel):
         when evaluation is performed outside the definition domain of the
         model.
 
+    norm_radius : float, optional
+        The radius inside which the ePSF is normalized by the sum over
+        undersampled integer pixel values inside a circular aperture.
+
+    shift_val : float, optional
+        The fractional undersampled pixel amount (equivalent to an integer 
+        oversampled pixel value) at which to evaluate the asymmetric
+        ePSF centroid corrections.
+
     ikwargs : dict, optional
 
         Additional optional keyword arguments to be passed directly to the
@@ -502,12 +511,23 @@ class EPSFModel(Fittable2DModel):
         details.
 
     """
-    def __init__(self, data, origin=None, oversampling=1, fill_value=0.0, 
-                 norm_radius=5.5, ikwargs={}):
+
+    flux = Parameter(description='Intensity scaling factor for image data.',
+                     default=1.0)
+    x_0 = Parameter(description='X-position of a feature in the image in '
+                    'the output coordinate grid on which the model is '
+                    'evaluated.', default=0.0)
+    y_0 = Parameter(description='Y-position of a feature in the image in '
+                    'the output coordinate grid on which the model is '
+                    'evaluated.', default=0.0)
+
+    def __init__(self, data, flux=flux.default, origin=None, oversampling=1, 
+                 fill_value=0.0, norm_radius=5.5, shift_val=0.5, ikwargs={}):
         self._fill_value = fill_value
         self._img_norm = None
         self._normalization_status = 0
         self._norm_radius = norm_radius
+        self._shift_val = shift_val
         self._store_interpolator_kwargs(ikwargs)
         self._set_oversampling(oversampling)
 
@@ -525,12 +545,17 @@ class EPSFModel(Fittable2DModel):
         # set the origin of the coordinate system in image's pixel grid:
         self.origin = origin
 
-        self._compute_normalization()
+        if flux is None:
+            if self._img_norm is None:
+                self._img_norm = self._compute_raw_image_norm(self._data)
+            flux = self._img_norm
+
+        self._compute_normalization('hi')
         # Force the model to be normalized initially.
         self._data /= self._img_norm
 
         x_0, y_0 = self.origin
-        super().__init__(x_0, y_0)
+        super().__init__(flux, x_0, y_0)
 
         # initialize interpolator:
         self.compute_interpolator(ikwargs)
@@ -557,7 +582,7 @@ class EPSFModel(Fittable2DModel):
 
         return np.sum(data[cut], dtype=np.float64)
 
-    def _compute_normalization(self):
+    def _compute_normalization(self, test):
         """
         Helper function that computes (corrected) normalization factor
         of the original image data. For the ePSF this is defined as the
@@ -566,13 +591,18 @@ class EPSFModel(Fittable2DModel):
         """
 
         if self._img_norm is None:
-            self._img_norm = self._compute_raw_image_norm(self._data)
-
+            if np.sum(self._data) == 0:
+                self._img_norm = 1
+            else:
+                self._img_norm = self._compute_raw_image_norm(self._data, 
+                                                              self._norm_radius)
+        print(np.sum(self._data), self._img_norm, test)
         if self._img_norm != 0.0 and np.isfinite(self._img_norm):
             self._data /= self._img_norm
             self._normalization_status = 0
         else:
             self._normalization_status = 1
+            self._img_norm = 1
             warnings.warn("Overflow encountered while computing "
                           "normalization constant. Normalization "
                           "constant will be set to 1.", NonNormalizable)
@@ -647,9 +677,13 @@ class EPSFModel(Fittable2DModel):
 
     @origin.setter
     def origin(self, origin):
-        if origin is None:
-            self._x_origin = (self._nx - 1) / 2.0
-            self._y_origin = (self._ny - 1) / 2.0
+        if origin is None or isinstance(origin, tuple):
+            if isinstance(origin, tuple) and len(origin) == 2:
+                self._x_origin = (self._nx - 1) / 2.0
+                self._y_origin = (self._ny - 1) / 2.0
+            else:
+                raise ValueError("Origin must be None or an iterable with two"
+                                 "elements.")
         else:
             raise TypeError("Parameter 'origin' must be either None or an "
                             "iterable with two elements.")

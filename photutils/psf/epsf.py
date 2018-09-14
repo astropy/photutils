@@ -186,23 +186,14 @@ class EPSFFitter:
             x0 = 0
             y0 = 0
 
-        # define positions in the ePSF oversampled grid
+        # define positions in the undersampled grid
         yy, xx = np.indices(data.shape, dtype=np.float)
         xx = (xx - (star.cutout_center[0] - x0))
         yy = (yy - (star.cutout_center[1] - y0))
 
         # define the initial guesses for fitted flux and shifts
         epsf.flux = star.flux
-        epsf.x_0 = 0.0
-        epsf.y_0 = 0.0
-
-        # The oversampling factor is used in the FittableImageModel
-        # evaluate method (which is use when fitting).  We do not want
-        # to use oversampling here because it has been set by the ratio
-        # of the ePSF and EPSFStar pixel scales.  This allows for
-        # oversampling factors that differ between stars and also for
-        # the factor to be different along the x and y axes.
-        epsf._oversampling = 1.
+        epsf.x_0, epsf.y_0 = 0.0, 0.0
 
         try:
             fitted_epsf = fitter(model=epsf, x=xx, y=yy, z=data,
@@ -324,7 +315,7 @@ class EPSFBuilder:
 
         if oversampling <= 0.0:
             raise ValueError('Oversampling must be a positive number.')
-        self.norm_radius = norm_radius
+        self._norm_radius = norm_radius
         self.oversampling = oversampling
         self.shape = self._init_img_params(shape)
         if self.shape is not None:
@@ -400,7 +391,7 @@ class EPSFBuilder:
             The initial ePSF model.
         """
 
-        norm_radius = self.norm_radius
+        norm_radius = self._norm_radius
         oversampling = self.oversampling
         shape = self.shape
 
@@ -472,12 +463,12 @@ class EPSFBuilder:
         xidx = xidx[mask]
         yidx = yidx[mask]
 
-        # Compute the normalized residual by subtracting the
-        # ePSF model from the normalized star at the location
-        # of the star in the undersampled grid.
+        # Compute the normalized residual by subtracting the ePSF model from 
+        # the normalized star at the location of the star in the undersampled 
+        # grid. Central pixel is assumed to be (0, 0) in these coordinates.
         stardata = (star._data_values_normalized -
-                    epsf.evaluate(x=x, y=y, flux=1.0, x_0=0.0, y_0=0.0,
-                                  use_oversampling=False))
+                    epsf.evaluate(x=x, y=y, flux=1.0, x_0=0.0, 
+                                  y_0=0.0, use_oversampling=False))
 
         resampled_img = np.full(epsf.shape, np.nan)
         resampled_img[yidx, xidx] = stardata[mask]
@@ -640,7 +631,7 @@ class EPSFBuilder:
         # centroid at the array center.
         epsf = EPSFModel(data=epsf_data, origin=epsf.origin,
                          oversampling=epsf.oversampling, 
-                         norm_radius=epsf.norm_radius)
+                         norm_radius=epsf._norm_radius)
         epsf.fill_value = 0.0
         xcenter, ycenter = epsf.origin
 
@@ -660,21 +651,19 @@ class EPSFBuilder:
             # Smooth the ePSF
             epsf_data = self._smooth_epsf(epsf_data)
 
-            # extract a cutout from the ePSF
-            slices_large, slices_small = overlap_slices(epsf_data.shape,
-                                                        box_size,
-                                                        (ycenter, xcenter))
-            epsf_cutout = epsf_data[slices_large]
-            mask = ~np.isfinite(epsf_cutout)
+            mask = ~np.isfinite(epsf_data)
 
             # find a new center position
-            xcenter_new, ycenter_new = centroid_func(epsf_cutout, mask=mask)
-            xcenter_new += slices_large[1].start
-            ycenter_new += slices_large[0].start
+            xcenter_new, ycenter_new = centroid_func(epsf_data, mask=mask, 
+                                                     oversampling=epsf.oversampling, 
+                                                     shift_val=epsf._shift_val)
 
-            # calculate the shift
-            dx = xcenter - xcenter_new
-            dy = ycenter - ycenter_new
+            # Calculate the shift; dx = i - x_star so if dx was positively 
+            # incremented then x_star was negatively incremented for a given i.
+            # We will therefore actually subsequently subtract dx from xcenter
+            # (or x_star).
+            dx = xcenter_new - xcenter
+            dy = ycenter_new - ycenter
             center_dist_sq = dx**2 + dy**2
             if center_dist_sq >= center_dist_sq_prev:  # don't shift
                 break
@@ -683,11 +672,11 @@ class EPSFBuilder:
             # Resample the ePSF data to a shifted grid to place the
             # centroid in the center of the central pixel.  The shift is
             # always performed on the input epsf_data.
-            dx_total += dx    # accumulated shifts for the input epsf_data
-            dy_total += dy
+            dx_total -= dx    # accumulated shifts for the input epsf_data
+            dy_total -= dy
             epsf_data = epsf.evaluate(x=x, y=y, flux=1.0,
-                                      x_0=xcenter + dx_total,
-                                      y_0=ycenter + dy_total,
+                                      x_0=xcenter + dx_total, # add dx to x_0
+                                      y_0=ycenter + dy_total, # even if negative
                                       use_oversampling=False)
 
         return epsf_data
@@ -767,7 +756,7 @@ class EPSFBuilder:
 
         return EPSFModel(data=new_epsf, origin=(xcenter, ycenter),
                          oversampling=epsf.oversampling, 
-                         norm_radius=epsf.norm_radius)
+                         norm_radius=epsf._norm_radius)
 
     def build_epsf(self, stars, init_epsf=None):
         """
@@ -867,7 +856,7 @@ class EPSFBuilder:
             plt.savefig('epsf_{}.pdf'.format(counter))
             plt.close()
             counter += 1
-            print(np.sum(epsf.data), epsf._normalization_correction)
+            print(np.sum(epsf.data))
 
         return epsf, stars
 
