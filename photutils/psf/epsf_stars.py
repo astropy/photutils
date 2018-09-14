@@ -65,11 +65,9 @@ class EPSFStar:
         floats of the form ``(x_pixscale, y_pixscale)``.  If
         ``pixel_scale`` is a scalar then the pixel scale will be the
         same for both the x and y axes.  The star ``pixel_scale`` is
-        used in conjunction with the ePSF pixel scale or oversampling
-        factor when building and fitting the ePSF.  The ratio of the
-        star-to-ePSF pixel scales represents the ePSF oversampling
-        factor.  ``pixel_scale`` allows for building (and fitting) an
-        ePSF using images of stars with different pixel scales (e.g.
+        used in conjunction with the ePSF oversampling factor when building 
+        and fitting the ePSF. ``pixel_scale`` allows for building (and fitting) 
+        an ePSF using images of stars with different pixel scales (e.g.
         velocity aberrations).
     """
 
@@ -214,13 +212,12 @@ class EPSFStar:
 
         x_oversamp = self.pixel_scale[0] / epsf.pixel_scale[0]
         y_oversamp = self.pixel_scale[1] / epsf.pixel_scale[1]
-        # TODO: check ePSF evaluation.
+
         yy, xx = np.indices(self.shape, dtype=np.float)
         xx = x_oversamp * (xx - self.cutout_center[0])
         yy = y_oversamp * (yy - self.cutout_center[1])
 
-        return (self.flux * x_oversamp * y_oversamp *
-                epsf.evaluate(xx, yy, flux=1.0, x_0=0.0, y_0=0.0))
+        return (self.flux * epsf.evaluate(xx, yy, flux=1.0, x_0=0.0, y_0=0.0))
 
     def compute_residual_image(self, epsf):
         """

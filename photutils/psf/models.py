@@ -550,7 +550,7 @@ class EPSFModel(Fittable2DModel):
                 self._img_norm = self._compute_raw_image_norm(self._data)
             flux = self._img_norm
 
-        self._compute_normalization('hi')
+        self._compute_normalization()
         # Force the model to be normalized initially.
         self._data /= self._img_norm
 
@@ -575,6 +575,10 @@ class EPSFModel(Fittable2DModel):
         # actual undersampled grid -- and find the cut where 
         # sqrt(dx**2 + dy**2) <= radius
         x_0, y_0 = self.origin
+        # However, as we are in units of the undersampled grid, we must convert
+        # to undersampled units by the same factor of oversampling
+        x_0 /= self.oversampling
+        y_0 /= self.oversampling
         cut = (((x.reshape(1, -1) - x_0)**2 + (y.reshape(-1, 1) - y_0)**2 
                <= radius**2) & (x.reshape(1, -1) % 1.0 == 0) & 
                (y.reshape(-1, 1) % 1.0 == 0))
@@ -582,7 +586,7 @@ class EPSFModel(Fittable2DModel):
 
         return np.sum(data[cut], dtype=np.float64)
 
-    def _compute_normalization(self, test):
+    def _compute_normalization(self):
         """
         Helper function that computes (corrected) normalization factor
         of the original image data. For the ePSF this is defined as the
@@ -596,7 +600,7 @@ class EPSFModel(Fittable2DModel):
             else:
                 self._img_norm = self._compute_raw_image_norm(self._data, 
                                                               self._norm_radius)
-        print(np.sum(self._data), self._img_norm, test)
+
         if self._img_norm != 0.0 and np.isfinite(self._img_norm):
             self._data /= self._img_norm
             self._normalization_status = 0
@@ -817,7 +821,7 @@ class EPSFModel(Fittable2DModel):
         yi += self._y_origin
 
         evaluated_model = flux * self.interpolator.ev(xi, yi)
-        # TODO: check the evaluation of the interpolated data
+        
         if self._fill_value is not None:
             # find indices of pixels that are outside the input pixel grid and
             # set these pixels to the 'fill_value':

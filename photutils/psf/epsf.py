@@ -213,10 +213,8 @@ class EPSFFitter:
             fit_info = None
 
         # compute the star's fitted position
-        x_center = (star.cutout_center[0] +
-                    (fitted_epsf.x_0.value * epsf.oversampling))
-        y_center = (star.cutout_center[1] +
-                    (fitted_epsf.y_0.value * epsf.oversampling))
+        x_center = star.cutout_center[0] + fitted_epsf.x_0.value 
+        y_center = star.cutout_center[1] + fitted_epsf.y_0.value
 
         star = copy.deepcopy(star)
         star.cutout_center = (x_center, y_center)
@@ -790,12 +788,6 @@ class EPSFBuilder:
         epsf = init_epsf
         dt = 0.
 
-        counter = 1
-        import matplotlib.pyplot as plt
-        from astropy.visualization import simple_norm
-        import matplotlib
-        matplotlib.rcParams['font.size'] = 10
-
         while (iter_num < self.maxiters and
                 np.max(center_dist_sq) >= self.center_accuracy_sq and
                 not np.all(fit_failed)):
@@ -848,15 +840,6 @@ class EPSFBuilder:
             self._epsf.append(epsf)
 
             dt = time.time() - t_start
-
-
-            norm = simple_norm(epsf.data, 'log', percent=99.)
-            plt.imshow(epsf.data, norm=norm, origin='lower', cmap='viridis')
-            plt.colorbar()
-            plt.savefig('epsf_{}.pdf'.format(counter))
-            plt.close()
-            counter += 1
-            print(np.sum(epsf.data))
 
         return epsf, stars
 
