@@ -15,7 +15,7 @@ from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
 from astropy.utils.exceptions import AstropyUserWarning
 from .epsf_stars import EPSFStar, LinkedEPSFStar, EPSFStars
 from .models import EPSFModel
-from ..centroids import centroid_com
+from ..centroids import centroid_epsf
 from ..extern import SigmaClip
 
 try:
@@ -276,8 +276,8 @@ class EPSFBuilder:
         calculate the centroid of a 2D array.  The callable must accept
         a 2D `~numpy.ndarray`, have a ``mask`` keyword and optionally an
         ``error`` keyword.  The callable object must return a tuple of
-        two 1D `~numpy.ndarray`\\s, representing the x and y centroids.
-        The default is `~photutils.centroids.centroid_com`.
+        two 1D `~numpy.ndarray`\s, representing the x and y centroids.
+        The default is `~photutils.centroids.centroid_epsf`.
 
     recentering_boxsize : float or tuple of two floats, optional
         The size (in pixels) of the box used to calculate the centroid
@@ -315,7 +315,7 @@ class EPSFBuilder:
 
     def __init__(self, oversampling=4., shape=None,
                  smoothing_kernel='quartic', norm_radius=5.5, 
-                 recentering_func=centroid_com, recentering_boxsize=(5, 5), 
+                 recentering_func=centroid_epsf, recentering_boxsize=(5, 5), 
                  recentering_maxiters=20, fitter=EPSFFitter(), 
                  center_accuracy=1.0e-3, maxiters=10, progress_bar=True):
 
@@ -407,7 +407,7 @@ class EPSFBuilder:
         if oversampling is None:
             raise ValueError('Oversampling must be specified.')
 
-        # define the ePSF shape
+        # Define the ePSF shape
         if shape is not None:
             shape = np.atleast_1d(shape).astype(int)
             if len(shape) == 1:
@@ -498,8 +498,8 @@ class EPSFBuilder:
 
         Returns
         -------
-        epsf_resid : 2D `~numpy.ndarray`
-            A 2D array containing the resampled residual images.
+        epsf_resid : 3D `~numpy.ndarray`
+            A 3D cube containing the resampled residual images.
         """
 
         shape = (stars.n_good_stars, epsf.shape[0], epsf.shape[1])
@@ -589,7 +589,7 @@ class EPSFBuilder:
 
         return convolve(epsf_data, kernel)
 
-    def _recenter_epsf(self, epsf_data, epsf, centroid_func=centroid_com,
+    def _recenter_epsf(self, epsf_data, epsf, centroid_func=centroid_epsf,
                        box_size=5, maxiters=20, center_accuracy=1.0e-4):
         """
         Calculate the center of the ePSF data and shift the data so the
@@ -610,7 +610,7 @@ class EPSFBuilder:
             optionally an ``error`` keyword.  The callable object must
             return a tuple of two 1D `~numpy.ndarray`\\s, representing
             the x and y centroids.  The default is
-            `~photutils.centroids.centroid_com`.
+            `~photutils.centroids.centroid_epsf`.
 
         recentering_boxsize : float or tuple of two floats, optional
             The size (in pixels) of the box used to calculate the
@@ -638,7 +638,7 @@ class EPSFBuilder:
         # Define an EPSFModel for the input data.  This EPSFModel will be
         # used to evaluate the model on a shifted pixel grid to place the
         # centroid at the array center.
-        epsf = EPSFModel(data=epsf_data, origin=epsf.origin, normalize=False,
+        epsf = EPSFModel(data=epsf_data, origin=epsf.origin,
                          oversampling=epsf.oversampling, 
                          norm_radius=epsf.norm_radius)
         epsf.fill_value = 0.0
@@ -656,6 +656,9 @@ class EPSFBuilder:
                center_dist_sq >= center_accuracy_sq):
 
             iter_num += 1
+
+            # Smooth the ePSF
+            epsf_data = self._smooth_epsf(epsf_data)
 
             # extract a cutout from the ePSF
             slices_large, slices_small = overlap_slices(epsf_data.shape,
@@ -731,9 +734,9 @@ class EPSFBuilder:
             residuals = self.sigclip(residuals, axis=0, masked=False,
                                      return_bounds=False)
             if HAS_BOTTLENECK:
-                residuals = bottleneck.nanmedian(residuals, axis=0)
+                residuals = bottleneck.nanmean(residuals, axis=0)
             else:
-                residuals = np.nanmedian(residuals, axis=0)
+                residuals = np.nanmean(residuals, axis=0)
 
         self._residuals_sigclip.append(residuals)
 
@@ -749,27 +752,21 @@ class EPSFBuilder:
         self._residuals_interp.append(residuals)
 
         # add the residuals to the previous ePSF image
-        new_epsf = epsf.normalized_data + residuals
+        new_epsf = epsf._data + residuals
 
-        # smooth the ePSF
-        new_epsf = self._smooth_epsf(new_epsf)
-
-        # recenter the ePSF
+        # iteratively smooth and recenter the ePSF
         new_epsf = self._recenter_epsf(new_epsf, epsf,
                                        centroid_func=self.recentering_func,
                                        box_size=self.recentering_boxsize,
                                        maxiters=self.recentering_maxiters,
                                        center_accuracy=1.0e-4)
 
-        # normalize the ePSF data
-        new_epsf /= np.sum(new_epsf, dtype=np.float64)
-
         # return the new ePSF object
         xcenter = (new_epsf.shape[1] - 1) / 2.
         ycenter = (new_epsf.shape[0] - 1) / 2.
 
         return EPSFModel(data=new_epsf, origin=(xcenter, ycenter),
-                         normalize=False, oversampling=epsf.oversampling, 
+                         oversampling=epsf.oversampling, 
                          norm_radius=epsf.norm_radius)
 
     def build_epsf(self, stars, init_epsf=None):

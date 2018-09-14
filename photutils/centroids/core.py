@@ -15,11 +15,12 @@ from astropy.modeling.models import (Gaussian1D, Gaussian2D, Const1D,
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import overlap_slices
 from astropy.utils.exceptions import AstropyUserWarning
+from ..psf import _interpolate_missing_data
 
 
 __all__ = ['GaussianConst2D', 'centroid_com', 'gaussian1d_moments',
            'fit_2dgaussian', 'centroid_1dg', 'centroid_2dg',
-           'centroid_sources']
+           'centroid_sources', 'centroid_epsf']
 
 
 class _GaussianConst1D(Const1D + Gaussian1D):
@@ -483,3 +484,70 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         ycentroids.append(ycen + slices_large[0].start)
 
     return np.array(xcentroids), np.array(ycentroids)
+
+
+def centroid_shift_epsf(data, mask=None, x=None, y=None, oversampling=4, shift_val=0.5):
+    """
+    Calculate the centroid shift of a 2-dimensional symmetric image by computing
+    the shift based on the asymmetry between f(x, N) and f(x, -N), along with the
+    differential df/dy(x, shift_val) and df/dy(x, -shift_val). Based on Anderson 
+    and King (2000; PASP 112, 1360)
+
+    Invalid values (e.g. NaNs or infs) in the ``data`` array are
+    automatically masked.
+
+    Parameters
+    ----------
+    data : array_like
+        The input n-dimensional array.
+
+    mask : array_like (bool), optional
+        A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+
+    x : array-like, optional
+        The x values of the ``data'' array, in the undersampled units. Used to 
+        evaulate pixel values at +/-shift_val.
+
+    y : array-like, optional
+        The y values of the ``data'' array, in the undersampled units. Used to 
+        evaulate pixel values at +/-shift_val.
+
+    oversampling : float, optional
+        The oversampling rate the image is evaluated at. Used to construct x and y
+        from data shape if x and y are not supplied.
+
+    shift_val : float, optional
+        The undersampled value at which to compute the shifts. Default is half a
+        pixel.
+
+    Returns
+    -------
+    centroid : `~numpy.ndarray`
+        The coordinates of the centroid in pixel order (e.g. ``(x, y)``
+        or ``(x, y, z)``), not numpy axis order.
+    """
+
+    data = data.astype(np.float)
+
+    if mask is not None and mask is not np.ma.nomask:
+        mask = np.asarray(mask, dtype=bool)
+        if data.shape != mask.shape:
+            raise ValueError('data and mask must have the same shape.')
+        data[mask] = 0.
+
+
+
+    badidx = ~np.isfinite(data)
+    if np.any(badidx):
+        warnings.warn('Input data contains input values (e.g. NaNs or infs), '
+                      'which were automatically set to the '
+                      'surrounding pixels.', AstropyUserWarning)
+        # d = [data[y_badidx, x_badidx-1], data[y_badidx-1, x_badidx],
+        #      data[y_badidx, x_badidx+1], data[y_badidx+1, x_badidx]]
+        # data[y_badidx, x_badidx] = np.sumnan(d) / np.count_nonzero(np.isfinite(d))
+        data = _interpolate_missing_data(data, badidx)
+
+    
+    
+    return x_new, y_new

@@ -482,7 +482,7 @@ class EPSFModel(Fittable2DModel):
     Parameters
     ----------
     data : numpy.ndarray
-        Array containing oePSF pixel values on a regularly oversampled pixel
+        Array containing ePSF pixel values on a regularly oversampled pixel
         grid.
 
     origin : tuple, None, optional
@@ -526,6 +526,8 @@ class EPSFModel(Fittable2DModel):
         self.origin = origin
 
         self._compute_normalization()
+        # Force the model to be normalized initially.
+        self._data /= self._img_norm
 
         x_0, y_0 = self.origin
         super().__init__(x_0, y_0)
@@ -533,11 +535,11 @@ class EPSFModel(Fittable2DModel):
         # initialize interpolator:
         self.compute_interpolator(ikwargs)
 
-    def _compute_raw_image_norm(self, data, R):
+    def _compute_raw_image_norm(self, data, radius):
         """
         Helper function that computes the normalization of input image data. 
-        This quantity is computed as the sum of all undersampled integetr pixel
-        values within R pixels of the center of the ePSF.
+        This quantity is computed as the sum of all undersampled integer pixel
+        values within radius pixels of the center of the ePSF.
         """
 
         # First need the indices of each axis at the oversampled resolution;
@@ -546,10 +548,11 @@ class EPSFModel(Fittable2DModel):
         y = np.arange(self._ny, dtype=np.float64) / self.oversampling
         # Take indices where the undersampled grid is an integer -- i.e., the
         # actual undersampled grid -- and find the cut where 
-        # sqrt(dx**2 + dy**2) <= R
+        # sqrt(dx**2 + dy**2) <= radius
         x_0, y_0 = self.origin
-        cut = (((x.reshape(-1, 1) - x_0)**2 + (y.reshape(1, -1) - y_0)**2 
-               <= R**2) & (x % 1.0 == 0) & (y % 1.0 == 0))
+        cut = (((x.reshape(1, -1) - x_0)**2 + (y.reshape(-1, 1) - y_0)**2 
+               <= radius**2) & (x.reshape(1, -1) % 1.0 == 0) & 
+               (y.reshape(-1, 1) % 1.0 == 0))
         data = self._data
 
         return np.sum(data[cut], dtype=np.float64)
