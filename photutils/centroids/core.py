@@ -557,27 +557,26 @@ def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
     psi_pos_x = data[y_0, x_0 + x_shiftidx]
     psi_pos_x_m1 = data[y_0, x_0 + x_shiftidx - 1]
     psi_pos_x_p1 = data[y_0, x_0 + x_shiftidx + 1]
-    dpsi_pos_x = (psi_pos_x_p1 - psi_pos_x_m1) / 2.
+    dpsi_pos_x = np.abs(psi_pos_x_p1 - psi_pos_x_m1) / 2.
     # psi_E(-0.5, 0.0) and derivative components.
     psi_neg_x = data[y_0, x_0 - x_shiftidx]
     psi_neg_x_m1 = data[y_0, x_0 - x_shiftidx - 1]
     psi_neg_x_p1 = data[y_0, x_0 - x_shiftidx + 1]
-    dpsi_neg_x = (psi_neg_x_p1 - psi_neg_x_m1) / 2.
+    dpsi_neg_x = np.abs(psi_neg_x_p1 - psi_neg_x_m1) / 2.
 
-    x_shift = (psi_pos_x - psi_neg_x) / (dpsi_pos_x - dpsi_neg_x)
+    x_shift = (psi_pos_x - psi_neg_x) / (dpsi_pos_x + dpsi_neg_x)
 
     # psi_E(0.0, 0.5) and derivatives.
     psi_pos_y = data[y_0 + y_shiftidx, x_0]
     psi_pos_y_m1 = data[y_0 + y_shiftidx - 1, x_0]
     psi_pos_y_p1 = data[y_0 + y_shiftidx + 1, x_0]
-    dpsi_pos_y = (psi_pos_y_p1 - psi_pos_y_m1) / 2.
+    dpsi_pos_y = np.abs(psi_pos_y_p1 - psi_pos_y_m1) / 2.
     # psi_E(0.0, -0.5) and derivative components.
     psi_neg_y = data[y_0 - y_shiftidx, x_0]
     psi_neg_y_m1 = data[y_0 - y_shiftidx - 1, x_0]
     psi_neg_y_p1 = data[y_0 - y_shiftidx + 1, x_0]
-    dpsi_neg_y = (psi_neg_y_p1 - psi_neg_y_m1) / 2.
+    dpsi_neg_y = np.abs(psi_neg_y_p1 - psi_neg_y_m1) / 2.
 
-    y_shift = (psi_pos_y - psi_neg_y) / (dpsi_pos_y - dpsi_neg_y)
-
+    y_shift = (psi_pos_y - psi_neg_y) / (dpsi_pos_y + dpsi_neg_y)
 
     return x_0+x_shift, y_0+y_shift

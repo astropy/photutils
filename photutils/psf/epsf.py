@@ -676,7 +676,6 @@ class EPSFBuilder:
                                       x_0=xcenter + dx_total, # add dx to x_0
                                       y_0=ycenter + dy_total, # even if negative
                                       use_oversampling=False)
-
         return epsf_data
 
     def _build_epsf_step(self, stars, epsf=None):
