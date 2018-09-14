@@ -502,15 +502,8 @@ class EPSFModel(Fittable2DModel):
         details.
 
     """
-    x_0 = Parameter(description='X-position of a feature in the image in '
-                    'the output coordinate grid on which the model is '
-                    'evaluated.', default=0.0)
-    y_0 = Parameter(description='Y-position of a feature in the image in '
-                    'the output coordinate grid on which the model is '
-                    'evaluated.', default=0.0)
-
-    def __init__(self, data, x_0=x_0.default, y_0=y_0.default,
-                 origin=None, oversampling=1, fill_value=0.0, norm_radius=5.5, ikwargs={}):
+    def __init__(self, data, origin=None, oversampling=1, fill_value=0.0, 
+                 norm_radius=5.5, ikwargs={}):
         self._fill_value = fill_value
         self._img_norm = None
         self._normalization_status = 0
@@ -534,6 +527,7 @@ class EPSFModel(Fittable2DModel):
 
         self._compute_normalization()
 
+        x_0, y_0 = self.origin
         super().__init__(x_0, y_0)
 
         # initialize interpolator:
@@ -653,8 +647,6 @@ class EPSFModel(Fittable2DModel):
         if origin is None:
             self._x_origin = (self._nx - 1) / 2.0
             self._y_origin = (self._ny - 1) / 2.0
-        elif hasattr(origin, '__iter__') and len(origin) == 2:
-            self._x_origin, self._y_origin = origin
         else:
             raise TypeError("Parameter 'origin' must be either None or an "
                             "iterable with two elements.")

@@ -260,6 +260,10 @@ class EPSFBuilder:
         have odd sizes along both axes to ensure a well-defined central
         pixel.
 
+    norm_radius : float, optional
+        The pixel radius over which the ePSF is normalized. If ``None'' or
+        not provided, defaults to 5.5 pixels.
+
     smoothing_kernel : {'quartic', 'quadratic'}, 2D `~numpy.ndarray`, or `None`
         The smoothing kernel to apply to the ePSF.  The predefined
         kernels ``'quartic'`` and ``'quadratic'`` have been optimized
@@ -310,16 +314,17 @@ class EPSFBuilder:
     """
 
     def __init__(self, oversampling=4., shape=None,
-                 smoothing_kernel='quartic', recentering_func=centroid_com,
-                 recentering_boxsize=(5, 5), recentering_maxiters=20,
-                 fitter=EPSFFitter(), center_accuracy=1.0e-3, maxiters=10,
-                 progress_bar=True):
+                 smoothing_kernel='quartic', norm_radius=5.5, 
+                 recentering_func=centroid_com, recentering_boxsize=(5, 5), 
+                 recentering_maxiters=20, fitter=EPSFFitter(), 
+                 center_accuracy=1.0e-3, maxiters=10, progress_bar=True):
 
         if oversampling is None:
             raise ValueError('Oversampling must be specified.')
 
         if oversampling <= 0.0:
             raise ValueError('Oversampling must be a positive number.')
+        self.norm_radius = norm_radius
         self.oversampling = oversampling
         self.shape = self._init_img_params(shape)
         if self.shape is not None:
@@ -395,6 +400,7 @@ class EPSFBuilder:
             The initial ePSF model.
         """
 
+        norm_radius = self.norm_radius
         oversampling = self.oversampling
         shape = self.shape
 
@@ -407,11 +413,14 @@ class EPSFBuilder:
             if len(shape) == 1:
                 shape = np.repeat(shape, 2)
         else:
-            x_shape = np.int(np.ceil(stars._max_shape[0] * oversampling))
-            y_shape = np.int(np.ceil(stars._max_shape[1] * oversampling))
+            # Stars class should have odd-sized dimensions, and thus we get the
+            # oversampled shape as oversampling * (len-1) + 1; if len=26, then
+            # newlen=101, for example.
+            x_shape = np.int(np.ceil((stars._max_shape[0] - 1) * oversampling) + 1)
+            y_shape = np.int(np.ceil((stars._max_shape[1] - 1) * oversampling) + 1)
             shape = np.array((y_shape, x_shape))
 
-        # ensure odd sizes
+        # Verify odd sizes of shape
         shape = [(i + 1) if i % 2 == 0 else i for i in shape]
 
         data = np.zeros(shape, dtype=np.float)
@@ -419,7 +428,7 @@ class EPSFBuilder:
         ycenter = (shape[0] - 1) / 2.
 
         return EPSFModel(data=data, origin=(xcenter, ycenter),
-                         normalize=False, oversampling=oversampling)
+                         oversampling=oversampling, norm_radius=norm_radius)
 
     def _resample_residual(self, star, epsf):
         """
@@ -447,8 +456,11 @@ class EPSFBuilder:
             image contains NaNs where there is no data.
         """
 
-        # find the integer index of EPSFStar pixels in the oversampled
-        # ePSF grid
+        # Find the integer index of Star pixels in the oversampled
+        # ePSF grid; each star is only within 1/oversampling pixels of
+        # 1/oversampling of the grid points (i.e., each star contributes one
+        # data point per pixel, which have been split into oversampling^2
+        # subpixels). 
         x = epsf.oversampling * star._xidx_centered
         y = epsf.oversampling * star._yidx_centered
         epsf_xcenter, epsf_ycenter = epsf.origin
@@ -460,14 +472,10 @@ class EPSFBuilder:
         xidx = xidx[mask]
         yidx = yidx[mask]
 
-        # Compute the normalized residual image by subtracting the
-        # normalized ePSF model from the normalized star at the location
-        # of the star in the undersampled grid.  Then, resample the
-        # normalized residual image in the oversampled ePSF grid.
-        # [(star - (epsf * xov * yov)) / (xov * yov)]
-        # --> [(star / (xov * yov)) - epsf]
-        stardata = ((star._data_values_normalized /
-                     (epsf.oversampling * epsf.oversampling)) -
+        # Compute the normalized residual by subtracting the
+        # ePSF model from the normalized star at the location
+        # of the star in the undersampled grid.
+        stardata = (star._data_values_normalized -
                     epsf.evaluate(x=x, y=y, flux=1.0, x_0=0.0, y_0=0.0,
                                   use_oversampling=False))
 
@@ -490,16 +498,16 @@ class EPSFBuilder:
 
         Returns
         -------
-        star_imgs : 3D `~numpy.ndarray`
-            A 3D cube containing the resampled residual images.
+        epsf_resid : 2D `~numpy.ndarray`
+            A 2D array containing the resampled residual images.
         """
 
         shape = (stars.n_good_stars, epsf.shape[0], epsf.shape[1])
-        star_imgs = np.zeros(shape)
+        epsf_resid = np.zeros(shape)
         for i, star in enumerate(stars.all_good_stars):
-            star_imgs[i, :, :] = self._resample_residual(star, epsf)
+            epsf_resid[i, :, :] = self._resample_residual(star, epsf)
 
-        return star_imgs
+        return epsf_resid
 
     def _smooth_epsf(self, epsf_data):
         """
@@ -630,8 +638,9 @@ class EPSFBuilder:
         # Define an EPSFModel for the input data.  This EPSFModel will be
         # used to evaluate the model on a shifted pixel grid to place the
         # centroid at the array center.
-        epsf = EPSFModel2(data=epsf_data, origin=epsf.origin, normalize=False,
-                         oversampling=epsf.oversampling)
+        epsf = EPSFModel(data=epsf_data, origin=epsf.origin, normalize=False,
+                         oversampling=epsf.oversampling, 
+                         norm_radius=epsf.norm_radius)
         epsf.fill_value = 0.0
         xcenter, ycenter = epsf.origin
 
@@ -759,8 +768,9 @@ class EPSFBuilder:
         xcenter = (new_epsf.shape[1] - 1) / 2.
         ycenter = (new_epsf.shape[0] - 1) / 2.
 
-        return EPSFModel2(data=new_epsf, origin=(xcenter, ycenter),
-                         normalize=False, oversampling=epsf.oversampling)
+        return EPSFModel(data=new_epsf, origin=(xcenter, ycenter),
+                         normalize=False, oversampling=epsf.oversampling, 
+                         norm_radius=epsf.norm_radius)
 
     def build_epsf(self, stars, init_epsf=None):
         """

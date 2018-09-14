@@ -451,7 +451,6 @@ class EPSFStars:
         count.
         """
 
-        # return np.count_nonzero(~self._excluded_from_fit.ravel())
         return len(self.all_good_stars)
 
     @lazyproperty
