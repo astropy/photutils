@@ -1278,7 +1278,7 @@ class SourceCatalog:
     def sky_bbox_ul(self):
         if self.wcs is not None:
             return pixel_to_skycoord(self.xmin.value - 0.5,
-                                     self.ymin.value + 0.5,
+                                     self.ymax.value + 0.5,
                                      self.wcs, origin=0)
         else:
             return None
@@ -1286,7 +1286,7 @@ class SourceCatalog:
     @lazyproperty
     def sky_bbox_lr(self):
         if self.wcs is not None:
-            return pixel_to_skycoord(self.xmin.value + 0.5,
+            return pixel_to_skycoord(self.xmax.value + 0.5,
                                      self.ymin.value - 0.5,
                                      self.wcs, origin=0)
         else:
@@ -1295,8 +1295,8 @@ class SourceCatalog:
     @lazyproperty
     def sky_bbox_ur(self):
         if self.wcs is not None:
-            return pixel_to_skycoord(self.xmin.value + 0.5,
-                                     self.ymin.value + 0.5,
+            return pixel_to_skycoord(self.xmax.value + 0.5,
+                                     self.ymax.value + 0.5,
                                      self.wcs, origin=0)
         else:
             return None
