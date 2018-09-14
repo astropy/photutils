@@ -13,6 +13,14 @@ API changes
   - The ``find_peaks`` function will no longer issue a RuntimeWarning
     if the input data contains NaNs. [#712]
 
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.segmentation``
+
+  - Fixed a bug in the computation of ``sky_bbox_ul``,
+    ``sky_bbox_lr``, ``sky_bbox_ur`` in the ``SourceCatalog``. [#716]
+
 
 0.5 (2018-08-06)
 ----------------
