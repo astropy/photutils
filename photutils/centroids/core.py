@@ -19,7 +19,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 __all__ = ['GaussianConst2D', 'centroid_com', 'gaussian1d_moments',
            'fit_2dgaussian', 'centroid_1dg', 'centroid_2dg',
-           'centroid_sources']
+           'centroid_sources', 'centroid_quadratic_2d']
 
 
 class _GaussianConst1D(Const1D + Gaussian1D):
@@ -357,6 +357,61 @@ def centroid_2dg(data, error=None, mask=None):
     gfit = fit_2dgaussian(data, error=error, mask=mask)
 
     return np.array([gfit.x_mean.value, gfit.y_mean.value])
+
+
+def centroid_quadratic_2d(data):
+    """
+    Calculate the centroid of a 2D array by fitting a quadratic function to the
+    eight pixels around the pixel with the largest value. This function returns
+    the coordinates of the pixel with the largest value if it is at an edge of
+    the array.
+
+    This method has been shown to perform quite well in various regimes of
+    signal-to-noise ratio and approximately attains the Cramer-Rao Lower
+    Bound [1]_. A one dimensional version of this algorithm is available at
+    [2]_.
+
+    Parameters
+    ----------
+    data : array_like
+        The 2D data array.
+
+    Returns
+    -------
+    centroid : `~numpy.ndarray`
+        The ``x, y`` coordinates of the centroid.
+
+    References
+    ----------
+    .. [1] Do fast stellar centroiding methods saturate the Cramér-Rao lower bound?
+           https://arxiv.org/abs/1610.05873
+    .. [2] A robust way to calculate line-of-sight velocities.
+           https://github.com/richteague/bettermoments
+    """
+    arg_data_max = np.argmax(data)
+    i, j = np.unravel_index(arg_data_max, data.shape)
+    z_ = data[i-1:i+2, j-1:j+2]
+    # our quadratic function is defined as
+    # f(x, y | a, b, c, d, e, f) := a + b * x + c * y + d * x^2 + e * xy + f * y^2
+    # therefore, the best fit coeffiecients are given as
+    try:
+        a = (-z_[0,0] + 2*z_[0,1] - z_[0,2] + 2*z_[1,0] + 5*z_[1,1] + 2*z_[1,2] -
+             z_[2,0] + 2*z_[2,1] - z_[2,2]) / 9
+        b = (-z_[0,0] - z_[0,1] - z_[0,2] + z_[2,0] + z_[2,1] + z_[2,2]) / 6
+        c = (-z_[0,0] + z_[0,2] - z_[1,0] + z_[1,2] - z_[2,0] + z_[2,2]) / 6
+        d = (z_[0,0] + z_[0,1] + z_[0,2] - z_[1,0]*2 - z_[1,1]*2 - z_[1,2]*2 +
+             z_[2,0] + z_[2,1] + z_[2,2])/6
+        e = (z_[0,0] - z_[0,2] - z_[2,0] + z_[2,2]) * .25
+        f = (z_[0,0] - 2 * z_[0,1] + z_[0,2] + z_[1,0] - 2 * z_[1,1] + z_[1,2] +
+             z_[2,0] - 2 * z_[2,1] + z_[2,2]) / 6
+    except IndexError:
+        return (j, i)
+
+    # see https://en.wikipedia.org/wiki/Quadratic_function
+    det = 4 * d * f - e ** 2
+    ym = - (2 * f * b - c * e) / det
+    xm = - (2 * d * c - b * e) / det
+    return (j+xm, i+ym)
 
 
 def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,

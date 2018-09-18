@@ -8,7 +8,7 @@ from astropy.modeling.models import Gaussian1D, Gaussian2D
 import pytest
 
 from ..core import (centroid_com, centroid_1dg, centroid_2dg,
-                    gaussian1d_moments, fit_2dgaussian)
+                    gaussian1d_moments, fit_2dgaussian, centroid_quadratic_2d)
 
 
 try:
@@ -48,6 +48,9 @@ def test_centroids(xc_ref, yc_ref, x_stddev, y_stddev, theta):
 
     xc3, yc3 = centroid_2dg(data)
     assert_allclose([xc_ref, yc_ref], [xc3, yc3], rtol=0, atol=1.e-3)
+
+    xc4, yc4 = centroid_quadratic_2d(data)
+    assert_allclose([xc_ref, yc_ref], [xc4, yc4], rtol=0, atol=1.e-2)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

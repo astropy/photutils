@@ -17,6 +17,9 @@ centroid of a single source.  The centroid methods are:
 * :func:`~photutils.centroids.centroid_2dg`: Calculates the centroid
   by fitting a 2D Gaussian to the 2D distribution of the data.
 
+* :func:`~photutils.centroids.centroid_quadratic_2d`: Calculates the centroid
+  by fitting a 2D quadratic function to the 2D distribution of the data.
+
 Masks can be input into each of these functions to mask bad pixels.
 Error arrays can be input into the two fitting methods to weight the
 fits.
@@ -31,7 +34,7 @@ not subtract the background from the data (but in practice, one should
 subtract the background)::
 
     >>> from photutils.datasets import make_4gaussians_image
-    >>> from photutils import centroid_com, centroid_1dg, centroid_2dg
+    >>> from photutils import centroid_com, centroid_1dg, centroid_2dg, centroid_quadratic_2d
     >>> data = make_4gaussians_image()[43:79, 76:104]
 
     >>> x1, y1 = centroid_com(data)
@@ -50,6 +53,10 @@ subtract the background)::
     >>> print((x3, y3))    # doctest: +FLOAT_CMP
     (14.002212073733611, 16.996134592982017)
 
+    >>> x4, y4 = centroid_quadratic_2d(data)
+    >>> print((x4, y4))    # doctest: +FLOAT_CMP
+    (14.32314970320474, 16.919720562376941)
+
 Now let's plot the results.  Because the centroids are all very
 similar, we also include an inset plot zoomed in near the centroid:
 
@@ -57,13 +64,14 @@ similar, we also include an inset plot zoomed in near the centroid:
     :include-source:
 
     from photutils.datasets import make_4gaussians_image
-    from photutils import centroid_com, centroid_1dg, centroid_2dg
+    from photutils import centroid_com, centroid_1dg, centroid_2dg, centroid_quadratic_2d
     import matplotlib.pyplot as plt
 
     data = make_4gaussians_image()[43:79, 76:104]    # extract single object
     x1, y1 = centroid_com(data)
     x2, y2 = centroid_1dg(data)
     x3, y3 = centroid_2dg(data)
+    x4, y4 = centroid_quadratic_2d(data)
     fig, ax = plt.subplots(1, 1)
     ax.imshow(data, origin='lower', interpolation='nearest', cmap='viridis')
     marker = '+'
@@ -71,6 +79,7 @@ similar, we also include an inset plot zoomed in near the centroid:
     plt.plot(x1, y1, color='#1f77b4', marker=marker, ms=ms, mew=mew)
     plt.plot(x2, y2, color='#17becf', marker=marker, ms=ms, mew=mew)
     plt.plot(x3, y3, color='#d62728', marker=marker, ms=ms, mew=mew)
+    plt.plot(x4, y4, color='#ffb6c1', marker=marker, ms=ms, mew=mew)
 
     from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
     from mpl_toolkits.axes_grid1.inset_locator import mark_inset
@@ -80,6 +89,7 @@ similar, we also include an inset plot zoomed in near the centroid:
     ax2.plot(x1, y1, color='#1f77b4', marker=marker, ms=ms, mew=mew)
     ax2.plot(x2, y2, color='#17becf', marker=marker, ms=ms, mew=mew)
     ax2.plot(x3, y3, color='#d62728', marker=marker, ms=ms, mew=mew)
+    plt.plot(x4, y4, color='#ffb6c1', marker=marker, ms=ms, mew=mew)
     ax2.set_xlim(13, 15)
     ax2.set_ylim(16, 18)
     mark_inset(ax, ax2, loc1=3, loc2=4, fc='none', ec='0.5')
