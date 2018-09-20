@@ -21,6 +21,11 @@ Bug Fixes
   - Fixed a bug in the computation of ``sky_bbox_ul``,
     ``sky_bbox_lr``, ``sky_bbox_ur`` in the ``SourceCatalog``. [#716]
 
+Other Changes
+^^^^^^^^^^^^^
+
+- Parameter update for ``astropy.stats.SigmaClip`` call moving iters to maxiters
+
 
 0.5 (2018-08-06)
 ----------------

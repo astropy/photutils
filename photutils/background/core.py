@@ -68,7 +68,7 @@ class BackgroundBase(metaclass=_ABCMetaAndInheritDocstrings):
         ``sigma=3.`` and ``iters=5``.
     """
 
-    def __init__(self, sigma_clip=SigmaClip(sigma=3., iters=5)):
+    def __init__(self, sigma_clip=SigmaClip(sigma=3., maxiters=5)):
         self.sigma_clip = sigma_clip
 
     def __call__(self, data, axis=None):
@@ -111,7 +111,7 @@ class BackgroundRMSBase(metaclass=_ABCMetaAndInheritDocstrings):
         ``sigma=3.`` and ``iters=5``.
     """
 
-    def __init__(self, sigma_clip=SigmaClip(sigma=3., iters=5)):
+    def __init__(self, sigma_clip=SigmaClip(sigma=3., maxiters=5)):
         self.sigma_clip = sigma_clip
 
     def __call__(self, data, axis=None):
