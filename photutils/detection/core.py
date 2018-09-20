@@ -92,7 +92,7 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
     if background is None or error is None:
         data_mean, data_median, data_std = sigma_clipped_stats(
             data, mask=mask, mask_value=mask_value, sigma=sigclip_sigma,
-            iters=sigclip_iters)
+            maxiters=sigclip_iters)
         bkgrd_image = np.zeros_like(data) + data_mean
         bkgrdrms_image = np.zeros_like(data) + data_std
 

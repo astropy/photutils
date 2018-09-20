@@ -282,7 +282,7 @@ class Background2D:
     def __init__(self, data, box_size, mask=None,
                  exclude_percentile=10., filter_size=(3, 3),
                  filter_threshold=None, edge_method='pad',
-                 sigma_clip=SigmaClip(sigma=3., iters=10),
+                 sigma_clip=SigmaClip(sigma=3., maxiters=10),
                  bkg_estimator=SExtractorBackground(sigma_clip=None),
                  bkgrms_estimator=StdBackgroundRMS(sigma_clip=None),
                  interpolator=BkgZoomInterpolator()):
