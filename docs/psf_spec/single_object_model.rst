@@ -1,76 +1,36 @@
 SingleObjectModel
 =================
 
-EJT: This does not exist in the current `photutils.psf` model, because there is not
-an explicit separate single object model.  Instead the psf_model is used
-directly, as the "single object model" is implicitly a delta function.  To
-maintain backwards-compatibility, the new ``SingleObjectModel`` will need to
-default to the "point source" object model, and behave the same as the current
-behavior of a model with shape parameters is provided as the "psf model".  But
-arguable that is *not* the desired behavior in the "new" paradigm that combines
-the `SceneMaker`and the `SingleObjectModel`.
-
-A single sentence summarizing this block.
-
-A longer descrption.  Can be multiple paragraphs.  You can link to other things
-like `photutils.background`.
+SingleObjectModel is an additional step between the PSF (or PRF) model
+and the `~astropy.modeling.fitting.Fitter` instance, to allow for cases
+where the images being fit contain sources other than point sources. In
+these instances a combined PRF, combining the PSF resulting from
+telescope optics, CCD, etc. with that of the intrinsic source as it would
+appear with infinite resolution.
 
 Parameters
 ----------
 
-first_parameter_name : `~astropy.table.Table`
-    Description of first input
-
-second_parameter_name : SomeOtherType
-    Description of second input (if any)
+psf_model : `astropy.modeling.Fittable2DModel` instance
+    The model used to fit individual point source objects.
+object_type : string
+    The extended source type used to determine the innate
+    light distribution of the source.
 
 Returns
 -------
 
-first_return : `~astropy.table.Table`
-    Description of the first thing this block outputs.
-
-second_return
-    Many blocks will only return one object, but if more things are returned
-    they can be described here (e.g., in python this is
-    ``first, second = some_function(...)``)
-
-
-Methods
--------
-
-Not all blocks will have these, but if desired some blocks can have methods that
-let you do something other than just running the block.  E.g::
-
-    some_block = BlockClassName()
-    output = some_block(input1, input2, ...)  # this is what is documented above
-    result = some_block.method_name(...)  #this is documented here
-
-method_name
-^^^^^^^^^^^
-
-Description of method
-
-Parameters
-""""""""""
-
-first_parameter : type
-    Description ...
-
-second_parameter : type
-    Description ...
-
-Returns
-"""""""
-
-first_return : type
-    Description ...
+convolve_psf_model : `astropy.modeling.Fittable2DModel` instance
+    The new, combined PRF of the extended source, combining the
+    intrinsic light distribution and PSF effects.
 
 
 Example Usage
 -------------
 
-An example of *using* the block should be provided.  This needs to be after a
-``::`` in the rst and indented::
-
-    print("This is example code")
+This class simply takes the `~astropy.modeling.Fittable2Dmodel` instance and 
+convolves it with the appropriate model describing the, e.g., galaxy light
+distribution.::
+    from photutils.funcs import SingleObjectModel
+    single_object_model = SingleObjectModel()
+    new_composite_psf = single_object_model(psf_to_add, star['object_type'])
