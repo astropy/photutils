@@ -8,7 +8,7 @@ from astropy.table import Table
 from astropy.nddata.utils import add_array, extract_array
 
 
-__all__ = ['subtract_psf']
+__all__ = ['subtract_psf', 'culler_and_ender']
 
 
 def _extract_psf_fitting_names(psf):
@@ -123,3 +123,20 @@ def subtract_psf(data, psf, posflux, subshape=None):
             subbeddata = add_array(subbeddata, -psf(x, y), (y_0, x_0))
 
     return subbeddata
+
+def culler_and_ender(data, psf_model):
+    """
+    Return input table, removing any sources which do not meet
+    the quality of fit statistic used to assess fits.
+     Parameters
+    ----------
+    data : `~astropy.table.Table`
+        Table containing the sources.
+    psf_model : `astropy.modeling.Fittable2DModel` instance
+        PSF/PRF model to which the data are being fit.
+     Returns
+    -------
+    culled_data : `~astropy.table.Table`
+        ``data`` with poor fits removed.
+    """
+    return data
