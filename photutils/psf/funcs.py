@@ -124,6 +124,7 @@ def subtract_psf(data, psf, posflux, subshape=None):
 
     return subbeddata
 
+
 @abc.abstractmethod
 class CullerAndEnderBase:
     """
@@ -157,9 +158,11 @@ class CullerAndEnderBase:
     def cull_data(self, data, psf_model):
         return NotImplementedError('cull_data should be defined in '
                                    'the subclass.')
+
     def end_loop(self, new_data, data, new_sources):
         return NotImplementedError('end_loop should be defined in '
                                    'the subclass.')
+
 
 class CullerAndEnder(CullerAndEnderBase):
     """
@@ -172,6 +175,7 @@ class CullerAndEnder(CullerAndEnderBase):
         # here; could potentially involve something like sharpness,
         # chi-squared statistics, analysis of residual images, etc.
         return data
+
     def end_loop(self, new_data, data, new_sources):
         # For now, trivially don't ever dictate the loop
         # end earlier than the maximum number of loops.
