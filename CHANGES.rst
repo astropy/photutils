@@ -23,7 +23,7 @@ API changes
 
 - ``photutils.funcs``
 
-   - Added ``CullerAndEnderBase`` abstract class, and ``CullerAndEnder`` 
+  - Added ``CullerAndEnderBase`` abstract class, and ``CullerAndEnder`` 
     class, which maintain backwards compatibility with previous versions in
     ``photutils.psf.BasicPSFPhotometry`` and subclasses.
 

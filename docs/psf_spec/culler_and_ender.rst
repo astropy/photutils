@@ -17,7 +17,7 @@ psf_model : `astropy.modeling.Fittable2DModel` instance
     PSF/PRF model to which the data are being fit.
 new_sources : `~astropy.table.Table`
     Newly found list of sources to compare with the sources
-    in `data`, when deciding whether to end iteration.
+    in ``data``, when deciding whether to end iteration.
 
 Returns
 -------
@@ -35,8 +35,8 @@ In the simplest example, a list of sources ``found_sources`` with parameters ``x
 and ``flux`` are compared to the expected PSF model (a FittableImageModel such as 
 `photutils.psf.IntegratedGaussianPRF`) and any fits above some minimum goodness-of-fit
 criterion are removed. If len(new_sources) == 0 then end_flag would return True, otherwise
-it will be set to False.
-::
+it will be set to False.::
+
     from photutils.psf.funcs import CullerAndEnder
     culler_and_ender = CullerAndEnder()
     good_sources, end_flag = culler_and_ender(found_sources, psf_model, new_sources)
