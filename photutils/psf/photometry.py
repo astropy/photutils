@@ -366,7 +366,10 @@ class BasicPSFPhotometry:
 
         if isinstance(image, NDData):
             # Pull the values, ignoring the uncertainty type for now
-            uncert = image.uncertainty.array
+            try:
+                uncert = image.uncertainty.array
+            except AttributeError:
+                uncert = None
             image = image.data
         else:
             image = image

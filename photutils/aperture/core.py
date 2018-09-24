@@ -15,7 +15,8 @@ from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
 from astropy.wcs.utils import (skycoord_to_pixel, pixel_to_skycoord,
                                wcs_to_celestial_frame)
-from astropy.nddata import NDData
+from astropy.nddata import StdDevUncertainty
+
 
 from ..utils import get_version_info
 from ..utils.misc import _ABCMetaAndInheritDocstrings
@@ -706,6 +707,10 @@ def _prepare_photometry_input(data, uncertainty, mask, wcs, unit):
             else:
                 data = u.Quantity(data, unit=bunit)
 
+    # If uncertainty was pulled from NDData instance, strip it to be array-like
+    if isinstance(uncertainty, StdDevUncertainty):
+        uncertainty=uncertainty.array
+
     if wcs is None:
         try:
             wcs = WCS(header)
@@ -752,7 +757,7 @@ def _prepare_photometry_input(data, uncertainty, mask, wcs, unit):
             uncertainty = np.asanyarray(uncertainty)
 
         if uncertainty.shape != data.shape:
-            raise ValueError('error and data must have the same shape.')
+            raise ValueError('uncertainty and data must have the same shape.')
 
     if mask is not None:
         mask = np.asanyarray(mask)
