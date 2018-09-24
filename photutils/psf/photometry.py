@@ -11,7 +11,7 @@ from astropy.table import Table, Column, vstack, hstack
 from astropy.utils.exceptions import AstropyUserWarning
 
 from . import DAOGroup
-from .funcs import (subtract_psf, _extract_psf_fitting_names, 
+from .funcs import (subtract_psf, _extract_psf_fitting_names,
                     SingleObjectModel)
 from .models import get_grouped_psf_model
 from ..aperture import CircularAperture, aperture_photometry
@@ -93,7 +93,7 @@ class BasicPSFPhotometry:
         be used if it can be determined from the ``psf_model``.
     single_object_model : `photutils.funcs.SingleObjectModel` instance
         Class describing the various models (aside from stars, which default
-        to PSF in -> PSF out assuming a point source) and handling the 
+        to PSF in -> PSF out assuming a point source) and handling the
         convolution of the PSF model with the underlying source light
         distribution.
 
@@ -119,7 +119,7 @@ class BasicPSFPhotometry:
     """
 
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
-                 finder=None, fitter=LevMarLSQFitter(), aperture_radius=None, 
+                 finder=None, fitter=LevMarLSQFitter(), aperture_radius=None,
                  single_object_model=SingleObjectModel):
         self.group_maker = group_maker
         self.bkg_estimator = bkg_estimator
@@ -438,7 +438,7 @@ class BasicPSFPhotometry:
                 n_fit_params = len(unc_tab.colnames)
                 for i in range(star_group_size):
                     unc_tab[i] = np.sqrt(np.diag(
-                                          self.fitter.fit_info['param_cov'])
+                                         self.fitter.fit_info['param_cov'])
                                          )[k: k + n_fit_params]
                     k = k + n_fit_params
         return unc_tab
@@ -552,7 +552,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         subtraction to create new sources infinitely.
     single_object_model : `photutils.funcs.SingleObjectModel` instance
         Class describing the various models (aside from stars, which default
-        to PSF in -> PSF out assuming a point source) and handling the 
+        to PSF in -> PSF out assuming a point source) and handling the
         convolution of the PSF model with the underlying source light
         distribution.
 
@@ -576,7 +576,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                  aperture_radius=None, single_object_model=SingleObjectModel):
 
         super().__init__(group_maker, bkg_estimator, psf_model, fitshape,
-                         finder, fitter, aperture_radius, 
+                         finder, fitter, aperture_radius,
                          single_object_model)
         self.niters = niters
 

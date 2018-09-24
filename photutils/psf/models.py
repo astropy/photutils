@@ -829,7 +829,8 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
     return outmod
 
 
-def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
+def get_grouped_psf_model(template_psf_model, star_group, pars_to_set,
+                          single_object_model):
     """
     Construct a joint PSF model which consists of a sum of PSF's templated on
     a specific model, but whose parameters are given by a table of objects.
@@ -844,7 +845,7 @@ def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
         must have columns named ``x_0``, ``y_0``, and ``flux_0``.
     single_object_model : `photutils.func.SingleObjectModel' instance
         Class describing the various models (aside from stars, which default
-        to PSF in -> PSF out assuming a point source) and handling the 
+        to PSF in -> PSF out assuming a point source) and handling the
         convolution of the PSF model with the underlying source light
         distribution.
 
