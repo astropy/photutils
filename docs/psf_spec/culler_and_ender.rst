@@ -1,69 +1,42 @@
 CullerAndEnder
 ==============
 
-EJT: No currently existing code in `photutils`.
-
-A single sentence summarizing this block.
-
-A longer descrption.  Can be multiple paragraphs.  You can link to other things
-like `photutils.background`.
+CullerAndEnder determines the fit quality of IterativelySubtractedPSFPhotometry 
+sources, removing any sources from the input `~astropy.table.Table` below a 
+minimum fit criterion, and subsequently determines whether the loop can be ended 
+prematurely, most likely when all found sources are of good quality and no 
+additional sources have been found. This method may be subject to API changes in
+future versions and should not be considered final.
 
 Parameters
 ----------
 
-first_parameter_name : `~astropy.table.Table`
-    Description of first input
-
-second_parameter_name : SomeOtherType
-    Description of second input (if any)
+data : `~astropy.table.Table`
+    Table containing the sources.
+psf_model : `astropy.modeling.Fittable2DModel` instance
+    PSF/PRF model to which the data are being fit.
+new_sources : `~astropy.table.Table`
+    Newly found list of sources to compare with the sources
+    in `data`, when deciding whether to end iteration.
 
 Returns
 -------
 
-first_return : `~astropy.table.Table`
-    Description of the first thing this block outputs.
-
-second_return
-    Many blocks will only return one object, but if more things are returned
-    they can be described here (e.g., in python this is
-    ``first, second = some_function(...)``)
-
-
-Methods
--------
-
-Not all blocks will have these, but if desired some blocks can have methods that
-let you do something other than just running the block.  E.g::
-
-    some_block = BlockClassName()
-    output = some_block(input1, input2, ...)  # this is what is documented above
-    result = some_block.method_name(...)  #this is documented here
-
-method_name
-^^^^^^^^^^^
-
-Description of method
-
-Parameters
-""""""""""
-
-first_parameter : type
-    Description ...
-
-second_parameter : type
-    Description ...
-
-Returns
-"""""""
-
-first_return : type
-    Description ...
-
+culled_data : `~astropy.table.Table`
+        ``data`` with poor fits removed.
+end_flag : boolean
+    Flag indicating whether to end iterative PSF fitting
+    before the maximum number of loops.
 
 Example Usage
 -------------
 
-An example of *using* the block should be provided.  This needs to be after a
-``::`` in the rst and indented::
-
-    print("This is example code")
+In the simplest example, a list of sources ``found_sources`` with parameters ``x_0``, ``y_0``
+and ``flux`` are compared to the expected PSF model (a FittableImageModel such as 
+`photutils.psf.IntegratedGaussianPRF`) and any fits above some minimum goodness-of-fit
+criterion are removed. If len(new_sources) == 0 then end_flag would return True, otherwise
+it will be set to False.
+::
+    from photutils.psf.funcs import CullerAndEnder
+    culler_and_ender = CullerAndEnder()
+    good_sources, end_flag = culler_and_ender(found_sources, psf_model, new_sources)

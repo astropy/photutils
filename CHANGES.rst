@@ -1,6 +1,14 @@
 0.6 (unreleased)
 ----------------
 
+New Features
+^^^^^^^^^^^^
+
+- ``photutils.psf``
+
+  - Added ``culler_and_ender`` option to 
+    IterativelySubtractedPSFPhotometry.
+
 API changes
 ^^^^^^^^^^^
 
