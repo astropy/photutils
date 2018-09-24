@@ -90,6 +90,9 @@ class BasicPSFPhotometry:
         The radius (in units of pixels) used to compute initial
         estimates for the fluxes of sources. If ``None``, one FWHM will
         be used if it can be determined from the ``psf_model``.
+    noise_calc : callable, optional
+        Function on which uncertainties of data can be calculated. If `None`
+        then the assumption is made that each data point gets unity weighting.
 
     Notes
     -----
@@ -113,7 +116,8 @@ class BasicPSFPhotometry:
     """
 
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
-                 finder=None, fitter=LevMarLSQFitter(), aperture_radius=None):
+                 finder=None, fitter=LevMarLSQFitter(), aperture_radius=None,
+                 noise_calc=None):
         self.group_maker = group_maker
         self.bkg_estimator = bkg_estimator
         self.psf_model = psf_model
@@ -124,6 +128,7 @@ class BasicPSFPhotometry:
         self._pars_to_set = None
         self._pars_to_output = None
         self._residual_image = None
+        self._noise_calc = noise_calc
 
     @property
     def fitshape(self):
@@ -346,8 +351,14 @@ class BasicPSFPhotometry:
                                         position=(row['y_0'], row['x_0']),
                                         mode='trim')[0]] = True
 
-            fit_model = self.fitter(group_psf, x[usepixel], y[usepixel],
-                                    image[usepixel])
+            if uncert is not None:
+                # Uncertainties are defined such that weights should be their
+                # inverse; e.g., for Gaussians this should be 1/sigma.
+                fit_model = self.fitter(group_psf, x[usepixel], y[usepixel],
+                                    image[usepixel], weights=1/uncert[usepixel])
+            else:
+                fit_model = self.fitter(group_psf, x[usepixel], y[usepixel],
+                                        image[usepixel])
             param_table = self._model_params2table(fit_model,
                                                    len(star_groups.groups[n]))
             result_tab = vstack([result_tab, param_table])
@@ -540,6 +551,11 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         stars remain.  Note that in this case it is *possible* that the
         loop will never end if the PSF has structure that causes
         subtraction to create new sources infinitely.
+    noise_calc : callable, optional
+        Function on which uncertainties of data can be calculated. If `None`
+        then `None` is propagated in the uncertainty attribute of the NDData
+        instance and handled accordingly. Must return an array with the same 
+        shape as the input array.
 
     Notes
     -----
@@ -558,10 +574,10 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
 
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
                  finder, fitter=LevMarLSQFitter(), niters=3,
-                 aperture_radius=None):
+                 aperture_radius=None, noise_calc=None):
 
         super().__init__(group_maker, bkg_estimator, psf_model, fitshape,
-                         finder, fitter, aperture_radius)
+                         finder, fitter, aperture_radius, noise_calc)
         self.niters = niters
 
     @property
