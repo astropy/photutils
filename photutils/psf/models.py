@@ -842,6 +842,11 @@ def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
     star_group : `~astropy.table.Table`
         Table of stars for which the compound PSF will be constructed.  It
         must have columns named ``x_0``, ``y_0``, and ``flux_0``.
+    single_object_model : `photutils.func.SingleObjectModel' instance
+        Class describing the various models (aside from stars, which default
+        to PSF in -> PSF out assuming a point source) and handling the 
+        convolution of the PSF model with the underlying source light
+        distribution.
 
     Returns
     -------
@@ -853,7 +858,13 @@ def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
     group_psf = None
 
     for star in star_group:
+        # If there is no additional column specifying what type of object the
+        # sources listed are, assume they are stars
         psf_to_add = template_psf_model.copy()
+        if 'object_type' in star.colnames:
+            # TODO: add convolution with SingleObjectModel per object_type,
+            # currently this just returns the psf, assuming a delta function source
+            psf_to_add = single_object_model(psf_to_add, star['object_type'])
         for param_tab_name, param_name in pars_to_set.items():
             setattr(psf_to_add, param_name, star[param_tab_name])
 

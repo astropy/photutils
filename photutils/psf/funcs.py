@@ -6,9 +6,9 @@ Models and functions for doing PSF/PRF fitting photometry on image data.
 import numpy as np
 from astropy.table import Table
 from astropy.nddata.utils import add_array, extract_array
+import abc
 
-
-__all__ = ['subtract_psf']
+__all__ = ['subtract_psf', 'SingleObjectModel']
 
 
 def _extract_psf_fitting_names(psf):
@@ -123,3 +123,37 @@ def subtract_psf(data, psf, posflux, subshape=None):
             subbeddata = add_array(subbeddata, -psf(x, y), (y_0, x_0))
 
     return subbeddata
+
+@abc.abstractmethod
+class SingleObjectModelBase:
+    """
+    Handles the convolution of non-point source objects with the
+    telescope PSF (or PRF, for discrete pixels), returning a PRF
+    which describes the fraction of light falling in each pixel
+    of an extended source.
+     Parameters
+    ---------
+    psf_model : `astropy.modeling.Fittable2DModel` instance
+        The model used to fit individual point source objects.
+    object_type : string
+        The extended source type used to determine the innate
+        light distribution of the source.
+     Returns
+    -------
+    convolve_psf_model : `astropy.modeling.Fittable2DModel` instance
+        The new, combined PRF of the extended source, combining the
+        intrinsic light distribution and PSF effects.
+    """
+    def __call__(self, psf_model, object_type):
+        return self.make_single_object(psf_model, object_type)
+    def make_single_object(self, psf_model, object_type):
+        return NotImplementedError('make_single_object must be defined'
+                                   'in a subclass.')
+
+class SingleObjectModel(SingleObjectModelBase):
+    """
+    Simple single object model class which assumes all sources are
+    point sources.
+    """
+    def make_single_object(self, psf_model, object_type):
+        return psf_model 
