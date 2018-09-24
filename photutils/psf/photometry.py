@@ -198,17 +198,16 @@ class BasicPSFPhotometry:
         Takes ndarray and returns NDData array with corresponding uncertainty
         attribute, determined by noise_calc. If noise_calc is `None` then
         return an empty uncertainty array. Currently assumes for compatibility
-        reasons that these uncertainties are of the standard deviation kind, 
+        reasons that these uncertainties are of the standard deviation kind,
         such that Fitter weights are 1/uncertainty.
         """
         if not isinstance(image, NDData):
             if self._noise_calc is not None:
-                image = NDData(image, 
-                    uncertainty=StdDevUncertainty(self._noise_calc(image)))
+                image = NDData(image,
+                               uncertainty=StdDevUncertainty(self._noise_calc(image)))
             else:
                 image = NDData(image)
         return image
-
 
     def do_photometry(self, image, init_guesses=None):
         """
@@ -227,7 +226,7 @@ class BasicPSFPhotometry:
 
         Parameters
         ----------
-        image : 2D array-like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`, 
+        image : 2D array-like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`,
                 or `~astropy.nddata.NDData`
             Image to perform photometry. If not NDData, the data array will
             be pulled and passed to noise_data, which will create the
@@ -270,9 +269,9 @@ class BasicPSFPhotometry:
             image = image.data
         image = self._make_image(image)
 
-
         if self.bkg_estimator is not None:
-            image.data = image.data - self.bkg_estimator(image.data)
+            image = NDData(image.data - self.bkg_estimator(image.data),
+                           uncertainty=StdDevUncertainty(image.uncertainty))
 
         if self.aperture_radius is None:
             if hasattr(self.psf_model, 'fwhm'):
@@ -375,7 +374,6 @@ class BasicPSFPhotometry:
             image = image
             uncert = None
 
-
         result_tab = Table()
         for param_tab_name in self._pars_to_output.keys():
             result_tab.add_column(Column(name=param_tab_name))
@@ -404,7 +402,7 @@ class BasicPSFPhotometry:
                 # Uncertainties are defined such that weights should be their
                 # inverse; e.g., for Gaussians this should be 1/sigma.
                 fit_model = self.fitter(group_psf, x[usepixel], y[usepixel],
-                                    image[usepixel], weights=1/uncert[usepixel])
+                                        image[usepixel], weights=1 / uncert[usepixel])
             else:
                 fit_model = self.fitter(group_psf, x[usepixel], y[usepixel],
                                         image[usepixel])
@@ -488,7 +486,7 @@ class BasicPSFPhotometry:
                 n_fit_params = len(unc_tab.colnames)
                 for i in range(star_group_size):
                     unc_tab[i] = np.sqrt(np.diag(
-                                          self.fitter.fit_info['param_cov'])
+                                         self.fitter.fit_info['param_cov'])
                                          )[k: k + n_fit_params]
                     k = k + n_fit_params
         return unc_tab
@@ -603,7 +601,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
     noise_calc : callable, optional
         Function on which uncertainties of data can be calculated. If `None`
         then `None` is propagated in the uncertainty attribute of the NDData
-        instance and handled accordingly. Must return an array with the same 
+        instance and handled accordingly. Must return an array with the same
         shape as the input array.
 
     Notes
@@ -717,7 +715,6 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             image = image.data
         image = self._make_image(image)
 
-
         if init_guesses is not None:
             table = super().do_photometry(image, init_guesses)
             table['iter_detected'] = np.ones(table['x_fit'].shape,
@@ -730,8 +727,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             output_table = vstack([table, output_table])
         else:
             if self.bkg_estimator is not None:
-                self._residual_image = NDData(image.data - self.bkg_estimator(image.data), 
-                                          uncertainty=StdDevUncertainty(image.uncertainty))
+                self._residual_image = NDData(image.data - self.bkg_estimator(image.data),
+                                              uncertainty=StdDevUncertainty(image.uncertainty))
 
             if self.aperture_radius is None:
                 if hasattr(self.psf_model, 'fwhm'):
@@ -805,8 +802,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             star_groups = star_groups.group_by('group_id')
             table = hstack([star_groups, table])
 
-            table['iter_detected'] = n*np.ones(table['x_fit'].shape,
-                                               dtype=np.int32)
+            table['iter_detected'] = n * np.ones(table['x_fit'].shape,
+                                                 dtype=np.int32)
 
             output_table = vstack([output_table, table])
 
