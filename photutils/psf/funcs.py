@@ -6,7 +6,7 @@ Models and functions for doing PSF/PRF fitting photometry on image data.
 import numpy as np
 from astropy.table import Table
 from astropy.nddata.utils import add_array, extract_array
-
+import abc
 
 __all__ = ['subtract_psf', 'CullerAndEnder']
 
@@ -124,6 +124,7 @@ def subtract_psf(data, psf, posflux, subshape=None):
 
     return subbeddata
 
+@abc.abstractmethod
 class CullerAndEnderBase:
     """
     Return input table, removing any sources which do not meet
