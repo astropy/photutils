@@ -31,6 +31,7 @@ Example Usage
 This class simply takes the `~astropy.modeling.Fittable2Dmodel` instance and 
 convolves it with the appropriate model describing the, e.g., galaxy light
 distribution.::
+
     from photutils.funcs import SingleObjectModel
     single_object_model = SingleObjectModel()
     new_composite_psf = single_object_model(psf_to_add, star['object_type'])

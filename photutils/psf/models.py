@@ -843,7 +843,7 @@ def get_grouped_psf_model(template_psf_model, star_group, pars_to_set,
     star_group : `~astropy.table.Table`
         Table of stars for which the compound PSF will be constructed.  It
         must have columns named ``x_0``, ``y_0``, and ``flux_0``.
-    single_object_model : `photutils.func.SingleObjectModel' instance, optional
+    single_object_model : `photutils.func.SingleObjectModel', optional
         Class describing the various models (aside from stars, which default
         to PSF in -> PSF out assuming a point source) and handling the
         convolution of the PSF model with the underlying source light

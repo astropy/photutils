@@ -23,7 +23,7 @@ API changes
 
 - ``photutils.funcs``
 
-   - Added ``SingleObjectModelBase`` abstract class, and ``SingleObjectModel`` 
+  - Added ``SingleObjectModelBase`` abstract class, and ``SingleObjectModel`` 
     class, which maintain backwards compatibility with previous versions in
     ``photutils.psf.BasicPSFPhotometry`` and subclasses.
 
