@@ -21,6 +21,12 @@ API changes
   - The ``find_peaks`` function will no longer issue a RuntimeWarning
     if the input data contains NaNs. [#712]
 
+- ``photutils.funcs``
+
+   - Added ``CullerAndEnderBase`` abstract class, and ``CullerAndEnder`` 
+    class, which maintain backwards compatibility with previous versions in
+    ``photutils.psf.BasicPSFPhotometry`` and subclasses.
+
 Bug Fixes
 ^^^^^^^^^
 
