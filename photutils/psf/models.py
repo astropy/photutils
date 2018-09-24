@@ -832,18 +832,18 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
 def get_grouped_psf_model(template_psf_model, star_group, pars_to_set,
                           single_object_model=None):
     """
-    Construct a joint PSF model which consists of a sum of PSF's templated on
+    Construct a joint PSF model which consists of a sum of PSFs templated on
     a specific model, but whose parameters are given by a table of objects.
 
     Parameters
     ----------
     template_psf_model : `astropy.modeling.Fittable2DModel` instance
-        The model to use for *individual* objects.  Must have parameters named
+        The model to use for individual objects.  Must have parameters named
         ``x_0``, ``y_0``, and ``flux``.
     star_group : `~astropy.table.Table`
         Table of stars for which the compound PSF will be constructed.  It
         must have columns named ``x_0``, ``y_0``, and ``flux_0``.
-    single_object_model : `photutils.func.SingleObjectModel', optional
+    single_object_model : `photutils.psf.SingleObjectModel`, optional
         Class describing the various models (aside from stars, which default
         to PSF in -> PSF out assuming a point source) and handling the
         convolution of the PSF model with the underlying source light
