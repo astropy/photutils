@@ -14,6 +14,7 @@ Blocks
 .. toctree::
     :maxdepth: 1
 
+    block_template
     background_estimator
     block_template
     culler_and_ender
@@ -24,3 +25,4 @@ Blocks
     psf_model
     scene_maker
     single_object_model
+

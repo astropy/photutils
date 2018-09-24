@@ -27,8 +27,8 @@ Example Usage
 
 StarFinder currently implements two methods: DAOFind and IRAFFind. For example, daofind
 can be run to find objects with FWHM of approximately 3 pixels with a peak 5-sigma above
-the background:
-::
+the background::
+
     from photutils import DAOStarFinder
     daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)
     sources = daofind(data)

@@ -1,13 +1,15 @@
 GroupMaker
 ==========
 
-Documented as the `__call__` method of ``GroupStarsBase`` - see
+Documented as the ``__call__`` method of ``GroupStarsBase`` - see
 https://photutils.readthedocs.io/en/stable/api/photutils.psf.groupstars.GroupStarsBase.html
-It'll be substantial work to re-design the photometry loops if this is changed
-in a backwards-incompatible manner, but of course that's possible if there's a
-good reason for it.
+API may potentially change if group_stars is updated to scene_maker extending PSF fitting to
+non-point source objects; however, it is likely that the fundamental inputs and outputs
+remain at least functionally similar to those shown here. Large changes to the GroupMaker
+call may require significant changes to the PSF Photometry fitting routines (e.g.,
+``IterativelySubtractedPSFPhotometry``).
 
-An object which groups stars within some critical separation, returning potentially
+A function which groups stars within some critical separation, returning potentially
 overlapping sources with an additonal column indicating their common group members.
 Subclasses of ``GroupStarsBase`` may require further input parameters, such as 
 ``crit_separation`` required for ``DAOGroup``.
@@ -48,15 +50,15 @@ starlist : `~astropy.table.Table`
 Returns
 """""""
 
-`~np.array` with the IDs of all stars with distance less than ``crit_separation`` to ``star``.
+`~numpy.array` with the IDs of all stars with distance less than ``crit_separation`` to ``star``.
 
 
 Example Usage
 -------------
 
 Here we create a ``DAOGroup`` list of overlapping sources, then find all sources within 3 pixels
-of the first source in the list.
-::
+of the first source in the list.::
+
     from photutils.psf.groupstars import DAOGroup
     group = DAOGroup(starlist, crit_separation=3)
     stargroups = group.group_stars(starlist)

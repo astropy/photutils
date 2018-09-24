@@ -4,7 +4,9 @@ BackgroundEstimator
 Existing code documented at
 https://photutils.readthedocs.io/en/stable/api/photutils.background.BackgroundBase.html
 - while the ``__call__`` function has no docstring, the ``calc_background``
-function is the actual block API. The documentation is therefore unlikely to change.
+function is the actual block API. This function is used significantly through `photutils`
+and should therefore be relatively stable to call changes; documentation is therefore 
+unlikely to change.
 
 Routine to estimate the background level of images and provide background subtraction. 
 Can either be applied across an entire image or applied in a two-dimensional grid, at
