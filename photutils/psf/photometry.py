@@ -11,7 +11,7 @@ from astropy.table import Table, Column, vstack, hstack
 from astropy.utils.exceptions import AstropyUserWarning
 
 from . import DAOGroup
-from .funcs import subtract_psf, _extract_psf_fitting_names, culler_and_ender
+from .funcs import subtract_psf, _extract_psf_fitting_names, CullerAndEnder
 from .models import get_grouped_psf_model
 from ..aperture import CircularAperture, aperture_photometry
 from ..background import MMMBackground
@@ -562,7 +562,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
     """
 
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
-                 finder, culler_and_ender=culler_and_ender, fitter=LevMarLSQFitter(), 
+                 finder, culler_and_ender=CullerAndEnder, fitter=LevMarLSQFitter(), 
                  niters=3, aperture_radius=None):
 
         super().__init__(group_maker, bkg_estimator, psf_model, fitshape,

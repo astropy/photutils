@@ -8,7 +8,7 @@ from astropy.table import Table
 from astropy.nddata.utils import add_array, extract_array
 
 
-__all__ = ['subtract_psf', 'culler_and_ender']
+__all__ = ['subtract_psf', 'CullerAndEnder']
 
 
 def _extract_psf_fitting_names(psf):
@@ -124,7 +124,7 @@ def subtract_psf(data, psf, posflux, subshape=None):
 
     return subbeddata
 
-class culler_and_ender:
+class CullerAndEnderBase:
     """
     Return input table, removing any sources which do not meet
     the quality of fit statistic used to assess fits.
@@ -147,11 +147,25 @@ class culler_and_ender:
         before the maximum number of loops.
 
     """
-    
+
     def __call__(self, data, psf_model, new_sources):
         new_data = self.cull_data(data, psf_model)
         end_flag = self.end_loop(new_data, data, new_sources)
         return new_data, end_flag
+
+    def cull_data(self, data, psf_model):
+        return NotImplementedError('cull_data should be defined in '
+                                   'the subclass.')
+    def end_loop(self, new_data, data, new_sources):
+        return NotImplementedError('end_loop should be defined in '
+                                   'the subclass.')
+
+class CullerAndEnder(CullerAndEnderBase):
+    """
+    Initial CullerAndEnder which simply ignores culling and ending
+    to preserve backwards-compatibility with no implementation.
+    """
+
     def cull_data(self, data, psf_model):
         # Make no attempt to cull any data by quality of fit
         # here; could potentially involve something like sharpness,
