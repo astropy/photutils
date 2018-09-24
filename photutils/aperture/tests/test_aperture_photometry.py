@@ -117,14 +117,14 @@ class BaseTestAperturePhotometry:
 
         table1 = aperture_photometry(self.data,
                                      self.aperture, method='center',
-                                     mask=mask, error=error)
+                                     mask=mask, uncertainty=error)
         table2 = aperture_photometry(self.data,
                                      self.aperture,
                                      method='subpixel', subpixels=12,
-                                     mask=mask, error=error)
+                                     mask=mask, uncertainty=error)
         table3 = aperture_photometry(self.data,
                                      self.aperture, method='exact',
-                                     mask=mask, error=error)
+                                     mask=mask, uncertainty=error)
 
         if not isinstance(self.aperture, (RectangularAperture,
                                           RectangularAnnulus)):
@@ -153,14 +153,14 @@ class BaseTestAperturePhotometry:
 
         table1 = aperture_photometry(self.data,
                                      self.aperture, method='center',
-                                     mask=mask, error=error)
+                                     mask=mask, uncertainty=error)
         table2 = aperture_photometry(self.data,
                                      self.aperture,
                                      method='subpixel', subpixels=12,
-                                     mask=mask, error=error)
+                                     mask=mask, uncertainty=error)
         table3 = aperture_photometry(self.data,
                                      self.aperture, method='exact',
-                                     mask=mask, error=error)
+                                     mask=mask, uncertainty=error)
 
         if not isinstance(self.aperture, (RectangularAperture,
                                           RectangularAnnulus)):
@@ -526,7 +526,7 @@ def test_aperture_photometry_with_error_units():
     unit = u.adu
     position = (20, 20)
     table1 = aperture_photometry(data2, CircularAperture(position, radius),
-                                 error=error)
+                                 uncertainty=error)
     assert_allclose(table1['aperture_sum'].value, true_flux)
     assert_allclose(table1['aperture_sum_err'].value, np.sqrt(true_flux))
     assert table1['aperture_sum'].unit == unit
@@ -547,7 +547,7 @@ def test_aperture_photometry_inputs_with_mask():
     error = np.sqrt(data)
     data_in = data.copy()
     error_in = error.copy()
-    t1 = aperture_photometry(data, aperture, error=error, mask=mask)
+    t1 = aperture_photometry(data, aperture, uncertainty=error, mask=mask)
     assert_array_equal(data, data_in)
     assert_array_equal(error, error_in)
     assert_allclose(t1['aperture_sum'][0], 11.5663706144)
@@ -597,12 +597,12 @@ def test_aperture_partial_overlap():
     xypos = [(10, 10), (0, 0), (0, 19), (19, 0), (19, 19)]
     r = 5.
     aper = CircularAperture(xypos, r=r)
-    tbl = aperture_photometry(data, aper, error=error)
+    tbl = aperture_photometry(data, aper, uncertainty=error)
     assert_allclose(tbl['aperture_sum'][0], np.pi * r ** 2)
     assert_array_less(tbl['aperture_sum'][1:], np.pi * r ** 2)
 
     unit = u.MJy / u.sr
-    tbl = aperture_photometry(data * unit, aper, error=error * unit)
+    tbl = aperture_photometry(data * unit, aper, uncertainty=error * unit)
     assert_allclose(tbl['aperture_sum'][0].value, np.pi * r ** 2)
     assert_array_less(tbl['aperture_sum'][1:].value, np.pi * r ** 2)
     assert_array_less(tbl['aperture_sum_err'][1:].value, np.pi * r ** 2)
