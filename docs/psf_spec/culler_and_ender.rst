@@ -37,6 +37,6 @@ and ``flux`` are compared to the expected PSF model (a FittableImageModel such a
 criterion are removed. If len(new_sources) == 0 then end_flag would return True, otherwise
 it will be set to False.::
 
-    from photutils.psf.funcs import CullerAndEnder
+    from photutils.psf import CullerAndEnder
     culler_and_ender = CullerAndEnder()
     good_sources, end_flag = culler_and_ender(found_sources, psf_model, new_sources)
