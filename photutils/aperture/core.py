@@ -709,7 +709,7 @@ def _prepare_photometry_input(data, uncertainty, mask, wcs, unit):
 
     # If uncertainty was pulled from NDData instance, strip it to be array-like
     if isinstance(uncertainty, StdDevUncertainty):
-        uncertainty=uncertainty.array
+        uncertainty = uncertainty.array
 
     if wcs is None:
         try:
