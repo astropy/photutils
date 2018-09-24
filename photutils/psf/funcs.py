@@ -124,6 +124,7 @@ def subtract_psf(data, psf, posflux, subshape=None):
 
     return subbeddata
 
+
 @abc.abstractmethod
 class SingleObjectModelBase:
     """
@@ -146,9 +147,11 @@ class SingleObjectModelBase:
     """
     def __call__(self, psf_model, object_type):
         return self.make_single_object(psf_model, object_type)
+
     def make_single_object(self, psf_model, object_type):
         return NotImplementedError('make_single_object must be defined'
                                    'in a subclass.')
+
 
 class SingleObjectModel(SingleObjectModelBase):
     """
@@ -156,4 +159,4 @@ class SingleObjectModel(SingleObjectModelBase):
     point sources.
     """
     def make_single_object(self, psf_model, object_type):
-        return psf_model 
+        return psf_model

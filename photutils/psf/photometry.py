@@ -91,7 +91,7 @@ class BasicPSFPhotometry:
         The radius (in units of pixels) used to compute initial
         estimates for the fluxes of sources. If ``None``, one FWHM will
         be used if it can be determined from the ``psf_model``.
-    single_object_model : `photutils.funcs.SingleObjectModel` instance
+    single_object_model : `photutils.psf.SingleObjectModel` instance
         Class describing the various models (aside from stars, which default
         to PSF in -> PSF out assuming a point source) and handling the
         convolution of the PSF model with the underlying source light
@@ -550,7 +550,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         stars remain.  Note that in this case it is *possible* that the
         loop will never end if the PSF has structure that causes
         subtraction to create new sources infinitely.
-    single_object_model : `photutils.funcs.SingleObjectModel` instance
+    single_object_model : `photutils.psf.SingleObjectModel` instance
         Class describing the various models (aside from stars, which default
         to PSF in -> PSF out assuming a point source) and handling the
         convolution of the PSF model with the underlying source light
