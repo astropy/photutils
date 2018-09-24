@@ -9,6 +9,8 @@ from astropy.nddata.utils import overlap_slices
 from astropy.stats import gaussian_sigma_to_fwhm, SigmaClip
 from astropy.table import Table, Column, vstack, hstack
 from astropy.utils.exceptions import AstropyUserWarning
+from astropy.nddata import NDData, StdDevUncertainty
+from astropy.io import fits
 
 from . import DAOGroup
 from .funcs import subtract_psf, _extract_psf_fitting_names
@@ -178,10 +180,10 @@ class BasicPSFPhotometry:
 
         Returns
         -------
-        residual_image : 2D array-like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
+        residual_image : 2D array-like, `~astropy.nddata.NDData` data attribute
         """
 
-        return self._residual_image
+        return self._residual_image.data
 
     def __call__(self, image, init_guesses=None):
         """
@@ -190,6 +192,23 @@ class BasicPSFPhotometry:
         """
 
         return self.do_photometry(image, init_guesses)
+
+    def _make_image(self, image):
+        """
+        Takes ndarray and returns NDData array with corresponding uncertainty
+        attribute, determined by noise_calc. If noise_calc is `None` then
+        return an empty uncertainty array. Currently assumes for compatibility
+        reasons that these uncertainties are of the standard deviation kind, 
+        such that Fitter weights are 1/uncertainty.
+        """
+        if not isinstance(image, NDData):
+            if self._noise_calc is not None:
+                image = NDData(image, 
+                    uncertainty=StdDevUncertainty(self._noise_calc(image)))
+            else:
+                image = NDData(image)
+        return image
+
 
     def do_photometry(self, image, init_guesses=None):
         """
@@ -208,8 +227,11 @@ class BasicPSFPhotometry:
 
         Parameters
         ----------
-        image : 2D array-like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
-            Image to perform photometry.
+        image : 2D array-like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`, 
+                or `~astropy.nddata.NDData`
+            Image to perform photometry. If not NDData, the data array will
+            be pulled and passed to noise_data, which will create the
+            corresponding uncertainty array and return an NDData instance.
         init_guesses: `~astropy.table.Table`
             Table which contains the initial guesses (estimates) for the
             set of parameters. Columns 'x_0' and 'y_0' which represent
@@ -234,8 +256,23 @@ class BasicPSFPhotometry:
             uncertanties are not reported.
         """
 
+        # Parse image_array for the different kinds of accepted inputs; if
+        # not ndarray, convert accordingly.
+        if isinstance(image, fits.HDUList):
+            for i in range(len(image)):
+                if image[i].data is not None:
+                    warnings.warn("Input data is a HDUList object, photometry is "
+                                  "run only for the {0} HDU."
+                                  .format(i), AstropyUserWarning)
+                    image = image[i]
+                    break
+        if isinstance(image, (fits.PrimaryHDU, fits.ImageHDU)):
+            image = image.data
+        image = self._make_image(image)
+
+
         if self.bkg_estimator is not None:
-            image = image - self.bkg_estimator(image)
+            image.data = image.data - self.bkg_estimator(image.data)
 
         if self.aperture_radius is None:
             if hasattr(self.psf_model, 'fwhm'):
@@ -271,7 +308,7 @@ class BasicPSFPhotometry:
             if self.finder is None:
                 raise ValueError('Finder cannot be None if init_guesses are '
                                  'not given.')
-            sources = self.finder(image)
+            sources = self.finder(image.data)
             if len(sources) > 0:
                 apertures = CircularAperture((sources['xcentroid'],
                                               sources['ycentroid']),
@@ -308,7 +345,7 @@ class BasicPSFPhotometry:
 
         Parameters
         ----------
-        image : numpy.ndarray
+        image : `~numpy.ndarray` or `~astropy.nddata.NDData`
             Background-subtracted image.
         star_groups : `~astropy.table.Table`
             This table must contain the following columns: ``id``,
@@ -323,9 +360,18 @@ class BasicPSFPhotometry:
         -------
         result_tab : `~astropy.table.Table`
             Astropy table that contains photometry results.
-        image : numpy.ndarray
-            Residual image.
+        image : `~astropy.nddata.NDData`
+            Residual image with corresponding uncertainty weights.
         """
+
+        if isinstance(image, NDData):
+            # Pull the values, ignoring the uncertainty type for now
+            uncert = image.uncertainty.array
+            image = image.data
+        else:
+            image = image
+            uncert = None
+
 
         result_tab = Table()
         for param_tab_name in self._pars_to_output.keys():
@@ -382,7 +428,7 @@ class BasicPSFPhotometry:
         if 'param_cov' in self.fitter.fit_info.keys():
             result_tab = hstack([result_tab, unc_tab])
 
-        return result_tab, image
+        return result_tab, NDData(image, uncertainty=StdDevUncertainty(uncert))
 
     def _define_fit_param_names(self):
         """
@@ -654,6 +700,21 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             covariance matrix.
         """
 
+        # Parse image_array for the different kinds of accepted inputs; if
+        # not ndarray, convert accordingly.
+        if isinstance(image, fits.HDUList):
+            for i in range(len(image)):
+                if image[i].data is not None:
+                    warnings.warn("Input data is a HDUList object, photometry is "
+                                  "run only for the {0} HDU."
+                                  .format(i), AstropyUserWarning)
+                    image = image[i]
+                    break
+        if isinstance(image, (fits.PrimaryHDU, fits.ImageHDU)):
+            image = image.data
+        image = self._make_image(image)
+
+
         if init_guesses is not None:
             table = super().do_photometry(image, init_guesses)
             table['iter_detected'] = np.ones(table['x_fit'].shape,
@@ -666,7 +727,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             output_table = vstack([table, output_table])
         else:
             if self.bkg_estimator is not None:
-                self._residual_image = image - self.bkg_estimator(image)
+                self._residual_image = NDData(image.data - self.bkg_estimator(image.data), 
+                                          uncertainty=StdDevUncertainty(image.uncertainty))
 
             if self.aperture_radius is None:
                 if hasattr(self.psf_model, 'fwhm'):
@@ -709,7 +771,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             output_table.add_column(Column(name=init_parname))
             output_table.add_column(Column(name=fit_parname))
 
-        sources = self.finder(self._residual_image)
+        sources = self.finder(self._residual_image.data)
 
         n = n_start
         while(len(sources) > 0 and
@@ -748,7 +810,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             # do not warn if no sources are found beyond the first iteration
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', AstropyUserWarning)
-                sources = self.finder(self._residual_image)
+                sources = self.finder(self._residual_image.data)
 
             n += 1
 
