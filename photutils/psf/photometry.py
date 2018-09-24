@@ -256,7 +256,7 @@ class BasicPSFPhotometry:
             uncertanties are not reported.
         """
 
-        # Parse image_array for the different kinds of accepted inputs; if
+        # Parse image for the different kinds of accepted inputs; if
         # not ndarray, convert accordingly.
         if isinstance(image, fits.HDUList):
             for i in range(len(image)):
@@ -703,7 +703,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             covariance matrix.
         """
 
-        # Parse image_array for the different kinds of accepted inputs; if
+        # Parse image for the different kinds of accepted inputs; if
         # not ndarray, convert accordingly.
         if isinstance(image, fits.HDUList):
             for i in range(len(image)):
