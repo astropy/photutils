@@ -830,7 +830,7 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
 
 
 def get_grouped_psf_model(template_psf_model, star_group, pars_to_set,
-                          single_object_model):
+                          single_object_model=None):
     """
     Construct a joint PSF model which consists of a sum of PSF's templated on
     a specific model, but whose parameters are given by a table of objects.
@@ -843,7 +843,7 @@ def get_grouped_psf_model(template_psf_model, star_group, pars_to_set,
     star_group : `~astropy.table.Table`
         Table of stars for which the compound PSF will be constructed.  It
         must have columns named ``x_0``, ``y_0``, and ``flux_0``.
-    single_object_model : `photutils.func.SingleObjectModel' instance
+    single_object_model : `photutils.func.SingleObjectModel' instance, optional
         Class describing the various models (aside from stars, which default
         to PSF in -> PSF out assuming a point source) and handling the
         convolution of the PSF model with the underlying source light
@@ -862,7 +862,7 @@ def get_grouped_psf_model(template_psf_model, star_group, pars_to_set,
         # If there is no additional column specifying what type of object the
         # sources listed are, assume they are stars
         psf_to_add = template_psf_model.copy()
-        if 'object_type' in star.colnames:
+        if 'object_type' in star.colnames and single_object_model is not None:
             # TODO: add convolution with SingleObjectModel per object_type,
             # currently this just returns the psf, assuming a delta function source
             psf_to_add = single_object_model(psf_to_add, star['object_type'])
