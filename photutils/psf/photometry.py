@@ -227,7 +227,7 @@ class BasicPSFPhotometry:
         Parameters
         ----------
         image : 2D array-like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`,
-                or `~astropy.nddata.NDData`
+            or `~astropy.nddata.NDData`
             Image to perform photometry. If not NDData, the data array will
             be pulled and passed to noise_data, which will create the
             corresponding uncertainty array and return an NDData instance.

@@ -678,10 +678,10 @@ def _prepare_photometry_input(data, uncertainty, mask, wcs, unit):
     Parse the inputs to `aperture_photometry`.
 
     `aperture_photometry` accepts a wide range of inputs, e.g. ``data``
-    could be a numpy array, a Quantity array, a fits HDU, or astropy 
-    NDData array.  This requires some parsing and validation to ensure 
-    that all inputs are complete and consistent.  For example, the data 
-    could carry a unit and the wcs itself, so we need to check that it 
+    could be a numpy array, a Quantity array, a fits HDU, or astropy
+    NDData array.  This requires some parsing and validation to ensure
+    that all inputs are complete and consistent.  For example, the data
+    could carry a unit and the wcs itself, so we need to check that it
     is consistent with the unit and wcs given as input parameters.
     """
 
@@ -776,8 +776,8 @@ def aperture_photometry(data, apertures, uncertainty=None, mask=None,
 
     Parameters
     ----------
-    data : array_like, `~astropy.units.Quantity`, `~astropy.io.fits.ImageHDU`, or 
-           `~astropy.io.fits.HDUList`
+    data : array_like, `~astropy.units.Quantity`, `~astropy.io.fits.ImageHDU`, or
+        `~astropy.io.fits.HDUList`
         The 2D array on which to perform photometry. ``data`` should be
         background-subtracted.  Units can be used during the photometry,
         either provided with the data (i.e. a `~astropy.units.Quantity`
