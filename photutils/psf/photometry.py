@@ -11,7 +11,7 @@ from astropy.table import Table, Column, vstack, hstack
 from astropy.utils.exceptions import AstropyUserWarning
 
 from . import DAOGroup
-from .funcs import subtract_psf, _extract_psf_fitting_names
+from .funcs import subtract_psf, _extract_psf_fitting_names, culler_and_ender
 from .models import get_grouped_psf_model
 from ..aperture import CircularAperture, aperture_photometry
 from ..background import MMMBackground
@@ -562,13 +562,13 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
     """
 
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
-                 finder, culler_and_ender, fitter=LevMarLSQFitter(), 
+                 finder, culler_and_ender=culler_and_ender, fitter=LevMarLSQFitter(), 
                  niters=3, aperture_radius=None):
 
         super().__init__(group_maker, bkg_estimator, psf_model, fitshape,
                          finder, fitter, aperture_radius)
         self.niters = niters
-        self.culler_and_ender = culler_and_ender
+        self.culler_and_ender = culler_and_ender()
 
     @property
     def niters(self):
@@ -740,9 +740,15 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                 warnings.simplefilter('ignore', AstropyUserWarning)
                 sources = self.finder(self._residual_image)
 
-            culled_table = self.culler_and_ender(output_table, self.psf_model)
-            # TODO: set up initial culler_and_ender such that it is trivially
-            # ignored, and thus does not ever cull or end anything.
+            # Culler and ender removes poor goodness-of-fit sources
+            culled_table, end_flag = self.culler_and_ender(output_table, self.psf_model,
+                                                           sources)
+            if end_flag:
+                break
+            else:
+                # If we did not break prematurely, then set the culled table
+                # as the new table for the loop to begin again.
+                output_table = culled_table
 
             n += 1
 
