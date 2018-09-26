@@ -156,12 +156,12 @@ class CullerAndEnderBase:
         return new_data, end_flag
 
     def cull_data(self, data, psf_model):
-        return NotImplementedError('cull_data should be defined in '
-                                   'the subclass.')
+        raise NotImplementedError('cull_data should be defined in '
+                                  'the subclass.')
 
     def end_loop(self, new_data, data, new_sources):
-        return NotImplementedError('end_loop should be defined in '
-                                   'the subclass.')
+        raise NotImplementedError('end_loop should be defined in '
+                                  'the subclass.')
 
 
 class CullerAndEnder(CullerAndEnderBase):

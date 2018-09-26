@@ -6,8 +6,9 @@ import pytest
 from astropy.modeling.models import Gaussian2D
 from astropy.convolution.utils import discretize_model
 from astropy.table import Table
-from .. import subtract_psf
+from .. import subtract_psf, IntegratedGaussianPRF
 from ..sandbox import DiscretePRF
+from ..funcs import CullerAndEnderBase
 
 try:
     import scipy    # noqa
@@ -52,3 +53,26 @@ def test_subtract_psf():
         posflux.rename_column(n, n.split('_')[0] + '_fit')
     residuals = subtract_psf(image, prf, posflux)
     assert_allclose(residuals, np.zeros_like(image), atol=1E-4)
+
+
+class TestCullerAndEnder(CullerAndEnderBase):
+    """Test Culler and Ender class"""
+    def cull_data(self, data, psf_model):
+        return data
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_culler_ender_base():
+    """Test SingleObjectModel"""
+
+    igp = IntegratedGaussianPRF(sigma=1.2)
+    tab = Table(names=['x_0', 'y_0', 'flux_0', 'object_type'],
+                data=[[1, 2], [3, 4], [0.5, 1], ['Star', 'Galaxy']])
+
+    single_object_model = CullerAndEnderBase()
+    with pytest.raises(NotImplementedError):
+        gpsf = single_object_model(tab, igp, tab)
+
+    single_object_model = TestCullerAndEnder()
+    with pytest.raises(NotImplementedError):
+        gpsf = single_object_model(tab, igp, tab)

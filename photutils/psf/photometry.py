@@ -562,7 +562,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
     """
 
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
-                 finder, culler_and_ender=CullerAndEnder, fitter=LevMarLSQFitter(), 
+                 finder, culler_and_ender=CullerAndEnder, fitter=LevMarLSQFitter(),
                  niters=3, aperture_radius=None):
 
         super().__init__(group_maker, bkg_estimator, psf_model, fitshape,
