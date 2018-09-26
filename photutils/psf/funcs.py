@@ -130,6 +130,7 @@ class CullerAndEnderBase:
     """
     Return input table, removing any sources which do not meet
     the quality of fit statistic used to assess fits.
+
     Parameters
     ----------
     data : `~astropy.table.Table`
