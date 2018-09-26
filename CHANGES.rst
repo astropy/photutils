@@ -21,6 +21,14 @@ Bug Fixes
   - Fixed a bug in the computation of ``sky_bbox_ul``,
     ``sky_bbox_lr``, ``sky_bbox_ur`` in the ``SourceCatalog``. [#716]
 
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Updated background and detection functions that call
+  ``astropy.stats.SigmaClip`` or ``astropy.stats.sigma_clipped_stats``
+  to support both their ``iters`` (for astropy < 3.1) and ``maxiters``
+  keywords. [#726]
+
 
 0.5 (2018-08-06)
 ----------------
