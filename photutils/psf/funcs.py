@@ -134,7 +134,7 @@ class SingleObjectModelBase:
     of an extended source.
 
     Parameters
-    ---------
+    ----------
     psf_model : `astropy.modeling.Fittable2DModel` instance
         The model used to fit individual point source objects.
     object_type : string
