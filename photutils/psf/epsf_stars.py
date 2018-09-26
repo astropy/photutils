@@ -494,11 +494,11 @@ class LinkedEPSFStar(EPSFStars):
     def __init__(self, stars_list):
         for star in stars_list:
             if not isinstance(star, EPSFStar):
-                return ValueError('stars_list must contain only EPSFStar '
-                                  'objects.')
+                raise ValueError('stars_list must contain only EPSFStar '
+                                 'objects.')
             if star.wcs_large is None:
-                return ValueError('Each EPSFStar object must have a valid '
-                                  'wcs_large attribute.')
+                raise ValueError('Each EPSFStar object must have a valid '
+                                 'wcs_large attribute.')
 
         super().__init__(stars_list)
 
