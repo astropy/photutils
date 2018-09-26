@@ -121,8 +121,7 @@ image, one should use more sophisticated methods (e.g.
 Let's subtract the background from the image::
 
     >>> from astropy.stats import sigma_clipped_stats
-    >>> mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.,
-    ...                                                     iters=None)
+    >>> mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.)
     >>> data -= median_val
 
 The :func:`~photutils.psf.extract_stars` function requires the input
@@ -190,8 +189,7 @@ which we'll build our ePSF.  Let's show the first 25 of them:
     stars_tbl['y'] = peaks_tbl['y_peak']
 
     from astropy.stats import sigma_clipped_stats
-    mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.,
-                                                        iters=None)
+    mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.)
     data -= median_val
 
     from astropy.nddata import NDData
@@ -267,8 +265,7 @@ Finally, let's show the constructed ePSF:
     stars_tbl['y'] = peaks_tbl['y_peak']
 
     from astropy.stats import sigma_clipped_stats
-    mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.,
-                                                        iters=None)
+    mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.)
     data -= median_val
 
     from astropy.nddata import NDData
