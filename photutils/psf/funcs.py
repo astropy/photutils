@@ -130,7 +130,7 @@ class CullerAndEnderBase:
     """
     Return input table, removing any sources which do not meet
     the quality of fit statistic used to assess fits.
-     Parameters
+    Parameters
     ----------
     data : `~astropy.table.Table`
         Table containing the sources.
@@ -138,9 +138,9 @@ class CullerAndEnderBase:
         PSF/PRF model to which the data are being fit.
     new_sources : `~astropy.table.Table`
         Newly found list of sources to compare with the sources
-        in `data`, when deciding whether to end iteration.
+        in ``data``, when deciding whether to end iteration.
 
-     Returns
+    Returns
     -------
     culled_data : `~astropy.table.Table`
         ``data`` with poor fits removed.
