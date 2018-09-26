@@ -95,7 +95,8 @@ class TestDetectThreshold:
     def test_image_mask(self):
         """
         Test detection with image_mask.
-        sig=10 and iters=1 to prevent sigma clipping after applying the mask.
+        Set sigma=10 and iters=1 to prevent sigma clipping after
+        applying the mask.
         """
 
         mask = REF1.astype(np.bool)
