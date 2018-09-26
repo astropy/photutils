@@ -12,18 +12,21 @@ from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
                                   NoOverlapError)
 from astropy.table import Table
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import skycoord_to_pixel
 
 from ..aperture import BoundingBox
 
 
-__all__ = ['Star', 'Stars', 'LinkedStar', 'extract_stars']
+__all__ = ['EPSFStar', 'EPSFStars', 'LinkedEPSFStar', 'extract_stars',
+           'Star', 'Stars', 'LinkedStar']
 
 
-class Star:
+class EPSFStar:
     """
-    A class to hold a 2D cutout image and associated metadata of a star.
+    A class to hold a 2D cutout image and associated metadata of a star
+    used to build an ePSF.
 
     Parameters
     ----------
@@ -307,25 +310,25 @@ class Star:
         return self.weights[~self.mask].ravel()
 
 
-class Stars:
+class EPSFStars:
     """
-    Class to hold a list of `Star` and/or `LinkedStar` objects.
+    Class to hold a list of `EPSFStar` and/or `LinkedEPSFStar` objects.
 
     Parameters
     ----------
-    star_list : list of `Star` or `LinkedStar` objects
-        A list of `Star` and/or `LinkedStar` objects.
+    star_list : list of `EPSFStar` or `LinkedEPSFStar` objects
+        A list of `EPSFStar` and/or `LinkedEPSFStar` objects.
     """
 
     def __init__(self, stars_list):
-        if (isinstance(stars_list, Star) or
-                isinstance(stars_list, LinkedStar)):
+        if (isinstance(stars_list, EPSFStar) or
+                isinstance(stars_list, LinkedEPSFStar)):
             self._data = [stars_list]
         elif isinstance(stars_list, list):
             self._data = stars_list
         else:
-            raise ValueError('stars_list must be a list of Star and/or '
-                             'LinkedStar objects.')
+            raise ValueError('stars_list must be a list of EPSFStar and/or '
+                             'LinkedEPSFStar objects.')
 
     def __len__(self):
         return len(self._data)
@@ -350,7 +353,7 @@ class Stars:
     def _getattr_flat(self, attr):
         values = []
         for item in self._data:
-            if isinstance(item, LinkedStar):
+            if isinstance(item, LinkedEPSFStar):
                 values.extend(getattr(item, attr))
             else:
                 values.append(getattr(item, attr))
@@ -365,7 +368,7 @@ class Stars:
         input cutout ``data`` array, as a 2D array (``n_all_stars`` x
         2).
 
-        Note that when `Stars` contains any `LinkedStar`, the
+        Note that when `EPSFStars` contains any `LinkedEPSFStar`, the
         ``cutout_center`` attribute will be a nested 3D array.
         """
 
@@ -379,8 +382,8 @@ class Stars:
         (large) image (not the cutout image) as a 2D array
         (``n_all_stars`` x 2).
 
-        Note that when `Stars` contains any `LinkedStar`, the ``center``
-        attribute will be a nested 3D array.
+        Note that when `EPSFStars` contains any `LinkedEPSFStar`, the
+        ``center`` attribute will be a nested 3D array.
         """
 
         return self._getattr_flat('center')
@@ -388,14 +391,14 @@ class Stars:
     @lazyproperty
     def all_stars(self):
         """
-        A list of all `Star` objects stored in this object, including
-        those that comprise linked stars (i.e. `LinkedStar`), as a flat
-        list.
+        A list of all `EPSFStar` objects stored in this object,
+        including those that comprise linked stars (i.e.
+        `LinkedEPSFStar`), as a flat list.
         """
 
         stars = []
         for item in self._data:
-            if isinstance(item, LinkedStar):
+            if isinstance(item, LinkedEPSFStar):
                 stars.extend(item.all_stars)
             else:
                 stars.append(item)
@@ -405,9 +408,9 @@ class Stars:
     @property
     def all_good_stars(self):
         """
-        A list of all `Star` objects stored in this object that have not
-        been excluded from fitting, including those that comprise linked
-        stars (i.e. `LinkedStar`), as a flat list.
+        A list of all `EPSFStar` objects stored in this object that have
+        not been excluded from fitting, including those that comprise
+        linked stars (i.e. `LinkedEPSFStar`), as a flat list.
         """
 
         stars = []
@@ -432,9 +435,9 @@ class Stars:
     @lazyproperty
     def n_all_stars(self):
         """
-        The total number of `Star` objects, including all the linked
-        stars within `LinkedStar`.  Each linked star is included in the
-        count.
+        The total number of `EPSFStar` objects, including all the linked
+        stars within `LinkedEPSFStar`.  Each linked star is included in
+        the count.
         """
 
         return len(self.all_stars)
@@ -442,8 +445,8 @@ class Stars:
     @property
     def n_good_stars(self):
         """
-        The total number of `Star` objects, including all the linked
-        stars within `LinkedStar`, that have not been excluded from
+        The total number of `EPSFStar` objects, including all the linked
+        stars within `LinkedEPSFStar`, that have not been excluded from
         fitting.  Each non-excluded linked star is included in the
         count.
         """
@@ -454,7 +457,7 @@ class Stars:
     @lazyproperty
     def _min_pixel_scale(self):
         """
-        The minimum x and y pixel scale of all the `Star` objects
+        The minimum x and y pixel scale of all the `EPSFStar` objects
         (including linked stars).
         """
 
@@ -464,48 +467,48 @@ class Stars:
     @lazyproperty
     def _max_shape(self):
         """
-        The maximum x and y shapes of all the `Star`s (including linked
-        stars).
+        The maximum x and y shapes of all the `EPSFStar`\\s (including
+        linked stars).
         """
 
         return np.max([star.shape for star in self.all_stars],
                       axis=0)
 
 
-class LinkedStar(Stars):
+class LinkedEPSFStar(EPSFStars):
     """
-    A class to hold a list of `Star` objects for linked stars.
+    A class to hold a list of `EPSFStar` objects for linked stars.
 
-    Linked stars are `Star` cutouts from different images that represent
-    the same physical star.  When building the ePSF, linked stars are
-    constrained to have the same sky coordinates.
+    Linked stars are `EPSFStar` cutouts from different images that
+    represent the same physical star.  When building the ePSF, linked
+    stars are constrained to have the same sky coordinates.
 
     Parameters
     ----------
-    star_list : list of `Star` objects
-        A list of `Star` objects for the same physical star.  Each
-        `Star` object must have a valid ``wcs_large`` attribute to
+    star_list : list of `EPSFStar` objects
+        A list of `EPSFStar` objects for the same physical star.  Each
+        `EPSFStar` object must have a valid ``wcs_large`` attribute to
         convert between pixel and sky coordinates.
     """
 
     def __init__(self, stars_list):
         for star in stars_list:
-            if not isinstance(star, Star):
-                return ValueError('stars_list must contain only Star '
-                                  'objects.')
+            if not isinstance(star, EPSFStar):
+                raise ValueError('stars_list must contain only EPSFStar '
+                                 'objects.')
             if star.wcs_large is None:
-                return ValueError('Each Star object must have a valid '
-                                  'wcs_large attribute.')
+                raise ValueError('Each EPSFStar object must have a valid '
+                                 'wcs_large attribute.')
 
         super().__init__(stars_list)
 
     def constrain_centers(self):
         """
-        Constrain the centers of linked `Star` objects (i.e. the same
-        physical star) to have the same sky coordinate.
+        Constrain the centers of linked `EPSFStar` objects (i.e. the
+        same physical star) to have the same sky coordinate.
 
-        Only `Star` objects that have not been excluded during the ePSF
-        build process will be used to constrain the centers.
+        Only `EPSFStar` objects that have not been excluded during the
+        ePSF build process will be used to constrain the centers.
 
         The single sky coordinate is calculated as the mean of sky
         coordinates of the linked stars.
@@ -607,8 +610,8 @@ def extract_stars(data, catalogs, size=(11, 11)):
 
     Returns
     -------
-    stars : `Stars` instance
-        A `Stars` instance containing the extracted stars.
+    stars : `EPSFStars` instance
+        A `EPSFStars` instance containing the extracted stars.
     """
 
     if isinstance(data, NDData):
@@ -691,7 +694,7 @@ def extract_stars(data, catalogs, size=(11, 11)):
             elif len(good_stars) == 1:
                 good_stars = good_stars[0]  # only one star, cannot be linked
             else:
-                good_stars = LinkedStar(good_stars)
+                good_stars = LinkedEPSFStar(good_stars)
 
             stars_out.append(good_stars)
     else:    # no linked stars
@@ -709,7 +712,7 @@ def extract_stars(data, catalogs, size=(11, 11)):
                       'region extended beyond the input image.'
                       .format(n_excluded), AstropyUserWarning)
 
-    return Stars(stars_out)
+    return EPSFStars(stars_out)
 
 
 def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
@@ -750,8 +753,8 @@ def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
 
     Returns
     -------
-    stars : list of `Star` objects
-        A list of `Star` instances containing the extracted stars.
+    stars : list of `EPSFStar` objects
+        A list of `EPSFStar` instances containing the extracted stars.
     """
 
     colnames = catalog.colnames
@@ -796,9 +799,25 @@ def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
 
         origin = (large_slc[1].start, large_slc[0].start)
         cutout_center = (xcenter - origin[0], ycenter - origin[1])
-        star = Star(data_cutout, weights_cutout, cutout_center=cutout_center,
-                    origin=origin, wcs_large=data.wcs, id_label=obj_id)
+        star = EPSFStar(data_cutout, weights_cutout,
+                        cutout_center=cutout_center, origin=origin,
+                        wcs_large=data.wcs, id_label=obj_id)
 
         stars.append(star)
 
     return stars
+
+
+@deprecated(0.6, alternative='EPSFStar')
+class Star(EPSFStar):
+    pass
+
+
+@deprecated(0.6, alternative='EPSFStars')
+class Stars(EPSFStars):
+    pass
+
+
+@deprecated(0.6, alternative='LinkedEPSFStar')
+class LinkedStar(LinkedEPSFStar):
+    pass

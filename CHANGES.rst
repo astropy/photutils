@@ -13,6 +13,13 @@ API changes
   - The ``find_peaks`` function will no longer issue a RuntimeWarning
     if the input data contains NaNs. [#712]
 
+- ``photutils.epsf``
+
+  - The ``Star``, ``Stars``, and ``LinkedStars`` classes are now
+    deprecated and have been renamed ``EPSFStar``, ``EPSFStars``, and
+    ``LinkedEPSFStars``, respectively. [#727]
+
+
 Bug Fixes
 ^^^^^^^^^
 

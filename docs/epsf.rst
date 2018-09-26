@@ -152,9 +152,9 @@ Let's extract 25 x 25 pixel cutouts of our selected stars:
     >>> from photutils.psf import extract_stars
     >>> stars = extract_stars(nddata, stars_tbl, size=25)
 
-The function returns a `~photutils.psf.Stars` object containing the
-cutouts of our selected stars.  The function extracted 403 stars, from
-which we'll build our ePSF.  Let's show the first 25 of them:
+The function returns a `~photutils.psf.EPSFStars` object containing
+the cutouts of our selected stars.  The function extracted 403 stars,
+from which we'll build our ePSF.  Let's show the first 25 of them:
 
 .. doctest-skip::
 
@@ -232,7 +232,7 @@ stars to the instance:
 
 The returned values are the ePSF, as an
 :class:`~photutils.psf.EPSFModel` object, and our input stars fitted
-with the constructed ePSF, as a new :class:`~photutils.psf.Stars`
+with the constructed ePSF, as a new :class:`~photutils.psf.EPSFStars`
 object with fitted star positions and fluxes.
 
 Finally, let's show the constructed ePSF:

@@ -8,7 +8,7 @@ from astropy.nddata import NDData
 from astropy.table import Table
 
 from ..epsf import EPSFBuilder
-from ..epsf_stars import extract_stars, Star, Stars
+from ..epsf_stars import extract_stars, EPSFStar, EPSFStars
 from ...centroids import gaussian1d_moments
 from ...datasets import make_gaussian_sources_image
 
@@ -70,8 +70,8 @@ class TestEPSFBuild:
         stars = extract_stars(self.nddata, self.init_stars, size=size)
 
         assert len(stars) == 41
-        assert isinstance(stars, Stars)
-        assert isinstance(stars[0], Star)
+        assert isinstance(stars, EPSFStars)
+        assert isinstance(stars[0], EPSFStar)
         assert stars[0].data.shape == (size, size)
 
     def test_extract_stars_inputs(self):
