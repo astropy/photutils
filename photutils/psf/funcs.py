@@ -147,7 +147,6 @@ class CullerAndEnderBase:
     end_flag : boolean
         Flag indicating whether to end iterative PSF fitting
         before the maximum number of loops.
-
     """
 
     def __call__(self, data, psf_model, new_sources):
