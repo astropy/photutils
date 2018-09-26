@@ -661,8 +661,9 @@ class BaseTestDifferentData:
         assert_almost_equal(phot_results['y_fit'], self.true_y)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 class TestInputPrimaryHDU(BaseTestDifferentData):
-    @pytest.mark.xfail('not HAS_SCIPY')
+
     def setup_class(self):
         data = self.setup_data(self)
         self.data = fits.ImageHDU(data=data)
@@ -674,8 +675,9 @@ class TestInputPrimaryHDU(BaseTestDifferentData):
                        21.059913112278178]
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 class TestInputHDUList(BaseTestDifferentData):
-    @pytest.mark.xfail('not HAS_SCIPY')
+
     def setup_class(self):
         data0 = self.setup_data(self)
         data1 = self.setup_data(self)
