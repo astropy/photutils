@@ -132,14 +132,16 @@ class SingleObjectModelBase:
     telescope PSF (or PRF, for discrete pixels), returning a PRF
     which describes the fraction of light falling in each pixel
     of an extended source.
-     Parameters
+
+    Parameters
     ---------
     psf_model : `astropy.modeling.Fittable2DModel` instance
         The model used to fit individual point source objects.
     object_type : string
         The extended source type used to determine the innate
         light distribution of the source.
-     Returns
+
+    Returns
     -------
     convolve_psf_model : `astropy.modeling.Fittable2DModel` instance
         The new, combined PRF of the extended source, combining the
