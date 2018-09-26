@@ -27,6 +27,12 @@ API changes
     class, which maintain backwards compatibility with previous versions in
     ``photutils.psf.BasicPSFPhotometry`` and subclasses.
 
+- ``photutils.epsf``
+
+  - The ``Star``, ``Stars``, and ``LinkedStars`` classes are now
+    deprecated and have been renamed ``EPSFStar``, ``EPSFStars``, and
+    ``LinkedEPSFStars``, respectively. [#727]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -34,6 +40,14 @@ Bug Fixes
 
   - Fixed a bug in the computation of ``sky_bbox_ul``,
     ``sky_bbox_lr``, ``sky_bbox_ur`` in the ``SourceCatalog``. [#716]
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Updated background and detection functions that call
+  ``astropy.stats.SigmaClip`` or ``astropy.stats.sigma_clipped_stats``
+  to support both their ``iters`` (for astropy < 3.1) and ``maxiters``
+  keywords. [#726]
 
 
 0.5 (2018-08-06)

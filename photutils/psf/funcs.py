@@ -8,7 +8,7 @@ from astropy.table import Table
 from astropy.nddata.utils import add_array, extract_array
 import abc
 
-__all__ = ['subtract_psf', 'CullerAndEnder']
+__all__ = ['subtract_psf', 'CullerAndEnder', 'CullerAndEnderBase']
 
 
 def _extract_psf_fitting_names(psf):
