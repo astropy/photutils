@@ -28,7 +28,7 @@ convolve_psf_model : `astropy.modeling.Fittable2DModel` instance
 Example Usage
 -------------
 
-This class simply takes the `~astropy.modeling.Fittable2Dmodel` instance and 
+This class simply takes the `~astropy.modeling.Fittable2DModel` instance and 
 convolves it with the appropriate model describing the, e.g., galaxy light
 distribution.::
 

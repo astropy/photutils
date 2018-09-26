@@ -8,7 +8,7 @@ from astropy.table import Table
 from astropy.nddata.utils import add_array, extract_array
 import abc
 
-__all__ = ['subtract_psf', 'SingleObjectModel']
+__all__ = ['subtract_psf', 'SingleObjectModel', 'SingleObjectModelBase']
 
 
 def _extract_psf_fitting_names(psf):
@@ -149,8 +149,8 @@ class SingleObjectModelBase:
         return self.make_single_object(psf_model, object_type)
 
     def make_single_object(self, psf_model, object_type):
-        return NotImplementedError('make_single_object must be defined'
-                                   'in a subclass.')
+        raise NotImplementedError('make_single_object must be defined'
+                                  'in a subclass.')
 
 
 class SingleObjectModel(SingleObjectModelBase):
