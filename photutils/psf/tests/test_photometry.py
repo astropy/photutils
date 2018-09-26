@@ -2,7 +2,8 @@
 
 import pytest
 import numpy as np
-from numpy.testing import assert_allclose, assert_array_equal, assert_equal
+from numpy.testing import (assert_allclose, assert_array_equal,
+                           assert_equal, assert_almost_equal)
 
 from astropy.table import Table
 from astropy.stats import gaussian_sigma_to_fwhm, SigmaClip
@@ -20,7 +21,8 @@ from ..photometry import (DAOPhotPSFPhotometry, BasicPSFPhotometry,
 from ..sandbox import DiscretePRF
 from ...background import StdBackgroundRMS, MMMBackground
 from ...datasets import make_gaussian_sources_image, make_noise_image
-from ...detection import DAOStarFinder
+from ...detection import DAOStarFinder, IRAFStarFinder
+from astropy.io import fits
 
 
 try:
@@ -601,3 +603,87 @@ def test_psf_fitting_data_on_edge():
     for n in ['x', 'y', 'flux']:
         assert_allclose(outtab[n + '_0'], outtab[n + '_fit'],
                         rtol=0.05, atol=0.1)
+
+
+class BaseTestDifferentData:
+
+    def setup_data(self):
+        sources = Table()
+        sources['flux'] = [10000, 1000]
+        sources['x_mean'] = [18, 9]
+        sources['y_mean'] = [17, 21]
+        sources['x_stddev'] = [2] * 2
+        sources['y_stddev'] = sources['x_stddev']
+        sources['theta'] = [0] * 2
+        tshape = (32, 32)
+        image = (make_gaussian_sources_image(tshape, sources) +
+                 make_noise_image(tshape, type='poisson', mean=6.,
+                                  random_state=1) +
+                 make_noise_image(tshape, type='gaussian', mean=0.,
+                                  stddev=2., random_state=1))
+        self.daogroup = DAOGroup(crit_separation=8)
+        self.mmm_bkg = MMMBackground()
+        self.iraffind = IRAFStarFinder(threshold=2.5*self.mmm_bkg(image), fwhm=4.5)
+        self.fitter = LevMarLSQFitter()
+        self.psf_model = IntegratedGaussianPRF(sigma=2.05)
+        self.psf_model.sigma.fixed = False
+        return image
+
+    def test_basic_psf_photometry(self):
+        itr_phot_obj = BasicPSFPhotometry(finder=self.iraffind,
+                                          group_maker=self.daogroup,
+                                          bkg_estimator=self.mmm_bkg,
+                                          psf_model=self.psf_model,
+                                          fitter=self.fitter,
+                                          fitshape=(11, 11))
+        phot_results = itr_phot_obj(self.data)
+
+        assert_almost_equal(phot_results['flux_fit'], self.true_flux[0])
+
+        assert_almost_equal(phot_results['x_fit'], self.true_x[0])
+
+        assert_almost_equal(phot_results['y_fit'], self.true_y[0])
+
+    def test_iterative_psf_photometry_and_noise_calc(self):
+        itr_phot_obj = IterativelySubtractedPSFPhotometry(finder=self.iraffind,
+                                                          group_maker=self.daogroup,
+                                                          bkg_estimator=self.mmm_bkg,
+                                                          psf_model=self.psf_model,
+                                                          fitter=self.fitter,
+                                                          fitshape=(11, 11),
+                                                          niters=2, noise_calc=np.ones_like)
+        phot_results = itr_phot_obj(self.data)
+        print(phot_results['x_fit'])
+        assert_almost_equal(phot_results['flux_fit'], self.true_flux)
+
+        assert_almost_equal(phot_results['x_fit'], self.true_x)
+
+        assert_almost_equal(phot_results['y_fit'], self.true_y)
+
+
+class TestInputPrimaryHDU(BaseTestDifferentData):
+
+    def setup_class(self):
+        data = self.setup_data(self)
+        self.data = fits.ImageHDU(data=data)
+        self.true_flux = [10000.28602504445,
+                          1020.672511378549]
+        self.true_x = [17.999512030659787,
+                       9.121823422550296]
+        self.true_y = [17.00395333854339,
+                       21.059913112278178]
+
+
+class TestInputHDUList(BaseTestDifferentData):
+
+    def setup_class(self):
+        data0 = self.setup_data(self)
+        data1 = self.setup_data(self)
+        self.data = fits.HDUList([fits.ImageHDU(data=data0),
+                                  fits.ImageHDU(data=data1)])
+        self.true_flux = [10000.28602504445,
+                          1020.672511378549]
+        self.true_x = [17.999512030659787,
+                       9.121823422550296]
+        self.true_y = [17.00395333854339,
+                       21.059913112278178]

@@ -5,7 +5,6 @@ King (2000; PASP 112, 1360).
 """
 
 import copy
-import sys
 import time
 import warnings
 
@@ -15,7 +14,7 @@ from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
                                   NoOverlapError)
 from astropy.utils.exceptions import AstropyUserWarning
 
-from .epsf_stars import Star, LinkedStar, Stars
+from .epsf_stars import EPSFStar, LinkedEPSFStar, EPSFStars
 from .models import EPSFModel
 from ..centroids import centroid_com
 from ..extern import SigmaClip
@@ -92,7 +91,7 @@ class EPSFFitter:
         epsf : `EPSFModel`
             An ePSF model to be fitted to the stars.
 
-        stars : `Stars` object
+        stars : `EPSFStars` object
             The stars to be fit.  The center coordinates for each star
             should be as close as possible to actual centers.  For stars
             than contain weights, a weighted fit of the ePSF to the star
@@ -100,7 +99,7 @@ class EPSFFitter:
 
         Returns
         -------
-        fitted_stars : `Stars` object
+        fitted_stars : `EPSFStars` object
             The fitted stars.  The ePSF-fitted center position and flux
             are stored in the ``center`` (and ``cutout_center``) and
             ``flux`` attributes.
@@ -118,13 +117,13 @@ class EPSFFitter:
         # perform the fit
         fitted_stars = []
         for star in stars:
-            if isinstance(star, Star):
+            if isinstance(star, EPSFStar):
                 fitted_star = self._fit_star(epsf, star, self.fitter,
                                              self.fitter_kwargs,
                                              self.fitter_has_fit_info,
                                              self.fit_boxsize)
 
-            elif isinstance(star, LinkedStar):
+            elif isinstance(star, LinkedEPSFStar):
                 fitted_star = []
                 for linked_star in star:
                     fitted_star.append(
@@ -133,16 +132,16 @@ class EPSFFitter:
                                        self.fitter_has_fit_info,
                                        self.fit_boxsize))
 
-                fitted_star = LinkedStar(fitted_star)
+                fitted_star = LinkedEPSFStar(fitted_star)
                 fitted_star.constrain_centers()
 
             else:
-                raise TypeError('stars must contain only Star and/or '
-                                'LinkedStar objects.')
+                raise TypeError('stars must contain only EPSFStar and/or '
+                                'LinkedEPSFStar objects.')
 
             fitted_stars.append(fitted_star)
 
-        return Stars(fitted_stars)
+        return EPSFStars(fitted_stars)
 
     def _fit_star(self, epsf, star, fitter, fitter_kwargs,
                   fitter_has_fit_info, fit_boxsize):
@@ -205,7 +204,7 @@ class EPSFFitter:
         # The oversampling factor is used in the FittableImageModel
         # evaluate method (which is use when fitting).  We do not want
         # to use oversampling here because it has been set by the ratio
-        # of the ePSF and Star pixel scales.  This allows for
+        # of the ePSF and EPSFStar pixel scales.  This allows for
         # oversampling factors that differ between stars and also for
         # the factor to be different along the x and y axes.
         epsf._oversampling = 1.
@@ -298,7 +297,7 @@ class EPSFBuilder:
         calculate the centroid of a 2D array.  The callable must accept
         a 2D `~numpy.ndarray`, have a ``mask`` keyword and optionally an
         ``error`` keyword.  The callable object must return a tuple of
-        two 1D `~numpy.ndarray`\s, representing the x and y centroids.
+        two 1D `~numpy.ndarray`\\s, representing the x and y centroids.
         The default is `~photutils.centroids.centroid_com`.
 
     recentering_boxsize : float or tuple of two floats, optional
@@ -418,7 +417,7 @@ class EPSFBuilder:
 
         Parameters
         ----------
-        stars : `Stars` object
+        stars : `EPSFStars` object
             The stars used to build the ePSF.
 
         Returns
@@ -490,7 +489,7 @@ class EPSFBuilder:
 
         Parameters
         ----------
-        star : `Star` object
+        star : `EPSFStar` object
             A single star object.
 
         epsf : `EPSFModel` object
@@ -503,7 +502,7 @@ class EPSFBuilder:
             image contains NaNs where there is no data.
         """
 
-        # find the integer index of Star pixels in the oversampled
+        # find the integer index of EPSFStar pixels in the oversampled
         # ePSF grid
         x_oversamp = star.pixel_scale[0] / epsf.pixel_scale[0]
         y_oversamp = star.pixel_scale[1] / epsf.pixel_scale[1]
@@ -540,7 +539,7 @@ class EPSFBuilder:
 
         Parameters
         ----------
-        stars : `Stars` object
+        stars : `EPSFStars` object
             The stars used to build the ePSF.
 
         epsf : `EPSFModel` object
@@ -640,7 +639,7 @@ class EPSFBuilder:
             calculate the centroid of a 2D array.  The callable must
             accept a 2D `~numpy.ndarray`, have a ``mask`` keyword and
             optionally an ``error`` keyword.  The callable object must
-            return a tuple of two 1D `~numpy.ndarray`\s, representing
+            return a tuple of two 1D `~numpy.ndarray`\\s, representing
             the x and y centroids.  The default is
             `~photutils.centroids.centroid_com`.
 
@@ -727,7 +726,7 @@ class EPSFBuilder:
 
         Parameters
         ----------
-        stars : `Stars` object
+        stars : `EPSFStars` object
             The stars used to build the ePSF.
 
         epsf : `EPSFModel` object, optional
@@ -741,8 +740,8 @@ class EPSFBuilder:
         """
 
         if len(stars) < 1:
-            raise ValueError('stars must contain at least one Star or '
-                             'LinkedStar object.')
+            raise ValueError('stars must contain at least one EPSFStar or '
+                             'LinkedEPSFStar object.')
 
         if epsf is None:
             # create an initial ePSF (array of zeros)
@@ -810,7 +809,7 @@ class EPSFBuilder:
 
         Parameters
         ----------
-        stars : `Stars` object
+        stars : `EPSFStars` object
             The stars used to build the ePSF.
 
         init_epsf : `EPSFModel` object, optional
@@ -822,7 +821,7 @@ class EPSFBuilder:
         epsf : `EPSFModel` object
             The constructed ePSF.
 
-        fitted_stars : `Stars` object
+        fitted_stars : `EPSFStars` object
             The input stars with updated centers and fluxes derived
             from fitting the output ``epsf``.
         """

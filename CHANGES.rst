@@ -21,6 +21,13 @@ API changes
   - The ``find_peaks`` function will no longer issue a RuntimeWarning
     if the input data contains NaNs. [#712]
 
+- ``photutils.epsf``
+
+  - The ``Star``, ``Stars``, and ``LinkedStars`` classes are now
+    deprecated and have been renamed ``EPSFStar``, ``EPSFStars``, and
+    ``LinkedEPSFStars``, respectively. [#727]
+
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -34,6 +41,14 @@ Bug Fixes
   - ``aperture_photometry`` now requires arg ``uncertainty`` rather than
     ``error`` to support NDData uncertainty attribute correctly.
 
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Updated background and detection functions that call
+  ``astropy.stats.SigmaClip`` or ``astropy.stats.sigma_clipped_stats``
+  to support both their ``iters`` (for astropy < 3.1) and ``maxiters``
+  keywords. [#726]
 
 
 0.5 (2018-08-06)

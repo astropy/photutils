@@ -8,6 +8,7 @@ from astropy.stats import sigma_clipped_stats
 from astropy.table import Table
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
+from astropy.version import version as astropy_version
 from astropy.wcs.utils import pixel_to_skycoord
 
 from ..utils.cutouts import cutout_footprint
@@ -90,9 +91,15 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
     """
 
     if background is None or error is None:
-        data_mean, data_median, data_std = sigma_clipped_stats(
-            data, mask=mask, mask_value=mask_value, sigma=sigclip_sigma,
-            iters=sigclip_iters)
+        if astropy_version < '3.1':
+            data_mean, data_median, data_std = sigma_clipped_stats(
+                data, mask=mask, mask_value=mask_value, sigma=sigclip_sigma,
+                iters=sigclip_iters)
+        else:
+            data_mean, data_median, data_std = sigma_clipped_stats(
+                data, mask=mask, mask_value=mask_value, sigma=sigclip_sigma,
+                maxiters=sigclip_iters)
+
         bkgrd_image = np.zeros_like(data) + data_mean
         bkgrdrms_image = np.zeros_like(data) + data_std
 
@@ -189,7 +196,7 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         calculate the centroid of a 2D array.  The ``centroid_func``
         must accept a 2D `~numpy.ndarray`, have a ``mask`` keyword, and
         optionally an ``error`` keyword.  The callable object must
-        return a tuple of two 1D `~numpy.ndarray`\s, representing the x
+        return a tuple of two 1D `~numpy.ndarray`\\s, representing the x
         and y centroids, respectively.
 
     subpixel : bool, optional
