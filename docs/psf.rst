@@ -21,9 +21,9 @@ definitions described here.
 For this module we take Point Spread Function (PSF), or instrumental Point Spread
 Function (iPSF) to be the infinite resolution and infinite signal-to-noise flux
 distribution from a point source on the detector, after passing through optics,
-dust, atmosphere, etc. By contrast, the function describing the efficiency of
-the *pixels* of the detector is the Pixel Response Function (sometimes called
-"PRF", but that acronym is not used here for reasons that will soon be
+dust, atmosphere, etc. By contrast, the function describing the responsivity
+variations across individual *pixels* is the Pixel Response Function (sometimes
+called "PRF", but that acronym is not used here for reasons that will soon be
 apparent). The convolution of the PSF and pixel response function, when
 discretized onto the detector (i.e. a rectilinear CCD grid), is the effective
 PSF (ePSF) or Point Response Function (PRF). (This latter terminology is the
