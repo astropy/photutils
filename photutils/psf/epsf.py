@@ -599,8 +599,8 @@ class EPSFBuilder:
                 warnings.warn('A quartic smoothing_kernel was requested, but'
                               'oversampling is set to {}.  This kernel is '
                               'only meant for use with an oversampling near 4, '
-                              'so photometry may be compromised. A different '
-                              'smoothing kernel is '
+                              'so the constructed ePSF may be compromised. A '
+                              'different smoothing kernel is '
                               'recommended'.format(self.oversampling),
                               AstropyUserWarning)
 
@@ -626,8 +626,8 @@ class EPSFBuilder:
                 warnings.warn('A quadratic smoothing_kernel was requested, but'
                               'oversampling is set to {}.  This kernel is '
                               'only meant for use with an oversampling near 4, '
-                              'so photometry may be compromised. A different '
-                              'smoothing kernel is '
+                              'so the constructed ePSF may be compromised. A '
+                              'different smoothing kernel is '
                               'recommended'.format(self.oversampling),
                               AstropyUserWarning)
 
