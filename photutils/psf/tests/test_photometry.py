@@ -16,7 +16,8 @@ from astropy.utils.exceptions import AstropyUserWarning
 from ..groupstars import DAOGroup
 from ..models import IntegratedGaussianPRF
 from ..photometry import (DAOPhotPSFPhotometry, BasicPSFPhotometry,
-                          IterativelySubtractedPSFPhotometry)
+                          IterativelySubtractedPSFPhotometry,
+                          IterativeGroupPSFPhotometry)
 from ..sandbox import DiscretePRF
 from ..utils import prepare_psf_model
 from ...background import StdBackgroundRMS, MMMBackground
@@ -68,7 +69,14 @@ def make_psf_photometry_objs(std=1, sigma_psf=1):
                                         psf_model=psf_model, fitshape=(11, 11),
                                         niters=1)
 
-    return (basic_phot_obj, iter_phot_obj, dao_phot_obj)
+    iter_group_phot_obj = IterativeGroupPSFPhotometry(finder=daofind,
+                                                      group_maker=daogroup,
+                                                      bkg_estimator=mode_bkg,
+                                                      psf_model=psf_model,
+                                                      fitter=fitter, niters=1,
+                                                      fitshape=(11, 11))
+
+    return (basic_phot_obj, iter_phot_obj, dao_phot_obj, iter_group_phot_obj)
 
 
 sigma_psfs = []
@@ -111,6 +119,17 @@ sources3['id'] = [1] * 2
 sources3['group_id'] = [1] * 2
 sources3['iter_detected'] = [1, 2]
 
+sigma_psfs.append(2)
+sources4 = Table()
+sources4['flux'] = [10000, 1000]
+sources4['x_0'] = [18, 13]
+sources4['y_0'] = [17, 19]
+sources4['sigma'] = [sigma_psfs[-1]] * 2
+sources4['theta'] = [0] * 2
+sources4['id'] = [1, 2]
+sources4['group_id'] = [1] * 2
+sources4['iter_detected'] = [1, 2]
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize("sigma_psf, sources", [(sigma_psfs[2], sources3)])
@@ -145,6 +164,7 @@ def test_psf_photometry_niters(sigma_psf, sources):
         assert_allclose(result_tab['x_fit'], sources['x_0'], rtol=1e-1)
         assert_allclose(result_tab['y_fit'], sources['y_0'], rtol=1e-1)
         assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
+
         assert_array_equal(result_tab['id'], sources['id'])
         assert_array_equal(result_tab['group_id'], sources['group_id'])
         assert_array_equal(result_tab['iter_detected'],
@@ -155,7 +175,50 @@ def test_psf_photometry_niters(sigma_psf, sources):
         assert_array_equal(cp_image, image)
 
 
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.parametrize("sigma_psf, sources", [(sigma_psfs[3], sources4)])
+def test_psf_photometry_niters_group(sigma_psf, sources):
+    img_shape = (32, 32)
+    # generate image with read-out noise (Gaussian) and
+    # background noise (Poisson)
+    image = (make_gaussian_prf_sources_image(img_shape, sources) +
+             make_noise_image(img_shape, type='poisson', mean=6.,
+                              random_state=1) +
+             make_noise_image(img_shape, type='gaussian', mean=0.,
+                              stddev=2., random_state=1))
+    cp_image = image.copy()
+    sigma_clip = SigmaClip(sigma=3.)
+    bkgrms = StdBackgroundRMS(sigma_clip)
+    std = bkgrms(image)
+
+    iter_phot_obj = make_psf_photometry_objs(std, sigma_psf)[3]
+    iter_phot_obj.niters = None
+
+    result_tab = iter_phot_obj(image)
+    residual_image = iter_phot_obj.get_residual_image()
+
+    assert (result_tab['x_0_unc'] < 1.96 * sigma_psf /
+            np.sqrt(sources['flux'])).all()
+    assert (result_tab['y_0_unc'] < 1.96 * sigma_psf /
+            np.sqrt(sources['flux'])).all()
+    assert (result_tab['flux_unc'] < 1.96 *
+            np.sqrt(sources['flux'])).all()
+
+    assert_allclose(result_tab['x_fit'], sources['x_0'], rtol=1e-1)
+    assert_allclose(result_tab['y_fit'], sources['y_0'], rtol=1e-1)
+    assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
+
+    assert_array_equal(result_tab['id'], sources['id'])
+    assert_array_equal(result_tab['group_id'], sources['group_id'])
+    assert_array_equal(result_tab['iter_detected'],
+                       sources['iter_detected'])
+    assert_allclose(np.mean(residual_image), 0.0, atol=1e1)
+
+    # make sure image is note overwritten
+    assert_array_equal(cp_image, image)
+
+
+@pytest.mark.xfail('not HAS_SCIPY')
 @pytest.mark.parametrize("sigma_psf, sources",
                          [(sigma_psfs[0], sources1),
                           (sigma_psfs[1], sources2),
@@ -250,6 +313,17 @@ def test_niters_errors():
     # test that it's OK to set niters to None
     iter_phot_obj.niters = None
 
+    iter_group_phot_obj = make_psf_photometry_objs()[3]
+
+    # tests that niters is set to an integer even if the user inputs
+    # a float
+    iter_group_phot_obj.niters = 1.1
+    assert_equal(iter_group_phot_obj.niters, 1)
+
+    # test that a ValueError is raised if niters <= 0
+    with pytest.raises(ValueError):
+        iter_group_phot_obj.niters = 0
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_fitshape_errors():
@@ -298,6 +372,13 @@ def test_finder_errors():
 
     with pytest.raises(ValueError):
         iter_phot_obj = IterativelySubtractedPSFPhotometry(
+            finder=None, group_maker=DAOGroup(1),
+            bkg_estimator=MMMBackground(),
+            psf_model=IntegratedGaussianPRF(1), fitshape=(11, 11))
+
+    iter_group_phot_obj = make_psf_photometry_objs()[3]
+    with pytest.raises(ValueError):
+        iter_group_phot_obj = IterativeGroupPSFPhotometry(
             finder=None, group_maker=DAOGroup(1),
             bkg_estimator=MMMBackground(),
             psf_model=IntegratedGaussianPRF(1), fitshape=(11, 11))
