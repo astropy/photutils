@@ -130,12 +130,12 @@ identified).  However, a centroiding function can be input via the
 to compute centroid coordinates with subpixel precision.
 
 :func:`~photutils.detection.find_peaks` supports a number of
-additional options, including searching for peaks only within a a
+additional options, including searching for peaks only within a
 specified footprint.  Please see the
 :func:`~photutils.detection.find_peaks` documentation for more
 options.
 
-As simple example, let's find the local peaks in an image that are 5
+As a simple example, let's find the local peaks in an image that are 5
 sigma above the background and a separated by at least 5 pixels:
 
 .. doctest-requires:: scipy
@@ -169,6 +169,7 @@ And let's plot the location of the detected peaks in the image:
     >>> import matplotlib.pyplot as plt
     >>> from astropy.visualization import simple_norm
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
+    >>> from photutils import CircularAperture
     >>> positions = (tbl['x_peak'], tbl['y_peak'])
     >>> apertures = CircularAperture(positions, r=5.)
     >>> norm = simple_norm(data, 'sqrt', percent=99.9)
