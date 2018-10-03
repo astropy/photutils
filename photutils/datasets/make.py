@@ -598,7 +598,7 @@ def make_gaussian_prf_sources_image(shape, source_table):
 
         # make an image of the sources without noise, with Gaussian
         # noise, and with Poisson noise
-        from photutils.datasets import make_gaussian_sources_image
+        from photutils.datasets import make_gaussian_prf_sources_image
         from photutils.datasets import make_noise_image
         shape = (100, 200)
         image1 = make_gaussian_prf_sources_image(shape, table)

@@ -12,8 +12,13 @@ from .. import (make_noise_image, apply_poisson_noise,
                 make_gaussian_sources_image, make_random_gaussians_table,
                 make_4gaussians_image, make_100gaussians_image,
                 make_random_models_table, make_model_sources_image,
-                make_wcs)
+                make_wcs, make_gaussian_prf_sources_image)
 
+try:
+    import scipy    # noqa
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
 
 TABLE = Table()
 TABLE['flux'] = [1, 2, 3]
@@ -22,6 +27,13 @@ TABLE['y_mean'] = [50, 50, 50.5]
 TABLE['x_stddev'] = [1, 2, 3.5]
 TABLE['y_stddev'] = [2, 1, 3.5]
 TABLE['theta'] = np.array([0., 30, 50]) * np.pi / 180.
+
+TABLE2 = Table()
+TABLE2['x_0'] = [30, 50, 70.5]
+TABLE2['y_0'] = [50, 50, 50.5]
+# Without sigma, make_gaussian_prf_sources_image will default to sigma = 1
+# so we can ignore it when converting to amplitude
+TABLE2['amplitude'] = np.array([1, 2, 3]) / (2 * np.pi)
 
 
 def test_make_noise_image():
@@ -78,6 +90,16 @@ def test_make_gaussian_sources_image():
     image = make_gaussian_sources_image(shape, TABLE)
     assert image.shape == shape
     assert_allclose(image.sum(), TABLE['flux'].sum())
+
+
+@pytest.mark.xfail('not HAS_SCIPY')
+def test_make_gaussian_prf_sources_image():
+    shape = (100, 100)
+    image = make_gaussian_prf_sources_image(shape, TABLE2)
+    assert image.shape == shape
+    # Without sigma in table, image assumes sigma = 1
+    flux = TABLE2['amplitude'] * (2 * np.pi)
+    assert_allclose(image.sum(), flux.sum())
 
 
 def test_make_gaussian_sources_image_amplitude():
