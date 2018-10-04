@@ -475,6 +475,7 @@ class FittableImageModel(Fittable2DModel):
 
         return evaluated_model
 
+
 class EPSFModel(Fittable2DModel):
     """
     A fittable ePSF model.
@@ -500,7 +501,7 @@ class EPSFModel(Fittable2DModel):
         undersampled integer pixel values inside a circular aperture.
 
     shift_val : float, optional
-        The fractional undersampled pixel amount (equivalent to an integer 
+        The fractional undersampled pixel amount (equivalent to an integer
         oversampled pixel value) at which to evaluate the asymmetric
         ePSF centroid corrections.
 
@@ -521,8 +522,9 @@ class EPSFModel(Fittable2DModel):
                     'the output coordinate grid on which the model is '
                     'evaluated.', default=0.0)
 
-    def __init__(self, data, flux=flux.default, origin=None, oversampling=1, 
-                 fill_value=0.0, norm_radius=5.5, shift_val=0.5, ikwargs={}):
+    def __init__(self, data, flux=flux.default, origin=None, oversampling=1,
+                 fill_value=0.0, norm_radius=5.5, shift_val=0.5,
+                 normalize=True, ikwargs={}):
         self._fill_value = fill_value
         self._img_norm = None
         self._normalization_status = 0
@@ -530,6 +532,7 @@ class EPSFModel(Fittable2DModel):
         self._shift_val = shift_val
         self._store_interpolator_kwargs(ikwargs)
         self._set_oversampling(oversampling)
+        self._normalize = normalize
 
         self._data = np.array(data, copy=True, dtype=np.float64)
 
@@ -547,12 +550,15 @@ class EPSFModel(Fittable2DModel):
 
         if flux is None:
             if self._img_norm is None:
-                self._img_norm = self._compute_raw_image_norm(self._data)
+                self._img_norm = self._compute_raw_image_norm(self._data,
+                                                              self._norm_radius)
             flux = self._img_norm
 
-        self._compute_normalization()
-        # Force the model to be normalized initially.
-        self._data /= self._img_norm
+        if self._normalize:
+            self._compute_normalization()
+        else:
+            self._img_norm = self._compute_raw_image_norm(self._data,
+                                                          self._norm_radius)
 
         x_0, y_0 = self.origin
         super().__init__(flux, x_0, y_0)
@@ -562,7 +568,7 @@ class EPSFModel(Fittable2DModel):
 
     def _compute_raw_image_norm(self, data, radius):
         """
-        Helper function that computes the normalization of input image data. 
+        Helper function that computes the normalization of input image data.
         This quantity is computed as the sum of all undersampled integer pixel
         values within radius pixels of the center of the ePSF.
         """
@@ -572,16 +578,23 @@ class EPSFModel(Fittable2DModel):
         x = np.arange(self._nx, dtype=np.float64) / self.oversampling
         y = np.arange(self._ny, dtype=np.float64) / self.oversampling
         # Take indices where the undersampled grid is an integer -- i.e., the
-        # actual undersampled grid -- and find the cut where 
+        # actual undersampled grid -- and find the cut where
         # sqrt(dx**2 + dy**2) <= radius
-        x_0, y_0 = self.origin
+        x_0, y_0 = int((self._nx - 1) / 2), int((self._ny - 1) / 2)
         # However, as we are in units of the undersampled grid, we must convert
         # to undersampled units by the same factor of oversampling
         x_0 /= self.oversampling
         y_0 /= self.oversampling
-        cut = (((x.reshape(1, -1) - x_0)**2 + (y.reshape(-1, 1) - y_0)**2 
-               <= radius**2) & (x.reshape(1, -1) % 1.0 == 0) & 
-               (y.reshape(-1, 1) % 1.0 == 0))
+        # When checking if the index is at the center of a pixel, we check such
+        # that the index number is half that of the oversampling -- if we
+        # oversample by a factor 4 then the middle pixel is the 0th large pixel
+        # is 2 ([0, 1, 2, 3, 4]). For this to work we require oversampling to be
+        # an even number; otherwise, the ``middle'' pixel will be halfway between
+        # two oversampled pixels.
+        over_index_middle = 1 / 2
+        cut = (((x.reshape(1, -1) - x_0)**2 + (y.reshape(-1, 1) - y_0)**2 <=
+                radius**2) & (x.reshape(1, -1) % 1.0 == over_index_middle) &
+               (y.reshape(-1, 1) % 1.0 == over_index_middle))
         data = self._data
 
         return np.sum(data[cut], dtype=np.float64)
@@ -598,7 +611,7 @@ class EPSFModel(Fittable2DModel):
             if np.sum(self._data) == 0:
                 self._img_norm = 1
             else:
-                self._img_norm = self._compute_raw_image_norm(self._data, 
+                self._img_norm = self._compute_raw_image_norm(self._data,
                                                               self._norm_radius)
 
         if self._img_norm != 0.0 and np.isfinite(self._img_norm):
@@ -623,6 +636,11 @@ class EPSFModel(Fittable2DModel):
     def _set_oversampling(self, value):
         try:
             value = float(value)
+            # We need oversampling to be a factor of 2 for ``middle of pixel''
+            # in the undersampled regime to have a pixel placed at it in the
+            # oversampled regime.
+            if value % 2 != 0:
+                raise ValueError('Oversampling factor must be a multiple of two')
         except ValueError:
             raise ValueError('Oversampling factor must be a scalar')
         if value <= 0:
@@ -666,12 +684,12 @@ class EPSFModel(Fittable2DModel):
     def origin(self):
         """
         A tuple of ``x`` and ``y`` coordinates of the origin of the coordinate
-        system in terms of pixels of model's image.
+        system in terms of undersampled pixels of model's image.
 
         When setting the coordinate system origin, a tuple of two `int` or
         `float` may be used. If origin is set to `None`, the origin of the
         coordinate system will be set to the middle of the data array
-        (``(npix-1)/2.0``).
+        (``(npix-1)/2.0/oversampling``).
 
         .. warning::
             Modifying `origin` will not adjust (modify) model's parameters
@@ -683,8 +701,8 @@ class EPSFModel(Fittable2DModel):
     def origin(self, origin):
         if origin is None or isinstance(origin, tuple):
             if isinstance(origin, tuple) and len(origin) == 2:
-                self._x_origin = (self._nx - 1) / 2.0
-                self._y_origin = (self._ny - 1) / 2.0
+                self._x_origin = (self._nx - 1) / 2.0 / self.oversampling
+                self._y_origin = (self._ny - 1) / 2.0 / self.oversampling
             else:
                 raise ValueError("Origin must be None or an iterable with two"
                                  "elements.")
@@ -790,47 +808,34 @@ class EPSFModel(Fittable2DModel):
         else:
             smoothness = 0
 
-        x = np.arange(self._nx, dtype=np.float)
-        y = np.arange(self._ny, dtype=np.float)
+        # Interpolator must be set to interpolate on the undersampled pixel
+        # grid, going from 0 to len(undersampled_grid)
+        x = np.arange(self._nx, dtype=np.float) / self.oversampling
+        y = np.arange(self._ny, dtype=np.float) / self.oversampling
         self.interpolator = RectBivariateSpline(
             x, y, self._data.T, kx=degx, ky=degy, s=smoothness)
 
         self._store_interpolator_kwargs(ikwargs)
 
-    def evaluate(self, x, y, flux, x_0, y_0, use_oversampling=True):
+    def evaluate(self, x, y, flux, x_0, y_0, use_oversampling=False):
         """
         Evaluate the model on some input variables and provided model
         parameters.
-
-        Parameters
-        ----------
-        use_oversampling : bool, optional
-            Whether to use the oversampling factor to calculate the
-            model pixel indices.  The default is `True`, which means the
-            input indices will be multipled by this factor.
         """
 
-        if use_oversampling:
-            xi = self._oversampling * (np.asarray(x) - x_0)
-            yi = self._oversampling * (np.asarray(y) - y_0)
-        else:
-            xi = np.asarray(x) - x_0
-            yi = np.asarray(y) - y_0
-
-        xi += self._x_origin
-        yi += self._y_origin
+        xi = np.asarray(x) - x_0 + self._x_origin
+        yi = np.asarray(y) - y_0 + self._y_origin
 
         evaluated_model = flux * self.interpolator.ev(xi, yi)
-        
-        if self._fill_value is not None:
-            # find indices of pixels that are outside the input pixel grid and
-            # set these pixels to the 'fill_value':
-            invalid = (((xi < 0) | (xi > self._nx - 1)) |
-                       ((yi < 0) | (yi > self._ny - 1)))
-            evaluated_model[invalid] = self._fill_value
+
+        # if self._fill_value is not None:
+        #     # find indices of pixels that are outside the input pixel grid and
+        #     # set these pixels to the 'fill_value':
+        #     invalid = (((xi < 0) | (xi > self._nx - 1)) |
+        #                ((yi < 0) | (yi > self._ny - 1)))
+        #     evaluated_model[invalid] = self._fill_value
 
         return evaluated_model
-
 
 
 class IntegratedGaussianPRF(Fittable2DModel):

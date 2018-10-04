@@ -65,8 +65,8 @@ class EPSFStar:
         floats of the form ``(x_pixscale, y_pixscale)``.  If
         ``pixel_scale`` is a scalar then the pixel scale will be the
         same for both the x and y axes.  The star ``pixel_scale`` is
-        used in conjunction with the ePSF oversampling factor when building 
-        and fitting the ePSF. ``pixel_scale`` allows for building (and fitting) 
+        used in conjunction with the ePSF oversampling factor when building
+        and fitting the ePSF. ``pixel_scale`` allows for building (and fitting)
         an ePSF using images of stars with different pixel scales (e.g.
         velocity aberrations).
     """
@@ -210,12 +210,9 @@ class EPSFStar:
             A 2D array of the registered/scaled ePSF.
         """
 
-        x_oversamp = self.pixel_scale[0] / epsf.pixel_scale[0]
-        y_oversamp = self.pixel_scale[1] / epsf.pixel_scale[1]
-
         yy, xx = np.indices(self.shape, dtype=np.float)
-        xx = x_oversamp * (xx - self.cutout_center[0])
-        yy = y_oversamp * (yy - self.cutout_center[1])
+        xx = xx - self.cutout_center[0]
+        yy = yy - self.cutout_center[1]
 
         return (self.flux * epsf.evaluate(xx, yy, flux=1.0, x_0=0.0, y_0=0.0))
 
@@ -744,7 +741,7 @@ def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
         The extraction box size along each axis.  If ``size`` is a
         scalar then a square box of size ``size`` will be used.  If
         ``size`` has two elements, they should be in ``(ny, nx)`` order.
-        The size must be greater than or equal to 3 pixel for both axes. 
+        The size must be greater than or equal to 3 pixel for both axes.
         Size must be odd in both axes; if either is even, it is padded
         by one to force oddness.
 

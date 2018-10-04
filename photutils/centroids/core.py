@@ -493,7 +493,7 @@ def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
     """
     Calculate the centroid shift of a 2-dimensional symmetric image by computing
     the shift based on the asymmetry between f(x, N) and f(x, -N), along with the
-    differential df/dy(x, shift_val) and df/dy(x, -shift_val). Based on Anderson 
+    differential df/dy(x, shift_val) and df/dy(x, -shift_val). Based on Anderson
     and King (2000; PASP 112, 1360)
 
     Invalid values (e.g. NaNs or infs) in the ``data`` array are
@@ -527,55 +527,56 @@ def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
     if mask is not None and mask is not np.ma.nomask:
         mask = np.asarray(mask, dtype=bool)
         if data.shape != mask.shape:
-            raise ValueError('Data and mask must have the same shape.')
+            raise ValueError('data and mask must have the same shape.')
         data[mask] = 0.
 
     if shift_val <= 0:
-        raise ValueError('Shift_val must be a positive number.')
+        raise ValueError('shift_val must be a positive number.')
 
     badidx = ~np.isfinite(data)
     if np.any(badidx):
         warnings.warn('Input data contains input values (e.g. NaNs or infs), '
                       'which were automatically set to the '
                       'surrounding pixels.', AstropyUserWarning)
-        # d = [data[y_badidx, x_badidx-1], data[y_badidx-1, x_badidx],
-        #      data[y_badidx, x_badidx+1], data[y_badidx+1, x_badidx]]
-        # data[y_badidx, x_badidx] = np.sumnan(d) / np.count_nonzero(np.isfinite(d))
         data = _interpolate_missing_data(data, badidx)
 
-
     if oversampling is None:
-        raise ValueError('Oversampling must be supplied.')
+        raise ValueError('oversampling must be supplied.')
 
     # Assume the center of the ePSF is the middle of an odd-sized grid.
-    x_0 = int((data.shape[1] - 1) / 2)
-    y_0 = int((data.shape[0] - 1) / 2)
+    xidx_0 = int((data.shape[1] - 1) / 2)
+    x_0 = np.arange(data.shape[1], dtype=float)[xidx_0] / oversampling
+    yidx_0 = int((data.shape[0] - 1) / 2)
+    y_0 = np.arange(data.shape[0], dtype=float)[yidx_0] / oversampling
+
     x_shiftidx = np.around((shift_val * oversampling)).astype(int)
     y_shiftidx = np.around((shift_val * oversampling)).astype(int)
-    # In Anderson & King (2000) notation this is psi_E(0.5, 0.0) and values used to 
+    # In Anderson & King (2000) notation this is psi_E(0.5, 0.0) and values used to
     # compute derivatives.
-    psi_pos_x = data[y_0, x_0 + x_shiftidx]
-    psi_pos_x_m1 = data[y_0, x_0 + x_shiftidx - 1]
-    psi_pos_x_p1 = data[y_0, x_0 + x_shiftidx + 1]
-    dpsi_pos_x = np.abs(psi_pos_x_p1 - psi_pos_x_m1) / 2.
+    psi_pos_x = data[yidx_0, xidx_0 + x_shiftidx]
+    psi_pos_x_m1 = data[yidx_0, xidx_0 + x_shiftidx - 1]
+    psi_pos_x_p1 = data[yidx_0, xidx_0 + x_shiftidx + 1]
+    # Our derivatives are simple differences across two data points, but this must
+    # be in units of the undersampled grid, so 2 pixels becomes 2/oversampling pixels
+    dpsi_pos_x = np.abs(psi_pos_x_p1 - psi_pos_x_m1) / (2. / oversampling)
     # psi_E(-0.5, 0.0) and derivative components.
-    psi_neg_x = data[y_0, x_0 - x_shiftidx]
-    psi_neg_x_m1 = data[y_0, x_0 - x_shiftidx - 1]
-    psi_neg_x_p1 = data[y_0, x_0 - x_shiftidx + 1]
-    dpsi_neg_x = np.abs(psi_neg_x_p1 - psi_neg_x_m1) / 2.
+    psi_neg_x = data[yidx_0, xidx_0 - x_shiftidx]
+    psi_neg_x_m1 = data[yidx_0, xidx_0 - x_shiftidx - 1]
+    psi_neg_x_p1 = data[yidx_0, xidx_0 - x_shiftidx + 1]
+    dpsi_neg_x = np.abs(psi_neg_x_p1 - psi_neg_x_m1) / (2. / oversampling)
 
     x_shift = (psi_pos_x - psi_neg_x) / (dpsi_pos_x + dpsi_neg_x)
 
     # psi_E(0.0, 0.5) and derivatives.
-    psi_pos_y = data[y_0 + y_shiftidx, x_0]
-    psi_pos_y_m1 = data[y_0 + y_shiftidx - 1, x_0]
-    psi_pos_y_p1 = data[y_0 + y_shiftidx + 1, x_0]
-    dpsi_pos_y = np.abs(psi_pos_y_p1 - psi_pos_y_m1) / 2.
+    psi_pos_y = data[yidx_0 + y_shiftidx, xidx_0]
+    psi_pos_y_m1 = data[yidx_0 + y_shiftidx - 1, xidx_0]
+    psi_pos_y_p1 = data[yidx_0 + y_shiftidx + 1, xidx_0]
+    dpsi_pos_y = np.abs(psi_pos_y_p1 - psi_pos_y_m1) / (2. / oversampling)
     # psi_E(0.0, -0.5) and derivative components.
-    psi_neg_y = data[y_0 - y_shiftidx, x_0]
-    psi_neg_y_m1 = data[y_0 - y_shiftidx - 1, x_0]
-    psi_neg_y_p1 = data[y_0 - y_shiftidx + 1, x_0]
-    dpsi_neg_y = np.abs(psi_neg_y_p1 - psi_neg_y_m1) / 2.
+    psi_neg_y = data[yidx_0 - y_shiftidx, xidx_0]
+    psi_neg_y_m1 = data[yidx_0 - y_shiftidx - 1, xidx_0]
+    psi_neg_y_p1 = data[yidx_0 - y_shiftidx + 1, xidx_0]
+    dpsi_neg_y = np.abs(psi_neg_y_p1 - psi_neg_y_m1) / (2. / oversampling)
 
     y_shift = (psi_pos_y - psi_neg_y) / (dpsi_pos_y + dpsi_neg_y)
 

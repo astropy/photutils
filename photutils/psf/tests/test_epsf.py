@@ -9,7 +9,7 @@ from astropy.table import Table
 
 from ..epsf import EPSFBuilder
 from ..epsf_stars import extract_stars, EPSFStar, EPSFStars
-from ...centroids import gaussian1d_moments
+from ..models import IntegratedGaussianPRF
 from ...datasets import make_gaussian_sources_image
 
 try:
@@ -91,16 +91,19 @@ class TestEPSFBuild:
         size = 25
         oversampling = 4.
         stars = extract_stars(self.nddata, self.init_stars, size=size)
-        epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=20,
-                                   progress_bar=False)
+        epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=8,
+                                   progress_bar=False, norm_radius=25,
+                                   recentering_maxiters=5)
         epsf, fitted_stars = epsf_builder(stars)
 
         ref_size = (size * oversampling) + 1
         assert epsf.data.shape == (ref_size, ref_size)
 
-        y0 = int((ref_size - 1) / 2)
-        z = epsf.data[y0, :]
-        ampl, peak, sigma = gaussian1d_moments(z)
-        assert_allclose(ampl, 0.002487, rtol=1e-4)
-        assert_allclose(peak, y0, rtol=1e-3)
-        assert_allclose(sigma, oversampling * self.stddev, rtol=1e-5)
+        y0 = (ref_size - 1) / 2 / oversampling
+        y = np.arange(ref_size, dtype=float) / oversampling
+
+        psf_model = IntegratedGaussianPRF(sigma=self.stddev)
+        z = epsf.data
+        x = psf_model.evaluate(y.reshape(-1, 1), y.reshape(1, -1), 1, y0, y0, self.stddev)
+
+        assert_allclose(z, x, rtol=1e-2, atol=1e-5)
