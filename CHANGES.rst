@@ -1,6 +1,14 @@
 0.6 (unreleased)
 ----------------
 
+New Features
+^^^^^^^^^^^^
+
+ - ``photutils.psf``
+
+  - Added ``noise_calc`` option to BasicPSFPhotometry and 
+    IterativelySubtractedPSFPhotometry.
+
 API changes
 ^^^^^^^^^^^
 
@@ -27,6 +35,12 @@ Bug Fixes
 
   - Fixed a bug in the computation of ``sky_bbox_ul``,
     ``sky_bbox_lr``, ``sky_bbox_ur`` in the ``SourceCatalog``. [#716]
+
+- ``photutils.aperature``
+
+  - ``aperture_photometry`` now requires arg ``uncertainty`` rather than
+    ``error`` to support NDData uncertainty attribute correctly.
+
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^

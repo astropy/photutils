@@ -15,6 +15,8 @@ from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
 from astropy.wcs.utils import (skycoord_to_pixel, pixel_to_skycoord,
                                wcs_to_celestial_frame)
+from astropy.nddata import StdDevUncertainty
+
 
 from ..utils import get_version_info
 from ..utils.misc import _ABCMetaAndInheritDocstrings
@@ -271,7 +273,7 @@ class PixelAperture(Aperture):
 
     @staticmethod
     def _prepare_photometry_output(_list, unit=None):
-        if len(_list) == 0:   # if error is not input
+        if len(_list) == 0:   # if uncertainty is not input
             return _list
 
         if unit is not None:
@@ -288,7 +290,7 @@ class PixelAperture(Aperture):
             if unit is not None:
                 if output.unit != unit:
                     warnings.warn('The input unit does not agree with the '
-                                  'data and/or error unit.',
+                                  'data and/or uncertainty unit.',
                                   AstropyUserWarning)
         else:
             if unit is not None:
@@ -298,7 +300,7 @@ class PixelAperture(Aperture):
 
         return output
 
-    def do_photometry(self, data, error=None, mask=None, method='exact',
+    def do_photometry(self, data, uncertainty=None, mask=None, method='exact',
                       subpixels=5, unit=None):
         """
         Perform aperture photometry on the input data.
@@ -309,11 +311,11 @@ class PixelAperture(Aperture):
             The 2D array on which to perform photometry.  ``data``
             should be background subtracted.
 
-        error : array_like or `~astropy.units.Quantity`, optional
-            The pixel-wise Gaussian 1-sigma errors of the input
-            ``data``.  ``error`` is assumed to include *all* sources of
-            error, including the Poisson error of the sources (see
-            `~photutils.utils.calc_total_error`) .  ``error`` must have
+        uncertainty : array_like or `~astropy.units.Quantity`, optional
+            The pixel-wise Gaussian 1-sigma uncertainties of the input
+            ``data``.  ``uncertainty`` is assumed to include *all* sources of
+            uncertainty, including the Poisson error of the sources (see
+            `~photutils.utils.calc_total_error`) .  ``uncertainty`` must have
             the same shape as the input ``data``.
 
         mask : array_like (bool), optional
@@ -354,9 +356,9 @@ class PixelAperture(Aperture):
 
         unit : `~astropy.units.UnitBase` object or str, optional
             An object that represents the unit associated with the input
-            ``data`` and ``error`` arrays.  Must be a
+            ``data`` and ``uncertainty`` arrays.  Must be a
             `~astropy.units.UnitBase` object or a string parseable by
-            the :mod:`~astropy.units` package.  If ``data`` or ``error``
+            the :mod:`~astropy.units` package.  If ``data`` or ``uncertainty``
             already have a different unit, the input ``unit`` will not
             be used and a warning will be raised.
 
@@ -366,7 +368,7 @@ class PixelAperture(Aperture):
             The sums within each aperture.
 
         aperture_sum_errs : `~numpy.ndarray` or `~astropy.units.Quantity`
-            The errors on the sums within each aperture.
+            The uncertainties on the sums within each aperture.
         """
 
         data = np.asanyarray(data)
@@ -377,10 +379,10 @@ class PixelAperture(Aperture):
             data = copy.deepcopy(data)    # do not modify input data
             data[mask] = 0
 
-            if error is not None:
+            if uncertainty is not None:
                 # do not modify input data
-                error = copy.deepcopy(np.asanyarray(error))
-                error[mask] = 0.
+                uncertainty = copy.deepcopy(np.asanyarray(uncertainty))
+                uncertainty[mask] = 0.
 
         aperture_sums = []
         aperture_sum_errs = []
@@ -392,13 +394,13 @@ class PixelAperture(Aperture):
             else:
                 aperture_sums.append(np.sum(data_cutout * mask.data))
 
-            if error is not None:
-                error_cutout = mask.cutout(error)
+            if uncertainty is not None:
+                uncertainty_cutout = mask.cutout(uncertainty)
 
-                if error_cutout is None:
+                if uncertainty_cutout is None:
                     aperture_sum_errs.append(np.nan)
                 else:
-                    aperture_var = np.sum(error_cutout ** 2 * mask.data)
+                    aperture_var = np.sum(uncertainty_cutout ** 2 * mask.data)
                     aperture_sum_errs.append(np.sqrt(aperture_var))
 
         # handle Quantity objects and input units
@@ -671,16 +673,16 @@ class SkyAperture(Aperture):
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
-def _prepare_photometry_input(data, error, mask, wcs, unit):
+def _prepare_photometry_input(data, uncertainty, mask, wcs, unit):
     """
     Parse the inputs to `aperture_photometry`.
 
     `aperture_photometry` accepts a wide range of inputs, e.g. ``data``
-    could be a numpy array, a Quantity array, or a fits HDU.  This
-    requires some parsing and validation to ensure that all inputs are
-    complete and consistent.  For example, the data could carry a unit
-    and the wcs itself, so we need to check that it is consistent with
-    the unit and wcs given as input parameters.
+    could be a numpy array, a Quantity array, a fits HDU, or astropy
+    NDData array.  This requires some parsing and validation to ensure
+    that all inputs are complete and consistent.  For example, the data
+    could carry a unit and the wcs itself, so we need to check that it
+    is consistent with the unit and wcs given as input parameters.
     """
 
     if isinstance(data, fits.HDUList):
@@ -704,6 +706,10 @@ def _prepare_photometry_input(data, error, mask, wcs, unit):
                               AstropyUserWarning)
             else:
                 data = u.Quantity(data, unit=bunit)
+
+    # If uncertainty was pulled from NDData instance, strip it to be array-like
+    if isinstance(uncertainty, StdDevUncertainty):
+        uncertainty = uncertainty.array
 
     if wcs is None:
         try:
@@ -732,37 +738,37 @@ def _prepare_photometry_input(data, error, mask, wcs, unit):
         if unit is not None:
             data = u.Quantity(data, unit=unit)
 
-    if error is not None:
-        if isinstance(error, u.Quantity):
-            if unit is not None and error.unit != unit:
-                warnings.warn('The input unit does not agree with the error '
+    if uncertainty is not None:
+        if isinstance(uncertainty, u.Quantity):
+            if unit is not None and uncertainty.unit != unit:
+                warnings.warn('The input unit does not agree with the uncertainty '
                               'unit.', AstropyUserWarning)
 
-            if np.isscalar(error.value):
-                error = u.Quantity(np.broadcast_arrays(error, data),
-                                   unit=error.unit)[0]
+            if np.isscalar(uncertainty.value):
+                uncertainty = u.Quantity(np.broadcast_arrays(uncertainty, data),
+                                   unit=uncertainty.unit)[0]
         else:
-            if np.isscalar(error):
-                error = np.broadcast_arrays(error, data)[0]
+            if np.isscalar(uncertainty):
+                uncertainty = np.broadcast_arrays(uncertainty, data)[0]
 
             if unit is not None:
-                error = u.Quantity(error, unit=unit)
+                uncertainty = u.Quantity(uncertainty, unit=unit)
 
-            error = np.asanyarray(error)
+            uncertainty = np.asanyarray(uncertainty)
 
-        if error.shape != data.shape:
-            raise ValueError('error and data must have the same shape.')
+        if uncertainty.shape != data.shape:
+            raise ValueError('uncertainty and data must have the same shape.')
 
     if mask is not None:
         mask = np.asanyarray(mask)
         if mask.shape != data.shape:
             raise ValueError('mask and data must have the same shape.')
 
-    return data, error, mask, wcs
+    return data, uncertainty, mask, wcs
 
 
 @support_nddata
-def aperture_photometry(data, apertures, error=None, mask=None,
+def aperture_photometry(data, apertures, uncertainty=None, mask=None,
                         method='exact', subpixels=5, unit=None, wcs=None):
     """
     Perform aperture photometry on the input data by summing the flux
@@ -770,23 +776,26 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
     Parameters
     ----------
-    data : array_like, `~astropy.units.Quantity`, `~astropy.io.fits.ImageHDU`, or `~astropy.io.fits.HDUList`
+    data : array_like, `~astropy.units.Quantity`, `~astropy.io.fits.ImageHDU`, or
+        `~astropy.io.fits.HDUList`
         The 2D array on which to perform photometry. ``data`` should be
         background-subtracted.  Units can be used during the photometry,
         either provided with the data (i.e. a `~astropy.units.Quantity`
         array) or the ``unit`` keyword.  If ``data`` is an
         `~astropy.io.fits.ImageHDU` or `~astropy.io.fits.HDUList`, the
-        unit is determined from the ``'BUNIT'`` header keyword.
+        unit is determined from the ``'BUNIT'`` header keyword. Pulled from
+        `~astropy.nddata.NDData` instance if passed.
 
     apertures : `~photutils.Aperture`
         The aperture(s) to use for the photometry.
 
-    error : array_like or `~astropy.units.Quantity`, optional
+    uncertainty : array_like or `~astropy.units.Quantity`, optional
         The pixel-wise Gaussian 1-sigma errors of the input ``data``.
-        ``error`` is assumed to include *all* sources of error,
-        including the Poisson error of the sources (see
-        `~photutils.utils.calc_total_error`) .  ``error`` must have the
-        same shape as the input ``data``.
+        ``uncertainty`` is assumed to include *all* sources of uncertainty,
+        including the Poisson uncertainty of the sources (see
+        `~photutils.utils.calc_total_error`) .  ``uncertainty`` must have the
+        same shape as the input ``data``. Pulled from `~astropy.nddata.NDData`
+        array if passed.
 
     mask : array_like (bool), optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -825,9 +834,9 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
     unit : `~astropy.units.UnitBase` object or str, optional
         An object that represents the unit associated with the input
-        ``data`` and ``error`` arrays.  Must be a
+        ``data`` and ``uncertainty`` arrays.  Must be a
         `~astropy.units.UnitBase` object or a string parseable by the
-        :mod:`~astropy.units` package.  If ``data`` or ``error`` already
+        :mod:`~astropy.units` package.  If ``data`` or ``uncertainty`` already
         have a different unit, the input ``unit`` will not be used and a
         warning will be raised.  If ``data`` is an
         `~astropy.io.fits.ImageHDU` or `~astropy.io.fits.HDUList`,
@@ -861,7 +870,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
             * ``'aperture_sum_err'``:
               The corresponding uncertainty in the ``'aperture_sum'``
-              values.  Returned only if the input ``error`` is not
+              values.  Returned only if the input ``uncertainty`` is not
               `None`.
 
         The table metadata includes the Astropy and Photutils version
@@ -873,7 +882,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     thus supports `~astropy.nddata.NDData` objects as input.
     """
 
-    data, error, mask, wcs = _prepare_photometry_input(data, error, mask,
+    data, uncertainty, mask, wcs = _prepare_photometry_input(data, uncertainty, mask,
                                                        wcs, unit)
 
     if method == 'subpixel':
@@ -923,7 +932,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
             tbl['celestial_center'] = skycoord_pos
 
     for i, aper in enumerate(apertures):
-        aper_sum, aper_sum_err = aper.do_photometry(data, error=error,
+        aper_sum, aper_sum_err = aper.do_photometry(data, uncertainty=uncertainty,
                                                     mask=mask, method=method,
                                                     subpixels=subpixels)
 
@@ -934,7 +943,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
             sum_err_key += '_{}'.format(i)
 
         tbl[sum_key] = aper_sum
-        if error is not None:
+        if uncertainty is not None:
             tbl[sum_err_key] = aper_sum_err
 
     return tbl
