@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 import numpy as np
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_almost_equal
 import pytest
 
 from astropy.table import Table
@@ -11,8 +11,13 @@ from .. import (make_noise_image, apply_poisson_noise,
                 make_gaussian_sources_image, make_random_gaussians_table,
                 make_4gaussians_image, make_100gaussians_image,
                 make_random_models_table, make_model_sources_image,
-                make_wcs)
+                make_wcs, make_gaussian_prf_sources_image)
 
+try:
+    import scipy    # noqa
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
 
 TABLE = Table()
 TABLE['flux'] = [1, 2, 3]
@@ -155,3 +160,15 @@ def test_make_wcs():
     wcs = make_wcs(shape, galactic=True)
     assert wcs.wcs.ctype[0] == 'GLON-CAR'
     assert wcs.wcs.ctype[1] == 'GLAT-CAR'
+
+
+@pytest.mark.xfail('not HAS_SCIPY')
+def test_gaussian_prf():
+    table = Table()
+    table['flux'] = [50]
+    table['x_0'] = [5]
+    table['y_0'] = [5]
+
+    shape = (10, 10)
+    image1 = make_gaussian_prf_sources_image(shape, table)
+    assert_almost_equal(np.sum(image1), table['flux'][0], decimal=3)

@@ -252,7 +252,7 @@ class EPSFBuilder:
         pixel.
 
     norm_radius : float, optional
-        The pixel radius over which the ePSF is normalized. If ``None'' or
+        The pixel radius over which the ePSF is normalized. If `None` or
         not provided, defaults to 5.5 pixels.
 
     smoothing_kernel : {'quartic', 'quadratic'}, 2D `~numpy.ndarray`, or `None`
@@ -267,8 +267,8 @@ class EPSFBuilder:
         calculate the centroid of a 2D array.  The callable must accept
         a 2D `~numpy.ndarray`, have a ``mask`` keyword and optionally an
         ``error`` keyword.  The callable object must return a tuple of
-        two 1D `~numpy.ndarray`s, representing the x and y centroids.
-        The default is `~photutils.centroids.centroid_epsf`.
+        two 1D `~numpy.ndarray` variables, representing the x and y
+        centroids. The default is `~photutils.centroids.centroid_epsf`.
 
     recentering_maxiters : int, optional
         The maximum number of recentering iterations to perform during

@@ -15,11 +15,6 @@ from astropy.modeling.models import (Gaussian1D, Gaussian2D, Const1D,
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import overlap_slices
 from astropy.utils.exceptions import AstropyUserWarning
-try:
-    from ..psf import _interpolate_missing_data
-except ImportError:
-    pass
-
 
 __all__ = ['GaussianConst2D', 'centroid_com', 'gaussian1d_moments',
            'fit_2dgaussian', 'centroid_1dg', 'centroid_2dg',
@@ -533,13 +528,6 @@ def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
     if shift_val <= 0:
         raise ValueError('shift_val must be a positive number.')
 
-    badidx = ~np.isfinite(data)
-    if np.any(badidx):
-        warnings.warn('Input data contains input values (e.g. NaNs or infs), '
-                      'which were automatically set to the '
-                      'surrounding pixels.', AstropyUserWarning)
-        data = _interpolate_missing_data(data, badidx)
-
     if oversampling is None:
         raise ValueError('oversampling must be supplied.')
 
@@ -551,6 +539,12 @@ def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
 
     x_shiftidx = np.around((shift_val * oversampling)).astype(int)
     y_shiftidx = np.around((shift_val * oversampling)).astype(int)
+
+    badidx = ~np.isfinite([data[y, x] for x in [xidx_0, xidx_0+x_shiftidx, xidx_0+x_shiftidx-1, xidx_0+x_shiftidx+1] for y in [yidx_0, yidx_0+y_shiftidx, yidx_0+y_shiftidx-1, yidx_0+y_shiftidx+1]])
+    if np.any(badidx):
+        raise ValueError('One or more centroiding pixels is set to a bad value, '
+                         'e.g., NaN or inf.')
+
     # In Anderson & King (2000) notation this is psi_E(0.5, 0.0) and values used to
     # compute derivatives.
     psi_pos_x = data[yidx_0, xidx_0 + x_shiftidx]

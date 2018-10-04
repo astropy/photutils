@@ -8,8 +8,8 @@ from astropy.modeling.models import Gaussian1D, Gaussian2D
 import pytest
 
 from ..core import (centroid_com, centroid_1dg, centroid_2dg,
-                    gaussian1d_moments, fit_2dgaussian)
-
+                    gaussian1d_moments, fit_2dgaussian,
+                    centroid_epsf)
 
 try:
     # the fitting routines in astropy use scipy.optimize
@@ -200,3 +200,24 @@ def test_fit2dgaussian_dof():
     data = np.ones((2, 2))
     with pytest.raises(ValueError):
         fit_2dgaussian(data)
+
+
+def test_centroid_epsf():
+    data = np.ones((5, 5), dtype=float)
+    mask = np.zeros((4, 5), dtype=int)
+    mask[2, 2] = 1
+
+    # Test data and mask having the same shape
+    with pytest.raises(ValueError):
+        centroid_epsf(data, mask)
+
+    with pytest.raises(ValueError):
+        centroid_epsf(data, shift_val=-1)
+
+    with pytest.raises(ValueError):
+        centroid_epsf(data, oversampling=None)
+
+    data = np.ones((21, 21), dtype=float)
+    data[10, 10] = np.inf
+    with pytest.raises(ValueError):
+        centroid_epsf(data)

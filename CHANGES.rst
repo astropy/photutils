@@ -37,6 +37,23 @@ Other Changes and Additions
   keywords. [#726]
 
 
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.psf``
+
+  - Fixed normalization of ePSF model, now correctly normalizing on
+    undersampled pixel grid.
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Updated background and detection functions that call
+  ``astropy.stats.SigmaClip`` or ``astropy.stats.sigma_clipped_stats``
+  to support both their ``iters`` (for astropy < 3.1) and ``maxiters``
+  keywords. [#726]
+
+
 0.5 (2018-08-06)
 ----------------
 
