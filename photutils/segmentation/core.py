@@ -197,7 +197,7 @@ class SegmentationImage:
         return self._data
 
     @lazyproperty
-    @deprecated(0.5, alternative='data_ma')
+    @deprecated('0.5', alternative='data_ma')
     def data_masked(self):
         return self.data_ma  # pragma: no cover
 
@@ -271,7 +271,7 @@ class SegmentationImage:
         return len(self.labels)
 
     @lazyproperty
-    @deprecated(0.5, alternative='max_label')
+    @deprecated('0.5', alternative='max_label')
     def max(self):
         return self.max_label  # pragma: no cover
 
@@ -311,7 +311,7 @@ class SegmentationImage:
 
         return np.bincount(self.data.ravel())[1:]
 
-    @deprecated(0.5, alternative='areas[labels-1]')
+    @deprecated('0.5', alternative='areas[labels-1]')
     def area(self, labels):  # pragma: no cover
         """
         The areas (in pixel**2) of the regions for the input labels.
@@ -333,7 +333,7 @@ class SegmentationImage:
         return self.areas[labels - 1]
 
     @lazyproperty
-    @deprecated(0.5, alternative='is_consecutive')
+    @deprecated('0.5', alternative='is_consecutive')
     def is_sequential(self):
         return self.is_consecutive  # pragma: no cover
 
@@ -398,7 +398,7 @@ class SegmentationImage:
         if len(bad_labels) > 0:
             raise ValueError('labels {} are invalid'.format(bad_labels))
 
-    @deprecated(0.5, alternative='check_labels')
+    @deprecated('0.5', alternative='check_labels')
     def check_label(self, label, allow_zero=False):  # pragma: no cover
         """
         Check for a valid label label number within the segmentation
@@ -550,7 +550,7 @@ class SegmentationImage:
             data[np.where(data == label)] = new_label
             self.data = data     # needed to call the data setter
 
-    @deprecated(0.5, alternative='relabel_consecutive()')
+    @deprecated('0.5', alternative='relabel_consecutive()')
     def relabel_sequential(self, start_label=1):
         return self.relabel_consecutive(start_label=start_label)  # pragma: no cover
 

@@ -3,7 +3,7 @@
 import warnings
 
 import numpy as np
-from astropy.utils.decorators import deprecated
+from astropy.utils import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 
 
