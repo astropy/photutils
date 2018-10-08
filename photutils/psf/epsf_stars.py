@@ -792,12 +792,12 @@ def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
         # the data uncertainties we can take the inverse standard deviation as
         # the weight. Before assigning the weights we must ignore zero
         # variance data, however, setting the weights for these data points to
-        # zero.
-        else if data.uncertainty.uncertainty_type == 'std':
-            std_dev = data.uncertainty.array
+        # zero by forcing their standard deviations to a large value.
+        elif data.uncertainty.uncertainty_type == 'std':
+            std_dev = data.uncertainty.array.copy()
             zero_uncert = std_dev == 0.
-            weights = np.asanyarray(np.where(zero_uncert, 1/std_dev,
-                                             np.zeros_like(std_dev)), dtype=np.float)
+            std_dev[zero_uncert] = 1e9
+            weights = np.asanyarray(1/std_dev, dtype=np.float)
         else:
             warnings.warn('The data uncertainty attribute has an unsupported '
                           'type.  Only uncertainty_type="weights" can be '
