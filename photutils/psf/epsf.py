@@ -210,6 +210,10 @@ class EPSFFitter:
         # the factor to be different along the x and y axes.
         epsf._oversampling = 1.
 
+        # Weights should be pulled from ``EPSFStar`` instance, where the
+        # weights are determined from an NDData.uncertainty array if its
+        # uncertainty type is `weight`, or inverse uncertainty if type is
+        # `std`; otherwise unity weights are used.
         try:
             fitted_epsf = fitter(model=epsf, x=xx, y=yy, z=scaled_data,
                                  weights=weights, **fitter_kwargs)

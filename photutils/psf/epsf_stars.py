@@ -784,8 +784,20 @@ def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
     if data.uncertainty is None:
         weights = np.ones_like(data.data)
     else:
+        # If NDData instance has been set to a custom uncertainty type with
+        # type ``weights`` then take the data as they are
         if data.uncertainty.uncertainty_type == 'weights':
             weights = np.asanyarray(data.uncertainty.array, dtype=np.float)
+        # Else, if astropy.nddata.StdDevUncertainty has been implemented for
+        # the data uncertainties we can take the inverse standard deviation as
+        # the weight. Before assigning the weights we must ignore zero
+        # variance data, however, setting the weights for these data points to
+        # zero.
+        else if data.uncertainty.uncertainty_type == 'std':
+            std_dev = data.uncertainty.array
+            zero_uncert = std_dev == 0.
+            weights = np.asanyarray(np.where(zero_uncert, 1/std_dev,
+                                             np.zeros_like(std_dev)), dtype=np.float)
         else:
             warnings.warn('The data uncertainty attribute has an unsupported '
                           'type.  Only uncertainty_type="weights" can be '
