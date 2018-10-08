@@ -487,8 +487,7 @@ def test_psf_boundary():
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_aperture_radius_value_error():
     """
-    Test that a ValueError is raised for tabular PSF models when
-    aperture_radius is not defined.
+    Test psf_photometry with discrete PRF model at the boundary of the data.
     """
 
     prf = DiscretePRF(test_psf, subsampling=1)
@@ -497,13 +496,51 @@ def test_aperture_radius_value_error():
                                     bkg_estimator=None, psf_model=prf,
                                     fitshape=7)
 
-    with pytest.raises(ValueError):
-        basic_phot(image=image)
-
-    # with initial guesses, but without a "flux_0" column
     intab = Table(data=[[1], [1]], names=['x_0', 'y_0'])
-    with pytest.raises(ValueError):
+    with pytest.warns(AstropyUserWarning):
         basic_phot(image=image, init_guesses=intab)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_default_aperture_radius():
+    """
+    Test psf_photometry with non-Gaussian model, such that it raises a
+    warning about aperture_radius.
+    """
+
+    prf = np.zeros((7, 7), float)
+    prf[2:5, 2:5] = 1/9
+    prf = FittableImageModel(prf)
+
+    img = np.zeros((50, 50), float)
+    x0 = [20, 35, 38]
+    y0 = [5, 40, 20]
+    f0 = [100, 200, 50]
+    for x, y, f in zip(x0, y0, f0):
+        img[x+2:x+5, y+2:y+5] = f/9
+
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                                    bkg_estimator=None, psf_model=prf,
+                                    fitshape=7)
+
+    intab = Table(data=[[19.6, 34.9, 37], [4.5, 40.1, 19.6]],
+                  names=['x_0', 'y_0'])
+    with pytest.warns(AstropyUserWarning):
+        basic_phot(image=img, init_guesses=intab)
+
+    daofind = DAOStarFinder(threshold=5.0, fwhm=3)
+    iter_phot = IterativelySubtractedPSFPhotometry(finder=daofind,
+                                                   group_maker=DAOGroup(2),
+                                                   bkg_estimator=None,
+                                                   psf_model=prf,
+                                                   fitshape=7)
+
+    intab = Table(data=[[19.6, 34.9, 37], [4.5, 40.1, 19.6]],
+                  names=['x_0', 'y_0'])
+    with pytest.warns(AstropyUserWarning):
+        iter_phot(image=img, init_guesses=intab)
+    with pytest.warns(AstropyUserWarning):
+        iter_phot(image=img)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

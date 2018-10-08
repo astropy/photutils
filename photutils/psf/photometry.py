@@ -256,6 +256,21 @@ class BasicPSFPhotometry:
             elif hasattr(self.psf_model, 'sigma'):
                 self.aperture_radius = (self.psf_model.sigma.value *
                                         gaussian_sigma_to_fwhm)
+            # If PSF model doesn't have FWHM or sigma value -- as it
+            # is not a Gaussian; most likely because it's an ePSF --
+            # then we fall back on fitting a circle of the average
+            # size of the fitting box. As ``fitshape`` is the width
+            # of the box, we need (width-1)/2 as the radius.
+            else:
+                self.aperture_radius = float(np.amin((np.asanyarray(
+                                             self.fitshape) - 1) / 2))
+                warnings.warn('aperture_radius is None and could not '
+                              'be determined by psf_model. Setting '
+                              'radius to the smallest fitshape size. '
+                              'If fitshape is significantly larger than '
+                              'the psf_model core lengthscale, consider '
+                              'supplying a specific aperture_radius.',
+                              AstropyUserWarning)
 
         if self.aperture_radius is None:
             if init_guesses is None:
@@ -741,6 +756,21 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                 elif hasattr(self.psf_model, 'sigma'):
                     self.aperture_radius = (self.psf_model.sigma.value *
                                             gaussian_sigma_to_fwhm)
+                # If PSF model doesn't have FWHM or sigma value -- as it
+                # is not a Gaussian; most likely because it's an ePSF --
+                # then we fall back on fitting a circle of the average
+                # size of the fitting box. As ``fitshape`` is the width
+                # of the box, we need (width-1)/2 as the radius.
+                else:
+                    self.aperture_radius = float(np.amin((np.asanyarray(
+                                                 self.fitshape) - 1) / 2))
+                    warnings.warn('aperture_radius is None and could not '
+                                  'be determined by psf_model. Setting '
+                                  'radius to the smallest fitshape size. '
+                                  'If fitshape is significantly larger than '
+                                  'the psf_model core lengthscale, consider '
+                                  'supplying a specific aperture_radius.',
+                                  AstropyUserWarning)
 
             output_table = self._do_photometry()
         return output_table
