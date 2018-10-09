@@ -96,6 +96,9 @@ class BasicPSFPhotometry:
         (e.g. an `EPSFModel`), you must input the ``aperture_radius``
         keyword.  For analytical PSF models, alternatively you may
         define a FWHM attribute on your input psf_model.
+    output_cols : list of str, optional
+        List of additional columns for parameters derived by the fitting
+        process, such as roundness or sharpness.
 
     Notes
     -----
@@ -119,7 +122,8 @@ class BasicPSFPhotometry:
     """
 
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
-                 finder=None, fitter=LevMarLSQFitter(), aperture_radius=None):
+                 finder=None, fitter=LevMarLSQFitter(), aperture_radius=None,
+                 output_cols=None):
         self.group_maker = group_maker
         self.bkg_estimator = bkg_estimator
         self.psf_model = psf_model
@@ -130,6 +134,7 @@ class BasicPSFPhotometry:
         self._pars_to_set = None
         self._pars_to_output = None
         self._residual_image = None
+        self._output_cols = output_cols
 
     @property
     def fitshape(self):
@@ -298,10 +303,21 @@ class BasicPSFPhotometry:
                 sources['aperture_flux'] = aperture_photometry(
                     image, apertures)['aperture_sum']
 
-                init_guesses = Table(names=['x_0', 'y_0', 'flux_0'],
-                                     data=[sources['xcentroid'],
-                                           sources['ycentroid'],
-                                           sources['aperture_flux']])
+                # init_guesses should be the initial 3 required parameters --
+                # x, y, flux -- and then concatentated with any additional
+                # sources, if there are any
+                if self._output_cols is None:
+                    init_guesses = Table(names=['x_0', 'y_0', 'flux_0'],
+                                         data=[sources['xcentroid'],
+                                               sources['ycentroid'],
+                                               sources['aperture_flux']])
+                else:
+                    init_guesses = Table(names=['x_0', 'y_0', 'flux_0'] +
+                                         list(self._output_cols),
+                                         data=[sources['xcentroid'],
+                                               sources['ycentroid'],
+                                               sources['aperture_flux']] +
+                                         [sources[o] for o in self._output_cols])
 
         self._define_fit_param_names()
         for p0, param in self._pars_to_set.items():
@@ -451,7 +467,7 @@ class BasicPSFPhotometry:
                 n_fit_params = len(unc_tab.colnames)
                 for i in range(star_group_size):
                     unc_tab[i] = np.sqrt(np.diag(
-                                          self.fitter.fit_info['param_cov'])
+                                         self.fitter.fit_info['param_cov'])
                                          )[k: k + n_fit_params]
                     k = k + n_fit_params
         return unc_tab
@@ -563,6 +579,9 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         stars remain.  Note that in this case it is *possible* that the
         loop will never end if the PSF has structure that causes
         subtraction to create new sources infinitely.
+    output_cols : list of str, optional
+        List of additional columns for parameters derived by the fitting
+        process, such as roundness or sharpness.
 
     Notes
     -----
@@ -581,10 +600,10 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
 
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
                  finder, fitter=LevMarLSQFitter(), niters=3,
-                 aperture_radius=None):
+                 aperture_radius=None, output_cols=None):
 
         super().__init__(group_maker, bkg_estimator, psf_model, fitshape,
-                         finder, fitter, aperture_radius)
+                         finder, fitter, aperture_radius, output_cols)
         self.niters = niters
 
     @property
@@ -662,6 +681,10 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         """
 
         if init_guesses is not None:
+            # If supplying the initial guesses with extra columns added
+            # in ``output_cols``, these columns are also required to be
+            # in ``init_guesses`` such that we can pass ``table`` through
+            # to _do_photometry and still have the required columns.
             table = super().do_photometry(image, init_guesses)
             table['iter_detected'] = np.ones(table['x_fit'].shape,
                                              dtype=np.int32)
@@ -728,10 +751,21 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             sources['aperture_flux'] = aperture_photometry(
                 self._residual_image, apertures)['aperture_sum']
 
-            init_guess_tab = Table(names=['id', 'x_0', 'y_0', 'flux_0'],
+            # init_guesses should be the initial 3 required parameters --
+            # x, y, flux -- and then concatentated with any additional
+            # sources, if there are any
+            if self._output_cols is None:
+                init_guess_tab = Table(names=['id', 'x_0', 'y_0', 'flux_0'],
                                    data=[sources['id'], sources['xcentroid'],
                                          sources['ycentroid'],
                                          sources['aperture_flux']])
+            else:
+                init_guess_tab = Table(names=['id', 'x_0', 'y_0', 'flux_0'] +
+                                       list(self._output_cols),
+                                       data=[sources['id'], sources['xcentroid'],
+                                             sources['ycentroid'],
+                                             sources['aperture_flux']] +
+                                       [sources[o] for o in self._output_cols])
 
             for param_tab_name, param_name in self._pars_to_set.items():
                 if param_tab_name not in (['x_0', 'y_0', 'flux_0']):
@@ -853,6 +887,9 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
         The radius (in units of pixels) used to compute initial
         estimates for the fluxes of sources. If ``None``, one FWHM will
         be used if it can be determined from the ```psf_model``.
+    output_cols : list of str, optional
+        List of additional columns for parameters derived by ``finder``,
+        such as roundness or sharpness.
 
     Notes
     -----
@@ -873,7 +910,7 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
                  sigma=3., ratio=1.0, theta=0.0, sigma_radius=1.5,
                  sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0,
                  fitter=LevMarLSQFitter(),
-                 niters=3, aperture_radius=None):
+                 niters=3, aperture_radius=None, output_cols=None):
 
         self.crit_separation = crit_separation
         self.threshold = threshold
@@ -898,4 +935,4 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
         super().__init__(group_maker=group_maker, bkg_estimator=bkg_estimator,
                          psf_model=psf_model, fitshape=fitshape,
                          finder=finder, fitter=fitter, niters=niters,
-                         aperture_radius=aperture_radius)
+                         aperture_radius=aperture_radius, output_cols=output_cols)

@@ -602,3 +602,36 @@ def test_psf_fitting_data_on_edge():
     for n in ['x', 'y', 'flux']:
         assert_allclose(outtab[n + '_0'], outtab[n + '_fit'],
                         rtol=0.05, atol=0.1)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.parametrize("sigma_psf, sources", [(sigma_psfs[2], sources3)])
+def test_psf_output_cols(sigma_psf, sources):
+    """
+    Test the handling of a non-None output_cols
+    """
+
+    psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
+    tshape = (32, 32)
+    image = (make_gaussian_prf_sources_image(tshape, sources) +
+             make_noise_image(tshape, type='poisson', mean=6.,
+                              random_state=1) +
+             make_noise_image(tshape, type='gaussian', mean=0.,
+                              stddev=2., random_state=1))
+    dao_phot = DAOPhotPSFPhotometry(crit_separation=8, threshold=40,
+                                    fwhm=2*2*np.sqrt(2*np.log(2)), psf_model=psf_model,
+                                    fitshape=(11, 11),
+                                    output_cols=['sharpness', 'roundness1', 'roundness2'])
+    phot_results = dao_phot(image)
+    assert np.all([name in phot_results.colnames for name in ['sharpness', 'roundness1', 'roundness2']])
+    assert len(phot_results) == 2
+
+    dao_phot = DAOPhotPSFPhotometry(crit_separation=8, threshold=40,
+                                    fwhm=2*2*np.sqrt(2*np.log(2)), psf_model=psf_model,
+                                    fitshape=(11, 11),
+                                    output_cols=['sharpness', 'roundness1', 'roundness2'])
+    phot_results = dao_phot(image, init_guesses=Table(names=['x_0', 'y_0', 'sharpness',
+                                                             'roundness1', 'roundness2'],
+                                                      data=[[17.4], [16], [0.4], [0], [0]]))
+    assert np.all([name in phot_results.colnames for name in ['sharpness', 'roundness1', 'roundness2']])
+    assert len(phot_results) == 2
