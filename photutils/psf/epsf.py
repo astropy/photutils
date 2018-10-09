@@ -287,10 +287,10 @@ class EPSFBuilder:
 
     smoothing_kernel : {'quartic', 'quadratic'}, 2D `~numpy.ndarray`, or `None`
         The smoothing kernel to apply to the ePSF.  The predefined
-        kernels ``'quartic'`` and ``'quadratic'`` have been optimized
-        for ePSF oversampling factors close to 4.  Alternatively, a
-        custom 2D array can be input.  If `None` then no smoothing will
-        be performed.  The default is ``'quartic'``.
+        ``'quartic'`` and ``'quadratic'`` kernels are derived from
+        fourth and second degree polynomials, respectively.
+        Alternatively, a custom 2D array can be input.  If `None` then
+        no smoothing will be performed.  The default is ``'quartic'``.
 
     recentering_func : callable, optional
         A callable object (e.g. function or class) that is used to
@@ -597,15 +597,6 @@ class EPSFBuilder:
                  [-0.080816, -0.019592, 0.200816, -0.019592, -0.080816],
                  [+0.041632, -0.080816, 0.078368, -0.080816, +0.041632]])
 
-            if not 3.5 < self.oversampling < 4.5:
-                warnings.warn('A quartic smoothing_kernel was requested, but'
-                              'oversampling is set to {}.  This kernel is '
-                              'only meant for use with an oversampling near 4, '
-                              'so the constructed ePSF may be compromised. A '
-                              'different smoothing kernel is '
-                              'recommended'.format(self.oversampling),
-                              AstropyUserWarning)
-
         elif self.smoothing_kernel == 'quadratic':
             # from Polynomial2D fit with degree=2 to 5x5 array of
             # zeros with 1. at the center
@@ -623,15 +614,6 @@ class EPSFBuilder:
                   +0.01142786],
                  [-0.07428311, 0.01142786, 0.03999952, 0.01142786,
                   -0.07428311]])
-
-            if not 3.5 < self.oversampling < 4.5:
-                warnings.warn('A quadratic smoothing_kernel was requested, but'
-                              'oversampling is set to {}.  This kernel is '
-                              'only meant for use with an oversampling near 4, '
-                              'so the constructed ePSF may be compromised. A '
-                              'different smoothing kernel is '
-                              'recommended'.format(self.oversampling),
-                              AstropyUserWarning)
 
         elif isinstance(self.smoothing_kernel, np.ndarray):
             kernel = self.kernel
