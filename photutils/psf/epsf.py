@@ -358,6 +358,9 @@ class EPSFBuilder:
         self.recentering_maxiters = recentering_maxiters
 
         self.smoothing_kernel = smoothing_kernel
+
+        if not isinstance(fitter, EPSFFitter):
+            raise TypeError('fitter must be an EPSFFitter instance.')
         self.fitter = fitter
 
         if center_accuracy <= 0.0:
