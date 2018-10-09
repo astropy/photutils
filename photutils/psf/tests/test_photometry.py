@@ -111,6 +111,14 @@ sources3['id'] = [1] * 2
 sources3['group_id'] = [1] * 2
 sources3['iter_detected'] = [1, 2]
 
+sigma_psfs.append(2)
+sources4 = Table()
+sources4['flux'] = [10000, 5000, 3000]
+sources4['x_mean'] = [20, 8, 13]
+sources4['y_mean'] = [9, 19, 21]
+sources4['x_stddev'] = [sigma_psfs[-1]] * len(sources4['x_mean'])
+sources4['y_stddev'] = [sigma_psfs[-1]] * len(sources4['y_mean'])
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize("sigma_psf, sources", [(sigma_psfs[2], sources3)])
@@ -516,6 +524,49 @@ def test_psf_boundary_gaussian():
     intab = Table(data=[[1], [1]], names=['x_0', 'y_0'])
     f = basic_phot(image=image, init_guesses=intab)
     assert_allclose(f['flux_fit'], 0, atol=1e-8)
+
+
+@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.parametrize("sigma_psf, sources", [(sigma_psfs[0], sources4)])
+def test_psf_preserve_order(sigma_psf, sources):
+    """
+    Test the order preservation of BasicPSFPhotometry.
+    """
+
+    psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
+
+    img_shape = (32, 32)
+    # generate image with read-out noise (Gaussian) and
+    # background noise (Poisson)
+    image = (make_gaussian_sources_image(img_shape, sources) +
+             make_noise_image(img_shape, type='poisson', mean=6.,
+                              random_state=1) +
+             make_noise_image(img_shape, type='gaussian', mean=0.,
+                              stddev=2., random_state=1))
+
+    psf_model.sigma.fixed = False
+    mmm_bkg = MMMBackground()
+    daogroup = DAOGroup(crit_separation=8)
+    basic_phot = BasicPSFPhotometry(group_maker=daogroup, bkg_estimator=mmm_bkg,
+                                  psf_model=psf_model, fitshape=(11, 11))
+    phot_results = basic_phot(image, init_guesses=Table(names=['x_0', 'y_0', 'flux_0'],
+                                                        data=[[7.8, 20.5, 13.1],
+                                                              [19.4, 8.8, 21.4],
+                                                              [4500, 9000, 2950]]))
+    # If preserver ID order is off -- by default -- we get group as [1, 1, 2]
+    assert np.all(phot_results['group_id'] == [1, 1, 2])
+    assert np.all(phot_results['id'] == [1, 3, 2])
+
+    basic_phot = BasicPSFPhotometry(group_maker=daogroup, bkg_estimator=mmm_bkg,
+                                  psf_model=psf_model, fitshape=(11, 11),
+                                  preserve_id_order=True)
+    phot_results = basic_phot(image, init_guesses=Table(names=['x_0', 'y_0', 'flux_0'],
+                                                        data=[[7.8, 20.5, 13.1],
+                                                              [19.4, 8.8, 21.4],
+                                                              [4500, 9000, 2950]]))
+
+    assert np.all(phot_results['group_id'] == [1, 2, 1])
+    assert np.all(phot_results['id'] == [1, 2, 3])
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
