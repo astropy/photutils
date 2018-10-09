@@ -4,10 +4,11 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
+from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata import NDData
 from astropy.table import Table
 
-from ..epsf import EPSFBuilder
+from ..epsf import EPSFBuilder, EPSFFitter
 from ..epsf_stars import extract_stars, EPSFStar, EPSFStars
 from ...centroids import gaussian1d_moments
 from ...datasets import make_gaussian_sources_image
@@ -104,3 +105,17 @@ class TestEPSFBuild:
         assert_allclose(ampl, 0.002487, rtol=1e-4)
         assert_allclose(peak, y0, rtol=1e-3)
         assert_allclose(sigma, oversampling * self.stddev, rtol=1e-5)
+
+    def test_epsf_build_invalid_fitter(self):
+        """
+        Test that the input fitter is an EPSFFitter instance.
+        """
+
+        with pytest.raises(TypeError):
+            EPSFBuilder(fitter=EPSFFitter, maxiters=3)
+
+        with pytest.raises(TypeError):
+            EPSFBuilder(fitter=LevMarLSQFitter(), maxiters=3)
+
+        with pytest.raises(TypeError):
+            EPSFBuilder(fitter=LevMarLSQFitter, maxiters=3)
