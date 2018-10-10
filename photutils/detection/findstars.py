@@ -835,8 +835,14 @@ class DAOStarFinder(StarFinderBase):
                  sigma_radius=1.5, sharplo=0.2, sharphi=1.0, roundlo=-1.0,
                  roundhi=1.0, sky=0.0, exclude_border=False):
 
+        if not np.isscalar(threshold):
+            raise TypeError('threshold must be a scalar value.')
         self.threshold = threshold
+
+        if not np.isscalar(fwhm):
+            raise TypeError('fwhm must be a scalar value.')
         self.fwhm = fwhm
+
         self.ratio = ratio
         self.theta = theta
         self.sigma_radius = sigma_radius
@@ -1023,8 +1029,14 @@ class IRAFStarFinder(StarFinderBase):
                  sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2, sky=None,
                  exclude_border=False):
 
+        if not np.isscalar(threshold):
+            raise TypeError('threshold must be a scalar value.')
         self.threshold = threshold
+
+        if not np.isscalar(fwhm):
+            raise TypeError('fwhm must be a scalar value.')
         self.fwhm = fwhm
+
         self.sigma_radius = sigma_radius
         self.minsep_fwhm = minsep_fwhm
         self.sharplo = sharplo

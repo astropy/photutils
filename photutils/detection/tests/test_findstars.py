@@ -43,6 +43,13 @@ class TestDAOStarFinder:
         for col in t.colnames:
             assert_allclose(t[col], t_ref[col])
 
+    def test_daofind_threshold_fwhm_inputs(self):
+        with pytest.raises(TypeError):
+            DAOStarFinder(threshold=np.ones((2, 2)), fwhm=3.)
+
+        with pytest.raises(TypeError):
+            DAOStarFinder(threshold=3., fwhm=np.ones((2, 2)))
+
     def test_daofind_include_border(self):
         starfinder = DAOStarFinder(threshold=10, fwhm=2, sigma_radius=1.5,
                                    exclude_border=False)
@@ -109,6 +116,13 @@ class TestIRAFStarFinder:
         assert t.colnames == t_ref.colnames
         for col in t.colnames:
             assert_allclose(t[col], t_ref[col])
+
+    def test_irafstarfind_threshold_fwhm_inputs(self):
+        with pytest.raises(TypeError):
+            IRAFStarFinder(threshold=np.ones((2, 2)), fwhm=3.)
+
+        with pytest.raises(TypeError):
+            IRAFStarFinder(threshold=3., fwhm=np.ones((2, 2)))
 
     def test_irafstarfind_nosources(self):
         data = np.ones((3, 3))
