@@ -244,6 +244,13 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
                       AstropyUserWarning)
         return Table()  # empty table
 
+    if not np.isscalar(threshold):
+        threshold = np.asanyarray(threshold)
+
+        if data.shape != threshold.shape:
+            raise ValueError('A threshold array must have the same shape as '
+                             'the input data.')
+
     # remove NaN values to avoid runtime warnings
     nan_mask = np.isnan(data)
     if np.any(nan_mask):

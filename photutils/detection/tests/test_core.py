@@ -157,6 +157,12 @@ class TestFindPeaks:
         with pytest.raises(ValueError):
             find_peaks(PEAKDATA, 0.1, mask=np.ones((5, 5)))
 
+    def test_thresholdshape(self):
+        """Test if threshold shape doesn't match data shape."""
+
+        with pytest.raises(ValueError):
+            find_peaks(PEAKDATA, np.ones((2, 2)))
+
     def test_npeaks(self):
         """Test npeaks."""
 
