@@ -2,6 +2,8 @@
 
 import math
 
+import numpy as np
+
 from astropy.coordinates import SkyCoord
 
 from .core import PixelAperture, SkyAperture
@@ -68,14 +70,14 @@ class CircularMaskMixin:
         use_exact, subpixels = self._translate_mask_mode(method, subpixels)
 
         if hasattr(self, 'r'):
-            radius = self.r
+            radii = self.r
         elif hasattr(self, 'r_out'):    # annulus
-            radius = self.r_out
+            radii = self.r_out
         else:
             raise ValueError('Cannot determine the aperture radius.')
 
         masks = []
-        for bbox, edges in zip(self.bounding_boxes, self._centered_edges):
+        for bbox, edges, radius in zip(self.bounding_boxes, self._centered_edges, radii):
             ny, nx = bbox.shape
             mask = circular_overlap_grid(edges[0], edges[1], edges[2],
                                          edges[3], nx, ny, radius, use_exact,
@@ -121,11 +123,18 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
     """
 
     def __init__(self, positions, r):
-        if r < 0:
-            raise ValueError('r must be non-negative')
 
         self.positions = self._sanitize_positions(positions)
-        self.r = float(r)
+        if isinstance(r,(float,int)):
+            if r < 0:
+                raise ValueError('r must be non-negative')
+            self.r=np.ones(len(self.positions))*r
+        elif isinstance(r, (list, tuple, np.ndarray)):
+            self.r = np.asarray(r)
+            if len(self.r) == 1:
+                self.r=np.ones(len(self.positions))*r[0]
+            elif len(self.r) != len(self.positions):
+                raise TypeError('Length of radius vector must match length of positions')
         self._params = ['r']
 
     # TODO: make lazyproperty?, but update if positions or radius change
@@ -150,8 +159,8 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         plot_positions, ax, kwargs = self._prepare_plot(
             origin, indices, ax, fill, **kwargs)
 
-        for position in plot_positions:
-            patch = mpatches.Circle(position, self.r, **kwargs)
+        for position,r in zip(plot_positions,self.r):
+            patch = mpatches.Circle(position, r, **kwargs)
             ax.add_patch(patch)
 
     def to_sky(self, wcs, mode='all'):
@@ -295,9 +304,19 @@ class SkyCircularAperture(SkyAperture):
             self.positions = positions
         else:
             raise TypeError('positions must be a SkyCoord object')
-
         assert_angle_or_pixel('r', r)
-        self.r = r
+        if self.positions.shape == ():
+            self.r = r
+        else:
+            if not isinstance(r, np.ndarray) or r.shape==():
+                self.r = np.ones(len(self.positions))*r
+            else:
+                self.r = r
+            if len(self.r) == 1:
+                self.r=np.ones(len(self.positions))*r[0]
+        if self.r.shape != self.positions.shape:
+            raise TypeError('Length of radius vector must match length of positions')
+
         self._params = ['r']
 
     def to_pixel(self, wcs, mode='all'):
