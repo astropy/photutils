@@ -6,9 +6,9 @@ Models and functions for doing PSF/PRF fitting photometry on image data.
 import numpy as np
 from astropy.table import Table
 from astropy.nddata.utils import add_array, extract_array
+import abc
 
-
-__all__ = ['subtract_psf']
+__all__ = ['subtract_psf', 'CullerAndEnder', 'CullerAndEnderBase']
 
 
 def _extract_psf_fitting_names(psf):
@@ -123,3 +123,64 @@ def subtract_psf(data, psf, posflux, subshape=None):
             subbeddata = add_array(subbeddata, -psf(x, y), (y_0, x_0))
 
     return subbeddata
+
+
+@abc.abstractmethod
+class CullerAndEnderBase:
+    """
+    Return input table, removing any sources which do not meet
+    the quality of fit statistic used to assess fits.
+
+    Parameters
+    ----------
+    data : `~astropy.table.Table`
+        Table containing the sources.
+    psf_model : `astropy.modeling.Fittable2DModel` instance
+        PSF/PRF model to which the data are being fit.
+    new_sources : `~astropy.table.Table`
+        Newly found list of sources to compare with the sources
+        in ``data``, when deciding whether to end iteration.
+
+    Returns
+    -------
+    culled_data : `~astropy.table.Table`
+        ``data`` with poor fits removed.
+    end_flag : boolean
+        Flag indicating whether to end iterative PSF fitting
+        before the maximum number of loops.
+    """
+
+    def __call__(self, data, psf_model, new_sources):
+        new_data = self.cull_data(data, psf_model)
+        end_flag = self.end_loop(new_data, data, new_sources)
+        return new_data, end_flag
+
+    def cull_data(self, data, psf_model):
+        raise NotImplementedError('cull_data should be defined in '
+                                  'the subclass.')
+
+    def end_loop(self, new_data, data, new_sources):
+        raise NotImplementedError('end_loop should be defined in '
+                                  'the subclass.')
+
+
+class CullerAndEnder(CullerAndEnderBase):
+    """
+    Initial CullerAndEnder which simply ignores culling and ending
+    to preserve backwards-compatibility with no implementation.
+    """
+
+    def cull_data(self, data, psf_model):
+        # Make no attempt to cull any data by quality of fit
+        # here; could potentially involve something like sharpness,
+        # chi-squared statistics, analysis of residual images, etc.
+        return data
+
+    def end_loop(self, new_data, data, new_sources):
+        # For now, trivially don't ever dictate the loop
+        # end earlier than the maximum number of loops.
+        # However, it will likely check something along the lines
+        # of whether any poor quality stars were just culled, or
+        # whether any new sources were just added; in either case
+        # the loop should continue.
+        return False

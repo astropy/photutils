@@ -21,7 +21,7 @@ from ..sandbox import DiscretePRF
 from ...background import StdBackgroundRMS, MMMBackground
 from ...datasets import make_gaussian_sources_image, make_noise_image
 from ...detection import DAOStarFinder
-
+from ..funcs import CullerAndEnderBase
 
 try:
     import scipy    # noqa
@@ -601,3 +601,101 @@ def test_psf_fitting_data_on_edge():
     for n in ['x', 'y', 'flux']:
         assert_allclose(outtab[n + '_0'], outtab[n + '_fit'],
                         rtol=0.05, atol=0.1)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_culler_ender_break():
+    """
+    Verify culler and ender breaking early if end_loop is met.
+    """
+
+    img_shape = (32, 32)
+
+    # generate image with read-out noise (Gaussian) and
+    # background noise (Poisson)
+    image = (make_gaussian_sources_image(img_shape, sources1) +
+             make_noise_image(img_shape, type='poisson', mean=6.,
+                              random_state=1) +
+             make_noise_image(img_shape, type='gaussian', mean=0.,
+                              stddev=2., random_state=1))
+
+    class CullerAndEnderTest(CullerAndEnderBase):
+        """Test culler and ender that will end at the first iteration"""
+
+        def cull_data(self, data, psf_model):
+            return data
+
+        def end_loop(self, new_data, data, new_sources):
+            return True
+
+    std, sigma_psf = 1, 1
+    threshold = 15. * std
+    fwhm = sigma_psf * gaussian_sigma_to_fwhm
+    crit_separation = 1.5 * sigma_psf * gaussian_sigma_to_fwhm
+    daofind = DAOStarFinder(threshold=threshold, fwhm=fwhm)
+    daogroup = DAOGroup(crit_separation)
+    mode_bkg = MMMBackground()
+    psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
+    fitter = LevMarLSQFitter()
+    iter_phot_obj = IterativelySubtractedPSFPhotometry(finder=daofind,
+                                                       group_maker=daogroup,
+                                                       bkg_estimator=mode_bkg,
+                                                       culler_and_ender=CullerAndEnderTest,
+                                                       psf_model=psf_model,
+                                                       fitter=fitter, niters=3,
+                                                       fitshape=(11, 11))
+
+    results = iter_phot_obj(image)
+    # Should only find two of the three sources in sources1 with just one loop.
+    assert len(results) == 2
+
+
+@pytest.mark.xfail('not HAS_SCIPY')
+def test_fwhm_iteratively_subtracted():
+    """
+    Test for setting the aperture radius to the FWHM PSF value
+    in IterativelySubtractedPSFPhotometry.
+    """
+
+    img_shape = (32, 32)
+
+    # generate image with read-out noise (Gaussian) and
+    # background noise (Poisson)
+    image = (make_gaussian_sources_image(img_shape, sources1) +
+             make_noise_image(img_shape, type='poisson', mean=6.,
+                              random_state=1) +
+             make_noise_image(img_shape, type='gaussian', mean=0.,
+                              stddev=2., random_state=1))
+
+    # test that aperture radius is properly set whenever the PSF model has
+    # a `fwhm` attribute
+    class PSFModelWithFWHM(Fittable2DModel):
+        x_0 = Parameter(default=1)
+        y_0 = Parameter(default=1)
+        flux = Parameter(default=1)
+        fwhm = Parameter(default=5)
+
+        def __init__(self, fwhm=fwhm.default):
+            super().__init__(fwhm=fwhm)
+
+        def evaluate(self, x, y, x_0, y_0, flux, fwhm):
+            return flux / (fwhm * (x - x_0)**2 * (y - y_0)**2)
+
+    std, sigma_psf = 1, 2
+    threshold = 5. * std
+    fwhm = sigma_psf * gaussian_sigma_to_fwhm
+    crit_separation = 1.5 * sigma_psf * gaussian_sigma_to_fwhm
+    daofind = DAOStarFinder(threshold=threshold, fwhm=fwhm)
+    daogroup = DAOGroup(crit_separation)
+    mode_bkg = MMMBackground()
+    psf_model = PSFModelWithFWHM(fwhm=sigma_psf * gaussian_sigma_to_fwhm)
+    fitter = LevMarLSQFitter()
+    iter_phot_obj = IterativelySubtractedPSFPhotometry(finder=daofind,
+                                                       group_maker=daogroup,
+                                                       bkg_estimator=mode_bkg,
+                                                       psf_model=psf_model,
+                                                       fitter=fitter, niters=1,
+                                                       fitshape=(11, 11))
+
+    results = iter_phot_obj(image)
+    assert_equal(iter_phot_obj.aperture_radius, psf_model.fwhm.value)

@@ -11,7 +11,7 @@ from astropy.table import Table, Column, vstack, hstack
 from astropy.utils.exceptions import AstropyUserWarning
 
 from . import DAOGroup
-from .funcs import subtract_psf, _extract_psf_fitting_names
+from .funcs import subtract_psf, _extract_psf_fitting_names, CullerAndEnder
 from .models import get_grouped_psf_model
 from ..aperture import CircularAperture, aperture_photometry
 from ..background import MMMBackground
@@ -530,6 +530,11 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         Fitter object used to compute the optimized centroid positions
         and/or flux of the identified sources. See
         `~astropy.modeling.fitting` for more details on fitters.
+    culler_and_ender : callable or `~photutils.psf.CullerAndEnder` subclass, or None
+        Function which should return an evaluation of the level to which
+        the models describing the sources fit the data for those sources.
+        Returns an updated `~astropy.table.Table` with bad fits removed
+        (culled) from the list.
     aperture_radius : float
         The radius (in units of pixels) used to compute initial
         estimates for the fluxes of sources. If ``None``, one FWHM will
@@ -557,12 +562,13 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
     """
 
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
-                 finder, fitter=LevMarLSQFitter(), niters=3,
-                 aperture_radius=None):
+                 finder, culler_and_ender=CullerAndEnder, fitter=LevMarLSQFitter(),
+                 niters=3, aperture_radius=None):
 
         super().__init__(group_maker, bkg_estimator, psf_model, fitshape,
                          finder, fitter, aperture_radius)
         self.niters = niters
+        self.culler_and_ender = culler_and_ender()
 
     @property
     def niters(self):
@@ -733,6 +739,16 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', AstropyUserWarning)
                 sources = self.finder(self._residual_image)
+
+            # Culler and ender removes poor goodness-of-fit sources
+            culled_table, end_flag = self.culler_and_ender(output_table, self.psf_model,
+                                                           sources)
+            if end_flag:
+                break
+            else:
+                # If we did not break prematurely, then set the culled table
+                # as the new table for the loop to begin again.
+                output_table = culled_table
 
             n += 1
 

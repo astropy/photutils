@@ -1,6 +1,14 @@
 0.6 (unreleased)
 ----------------
 
+New Features
+^^^^^^^^^^^^
+
+- ``photutils.psf``
+
+  - Added ``culler_and_ender`` option to 
+    IterativelySubtractedPSFPhotometry.
+
 API changes
 ^^^^^^^^^^^
 
@@ -13,12 +21,17 @@ API changes
   - The ``find_peaks`` function will no longer issue a RuntimeWarning
     if the input data contains NaNs. [#712]
 
+- ``photutils.funcs``
+
+  - Added ``CullerAndEnderBase`` abstract class, and ``CullerAndEnder`` 
+    class, which maintain backwards compatibility with previous versions in
+    ``photutils.psf.BasicPSFPhotometry`` and subclasses.
+
 - ``photutils.epsf``
 
   - The ``Star``, ``Stars``, and ``LinkedStars`` classes are now
     deprecated and have been renamed ``EPSFStar``, ``EPSFStars``, and
     ``LinkedEPSFStars``, respectively. [#727]
-
 
 Bug Fixes
 ^^^^^^^^^
