@@ -1,7 +1,7 @@
 GroupMaker
 ==========
 
-EJT: Documented as the `__call__` method of ``GroupStarsBase`` - see
+EJT: Documented as the ``__call__`` method of ``GroupStarsBase`` - see
 https://photutils.readthedocs.io/en/stable/api/photutils.psf.groupstars.GroupStarsBase.html
 It'll be substantial work to re-design the photometry loops if this is changed
 in a backwards-incompatible manner, but of course that's possible if there's a

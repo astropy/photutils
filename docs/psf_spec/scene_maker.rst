@@ -3,7 +3,7 @@ SceneMaker
 
 EJT: This object is not currently in the block diagram, as it represents a step
 beyond the "baseline" PSF fitting machinery. It should be developed in parallel
-with the `SingleObjectModel`, which really doesn't have reason to exist without
+with the ``SingleObjectModel``, which really doesn't have reason to exist without
 the scene maker.
 
 A single sentence summarizing this block.

@@ -8,7 +8,7 @@ maintain backwards-compatibility, the new ``SingleObjectModel`` will need to
 default to the "point source" object model, and behave the same as the current
 behavior of a model with shape parameters is provided as the "psf model".  But
 arguable that is *not* the desired behavior in the "new" paradigm that combines
-the `SceneMaker`and the `SingleObjectModel`.
+the ``SceneMaker``and the ``SingleObjectModel``.
 
 A single sentence summarizing this block.
 
