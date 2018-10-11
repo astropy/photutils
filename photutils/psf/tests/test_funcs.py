@@ -6,8 +6,10 @@ import pytest
 from astropy.modeling.models import Gaussian2D
 from astropy.convolution.utils import discretize_model
 from astropy.table import Table
-from .. import subtract_psf
+from .. import IntegratedGaussianPRF, get_grouped_psf_model, subtract_psf
 from ..sandbox import DiscretePRF
+from ..funcs import SingleObjectModel, SingleObjectModelBase
+
 
 try:
     import scipy    # noqa
@@ -52,3 +54,27 @@ def test_subtract_psf():
         posflux.rename_column(n, n.split('_')[0] + '_fit')
     residuals = subtract_psf(image, prf, posflux)
     assert_allclose(residuals, np.zeros_like(image), atol=1E-4)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_single_object_model():
+    """Test SingleObjectModel"""
+
+    igp = IntegratedGaussianPRF(sigma=1.2)
+    tab = Table(names=['x_0', 'y_0', 'flux_0', 'object_type'],
+                data=[[1, 2], [3, 4], [0.5, 1], ['Star', 'Galaxy']])
+    pars_to_set = {'x_0': 'x_0', 'y_0': 'y_0', 'flux_0': 'flux'}
+
+    single_object_model = SingleObjectModel()
+
+    gpsf = get_grouped_psf_model(igp, tab, pars_to_set, single_object_model)
+
+    assert gpsf.x_0_0 == 1
+    assert gpsf.y_0_1 == 4
+    assert gpsf.flux_0 == 0.5
+    assert gpsf.flux_1 == 1
+    assert gpsf.sigma_0 == gpsf.sigma_1 == 1.2
+
+    single_object_model = SingleObjectModelBase()
+    with pytest.raises(NotImplementedError):
+        gpsf = get_grouped_psf_model(igp, tab, pars_to_set, single_object_model)

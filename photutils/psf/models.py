@@ -829,19 +829,25 @@ def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
     return outmod
 
 
-def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
+def get_grouped_psf_model(template_psf_model, star_group, pars_to_set,
+                          single_object_model=None):
     """
-    Construct a joint PSF model which consists of a sum of PSF's templated on
+    Construct a joint PSF model which consists of a sum of PSFs templated on
     a specific model, but whose parameters are given by a table of objects.
 
     Parameters
     ----------
     template_psf_model : `astropy.modeling.Fittable2DModel` instance
-        The model to use for *individual* objects.  Must have parameters named
+        The model to use for individual objects.  Must have parameters named
         ``x_0``, ``y_0``, and ``flux``.
     star_group : `~astropy.table.Table`
         Table of stars for which the compound PSF will be constructed.  It
         must have columns named ``x_0``, ``y_0``, and ``flux_0``.
+    single_object_model : `photutils.psf.SingleObjectModel`, optional
+        Class describing the various models (aside from stars, which default
+        to PSF in -> PSF out assuming a point source) and handling the
+        convolution of the PSF model with the underlying source light
+        distribution.
 
     Returns
     -------
@@ -853,7 +859,13 @@ def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
     group_psf = None
 
     for star in star_group:
+        # If there is no additional column specifying what type of object the
+        # sources listed are, assume they are stars
         psf_to_add = template_psf_model.copy()
+        if 'object_type' in star.colnames and single_object_model is not None:
+            # TODO: add convolution with SingleObjectModel per object_type,
+            # currently this just returns the psf, assuming a delta function source
+            psf_to_add = single_object_model(psf_to_add, star['object_type'])
         for param_tab_name, param_name in pars_to_set.items():
             setattr(psf_to_add, param_name, star[param_tab_name])
 

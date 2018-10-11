@@ -11,7 +11,8 @@ from astropy.table import Table, Column, vstack, hstack
 from astropy.utils.exceptions import AstropyUserWarning
 
 from . import DAOGroup
-from .funcs import subtract_psf, _extract_psf_fitting_names
+from .funcs import (subtract_psf, _extract_psf_fitting_names,
+                    SingleObjectModel)
 from .models import get_grouped_psf_model
 from ..aperture import CircularAperture, aperture_photometry
 from ..background import MMMBackground
@@ -90,6 +91,11 @@ class BasicPSFPhotometry:
         The radius (in units of pixels) used to compute initial
         estimates for the fluxes of sources. If ``None``, one FWHM will
         be used if it can be determined from the ``psf_model``.
+    single_object_model : `photutils.psf.SingleObjectModel` instance
+        Class describing the various models (aside from stars, which default
+        to PSF in -> PSF out assuming a point source) and handling the
+        convolution of the PSF model with the underlying source light
+        distribution.
 
     Notes
     -----
@@ -97,7 +103,7 @@ class BasicPSFPhotometry:
     ``init_guesses`` (keyword argument for ``do_photometry``) are both
     not ``None``. In this case, ``finder`` is ignored and initial
     guesses are taken from ``init_guesses``. In addition, an warning is
-    raised to remaind the user about this behavior.
+    raised to remind the user about this behavior.
 
     If there are problems with fitting large groups, change the
     parameters of the grouping algorithm to reduce the number of sources
@@ -113,7 +119,8 @@ class BasicPSFPhotometry:
     """
 
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
-                 finder=None, fitter=LevMarLSQFitter(), aperture_radius=None):
+                 finder=None, fitter=LevMarLSQFitter(), aperture_radius=None,
+                 single_object_model=SingleObjectModel):
         self.group_maker = group_maker
         self.bkg_estimator = bkg_estimator
         self.psf_model = psf_model
@@ -124,6 +131,7 @@ class BasicPSFPhotometry:
         self._pars_to_set = None
         self._pars_to_output = None
         self._residual_image = None
+        self._single_object_model = single_object_model()
 
     @property
     def fitshape(self):
@@ -286,6 +294,7 @@ class BasicPSFPhotometry:
                 init_guesses[p0] = (len(init_guesses) *
                                     [getattr(self.psf_model, param).value])
 
+        # TODO: update to scene_maker if single_object_model is extended
         star_groups = self.group_maker(init_guesses)
         output_tab, self._residual_image = self.nstar(image, star_groups)
 
@@ -337,7 +346,8 @@ class BasicPSFPhotometry:
         for n in range(len(star_groups.groups)):
             group_psf = get_grouped_psf_model(self.psf_model,
                                               star_groups.groups[n],
-                                              self._pars_to_set)
+                                              self._pars_to_set,
+                                              self._single_object_model)
             usepixel = np.zeros_like(image, dtype=np.bool)
 
             for row in star_groups.groups[n]:
@@ -428,7 +438,7 @@ class BasicPSFPhotometry:
                 n_fit_params = len(unc_tab.colnames)
                 for i in range(star_group_size):
                     unc_tab[i] = np.sqrt(np.diag(
-                                          self.fitter.fit_info['param_cov'])
+                                         self.fitter.fit_info['param_cov'])
                                          )[k: k + n_fit_params]
                     k = k + n_fit_params
         return unc_tab
@@ -540,6 +550,11 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         stars remain.  Note that in this case it is *possible* that the
         loop will never end if the PSF has structure that causes
         subtraction to create new sources infinitely.
+    single_object_model : `photutils.psf.SingleObjectModel` instance
+        Class describing the various models (aside from stars, which default
+        to PSF in -> PSF out assuming a point source) and handling the
+        convolution of the PSF model with the underlying source light
+        distribution.
 
     Notes
     -----
@@ -558,10 +573,11 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
 
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
                  finder, fitter=LevMarLSQFitter(), niters=3,
-                 aperture_radius=None):
+                 aperture_radius=None, single_object_model=SingleObjectModel):
 
         super().__init__(group_maker, bkg_estimator, psf_model, fitshape,
-                         finder, fitter, aperture_radius)
+                         finder, fitter, aperture_radius,
+                         single_object_model)
         self.niters = niters
 
     @property
@@ -717,6 +733,9 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                                              param_name) *
                                      np.ones(len(sources)))))
 
+            # TODO: update group_maker to full scene_maker when
+            # single_object_model extended to include non-point
+            # sources.
             star_groups = self.group_maker(init_guess_tab)
             table, self._residual_image = super().nstar(
                 self._residual_image, star_groups)
