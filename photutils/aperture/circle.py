@@ -224,14 +224,30 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
     """
 
     def __init__(self, positions, r_in, r_out):
-        if not (r_out > r_in):
+        self.positions = self._sanitize_positions(positions)
+
+        if isinstance(r_in,(float,int)):
+            self.r_in=np.ones(len(self.positions))*r_in
+        elif isinstance(r_in, (list, tuple, np.ndarray)):
+            self.r_in = np.asarray(r_in)
+            if len(self.r_in) == 1:
+                self.r_in=np.ones(len(self.positions))*r_in[0]
+            elif len(self.r_in) != len(self.positions):
+                raise TypeError('Length of r_in vector must match length of positions')
+        if isinstance(r_out,(float,int)):
+            self.r_out=np.ones(len(self.positions))*r_out
+        elif isinstance(r_out, (list, tuple, np.ndarray)):
+            self.r_out = np.asarray(r_out)
+            if len(self.r_out) == 1:
+                self.r_out=np.ones(len(self.positions))*r_out[0]
+            elif len(self.r_out) != len(self.positions):
+                raise TypeError('Length of r_out vector must match length of positions')
+        
+        if not (self.r_out > self.r_in).all():
             raise ValueError('r_out must be greater than r_in')
-        if r_in < 0:
+        if (self.r_in < 0).any():
             raise ValueError('r_in must be non-negative')
 
-        self.positions = self._sanitize_positions(positions)
-        self.r_in = float(r_in)
-        self.r_out = float(r_out)
         self._params = ['r_in', 'r_out']
 
     @property
@@ -254,9 +270,9 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         plot_positions, ax, kwargs = self._prepare_plot(
             origin, indices, ax, fill, **kwargs)
 
-        for position in plot_positions:
-            patch_inner = mpatches.Circle(position, self.r_in)
-            patch_outer = mpatches.Circle(position, self.r_out)
+        for position,r_in,r_out in zip(plot_positions,self.r_in,self.r_out):
+            patch_inner = mpatches.Circle(position, r_in)
+            patch_outer = mpatches.Circle(position, r_out)
             path = self._make_annulus_path(patch_inner, patch_outer)
             patch = mpatches.PathPatch(path, **kwargs)
             ax.add_patch(patch)
@@ -371,15 +387,34 @@ class SkyCircularAnnulus(SkyAperture):
         else:
             raise TypeError('positions must be a SkyCoord object')
 
-        assert_angle_or_pixel('r_in', r_in)
-        assert_angle_or_pixel('r_out', r_out)
+        if self.positions.shape == ():
+            self.r_in = r_in
+            self.r_out = r_out
+        else:
+            if not isinstance(r_in, np.ndarray) or r_in.shape==():
+                self.r_in = np.ones(len(self.positions))*r_in
+            else:
+                self.r_in = r_in
+            if len(self.r_in) == 1:
+                self.r_in=np.ones(len(self.positions))*r_in[0]
+            if not isinstance(r_out, np.ndarray) or r_out.shape==():
+                self.r_out = np.ones(len(self.positions))*r_out
+            else:
+                self.r_out = r_out
+            if len(self.r_out) == 1:
+                self.r_out=np.ones(len(self.positions))*r_out[0]
 
-        if r_in.unit.physical_type != r_out.unit.physical_type:
+        if self.r_in.shape != self.positions.shape:
+            raise TypeError('Length of r_in vector must match length of positions')
+        if self.r_out.shape != self.positions.shape:
+            raise TypeError('Length of r_out vector must match length of positions')
+
+        assert_angle_or_pixel('r_in', self.r_in)
+        assert_angle_or_pixel('r_out', self.r_out)
+
+        if self.r_in.unit.physical_type != self.r_out.unit.physical_type:
             raise ValueError("r_in and r_out should either both be angles "
                              "or in pixels.")
-
-        self.r_in = r_in
-        self.r_out = r_out
         self._params = ['r_in', 'r_out']
 
     def to_pixel(self, wcs, mode='all'):
