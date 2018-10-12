@@ -71,25 +71,33 @@ class CircularMaskMixin:
 
         if hasattr(self, 'r'):
             radii = self.r
+            masks = []
+            for bbox, edges, radius in zip(self.bounding_boxes, self._centered_edges, radii):
+                ny, nx = bbox.shape
+                mask = circular_overlap_grid(edges[0], edges[1], edges[2],
+                                             edges[3], nx, ny, radius, use_exact,
+                                             subpixels)
+
+                masks.append(ApertureMask(mask, bbox))
+
+            
         elif hasattr(self, 'r_out'):    # annulus
             radii = self.r_out
+            masks = []
+            for bbox, edges, radius, radius_in in zip(self.bounding_boxes, self._centered_edges, radii, self.r_in):
+                ny, nx = bbox.shape
+                mask = circular_overlap_grid(edges[0], edges[1], edges[2],
+                                             edges[3], nx, ny, radius, use_exact,
+                                             subpixels)
+                mask -= circular_overlap_grid(edges[0], edges[1], edges[2],
+                                              edges[3], nx, ny, radius_in,
+                                              use_exact, subpixels)
+
+                masks.append(ApertureMask(mask, bbox))
+
         else:
             raise ValueError('Cannot determine the aperture radius.')
 
-        masks = []
-        for bbox, edges, radius in zip(self.bounding_boxes, self._centered_edges, radii):
-            ny, nx = bbox.shape
-            mask = circular_overlap_grid(edges[0], edges[1], edges[2],
-                                         edges[3], nx, ny, radius, use_exact,
-                                         subpixels)
-
-            # subtract the inner circle for an annulus
-            if hasattr(self, 'r_in'):
-                mask -= circular_overlap_grid(edges[0], edges[1], edges[2],
-                                              edges[3], nx, ny, self.r_in,
-                                              use_exact, subpixels)
-
-            masks.append(ApertureMask(mask, bbox))
 
         return masks
 
