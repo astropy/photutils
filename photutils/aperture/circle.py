@@ -114,7 +114,8 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         rows of (x, y) coordinates.
 
     r : float
-        The radius of the aperture(s), in pixels.
+        The radii of the aperture(s), in pixels.  This can be a scalar
+        (same radius for all apertures) or an array of radii.
 
     Raises
     ------
@@ -296,7 +297,9 @@ class SkyCircularAperture(SkyAperture):
         either scalar coordinates or an array of coordinates.
 
     r : `~astropy.units.Quantity`
-        The radius of the aperture(s), either in angular or pixel units.
+        The radii of the aperture(s), either in angular or pixel units.
+        This can be a scalar (same radius for all apertures) or an array
+        of radii.
     """
 
     def __init__(self, positions, r):
