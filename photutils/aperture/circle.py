@@ -304,7 +304,6 @@ class SkyCircularAperture(SkyAperture):
             self.positions = positions
         else:
             raise TypeError('positions must be a SkyCoord object')
-        assert_angle_or_pixel('r', r)
         if self.positions.shape == ():
             self.r = r
         else:
@@ -316,7 +315,7 @@ class SkyCircularAperture(SkyAperture):
                 self.r=np.ones(len(self.positions))*r[0]
         if self.r.shape != self.positions.shape:
             raise TypeError('Length of radius vector must match length of positions')
-
+        assert_angle_or_pixel('r', r)
         self._params = ['r']
 
     def to_pixel(self, wcs, mode='all'):
