@@ -209,10 +209,12 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         rows of (x, y) coordinates.
 
     r_in : float
-        The inner radius of the annulus.
+        The inner radius of the annulus.  This can be a scalar
+        (same radius for all apertures) or an array of radii.
 
     r_out : float
-        The outer radius of the annulus.
+        The outer radius of the annulus.  This can be a scalar
+        (same radius for all apertures) or an array of radii.
 
     Raises
     ------
@@ -374,11 +376,13 @@ class SkyCircularAnnulus(SkyAperture):
 
     r_in : `~astropy.units.Quantity`
         The inner radius of the annulus, either in angular or pixel
-        units.
+        units.  This can be a scalar (same radius for all apertures)
+        or an array of radii.
 
     r_out : `~astropy.units.Quantity`
         The outer radius of the annulus, either in angular or pixel
-        units.
+        units.  This can be a scalar (same radius for all apertures)
+        or an array of radii.
     """
 
     def __init__(self, positions, r_in, r_out):
