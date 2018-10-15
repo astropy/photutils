@@ -162,10 +162,10 @@ class _StarCutout:
 
     Parameters
     ----------
-    data : array_like
+    data : 2D array_like
         The cutout 2D image from the input unconvolved 2D image.
 
-    convdata : array_like
+    convdata : 2D array_like
         The cutout 2D image from the convolved 2D image.
 
     slices : tuple of two slices
@@ -593,13 +593,13 @@ class _IRAFStarFind_Properties:
 
 
 def _find_stars(data, kernel, threshold_eff, min_separation=None,
-                exclude_border=False):
+                mask=None, exclude_border=False):
     """
     Find stars in an image.
 
     Parameters
     ----------
-    data : array_like
+    data : 2D array_like
         The 2D array of the image.
 
     kernel : `_StarFinderKernel`
@@ -609,6 +609,11 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
         The absolute image value above which to select sources.  This
         threshold should be the threshold input to the star finder class
         multiplied by the kernel relerr.
+
+    mask : 2D bool array, optional
+        A boolean mask with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Masked pixels are ignored when searching for stars.
 
     exclude_border : bool, optional
         Set to `True` to exclude sources found within half the size of
@@ -648,11 +653,14 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
         # (see https://github.com/numpy/numpy/issues/7112)
         mode = str('constant')
         data = np.pad(data, pad, mode=mode, constant_values=[0.])
+        if mask is not None:
+            mask = np.pad(mask, pad, mode=mode, constant_values=[0.])
         convolved_data = np.pad(convolved_data, pad, mode=mode,
                                 constant_values=[0.])
 
     # find local peaks in the convolved data
-    tbl = find_peaks(convolved_data, threshold_eff, footprint=footprint)
+    tbl = find_peaks(convolved_data, threshold_eff, footprint=footprint,
+                     mask=mask)
     if len(tbl) == 0:
         return []
 
@@ -697,18 +705,24 @@ class StarFinderBase(metaclass=_ABCMetaAndInheritDocstrings):
     Abstract base class for star finders.
     """
 
-    def __call__(self, data):
-        return self.find_stars(data)
+    def __call__(self, data, mask=None):
+        return self.find_stars(data, mask=mask)
 
     @abc.abstractmethod
-    def find_stars(self, data):
+    def find_stars(self, data, mask=None):
         """
         Find stars in an astronomical image.
 
         Parameters
         ----------
-        data : array_like
+        data : 2D array_like
             The 2D image array.
+
+        mask : 2D bool array, optional
+            A boolean mask with the same shape as ``data``, where a
+            `True` value indicates the corresponding element of ``data``
+            is masked.  Masked pixels are ignored when searching for
+            stars.
 
         Returns
         -------
@@ -875,14 +889,20 @@ class DAOStarFinder(StarFinderBase):
         self.brightest = brightest
         self.peakmax = peakmax
 
-    def find_stars(self, data):
+    def find_stars(self, data, mask=None):
         """
         Find stars in an astronomical image.
 
         Parameters
         ----------
-        data : array_like
+        data : 2D array_like
             The 2D image array.
+
+        mask : 2D bool array, optional
+            A boolean mask with the same shape as ``data``, where a
+            `True` value indicates the corresponding element of ``data``
+            is masked.  Masked pixels are ignored when searching for
+            stars.
 
         Returns
         -------
@@ -910,8 +930,9 @@ class DAOStarFinder(StarFinderBase):
         """
 
         star_cutouts = _find_stars(data, self.kernel, self.threshold_eff,
+                                   mask=mask,
                                    exclude_border=self.exclude_border)
-        self.star_cutouts = star_cutouts
+        self._star_cutouts = star_cutouts
 
         if len(star_cutouts) == 0:
             warnings.warn('No sources were found.', AstropyUserWarning)
@@ -1095,14 +1116,20 @@ class IRAFStarFinder(StarFinderBase):
         self.brightest = brightest
         self.peakmax = peakmax
 
-    def find_stars(self, data):
+    def find_stars(self, data, mask=None):
         """
         Find stars in an astronomical image.
 
         Parameters
         ----------
-        data : array_like
+        data : 2D array_like
             The 2D image array.
+
+        mask : 2D bool array, optional
+            A boolean mask with the same shape as ``data``, where a
+            `True` value indicates the corresponding element of ``data``
+            is masked.  Masked pixels are ignored when searching for
+            stars.
 
         Returns
         -------
@@ -1128,7 +1155,9 @@ class IRAFStarFinder(StarFinderBase):
 
         star_cutouts = _find_stars(data, self.kernel, self.threshold,
                                    min_separation=self.min_separation,
+                                   mask=mask,
                                    exclude_border=self.exclude_border)
+        self._star_cutouts = star_cutouts
 
         if len(star_cutouts) == 0:
             warnings.warn('No sources were found.', AstropyUserWarning)
