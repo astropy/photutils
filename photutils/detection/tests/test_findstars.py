@@ -102,7 +102,7 @@ class TestDAOStarFinder:
 
     def test_daofind_peakmax_filtering(self):
         """
-        Regression test that objects with ``peak`` < ``peakmax`` are
+        Regression test that objects with ``peak`` >= ``peakmax`` are
         filtered out.
         """
         peakmax = 20
@@ -186,7 +186,7 @@ class TestIRAFStarFinder:
 
     def test_irafstarfind_peakmax_filtering(self):
         """
-        Regression test that objects with ``peak`` < ``peakmax`` are
+        Regression test that objects with ``peak`` >= ``peakmax`` are
         filtered out.
         """
         peakmax = 20
