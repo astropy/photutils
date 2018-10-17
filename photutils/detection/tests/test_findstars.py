@@ -100,6 +100,38 @@ class TestDAOStarFinder:
         t = starfinder(DATA)
         assert len(t) == 102
 
+    def test_daofind_peakmax_filtering(self):
+        """
+        Regression test that objects with ``peak`` >= ``peakmax`` are
+        filtered out.
+        """
+        peakmax = 20
+        starfinder = DAOStarFinder(threshold=7., fwhm=1.5, roundlo=-np.inf,
+                                   roundhi=np.inf, sharplo=-np.inf,
+                                   sharphi=np.inf, peakmax=peakmax)
+        t = starfinder(DATA)
+        assert len(t) == 37
+        assert all(t['peak'] < peakmax)
+
+    def test_daofind_brightest_filtering(self):
+        """
+        Regression test that only top ``brightest`` objects are selected.
+        """
+        brightest = 40
+        peakmax = 20
+        starfinder = DAOStarFinder(threshold=7., fwhm=1.5, roundlo=-np.inf,
+                                   roundhi=np.inf, sharplo=-np.inf,
+                                   sharphi=np.inf, brightest=brightest)
+        t = starfinder(DATA)
+        # combined with peakmax
+        assert len(t) == brightest
+        starfinder = DAOStarFinder(threshold=7., fwhm=1.5, roundlo=-np.inf,
+                                   roundhi=np.inf, sharplo=-np.inf,
+                                   sharphi=np.inf, brightest=brightest,
+                                   peakmax=peakmax)
+        t = starfinder(DATA)
+        assert len(t) == 37
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestIRAFStarFinder:
@@ -151,3 +183,27 @@ class TestIRAFStarFinder:
         starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0, sky=100.)
         t = starfinder(DATA)
         assert len(t) == 0
+
+    def test_irafstarfind_peakmax_filtering(self):
+        """
+        Regression test that objects with ``peak`` >= ``peakmax`` are
+        filtered out.
+        """
+        peakmax = 20
+        starfinder = IRAFStarFinder(threshold=7., fwhm=2, roundlo=-np.inf,
+                                    roundhi=np.inf, sharplo=-np.inf,
+                                    sharphi=np.inf, peakmax=peakmax)
+        t = starfinder(DATA)
+        assert len(t) == 117
+        assert all(t['peak'] < peakmax)
+
+    def test_irafstarfind_brightest_filtering(self):
+        """
+        Regression test that only top ``brightest`` objects are selected.
+        """
+        brightest = 40
+        starfinder = IRAFStarFinder(threshold=7., fwhm=2, roundlo=-np.inf,
+                                    roundhi=np.inf, sharplo=-np.inf,
+                                    sharphi=np.inf, brightest=brightest)
+        t = starfinder(DATA)
+        assert len(t) == brightest

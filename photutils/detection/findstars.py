@@ -802,6 +802,21 @@ class DAOStarFinder(StarFinderBase):
         the convolution kernel from the image borders.  The default is
         `False`, which is the mode used by `DAOFIND`_.
 
+    brightest : int, None, optional
+        Number of brightest objects to keep after sorting the full object list.
+        If ``brightest`` is set to `None`, all objects will be selected.
+
+    peakmax : float, None, optional
+        Maximum peak pixel value in an object. Only objects whose peak pixel
+        values are *strictly smaller* than ``peakmax`` will be selected.
+        This may be used to exclude saturated sources. By default, when
+        ``peakmax`` is set to `None`, all objects will be selected.
+
+        .. warning::
+            `DAOStarFinder` automatically excludes objects whose peak
+            pixel values are negative. Therefore, setting ``peakmax`` to a
+            non-positive value would result in exclusion of all objects.
+
     See Also
     --------
     IRAFStarFinder
@@ -833,7 +848,8 @@ class DAOStarFinder(StarFinderBase):
 
     def __init__(self, threshold, fwhm, ratio=1.0, theta=0.0,
                  sigma_radius=1.5, sharplo=0.2, sharphi=1.0, roundlo=-1.0,
-                 roundhi=1.0, sky=0.0, exclude_border=False):
+                 roundhi=1.0, sky=0.0, exclude_border=False,
+                 brightest=None, peakmax=None):
 
         if not np.isscalar(threshold):
             raise TypeError('threshold must be a scalar value.')
@@ -856,6 +872,8 @@ class DAOStarFinder(StarFinderBase):
         self.kernel = _StarFinderKernel(self.fwhm, self.ratio, self.theta,
                                         self.sigma_radius)
         self.threshold_eff = self.threshold * self.kernel.relerr
+        self.brightest = brightest
+        self.peakmax = peakmax
 
     def find_stars(self, data):
         """
@@ -918,6 +936,9 @@ class DAOStarFinder(StarFinderBase):
                     props.roundness2 >= self.roundhi):
                 continue
 
+            if self.peakmax is not None and props.peak >= self.peakmax:
+                continue
+
             star_props.append(props)
 
         nstars = len(star_props)
@@ -925,6 +946,12 @@ class DAOStarFinder(StarFinderBase):
             warnings.warn('Sources were found, but none pass the sharpness '
                           'and roundness criteria.', AstropyUserWarning)
             return Table()
+
+        if self.brightest is not None:
+            fluxes = [props.flux for props in star_props]
+            idx = sorted(np.argsort(fluxes)[-self.brightest:].tolist())
+            star_props = [star_props[k] for k in idx]
+            nstars = len(star_props)
 
         table = Table()
         table['id'] = np.arange(nstars) + 1
@@ -989,6 +1016,21 @@ class IRAFStarFinder(StarFinderBase):
         the convolution kernel from the image borders.  The default is
         `False`, which is the mode used by `starfind`_.
 
+    brightest : int, None, optional
+        Number of brightest objects to keep after sorting the full object list.
+        If ``brightest`` is set to `None`, all objects will be selected.
+
+    peakmax : float, None, optional
+        Maximum peak pixel value in an object. Only objects whose peak pixel
+        values are *strictly smaller* than ``peakmax`` will be selected.
+        This may be used to exclude saturated sources. By default, when
+        ``peakmax`` is set to `None`, all objects will be selected.
+
+        .. warning::
+            `IRAFStarFinder` automatically excludes objects whose peak
+            pixel values are negative. Therefore, setting ``peakmax`` to a
+            non-positive value would result in exclusion of all objects.
+
     Notes
     -----
     For the convolution step, this routine sets pixels beyond the image
@@ -1027,7 +1069,7 @@ class IRAFStarFinder(StarFinderBase):
 
     def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
                  sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2, sky=None,
-                 exclude_border=False):
+                 exclude_border=False, brightest=None, peakmax=None):
 
         if not np.isscalar(threshold):
             raise TypeError('threshold must be a scalar value.')
@@ -1050,6 +1092,8 @@ class IRAFStarFinder(StarFinderBase):
                                          0.5))
         self.kernel = _StarFinderKernel(self.fwhm, ratio=1.0, theta=0.0,
                                         sigma_radius=self.sigma_radius)
+        self.brightest = brightest
+        self.peakmax = peakmax
 
     def find_stars(self, data):
         """
@@ -1107,6 +1151,9 @@ class IRAFStarFinder(StarFinderBase):
                     props.roundness >= self.roundhi):
                 continue
 
+            if self.peakmax is not None and props.peak >= self.peakmax:
+                continue
+
             star_props.append(props)
 
         nstars = len(star_props)
@@ -1114,6 +1161,12 @@ class IRAFStarFinder(StarFinderBase):
             warnings.warn('Sources were found, but none pass the sharpness '
                           'and roundness criteria.', AstropyUserWarning)
             return Table()
+
+        if self.brightest is not None:
+            fluxes = [props.flux for props in star_props]
+            idx = sorted(np.argsort(fluxes)[-self.brightest:].tolist())
+            star_props = [star_props[k] for k in idx]
+            nstars = len(star_props)
 
         table = Table()
         table['id'] = np.arange(nstars) + 1
