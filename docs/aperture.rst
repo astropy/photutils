@@ -379,11 +379,13 @@ the aperture is simply being used to estimate the local background.
 Whole pixels are fine, assuming you have a sufficient number of them
 on which to apply your statistical estimator.
 
-Let's focus on just the first annulus.  Let's plot its aperture mask::
+Let's focus on just the first annulus.  Let's plot its aperture mask:
+
+.. doctest-skip::
 
     >>> import matplotlib.pyplot as plt
-    >>> plt.imshow(annulus_masks[0])  # doctest: +SKIP
-    >>> plt.colorbar()  # doctest: +SKIP
+    >>> plt.imshow(annulus_masks[0])
+    >>> plt.colorbar()
 
 .. plot::
 
