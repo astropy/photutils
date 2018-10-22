@@ -2,17 +2,24 @@ GroupMaker
 ==========
 
 Documented as the ``__call__`` method of ``GroupStarsBase`` - see
-https://photutils.readthedocs.io/en/stable/api/photutils.psf.groupstars.GroupStarsBase.html
-API may potentially change if group_stars is updated to scene_maker extending PSF fitting to
-non-point source objects; however, it is likely that the fundamental inputs and outputs
-remain at least functionally similar to those shown here. Large changes to the GroupMaker
-call may require significant changes to the PSF Photometry fitting routines (e.g.,
-``IterativelySubtractedPSFPhotometry``).
+https://photutils.readthedocs.io/en/stable/api/photutils.psf.groupstars.GroupStarsBase.html.
+The API for the group maker may be subject to change if ``group_stars`` requires changes
+to accommodate future revisions to the PSF fitting process -- primarily it would require
+updates if the PSF fitting is extended to include non-point sources and "scene maker"
+functionality. These large changes would subsequently require significant changes to the
+PSF fitting routines (e.g., ``IterativelySubtractedPSFPhotometry``) as a whole.
 
 A function which groups stars within some critical separation, returning potentially
 overlapping sources with an additonal column indicating their common group members.
 Subclasses of ``GroupStarsBase`` may require further input parameters, such as 
 ``crit_separation`` required for ``DAOGroup``.
+
+The main functionality of this routine is within ``group_stars``, which accepts
+``starlist``, a `~astropy.table.Table` of sources with centroid positions, and returns
+``group_starlist``, the same `~astropy.table.Table` passed to the routine but with an
+additional column indicating the group number of the sources. These sources are grouped
+by the individual criteria specified within the ``group_stars`` function defined by the
+``GroupStarsBase`` subclass in question.
 
 Parameters
 ----------

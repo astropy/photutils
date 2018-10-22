@@ -3,10 +3,21 @@ ObjectFinder
 
 Existing code documented at
 https://photutils.readthedocs.io/en/stable/api/photutils.detection.StarFinderBase.html
-- see the ``find_stars`` function for the basic API.
+- see the ``find_stars`` function for the basic API. ``Finder`` is a relatively
+independent routine in the PSF fitting process, and as such it is documented within its
+own documentation blocks, based on ``StarFinderBase``; it is documented here for
+completeness.
 
 The object which defines the detection of objects in an image. Subclass finders
-may require additional parameters -- see below for the example of ``DAOStarFinder``.
+may require additional parameters -- see below for the example of ``DAOStarFinder``. The
+class is defined entirely by its ``find_stars`` function, with some initialization,
+depending on the individual subclass.
+
+``find_stars`` accepts ``data``, the two-dimensional image in which sources should be
+found, and returns ``table``, an `~astropy.table.Table` list of sources which passed
+the given detection criteria. For example, in `~photutils.detection.DAOStarFinder`
+a source must have given ``sharpness`` and ``roundness`` within specified ranges for
+acceptance as a detected source.
 
 Parameters
 ----------

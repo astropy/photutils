@@ -9,6 +9,14 @@ of the source. The main input is a 2D image, with the model returning ``flux``,
 in the current ``photutils.psf`` are not explicitly defined as a specific class,
 but any 2D model (inputs: x,y, output: flux) can be considered a PSF Model.
 
+This block is primarily an external block, defined as a
+`~astropy.modeling.Fittable2DModel`, and should have a well documented subclass.
+The requirements for use within the PSF model block are that the
+`~astropy.modeling.Fittable2DModel` have parameters ``flux``, ``x_0``, and ``y_0``,
+as well as the ``evaluate`` function. When the model is combined with a minimization
+routine the best fitting flux and position for the input ``data`` image array
+containing the source are returned.
+
 The `~photutils.psf.PRFAdapter` class allows for the wrapping of any arbitrary 
 other models to make it compatible with the machinery. Some individual models 
 will require additional parameters, such as the ``IntegratedGaussianPRF`` which 
@@ -30,17 +38,12 @@ flux : float
     will be set to 1.
 x_0 : float
     The position of the source in the x axis, to sub-pixel resolution.
+y_0 : float
+    The position of the source in the y axis, to sub-pixel resolution.
 
 
 Methods
 -------
-
-Not all blocks will have these, but if desired some blocks can have methods that
-let you do something other than just running the block.  E.g::
-
-    some_block = BlockClassName()
-    output = some_block(input1, input2, ...)  # this is what is documented above
-    result = some_block.method_name(...)  #this is documented here
 
 evaluate
 ^^^^^^^^^^^
