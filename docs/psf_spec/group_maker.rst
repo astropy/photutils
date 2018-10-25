@@ -1,13 +1,14 @@
 GroupMaker
 ==========
 
-Documented as the ``__call__`` method of ``GroupStarsBase`` - see
-https://photutils.readthedocs.io/en/stable/api/photutils.psf.groupstars.GroupStarsBase.html.
-The API for the group maker may be subject to change if ``group_stars`` requires changes
-to accommodate future revisions to the PSF fitting process -- primarily it would require
-updates if the PSF fitting is extended to include non-point sources and "scene maker"
-functionality. These large changes would subsequently require significant changes to the
-PSF fitting routines (e.g., ``IterativelySubtractedPSFPhotometry``) as a whole.
+Documented as the ``__call__`` method of ``GroupStarsBase`` -- see `here 
+<https://photutils.readthedocs.io/en/stable/api/photutils.psf.groupstars.GroupStarsBase.html>`_
+for more information. The API for the group maker may be subject to change if ``group_stars``
+requires changes to accommodate future revisions to the PSF fitting process -- primarily it
+would require updates if the PSF fitting is extended to include non-point sources and
+"scene maker" functionality. These large changes would subsequently require significant
+changes to the PSF fitting routines (e.g., `~photutils.psf.IterativelySubtractedPSFPhotometry`)
+as a whole.
 
 A function which groups stars within some critical separation, returning potentially
 overlapping sources with an additonal column indicating their common group members.
@@ -64,7 +65,7 @@ Example Usage
 -------------
 
 Here we create a ``DAOGroup`` list of overlapping sources, then find all sources within 3 pixels
-of the first source in the list.::
+of the first source in the list. ::
 
     from photutils.psf.groupstars import DAOGroup
     group = DAOGroup(starlist, crit_separation=3)

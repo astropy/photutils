@@ -1,9 +1,9 @@
 ObjectFinder
 ============
 
-Existing code documented at
-https://photutils.readthedocs.io/en/stable/api/photutils.detection.StarFinderBase.html
-- see the ``find_stars`` function for the basic API. ``Finder`` is a relatively
+Existing code documented `here 
+<https://photutils.readthedocs.io/en/stable/api/photutils.detection.StarFinderBase.html>`_
+-- see the ``find_stars`` function for the basic API. ``Finder`` is a relatively
 independent routine in the PSF fitting process, and as such it is documented within its
 own documentation blocks, based on ``StarFinderBase``; it is documented here for
 completeness.

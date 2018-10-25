@@ -1,4 +1,4 @@
-PsfModel
+PSFModel
 ========
 
 The model for the PSF -- integrated over discrete pixels (see `discussion 

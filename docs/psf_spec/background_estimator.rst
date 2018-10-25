@@ -1,8 +1,8 @@
 BackgroundEstimator
 ===================
 
-Existing code documented at
-https://photutils.readthedocs.io/en/stable/api/photutils.background.BackgroundBase.html
+Existing code documented `here 
+<https://photutils.readthedocs.io/en/stable/api/photutils.background.BackgroundBase.html>`_
 -- while the ``__call__`` function has no docstring, the ``calc_background``
 function is the actual block API. This function is used significantly through `photutils`
 and is heavily used within the PSF fitting process, so the documentation is summarized
