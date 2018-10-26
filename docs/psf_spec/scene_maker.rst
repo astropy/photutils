@@ -1,11 +1,17 @@
 SceneMaker
 ==========
 
-SceneMaker does not yet exist in the framework of PSF Photometry. However,
-it likely will involve an additional column or variable attributed to each
-source in the input `~astropy.table.Table` indicating whether sources are
-stars or more extended objects. This must handle the possibility of merging
-several point sources into an extended object and vice versa. This will
-then be used in conjunction with SingleObjectModel, which already has the
-framework of ``object_type`` which allows for individual extended sources
-to be handled.
+SceneMaker does not yet exist in the framework of PSF Photometry. This API
+is therefore a work in progress and should be considered as such.
+
+However, the block will likely involve an additional column or variable attributed
+to each source in the input `~astropy.table.Table` indicating whether sources are
+stars or more extended objects. This column will be used in conjunction with 
+``SingleObjectModel``, which already has the framework to accept ``object_type`` which
+allows for individual extended sources to be handled, depending on the specific
+class used for the specific purpose. The given list of single object models allowed
+by, and available to, ``SingleObjectModel`` must be the same list of physical
+source classes (stars, galaxies, etc.) as ``SceneMaker`` uses to group and merge
+detected sources into point sources or extended objects. The block must also handle
+the possibility of merging several point sources into an extended object and vice
+versa.
