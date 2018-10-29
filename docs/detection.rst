@@ -46,7 +46,7 @@ background noise using sigma-clipped statistics::
     >>> from astropy.stats import sigma_clipped_stats
     >>> from photutils import datasets
     >>> hdu = datasets.load_star_image()    # doctest: +REMOTE_DATA
-    >>> data = hdu.data[0:400, 0:400]    # doctest: +REMOTE_DATA
+    >>> data = hdu.data[0:401, 0:401]    # doctest: +REMOTE_DATA
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, iters=5)    # doctest: +REMOTE_DATA
     >>> print((mean, median, std))    # doctest: +REMOTE_DATA, +FLOAT_CMP
     (3667.7792400186008, 3649.0, 204.27923665845705)
@@ -104,7 +104,7 @@ Let's plot the image and mark the location of detected sources:
     from photutils import datasets, DAOStarFinder, CircularAperture
 
     hdu = datasets.load_star_image()
-    data = hdu.data[0:400, 0:400]
+    data = hdu.data[0:401, 0:401]
     mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)
     sources = daofind(data - median)
@@ -113,6 +113,54 @@ Let's plot the image and mark the location of detected sources:
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data, cmap='Greys', origin='lower', norm=norm)
     apertures.plot(color='blue', lw=1.5, alpha=0.5)
+
+
+Masking Regions
+^^^^^^^^^^^^^^^
+
+Regions of the input image can be masked by using the ``mask`` keyword
+with the :class:`~photutils.DAOStarFinder` or
+:class:`~photutils.IRAFStarFinder` instance.  This simple examples
+uses :class:`~photutils.DAOStarFinder` and masks two rectangular
+regions.  No sources will be detected in the masked regions::
+
+   >>> from photutils import DAOStarFinder
+   >>> daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)
+   >>> mask = np.zeros_like(data, dtype=bool)
+   >>> mask[50:151, 50:351] = True
+   >>> mask[250:351, 150:351] = True
+   >>> sources = daofind(data - median, mask=mask)
+   >>> for col in sources.colnames:
+   >>>     sources[col].info.format = '%.8g'  # for consistent table output
+   >>> print(sources)
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    from astropy.stats import sigma_clipped_stats
+    from astropy.visualization import SqrtStretch
+    from astropy.visualization.mpl_normalize import ImageNormalize
+    from photutils import datasets, DAOStarFinder, CircularAperture
+    from photutils import RectangularAperture
+
+    hdu = datasets.load_star_image()
+    data = hdu.data[0:401, 0:401]
+    mean, median, std = sigma_clipped_stats(data, sigma=3.0)
+    daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)
+    mask = np.zeros_like(data, dtype=bool)
+    mask[50:151, 50:351] = True
+    mask[250:351, 150:351] = True
+    sources = daofind(data - median, mask=mask)
+    positions = (sources['xcentroid'], sources['ycentroid'])
+    apertures = CircularAperture(positions, r=4.)
+    norm = ImageNormalize(stretch=SqrtStretch())
+    plt.imshow(data, cmap='Greys', origin='lower', norm=norm)
+    plt.title('Star finder with a mask to exclude regions')
+    apertures.plot(color='blue', lw=1.5, alpha=0.5)
+    rect1 = RectangularAperture((200, 100), 300, 100, theta=0.)
+    rect2 = RectangularAperture((250, 300), 200, 100, theta=0.)
+    rect1.plot(color='salmon', ls='dashed')
+    rect2.plot(color='salmon', ls='dashed')
 
 
 Local Peak Detection
