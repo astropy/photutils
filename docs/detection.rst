@@ -47,9 +47,9 @@ background noise using sigma-clipped statistics::
     >>> from photutils import datasets
     >>> hdu = datasets.load_star_image()    # doctest: +REMOTE_DATA
     >>> data = hdu.data[0:401, 0:401]    # doctest: +REMOTE_DATA
-    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, iters=5)    # doctest: +REMOTE_DATA
+    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)    # doctest: +REMOTE_DATA
     >>> print((mean, median, std))    # doctest: +REMOTE_DATA, +FLOAT_CMP
-    (3667.7792400186008, 3649.0, 204.27923665845705)
+    (3668.09661145823, 3649.0, 204.41388592022315)
 
 Now we will subtract the background and use an instance of
 :class:`~photutils.DAOStarFinder` to find the stars in the image that
@@ -122,7 +122,9 @@ Regions of the input image can be masked by using the ``mask`` keyword
 with the :class:`~photutils.DAOStarFinder` or
 :class:`~photutils.IRAFStarFinder` instance.  This simple examples
 uses :class:`~photutils.DAOStarFinder` and masks two rectangular
-regions.  No sources will be detected in the masked regions::
+regions.  No sources will be detected in the masked regions:
+
+.. doctest-skip::
 
    >>> from photutils import DAOStarFinder
    >>> daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)
