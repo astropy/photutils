@@ -105,6 +105,7 @@ class TestDAOStarFinder:
         Regression test that objects with ``peak`` >= ``peakmax`` are
         filtered out.
         """
+
         peakmax = 20
         starfinder = DAOStarFinder(threshold=7., fwhm=1.5, roundlo=-np.inf,
                                    roundhi=np.inf, sharplo=-np.inf,
@@ -115,8 +116,10 @@ class TestDAOStarFinder:
 
     def test_daofind_brightest_filtering(self):
         """
-        Regression test that only top ``brightest`` objects are selected.
+        Regression test that only top ``brightest`` objects are
+        selected.
         """
+
         brightest = 40
         peakmax = 20
         starfinder = DAOStarFinder(threshold=7., fwhm=1.5, roundlo=-np.inf,
@@ -131,6 +134,16 @@ class TestDAOStarFinder:
                                    peakmax=peakmax)
         t = starfinder(DATA)
         assert len(t) == 37
+
+    def test_daofind_mask(self):
+        """Test DAOStarFinder with a mask."""
+
+        starfinder = DAOStarFinder(threshold=10, fwhm=1.5)
+        mask = np.zeros_like(DATA, dtype=bool)
+        mask[100:200] = True
+        tbl1 = starfinder(DATA)
+        tbl2 = starfinder(DATA, mask=mask)
+        assert len(tbl1) > len(tbl2)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -207,3 +220,13 @@ class TestIRAFStarFinder:
                                     sharphi=np.inf, brightest=brightest)
         t = starfinder(DATA)
         assert len(t) == brightest
+
+    def test_irafstarfind_mask(self):
+        """Test IRAFStarFinder with a mask."""
+
+        starfinder = IRAFStarFinder(threshold=10, fwhm=1.5)
+        mask = np.zeros_like(DATA, dtype=bool)
+        mask[100:200] = True
+        tbl1 = starfinder(DATA)
+        tbl2 = starfinder(DATA, mask=mask)
+        assert len(tbl1) > len(tbl2)
