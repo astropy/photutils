@@ -1,6 +1,21 @@
 0.6 (unreleased)
 ----------------
 
+New Features
+^^^^^^^^^^^^
+
+- ``photutils.detection``
+
+  - ``DAOStarFinder`` and ``IRAFStarFinder`` gain two new parameters:
+    ``brightest`` to keep the top ``brightest`` (based on the flux)
+    objects in the returned catalog (after all other filtering has
+    been applied) and ``peakmax`` to exclude sources with peak pixel
+    values larger or equal to ``peakmax``. [#750]
+
+  - Added a ``mask`` keyword to ``DAOStarFinder`` and
+    ``IRAFStarFinder`` that can be used to mask regions of the input
+    image.  [#759]
+
 API changes
 ^^^^^^^^^^^
 
@@ -13,18 +28,11 @@ API changes
   - The ``find_peaks`` function will no longer issue a RuntimeWarning
     if the input data contains NaNs. [#712]
 
-  - ``DAOStarFinder`` and ``IRAFStarFinder`` gain two new parameters:
-    ``brightest`` to keep the top ``brightest`` (based on the flux) objects
-    in the returned catalog *after all other filtering has been applied* and
-    ``peakmax`` to exclude sources with peak pixel values larger or equal to
-    ``peakmax``. [#750]
-
 - ``photutils.epsf``
 
   - The ``Star``, ``Stars``, and ``LinkedStars`` classes are now
     deprecated and have been renamed ``EPSFStar``, ``EPSFStars``, and
     ``LinkedEPSFStars``, respectively. [#727]
-
 
 Bug Fixes
 ^^^^^^^^^
