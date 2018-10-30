@@ -132,6 +132,11 @@ class TestFindPeaks:
         assert_array_equal(tbl['y_peak'], PEAKREF1[:, 0])
         assert_array_equal(tbl['peak_value'], [1., 1.])
 
+    def test_centroid_func_and_subpixel(self):
+        with pytest.raises(ValueError):
+            find_peaks(PEAKDATA, 0.1, centroid_func=centroid_com,
+                       subpixel=True)
+
     def test_subpixel_regionsize(self):
         """Test that data cutout has at least 6 values."""
 
