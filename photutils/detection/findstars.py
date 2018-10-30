@@ -727,7 +727,8 @@ class StarFinderBase(metaclass=_ABCMetaAndInheritDocstrings):
         Returns
         -------
         table : `~astropy.table.Table`
-            A table of found stars.
+            A table of found stars.  If no stars are found then an empty
+            table is returned.
         """
 
         raise NotImplementedError('Needs to be implemented in a subclass.')
@@ -925,6 +926,8 @@ class DAOStarFinder(StarFinderBase):
             * ``mag``: the object instrumental magnitude calculated as
               ``-2.5 * log10(flux)``.  The derivation matches that of
               `DAOFIND`_ if ``sky`` is 0.0.
+
+            If no stars are found then an empty table is returned.
 
         .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
         """
@@ -1155,6 +1158,8 @@ class IRAFStarFinder(StarFinderBase):
             * ``flux``: the object instrumental flux.
             * ``mag``: the object instrumental magnitude calculated as
               ``-2.5 * log10(flux)``.
+
+            If no stars are found then an empty table is returned.
 
         .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
         """
