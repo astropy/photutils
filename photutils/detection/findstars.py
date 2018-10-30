@@ -937,13 +937,11 @@ class DAOStarFinder(StarFinderBase):
                                    exclude_border=self.exclude_border)
         self._star_cutouts = star_cutouts
 
-        columns = ['id', 'xcentroid', 'ycentroid', 'sharpness', 'roundness1',
-                   'roundness2', 'npix', 'sky', 'peak', 'flux', 'mag']
-
-        coltypes = (
-            np.int_, np.float_, np.float_, np.float_, np.float_, np.float_,
-            np.int_, np.float_, np.float_, np.float_, np.float_
-        )
+        columns = ('id', 'xcentroid', 'ycentroid', 'sharpness', 'roundness1',
+                   'roundness2', 'npix', 'sky', 'peak', 'flux', 'mag')
+        coltypes = (np.int_, np.float_, np.float_, np.float_, np.float_,
+                    np.float_, np.int_, np.float_, np.float_, np.float_,
+                    np.float_)
 
         if len(star_cutouts) == 0:
             warnings.warn('No sources were found.', AstropyUserWarning)
@@ -987,7 +985,6 @@ class DAOStarFinder(StarFinderBase):
 
         table = Table()
         table['id'] = np.arange(nstars) + 1
-
         for column in columns[1:]:
             table[column] = [getattr(props, column) for props in star_props]
 
@@ -1170,13 +1167,11 @@ class IRAFStarFinder(StarFinderBase):
                                    exclude_border=self.exclude_border)
         self._star_cutouts = star_cutouts
 
-        columns = ['id', 'xcentroid', 'ycentroid', 'fwhm', 'sharpness',
-                   'roundness', 'pa', 'npix', 'sky', 'peak', 'flux', 'mag']
-
-        coltypes = (
-            np.int_, np.float_, np.float_, np.float_, np.float_, np.float_,
-            np.float_, np.int_, np.float_, np.float_, np.float_, np.float_
-        )
+        columns = ('id', 'xcentroid', 'ycentroid', 'fwhm', 'sharpness',
+                   'roundness', 'pa', 'npix', 'sky', 'peak', 'flux', 'mag')
+        coltypes = (np.int_, np.float_, np.float_, np.float_, np.float_,
+                    np.float_, np.float_, np.int_, np.float_, np.float_,
+                    np.float_, np.float_)
 
         if len(star_cutouts) == 0:
             warnings.warn('No sources were found.', AstropyUserWarning)
@@ -1218,7 +1213,6 @@ class IRAFStarFinder(StarFinderBase):
 
         table = Table()
         table['id'] = np.arange(nstars) + 1
-
         for column in columns[1:]:
             table[column] = [getattr(props, column) for props in star_props]
 
