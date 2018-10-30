@@ -6,6 +6,7 @@ import pytest
 
 from astropy.table import Table
 from astropy.modeling.models import Moffat2D
+from astropy.version import version as astropy_version
 
 from .. import (make_noise_image, apply_poisson_noise,
                 make_gaussian_sources_image, make_random_gaussians_table,
@@ -148,8 +149,13 @@ def test_make_random_models_table():
 def test_make_wcs():
     shape = (100, 200)
     wcs = make_wcs(shape)
-    assert wcs._naxis1 == shape[1]
-    assert wcs._naxis2 == shape[0]
+
+    if astropy_version < '3.1':
+        assert wcs._naxis1 == shape[1]
+        assert wcs._naxis2 == shape[0]
+    else:
+        assert wcs.pixel_shape == shape
+
     assert wcs.wcs.radesys == 'ICRS'
 
     wcs = make_wcs(shape, galactic=True)
