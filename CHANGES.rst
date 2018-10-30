@@ -28,6 +28,10 @@ API changes
   - The ``find_peaks`` function will no longer issue a RuntimeWarning
     if the input data contains NaNs. [#712]
 
+  - If no sources/peaks are found, ``DAOStarFinder``,
+    ``IRAFStarFinder``, and ``find_peaks`` now will return an empty
+    table with column names and types. [#758, #762]
+
 - ``photutils.epsf``
 
   - The ``Star``, ``Stars``, and ``LinkedStars`` classes are now
