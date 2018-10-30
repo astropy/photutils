@@ -3,17 +3,19 @@
 Models for doing PSF/PRF fitting photometry on image data.
 """
 
-import warnings
 import copy
+import itertools
+import warnings
 
 import numpy as np
+from astropy.nddata import NDData
 from astropy.modeling import models, Parameter, Fittable2DModel
 from astropy.utils.exceptions import AstropyWarning
 
 
 __all__ = ['NonNormalizable', 'FittableImageModel', 'EPSFModel',
-           'IntegratedGaussianPRF', 'PRFAdapter', 'prepare_psf_model',
-           'get_grouped_psf_model']
+           'IntegratedGaussianPRF', 'PRFAdapter', 'GriddedPSFModel',
+           'prepare_psf_model', 'get_grouped_psf_model']
 
 
 class NonNormalizable(AstropyWarning):
@@ -733,6 +735,165 @@ class PRFAdapter(Fittable2DModel):
                                   lambda x: yi-0.5, lambda x: yi+0.5,
                                   **self._dblquadkwargs)[0]
         return out
+
+
+class GriddedPSFModel(Fittable2DModel):
+    """
+    A fittable 2D model containing a grid of PSF models that are
+    interpolated to evaluate the PSF at an arbitrary (x, y) position.
+
+    Parameters
+    ----------
+    data : `~astropy.nddata.NDData`
+        An `~astropy.nddata.NDData` object containing the grid of PSF
+        models.  The data attribute must contain a 3D `~numpy.ndarray`
+        representing N 2D PSFs (data shape is `(N, ny, nx)`).  The meta
+        attribute must be `dict` containing the following:
+
+            * `'grid_xypos'`:  A list of N `(x, y)` positions corresponding
+               to the data cube.
+            * `'oversampling'`:  The integer oversampling factor
+            * `'instrument'`:  The instrument from which the PSF was derived.
+            * `'detector'`:  The detector from which the PSF was derived.
+            * `'filter'`:  The name of the filter from which the PSF was
+               derived.
+    """
+
+    flux = Parameter(default=1.0)
+    x_0 = Parameter(default=0.0)
+    y_0 = Parameter(default=0.0)
+
+    def __init__(self, data, flux=flux.default, x_0=x_0.default,
+                 y_0=y_0.default, fill_value=0.0):
+
+        if not isinstance(data, NDData):
+            raise TypeError('data must be an NDData instance.')
+
+        self.data = np.array(nddata.data, copy=True, dtype=np.float)
+        self._meta = nddata.meta
+        self._grid_xypos = nddata.meta['grid_xypos']
+        self.oversampling = nddata.meta['oversampling']
+        self.instrument = nddata.meta['instrument']
+        self.detector = nddata.meta['detector']
+        self.filter = nddata.meta['filter']
+
+        super().__init__(flux, x_0, y_0)
+
+    def find_bounding_neighbors(self, x, y):
+        """
+        Returns indices of the bounding neighbors.
+        """
+
+        if not np.isscalar(x):
+            print('x not scalar: {}'.format(x))
+
+        if not np.isscalar(y):
+            print('y not scalar: {}'.format(y))
+
+        xgrid, ygrid = np.transpose(self._grid_xypos)
+        xgrid1d = np.unique(xgrid)
+        ygrid1d = np.unique(ygrid)
+
+        xidx = np.searchsorted(xgrid1d, x)
+        yidx = np.searchsorted(ygrid1d, y)
+
+        if xidx == 0:
+            x0 = 0
+            x1 = 1
+        else:
+            x0 = xidx - 1
+            x1 = xidx
+
+        if yidx == 0:
+            y0 = 0
+            y1 = 1
+        else:
+            y0 = yidx - 1
+            y1 = yidx
+
+        points = list(itertools.product(xgrid1d[x0:x1 + 1],
+                                        ygrid1d[y0:y1 + 1]))
+
+        indices = []
+        for xx, yy in points:
+            distances = np.hypot(xgrid - xx, ygrid - yy)
+            indices.append(np.argsort(distances)[0])
+
+        return indices
+
+    @staticmethod
+    def bilinear_interp(xyref, zref, xi, yi):
+        """
+        refxy : list of 4 tuples
+            4 (x, y) tuples
+        refdata : 3D ndarray
+            (4, nx, ny)
+        """
+
+        if len(xyref) != 4:
+            raise ValueError('xyref must contain only 4 (x, y) pairs')
+
+        if zref.shape[0] != 4:
+            raise ValueError('zref must have a length of 4 on the first '
+                             'axis.')
+
+        xyref = [tuple(i) for i in xyref]
+        idx = sorted(range(len(xyref)), key=xyref.__getitem__)
+        xyref = sorted(xyref)   # sort by x, then y
+        (x0, y0), (_x0, y1), (x1, _y0), (_x1, _y1) = xyref
+
+        if x0 != _x0 or x1 != _x1 or y0 != _y0 or y1 != _y1:
+            raise ValueError('The refxy points do not form a rectangle.')
+
+        if not np.isscalar(xi):
+            xi = xi[0]
+        if not np.isscalar(yi):
+            yi = yi[0]
+
+        if not x0 <= xi <= x1 or not y0 <= yi <= y1:
+            raise ValueError('The (x, y) input is not within the rectangle '
+                             'defined by xyref.')
+
+        data = np.asarray(zref)[idx]
+        weights = np.array([(x1 - xi) * (y1 - yi), (x1 - xi) * (yi - y0),
+                            (xi - x0) * (y1 - yi), (xi - x0) * (yi - y0)])
+        norm = (x1 - x0) * (y1 - y0)
+
+        return np.sum(data * weights[:, None, None], axis=0) / norm
+
+    @staticmethod
+    def bilinear_interp_rectbiv(xyref, zref, xi, yi):
+
+        from scipy.interpolate import RectBivariateSpline
+
+        xyref = [tuple(i) for i in xyref]
+        idx = sorted(range(len(xyref)), key=xyref.__getitem__)
+        xyref = sorted(xyref)   # sort by x, then y
+        xref, yref = np.transpose(xyref)
+        xref = np.unique(xref)
+        yref = np.unique(yref)
+
+        data = np.asarray(zref)[idx]
+        npt, ny, nx = data.shape
+        data = data.reshape((npt, nx*ny)).T
+
+        sps = [RectBivariateSpline(xref, yref, datai.reshape((2, 2)), kx=1,
+                                   ky=1, s=0) for datai in data]
+
+        return np.array([spsi.ev(xi, yi) for spsi in sps]).reshape((nx, ny))
+
+    def evaluate(self, x, y, flux, x_0, y_0):
+        # interpolate using the PSF library
+        indices = self.find_bounding_neighbors(x_0, y_0)
+        psfs = self.data[indices, :, :]
+        xyref = np.array(self._grid_xypos)[indices]
+
+        self._psf_interp = self.bilinear_interp(xyref, psfs, x_0, y_0)
+        #self._psf_interp = self.bilinear_interp_rectbiv(xyref, psfs, x_0, y_0)
+
+        psfmodel = FittableImageModel(self._psf_interp,
+                                      oversampling=self.oversampling)
+        return psfmodel.evaluate(x, y, flux, x_0, y_0)
 
 
 def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
