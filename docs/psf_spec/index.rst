@@ -20,6 +20,7 @@ Blocks
     finder
     fitter
     group_maker
+    high_level_overview
     noise_data
     psf_model
     scene_maker
