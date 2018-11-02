@@ -280,17 +280,8 @@ class EPSFBuilder:
         `~astropy.modeling.fitting.LevMarLSQFitter`.  See the
         `EPSFFitter` documentation its options.
 
-    center_accuracy : float, optional
-        The desired accuracy for the centers of stars.  The building
-        iterations will stop if the centers of all the stars change by
-        less than ``center_accuracy`` pixels between iterations.  All
-        stars must meet this condition for the loop to exit.  The
-        default is 1.0e-3.
-
     maxiters : int, optional
-        The maximum number of iterations to perform.  If the
-        ``center_accuracy`` is met, then the iterations will stop prior
-        to ``maxiters``.  The default is 10.
+        The maximum number of iterations to perform. The default is 10.
 
     progress_bar : bool, option
         Whether to print the progress bar during the build iterations.
@@ -300,8 +291,7 @@ class EPSFBuilder:
     def __init__(self, oversampling=4., shape=None,
                  smoothing_kernel='quartic', norm_radius=5.5, shift_val=0.5,
                  recentering_func=centroid_epsf, recentering_maxiters=20,
-                 fitter=EPSFFitter(), center_accuracy=1.0e-3, maxiters=10,
-                 progress_bar=True):
+                 fitter=EPSFFitter(), maxiters=10, progress_bar=True):
 
         if oversampling is None:
             raise ValueError("'oversampling' must be specified.")
@@ -320,10 +310,6 @@ class EPSFBuilder:
 
         self.smoothing_kernel = smoothing_kernel
         self.fitter = fitter
-
-        if center_accuracy <= 0.0:
-            raise ValueError("'center_accuracy' must be a positive number.")
-        self.center_accuracy_sq = center_accuracy**2
 
         maxiters = int(maxiters)
         if maxiters <= 0:
@@ -409,9 +395,14 @@ class EPSFBuilder:
 
         data = np.zeros(shape, dtype=np.float)
         # ePSF origin should be in the undersampled pixel units, not the oversampled
-        # grid units.
-        xcenter = (stars._max_shape[0] - 1) / 2.
-        ycenter = (stars._max_shape[1] - 1) / 2.
+        # grid units. The middle, fractional (as we wish for the center of the
+        # pixel, so the center should be at (v.5, w.5) detector pixels) value is
+        # simply the average of the two values at the extremes. If a detector has 5
+        # pixels, then the values are [0, 1, 2, 3, 4, [5]] (with [5] being the right
+        # side of the final pixel), then the middle is (5+0)/2 or 5/2, so we can
+        # simply take half of the shape of the grid as the middle value.
+        xcenter = stars._max_shape[0] / 2.
+        ycenter = stars._max_shape[1] / 2.
 
         return EPSFModel(data=data, origin=(xcenter, ycenter),
                          oversampling=oversampling, norm_radius=norm_radius,
@@ -464,8 +455,7 @@ class EPSFBuilder:
         # the normalized star at the location of the star in the undersampled
         # grid. Central pixel is assumed to be (0, 0) in these coordinates.
         stardata = (star._data_values_normalized -
-                    epsf.evaluate(x=x, y=y, flux=1.0, x_0=0.0,
-                                  y_0=0.0, use_oversampling=False))
+                    epsf.evaluate(x=x, y=y, flux=1.0, x_0=0.0, y_0=0.0))
 
         resampled_img = np.full(epsf.shape, np.nan)
         resampled_img[yidx, xidx] = stardata[mask]
@@ -630,8 +620,7 @@ class EPSFBuilder:
 
         epsf_data = epsf.evaluate(x=x, y=y, flux=1.0,
                                   x_0=xcenter - dx,  # subtract dx from x_0
-                                  y_0=ycenter - dy,  # even if positive
-                                  use_oversampling=False)
+                                  y_0=ycenter - dy)  # even if positive
         return epsf_data
 
     def _build_epsf_step(self, stars, epsf=None):
@@ -739,7 +728,6 @@ class EPSFBuilder:
         """
 
         iter_num = 0
-        center_dist_sq = self.center_accuracy_sq + 1.
         centers = stars.cutout_center_flat
         n_stars = stars.n_stars
         fit_failed = np.zeros(n_stars, dtype=bool)
@@ -747,9 +735,7 @@ class EPSFBuilder:
         epsf = init_epsf
         dt = 0.
 
-        while (iter_num < self.maxiters and
-                np.max(center_dist_sq) >= self.center_accuracy_sq and
-                not np.all(fit_failed)):
+        while (iter_num < self.maxiters and not np.all(fit_failed)):
 
             t_start = time.time()
             iter_num += 1

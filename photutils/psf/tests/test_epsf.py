@@ -132,8 +132,6 @@ def test_epsfbuilder_inputs():
     with pytest.raises(ValueError):
         epsf_builder = EPSFBuilder(oversampling=-1)
     with pytest.raises(ValueError):
-        epsf_builder = EPSFBuilder(shape=5, center_accuracy=-1)
-    with pytest.raises(ValueError):
         epsf_builder = EPSFBuilder(maxiters=-1)
 
 
@@ -145,7 +143,7 @@ def test_epsfmodel_inputs():
     data[2, 2] = np.inf
     with pytest.raises(ValueError):
         epsf_model = EPSFModel(data)
-    data[2, 2] = np.finfo(np.float64).max + 1
+    data[2, 2] = np.finfo(np.float64).max * 2
     with pytest.raises(ValueError):
         epsf_model = EPSFModel(data, flux=None)
     data[2, 2] = 1

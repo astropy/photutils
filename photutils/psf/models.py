@@ -91,6 +91,10 @@ class FittableImageModel(Fittable2DModel):
         data) to the flux of model's data.
         Then, best fitted value of the `flux` model
         parameter will represent an aperture-corrected flux of the target star.
+        In the case of aperture correction, ``normalization_correction`` should
+        be a value larger than one, as the total flux, including regions outside
+        of the aperture, should be larger than the flux inside the aperture,
+        and thus the correction is applied as an inversely multiplied factor.
 
     fill_value : float, optional
         The value to be returned by the `evaluate` or
@@ -143,6 +147,14 @@ class FittableImageModel(Fittable2DModel):
         # set the origin of the coordinate system in image's pixel grid:
         self.origin = origin
 
+        flux = self._initial_norm(flux, normalize)
+
+        super().__init__(flux, x_0, y_0)
+
+        # initialize interpolator:
+        self.compute_interpolator(ikwargs)
+
+    def _initial_norm(self, flux, normalize):
         if flux is None:
             if self._img_norm is None:
                 self._img_norm = self._compute_raw_image_norm(self._data)
@@ -150,10 +162,7 @@ class FittableImageModel(Fittable2DModel):
 
         self._compute_normalization(normalize)
 
-        super().__init__(flux, x_0, y_0)
-
-        # initialize interpolator:
-        self.compute_interpolator(ikwargs)
+        return flux
 
     def _compute_raw_image_norm(self, data):
         """
@@ -476,7 +485,7 @@ class FittableImageModel(Fittable2DModel):
         return evaluated_model
 
 
-class EPSFModel(Fittable2DModel):
+class EPSFModel(FittableImageModel):
     """
     A fittable ePSF model.
 
@@ -490,11 +499,43 @@ class EPSFModel(Fittable2DModel):
         A reference point in the input image ``data`` array. When origin is
         `None`, origin will be set at the middle of the image array.
 
-    fill_value : float, optional
-        The value to be returned by the `evaluate` or
-        ``astropy.modeling.Model.__call__`` methods
-        when evaluation is performed outside the definition domain of the
-        model.
+    oversampling : int, optional
+        The number of oversampled pixels to place within each regular pixel.
+        This defines the shape of the ePSF grid, and the granularity of the
+        spacing between ePSF values, determining the level of interpolation
+        necessary.
+
+    normalize : bool, optional
+        Indicates whether or not the model should be build on normalized
+        input image data. If true, then the normalization constant (*N*) is
+        computed so that
+
+        .. math::
+            N \\cdot C \\cdot \\Sigma_{i^2 + j^2 <= R}D_{i,j} = 1,
+
+        where *N* is the normalization constant, *C* is correction factor
+        given by the parameter ``normalization_correction``, *R* is the
+        normalization radius given by ``norm_radius``, and :math:`D_{i,j}`
+        are the elements of the input image ``data`` array.
+
+    normalization_correction : float, optional
+        A strictly positive number that represents correction that needs to
+        be applied to model's data normalization (see *C* in the equation
+        in the comments to ``normalize`` for more details).
+
+        A possible application for this parameter is to account for aperture
+        correction. Assuming model's data represent a PSF to be fitted to
+        some target star, we set ``normalization_correction`` to the aperture
+        correction that needs to be applied to the model. That is,
+        ``normalization_correction`` in this case should be set to the
+        ratio between the total flux of the PSF (including flux outside model's
+        data) to the flux of model's data.
+        Then, best fitted value of the `flux` model
+        parameter will represent an aperture-corrected flux of the target star.
+        In the case of aperture correction, ``normalization_correction`` should
+        be a value larger than one, as the total flux, including regions outside
+        of the aperture, should be larger than the flux inside the aperture,
+        and thus the correction is applied as an inversely multiplied factor.
 
     norm_radius : float, optional
         The radius inside which the ePSF is normalized by the sum over
@@ -504,6 +545,12 @@ class EPSFModel(Fittable2DModel):
         The fractional undersampled pixel amount (equivalent to an integer
         oversampled pixel value) at which to evaluate the asymmetric
         ePSF centroid corrections.
+
+    fill_value : float, optional
+        The value to be returned by the `evaluate` or
+        ``astropy.modeling.Model.__call__`` methods
+        when evaluation is performed outside the definition domain of the
+        model.
 
     ikwargs : dict, optional
 
@@ -522,49 +569,30 @@ class EPSFModel(Fittable2DModel):
                     'the output coordinate grid on which the model is '
                     'evaluated.', default=0.0)
 
-    def __init__(self, data, flux=flux.default, origin=None, oversampling=1,
-                 fill_value=0.0, norm_radius=5.5, shift_val=0.5,
-                 normalize=True, ikwargs={}):
-        self._fill_value = fill_value
-        self._img_norm = None
-        self._normalization_status = 0
+    def __init__(self, data, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
+                 origin=None, oversampling=1, fill_value=0.0, norm_radius=5.5,
+                 shift_val=0.5, normalize=True, normalization_correction=1.0,
+                 ikwargs={}):
         self._norm_radius = norm_radius
         self._shift_val = shift_val
-        self._store_interpolator_kwargs(ikwargs)
-        self._set_oversampling(oversampling)
-        self._normalize = normalize
 
-        self._data = np.array(data, copy=True, dtype=np.float64)
+        super().__init__(data=data, flux=flux, x_0=x_0, y_0=y_0, normalize=normalize,
+                         normalization_correction=normalization_correction,
+                         origin=origin, oversampling=oversampling, fill_value=fill_value,
+                         ikwargs=ikwargs)
 
-        if not np.all(np.isfinite(self._data)):
-            raise ValueError("All elements of input 'data' must be finite.")
-
-        # set input image related parameters:
-        self._ny, self._nx = self._data.shape
-        self._shape = self._data.shape
-        if self._data.size < 1:
-            raise ValueError("Image data array cannot be zero-sized.")
-
-        # set the origin of the coordinate system in image's pixel grid:
-        self.origin = origin
-
+    def _initial_norm(self, flux, normalize):
         if flux is None:
             if self._img_norm is None:
                 self._img_norm = self._compute_raw_image_norm(self._data,
                                                               self._norm_radius)
             flux = self._img_norm
 
-        if self._normalize:
+        if normalize:
             self._compute_normalization()
         else:
             self._img_norm = self._compute_raw_image_norm(self._data,
                                                           self._norm_radius)
-
-        x_0, y_0 = self.origin
-        super().__init__(flux, x_0, y_0)
-
-        # initialize interpolator:
-        self.compute_interpolator(ikwargs)
 
     def _compute_raw_image_norm(self, data, radius):
         """
@@ -615,7 +643,7 @@ class EPSFModel(Fittable2DModel):
                                                               self._norm_radius)
 
         if self._img_norm != 0.0 and np.isfinite(self._img_norm):
-            self._data /= self._img_norm
+            self._data /= (self._img_norm * self._normalization_correction)
             self._normalization_status = 0
         else:
             self._normalization_status = 1
@@ -623,15 +651,6 @@ class EPSFModel(Fittable2DModel):
             warnings.warn("Overflow encountered while computing "
                           "normalization constant. Normalization "
                           "constant will be set to 1.", NonNormalizable)
-
-    @property
-    def oversampling(self):
-        """
-        The factor by which the stored image is oversampled.  I.e., an input
-        to this model is multipled by this factor to yield the index into the
-        stored image.
-        """
-        return self._oversampling
 
     def _set_oversampling(self, value):
         try:
@@ -649,105 +668,24 @@ class EPSFModel(Fittable2DModel):
         self._oversampling = value
 
     @property
-    def data(self):
-        """ Get ePSF oversampled grid values of the ePSF. """
+    def normalized_data(self):
+        """
+        Overloaded dummy function that also returns self._data, as the
+        normalization occurs within _compute_normalization in EPSFModel,
+        and as such self._data will sum, accounting for under/oversampled
+        pixels, to 1/self._normalization_correction. """
         return self._data
 
-    @property
-    def normalization_status(self):
-        """
-        Get normalization status. Possible status values are:
-
-        - 0: **Performed**. Model has been successfuly normalized at
-          user's request.
-        - 1: **Failed**. Attempt to normalize has failed.
-
-        """
-        return self._normalization_status
-
-    @property
-    def shape(self):
-        """A tuple of dimensions of the data array in numpy style (ny, nx)."""
-        return self._shape
-
-    @property
-    def nx(self):
-        """Number of columns in the data array."""
-        return self._nx
-
-    @property
-    def ny(self):
-        """Number of rows in the data array."""
-        return self._ny
-
-    @property
-    def origin(self):
-        """
-        A tuple of ``x`` and ``y`` coordinates of the origin of the coordinate
-        system in terms of undersampled pixels of model's image.
-
-        When setting the coordinate system origin, a tuple of two `int` or
-        `float` may be used. If origin is set to `None`, the origin of the
-        coordinate system will be set to the middle of the data array
-        (``(npix-1)/2.0/oversampling``).
-
-        .. warning::
-            Modifying `origin` will not adjust (modify) model's parameters
-            `x_0` and `y_0`.
-        """
-        return (self._x_origin, self._y_origin)
-
-    @origin.setter
+    @FittableImageModel.origin.setter
     def origin(self, origin):
-        if origin is None or isinstance(origin, tuple):
-            if isinstance(origin, tuple) and len(origin) == 2:
-                self._x_origin = (self._nx - 1) / 2.0 / self.oversampling
-                self._y_origin = (self._ny - 1) / 2.0 / self.oversampling
-            else:
-                raise ValueError("Origin must be None or an iterable with two"
-                                 "elements.")
+        if origin is None:
+            self._x_origin = (self._nx - 1) / 2.0 / self.oversampling
+            self._y_origin = (self._ny - 1) / 2.0 / self.oversampling
+        elif (hasattr(origin, '__iter__') and len(origin) == 2):
+            self._x_origin, self._y_origin = origin
         else:
             raise TypeError("Parameter 'origin' must be either None or an "
                             "iterable with two elements.")
-
-    @property
-    def x_origin(self):
-        """X-coordinate of the origin of the coordinate system."""
-        return self._x_origin
-
-    @property
-    def y_origin(self):
-        """Y-coordinate of the origin of the coordinate system."""
-        return self._y_origin
-
-    @property
-    def fill_value(self):
-        """Fill value to be returned for coordinates outside of the domain of
-        definition of the interpolator. If ``fill_value`` is `None`, then
-        values outside of the domain of definition are the ones returned
-        by the interpolator.
-
-        """
-        return self._fill_value
-
-    @fill_value.setter
-    def fill_value(self, fill_value):
-        self._fill_value = fill_value
-
-    def _store_interpolator_kwargs(self, ikwargs):
-        """
-        This function should be called in a subclass whenever model's
-        interpolator is (re-)computed.
-        """
-        self._interpolator_kwargs = copy.deepcopy(ikwargs)
-
-    @property
-    def interpolator_kwargs(self):
-        """
-        Get current interpolator's arguments used when interpolator was
-        created.
-        """
-        return self._interpolator_kwargs
 
     def compute_interpolator(self, ikwargs={}):
         """
@@ -817,7 +755,7 @@ class EPSFModel(Fittable2DModel):
 
         self._store_interpolator_kwargs(ikwargs)
 
-    def evaluate(self, x, y, flux, x_0, y_0, use_oversampling=False):
+    def evaluate(self, x, y, flux, x_0, y_0):
         """
         Evaluate the model on some input variables and provided model
         parameters.
@@ -828,12 +766,12 @@ class EPSFModel(Fittable2DModel):
 
         evaluated_model = flux * self.interpolator.ev(xi, yi)
 
-        # if self._fill_value is not None:
-        #     # find indices of pixels that are outside the input pixel grid and
-        #     # set these pixels to the 'fill_value':
-        #     invalid = (((xi < 0) | (xi > self._nx - 1)) |
-        #                ((yi < 0) | (yi > self._ny - 1)))
-        #     evaluated_model[invalid] = self._fill_value
+        if self._fill_value is not None:
+            # find indices of pixels that are outside the input pixel grid and
+            # set these pixels to the 'fill_value':
+            invalid = (((xi < 0) | (xi > self._nx - 1)) |
+                       ((yi < 0) | (yi > self._ny - 1)))
+            evaluated_model[invalid] = self._fill_value
 
         return evaluated_model
 
