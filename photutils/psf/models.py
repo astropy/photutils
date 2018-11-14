@@ -739,24 +739,29 @@ class PRFAdapter(Fittable2DModel):
 
 class GriddedPSFModel(Fittable2DModel):
     """
-    A fittable 2D model containing a grid of PSF models that are
-    interpolated to evaluate the PSF at an arbitrary (x, y) position.
+    A fittable 2D model containing a grid PSF models defined at specific
+    locations that are interpolated to evaluate a PSF at an arbitrary
+    (x, y) position.
 
     Parameters
     ----------
     data : `~astropy.nddata.NDData`
-        An `~astropy.nddata.NDData` object containing the grid of PSF
-        models.  The data attribute must contain a 3D `~numpy.ndarray`
-        representing N 2D PSFs (data shape is `(N, ny, nx)`).  The meta
-        attribute must be `dict` containing the following:
+        An `~astropy.nddata.NDData` object containing the grid of
+        reference PSF arrays.  The data attribute must contain a 3D
+        `~numpy.ndarray` containing a stack of the 2D PSFs (the data
+        shape should be ``(N, PSF_ny, PSF_nx)``).  The meta attribute
+        must be `dict` containing the following:
 
-            * `'grid_xypos'`:  A list of N `(x, y)` positions corresponding
-               to the data cube.
-            * `'oversampling'`:  The integer oversampling factor
-            * `'instrument'`:  The instrument from which the PSF was derived.
-            * `'detector'`:  The detector from which the PSF was derived.
-            * `'filter'`:  The name of the filter from which the PSF was
-               derived.
+            * ``'grid_xypos'``:  A list of the (x, y) grid positions of
+              each reference PSF.  The order of positions should match
+              the first axis of the 3D `~numpy.ndarray` of PSFs.  In
+              other words, ``grid_xypos[i]`` should be the (x, y)
+              position of the reference PSF defined in ``data[i]``.
+            * ``'oversampling'``:  The integer oversampling factor of the
+               PSF.
+
+        The meta attribute may contain other properties such as the
+        instrument, detector, and filter of the PSF.
     """
 
     flux = Parameter(default=1.0)
@@ -769,55 +774,62 @@ class GriddedPSFModel(Fittable2DModel):
         if not isinstance(data, NDData):
             raise TypeError('data must be an NDData instance.')
 
-        self.data = np.array(nddata.data, copy=True, dtype=np.float)
-        self._meta = nddata.meta
-        self._grid_xypos = nddata.meta['grid_xypos']
-        self.oversampling = nddata.meta['oversampling']
-        self.instrument = nddata.meta['instrument']
-        self.detector = nddata.meta['detector']
-        self.filter = nddata.meta['filter']
+        if 'grid_xypos' not in data.meta:
+            raise ValueError('"grid_xypos" must be in the nddata meta '
+                             'dictionary.')
+        if 'oversampling' not in data.meta:
+            raise ValueError('"oversampling" must be in the nddata meta '
+                             'dictionary.')
+
+        self.data = np.array(data.data, copy=True, dtype=np.float)
+        self.meta = data.meta
+        self.grid_xypos = data.meta['grid_xypos']
+        self.oversampling = data.meta['oversampling']
 
         super().__init__(flux, x_0, y_0)
 
-    def find_bounding_neighbors(self, x, y):
+    @staticmethod
+    def _find_bounds_1d(grid1d, x):
+        idx = np.searchsorted(grid1d, x)
+        if idx == 0:
+            x0 = 0
+        elif idx == len(grid1d):
+            x0 = idx - 2
+        else:
+            x0 = idx - 1
+        return x0
+
+    def _find_bounding_points(self, x, y):
         """
-        Returns indices of the bounding neighbors.
+        Find the indices of the grid points that bound the input
+        ``(x, y)`` position.
+
+        Parameters
+        ----------
+        x, y : float
+            The (x, y) position where the PSF is to be evaluated.
+
+        Returns
+        -------
+        indices : list
+            A list of indices of the bounding grid points.
         """
 
         if not np.isscalar(x):
-            print('x not scalar: {}'.format(x))
-
+            raise TypeError('x must be a scalar, got {}.'.format(x))
         if not np.isscalar(y):
-            print('y not scalar: {}'.format(y))
+            raise TypeError('y must be a scalar, got {}.'.format(y))
 
-        xgrid, ygrid = np.transpose(self._grid_xypos)
+        xgrid, ygrid = np.transpose(self.grid_xypos)
         xgrid1d = np.unique(xgrid)
         ygrid1d = np.unique(ygrid)
-
-        xidx = np.searchsorted(xgrid1d, x)
-        yidx = np.searchsorted(ygrid1d, y)
-
-        if xidx == 0:
-            x0 = 0
-            x1 = 1
-        else:
-            x0 = xidx - 1
-            x1 = xidx
-
-        if yidx == 0:
-            y0 = 0
-            y1 = 1
-        else:
-            y0 = yidx - 1
-            y1 = yidx
-
-        points = list(itertools.product(xgrid1d[x0:x1 + 1],
-                                        ygrid1d[y0:y1 + 1]))
+        x0 = self._find_bounds_1d(xgrid1d, x)
+        y0 = self._find_bounds_1d(ygrid1d, y)
+        points = list(itertools.product(xgrid1d[x0:x0+2], ygrid1d[y0:y0+2]))
 
         indices = []
         for xx, yy in points:
-            distances = np.hypot(xgrid - xx, ygrid - yy)
-            indices.append(np.argsort(distances)[0])
+            indices.append(np.argsort(np.hypot(xgrid - xx, ygrid - yy))[0])
 
         return indices
 
@@ -883,14 +895,20 @@ class GriddedPSFModel(Fittable2DModel):
         return np.array([spsi.ev(xi, yi) for spsi in sps]).reshape((nx, ny))
 
     def evaluate(self, x, y, flux, x_0, y_0):
-        # interpolate using the PSF library
-        indices = self.find_bounding_neighbors(x_0, y_0)
+        """
+        Evaluate the `GriddedPSFModel` for the input parameters.
+        """
+
+        # find the four bounding reference PSFs and interpolate
+        indices = self._find_bounding_points(x_0, y_0)
+        xyref = np.array(self.grid_xypos)[indices]
         psfs = self.data[indices, :, :]
-        xyref = np.array(self._grid_xypos)[indices]
 
         self._psf_interp = self.bilinear_interp(xyref, psfs, x_0, y_0)
         #self._psf_interp = self.bilinear_interp_rectbiv(xyref, psfs, x_0, y_0)
 
+        # now evaluate the PSF at the (x_0, y_0) subpixel position on
+        # the input (x, y) values
         psfmodel = FittableImageModel(self._psf_interp,
                                       oversampling=self.oversampling)
         return psfmodel.evaluate(x, y, flux, x_0, y_0)
