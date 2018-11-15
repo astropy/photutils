@@ -749,8 +749,8 @@ class GriddedPSFModel(Fittable2DModel):
         An `~astropy.nddata.NDData` object containing the grid of
         reference PSF arrays.  The data attribute must contain a 3D
         `~numpy.ndarray` containing a stack of the 2D PSFs (the data
-        shape should be ``(N, PSF_ny, PSF_nx)``).  The meta attribute
-        must be `dict` containing the following:
+        shape should be (N_psf, PSF_ny, PSF_nx)).  The meta
+        attribute must be `dict` containing the following:
 
             * ``'grid_xypos'``:  A list of the (x, y) grid positions of
               each reference PSF.  The order of positions should match
@@ -761,7 +761,7 @@ class GriddedPSFModel(Fittable2DModel):
                PSF.
 
         The meta attribute may contain other properties such as the
-        instrument, detector, and filter of the PSF.
+        telescope, instrument, detector, and filter of the PSF.
     """
 
     flux = Parameter(default=1.0)
@@ -786,18 +786,48 @@ class GriddedPSFModel(Fittable2DModel):
         self.grid_xypos = data.meta['grid_xypos']
         self.oversampling = data.meta['oversampling']
 
+        self._grid_xpos, self._grid_ypos = np.transpose(self.grid_xypos)
+        self._xgrid = np.unique(self._grid_xpos)  # also sorts values
+        self._ygrid = np.unique(self._grid_ypos)  # also sorts values
+        self._xgrid_min = self._xgrid[0]
+        self._xgrid_max = self._xgrid[-1]
+        self._ygrid_min = self._ygrid[0]
+        self._ygrid_max = self._ygrid[-1]
+
         super().__init__(flux, x_0, y_0)
 
     @staticmethod
-    def _find_bounds_1d(grid1d, x):
-        idx = np.searchsorted(grid1d, x)
+    def _find_bounds_1d(data, x):
+        """
+        Find the index of the lower bound where ``x`` should be inserted
+        into ``a`` to maintain order.
+
+        The index of the upper bound is the index of the lower bound
+        plus 2.  Both bound indices must be within the array.
+
+        Parameters
+        ----------
+        data : 1D `~numpy.ndarray`
+            The 1D array to search.
+
+        x : float
+            The value to insert.
+
+        Returns
+        -------
+        index : int
+            The index of the lower bound.
+        """
+
+        idx = np.searchsorted(data, x)
         if idx == 0:
-            x0 = 0
-        elif idx == len(grid1d):
-            x0 = idx - 2
+            idx0 = 0
+        elif idx == len(data):
+            idx0 = idx - 2
         else:
-            x0 = idx - 1
-        return x0
+            idx0 = idx - 1
+
+        return idx0
 
     def _find_bounding_points(self, x, y):
         """
@@ -807,29 +837,31 @@ class GriddedPSFModel(Fittable2DModel):
         Parameters
         ----------
         x, y : float
-            The (x, y) position where the PSF is to be evaluated.
+            The ``(x, y)`` position where the PSF is to be evaluated.
 
         Returns
         -------
-        indices : list
+        indices : list of int
             A list of indices of the bounding grid points.
         """
 
-        if not np.isscalar(x):
-            raise TypeError('x must be a scalar, got {}.'.format(x))
-        if not np.isscalar(y):
-            raise TypeError('y must be a scalar, got {}.'.format(y))
+        if not np.isscalar(x) or not np.isscalar(y):
+            raise TypeError('x and y must be scalars')
 
-        xgrid, ygrid = np.transpose(self.grid_xypos)
-        xgrid1d = np.unique(xgrid)
-        ygrid1d = np.unique(ygrid)
-        x0 = self._find_bounds_1d(xgrid1d, x)
-        y0 = self._find_bounds_1d(ygrid1d, y)
-        points = list(itertools.product(xgrid1d[x0:x0+2], ygrid1d[y0:y0+2]))
+        if (x < self._xgrid_min or x > self._xgrid_max or
+                y < self._ygrid_min or y > self._ygrid_max):
+            raise ValueError('(x, y) position is outside of the region '
+                             'defined by grid of PSF positions')
+
+        x0 = self._find_bounds_1d(self._xgrid, x)
+        y0 = self._find_bounds_1d(self._ygrid, y)
+        points = list(itertools.product(self._xgrid[x0:x0 + 2],
+                                        self._ygrid[y0:y0 + 2]))
 
         indices = []
         for xx, yy in points:
-            indices.append(np.argsort(np.hypot(xgrid - xx, ygrid - yy))[0])
+            indices.append(np.argsort(np.hypot(self._grid_xpos - xx,
+                                               self._grid_ypos - yy))[0])
 
         return indices
 
@@ -899,18 +931,29 @@ class GriddedPSFModel(Fittable2DModel):
         Evaluate the `GriddedPSFModel` for the input parameters.
         """
 
-        # find the four bounding reference PSFs and interpolate
-        indices = self._find_bounding_points(x_0, y_0)
-        xyref = np.array(self.grid_xypos)[indices]
-        psfs = self.data[indices, :, :]
+        if (x_0 < self._xgrid_min or x_0 > self._xgrid_max or
+                y_0 < self._ygrid_min or y_0 > self._ygrid_max):
 
-        self._psf_interp = self.bilinear_interp(xyref, psfs, x_0, y_0)
-        #self._psf_interp = self.bilinear_interp_rectbiv(xyref, psfs, x_0, y_0)
+            # position is outside of the grid, so simply use the
+            # closest reference PSF
+            self._ref_indices = np.argsort(np.hypot(self._grid_xpos - x_0,
+                                                    self._grid_ypos - y_0))[0]
+            self._psf_interp = self.data[self._ref_indices, :, :]
+        else:
+            # find the four bounding reference PSFs and interpolate
+            self._ref_indices = self._find_bounding_points(x_0, y_0)
+            xyref = np.array(self.grid_xypos)[self._ref_indices]
+            psfs = self.data[self._ref_indices, :, :]
+
+            self._psf_interp = self.bilinear_interp(xyref, psfs, x_0, y_0)
+            # self._psf_interp = self.bilinear_interp_rectbiv(xyref, psfs,
+            #                                                 x_0, y_0)
 
         # now evaluate the PSF at the (x_0, y_0) subpixel position on
         # the input (x, y) values
         psfmodel = FittableImageModel(self._psf_interp,
                                       oversampling=self.oversampling)
+
         return psfmodel.evaluate(x, y, flux, x_0, y_0)
 
 
