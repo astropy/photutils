@@ -113,7 +113,7 @@ Other Changes and Additions
   keywords. [#726]
 
 - Added the option for ``EPSFStar`` to have ``weights`` based on an
-  ``astropy.nddata.StdDevUncertainty`` object.
+  ``astropy.nddata.StdDevUncertainty`` object. [#739]
 
 
 0.5 (2018-08-06)
