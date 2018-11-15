@@ -272,30 +272,6 @@ class BasicPSFPhotometry:
                               'supplying a specific aperture_radius.',
                               AstropyUserWarning)
 
-        if self.aperture_radius is None:
-            if init_guesses is None:
-                raise ValueError('aperture_radius was not input and could '
-                                 'not be determined by the input psf_model '
-                                 '(e.g., an EPSFModel).  For tabular PSF '
-                                 'models, you must input the aperture_radius '
-                                 'keyword.  For analytical PSF models, you '
-                                 'must either input the aperture_radius '
-                                 'keyword or define a fwhm or sigma '
-                                 'attribute on your input psf_model.')
-
-            if (init_guesses is not None and
-                    'flux_0' not in init_guesses.colnames):
-                raise ValueError('init_guesses were input, but the "flux_0" '
-                                 'column was not present.  Initial fluxes '
-                                 'cannot be calculated because '
-                                 'aperture_radius must was not input and '
-                                 'could not be determined by the input '
-                                 'psf_model (e.g., an EPSFModel).  For '
-                                 'analytical PSF models, you must either '
-                                 'input the aperture_radius keyword or '
-                                 'define a fwhm or sigma attribute on your '
-                                 'input psf_model.')
-
         if init_guesses is not None:
             # make sure the code does not modify user's input
             init_guesses = init_guesses.copy()

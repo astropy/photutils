@@ -485,41 +485,23 @@ def test_psf_boundary():
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-def test_aperture_radius_value_error():
-    """
-    Test psf_photometry with discrete PRF model at the boundary of the data.
-    """
-
-    prf = DiscretePRF(test_psf, subsampling=1)
-
-    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
-                                    bkg_estimator=None, psf_model=prf,
-                                    fitshape=7)
-
-    intab = Table(data=[[1], [1]], names=['x_0', 'y_0'])
-    with pytest.warns(AstropyUserWarning):
-        basic_phot(image=image, init_guesses=intab)
-
-
-def tophatfinder(image):
-    fluxes = np.unique(image[image > 0])
-    table = Table(names=['id', 'xcentroid', 'ycentroid', 'flux'],
-                  dtype=[int, float, float, float])
-    for n, f in enumerate(fluxes):
-        xs, ys = np.where(image == f)
-        x = np.mean(xs)
-        y = np.mean(ys)
-        table.add_row([int(n+1), x, y, f])
-
-    return table
-
-
-@pytest.mark.skipif('not HAS_SCIPY')
 def test_default_aperture_radius():
     """
     Test psf_photometry with non-Gaussian model, such that it raises a
     warning about aperture_radius.
     """
+    def tophatfinder(image):
+        """ Simple top hat finder function for use with a top hat PRF"""
+        fluxes = np.unique(image[image > 0])
+        table = Table(names=['id', 'xcentroid', 'ycentroid', 'flux'],
+                      dtype=[int, float, float, float])
+        for n, f in enumerate(fluxes):
+            xs, ys = np.where(image == f)
+            x = np.mean(xs)
+            y = np.mean(ys)
+            table.add_row([int(n+1), x, y, f])
+
+        return table
 
     prf = np.zeros((7, 7), float)
     prf[2:5, 2:5] = 1/9
@@ -538,7 +520,8 @@ def test_default_aperture_radius():
 
     intab = Table(data=[[19.6, 34.9, 37], [4.5, 40.1, 19.6]],
                   names=['x_0', 'y_0'])
-    with pytest.warns(AstropyUserWarning):
+    with pytest.warns(AstropyUserWarning, match='aperture_radius is None and '
+                                                'could not be determined'):
         basic_phot(image=img, init_guesses=intab)
 
     daofind = DAOStarFinder(threshold=5.0, fwhm=3)
@@ -548,7 +531,8 @@ def test_default_aperture_radius():
                                                    psf_model=prf,
                                                    fitshape=7)
 
-    with pytest.warns(AstropyUserWarning):
+    with pytest.warns(AstropyUserWarning, match='aperture_radius is None and '
+                                                'could not be determined'):
         iter_phot(image=img, init_guesses=intab)
     # Have to reset the object or it saves any updates, and we wish to
     # re-verify the aperture_radius assignment
@@ -557,7 +541,8 @@ def test_default_aperture_radius():
                                                    bkg_estimator=None,
                                                    psf_model=prf,
                                                    fitshape=7, niters=2)
-    with pytest.warns(AstropyUserWarning):
+    with pytest.warns(AstropyUserWarning, match='aperture_radius is None and '
+                                                'could not be determined'):
         iter_phot(image=img)
 
 
