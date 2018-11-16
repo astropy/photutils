@@ -93,6 +93,7 @@ matrix:
           env: ASTROPY_VERSION=lts
                EVENT_TYPE='pull_request push cron'
                NUMPY_VERSION=1.13
+               PIP_DEPENDENCIES='pytest<3.10'
 
         # Test with other Python and numpy versions
         - stage: Comprehensive tests
