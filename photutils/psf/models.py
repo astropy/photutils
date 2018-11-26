@@ -774,12 +774,22 @@ class GriddedPSFModel(Fittable2DModel):
         if not isinstance(data, NDData):
             raise TypeError('data must be an NDData instance.')
 
+        if data.data.ndim != 3:
+            raise ValueError('The NDData data attribute must be a 3D numpy '
+                             'ndarray')
+
         if 'grid_xypos' not in data.meta:
             raise ValueError('"grid_xypos" must be in the nddata meta '
                              'dictionary.')
+        if len(data.meta['grid_xypos']) != data.data.shape[0]:
+            raise ValueError('The length of grid_xypos must match the number '
+                             'of input PSFs.')
+
         if 'oversampling' not in data.meta:
             raise ValueError('"oversampling" must be in the nddata meta '
                              'dictionary.')
+        if not np.isscalar(data.meta['oversampling']):
+            raise ValueError('oversampling must be a scalar value')
 
         self.data = np.array(data.data, copy=True, dtype=np.float)
         self.meta = data.meta
@@ -789,6 +799,11 @@ class GriddedPSFModel(Fittable2DModel):
         self._grid_xpos, self._grid_ypos = np.transpose(self.grid_xypos)
         self._xgrid = np.unique(self._grid_xpos)  # also sorts values
         self._ygrid = np.unique(self._grid_ypos)  # also sorts values
+
+        if (len(list(itertools.product(self._xgrid, self._ygrid))) !=
+                len(self.grid_xypos)):
+            raise ValueError('"grid_xypos" must form a regular grid.')
+
         self._xgrid_min = self._xgrid[0]
         self._xgrid_max = self._xgrid[-1]
         self._ygrid_min = self._ygrid[0]
