@@ -837,7 +837,7 @@ class GriddedPSFModel(Fittable2DModel):
         idx = np.searchsorted(data, x)
         if idx == 0:
             idx0 = 0
-        elif idx == len(data):
+        elif idx == len(data):  # pragma: no cover
             idx0 = idx - 2
         else:
             idx0 = idx - 1
@@ -860,11 +860,11 @@ class GriddedPSFModel(Fittable2DModel):
             A list of indices of the bounding grid points.
         """
 
-        if not np.isscalar(x) or not np.isscalar(y):
+        if not np.isscalar(x) or not np.isscalar(y):  # pragma: no cover
             raise TypeError('x and y must be scalars')
 
         if (x < self._xgrid_min or x > self._xgrid_max or
-                y < self._ygrid_min or y > self._ygrid_max):
+                y < self._ygrid_min or y > self._ygrid_max):  # pragma: no cover
             raise ValueError('(x, y) position is outside of the region '
                              'defined by grid of PSF positions')
 
@@ -881,12 +881,30 @@ class GriddedPSFModel(Fittable2DModel):
         return indices
 
     @staticmethod
-    def bilinear_interp(xyref, zref, xi, yi):
+    def _bilinear_interp(xyref, zref, xi, yi):
         """
-        refxy : list of 4 tuples
-            4 (x, y) tuples
-        refdata : 3D ndarray
-            (4, nx, ny)
+        Perform bilinear interpolation of four 2D arrays located at
+        points on a regular grid.
+
+        Parameters
+        ----------
+        xyref : list of 4 (x, y) pairs
+            A list of 4 ``(x, y)`` pairs that form a rectangle.
+
+        refdata : 3D `~numpy.ndarray`
+            A 3D `~numpy.ndarray` of shape ``(4, nx, ny)``.  The first
+            axis corresponds to ``xyref``, i.e. ``refdata[0, :, :]`` is
+            the 2D array located at ``xyref[0]``.
+
+        xi, yi : float
+            The ``(xi, yi)`` point at which to perform the
+            interpolation.  The ``(xi, yi)`` point must lie within the
+            rectangle defined by ``xyref``.
+
+        Returns
+        -------
+        result : 2D `~numpy.ndarray`
+            The 2D interpolated array.
         """
 
         if len(xyref) != 4:
@@ -920,27 +938,6 @@ class GriddedPSFModel(Fittable2DModel):
 
         return np.sum(data * weights[:, None, None], axis=0) / norm
 
-    @staticmethod
-    def bilinear_interp_rectbiv(xyref, zref, xi, yi):
-
-        from scipy.interpolate import RectBivariateSpline
-
-        xyref = [tuple(i) for i in xyref]
-        idx = sorted(range(len(xyref)), key=xyref.__getitem__)
-        xyref = sorted(xyref)   # sort by x, then y
-        xref, yref = np.transpose(xyref)
-        xref = np.unique(xref)
-        yref = np.unique(yref)
-
-        data = np.asarray(zref)[idx]
-        npt, ny, nx = data.shape
-        data = data.reshape((npt, nx*ny)).T
-
-        sps = [RectBivariateSpline(xref, yref, datai.reshape((2, 2)), kx=1,
-                                   ky=1, s=0) for datai in data]
-
-        return np.array([spsi.ev(xi, yi) for spsi in sps]).reshape((nx, ny))
-
     def evaluate(self, x, y, flux, x_0, y_0):
         """
         Evaluate the `GriddedPSFModel` for the input parameters.
@@ -960,9 +957,7 @@ class GriddedPSFModel(Fittable2DModel):
             xyref = np.array(self.grid_xypos)[self._ref_indices]
             psfs = self.data[self._ref_indices, :, :]
 
-            self._psf_interp = self.bilinear_interp(xyref, psfs, x_0, y_0)
-            # self._psf_interp = self.bilinear_interp_rectbiv(xyref, psfs,
-            #                                                 x_0, y_0)
+            self._psf_interp = self._bilinear_interp(xyref, psfs, x_0, y_0)
 
         # now evaluate the PSF at the (x_0, y_0) subpixel position on
         # the input (x, y) values
