@@ -764,9 +764,12 @@ class GriddedPSFModel(Fittable2DModel):
         telescope, instrument, detector, and filter of the PSF.
     """
 
-    flux = Parameter(default=1.0)
-    x_0 = Parameter(default=0.0)
-    y_0 = Parameter(default=0.0)
+    flux = Parameter(description='Intensity scaling factor for the PSF '
+                     'model.', default=1.0)
+    x_0 = Parameter(description='x position in the output coordinate grid '
+                    'where the model is evaluated.', default=0.0)
+    y_0 = Parameter(description='y position in the output coordinate grid '
+                    'where the model is evaluated.', default=0.0)
 
     def __init__(self, data, flux=flux.default, x_0=x_0.default,
                  y_0=y_0.default, fill_value=0.0):
