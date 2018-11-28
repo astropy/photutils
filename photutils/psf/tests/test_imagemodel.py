@@ -265,8 +265,7 @@ class TestGriddedPSFModel:
 
         segm = detect_sources(data, 0., 5)
         props = source_properties(data, segm)
-        tbl = props.to_table()
-        orients = tbl['orientation'].to(u.deg)
+        orients = props.orientation.to(u.deg)
         assert_allclose(orients[1].value, 50., rtol=1.e-5)
         assert_allclose(orients[2].value, -80., rtol=1.e-5)
         assert 88.3 < orients[0].value < 88.4
