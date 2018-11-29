@@ -3,17 +3,19 @@
 Models for doing PSF/PRF fitting photometry on image data.
 """
 
-import warnings
 import copy
+import itertools
+import warnings
 
 import numpy as np
+from astropy.nddata import NDData
 from astropy.modeling import models, Parameter, Fittable2DModel
 from astropy.utils.exceptions import AstropyWarning
 
 
 __all__ = ['NonNormalizable', 'FittableImageModel', 'EPSFModel',
-           'IntegratedGaussianPRF', 'PRFAdapter', 'prepare_psf_model',
-           'get_grouped_psf_model']
+           'IntegratedGaussianPRF', 'PRFAdapter', 'GriddedPSFModel',
+           'prepare_psf_model', 'get_grouped_psf_model']
 
 
 class NonNormalizable(AstropyWarning):
@@ -733,6 +735,239 @@ class PRFAdapter(Fittable2DModel):
                                   lambda x: yi-0.5, lambda x: yi+0.5,
                                   **self._dblquadkwargs)[0]
         return out
+
+
+class GriddedPSFModel(Fittable2DModel):
+    """
+    A fittable 2D model containing a grid PSF models defined at specific
+    locations that are interpolated to evaluate a PSF at an arbitrary
+    (x, y) position.
+
+    Parameters
+    ----------
+    data : `~astropy.nddata.NDData`
+        An `~astropy.nddata.NDData` object containing the grid of
+        reference PSF arrays.  The data attribute must contain a 3D
+        `~numpy.ndarray` containing a stack of the 2D PSFs (the data
+        shape should be (N_psf, PSF_ny, PSF_nx)).  The meta
+        attribute must be `dict` containing the following:
+
+            * ``'grid_xypos'``:  A list of the (x, y) grid positions of
+              each reference PSF.  The order of positions should match
+              the first axis of the 3D `~numpy.ndarray` of PSFs.  In
+              other words, ``grid_xypos[i]`` should be the (x, y)
+              position of the reference PSF defined in ``data[i]``.
+            * ``'oversampling'``:  The integer oversampling factor of the
+               PSF.
+
+        The meta attribute may contain other properties such as the
+        telescope, instrument, detector, and filter of the PSF.
+    """
+
+    flux = Parameter(description='Intensity scaling factor for the PSF '
+                     'model.', default=1.0)
+    x_0 = Parameter(description='x position in the output coordinate grid '
+                    'where the model is evaluated.', default=0.0)
+    y_0 = Parameter(description='y position in the output coordinate grid '
+                    'where the model is evaluated.', default=0.0)
+
+    def __init__(self, data, flux=flux.default, x_0=x_0.default,
+                 y_0=y_0.default, fill_value=0.0):
+
+        if not isinstance(data, NDData):
+            raise TypeError('data must be an NDData instance.')
+
+        if data.data.ndim != 3:
+            raise ValueError('The NDData data attribute must be a 3D numpy '
+                             'ndarray')
+
+        if 'grid_xypos' not in data.meta:
+            raise ValueError('"grid_xypos" must be in the nddata meta '
+                             'dictionary.')
+        if len(data.meta['grid_xypos']) != data.data.shape[0]:
+            raise ValueError('The length of grid_xypos must match the number '
+                             'of input PSFs.')
+
+        if 'oversampling' not in data.meta:
+            raise ValueError('"oversampling" must be in the nddata meta '
+                             'dictionary.')
+        if not np.isscalar(data.meta['oversampling']):
+            raise ValueError('oversampling must be a scalar value')
+
+        self.data = np.array(data.data, copy=True, dtype=np.float)
+        self.meta = data.meta
+        self.grid_xypos = data.meta['grid_xypos']
+        self.oversampling = data.meta['oversampling']
+
+        self._grid_xpos, self._grid_ypos = np.transpose(self.grid_xypos)
+        self._xgrid = np.unique(self._grid_xpos)  # also sorts values
+        self._ygrid = np.unique(self._grid_ypos)  # also sorts values
+
+        if (len(list(itertools.product(self._xgrid, self._ygrid))) !=
+                len(self.grid_xypos)):
+            raise ValueError('"grid_xypos" must form a regular grid.')
+
+        self._xgrid_min = self._xgrid[0]
+        self._xgrid_max = self._xgrid[-1]
+        self._ygrid_min = self._ygrid[0]
+        self._ygrid_max = self._ygrid[-1]
+
+        super().__init__(flux, x_0, y_0)
+
+    @staticmethod
+    def _find_bounds_1d(data, x):
+        """
+        Find the index of the lower bound where ``x`` should be inserted
+        into ``a`` to maintain order.
+
+        The index of the upper bound is the index of the lower bound
+        plus 2.  Both bound indices must be within the array.
+
+        Parameters
+        ----------
+        data : 1D `~numpy.ndarray`
+            The 1D array to search.
+
+        x : float
+            The value to insert.
+
+        Returns
+        -------
+        index : int
+            The index of the lower bound.
+        """
+
+        idx = np.searchsorted(data, x)
+        if idx == 0:
+            idx0 = 0
+        elif idx == len(data):  # pragma: no cover
+            idx0 = idx - 2
+        else:
+            idx0 = idx - 1
+
+        return idx0
+
+    def _find_bounding_points(self, x, y):
+        """
+        Find the indices of the grid points that bound the input
+        ``(x, y)`` position.
+
+        Parameters
+        ----------
+        x, y : float
+            The ``(x, y)`` position where the PSF is to be evaluated.
+
+        Returns
+        -------
+        indices : list of int
+            A list of indices of the bounding grid points.
+        """
+
+        if not np.isscalar(x) or not np.isscalar(y):  # pragma: no cover
+            raise TypeError('x and y must be scalars')
+
+        if (x < self._xgrid_min or x > self._xgrid_max or
+                y < self._ygrid_min or y > self._ygrid_max):  # pragma: no cover
+            raise ValueError('(x, y) position is outside of the region '
+                             'defined by grid of PSF positions')
+
+        x0 = self._find_bounds_1d(self._xgrid, x)
+        y0 = self._find_bounds_1d(self._ygrid, y)
+        points = list(itertools.product(self._xgrid[x0:x0 + 2],
+                                        self._ygrid[y0:y0 + 2]))
+
+        indices = []
+        for xx, yy in points:
+            indices.append(np.argsort(np.hypot(self._grid_xpos - xx,
+                                               self._grid_ypos - yy))[0])
+
+        return indices
+
+    @staticmethod
+    def _bilinear_interp(xyref, zref, xi, yi):
+        """
+        Perform bilinear interpolation of four 2D arrays located at
+        points on a regular grid.
+
+        Parameters
+        ----------
+        xyref : list of 4 (x, y) pairs
+            A list of 4 ``(x, y)`` pairs that form a rectangle.
+
+        refdata : 3D `~numpy.ndarray`
+            A 3D `~numpy.ndarray` of shape ``(4, nx, ny)``.  The first
+            axis corresponds to ``xyref``, i.e. ``refdata[0, :, :]`` is
+            the 2D array located at ``xyref[0]``.
+
+        xi, yi : float
+            The ``(xi, yi)`` point at which to perform the
+            interpolation.  The ``(xi, yi)`` point must lie within the
+            rectangle defined by ``xyref``.
+
+        Returns
+        -------
+        result : 2D `~numpy.ndarray`
+            The 2D interpolated array.
+        """
+
+        if len(xyref) != 4:
+            raise ValueError('xyref must contain only 4 (x, y) pairs')
+
+        if zref.shape[0] != 4:
+            raise ValueError('zref must have a length of 4 on the first '
+                             'axis.')
+
+        xyref = [tuple(i) for i in xyref]
+        idx = sorted(range(len(xyref)), key=xyref.__getitem__)
+        xyref = sorted(xyref)   # sort by x, then y
+        (x0, y0), (_x0, y1), (x1, _y0), (_x1, _y1) = xyref
+
+        if x0 != _x0 or x1 != _x1 or y0 != _y0 or y1 != _y1:
+            raise ValueError('The refxy points do not form a rectangle.')
+
+        if not np.isscalar(xi):
+            xi = xi[0]
+        if not np.isscalar(yi):
+            yi = yi[0]
+
+        if not x0 <= xi <= x1 or not y0 <= yi <= y1:
+            raise ValueError('The (x, y) input is not within the rectangle '
+                             'defined by xyref.')
+
+        data = np.asarray(zref)[idx]
+        weights = np.array([(x1 - xi) * (y1 - yi), (x1 - xi) * (yi - y0),
+                            (xi - x0) * (y1 - yi), (xi - x0) * (yi - y0)])
+        norm = (x1 - x0) * (y1 - y0)
+
+        return np.sum(data * weights[:, None, None], axis=0) / norm
+
+    def evaluate(self, x, y, flux, x_0, y_0):
+        """
+        Evaluate the `GriddedPSFModel` for the input parameters.
+        """
+
+        if (x_0 < self._xgrid_min or x_0 > self._xgrid_max or
+                y_0 < self._ygrid_min or y_0 > self._ygrid_max):
+
+            # position is outside of the grid, so simply use the
+            # closest reference PSF
+            self._ref_indices = np.argsort(np.hypot(self._grid_xpos - x_0,
+                                                    self._grid_ypos - y_0))[0]
+            self._psf_interp = self.data[self._ref_indices, :, :]
+        else:
+            # find the four bounding reference PSFs and interpolate
+            self._ref_indices = self._find_bounding_points(x_0, y_0)
+            xyref = np.array(self.grid_xypos)[self._ref_indices]
+            psfs = self.data[self._ref_indices, :, :]
+
+            self._psf_interp = self._bilinear_interp(xyref, psfs, x_0, y_0)
+
+        # now evaluate the PSF at the (x_0, y_0) subpixel position on
+        # the input (x, y) values
+        psfmodel = FittableImageModel(self._psf_interp,
+                                      oversampling=self.oversampling)
+
+        return psfmodel.evaluate(x, y, flux, x_0, y_0)
 
 
 def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,

@@ -16,6 +16,11 @@ New Features
     ``IRAFStarFinder`` that can be used to mask regions of the input
     image.  [#759]
 
+- ``photutils.psf``
+
+  - Added a ``GriddedPSFModel`` class for spatially-dependent PSFs.
+    [#772]
+
 API changes
 ^^^^^^^^^^^
 
