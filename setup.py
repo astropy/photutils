@@ -46,6 +46,7 @@ builtins._ASTROPY_SETUP_ = True
 from astropy_helpers.setup_helpers import (register_commands,
                                            get_debug_option,
                                            get_package_info)
+from astropy_helpers.distutils_helpers import is_distutils_display_option
 from astropy_helpers.git_helpers import get_git_devstr
 from astropy_helpers.version_helpers import generate_version_py
 
@@ -141,6 +142,11 @@ package_info['package_data'][PACKAGENAME].extend(c_files)
 setup_requires = ['numpy>={}'.format(__minimum_numpy_version__)]
 if not os.path.exists(os.path.join(os.path.dirname(__file__), 'PKG-INFO')):
     setup_requires.extend(['cython>=0.21'])
+
+# Avoid installing setup_requires dependencies if the user just
+# queries for information
+if is_distutils_display_option():
+    setup_requires = []
 
 install_requires = [s.strip() for s in metadata.get(
     'install_requires', 'astropy').split(',')]
