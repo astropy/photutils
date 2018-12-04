@@ -18,7 +18,15 @@ AUTHOR = metadata.get('author', '')
 AUTHOR_EMAIL = metadata.get('author_email', '')
 LICENSE = metadata.get('license', 'unknown')
 URL = metadata.get('url', '')
-__minimum_python_version__ = metadata.get('minimum_python_version', '3.5')
+
+try:
+    __minimum_python_version__ = metadata['minimum_python_version']
+except KeyError:
+    raise KeyError('minimum_python_version must be defined in setup.cfg')
+try:
+    __minimum_numpy_version__ = metadata['minimum_numpy_version']
+except KeyError:
+    raise KeyError('minimum_numpy_version must be defined in setup.cfg')
 
 # Enforce Python version check - this is the same check as in __init__.py but
 # this one has to happen before importing ah_bootstrap.
@@ -127,6 +135,13 @@ package_info['package_data'][PACKAGENAME].extend(c_files)
 # ``setup``, since these are now deprecated. See this link for more details:
 # https://groups.google.com/forum/#!topic/astropy-dev/urYO8ckB2uM
 
+# Make sure to have the packages needed for building photutils, but do
+# not require them when installing from an sdist as the .c files are
+# included there.
+setup_requires = ['numpy>={}'.format(__minimum_numpy_version__)]
+if not os.path.exists(os.path.join(os.path.dirname(__file__), 'PKG-INFO')):
+    setup_requires.extend(['cython>=0.21'])
+
 install_requires = [s.strip() for s in metadata.get(
     'install_requires', 'astropy').split(',')]
 
@@ -134,6 +149,7 @@ setup(name=PACKAGENAME,
       version=VERSION,
       description=DESCRIPTION,
       scripts=scripts,
+      setup_requires=setup_requires,
       install_requires=install_requires,
       author=AUTHOR,
       author_email=AUTHOR_EMAIL,
