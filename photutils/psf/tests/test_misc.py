@@ -7,7 +7,9 @@ place to go
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
+
 from astropy.table import Table
+
 from .. import IntegratedGaussianPRF, prepare_psf_model, get_grouped_psf_model
 
 try:

@@ -4,24 +4,24 @@ import pytest
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 
-from astropy.table import Table
-from astropy.stats import gaussian_sigma_to_fwhm, SigmaClip
+from astropy.convolution.utils import discretize_model
 from astropy.modeling import Parameter, Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling.models import Gaussian2D, Moffat2D
-from astropy.convolution.utils import discretize_model
+from astropy.stats import gaussian_sigma_to_fwhm, SigmaClip
+from astropy.table import Table
 from astropy.tests.helper import catch_warnings
 from astropy.utils.exceptions import AstropyUserWarning
 
 from ..groupstars import DAOGroup
-from ..models import IntegratedGaussianPRF, prepare_psf_model
+from ..models import IntegratedGaussianPRF
 from ..photometry import (DAOPhotPSFPhotometry, BasicPSFPhotometry,
                           IterativelySubtractedPSFPhotometry)
 from ..sandbox import DiscretePRF
+from ..utils import prepare_psf_model
 from ...background import StdBackgroundRMS, MMMBackground
 from ...datasets import make_gaussian_sources_image, make_noise_image
 from ...detection import DAOStarFinder
-
 
 try:
     import scipy    # noqa

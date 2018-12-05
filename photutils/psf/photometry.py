@@ -10,9 +10,9 @@ from astropy.stats import gaussian_sigma_to_fwhm, SigmaClip
 from astropy.table import Table, Column, vstack, hstack
 from astropy.utils.exceptions import AstropyUserWarning
 
-from . import DAOGroup
-from .funcs import subtract_psf, _extract_psf_fitting_names
-from .models import get_grouped_psf_model
+from .groupstars import DAOGroup
+from .utils import (get_grouped_psf_model, subtract_psf,
+                    _extract_psf_fitting_names)
 from ..aperture import CircularAperture, aperture_photometry
 from ..background import MMMBackground
 from ..detection import DAOStarFinder
