@@ -19,83 +19,82 @@ except ImportError:
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-def test_image_model():
-    gm = Gaussian2D(x_stddev=3, y_stddev=3)
-    xg, yg = np.mgrid[-2:3, -2:3]
+class TestFittableImageModel:
+    def setup_class(self):
+        self.gm = Gaussian2D(x_stddev=3, y_stddev=3)
 
-    imod_nonorm = FittableImageModel(gm(xg, yg))
-    assert np.allclose(imod_nonorm(0, 0), gm(0, 0))
-    assert np.allclose(imod_nonorm(1, 1), gm(1, 1))
-    assert np.allclose(imod_nonorm(-2, 1), gm(-2, 1))
+    def test_fittable_image_model(self):
+        xx, yy = np.mgrid[-2:3, -2:3]
+        model_nonorm = FittableImageModel(self.gm(xx, yy))
 
-    # now sub-pixel should *not* match, but be reasonably close
-    assert not np.allclose(imod_nonorm(0.5, 0.5), gm(0.5, 0.5))
-    # in this case good to ~0.1% seems to be fine
-    assert np.allclose(imod_nonorm(0.5, 0.5), gm(0.5, 0.5), rtol=.001)
-    assert np.allclose(imod_nonorm(-0.5, 1.75), gm(-0.5, 1.75), rtol=.001)
+        assert_allclose(model_nonorm(0, 0), self.gm(0, 0))
+        assert_allclose(model_nonorm(1, 1), self.gm(1, 1))
+        assert_allclose(model_nonorm(-2, 1), self.gm(-2, 1))
 
-    imod_norm = FittableImageModel(gm(xg, yg), normalize=True)
-    assert not np.allclose(imod_norm(0, 0), gm(0, 0))
-    assert np.allclose(np.sum(imod_norm(xg, yg)), 1)
+        # subpixel should *not* match, but be reasonably close
+        # in this case good to ~0.1% seems to be fine
+        assert_allclose(model_nonorm(0.5, 0.5), self.gm(0.5, 0.5), rtol=.001)
+        assert_allclose(model_nonorm(-0.5, 1.75), self.gm(-0.5, 1.75),
+                        rtol=.001)
 
-    imod_norm2 = FittableImageModel(gm(xg, yg), normalize=True,
-                                    normalization_correction=2)
-    assert not np.allclose(imod_norm2(0, 0), gm(0, 0))
-    assert np.allclose(imod_norm(0, 0), imod_norm2(0, 0)*2)
-    assert np.allclose(np.sum(imod_norm2(xg, yg)), 0.5)
+        model_norm = FittableImageModel(self.gm(xx, yy), normalize=True)
+        assert not np.allclose(model_norm(0, 0), self.gm(0, 0))
+        assert_allclose(np.sum(model_norm(xx, yy)), 1)
 
+        model_norm2 = FittableImageModel(self.gm(xx, yy), normalize=True,
+                                         normalization_correction=2)
+        assert not np.allclose(model_norm2(0, 0), self.gm(0, 0))
+        assert_allclose(model_norm(0, 0), model_norm2(0, 0)*2)
+        assert_allclose(np.sum(model_norm2(xx, yy)), 0.5)
 
-@pytest.mark.skipif('not HAS_SCIPY')
-def test_image_model_oversampling():
-    gm = Gaussian2D(x_stddev=3, y_stddev=3)
+    def test_fittable_image_model_oversampling(self):
+        oversamp = 3  # oversampling factor
+        xx, yy = np.mgrid[-3:3.00001:(1/oversamp), -3:3.00001:(1/oversamp)]
 
-    osa = 3  # oversampling factor
-    xg, yg = np.mgrid[-3:3.00001:(1/osa), -3:3.00001:(1/osa)]
+        im = self.gm(xx, yy)
+        assert im.shape[0] > 7
 
-    im = gm(xg, yg)
-    # should be obvious, but at least ensures the test is right:
-    assert im.shape[0] > 7
-    imod_oversampled = FittableImageModel(im, oversampling=osa)
+        model_oversampled = FittableImageModel(im, oversampling=oversamp)
+        assert_allclose(model_oversampled(0, 0), self.gm(0, 0))
+        assert_allclose(model_oversampled(1, 1), self.gm(1, 1))
+        assert_allclose(model_oversampled(-2, 1), self.gm(-2, 1))
+        assert_allclose(model_oversampled(0.5, 0.5), self.gm(0.5, 0.5),
+                        rtol=.001)
+        assert_allclose(model_oversampled(-0.5, 1.75), self.gm(-0.5, 1.75),
+                        rtol=.001)
 
-    assert np.allclose(imod_oversampled(0, 0), gm(0, 0))
-    assert np.allclose(imod_oversampled(1, 1), gm(1, 1))
-    assert np.allclose(imod_oversampled(-2, 1), gm(-2, 1))
-    assert np.allclose(imod_oversampled(0.5, 0.5), gm(0.5, 0.5), rtol=.001)
-    assert np.allclose(imod_oversampled(-0.5, 1.75), gm(-0.5, 1.75), rtol=.001)
+        # without oversampling the same tests should fail except for at
+        # the origin
+        model_wrongsampled = FittableImageModel(im)
+        assert_allclose(model_wrongsampled(0, 0), self.gm(0, 0))
+        assert not np.allclose(model_wrongsampled(1, 1), self.gm(1, 1))
+        assert not np.allclose(model_wrongsampled(-2, 1), self.gm(-2, 1))
+        assert not np.allclose(model_wrongsampled(0.5, 0.5),
+                               self.gm(0.5, 0.5), rtol=.001)
+        assert not np.allclose(model_wrongsampled(-0.5, 1.75),
+                               self.gm(-0.5, 1.75), rtol=.001)
 
-    imod_wrongsampled = FittableImageModel(im)
+    def test_centering_oversampled(self):
+        gm = Gaussian2D(x_stddev=2, y_stddev=3)
 
-    # now make sure that all *fails* without the oversampling
-    # except for at the origin
-    assert np.allclose(imod_wrongsampled(0, 0), gm(0, 0))
-    assert not np.allclose(imod_wrongsampled(1, 1), gm(1, 1))
-    assert not np.allclose(imod_wrongsampled(-2, 1), gm(-2, 1))
-    assert not np.allclose(imod_wrongsampled(0.5, 0.5), gm(0.5, 0.5),
-                           rtol=.001)
-    assert not np.allclose(imod_wrongsampled(-0.5, 1.75), gm(-0.5, 1.75),
-                           rtol=.001)
+        oversamp = 3
+        xx, yy = np.mgrid[-3:3.00001:(1/oversamp), -3:3.00001:(1/oversamp)]
 
+        model_oversampled = FittableImageModel(gm(xx, yy),
+                                               oversampling=oversamp)
 
-@pytest.mark.skipif('not HAS_SCIPY')
-def test_centering_oversampled():
-    gm = Gaussian2D(x_stddev=2, y_stddev=3)
+        valcen = gm(0, 0)
+        val36 = gm(0.66, 0.66)
 
-    osa = 3  # oversampling factor
-    xg, yg = np.mgrid[-3:3.00001:(1/osa), -3:3.00001:(1/osa)]
+        assert_allclose(valcen, model_oversampled(0, 0))
+        assert_allclose(val36, model_oversampled(0.66, 0.66), rtol=1.e-6)
 
-    imod_oversampled = FittableImageModel(gm(xg, yg), oversampling=osa)
+        model_oversampled.x_0 = 2.5
+        model_oversampled.y_0 = -3.5
 
-    valcen = gm(0, 0)
-    val36 = gm(0.66, 0.66)
-
-    assert np.allclose(valcen, imod_oversampled(0, 0))
-    assert np.allclose(val36, imod_oversampled(0.66, 0.66))
-
-    imod_oversampled.x_0 = 2.5
-    imod_oversampled.y_0 = -3.5
-
-    assert np.allclose(valcen, imod_oversampled(2.5, -3.5))
-    assert np.allclose(val36, imod_oversampled(2.5 + 0.66, -3.5 + 0.66))
+        assert_allclose(valcen, model_oversampled(2.5, -3.5))
+        assert_allclose(val36, model_oversampled(2.5 + 0.66, -3.5 + 0.66),
+                        rtol=1.e-6)
 
 
 class TestGriddedPSFModel:
