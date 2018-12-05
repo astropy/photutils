@@ -10,7 +10,8 @@ from astropy.modeling.models import Gaussian2D, Moffat2D
 from astropy.nddata import NDData
 import astropy.units as u
 
-from ..models import FittableImageModel, GriddedPSFModel, PRFAdapter
+from ..models import (FittableImageModel, GriddedPSFModel,
+                      IntegratedGaussianPRF, PRFAdapter)
 from ...segmentation import detect_sources, source_properties
 
 try:
@@ -271,6 +272,34 @@ class TestGriddedPSFModel:
         assert_allclose(orients[2].value, -80., rtol=1.e-5)
         assert 88.3 < orients[0].value < 88.4
         assert 64. < orients[3].value < 64.2
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+class TestIntegratedGaussianPRF:
+    widths = [0.001, 0.01, 0.1, 1]
+    sigmas = [0.5, 1., 2., 10., 12.34]
+
+    @pytest.mark.parametrize('width', widths)
+    def test_subpixel_gauss_psf(self, width):
+        """
+        Test subpixel accuracy of IntegratedGaussianPRF by checking the
+        sum of pixels.
+        """
+
+        gauss_psf = IntegratedGaussianPRF(width)
+        y, x = np.mgrid[-10:11, -10:11]
+        assert_allclose(gauss_psf(x, y).sum(), 1)
+
+    @pytest.mark.parametrize('sigma', sigmas)
+    def test_gaussian_psf_integral(self, sigma):
+        """
+        Test if IntegratedGaussianPRF integrates to unity on larger
+        scales.
+        """
+
+        psf = IntegratedGaussianPRF(sigma=sigma)
+        y, x = np.mgrid[-100:101, -100:101]
+        assert_allclose(psf(y, x).sum(), 1)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
