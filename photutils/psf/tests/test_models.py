@@ -1,14 +1,16 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 from itertools import product
+
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
+
 from astropy.modeling.models import Gaussian2D, Moffat2D
 from astropy.nddata import NDData
 import astropy.units as u
 
-from .. import FittableImageModel, PRFAdapter, GriddedPSFModel
+from ..models import FittableImageModel, GriddedPSFModel, PRFAdapter
 from ...segmentation import detect_sources, source_properties
 
 try:
@@ -95,80 +97,6 @@ class TestFittableImageModel:
         assert_allclose(valcen, model_oversampled(2.5, -3.5))
         assert_allclose(val36, model_oversampled(2.5 + 0.66, -3.5 + 0.66),
                         rtol=1.e-6)
-
-
-@pytest.mark.skipif('not HAS_SCIPY')
-class TestPRFAdapter:
-    def normalize_moffat(self, mof):
-        # this is the analytic value needed to get a total flux of 1
-        mof = mof.copy()
-        mof.amplitude = (mof.alpha-1)/(np.pi*mof.gamma**2)
-        return mof
-
-    @pytest.mark.parametrize("adapterkwargs", [
-        dict(xname='x_0', yname='y_0', fluxname=None, renormalize_psf=False),
-        dict(xname=None, yname=None, fluxname=None, renormalize_psf=False),
-        dict(xname='x_0', yname='y_0', fluxname='amplitude',
-             renormalize_psf=False)])
-    def test_create_eval_prfadapter(self, adapterkwargs):
-        mof = Moffat2D(gamma=1, alpha=4.8)
-        prf = PRFAdapter(mof, **adapterkwargs)
-
-        # test that these work without errors
-        prf.x_0 = 0.5
-        prf.y_0 = -0.5
-        prf.flux = 1.2
-        prf(0, 0)
-
-    @pytest.mark.parametrize("adapterkwargs", [
-        dict(xname='x_0', yname='y_0', fluxname=None, renormalize_psf=True),
-        dict(xname='x_0', yname='y_0', fluxname=None, renormalize_psf=False),
-        dict(xname=None, yname=None, fluxname=None, renormalize_psf=False)
-        ])
-    def test_prfadapter_integrates(self, adapterkwargs):
-        from scipy.integrate import dblquad
-
-        mof = Moffat2D(gamma=1.5, alpha=4.8)
-        if not adapterkwargs['renormalize_psf']:
-            mof = self.normalize_moffat(mof)
-        prf1 = PRFAdapter(mof, **adapterkwargs)
-
-        # first check that the PRF over a central grid ends up summing to the
-        # integrand over the whole PSF
-        xg, yg = np.meshgrid(*([(-1, 0, 1)]*2))
-        evalmod = prf1(xg, yg)
-
-        if adapterkwargs['renormalize_psf']:
-            mof = self.normalize_moffat(mof)
-
-        integrand, itol = dblquad(mof, -1.5, 1.5, lambda x: -1.5,
-                                  lambda x: 1.5)
-        assert_allclose(np.sum(evalmod), integrand, atol=itol * 10)
-
-    @pytest.mark.parametrize("adapterkwargs", [
-        dict(xname='x_0', yname='y_0', fluxname=None, renormalize_psf=False),
-        dict(xname=None, yname=None, fluxname=None, renormalize_psf=False)])
-    def test_prfadapter_sizematch(self, adapterkwargs):
-        from scipy.integrate import dblquad
-
-        mof1 = self.normalize_moffat(Moffat2D(gamma=1, alpha=4.8))
-        prf1 = PRFAdapter(mof1, **adapterkwargs)
-
-        # now try integrating over differently-sampled PRFs
-        # and check that they match
-        mof2 = self.normalize_moffat(Moffat2D(gamma=2, alpha=4.8))
-        prf2 = PRFAdapter(mof2, **adapterkwargs)
-
-        xg1, yg1 = np.meshgrid(*([(-0.5, 0.5)]*2))
-        xg2, yg2 = np.meshgrid(*([(-1.5, -0.5, 0.5, 1.5)]*2))
-
-        eval11 = prf1(xg1, yg1)
-        eval22 = prf2(xg2, yg2)
-
-        integrand, itol = dblquad(mof1, -2, 2, lambda x: -2, lambda x: 2)
-        # it's a bit of a guess that the above itol is appropriate, but
-        # it should be close
-        assert_allclose(np.sum(eval11), np.sum(eval22), atol=itol*100)
 
 
 class TestGriddedPSFModel:
@@ -343,3 +271,77 @@ class TestGriddedPSFModel:
         assert_allclose(orients[2].value, -80., rtol=1.e-5)
         assert 88.3 < orients[0].value < 88.4
         assert 64. < orients[3].value < 64.2
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+class TestPRFAdapter:
+    def normalize_moffat(self, mof):
+        # this is the analytic value needed to get a total flux of 1
+        mof = mof.copy()
+        mof.amplitude = (mof.alpha-1)/(np.pi*mof.gamma**2)
+        return mof
+
+    @pytest.mark.parametrize("adapterkwargs", [
+        dict(xname='x_0', yname='y_0', fluxname=None, renormalize_psf=False),
+        dict(xname=None, yname=None, fluxname=None, renormalize_psf=False),
+        dict(xname='x_0', yname='y_0', fluxname='amplitude',
+             renormalize_psf=False)])
+    def test_create_eval_prfadapter(self, adapterkwargs):
+        mof = Moffat2D(gamma=1, alpha=4.8)
+        prf = PRFAdapter(mof, **adapterkwargs)
+
+        # test that these work without errors
+        prf.x_0 = 0.5
+        prf.y_0 = -0.5
+        prf.flux = 1.2
+        prf(0, 0)
+
+    @pytest.mark.parametrize("adapterkwargs", [
+        dict(xname='x_0', yname='y_0', fluxname=None, renormalize_psf=True),
+        dict(xname='x_0', yname='y_0', fluxname=None, renormalize_psf=False),
+        dict(xname=None, yname=None, fluxname=None, renormalize_psf=False)
+        ])
+    def test_prfadapter_integrates(self, adapterkwargs):
+        from scipy.integrate import dblquad
+
+        mof = Moffat2D(gamma=1.5, alpha=4.8)
+        if not adapterkwargs['renormalize_psf']:
+            mof = self.normalize_moffat(mof)
+        prf1 = PRFAdapter(mof, **adapterkwargs)
+
+        # first check that the PRF over a central grid ends up summing to the
+        # integrand over the whole PSF
+        xg, yg = np.meshgrid(*([(-1, 0, 1)]*2))
+        evalmod = prf1(xg, yg)
+
+        if adapterkwargs['renormalize_psf']:
+            mof = self.normalize_moffat(mof)
+
+        integrand, itol = dblquad(mof, -1.5, 1.5, lambda x: -1.5,
+                                  lambda x: 1.5)
+        assert_allclose(np.sum(evalmod), integrand, atol=itol * 10)
+
+    @pytest.mark.parametrize("adapterkwargs", [
+        dict(xname='x_0', yname='y_0', fluxname=None, renormalize_psf=False),
+        dict(xname=None, yname=None, fluxname=None, renormalize_psf=False)])
+    def test_prfadapter_sizematch(self, adapterkwargs):
+        from scipy.integrate import dblquad
+
+        mof1 = self.normalize_moffat(Moffat2D(gamma=1, alpha=4.8))
+        prf1 = PRFAdapter(mof1, **adapterkwargs)
+
+        # now try integrating over differently-sampled PRFs
+        # and check that they match
+        mof2 = self.normalize_moffat(Moffat2D(gamma=2, alpha=4.8))
+        prf2 = PRFAdapter(mof2, **adapterkwargs)
+
+        xg1, yg1 = np.meshgrid(*([(-0.5, 0.5)]*2))
+        xg2, yg2 = np.meshgrid(*([(-1.5, -0.5, 0.5, 1.5)]*2))
+
+        eval11 = prf1(xg1, yg1)
+        eval22 = prf2(xg2, yg2)
+
+        integrand, itol = dblquad(mof1, -2, 2, lambda x: -2, lambda x: 2)
+        # it's a bit of a guess that the above itol is appropriate, but
+        # it should be close
+        assert_allclose(np.sum(eval11), np.sum(eval22), atol=itol*100)
