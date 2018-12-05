@@ -23,6 +23,9 @@ except ImportError:
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestEPSFBuild:
     def setup_class(self):
+        """
+        Create a simulated image for testing.
+        """
 
         from scipy.spatial import cKDTree
 
@@ -75,20 +78,11 @@ class TestEPSFBuild:
         assert isinstance(stars[0], EPSFStar)
         assert stars[0].data.shape == (size, size)
 
-    def test_extract_stars_inputs(self):
-        with pytest.raises(ValueError):
-            extract_stars(np.ones(3), self.init_stars)
-
-        with pytest.raises(ValueError):
-            extract_stars(self.nddata, [(1, 1), (2, 2), (3, 3)])
-
-        with pytest.raises(ValueError):
-            extract_stars(self.nddata, [self.init_stars, self.init_stars])
-
-        with pytest.raises(ValueError):
-            extract_stars([self.nddata, self.nddata], self.init_stars)
-
     def test_epsf_build(self):
+        """
+        This is an end-to-end test of EPSFBuilder on a simulated image.
+        """
+
         size = 25
         oversampling = 4.
         stars = extract_stars(self.nddata, self.init_stars, size=size)
