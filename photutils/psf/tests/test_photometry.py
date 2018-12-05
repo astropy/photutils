@@ -255,7 +255,7 @@ def test_niters_errors():
 
 
 @pytest.mark.xfail('not HAS_SCIPY')
-def test_fitshape_erros():
+def test_fitshape_errors():
     basic_phot_obj = make_psf_photometry_objs()[0]
 
     # first make sure setting to a scalar does the right thing (and makes
@@ -293,7 +293,7 @@ def test_aperture_radius_errors():
 
 
 @pytest.mark.xfail('not HAS_SCIPY')
-def test_finder_erros():
+def test_finder_errors():
     iter_phot_obj = make_psf_photometry_objs()[1]
 
     with pytest.raises(ValueError):
