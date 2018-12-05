@@ -1,14 +1,146 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Models and functions for doing PSF/PRF fitting photometry on image data.
+Utilities for PSF fitting photometry.
 """
 
 import numpy as np
 from astropy.table import Table
+from astropy.modeling import models
 from astropy.nddata.utils import add_array, extract_array
 
 
-__all__ = ['subtract_psf']
+__all__ = ['prepare_psf_model', 'get_grouped_psf_model', 'subtract_psf']
+
+
+def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
+                      renormalize_psf=True):
+    """
+    Convert a 2D PSF model to one suitable for use with
+    `BasicPSFPhotometry` or its subclasses.
+
+    The resulting model may be a composite model, but should have only
+    the x, y, and flux related parameters un-fixed.
+
+    Parameters
+    ----------
+    psfmodel : a 2D model
+        The model to assume as representative of the PSF.
+    xname : str or None
+        The name of the ``psfmodel`` parameter that corresponds to the
+        x-axis center of the PSF.  If None, the model will be assumed to
+        be centered at x=0, and a new parameter will be added for the
+        offset.
+    yname : str or None
+        The name of the ``psfmodel`` parameter that corresponds to the
+        y-axis center of the PSF.  If None, the model will be assumed to
+        be centered at y=0, and a new parameter will be added for the
+        offset.
+    fluxname : str or None
+        The name of the ``psfmodel`` parameter that corresponds to the
+        total flux of the star.  If None, a scaling factor will be added
+        to the model.
+    renormalize_psf : bool
+        If True, the model will be integrated from -inf to inf and
+        re-scaled so that the total integrates to 1.  Note that this
+        renormalization only occurs *once*, so if the total flux of
+        ``psfmodel`` depends on position, this will *not* be correct.
+
+    Returns
+    -------
+    outmod : a model
+        A new model ready to be passed into `BasicPSFPhotometry` or its
+        subclasses.
+    """
+
+    if xname is None:
+        xinmod = models.Shift(0, name='x_offset')
+        xname = 'offset_0'
+    else:
+        xinmod = models.Identity(1)
+        xname = xname + '_2'
+    xinmod.fittable = True
+
+    if yname is None:
+        yinmod = models.Shift(0, name='y_offset')
+        yname = 'offset_1'
+    else:
+        yinmod = models.Identity(1)
+        yname = yname + '_2'
+    yinmod.fittable = True
+
+    outmod = (xinmod & yinmod) | psfmodel
+
+    if fluxname is None:
+        outmod = outmod * models.Const2D(1, name='flux_scaling')
+        fluxname = 'amplitude_3'
+    else:
+        fluxname = fluxname + '_2'
+
+    if renormalize_psf:
+        # we do the import here because other machinery works w/o scipy
+        from scipy import integrate
+
+        integrand = integrate.dblquad(psfmodel, -np.inf, np.inf,
+                                      lambda x: -np.inf, lambda x: np.inf)[0]
+        normmod = models.Const2D(1./integrand, name='renormalize_scaling')
+        outmod = outmod * normmod
+
+    # final setup of the output model - fix all the non-offset/scale
+    # parameters
+    for pnm in outmod.param_names:
+        outmod.fixed[pnm] = pnm not in (xname, yname, fluxname)
+
+    # and set the names so that BasicPSFPhotometry knows what to do
+    outmod.xname = xname
+    outmod.yname = yname
+    outmod.fluxname = fluxname
+
+    # now some convenience aliases if reasonable
+    outmod.psfmodel = outmod[2]
+    if 'x_0' not in outmod.param_names and 'y_0' not in outmod.param_names:
+        outmod.x_0 = getattr(outmod, xname)
+        outmod.y_0 = getattr(outmod, yname)
+    if 'flux' not in outmod.param_names:
+        outmod.flux = getattr(outmod, fluxname)
+
+    return outmod
+
+
+def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
+    """
+    Construct a joint PSF model which consists of a sum of PSF's templated on
+    a specific model, but whose parameters are given by a table of objects.
+
+    Parameters
+    ----------
+    template_psf_model : `astropy.modeling.Fittable2DModel` instance
+        The model to use for *individual* objects.  Must have parameters named
+        ``x_0``, ``y_0``, and ``flux``.
+    star_group : `~astropy.table.Table`
+        Table of stars for which the compound PSF will be constructed.  It
+        must have columns named ``x_0``, ``y_0``, and ``flux_0``.
+
+    Returns
+    -------
+    group_psf
+        An `astropy.modeling` ``CompoundModel`` instance which is a sum of the
+        given PSF models.
+    """
+
+    group_psf = None
+
+    for star in star_group:
+        psf_to_add = template_psf_model.copy()
+        for param_tab_name, param_name in pars_to_set.items():
+            setattr(psf_to_add, param_name, star[param_tab_name])
+
+        if group_psf is None:
+            # this is the first one only
+            group_psf = psf_to_add
+        else:
+            group_psf += psf_to_add
+
+    return group_psf
 
 
 def _extract_psf_fitting_names(psf):
