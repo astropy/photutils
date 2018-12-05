@@ -79,9 +79,14 @@ exclude_patterns.append('psf_spec/*')
 
 # This is added to the end of RST files - a good place to put substitutions to
 # be used globally.
+import photutils
+
 rst_epilog += """
+.. |minimum_python_version| replace:: {0}
+.. |minimum_numpy_version| replace:: {1}
 .. _Photutils: high-level_API.html
-"""
+""".format(photutils.__minimum_python_version__,
+           photutils.__minimum_numpy_version__)
 
 # -- Project information ------------------------------------------------------
 
@@ -95,7 +100,7 @@ copyright = '{0}, {1}'.format(
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 
-__import__(setup_cfg['package_name'])
+# Note: photutils was explicitly imported above
 package = sys.modules[setup_cfg['package_name']]
 
 # The short X.Y version.

@@ -17,6 +17,7 @@ from ._astropy_init import *       # noqa
 import sys
 
 __minimum_python_version__ = '3.5'
+__minimum_numpy_version__ = '1.10'
 
 
 class UnsupportedPythonError(Exception):
@@ -28,11 +29,12 @@ if (sys.version_info <
     raise UnsupportedPythonError('Photutils does not support Python < {}'
                                  .format(__minimum_python_version__))
 
-if not _ASTROPY_SETUP_:            # noqa
-    from .aperture import *        # noqa
-    from .background import *      # noqa
-    from .centroids import *       # noqa
-    from .detection import *       # noqa
-    from .morphology import *      # noqa
-    from .psf import *             # noqa
-    from .segmentation import *    # noqa
+
+if not _ASTROPY_SETUP_:  # noqa
+    from .aperture import *  # noqa
+    from .background import *  # noqa
+    from .centroids import *  # noqa
+    from .detection import *  # noqa
+    from .morphology import *  # noqa
+    from .psf import *  # noqa
+    from .segmentation import *  # noqa
