@@ -115,7 +115,7 @@ sources3['group_id'] = [1] * 2
 sources3['iter_detected'] = [1, 2]
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize("sigma_psf, sources", [(sigma_psfs[2], sources3)])
 def test_psf_photometry_niters(sigma_psf, sources):
     img_shape = (32, 32)
@@ -158,7 +158,7 @@ def test_psf_photometry_niters(sigma_psf, sources):
         assert_array_equal(cp_image, image)
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize("sigma_psf, sources",
                          [(sigma_psfs[0], sources1),
                           (sigma_psfs[1], sources2),
@@ -237,7 +237,7 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
         phot_proc.psf_model.y_0.fixed = False
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_niters_errors():
     iter_phot_obj = make_psf_photometry_objs()[1]
 
@@ -254,7 +254,7 @@ def test_niters_errors():
     iter_phot_obj.niters = None
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_fitshape_errors():
     basic_phot_obj = make_psf_photometry_objs()[0]
 
@@ -280,7 +280,7 @@ def test_fitshape_errors():
         basic_phot_obj.fitshape = (3, 3, 3)
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_aperture_radius_errors():
     basic_phot_obj = make_psf_photometry_objs()[0]
 
@@ -292,7 +292,7 @@ def test_aperture_radius_errors():
         basic_phot_obj.aperture_radius = -3
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_finder_errors():
     iter_phot_obj = make_psf_photometry_objs()[1]
 
@@ -306,7 +306,7 @@ def test_finder_errors():
             psf_model=IntegratedGaussianPRF(1), fitshape=(11, 11))
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_finder_positions_warning():
     basic_phot_obj = make_psf_photometry_objs(sigma_psf=2)[0]
     positions = Table()
@@ -329,7 +329,7 @@ def test_finder_positions_warning():
         result_tab = basic_phot_obj(image=image)
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_aperture_radius():
     img_shape = (32, 32)
 
