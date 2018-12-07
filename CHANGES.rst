@@ -21,6 +21,10 @@ New Features
   - Added a ``GriddedPSFModel`` class for spatially-dependent PSFs.
     [#772]
 
+  - The ``pixel_scale`` keyword in ``EPSFStar``, ``EPSFBuilder`` and
+    ``EPSFModel`` is now deprecated.  Use the ``oversampling`` keyword
+    instead. [#780]
+
 API changes
 ^^^^^^^^^^^
 
