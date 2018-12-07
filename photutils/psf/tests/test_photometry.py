@@ -4,24 +4,24 @@ import pytest
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 
-from astropy.table import Table
-from astropy.stats import gaussian_sigma_to_fwhm, SigmaClip
+from astropy.convolution.utils import discretize_model
 from astropy.modeling import Parameter, Fittable2DModel
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling.models import Gaussian2D, Moffat2D
-from astropy.convolution.utils import discretize_model
+from astropy.stats import gaussian_sigma_to_fwhm, SigmaClip
+from astropy.table import Table
 from astropy.tests.helper import catch_warnings
 from astropy.utils.exceptions import AstropyUserWarning
 
 from ..groupstars import DAOGroup
-from ..models import IntegratedGaussianPRF, prepare_psf_model
+from ..models import IntegratedGaussianPRF
 from ..photometry import (DAOPhotPSFPhotometry, BasicPSFPhotometry,
                           IterativelySubtractedPSFPhotometry)
 from ..sandbox import DiscretePRF
+from ..utils import prepare_psf_model
 from ...background import StdBackgroundRMS, MMMBackground
 from ...datasets import make_gaussian_sources_image, make_noise_image
 from ...detection import DAOStarFinder
-
 
 try:
     import scipy    # noqa
@@ -115,7 +115,7 @@ sources3['group_id'] = [1] * 2
 sources3['iter_detected'] = [1, 2]
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize("sigma_psf, sources", [(sigma_psfs[2], sources3)])
 def test_psf_photometry_niters(sigma_psf, sources):
     img_shape = (32, 32)
@@ -158,7 +158,7 @@ def test_psf_photometry_niters(sigma_psf, sources):
         assert_array_equal(cp_image, image)
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize("sigma_psf, sources",
                          [(sigma_psfs[0], sources1),
                           (sigma_psfs[1], sources2),
@@ -237,7 +237,7 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
         phot_proc.psf_model.y_0.fixed = False
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_niters_errors():
     iter_phot_obj = make_psf_photometry_objs()[1]
 
@@ -254,8 +254,8 @@ def test_niters_errors():
     iter_phot_obj.niters = None
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
-def test_fitshape_erros():
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_fitshape_errors():
     basic_phot_obj = make_psf_photometry_objs()[0]
 
     # first make sure setting to a scalar does the right thing (and makes
@@ -280,7 +280,7 @@ def test_fitshape_erros():
         basic_phot_obj.fitshape = (3, 3, 3)
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_aperture_radius_errors():
     basic_phot_obj = make_psf_photometry_objs()[0]
 
@@ -292,8 +292,8 @@ def test_aperture_radius_errors():
         basic_phot_obj.aperture_radius = -3
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
-def test_finder_erros():
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_finder_errors():
     iter_phot_obj = make_psf_photometry_objs()[1]
 
     with pytest.raises(ValueError):
@@ -306,7 +306,7 @@ def test_finder_erros():
             psf_model=IntegratedGaussianPRF(1), fitshape=(11, 11))
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_finder_positions_warning():
     basic_phot_obj = make_psf_photometry_objs(sigma_psf=2)[0]
     positions = Table()
@@ -329,7 +329,7 @@ def test_finder_positions_warning():
         result_tab = basic_phot_obj(image=image)
 
 
-@pytest.mark.xfail('not HAS_SCIPY')
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_aperture_radius():
     img_shape = (32, 32)
 
