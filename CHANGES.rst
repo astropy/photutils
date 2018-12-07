@@ -51,6 +51,14 @@ API changes
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - If a single aperture is input as a list into the
+    ``aperture_photometry`` function, then the output columns will be
+    called ``aperture_sum_0`` and ``aperture_sum_err_0`` (if errors
+    are used).  Previously these column names did not have the
+    trailing "_0". [#779]
+
 - ``photutils.segmentation``
 
   - Fixed a bug in the computation of ``sky_bbox_ul``,
