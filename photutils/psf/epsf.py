@@ -487,9 +487,11 @@ class EPSFBuilder:
         # FittableImageModel requires a scalar oversampling factor
         oversampling = np.mean(oversampling)
 
-        return EPSFModel(data=data, origin=(xcenter, ycenter),
-                         normalize=False, oversampling=oversampling,
-                         pixel_scale=pixel_scale)
+        epsf = EPSFModel(data=data, origin=(xcenter, ycenter),
+                         normalize=False, oversampling=oversampling)
+        epsf._pixel_scale = pixel_scale
+
+        return epsf
 
     def _resample_residual(self, star, epsf):
         """
@@ -684,9 +686,11 @@ class EPSFBuilder:
         # Define an EPSFModel for the input data.  This EPSFModel will be
         # used to evaluate the model on a shifted pixel grid to place the
         # centroid at the array center.
+        pixel_scale = epsf.pixel_scale
         epsf = EPSFModel(data=epsf_data, origin=epsf.origin, normalize=False,
-                         oversampling=epsf.oversampling,
-                         pixel_scale=epsf.pixel_scale)
+                         oversampling=epsf.oversampling)
+        epsf._pixel_scale = pixel_scale
+
         epsf.fill_value = 0.0
         xcenter, ycenter = epsf.origin
 
@@ -814,9 +818,11 @@ class EPSFBuilder:
         xcenter = (new_epsf.shape[1] - 1) / 2.
         ycenter = (new_epsf.shape[0] - 1) / 2.
 
-        return EPSFModel(data=new_epsf, origin=(xcenter, ycenter),
-                         normalize=False, oversampling=epsf.oversampling,
-                         pixel_scale=epsf.pixel_scale)
+        epsf_new = EPSFModel(data=new_epsf, origin=(xcenter, ycenter),
+                             normalize=False, oversampling=epsf.oversampling)
+        epsf_new._pixel_scale = epsf.pixel_scale
+
+        return epsf_new
 
     def build_epsf(self, stars, init_epsf=None):
         """
