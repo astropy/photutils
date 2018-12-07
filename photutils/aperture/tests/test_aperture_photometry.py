@@ -392,6 +392,9 @@ def test_wcs_based_photometry_to_catalogue():
     assert(np.mean(np.fabs(((fluxes_catalog - converted_aperture_sum.value) /
                             fluxes_catalog))) < 0.1)
 
+    # close the file
+    hdu.close()
+
 
 def test_wcs_based_photometry():
     data = make_4gaussians_image()
