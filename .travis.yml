@@ -36,6 +36,7 @@ env:
         - SETUP_CMD='test'
         - EVENT_TYPE='push pull_request'
         - SETUP_XVFB=True
+        - MPLBACKEND=Agg
 
         # PEP8 errors/warnings:
         # E101 - mix of tabs and spaces
