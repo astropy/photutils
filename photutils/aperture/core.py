@@ -880,6 +880,10 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         if (int(subpixels) != subpixels) or (subpixels <= 0):
             raise ValueError('subpixels must be a positive integer.')
 
+    scalar_aperture = False
+    if isinstance(apertures, Aperture):
+        scalar_aperture = True
+
     apertures = np.atleast_1d(apertures)
 
     # convert sky to pixel apertures
@@ -929,7 +933,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
         sum_key = 'aperture_sum'
         sum_err_key = 'aperture_sum_err'
-        if len(apertures) > 1:
+        if not scalar_aperture:
             sum_key += '_{}'.format(i)
             sum_err_key += '_{}'.format(i)
 
