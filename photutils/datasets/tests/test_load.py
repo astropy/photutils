@@ -1,7 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 import pytest
-from astropy.tests.helper import remote_data
 
 from .. import load, get_path
 
@@ -17,7 +16,7 @@ def test_load_fermi_image():
     assert hdu.data.shape == (201, 401)
 
 
-@remote_data
+@pytest.mark.remote_data
 def test_load_star_image():
     hdu = load.load_star_image()
     assert len(hdu.header) == 104
