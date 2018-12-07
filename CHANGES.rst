@@ -37,11 +37,16 @@ API changes
     ``IRAFStarFinder``, and ``find_peaks`` now will return an empty
     table with column names and types. [#758, #762]
 
-- ``photutils.epsf``
+- ``photutils.psf``
 
   - The ``Star``, ``Stars``, and ``LinkedStars`` classes are now
     deprecated and have been renamed ``EPSFStar``, ``EPSFStars``, and
     ``LinkedEPSFStars``, respectively. [#727]
+
+  - The ``photutils.psf.funcs.py`` module was renamed
+    ``photutils.psf.utils.py``. The ``prepare_psf_model`` and
+    ``get_grouped_psf_model`` functions were also moved to this new
+    ``utils.py`` module.  [#777]
 
 Bug Fixes
 ^^^^^^^^^
