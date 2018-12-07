@@ -898,3 +898,26 @@ def test_radius_units():
     ap = SkyCircularAperture(pos, r=r)
     assert ap.r.value == 3.0
     assert ap.r.unit == u.pix
+
+
+def test_scalar_aperture():
+    """
+    Regression test to check that length-1 aperture list appends a "_0"
+    on the column names to be consistent with list inputs.
+    """
+
+    data = np.ones((20, 20), dtype=np.float)
+
+    ap = CircularAperture((10, 10), r=3.)
+    colnames1 = aperture_photometry(data, ap, error=data).colnames
+    assert (colnames1 == ['id', 'xcenter', 'ycenter', 'aperture_sum',
+                          'aperture_sum_err'])
+
+    colnames2 = aperture_photometry(data, [ap], error=data).colnames
+    assert (colnames2 == ['id', 'xcenter', 'ycenter', 'aperture_sum_0',
+                          'aperture_sum_err_0'])
+
+    colnames3 = aperture_photometry(data, [ap, ap], error=data).colnames
+    assert (colnames3 == ['id', 'xcenter', 'ycenter', 'aperture_sum_0',
+                          'aperture_sum_err_0', 'aperture_sum_1',
+                          'aperture_sum_err_1'])
