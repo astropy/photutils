@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 
 from astropy.io import fits
-from astropy.tests.helper import remote_data
 
 from .make_test_data import make_test_image
 from ..ellipse import Ellipse
@@ -19,7 +18,7 @@ except ImportError:
     HAS_SCIPY = False
 
 
-@remote_data
+@pytest.mark.remote_data
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_model():
     path = get_path('isophote/M105-S001-RGB.fits',

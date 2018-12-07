@@ -14,7 +14,6 @@ from astropy.coordinates import SkyCoord
 from astropy.io import fits
 from astropy.nddata import NDData
 from astropy.table import Table
-from astropy.tests.helper import remote_data
 import astropy.units as u
 from astropy.utils import minversion
 from astropy.wcs.utils import pixel_to_skycoord
@@ -359,7 +358,7 @@ class TestInputNDData(BaseTestDifferentData):
         self.fluxunit = u.adu
 
 
-@remote_data
+@pytest.mark.remote_data
 def test_wcs_based_photometry_to_catalogue():
     pathcat = get_path('spitzer_example_catalog.xml', location='remote')
     pathhdu = get_path('spitzer_example_image.fits', location='remote')
@@ -392,6 +391,9 @@ def test_wcs_based_photometry_to_catalogue():
 
     assert(np.mean(np.fabs(((fluxes_catalog - converted_aperture_sum.value) /
                             fluxes_catalog))) < 0.1)
+
+    # close the file
+    hdu.close()
 
 
 def test_wcs_based_photometry():

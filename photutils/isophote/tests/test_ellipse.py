@@ -5,7 +5,6 @@ import pytest
 
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
-from astropy.tests.helper import remote_data
 
 from .make_test_data import make_test_image
 from ..ellipse import Ellipse
@@ -39,7 +38,7 @@ class TestEllipse:
         # centered, tilted galaxy.
         self.data = make_test_image(pa=PA, random_state=123)
 
-    @remote_data
+    @pytest.mark.remote_data
     def test_find_center(self):
         path = get_path('isophote/M51.fits', location='photutils-datasets',
                         cache=True)
@@ -126,7 +125,7 @@ class TestEllipse:
         assert len(isolist) == 54
 
 
-@remote_data
+@pytest.mark.remote_data
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestEllipseOnRealData:
     def test_basic(self):
