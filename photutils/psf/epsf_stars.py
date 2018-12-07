@@ -12,7 +12,8 @@ from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
                                   NoOverlapError)
 from astropy.table import Table
 from astropy.utils import lazyproperty, deprecated
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyUserWarning,
+                                      AstropyDeprecationWarning)
 from astropy.wcs.utils import skycoord_to_pixel
 
 from ..aperture import BoundingBox
@@ -59,6 +60,12 @@ class EPSFStar:
         An optional identification number or label for the star.
 
     pixel_scale : float or tuple of two floats, optional
+        .. warning::
+
+            The ``pixel_scale`` keyword is now deprecated (since v0.6)
+            and will likely be removed in v0.7.  Use the
+            ``oversampling`` keyword instead.
+
         The pixel scale (in arbitrary units) of the input ``data``.  The
         ``pixel_scale`` can either be a single float or tuple of two
         floats of the form ``(x_pixscale, y_pixscale)``.  If
@@ -98,6 +105,11 @@ class EPSFStar:
         self.origin = np.asarray(origin)
         self.wcs_large = wcs_large
         self.id_label = id_label
+
+        if pixel_scale != 1:
+            warnings.warn('The pixel_scale keyword is deprecated and will '
+                          'likely be removed in v0.7.  Use the oversampling '
+                          'keyword instead.', AstropyDeprecationWarning)
 
         pixel_scale = np.atleast_1d(pixel_scale)
         if len(pixel_scale) == 1:

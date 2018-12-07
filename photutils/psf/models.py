@@ -10,7 +10,8 @@ import warnings
 import numpy as np
 from astropy.nddata import NDData
 from astropy.modeling import Parameter, Fittable2DModel
-from astropy.utils.exceptions import AstropyWarning
+from astropy.utils.exceptions import (AstropyWarning,
+                                      AstropyDeprecationWarning)
 
 
 __all__ = ['NonNormalizable', 'FittableImageModel', 'EPSFModel',
@@ -479,20 +480,17 @@ class FittableImageModel(Fittable2DModel):
 
 class EPSFModel(FittableImageModel):
     """
-    A subclass of `FittableImageModel` that adds a ``pixel_scale``
-    attribute.
-
-    The ``pixel_scale`` can be used in conjunction with the
-    `~photutils.psf.Star` pixel scale when fitting (and building) the
-    PSF.  This allows fitting (and building) a PSF using images of stars
-    with different pixel scales.
-
-    `EPSFModel` has the same parameters as `FittableImageModel` with the
-    addition of a single parameter listed below.
+    A subclass of `FittableImageModel`.
 
     Parameters
     ----------
     pixel_scale : float, tuple of two floats or `None`, optional
+        .. warning::
+
+            The ``pixel_scale`` keyword is now deprecated (since v0.6)
+            and will likely be removed in v0.7.  Use the
+            ``oversampling`` keyword instead.
+
         The pixel scale (in arbitrary units) of the ePSF.  The
         ``pixel_scale`` can either be a single float or tuple of two
         floats of the form ``(x_pixscale, y_pixscale)``.  If
@@ -520,6 +518,10 @@ class EPSFModel(FittableImageModel):
 
         if pixel_scale is None:
             pixel_scale = 1. / oversampling
+        else:
+            warnings.warn('The pixel_scale keyword is deprecated and will '
+                          'likely be removed in v0.7.  Use the oversampling '
+                          'keyword instead.', AstropyDeprecationWarning)
 
         super().__init__(
             data=data, flux=flux, x_0=x_0, y_0=y_0, normalize=normalize,
