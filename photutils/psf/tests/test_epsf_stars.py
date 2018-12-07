@@ -26,6 +26,7 @@ STARS_TBL['x'] = peaks_tbl['x_peak']
 STARS_TBL['y'] = peaks_tbl['y_peak']
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_extract_stars():
     stars = extract_stars(NDDATA, STARS_TBL, size=25)
     assert len(stars) == 403
@@ -37,6 +38,7 @@ def test_extract_stars():
     assert stars.center.shape == (len(stars), 2)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_extract_stars_inputs():
     with pytest.raises(ValueError):
         extract_stars(np.ones(3), STARS_TBL)
