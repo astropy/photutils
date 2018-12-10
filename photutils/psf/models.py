@@ -760,6 +760,14 @@ class GriddedPSFModel(Fittable2DModel):
         Evaluate the `GriddedPSFModel` for the input parameters.
         """
 
+        # NOTE: this is needed because the PSF photometry routines input
+        # length-1 values instead of scalars.  TODO: fix the photometry
+        # routines.
+        if not np.isscalar(x_0):
+            x_0 = x_0[0]
+        if not np.isscalar(y_0):
+            y_0 = y_0[0]
+
         if (x_0 < self._xgrid_min or x_0 > self._xgrid_max or
                 y_0 < self._ygrid_min or y_0 > self._ygrid_max):
 
