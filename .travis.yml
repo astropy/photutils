@@ -90,25 +90,26 @@ matrix:
           env: ASTROPY_VERSION=development
                EVENT_TYPE='pull_request push cron'
 
-        # Test with Astropy LTS version and the latest Python
+        # Test with Astropy LTS version and older numpy versions
+        # astropy >= 3.1 requires numpy >= 1.13
         - stage: Comprehensive tests
-          env: ASTROPY_VERSION=lts
-               EVENT_TYPE='pull_request push cron'
-               NUMPY_VERSION=1.13
+          env: PYTHON_VERSION=3.5
+               NUMPY_VERSION=1.11
+               ASTROPY_VERSION=lts
                PIP_DEPENDENCIES='pytest<3.10'
+
+        - stage: Comprehensive tests
+          env: NUMPY_VERSION=1.12 ASTROPY_VERSION=lts
+               PIP_DEPENDENCIES='pytest<3.10'
+
+        - stage: Comprehensive tests
+          env: NUMPY_VERSION=1.13 ASTROPY_VERSION=lts
+               PIP_DEPENDENCIES='pytest<3.10'
+               EVENT_TYPE='pull_request push cron'
 
         # Test with other Python and numpy versions
         - stage: Comprehensive tests
           env: PYTHON_VERSION=3.7
-
-        - stage: Comprehensive tests
-          env: PYTHON_VERSION=3.5 NUMPY_VERSION=1.10
-
-        - stage: Comprehensive tests
-          env: NUMPY_VERSION=1.11
-
-        - stage: Comprehensive tests
-          env: NUMPY_VERSION=1.12
 
         # Test with numpy pre-release version
         - stage: Comprehensive tests
