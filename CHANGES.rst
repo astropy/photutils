@@ -1,6 +1,11 @@
 0.6 (unreleased)
 ----------------
 
+General
+^^^^^^^
+
+ - Versions of Numpy <1.11 are no longer supported. [#783]
+
 New Features
 ^^^^^^^^^^^^
 
@@ -18,12 +23,17 @@ New Features
 
 - ``photutils.psf``
 
+  - The ``Star``, ``Stars``, and ``LinkedStars`` classes are now
+    deprecated and have been renamed ``EPSFStar``, ``EPSFStars``, and
+    ``LinkedEPSFStars``, respectively. [#727]
+
   - Added a ``GriddedPSFModel`` class for spatially-dependent PSFs.
     [#772]
 
   - The ``pixel_scale`` keyword in ``EPSFStar``, ``EPSFBuilder`` and
     ``EPSFModel`` is now deprecated.  Use the ``oversampling`` keyword
     instead. [#780]
+
 
 API changes
 ^^^^^^^^^^^
@@ -42,10 +52,6 @@ API changes
     table with column names and types. [#758, #762]
 
 - ``photutils.psf``
-
-  - The ``Star``, ``Stars``, and ``LinkedStars`` classes are now
-    deprecated and have been renamed ``EPSFStar``, ``EPSFStars``, and
-    ``LinkedEPSFStars``, respectively. [#727]
 
   - The ``photutils.psf.funcs.py`` module was renamed
     ``photutils.psf.utils.py``. The ``prepare_psf_model`` and
