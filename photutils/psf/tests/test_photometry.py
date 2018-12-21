@@ -20,7 +20,7 @@ from ..photometry import (DAOPhotPSFPhotometry, BasicPSFPhotometry,
 from ..sandbox import DiscretePRF
 from ..utils import prepare_psf_model
 from ...background import StdBackgroundRMS, MMMBackground
-from ...datasets import make_gaussian_sources_image, make_noise_image
+from ...datasets import make_gaussian_prf_sources_image, make_noise_image
 from ...detection import DAOStarFinder
 
 try:
@@ -77,10 +77,9 @@ sigma_psfs = []
 sigma_psfs.append(2)
 sources1 = Table()
 sources1['flux'] = [800, 1000, 1200]
-sources1['x_mean'] = [13, 18, 25]
-sources1['y_mean'] = [16, 16, 25]
-sources1['x_stddev'] = [sigma_psfs[-1]] * 3
-sources1['y_stddev'] = sources1['x_stddev']
+sources1['x_0'] = [13, 18, 25]
+sources1['y_0'] = [16, 16, 25]
+sources1['sigma'] = [sigma_psfs[-1]] * 3
 sources1['theta'] = [0] * 3
 sources1['id'] = [1, 2, 3]
 sources1['group_id'] = [1, 1, 2]
@@ -90,10 +89,9 @@ sources1['group_id'] = [1, 1, 2]
 sigma_psfs.append(2)
 sources2 = Table()
 sources2['flux'] = [700, 800, 700, 800]
-sources2['x_mean'] = [12, 17, 12, 17]
-sources2['y_mean'] = [15, 15, 20, 20]
-sources2['x_stddev'] = [sigma_psfs[-1]] * 4
-sources2['y_stddev'] = sources2['x_stddev']
+sources2['x_0'] = [12, 17, 12, 17]
+sources2['y_0'] = [15, 15, 20, 20]
+sources2['sigma'] = [sigma_psfs[-1]] * 4
 sources2['theta'] = [0] * 4
 sources2['id'] = [1, 2, 3, 4]
 sources2['group_id'] = [1, 1, 1, 1]
@@ -105,10 +103,9 @@ sources2['group_id'] = [1, 1, 1, 1]
 sigma_psfs.append(2)
 sources3 = Table()
 sources3['flux'] = [10000, 1000]
-sources3['x_mean'] = [18, 13]
-sources3['y_mean'] = [17, 19]
-sources3['x_stddev'] = [sigma_psfs[-1]] * 2
-sources3['y_stddev'] = sources3['x_stddev']
+sources3['x_0'] = [18, 13]
+sources3['y_0'] = [17, 19]
+sources3['sigma'] = [sigma_psfs[-1]] * 2
 sources3['theta'] = [0] * 2
 sources3['id'] = [1] * 2
 sources3['group_id'] = [1] * 2
@@ -121,7 +118,7 @@ def test_psf_photometry_niters(sigma_psf, sources):
     img_shape = (32, 32)
     # generate image with read-out noise (Gaussian) and
     # background noise (Poisson)
-    image = (make_gaussian_sources_image(img_shape, sources) +
+    image = (make_gaussian_prf_sources_image(img_shape, sources) +
              make_noise_image(img_shape, type='poisson', mean=6.,
                               random_state=1) +
              make_noise_image(img_shape, type='gaussian', mean=0.,
@@ -145,8 +142,8 @@ def test_psf_photometry_niters(sigma_psf, sources):
         assert (result_tab['flux_unc'] < 1.96 *
                 np.sqrt(sources['flux'])).all()
 
-        assert_allclose(result_tab['x_fit'], sources['x_mean'], rtol=1e-1)
-        assert_allclose(result_tab['y_fit'], sources['y_mean'], rtol=1e-1)
+        assert_allclose(result_tab['x_fit'], sources['x_0'], rtol=1e-1)
+        assert_allclose(result_tab['y_fit'], sources['y_0'], rtol=1e-1)
         assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
         assert_array_equal(result_tab['id'], sources['id'])
         assert_array_equal(result_tab['group_id'], sources['group_id'])
@@ -177,7 +174,7 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
     img_shape = (32, 32)
     # generate image with read-out noise (Gaussian) and
     # background noise (Poisson)
-    image = (make_gaussian_sources_image(img_shape, sources) +
+    image = (make_gaussian_prf_sources_image(img_shape, sources) +
              make_noise_image(img_shape, type='poisson', mean=6.,
                               random_state=1) +
              make_noise_image(img_shape, type='gaussian', mean=0.,
@@ -198,8 +195,8 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
                 np.sqrt(sources['flux'])).all()
         assert (result_tab['flux_unc'] < 1.96 *
                 np.sqrt(sources['flux'])).all()
-        assert_allclose(result_tab['x_fit'], sources['x_mean'], rtol=1e-1)
-        assert_allclose(result_tab['y_fit'], sources['y_mean'], rtol=1e-1)
+        assert_allclose(result_tab['x_fit'], sources['x_0'], rtol=1e-1)
+        assert_allclose(result_tab['y_fit'], sources['y_0'], rtol=1e-1)
         assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
         assert_array_equal(result_tab['id'], sources['id'])
         assert_array_equal(result_tab['group_id'], sources['group_id'])
@@ -209,8 +206,8 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
         phot_proc.psf_model.x_0.fixed = True
         phot_proc.psf_model.y_0.fixed = True
 
-        pos = Table(names=['x_0', 'y_0'], data=[sources['x_mean'],
-                                                sources['y_mean']])
+        pos = Table(names=['x_0', 'y_0'], data=[sources['x_0'],
+                                                sources['y_0']])
         cp_pos = pos.copy()
 
         result_tab = phot_proc(image, pos)
@@ -219,8 +216,8 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
         assert 'y_0_unc' not in result_tab.colnames
         assert (result_tab['flux_unc'] < 1.96 *
                 np.sqrt(sources['flux'])).all()
-        assert_array_equal(result_tab['x_fit'], sources['x_mean'])
-        assert_array_equal(result_tab['y_fit'], sources['y_mean'])
+        assert_array_equal(result_tab['x_fit'], sources['x_0'])
+        assert_array_equal(result_tab['y_fit'], sources['y_0'])
         assert_allclose(result_tab['flux_fit'], sources['flux'], rtol=1e-1)
         assert_array_equal(result_tab['id'], sources['id'])
         assert_array_equal(result_tab['group_id'], sources['group_id'])
@@ -313,7 +310,7 @@ def test_finder_positions_warning():
     positions['x_0'] = [12.8, 18.2, 25.3]
     positions['y_0'] = [15.7, 16.5, 25.1]
 
-    image = (make_gaussian_sources_image((32, 32), sources1) +
+    image = (make_gaussian_prf_sources_image((32, 32), sources1) +
              make_noise_image((32, 32), type='poisson', mean=6.,
                               random_state=1))
 
@@ -335,7 +332,7 @@ def test_aperture_radius():
 
     # generate image with read-out noise (Gaussian) and
     # background noise (Poisson)
-    image = (make_gaussian_sources_image(img_shape, sources1) +
+    image = (make_gaussian_prf_sources_image(img_shape, sources1) +
              make_noise_image(img_shape, type='poisson', mean=6.,
                               random_state=1) +
              make_noise_image(img_shape, type='gaussian', mean=0.,
@@ -555,9 +552,8 @@ def test_psf_photometry_gaussian2(renormalize_psf):
     f = basic_phot(image=image, init_guesses=INTAB)
 
     for n in ['x', 'y']:
-        assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
-    # flux error worse, because of integration scheme ?
-    assert_allclose(f['flux_0'], f['flux_fit'], rtol=1)
+        assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-1)
+    assert_allclose(f['flux_0'], f['flux_fit'], rtol=1e-1)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -580,7 +576,7 @@ def test_psf_photometry_moffat():
     for n in ['x', 'y']:
         assert_allclose(f[n + '_0'], f[n + '_fit'], rtol=1e-3)
     # image was created with a gaussian, so flux won't match exactly
-    assert_allclose(f['flux_0'], f['flux_fit'], rtol=1)
+    assert_allclose(f['flux_0'], f['flux_fit'], rtol=1e-1)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
