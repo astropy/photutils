@@ -236,6 +236,12 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         empty table is returned.
     """
 
+    if subpixel:
+        warnings.warn('The subpixel keyword is deprecated and will be '
+                      'removed in a future version.  The centroid_func '
+                      'keyword can be used to calculate centroid positions.',
+                      AstropyDeprecationWarning)
+
     if centroid_func is not None and subpixel:
         raise ValueError('centroid_func and subpixel (deprecated) cannot '
                          'both be used.')
@@ -349,11 +355,6 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         table['x_centroid'] = x_centroids
         table['y_centroid'] = y_centroids
     elif subpixel:
-        warnings.warn('The subpixel keyword is deprecated and will be '
-                      'removed in a future version.  The centroid_func '
-                      'keyword can be used to calculate centroid positions.',
-                      AstropyDeprecationWarning)
-
         from ..centroids import fit_2dgaussian  # prevents circular import
 
         x_centroids, y_centroids = [], []
