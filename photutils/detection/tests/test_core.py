@@ -137,8 +137,9 @@ class TestFindPeaks:
 
     def test_centroid_func_and_subpixel(self):
         with pytest.raises(ValueError):
-            find_peaks(PEAKDATA, 0.1, centroid_func=centroid_com,
-                       subpixel=True)
+            with catch_warnings(AstropyDeprecationWarning):
+                find_peaks(PEAKDATA, 0.1, centroid_func=centroid_com,
+                           subpixel=True)
 
     def test_subpixel_regionsize(self):
         """Test that data cutout has at least 6 values."""
@@ -240,11 +241,13 @@ class TestFindPeaks:
 
         with catch_warnings(AstropyDeprecationWarning) as w:
             tbl1 = find_peaks(data, 100, subpixel=True)
-        tbl2 = find_peaks(data, 100000, subpixel=True)
 
         # find_peaks with subpixels uses deprecated cutout_footprint, thus
         # 4 warnings are expected here
         assert len(w) == 4
+
+        with catch_warnings(AstropyDeprecationWarning):
+            tbl2 = find_peaks(data, 100000, subpixel=True)
 
         assert set(tbl1.colnames) == set(tbl2.colnames)
 
@@ -258,7 +261,7 @@ class TestFindPeaks:
 
         with catch_warnings(AstropyDeprecationWarning):
             tbl1 = find_peaks(data, 100, wcs=wcs, subpixel=True)
-        tbl2 = find_peaks(data, 100000, wcs=wcs, subpixel=True)
+            tbl2 = find_peaks(data, 100000, wcs=wcs, subpixel=True)
         assert set(tbl1.colnames) == set(tbl2.colnames)
 
     def test_data_nans(self):
