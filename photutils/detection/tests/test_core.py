@@ -5,6 +5,9 @@ from numpy.testing import assert_array_equal, assert_allclose
 import pytest
 import warnings
 
+from astropy.tests.helper import catch_warnings
+from astropy.utils.exceptions import AstropyDeprecationWarning
+
 from ..core import detect_threshold, find_peaks
 from ...centroids import centroid_com
 from ...datasets import make_4gaussians_image, make_wcs
@@ -141,7 +144,9 @@ class TestFindPeaks:
         """Test that data cutout has at least 6 values."""
 
         with pytest.raises(ValueError):
-            find_peaks(PEAKDATA, 0.1, box_size=2, subpixel=True)
+            with catch_warnings(AstropyDeprecationWarning) as w:
+                find_peaks(PEAKDATA, 0.1, box_size=2, subpixel=True)
+            assert len(w) == 1
 
     def test_mask(self):
         """Test with mask."""
@@ -203,7 +208,8 @@ class TestFindPeaks:
         for col in cols:
             assert col in tbl.colnames
 
-        tbl = find_peaks(data, 100, wcs=wcs, subpixel=True)
+        with catch_warnings(AstropyDeprecationWarning):
+            tbl = find_peaks(data, 100, wcs=wcs, subpixel=True)
         for col in cols:
             assert col in tbl.colnames
 
@@ -232,8 +238,14 @@ class TestFindPeaks:
         tbl2 = find_peaks(data, 100000, centroid_func=centroid_com)
         assert set(tbl1.colnames) == set(tbl2.colnames)
 
-        tbl1 = find_peaks(data, 100, subpixel=True)
+        with catch_warnings(AstropyDeprecationWarning) as w:
+            tbl1 = find_peaks(data, 100, subpixel=True)
         tbl2 = find_peaks(data, 100000, subpixel=True)
+
+        # find_peaks with subpixels uses deprecated cutout_footprint, thus
+        # 4 warnings are expected here
+        assert len(w) == 4
+
         assert set(tbl1.colnames) == set(tbl2.colnames)
 
         tbl1 = find_peaks(data, 100, wcs=wcs)
@@ -244,7 +256,8 @@ class TestFindPeaks:
         tbl2 = find_peaks(data, 100000, wcs=wcs, centroid_func=centroid_com)
         assert set(tbl1.colnames) == set(tbl2.colnames)
 
-        tbl1 = find_peaks(data, 100, wcs=wcs, subpixel=True)
+        with catch_warnings(AstropyDeprecationWarning):
+            tbl1 = find_peaks(data, 100, wcs=wcs, subpixel=True)
         tbl2 = find_peaks(data, 100000, wcs=wcs, subpixel=True)
         assert set(tbl1.colnames) == set(tbl2.colnames)
 
