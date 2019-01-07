@@ -1,4 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+#cython: language_level=3
 """
 The functions defined here allow one to determine the exact area of
 overlap of an ellipse and a triangle (written by Thomas Robitaille).
