@@ -4,8 +4,10 @@
 import glob
 import os
 import sys
-
-from configparser import ConfigParser
+try:
+    from configparser import ConfigParser
+except ImportError:
+    from ConfigParser import ConfigParser
 
 # Get some values from the setup.cfg
 conf = ConfigParser()
