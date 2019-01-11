@@ -1,6 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
 import numpy as np
 from numpy.testing import assert_allclose
@@ -29,7 +27,7 @@ except ImportError:
 
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.skipif('not HAS_SKIMAGE')
-class TestDeblendSources(object):
+class TestDeblendSources:
     def setup_class(self):
         g1 = models.Gaussian2D(100, 50, 50, 5, 5)
         g2 = models.Gaussian2D(100, 35, 50, 5, 5)

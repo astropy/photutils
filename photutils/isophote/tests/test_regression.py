@@ -46,9 +46,6 @@ output of 'ellipse' instead, captured from screen, and use it as
 reference for the regression.
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
 import math
 import numpy as np
 import os.path as op
@@ -56,7 +53,6 @@ import pytest
 
 from astropy.io import fits
 from astropy.table import Table
-from astropy.tests.helper import remote_data
 
 from ..ellipse import Ellipse
 from ..integrator import BILINEAR
@@ -69,7 +65,7 @@ except ImportError:
     HAS_SCIPY = False
 
 
-@remote_data
+@pytest.mark.remote_data
 @pytest.mark.skipif('not HAS_SCIPY')
 # @pytest.mark.parametrize('name', ['M51', 'synth', 'synth_lowsnr',
 #                                   'synth_highsnr'])

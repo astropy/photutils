@@ -1,22 +1,19 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
 import numpy as np
 import numpy.ma as ma
 from numpy.testing import assert_allclose
+import pytest
 
 from astropy.io import fits
-from astropy.tests.helper import remote_data
 
 from ..sample import EllipseSample
 from ..integrator import NEAREST_NEIGHBOR, BILINEAR, MEAN, MEDIAN
 from ...datasets import get_path
 
 
-@remote_data
-class TestData(object):
-
+@pytest.mark.remote_data
+class TestData:
     def setup_class(self):
         path = get_path('isophote/synth_highsnr.fits',
                         location='photutils-datasets', cache=True)
@@ -39,9 +36,8 @@ class TestData(object):
         return s, sample
 
 
-@remote_data
+@pytest.mark.remote_data
 class TestUnmasked(TestData):
-
     def test_bilinear(self):
         s, sample = self.make_sample()
 
@@ -130,9 +126,8 @@ class TestUnmasked(TestData):
         assert sample.actual_points == 64
 
 
-@remote_data
+@pytest.mark.remote_data
 class TestMasked(TestData):
-
     def test_bilinear(self):
         s, sample = self.make_sample(masked=True, integrmode=BILINEAR)
 

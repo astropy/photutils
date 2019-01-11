@@ -3,14 +3,7 @@
 Load example datasets.
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-try:
-    # python >= 3
-    from urllib.error import HTTPError, URLError
-except ImportError:
-    # python 2
-    from urllib2 import HTTPError, URLError
+from urllib.error import HTTPError, URLError
 
 from astropy.io import fits
 from astropy.table import Table
@@ -18,7 +11,8 @@ from astropy.utils.data import get_pkg_data_filename, download_file
 
 
 __all__ = ['get_path', 'load_spitzer_image', 'load_spitzer_catalog',
-           'load_irac_psf', 'load_fermi_image', 'load_star_image']
+           'load_irac_psf', 'load_fermi_image', 'load_star_image',
+           'load_simulated_hst_star_image']
 
 
 def get_path(filename, location='local', cache=True, show_progress=False):
@@ -287,6 +281,41 @@ def load_star_image(show_progress=False):    # pragma: no cover
     """
 
     path = get_path('M6707HH.fits', location='remote',
+                    show_progress=show_progress)
+    hdu = fits.open(path)[0]
+
+    return hdu
+
+
+def load_simulated_hst_star_image(show_progress=False):  # pragma: no cover
+    """
+    Load a simulated HST WFC3/IR F160W image of stars.
+
+    The simulated image does not contain any background or noise.
+
+    Parameters
+    ----------
+    show_progress : bool, optional
+        Whether to display a progress bar during the download (default
+        is `False`).
+
+    Returns
+    -------
+    hdu : `~astropy.io.fits.ImageHDU`
+        A FITS image HDU containing the simulated HST star image.
+
+    Examples
+    --------
+    .. plot::
+        :include-source:
+
+        from photutils import datasets
+        hdu = datasets.load_simulated_hst_star_image()
+        plt.imshow(hdu.data, origin='lower', interpolation='nearest')
+    """
+
+    path = get_path('hst_wfc3ir_f160w_simulated_starfield.fits',
+                    location='photutils-datasets',
                     show_progress=show_progress)
     hdu = fits.open(path)[0]
 

@@ -1,9 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import division
+
 import numpy as np
-import pytest
 from numpy.testing import assert_array_equal
+import pytest
+
 from astropy.table import Table, vstack
+
 from ..groupstars import DAOGroup, DBSCANGroup
 
 try:
@@ -13,7 +15,7 @@ except ImportError:
     HAS_SKLEARN = False
 
 
-class TestDAOGROUP(object):
+class TestDAOGROUP:
     def test_daogroup_one(self):
         """
              +---------+--------+---------+---------+--------+---------+
@@ -268,7 +270,7 @@ class TestDAOGROUP(object):
 
 
 @pytest.mark.skipif('not HAS_SKLEARN')
-class TestDBSCANGroup(object):
+class TestDBSCANGroup:
     def test_group_stars_one(object):
         x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
                         -np.sqrt(2)/4])

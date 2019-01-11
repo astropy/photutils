@@ -1,12 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
 import abc
 import copy
 import warnings
 from collections import OrderedDict
 
-import six
 import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
@@ -14,24 +12,19 @@ from astropy.nddata import support_nddata
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.utils.misc import InheritDocstrings
 from astropy.wcs import WCS
 from astropy.wcs.utils import (skycoord_to_pixel, pixel_to_skycoord,
                                wcs_to_celestial_frame)
 
 from ..utils import get_version_info
+from ..utils.misc import _ABCMetaAndInheritDocstrings
 from ..utils.wcs_helpers import pixel_scale_angle_at_skycoord
 
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture', 'aperture_photometry']
 
 
-class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
-    pass
-
-
-@six.add_metaclass(_ABCMetaAndInheritDocstrings)
-class Aperture(object):
+class Aperture(metaclass=_ABCMetaAndInheritDocstrings):
     """
     Abstract base class for all apertures.
     """
@@ -81,7 +74,7 @@ class PixelAperture(Aperture):
     @staticmethod
     def _sanitize_positions(positions):
         if isinstance(positions, u.Quantity):
-            if positions.unit is u.pixel:
+            if positions.unit == u.pixel:
                 positions = np.atleast_2d(positions.value)
             else:
                 raise u.UnitsError('positions should be in pixel units')
@@ -96,6 +89,7 @@ class PixelAperture(Aperture):
                                     .format(positions))
         elif isinstance(positions, zip):
             # This is needed for zip to work seamlessly in Python 3
+            # (e.g. positions = zip(xpos, ypos))
             positions = np.atleast_2d(list(positions))
         else:
             raise TypeError('List or array of (x, y) pixel coordinates '
@@ -142,8 +136,7 @@ class PixelAperture(Aperture):
         for each position, for the aperture.
         """
 
-        raise NotImplementedError('Needs to be implemented in a '
-                                  'PixelAperture subclass.')
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
     @property
     def _centered_edges(self):
@@ -176,8 +169,7 @@ class PixelAperture(Aperture):
             The aperture area.
         """
 
-        raise NotImplementedError('Needs to be implemented in a '
-                                  'PixelAperture subclass.')
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
     def mask_area(self, method='exact', subpixels=5):
         """
@@ -275,8 +267,7 @@ class PixelAperture(Aperture):
             A list of aperture mask objects.
         """
 
-        raise NotImplementedError('Needs to be implemented in a '
-                                  'PixelAperture subclass.')
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
     @staticmethod
     def _prepare_photometry_output(_list, unit=None):
@@ -531,8 +522,7 @@ class PixelAperture(Aperture):
             Any keyword arguments accepted by `matplotlib.patches.Patch`.
         """
 
-        raise NotImplementedError('Needs to be implemented in a '
-                                  'PixelAperture subclass.')
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
     def _to_sky_params(self, wcs, mode='all'):
         """
@@ -600,8 +590,7 @@ class PixelAperture(Aperture):
             A `SkyAperture` object.
         """
 
-        raise NotImplementedError('Needs to be implemented in a '
-                                  'PixelAperture subclass.')
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
 class SkyAperture(Aperture):
@@ -680,8 +669,7 @@ class SkyAperture(Aperture):
             A `PixelAperture` object.
         """
 
-        raise NotImplementedError('Needs to be implemented in a '
-                                  'SkyAperture subclass.')
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
 def _prepare_photometry_input(data, error, mask, wcs, unit):
@@ -893,6 +881,10 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         if (int(subpixels) != subpixels) or (subpixels <= 0):
             raise ValueError('subpixels must be a positive integer.')
 
+    scalar_aperture = False
+    if isinstance(apertures, Aperture):
+        scalar_aperture = True
+
     apertures = np.atleast_1d(apertures)
 
     # convert sky to pixel apertures
@@ -942,7 +934,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
         sum_key = 'aperture_sum'
         sum_err_key = 'aperture_sum_err'
-        if len(apertures) > 1:
+        if not scalar_aperture:
             sum_key += '_{}'.format(i)
             sum_err_key += '_{}'.format(i)
 

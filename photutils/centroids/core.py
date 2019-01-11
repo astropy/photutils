@@ -4,8 +4,6 @@ Functions for centroiding sources and measuring their morphological
 properties.
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 import inspect
 import sys
 import warnings
@@ -104,7 +102,7 @@ def centroid_com(data, mask=None):
     data = data.astype(np.float)
 
     if mask is not None and mask is not np.ma.nomask:
-        mask = np.asarray(mask)
+        mask = np.asarray(mask, dtype=bool)
         if data.shape != mask.shape:
             raise ValueError('data and mask must have the same shape.')
         data[mask] = 0.
@@ -446,11 +444,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
             raise ValueError('footprint must be a 2D array.')
 
     use_error = False
-    if sys.version_info[0] <= 2:
-        spec = inspect.getargspec(centroid_func)
-    else:
-        spec = inspect.getfullargspec(centroid_func)
-
+    spec = inspect.getfullargspec(centroid_func)
     if 'mask' not in spec.args:
         raise ValueError('The input "centroid_func" must have a "mask" '
                          'keyword.')

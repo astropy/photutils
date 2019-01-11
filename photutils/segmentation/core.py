@@ -1,6 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
 from copy import deepcopy
 
 import numpy as np
@@ -16,7 +15,7 @@ __doctest_requires__ = {('SegmentationImage', 'SegmentationImage.*'):
                         ['scipy', 'skimage']}
 
 
-class Segment(object):
+class Segment:
     """
     Class for a single labeled region (segment) within a segmentation
     image.
@@ -121,7 +120,7 @@ class Segment(object):
             return data[self.slices]
 
 
-class SegmentationImage(object):
+class SegmentationImage:
     """
     Class for a segmentation image.
 
@@ -138,10 +137,6 @@ class SegmentationImage(object):
 
     def __getitem__(self, index):
         return self.segments[index]
-
-    # python 2 only
-    def __getslice__(self, i, j):
-        return self.__getitem__(slice(i, j))
 
     def __iter__(self):
         for i in self.segments:
@@ -202,7 +197,7 @@ class SegmentationImage(object):
         return self._data
 
     @lazyproperty
-    @deprecated(0.5, alternative='data_ma')
+    @deprecated('0.5', alternative='data_ma')
     def data_masked(self):
         return self.data_ma  # pragma: no cover
 
@@ -276,7 +271,7 @@ class SegmentationImage(object):
         return len(self.labels)
 
     @lazyproperty
-    @deprecated(0.5, alternative='max_label')
+    @deprecated('0.5', alternative='max_label')
     def max(self):
         return self.max_label  # pragma: no cover
 
@@ -316,7 +311,7 @@ class SegmentationImage(object):
 
         return np.bincount(self.data.ravel())[1:]
 
-    @deprecated(0.5, alternative='areas[labels-1]')
+    @deprecated('0.5', alternative='areas[labels-1]')
     def area(self, labels):  # pragma: no cover
         """
         The areas (in pixel**2) of the regions for the input labels.
@@ -338,7 +333,7 @@ class SegmentationImage(object):
         return self.areas[labels - 1]
 
     @lazyproperty
-    @deprecated(0.5, alternative='is_consecutive')
+    @deprecated('0.5', alternative='is_consecutive')
     def is_sequential(self):
         return self.is_consecutive  # pragma: no cover
 
@@ -403,7 +398,7 @@ class SegmentationImage(object):
         if len(bad_labels) > 0:
             raise ValueError('labels {} are invalid'.format(bad_labels))
 
-    @deprecated(0.5, alternative='check_labels')
+    @deprecated('0.5', alternative='check_labels')
     def check_label(self, label, allow_zero=False):  # pragma: no cover
         """
         Check for a valid label label number within the segmentation
@@ -555,7 +550,7 @@ class SegmentationImage(object):
             data[np.where(data == label)] = new_label
             self.data = data     # needed to call the data setter
 
-    @deprecated(0.5, alternative='relabel_consecutive()')
+    @deprecated('0.5', alternative='relabel_consecutive()')
     def relabel_sequential(self, start_label=1):
         return self.relabel_consecutive(start_label=start_label)  # pragma: no cover
 

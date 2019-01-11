@@ -1,15 +1,16 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-"""
-Miscellaneous tests for psf functionality that doesn't have another obvious
-place to go
-"""
 
-from __future__ import division
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
+
+from astropy.modeling.models import Gaussian2D
+from astropy.convolution.utils import discretize_model
 from astropy.table import Table
-from .. import IntegratedGaussianPRF, prepare_psf_model, get_grouped_psf_model
+
+from ..models import IntegratedGaussianPRF
+from ..sandbox import DiscretePRF
+from ..utils import prepare_psf_model, get_grouped_psf_model, subtract_psf
 
 try:
     import scipy    # noqa
@@ -18,30 +19,30 @@ except ImportError:
     HAS_SCIPY = False
 
 
-widths = [0.001, 0.01, 0.1, 1]
-sigmas = [0.5, 1., 2., 10., 12.34]
+PSF_SIZE = 11
+GAUSSIAN_WIDTH = 1.
+IMAGE_SIZE = 101
 
+# Position and FLUXES of test sources
+INTAB = Table([[50., 23, 12, 86], [50., 83, 80, 84],
+               [np.pi * 10, 3.654, 20., 80 / np.sqrt(3)]],
+              names=['x_0', 'y_0', 'flux_0'])
 
-@pytest.mark.skipif('not HAS_SCIPY')
-@pytest.mark.parametrize('width', widths)
-def test_subpixel_gauss_psf(width):
-    """
-    Test subpixel accuracy of Gaussian PSF by checking the sum of pixels.
-    """
-    gauss_psf = IntegratedGaussianPRF(width)
-    y, x = np.mgrid[-10:11, -10:11]
-    assert_allclose(gauss_psf(x, y).sum(), 1)
+# Create test psf
+psf_model = Gaussian2D(1. / (2 * np.pi * GAUSSIAN_WIDTH ** 2), PSF_SIZE // 2,
+                       PSF_SIZE // 2, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
+test_psf = discretize_model(psf_model, (0, PSF_SIZE), (0, PSF_SIZE),
+                            mode='oversample')
 
+# Set up grid for test image
+image = np.zeros((IMAGE_SIZE, IMAGE_SIZE))
 
-@pytest.mark.skipif('not HAS_SCIPY')
-@pytest.mark.parametrize('sigma', sigmas)
-def test_gaussian_psf_integral(sigma):
-    """
-    Test if Gaussian PSF integrates to unity on larger scales.
-    """
-    psf = IntegratedGaussianPRF(sigma=sigma)
-    y, x = np.mgrid[-100:101, -100:101]
-    assert_allclose(psf(y, x).sum(), 1)
+# Add sources to test image
+for x, y, flux in INTAB:
+    model = Gaussian2D(flux / (2 * np.pi * GAUSSIAN_WIDTH ** 2),
+                       x, y, GAUSSIAN_WIDTH, GAUSSIAN_WIDTH)
+    image += discretize_model(model, (0, IMAGE_SIZE), (0, IMAGE_SIZE),
+                              mode='oversample')
 
 
 @pytest.fixture(scope="module")
@@ -100,9 +101,9 @@ def test_moffat_fitting(moffimg):
                                renormalize_psf=False), (1e-3, None)),
                          ])
 @pytest.mark.skipif('not HAS_SCIPY')
-def test_psf_adapter(moffimg, prepkwargs, tols):
+def test_prepare_psf_model(moffimg, prepkwargs, tols):
     """
-    Test that the PSF adapter behaves as expected for fitting (don't worry
+    Test that prepare_psf_model behaves as expected for fitting (don't worry
     about full-on psf photometry for now)
     """
 
@@ -157,3 +158,15 @@ def test_get_grouped_psf_model():
     assert gpsf.flux_0 == 0.5
     assert gpsf.flux_1 == 1
     assert gpsf.sigma_0 == gpsf.sigma_1 == 1.2
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_subtract_psf():
+    """Test subtract_psf."""
+
+    prf = DiscretePRF(test_psf, subsampling=1)
+    posflux = INTAB.copy()
+    for n in posflux.colnames:
+        posflux.rename_column(n, n.split('_')[0] + '_fit')
+    residuals = subtract_psf(image, prf, posflux)
+    assert_allclose(residuals, np.zeros_like(image), atol=1E-4)

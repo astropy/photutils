@@ -1,19 +1,18 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """Module which provides classes to perform source grouping."""
 
-from __future__ import division
 import abc
 
-import six
 import numpy as np
 from astropy.table import Column
+
+from ..utils.misc import _ABCMetaAndInheritDocstrings
 
 
 __all__ = ['DAOGroup', 'DBSCANGroup', 'GroupStarsBase']
 
 
-@six.add_metaclass(abc.ABCMeta)
-class GroupStarsBase(object):
+class GroupStarsBase(metaclass=_ABCMetaAndInheritDocstrings):
     """
     This base class provides the basic interface for subclasses that
     are capable of classifying stars in groups.
@@ -26,18 +25,41 @@ class GroupStarsBase(object):
         Parameters
         ----------
         starlist : `~astropy.table.Table`
-            List of star positions. Columns named as ``x_0`` and ``y_0``,
-            which corresponds to the centroid coordinates of the sources,
-            must be provided.
+            List of star positions. Columns named as ``x_0`` and
+            ``y_0``, which corresponds to the centroid coordinates of
+            the sources, must be provided.
 
         Returns
         -------
         group_starlist : `~astropy.table.Table`
-            ``starlist`` with an additional column named ``group_id`` whose
-            unique values represent groups of mutually overlapping stars.
+            ``starlist`` with an additional column named ``group_id``
+            whose unique values represent groups of mutually overlapping
+            stars.
         """
 
         return self.group_stars(starlist)
+
+    @abc.abstractmethod
+    def group_stars(self, starlist):
+        """
+        Classify stars into groups.
+
+        Parameters
+        ----------
+        starlist : `~astropy.table.Table`
+            List of star positions. Columns named as ``x_0`` and
+            ``y_0``, which corresponds to the centroid coordinates of
+            the sources, must be provided.
+
+        Returns
+        -------
+        group_starlist : `~astropy.table.Table`
+            ``starlist`` with an additional column named ``group_id``
+            whose unique values represent groups of mutually overlapping
+            stars.
+        """
+
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
 class DAOGroup(GroupStarsBase):
@@ -92,23 +114,6 @@ class DAOGroup(GroupStarsBase):
             self._crit_separation = crit_separation
 
     def group_stars(self, starlist):
-        """
-        Classify stars into groups.
-
-        Parameters
-        ----------
-        starlist : `~astropy.table.Table`
-            List of star positions. Columns named as ``x_0`` and
-            ``y_0``, which corresponds to the centroid coordinates of
-            the sources, must be provided.
-
-        Returns
-        -------
-        group_starlist : `~astropy.table.Table`
-            ``starlist`` with an additional column named ``group_id`` whose
-            unique values represent groups of mutually overlapping stars.
-        """
-
         cstarlist = starlist.copy()
 
         if 'id' not in cstarlist.colnames:
@@ -219,24 +224,6 @@ class DBSCANGroup(GroupStarsBase):
         self.leaf_size = leaf_size
 
     def group_stars(self, starlist):
-        """
-        Classify stars into groups.
-
-        Parameters
-        ----------
-        starlist : `~astropy.table.Table`
-            List of star positions. Columns named as ``x_0`` and
-            ``y_0``, which corresponds to the centroid coordinates of
-            the sources, must be provided.
-
-        Returns
-        -------
-        group_starlist : `~astropy.table.Table`
-            ``starlist`` with an additional column named ``group_id``
-            whose unique values represent groups of mutually overlapping
-            stars.
-        """
-
         from sklearn.cluster import DBSCAN
 
         cstarlist = starlist.copy()
@@ -250,7 +237,7 @@ class DBSCANGroup(GroupStarsBase):
                              'sequence starting from 1. ' +
                              'Got {}'.format(cstarlist['id']))
 
-        pos_stars = list(zip(cstarlist['x_0'], cstarlist['y_0']))
+        pos_stars = np.transpose((cstarlist['x_0'], cstarlist['y_0']))
         dbscan = DBSCAN(eps=self.crit_separation,
                         min_samples=self.min_samples, metric=self.metric,
                         algorithm=self.algorithm, leaf_size=self.leaf_size)

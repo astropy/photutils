@@ -1,15 +1,13 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
 import warnings
 
 import numpy as np
 import astropy.units as u
 from astropy.coordinates import SkyCoord
 from astropy.table import QTable
-from astropy.utils import deprecated, lazyproperty
-from astropy.utils.exceptions import (AstropyUserWarning,
-                                      AstropyDeprecationWarning)
+from astropy.utils import lazyproperty
+from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import pixel_to_skycoord
 
 
@@ -18,8 +16,7 @@ from ..utils.convolution import filter_data
 from ..utils._moments import _moments, _moments_central
 
 
-__all__ = ['SourceProperties', 'source_properties', 'SourceCatalog',
-           'properties_table']
+__all__ = ['SourceProperties', 'source_properties', 'SourceCatalog']
 
 __doctest_requires__ = {('SourceProperties', 'SourceProperties.*',
                          'SourceCatalog', 'SourceCatalog.*',
@@ -27,7 +24,7 @@ __doctest_requires__ = {('SourceProperties', 'SourceProperties.*',
                         ['scipy', 'skimage']}
 
 
-class SourceProperties(object):
+class SourceProperties:
     """
     Class to calculate photometry and morphological properties of a
     single labeled source.
@@ -445,43 +442,6 @@ class SourceProperties(object):
 
         if self._wcs is not None:
             return self.sky_centroid.icrs
-        else:
-            return None
-
-    @lazyproperty
-    @deprecated(0.4, alternative='sky_centroid_icrs')
-    def icrs_centroid(self):  # pragma: no cover
-        """
-        The sky coordinates, in the International Celestial Reference
-        System (ICRS) frame, of the centroid within the source segment,
-        returned as a `~astropy.coordinates.SkyCoord` object.
-        """
-
-        return self.sky_centroid_icrs
-
-    @lazyproperty
-    @deprecated(0.4, alternative='sky_centroid_icrs.ra')
-    def ra_icrs_centroid(self):  # pragma: no cover
-        """
-        The ICRS Right Ascension coordinate (in degrees) of the centroid
-        within the source segment.
-        """
-
-        if self._wcs is not None:
-            return self.sky_centroid_icrs.ra.degree * u.deg
-        else:
-            return None
-
-    @lazyproperty
-    @deprecated(0.4, alternative='sky_centroid_icrs.dec')
-    def dec_icrs_centroid(self):  # pragma: no cover
-        """
-        The ICRS Declination coordinate (in degrees) of the centroid
-        within the source segment.
-        """
-
-        if self._wcs is not None:
-            return self.sky_centroid_icrs.dec.degree * u.deg
         else:
             return None
 
@@ -1235,7 +1195,7 @@ def source_properties(data, segment_img, error=None, mask=None,
     return SourceCatalog(sources_props, wcs=wcs)
 
 
-class SourceCatalog(object):
+class SourceCatalog:
     """
     Class to hold source catalogs.
     """
@@ -1256,10 +1216,6 @@ class SourceCatalog(object):
 
     def __getitem__(self, index):
         return self._data[index]
-
-    # python 2 only
-    def __getslice__(self, i, j):
-        return self.__getitem__(slice(i, j))
 
     def __delitem__(self, index):
         del self._data[index]
@@ -1310,30 +1266,6 @@ class SourceCatalog(object):
             return None
 
     @lazyproperty
-    @deprecated(0.4, alternative='sky_centroid_icrs')
-    def icrs_centroid(self):  # pragma: no cover
-        if self.wcs is not None:
-            return self.sky_centroid_icrs
-        else:
-            return None
-
-    @lazyproperty
-    @deprecated(0.4, alternative='sky_centroid_icrs.ra')
-    def ra_icrs_centroid(self):  # pragma: no cover
-        if self.wcs is not None:
-            return self.sky_centroid_icrs.ra.deg * u.deg
-        else:
-            return None
-
-    @lazyproperty
-    @deprecated(0.4, alternative='sky_centroid_icrs.dec')
-    def dec_icrs_centroid(self):  # pragma: no cover
-        if self.wcs is not None:
-            return self.sky_centroid_icrs.dec.deg * u.deg
-        else:
-            return None
-
-    @lazyproperty
     def sky_bbox_ll(self):
         if self.wcs is not None:
             return pixel_to_skycoord(self.xmin.value - 0.5,
@@ -1346,7 +1278,7 @@ class SourceCatalog(object):
     def sky_bbox_ul(self):
         if self.wcs is not None:
             return pixel_to_skycoord(self.xmin.value - 0.5,
-                                     self.ymin.value + 0.5,
+                                     self.ymax.value + 0.5,
                                      self.wcs, origin=0)
         else:
             return None
@@ -1354,7 +1286,7 @@ class SourceCatalog(object):
     @lazyproperty
     def sky_bbox_lr(self):
         if self.wcs is not None:
-            return pixel_to_skycoord(self.xmin.value + 0.5,
+            return pixel_to_skycoord(self.xmax.value + 0.5,
                                      self.ymin.value - 0.5,
                                      self.wcs, origin=0)
         else:
@@ -1363,8 +1295,8 @@ class SourceCatalog(object):
     @lazyproperty
     def sky_bbox_ur(self):
         if self.wcs is not None:
-            return pixel_to_skycoord(self.xmin.value + 0.5,
-                                     self.ymin.value + 0.5,
+            return pixel_to_skycoord(self.xmax.value + 0.5,
+                                     self.ymax.value + 0.5,
                                      self.wcs, origin=0)
         else:
             return None
@@ -1490,168 +1422,3 @@ def _properties_table(obj, columns=None, exclude_columns=None):
         tbl[column] = values
 
     return tbl
-
-
-@deprecated(0.4, alternative='SourceCatalog.to_table()')
-def properties_table(source_props, columns=None, exclude_columns=None):  # pragma: no cover
-    """
-    Construct a `~astropy.table.QTable` of properties from a list of
-    `SourceProperties` objects.
-
-    If ``columns`` or ``exclude_columns`` are not input, then the
-    `~astropy.table.QTable` will include most scalar-valued source
-    properties.  Multi-dimensional properties, e.g.
-    `~photutils.SourceProperties.data_cutout`, can be included in the
-    ``columns`` input.
-
-    Parameters
-    ----------
-    source_props : `SourceProperties` or list of `SourceProperties`
-        A `SourceProperties` object or list of `SourceProperties`
-        objects, one for each source.
-
-    columns : str or list of str, optional
-        Names of columns, in order, to include in the output
-        `~astropy.table.QTable`.  The allowed column names are any of
-        the attributes of `SourceProperties`.
-
-    exclude_columns : str or list of str, optional
-        Names of columns to exclude from the default properties list in
-        the output `~astropy.table.QTable`.  The default properties are
-        those with scalar values.
-
-    Returns
-    -------
-    table : `~astropy.table.QTable`
-        A table of properties of the segmented sources, one row per
-        source.
-
-    See Also
-    --------
-    SegmentationImage, SourceProperties, source_properties, detect_sources
-    """
-
-    if ((isinstance(source_props, list) or
-         isinstance(source_props, SourceCatalog)) and len(source_props) == 0):
-            raise ValueError('source_props is an empty list')
-
-    source_props = np.atleast_1d(source_props)
-
-    # all scalar-valued properties
-    columns_all = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
-                   'sky_centroid_icrs', 'source_sum',
-                   'source_sum_err', 'background_sum', 'background_mean',
-                   'background_at_centroid', 'xmin', 'xmax', 'ymin', 'ymax',
-                   'min_value', 'max_value', 'minval_xpos', 'minval_ypos',
-                   'maxval_xpos', 'maxval_ypos', 'area', 'equivalent_radius',
-                   'perimeter', 'semimajor_axis_sigma',
-                   'semiminor_axis_sigma', 'eccentricity', 'orientation',
-                   'ellipticity', 'elongation', 'covar_sigx2',
-                   'covar_sigxy', 'covar_sigy2', 'cxx', 'cxy', 'cyy']
-
-    table_columns = None
-    if exclude_columns is not None:
-        table_columns = [s for s in columns_all if s not in exclude_columns]
-    if columns is not None:
-        table_columns = np.atleast_1d(columns)
-    if table_columns is None:
-        table_columns = columns_all
-
-    # For a large catalog, it's much faster to calculate world
-    # coordinates using the complete list of (x, y) instead of looping
-    # through the individual (x, y).  It's also much faster to recalculate
-    # world coordinates than to create a SkyCoord array from a
-    # loop-generated SkyCoord list.  The assumption here is that the wcs
-    # is the same for each element of source_props.
-    sky_colnames = ['sky_centroid', 'sky_centroid_icrs', 'icrs_centroid',
-                    'ra_icrs_centroid', 'dec_icrs_centroid']
-    calc_skycoords = any(sky_colname in table_columns
-                         for sky_colname in sky_colnames)
-
-    if calc_skycoords:
-        if source_props[0]._wcs is not None:
-            xcentroid = [props.xcentroid.value for props in source_props]
-            ycentroid = [props.ycentroid.value for props in source_props]
-
-            sky_centroid = pixel_to_skycoord(
-                xcentroid, ycentroid, source_props[0]._wcs, origin=0)
-            sky_centroid_icrs = sky_centroid.icrs
-            icrs_centroid = sky_centroid_icrs
-            ra_icrs_centroid = sky_centroid_icrs.ra.deg * u.deg
-            dec_icrs_centroid = sky_centroid_icrs.dec.deg * u.deg
-        else:
-            nprops = len(source_props)
-            sky_centroid = sky_centroid_icrs = [None] * nprops
-            icrs_centroid = [None] * nprops
-            ra_icrs_centroid = dec_icrs_centroid = [None] * nprops
-
-    bbox_colnames = ['sky_bbox_ll', 'sky_bbox_ul', 'sky_bbox_lr',
-                     'sky_bbox_ur']
-    calc_bboxcoords = any(bbox_colname in table_columns
-                          for bbox_colname in bbox_colnames)
-
-    if calc_bboxcoords:
-        if source_props[0]._wcs is not None:
-            xmin = np.array([props.xmin.value for props in source_props])
-            ymin = np.array([props.ymin.value for props in source_props])
-            xmax = np.array([props.xmax.value for props in source_props])
-            ymax = np.array([props.ymax.value for props in source_props])
-
-            wcs = source_props[0]._wcs
-            sky_bbox_ll = pixel_to_skycoord(xmin - 0.5, ymin - 0.5, wcs,
-                                            origin=0)
-            sky_bbox_ul = pixel_to_skycoord(xmin - 0.5, ymax + 0.5, wcs,
-                                            origin=0)
-            sky_bbox_lr = pixel_to_skycoord(xmax + 0.5, ymin - 0.5, wcs,
-                                            origin=0)
-            sky_bbox_ur = pixel_to_skycoord(xmax + 0.5, ymax + 0.5, wcs,
-                                            origin=0)
-        else:
-            nprops = len(source_props)
-            sky_bbox_ll = sky_bbox_ul = [None] * nprops
-            sky_bbox_lr = sky_bbox_ur = [None] * nprops
-
-    props_table = QTable()
-    for column in table_columns:
-        if column == 'sky_centroid':
-            props_table[column] = sky_centroid
-        elif column == 'sky_centroid_icrs':
-            props_table[column] = sky_centroid_icrs
-        elif column == 'icrs_centroid':
-            warnings.warn('The icrs_centroid property is deprecated and '
-                          'may be removed in a future version.  Use '
-                          'sky_centroid_icrs instead',
-                          AstropyDeprecationWarning)
-            props_table[column] = icrs_centroid
-        elif column == 'ra_icrs_centroid':
-            warnings.warn('The ra_icrs_centroid property is deprecated and '
-                          'may be removed in a future version.  Use '
-                          'sky_centroid_icrs.ra instead',
-                          AstropyDeprecationWarning)
-            props_table[column] = ra_icrs_centroid
-        elif column == 'dec_icrs_centroid':
-            warnings.warn('The dec_icrs_centroid property is deprecated and '
-                          'may be removed in a future version.  Use '
-                          'sky_centroid_icrs.dec instead',
-                          AstropyDeprecationWarning)
-            props_table[column] = dec_icrs_centroid
-        elif column == 'sky_bbox_ll':
-            props_table[column] = sky_bbox_ll
-        elif column == 'sky_bbox_ul':
-            props_table[column] = sky_bbox_ul
-        elif column == 'sky_bbox_lr':
-            props_table[column] = sky_bbox_lr
-        elif column == 'sky_bbox_ur':
-            props_table[column] = sky_bbox_ur
-        else:
-            values = [getattr(props, column) for props in source_props]
-            if isinstance(values[0], u.Quantity):
-                # turn list of Quantities into a Quantity array
-                values = u.Quantity(values)
-            if isinstance(values[0], SkyCoord):   # pragma: no cover
-                # turn list of SkyCoord into a SkyCoord array
-                values = SkyCoord(values)
-
-            props_table[column] = values
-
-    return props_table

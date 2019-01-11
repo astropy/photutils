@@ -1,10 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
 import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 import pytest
+import warnings
 
 from ..core import detect_threshold, find_peaks
 from ...centroids import centroid_com
@@ -24,7 +23,7 @@ PEAKREF1 = np.array([[0, 0], [2, 2]])
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestDetectThreshold(object):
+class TestDetectThreshold:
     def test_snr(self):
         """Test basic snr."""
 
@@ -94,7 +93,8 @@ class TestDetectThreshold(object):
     def test_image_mask(self):
         """
         Test detection with image_mask.
-        sig=10 and iters=1 to prevent sigma clipping after applying the mask.
+        Set sigma=10 and iters=1 to prevent sigma clipping after
+        applying the mask.
         """
 
         mask = REF1.astype(np.bool)
@@ -115,7 +115,7 @@ class TestDetectThreshold(object):
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestFindPeaks(object):
+class TestFindPeaks:
     def test_box_size(self):
         """Test with box_size."""
 
@@ -131,6 +131,11 @@ class TestFindPeaks(object):
         assert_array_equal(tbl['x_peak'], PEAKREF1[:, 1])
         assert_array_equal(tbl['y_peak'], PEAKREF1[:, 0])
         assert_array_equal(tbl['peak_value'], [1., 1.])
+
+    def test_centroid_func_and_subpixel(self):
+        with pytest.raises(ValueError):
+            find_peaks(PEAKDATA, 0.1, centroid_func=centroid_com,
+                       subpixel=True)
 
     def test_subpixel_regionsize(self):
         """Test that data cutout has at least 6 values."""
@@ -155,6 +160,12 @@ class TestFindPeaks(object):
         with pytest.raises(ValueError):
             find_peaks(PEAKDATA, 0.1, mask=np.ones((5, 5)))
 
+    def test_thresholdshape(self):
+        """Test if threshold shape doesn't match data shape."""
+
+        with pytest.raises(ValueError):
+            find_peaks(PEAKDATA, np.ones((2, 2)))
+
     def test_npeaks(self):
         """Test npeaks."""
 
@@ -166,19 +177,7 @@ class TestFindPeaks(object):
         """Test border exclusion."""
 
         tbl = find_peaks(PEAKDATA, 0.1, box_size=3, border_width=3)
-        assert_array_equal(len(tbl), 0)
-
-    def test_zerodet(self):
-        """Test with large threshold giving no sources."""
-
-        tbl = find_peaks(PEAKDATA, 5., box_size=3, border_width=3)
-        assert_array_equal(len(tbl), 0)
-
-    def test_constant_data(self):
-        """Test constant data."""
-
-        tbl = find_peaks(np.ones((5, 5)), 0.1, box_size=3.)
-        assert_array_equal(len(tbl), 0)
+        assert len(tbl) == 0
 
     def test_box_size_int(self):
         """Test non-integer box_size."""
@@ -208,26 +207,53 @@ class TestFindPeaks(object):
         for col in cols:
             assert col in tbl.colnames
 
+    def test_constant_array(self):
+        """Test for empty output table when data is constant."""
+
+        data = np.ones((10, 10))
+        tbl = find_peaks(data, 0.)
+        assert len(tbl) == 0
+        assert set(tbl.colnames) == {'x_peak', 'y_peak', 'peak_value'}
+
     def test_no_peaks(self):
-        """Test for empty output table when no peaks are found."""
+        """
+        Test for an empty output table with the expected column names
+        when no peaks are found.
+        """
 
         data = make_4gaussians_image()
         wcs = make_wcs(data.shape)
 
-        tbl = find_peaks(data, 100000)
-        assert len(tbl) == 0
+        tbl1 = find_peaks(data, 100)
+        tbl2 = find_peaks(data, 10000)
+        assert set(tbl1.colnames) == set(tbl2.colnames)
 
-        tbl = find_peaks(data, 100000, centroid_func=centroid_com)
-        assert len(tbl) == 0
+        tbl1 = find_peaks(data, 100, centroid_func=centroid_com)
+        tbl2 = find_peaks(data, 100000, centroid_func=centroid_com)
+        assert set(tbl1.colnames) == set(tbl2.colnames)
 
-        tbl = find_peaks(data, 100000, subpixel=True)
-        assert len(tbl) == 0
+        tbl1 = find_peaks(data, 100, subpixel=True)
+        tbl2 = find_peaks(data, 100000, subpixel=True)
+        assert set(tbl1.colnames) == set(tbl2.colnames)
 
-        tbl = find_peaks(data, 100000, wcs=wcs)
-        assert len(tbl) == 0
+        tbl1 = find_peaks(data, 100, wcs=wcs)
+        tbl2 = find_peaks(data, 100000, wcs=wcs)
+        assert set(tbl1.colnames) == set(tbl2.colnames)
 
-        tbl = find_peaks(data, 100000, wcs=wcs, centroid_func=centroid_com)
-        assert len(tbl) == 0
+        tbl1 = find_peaks(data, 100, wcs=wcs, centroid_func=centroid_com)
+        tbl2 = find_peaks(data, 100000, wcs=wcs, centroid_func=centroid_com)
+        assert set(tbl1.colnames) == set(tbl2.colnames)
 
-        tbl = find_peaks(data, 100000, wcs=wcs, subpixel=True)
-        assert len(tbl) == 0
+        tbl1 = find_peaks(data, 100, wcs=wcs, subpixel=True)
+        tbl2 = find_peaks(data, 100000, wcs=wcs, subpixel=True)
+        assert set(tbl1.colnames) == set(tbl2.colnames)
+
+    def test_data_nans(self):
+        """Test that data with NaNs does not issue Runtime warning."""
+
+        data = np.copy(PEAKDATA)
+        data[1, 1] = np.nan
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings('error')
+            find_peaks(data, 0.)

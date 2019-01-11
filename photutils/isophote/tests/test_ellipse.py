@@ -1,13 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
 import numpy as np
 import pytest
 
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
-from astropy.tests.helper import remote_data
 
 from .make_test_data import make_test_image
 from ..ellipse import Ellipse
@@ -36,13 +33,12 @@ OFFSET_GALAXY = make_test_image(x0=POS, y0=POS, pa=PA, noise=1.e-12,
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestEllipse(object):
-
+class TestEllipse:
     def setup_class(self):
         # centered, tilted galaxy.
         self.data = make_test_image(pa=PA, random_state=123)
 
-    @remote_data
+    @pytest.mark.remote_data
     def test_find_center(self):
         path = get_path('isophote/M51.fits', location='photutils-datasets',
                         cache=True)
@@ -129,10 +125,9 @@ class TestEllipse(object):
         assert len(isolist) == 54
 
 
-@remote_data
+@pytest.mark.remote_data
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestEllipseOnRealData(object):
-
+class TestEllipseOnRealData:
     def test_basic(self):
         path = get_path('isophote/M105-S001-RGB.fits',
                         location='photutils-datasets', cache=True)

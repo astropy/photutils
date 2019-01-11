@@ -1,6 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
 import warnings
 
@@ -29,7 +27,7 @@ WRONG_SHAPE = np.ones((2, 2))
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestShepardIDWInterpolator(object):
+class TestShepardIDWInterpolator:
     def setup_class(self):
         np.random.seed(123)
         self.x = np.random.random(100)
@@ -113,7 +111,7 @@ class TestShepardIDWInterpolator(object):
             self.f(np.ones((3, 3, 3)))
 
 
-class TestInterpolateMaskedData(object):
+class TestInterpolateMaskedData:
     def setup_class(cls):
         """Ignore all deprecation warnings here."""
         warnings.simplefilter('ignore', AstropyDeprecationWarning)
@@ -162,7 +160,7 @@ class TestInterpolateMaskedData(object):
         assert_allclose(background, BACKGROUND)
 
 
-class TestMaskToMirroredNum(object):
+class TestMaskToMirroredNum:
     def test_mask_to_mirrored_num(self):
         """
         Test mask_to_mirrored_num.

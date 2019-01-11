@@ -1,6 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
 import copy
 
 import numpy as np
@@ -12,7 +11,7 @@ from .integrator import integrators
 __all__ = ['EllipseSample']
 
 
-class EllipseSample(object):
+class EllipseSample:
     """
     Class to sample image data along an elliptical path.
 

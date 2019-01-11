@@ -1,6 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
 import math
 
 from astropy.coordinates import SkyCoord
@@ -16,7 +15,7 @@ __all__ = ['CircularMaskMixin', 'CircularAperture', 'CircularAnnulus',
            'SkyCircularAperture', 'SkyCircularAnnulus']
 
 
-class CircularMaskMixin(object):
+class CircularMaskMixin:
     """
     Mixin class to create masks for circular and circular-annulus
     aperture objects.

@@ -1,6 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
 import numpy as np
 from numpy.testing import assert_allclose
@@ -8,21 +6,34 @@ import pytest
 
 from astropy.table import Table
 from astropy.modeling.models import Moffat2D
+from astropy.version import version as astropy_version
 
 from .. import (make_noise_image, apply_poisson_noise,
                 make_gaussian_sources_image, make_random_gaussians_table,
                 make_4gaussians_image, make_100gaussians_image,
                 make_random_models_table, make_model_sources_image,
-                make_wcs)
+                make_wcs, make_gaussian_prf_sources_image)
 
+try:
+    import scipy    # noqa
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
 
-TABLE = Table()
-TABLE['flux'] = [1, 2, 3]
-TABLE['x_mean'] = [30, 50, 70.5]
-TABLE['y_mean'] = [50, 50, 50.5]
-TABLE['x_stddev'] = [1, 2, 3.5]
-TABLE['y_stddev'] = [2, 1, 3.5]
-TABLE['theta'] = np.array([0., 30, 50]) * np.pi / 180.
+SOURCE_TABLE = Table()
+SOURCE_TABLE['flux'] = [1, 2, 3]
+SOURCE_TABLE['x_mean'] = [30, 50, 70.5]
+SOURCE_TABLE['y_mean'] = [50, 50, 50.5]
+SOURCE_TABLE['x_stddev'] = [1, 2, 3.5]
+SOURCE_TABLE['y_stddev'] = [2, 1, 3.5]
+SOURCE_TABLE['theta'] = np.array([0., 30, 50]) * np.pi / 180.
+
+SOURCE_TABLE_PRF = Table()
+SOURCE_TABLE_PRF['x_0'] = [30, 50, 70.5]
+SOURCE_TABLE_PRF['y_0'] = [50, 50, 50.5]
+# Without sigma, make_gaussian_prf_sources_image will default to sigma = 1
+# so we can ignore it when converting to amplitude
+SOURCE_TABLE_PRF['amplitude'] = np.array([1, 2, 3]) / (2 * np.pi)
 
 
 def test_make_noise_image():
@@ -76,13 +87,23 @@ def test_apply_poisson_noise_negative():
 
 def test_make_gaussian_sources_image():
     shape = (100, 100)
-    image = make_gaussian_sources_image(shape, TABLE)
+    image = make_gaussian_sources_image(shape, SOURCE_TABLE)
     assert image.shape == shape
-    assert_allclose(image.sum(), TABLE['flux'].sum())
+    assert_allclose(image.sum(), SOURCE_TABLE['flux'].sum())
+
+
+@pytest.mark.xfail('not HAS_SCIPY')
+def test_make_gaussian_prf_sources_image():
+    shape = (100, 100)
+    image = make_gaussian_prf_sources_image(shape, SOURCE_TABLE_PRF)
+    assert image.shape == shape
+    # Without sigma in table, image assumes sigma = 1
+    flux = SOURCE_TABLE_PRF['amplitude'] * (2 * np.pi)
+    assert_allclose(image.sum(), flux.sum())
 
 
 def test_make_gaussian_sources_image_amplitude():
-    table = TABLE.copy()
+    table = SOURCE_TABLE.copy()
     table.remove_column('flux')
     table['amplitude'] = [1, 2, 3]
     shape = (100, 100)
@@ -92,9 +113,9 @@ def test_make_gaussian_sources_image_amplitude():
 
 def test_make_gaussian_sources_image_oversample():
     shape = (100, 100)
-    image = make_gaussian_sources_image(shape, TABLE, oversample=10)
+    image = make_gaussian_sources_image(shape, SOURCE_TABLE, oversample=10)
     assert image.shape == shape
-    assert_allclose(image.sum(), TABLE['flux'].sum())
+    assert_allclose(image.sum(), SOURCE_TABLE['flux'].sum())
 
 
 def test_make_random_gaussians_table():
@@ -150,8 +171,13 @@ def test_make_random_models_table():
 def test_make_wcs():
     shape = (100, 200)
     wcs = make_wcs(shape)
-    assert wcs._naxis1 == shape[1]
-    assert wcs._naxis2 == shape[0]
+
+    if astropy_version < '3.1':
+        assert wcs._naxis1 == shape[1]
+        assert wcs._naxis2 == shape[0]
+    else:
+        assert wcs.pixel_shape == shape
+
     assert wcs.wcs.radesys == 'ICRS'
 
     wcs = make_wcs(shape, galactic=True)

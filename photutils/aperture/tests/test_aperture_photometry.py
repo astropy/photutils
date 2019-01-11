@@ -5,9 +5,6 @@ Here we test directly with aperture objects since we are checking the
 algorithms in aperture_photometry, not in the wrappers.
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
 import pytest
 import numpy as np
 from numpy.testing import (assert_allclose, assert_array_equal,
@@ -17,7 +14,6 @@ from astropy.coordinates import SkyCoord
 from astropy.io import fits
 from astropy.nddata import NDData
 from astropy.table import Table
-from astropy.tests.helper import remote_data
 import astropy.units as u
 from astropy.utils import minversion
 from astropy.wcs.utils import pixel_to_skycoord
@@ -105,7 +101,7 @@ def test_aperture_pixel_positions():
     assert_allclose(pos3_pairs, ap3.positions)
 
 
-class BaseTestAperturePhotometry(object):
+class BaseTestAperturePhotometry:
 
     def test_scalar_error(self):
         # Scalar error
@@ -297,7 +293,7 @@ class TestMaskedSkipCircular(BaseTestAperturePhotometry):
         self.true_flux = self.area - 1
 
 
-class BaseTestDifferentData(object):
+class BaseTestDifferentData:
 
     def test_basic_circular_aperture_photometry(self):
         aperture = CircularAperture(self.position, self.radius)
@@ -362,7 +358,7 @@ class TestInputNDData(BaseTestDifferentData):
         self.fluxunit = u.adu
 
 
-@remote_data
+@pytest.mark.remote_data
 def test_wcs_based_photometry_to_catalogue():
     pathcat = get_path('spitzer_example_catalog.xml', location='remote')
     pathhdu = get_path('spitzer_example_image.fits', location='remote')
@@ -395,6 +391,9 @@ def test_wcs_based_photometry_to_catalogue():
 
     assert(np.mean(np.fabs(((fluxes_catalog - converted_aperture_sum.value) /
                             fluxes_catalog))) < 0.1)
+
+    # close the file
+    hdu.close()
 
 
 def test_wcs_based_photometry():
@@ -883,3 +882,44 @@ def test_to_sky_pixel():
     assert_allclose(ap.w_out, ap2.w_out)
     assert_allclose(ap.h_out, ap2.h_out)
     assert_allclose(ap.theta, ap2.theta)
+
+
+def test_position_units():
+    """Regression test for unit check."""
+    pos = (10, 10) * u.pix
+    pos = np.sqrt(pos**2)
+    ap = CircularAperture(pos, r=3.)
+    assert_allclose(ap.positions, np.array([[10, 10]]))
+
+
+def test_radius_units():
+    """Regression test for unit check."""
+    pos = SkyCoord(10, 10, unit='deg')
+    r = 3.*u.pix
+    r = np.sqrt(r**2)
+    ap = SkyCircularAperture(pos, r=r)
+    assert ap.r.value == 3.0
+    assert ap.r.unit == u.pix
+
+
+def test_scalar_aperture():
+    """
+    Regression test to check that length-1 aperture list appends a "_0"
+    on the column names to be consistent with list inputs.
+    """
+
+    data = np.ones((20, 20), dtype=np.float)
+
+    ap = CircularAperture((10, 10), r=3.)
+    colnames1 = aperture_photometry(data, ap, error=data).colnames
+    assert (colnames1 == ['id', 'xcenter', 'ycenter', 'aperture_sum',
+                          'aperture_sum_err'])
+
+    colnames2 = aperture_photometry(data, [ap], error=data).colnames
+    assert (colnames2 == ['id', 'xcenter', 'ycenter', 'aperture_sum_0',
+                          'aperture_sum_err_0'])
+
+    colnames3 = aperture_photometry(data, [ap, ap], error=data).colnames
+    assert (colnames3 == ['id', 'xcenter', 'ycenter', 'aperture_sum_0',
+                          'aperture_sum_err_0', 'aperture_sum_1',
+                          'aperture_sum_err_1'])

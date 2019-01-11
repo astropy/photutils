@@ -1,6 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
 import collections
 
 import numpy as np
@@ -11,7 +10,7 @@ from astropy.utils import deprecated
 __all__ = ['cutout_footprint']
 
 
-@deprecated(0.5)
+@deprecated('0.5')
 def cutout_footprint(data, position, box_size=3, footprint=None, mask=None,
                      error=None):
     """

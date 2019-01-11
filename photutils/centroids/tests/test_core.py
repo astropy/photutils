@@ -1,6 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
 import itertools
 
 import numpy as np
@@ -87,6 +86,18 @@ def test_centroids_withmask():
 
     xc3, yc3 = centroid_2dg(data, mask=mask)
     assert_allclose([xc3, yc3], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_centroids_withmask_nonbool():
+    data = np.arange(16).reshape(4, 4)
+    mask = np.zeros(data.shape)
+    mask[0:2, :] = 1
+    mask2 = np.array(mask, dtype=bool)
+
+    xc1, yc1 = centroid_com(data, mask=mask)
+    xc2, yc2 = centroid_com(data, mask=mask2)
+    assert_allclose([xc1, yc1], [xc2, yc2])
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
