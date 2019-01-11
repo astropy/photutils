@@ -4,17 +4,22 @@ This module defines background classes to estimate the 2D background and
 background RMS in a 2D image.
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 from itertools import product
 
 import numpy as np
 from numpy.lib.index_tricks import index_exp
-from astropy.stats import SigmaClip
 from astropy.utils import lazyproperty
 
 from .core import SExtractorBackground, StdBackgroundRMS
 from ..utils import ShepardIDWInterpolator
+
+from astropy.version import version as astropy_version
+if astropy_version < '3.1':
+    from astropy.stats import SigmaClip
+    SIGMA_CLIP = SigmaClip(sigma=3., iters=10)
+else:
+    from ..extern import SigmaClip
+    SIGMA_CLIP = SigmaClip(sigma=3., maxiters=10)
 
 
 __all__ = ['BkgZoomInterpolator', 'BkgIDWInterpolator', 'Background2D']
@@ -22,7 +27,7 @@ __all__ = ['BkgZoomInterpolator', 'BkgIDWInterpolator', 'Background2D']
 __doctest_requires__ = {('BkgZoomInterpolator', 'Background2D'): ['scipy']}
 
 
-class BkgZoomInterpolator(object):
+class BkgZoomInterpolator:
     """
     This class generates full-sized background and background RMS images
     from lower-resolution mesh images using the `~scipy.ndimage.zoom`
@@ -98,7 +103,7 @@ class BkgZoomInterpolator(object):
                         cval=self.cval)
 
 
-class BkgIDWInterpolator(object):
+class BkgIDWInterpolator:
     """
     This class generates full-sized background and background RMS images
     from lower-resolution mesh images using inverse-distance weighting
@@ -163,7 +168,7 @@ class BkgIDWInterpolator(object):
         return data.reshape(bkg2d_obj.data.shape)
 
 
-class Background2D(object):
+class Background2D:
     """
     Class to estimate a 2D background and background RMS noise in an
     image.
@@ -240,7 +245,7 @@ class Background2D(object):
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters.  If `None` then no sigma clipping will be
         performed.  The default is to perform sigma clipping with
-        ``sigma=3.`` and ``iters=10``.
+        ``sigma=3.`` and ``maxiters=10``.
 
     bkg_estimator : callable, optional
         A callable object (a function or e.g., an instance of any
@@ -284,7 +289,7 @@ class Background2D(object):
     def __init__(self, data, box_size, mask=None,
                  exclude_percentile=10., filter_size=(3, 3),
                  filter_threshold=None, edge_method='pad',
-                 sigma_clip=SigmaClip(sigma=3., iters=10),
+                 sigma_clip=SIGMA_CLIP,
                  bkg_estimator=SExtractorBackground(sigma_clip=None),
                  bkgrms_estimator=StdBackgroundRMS(sigma_clip=None),
                  interpolator=BkgZoomInterpolator()):

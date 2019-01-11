@@ -24,7 +24,7 @@ noise level, estimated using the median absolute deviation
 (`~astropy.stats.mad_std`) of the image. The parameters of the
 detected sources are returned as an Astropy `~astropy.table.Table`:
 
-.. doctest-requires:: scipy, skimage
+.. doctest-requires:: scipy
 
     >>> from photutils import DAOStarFinder
     >>> from astropy.stats import mad_std
@@ -56,7 +56,7 @@ a radius of 4 pixels.  The :func:`~photutils.aperture_photometry`
 function returns an Astropy `~astropy.table.Table` with the results of
 the photometry:
 
-.. doctest-requires:: scipy, skimage
+.. doctest-requires:: scipy
 
     >>> from photutils import aperture_photometry, CircularAperture
     >>> positions = (sources['xcentroid'], sources['ycentroid'])    # doctest: +REMOTE_DATA

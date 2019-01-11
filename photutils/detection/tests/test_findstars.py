@@ -1,6 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
 import os.path as op
 import itertools
 import warnings
@@ -21,12 +20,6 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
-try:
-    import skimage    # noqa
-    HAS_SKIMAGE = True
-except ImportError:
-    HAS_SKIMAGE = False
-
 
 DATA = make_100gaussians_image()
 THRESHOLDS = [8.0, 10.0]
@@ -35,8 +28,7 @@ warnings.simplefilter('always', AstropyUserWarning)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-@pytest.mark.skipif('not HAS_SKIMAGE')
-class TestDAOStarFinder(object):
+class TestDAOStarFinder:
     @pytest.mark.parametrize(('threshold', 'fwhm'),
                              list(itertools.product(THRESHOLDS, FWHMS)))
     def test_daofind(self, threshold, fwhm):
@@ -50,6 +42,13 @@ class TestDAOStarFinder(object):
         assert t.colnames == t_ref.colnames
         for col in t.colnames:
             assert_allclose(t[col], t_ref[col])
+
+    def test_daofind_threshold_fwhm_inputs(self):
+        with pytest.raises(TypeError):
+            DAOStarFinder(threshold=np.ones((2, 2)), fwhm=3.)
+
+        with pytest.raises(TypeError):
+            DAOStarFinder(threshold=3., fwhm=np.ones((2, 2)))
 
     def test_daofind_include_border(self):
         starfinder = DAOStarFinder(threshold=10, fwhm=2, sigma_radius=1.5,
@@ -101,10 +100,54 @@ class TestDAOStarFinder(object):
         t = starfinder(DATA)
         assert len(t) == 102
 
+    def test_daofind_peakmax_filtering(self):
+        """
+        Regression test that objects with ``peak`` >= ``peakmax`` are
+        filtered out.
+        """
+
+        peakmax = 20
+        starfinder = DAOStarFinder(threshold=7., fwhm=1.5, roundlo=-np.inf,
+                                   roundhi=np.inf, sharplo=-np.inf,
+                                   sharphi=np.inf, peakmax=peakmax)
+        t = starfinder(DATA)
+        assert len(t) == 37
+        assert all(t['peak'] < peakmax)
+
+    def test_daofind_brightest_filtering(self):
+        """
+        Regression test that only top ``brightest`` objects are
+        selected.
+        """
+
+        brightest = 40
+        peakmax = 20
+        starfinder = DAOStarFinder(threshold=7., fwhm=1.5, roundlo=-np.inf,
+                                   roundhi=np.inf, sharplo=-np.inf,
+                                   sharphi=np.inf, brightest=brightest)
+        t = starfinder(DATA)
+        # combined with peakmax
+        assert len(t) == brightest
+        starfinder = DAOStarFinder(threshold=7., fwhm=1.5, roundlo=-np.inf,
+                                   roundhi=np.inf, sharplo=-np.inf,
+                                   sharphi=np.inf, brightest=brightest,
+                                   peakmax=peakmax)
+        t = starfinder(DATA)
+        assert len(t) == 37
+
+    def test_daofind_mask(self):
+        """Test DAOStarFinder with a mask."""
+
+        starfinder = DAOStarFinder(threshold=10, fwhm=1.5)
+        mask = np.zeros_like(DATA, dtype=bool)
+        mask[100:200] = True
+        tbl1 = starfinder(DATA)
+        tbl2 = starfinder(DATA, mask=mask)
+        assert len(tbl1) > len(tbl2)
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
-@pytest.mark.skipif('not HAS_SKIMAGE')
-class TestIRAFStarFinder(object):
+class TestIRAFStarFinder:
     @pytest.mark.parametrize(('threshold', 'fwhm'),
                              list(itertools.product(THRESHOLDS, FWHMS)))
     def test_irafstarfind(self, threshold, fwhm):
@@ -118,6 +161,13 @@ class TestIRAFStarFinder(object):
         assert t.colnames == t_ref.colnames
         for col in t.colnames:
             assert_allclose(t[col], t_ref[col])
+
+    def test_irafstarfind_threshold_fwhm_inputs(self):
+        with pytest.raises(TypeError):
+            IRAFStarFinder(threshold=np.ones((2, 2)), fwhm=3.)
+
+        with pytest.raises(TypeError):
+            IRAFStarFinder(threshold=3., fwhm=np.ones((2, 2)))
 
     def test_irafstarfind_nosources(self):
         data = np.ones((3, 3))
@@ -146,3 +196,37 @@ class TestIRAFStarFinder(object):
         starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0, sky=100.)
         t = starfinder(DATA)
         assert len(t) == 0
+
+    def test_irafstarfind_peakmax_filtering(self):
+        """
+        Regression test that objects with ``peak`` >= ``peakmax`` are
+        filtered out.
+        """
+        peakmax = 20
+        starfinder = IRAFStarFinder(threshold=7., fwhm=2, roundlo=-np.inf,
+                                    roundhi=np.inf, sharplo=-np.inf,
+                                    sharphi=np.inf, peakmax=peakmax)
+        t = starfinder(DATA)
+        assert len(t) == 117
+        assert all(t['peak'] < peakmax)
+
+    def test_irafstarfind_brightest_filtering(self):
+        """
+        Regression test that only top ``brightest`` objects are selected.
+        """
+        brightest = 40
+        starfinder = IRAFStarFinder(threshold=7., fwhm=2, roundlo=-np.inf,
+                                    roundhi=np.inf, sharplo=-np.inf,
+                                    sharphi=np.inf, brightest=brightest)
+        t = starfinder(DATA)
+        assert len(t) == brightest
+
+    def test_irafstarfind_mask(self):
+        """Test IRAFStarFinder with a mask."""
+
+        starfinder = IRAFStarFinder(threshold=10, fwhm=1.5)
+        mask = np.zeros_like(DATA, dtype=bool)
+        mask[100:200] = True
+        tbl1 = starfinder(DATA)
+        tbl2 = starfinder(DATA, mask=mask)
+        assert len(tbl1) > len(tbl2)

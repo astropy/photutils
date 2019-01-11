@@ -2,7 +2,7 @@
 """
 Window (or tapering) functions for matching PSFs using Fourier methods.
 """
-from __future__ import division
+
 import numpy as np
 
 
@@ -36,7 +36,7 @@ def _radial_distance(shape):
     return np.sqrt(xx**2 + yy**2)
 
 
-class SplitCosineBellWindow(object):
+class SplitCosineBellWindow:
     """
     Class to define a 2D split cosine bell taper function.
 

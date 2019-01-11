@@ -1,6 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
 import numpy as np
 from numpy.testing import assert_allclose
@@ -21,7 +19,7 @@ BACKGROUND = np.ones(SHAPE)
 WRONG_SHAPE = np.ones((2, 2))
 
 
-class TestCalculateTotalError(object):
+class TestCalculateTotalError:
     def test_error_shape(self):
         with pytest.raises(ValueError):
             calc_total_error(DATA, WRONG_SHAPE, EFFGAIN)

@@ -3,18 +3,19 @@
 Models for doing PSF/PRF fitting photometry on image data.
 """
 
-from __future__ import division
-import warnings
 import copy
+import itertools
+import warnings
 
 import numpy as np
-from astropy.modeling import models, Parameter, Fittable2DModel
-from astropy.utils.exceptions import AstropyWarning
+from astropy.nddata import NDData
+from astropy.modeling import Parameter, Fittable2DModel
+from astropy.utils.exceptions import (AstropyWarning,
+                                      AstropyDeprecationWarning)
 
 
-__all__ = ['FittableImageModel', 'NonNormalizable',
-           'IntegratedGaussianPRF', 'PRFAdapter',
-           'prepare_psf_model', 'get_grouped_psf_model']
+__all__ = ['NonNormalizable', 'FittableImageModel', 'EPSFModel',
+           'GriddedPSFModel', 'IntegratedGaussianPRF', 'PRFAdapter']
 
 
 class NonNormalizable(AstropyWarning):
@@ -151,7 +152,7 @@ class FittableImageModel(Fittable2DModel):
 
         self._compute_normalization(normalize)
 
-        super(FittableImageModel, self).__init__(flux, x_0, y_0)
+        super().__init__(flux, x_0, y_0)
 
         # initialize interpolator:
         self.compute_interpolator(ikwargs)
@@ -441,14 +442,28 @@ class FittableImageModel(Fittable2DModel):
 
         self._store_interpolator_kwargs(ikwargs)
 
-    def evaluate(self, x, y, flux, x_0, y_0):
+    def evaluate(self, x, y, flux, x_0, y_0, use_oversampling=True):
         """
         Evaluate the model on some input variables and provided model
         parameters.
 
+        Parameters
+        ----------
+        use_oversampling : bool, optional
+            Whether to use the oversampling factor to calculate the
+            model pixel indices.  The default is `True`, which means the
+            input indices will be multipled by this factor.
         """
-        xi = self._oversampling * (np.asarray(x) - x_0) + self._x_origin
-        yi = self._oversampling * (np.asarray(y) - y_0) + self._y_origin
+
+        if use_oversampling:
+            xi = self._oversampling * (np.asarray(x) - x_0)
+            yi = self._oversampling * (np.asarray(y) - y_0)
+        else:
+            xi = np.asarray(x) - x_0
+            yi = np.asarray(y) - y_0
+
+        xi += self._x_origin
+        yi += self._y_origin
 
         f = flux * self._normalization_constant
         evaluated_model = f * self.interpolator.ev(xi, yi)
@@ -461,6 +476,320 @@ class FittableImageModel(Fittable2DModel):
             evaluated_model[invalid] = self._fill_value
 
         return evaluated_model
+
+
+class EPSFModel(FittableImageModel):
+    """
+    A subclass of `FittableImageModel`.
+
+    Parameters
+    ----------
+    pixel_scale : float, tuple of two floats or `None`, optional
+        .. warning::
+
+            The ``pixel_scale`` keyword is now deprecated (since v0.6)
+            and will likely be removed in v0.7.  Use the
+            ``oversampling`` keyword instead.
+
+        The pixel scale (in arbitrary units) of the ePSF.  The
+        ``pixel_scale`` can either be a single float or tuple of two
+        floats of the form ``(x_pixscale, y_pixscale)``.  If
+        ``pixel_scale`` is a scalar then the pixel scale will be the
+        same for both the x and y axes.  The default is `None`, which
+        means it will be set to the inverse of the ``oversampling``
+        factor.
+
+        The ePSF ``pixel_scale`` is used only when building the ePSF and
+        when fitting the ePSF to `Star` objects with `EPSFFitter`.  In
+        those cases, the ``pixel_scale`` is used in conjunction with the
+        `Star` pixel scale when building and fitting the ePSF.  This
+        allows for building (and fitting) a ePSF using images of stars
+        with different pixel scales (e.g. velocity aberrations).  The
+        ``oversampling`` factor is ignored in these cases.
+
+        If you are not using `EPSFBuilder` or `EPSFFitter`, then you
+        must set the ``oversampling`` factor.  The ``pixel_scale`` will
+        be ignored.
+    """
+
+    def __init__(self, data, flux=1.0, x_0=0, y_0=0, normalize=True,
+                 normalization_correction=1.0, origin=None, oversampling=1.,
+                 pixel_scale=None, fill_value=0., ikwargs={}):
+
+        if pixel_scale is None:
+            pixel_scale = 1. / oversampling
+        else:
+            warnings.warn('The pixel_scale keyword is deprecated and will '
+                          'likely be removed in v0.7.  Use the oversampling '
+                          'keyword instead.', AstropyDeprecationWarning)
+
+        super().__init__(
+            data=data, flux=flux, x_0=x_0, y_0=y_0, normalize=normalize,
+            normalization_correction=normalization_correction, origin=origin,
+            oversampling=oversampling, fill_value=fill_value, ikwargs=ikwargs)
+
+        self._pixel_scale = pixel_scale
+
+    @property
+    def pixel_scale(self):
+        """
+        The ``(x, y)`` pixel scale (in arbitrary units) of the PSF.
+        """
+
+        return self._pixel_scale
+
+    @pixel_scale.setter
+    def pixel_scale(self, pixel_scale):
+        if pixel_scale is not None:
+            pixel_scale = np.atleast_1d(pixel_scale)
+            if len(pixel_scale) == 1:
+                pixel_scale = np.repeat(pixel_scale, 2).astype(float)
+            elif len(pixel_scale) > 2:
+                raise ValueError('pixel_scale must be a scalar or tuple '
+                                 'of two floats.')
+
+        self._pixel_scale = pixel_scale
+
+
+class GriddedPSFModel(Fittable2DModel):
+    """
+    A fittable 2D model containing a grid PSF models defined at specific
+    locations that are interpolated to evaluate a PSF at an arbitrary
+    (x, y) position.
+
+    Parameters
+    ----------
+    data : `~astropy.nddata.NDData`
+        An `~astropy.nddata.NDData` object containing the grid of
+        reference PSF arrays.  The data attribute must contain a 3D
+        `~numpy.ndarray` containing a stack of the 2D PSFs (the data
+        shape should be (N_psf, PSF_ny, PSF_nx)).  The meta
+        attribute must be `dict` containing the following:
+
+            * ``'grid_xypos'``:  A list of the (x, y) grid positions of
+              each reference PSF.  The order of positions should match
+              the first axis of the 3D `~numpy.ndarray` of PSFs.  In
+              other words, ``grid_xypos[i]`` should be the (x, y)
+              position of the reference PSF defined in ``data[i]``.
+            * ``'oversampling'``:  The integer oversampling factor of the
+               PSF.
+
+        The meta attribute may contain other properties such as the
+        telescope, instrument, detector, and filter of the PSF.
+    """
+
+    flux = Parameter(description='Intensity scaling factor for the PSF '
+                     'model.', default=1.0)
+    x_0 = Parameter(description='x position in the output coordinate grid '
+                    'where the model is evaluated.', default=0.0)
+    y_0 = Parameter(description='y position in the output coordinate grid '
+                    'where the model is evaluated.', default=0.0)
+
+    def __init__(self, data, flux=flux.default, x_0=x_0.default,
+                 y_0=y_0.default, fill_value=0.0):
+
+        if not isinstance(data, NDData):
+            raise TypeError('data must be an NDData instance.')
+
+        if data.data.ndim != 3:
+            raise ValueError('The NDData data attribute must be a 3D numpy '
+                             'ndarray')
+
+        if 'grid_xypos' not in data.meta:
+            raise ValueError('"grid_xypos" must be in the nddata meta '
+                             'dictionary.')
+        if len(data.meta['grid_xypos']) != data.data.shape[0]:
+            raise ValueError('The length of grid_xypos must match the number '
+                             'of input PSFs.')
+
+        if 'oversampling' not in data.meta:
+            raise ValueError('"oversampling" must be in the nddata meta '
+                             'dictionary.')
+        if not np.isscalar(data.meta['oversampling']):
+            raise ValueError('oversampling must be a scalar value')
+
+        self.data = np.array(data.data, copy=True, dtype=np.float)
+        self.meta = data.meta
+        self.grid_xypos = data.meta['grid_xypos']
+        self.oversampling = data.meta['oversampling']
+
+        self._grid_xpos, self._grid_ypos = np.transpose(self.grid_xypos)
+        self._xgrid = np.unique(self._grid_xpos)  # also sorts values
+        self._ygrid = np.unique(self._grid_ypos)  # also sorts values
+
+        if (len(list(itertools.product(self._xgrid, self._ygrid))) !=
+                len(self.grid_xypos)):
+            raise ValueError('"grid_xypos" must form a regular grid.')
+
+        self._xgrid_min = self._xgrid[0]
+        self._xgrid_max = self._xgrid[-1]
+        self._ygrid_min = self._ygrid[0]
+        self._ygrid_max = self._ygrid[-1]
+
+        super().__init__(flux, x_0, y_0)
+
+    @staticmethod
+    def _find_bounds_1d(data, x):
+        """
+        Find the index of the lower bound where ``x`` should be inserted
+        into ``a`` to maintain order.
+
+        The index of the upper bound is the index of the lower bound
+        plus 2.  Both bound indices must be within the array.
+
+        Parameters
+        ----------
+        data : 1D `~numpy.ndarray`
+            The 1D array to search.
+
+        x : float
+            The value to insert.
+
+        Returns
+        -------
+        index : int
+            The index of the lower bound.
+        """
+
+        idx = np.searchsorted(data, x)
+        if idx == 0:
+            idx0 = 0
+        elif idx == len(data):  # pragma: no cover
+            idx0 = idx - 2
+        else:
+            idx0 = idx - 1
+
+        return idx0
+
+    def _find_bounding_points(self, x, y):
+        """
+        Find the indices of the grid points that bound the input
+        ``(x, y)`` position.
+
+        Parameters
+        ----------
+        x, y : float
+            The ``(x, y)`` position where the PSF is to be evaluated.
+
+        Returns
+        -------
+        indices : list of int
+            A list of indices of the bounding grid points.
+        """
+
+        if not np.isscalar(x) or not np.isscalar(y):  # pragma: no cover
+            raise TypeError('x and y must be scalars')
+
+        if (x < self._xgrid_min or x > self._xgrid_max or
+                y < self._ygrid_min or y > self._ygrid_max):  # pragma: no cover
+            raise ValueError('(x, y) position is outside of the region '
+                             'defined by grid of PSF positions')
+
+        x0 = self._find_bounds_1d(self._xgrid, x)
+        y0 = self._find_bounds_1d(self._ygrid, y)
+        points = list(itertools.product(self._xgrid[x0:x0 + 2],
+                                        self._ygrid[y0:y0 + 2]))
+
+        indices = []
+        for xx, yy in points:
+            indices.append(np.argsort(np.hypot(self._grid_xpos - xx,
+                                               self._grid_ypos - yy))[0])
+
+        return indices
+
+    @staticmethod
+    def _bilinear_interp(xyref, zref, xi, yi):
+        """
+        Perform bilinear interpolation of four 2D arrays located at
+        points on a regular grid.
+
+        Parameters
+        ----------
+        xyref : list of 4 (x, y) pairs
+            A list of 4 ``(x, y)`` pairs that form a rectangle.
+
+        refdata : 3D `~numpy.ndarray`
+            A 3D `~numpy.ndarray` of shape ``(4, nx, ny)``.  The first
+            axis corresponds to ``xyref``, i.e. ``refdata[0, :, :]`` is
+            the 2D array located at ``xyref[0]``.
+
+        xi, yi : float
+            The ``(xi, yi)`` point at which to perform the
+            interpolation.  The ``(xi, yi)`` point must lie within the
+            rectangle defined by ``xyref``.
+
+        Returns
+        -------
+        result : 2D `~numpy.ndarray`
+            The 2D interpolated array.
+        """
+
+        if len(xyref) != 4:
+            raise ValueError('xyref must contain only 4 (x, y) pairs')
+
+        if zref.shape[0] != 4:
+            raise ValueError('zref must have a length of 4 on the first '
+                             'axis.')
+
+        xyref = [tuple(i) for i in xyref]
+        idx = sorted(range(len(xyref)), key=xyref.__getitem__)
+        xyref = sorted(xyref)   # sort by x, then y
+        (x0, y0), (_x0, y1), (x1, _y0), (_x1, _y1) = xyref
+
+        if x0 != _x0 or x1 != _x1 or y0 != _y0 or y1 != _y1:
+            raise ValueError('The refxy points do not form a rectangle.')
+
+        if not np.isscalar(xi):
+            xi = xi[0]
+        if not np.isscalar(yi):
+            yi = yi[0]
+
+        if not x0 <= xi <= x1 or not y0 <= yi <= y1:
+            raise ValueError('The (x, y) input is not within the rectangle '
+                             'defined by xyref.')
+
+        data = np.asarray(zref)[idx]
+        weights = np.array([(x1 - xi) * (y1 - yi), (x1 - xi) * (yi - y0),
+                            (xi - x0) * (y1 - yi), (xi - x0) * (yi - y0)])
+        norm = (x1 - x0) * (y1 - y0)
+
+        return np.sum(data * weights[:, None, None], axis=0) / norm
+
+    def evaluate(self, x, y, flux, x_0, y_0):
+        """
+        Evaluate the `GriddedPSFModel` for the input parameters.
+        """
+
+        # NOTE: this is needed because the PSF photometry routines input
+        # length-1 values instead of scalars.  TODO: fix the photometry
+        # routines.
+        if not np.isscalar(x_0):
+            x_0 = x_0[0]
+        if not np.isscalar(y_0):
+            y_0 = y_0[0]
+
+        if (x_0 < self._xgrid_min or x_0 > self._xgrid_max or
+                y_0 < self._ygrid_min or y_0 > self._ygrid_max):
+
+            # position is outside of the grid, so simply use the
+            # closest reference PSF
+            self._ref_indices = np.argsort(np.hypot(self._grid_xpos - x_0,
+                                                    self._grid_ypos - y_0))[0]
+            self._psf_interp = self.data[self._ref_indices, :, :]
+        else:
+            # find the four bounding reference PSFs and interpolate
+            self._ref_indices = self._find_bounding_points(x_0, y_0)
+            xyref = np.array(self.grid_xypos)[self._ref_indices]
+            psfs = self.data[self._ref_indices, :, :]
+
+            self._psf_interp = self._bilinear_interp(xyref, psfs, x_0, y_0)
+
+        # now evaluate the PSF at the (x_0, y_0) subpixel position on
+        # the input (x, y) values
+        psfmodel = FittableImageModel(self._psf_interp,
+                                      oversampling=self.oversampling)
+
+        return psfmodel.evaluate(x, y, flux, x_0, y_0)
 
 
 class IntegratedGaussianPRF(Fittable2DModel):
@@ -534,9 +863,8 @@ class IntegratedGaussianPRF(Fittable2DModel):
             from scipy.special import erf
             self.__class__._erf = erf
 
-        super(IntegratedGaussianPRF, self).__init__(n_models=1, sigma=sigma,
-                                                    x_0=x_0, y_0=y_0,
-                                                    flux=flux, **kwargs)
+        super().__init__(n_models=1, sigma=sigma, x_0=x_0, y_0=y_0, flux=flux,
+                         **kwargs)
 
     def evaluate(self, x, y, flux, x_0, y_0, sigma):
         """Model function Gaussian PSF model."""
@@ -612,8 +940,7 @@ class PRFAdapter(Fittable2DModel):
         # used in the future to expose how the integration happens
         self._dblquadkwargs = {}
 
-        super(PRFAdapter, self).__init__(n_models=1, x_0=x_0, y_0=y_0,
-                                         flux=flux, **kwargs)
+        super().__init__(n_models=1, x_0=x_0, y_0=y_0, flux=flux, **kwargs)
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """The evaluation function for PRFAdapter."""
@@ -650,134 +977,3 @@ class PRFAdapter(Fittable2DModel):
                                   lambda x: yi-0.5, lambda x: yi+0.5,
                                   **self._dblquadkwargs)[0]
         return out
-
-
-def prepare_psf_model(psfmodel, xname=None, yname=None, fluxname=None,
-                      renormalize_psf=True):
-    """
-    Convert a 2D PSF model to one suitable for use with
-    `BasicPSFPhotometry` or its subclasses.
-
-    The resulting model may be a composite model, but should have only
-    the x, y, and flux related parameters un-fixed.
-
-    Parameters
-    ----------
-    psfmodel : a 2D model
-        The model to assume as representative of the PSF.
-    xname : str or None
-        The name of the ``psfmodel`` parameter that corresponds to the
-        x-axis center of the PSF.  If None, the model will be assumed to
-        be centered at x=0, and a new parameter will be added for the
-        offset.
-    yname : str or None
-        The name of the ``psfmodel`` parameter that corresponds to the
-        y-axis center of the PSF.  If None, the model will be assumed to
-        be centered at y=0, and a new parameter will be added for the
-        offset.
-    fluxname : str or None
-        The name of the ``psfmodel`` parameter that corresponds to the
-        total flux of the star.  If None, a scaling factor will be added
-        to the model.
-    renormalize_psf : bool
-        If True, the model will be integrated from -inf to inf and
-        re-scaled so that the total integrates to 1.  Note that this
-        renormalization only occurs *once*, so if the total flux of
-        ``psfmodel`` depends on position, this will *not* be correct.
-
-    Returns
-    -------
-    outmod : a model
-        A new model ready to be passed into `BasicPSFPhotometry` or its
-        subclasses.
-    """
-
-    if xname is None:
-        xinmod = models.Shift(0, name='x_offset')
-        xname = 'offset_0'
-    else:
-        xinmod = models.Identity(1)
-        xname = xname + '_2'
-    xinmod.fittable = True
-
-    if yname is None:
-        yinmod = models.Shift(0, name='y_offset')
-        yname = 'offset_1'
-    else:
-        yinmod = models.Identity(1)
-        yname = yname + '_2'
-    yinmod.fittable = True
-
-    outmod = (xinmod & yinmod) | psfmodel
-
-    if fluxname is None:
-        outmod = outmod * models.Const2D(1, name='flux_scaling')
-        fluxname = 'amplitude_3'
-    else:
-        fluxname = fluxname + '_2'
-
-    if renormalize_psf:
-        # we do the import here because other machinery works w/o scipy
-        from scipy import integrate
-
-        integrand = integrate.dblquad(psfmodel, -np.inf, np.inf,
-                                      lambda x: -np.inf, lambda x: np.inf)[0]
-        normmod = models.Const2D(1./integrand, name='renormalize_scaling')
-        outmod = outmod * normmod
-
-    # final setup of the output model - fix all the non-offset/scale
-    # parameters
-    for pnm in outmod.param_names:
-        outmod.fixed[pnm] = pnm not in (xname, yname, fluxname)
-
-    # and set the names so that BasicPSFPhotometry knows what to do
-    outmod.xname = xname
-    outmod.yname = yname
-    outmod.fluxname = fluxname
-
-    # now some convenience aliases if reasonable
-    outmod.psfmodel = outmod[2]
-    if 'x_0' not in outmod.param_names and 'y_0' not in outmod.param_names:
-        outmod.x_0 = getattr(outmod, xname)
-        outmod.y_0 = getattr(outmod, yname)
-    if 'flux' not in outmod.param_names:
-        outmod.flux = getattr(outmod, fluxname)
-
-    return outmod
-
-
-def get_grouped_psf_model(template_psf_model, star_group, pars_to_set):
-    """
-    Construct a joint PSF model which consists of a sum of PSF's templated on
-    a specific model, but whose parameters are given by a table of objects.
-
-    Parameters
-    ----------
-    template_psf_model : `astropy.modeling.Fittable2DModel` instance
-        The model to use for *individual* objects.  Must have parameters named
-        ``x_0``, ``y_0``, and ``flux``.
-    star_group : `~astropy.table.Table`
-        Table of stars for which the compound PSF will be constructed.  It
-        must have columns named ``x_0``, ``y_0``, and ``flux_0``.
-
-    Returns
-    -------
-    group_psf
-        An `astropy.modeling` ``CompoundModel`` instance which is a sum of the
-        given PSF models.
-    """
-
-    group_psf = None
-
-    for star in star_group:
-        psf_to_add = template_psf_model.copy()
-        for param_tab_name, param_name in pars_to_set.items():
-            setattr(psf_to_add, param_name, star[param_tab_name])
-
-        if group_psf is None:
-            # this is the first one only
-            group_psf = psf_to_add
-        else:
-            group_psf += psf_to_add
-
-    return group_psf

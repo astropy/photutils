@@ -102,7 +102,7 @@ provides a better estimate of the background and background noise
 levels::
 
     >>> from astropy.stats import sigma_clipped_stats
-    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, iters=5)
+    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     >>> print((mean, median, std))  # doctest: +FLOAT_CMP
     (5.199138651621793, 5.155587433358291, 2.094275212132969)
 
@@ -202,7 +202,7 @@ By default the ``bkg_estimator`` and ``bkgrms_estimator`` are applied
 to sigma clipped data.  Sigma clipping is defined by inputting a
 :class:`astropy.stats.SigmaClip` object to the ``sigma_clip`` keyword.
 The default is to perform sigma clipping with ``sigma=3`` and
-``iters=10``.  Sigma clipping can be turned off by setting
+``maxiters=10``.  Sigma clipping can be turned off by setting
 ``sigma_clip=None``.
 
 After the background level has been determined in each of the boxes,
@@ -254,7 +254,7 @@ instance of :class:`~photutils.background.MedianBackground`.
 
     >>> from astropy.stats import SigmaClip
     >>> from photutils import Background2D, MedianBackground
-    >>> sigma_clip = SigmaClip(sigma=3., iters=10)
+    >>> sigma_clip = SigmaClip(sigma=3.)
     >>> bkg_estimator = MedianBackground()
     >>> bkg = Background2D(data2, (50, 50), filter_size=(3, 3),
     ...                    sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
@@ -293,7 +293,7 @@ Let's plot the background image:
     y, x = np.mgrid[:ny, :nx]
     gradient =  x * y / 5000.
     data2 = data + gradient
-    sigma_clip = SigmaClip(sigma=3., iters=10)
+    sigma_clip = SigmaClip(sigma=3.)
     bkg_estimator = MedianBackground()
     bkg = Background2D(data2, (50, 50), filter_size=(3, 3),
                        sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
@@ -319,7 +319,7 @@ and the background-subtracted image:
     y, x = np.mgrid[:ny, :nx]
     gradient =  x * y / 5000.
     data2 = data + gradient
-    sigma_clip = SigmaClip(sigma=3., iters=10)
+    sigma_clip = SigmaClip(sigma=3.)
     bkg_estimator = MedianBackground()
     bkg = Background2D(data2, (50, 50), filter_size=(3, 3),
                        sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)

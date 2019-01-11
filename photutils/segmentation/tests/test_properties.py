@@ -1,6 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
 import itertools
 
 import numpy as np
@@ -15,7 +14,7 @@ from astropy.utils.misc import isiterable
 import astropy.wcs as WCS
 
 from ..properties import (SegmentationImage, SourceProperties,
-                          source_properties, SourceCatalog, properties_table)
+                          source_properties, SourceCatalog)
 
 try:
     import scipy    # noqa
@@ -47,7 +46,7 @@ BACKGRD_VALS = [None, 0., 1., 3.5]
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestSourceProperties(object):
+class TestSourceProperties:
     def test_segment_shape(self):
         with pytest.raises(ValueError):
             SourceProperties(IMAGE, np.zeros((2, 2)), label=1)
@@ -89,18 +88,14 @@ class TestSourceProperties(object):
     def test_to_table(self):
         props = SourceProperties(IMAGE, SEGM, label=1)
         t1 = props.to_table()
-        t2 = properties_table(props)
         assert isinstance(t1, QTable)
-        assert isinstance(t2, QTable)
         assert len(t1) == 1
-        props = ['xcentroid', 'ycentroid', 'source_sum']
-        for prop in props:
-            assert t1[prop] == t2[prop]
+        assert_quantity_allclose(t1['area'], 1058 * u.pix**2)
 
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestSourcePropertiesFunctionInputs(object):
+class TestSourcePropertiesFunctionInputs:
     def test_segment_shape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
@@ -132,7 +127,7 @@ class TestSourcePropertiesFunctionInputs(object):
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestSourcePropertiesFunction(object):
+class TestSourcePropertiesFunction:
     def test_properties(self):
         props = source_properties(IMAGE, SEGM)
         assert props[0].id == 1
@@ -331,7 +326,7 @@ class TestSourcePropertiesFunction(object):
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
-class TestSourceCatalog(object):
+class TestSourceCatalog:
     def test_basic(self):
         segm = np.zeros(IMAGE.shape)
         x = y = np.arange(0, 100, 10)
@@ -403,6 +398,21 @@ class TestSourceCatalog(object):
         assert t[0]['sky_centroid'] is not None
         assert t.colnames == columns
 
+        obj = cat[0]
+        row = t[0]
+        assert_quantity_allclose(obj.sky_bbox_ll.ra, row['sky_bbox_ll'].ra)
+        assert_quantity_allclose(obj.sky_bbox_ll.dec, row['sky_bbox_ll'].dec)
+
+        assert_quantity_allclose(obj.sky_bbox_ul.ra, row['sky_bbox_ul'].ra)
+        assert_quantity_allclose(obj.sky_bbox_ul.dec, row['sky_bbox_ul'].dec)
+
+        assert_quantity_allclose(obj.sky_bbox_lr.ra, row['sky_bbox_lr'].ra)
+        assert_quantity_allclose(obj.sky_bbox_lr.dec, row['sky_bbox_lr'].dec)
+
+        assert_quantity_allclose(obj.sky_bbox_ur.ra, row['sky_bbox_ur'].ra)
+        assert_quantity_allclose(obj.sky_bbox_ur.dec, row['sky_bbox_ur'].dec)
+
+    def test_table_no_wcs(self):
         cat = source_properties(IMAGE, SEGM)
         columns = ['sky_centroid', 'sky_centroid_icrs', 'icrs_centroid',
                    'ra_icrs_centroid', 'dec_icrs_centroid', 'sky_bbox_ll',
@@ -410,61 +420,3 @@ class TestSourceCatalog(object):
         t = cat.to_table(columns=columns)
         assert t[0]['sky_centroid'] is None
         assert t.colnames == columns
-
-
-@pytest.mark.skipif('not HAS_SKIMAGE')
-@pytest.mark.skipif('not HAS_SCIPY')
-class TestPropertiesTable(object):
-    def test_properties_table(self):
-        props = source_properties(IMAGE, SEGM)
-        t = properties_table(props)
-        assert isinstance(t, QTable)
-        assert len(t) == 1
-
-    def test_properties_table_include(self):
-        props = source_properties(IMAGE, SEGM)
-        columns = ['id', 'xcentroid']
-        t = properties_table(props, columns=columns)
-        assert isinstance(t, QTable)
-        assert len(t) == 1
-        assert t.colnames == columns
-
-    def test_properties_table_include_invalidname(self):
-        props = source_properties(IMAGE, SEGM)
-        columns = ['idzz', 'xcentroidzz']
-        with pytest.raises(AttributeError):
-            properties_table(props, columns=columns)
-
-    def test_properties_table_exclude(self):
-        props = source_properties(IMAGE, SEGM)
-        exclude = ['id', 'xcentroid']
-        t = properties_table(props, exclude_columns=exclude)
-        assert isinstance(t, QTable)
-        assert len(t) == 1
-        with pytest.raises(KeyError):
-            t['id']
-
-    def test_properties_table_empty_props(self):
-        props = source_properties(IMAGE, SEGM, labels=-1)
-        with pytest.raises(ValueError):
-            properties_table(props)
-
-    def test_properties_table_empty_list(self):
-        with pytest.raises(ValueError):
-            properties_table([])
-
-    def test_properties_table_wcs(self):
-        mywcs = WCS.WCS(naxis=2)
-        rho = np.pi / 3.
-        scale = 0.1 / 3600.
-        mywcs.wcs.cd = [[scale*np.cos(rho), -scale*np.sin(rho)],
-                        [scale*np.sin(rho), scale*np.cos(rho)]]
-        mywcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
-
-        props = source_properties(IMAGE, SEGM, wcs=mywcs)
-        columns = ['sky_centroid', 'sky_centroid_icrs', 'icrs_centroid',
-                   'ra_icrs_centroid', 'dec_icrs_centroid', 'sky_bbox_ll',
-                   'sky_bbox_ul', 'sky_bbox_lr', 'sky_bbox_ur']
-        t = properties_table(props, columns=columns)
-        assert t.colnames == columns
-        assert t[0]['sky_centroid_icrs'] is not None

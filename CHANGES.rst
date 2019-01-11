@@ -1,5 +1,111 @@
-0.5 (unreleased)
+0.7 (unreleased)
 ----------------
+
+- No changes yet
+
+
+0.6 (2018-12-11)
+----------------
+
+General
+^^^^^^^
+
+ - Versions of Numpy <1.11 are no longer supported. [#783]
+
+New Features
+^^^^^^^^^^^^
+
+- ``photutils.detection``
+
+  - ``DAOStarFinder`` and ``IRAFStarFinder`` gain two new parameters:
+    ``brightest`` to keep the top ``brightest`` (based on the flux)
+    objects in the returned catalog (after all other filtering has
+    been applied) and ``peakmax`` to exclude sources with peak pixel
+    values larger or equal to ``peakmax``. [#750]
+
+  - Added a ``mask`` keyword to ``DAOStarFinder`` and
+    ``IRAFStarFinder`` that can be used to mask regions of the input
+    image.  [#759]
+
+- ``photutils.psf``
+
+  - The ``Star``, ``Stars``, and ``LinkedStars`` classes are now
+    deprecated and have been renamed ``EPSFStar``, ``EPSFStars``, and
+    ``LinkedEPSFStars``, respectively. [#727]
+
+  - Added a ``GriddedPSFModel`` class for spatially-dependent PSFs.
+    [#772]
+
+  - The ``pixel_scale`` keyword in ``EPSFStar``, ``EPSFBuilder`` and
+    ``EPSFModel`` is now deprecated.  Use the ``oversampling`` keyword
+    instead. [#780]
+
+
+API changes
+^^^^^^^^^^^
+
+- ``photutils.detection``
+
+  - The ``find_peaks`` function now returns an empty
+    ``astropy.table.Table`` instead of an empty list if the input data
+    is an array of constant values. [#709]
+
+  - The ``find_peaks`` function will no longer issue a RuntimeWarning
+    if the input data contains NaNs. [#712]
+
+  - If no sources/peaks are found, ``DAOStarFinder``,
+    ``IRAFStarFinder``, and ``find_peaks`` now will return an empty
+    table with column names and types. [#758, #762]
+
+- ``photutils.psf``
+
+  - The ``photutils.psf.funcs.py`` module was renamed
+    ``photutils.psf.utils.py``. The ``prepare_psf_model`` and
+    ``get_grouped_psf_model`` functions were also moved to this new
+    ``utils.py`` module.  [#777]
+
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.aperture``
+
+  - If a single aperture is input as a list into the
+    ``aperture_photometry`` function, then the output columns will be
+    called ``aperture_sum_0`` and ``aperture_sum_err_0`` (if errors
+    are used).  Previously these column names did not have the
+    trailing "_0". [#779]
+
+- ``photutils.segmentation``
+
+  - Fixed a bug in the computation of ``sky_bbox_ul``,
+    ``sky_bbox_lr``, ``sky_bbox_ur`` in the ``SourceCatalog``. [#716]
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Updated background and detection functions that call
+  ``astropy.stats.SigmaClip`` or ``astropy.stats.sigma_clipped_stats``
+  to support both their ``iters`` (for astropy < 3.1) and ``maxiters``
+  keywords. [#726]
+
+
+0.5 (2018-08-06)
+----------------
+
+General
+^^^^^^^
+
+- Versions of Python <3.5 are no longer supported. [#702, #703]
+
+- Versions of Numpy <1.10 are no longer supported. [#697, #703]
+
+- Versions of Pytest <3.1 are no longer supported. [#702]
+
+- ``pytest-astropy`` is now required to run the test suite. [#702, #703]
+
+- The documentation build now uses the Sphinx configuration from
+  ``sphinx-astropy`` rather than from ``astropy-helpers``. [#702]
+
 
 New Features
 ^^^^^^^^^^^^
@@ -16,6 +122,14 @@ New Features
   - Added a ``centroid_sources`` function to calculate centroid of
     many sources in a single image. [#656]
 
+  - An n-dimensional array can now be input into the ``centroid_com``
+    function. [#685]
+
+- ``photutils.datasets``
+
+  - Added a ``load_simulated_hst_star_image`` function to load a
+    simulated HST WFC3/IR F160W image of stars. [#695]
+
 - ``photutils.detection``
 
   - Added a ``centroid_func`` keyword to ``find_peaks``.  The
@@ -27,8 +141,15 @@ New Features
   - The ``find_peaks`` function now returns an empty Table and issues
     a warning when no peaks are found. [#668]
 
-  - The ``exclude_border`` keyword in ``DAOStarFinder`` and
-    ``IRAFStarFinder`` is deprecated. F[#671]
+- ``photutils.psf``
+
+  - Added tools to build and fit an effective PSF (``EPSFBuilder`` and
+    ``EPSFFitter``). [#695]
+
+  - Added ``extract_stars`` function to extract cutouts of stars used
+    to build an ePSF. [#695]
+
+  - Added ``EPSFModel`` class to hold a fittable ePSF model. [#695]
 
 - ``photutils.segmentation``
 
@@ -65,6 +186,11 @@ New Features
 
 Bug Fixes
 ^^^^^^^^^
+
+- ``photutils.aperture``
+
+  - Fixed a bug where quantity inputs to the aperture classes would
+    sometimes fail. [#693]
 
 - ``photutils.detection``
 

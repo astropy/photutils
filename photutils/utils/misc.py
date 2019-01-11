@@ -1,9 +1,15 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+
+import abc
+
+from astropy.utils.misc import InheritDocstrings
 
 
 __all__ = ['get_version_info']
+
+
+class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
+    pass
 
 
 def get_version_info():

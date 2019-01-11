@@ -4,9 +4,10 @@ This subpackage contains modules and packages for point spread function
 photometry.
 """
 
-from .funcs import *         # noqa
+from .epsf import *          # noqa
+from .epsf_stars import *    # noqa
 from .groupstars import *    # noqa
 from .matching import *      # noqa
 from .models import *        # noqa
-from .groupstars import *    # noqa
 from .photometry import *    # noqa
+from .utils import *         # noqa

@@ -5,9 +5,6 @@ for prime-time (i.e., is not considered a stable public API), but is
 included either for experimentation or as legacy code.
 """
 
-from __future__ import (absolute_import, unicode_literals, division,
-                        print_function)
-
 import numpy as np
 from astropy.table import Table
 from astropy.modeling import Parameter, Fittable2DModel
@@ -94,8 +91,8 @@ class DiscretePRF(Fittable2DModel):
         x_0 = 0
         y_0 = 0
         flux = 1
-        super(DiscretePRF, self).__init__(n_models=1, x_0=x_0, y_0=y_0,
-                                          flux=flux, **constraints)
+        super().__init__(n_models=1, x_0=x_0, y_0=y_0, flux=flux,
+                         **constraints)
         self.fitter = LevMarLSQFitter()
 
     @property
@@ -296,7 +293,7 @@ class DiscretePRF(Fittable2DModel):
         return cls(prf_model, subsampling=subsampling)
 
 
-class Reproject(object):
+class Reproject:
     """
     Class to reproject pixel coordinates between unrectified and
     rectified images.

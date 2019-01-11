@@ -7,29 +7,26 @@ class should define a method called ``find_stars`` that finds stars in
 an image.
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-import warnings
-import math
 import abc
+import math
+import warnings
 
-import six
 import numpy as np
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.table import Table
-from astropy.utils.exceptions import (AstropyUserWarning,
-                                      AstropyDeprecationWarning)
+from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils import lazyproperty
-from astropy.utils.misc import InheritDocstrings
 
 from .core import find_peaks
+from ..utils._moments import _moments, _moments_central
 from ..utils.convolution import filter_data
+from ..utils.misc import _ABCMetaAndInheritDocstrings
 
 
 __all__ = ['StarFinderBase', 'DAOStarFinder', 'IRAFStarFinder']
 
 
-class _StarFinderKernel(object):
+class _StarFinderKernel:
     """
     Class to calculate a 2D Gaussian density enhancement kernel.
 
@@ -158,17 +155,17 @@ class _StarFinderKernel(object):
         return
 
 
-class _StarCutout(object):
+class _StarCutout:
     """
     Class to hold a 2D image cutout of a single star for the star finder
     classes.
 
     Parameters
     ----------
-    data : array_like
+    data : 2D array_like
         The cutout 2D image from the input unconvolved 2D image.
 
-    convdata : array_like
+    convdata : 2D array_like
         The cutout 2D image from the convolved 2D image.
 
     slices : tuple of two slices
@@ -213,7 +210,7 @@ class _StarCutout(object):
         self.data_masked = self.data * self.mask
 
 
-class _DAOFind_Properties(object):
+class _DAOFind_Properties:
     """
     Class to calculate the properties of each detected star, as defined
     by `DAOFIND`_.
@@ -468,7 +465,7 @@ class _DAOFind_Properties(object):
             return -2.5 * np.log10(self.flux)
 
 
-class _IRAFStarFind_Properties(object):
+class _IRAFStarFind_Properties:
     """
     Class to calculate the properties of each detected star, as defined
     by IRAF's ``starfind`` task.
@@ -520,17 +517,15 @@ class _IRAFStarFind_Properties(object):
 
     @lazyproperty
     def moments(self):
-        from skimage.measure import moments
-
-        return moments(self.data, 1)
+        return _moments(self.data, order=1)
 
     @lazyproperty
     def cutout_xcentroid(self):
-        return self.moments[1, 0] / self.moments[0, 0]
+        return self.moments[0, 1] / self.moments[0, 0]
 
     @lazyproperty
     def cutout_ycentroid(self):
-        return self.moments[0, 1] / self.moments[0, 0]
+        return self.moments[1, 0] / self.moments[0, 0]
 
     @lazyproperty
     def xcentroid(self):
@@ -562,19 +557,17 @@ class _IRAFStarFind_Properties(object):
 
     @lazyproperty
     def moments_central(self):
-        from skimage.measure import moments_central
-
-        return (moments_central(self.data, self.cutout_ycentroid,
-                                self.cutout_xcentroid, 2) /
-                self.moments[0, 0])
+        return _moments_central(
+            self.data, (self.cutout_xcentroid, self.cutout_ycentroid),
+            order=2) / self.moments[0, 0]
 
     @lazyproperty
     def mu_sum(self):
-        return self.moments_central[2, 0] + self.moments_central[0, 2]
+        return self.moments_central[0, 2] + self.moments_central[2, 0]
 
     @lazyproperty
     def mu_diff(self):
-        return self.moments_central[2, 0] - self.moments_central[0, 2]
+        return self.moments_central[0, 2] - self.moments_central[2, 0]
 
     @lazyproperty
     def fwhm(self):
@@ -600,13 +593,13 @@ class _IRAFStarFind_Properties(object):
 
 
 def _find_stars(data, kernel, threshold_eff, min_separation=None,
-                exclude_border=False):
+                mask=None, exclude_border=False):
     """
     Find stars in an image.
 
     Parameters
     ----------
-    data : array_like
+    data : 2D array_like
         The 2D array of the image.
 
     kernel : `_StarFinderKernel`
@@ -617,8 +610,12 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
         threshold should be the threshold input to the star finder class
         multiplied by the kernel relerr.
 
+    mask : 2D bool array, optional
+        A boolean mask with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Masked pixels are ignored when searching for stars.
+
     exclude_border : bool, optional
-        Deprecated.
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders.  The default is
         `False`, which is the mode used by IRAF's `DAOFIND`_ and
@@ -634,13 +631,20 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
     .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
     """
 
-    if exclude_border:
-        warnings.warn('The exclude_border keyword is deprecated and will be '
-                      'removed in a future version.',
-                      AstropyDeprecationWarning)
+    convolved_data = filter_data(data, kernel.data, mode='constant',
+                                 fill_value=0.0, check_normalization=False)
 
-    from scipy import ndimage
+    # define a local footprint for the peak finder
+    if min_separation is None:   # daofind
+        footprint = kernel.mask.astype(np.bool)
+    else:
+        # define a circular footprint
+        idx = np.arange(-min_separation, min_separation + 1)
+        xx, yy = np.meshgrid(idx, idx)
+        footprint = np.array((xx**2 + yy**2) <= min_separation**2, dtype=int)
 
+    # pad the data and convolved image by the kernel x/y radius to allow
+    # for detections near the edges
     if not exclude_border:
         ypad = kernel.yradius
         xpad = kernel.xradius
@@ -649,35 +653,20 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
         # (see https://github.com/numpy/numpy/issues/7112)
         mode = str('constant')
         data = np.pad(data, pad, mode=mode, constant_values=[0.])
+        if mask is not None:
+            mask = np.pad(mask, pad, mode=mode, constant_values=[0.])
+        convolved_data = np.pad(convolved_data, pad, mode=mode,
+                                constant_values=[0.])
 
-    convolved_data = filter_data(data, kernel.data, mode='constant',
-                                 fill_value=0.0, check_normalization=False)
+    # find local peaks in the convolved data
+    tbl = find_peaks(convolved_data, threshold_eff, footprint=footprint,
+                     mask=mask)
+    if len(tbl) == 0:
+        return []
 
-    if not exclude_border:
-        # keep border=0 in convolved data
-        convolved_data[:kernel.yradius, :] = 0.
-        convolved_data[-kernel.yradius:, :] = 0.
-        convolved_data[:, :kernel.xradius] = 0.
-        convolved_data[:, -kernel.xradius:] = 0.
-
-    selem = ndimage.generate_binary_structure(2, 2)
-    object_labels, nobjects = ndimage.label(convolved_data > threshold_eff,
-                                            structure=selem)
-
-    star_cutouts = []
-    if nobjects == 0:
-        return star_cutouts
-
-    # find object peaks in the convolved data
-    # footprint overrides min_separation in find_peaks
-    if min_separation is None:   # daofind
-        footprint = kernel.mask.astype(np.bool)
-    else:
-        from skimage.morphology import disk
-        footprint = disk(min_separation)
-    tbl = find_peaks(convolved_data, threshold_eff, footprint=footprint)
     coords = np.transpose([tbl['y_peak'], tbl['x_peak']])
 
+    star_cutouts = []
     for (ypeak, xpeak) in coords:
         # now extract the object from the data, centered on the peak
         # pixel in the convolved image, with the same size as the kernel
@@ -695,8 +684,8 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
         data_cutout = data[slices]
         convdata_cutout = convolved_data[slices]
 
+        # correct pixel values for the previous image padding
         if not exclude_border:
-            # correct for image padding
             x0 -= kernel.xradius
             x1 -= kernel.xradius
             y0 -= kernel.yradius
@@ -711,22 +700,38 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
     return star_cutouts
 
 
-class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
-    pass
-
-
-@six.add_metaclass(_ABCMetaAndInheritDocstrings)
-class StarFinderBase(object):
+class StarFinderBase(metaclass=_ABCMetaAndInheritDocstrings):
     """
     Abstract base class for star finders.
     """
 
-    def __call__(self, data):
-        return self.find_stars(data)
+    def __call__(self, data, mask=None):
+        return self.find_stars(data, mask=mask)
 
     @abc.abstractmethod
-    def find_stars(self, data):
-        raise NotImplementedError
+    def find_stars(self, data, mask=None):
+        """
+        Find stars in an astronomical image.
+
+        Parameters
+        ----------
+        data : 2D array_like
+            The 2D image array.
+
+        mask : 2D bool array, optional
+            A boolean mask with the same shape as ``data``, where a
+            `True` value indicates the corresponding element of ``data``
+            is masked.  Masked pixels are ignored when searching for
+            stars.
+
+        Returns
+        -------
+        table : `~astropy.table.Table`
+            A table of found stars.  If no stars are found then an empty
+            table is returned.
+        """
+
+        raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
 class DAOStarFinder(StarFinderBase):
@@ -808,10 +813,24 @@ class DAOStarFinder(StarFinderBase):
         replicate the results from `DAOFIND`_.
 
     exclude_border : bool, optional
-        Deprecated.
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders.  The default is
         `False`, which is the mode used by `DAOFIND`_.
+
+    brightest : int, None, optional
+        Number of brightest objects to keep after sorting the full object list.
+        If ``brightest`` is set to `None`, all objects will be selected.
+
+    peakmax : float, None, optional
+        Maximum peak pixel value in an object. Only objects whose peak pixel
+        values are *strictly smaller* than ``peakmax`` will be selected.
+        This may be used to exclude saturated sources. By default, when
+        ``peakmax`` is set to `None`, all objects will be selected.
+
+        .. warning::
+            `DAOStarFinder` automatically excludes objects whose peak
+            pixel values are negative. Therefore, setting ``peakmax`` to a
+            non-positive value would result in exclusion of all objects.
 
     See Also
     --------
@@ -844,10 +863,17 @@ class DAOStarFinder(StarFinderBase):
 
     def __init__(self, threshold, fwhm, ratio=1.0, theta=0.0,
                  sigma_radius=1.5, sharplo=0.2, sharphi=1.0, roundlo=-1.0,
-                 roundhi=1.0, sky=0.0, exclude_border=False):
+                 roundhi=1.0, sky=0.0, exclude_border=False,
+                 brightest=None, peakmax=None):
 
+        if not np.isscalar(threshold):
+            raise TypeError('threshold must be a scalar value.')
         self.threshold = threshold
+
+        if not np.isscalar(fwhm):
+            raise TypeError('fwhm must be a scalar value.')
         self.fwhm = fwhm
+
         self.ratio = ratio
         self.theta = theta
         self.sigma_radius = sigma_radius
@@ -861,15 +887,23 @@ class DAOStarFinder(StarFinderBase):
         self.kernel = _StarFinderKernel(self.fwhm, self.ratio, self.theta,
                                         self.sigma_radius)
         self.threshold_eff = self.threshold * self.kernel.relerr
+        self.brightest = brightest
+        self.peakmax = peakmax
 
-    def find_stars(self, data):
+    def find_stars(self, data, mask=None):
         """
         Find stars in an astronomical image.
 
         Parameters
         ----------
-        data : array_like
+        data : 2D array_like
             The 2D image array.
+
+        mask : 2D bool array, optional
+            A boolean mask with the same shape as ``data``, where a
+            `True` value indicates the corresponding element of ``data``
+            is masked.  Masked pixels are ignored when searching for
+            stars.
 
         Returns
         -------
@@ -893,15 +927,25 @@ class DAOStarFinder(StarFinderBase):
               ``-2.5 * log10(flux)``.  The derivation matches that of
               `DAOFIND`_ if ``sky`` is 0.0.
 
+            If no stars are found then an empty table is returned.
+
         .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
         """
 
         star_cutouts = _find_stars(data, self.kernel, self.threshold_eff,
+                                   mask=mask,
                                    exclude_border=self.exclude_border)
+        self._star_cutouts = star_cutouts
+
+        columns = ('id', 'xcentroid', 'ycentroid', 'sharpness', 'roundness1',
+                   'roundness2', 'npix', 'sky', 'peak', 'flux', 'mag')
+        coltypes = (np.int_, np.float_, np.float_, np.float_, np.float_,
+                    np.float_, np.int_, np.float_, np.float_, np.float_,
+                    np.float_)
 
         if len(star_cutouts) == 0:
             warnings.warn('No sources were found.', AstropyUserWarning)
-            return Table()
+            return Table(names=columns, dtype=coltypes)
 
         star_props = []
         for star_cutout in star_cutouts:
@@ -922,20 +966,26 @@ class DAOStarFinder(StarFinderBase):
                     props.roundness2 >= self.roundhi):
                 continue
 
+            if self.peakmax is not None and props.peak >= self.peakmax:
+                continue
+
             star_props.append(props)
 
         nstars = len(star_props)
         if nstars == 0:
             warnings.warn('Sources were found, but none pass the sharpness '
                           'and roundness criteria.', AstropyUserWarning)
-            return Table()
+            return Table(names=columns, dtype=coltypes)
+
+        if self.brightest is not None:
+            fluxes = [props.flux for props in star_props]
+            idx = sorted(np.argsort(fluxes)[-self.brightest:].tolist())
+            star_props = [star_props[k] for k in idx]
+            nstars = len(star_props)
 
         table = Table()
         table['id'] = np.arange(nstars) + 1
-
-        columns = ['xcentroid', 'ycentroid', 'sharpness', 'roundness1',
-                   'roundness2', 'npix', 'sky', 'peak', 'flux', 'mag']
-        for column in columns:
+        for column in columns[1:]:
             table[column] = [getattr(props, column) for props in star_props]
 
         return table
@@ -989,10 +1039,24 @@ class IRAFStarFinder(StarFinderBase):
         sky value will be estimated using the `starfind`_ method.
 
     exclude_border : bool, optional
-        Deprecated.
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders.  The default is
         `False`, which is the mode used by `starfind`_.
+
+    brightest : int, None, optional
+        Number of brightest objects to keep after sorting the full object list.
+        If ``brightest`` is set to `None`, all objects will be selected.
+
+    peakmax : float, None, optional
+        Maximum peak pixel value in an object. Only objects whose peak pixel
+        values are *strictly smaller* than ``peakmax`` will be selected.
+        This may be used to exclude saturated sources. By default, when
+        ``peakmax`` is set to `None`, all objects will be selected.
+
+        .. warning::
+            `IRAFStarFinder` automatically excludes objects whose peak
+            pixel values are negative. Therefore, setting ``peakmax`` to a
+            non-positive value would result in exclusion of all objects.
 
     Notes
     -----
@@ -1032,10 +1096,16 @@ class IRAFStarFinder(StarFinderBase):
 
     def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
                  sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2, sky=None,
-                 exclude_border=False):
+                 exclude_border=False, brightest=None, peakmax=None):
 
+        if not np.isscalar(threshold):
+            raise TypeError('threshold must be a scalar value.')
         self.threshold = threshold
+
+        if not np.isscalar(fwhm):
+            raise TypeError('fwhm must be a scalar value.')
         self.fwhm = fwhm
+
         self.sigma_radius = sigma_radius
         self.minsep_fwhm = minsep_fwhm
         self.sharplo = sharplo
@@ -1049,15 +1119,23 @@ class IRAFStarFinder(StarFinderBase):
                                          0.5))
         self.kernel = _StarFinderKernel(self.fwhm, ratio=1.0, theta=0.0,
                                         sigma_radius=self.sigma_radius)
+        self.brightest = brightest
+        self.peakmax = peakmax
 
-    def find_stars(self, data):
+    def find_stars(self, data, mask=None):
         """
         Find stars in an astronomical image.
 
         Parameters
         ----------
-        data : array_like
+        data : 2D array_like
             The 2D image array.
+
+        mask : 2D bool array, optional
+            A boolean mask with the same shape as ``data``, where a
+            `True` value indicates the corresponding element of ``data``
+            is masked.  Masked pixels are ignored when searching for
+            stars.
 
         Returns
         -------
@@ -1078,16 +1156,26 @@ class IRAFStarFinder(StarFinderBase):
             * ``mag``: the object instrumental magnitude calculated as
               ``-2.5 * log10(flux)``.
 
+            If no stars are found then an empty table is returned.
+
         .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
         """
 
         star_cutouts = _find_stars(data, self.kernel, self.threshold,
                                    min_separation=self.min_separation,
+                                   mask=mask,
                                    exclude_border=self.exclude_border)
+        self._star_cutouts = star_cutouts
+
+        columns = ('id', 'xcentroid', 'ycentroid', 'fwhm', 'sharpness',
+                   'roundness', 'pa', 'npix', 'sky', 'peak', 'flux', 'mag')
+        coltypes = (np.int_, np.float_, np.float_, np.float_, np.float_,
+                    np.float_, np.float_, np.int_, np.float_, np.float_,
+                    np.float_, np.float_)
 
         if len(star_cutouts) == 0:
             warnings.warn('No sources were found.', AstropyUserWarning)
-            return Table()
+            return Table(names=columns, dtype=coltypes)
 
         star_props = []
         for star_cutout in star_cutouts:
@@ -1106,20 +1194,26 @@ class IRAFStarFinder(StarFinderBase):
                     props.roundness >= self.roundhi):
                 continue
 
+            if self.peakmax is not None and props.peak >= self.peakmax:
+                continue
+
             star_props.append(props)
 
         nstars = len(star_props)
         if nstars == 0:
             warnings.warn('Sources were found, but none pass the sharpness '
                           'and roundness criteria.', AstropyUserWarning)
-            return Table()
+            return Table(names=columns, dtype=coltypes)
+
+        if self.brightest is not None:
+            fluxes = [props.flux for props in star_props]
+            idx = sorted(np.argsort(fluxes)[-self.brightest:].tolist())
+            star_props = [star_props[k] for k in idx]
+            nstars = len(star_props)
 
         table = Table()
         table['id'] = np.arange(nstars) + 1
-
-        columns = ['xcentroid', 'ycentroid', 'fwhm', 'sharpness', 'roundness',
-                   'pa', 'npix', 'sky', 'peak', 'flux', 'mag']
-        for column in columns:
+        for column in columns[1:]:
             table[column] = [getattr(props, column) for props in star_props]
 
         return table

@@ -10,25 +10,18 @@ __pycache__
 *.c
 
 # Other generated files
+MANIFEST
 */version.py
 */cython_version.py
 htmlcov
 .coverage
-MANIFEST
 .ipynb_checkpoints
 benchmarks/_results
 
 # Sphinx
+_build
+_generated
 docs/api
-docs/_build
-
-# Eclipse editor project files
-.project
-.pydevproject
-.settings
-
-# Pycharm editor project files
-.idea
 
 # Packages/installer info
 *.egg
@@ -36,6 +29,7 @@ docs/_build
 dist
 build
 eggs
+.eggs
 parts
 bin
 var
@@ -49,9 +43,14 @@ distribute-*.tar.gz
 .tox
 .*.sw[op]
 *~
+.idea
+.project
+.pydevproject
+.settings
 
 # Mac OSX
 .DS_Store
 
 # Pytest
-v/
+.pytest_cache
+v

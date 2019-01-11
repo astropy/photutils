@@ -4,12 +4,7 @@ Functions for measuring morphological properties of objects in an
 astronomical image using image moments.
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
 import numpy as np
-
-from ..segmentation import SourceProperties
 
 
 __all__ = ['data_properties']
@@ -44,6 +39,8 @@ def data_properties(data, mask=None, background=None):
     result : `~photutils.segmentation.SourceProperties` instance
         A `~photutils.segmentation.SourceProperties` object.
     """
+
+    from ..segmentation import SourceProperties  # prevent circular imports
 
     segment_image = np.ones(data.shape, dtype=np.int)
 

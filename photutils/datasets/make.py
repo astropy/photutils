@@ -3,18 +3,17 @@
 Make example datasets.
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
 from collections import OrderedDict
 import numpy as np
 from astropy.convolution import discretize_model
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
 from astropy.table import Table
+from astropy.version import version as astropy_version
 from astropy.wcs import WCS
 
 from ..utils import check_random_state
+from ..psf import IntegratedGaussianPRF
 
 
 __all__ = ['apply_poisson_noise', 'make_noise_image',
@@ -23,7 +22,9 @@ __all__ = ['apply_poisson_noise', 'make_noise_image',
            'make_4gaussians_image', 'make_100gaussians_image',
            'make_4gaussians_cube', 'make_100gaussians_cube',
            'make_wcs', 'make_imagehdu', 'make_cubehdu',
-           ]
+           'make_gaussian_prf_sources_image'
+          ]
+
 
 
 def apply_poisson_noise(data, random_state=None):
@@ -559,6 +560,87 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
 
 
 
+def make_gaussian_prf_sources_image(shape, source_table):
+    """
+    Make an image containing 2D Gaussian sources.
+
+    Parameters
+    ----------
+    shape : 2-tuple of int
+        The shape of the output 2D image.
+
+    source_table : `~astropy.table.Table`
+        Table of parameters for the Gaussian sources.  Each row of the
+        table corresponds to a Gaussian source whose parameters are
+        defined by the column names.  With the exception of ``'flux'``,
+        column names that do not match model parameters will be ignored
+        (flux will be converted to amplitude).  If both ``'flux'`` and
+        ``'amplitude'`` are present, then ``'flux'`` will be ignored.
+        Model parameters not defined in the table will be set to the
+        default value.
+
+    Returns
+    -------
+    image : 2D `~numpy.ndarray`
+        Image containing 2D Gaussian sources.
+
+    See Also
+    --------
+    make_model_sources_image, make_random_gaussians_table
+
+    Examples
+    --------
+    .. plot::
+        :include-source:
+
+        # make a table of Gaussian sources
+        from astropy.table import Table
+        table = Table()
+        table['amplitude'] = [50, 70, 150, 210]
+        table['x_0'] = [160, 25, 150, 90]
+        table['y_0'] = [70, 40, 25, 60]
+        table['sigma'] = [15.2, 5.1, 3., 8.1]
+
+        # make an image of the sources without noise, with Gaussian
+        # noise, and with Poisson noise
+        from photutils.datasets import make_gaussian_prf_sources_image
+        from photutils.datasets import make_noise_image
+        shape = (100, 200)
+        image1 = make_gaussian_prf_sources_image(shape, table)
+        image2 = image1 + make_noise_image(shape, type='gaussian', mean=5.,
+                                           stddev=5.)
+        image3 = image1 + make_noise_image(shape, type='poisson', mean=5.)
+
+        # plot the images
+        import matplotlib.pyplot as plt
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 12))
+        ax1.imshow(image1, origin='lower', interpolation='nearest')
+        ax1.set_title('Original image')
+        ax2.imshow(image2, origin='lower', interpolation='nearest')
+        ax2.set_title('Original image with added Gaussian noise'
+                      ' ($\\mu = 5, \\sigma = 5$)')
+        ax3.imshow(image3, origin='lower', interpolation='nearest')
+        ax3.set_title('Original image with added Poisson noise ($\\mu = 5$)')
+    """
+
+    model = IntegratedGaussianPRF(sigma=1)
+
+    if 'sigma' in source_table.colnames:
+        sigma = source_table['sigma']
+    else:
+        sigma = model.sigma.value    # default
+
+    colnames = source_table.colnames
+    if 'flux' not in colnames and 'amplitude' in colnames:
+        source_table = source_table.copy()
+        source_table['flux'] = (source_table['amplitude'] *
+                                (2. * np.pi * sigma * sigma))
+
+    return make_model_sources_image(shape, model, source_table,
+                                    oversample=1)
+
+
+
 def make_4gaussians_image(noise=True):
     """
     Make an example image containing four 2D Gaussians plus a constant
@@ -873,8 +955,13 @@ def _make_wcs_2D(shape, galactic=False):
     wcs = WCS(naxis=2)
     rho = np.pi / 3.
     scale = 0.1 / 3600.
-    wcs._naxis1 = shape[1]     # nx
-    wcs._naxis2 = shape[0]     # ny
+
+    if astropy_version < '3.1':
+        wcs._naxis1 = shape[1]     # nx
+        wcs._naxis2 = shape[0]     # ny
+    else:
+        wcs.pixel_shape = shape
+
     wcs.wcs.crpix = [shape[1] / 2, shape[0] / 2]     # 1-indexed (x, y)
     wcs.wcs.crval = [197.8925, -1.36555556]
     wcs.wcs.cunit = ['deg', 'deg']

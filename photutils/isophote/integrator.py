@@ -1,6 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
 import math
 import numpy.ma as ma
@@ -16,7 +14,7 @@ MEAN = 'mean'
 MEDIAN = 'median'
 
 
-class _Integrator(object):
+class _Integrator:
     """
     Base class that supports different kinds of pixel integration methods.
 
@@ -210,8 +208,7 @@ class _BiLinearIntegrator(_Integrator):
 class _AreaIntegrator(_Integrator):
 
     def __init__(self, image, geometry, angles, radii, intensities):
-        super(_AreaIntegrator, self).__init__(image, geometry, angles, radii,
-                                              intensities)
+        super().__init__(image, geometry, angles, radii, intensities)
 
         # build auxiliary bilinear integrator to be used when
         # sector areas contain a too small number of valid pixels.
