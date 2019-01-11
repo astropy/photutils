@@ -155,7 +155,7 @@ def make_noise_image(shape, type='gaussian', mean=None, stddev=None,
         image = prng.poisson(lam=mean, size=shape)
     else:
         raise ValueError('Invalid type: {0}. Use one of '
-                         '{"gaussian", "poisson"}.'.format(type))
+                         '{{"gaussian", "poisson"}}.'.format(type))
 
     return image
 
@@ -863,11 +863,12 @@ def make_100gaussians_cube(noise=True):
 
     shape = (1000, 300, 500)
     data = np.empty(shape)
-    data[:, :, :] = make_gaussian_sources_image(shape[-2:], table)[None, :, :] + 5.
+    data[:, :, :] = make_gaussian_sources_image(
+        shape[-2:], sources)[None, :, :] + 5.
 
     if noise:
         data += make_noise_image(shape[-2:], type='gaussian', mean=0.,
-                                 stddev=5., random_state=12345)[None, :, :]
+                                 stddev=2., random_state=12345)[None, :, :]
 
     return data
 
