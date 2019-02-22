@@ -4,6 +4,9 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
+from astropy.tests.helper import catch_warnings
+from astropy.utils.exceptions import AstropyDeprecationWarning
+
 from ..cutouts import cutout_footprint
 
 
@@ -22,12 +25,15 @@ class TestCutoutFootprint:
     def test_dataonly(self):
         data = np.ones((5, 5))
         position = (2, 2)
-        result1 = cutout_footprint(data, position, 3)
-        result2 = cutout_footprint(data, position, footprint=np.ones((3, 3)))
+        with catch_warnings(AstropyDeprecationWarning) as w:
+            result1 = cutout_footprint(data, position, 3)
+            result2 = cutout_footprint(data, position,
+                                       footprint=np.ones((3, 3)))
         assert_allclose(result1[:-2], result2[:-2])
         assert result1[-2] is None
         assert result2[-2] is None
         assert result1[-1] == result2[-1]
+        assert len(w) == 2
 
     def test_mask_error(self):
         data = error = np.ones((5, 5))
@@ -36,26 +42,31 @@ class TestCutoutFootprint:
         box_size1 = 3
         box_size2 = (3, 3)
         footprint = np.ones((3, 3))
-        result1 = cutout_footprint(data, position, box_size1, mask=mask,
-                                   error=error)
-        result2 = cutout_footprint(data, position, box_size2, mask=mask,
-                                   error=error)
-        result3 = cutout_footprint(data, position, box_size1,
-                                   footprint=footprint, mask=mask,
-                                   error=error)
+        with catch_warnings(AstropyDeprecationWarning) as w:
+            result1 = cutout_footprint(data, position, box_size1, mask=mask,
+                                       error=error)
+            result2 = cutout_footprint(data, position, box_size2, mask=mask,
+                                       error=error)
+            result3 = cutout_footprint(data, position, box_size1,
+                                       footprint=footprint, mask=mask,
+                                       error=error)
         assert_allclose(result1[:-1], result2[:-1])
         assert_allclose(result1[:-1], result3[:-1])
         assert result1[-1] == result2[-1]
+        assert len(w) == 3
 
     def test_position_len(self):
         with pytest.raises(ValueError):
-            cutout_footprint(np.ones((3, 3)), [1])
+            with catch_warnings(AstropyDeprecationWarning):
+                cutout_footprint(np.ones((3, 3)), [1])
 
     def test_nofootprint(self):
         with pytest.raises(ValueError):
-            cutout_footprint(np.ones((3, 3)), (1, 1), box_size=None,
-                             footprint=None)
+            with catch_warnings(AstropyDeprecationWarning):
+                cutout_footprint(np.ones((3, 3)), (1, 1), box_size=None,
+                                 footprint=None)
 
     def test_wrongboxsize(self):
         with pytest.raises(ValueError):
-            cutout_footprint(np.ones((3, 3)), (1, 1), box_size=(1, 2, 3))
+            with catch_warnings(AstropyDeprecationWarning):
+                cutout_footprint(np.ones((3, 3)), (1, 1), box_size=(1, 2, 3))

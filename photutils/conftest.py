@@ -25,7 +25,7 @@ from astropy.tests.helper import enable_deprecations_as_exceptions
 ## To ignore some specific deprecation warning messages for Python version
 ## MAJOR.MINOR or later, add:
 ##     warnings_to_ignore_by_pyver={(MAJOR, MINOR): ['Message to ignore']}
-# enable_deprecations_as_exceptions()
+enable_deprecations_as_exceptions()
 
 # Uncomment and customize the following lines to add/remove entries from
 # the list of packages for which version numbers are displayed when running
