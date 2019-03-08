@@ -263,7 +263,7 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     if nbranch == 0:
         return segment_img
     else:
-        for j in np.arange(nbranch - 1, 0, -1):
+        for j in range(nbranch - 1, 0, -1):
             intersect_mask = (segm_tree[j].data *
                               segm_tree[j - 1].data).astype(bool)
             intersect_labels = np.unique(segm_tree[j].data[intersect_mask])
