@@ -6,8 +6,8 @@ Bug Fixes
 
 - ``photutils.segmentation``
 
-  - Fixed an issue where ``deblend_sources`` could fail for source label
-    512. [#806]
+  - Fixed an issue where ``deblend_sources`` could fail for sources
+    with labels that are a power of 2 and greater than 255. [#806]
 
 
 0.6 (2018-12-11)
