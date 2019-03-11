@@ -173,3 +173,17 @@ class TestDeblendSources:
         data[50, 50] = np.nan
         segm2 = deblend_sources(data, self.segm, 5)
         assert segm2.nlabels == 2
+
+    def test_watershed(self):
+        """
+        Regression test to ensure watershed input mask is bool array.
+
+        With scikit-image >= 0.13, the mask must be a bool array.  In
+        particular, if the mask array contains label 512, the watershed
+        algorithm fails.
+        """
+
+        segm = self.segm.copy()
+        segm.relabel(1, 512)
+        result = deblend_sources(self.data, segm, self.npixels)
+        assert result.nlabels == 2

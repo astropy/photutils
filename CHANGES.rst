@@ -1,7 +1,13 @@
 0.7 (unreleased)
 ----------------
 
-- No changes yet
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.segmentation``
+
+  - Fixed an issue where ``deblend_sources`` could fail for source label
+    512. [#806]
 
 
 0.6 (2018-12-11)
