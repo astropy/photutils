@@ -30,7 +30,8 @@ env:
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
         - CONDA_CHANNELS='astropy-ci-extras astropy'
-        - CONDA_DEPENDENCIES='Cython scipy scikit-image scikit-learn matplotlib'
+        - CONDA_DEPENDENCIES='Cython scipy scikit-learn matplotlib'
+        - PIP_DEPENDENCIES='scikit-image>0.14.1'
         - CONDA_REQUIRED_DEPENDENCIES='Cython'
         - MAIN_CMD='python setup.py'
         - SETUP_CMD='test'
@@ -79,7 +80,7 @@ matrix:
 
         # Check for Sphinx doc build warnings
         - env: SETUP_CMD='build_docs -w'
-               PIP_DEPENDENCIES='sphinx-astropy'
+               PIP_DEPENDENCIES='sphinx-astropy scikit-image>0.14.1'
                EVENT_TYPE='push pull_request cron'
 
         # Test with optional dependencies disabled
@@ -96,15 +97,15 @@ matrix:
           env: PYTHON_VERSION=3.5
                NUMPY_VERSION=1.11
                ASTROPY_VERSION=lts
-               PIP_DEPENDENCIES='pytest<3.10'
+               PIP_DEPENDENCIES='pytest<3.10 scikit-image>0.14.1'
 
         - stage: Comprehensive tests
           env: NUMPY_VERSION=1.12 ASTROPY_VERSION=lts
-               PIP_DEPENDENCIES='pytest<3.10'
+               PIP_DEPENDENCIES='pytest<3.10 scikit-image>0.14.1'
 
         - stage: Comprehensive tests
           env: NUMPY_VERSION=1.13 ASTROPY_VERSION=lts
-               PIP_DEPENDENCIES='pytest<3.10'
+               PIP_DEPENDENCIES='pytest<3.10 scikit-image>0.14.1'
                EVENT_TYPE='pull_request push cron'
 
         # Test with other Python and numpy versions
