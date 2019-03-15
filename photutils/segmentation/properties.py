@@ -571,7 +571,10 @@ class SourceProperties:
         within the source segment.
         """
 
-        return np.nanmin(self.values)
+        if len(self.values) == 0:
+            return np.nan
+        else:
+            return np.nanmin(self.values)
 
     @lazyproperty
     def max_value(self):
@@ -580,7 +583,10 @@ class SourceProperties:
         within the source segment.
         """
 
-        return np.nanmax(self.values)
+        if len(self.values) == 0:
+            return np.nan
+        else:
+            return np.nanmax(self.values)
 
     @lazyproperty
     def minval_cutout_pos(self):
@@ -660,9 +666,18 @@ class SourceProperties:
 
     @lazyproperty
     def area(self):
-        """The area of the source segment in units of pixels**2."""
+        """
+        The area of the source segment in units of pixels**2.
 
-        return len(self.values) * u.pix**2
+        Note that the source area may be smaller than its segment area
+        if a mask is input to `SourceProperties` or `source_properties`.
+        """
+
+        nvalues = len(self.values)
+        if nvalues == 0:
+            return np.nan * u.pix**2
+        else:
+            return nvalues * u.pix**2
 
     @lazyproperty
     def equivalent_radius(self):
