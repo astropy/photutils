@@ -298,6 +298,14 @@ class SegmentationImage:
         return find_objects(self._data)
 
     @lazyproperty
+    def background_area(self):
+        """
+        The area (in pixel**2) of the background (label=0) region.
+        """
+
+        return len(self.data[self.data == 0])
+
+    @lazyproperty
     def areas(self):
         """
         A 1D array of areas (in pixel**2) of the non-zero labeled
@@ -318,7 +326,8 @@ class SegmentationImage:
         Parameters
         ----------
         labels : int, 1D array-like (int)
-            The label(s) for which to return areas.
+            The label(s) for which to return areas.  Label must be
+            non-zero.
 
         Returns
         -------
