@@ -3,7 +3,7 @@
 from copy import deepcopy
 
 import numpy as np
-from astropy.utils import lazyproperty, deprecated
+from astropy.utils import lazyproperty
 
 from ..aperture import BoundingBox
 from ..utils.colormaps import random_cmap
@@ -207,11 +207,6 @@ class SegmentationImage:
         return self._data
 
     @lazyproperty
-    @deprecated('0.5', alternative='data_ma')
-    def data_masked(self):
-        return self.data_ma  # pragma: no cover
-
-    @lazyproperty
     def data_ma(self):
         """
         A `~numpy.ma.MaskedArray` version of the segmentation image
@@ -281,11 +276,6 @@ class SegmentationImage:
         return len(self.labels)
 
     @lazyproperty
-    @deprecated('0.5', alternative='max_label')
-    def max(self):
-        return self.max_label  # pragma: no cover
-
-    @lazyproperty
     def max_label(self):
         """The maximum non-zero label in the segmentation image."""
 
@@ -321,8 +311,7 @@ class SegmentationImage:
 
         return np.bincount(self.data.ravel())[1:]
 
-    @deprecated('0.5', alternative='areas[labels-1]')
-    def area(self, labels):  # pragma: no cover
+    def get_areas(self, labels):
         """
         The areas (in pixel**2) of the regions for the input labels.
 
@@ -343,14 +332,9 @@ class SegmentationImage:
         return self.areas[labels - 1]
 
     @lazyproperty
-    @deprecated('0.5', alternative='is_consecutive')
-    def is_sequential(self):
-        return self.is_consecutive  # pragma: no cover
-
-    @lazyproperty
     def is_consecutive(self):
         """
-        Determine whether or not the non-zero labels in the segmenation
+        Determine whether or not the non-zero labels in the segmentation
         image are consecutive (i.e. no missing values).
         """
 
@@ -407,40 +391,6 @@ class SegmentationImage:
         bad_labels = tuple(bad_labels)
         if len(bad_labels) > 0:
             raise ValueError('labels {} are invalid'.format(bad_labels))
-
-    @deprecated('0.5', alternative='check_labels')
-    def check_label(self, label, allow_zero=False):  # pragma: no cover
-        """
-        Check for a valid label label number within the segmentation
-        image.
-
-        Parameters
-        ----------
-        label : int
-            The label number to check.
-
-        allow_zero : bool
-            If `True` then a label of 0 is valid, otherwise 0 is
-            invalid.
-
-        Raises
-        ------
-        ValueError
-            If the input ``label`` is invalid.
-        """
-
-        if label == 0:
-            if allow_zero:
-                return
-            else:
-                raise ValueError('label "0" is reserved for the background')
-
-        if label < 0:
-            raise ValueError('label must be a positive integer, got '
-                             '"{0}"'.format(label))
-        if label not in self.labels:
-            raise ValueError('label "{0}" is not in the segmentation '
-                             'image'.format(label))
 
     def cmap(self, background_color='#000000', random_state=None):
         """
@@ -564,10 +514,6 @@ class SegmentationImage:
 
         # calling the data setter resets all cached properties
         self.data = idx[self.data]
-
-    @deprecated('0.5', alternative='relabel_consecutive()')
-    def relabel_sequential(self, start_label=1):
-        return self.relabel_consecutive(start_label=start_label)  # pragma: no cover
 
     def relabel_consecutive(self, start_label=1):
         """
