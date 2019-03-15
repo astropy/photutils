@@ -221,7 +221,7 @@ class SegmentationImage:
         return np.ma.masked_where(self.data == 0, self.data)
 
     @staticmethod
-    def _labels(data):
+    def _get_labels(data):
         """
         Return a sorted array of the non-zero labels in the segmentation
         image.
@@ -240,7 +240,7 @@ class SegmentationImage:
 
         Notes
         -----
-        This is a separate static method so it can be used in
+        This is a static method so it can be used in
         :meth:`remove_masked_labels` on a masked version of the
         segmentation image.
 
@@ -253,7 +253,7 @@ class SegmentationImage:
         ...                           [7, 0, 0, 0, 0, 5],
         ...                           [7, 7, 0, 5, 5, 5],
         ...                           [7, 7, 0, 0, 5, 5]])
-        >>> segm._labels(segm.data)
+        >>> segm._get_labels(segm.data)
         array([1, 3, 4, 5, 7])
         """
 
@@ -272,7 +272,7 @@ class SegmentationImage:
     def labels(self):
         """The sorted non-zero labels in the segmentation image."""
 
-        return self._labels(self.data)
+        return self._get_labels(self.data)
 
     @lazyproperty
     def nlabels(self):
@@ -846,8 +846,8 @@ class SegmentationImage:
         if mask.shape != self.shape:
             raise ValueError('mask must have the same shape as the '
                              'segmentation image')
-        remove_labels = self._labels(self.data[mask])
+        remove_labels = self._get_labels(self.data[mask])
         if not partial_overlap:
-            interior_labels = self._labels(self.data[~mask])
+            interior_labels = self._get_labels(self.data[~mask])
             remove_labels = list(set(remove_labels) - set(interior_labels))
         self.remove_labels(remove_labels, relabel=relabel)
