@@ -446,56 +446,6 @@ class SegmentationImage:
 
         return cmap
 
-    def outline_segments(self, mask_background=False):
-        """
-        Outline the labeled segments.
-
-        The "outlines" represent the pixels *just inside* the segments,
-        leaving the background pixels unmodified.  This corresponds to
-        the ``mode='inner'`` in `skimage.segmentation.find_boundaries`.
-
-        Parameters
-        ----------
-        mask_background : bool, optional
-            Set to `True` to mask the background pixels (labels = 0) in
-            the returned image.  This is useful for overplotting the
-            segment outlines on an image.  The default is `False`.
-
-        Returns
-        -------
-        boundaries : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-            An image with the same shape of the segmenation image
-            containing only the outlines of the labeled segments.  The
-            pixel values in the outlines correspond to the labels in the
-            segmentation image.  If ``mask_background`` is `True`, then
-            a `~numpy.ma.MaskedArray` is returned.
-
-        Examples
-        --------
-        >>> from photutils import SegmentationImage
-        >>> segm = SegmentationImage([[0, 0, 0, 0, 0, 0],
-        ...                           [0, 2, 2, 2, 2, 0],
-        ...                           [0, 2, 2, 2, 2, 0],
-        ...                           [0, 2, 2, 2, 2, 0],
-        ...                           [0, 2, 2, 2, 2, 0],
-        ...                           [0, 0, 0, 0, 0, 0]])
-        >>> segm.outline_segments()
-        array([[0, 0, 0, 0, 0, 0],
-               [0, 2, 2, 2, 2, 0],
-               [0, 2, 0, 0, 2, 0],
-               [0, 2, 0, 0, 2, 0],
-               [0, 2, 2, 2, 2, 0],
-               [0, 0, 0, 0, 0, 0]])
-        """
-
-        # requires scikit-image >= 0.11
-        from skimage.segmentation import find_boundaries
-
-        outlines = self.data * find_boundaries(self.data, mode='inner')
-        if mask_background:
-            outlines = np.ma.masked_where(outlines == 0, outlines)
-        return outlines
-
     @deprecated('0.7', alternative='reassign_label')
     def relabel(self, labels, new_label):
         """
@@ -843,3 +793,53 @@ class SegmentationImage:
             interior_labels = self._get_labels(self.data[~mask])
             remove_labels = list(set(remove_labels) - set(interior_labels))
         self.remove_labels(remove_labels, relabel=relabel)
+
+    def outline_segments(self, mask_background=False):
+        """
+        Outline the labeled segments.
+
+        The "outlines" represent the pixels *just inside* the segments,
+        leaving the background pixels unmodified.  This corresponds to
+        the ``mode='inner'`` in `skimage.segmentation.find_boundaries`.
+
+        Parameters
+        ----------
+        mask_background : bool, optional
+            Set to `True` to mask the background pixels (labels = 0) in
+            the returned image.  This is useful for overplotting the
+            segment outlines on an image.  The default is `False`.
+
+        Returns
+        -------
+        boundaries : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+            An image with the same shape of the segmenation image
+            containing only the outlines of the labeled segments.  The
+            pixel values in the outlines correspond to the labels in the
+            segmentation image.  If ``mask_background`` is `True`, then
+            a `~numpy.ma.MaskedArray` is returned.
+
+        Examples
+        --------
+        >>> from photutils import SegmentationImage
+        >>> segm = SegmentationImage([[0, 0, 0, 0, 0, 0],
+        ...                           [0, 2, 2, 2, 2, 0],
+        ...                           [0, 2, 2, 2, 2, 0],
+        ...                           [0, 2, 2, 2, 2, 0],
+        ...                           [0, 2, 2, 2, 2, 0],
+        ...                           [0, 0, 0, 0, 0, 0]])
+        >>> segm.outline_segments()
+        array([[0, 0, 0, 0, 0, 0],
+               [0, 2, 2, 2, 2, 0],
+               [0, 2, 0, 0, 2, 0],
+               [0, 2, 0, 0, 2, 0],
+               [0, 2, 2, 2, 2, 0],
+               [0, 0, 0, 0, 0, 0]])
+        """
+
+        # requires scikit-image >= 0.11
+        from skimage.segmentation import find_boundaries
+
+        outlines = self.data * find_boundaries(self.data, mode='inner')
+        if mask_background:
+            outlines = np.ma.masked_where(outlines == 0, outlines)
+        return outlines

@@ -131,25 +131,6 @@ class TestSegmentationImage:
         assert len(cmap.colors) == (self.segm.max_label + 1)
         assert_allclose(cmap.colors[0], [0, 0, 0])
 
-    def test_outline_segments(self):
-        segm_array = np.zeros((5, 5)).astype(int)
-        segm_array[1:4, 1:4] = 2
-        segm = SegmentationImage(segm_array)
-        segm_array_ref = np.copy(segm_array)
-        segm_array_ref[2, 2] = 0
-        assert_allclose(segm.outline_segments(), segm_array_ref)
-
-    def test_outline_segments_masked_background(self):
-        segm_array = np.zeros((5, 5)).astype(int)
-        segm_array[1:4, 1:4] = 2
-        segm = SegmentationImage(segm_array)
-        segm_array_ref = np.copy(segm_array)
-        segm_array_ref[2, 2] = 0
-        segm_outlines = segm.outline_segments(mask_background=True)
-        assert isinstance(segm_outlines, np.ma.MaskedArray)
-        assert np.ma.count(segm_outlines) == 8
-        assert np.ma.count_masked(segm_outlines) == 17
-
     def test_reassign_label(self):
         segm = SegmentationImage(self.data)
         segm.reassign_label(labels=[1, 7], new_label=2)
@@ -277,3 +258,22 @@ class TestSegmentationImage:
         mask = np.zeros((3, 3), dtype=np.bool)
         with pytest.raises(ValueError):
             segm.remove_masked_labels(mask)
+
+    def test_outline_segments(self):
+        segm_array = np.zeros((5, 5)).astype(int)
+        segm_array[1:4, 1:4] = 2
+        segm = SegmentationImage(segm_array)
+        segm_array_ref = np.copy(segm_array)
+        segm_array_ref[2, 2] = 0
+        assert_allclose(segm.outline_segments(), segm_array_ref)
+
+    def test_outline_segments_masked_background(self):
+        segm_array = np.zeros((5, 5)).astype(int)
+        segm_array[1:4, 1:4] = 2
+        segm = SegmentationImage(segm_array)
+        segm_array_ref = np.copy(segm_array)
+        segm_array_ref[2, 2] = 0
+        segm_outlines = segm.outline_segments(mask_background=True)
+        assert isinstance(segm_outlines, np.ma.MaskedArray)
+        assert np.ma.count(segm_outlines) == 8
+        assert np.ma.count_masked(segm_outlines) == 17
