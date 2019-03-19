@@ -843,7 +843,7 @@ class SegmentationImage:
         Returns
         -------
         boundaries : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-            An image with the same shape of the segmenation image
+            An image with the same shape of the segmentation image
             containing only the outlines of the labeled segments.  The
             pixel values in the outlines correspond to the labels in the
             segmentation image.  If ``mask_background`` is `True`, then
