@@ -3,7 +3,7 @@
 from copy import deepcopy
 
 import numpy as np
-from astropy.utils import lazyproperty
+from astropy.utils import lazyproperty, deprecated
 
 from ..aperture import BoundingBox
 from ..utils.colormaps import random_cmap
@@ -496,19 +496,39 @@ class SegmentationImage:
             outlines = np.ma.masked_where(outlines == 0, outlines)
         return outlines
 
+    @deprecated('0.7', alternative='reassign_label')
     def relabel(self, labels, new_label):
         """
-        Relabel one or more label numbers.
+        Reassign one or more label numbers.
 
-        The input ``labels`` will all be relabeled to ``new_label``.
+        Multiple input ``labels`` will all be reassigned to the same
+        ``new_label`` number.
 
         Parameters
         ----------
         labels : int, array-like (1D, int)
-            The label numbers(s) to relabel.
+            The label numbers(s) to reassign.
 
         new_label : int
-            The relabeled label number.
+            The reassigned label number.
+        """
+
+        self.reassign_label(labels, new_label)
+
+    def reassign_label(self, labels, new_label):
+        """
+        Reassign one or more label numbers.
+
+        Multiple input ``labels`` will all be reassigned to the same
+        ``new_label`` number.
+
+        Parameters
+        ----------
+        labels : int, array-like (1D, int)
+            The label numbers(s) to reassign.
+
+        new_label : int
+            The reassigned label number.
 
         Examples
         --------
@@ -519,7 +539,7 @@ class SegmentationImage:
         ...                           [7, 0, 0, 0, 0, 5],
         ...                           [7, 7, 0, 5, 5, 5],
         ...                           [7, 7, 0, 0, 5, 5]])
-        >>> segm.relabel(labels=[1, 7], new_label=2)
+        >>> segm.reassign_label(labels=[1, 7], new_label=2)
         >>> segm.data
         array([[2, 2, 0, 0, 4, 4],
                [0, 0, 0, 0, 0, 4],
@@ -542,7 +562,7 @@ class SegmentationImage:
 
     def relabel_consecutive(self, start_label=1):
         """
-        Relabel the label numbers consecutively, such that there are no
+        Reassign the label numbers consecutively, such that there are no
         missing label numbers (up to the maximum label number).
 
         Parameters
@@ -576,13 +596,13 @@ class SegmentationImage:
         if self.is_consecutive and (self.labels[0] == start_label):
             return
 
-        forward_map = np.zeros(self.max_label + 1, dtype=np.int)
-        forward_map[self.labels] = np.arange(self.nlabels) + start_label
-        self.data = forward_map[self.data]
+        new_labels = np.zeros(self.max_label + 1, dtype=np.int)
+        new_labels[self.labels] = np.arange(self.nlabels) + start_label
+        self.data = new_labels[self.data]
 
     def keep_labels(self, labels, relabel=False):
         """
-        Keep only the specified label numbers.
+        Keep only the specified labels.
 
         Parameters
         ----------
@@ -635,7 +655,9 @@ class SegmentationImage:
 
     def remove_labels(self, labels, relabel=False):
         """
-        Remove one or more label numbers.
+        Remove one or more labels.
+
+        Removed labels are assigned a value of zero (i.e., background).
 
         Parameters
         ----------
@@ -682,7 +704,7 @@ class SegmentationImage:
                [7, 7, 0, 0, 0, 0]])
         """
 
-        self.relabel(labels, new_label=0)
+        self.reassign_label(labels, new_label=0)
         if relabel:
             self.relabel_consecutive()
 
@@ -764,8 +786,7 @@ class SegmentationImage:
         ----------
         mask : array_like (bool)
             A boolean mask, with the same shape as the segmentation
-            image (``.data``), where `True` values indicate masked
-            pixels.
+            image, where `True` values indicate masked pixels.
 
         partial_overlap : bool, optional
             If this is set to `True` (default), a segment that partially

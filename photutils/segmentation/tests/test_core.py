@@ -150,9 +150,9 @@ class TestSegmentationImage:
         assert np.ma.count(segm_outlines) == 8
         assert np.ma.count_masked(segm_outlines) == 17
 
-    def test_relabel(self):
+    def test_reassign_label(self):
         segm = SegmentationImage(self.data)
-        segm.relabel(labels=[1, 7], new_label=2)
+        segm.reassign_label(labels=[1, 7], new_label=2)
         ref_data = np.array([[2, 2, 0, 0, 4, 4],
                              [0, 0, 0, 0, 0, 4],
                              [0, 0, 3, 3, 0, 0],

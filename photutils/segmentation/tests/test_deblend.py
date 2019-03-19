@@ -184,6 +184,6 @@ class TestDeblendSources:
         """
 
         segm = self.segm.copy()
-        segm.relabel(1, 512)
+        segm.reassign_label(1, 512)
         result = deblend_sources(self.data, segm, self.npixels)
         assert result.nlabels == 2
