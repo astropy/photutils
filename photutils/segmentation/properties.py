@@ -46,7 +46,7 @@ class SourceProperties:
         value of zero is reserved for the background.
 
     label : int
-        The label number of the source whose properties to calculate.
+        The label number of the source whose properties are calculated.
 
     filtered_data : array-like or `~astropy.units.Quantity`, optional
         The filtered version of the background-subtracted ``data`` from
@@ -59,7 +59,7 @@ class SourceProperties:
         calculated from the filtered "detection" image.
 
     error : array_like or `~astropy.units.Quantity`, optional
-        The pixel-wise Gaussian 1-sigma errors of the input ``data``.
+        The total error array corresponding to the input ``data`` array.
         ``error`` is assumed to include *all* sources of error,
         including the Poisson error of the sources (see
         `~photutils.utils.calc_total_error`) .  ``error`` must have the
@@ -87,23 +87,23 @@ class SourceProperties:
     Notes
     -----
     `SExtractor`_'s centroid and morphological parameters are always
-    calculated from the filtered "detection" image.  The usual downside
-    of the filtering is the sources will be made more circular than they
+    calculated from a filtered "detection" image.  The usual downside of
+    the filtering is the sources will be made more circular than they
     actually are.  If you wish to reproduce `SExtractor`_ results, then
     use the ``filtered_data`` input.  If ``filtered_data`` is `None`,
     then the unfiltered ``data`` will be used for the source centroid
     and morphological parameters.
 
-    Negative (background-subtracted) data values within the source
-    segment are set to zero when measuring morphological properties
-    based on image moments.  This could occur, for example, if the
-    segmentation image was defined from a different image (e.g.,
-    different bandpass) or if the background was oversubtracted.  Note
-    that `~photutils.SourceProperties.source_sum` includes the
-    contribution of negative (background-subtracted) data values.
+    Negative data values within the source segment are set to zero when
+    calculating morphological properties based on image moments.
+    Negative values could occur, for example, if the segmentation image
+    was defined from a different image (e.g., different bandpass) or if
+    the background was oversubtracted. However,
+    `~photutils.SourceProperties.source_sum` does include the
+    contribution of negative data values.
 
-    The input ``error`` is assumed to include *all* sources of error,
-    including the Poisson error of the sources.
+    The input ``error`` array is assumed to include *all* sources of
+    error, including the Poisson error of the sources.
     `~photutils.SourceProperties.source_sum_err` is simply the
     quadrature sum of the pixel-wise total errors over the non-masked
     pixels within the source segment:
