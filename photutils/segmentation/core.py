@@ -6,7 +6,7 @@ import numpy as np
 from astropy.utils import lazyproperty, deprecated
 
 from ..aperture import BoundingBox
-from ..utils.colormaps import random_cmap
+from ..utils.colormaps import make_random_cmap
 
 
 __all__ = ['Segment', 'SegmentationImage']
@@ -470,7 +470,7 @@ class SegmentationImage:
 
         from matplotlib import colors
 
-        cmap = random_cmap(self.max_label + 1, random_state=random_state)
+        cmap = make_random_cmap(self.max_label + 1, random_state=random_state)
 
         if background_color is not None:
             cmap.colors[0] = colors.hex2color(background_color)

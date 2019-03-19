@@ -1,16 +1,18 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 import numpy as np
+from astropy.utils import deprecated
 
 from .check_random_state import check_random_state
 
 
-__all__ = ['random_cmap']
+__all__ = ['make_random_cmap']
 
 
+@deprecated('0.7', alternative='make_random_cmap')
 def random_cmap(ncolors=256, random_state=None):
     """
-    Generate a matplotlib colormap consisting of random (muted) colors.
+    Make a matplotlib colormap consisting of (random) muted colors.
 
     A random colormap is very useful for plotting segmentation images.
 
@@ -26,7 +28,32 @@ def random_cmap(ncolors=256, random_state=None):
 
     Returns
     -------
-    cmap : `matplotlib.colors.Colormap`
+    cmap : `matplotlib.colors.ListedColormap`
+        The matplotlib colormap with random colors.
+    """
+
+    return make_random_cmap(ncolors=ncolors, random_state=random_state)
+
+
+def make_random_cmap(ncolors=256, random_state=None):
+    """
+    Make a matplotlib colormap consisting of (random) muted colors.
+
+    A random colormap is very useful for plotting segmentation images.
+
+    Parameters
+    ----------
+    ncolors : int, optional
+        The number of colors in the colormap.  The default is 256.
+
+    random_state : int or `~numpy.random.RandomState`, optional
+        The pseudo-random number generator state used for random
+        sampling.  Separate function calls with the same
+        ``random_state`` will generate the same colormap.
+
+    Returns
+    -------
+    cmap : `matplotlib.colors.ListedColormap`
         The matplotlib colormap with random colors.
     """
 
