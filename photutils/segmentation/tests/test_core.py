@@ -126,8 +126,8 @@ class TestSegmentationImage:
         with pytest.raises(ValueError):
             self.segm.check_labels([2, 6])
 
-    def test_cmap(self):
-        cmap = self.segm.cmap()
+    def test_make_cmap(self):
+        cmap = self.segm.make_cmap()
         assert len(cmap.colors) == (self.segm.max_label + 1)
         assert_allclose(cmap.colors[0], [0, 0, 0])
 

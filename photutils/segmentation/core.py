@@ -417,9 +417,11 @@ class SegmentationImage:
         if len(bad_labels) > 0:
             raise ValueError('labels {} are invalid'.format(bad_labels))
 
+    @deprecated('0.7', alternative='make_cmap')
     def cmap(self, background_color='#000000', random_state=None):
         """
-        A matplotlib colormap consisting of random (muted) colors.
+        Define a matplotlib colormap consisting of (random) muted
+        colors.
 
         This is very useful for plotting the segmentation image.
 
@@ -429,12 +431,41 @@ class SegmentationImage:
             A hex string in the "#rrggbb" format defining the first
             color in the colormap.  This color will be used as the
             background color (label = 0) when plotting the segmentation
-            image.  The default is black.
+            image.  The default is black ('#000000').
 
         random_state : int or `~numpy.random.RandomState`, optional
             The pseudo-random number generator state used for random
             sampling.  Separate function calls with the same
             ``random_state`` will generate the same colormap.
+        """
+
+        return self.make_cmap(background_color=background_color,
+                              random_state=random_state)
+
+    def make_cmap(self, background_color='#000000', random_state=None):
+        """
+        Define a matplotlib colormap consisting of (random) muted
+        colors.
+
+        This is very useful for plotting the segmentation image.
+
+        Parameters
+        ----------
+        background_color : str or `None`, optional
+            A hex string in the "#rrggbb" format defining the first
+            color in the colormap.  This color will be used as the
+            background color (label = 0) when plotting the segmentation
+            image.  The default is black ('#000000').
+
+        random_state : int or `~numpy.random.RandomState`, optional
+            The pseudo-random number generator state used for random
+            sampling.  Separate function calls with the same
+            ``random_state`` will generate the same colormap.
+
+        Returns
+        -------
+        cmap : `matplotlib.colors.ListedColormap`
+            The matplotlib colormap.
         """
 
         from matplotlib import colors
