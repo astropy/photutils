@@ -288,10 +288,10 @@ class TestSourcePropertiesFunction:
         p1, p2 = props1[0], props2[0]
         keys = ['source_sum', 'source_sum_err']
         for key in keys:
-            assert p1[key] == p2[key]
+            assert getattr(p1, key) == getattr(p2, key)
         keys = ['semimajor_axis_sigma', 'semiminor_axis_sigma']
         for key in keys:
-            assert p1[key] != p2[key]
+            assert getattr(p1, key) != getattr(p2, key)
 
     def test_filtering_kernel(self):
         data = np.zeros((3, 3))
@@ -306,10 +306,10 @@ class TestSourcePropertiesFunction:
         p1, p2 = props1[0], props2[0]
         keys = ['source_sum', 'source_sum_err']
         for key in keys:
-            assert p1[key] == p2[key]
+            assert getattr(p1, key) == getattr(p2, key)
         keys = ['semimajor_axis_sigma', 'semiminor_axis_sigma']
         for key in keys:
-            assert p1[key] != p2[key]
+            assert getattr(p1, key) != getattr(p2, key)
 
     def test_data_nan(self):
         """Test case when data contains NaNs within a segment."""
