@@ -198,13 +198,11 @@ class SourceProperties:
             The 2D cutout array or masked array.
         """
 
-        if data is None:
-            return None
-
         data = np.asanyarray(data)
-        if data.shape != self._data.shape:
+        if data.shape != self._segment_img.shape:
             raise ValueError('data must have the same shape as the '
                              'segmentation image input to SourceProperties')
+
         if masked_array:
             return np.ma.masked_array(data[self._slice],
                                       mask=self._cutout_total_mask)
@@ -311,7 +309,10 @@ class SourceProperties:
         ``error_cutout_ma`` is also `None`.
         """
 
-        return self.make_cutout(self._error, masked_array=True)
+        if self._error is None:
+            return None
+        else:
+            return self.make_cutout(self._error, masked_array=True)
 
     @lazyproperty
     def background_cutout_ma(self):
@@ -322,7 +323,10 @@ class SourceProperties:
         `None`, then ``background_cutout_ma`` is also `None`.
         """
 
-        return self.make_cutout(self._background, masked_array=True)
+        if self._background is None:
+            return None
+        else:
+            return self.make_cutout(self._background, masked_array=True)
 
     @lazyproperty
     def coords(self):
