@@ -59,6 +59,14 @@ class Segment:
     def __repr__(self):
         return self.__str__()
 
+    def __array__(self):
+        """
+        Array representation of the labeled region (e.g., for
+        matplotlib).
+        """
+
+        return self.data
+
     @lazyproperty
     def data(self):
         """
@@ -71,14 +79,6 @@ class Segment:
         cutout[cutout != self.label] = 0
 
         return cutout
-
-    def __array__(self):
-        """
-        Array representation of the labeled region (e.g., for
-        matplotlib).
-        """
-
-        return self.data
 
     @lazyproperty
     def bbox(self):
@@ -167,53 +167,6 @@ class SegmentationImage:
     def __repr__(self):
         return self.__str__()
 
-
-    @lazyproperty
-    def segments(self):
-        """
-        A list of `Segment` objects.
-
-        The list starts with the *non-zero* label.  The returned list
-        has a length equal to the maximum label number.  If a label
-        number is missing from the segmentation image, then `None` is
-        returned instead of a `Segment` object.
-        """
-
-        segments = []
-        for i, slc in enumerate(self.slices):
-            if slc is None:
-                segments.append(None)
-            else:
-                segments.append(Segment(self.data, i+1, slc, self.areas[i]))
-
-        return segments
-
-    @property
-    def data(self):
-        """
-        The 2D segmentation image.
-        """
-
-        return self._data
-
-    @data.setter
-    def data(self, value):
-        if np.min(value) < 0:
-            raise ValueError('The segmentation image cannot contain '
-                             'negative integers.')
-
-        if '_data' in self.__dict__:
-            # needed only when data is reassigned, not on init
-            self._reset_lazy_properties()
-
-        self._data = value
-
-    def _reset_lazy_properties(self):
-        """Reset all lazy properties."""
-        for key, value in self.__class__.__dict__.items():
-            if isinstance(value, lazyproperty):
-                self.__dict__.pop(key, None)
-
     def __array__(self):
         """
         Array representation of the segmentation image (e.g., for
@@ -222,14 +175,12 @@ class SegmentationImage:
 
         return self._data
 
-    @lazyproperty
-    def data_ma(self):
-        """
-        A `~numpy.ma.MaskedArray` version of the segmentation image
-        where the background (label = 0) has been masked.
-        """
+    def _reset_lazy_properties(self):
+        """Reset all lazy properties."""
 
-        return np.ma.masked_where(self.data == 0, self.data)
+        for key, value in self.__class__.__dict__.items():
+            if isinstance(value, lazyproperty):
+                self.__dict__.pop(key, None)
 
     @staticmethod
     def _get_labels(data):
@@ -272,10 +223,55 @@ class SegmentationImage:
         return np.unique(data[data != 0])
 
     @lazyproperty
+    def segments(self):
+        """
+        A list of `Segment` objects.
+
+        The list starts with the *non-zero* label.  The returned list
+        has a length equal to the maximum label number.  If a label
+        number is missing from the segmentation image, then `None` is
+        returned instead of a `Segment` object.
+        """
+
+        segments = []
+        for i, slc in enumerate(self.slices):
+            if slc is None:
+                segments.append(None)
+            else:
+                segments.append(Segment(self.data, i+1, slc, self.areas[i]))
+
+        return segments
+
+    @property
+    def data(self):
+        """The 2D segmentation image."""
+
+        return self._data
+
+    @data.setter
+    def data(self, value):
+        if np.min(value) < 0:
+            raise ValueError('The segmentation image cannot contain '
+                             'negative integers.')
+
+        if '_data' in self.__dict__:
+            # needed only when data is reassigned, not on init
+            self._reset_lazy_properties()
+
+        self._data = value
+
+    @lazyproperty
+    def data_ma(self):
+        """
+        A `~numpy.ma.MaskedArray` version of the segmentation image
+        where the background (label = 0) has been masked.
+        """
+
+        return np.ma.masked_where(self.data == 0, self.data)
+
+    @lazyproperty
     def shape(self):
-        """
-        The shape of the 2D segmentation image.
-        """
+        """The shape of the 2D segmentation image."""
 
         return self._data.shape
 
@@ -315,9 +311,7 @@ class SegmentationImage:
 
     @lazyproperty
     def background_area(self):
-        """
-        The area (in pixel**2) of the background (label=0) region.
-        """
+        """The area (in pixel**2) of the background (label=0) region."""
 
         return len(self.data[self.data == 0])
 
@@ -380,9 +374,7 @@ class SegmentationImage:
                                difference(np.insert(self.labels, 0, 0))))
 
     def copy(self):
-        """
-        Return a deep copy of this class instance.
-        """
+        """Return a deep copy of this class instance."""
 
         return deepcopy(self)
 
