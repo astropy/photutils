@@ -1,6 +1,15 @@
 0.7 (unreleased)
 ----------------
 
+New Features
+^^^^^^^^^^^^
+
+- ``photutils.segmentation``
+
+  - Significantly improved the performance of relabeling in
+    segmentation images (e.g.  ``remove_labels``, ``keep_labels``).
+    [#810]
+
 Bug Fixes
 ^^^^^^^^^
 
