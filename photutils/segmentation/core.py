@@ -545,10 +545,15 @@ class SegmentationImage:
         """
 
         labels = np.atleast_1d(labels)
-        for label in labels:
-            data = self.data
-            data[np.where(data == label)] = new_label
-            self.data = data     # needed to call the data setter
+        if len(labels) == 0:
+            return
+
+        idx = np.zeros(self.max_label + 1, dtype=int)
+        idx[self.labels] = self.labels
+        idx[labels] = new_label
+
+        # calling the data setter resets all cached properties
+        self.data = idx[self.data]
 
     @deprecated('0.5', alternative='relabel_consecutive()')
     def relabel_sequential(self, start_label=1):
