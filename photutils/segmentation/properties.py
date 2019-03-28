@@ -174,6 +174,31 @@ class SourceProperties:
         self._mask = mask
         self._wcs = wcs
 
+    @lazyproperty
+    def _segment_mask(self):
+        """
+        _segment_mask is `True` for pixels outside of the source
+        segment.  Pixels from other source segments within the
+        rectangular cutout are also `True`.
+        """
+
+        return self._segment_img.data[self._slice] != self.label
+
+    @lazyproperty
+    def _total_mask(self):
+        """
+        _total_mask is `True` for pixels outside of the source segment
+        or where the input ``mask`` is `True`.  Pixels from other source
+        segments within the rectangular cutout are also `True`.
+        """
+
+        mask = np.copy(self._segment_mask)
+
+        if self._mask is not None:
+            mask |= self._mask[self._slice]
+
+        return mask
+
     def make_cutout(self, data, masked_array=False):
         """
         Create a (masked) cutout array from the input ``data`` using the
@@ -216,7 +241,7 @@ class SourceProperties:
 
         if masked_array:
             return np.ma.masked_array(data[self._slice],
-                                      mask=self._cutout_total_mask)
+                                      mask=self._total_mask)
         else:
             return data[self._slice]
 
@@ -250,28 +275,6 @@ class SourceProperties:
 
         return _properties_table(self, columns=columns,
                                  exclude_columns=exclude_columns)
-
-    @lazyproperty
-    def _cutout_segment_bool(self):
-        """
-        _cutout_segment_bool is `True` only for pixels in the source
-        segment of interest.  Pixels from other sources within the
-        rectangular cutout are not included.
-        """
-
-        return self._segment_img.data[self._slice] == self.label
-
-    @lazyproperty
-    def _cutout_total_mask(self):
-        """
-        _cutout_total_mask is `True` for regions outside of the source
-        segment or where the input mask is `True`.
-        """
-
-        mask = ~self._cutout_segment_bool
-        if self._mask is not None:
-            mask |= self._mask[self._slice]
-        return mask
 
     @lazyproperty
     def data_cutout(self):
@@ -309,7 +312,7 @@ class SourceProperties:
         cutout = np.where(np.isfinite(cutout), cutout, 0.)
         cutout = np.where(cutout > 0, cutout, 0.)    # negative pixels -> 0
 
-        return (cutout * ~self._cutout_total_mask).astype(np.float64)
+        return (cutout * ~self._total_mask).astype(np.float64)
 
     @lazyproperty
     def error_cutout_ma(self):
@@ -358,7 +361,7 @@ class SourceProperties:
         within the source segment.  Masked pixels are not included.
         """
 
-        return self.data_cutout[~self._cutout_total_mask]
+        return self.data_cutout[~self._total_mask]
 
     @lazyproperty
     def moments(self):
@@ -708,7 +711,7 @@ class SourceProperties:
         """
 
         from skimage.measure import perimeter
-        return perimeter(self._cutout_segment_bool, 4) * u.pix
+        return perimeter(~self._segment_mask, 4) * u.pix
 
     @lazyproperty
     def inertia_tensor(self):
@@ -973,7 +976,7 @@ class SourceProperties:
         """
 
         return np.nansum(np.ma.masked_array(self._data[self._slice],
-                                            mask=self._cutout_total_mask))
+                                            mask=self._total_mask))
 
     @lazyproperty
     def source_sum_err(self):

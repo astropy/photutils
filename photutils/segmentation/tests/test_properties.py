@@ -92,6 +92,14 @@ class TestSourceProperties:
         assert len(t1) == 1
         assert_quantity_allclose(t1['area'], 1058 * u.pix**2)
 
+    def test_masks(self):
+        """Test that the masks are independent objects."""
+
+        mask = np.zeros(IMAGE.shape).astype(bool)
+        mask[45:55, :] = True
+        props = SourceProperties(IMAGE, SEGM, label=1, mask=mask)
+        assert (np.count_nonzero(props._total_mask) !=
+                np.count_nonzero(props._segment_mask))
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
