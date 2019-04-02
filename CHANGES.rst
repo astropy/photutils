@@ -18,6 +18,15 @@ Bug Fixes
   - Fixed an issue where ``deblend_sources`` could fail for sources
     with labels that are a power of 2 and greater than 255. [#806]
 
+API changes
+^^^^^^^^^^^
+
+-
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+-
 
 0.6 (2018-12-11)
 ----------------
