@@ -610,8 +610,12 @@ class SourceProperties:
         minimum pixel value of the (background-subtracted) data.
         """
 
-        # NOTE:  Quantity converts this to float
-        return np.argwhere(self.data_cutout_ma == self.min_value)[0] * u.pix
+        if len(self.values) == 0:
+            return np.nan * u.pix
+        else:
+            # NOTE:  Quantity converts this to float
+            return (np.argwhere(self.data_cutout_ma == self.min_value)[0] *
+                    u.pix)
 
     @lazyproperty
     def maxval_cutout_pos(self):
@@ -620,8 +624,12 @@ class SourceProperties:
         maximum pixel value of the (background-subtracted) data.
         """
 
-        # NOTE:  Quantity converts this to float
-        return np.argwhere(self.data_cutout_ma == self.max_value)[0] * u.pix
+        if len(self.values) == 0:
+            return np.nan * u.pix
+        else:
+            # NOTE:  Quantity converts this to float
+            return (np.argwhere(self.data_cutout_ma == self.max_value)[0] *
+                    u.pix)
 
     @lazyproperty
     def minval_pos(self):
@@ -630,8 +638,12 @@ class SourceProperties:
         (background-subtracted) data.
         """
 
-        yp, xp = np.array(self.minval_cutout_pos)
-        return (yp + self._slice[0].start, xp + self._slice[1].start) * u.pix
+        if len(self.values) == 0:
+            return (np.nan, np.nan) * u.pix
+        else:
+            yp, xp = np.array(self.minval_cutout_pos)
+            return ((yp + self._slice[0].start, xp + self._slice[1].start) *
+                    u.pix)
 
     @lazyproperty
     def maxval_pos(self):
@@ -640,8 +652,12 @@ class SourceProperties:
         (background-subtracted) data.
         """
 
-        yp, xp = np.array(self.maxval_cutout_pos)
-        return (yp + self._slice[0].start, xp + self._slice[1].start) * u.pix
+        if len(self.values) == 0:
+            return (np.nan, np.nan) * u.pix
+        else:
+            yp, xp = np.array(self.maxval_cutout_pos)
+            return ((yp + self._slice[0].start, xp + self._slice[1].start) *
+                    u.pix)
 
     @lazyproperty
     def minval_xpos(self):
