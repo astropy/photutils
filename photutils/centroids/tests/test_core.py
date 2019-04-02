@@ -8,7 +8,8 @@ from astropy.modeling.models import Gaussian1D, Gaussian2D
 import pytest
 
 from ..core import (centroid_com, centroid_1dg, centroid_2dg,
-                    gaussian1d_moments, fit_2dgaussian)
+                    gaussian1d_moments, fit_2dgaussian,
+                    centroid_epsf)
 
 
 try:
@@ -66,6 +67,25 @@ def test_centroids_witherror(xc_ref, yc_ref, x_stddev, y_stddev, theta):
 
     xc3, yc3 = centroid_2dg(data, error=error)
     assert_allclose([xc_ref, yc_ref], [xc3, yc3], rtol=0, atol=1.e-3)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.parametrize(
+    ('xc_ref', 'yc_ref', 'x_stddev', 'y_stddev', 'theta'),
+    list(itertools.product(XCS, YCS, XSTDDEVS, YSTDDEVS, THETAS)))
+def test_centroids_oversampling(xc_ref, yc_ref, x_stddev, y_stddev, theta):
+    model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=x_stddev,
+                       y_stddev=y_stddev, theta=theta)
+    y, x = np.mgrid[0:50, 0:50]
+    data = model(x, y)
+    mask = np.zeros_like(data, dtype=bool)
+    data[10, 10] = 1.e5
+    mask[10, 10] = True
+    oversampling = 4
+
+    xc, yc = centroid_com(data, mask=mask, oversampling=oversampling)
+    assert_allclose([xc, yc], [xc_ref / oversampling, yc_ref / oversampling],
+                    rtol=0, atol=1.e-3)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -200,3 +220,24 @@ def test_fit2dgaussian_dof():
     data = np.ones((2, 2))
     with pytest.raises(ValueError):
         fit_2dgaussian(data)
+
+
+def test_centroid_epsf():
+    data = np.ones((5, 5), dtype=float)
+    mask = np.zeros((4, 5), dtype=int)
+    mask[2, 2] = 1
+
+    # Test data and mask having the same shape
+    with pytest.raises(ValueError):
+        centroid_epsf(data, mask)
+
+    with pytest.raises(ValueError):
+        centroid_epsf(data, shift_val=-1)
+
+    with pytest.raises(ValueError):
+        centroid_epsf(data, oversampling=None)
+
+    data = np.ones((21, 21), dtype=float)
+    data[10, 10] = np.inf
+    with pytest.raises(ValueError):
+        centroid_epsf(data)

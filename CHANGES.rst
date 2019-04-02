@@ -41,6 +41,10 @@ New Features
 
   - Added ``NoDetectionsWarning`` class. [#836]
 
+- ``photutils.psf``
+
+  - Added new centroiding function ``centroid_epsf``. [#816]
+
 Bug Fixes
 ^^^^^^^^^
 
