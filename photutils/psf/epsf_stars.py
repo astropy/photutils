@@ -59,28 +59,10 @@ class EPSFStar:
     id_label : int, str, or `None`, optional
         An optional identification number or label for the star.
 
-    pixel_scale : float or tuple of two floats, optional
-        .. warning::
-
-            The ``pixel_scale`` keyword is now deprecated (since v0.6)
-            and will likely be removed in v0.7.  Use the
-            ``oversampling`` keyword instead.
-
-        The pixel scale (in arbitrary units) of the input ``data``.  The
-        ``pixel_scale`` can either be a single float or tuple of two
-        floats of the form ``(x_pixscale, y_pixscale)``.  If
-        ``pixel_scale`` is a scalar then the pixel scale will be the
-        same for both the x and y axes.  The star ``pixel_scale`` is
-        used in conjunction with the ePSF pixel scale or oversampling
-        factor when building and fitting the ePSF.  The ratio of the
-        star-to-ePSF pixel scales represents the ePSF oversampling
-        factor.  ``pixel_scale`` allows for building (and fitting) an
-        ePSF using images of stars with different pixel scales (e.g.
-        velocity aberrations).
     """
 
     def __init__(self, data, weights=None, cutout_center=None, origin=(0, 0),
-                 wcs_large=None, id_label=None, pixel_scale=1.):
+                 wcs_large=None, id_label=None):
 
         self._data = np.asanyarray(data)
         self.shape = self._data.shape
@@ -105,16 +87,6 @@ class EPSFStar:
         self.origin = np.asarray(origin)
         self.wcs_large = wcs_large
         self.id_label = id_label
-
-        if pixel_scale != 1:
-            warnings.warn('The pixel_scale keyword is deprecated and will '
-                          'likely be removed in v0.7.  Use the oversampling '
-                          'keyword instead.', AstropyDeprecationWarning)
-
-        pixel_scale = np.atleast_1d(pixel_scale)
-        if len(pixel_scale) == 1:
-            pixel_scale = np.repeat(pixel_scale, 2)
-        self.pixel_scale = pixel_scale  # ndarray
 
         self.flux = self.estimate_flux()
 
@@ -223,14 +195,11 @@ class EPSFStar:
             A 2D array of the registered/scaled ePSF.
         """
 
-        x_oversamp = self.pixel_scale[0] / epsf.pixel_scale[0]
-        y_oversamp = self.pixel_scale[1] / epsf.pixel_scale[1]
-
         yy, xx = np.indices(self.shape, dtype=np.float)
-        xx = x_oversamp * (xx - self.cutout_center[0])
-        yy = y_oversamp * (yy - self.cutout_center[1])
+        xx = epsf._oversampling * (xx - self.cutout_center[0])
+        yy = epsf._oversampling * (yy - self.cutout_center[1])
 
-        return (self.flux * x_oversamp * y_oversamp *
+        return (self.flux * epsf._oversampling**2 *
                 epsf.evaluate(xx, yy, flux=1.0, x_0=0.0, y_0=0.0))
 
     def compute_residual_image(self, epsf):
@@ -355,7 +324,7 @@ class EPSFStars:
             yield i
 
     def __getattr__(self, attr):
-        if attr in ['cutout_center', 'center', 'pixel_scale', 'flux',
+        if attr in ['cutout_center', 'center', 'flux',
                     '_excluded_from_fit']:
             return np.array([getattr(star, attr) for star in self._data])
         else:
@@ -464,16 +433,6 @@ class EPSFStars:
 
         # return np.count_nonzero(~self._excluded_from_fit.ravel())
         return len(self.all_good_stars)
-
-    @lazyproperty
-    def _min_pixel_scale(self):
-        """
-        The minimum x and y pixel scale of all the `EPSFStar` objects
-        (including linked stars).
-        """
-
-        return np.min([star.pixel_scale for star in self.all_stars],
-                      axis=0)
 
     @lazyproperty
     def _max_shape(self):
