@@ -160,6 +160,11 @@ class SourceProperties:
         # data and filtered_data should be background-subtracted
         # for accurate source photometry and properties
         self._data = data
+        try:
+            self._data_unit = self._data.unit
+        except AttributeError:
+            self._data_unit = 1
+
         if filtered_data is None:
             self._filtered_data = data
         else:
@@ -212,16 +217,16 @@ class SourceProperties:
         return mask
 
     @lazyproperty
+    def _is_completely_masked(self):
+        return np.all(self._total_mask)
+
+    @lazyproperty
     def _data_zeroed(self):
         """
         A 2D `~numpy.nddarray` cutout from the input ``data`` where any
         masked pixels (_segment_mask, _input_mask, or _data_mask) are
         set to zero.  Invalid values (e.g. NaNs or infs) are set to
-        zero.
-
-        Negative data values are also set to zero because negative
-        pixels (especially at large radii) can result in image moments
-        that result in negative variances.
+        zero.  Units are dropped on the input ``data``.
         """
 
         # NOTE: using np.where is faster than
@@ -237,6 +242,7 @@ class SourceProperties:
         (or ``data`` if ``filtered_data`` is `None`) where any masked
         pixels (_segment_mask, _input_mask, or _data_mask) are set to
         zero.  Invalid values (e.g. NaNs or infs) are set to zero.
+        Units are dropped on the input ``filtered_data`` (or ``data``).
 
         Negative data values are also set to zero because negative
         pixels (especially at large radii) can result in image moments
@@ -378,23 +384,32 @@ class SourceProperties:
     @lazyproperty
     def coords(self):
         """
-        A tuple of `~numpy.ndarray` containing the ``y`` and ``x`` pixel
-        coordinates of the source segment.  Masked pixels are not
-        included.
+        A tuple of two `~numpy.ndarray` containing the ``y`` and ``x``
+        pixel coordinates of unmasked pixels within the source segment.
+
+        Non-finite pixel values (i.e. NaN, infs) are excluded
+        (automatically masked).
+
+        If all pixels are masked, ``coords`` will be a tuple of
+        two empty arrays.
         """
 
         yy, xx = np.nonzero(self.data_cutout_ma)
-        coords = (yy + self._slice[0].start, xx + self._slice[1].start)
-        return coords
+        return (yy + self._slice[0].start, xx + self._slice[1].start)
 
     @lazyproperty
     def values(self):
         """
-        A `~numpy.ndarray` of the (background-subtracted) pixel values
-        within the source segment.  Masked pixels are not included.
+        A 1D `~numpy.ndarray` of the unmasked pixel values within the
+        source segment.
+
+        Non-finite pixel values (i.e. NaN, infs) are excluded
+        (automatically masked).
+
+        If all pixels are masked, ``values`` will be an empty array.
         """
 
-        return self.data_cutout[~self._total_mask]
+        return self.data_cutout_ma.compressed()
 
     @lazyproperty
     def moments(self):
@@ -615,88 +630,104 @@ class SourceProperties:
     @lazyproperty
     def min_value(self):
         """
-        The minimum pixel value of the (background-subtracted) data
-        within the source segment.
+        The minimum pixel value of the data within the source segment.
         """
 
-        if len(self.values) == 0:
-            return np.nan
+        if self._is_completely_masked:
+            return np.nan * self._data_unit
         else:
-            return np.nanmin(self.values)
+            return np.min(self.values)
 
     @lazyproperty
     def max_value(self):
         """
-        The maximum pixel value of the (background-subtracted) data
-        within the source segment.
+        The maximum pixel value of the data within the source segment.
         """
 
-        if len(self.values) == 0:
-            return np.nan
+        if self._is_completely_masked:
+            return np.nan * self._data_unit
         else:
-            return np.nanmax(self.values)
+            return np.max(self.values)
 
     @lazyproperty
     def minval_cutout_pos(self):
         """
         The ``(y, x)`` coordinate, relative to the `data_cutout`, of the
-        minimum pixel value of the (background-subtracted) data.
+        minimum pixel value of the data.
+
+        If there are multiple occurrences of the minimum value, only the
+        first occurence is returned.
         """
 
-        if len(self.values) == 0:
-            return np.nan * u.pix
+        if self._is_completely_masked:
+            return (np.nan, np.nan) * u.pix
         else:
-            # NOTE:  Quantity converts this to float
-            return (np.argwhere(self.data_cutout_ma == self.min_value)[0] *
-                    u.pix)
+            arr = self.data_cutout_ma
+            # multiplying by unit converts int to float, but keep as
+            # float in case of NaNs
+            return np.asarray(np.unravel_index(np.argmin(arr),
+                                               arr.shape)) * u.pix
 
     @lazyproperty
     def maxval_cutout_pos(self):
         """
         The ``(y, x)`` coordinate, relative to the `data_cutout`, of the
-        maximum pixel value of the (background-subtracted) data.
+        maximum pixel value of the data.
+
+        If there are multiple occurrences of the maximum value, only the
+        first occurence is returned.
         """
 
-        if len(self.values) == 0:
-            return np.nan * u.pix
+        if self._is_completely_masked:
+            return (np.nan, np.nan) * u.pix
         else:
-            # NOTE:  Quantity converts this to float
-            return (np.argwhere(self.data_cutout_ma == self.max_value)[0] *
-                    u.pix)
+            arr = self.data_cutout_ma
+            # multiplying by unit converts int to float, but keep as
+            # float in case of NaNs
+            return np.asarray(np.unravel_index(np.argmax(arr),
+                                               arr.shape)) * u.pix
 
     @lazyproperty
     def minval_pos(self):
         """
         The ``(y, x)`` coordinate of the minimum pixel value of the
-        (background-subtracted) data.
+        data.
+
+        If there are multiple occurrences of the minimum value, only the
+        first occurence is returned.
         """
 
-        if len(self.values) == 0:
+        if self._is_completely_masked:
             return (np.nan, np.nan) * u.pix
         else:
-            yp, xp = np.array(self.minval_cutout_pos)
-            return ((yp + self._slice[0].start, xp + self._slice[1].start) *
-                    u.pix)
+            yp, xp = self.minval_cutout_pos.value
+            return (yp + self._slice[0].start,
+                    xp + self._slice[1].start) * u.pix
 
     @lazyproperty
     def maxval_pos(self):
         """
         The ``(y, x)`` coordinate of the maximum pixel value of the
-        (background-subtracted) data.
+        data.
+
+        If there are multiple occurrences of the maximum value, only the
+        first occurence is returned.
         """
 
-        if len(self.values) == 0:
+        if self._is_completely_masked:
             return (np.nan, np.nan) * u.pix
         else:
-            yp, xp = np.array(self.maxval_cutout_pos)
-            return ((yp + self._slice[0].start, xp + self._slice[1].start) *
-                    u.pix)
+            yp, xp = self.maxval_cutout_pos.value
+            return (yp + self._slice[0].start,
+                    xp + self._slice[1].start) * u.pix
 
     @lazyproperty
     def minval_xpos(self):
         """
-        The ``x`` coordinate of the minimum pixel value of the
-        (background-subtracted) data.
+        The ``x`` coordinate of the minimum pixel value of the data.
+
+        If there are multiple occurrences of the minimum value, only the
+        first occurence is returned.
         """
 
         return self.minval_pos[1]
@@ -704,8 +735,10 @@ class SourceProperties:
     @lazyproperty
     def minval_ypos(self):
         """
-        The ``y`` coordinate of the minimum pixel value of the
-        (background-subtracted) data.
+        The ``y`` coordinate of the minimum pixel value of the data.
+
+        If there are multiple occurrences of the minimum value, only the
+        first occurence is returned.
         """
 
         return self.minval_pos[0]
@@ -713,8 +746,10 @@ class SourceProperties:
     @lazyproperty
     def maxval_xpos(self):
         """
-        The ``x`` coordinate of the maximum pixel value of the
-        (background-subtracted) data.
+        The ``x`` coordinate of the maximum pixel value of the data.
+
+        If there are multiple occurrences of the maximum value, only the
+        first occurence is returned.
         """
 
         return self.maxval_pos[1]
@@ -722,26 +757,123 @@ class SourceProperties:
     @lazyproperty
     def maxval_ypos(self):
         """
-        The ``y`` coordinate of the maximum pixel value of the
-        (background-subtracted) data.
+        The ``y`` coordinate of the maximum pixel value of the data.
+
+        If there are multiple occurrences of the maximum value, only the
+        first occurence is returned.
         """
 
         return self.maxval_pos[0]
 
     @lazyproperty
+    def source_sum(self):
+        """
+        The sum of the unmasked data values within the source segment.
+
+        .. math:: F = \\sum_{i \\in S} (I_i - B_i)
+
+        where :math:`F` is ``source_sum``, :math:`(I_i - B_i)` is the
+        ``data``, and :math:`S` are the unmasked pixels in the source
+        segment.
+
+        Non-finite pixel values (i.e. NaN, infs) are excluded
+        (automatically masked).
+        """
+
+        if self._is_completely_masked:
+            return np.nan * self._data_unit
+        else:
+            return np.sum(self.values)
+
+    @lazyproperty
+    def source_sum_err(self):
+        """
+        The uncertainty of `~photutils.SourceProperties.source_sum`,
+        propagated from the input ``error`` array.
+
+        ``source_sum_err`` is the quadrature sum of the total errors
+        over the non-masked pixels within the source segment:
+
+        .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
+                  \\sigma_{\\mathrm{tot}, i}^2}
+
+        where :math:`\\Delta F` is ``source_sum_err``,
+        :math:`\\sigma_{\\mathrm{tot, i}}` are the pixel-wise total
+        errors, and :math:`S` are the non-masked pixels in the source
+        segment.
+
+        Pixel values that are masked in the input data, including any
+        non-finite pixel values (i.e. NaN, infs) that are automatically
+        masked, are also masked in the error array.
+        """
+
+        if self._error is not None:
+            # power doesn't work here, see astropy #2968
+            # return np.sqrt(np.sum(self.error_cutout_ma**2))
+            return np.sqrt(np.nansum(
+                np.ma.masked_array(self.error_cutout_ma.data**2,
+                                   mask=self.error_cutout_ma.mask)))
+        else:
+            return None
+
+    @lazyproperty
+    def background_sum(self):
+        """The sum of ``background`` values within the source segment."""
+
+        if self._background is not None:
+            return np.sum(self.background_cutout_ma)
+        else:
+            return None
+
+    @lazyproperty
+    def background_mean(self):
+        """The mean of ``background`` values within the source segment."""
+
+        if self._background is not None:
+            return np.mean(self.background_cutout_ma)
+        else:
+            return None
+
+    @lazyproperty
+    def background_at_centroid(self):
+        """
+        The value of the ``background`` at the position of the source
+        centroid.  Fractional position values are determined using
+        bilinear interpolation.
+        """
+
+        from scipy.ndimage import map_coordinates
+
+        if self._background is None:
+            return None
+        else:
+            value = map_coordinates(self._background,
+                                    [[self.ycentroid.value],
+                                     [self.xcentroid.value]])[0]
+
+            # map_coordinates works if self._background is a Quantity, but
+            # the returned value is a numpy array (without units)
+            if isinstance(self._background, u.Quantity):
+                value *= self._background.unit
+
+            return value
+
+    @lazyproperty
     def area(self):
         """
-        The area of the source segment in units of pixels**2.
+        The total unmasked area of the source segment in units of
+        pixels**2.
 
         Note that the source area may be smaller than its segment area
-        if a mask is input to `SourceProperties` or `source_properties`.
+        if a mask is input to `SourceProperties` or `source_properties`,
+        or if the ``data`` within the segment contains invalid values
+        (e.g. NaN or infs).
         """
 
-        nvalues = len(self.values)
-        if nvalues == 0:
+        if self._is_completely_masked:
             return np.nan * u.pix**2
         else:
-            return nvalues * u.pix**2
+            return len(self.values) * u.pix**2
 
     @lazyproperty
     def equivalent_radius(self):
@@ -1010,91 +1142,6 @@ class SourceProperties:
         return (2. * np.cos(self.orientation) * np.sin(self.orientation) *
                 ((1. / self.semimajor_axis_sigma**2) -
                  (1. / self.semiminor_axis_sigma**2)))
-
-    @lazyproperty
-    def source_sum(self):
-        """
-        The sum of the non-masked (background-subtracted) data values
-        within the source segment.
-
-        .. math:: F = \\sum_{i \\in S} (I_i - B_i)
-
-        where :math:`F` is ``source_sum``, :math:`(I_i - B_i)` is the
-        background-subtracted input ``data``, and :math:`S` are the
-        non-masked pixels in the source segment.
-        """
-
-        return np.nansum(np.ma.masked_array(self._data[self._slice],
-                                            mask=self._total_mask))
-
-    @lazyproperty
-    def source_sum_err(self):
-        """
-        The uncertainty of `~photutils.SourceProperties.source_sum`,
-        propagated from the input ``error`` array.
-
-        ``source_sum_err`` is the quadrature sum of the total errors
-        over the non-masked pixels within the source segment:
-
-        .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
-                  \\sigma_{\\mathrm{tot}, i}^2}
-
-        where :math:`\\Delta F` is ``source_sum_err``,
-        :math:`\\sigma_{\\mathrm{tot, i}}` are the pixel-wise total
-        errors, and :math:`S` are the non-masked pixels in the source
-        segment.
-        """
-
-        if self._error is not None:
-            # power doesn't work here, see astropy #2968
-            # return np.sqrt(np.sum(self.error_cutout_ma**2))
-            return np.sqrt(np.nansum(
-                np.ma.masked_array(self.error_cutout_ma.data**2,
-                                   mask=self.error_cutout_ma.mask)))
-        else:
-            return None
-
-    @lazyproperty
-    def background_sum(self):
-        """The sum of ``background`` values within the source segment."""
-
-        if self._background is not None:
-            return np.sum(self.background_cutout_ma)
-        else:
-            return None
-
-    @lazyproperty
-    def background_mean(self):
-        """The mean of ``background`` values within the source segment."""
-
-        if self._background is not None:
-            return np.mean(self.background_cutout_ma)
-        else:
-            return None
-
-    @lazyproperty
-    def background_at_centroid(self):
-        """
-        The value of the ``background`` at the position of the source
-        centroid.  Fractional position values are determined using
-        bilinear interpolation.
-        """
-
-        from scipy.ndimage import map_coordinates
-
-        if self._background is None:
-            return None
-        else:
-            value = map_coordinates(self._background,
-                                    [[self.ycentroid.value],
-                                     [self.xcentroid.value]])[0]
-
-            # map_coordinates works if self._background is a Quantity, but
-            # the returned value is a numpy array (without units)
-            if isinstance(self._background, u.Quantity):
-                value *= self._background.unit
-
-            return value
 
 
 def source_properties(data, segment_img, error=None, mask=None,
