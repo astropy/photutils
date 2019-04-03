@@ -538,7 +538,7 @@ def test_psf_preserve_order(sigma_psf, sources):
     img_shape = (32, 32)
     # generate image with read-out noise (Gaussian) and
     # background noise (Poisson)
-    image = (make_gaussian_sources_image(img_shape, sources) +
+    image = (make_gaussian_prf_sources_image(img_shape, sources) +
              make_noise_image(img_shape, type='poisson', mean=6.,
                               random_state=1) +
              make_noise_image(img_shape, type='gaussian', mean=0.,
@@ -548,7 +548,7 @@ def test_psf_preserve_order(sigma_psf, sources):
     mmm_bkg = MMMBackground()
     daogroup = DAOGroup(crit_separation=8)
     basic_phot = BasicPSFPhotometry(group_maker=daogroup, bkg_estimator=mmm_bkg,
-                                  psf_model=psf_model, fitshape=(11, 11))
+                                    psf_model=psf_model, fitshape=(11, 11))
     phot_results = basic_phot(image, init_guesses=Table(names=['x_0', 'y_0', 'flux_0'],
                                                         data=[[7.8, 20.5, 13.1],
                                                               [19.4, 8.8, 21.4],
@@ -558,8 +558,8 @@ def test_psf_preserve_order(sigma_psf, sources):
     assert np.all(phot_results['id'] == [1, 3, 2])
 
     basic_phot = BasicPSFPhotometry(group_maker=daogroup, bkg_estimator=mmm_bkg,
-                                  psf_model=psf_model, fitshape=(11, 11),
-                                  preserve_id_order=True)
+                                    psf_model=psf_model, fitshape=(11, 11),
+                                    preserve_id_order=True)
     phot_results = basic_phot(image, init_guesses=Table(names=['x_0', 'y_0', 'flux_0'],
                                                         data=[[7.8, 20.5, 13.1],
                                                               [19.4, 8.8, 21.4],
