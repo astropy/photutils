@@ -169,8 +169,18 @@ class SourceProperties:
             self._filtered_data = data
         else:
             self._filtered_data = filtered_data
+
         self._error = error    # total error; 2D array
+        try:
+            self._error_unit = self._error.unit
+        except AttributeError:
+            self._error_unit = 1
+
         self._background = background    # 2D array
+        try:
+            self._background_unit = self._background.unit
+        except AttributeError:
+            self._background_unit = 1
 
         segment_img.check_labels(label)
         self.label = label
@@ -382,6 +392,28 @@ class SourceProperties:
                                       mask=self._total_mask)
 
     @lazyproperty
+    def values(self):
+        """
+        A 1D `~numpy.ndarray` of the unmasked pixel values within the
+        source segment.
+
+        Non-finite pixel values (i.e. NaN, infs) are excluded
+        (automatically masked).
+
+        If all pixels are masked, ``values`` will be an empty array.
+        """
+
+        return self.data_cutout_ma.compressed()
+
+    @lazyproperty
+    def _error_values(self):
+        return self.error_cutout_ma.compressed()
+
+    @lazyproperty
+    def _background_values(self):
+        return self.background_cutout_ma.compressed()
+
+    @lazyproperty
     def coords(self):
         """
         A tuple of two `~numpy.ndarray` containing the ``y`` and ``x``
@@ -396,20 +428,6 @@ class SourceProperties:
 
         yy, xx = np.nonzero(self.data_cutout_ma)
         return (yy + self._slice[0].start, xx + self._slice[1].start)
-
-    @lazyproperty
-    def values(self):
-        """
-        A 1D `~numpy.ndarray` of the unmasked pixel values within the
-        source segment.
-
-        Non-finite pixel values (i.e. NaN, infs) are excluded
-        (automatically masked).
-
-        If all pixels are masked, ``values`` will be an empty array.
-        """
-
-        return self.data_cutout_ma.compressed()
 
     @lazyproperty
     def moments(self):
@@ -781,7 +799,7 @@ class SourceProperties:
         """
 
         if self._is_completely_masked:
-            return np.nan * self._data_unit
+            return np.nan * self._data_unit  # table output needs unit
         else:
             return np.sum(self.values)
 
@@ -808,29 +826,46 @@ class SourceProperties:
         """
 
         if self._error is not None:
-            # power doesn't work here, see astropy #2968
-            # return np.sqrt(np.sum(self.error_cutout_ma**2))
-            return np.sqrt(np.nansum(
-                np.ma.masked_array(self.error_cutout_ma.data**2,
-                                   mask=self.error_cutout_ma.mask)))
+            if self._is_completely_masked:
+                return np.nan * self._error_unit  # table output needs unit
+            else:
+                return np.sqrt(np.sum(self._error_values ** 2))
         else:
             return None
 
     @lazyproperty
     def background_sum(self):
-        """The sum of ``background`` values within the source segment."""
+        """
+        The sum of ``background`` values within the source segment.
+
+        Pixel values that are masked in the input data, including any
+        non-finite pixel values (i.e. NaN, infs) that are automatically
+        masked, are also masked in the background array.
+        """
 
         if self._background is not None:
-            return np.sum(self.background_cutout_ma)
+            if self._is_completely_masked:
+                return np.nan * self._background_unit  # unit for table
+            else:
+                return np.sum(self._background_values)
         else:
             return None
 
     @lazyproperty
     def background_mean(self):
-        """The mean of ``background`` values within the source segment."""
+        """
+        The mean of ``background`` values within the source segment.
+
+        Pixel values that are masked in the input data, including any
+        non-finite pixel values (i.e. NaN, infs) that are automatically
+        masked, are also masked in the background array.
+        """
 
         if self._background is not None:
-            return np.mean(self.background_cutout_ma)
+            if self._is_completely_masked:
+                return np.nan * self._background_unit  # unit for table
+            else:
+                return np.mean(self._background_values)
         else:
             return None
 
