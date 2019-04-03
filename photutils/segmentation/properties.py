@@ -177,27 +177,76 @@ class SourceProperties:
     @lazyproperty
     def _segment_mask(self):
         """
-        _segment_mask is `True` for pixels outside of the source
-        segment.  Pixels from other source segments within the
-        rectangular cutout are also `True`.
+        _segment_mask is `True` for all pixels outside of the source
+        segment for this label.  Pixels from other source segments
+        within the rectangular cutout are `True`.
         """
 
         return self._segment_img.data[self._slice] != self.label
 
     @lazyproperty
+    def _input_mask(self):
+        if self._mask is not None:
+            return self._mask[self._slice]
+        else:
+            return None
+
+    @lazyproperty
+    def _data_mask(self):
+        return ~np.isfinite(self.data_cutout)
+
+    @lazyproperty
     def _total_mask(self):
         """
-        _total_mask is `True` for pixels outside of the source segment
-        or where the input ``mask`` is `True`.  Pixels from other source
-        segments within the rectangular cutout are also `True`.
+        Combination of the _segment_mask, _input_mask, and _data_mask.
+
+        This mask is applied to ``data``, ``error``, and ``background``
+        inputs when calculating properties.
         """
 
-        mask = np.copy(self._segment_mask)
+        mask = self._segment_mask | self._data_mask
 
-        if self._mask is not None:
-            mask |= self._mask[self._slice]
+        if self._input_mask is not None:
+            mask |= self._input_mask
 
         return mask
+
+    @lazyproperty
+    def _data_zeroed(self):
+        """
+        A 2D `~numpy.nddarray` cutout from the input ``data`` where any
+        masked pixels (_segment_mask, _input_mask, or _data_mask) are
+        set to zero.  Invalid values (e.g. NaNs or infs) are set to
+        zero.
+
+        Negative data values are also set to zero because negative
+        pixels (especially at large radii) can result in image moments
+        that result in negative variances.
+        """
+
+        # NOTE: using np.where is faster than
+        #     _data = np.copy(self.data_cutout)
+        #     self._data[self._total_mask] = 0.
+        return np.where(self._total_mask, 0,
+                        self.data_cutout).astype(np.float64)  # copy
+
+    @lazyproperty
+    def _filtered_data_zeroed(self):
+        """
+        A 2D `~numpy.nddarray` cutout from the input ``filtered_data``
+        (or ``data`` if ``filtered_data`` is `None`) where any masked
+        pixels (_segment_mask, _input_mask, or _data_mask) are set to
+        zero.  Invalid values (e.g. NaNs or infs) are set to zero.
+
+        Negative data values are also set to zero because negative
+        pixels (especially at large radii) can result in image moments
+        that result in negative variances.
+        """
+
+        filt_data = self._filtered_data[self._slice]
+        filt_data = np.where(self._total_mask, 0., filt_data)  # copy
+        filt_data[filt_data < 0] = 0.
+        return filt_data.astype(np.float64)
 
     def make_cutout(self, data, masked_array=False):
         """
@@ -283,7 +332,7 @@ class SourceProperties:
         segment.
         """
 
-        return self.make_cutout(self._data, masked_array=False)
+        return self._data[self._slice]
 
     @lazyproperty
     def data_cutout_ma(self):
@@ -293,26 +342,8 @@ class SourceProperties:
         pixels outside of the source segment and masked pixels.
         """
 
-        return self.make_cutout(self._data, masked_array=True)
-
-    @lazyproperty
-    def _data_cutout_maskzeroed(self):
-        """
-        A 2D cutout from the (background-subtracted) (filtered) data,
-        where pixels outside of the source segment and masked pixels are
-        set to zero.
-
-        Invalid values (e.g. NaNs or infs) are set to zero.  Negative
-        data values are also set to zero because negative pixels
-        (especially at large radii) can result in image moments that
-        result in negative variances.
-        """
-
-        cutout = self.make_cutout(self._filtered_data, masked_array=False)
-        cutout = np.where(np.isfinite(cutout), cutout, 0.)
-        cutout = np.where(cutout > 0, cutout, 0.)    # negative pixels -> 0
-
-        return (cutout * ~self._total_mask).astype(np.float64)
+        return np.ma.masked_array(self._data[self._slice],
+                                  mask=self._total_mask)
 
     @lazyproperty
     def error_cutout_ma(self):
@@ -326,7 +357,8 @@ class SourceProperties:
         if self._error is None:
             return None
         else:
-            return self.make_cutout(self._error, masked_array=True)
+            return np.ma.masked_array(self._error[self._slice],
+                                      mask=self._total_mask)
 
     @lazyproperty
     def background_cutout_ma(self):
@@ -340,7 +372,8 @@ class SourceProperties:
         if self._background is None:
             return None
         else:
-            return self.make_cutout(self._background, masked_array=True)
+            return np.ma.masked_array(self._background[self._slice],
+                                      mask=self._total_mask)
 
     @lazyproperty
     def coords(self):
@@ -367,7 +400,7 @@ class SourceProperties:
     def moments(self):
         """Spatial moments up to 3rd order of the source."""
 
-        return _moments(self._data_cutout_maskzeroed, order=3)
+        return _moments(self._filtered_data_zeroed, order=3)
 
     @lazyproperty
     def moments_central(self):
@@ -377,7 +410,7 @@ class SourceProperties:
         """
 
         ycentroid, xcentroid = self.cutout_centroid.value
-        return _moments_central(self._data_cutout_maskzeroed,
+        return _moments_central(self._filtered_data_zeroed,
                                 center=(xcentroid, ycentroid), order=3)
 
     @lazyproperty
