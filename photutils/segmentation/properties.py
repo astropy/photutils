@@ -923,12 +923,19 @@ class SourceProperties:
     @lazyproperty
     def perimeter(self):
         """
-        The perimeter of the source segment, approximated lines through
-        the centers of the border pixels using a 4-connectivity.
+        The total perimeter of the source segment, approximated lines
+        through the centers of the border pixels using a 4-connectivity.
+
+        If any masked pixels make holes within the source segment, then
+        the perimeter around the inner hole (e.g. an annulus) will also
+        contribute to the total perimeter.
         """
 
-        from skimage.measure import perimeter
-        return perimeter(~self._segment_mask, 4) * u.pix
+        if self._is_completely_masked:
+            return np.nan * u.pix  # unit for table
+        else:
+            from skimage.measure import perimeter
+            return perimeter(~self._total_mask, neighbourhood=4) * u.pix
 
     @lazyproperty
     def inertia_tensor(self):
