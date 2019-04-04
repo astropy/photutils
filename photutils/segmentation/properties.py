@@ -879,19 +879,20 @@ class SourceProperties:
 
         from scipy.ndimage import map_coordinates
 
-        if self._background is None:
-            return None
+        if self._background is not None:
+            # centroid can still be NaN if all data values are <= 0
+            if (self._is_completely_masked or
+                    np.any(~np.isfinite(self.centroid))):
+                return np.nan * self._background_unit  # unit for table
+            else:
+                value = map_coordinates(self._background,
+                                        [[self.ycentroid.value],
+                                         [self.xcentroid.value]], order=1,
+                                        mode='nearest')[0]
+
+                return value * self._background_unit
         else:
-            value = map_coordinates(self._background,
-                                    [[self.ycentroid.value],
-                                     [self.xcentroid.value]])[0]
-
-            # map_coordinates works if self._background is a Quantity, but
-            # the returned value is a numpy array (without units)
-            if isinstance(self._background, u.Quantity):
-                value *= self._background.unit
-
-            return value
+            return None
 
     @lazyproperty
     def area(self):
