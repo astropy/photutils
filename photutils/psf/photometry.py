@@ -90,6 +90,11 @@ class BasicPSFPhotometry:
         The radius (in units of pixels) used to compute initial
         estimates for the fluxes of sources. If ``None``, one FWHM will
         be used if it can be determined from the ``psf_model``.
+    preserve_id_order : bool, optional
+        Flag indicating whether to present final output table in ascending
+        ID order. Default is ``False``, and thus sources may be presented
+        in differing order to any input as ``init_guesses``, with output
+        being arranged by ``group_id``.
 
     Notes
     -----
@@ -113,7 +118,8 @@ class BasicPSFPhotometry:
     """
 
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
-                 finder=None, fitter=LevMarLSQFitter(), aperture_radius=None):
+                 finder=None, fitter=LevMarLSQFitter(), aperture_radius=None,
+                 preserve_id_order=False):
         self.group_maker = group_maker
         self.bkg_estimator = bkg_estimator
         self.psf_model = psf_model
@@ -124,6 +130,7 @@ class BasicPSFPhotometry:
         self._pars_to_set = None
         self._pars_to_output = None
         self._residual_image = None
+        self._preserve_id_order = preserve_id_order
 
     @property
     def fitshape(self):
@@ -291,6 +298,9 @@ class BasicPSFPhotometry:
 
         star_groups = star_groups.group_by('group_id')
         output_tab = hstack([star_groups, output_tab])
+
+        if self._preserve_id_order:
+            output_tab = output_tab.group_by('id')
 
         return output_tab
 

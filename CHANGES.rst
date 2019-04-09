@@ -21,7 +21,11 @@ Bug Fixes
 API changes
 ^^^^^^^^^^^
 
--
+- ``photutils.psf``
+
+  - Added ``preserve_id_order`` as input parameter to ``BasicPSFPhotometry``,
+    allowing for the return of source table in ``id`` rather than ``group_id``
+    order. [#746]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
