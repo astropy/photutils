@@ -225,7 +225,7 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     source_max = np.nanmax(source_values)
     if source_min == source_max:
         return segment_img     # no deblending
-    if source_min < 0:
+    if mode == 'exponential' and source_min < 0:
         warnings.warn('Source "{0}" contains negative values, setting '
                       'deblending mode to "linear"'.format(
                           segment_img.labels[0]), AstropyUserWarning)
