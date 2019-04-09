@@ -997,7 +997,7 @@ class SourceProperties:
         if not np.isnan(np.sum(self.covariance)):
             eigvals = np.linalg.eigvals(self.covariance)
             if np.any(eigvals < 0):    # negative variance
-                return (np.nan, np.nan) * u.pix**2
+                return (np.nan, np.nan) * u.pix**2  # pragma: no cover
             return (np.max(eigvals), np.min(eigvals)) * u.pix**2
         else:
             return (np.nan, np.nan) * u.pix**2
@@ -1041,7 +1041,7 @@ class SourceProperties:
 
         l1, l2 = self.covariance_eigvals
         if l1 == 0:
-            return 0.
+            return 0.  # pragma: no cover
         return np.sqrt(1. - (l2 / l1))
 
     @lazyproperty
@@ -1055,7 +1055,7 @@ class SourceProperties:
 
         a, b, b, c = self.covariance.flat
         if a < 0 or c < 0:    # negative variance
-            return np.nan * u.rad
+            return np.nan * u.rad  # pragma: no cover
         return 0.5 * np.arctan2(2. * b, (a - c))
 
     @lazyproperty
@@ -1404,7 +1404,7 @@ class SourceCatalog:
                 if isinstance(values[0], u.Quantity):
                     # turn list of Quantities into a Quantity array
                     values = u.Quantity(values)
-                if isinstance(values[0], SkyCoord):   # pragma: no cover
+                if isinstance(values[0], SkyCoord):  # pragma: no cover
                     # turn list of SkyCoord into a SkyCoord array
                     values = SkyCoord(values)
 
@@ -1581,7 +1581,7 @@ def _properties_table(obj, columns=None, exclude_columns=None):
             if isinstance(values[0], u.Quantity):
                 # turn list of Quantities into a Quantity array
                 values = u.Quantity(values)
-            if isinstance(values[0], SkyCoord):   # pragma: no cover
+            if isinstance(values[0], SkyCoord):  # pragma: no cover
                 # turn list of SkyCoord into a SkyCoord array
                 values = SkyCoord(values)
 
