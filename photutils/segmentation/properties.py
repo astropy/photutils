@@ -6,7 +6,7 @@ import numpy as np
 import astropy.units as u
 from astropy.coordinates import SkyCoord
 from astropy.table import QTable
-from astropy.utils import lazyproperty
+from astropy.utils import lazyproperty, deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import pixel_to_skycoord
 
@@ -417,9 +417,24 @@ class SourceProperties:
                                       mask=self._total_mask)
 
     @lazyproperty
+    @deprecated('0.7')
     def values(self):
         """
-        A 1D `~numpy.ndarray` of the unmasked pixel values within the
+        A 1D `~numpy.ndarray` of the unmasked ``data`` values within the
+        source segment.
+
+        Non-finite pixel values (e.g. NaN, infs) are excluded
+        (automatically masked).
+
+        If all pixels are masked, ``values`` will be an empty array.
+        """
+
+        return self._data_values  # pragma: no cover
+
+    @lazyproperty
+    def _data_values(self):
+        """
+        A 1D `~numpy.ndarray` of the unmasked ``data`` values within the
         source segment.
 
         Non-finite pixel values (e.g. NaN, infs) are excluded
@@ -680,7 +695,7 @@ class SourceProperties:
         if self._is_completely_masked:
             return np.nan * self._data_unit
         else:
-            return np.min(self.values)
+            return np.min(self._data_values)
 
     @lazyproperty
     def max_value(self):
@@ -692,7 +707,7 @@ class SourceProperties:
         if self._is_completely_masked:
             return np.nan * self._data_unit
         else:
-            return np.max(self.values)
+            return np.max(self._data_values)
 
     @lazyproperty
     def minval_cutout_pos(self):
@@ -832,7 +847,7 @@ class SourceProperties:
         if self._is_completely_masked:
             return np.nan * self._data_unit  # table output needs unit
         else:
-            return np.sum(self.values)
+            return np.sum(self._data_values)
 
     @lazyproperty
     def source_sum_err(self):
@@ -942,7 +957,7 @@ class SourceProperties:
         if self._is_completely_masked:
             return np.nan * u.pix**2
         else:
-            return len(self.values) * u.pix**2
+            return len(self._data_values) * u.pix**2
 
     @lazyproperty
     def equivalent_radius(self):

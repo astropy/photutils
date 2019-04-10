@@ -236,7 +236,6 @@ class TestSourcePropertiesFunction:
                                  rtol=1.e-3)
         assert_allclose(props[0].bbox.value, [35, 25, 70, 77])
         assert_quantity_allclose(props[0].area, 1058.0*u.pix**2)
-        assert_allclose(len(props[0].values), props[0].area.value)
         assert_allclose(len(props[0].coords), 2)
         assert_allclose(len(props[0].coords[0]), props[0].area.value)
 
