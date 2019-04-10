@@ -121,9 +121,13 @@ class TestSourceProperties:
         # ensure mask is identical for data, error, and background
         assert props.data_cutout_ma.compressed().size == 677
         assert (props.data_cutout_ma.compressed().size ==
+                props.filtered_data_cutout_ma.compressed().size)
+        assert (props.data_cutout_ma.compressed().size ==
                 props.error_cutout_ma.compressed().size)
         assert (props.data_cutout_ma.compressed().size ==
                 props.background_cutout_ma.compressed().size)
+        assert (len(props._filtered_data_values) ==
+                props.filtered_data_cutout_ma.compressed().size)
 
         # test for non-finite values in error and/or background outside
         # of the data mask

@@ -38,7 +38,7 @@ class SourceProperties:
         morphological properties.  Source photometry is always measured
         from ``data``.  For accurate source properties and photometry,
         ``data`` should be background-subtracted.  Non-finite ``data``
-        values (e.g. NaN or inf) are automatically masked.
+        values (NaN and +/- inf) are automatically masked.
 
     segment_img : `SegmentationImage` or array_like (int)
         A 2D segmentation image, either as a `SegmentationImage` object
@@ -55,7 +55,7 @@ class SourceProperties:
         properties.  The kernel used to perform the filtering should be
         the same one used in defining the source segments (e.g., see
         :func:`~photutils.detect_sources`).  Non-finite
-        ``filtered_data`` values (e.g. NaN or inf) are not automatically
+        ``filtered_data`` values (NaN and +/- inf) are not automatically
         masked, unless they are at the same position of non-finite
         values in the input ``data`` array.  Such pixels can be masked
         using the ``mask`` keyword.  If `None`, then the unfiltered
@@ -67,7 +67,7 @@ class SourceProperties:
         including the Poisson error of the sources (see
         `~photutils.utils.calc_total_error`) .  ``error`` must have the
         same shape as the input ``data``.  Non-finite ``error`` values
-        (e.g. NaN or inf) are not automatically masked, unless they are
+        (NaN and +/- inf) are not automatically masked, unless they are
         at the same position of non-finite values in the input ``data``
         array.  Such pixels can be masked using the ``mask`` keyword.
         See the Notes section below for details on the error
@@ -77,7 +77,7 @@ class SourceProperties:
         A boolean mask with the same shape as ``data`` where a `True`
         value indicates the corresponding element of ``data`` is masked.
         Masked data are excluded from all calculations.  Non-finite
-        values (e.g. NaN or inf) in the input ``data`` are automatically
+        values (NaN and +/- inf) in the input ``data`` are automatically
         masked.
 
     background : float, array_like, or `~astropy.units.Quantity`, optional
@@ -87,10 +87,10 @@ class SourceProperties:
         ``background`` merely allows for its properties to be measured
         within each source segment.  The input ``background`` does *not*
         get subtracted from the input ``data``, which should already be
-        background-subtracted.  Non-finite ``background`` values (e.g.
-        NaN or inf) are not automatically masked, unless they are at the
-        same position of non-finite values in the input ``data`` array.
-        Such pixels can be masked using the ``mask`` keyword.
+        background-subtracted.  Non-finite ``background`` values (NaN
+        and +/- inf) are not automatically masked, unless they are at
+        the same position of non-finite values in the input ``data``
+        array.  Such pixels can be masked using the ``mask`` keyword.
 
     wcs : `~astropy.wcs.WCS`
         The WCS transformation to use.  If `None`, then any sky-based
@@ -135,8 +135,8 @@ class SourceProperties:
     `~photutils.SourceProperties.background_cutout_ma` properties, which
     are 2D `~numpy.ma.MaskedArray` cutout versions of the input
     ``error`` and ``background``.  The mask is `True` for pixels outside
-    of the source segment, masked pixels from the ``mask`` input, or
-    any non-finite ``data`` values (e.g. NaN or inf).
+    of the source segment, masked pixels from the ``mask`` input, or any
+    non-finite ``data`` values (NaN and +/- inf).
 
     .. _SExtractor: http://www.astromatic.net/software/sextractor
     """
@@ -206,7 +206,9 @@ class SourceProperties:
     @lazyproperty
     def _segment_mask(self):
         """
-        _segment_mask is `True` for all pixels outside of the source
+        Boolean mask for source segment.
+
+        ``_segment_mask`` is `True` for all pixels outside of the source
         segment for this label.  Pixels from other source segments
         within the rectangular cutout are `True`.
         """
@@ -215,6 +217,10 @@ class SourceProperties:
 
     @lazyproperty
     def _input_mask(self):
+        """
+        Boolean mask for the user-input mask.
+        """
+
         if self._mask is not None:
             return self._mask[self._slice]
         else:
@@ -222,12 +228,17 @@ class SourceProperties:
 
     @lazyproperty
     def _data_mask(self):
+        """
+        Boolean mask for non-finite (NaN and +/- inf) ``data`` values.
+        """
+
         return ~np.isfinite(self.data_cutout)
 
     @lazyproperty
     def _total_mask(self):
         """
-        Combination of the _segment_mask, _input_mask, and _data_mask.
+        Boolean mask representing the combination of the
+        ``_segment_mask``, ``_input_mask``, and ``_data_mask``.
 
         This mask is applied to ``data``, ``error``, and ``background``
         inputs when calculating properties.
@@ -242,15 +253,27 @@ class SourceProperties:
 
     @lazyproperty
     def _is_completely_masked(self):
+        """
+        `True` if all pixels within the source segment are masked,
+        otherwise `False`.
+        """
+
         return np.all(self._total_mask)
 
     @lazyproperty
     def _data_zeroed(self):
         """
-        A 2D `~numpy.nddarray` cutout from the input ``data`` where any
-        masked pixels (_segment_mask, _input_mask, or _data_mask) are
-        set to zero.  Invalid values (e.g. NaNs or infs) are set to
-        zero.  Units are dropped on the input ``data``.
+        A 2D `~numpy.ndarray` cutout from the input ``data`` where any
+        masked pixels (``_segment_mask``, ``_input_mask``, or
+        ``_data_mask``) are set to zero.  Invalid values (NaN and +/-
+        inf) are set to zero via the ``_data_mask``.  Units are dropped
+        on the input ``data``.
+
+        This is a 2D array representation (with zeros as placeholders
+        for the masked/removed values) of the 1D ``_data_values``
+        property, which is used for ``source_sum``, ``area``,
+        ``min_value``, ``max_value``, ``minval_pos``, ``maxval_pos``,
+        etc.
         """
 
         # NOTE: using np.where is faster than
@@ -262,15 +285,18 @@ class SourceProperties:
     @lazyproperty
     def _filtered_data_zeroed(self):
         """
-        A 2D `~numpy.nddarray` cutout from the input ``filtered_data``
+        A 2D `~numpy.ndarray` cutout from the input ``filtered_data``
         (or ``data`` if ``filtered_data`` is `None`) where any masked
-        pixels (_segment_mask, _input_mask, or _data_mask) are set to
-        zero.  Invalid values (e.g. NaNs or infs) are set to zero.
-        Units are dropped on the input ``filtered_data`` (or ``data``).
+        pixels (``_segment_mask``, ``_input_mask``, or ``_data_mask``)
+        are set to zero.  Invalid values (NaN and +/- inf) are set to
+        zero.  Units are dropped on the input ``filtered_data`` (or
+        ``data``).
 
         Negative data values are also set to zero because negative
         pixels (especially at large radii) can result in image moments
         that result in negative variances.
+
+        This array is used for moment-based properties.
         """
 
         filt_data = self._filtered_data[self._slice]
@@ -292,7 +318,7 @@ class SourceProperties:
         a `~numpy.ma.MaskedArray`.  The mask is `True` for pixels
         outside of the source segment (labeled region of interest),
         masked pixels from the ``mask`` input, or any non-finite
-        ``data`` values (e.g. NaN or inf).  The data part of the masked
+        ``data`` values (NaN and +/- inf).  The data part of the masked
         array is a view (not a copy) of the input ``data``.
 
         Parameters
@@ -306,8 +332,8 @@ class SourceProperties:
             If `True` then a `~numpy.ma.MaskedArray` will be returned,
             where the mask is `True` for pixels outside of the source
             segment (labeled region of interest), masked pixels from the
-            ``mask`` input, or any non-finite ``data`` values (e.g. NaN
-            or inf).  If `False`, then a `~numpy.ndarray` will be
+            ``mask`` input, or any non-finite ``data`` values (NaN and
+            +/- inf).  If `False`, then a `~numpy.ndarray` will be
             returned.
 
         Returns
@@ -367,14 +393,30 @@ class SourceProperties:
     @lazyproperty
     def data_cutout_ma(self):
         """
-        A 2D `~numpy.ma.MaskedArray` cutout from the data.
+        A 2D `~numpy.ma.MaskedArray` cutout from the ``data``.
 
         The mask is `True` for pixels outside of the source segment
         (labeled region of interest), masked pixels from the ``mask``
-        input, or any non-finite ``data`` values (e.g. NaN or inf).
+        input, or any non-finite ``data`` values (NaN and +/- inf).
         """
 
         return np.ma.masked_array(self._data[self._slice],
+                                  mask=self._total_mask)
+
+    @lazyproperty
+    def filtered_data_cutout_ma(self):
+        """
+        A 2D `~numpy.ma.MaskedArray` cutout from the ``filtered_data``.
+
+        If ``filtered_data`` was not input, then the cutout will be from
+        the input ``data``.
+
+        The mask is `True` for pixels outside of the source segment
+        (labeled region of interest), masked pixels from the ``mask``
+        input, or any non-finite ``data`` values (NaN and +/- inf).
+        """
+
+        return np.ma.masked_array(self._filtered_data[self._slice],
                                   mask=self._total_mask)
 
     @lazyproperty
@@ -385,7 +427,7 @@ class SourceProperties:
 
         The mask is `True` for pixels outside of the source segment
         (labeled region of interest), masked pixels from the ``mask``
-        input, or any non-finite ``data`` values (e.g. NaN or inf).
+        input, or any non-finite ``data`` values (NaN and +/- inf).
 
         If ``error`` is `None`, then ``error_cutout_ma`` is also `None`.
         """
@@ -404,7 +446,7 @@ class SourceProperties:
 
         The mask is `True` for pixels outside of the source segment
         (labeled region of interest), masked pixels from the ``mask``
-        input, or any non-finite ``data`` values (e.g. NaN or inf).
+        input, or any non-finite ``data`` values (NaN and +/- inf).
 
         If ``background`` is `None`, then ``background_cutout_ma`` is
         also `None`.
@@ -423,7 +465,7 @@ class SourceProperties:
         A 1D `~numpy.ndarray` of the unmasked ``data`` values within the
         source segment.
 
-        Non-finite pixel values (e.g. NaN, infs) are excluded
+        Non-finite pixel values (NaN and +/- inf) are excluded
         (automatically masked).
 
         If all pixels are masked, ``values`` will be an empty array.
@@ -437,13 +479,20 @@ class SourceProperties:
         A 1D `~numpy.ndarray` of the unmasked ``data`` values within the
         source segment.
 
-        Non-finite pixel values (e.g. NaN, infs) are excluded
-        (automatically masked).
+        Non-finite pixel values (NaN and +/- inf) are excluded
+        (automatically masked) via the ``_data_mask``.
 
-        If all pixels are masked, ``values`` will be an empty array.
+        If all pixels are masked, an empty array will be returned.
+
+        This array is used for ``source_sum``, ``area``, ``min_value``,
+        ``max_value``, ``minval_pos``, ``maxval_pos``, etc.
         """
 
         return self.data_cutout_ma.compressed()
+
+    @lazyproperty
+    def _filtered_data_values(self):
+        return self.filtered_data_cutout_ma.compressed()
 
     @lazyproperty
     def _error_values(self):
@@ -460,7 +509,7 @@ class SourceProperties:
         pixel indices, respectively, of unmasked pixels within the
         source segment.
 
-        Non-finite ``data`` values (e.g. NaN, infs) are excluded.
+        Non-finite ``data`` values (NaN and +/- inf) are excluded.
 
         If all ``data`` pixels are masked, a tuple of two empty arrays
         will be returned.
@@ -477,7 +526,7 @@ class SourceProperties:
         pixel indices, respectively, of unmasked pixels within the
         source segment.
 
-        Non-finite ``data`` values (e.g. NaN, infs) are excluded.
+        Non-finite ``data`` values (NaN and +/- inf) are excluded.
 
         If all ``data`` pixels are masked, a tuple of two empty arrays
         will be returned.
@@ -740,7 +789,7 @@ class SourceProperties:
         else:
             arr = self.data_cutout_ma
             # multiplying by unit converts int to float, but keep as
-            # float in case of NaNs
+            # float in case the array contains a NaN
             return np.asarray(np.unravel_index(np.argmin(arr),
                                                arr.shape)) * u.pix
 
@@ -759,7 +808,7 @@ class SourceProperties:
         else:
             arr = self.data_cutout_ma
             # multiplying by unit converts int to float, but keep as
-            # float in case of NaNs
+            # float in case the array contains a NaN
             return np.asarray(np.unravel_index(np.argmax(arr),
                                                arr.shape)) * u.pix
 
@@ -856,7 +905,7 @@ class SourceProperties:
         ``data``, and :math:`S` are the unmasked pixels in the source
         segment.
 
-        Non-finite pixel values (e.g. NaN, infs) are excluded
+        Non-finite pixel values (NaN and +/- inf) are excluded
         (automatically masked).
         """
 
@@ -883,7 +932,7 @@ class SourceProperties:
         segment.
 
         Pixel values that are masked in the input ``data``, including
-        any non-finite pixel values (i.e. NaN, infs) that are
+        any non-finite pixel values (NaN and +/- inf) that are
         automatically masked, are also masked in the error array.
         """
 
@@ -901,7 +950,7 @@ class SourceProperties:
         The sum of ``background`` values within the source segment.
 
         Pixel values that are masked in the input ``data``, including
-        any non-finite pixel values (i.e. NaN, infs) that are
+        any non-finite pixel values (NaN and +/- inf) that are
         automatically masked, are also masked in the background array.
         """
 
@@ -919,7 +968,7 @@ class SourceProperties:
         The mean of ``background`` values within the source segment.
 
         Pixel values that are masked in the input ``data``, including
-        any non-finite pixel values (i.e. NaN, infs) that are
+        any non-finite pixel values (NaN and +/- inf) that are
         automatically masked, are also masked in the background array.
         """
 
@@ -967,7 +1016,7 @@ class SourceProperties:
         Note that the source area may be smaller than its segment area
         if a mask is input to `SourceProperties` or `source_properties`,
         or if the ``data`` within the segment contains invalid values
-        (e.g. NaN or infs).
+        (NaN and +/- inf).
         """
 
         if self._is_completely_masked:
@@ -1263,7 +1312,7 @@ def source_properties(data, segment_img, error=None, mask=None,
     data : array_like or `~astropy.units.Quantity`
         The 2D array from which to calculate the source photometry and
         properties.  ``data`` should be background-subtracted.
-        Non-finite ``data`` values (e.g. NaN or inf) are automatically
+        Non-finite ``data`` values (NaN and +/- inf) are automatically
         masked.
 
     segment_img : `SegmentationImage` or array_like (int)
@@ -1278,7 +1327,7 @@ def source_properties(data, segment_img, error=None, mask=None,
         including the Poisson error of the sources (see
         `~photutils.utils.calc_total_error`) .  ``error`` must have the
         same shape as the input ``data``.  Non-finite ``error`` values
-        (e.g. NaN or inf) are not automatically masked, unless they are
+        (NaN and +/- inf) are not automatically masked, unless they are
         at the same position of non-finite values in the input ``data``
         array.  Such pixels can be masked using the ``mask`` keyword.
         See the Notes section below for details on the error
@@ -1288,7 +1337,7 @@ def source_properties(data, segment_img, error=None, mask=None,
         A boolean mask with the same shape as ``data`` where a `True`
         value indicates the corresponding element of ``data`` is masked.
         Masked data are excluded from all calculations.  Non-finite
-        values (e.g. NaN or inf) in the input ``data`` are automatically
+        values (NaN and +/- inf) in the input ``data`` are automatically
         masked.
 
     background : float, array_like, or `~astropy.units.Quantity`, optional
@@ -1298,10 +1347,10 @@ def source_properties(data, segment_img, error=None, mask=None,
         ``background`` merely allows for its properties to be measured
         within each source segment.  The input ``background`` does *not*
         get subtracted from the input ``data``, which should already be
-        background-subtracted.  Non-finite ``background`` values (e.g.
-        NaN or inf) are not automatically masked, unless they are at the
-        same position of non-finite values in the input ``data`` array.
-        Such pixels can be masked using the ``mask`` keyword.
+        background-subtracted.  Non-finite ``background`` values (NaN
+        and +/- inf) are not automatically masked, unless they are at
+        the same position of non-finite values in the input ``data``
+        array.  Such pixels can be masked using the ``mask`` keyword.
 
     filter_kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
         The 2D array of the kernel used to filter the data prior to
