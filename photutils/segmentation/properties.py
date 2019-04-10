@@ -28,13 +28,14 @@ __doctest_requires__ = {('SourceProperties', 'SourceProperties.*',
 DEFAULT_COLUMNS = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
                    'sky_centroid_icrs', 'source_sum', 'source_sum_err',
                    'background_sum', 'background_mean',
-                   'background_at_centroid', 'xmin', 'xmax', 'ymin', 'ymax',
-                   'min_value', 'max_value', 'minval_xpos', 'minval_ypos',
-                   'maxval_xpos', 'maxval_ypos', 'area', 'equivalent_radius',
-                   'perimeter', 'semimajor_axis_sigma',
-                   'semiminor_axis_sigma', 'orientation', 'eccentricity',
-                   'ellipticity', 'elongation', 'covar_sigx2', 'covar_sigxy',
-                   'covar_sigy2', 'cxx', 'cxy', 'cyy']
+                   'background_at_centroid', 'bbox_xmin', 'bbox_xmax',
+                   'bbox_ymin', 'bbox_ymax', 'min_value', 'max_value',
+                   'minval_xpos', 'minval_ypos', 'maxval_xpos', 'maxval_ypos',
+                   'area', 'equivalent_radius', 'perimeter',
+                   'semimajor_axis_sigma', 'semiminor_axis_sigma',
+                   'orientation', 'eccentricity', 'ellipticity', 'elongation',
+                   'covar_sigx2', 'covar_sigxy', 'covar_sigy2', 'cxx', 'cxy',
+                   'cyy']
 
 
 class SourceProperties:
@@ -698,40 +699,88 @@ class SourceProperties:
                            self.slices[0].start, self.slices[0].stop)
 
     @lazyproperty
-    def xmin(self):
+    def bbox_xmin(self):
         """
-        The minimum ``x`` pixel location of the minimal bounding box
-        (`~photutils.SourceProperties.bbox`) of the source segment.
+        The minimum ``x`` pixel location within the minimal bounding box
+        containing the source segment.
         """
 
         return self.bbox.ixmin * u.pix
 
     @lazyproperty
-    def xmax(self):
+    def bbox_xmax(self):
         """
-        The maximum ``x`` pixel location of the minimal bounding box
-        (`~photutils.SourceProperties.bbox`) of the source segment.
+        The maximum ``x`` pixel location within the minimal bounding box
+        containing the source segment.
+
+        Note that this value is inclusive, unlike numpy slice indices.
         """
 
         return (self.bbox.ixmax - 1) * u.pix
 
     @lazyproperty
-    def ymin(self):
+    def bbox_ymin(self):
         """
-        The minimum ``y`` pixel location of the minimal bounding box
-        (`~photutils.SourceProperties.bbox`) of the source segment.
+        The minimum ``y`` pixel location within the minimal bounding box
+        containing the source segment.
         """
 
         return self.bbox.iymin * u.pix
 
     @lazyproperty
-    def ymax(self):
+    def bbox_ymax(self):
         """
-        The maximum ``y`` pixel location of the minimal bounding box
-        (`~photutils.SourceProperties.bbox`) of the source segment.
+        The maximum ``y`` pixel location within the minimal bounding box
+        containing the source segment.
+
+        Note that this value is inclusive, unlike numpy slice indices.
         """
 
         return (self.bbox.iymax - 1) * u.pix
+
+    @lazyproperty
+    @deprecated('0.7', 'bbox_xmin')
+    def xmin(self):
+        """
+        The minimum ``x`` pixel location within the minimal bounding box
+        containing the source segment.
+        """
+
+        return self.bbox_xmin  # pragma: no cover
+
+    @lazyproperty
+    @deprecated('0.7', 'bbox_xmax')
+    def xmax(self):
+        """
+        The maximum ``x`` pixel location within the minimal bounding box
+        containing the source segment.
+
+        Note that this value is inclusive, unlike numpy slice indices.
+        """
+
+        return self.bbox_xmax  # pragma: no cover
+
+    @lazyproperty
+    @deprecated('0.7', 'bbox_ymin')
+    def ymin(self):
+        """
+        The minimum ``y`` pixel location within the minimal bounding box
+        containing the source segment.
+        """
+
+        return self.bbox_ymin  # pragma: no cover
+
+    @lazyproperty
+    @deprecated('0.7', 'bbox_ymax')
+    def ymax(self):
+        """
+        The maximum``y`` pixel location within the minimal bounding box
+        containing the source segment.
+
+        Note that this value is inclusive, unlike numpy slice indices.
+        """
+
+        return self.bbox_ymax  # pragma: no cover
 
     @lazyproperty
     def sky_bbox_ll(self):
@@ -745,8 +794,8 @@ class SourceProperties:
         """
 
         if self._wcs is not None:
-            return pixel_to_skycoord(self.xmin.value - 0.5,
-                                     self.ymin.value - 0.5,
+            return pixel_to_skycoord(self.bbox_xmin.value - 0.5,
+                                     self.bbox_ymin.value - 0.5,
                                      self._wcs, origin=0)
         else:
             return None
@@ -763,8 +812,8 @@ class SourceProperties:
         """
 
         if self._wcs is not None:
-            return pixel_to_skycoord(self.xmin.value - 0.5,
-                                     self.ymax.value + 0.5,
+            return pixel_to_skycoord(self.bbox_xmin.value - 0.5,
+                                     self.bbox_ymax.value + 0.5,
                                      self._wcs, origin=0)
         else:
             return None
@@ -781,8 +830,8 @@ class SourceProperties:
         """
 
         if self._wcs is not None:
-            return pixel_to_skycoord(self.xmax.value + 0.5,
-                                     self.ymin.value - 0.5,
+            return pixel_to_skycoord(self.bbox_xmax.value + 0.5,
+                                     self.bbox_ymin.value - 0.5,
                                      self._wcs, origin=0)
         else:
             return None
@@ -799,8 +848,8 @@ class SourceProperties:
         """
 
         if self._wcs is not None:
-            return pixel_to_skycoord(self.xmax.value + 0.5,
-                                     self.ymax.value + 0.5,
+            return pixel_to_skycoord(self.bbox_xmax.value + 0.5,
+                                     self.bbox_ymax.value + 0.5,
                                      self._wcs, origin=0)
         else:
             return None
@@ -1685,8 +1734,8 @@ class SourceCatalog:
     @lazyproperty
     def sky_bbox_ll(self):
         if self.wcs is not None:
-            return pixel_to_skycoord(self.xmin.value - 0.5,
-                                     self.ymin.value - 0.5,
+            return pixel_to_skycoord(self.bbox_xmin.value - 0.5,
+                                     self.bbox_ymin.value - 0.5,
                                      self.wcs, origin=0)
         else:
             return self._none_list
@@ -1694,8 +1743,8 @@ class SourceCatalog:
     @lazyproperty
     def sky_bbox_ul(self):
         if self.wcs is not None:
-            return pixel_to_skycoord(self.xmin.value - 0.5,
-                                     self.ymax.value + 0.5,
+            return pixel_to_skycoord(self.bbox_xmin.value - 0.5,
+                                     self.bbox_ymax.value + 0.5,
                                      self.wcs, origin=0)
         else:
             return self._none_list
@@ -1703,8 +1752,8 @@ class SourceCatalog:
     @lazyproperty
     def sky_bbox_lr(self):
         if self.wcs is not None:
-            return pixel_to_skycoord(self.xmax.value + 0.5,
-                                     self.ymin.value - 0.5,
+            return pixel_to_skycoord(self.bbox_xmax.value + 0.5,
+                                     self.bbox_ymin.value - 0.5,
                                      self.wcs, origin=0)
         else:
             return self._none_list
@@ -1712,8 +1761,8 @@ class SourceCatalog:
     @lazyproperty
     def sky_bbox_ur(self):
         if self.wcs is not None:
-            return pixel_to_skycoord(self.xmax.value + 0.5,
-                                     self.ymax.value + 0.5,
+            return pixel_to_skycoord(self.bbox_xmax.value + 0.5,
+                                     self.bbox_ymax.value + 0.5,
                                      self.wcs, origin=0)
         else:
             return self._none_list

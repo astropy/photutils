@@ -271,10 +271,10 @@ class TestSourcePropertiesFunction:
                                  MINOR_SIG*u.pix, rtol=1.e-2)
         assert_quantity_allclose(obj.orientation, THETA*u.rad,
                                  rtol=1.e-3)
-        assert obj.xmin.value == 25
-        assert obj.xmax.value == 77
-        assert obj.ymin.value == 35
-        assert obj.ymax.value == 70
+        assert obj.bbox_xmin.value == 25
+        assert obj.bbox_xmax.value == 77
+        assert obj.bbox_ymin.value == 35
+        assert obj.bbox_ymax.value == 70
 
         assert_quantity_allclose(obj.area, 1058.0*u.pix**2)
         assert_allclose(len(obj.indices), 2)
@@ -285,8 +285,8 @@ class TestSourcePropertiesFunction:
                       'equivalent_radius', 'max_value', 'maxval_xpos',
                       'maxval_ypos', 'min_value', 'minval_xpos',
                       'minval_ypos', 'perimeter', 'cxx', 'cxy', 'cyy',
-                      'covar_sigx2', 'covar_sigxy', 'covar_sigy2', 'xmax',
-                      'xmin', 'ymax', 'ymin']
+                      'covar_sigx2', 'covar_sigxy', 'covar_sigy2',
+                      'bbox_xmin', 'bbox_xmax', 'bbox_ymin', 'bbox_ymax']
         for propname in properties:
             assert not isiterable(getattr(obj, propname))
 
@@ -355,10 +355,10 @@ class TestSourcePropertiesFunction:
                                  MINOR_SIG*u.pix, rtol=1.e-2)
         assert_quantity_allclose(obj.orientation, THETA*u.rad,
                                  rtol=1.e-3)
-        assert obj.xmin.value == 25
-        assert obj.xmax.value == 77
-        assert obj.ymin.value == 35
-        assert obj.ymax.value == 70
+        assert obj.bbox_xmin.value == 25
+        assert obj.bbox_xmax.value == 77
+        assert obj.bbox_ymin.value == 35
+        assert obj.bbox_ymax.value == 70
 
         area = obj.area.value
         assert_allclose(area, 1058.0)
