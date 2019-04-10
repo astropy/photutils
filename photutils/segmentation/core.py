@@ -90,6 +90,16 @@ class Segment:
         Create a (masked) cutout array from the input ``data`` using the
         minimal bounding box of the segment (labeled region).
 
+        If ``masked_array`` is `False` (default), then the returned
+        cutout array is simply a `~numpy.ndarray`.  The returned cutout
+        is a view (not a copy) of the input ``data``.  No pixels are
+        altered (e.g. set to zero) within the bounding box.
+
+        If ``masked_array` is `True`, then the returned cutout array is
+        a `~numpy.ma.MaskedArray`, where the mask is `True` for pixels
+        outside of the segment (labeled region).  The data part of the
+        masked array is a view (not a copy) of the input ``data``.
+
         Parameters
         ----------
         data : 2D array-like
@@ -104,8 +114,8 @@ class Segment:
 
         Returns
         -------
-        result : 2D `~numpy.ndarray` or 2D `~numpy.ma.MaskedArray`
-            The 2D cutout array or masked array.
+        result : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+            The 2D cutout array.
         """
 
         data = np.asanyarray(data)

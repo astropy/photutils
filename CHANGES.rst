@@ -18,6 +18,22 @@ Bug Fixes
   - Fixed an issue where ``deblend_sources`` could fail for sources
     with labels that are a power of 2 and greater than 255. [#806]
 
+  - ``SourceProperties`` and ``source_properties`` will no longer
+    raise an exception if a source is completely masked. [#822]
+
+  - Fixed an issue in ``SourceProperties`` and ``source_properties``
+    where inf values in the data array were not automatically masked.
+    [#822]
+
+  - ``error`` and ``background`` arrays are now always masked
+    identically to the input ``data``. [#822]
+
+  - Fixed the ``perimeter`` property to take into account the source
+    mask. [#822]
+
+  - Fixed the ``background_at_centroid`` source property to use
+    bilinear interpolation. [#822]
+
 API changes
 ^^^^^^^^^^^
 

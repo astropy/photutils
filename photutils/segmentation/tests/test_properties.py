@@ -92,6 +92,86 @@ class TestSourceProperties:
         assert len(t1) == 1
         assert_quantity_allclose(t1['area'], 1058 * u.pix**2)
 
+    def test_masks(self):
+        """
+        Test masks, including automatic masking of all non-finite (e.g.
+        NaN, inf) values in the data array.
+        """
+
+        error = np.ones_like(IMAGE) * 5.1
+        error[41, 35] = np.nan
+        error[42, 36] = np.inf
+        background = np.ones_like(IMAGE) * 1.2
+        background[62, 55] = np.nan
+        background[63, 56] = np.inf
+        mask = np.zeros(IMAGE.shape).astype(bool)
+        mask[45:55, :] = True
+        data = np.copy(IMAGE)
+        data[40, 40:45] = np.nan
+        data[60, 60:65] = np.inf
+        data[65, 65:70] = -np.inf
+
+        props = SourceProperties(data, SEGM, label=1, error=error,
+                                 background=background, mask=mask)
+
+        # ensure mask is identical for data, error, and background
+        assert props.data_cutout_ma.compressed().size == 677
+        assert (props.data_cutout_ma.compressed().size ==
+                props.error_cutout_ma.compressed().size)
+        assert (props.data_cutout_ma.compressed().size ==
+                props.background_cutout_ma.compressed().size)
+
+        # test for non-finite values in error and/or background outside
+        # of the data mask
+        tbl = props.to_table()
+        assert np.isnan(tbl['source_sum_err'])
+        assert np.isnan(tbl['background_sum'])
+        assert np.isnan(tbl['background_mean'])
+
+        # test that the masks are independent objects
+        assert (np.count_nonzero(props._segment_mask) !=
+                np.count_nonzero(props._total_mask))
+        assert (np.count_nonzero(props._data_mask) !=
+                np.count_nonzero(props._total_mask))
+
+        assert_allclose(props._data_zeroed.sum(), props.source_sum)
+
+        assert_allclose(props.data_cutout,
+                        props.make_cutout(props._data, masked_array=False))
+        assert_allclose(props.data_cutout_ma,
+                        props.make_cutout(props._data, masked_array=True))
+        assert_allclose(props.error_cutout_ma,
+                        props.make_cutout(props._error, masked_array=True))
+        assert_allclose(props.background_cutout_ma,
+                        props.make_cutout(props._background,
+                                          masked_array=True))
+
+    def test_completely_masked(self):
+        """Test case where a source is completely masked."""
+
+        error = np.ones_like(IMAGE) * 5.1
+        background = np.ones_like(IMAGE) * 1.2
+        mask = np.ones(IMAGE.shape).astype(bool)
+        obj = source_properties(IMAGE, SEGM, error=error,
+                                background=background, mask=mask)[0]
+        assert np.isnan(obj.xcentroid.value)
+        assert np.isnan(obj.ycentroid.value)
+        assert np.isnan(obj.source_sum)
+        assert np.isnan(obj.source_sum_err)
+        assert np.isnan(obj.background_sum)
+        assert np.isnan(obj.background_mean)
+        assert np.isnan(obj.background_at_centroid)
+        assert np.isnan(obj.area)
+        assert np.isnan(obj.perimeter)
+        assert np.isnan(obj.min_value)
+        assert np.isnan(obj.max_value)
+        assert np.isnan(obj.minval_xpos.value)
+        assert np.isnan(obj.minval_ypos.value)
+        assert np.isnan(obj.maxval_xpos.value)
+        assert np.isnan(obj.maxval_ypos.value)
+        assert np.all(np.isnan(obj.minval_cutout_pos.value))
+        assert np.all(np.isnan(obj.maxval_cutout_pos.value))
+
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -288,10 +368,10 @@ class TestSourcePropertiesFunction:
         p1, p2 = props1[0], props2[0]
         keys = ['source_sum', 'source_sum_err']
         for key in keys:
-            assert p1[key] == p2[key]
+            assert getattr(p1, key) == getattr(p2, key)
         keys = ['semimajor_axis_sigma', 'semiminor_axis_sigma']
         for key in keys:
-            assert p1[key] != p2[key]
+            assert getattr(p1, key) != getattr(p2, key)
 
     def test_filtering_kernel(self):
         data = np.zeros((3, 3))
@@ -306,10 +386,10 @@ class TestSourcePropertiesFunction:
         p1, p2 = props1[0], props2[0]
         keys = ['source_sum', 'source_sum_err']
         for key in keys:
-            assert p1[key] == p2[key]
+            assert getattr(p1, key) == getattr(p2, key)
         keys = ['semimajor_axis_sigma', 'semiminor_axis_sigma']
         for key in keys:
-            assert p1[key] != p2[key]
+            assert getattr(p1, key) != getattr(p2, key)
 
     def test_data_nan(self):
         """Test case when data contains NaNs within a segment."""
@@ -338,6 +418,10 @@ class TestSourceCatalog:
         cat3 = SourceCatalog(cat2)
         del cat3[4]
         assert len(cat3) == 4
+
+        # test iteration
+        for obj in cat:
+            assert obj.area.value == 1
 
     def test_inputs(self):
         cat = source_properties(IMAGE, SEGM)

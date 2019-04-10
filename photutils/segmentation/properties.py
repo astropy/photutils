@@ -37,7 +37,8 @@ class SourceProperties:
         instead of ``data`` to calculate the source centroid and
         morphological properties.  Source photometry is always measured
         from ``data``.  For accurate source properties and photometry,
-        ``data`` should be background-subtracted.
+        ``data`` should be background-subtracted.  Non-finite ``data``
+        values (e.g. NaN or inf) are automatically masked.
 
     segment_img : `SegmentationImage` or array_like (int)
         A 2D segmentation image, either as a `SegmentationImage` object
@@ -46,30 +47,38 @@ class SourceProperties:
         value of zero is reserved for the background.
 
     label : int
-        The label number of the source whose properties to calculate.
+        The label number of the source whose properties are calculated.
 
     filtered_data : array-like or `~astropy.units.Quantity`, optional
         The filtered version of the background-subtracted ``data`` from
         which to calculate the source centroid and morphological
         properties.  The kernel used to perform the filtering should be
         the same one used in defining the source segments (e.g., see
-        :func:`~photutils.detect_sources`).  If `None`, then the
-        unfiltered ``data`` will be used instead.  Note that
-        SExtractor's centroid and morphological parameters are
-        calculated from the filtered "detection" image.
+        :func:`~photutils.detect_sources`).  Non-finite
+        ``filtered_data`` values (e.g. NaN or inf) are not automatically
+        masked, unless they are at the same position of non-finite
+        values in the input ``data`` array.  Such pixels can be masked
+        using the ``mask`` keyword.  If `None`, then the unfiltered
+        ``data`` will be used instead.
 
     error : array_like or `~astropy.units.Quantity`, optional
-        The pixel-wise Gaussian 1-sigma errors of the input ``data``.
+        The total error array corresponding to the input ``data`` array.
         ``error`` is assumed to include *all* sources of error,
         including the Poisson error of the sources (see
         `~photutils.utils.calc_total_error`) .  ``error`` must have the
-        same shape as the input ``data``.  See the Notes section below
-        for details on the error propagation.
+        same shape as the input ``data``.  Non-finite ``error`` values
+        (e.g. NaN or inf) are not automatically masked, unless they are
+        at the same position of non-finite values in the input ``data``
+        array.  Such pixels can be masked using the ``mask`` keyword.
+        See the Notes section below for details on the error
+        propagation.
 
     mask : array_like (bool), optional
         A boolean mask with the same shape as ``data`` where a `True`
         value indicates the corresponding element of ``data`` is masked.
-        Masked data are excluded from all calculations.
+        Masked data are excluded from all calculations.  Non-finite
+        values (e.g. NaN or inf) in the input ``data`` are automatically
+        masked.
 
     background : float, array_like, or `~astropy.units.Quantity`, optional
         The background level that was *previously* present in the input
@@ -78,7 +87,10 @@ class SourceProperties:
         ``background`` merely allows for its properties to be measured
         within each source segment.  The input ``background`` does *not*
         get subtracted from the input ``data``, which should already be
-        background-subtracted.
+        background-subtracted.  Non-finite ``background`` values (e.g.
+        NaN or inf) are not automatically masked, unless they are at the
+        same position of non-finite values in the input ``data`` array.
+        Such pixels can be masked using the ``mask`` keyword.
 
     wcs : `~astropy.wcs.WCS`
         The WCS transformation to use.  If `None`, then any sky-based
@@ -87,23 +99,25 @@ class SourceProperties:
     Notes
     -----
     `SExtractor`_'s centroid and morphological parameters are always
-    calculated from the filtered "detection" image.  The usual downside
-    of the filtering is the sources will be made more circular than they
-    actually are.  If you wish to reproduce `SExtractor`_ results, then
-    use the ``filtered_data`` input.  If ``filtered_data`` is `None`,
-    then the unfiltered ``data`` will be used for the source centroid
-    and morphological parameters.
+    calculated from a filtered "detection" image, i.e. the image used to
+    define the segmentation image.  The usual downside of the filtering
+    is the sources will be made more circular than they actually are.
+    If you wish to reproduce `SExtractor`_ centroid and morphology
+    results, then input a filtered and background-subtracted "detection"
+    image into the ``filtered_data`` keyword.  If ``filtered_data`` is
+    `None`, then the unfiltered ``data`` will be used for the source
+    centroid and morphological parameters.
 
-    Negative (background-subtracted) data values within the source
-    segment are set to zero when measuring morphological properties
-    based on image moments.  This could occur, for example, if the
-    segmentation image was defined from a different image (e.g.,
-    different bandpass) or if the background was oversubtracted.  Note
-    that `~photutils.SourceProperties.source_sum` includes the
-    contribution of negative (background-subtracted) data values.
+    Negative data values (``filtered_data`` or ``data``) within the
+    source segment are set to zero when calculating morphological
+    properties based on image moments.  Negative values could occur, for
+    example, if the segmentation image was defined from a different
+    image (e.g., different bandpass) or if the background was
+    oversubtracted. Note that `~photutils.SourceProperties.source_sum`
+    always includes the contribution of negative ``data`` values.
 
-    The input ``error`` is assumed to include *all* sources of error,
-    including the Poisson error of the sources.
+    The input ``error`` array is assumed to include *all* sources of
+    error, including the Poisson error of the sources.
     `~photutils.SourceProperties.source_sum_err` is simply the
     quadrature sum of the pixel-wise total errors over the non-masked
     pixels within the source segment:
@@ -120,9 +134,9 @@ class SourceProperties:
     `~photutils.SourceProperties.error_cutout_ma` and
     `~photutils.SourceProperties.background_cutout_ma` properties, which
     are 2D `~numpy.ma.MaskedArray` cutout versions of the input
-    ``error`` and ``background``.  The mask is `True` for both pixels
-    outside of the source segment and masked pixels from the ``mask``
-    input.
+    ``error`` and ``background``.  The mask is `True` for pixels outside
+    of the source segment, masked pixels from the ``mask`` input, or
+    any non-finite ``data`` values (e.g. NaN or inf).
 
     .. _SExtractor: http://www.astromatic.net/software/sextractor
     """
@@ -160,12 +174,27 @@ class SourceProperties:
         # data and filtered_data should be background-subtracted
         # for accurate source photometry and properties
         self._data = data
+        try:
+            self._data_unit = self._data.unit
+        except AttributeError:
+            self._data_unit = 1
+
         if filtered_data is None:
             self._filtered_data = data
         else:
             self._filtered_data = filtered_data
+
         self._error = error    # total error; 2D array
+        try:
+            self._error_unit = self._error.unit
+        except AttributeError:
+            self._error_unit = 1
+
         self._background = background    # 2D array
+        try:
+            self._background_unit = self._background.unit
+        except AttributeError:
+            self._background_unit = 1
 
         segment_img.check_labels(label)
         self.label = label
@@ -174,13 +203,97 @@ class SourceProperties:
         self._mask = mask
         self._wcs = wcs
 
-    def __getitem__(self, key):
-        return getattr(self, key, None)
+    @lazyproperty
+    def _segment_mask(self):
+        """
+        _segment_mask is `True` for all pixels outside of the source
+        segment for this label.  Pixels from other source segments
+        within the rectangular cutout are `True`.
+        """
+
+        return self._segment_img.data[self._slice] != self.label
+
+    @lazyproperty
+    def _input_mask(self):
+        if self._mask is not None:
+            return self._mask[self._slice]
+        else:
+            return None
+
+    @lazyproperty
+    def _data_mask(self):
+        return ~np.isfinite(self.data_cutout)
+
+    @lazyproperty
+    def _total_mask(self):
+        """
+        Combination of the _segment_mask, _input_mask, and _data_mask.
+
+        This mask is applied to ``data``, ``error``, and ``background``
+        inputs when calculating properties.
+        """
+
+        mask = self._segment_mask | self._data_mask
+
+        if self._input_mask is not None:
+            mask |= self._input_mask
+
+        return mask
+
+    @lazyproperty
+    def _is_completely_masked(self):
+        return np.all(self._total_mask)
+
+    @lazyproperty
+    def _data_zeroed(self):
+        """
+        A 2D `~numpy.nddarray` cutout from the input ``data`` where any
+        masked pixels (_segment_mask, _input_mask, or _data_mask) are
+        set to zero.  Invalid values (e.g. NaNs or infs) are set to
+        zero.  Units are dropped on the input ``data``.
+        """
+
+        # NOTE: using np.where is faster than
+        #     _data = np.copy(self.data_cutout)
+        #     self._data[self._total_mask] = 0.
+        return np.where(self._total_mask, 0,
+                        self.data_cutout).astype(np.float64)  # copy
+
+    @lazyproperty
+    def _filtered_data_zeroed(self):
+        """
+        A 2D `~numpy.nddarray` cutout from the input ``filtered_data``
+        (or ``data`` if ``filtered_data`` is `None`) where any masked
+        pixels (_segment_mask, _input_mask, or _data_mask) are set to
+        zero.  Invalid values (e.g. NaNs or infs) are set to zero.
+        Units are dropped on the input ``filtered_data`` (or ``data``).
+
+        Negative data values are also set to zero because negative
+        pixels (especially at large radii) can result in image moments
+        that result in negative variances.
+        """
+
+        filt_data = self._filtered_data[self._slice]
+        filt_data = np.where(self._total_mask, 0., filt_data)  # copy
+        filt_data[filt_data < 0] = 0.
+        return filt_data.astype(np.float64)
 
     def make_cutout(self, data, masked_array=False):
         """
         Create a (masked) cutout array from the input ``data`` using the
         minimal bounding box of the source segment.
+
+        If ``masked_array`` is `False` (default), then the returned
+        cutout array is simply a `~numpy.ndarray`.  The returned cutout
+        is a view (not a copy) of the input ``data``.  No pixels are
+        altered (e.g. set to zero) within the bounding box.
+
+        If ``masked_array` is `True`, then the returned cutout array is
+        a `~numpy.ma.MaskedArray`.  The mask is `True` for pixels
+        outside of the source segment (labeled region of interest),
+        masked pixels from the ``mask`` input, or any non-finite
+        ``data`` values (e.g. NaN or inf).  The data part of the masked
+        array is a view (not a copy) of the input ``data``.
 
         Parameters
         ----------
@@ -190,27 +303,27 @@ class SourceProperties:
             input into `SourceProperties`.
 
         masked_array : bool, optional
-            If `True` then a `~numpy.ma.MaskedArray` will be created
-            where the mask is `True` for both pixels outside of the
-            source segment and any masked pixels.  If `False`, then a
-            `~numpy.ndarray` will be generated.
+            If `True` then a `~numpy.ma.MaskedArray` will be returned,
+            where the mask is `True` for pixels outside of the source
+            segment (labeled region of interest), masked pixels from the
+            ``mask`` input, or any non-finite ``data`` values (e.g. NaN
+            or inf).  If `False`, then a `~numpy.ndarray` will be
+            returned.
 
         Returns
         -------
-        result : `~numpy.ndarray` or `~numpy.ma.MaskedArray` (2D)
-            The 2D cutout array or masked array.
+        result : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+            The 2D cutout array.
         """
 
-        if data is None:
-            return None
-
         data = np.asanyarray(data)
-        if data.shape != self._data.shape:
+        if data.shape != self._segment_img.shape:
             raise ValueError('data must have the same shape as the '
                              'segmentation image input to SourceProperties')
+
         if masked_array:
             return np.ma.masked_array(data[self._slice],
-                                      mask=self._cutout_total_mask)
+                                      mask=self._total_mask)
         else:
             return data[self._slice]
 
@@ -219,10 +332,8 @@ class SourceProperties:
         Create a `~astropy.table.QTable` of properties.
 
         If ``columns`` or ``exclude_columns`` are not input, then the
-        `~astropy.table.QTable` will include all scalar-valued
-        properties.  Multi-dimensional properties, e.g.
-        `~photutils.SourceProperties.data_cutout`, can be included in
-        the ``columns`` input.
+        `~astropy.table.QTable` will include a default list of
+        scalar-valued properties.
 
         Parameters
         ----------
@@ -233,8 +344,7 @@ class SourceProperties:
 
         exclude_columns : str or list of str, optional
             Names of columns to exclude from the default properties list
-            in the output `~astropy.table.QTable`.  The default
-            properties are those with scalar values.
+            in the output `~astropy.table.QTable`.
 
         Returns
         -------
@@ -246,113 +356,109 @@ class SourceProperties:
                                  exclude_columns=exclude_columns)
 
     @lazyproperty
-    def _cutout_segment_bool(self):
-        """
-        _cutout_segment_bool is `True` only for pixels in the source
-        segment of interest.  Pixels from other sources within the
-        rectangular cutout are not included.
-        """
-
-        return self._segment_img.data[self._slice] == self.label
-
-    @lazyproperty
-    def _cutout_total_mask(self):
-        """
-        _cutout_total_mask is `True` for regions outside of the source
-        segment or where the input mask is `True`.
-        """
-
-        mask = ~self._cutout_segment_bool
-        if self._mask is not None:
-            mask |= self._mask[self._slice]
-        return mask
-
-    @lazyproperty
     def data_cutout(self):
         """
-        A 2D cutout from the (background-subtracted) data of the source
-        segment.
+        A 2D `~numpy.ndarray` cutout from the data using the minimal
+        bounding box of the source segment.
         """
 
-        return self.make_cutout(self._data, masked_array=False)
+        return self._data[self._slice]
 
     @lazyproperty
     def data_cutout_ma(self):
         """
-        A 2D `~numpy.ma.MaskedArray` cutout from the
-        (background-subtracted) data, where the mask is `True` for both
-        pixels outside of the source segment and masked pixels.
+        A 2D `~numpy.ma.MaskedArray` cutout from the data.
+
+        The mask is `True` for pixels outside of the source segment
+        (labeled region of interest), masked pixels from the ``mask``
+        input, or any non-finite ``data`` values (e.g. NaN or inf).
         """
 
-        return self.make_cutout(self._data, masked_array=True)
-
-    @lazyproperty
-    def _data_cutout_maskzeroed(self):
-        """
-        A 2D cutout from the (background-subtracted) (filtered) data,
-        where pixels outside of the source segment and masked pixels are
-        set to zero.
-
-        Invalid values (e.g. NaNs or infs) are set to zero.  Negative
-        data values are also set to zero because negative pixels
-        (especially at large radii) can result in image moments that
-        result in negative variances.
-        """
-
-        cutout = self.make_cutout(self._filtered_data, masked_array=False)
-        cutout = np.where(np.isfinite(cutout), cutout, 0.)
-        cutout = np.where(cutout > 0, cutout, 0.)    # negative pixels -> 0
-
-        return (cutout * ~self._cutout_total_mask).astype(np.float64)
+        return np.ma.masked_array(self._data[self._slice],
+                                  mask=self._total_mask)
 
     @lazyproperty
     def error_cutout_ma(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the input ``error``
-        image, where the mask is `True` for both pixels outside of the
-        source segment and masked pixels.  If ``error`` is `None`, then
-        ``error_cutout_ma`` is also `None`.
+        image.
+
+        The mask is `True` for pixels outside of the source segment
+        (labeled region of interest), masked pixels from the ``mask``
+        input, or any non-finite ``data`` values (e.g. NaN or inf).
+
+        If ``error`` is `None`, then ``error_cutout_ma`` is also `None`.
         """
 
-        return self.make_cutout(self._error, masked_array=True)
+        if self._error is None:
+            return None
+        else:
+            return np.ma.masked_array(self._error[self._slice],
+                                      mask=self._total_mask)
 
     @lazyproperty
     def background_cutout_ma(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the input
-        ``background``, where the mask is `True` for both pixels outside
-        of the source segment and masked pixels.  If ``background`` is
-        `None`, then ``background_cutout_ma`` is also `None`.
+        ``background``.
+
+        The mask is `True` for pixels outside of the source segment
+        (labeled region of interest), masked pixels from the ``mask``
+        input, or any non-finite ``data`` values (e.g. NaN or inf).
+
+        If ``background`` is `None`, then ``background_cutout_ma`` is
+        also `None`.
         """
 
-        return self.make_cutout(self._background, masked_array=True)
-
-    @lazyproperty
-    def coords(self):
-        """
-        A tuple of `~numpy.ndarray` containing the ``y`` and ``x`` pixel
-        coordinates of the source segment.  Masked pixels are not
-        included.
-        """
-
-        yy, xx = np.nonzero(self.data_cutout_ma)
-        coords = (yy + self._slice[0].start, xx + self._slice[1].start)
-        return coords
+        if self._background is None:
+            return None
+        else:
+            return np.ma.masked_array(self._background[self._slice],
+                                      mask=self._total_mask)
 
     @lazyproperty
     def values(self):
         """
-        A `~numpy.ndarray` of the (background-subtracted) pixel values
-        within the source segment.  Masked pixels are not included.
+        A 1D `~numpy.ndarray` of the unmasked pixel values within the
+        source segment.
+
+        Non-finite pixel values (e.g. NaN, infs) are excluded
+        (automatically masked).
+
+        If all pixels are masked, ``values`` will be an empty array.
         """
 
-        return self.data_cutout[~self._cutout_total_mask]
+        return self.data_cutout_ma.compressed()
+
+    @lazyproperty
+    def _error_values(self):
+        return self.error_cutout_ma.compressed()
+
+    @lazyproperty
+    def _background_values(self):
+        return self.background_cutout_ma.compressed()
+
+    @lazyproperty
+    def coords(self):
+        """
+        A tuple of two `~numpy.ndarray` containing the ``y`` and ``x``
+        pixel coordinates of unmasked pixels within the source segment.
+
+        Non-finite pixel values (e.g. NaN, infs) are excluded
+        (automatically masked).
+
+        If all pixels are masked, ``coords`` will be a tuple of
+        two empty arrays.
+        """
+
+        yy, xx = np.nonzero(self.data_cutout_ma)
+        return (yy + self._slice[0].start, xx + self._slice[1].start)
 
     @lazyproperty
     def moments(self):
         """Spatial moments up to 3rd order of the source."""
 
-        return _moments(self._data_cutout_maskzeroed, order=3)
+        return _moments(self._filtered_data_zeroed, order=3)
 
     @lazyproperty
     def moments_central(self):
@@ -362,7 +468,7 @@ class SourceProperties:
         """
 
         ycentroid, xcentroid = self.cutout_centroid.value
-        return _moments_central(self._data_cutout_maskzeroed,
+        return _moments_central(self._filtered_data_zeroed,
                                 center=(xcentroid, ycentroid), order=3)
 
     @lazyproperty
@@ -567,66 +673,107 @@ class SourceProperties:
     @lazyproperty
     def min_value(self):
         """
-        The minimum pixel value of the (background-subtracted) data
-        within the source segment.
+        The minimum pixel value of the ``data`` within the source
+        segment.
         """
 
-        return np.nanmin(self.values)
+        if self._is_completely_masked:
+            return np.nan * self._data_unit
+        else:
+            return np.min(self.values)
 
     @lazyproperty
     def max_value(self):
         """
-        The maximum pixel value of the (background-subtracted) data
-        within the source segment.
+        The maximum pixel value of the ``data`` within the source
+        segment.
         """
 
-        return np.nanmax(self.values)
+        if self._is_completely_masked:
+            return np.nan * self._data_unit
+        else:
+            return np.max(self.values)
 
     @lazyproperty
     def minval_cutout_pos(self):
         """
         The ``(y, x)`` coordinate, relative to the `data_cutout`, of the
-        minimum pixel value of the (background-subtracted) data.
+        minimum pixel value of the ``data`` within the source segment.
+
+        If there are multiple occurrences of the minimum value, only the
+        first occurence is returned.
         """
 
-        # NOTE:  Quantity converts this to float
-        return np.argwhere(self.data_cutout_ma == self.min_value)[0] * u.pix
+        if self._is_completely_masked:
+            return (np.nan, np.nan) * u.pix
+        else:
+            arr = self.data_cutout_ma
+            # multiplying by unit converts int to float, but keep as
+            # float in case of NaNs
+            return np.asarray(np.unravel_index(np.argmin(arr),
+                                               arr.shape)) * u.pix
 
     @lazyproperty
     def maxval_cutout_pos(self):
         """
         The ``(y, x)`` coordinate, relative to the `data_cutout`, of the
-        maximum pixel value of the (background-subtracted) data.
+        maximum pixel value of the ``data`` within the source segment.
+
+        If there are multiple occurrences of the maximum value, only the
+        first occurence is returned.
         """
 
-        # NOTE:  Quantity converts this to float
-        return np.argwhere(self.data_cutout_ma == self.max_value)[0] * u.pix
+        if self._is_completely_masked:
+            return (np.nan, np.nan) * u.pix
+        else:
+            arr = self.data_cutout_ma
+            # multiplying by unit converts int to float, but keep as
+            # float in case of NaNs
+            return np.asarray(np.unravel_index(np.argmax(arr),
+                                               arr.shape)) * u.pix
 
     @lazyproperty
     def minval_pos(self):
         """
         The ``(y, x)`` coordinate of the minimum pixel value of the
-        (background-subtracted) data.
+        ``data`` within the source segment.
+
+        If there are multiple occurrences of the minimum value, only the
+        first occurence is returned.
         """
 
-        yp, xp = np.array(self.minval_cutout_pos)
-        return (yp + self._slice[0].start, xp + self._slice[1].start) * u.pix
+        if self._is_completely_masked:
+            return (np.nan, np.nan) * u.pix
+        else:
+            yp, xp = self.minval_cutout_pos.value
+            return (yp + self._slice[0].start,
+                    xp + self._slice[1].start) * u.pix
 
     @lazyproperty
     def maxval_pos(self):
         """
         The ``(y, x)`` coordinate of the maximum pixel value of the
-        (background-subtracted) data.
+        ``data`` within the source segment.
+
+        If there are multiple occurrences of the maximum value, only the
+        first occurence is returned.
         """
 
-        yp, xp = np.array(self.maxval_cutout_pos)
-        return (yp + self._slice[0].start, xp + self._slice[1].start) * u.pix
+        if self._is_completely_masked:
+            return (np.nan, np.nan) * u.pix
+        else:
+            yp, xp = self.maxval_cutout_pos.value
+            return (yp + self._slice[0].start,
+                    xp + self._slice[1].start) * u.pix
 
     @lazyproperty
     def minval_xpos(self):
         """
-        The ``x`` coordinate of the minimum pixel value of the
-        (background-subtracted) data.
+        The ``x`` coordinate of the minimum pixel value of the ``data``
+        within the source segment.
+
+        If there are multiple occurrences of the minimum value, only the
+        first occurence is returned.
         """
 
         return self.minval_pos[1]
@@ -634,8 +781,11 @@ class SourceProperties:
     @lazyproperty
     def minval_ypos(self):
         """
-        The ``y`` coordinate of the minimum pixel value of the
-        (background-subtracted) data.
+        The ``y`` coordinate of the minimum pixel value of the ``data``
+        within the source segment.
+
+        If there are multiple occurrences of the minimum value, only the
+        first occurence is returned.
         """
 
         return self.minval_pos[0]
@@ -643,8 +793,11 @@ class SourceProperties:
     @lazyproperty
     def maxval_xpos(self):
         """
-        The ``x`` coordinate of the maximum pixel value of the
-        (background-subtracted) data.
+        The ``x`` coordinate of the maximum pixel value of the ``data``
+        within the source segment.
+
+        If there are multiple occurrences of the maximum value, only the
+        first occurence is returned.
         """
 
         return self.maxval_pos[1]
@@ -652,17 +805,144 @@ class SourceProperties:
     @lazyproperty
     def maxval_ypos(self):
         """
-        The ``y`` coordinate of the maximum pixel value of the
-        (background-subtracted) data.
+        The ``y`` coordinate of the maximum pixel value of the ``data``
+        within the source segment.
+
+        If there are multiple occurrences of the maximum value, only the
+        first occurence is returned.
         """
 
         return self.maxval_pos[0]
 
     @lazyproperty
-    def area(self):
-        """The area of the source segment in units of pixels**2."""
+    def source_sum(self):
+        """
+        The sum of the unmasked ``data`` values within the source segment.
 
-        return len(self.values) * u.pix**2
+        .. math:: F = \\sum_{i \\in S} (I_i - B_i)
+
+        where :math:`F` is ``source_sum``, :math:`(I_i - B_i)` is the
+        ``data``, and :math:`S` are the unmasked pixels in the source
+        segment.
+
+        Non-finite pixel values (e.g. NaN, infs) are excluded
+        (automatically masked).
+        """
+
+        if self._is_completely_masked:
+            return np.nan * self._data_unit  # table output needs unit
+        else:
+            return np.sum(self.values)
+
+    @lazyproperty
+    def source_sum_err(self):
+        """
+        The uncertainty of `~photutils.SourceProperties.source_sum`,
+        propagated from the input ``error`` array.
+
+        ``source_sum_err`` is the quadrature sum of the total errors
+        over the non-masked pixels within the source segment:
+
+        .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
+                  \\sigma_{\\mathrm{tot}, i}^2}
+
+        where :math:`\\Delta F` is ``source_sum_err``,
+        :math:`\\sigma_{\\mathrm{tot, i}}` are the pixel-wise total
+        errors, and :math:`S` are the non-masked pixels in the source
+        segment.
+
+        Pixel values that are masked in the input ``data``, including
+        any non-finite pixel values (i.e. NaN, infs) that are
+        automatically masked, are also masked in the error array.
+        """
+
+        if self._error is not None:
+            if self._is_completely_masked:
+                return np.nan * self._error_unit  # table output needs unit
+            else:
+                return np.sqrt(np.sum(self._error_values ** 2))
+        else:
+            return None
+
+    @lazyproperty
+    def background_sum(self):
+        """
+        The sum of ``background`` values within the source segment.
+
+        Pixel values that are masked in the input ``data``, including
+        any non-finite pixel values (i.e. NaN, infs) that are
+        automatically masked, are also masked in the background array.
+        """
+
+        if self._background is not None:
+            if self._is_completely_masked:
+                return np.nan * self._background_unit  # unit for table
+            else:
+                return np.sum(self._background_values)
+        else:
+            return None
+
+    @lazyproperty
+    def background_mean(self):
+        """
+        The mean of ``background`` values within the source segment.
+
+        Pixel values that are masked in the input ``data``, including
+        any non-finite pixel values (i.e. NaN, infs) that are
+        automatically masked, are also masked in the background array.
+        """
+
+        if self._background is not None:
+            if self._is_completely_masked:
+                return np.nan * self._background_unit  # unit for table
+            else:
+                return np.mean(self._background_values)
+        else:
+            return None
+
+    @lazyproperty
+    def background_at_centroid(self):
+        """
+        The value of the ``background`` at the position of the source
+        centroid.
+
+        The background value at fractional position values are
+        determined using bilinear interpolation.
+        """
+
+        from scipy.ndimage import map_coordinates
+
+        if self._background is not None:
+            # centroid can still be NaN if all data values are <= 0
+            if (self._is_completely_masked or
+                    np.any(~np.isfinite(self.centroid))):
+                return np.nan * self._background_unit  # unit for table
+            else:
+                value = map_coordinates(self._background,
+                                        [[self.ycentroid.value],
+                                         [self.xcentroid.value]], order=1,
+                                        mode='nearest')[0]
+
+                return value * self._background_unit
+        else:
+            return None
+
+    @lazyproperty
+    def area(self):
+        """
+        The total unmasked area of the source segment in units of
+        pixels**2.
+
+        Note that the source area may be smaller than its segment area
+        if a mask is input to `SourceProperties` or `source_properties`,
+        or if the ``data`` within the segment contains invalid values
+        (e.g. NaN or infs).
+        """
+
+        if self._is_completely_masked:
+            return np.nan * u.pix**2
+        else:
+            return len(self.values) * u.pix**2
 
     @lazyproperty
     def equivalent_radius(self):
@@ -676,12 +956,19 @@ class SourceProperties:
     @lazyproperty
     def perimeter(self):
         """
-        The perimeter of the source segment, approximated lines through
-        the centers of the border pixels using a 4-connectivity.
+        The total perimeter of the source segment, approximated lines
+        through the centers of the border pixels using a 4-connectivity.
+
+        If any masked pixels make holes within the source segment, then
+        the perimeter around the inner hole (e.g. an annulus) will also
+        contribute to the total perimeter.
         """
 
-        from skimage.measure import perimeter
-        return perimeter(self._cutout_segment_bool, 4) * u.pix
+        if self._is_completely_masked:
+            return np.nan * u.pix  # unit for table
+        else:
+            from skimage.measure import perimeter
+            return perimeter(~self._total_mask, neighbourhood=4) * u.pix
 
     @lazyproperty
     def inertia_tensor(self):
@@ -743,7 +1030,7 @@ class SourceProperties:
         if not np.isnan(np.sum(self.covariance)):
             eigvals = np.linalg.eigvals(self.covariance)
             if np.any(eigvals < 0):    # negative variance
-                return (np.nan, np.nan) * u.pix**2
+                return (np.nan, np.nan) * u.pix**2  # pragma: no cover
             return (np.max(eigvals), np.min(eigvals)) * u.pix**2
         else:
             return (np.nan, np.nan) * u.pix**2
@@ -787,7 +1074,7 @@ class SourceProperties:
 
         l1, l2 = self.covariance_eigvals
         if l1 == 0:
-            return 0.
+            return 0.  # pragma: no cover
         return np.sqrt(1. - (l2 / l1))
 
     @lazyproperty
@@ -801,7 +1088,7 @@ class SourceProperties:
 
         a, b, b, c = self.covariance.flat
         if a < 0 or c < 0:    # negative variance
-            return np.nan * u.rad
+            return np.nan * u.rad  # pragma: no cover
         return 0.5 * np.arctan2(2. * b, (a - c))
 
     @lazyproperty
@@ -932,91 +1219,6 @@ class SourceProperties:
                 ((1. / self.semimajor_axis_sigma**2) -
                  (1. / self.semiminor_axis_sigma**2)))
 
-    @lazyproperty
-    def source_sum(self):
-        """
-        The sum of the non-masked (background-subtracted) data values
-        within the source segment.
-
-        .. math:: F = \\sum_{i \\in S} (I_i - B_i)
-
-        where :math:`F` is ``source_sum``, :math:`(I_i - B_i)` is the
-        background-subtracted input ``data``, and :math:`S` are the
-        non-masked pixels in the source segment.
-        """
-
-        return np.nansum(np.ma.masked_array(self._data[self._slice],
-                                            mask=self._cutout_total_mask))
-
-    @lazyproperty
-    def source_sum_err(self):
-        """
-        The uncertainty of `~photutils.SourceProperties.source_sum`,
-        propagated from the input ``error`` array.
-
-        ``source_sum_err`` is the quadrature sum of the total errors
-        over the non-masked pixels within the source segment:
-
-        .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
-                  \\sigma_{\\mathrm{tot}, i}^2}
-
-        where :math:`\\Delta F` is ``source_sum_err``,
-        :math:`\\sigma_{\\mathrm{tot, i}}` are the pixel-wise total
-        errors, and :math:`S` are the non-masked pixels in the source
-        segment.
-        """
-
-        if self._error is not None:
-            # power doesn't work here, see astropy #2968
-            # return np.sqrt(np.sum(self.error_cutout_ma**2))
-            return np.sqrt(np.nansum(
-                np.ma.masked_array(self.error_cutout_ma.data**2,
-                                   mask=self.error_cutout_ma.mask)))
-        else:
-            return None
-
-    @lazyproperty
-    def background_sum(self):
-        """The sum of ``background`` values within the source segment."""
-
-        if self._background is not None:
-            return np.sum(self.background_cutout_ma)
-        else:
-            return None
-
-    @lazyproperty
-    def background_mean(self):
-        """The mean of ``background`` values within the source segment."""
-
-        if self._background is not None:
-            return np.mean(self.background_cutout_ma)
-        else:
-            return None
-
-    @lazyproperty
-    def background_at_centroid(self):
-        """
-        The value of the ``background`` at the position of the source
-        centroid.  Fractional position values are determined using
-        bilinear interpolation.
-        """
-
-        from scipy.ndimage import map_coordinates
-
-        if self._background is None:
-            return None
-        else:
-            value = map_coordinates(self._background,
-                                    [[self.ycentroid.value],
-                                     [self.xcentroid.value]])[0]
-
-            # map_coordinates works if self._background is a Quantity, but
-            # the returned value is a numpy array (without units)
-            if isinstance(self._background, u.Quantity):
-                value *= self._background.unit
-
-            return value
-
 
 def source_properties(data, segment_img, error=None, mask=None,
                       background=None, filter_kernel=None, wcs=None,
@@ -1030,6 +1232,8 @@ def source_properties(data, segment_img, error=None, mask=None,
     data : array_like or `~astropy.units.Quantity`
         The 2D array from which to calculate the source photometry and
         properties.  ``data`` should be background-subtracted.
+        Non-finite ``data`` values (e.g. NaN or inf) are automatically
+        masked.
 
     segment_img : `SegmentationImage` or array_like (int)
         A 2D segmentation image, either as a `SegmentationImage` object
@@ -1038,17 +1242,23 @@ def source_properties(data, segment_img, error=None, mask=None,
         value of zero is reserved for the background.
 
     error : array_like or `~astropy.units.Quantity`, optional
-        The pixel-wise Gaussian 1-sigma errors of the input ``data``.
+        The total error array corresponding to the input ``data`` array.
         ``error`` is assumed to include *all* sources of error,
         including the Poisson error of the sources (see
         `~photutils.utils.calc_total_error`) .  ``error`` must have the
-        same shape as the input ``data``.  See the Notes section below
-        for details on the error propagation.
+        same shape as the input ``data``.  Non-finite ``error`` values
+        (e.g. NaN or inf) are not automatically masked, unless they are
+        at the same position of non-finite values in the input ``data``
+        array.  Such pixels can be masked using the ``mask`` keyword.
+        See the Notes section below for details on the error
+        propagation.
 
     mask : array_like (bool), optional
         A boolean mask with the same shape as ``data`` where a `True`
         value indicates the corresponding element of ``data`` is masked.
-        Masked data are excluded from all calculations.
+        Masked data are excluded from all calculations.  Non-finite
+        values (e.g. NaN or inf) in the input ``data`` are automatically
+        masked.
 
     background : float, array_like, or `~astropy.units.Quantity`, optional
         The background level that was *previously* present in the input
@@ -1057,49 +1267,53 @@ def source_properties(data, segment_img, error=None, mask=None,
         ``background`` merely allows for its properties to be measured
         within each source segment.  The input ``background`` does *not*
         get subtracted from the input ``data``, which should already be
-        background-subtracted.
+        background-subtracted.  Non-finite ``background`` values (e.g.
+        NaN or inf) are not automatically masked, unless they are at the
+        same position of non-finite values in the input ``data`` array.
+        Such pixels can be masked using the ``mask`` keyword.
 
     filter_kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
         The 2D array of the kernel used to filter the data prior to
         calculating the source centroid and morphological parameters.
         The kernel should be the same one used in defining the source
-        segments (e.g., see :func:`~photutils.detect_sources`).  If
-        `None`, then the unfiltered ``data`` will be used instead.  Note
-        that `SExtractor`_'s centroid and morphological parameters are
-        calculated from the filtered "detection" image.
+        segments, i.e. the detection image (e.g., see
+        :func:`~photutils.detect_sources`).  If `None`, then the
+        unfiltered ``data`` will be used instead.
 
     wcs : `~astropy.wcs.WCS`
         The WCS transformation to use.  If `None`, then any sky-based
         properties will be set to `None`.
 
     labels : int, array-like (1D, int)
-        Subset of segmentation labels for which to calculate the
-        properties.  If `None`, then the properties will be calculated
-        for all labeled sources (the default).
+        The segmentation labels for which to calculate source
+        properties.  If `None` (default), then the properties will be
+        calculated for all labeled sources.
 
     Returns
     -------
-    output : list of `SourceProperties` objects
-        A list of `SourceProperties` objects, one for each source.  The
-        properties can be accessed as attributes or keys.
+    output : `SourceCatalog` instance
+        A `SourceCatalog` instance containing the properties of each
+        source.
 
     Notes
     -----
     `SExtractor`_'s centroid and morphological parameters are always
-    calculated from the filtered "detection" image.  The usual downside
-    of the filtering is the sources will be made more circular than they
-    actually are.  If you wish to reproduce `SExtractor`_ results, then
-    use the ``filtered_data`` input.  If ``filtered_data`` is `None`,
-    then the unfiltered ``data`` will be used for the source centroid
-    and morphological parameters.
+    calculated from a filtered "detection" image, i.e. the image used to
+    define the segmentation image.  The usual downside of the filtering
+    is the sources will be made more circular than they actually are.
+    If you wish to reproduce `SExtractor`_ centroid and morphology
+    results, then input a filtered and background-subtracted "detection"
+    image into the ``filtered_data`` keyword.  If ``filtered_data`` is
+    `None`, then the unfiltered ``data`` will be used for the source
+    centroid and morphological parameters.
 
-    Negative (background-subtracted) data values within the source
-    segment are set to zero when measuring morphological properties
-    based on image moments.  This could occur, for example, if the
-    segmentation image was defined from a different image (e.g.,
-    different bandpass) or if the background was oversubtracted.  Note
-    that `~photutils.SourceProperties.source_sum` includes the
-    contribution of negative (background-subtracted) data values.
+    Negative data values (``filtered_data`` or ``data``) within the
+    source segment are set to zero when calculating morphological
+    properties based on image moments.  Negative values could occur, for
+    example, if the segmentation image was defined from a different
+    image (e.g., different bandpass) or if the background was
+    oversubtracted. Note that `~photutils.SourceProperties.source_sum`
+    always includes the contribution of negative ``data`` values.
 
     The input ``error`` is assumed to include *all* sources of error,
     including the Poisson error of the sources.
@@ -1235,7 +1449,7 @@ class SourceCatalog:
                 if isinstance(values[0], u.Quantity):
                     # turn list of Quantities into a Quantity array
                     values = u.Quantity(values)
-                if isinstance(values[0], SkyCoord):   # pragma: no cover
+                if isinstance(values[0], SkyCoord):  # pragma: no cover
                     # turn list of SkyCoord into a SkyCoord array
                     values = SkyCoord(values)
 
@@ -1307,8 +1521,10 @@ class SourceCatalog:
         `SourceCatalog` object.
 
         If ``columns`` or ``exclude_columns`` are not input, then the
-        `~astropy.table.QTable` will include most scalar-valued source
-        properties.  Multi-dimensional properties, e.g.
+        `~astropy.table.QTable` will include a default list of
+        scalar-valued properties.
+
+        Multi-dimensional properties, e.g.
         `~photutils.SourceProperties.data_cutout`, can be included in
         the ``columns`` input, but they will not be preserved when
         writing the table to a file.  This is a limitation of
@@ -1324,7 +1540,7 @@ class SourceCatalog:
         exclude_columns : str or list of str, optional
             Names of columns to exclude from the default properties list
             in the output `~astropy.table.QTable`.  The default
-            properties are those with scalar values:
+            properties are:
 
             'id', 'xcentroid', 'ycentroid', 'sky_centroid',
             'sky_centroid_icrs', 'source_sum', 'source_sum_err',
@@ -1382,7 +1598,7 @@ def _properties_table(obj, columns=None, exclude_columns=None):
     if isinstance(obj, SourceCatalog) and len(obj) == 0:
         raise ValueError('SourceCatalog contains no sources.')
 
-    # all scalar-valued properties
+    # default properties
     columns_all = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
                    'sky_centroid_icrs', 'source_sum', 'source_sum_err',
                    'background_sum', 'background_mean',
@@ -1412,7 +1628,7 @@ def _properties_table(obj, columns=None, exclude_columns=None):
             if isinstance(values[0], u.Quantity):
                 # turn list of Quantities into a Quantity array
                 values = u.Quantity(values)
-            if isinstance(values[0], SkyCoord):   # pragma: no cover
+            if isinstance(values[0], SkyCoord):  # pragma: no cover
                 # turn list of SkyCoord into a SkyCoord array
                 values = SkyCoord(values)
 
