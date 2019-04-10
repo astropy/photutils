@@ -19,7 +19,7 @@ from ..detection import DAOStarFinder
 
 
 __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',
-           'DAOPhotPSFPhotometry']
+           'IterativeGroupPSFPhotometry', 'DAOPhotPSFPhotometry']
 
 
 class BasicPSFPhotometry:
@@ -428,7 +428,7 @@ class BasicPSFPhotometry:
                 n_fit_params = len(unc_tab.colnames)
                 for i in range(star_group_size):
                     unc_tab[i] = np.sqrt(np.diag(
-                                          self.fitter.fit_info['param_cov'])
+                                         self.fitter.fit_info['param_cov'])
                                          )[k: k + n_fit_params]
                     k = k + n_fit_params
         return unc_tab
@@ -737,6 +737,344 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             n += 1
 
         return output_table
+
+
+class IterativeGroupPSFPhotometry(BasicPSFPhotometry):
+    """
+    This class implements an iterative algorithm to perform point spread
+    function photometry in crowded fields. This consists of applying a
+    loop of find sources, make groups, fit groups, subtract groups, find
+    new sources, re-fit all new groups, and then repeat until no more stars
+    are detected or a given number of iterations is reached.
+
+    Parameters
+    ----------
+    group_maker : callable or `~photutils.psf.GroupStarsBase`
+        ``group_maker`` should be able to decide whether a given star
+        overlaps with any other and label them as beloging to the same
+        group.  ``group_maker`` receives as input an
+        `~astropy.table.Table` object with columns named as ``id``,
+        ``x_0``, ``y_0``, in which ``x_0`` and ``y_0`` have the same
+        meaning of ``xcentroid`` and ``ycentroid``.  This callable must
+        return an `~astropy.table.Table` with columns ``id``, ``x_0``,
+        ``y_0``, and ``group_id``. The column ``group_id`` should cotain
+        integers starting from ``1`` that indicate which group a given
+        source belongs to. See, e.g., `~photutils.psf.DAOGroup`.
+    bkg_estimator : callable, instance of any `~photutils.BackgroundBase` subclass, or None
+        ``bkg_estimator`` should be able to compute either a scalar
+        background or a 2D background of a given 2D image. See, e.g.,
+        `~photutils.background.MedianBackground`.  If None, no
+        background subtraction is performed.
+    psf_model : `astropy.modeling.Fittable2DModel` instance
+        PSF or PRF model to fit the data. Could be one of the models in
+        this package like `~photutils.psf.sandbox.DiscretePRF`,
+        `~photutils.psf.IntegratedGaussianPRF`, or any other suitable 2D
+        model.  This object needs to identify three parameters (position
+        of center in x and y coordinates and the flux) in order to set
+        them to suitable starting values for each fit. The names of
+        these parameters should be given as ``x_0``, ``y_0`` and
+        ``flux``.  `~photutils.psf.prepare_psf_model` can be used to
+        prepare any 2D model to match this assumption.
+    fitshape : int or length-2 array-like
+        Rectangular shape around the center of a star which will be used
+        to collect the data to do the fitting. Can be an integer to be
+        the same along both axes. E.g., 5 is the same as (5, 5), which
+        means to fit only at the following relative pixel positions:
+        [-2, -1, 0, 1, 2].  Each element of ``fitshape`` must be an odd
+        number.
+    finder : callable or instance of any `~photutils.detection.StarFinderBase` subclasses
+        ``finder`` should be able to identify stars, i.e. compute a
+        rough estimate of the centroids, in a given 2D image.
+        ``finder`` receives as input a 2D image and returns an
+        `~astropy.table.Table` object which contains columns with names:
+        ``id``, ``xcentroid``, ``ycentroid``, and ``flux``. In which
+        ``id`` is an integer-valued column starting from ``1``,
+        ``xcentroid`` and ``ycentroid`` are center position estimates of
+        the sources and ``flux`` contains flux estimates of the sources.
+        See, e.g., `~photutils.detection.DAOStarFinder` or
+        `~photutils.detection.IRAFStarFinder`.
+    fitter : `~astropy.modeling.fitting.Fitter` instance
+        Fitter object used to compute the optimized centroid positions
+        and/or flux of the identified sources. See
+        `~astropy.modeling.fitting` for more details on fitters.
+    aperture_radius : float
+        The radius (in units of pixels) used to compute initial
+        estimates for the fluxes of sources. If ``None``, one FWHM will
+        be used if it can be determined from the ```psf_model``.
+    niters : int or None
+        Number of iterations to perform of the iterative fitting. If None,
+        iterations will proceed until no more stars remain.  Note that in
+        this case it is *possible* that the loop will never end if the PSF
+        has structure that causes subtraction to create new sources
+        infinitely.
+
+    Notes
+    -----
+    If there are problems with fitting large groups, change the
+    parameters of the grouping algorithm to reduce the number of sources
+    in each group or input a ``star_groups`` table that only includes
+    the groups that are relevant (e.g. manually remove all entries that
+    coincide with artifacts).
+    """
+
+    def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
+                 finder, fitter=LevMarLSQFitter(), niters=3,
+                 aperture_radius=None):
+
+        super().__init__(group_maker, bkg_estimator, psf_model, fitshape,
+                         finder, fitter, aperture_radius)
+        self.niters = niters
+
+    @property
+    def niters(self):
+        return self._niters
+
+    @niters.setter
+    def niters(self, value):
+        if value is None:
+            self._niters = None
+        else:
+            try:
+                if value <= 0:
+                    raise ValueError('niters must be positive.')
+                else:
+                    self._niters = int(value)
+            except ValueError:
+                raise ValueError('niters must be None or an integer or '
+                                 'convertable into an integer.')
+
+    @property
+    def finder(self):
+        return self._finder
+
+    @finder.setter
+    def finder(self, value):
+        if value is None:
+            raise ValueError("finder cannot be None for "
+                             "IterativelySubtractedPSFPhotometry - you may "
+                             "want to use BasicPSFPhotometry. Please see the "
+                             "Detection section on photutils documentation.")
+        else:
+            self._finder = value
+
+    def do_photometry(self, image, init_guesses=None):
+        """
+        Perform PSF photometry in ``image``.
+
+        This method assumes that ``psf_model`` has centroids and flux
+        parameters which will be fitted to the data provided in
+        ``image``. A compound model, in fact a sum of ``psf_model``,
+        will be fitted to groups of stars automatically identified by
+        ``group_maker``. Also, ``image`` is not assumed to be background
+        subtracted.  If ``init_guesses`` are not ``None`` then this
+        method uses ``init_guesses`` as initial guesses for the
+        centroids. If the centroid positions are set as ``fixed`` in the
+        PSF model ``psf_model``, then the optimizer will only consider
+        the flux as a variable.
+
+        Parameters
+        ----------
+        image : 2D array-like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
+            Image to perform photometry.
+        init_guesses: `~astropy.table.Table`
+            Table which contains the initial guesses (estimates) for the
+            set of parameters. Columns 'x_0' and 'y_0' which represent
+            the positions (in pixel coordinates) for each object must be
+            present.  'flux_0' can also be provided to set initial
+            fluxes.  If 'flux_0' is not provided, aperture photometry is
+            used to estimate initial values for the fluxes. Additional
+            columns of the form '<parametername>_0' will be used to set
+            the initial guess for any parameters of the ``psf_model``
+            model that are not fixed.
+
+        Returns
+        -------
+        output_table : `~astropy.table.Table` or None
+            Table with the photometry results, i.e., centroids and
+            fluxes estimations and the initial estimates used to start
+            the fitting process. Uncertainties on the fitted parameters
+            are reported as columns called ``<paramname>_unc`` provided
+            that the fitter object contains a dictionary called
+            ``fit_info`` with the key ``param_cov``, which contains the
+            covariance matrix.
+        """
+
+        self.image = image
+        if self.bkg_estimator is not None:
+            self.image = self.image - self.bkg_estimator(image)
+
+        output_table = Table()
+        self._define_fit_param_names()
+
+        for (init_parname, fit_parname) in zip(self._pars_to_set.keys(),
+                                               self._pars_to_output.keys()):
+            output_table.add_column(Column(name=init_parname))
+            output_table.add_column(Column(name=fit_parname))
+
+        if init_guesses is not None:
+            output_table = init_guesses.copy()
+        else:
+            output_table = None
+        n = 1
+        while(self.niters is None or n <= self.niters):
+            new_output_table = self._do_photometry(output_table, n)
+            # If loop counter not set then break once no new sources
+            # are found; otherwise simply update the table with the
+            # new list of sources.
+            if (self.niters is None and output_table is not None and
+                    new_output_table is not None and
+                    len(new_output_table) == len(output_table)):
+                break
+            else:
+                output_table = new_output_table
+            n += 1
+        return output_table
+
+    def _do_photometry(self, init_guesses=None, n_iter=1):
+        """
+        Perform PSF photometry in ``image``.
+
+        This method assumes that ``psf_model`` has centroids and flux
+        parameters which will be fitted to the data provided in
+        ``image``. A compound model, in fact a sum of ``psf_model``,
+        will be fitted to groups of stars automatically identified by
+        ``group_maker``. Also, ``image`` is not assumed to be background
+        subtracted.  If ``init_guesses`` are not ``None`` then this
+        method uses ``init_guesses`` as initial guesses for the
+        centroids. If the centroid positions are set as ``fixed`` in the
+        PSF model ``psf_model``, then the optimizer will only consider
+        the flux as a variable.
+
+        Parameters
+        ----------
+        init_guesses: `~astropy.table.Table`
+            Table which contains the initial guesses (estimates) for the
+            set of parameters. Columns 'x_0' and 'y_0' which represent
+            the positions (in pixel coordinates) for each object must be
+            present.  'flux_0' can also be provided to set initial
+            fluxes.  If 'flux_0' is not provided, aperture photometry is
+            used to estimate initial values for the fluxes. Additional
+            columns of the form '<parametername>_0' will be used to set
+            the initial guess for any parameters of the ``psf_model``
+            model that are not fixed.
+        n_iter : int
+            Iteration counter, used to record which loop each source is
+            detected in.
+
+        Returns
+        -------
+        output_tab : `~astropy.table.Table`
+            Table with the photometry results, i.e., centroids and
+            fluxes estimations and the initial estimates used to start
+            the fitting process. Uncertainties on the fitted parameters
+            are reported as columns called ``<paramname>_unc`` provided
+            that the fitter object contains a dictionary called
+            ``fit_info`` with the key ``param_cov``, which contains the
+            covariance matrix. If ``param_cov`` is not present,
+            uncertanties are not reported.
+        """
+
+        if self.aperture_radius is None:
+            if hasattr(self.psf_model, 'fwhm'):
+                self.aperture_radius = self.psf_model.fwhm.value
+            elif hasattr(self.psf_model, 'sigma'):
+                self.aperture_radius = (self.psf_model.sigma.value *
+                                        gaussian_sigma_to_fwhm)
+
+        if self.finder is None:
+            raise ValueError('Finder cannot be None for this routine.')
+
+        if init_guesses is not None:
+            # make sure the code does not modify user's input
+            init_guesses = init_guesses.copy()
+            # Remove extra columns, keeping only the necessary ones. This is
+            # easy if we have a previous fit attempt, as we just keep the
+            # fit values.
+            if 'x_fit' in init_guesses.colnames:
+                init_guesses = init_guesses['x_fit', 'y_fit', 'flux_fit',
+                                            'iter_detected']
+                init_guesses = Table(names=['x_0', 'y_0', 'flux_0', 'iter_detected'],
+                                     data=[init_guesses['x_fit'],
+                                           init_guesses['y_fit'],
+                                           init_guesses['flux_fit'],
+                                           init_guesses['iter_detected']])
+            else:
+                # Otherwise, we take the initial position and flux guesses and set
+                # iter_detected to zero.
+                if self.aperture_radius is None:
+                    if 'flux_0' not in init_guesses.colnames:
+                        raise ValueError('aperture_radius is None and could not '
+                                         'be determined by psf_model. Please, '
+                                         'either provided a value for '
+                                         'aperture_radius or define fwhm/sigma '
+                                         'at psf_model.')
+
+                if 'flux_0' not in init_guesses.colnames:
+                    apertures = CircularAperture((init_guesses['x_0'],
+                                                  init_guesses['y_0']),
+                                                 r=self.aperture_radius)
+
+                    init_guesses['flux_0'] = aperture_photometry(
+                        self.image, apertures)['aperture_sum']
+                init_guesses = Table(names=['x_0', 'y_0', 'flux_0', 'iter_detected'],
+                                     data=[init_guesses['x_0'],
+                                           init_guesses['y_0'],
+                                           init_guesses['flux_0'],
+                                           np.zeros_like(init_guesses['x_0'])])
+
+            # If there are previous guesses, we must search for new sources
+            # and then append the two guess sets together
+            sources = self.finder(self._residual_image)
+            if len(sources) > 0:
+                apertures = CircularAperture((sources['xcentroid'],
+                                              sources['ycentroid']),
+                                             r=self.aperture_radius)
+
+                sources['aperture_flux'] = aperture_photometry(
+                    self._residual_image, apertures)['aperture_sum']
+
+                new_guesses = Table(names=['x_0', 'y_0', 'flux_0', 'iter_detected'],
+                                    data=[sources['xcentroid'],
+                                          sources['ycentroid'],
+                                          sources['aperture_flux'],
+                                          n_iter * np.ones(sources['xcentroid'].shape,
+                                                           dtype=np.int32)])
+                guesses = vstack([init_guesses, new_guesses])
+            else:
+                guesses = init_guesses
+        else:
+            # If no previous guesses of sources have been provided, run
+            # finder on the entire image, and use these detected sources
+            # as the only sources to perform photometry on.
+            sources = self.finder(self.image)
+            if len(sources) > 0:
+                apertures = CircularAperture((sources['xcentroid'],
+                                              sources['ycentroid']),
+                                             r=self.aperture_radius)
+
+                sources['aperture_flux'] = aperture_photometry(
+                    self.image, apertures)['aperture_sum']
+
+                guesses = Table(names=['x_0', 'y_0', 'flux_0', 'iter_detected'],
+                                data=[sources['xcentroid'],
+                                      sources['ycentroid'],
+                                      sources['aperture_flux'],
+                                      n_iter * np.ones(sources['xcentroid'].shape,
+                                                       dtype=np.int32)])
+
+        self._define_fit_param_names()
+        for p0, param in self._pars_to_set.items():
+            if p0 not in guesses.colnames:
+                guesses[p0] = (len(guesses) *
+                               [getattr(self.psf_model, param).value])
+
+        star_groups = self.group_maker(guesses)
+        output_tab, self._residual_image = self.nstar(self.image, star_groups)
+
+        star_groups = star_groups.group_by('group_id')
+        output_tab = hstack([star_groups, output_tab])
+
+        return output_tab
 
 
 class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):

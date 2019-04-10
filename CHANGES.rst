@@ -10,6 +10,12 @@ New Features
     segmentation images (e.g.  ``remove_labels``, ``keep_labels``).
     [#810]
 
+- ``photutils.psf``
+  
+  - New iterative PSF photometry fitting algorithm,
+    ``IterativeGroupPSFPhotometry``, re-fitting previously detected sources
+    in a given group with sources detected in the current iteration. [#732]
+
 Bug Fixes
 ^^^^^^^^^
 
