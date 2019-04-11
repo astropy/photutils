@@ -180,6 +180,14 @@ class TestSourceProperties:
         assert np.all(np.isnan(obj.minval_cutout_pos.value))
         assert np.all(np.isnan(obj.maxval_cutout_pos.value))
 
+    def test_repr_str(self):
+        props = SourceProperties(IMAGE, SEGM, label=1)
+        assert repr(props) == str(props)
+
+        attrs = ['label', 'centroid', 'sky_centroid']
+        for attr in attrs:
+            assert '{}:'.format(attr) in repr(props)
+
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -516,3 +524,12 @@ class TestSourceCatalog:
         t = cat.to_table(columns=columns)
         assert t[0]['sky_centroid'] is None
         assert t.colnames == columns
+
+    def test_repr_str(self):
+        segm = np.zeros(IMAGE.shape)
+        x = y = np.arange(0, 100, 10)
+        segm[y, x] = np.arange(10)
+        cat = source_properties(IMAGE, segm)
+
+        assert repr(cat) == str(cat)
+        assert 'Catalog length:' in repr(cat)

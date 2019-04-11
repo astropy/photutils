@@ -204,6 +204,23 @@ class SourceProperties:
         self.segment = segment_img[segment_img.get_index(label)]
         self.slices = self.segment.slices
 
+    def __str__(self):
+        cls_name = '<{0}.{1}>'.format(self.__class__.__module__,
+                                      self.__class__.__name__)
+
+        cls_info = []
+        params = ['label', 'sky_centroid']
+        for param in params:
+            cls_info.append((param, getattr(self, param)))
+        fmt = (['{0}: {1}'.format(key, val) for key, val in cls_info])
+        fmt.insert(1, 'centroid (x, y): ({0:0.4f}, {1:0.4f})'
+                   .format(self.xcentroid.value, self.ycentroid.value))
+
+        return '{}\n'.format(cls_name) + '\n'.join(fmt)
+
+    def __repr__(self):
+        return self.__str__()
+
     @lazyproperty
     def _segment_mask(self):
         """
@@ -1523,6 +1540,16 @@ class SourceCatalog:
     def __iter__(self):
         for i in self._data:
             yield i
+
+    def __str__(self):
+        cls_name = '<{0}.{1}>'.format(self.__class__.__module__,
+                                      self.__class__.__name__)
+        fmt = ['Catalog length: {0}'.format(len(self))]
+
+        return '{}\n'.format(cls_name) + '\n'.join(fmt)
+
+    def __repr__(self):
+        return self.__str__()
 
     def __getattr__(self, attr):
         exclude = ['sky_centroid', 'sky_centroid_icrs', 'icrs_centroid',
