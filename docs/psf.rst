@@ -38,7 +38,7 @@ sensitivity variations. For a more detailed description of this formalism, see
 All this said, in colloquial usage "PSF photometry" sometimes refers to the more 
 general task of model-fitting photometry (with the effects of the PSF either
 implicitly or explicitly included in the models), regardless of exactly what 
-kind of model is actually being fit. For brevity (e.g.,``photutils.psf``), we
+kind of model is actually being fit. For brevity (e.g., ``photutils.psf``), we
 use "PSF photometry"  in this way, as a shorthand for the general approach.
 
 
