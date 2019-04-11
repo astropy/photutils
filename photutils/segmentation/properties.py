@@ -198,10 +198,11 @@ class SourceProperties:
 
         segment_img.check_labels(label)
         self.label = label
-        self._slice = segment_img.slices[segment_img.get_index(label)]
         self._segment_img = segment_img
         self._mask = mask
         self._wcs = wcs
+        self.segment = segment_img[segment_img.get_index(label)]
+        self.slices = self.segment.slices
 
     @lazyproperty
     def _segment_mask(self):
@@ -213,7 +214,7 @@ class SourceProperties:
         within the rectangular cutout are `True`.
         """
 
-        return self._segment_img.data[self._slice] != self.label
+        return self._segment_img.data[self.slices] != self.label
 
     @lazyproperty
     def _input_mask(self):
@@ -222,7 +223,7 @@ class SourceProperties:
         """
 
         if self._mask is not None:
-            return self._mask[self._slice]
+            return self._mask[self.slices]
         else:
             return None
 
@@ -299,7 +300,7 @@ class SourceProperties:
         This array is used for moment-based properties.
         """
 
-        filt_data = self._filtered_data[self._slice]
+        filt_data = self._filtered_data[self.slices]
         filt_data = np.where(self._total_mask, 0., filt_data)  # copy
         filt_data[filt_data < 0] = 0.
         return filt_data.astype(np.float64)
@@ -348,10 +349,10 @@ class SourceProperties:
                              'segmentation image input to SourceProperties')
 
         if masked_array:
-            return np.ma.masked_array(data[self._slice],
+            return np.ma.masked_array(data[self.slices],
                                       mask=self._total_mask)
         else:
-            return data[self._slice]
+            return data[self.slices]
 
     def to_table(self, columns=None, exclude_columns=None):
         """
@@ -388,7 +389,7 @@ class SourceProperties:
         bounding box of the source segment.
         """
 
-        return self._data[self._slice]
+        return self._data[self.slices]
 
     @lazyproperty
     def data_cutout_ma(self):
@@ -400,7 +401,7 @@ class SourceProperties:
         input, or any non-finite ``data`` values (NaN and +/- inf).
         """
 
-        return np.ma.masked_array(self._data[self._slice],
+        return np.ma.masked_array(self._data[self.slices],
                                   mask=self._total_mask)
 
     @lazyproperty
@@ -416,7 +417,7 @@ class SourceProperties:
         input, or any non-finite ``data`` values (NaN and +/- inf).
         """
 
-        return np.ma.masked_array(self._filtered_data[self._slice],
+        return np.ma.masked_array(self._filtered_data[self.slices],
                                   mask=self._total_mask)
 
     @lazyproperty
@@ -435,7 +436,7 @@ class SourceProperties:
         if self._error is None:
             return None
         else:
-            return np.ma.masked_array(self._error[self._slice],
+            return np.ma.masked_array(self._error[self.slices],
                                       mask=self._total_mask)
 
     @lazyproperty
@@ -455,7 +456,7 @@ class SourceProperties:
         if self._background is None:
             return None
         else:
-            return np.ma.masked_array(self._background[self._slice],
+            return np.ma.masked_array(self._background[self.slices],
                                       mask=self._total_mask)
 
     @lazyproperty
@@ -516,7 +517,7 @@ class SourceProperties:
         """
 
         yy, xx = np.nonzero(self.data_cutout_ma)
-        return (yy + self._slice[0].start, xx + self._slice[1].start)
+        return (yy + self.slices[0].start, xx + self.slices[1].start)
 
     @lazyproperty
     @deprecated('0.7', 'indices')
@@ -583,8 +584,8 @@ class SourceProperties:
         """
 
         ycen, xcen = self.cutout_centroid.value
-        return (ycen + self._slice[0].start,
-                xcen + self._slice[1].start) * u.pix
+        return (ycen + self.slices[0].start,
+                xcen + self.slices[1].start) * u.pix
 
     @lazyproperty
     def xcentroid(self):
@@ -639,8 +640,8 @@ class SourceProperties:
         """
 
         # (stop - 1) to return the max pixel location, not the slice index
-        return (self._slice[0].start, self._slice[1].start,
-                self._slice[0].stop - 1, self._slice[1].stop - 1) * u.pix
+        return (self.slices[0].start, self.slices[1].start,
+                self.slices[0].stop - 1, self.slices[1].stop - 1) * u.pix
 
     @lazyproperty
     def xmin(self):
@@ -826,8 +827,8 @@ class SourceProperties:
             return (np.nan, np.nan) * u.pix
         else:
             yp, xp = self.minval_cutout_pos.value
-            return (yp + self._slice[0].start,
-                    xp + self._slice[1].start) * u.pix
+            return (yp + self.slices[0].start,
+                    xp + self.slices[1].start) * u.pix
 
     @lazyproperty
     def maxval_pos(self):
@@ -843,8 +844,8 @@ class SourceProperties:
             return (np.nan, np.nan) * u.pix
         else:
             yp, xp = self.maxval_cutout_pos.value
-            return (yp + self._slice[0].start,
-                    xp + self._slice[1].start) * u.pix
+            return (yp + self.slices[0].start,
+                    xp + self.slices[1].start) * u.pix
 
     @lazyproperty
     def minval_xpos(self):
