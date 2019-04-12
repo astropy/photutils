@@ -228,7 +228,7 @@ Let's plot one of the deblended sources:
     cmap1 = segm.make_cmap(random_state=123)
     ax2.imshow(segm.data[slc], origin='lower', cmap=cmap1)
     ax2.set_title('Original Segment')
-    cmap2 = segm_deblend.cmap(random_state=123)
+    cmap2 = segm_deblend.make_cmap(random_state=123)
     ax3.imshow(segm_deblend.data[slc], origin='lower', cmap=cmap2)
     ax3.set_title('Deblended Segments')
     plt.tight_layout()
@@ -403,7 +403,7 @@ Now let's plot the derived elliptical apertures on the data:
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     >>> ax1.set_title('Data')
-    >>> cmap = segm_deblend.cmap(random_state=12345)
+    >>> cmap = segm_deblend.make_cmap(random_state=12345)
     >>> ax2.imshow(segm_deblend, origin='lower', cmap=cmap)
     >>> ax2.set_title('Segmentation Image')
     >>> for aperture in apertures:
@@ -450,7 +450,7 @@ Now let's plot the derived elliptical apertures on the data:
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     ax1.set_title('Data')
-    cmap = segm_deblend.cmap(random_state=12345)
+    cmap = segm_deblend.make_cmap(random_state=12345)
     ax2.imshow(segm_deblend, origin='lower', cmap=cmap)
     ax2.set_title('Segmentation Image')
     for aperture in apertures:
