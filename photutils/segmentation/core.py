@@ -228,18 +228,14 @@ class SegmentationImage:
         A list of `Segment` objects.
 
         The list starts with the *non-zero* label.  The returned list
-        has a length equal to the maximum label number.  If a label
-        number is missing from the segmentation image, then `None` is
-        returned instead of a `Segment` object.
+        has a length equal to the number of labels and matches the order
+        of the ``labels`` attribute.
         """
 
         segments = []
-        for i, slc in enumerate(self.slices):
-            if slc is None:
-                segments.append(None)
-            else:
-                segments.append(Segment(self.data, i+1, slc, self.areas[i]))
-
+        for label, slc in zip(self.labels, self.slices):
+            segments.append(Segment(self.data, label, slc,
+                                    self.get_area(label)))
         return segments
 
     @property
@@ -293,7 +289,7 @@ class SegmentationImage:
 
         return np.max(self.labels)
 
-    def find_index(self, label):
+    def get_index(self, label):
         """
         Find the index of the input ``label``.
 
@@ -316,7 +312,7 @@ class SegmentationImage:
         self.check_labels(label)
         return np.searchsorted(self.labels, label)
 
-    def find_indices(self, labels):
+    def get_indices(self, labels):
         """
         Find the indices of the input ``labels``.
 
@@ -348,14 +344,13 @@ class SegmentationImage:
         representing the minimal box that contains the labeled region.
 
         The list starts with the *non-zero* label.  The returned list
-        has a length equal to the maximum label number.  If a label
-        number is missing, then `None` is returned for that list element
-        instead of a slice.
+        has a length equal to the number of labels and matches the order
+        of the ``labels`` attribute.
         """
 
         from scipy.ndimage import find_objects
 
-        return find_objects(self._data)
+        return [slc for slc in find_objects(self._data) if slc is not None]
 
     @lazyproperty
     def background_area(self):
@@ -411,7 +406,7 @@ class SegmentationImage:
             The areas of the labeled regions.
         """
 
-        idx = self.find_indices(labels)
+        idx = self.get_indices(labels)
         return self.areas[idx]
 
     @lazyproperty
