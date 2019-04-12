@@ -98,8 +98,8 @@ class Segment:
     @lazyproperty
     def bbox(self):
         """
-        The `BoundingBox` of the minimal rectangular region containing
-        the source segment.
+        The `~photutils.BoundingBox` of the minimal rectangular region
+        containing the source segment.
         """
 
         return BoundingBox(self.slices[1].start, self.slices[1].stop,
