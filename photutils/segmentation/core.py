@@ -442,6 +442,24 @@ class SegmentationImage:
 
         return deepcopy(self)
 
+    def check_label(self, label):
+        """
+        Check that the input label is a valid label number within the
+        segmentation image.
+
+        Parameters
+        ----------
+        label : int
+            The label number to check.
+
+        Raises
+        ------
+        ValueError
+            If the input ``label`` is invalid.
+        """
+
+        self.check_labels(label)
+
     def check_labels(self, labels):
         """
         Check that the input label(s) are valid label numbers within the
@@ -469,9 +487,11 @@ class SegmentationImage:
         # check if label is in the segmentation image
         bad_labels.update(np.setdiff1d(labels, self.labels))
 
-        bad_labels = tuple(bad_labels)
         if len(bad_labels) > 0:
-            raise ValueError('labels {} are invalid'.format(bad_labels))
+            if len(bad_labels) == 1:
+                raise ValueError('label {} is invalid'.format(bad_labels))
+            else:
+                raise ValueError('labels {} are invalid'.format(bad_labels))
 
     @deprecated('0.7', alternative='make_cmap')
     def cmap(self, background_color='#000000', random_state=None):
