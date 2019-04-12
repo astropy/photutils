@@ -182,6 +182,16 @@ class SegmentationImage:
             if isinstance(value, lazyproperty):
                 self.__dict__.pop(key, None)
 
+    @lazyproperty
+    def _cmap(self):
+        """
+        A matplotlib colormap consisting of (random) muted colors.
+
+        This is very useful for plotting the segmentation image.
+        """
+
+        return self.make_cmap(background_color='#000000', random_state=1234)
+
     @staticmethod
     def _get_labels(data):
         """
