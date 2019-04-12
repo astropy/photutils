@@ -409,6 +409,10 @@ class EllipseGeometry:
         radius, angle : float
             The ellipse radius and polar angle.
         """
+        # We split in between a scalar version and a 
+        # vectorized version. This is necessary for
+        # now so we don't pay a heavy speed penalty
+        # that is incurred when using vectorized code.
 
         if type(x) == type(1) or type(x) == type(1.0):
 
@@ -441,7 +445,6 @@ class EllipseGeometry:
 
         else:
 
-
             x1 = np.atleast_2d(x) - self.x0
             y1 = np.atleast_2d(y) - self.y0
 
@@ -468,10 +471,6 @@ class EllipseGeometry:
             angle[angle < 0] += 2*np.pi
 
             return radius, angle
-
-
-
-
 
     def update_sma(self, step):
         """
