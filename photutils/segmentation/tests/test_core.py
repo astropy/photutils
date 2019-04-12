@@ -43,6 +43,7 @@ class TestSegmentationImage:
     def test_invalid_label(self, label):
         # test with scalar labels
         with pytest.raises(ValueError):
+            self.segm.check_label(label)
             self.segm.check_labels(label)
 
     def test_invalid_label_array(self):
@@ -59,6 +60,10 @@ class TestSegmentationImage:
         assert isinstance(self.segm[0], Segment)
         assert_allclose(self.segm[0].data, self.segm[0].__array__())
 
+        assert self.segm[0].data_ma.shape == self.segm[0].data.shape
+        assert (self.segm[0].data_ma.filled(0.).sum() ==
+                self.segm[0].data.sum())
+
         label = 4
         idx = self.segm.get_index(label)
         assert self.segm[idx].label == label
@@ -68,6 +73,13 @@ class TestSegmentationImage:
 
         for i, segment in enumerate(self.segm):
             assert segment.label == self.segm.labels[i]
+
+    def test_repr_str(self):
+        assert repr(self.segm) == str(self.segm)
+
+        props = ['shape', 'nlabels', 'max_label']
+        for prop in props:
+            assert '{}:'.format(prop) in repr(self.segm)
 
     def test_segment_repr_str(self):
         assert repr(self.segm[0]) == str(self.segm[0])
@@ -106,6 +118,14 @@ class TestSegmentationImage:
         expected = np.array([2, 2, 3, 6, 5])
         assert_allclose(self.segm.areas, expected)
 
+        assert (self.segm.get_area(1) ==
+                self.segm.areas[self.segm.get_index(1)])
+        assert_allclose(self.segm.get_areas(self.segm.labels),
+                        self.segm.areas)
+
+    def test_background_area(self):
+        assert self.segm.background_area == 18
+
     def test_is_consecutive(self):
         assert self.segm.is_consecutive is False
 
@@ -114,6 +134,7 @@ class TestSegmentationImage:
 
     def test_check_labels(self):
         with pytest.raises(ValueError):
+            self.segm.check_label(2)
             self.segm.check_labels([2])
 
         with pytest.raises(ValueError):
@@ -123,6 +144,10 @@ class TestSegmentationImage:
         cmap = self.segm.make_cmap()
         assert len(cmap.colors) == (self.segm.max_label + 1)
         assert_allclose(cmap.colors[0], [0, 0, 0])
+
+        assert_allclose(self.segm._cmap.colors,
+                        self.segm.make_cmap(background_color='#000000',
+                                            random_state=1234).colors)
 
     def test_reassign_labels(self):
         segm = SegmentationImage(self.data)

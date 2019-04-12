@@ -541,7 +541,7 @@ class SegmentationImage:
         """
 
         return self.make_cmap(background_color=background_color,
-                              random_state=random_state)
+                              random_state=random_state)  # pragma: no cover
 
     def make_cmap(self, background_color='#000000', random_state=None):
         """
@@ -595,7 +595,7 @@ class SegmentationImage:
             The reassigned label number.
         """
 
-        self.reassign_label(labels, new_label)
+        self.reassign_label(labels, new_label)  # pragma: no cover
 
     def reassign_label(self, label, new_label, relabel=False):
         """
