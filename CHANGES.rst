@@ -10,6 +10,18 @@ New Features
     segmentation images (e.g.  ``remove_labels``, ``keep_labels``).
     [#810]
 
+  - Added new ``background_area`` attribute to ``SegmentationImage``.
+    [#825]
+
+  - Added new ``data_ma`` attribute to ``Segment``. [#825]
+
+  - Added new ``SegmentationImage`` methods:  ``find_index``,
+    ``find_indices``, ``find_areas``, ``check_label``, ``keep_label``,
+    ``remove_label``, and ``reassign_labels``. [#825]
+
+  - Added ``__repr__`` and ``__str__`` methods to
+    ``SegmentationImage``. [#825]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -34,15 +46,36 @@ Bug Fixes
   - Fixed the ``background_at_centroid`` source property to use
     bilinear interpolation. [#822]
 
+  - Fixed ``SegmentationImage`` ``outline_segments`` to include
+    outlines along the image boundaries. [#825]
+
 API changes
 ^^^^^^^^^^^
 
--
+- ``photutils.segmentation``
+
+  - Removed deprecated ``SegmentationImage`` attributes
+    ``data_masked``, ``max``, and ``is_sequential``  and methods
+    ``area`` and ``relabel_sequential``. [#825]
+
+  - Renamed ``SegmentationImage`` methods ``cmap`` (deprecated) to
+    ``make_cmap`` and ``relabel`` (deprecated) to ``reassign_label``.
+    The new ``reassign_label`` method gains a ``relabel`` keyword.
+    [#825]
+
+  - The ``SegmentationImage`` ``segments`` and ``slices`` attributes
+    now have the same length as ``labels`` (no ``None`` placeholders).
+    [#825]
+
+- ``photutils.utils``
+
+  - Renamed ``random_cmap`` to ``make_random_cmap``. [#825]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 -
+
 
 0.6 (2018-12-11)
 ----------------
