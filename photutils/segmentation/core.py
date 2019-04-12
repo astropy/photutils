@@ -70,15 +70,30 @@ class Segment:
     @lazyproperty
     def data(self):
         """
-        Cutout image of the segment, where pixels outside of the labeled
-        region are set to zero (i.e. neighboring segments within the
-        rectangular cutout image are not shown).
+        A 2D cutout image of the segment using the minimal bounding box,
+        where pixels outside of the labeled region are set to zero (i.e.
+        neighboring segments within the rectangular cutout image are not
+        shown).
         """
 
         cutout = np.copy(self._segment_img[self.slices])
         cutout[cutout != self.label] = 0
 
         return cutout
+
+    @lazyproperty
+    def data_ma(self):
+        """
+        A 2D `~numpy.ma.MaskedArray` cutout image of the segment using
+        the minimal bounding box.
+
+        The mask is `True` for pixels outside of the source segment
+        (i.e. neighboring segments within the rectangular cutout image
+        are masked).
+        """
+
+        mask = (self._segment_img[self.slices] != self.label)
+        return np.ma.masked_array(self._segment_img[self.slices], mask=mask)
 
     @lazyproperty
     def bbox(self):
