@@ -22,10 +22,6 @@ __all__ = ['GaussianConst2D', 'centroid_com', 'gaussian1d_moments',
            'centroid_sources']
 
 
-class _GaussianConst1D(Const1D + Gaussian1D):
-    """A model for a 1D Gaussian plus a constant."""
-
-
 class GaussianConst2D(Fittable2DModel):
     """
     A model for a 2D Gaussian plus a constant.
@@ -317,7 +313,7 @@ def centroid_1dg(data, error=None, mask=None):
     centroid = []
     for (data_i, weights_i) in zip(xy_data, xy_weights):
         params_init = gaussian1d_moments(data_i)
-        g_init = _GaussianConst1D(constant_init, *params_init)
+        g_init = Const1D(constant_init) + Gaussian1D(*params_init)
         fitter = LevMarLSQFitter()
         x = np.arange(data_i.size)
         g_fit = fitter(g_init, x, data_i, weights=weights_i)
