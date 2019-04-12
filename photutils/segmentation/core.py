@@ -657,20 +657,18 @@ class SegmentationImage:
         new_labels[self.labels] = np.arange(self.nlabels) + start_label
         self.data = new_labels[self.data]
 
-    def keep_labels(self, labels, relabel=False):
+    def keep_label(self, label, relabel=False):
         """
-        Keep only the specified labels.
+        Keep only the specified label.
 
         Parameters
         ----------
-        labels : int, array-like (1D, int)
-            The label number(s) to keep.  Labels of zero and those not
-            in the segmentation image will be ignored.
+        label : int
+            The label number to keep.
 
         relabel : bool, optional
-            If `True`, then the segmentation image will be relabeled
-            such that the labels are in consecutive order starting from
-            1.
+            If `True`, then the single segment will be assigned a label
+            value of 1.
 
         Examples
         --------
@@ -681,7 +679,7 @@ class SegmentationImage:
         ...                           [7, 0, 0, 0, 0, 5],
         ...                           [7, 7, 0, 5, 5, 5],
         ...                           [7, 7, 0, 0, 5, 5]])
-        >>> segm.keep_labels(labels=3)
+        >>> segm.keep_label(label=3)
         >>> segm.data
         array([[0, 0, 0, 0, 0, 0],
                [0, 0, 0, 0, 0, 0],
@@ -696,31 +694,26 @@ class SegmentationImage:
         ...                           [7, 0, 0, 0, 0, 5],
         ...                           [7, 7, 0, 5, 5, 5],
         ...                           [7, 7, 0, 0, 5, 5]])
-        >>> segm.keep_labels(labels=[5, 3])
+        >>> segm.keep_label(label=3, relabel=True)
         >>> segm.data
         array([[0, 0, 0, 0, 0, 0],
                [0, 0, 0, 0, 0, 0],
-               [0, 0, 3, 3, 0, 0],
-               [0, 0, 0, 0, 0, 5],
-               [0, 0, 0, 5, 5, 5],
-               [0, 0, 0, 0, 5, 5]])
+               [0, 0, 1, 1, 0, 0],
+               [0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0]])
         """
 
-        labels = np.atleast_1d(labels)
-        labels_tmp = list(set(self.labels) - set(labels))
-        self.remove_labels(labels_tmp, relabel=relabel)
+        self.keep_labels(label, relabel=relabel)
 
-    def remove_labels(self, labels, relabel=False):
+    def keep_labels(self, labels, relabel=False):
         """
-        Remove one or more labels.
-
-        Removed labels are assigned a value of zero (i.e., background).
+        Keep only the specified labels.
 
         Parameters
         ----------
         labels : int, array-like (1D, int)
-            The label number(s) to remove.  Labels of zero and those not
-            in the segmentation image will be ignored.
+            The label number(s) to keep.
 
         relabel : bool, optional
             If `True`, then the segmentation image will be relabeled
@@ -736,7 +729,64 @@ class SegmentationImage:
         ...                           [7, 0, 0, 0, 0, 5],
         ...                           [7, 7, 0, 5, 5, 5],
         ...                           [7, 7, 0, 0, 5, 5]])
-        >>> segm.remove_labels(labels=5)
+        >>> segm.keep_labels(labels=[5, 3])
+        >>> segm.data
+        array([[0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0],
+               [0, 0, 3, 3, 0, 0],
+               [0, 0, 0, 0, 0, 5],
+               [0, 0, 0, 5, 5, 5],
+               [0, 0, 0, 0, 5, 5]])
+
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.keep_labels(labels=[5, 3], relabel=True)
+        >>> segm.data
+        array([[0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0],
+               [0, 0, 1, 1, 0, 0],
+               [0, 0, 0, 0, 0, 2],
+               [0, 0, 0, 2, 2, 2],
+               [0, 0, 0, 0, 2, 2]])
+        """
+
+        self.check_labels(labels)
+
+        labels = np.atleast_1d(labels)
+        labels_tmp = list(set(self.labels) - set(labels))
+        self.remove_labels(labels_tmp, relabel=relabel)
+
+    def remove_label(self, label, relabel=False):
+        """
+        Remove the label number.
+
+        The removed label is assigned a value of zero (i.e., background)
+        in the segmentation image.
+
+        Parameters
+        ----------
+        label : int
+            The label number to remove.
+
+        relabel : bool, optional
+            If `True`, then the segmentation image will be relabeled
+            such that the labels are in consecutive order starting from
+            1.
+
+        Examples
+        --------
+        >>> from photutils import SegmentationImage
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.remove_label(label=5)
         >>> segm.data
         array([[1, 1, 0, 0, 4, 4],
                [0, 0, 0, 0, 0, 4],
@@ -751,6 +801,44 @@ class SegmentationImage:
         ...                           [7, 0, 0, 0, 0, 5],
         ...                           [7, 7, 0, 5, 5, 5],
         ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.remove_label(label=5, relabel=True)
+        >>> segm.data
+        array([[1, 1, 0, 0, 3, 3],
+               [0, 0, 0, 0, 0, 3],
+               [0, 0, 2, 2, 0, 0],
+               [4, 0, 0, 0, 0, 0],
+               [4, 4, 0, 0, 0, 0],
+               [4, 4, 0, 0, 0, 0]])
+        """
+
+        self.remove_labels(label, relabel=relabel)
+
+    def remove_labels(self, labels, relabel=False):
+        """
+        Remove one or more labels.
+
+        Removed labels are assigned a value of zero (i.e., background)
+        in the segmentation image.
+
+        Parameters
+        ----------
+        labels : int, array-like (1D, int)
+            The label number(s) to remove.
+
+        relabel : bool, optional
+            If `True`, then the segmentation image will be relabeled
+            such that the labels are in consecutive order starting from
+            1.
+
+        Examples
+        --------
+        >>> from photutils import SegmentationImage
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
         >>> segm.remove_labels(labels=[5, 3])
         >>> segm.data
         array([[1, 1, 0, 0, 4, 4],
@@ -759,7 +847,24 @@ class SegmentationImage:
                [7, 0, 0, 0, 0, 0],
                [7, 7, 0, 0, 0, 0],
                [7, 7, 0, 0, 0, 0]])
+
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.remove_labels(labels=[5, 3], relabel=True)
+        >>> segm.data
+        array([[1, 1, 0, 0, 2, 2],
+               [0, 0, 0, 0, 0, 2],
+               [0, 0, 0, 0, 0, 0],
+               [3, 0, 0, 0, 0, 0],
+               [3, 3, 0, 0, 0, 0],
+               [3, 3, 0, 0, 0, 0]])
         """
+
+        self.check_labels(labels)
 
         self.reassign_label(labels, new_label=0)
         if relabel:
