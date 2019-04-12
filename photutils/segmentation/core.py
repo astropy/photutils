@@ -97,6 +97,11 @@ class Segment:
 
     @lazyproperty
     def bbox(self):
+        """
+        The `BoundingBox` of the minimal rectangular region containing
+        the source segment.
+        """
+
         return BoundingBox(self.slices[1].start, self.slices[1].stop,
                            self.slices[0].start, self.slices[0].stop)
 
