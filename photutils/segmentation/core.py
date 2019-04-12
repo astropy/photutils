@@ -293,6 +293,54 @@ class SegmentationImage:
 
         return np.max(self.labels)
 
+    def find_index(self, label):
+        """
+        Find the index of the input ``label``.
+
+        Parameters
+        ----------
+        labels : int
+            The label numbers to find.
+
+        Returns
+        -------
+        index : int
+            The array index.
+
+        Raises
+        ------
+        ValueError
+            If ``label`` is invalid.
+        """
+
+        self.check_labels(label)
+        return np.searchsorted(self.labels, label)
+
+    def find_indices(self, labels):
+        """
+        Find the indices of the input ``labels``.
+
+        Parameters
+        ----------
+        labels : int, array-like (1D, int)
+            The label numbers(s) to find.
+
+        Returns
+        -------
+        indices : int `~numpy.ndarray`
+            An integer array of indices with the same shape as
+            ``labels``.  If ``labels`` is a scalar, then the returned
+            index will also be a scalar.
+
+        Raises
+        ------
+        ValueError
+            If any input ``labels`` are invalid.
+        """
+
+        self.check_labels(labels)
+        return np.searchsorted(self.labels, labels)
+
     @lazyproperty
     def slices(self):
         """
@@ -321,13 +369,31 @@ class SegmentationImage:
         A 1D array of areas (in pixel**2) of the non-zero labeled
         regions.
 
-        The `~numpy.ndarray` starts with the *non-zero* label The
-        returned array has a length equal to the maximum label number.
-        If a label number is missing, then 0 is returned for that array
-        element.
+        The `~numpy.ndarray` starts with the *non-zero* label.  The
+        returned array has a length equal to the number of labels and
+        matches the order of the ``labels`` attribute.
         """
 
-        return np.bincount(self.data.ravel())[1:]
+        return np.array([area
+                         for area in np.bincount(self.data.ravel())[1:]
+                         if area != 0])
+
+    def get_area(self, label):
+        """
+        The area (in pixel**2) of the region for the input label.
+
+        Parameters
+        ----------
+        label : int
+            The label whose area to return.  Label must be non-zero.
+
+        Returns
+        -------
+        area : `~numpy.ndarray`
+            The area of the labeled region.
+        """
+
+        return self.get_areas(label)
 
     def get_areas(self, labels):
         """
@@ -345,10 +411,8 @@ class SegmentationImage:
             The areas of the labeled regions.
         """
 
-        labels = np.atleast_1d(labels)
-        self.check_labels(labels)
-
-        return self.areas[labels - 1]
+        idx = self.find_indices(labels)
+        return self.areas[idx]
 
     @lazyproperty
     def is_consecutive(self):

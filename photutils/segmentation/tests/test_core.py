@@ -66,7 +66,7 @@ class TestSegmentationImage:
     def test_segments(self):
         assert isinstance(self.segm[0], Segment)
         assert_allclose(self.segm[0].data, self.segm[0].__array__())
-        assert self.segm[4].area == self.segm.areas[4]
+        assert self.segm[4].area == self.segm.get_area(self.segm[4].label)
         assert self.segm[4].slices == self.segm.slices[4]
         assert self.segm[3].bbox.slices == self.segm[3].slices
         assert self.segm[1] is None
@@ -110,7 +110,7 @@ class TestSegmentationImage:
         assert self.segm.max_label == 7
 
     def test_areas(self):
-        expected = np.array([2, 0, 2, 3, 6, 0, 5])
+        expected = np.array([2, 2, 3, 6, 5])
         assert_allclose(self.segm.areas, expected)
 
     def test_is_consecutive(self):
