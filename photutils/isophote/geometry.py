@@ -413,7 +413,6 @@ class EllipseGeometry:
         # vectorized version. This is necessary for
         # now so we don't pay a heavy speed penalty
         # that is incurred when using vectorized code.
-
         if type(x) == type(1) or type(x) == type(1.0):
 
             x1 = x - self.x0
