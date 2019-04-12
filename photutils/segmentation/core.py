@@ -12,7 +12,7 @@ from ..utils.colormaps import make_random_cmap
 __all__ = ['Segment', 'SegmentationImage']
 
 __doctest_requires__ = {('SegmentationImage', 'SegmentationImage.*'):
-                        ['scipy', 'skimage']}
+                        ['scipy']}
 
 
 class Segment:
@@ -1128,8 +1128,7 @@ class SegmentationImage:
         Outline the labeled segments.
 
         The "outlines" represent the pixels *just inside* the segments,
-        leaving the background pixels unmodified.  This corresponds to
-        the ``mode='inner'`` in `skimage.segmentation.find_boundaries`.
+        leaving the background pixels unmodified.
 
         Parameters
         ----------
@@ -1165,10 +1164,19 @@ class SegmentationImage:
                [0, 0, 0, 0, 0, 0]])
         """
 
-        # requires scikit-image >= 0.11
-        from skimage.segmentation import find_boundaries
+        from scipy.ndimage import grey_erosion, grey_dilation
 
-        outlines = self.data * find_boundaries(self.data, mode='inner')
+        # mode='constant' ensures outline is included on the image borders
+        selem = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
+        eroded = grey_erosion(self.data, footprint=selem, mode='constant',
+                              cval=0.)
+        dilated = grey_dilation(self.data, footprint=selem, mode='constant',
+                                cval=0.)
+
+        outlines = ((dilated != eroded) & (self.data != 0)).astype(int)
+        outlines *= self.data
+
         if mask_background:
             outlines = np.ma.masked_where(outlines == 0, outlines)
+
         return outlines
