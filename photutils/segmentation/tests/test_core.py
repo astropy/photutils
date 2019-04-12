@@ -131,9 +131,9 @@ class TestSegmentationImage:
         assert len(cmap.colors) == (self.segm.max_label + 1)
         assert_allclose(cmap.colors[0], [0, 0, 0])
 
-    def test_reassign_label(self):
+    def test_reassign_labels(self):
         segm = SegmentationImage(self.data)
-        segm.reassign_label(labels=[1, 7], new_label=2)
+        segm.reassign_labels(labels=[1, 7], new_label=2)
         ref_data = np.array([[2, 2, 0, 0, 4, 4],
                              [0, 0, 0, 0, 0, 4],
                              [0, 0, 3, 3, 0, 0],

@@ -553,7 +553,7 @@ class SegmentationImage:
 
         return cmap
 
-    @deprecated('0.7', alternative='reassign_label')
+    @deprecated('0.7', alternative='reassign_labels')
     def relabel(self, labels, new_label):
         """
         Reassign one or more label numbers.
@@ -572,20 +572,25 @@ class SegmentationImage:
 
         self.reassign_label(labels, new_label)
 
-    def reassign_label(self, labels, new_label):
+    def reassign_label(self, label, new_label, relabel=False):
         """
-        Reassign one or more label numbers.
+        Reassign a label number to a new number.
 
-        Multiple input ``labels`` will all be reassigned to the same
-        ``new_label`` number.
+        If ``new_label`` is already present in the segmentation image,
+        then it will be combined with the input ``label`` number.
 
         Parameters
         ----------
-        labels : int, array-like (1D, int)
-            The label numbers(s) to reassign.
+        labels : int
+            The label number to reassign.
 
         new_label : int
-            The reassigned label number.
+            The newly assigned label number.
+
+        relabel : bool, optional
+            If `True`, then the segmentation image will be relabeled
+            such that the labels are in consecutive order starting from
+            1.
 
         Examples
         --------
@@ -596,7 +601,80 @@ class SegmentationImage:
         ...                           [7, 0, 0, 0, 0, 5],
         ...                           [7, 7, 0, 5, 5, 5],
         ...                           [7, 7, 0, 0, 5, 5]])
-        >>> segm.reassign_label(labels=[1, 7], new_label=2)
+        >>> segm.reassign_label(label=1, new_label=2)
+        >>> segm.data
+        array([[2, 2, 0, 0, 4, 4],
+               [0, 0, 0, 0, 0, 4],
+               [0, 0, 3, 3, 0, 0],
+               [7, 0, 0, 0, 0, 5],
+               [7, 7, 0, 5, 5, 5],
+               [7, 7, 0, 0, 5, 5]])
+
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.reassign_label(label=1, new_label=4)
+        >>> segm.data
+        array([[4, 4, 0, 0, 4, 4],
+               [0, 0, 0, 0, 0, 4],
+               [0, 0, 3, 3, 0, 0],
+               [7, 0, 0, 0, 0, 5],
+               [7, 7, 0, 5, 5, 5],
+               [7, 7, 0, 0, 5, 5]])
+
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.reassign_label(label=1, new_label=4, relabel=True)
+        >>> segm.data
+        array([[2, 2, 0, 0, 2, 2],
+               [0, 0, 0, 0, 0, 2],
+               [0, 0, 1, 1, 0, 0],
+               [4, 0, 0, 0, 0, 3],
+               [4, 4, 0, 3, 3, 3],
+               [4, 4, 0, 0, 3, 3]])
+        """
+
+        self.reassign_labels(label, new_label, relabel=relabel)
+
+    def reassign_labels(self, labels, new_label, relabel=False):
+        """
+        Reassign one or more label numbers.
+
+        Multiple input ``labels`` will all be reassigned to the same
+        ``new_label`` number.  If ``new_label`` is already present in
+        the segmentation image, then it will be combined with the input
+        ``labels``.
+
+        Parameters
+        ----------
+        labels : int, array-like (1D, int)
+            The label numbers(s) to reassign.
+
+        new_label : int
+            The reassigned label number.
+
+        relabel : bool, optional
+            If `True`, then the segmentation image will be relabeled
+            such that the labels are in consecutive order starting from
+            1.
+
+        Examples
+        --------
+        >>> from photutils import SegmentationImage
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.reassign_labels(labels=[1, 7], new_label=2)
         >>> segm.data
         array([[2, 2, 0, 0, 4, 4],
                [0, 0, 0, 0, 0, 4],
@@ -604,7 +682,39 @@ class SegmentationImage:
                [2, 0, 0, 0, 0, 5],
                [2, 2, 0, 5, 5, 5],
                [2, 2, 0, 0, 5, 5]])
+
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.reassign_labels(labels=[1, 7], new_label=4)
+        >>> segm.data
+        array([[4, 4, 0, 0, 4, 4],
+               [0, 0, 0, 0, 0, 4],
+               [0, 0, 3, 3, 0, 0],
+               [4, 0, 0, 0, 0, 5],
+               [4, 4, 0, 5, 5, 5],
+               [4, 4, 0, 0, 5, 5]])
+
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.reassign_labels(labels=[1, 7], new_label=2, relabel=True)
+        >>> segm.data
+        array([[1, 1, 0, 0, 3, 3],
+               [0, 0, 0, 0, 0, 3],
+               [0, 0, 2, 2, 0, 0],
+               [1, 0, 0, 0, 0, 4],
+               [1, 1, 0, 4, 4, 4],
+               [1, 1, 0, 0, 4, 4]])
         """
+
+        self.check_labels(labels)
 
         labels = np.atleast_1d(labels)
         if len(labels) == 0:
@@ -617,10 +727,13 @@ class SegmentationImage:
         # calling the data setter resets all cached properties
         self.data = idx[self.data]
 
+        if relabel:
+            self.relabel_consecutive()
+
     def relabel_consecutive(self, start_label=1):
         """
         Reassign the label numbers consecutively, such that there are no
-        missing label numbers (up to the maximum label number).
+        missing label numbers.
 
         Parameters
         ----------
@@ -764,8 +877,8 @@ class SegmentationImage:
         """
         Remove the label number.
 
-        The removed label is assigned a value of zero (i.e., background)
-        in the segmentation image.
+        The removed label is assigned a value of zero (i.e.,
+        background).
 
         Parameters
         ----------
@@ -817,8 +930,7 @@ class SegmentationImage:
         """
         Remove one or more labels.
 
-        Removed labels are assigned a value of zero (i.e., background)
-        in the segmentation image.
+        Removed labels are assigned a value of zero (i.e., background).
 
         Parameters
         ----------
