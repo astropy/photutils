@@ -7,6 +7,12 @@ import pytest
 from ..core import Segment, SegmentationImage
 
 try:
+    import matplotlib    # noqa
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
+
+try:
     import scipy    # noqa
     HAS_SCIPY = True
 except ImportError:
@@ -140,6 +146,7 @@ class TestSegmentationImage:
         with pytest.raises(ValueError):
             self.segm.check_labels([2, 6])
 
+    @pytest.mark.skipif('not HAS_MATPLOTLIB')
     def test_make_cmap(self):
         cmap = self.segm.make_cmap()
         assert len(cmap.colors) == (self.segm.max_label + 1)
