@@ -90,7 +90,7 @@ class TestDeblendSources:
                                  mode=mode, relabel=False)
         assert result.nlabels == 2
         assert len(result.slices) <= result.max_label
-        assert len(result.slices) == 3   # label 1 is None
+        assert len(result.slices) == result.nlabels
         assert_allclose(np.nonzero(self.segm), np.nonzero(result))
 
     @pytest.mark.parametrize('mode', ['exponential', 'linear'])
@@ -184,6 +184,6 @@ class TestDeblendSources:
         """
 
         segm = self.segm.copy()
-        segm.relabel(1, 512)
+        segm.reassign_label(1, 512)
         result = deblend_sources(self.data, segm, self.npixels)
         assert result.nlabels == 2

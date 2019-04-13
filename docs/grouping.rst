@@ -145,10 +145,10 @@ in the same group have the same aperture color:
 .. doctest-skip::
 
     >>> from photutils import CircularAperture
-    >>> from photutils.utils import random_cmap
+    >>> from photutils.utils import make_random_cmap
     >>> plt.imshow(sim_image, origin='lower', interpolation='nearest',
     ...            cmap='Greys_r')
-    >>> cmap = random_cmap(random_state=12345)
+    >>> cmap = make_random_cmap(random_state=12345)
     >>> for i, group in enumerate(star_groups.groups):
     >>>     xypos = np.transpose([group['x_0'], group['y_0']])
     >>>     ap = CircularAperture(xypos, r=fwhm)
@@ -165,7 +165,7 @@ in the same group have the same aperture color:
                                     make_gaussian_sources_image)
     from photutils.psf.groupstars import DAOGroup
     from photutils import CircularAperture
-    from photutils.utils import random_cmap
+    from photutils.utils import make_random_cmap
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
 
@@ -199,7 +199,7 @@ in the same group have the same aperture color:
     plt.imshow(sim_image, origin='lower', interpolation='nearest',
                cmap='Greys_r')
 
-    cmap = random_cmap(random_state=12345)
+    cmap = make_random_cmap(random_state=12345)
     for i, group in enumerate(star_groups.groups):
         xypos = np.transpose([group['x_0'], group['y_0']])
         ap = CircularAperture(xypos, r=fwhm)
@@ -232,7 +232,7 @@ to use :class:`~photutils.psf.DBSCANGroup`.
                                     make_gaussian_sources_image)
     from photutils.psf.groupstars import DBSCANGroup
     from photutils import CircularAperture
-    from photutils.utils import random_cmap
+    from photutils.utils import make_random_cmap
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
 
@@ -266,7 +266,7 @@ to use :class:`~photutils.psf.DBSCANGroup`.
     plt.imshow(sim_image, origin='lower', interpolation='nearest',
                cmap='Greys_r')
 
-    cmap = random_cmap(random_state=12345)
+    cmap = make_random_cmap(random_state=12345)
     for i, group in enumerate(star_groups.groups):
         xypos = np.transpose([group['x_0'], group['y_0']])
         ap = CircularAperture(xypos, r=fwhm)

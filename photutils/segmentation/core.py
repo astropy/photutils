@@ -6,13 +6,13 @@ import numpy as np
 from astropy.utils import lazyproperty, deprecated
 
 from ..aperture import BoundingBox
-from ..utils.colormaps import random_cmap
+from ..utils.colormaps import make_random_cmap
 
 
 __all__ = ['Segment', 'SegmentationImage']
 
 __doctest_requires__ = {('SegmentationImage', 'SegmentationImage.*'):
-                        ['scipy', 'skimage']}
+                        ['scipy']}
 
 
 class Segment:
@@ -59,19 +59,6 @@ class Segment:
     def __repr__(self):
         return self.__str__()
 
-    @lazyproperty
-    def data(self):
-        """
-        Cutout image of the segment, where pixels outside of the labeled
-        region are set to zero (i.e. neighboring segments within the
-        rectangular cutout image are not shown).
-        """
-
-        cutout = np.copy(self._segment_img[self.slices])
-        cutout[cutout != self.label] = 0
-
-        return cutout
-
     def __array__(self):
         """
         Array representation of the labeled region (e.g., for
@@ -81,7 +68,40 @@ class Segment:
         return self.data
 
     @lazyproperty
+    def data(self):
+        """
+        A 2D cutout image of the segment using the minimal bounding box,
+        where pixels outside of the labeled region are set to zero (i.e.
+        neighboring segments within the rectangular cutout image are not
+        shown).
+        """
+
+        cutout = np.copy(self._segment_img[self.slices])
+        cutout[cutout != self.label] = 0
+
+        return cutout
+
+    @lazyproperty
+    def data_ma(self):
+        """
+        A 2D `~numpy.ma.MaskedArray` cutout image of the segment using
+        the minimal bounding box.
+
+        The mask is `True` for pixels outside of the source segment
+        (i.e. neighboring segments within the rectangular cutout image
+        are masked).
+        """
+
+        mask = (self._segment_img[self.slices] != self.label)
+        return np.ma.masked_array(self._segment_img[self.slices], mask=mask)
+
+    @lazyproperty
     def bbox(self):
+        """
+        The `~photutils.BoundingBox` of the minimal rectangular region
+        containing the source segment.
+        """
+
         return BoundingBox(self.slices[1].start, self.slices[1].stop,
                            self.slices[0].start, self.slices[0].stop)
 
@@ -152,51 +172,20 @@ class SegmentationImage:
         for i in self.segments:
             yield i
 
-    @lazyproperty
-    def segments(self):
-        """
-        A list of `Segment` objects.
+    def __str__(self):
+        cls_name = '<{0}.{1}>'.format(self.__class__.__module__,
+                                      self.__class__.__name__)
 
-        The list starts with the *non-zero* label.  The returned list
-        has a length equal to the maximum label number.  If a label
-        number is missing from the segmentation image, then `None` is
-        returned instead of a `Segment` object.
-        """
+        cls_info = []
+        params = ['shape', 'nlabels', 'max_label']
+        for param in params:
+            cls_info.append((param, getattr(self, param)))
+        fmt = ['{0}: {1}'.format(key, val) for key, val in cls_info]
 
-        segments = []
-        for i, slc in enumerate(self.slices):
-            if slc is None:
-                segments.append(None)
-            else:
-                segments.append(Segment(self.data, i+1, slc, self.areas[i]))
+        return '{}\n'.format(cls_name) + '\n'.join(fmt)
 
-        return segments
-
-    @property
-    def data(self):
-        """
-        The 2D segmentation image.
-        """
-
-        return self._data
-
-    @data.setter
-    def data(self, value):
-        if np.min(value) < 0:
-            raise ValueError('The segmentation image cannot contain '
-                             'negative integers.')
-
-        if '_data' in self.__dict__:
-            # needed only when data is reassigned, not on init
-            self._reset_lazy_properties()
-
-        self._data = value
-
-    def _reset_lazy_properties(self):
-        """Reset all lazy properties."""
-        for key, value in self.__class__.__dict__.items():
-            if isinstance(value, lazyproperty):
-                self.__dict__.pop(key, None)
+    def __repr__(self):
+        return self.__str__()
 
     def __array__(self):
         """
@@ -206,22 +195,25 @@ class SegmentationImage:
 
         return self._data
 
-    @lazyproperty
-    @deprecated('0.5', alternative='data_ma')
-    def data_masked(self):
-        return self.data_ma  # pragma: no cover
+    def _reset_lazy_properties(self):
+        """Reset all lazy properties."""
+
+        for key, value in self.__class__.__dict__.items():
+            if isinstance(value, lazyproperty):
+                self.__dict__.pop(key, None)
 
     @lazyproperty
-    def data_ma(self):
+    def _cmap(self):
         """
-        A `~numpy.ma.MaskedArray` version of the segmentation image
-        where the background (label = 0) has been masked.
+        A matplotlib colormap consisting of (random) muted colors.
+
+        This is very useful for plotting the segmentation image.
         """
 
-        return np.ma.masked_where(self.data == 0, self.data)
+        return self.make_cmap(background_color='#000000', random_state=1234)
 
     @staticmethod
-    def _labels(data):
+    def _get_labels(data):
         """
         Return a sorted array of the non-zero labels in the segmentation
         image.
@@ -240,7 +232,7 @@ class SegmentationImage:
 
         Notes
         -----
-        This is a separate static method so it can be used in
+        This is a static method so it can be used in
         :meth:`remove_masked_labels` on a masked version of the
         segmentation image.
 
@@ -253,7 +245,7 @@ class SegmentationImage:
         ...                           [7, 0, 0, 0, 0, 5],
         ...                           [7, 7, 0, 5, 5, 5],
         ...                           [7, 7, 0, 0, 5, 5]])
-        >>> segm._labels(segm.data)
+        >>> segm._get_labels(segm.data)
         array([1, 3, 4, 5, 7])
         """
 
@@ -261,10 +253,51 @@ class SegmentationImage:
         return np.unique(data[data != 0])
 
     @lazyproperty
+    def segments(self):
+        """
+        A list of `Segment` objects.
+
+        The list starts with the *non-zero* label.  The returned list
+        has a length equal to the number of labels and matches the order
+        of the ``labels`` attribute.
+        """
+
+        segments = []
+        for label, slc in zip(self.labels, self.slices):
+            segments.append(Segment(self.data, label, slc,
+                                    self.get_area(label)))
+        return segments
+
+    @property
+    def data(self):
+        """The 2D segmentation image."""
+
+        return self._data
+
+    @data.setter
+    def data(self, value):
+        if np.min(value) < 0:
+            raise ValueError('The segmentation image cannot contain '
+                             'negative integers.')
+
+        if '_data' in self.__dict__:
+            # needed only when data is reassigned, not on init
+            self._reset_lazy_properties()
+
+        self._data = value
+
+    @lazyproperty
+    def data_ma(self):
+        """
+        A `~numpy.ma.MaskedArray` version of the segmentation image
+        where the background (label = 0) has been masked.
+        """
+
+        return np.ma.masked_where(self.data == 0, self.data)
+
+    @lazyproperty
     def shape(self):
-        """
-        The shape of the 2D segmentation image.
-        """
+        """The shape of the 2D segmentation image."""
 
         return self._data.shape
 
@@ -272,7 +305,7 @@ class SegmentationImage:
     def labels(self):
         """The sorted non-zero labels in the segmentation image."""
 
-        return self._labels(self.data)
+        return self._get_labels(self.data)
 
     @lazyproperty
     def nlabels(self):
@@ -281,15 +314,58 @@ class SegmentationImage:
         return len(self.labels)
 
     @lazyproperty
-    @deprecated('0.5', alternative='max_label')
-    def max(self):
-        return self.max_label  # pragma: no cover
-
-    @lazyproperty
     def max_label(self):
         """The maximum non-zero label in the segmentation image."""
 
         return np.max(self.labels)
+
+    def get_index(self, label):
+        """
+        Find the index of the input ``label``.
+
+        Parameters
+        ----------
+        labels : int
+            The label numbers to find.
+
+        Returns
+        -------
+        index : int
+            The array index.
+
+        Raises
+        ------
+        ValueError
+            If ``label`` is invalid.
+        """
+
+        self.check_labels(label)
+        return np.searchsorted(self.labels, label)
+
+    def get_indices(self, labels):
+        """
+        Find the indices of the input ``labels``.
+
+        Parameters
+        ----------
+        labels : int, array-like (1D, int)
+            The label numbers(s) to find.
+
+        Returns
+        -------
+        indices : int `~numpy.ndarray`
+            An integer array of indices with the same shape as
+            ``labels``.  If ``labels`` is a scalar, then the returned
+            index will also be a scalar.
+
+        Raises
+        ------
+        ValueError
+            If any input ``labels`` are invalid.
+        """
+
+        self.check_labels(labels)
+        return np.searchsorted(self.labels, labels)
 
     @lazyproperty
     def slices(self):
@@ -298,14 +374,19 @@ class SegmentationImage:
         representing the minimal box that contains the labeled region.
 
         The list starts with the *non-zero* label.  The returned list
-        has a length equal to the maximum label number.  If a label
-        number is missing, then `None` is returned for that list element
-        instead of a slice.
+        has a length equal to the number of labels and matches the order
+        of the ``labels`` attribute.
         """
 
         from scipy.ndimage import find_objects
 
-        return find_objects(self._data)
+        return [slc for slc in find_objects(self._data) if slc is not None]
+
+    @lazyproperty
+    def background_area(self):
+        """The area (in pixel**2) of the background (label=0) region."""
+
+        return len(self.data[self.data == 0])
 
     @lazyproperty
     def areas(self):
@@ -313,23 +394,41 @@ class SegmentationImage:
         A 1D array of areas (in pixel**2) of the non-zero labeled
         regions.
 
-        The `~numpy.ndarray` starts with the *non-zero* label The
-        returned array has a length equal to the maximum label number.
-        If a label number is missing, then 0 is returned for that array
-        element.
+        The `~numpy.ndarray` starts with the *non-zero* label.  The
+        returned array has a length equal to the number of labels and
+        matches the order of the ``labels`` attribute.
         """
 
-        return np.bincount(self.data.ravel())[1:]
+        return np.array([area
+                         for area in np.bincount(self.data.ravel())[1:]
+                         if area != 0])
 
-    @deprecated('0.5', alternative='areas[labels-1]')
-    def area(self, labels):  # pragma: no cover
+    def get_area(self, label):
+        """
+        The area (in pixel**2) of the region for the input label.
+
+        Parameters
+        ----------
+        label : int
+            The label whose area to return.  Label must be non-zero.
+
+        Returns
+        -------
+        area : `~numpy.ndarray`
+            The area of the labeled region.
+        """
+
+        return self.get_areas(label)
+
+    def get_areas(self, labels):
         """
         The areas (in pixel**2) of the regions for the input labels.
 
         Parameters
         ----------
         labels : int, 1D array-like (int)
-            The label(s) for which to return areas.
+            The label(s) for which to return areas.  Label must be
+            non-zero.
 
         Returns
         -------
@@ -337,20 +436,13 @@ class SegmentationImage:
             The areas of the labeled regions.
         """
 
-        labels = np.atleast_1d(labels)
-        self.check_labels(labels)
-
-        return self.areas[labels - 1]
-
-    @lazyproperty
-    @deprecated('0.5', alternative='is_consecutive')
-    def is_sequential(self):
-        return self.is_consecutive  # pragma: no cover
+        idx = self.get_indices(labels)
+        return self.areas[idx]
 
     @lazyproperty
     def is_consecutive(self):
         """
-        Determine whether or not the non-zero labels in the segmenation
+        Determine whether or not the non-zero labels in the segmentation
         image are consecutive (i.e. no missing values).
         """
 
@@ -371,11 +463,27 @@ class SegmentationImage:
                                difference(np.insert(self.labels, 0, 0))))
 
     def copy(self):
-        """
-        Return a deep copy of this class instance.
-        """
+        """Return a deep copy of this class instance."""
 
         return deepcopy(self)
+
+    def check_label(self, label):
+        """
+        Check that the input label is a valid label number within the
+        segmentation image.
+
+        Parameters
+        ----------
+        label : int
+            The label number to check.
+
+        Raises
+        ------
+        ValueError
+            If the input ``label`` is invalid.
+        """
+
+        self.check_labels(label)
 
     def check_labels(self, labels):
         """
@@ -404,47 +512,17 @@ class SegmentationImage:
         # check if label is in the segmentation image
         bad_labels.update(np.setdiff1d(labels, self.labels))
 
-        bad_labels = tuple(bad_labels)
         if len(bad_labels) > 0:
-            raise ValueError('labels {} are invalid'.format(bad_labels))
-
-    @deprecated('0.5', alternative='check_labels')
-    def check_label(self, label, allow_zero=False):  # pragma: no cover
-        """
-        Check for a valid label label number within the segmentation
-        image.
-
-        Parameters
-        ----------
-        label : int
-            The label number to check.
-
-        allow_zero : bool
-            If `True` then a label of 0 is valid, otherwise 0 is
-            invalid.
-
-        Raises
-        ------
-        ValueError
-            If the input ``label`` is invalid.
-        """
-
-        if label == 0:
-            if allow_zero:
-                return
+            if len(bad_labels) == 1:
+                raise ValueError('label {} is invalid'.format(bad_labels))
             else:
-                raise ValueError('label "0" is reserved for the background')
+                raise ValueError('labels {} are invalid'.format(bad_labels))
 
-        if label < 0:
-            raise ValueError('label must be a positive integer, got '
-                             '"{0}"'.format(label))
-        if label not in self.labels:
-            raise ValueError('label "{0}" is not in the segmentation '
-                             'image'.format(label))
-
+    @deprecated('0.7', alternative='make_cmap')
     def cmap(self, background_color='#000000', random_state=None):
         """
-        A matplotlib colormap consisting of random (muted) colors.
+        Define a matplotlib colormap consisting of (random) muted
+        colors.
 
         This is very useful for plotting the segmentation image.
 
@@ -454,7 +532,7 @@ class SegmentationImage:
             A hex string in the "#rrggbb" format defining the first
             color in the colormap.  This color will be used as the
             background color (label = 0) when plotting the segmentation
-            image.  The default is black.
+            image.  The default is black ('#000000').
 
         random_state : int or `~numpy.random.RandomState`, optional
             The pseudo-random number generator state used for random
@@ -462,78 +540,82 @@ class SegmentationImage:
             ``random_state`` will generate the same colormap.
         """
 
+        return self.make_cmap(background_color=background_color,
+                              random_state=random_state)  # pragma: no cover
+
+    def make_cmap(self, background_color='#000000', random_state=None):
+        """
+        Define a matplotlib colormap consisting of (random) muted
+        colors.
+
+        This is very useful for plotting the segmentation image.
+
+        Parameters
+        ----------
+        background_color : str or `None`, optional
+            A hex string in the "#rrggbb" format defining the first
+            color in the colormap.  This color will be used as the
+            background color (label = 0) when plotting the segmentation
+            image.  The default is black ('#000000').
+
+        random_state : int or `~numpy.random.RandomState`, optional
+            The pseudo-random number generator state used for random
+            sampling.  Separate function calls with the same
+            ``random_state`` will generate the same colormap.
+
+        Returns
+        -------
+        cmap : `matplotlib.colors.ListedColormap`
+            The matplotlib colormap.
+        """
+
         from matplotlib import colors
 
-        cmap = random_cmap(self.max_label + 1, random_state=random_state)
+        cmap = make_random_cmap(self.max_label + 1, random_state=random_state)
 
         if background_color is not None:
             cmap.colors[0] = colors.hex2color(background_color)
 
         return cmap
 
-    def outline_segments(self, mask_background=False):
-        """
-        Outline the labeled segments.
-
-        The "outlines" represent the pixels *just inside* the segments,
-        leaving the background pixels unmodified.  This corresponds to
-        the ``mode='inner'`` in `skimage.segmentation.find_boundaries`.
-
-        Parameters
-        ----------
-        mask_background : bool, optional
-            Set to `True` to mask the background pixels (labels = 0) in
-            the returned image.  This is useful for overplotting the
-            segment outlines on an image.  The default is `False`.
-
-        Returns
-        -------
-        boundaries : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-            An image with the same shape of the segmenation image
-            containing only the outlines of the labeled segments.  The
-            pixel values in the outlines correspond to the labels in the
-            segmentation image.  If ``mask_background`` is `True`, then
-            a `~numpy.ma.MaskedArray` is returned.
-
-        Examples
-        --------
-        >>> from photutils import SegmentationImage
-        >>> segm = SegmentationImage([[0, 0, 0, 0, 0, 0],
-        ...                           [0, 2, 2, 2, 2, 0],
-        ...                           [0, 2, 2, 2, 2, 0],
-        ...                           [0, 2, 2, 2, 2, 0],
-        ...                           [0, 2, 2, 2, 2, 0],
-        ...                           [0, 0, 0, 0, 0, 0]])
-        >>> segm.outline_segments()
-        array([[0, 0, 0, 0, 0, 0],
-               [0, 2, 2, 2, 2, 0],
-               [0, 2, 0, 0, 2, 0],
-               [0, 2, 0, 0, 2, 0],
-               [0, 2, 2, 2, 2, 0],
-               [0, 0, 0, 0, 0, 0]])
-        """
-
-        # requires scikit-image >= 0.11
-        from skimage.segmentation import find_boundaries
-
-        outlines = self.data * find_boundaries(self.data, mode='inner')
-        if mask_background:
-            outlines = np.ma.masked_where(outlines == 0, outlines)
-        return outlines
-
+    @deprecated('0.7', alternative='reassign_labels')
     def relabel(self, labels, new_label):
         """
-        Relabel one or more label numbers.
+        Reassign one or more label numbers.
 
-        The input ``labels`` will all be relabeled to ``new_label``.
+        Multiple input ``labels`` will all be reassigned to the same
+        ``new_label`` number.
 
         Parameters
         ----------
         labels : int, array-like (1D, int)
-            The label numbers(s) to relabel.
+            The label numbers(s) to reassign.
 
         new_label : int
-            The relabeled label number.
+            The reassigned label number.
+        """
+
+        self.reassign_label(labels, new_label)  # pragma: no cover
+
+    def reassign_label(self, label, new_label, relabel=False):
+        """
+        Reassign a label number to a new number.
+
+        If ``new_label`` is already present in the segmentation image,
+        then it will be combined with the input ``label`` number.
+
+        Parameters
+        ----------
+        labels : int
+            The label number to reassign.
+
+        new_label : int
+            The newly assigned label number.
+
+        relabel : bool, optional
+            If `True`, then the segmentation image will be relabeled
+            such that the labels are in consecutive order starting from
+            1.
 
         Examples
         --------
@@ -544,7 +626,80 @@ class SegmentationImage:
         ...                           [7, 0, 0, 0, 0, 5],
         ...                           [7, 7, 0, 5, 5, 5],
         ...                           [7, 7, 0, 0, 5, 5]])
-        >>> segm.relabel(labels=[1, 7], new_label=2)
+        >>> segm.reassign_label(label=1, new_label=2)
+        >>> segm.data
+        array([[2, 2, 0, 0, 4, 4],
+               [0, 0, 0, 0, 0, 4],
+               [0, 0, 3, 3, 0, 0],
+               [7, 0, 0, 0, 0, 5],
+               [7, 7, 0, 5, 5, 5],
+               [7, 7, 0, 0, 5, 5]])
+
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.reassign_label(label=1, new_label=4)
+        >>> segm.data
+        array([[4, 4, 0, 0, 4, 4],
+               [0, 0, 0, 0, 0, 4],
+               [0, 0, 3, 3, 0, 0],
+               [7, 0, 0, 0, 0, 5],
+               [7, 7, 0, 5, 5, 5],
+               [7, 7, 0, 0, 5, 5]])
+
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.reassign_label(label=1, new_label=4, relabel=True)
+        >>> segm.data
+        array([[2, 2, 0, 0, 2, 2],
+               [0, 0, 0, 0, 0, 2],
+               [0, 0, 1, 1, 0, 0],
+               [4, 0, 0, 0, 0, 3],
+               [4, 4, 0, 3, 3, 3],
+               [4, 4, 0, 0, 3, 3]])
+        """
+
+        self.reassign_labels(label, new_label, relabel=relabel)
+
+    def reassign_labels(self, labels, new_label, relabel=False):
+        """
+        Reassign one or more label numbers.
+
+        Multiple input ``labels`` will all be reassigned to the same
+        ``new_label`` number.  If ``new_label`` is already present in
+        the segmentation image, then it will be combined with the input
+        ``labels``.
+
+        Parameters
+        ----------
+        labels : int, array-like (1D, int)
+            The label numbers(s) to reassign.
+
+        new_label : int
+            The reassigned label number.
+
+        relabel : bool, optional
+            If `True`, then the segmentation image will be relabeled
+            such that the labels are in consecutive order starting from
+            1.
+
+        Examples
+        --------
+        >>> from photutils import SegmentationImage
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.reassign_labels(labels=[1, 7], new_label=2)
         >>> segm.data
         array([[2, 2, 0, 0, 4, 4],
                [0, 0, 0, 0, 0, 4],
@@ -552,7 +707,39 @@ class SegmentationImage:
                [2, 0, 0, 0, 0, 5],
                [2, 2, 0, 5, 5, 5],
                [2, 2, 0, 0, 5, 5]])
+
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.reassign_labels(labels=[1, 7], new_label=4)
+        >>> segm.data
+        array([[4, 4, 0, 0, 4, 4],
+               [0, 0, 0, 0, 0, 4],
+               [0, 0, 3, 3, 0, 0],
+               [4, 0, 0, 0, 0, 5],
+               [4, 4, 0, 5, 5, 5],
+               [4, 4, 0, 0, 5, 5]])
+
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.reassign_labels(labels=[1, 7], new_label=2, relabel=True)
+        >>> segm.data
+        array([[1, 1, 0, 0, 3, 3],
+               [0, 0, 0, 0, 0, 3],
+               [0, 0, 2, 2, 0, 0],
+               [1, 0, 0, 0, 0, 4],
+               [1, 1, 0, 4, 4, 4],
+               [1, 1, 0, 0, 4, 4]])
         """
+
+        self.check_labels(labels)
 
         labels = np.atleast_1d(labels)
         if len(labels) == 0:
@@ -565,14 +752,13 @@ class SegmentationImage:
         # calling the data setter resets all cached properties
         self.data = idx[self.data]
 
-    @deprecated('0.5', alternative='relabel_consecutive()')
-    def relabel_sequential(self, start_label=1):
-        return self.relabel_consecutive(start_label=start_label)  # pragma: no cover
+        if relabel:
+            self.relabel_consecutive()
 
     def relabel_consecutive(self, start_label=1):
         """
-        Relabel the label numbers consecutively, such that there are no
-        missing label numbers (up to the maximum label number).
+        Reassign the label numbers consecutively, such that there are no
+        missing label numbers.
 
         Parameters
         ----------
@@ -605,24 +791,22 @@ class SegmentationImage:
         if self.is_consecutive and (self.labels[0] == start_label):
             return
 
-        forward_map = np.zeros(self.max_label + 1, dtype=np.int)
-        forward_map[self.labels] = np.arange(self.nlabels) + start_label
-        self.data = forward_map[self.data]
+        new_labels = np.zeros(self.max_label + 1, dtype=np.int)
+        new_labels[self.labels] = np.arange(self.nlabels) + start_label
+        self.data = new_labels[self.data]
 
-    def keep_labels(self, labels, relabel=False):
+    def keep_label(self, label, relabel=False):
         """
-        Keep only the specified label numbers.
+        Keep only the specified label.
 
         Parameters
         ----------
-        labels : int, array-like (1D, int)
-            The label number(s) to keep.  Labels of zero and those not
-            in the segmentation image will be ignored.
+        label : int
+            The label number to keep.
 
         relabel : bool, optional
-            If `True`, then the segmentation image will be relabeled
-            such that the labels are in consecutive order starting from
-            1.
+            If `True`, then the single segment will be assigned a label
+            value of 1.
 
         Examples
         --------
@@ -633,7 +817,7 @@ class SegmentationImage:
         ...                           [7, 0, 0, 0, 0, 5],
         ...                           [7, 7, 0, 5, 5, 5],
         ...                           [7, 7, 0, 0, 5, 5]])
-        >>> segm.keep_labels(labels=3)
+        >>> segm.keep_label(label=3)
         >>> segm.data
         array([[0, 0, 0, 0, 0, 0],
                [0, 0, 0, 0, 0, 0],
@@ -648,29 +832,26 @@ class SegmentationImage:
         ...                           [7, 0, 0, 0, 0, 5],
         ...                           [7, 7, 0, 5, 5, 5],
         ...                           [7, 7, 0, 0, 5, 5]])
-        >>> segm.keep_labels(labels=[5, 3])
+        >>> segm.keep_label(label=3, relabel=True)
         >>> segm.data
         array([[0, 0, 0, 0, 0, 0],
                [0, 0, 0, 0, 0, 0],
-               [0, 0, 3, 3, 0, 0],
-               [0, 0, 0, 0, 0, 5],
-               [0, 0, 0, 5, 5, 5],
-               [0, 0, 0, 0, 5, 5]])
+               [0, 0, 1, 1, 0, 0],
+               [0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0]])
         """
 
-        labels = np.atleast_1d(labels)
-        labels_tmp = list(set(self.labels) - set(labels))
-        self.remove_labels(labels_tmp, relabel=relabel)
+        self.keep_labels(label, relabel=relabel)
 
-    def remove_labels(self, labels, relabel=False):
+    def keep_labels(self, labels, relabel=False):
         """
-        Remove one or more label numbers.
+        Keep only the specified labels.
 
         Parameters
         ----------
         labels : int, array-like (1D, int)
-            The label number(s) to remove.  Labels of zero and those not
-            in the segmentation image will be ignored.
+            The label number(s) to keep.
 
         relabel : bool, optional
             If `True`, then the segmentation image will be relabeled
@@ -686,7 +867,64 @@ class SegmentationImage:
         ...                           [7, 0, 0, 0, 0, 5],
         ...                           [7, 7, 0, 5, 5, 5],
         ...                           [7, 7, 0, 0, 5, 5]])
-        >>> segm.remove_labels(labels=5)
+        >>> segm.keep_labels(labels=[5, 3])
+        >>> segm.data
+        array([[0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0],
+               [0, 0, 3, 3, 0, 0],
+               [0, 0, 0, 0, 0, 5],
+               [0, 0, 0, 5, 5, 5],
+               [0, 0, 0, 0, 5, 5]])
+
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.keep_labels(labels=[5, 3], relabel=True)
+        >>> segm.data
+        array([[0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 0],
+               [0, 0, 1, 1, 0, 0],
+               [0, 0, 0, 0, 0, 2],
+               [0, 0, 0, 2, 2, 2],
+               [0, 0, 0, 0, 2, 2]])
+        """
+
+        self.check_labels(labels)
+
+        labels = np.atleast_1d(labels)
+        labels_tmp = list(set(self.labels) - set(labels))
+        self.remove_labels(labels_tmp, relabel=relabel)
+
+    def remove_label(self, label, relabel=False):
+        """
+        Remove the label number.
+
+        The removed label is assigned a value of zero (i.e.,
+        background).
+
+        Parameters
+        ----------
+        label : int
+            The label number to remove.
+
+        relabel : bool, optional
+            If `True`, then the segmentation image will be relabeled
+            such that the labels are in consecutive order starting from
+            1.
+
+        Examples
+        --------
+        >>> from photutils import SegmentationImage
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.remove_label(label=5)
         >>> segm.data
         array([[1, 1, 0, 0, 4, 4],
                [0, 0, 0, 0, 0, 4],
@@ -701,6 +939,43 @@ class SegmentationImage:
         ...                           [7, 0, 0, 0, 0, 5],
         ...                           [7, 7, 0, 5, 5, 5],
         ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.remove_label(label=5, relabel=True)
+        >>> segm.data
+        array([[1, 1, 0, 0, 3, 3],
+               [0, 0, 0, 0, 0, 3],
+               [0, 0, 2, 2, 0, 0],
+               [4, 0, 0, 0, 0, 0],
+               [4, 4, 0, 0, 0, 0],
+               [4, 4, 0, 0, 0, 0]])
+        """
+
+        self.remove_labels(label, relabel=relabel)
+
+    def remove_labels(self, labels, relabel=False):
+        """
+        Remove one or more labels.
+
+        Removed labels are assigned a value of zero (i.e., background).
+
+        Parameters
+        ----------
+        labels : int, array-like (1D, int)
+            The label number(s) to remove.
+
+        relabel : bool, optional
+            If `True`, then the segmentation image will be relabeled
+            such that the labels are in consecutive order starting from
+            1.
+
+        Examples
+        --------
+        >>> from photutils import SegmentationImage
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
         >>> segm.remove_labels(labels=[5, 3])
         >>> segm.data
         array([[1, 1, 0, 0, 4, 4],
@@ -709,9 +984,26 @@ class SegmentationImage:
                [7, 0, 0, 0, 0, 0],
                [7, 7, 0, 0, 0, 0],
                [7, 7, 0, 0, 0, 0]])
+
+        >>> segm = SegmentationImage([[1, 1, 0, 0, 4, 4],
+        ...                           [0, 0, 0, 0, 0, 4],
+        ...                           [0, 0, 3, 3, 0, 0],
+        ...                           [7, 0, 0, 0, 0, 5],
+        ...                           [7, 7, 0, 5, 5, 5],
+        ...                           [7, 7, 0, 0, 5, 5]])
+        >>> segm.remove_labels(labels=[5, 3], relabel=True)
+        >>> segm.data
+        array([[1, 1, 0, 0, 2, 2],
+               [0, 0, 0, 0, 0, 2],
+               [0, 0, 0, 0, 0, 0],
+               [3, 0, 0, 0, 0, 0],
+               [3, 3, 0, 0, 0, 0],
+               [3, 3, 0, 0, 0, 0]])
         """
 
-        self.relabel(labels, new_label=0)
+        self.check_labels(labels)
+
+        self.reassign_label(labels, new_label=0)
         if relabel:
             self.relabel_consecutive()
 
@@ -793,8 +1085,7 @@ class SegmentationImage:
         ----------
         mask : array_like (bool)
             A boolean mask, with the same shape as the segmentation
-            image (``.data``), where `True` values indicate masked
-            pixels.
+            image, where `True` values indicate masked pixels.
 
         partial_overlap : bool, optional
             If this is set to `True` (default), a segment that partially
@@ -846,8 +1137,66 @@ class SegmentationImage:
         if mask.shape != self.shape:
             raise ValueError('mask must have the same shape as the '
                              'segmentation image')
-        remove_labels = self._labels(self.data[mask])
+        remove_labels = self._get_labels(self.data[mask])
         if not partial_overlap:
-            interior_labels = self._labels(self.data[~mask])
+            interior_labels = self._get_labels(self.data[~mask])
             remove_labels = list(set(remove_labels) - set(interior_labels))
         self.remove_labels(remove_labels, relabel=relabel)
+
+    def outline_segments(self, mask_background=False):
+        """
+        Outline the labeled segments.
+
+        The "outlines" represent the pixels *just inside* the segments,
+        leaving the background pixels unmodified.
+
+        Parameters
+        ----------
+        mask_background : bool, optional
+            Set to `True` to mask the background pixels (labels = 0) in
+            the returned image.  This is useful for overplotting the
+            segment outlines on an image.  The default is `False`.
+
+        Returns
+        -------
+        boundaries : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+            An image with the same shape of the segmentation image
+            containing only the outlines of the labeled segments.  The
+            pixel values in the outlines correspond to the labels in the
+            segmentation image.  If ``mask_background`` is `True`, then
+            a `~numpy.ma.MaskedArray` is returned.
+
+        Examples
+        --------
+        >>> from photutils import SegmentationImage
+        >>> segm = SegmentationImage([[0, 0, 0, 0, 0, 0],
+        ...                           [0, 2, 2, 2, 2, 0],
+        ...                           [0, 2, 2, 2, 2, 0],
+        ...                           [0, 2, 2, 2, 2, 0],
+        ...                           [0, 2, 2, 2, 2, 0],
+        ...                           [0, 0, 0, 0, 0, 0]])
+        >>> segm.outline_segments()
+        array([[0, 0, 0, 0, 0, 0],
+               [0, 2, 2, 2, 2, 0],
+               [0, 2, 0, 0, 2, 0],
+               [0, 2, 0, 0, 2, 0],
+               [0, 2, 2, 2, 2, 0],
+               [0, 0, 0, 0, 0, 0]])
+        """
+
+        from scipy.ndimage import grey_erosion, grey_dilation
+
+        # mode='constant' ensures outline is included on the image borders
+        selem = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
+        eroded = grey_erosion(self.data, footprint=selem, mode='constant',
+                              cval=0.)
+        dilated = grey_dilation(self.data, footprint=selem, mode='constant',
+                                cval=0.)
+
+        outlines = ((dilated != eroded) & (self.data != 0)).astype(int)
+        outlines *= self.data
+
+        if mask_background:
+            outlines = np.ma.masked_where(outlines == 0, outlines)
+
+        return outlines

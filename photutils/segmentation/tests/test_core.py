@@ -7,19 +7,17 @@ import pytest
 from ..core import Segment, SegmentationImage
 
 try:
+    import matplotlib    # noqa
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
+
+try:
     import scipy    # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
 
-try:
-    import skimage    # noqa
-    HAS_SKIMAGE = True
-except ImportError:
-    HAS_SKIMAGE = False
-
-
-@pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSegmentationImage:
     def setup_class(self):
@@ -51,6 +49,7 @@ class TestSegmentationImage:
     def test_invalid_label(self, label):
         # test with scalar labels
         with pytest.raises(ValueError):
+            self.segm.check_label(label)
             self.segm.check_labels(label)
 
     def test_invalid_label_array(self):
@@ -66,15 +65,27 @@ class TestSegmentationImage:
     def test_segments(self):
         assert isinstance(self.segm[0], Segment)
         assert_allclose(self.segm[0].data, self.segm[0].__array__())
-        assert self.segm[4].area == self.segm.areas[4]
-        assert self.segm[4].slices == self.segm.slices[4]
-        assert self.segm[3].bbox.slices == self.segm[3].slices
-        assert self.segm[1] is None
-        assert self.segm[5] is None
+
+        assert self.segm[0].data_ma.shape == self.segm[0].data.shape
+        assert (self.segm[0].data_ma.filled(0.).sum() ==
+                self.segm[0].data.sum())
+
+        label = 4
+        idx = self.segm.get_index(label)
+        assert self.segm[idx].label == label
+        assert self.segm[idx].area == self.segm.get_area(label)
+        assert self.segm[idx].slices == self.segm.slices[idx]
+        assert self.segm[idx].bbox.slices == self.segm[idx].slices
 
         for i, segment in enumerate(self.segm):
-            if segment is not None:
-                assert segment.label == (i + 1)
+            assert segment.label == self.segm.labels[i]
+
+    def test_repr_str(self):
+        assert repr(self.segm) == str(self.segm)
+
+        props = ['shape', 'nlabels', 'max_label']
+        for prop in props:
+            assert '{}:'.format(prop) in repr(self.segm)
 
     def test_segment_repr_str(self):
         assert repr(self.segm[0]) == str(self.segm[0])
@@ -84,15 +95,15 @@ class TestSegmentationImage:
             assert '{}:'.format(prop) in repr(self.segm[0])
 
     def test_segment_data(self):
-        assert_allclose(self.segm[4].data.shape, (3, 3))
-        assert_allclose(np.unique(self.segm[4].data), [0, 5])
+        assert_allclose(self.segm[3].data.shape, (3, 3))
+        assert_allclose(np.unique(self.segm[3].data), [0, 5])
 
     def test_segment_make_cutout(self):
-        cutout = self.segm[4].make_cutout(self.data, masked_array=False)
+        cutout = self.segm[3].make_cutout(self.data, masked_array=False)
         assert not np.ma.is_masked(cutout)
         assert_allclose(cutout.shape, (3, 3))
 
-        cutout = self.segm[4].make_cutout(self.data, masked_array=True)
+        cutout = self.segm[3].make_cutout(self.data, masked_array=True)
         assert np.ma.is_masked(cutout)
         assert_allclose(cutout.shape, (3, 3))
 
@@ -110,8 +121,16 @@ class TestSegmentationImage:
         assert self.segm.max_label == 7
 
     def test_areas(self):
-        expected = np.array([2, 0, 2, 3, 6, 0, 5])
+        expected = np.array([2, 2, 3, 6, 5])
         assert_allclose(self.segm.areas, expected)
+
+        assert (self.segm.get_area(1) ==
+                self.segm.areas[self.segm.get_index(1)])
+        assert_allclose(self.segm.get_areas(self.segm.labels),
+                        self.segm.areas)
+
+    def test_background_area(self):
+        assert self.segm.background_area == 18
 
     def test_is_consecutive(self):
         assert self.segm.is_consecutive is False
@@ -121,38 +140,25 @@ class TestSegmentationImage:
 
     def test_check_labels(self):
         with pytest.raises(ValueError):
+            self.segm.check_label(2)
             self.segm.check_labels([2])
 
         with pytest.raises(ValueError):
             self.segm.check_labels([2, 6])
 
-    def test_cmap(self):
-        cmap = self.segm.cmap()
+    @pytest.mark.skipif('not HAS_MATPLOTLIB')
+    def test_make_cmap(self):
+        cmap = self.segm.make_cmap()
         assert len(cmap.colors) == (self.segm.max_label + 1)
         assert_allclose(cmap.colors[0], [0, 0, 0])
 
-    def test_outline_segments(self):
-        segm_array = np.zeros((5, 5)).astype(int)
-        segm_array[1:4, 1:4] = 2
-        segm = SegmentationImage(segm_array)
-        segm_array_ref = np.copy(segm_array)
-        segm_array_ref[2, 2] = 0
-        assert_allclose(segm.outline_segments(), segm_array_ref)
+        assert_allclose(self.segm._cmap.colors,
+                        self.segm.make_cmap(background_color='#000000',
+                                            random_state=1234).colors)
 
-    def test_outline_segments_masked_background(self):
-        segm_array = np.zeros((5, 5)).astype(int)
-        segm_array[1:4, 1:4] = 2
-        segm = SegmentationImage(segm_array)
-        segm_array_ref = np.copy(segm_array)
-        segm_array_ref[2, 2] = 0
-        segm_outlines = segm.outline_segments(mask_background=True)
-        assert isinstance(segm_outlines, np.ma.MaskedArray)
-        assert np.ma.count(segm_outlines) == 8
-        assert np.ma.count_masked(segm_outlines) == 17
-
-    def test_relabel(self):
+    def test_reassign_labels(self):
         segm = SegmentationImage(self.data)
-        segm.relabel(labels=[1, 7], new_label=2)
+        segm.reassign_labels(labels=[1, 7], new_label=2)
         ref_data = np.array([[2, 2, 0, 0, 4, 4],
                              [0, 0, 0, 0, 0, 4],
                              [0, 0, 3, 3, 0, 0],
@@ -277,3 +283,22 @@ class TestSegmentationImage:
         mask = np.zeros((3, 3), dtype=np.bool)
         with pytest.raises(ValueError):
             segm.remove_masked_labels(mask)
+
+    def test_outline_segments(self):
+        segm_array = np.zeros((5, 5)).astype(int)
+        segm_array[1:4, 1:4] = 2
+        segm = SegmentationImage(segm_array)
+        segm_array_ref = np.copy(segm_array)
+        segm_array_ref[2, 2] = 0
+        assert_allclose(segm.outline_segments(), segm_array_ref)
+
+    def test_outline_segments_masked_background(self):
+        segm_array = np.zeros((5, 5)).astype(int)
+        segm_array[1:4, 1:4] = 2
+        segm = SegmentationImage(segm_array)
+        segm_array_ref = np.copy(segm_array)
+        segm_array_ref[2, 2] = 0
+        segm_outlines = segm.outline_segments(mask_background=True)
+        assert isinstance(segm_outlines, np.ma.MaskedArray)
+        assert np.ma.count(segm_outlines) == 8
+        assert np.ma.count_masked(segm_outlines) == 17

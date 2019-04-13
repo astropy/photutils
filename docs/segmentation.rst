@@ -102,7 +102,8 @@ segmentation image showing the detected sources:
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     >>> ax1.set_title('Data')
-    >>> ax2.imshow(segm, origin='lower', cmap=segm.cmap(random_state=12345))
+    >>> cmap = segm.make_cmap(random_state=12345)
+    >>> ax2.imshow(segm, origin='lower', cmap=cmap)
     >>> ax2.set_title('Segmentation Image')
 
 .. plot::
@@ -125,7 +126,8 @@ segmentation image showing the detected sources:
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     ax1.set_title('Data')
-    ax2.imshow(segm, origin='lower', cmap=segm.cmap(random_state=12345))
+    cmap = segm.make_cmap(random_state=12345)
+    ax2.imshow(segm, origin='lower', cmap=cmap)
     ax2.set_title('Segmentation Image')
     plt.tight_layout()
 
@@ -193,8 +195,8 @@ the deblended segmentation image:
 
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, ax = plt.subplots(1, 1, figsize=(10, 6.5))
-    ax.imshow(segm_deblend, origin='lower',
-              cmap=segm_deblend.cmap(random_state=12345))
+    cmap = segm_deblend.make_cmap(random_state=12345)
+    ax.imshow(segm_deblend, origin='lower', cmap=cmap)
     ax.set_title('Deblended Segmentation Image')
     plt.tight_layout()
 
@@ -223,11 +225,11 @@ Let's plot one of the deblended sources:
     slc = (slice(273, 297), slice(425, 444))
     ax1.imshow(data[slc], origin='lower')
     ax1.set_title('Data')
-    ax2.imshow(segm.data[slc], origin='lower',
-               cmap=segm.cmap(random_state=123))
+    cmap1 = segm.make_cmap(random_state=123)
+    ax2.imshow(segm.data[slc], origin='lower', cmap=cmap1)
     ax2.set_title('Original Segment')
-    ax3.imshow(segm_deblend.data[slc], origin='lower',
-               cmap=segm_deblend.cmap(random_state=123))
+    cmap2 = segm_deblend.make_cmap(random_state=123)
+    ax3.imshow(segm_deblend.data[slc], origin='lower', cmap=cmap2)
     ax3.set_title('Deblended Segments')
     plt.tight_layout()
 
@@ -240,17 +242,18 @@ several methods that can be used to visualize or modify itself (e.g.,
 combining labels, removing labels, removing border segments) prior to
 measuring source photometry and other source properties, including:
 
-  * :meth:`~photutils.segmentation.SegmentationImage.relabel`:
-    Relabel one or more label numbers.
+  * :meth:`~photutils.segmentation.SegmentationImage.reassign_label`:
+    Reassign one or more label numbers.
 
-  * :meth:`~photutils.segmentation.SegmentationImage.relabel_sequential`:
-    Relable the label numbers sequentially.
+  * :meth:`~photutils.segmentation.SegmentationImage.relabel_consecutive`:
+    Reassign the label numbers consecutively, such that there are no
+    missing label numbers (up to the maximum label number).
 
   * :meth:`~photutils.segmentation.SegmentationImage.keep_labels`:
-    Keep only certain label numbers.
+    Keep only the specified labels.
 
   * :meth:`~photutils.segmentation.SegmentationImage.remove_labels`:
-    Remove one or more label numbers.
+    Remove one or more labels.
 
   * :meth:`~photutils.segmentation.SegmentationImage.remove_border_labels`:
     Remove labeled segments near the image border.
@@ -400,8 +403,8 @@ Now let's plot the derived elliptical apertures on the data:
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     >>> ax1.set_title('Data')
-    >>> ax2.imshow(segm_deblend, origin='lower',
-    ...            cmap=segm_deblend.cmap(random_state=12345))
+    >>> cmap = segm_deblend.make_cmap(random_state=12345)
+    >>> ax2.imshow(segm_deblend, origin='lower', cmap=cmap)
     >>> ax2.set_title('Segmentation Image')
     >>> for aperture in apertures:
     ...     aperture.plot(color='white', lw=1.5, ax=ax1)
@@ -447,8 +450,8 @@ Now let's plot the derived elliptical apertures on the data:
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     ax1.set_title('Data')
-    ax2.imshow(segm_deblend, origin='lower',
-               cmap=segm_deblend.cmap(random_state=12345))
+    cmap = segm_deblend.make_cmap(random_state=12345)
+    ax2.imshow(segm_deblend, origin='lower', cmap=cmap)
     ax2.set_title('Segmentation Image')
     for aperture in apertures:
         aperture.plot(color='white', lw=1.5, ax=ax1)
