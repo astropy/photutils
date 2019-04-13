@@ -198,7 +198,7 @@ class SourceProperties:
 
         segment_img.check_labels(label)
         self.label = label
-        self._slice = segment_img.slices[label - 1]
+        self._slice = segment_img.slices[segment_img.get_index(label)]
         self._segment_img = segment_img
         self._mask = mask
         self._wcs = wcs
