@@ -1153,13 +1153,13 @@ class SourceProperties:
         order.
         """
 
-        if not np.isnan(np.sum(self.covariance)):
+        if np.any(~np.isfinite(self.covariance)):
+            return (np.nan, np.nan) * u.pix**2
+        else:
             eigvals = np.linalg.eigvals(self.covariance)
-            if np.any(eigvals < 0):    # negative variance
+            if np.any(eigvals < 0):  # negative variance
                 return (np.nan, np.nan) * u.pix**2  # pragma: no cover
             return (np.max(eigvals), np.min(eigvals)) * u.pix**2
-        else:
-            return (np.nan, np.nan) * u.pix**2
 
     @lazyproperty
     def semimajor_axis_sigma(self):
