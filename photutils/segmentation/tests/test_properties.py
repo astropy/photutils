@@ -24,13 +24,6 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
-try:
-    import skimage    # noqa
-    HAS_SKIMAGE = True
-except ImportError:
-    HAS_SKIMAGE = False
-
-
 XCEN = 51.
 YCEN = 52.7
 MAJOR_SIG = 8.
@@ -48,7 +41,6 @@ ERR_VALS = [0., 2.5]
 BACKGRD_VALS = [None, 0., 1., 3.5]
 
 
-@pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSourceProperties:
     def test_segment_shape(self):
@@ -193,7 +185,6 @@ class TestSourceProperties:
             assert '{}:'.format(attr) in repr(props)
 
 
-@pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSourcePropertiesFunctionInputs:
     def test_segment_shape(self):
@@ -233,7 +224,6 @@ class TestSourcePropertiesFunctionInputs:
             source_properties(IMAGE, SEGM, labels=-1)
 
 
-@pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSourcePropertiesFunction:
     def test_properties(self):
@@ -441,7 +431,6 @@ class TestSourcePropertiesFunction:
         assert cat[segm.get_index(label=1000)].id == 1000
 
 
-@pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSourceCatalog:
     def test_basic(self):

@@ -21,7 +21,7 @@ __all__ = ['SourceProperties', 'source_properties', 'SourceCatalog']
 __doctest_requires__ = {('SourceProperties', 'SourceProperties.*',
                          'SourceCatalog', 'SourceCatalog.*',
                          'source_properties', 'properties_table'):
-                        ['scipy', 'skimage']}
+                        ['scipy']}
 
 
 class SourceProperties:
@@ -1054,19 +1054,47 @@ class SourceProperties:
     @lazyproperty
     def perimeter(self):
         """
-        The total perimeter of the source segment, approximated lines
-        through the centers of the border pixels using a 4-connectivity.
+        The perimeter of the source segment, approximated as the total
+        length of lines connecting the centers of the border pixels
+        defined by a 4-pixel connectivity.
 
         If any masked pixels make holes within the source segment, then
         the perimeter around the inner hole (e.g. an annulus) will also
         contribute to the total perimeter.
+
+        References
+        ----------
+        .. [1] K. Benkrid, D. Crookes, and A. Benkrid.  "Design and FPGA
+               Implementation of a Perimeter Estimator".  Proceedings of
+               the Irish Machine Vision and Image Processing Conference,
+               pp. 51-57 (2000).
+               http://www.cs.qub.ac.uk/~d.crookes/webpubs/papers/perimeter.doc
         """
 
         if self._is_completely_masked:
             return np.nan * u.pix  # unit for table
         else:
-            from skimage.measure import perimeter
-            return perimeter(~self._total_mask, neighbourhood=4) * u.pix
+            from scipy.ndimage import binary_erosion, convolve
+
+            data = ~self._total_mask
+            selem = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
+            data_eroded = binary_erosion(data, selem, border_value=0)
+            border = np.logical_xor(data, data_eroded).astype(np.int)
+            self._border = border
+
+            kernel = np.array([[10, 2, 10], [2, 1, 2], [10, 2, 10]])
+            perimeter_data = convolve(border, kernel, mode='constant', cval=0)
+
+            size = 34
+            perimeter_hist = np.bincount(perimeter_data.ravel(),
+                                         minlength=size)
+
+            weights = np.zeros(size, dtype=np.float)
+            weights[[5, 7, 15, 17, 25, 27]] = 1.
+            weights[[21, 33]] = np.sqrt(2.)
+            weights[[13, 23]] = (1 + np.sqrt(2.)) / 2.
+
+            return (perimeter_hist[0:size] @ weights) * u.pix
 
     @lazyproperty
     def inertia_tensor(self):
