@@ -1406,6 +1406,9 @@ def source_properties(data, segment_img, error=None, mask=None,
             data, segment_img, label, filtered_data=filtered_data,
             error=error, mask=mask, background=background, wcs=wcs))
 
+    if len(sources_props) == 0:
+        raise ValueError('No sources are defined.')
+
     return SourceCatalog(sources_props, wcs=wcs)
 
 

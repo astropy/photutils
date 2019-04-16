@@ -6,10 +6,11 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from astropy.tests.helper import assert_quantity_allclose
 from astropy.modeling import models
 from astropy.table import QTable
+from astropy.tests.helper import assert_quantity_allclose, catch_warnings
 import astropy.units as u
+from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils.misc import isiterable
 import astropy.wcs as WCS
 
@@ -204,8 +205,16 @@ class TestSourcePropertiesFunctionInputs:
         assert props[0].id == 1
 
     def test_invalidlabels(self):
+        with catch_warnings(AstropyUserWarning) as warning_lines:
+            source_properties(IMAGE, SEGM, labels=[-1, 1])
+
+            assert warning_lines[0].category == AstropyUserWarning
+            assert ('label -1 is not in the segmentation image.' in
+                    str(warning_lines[0].message))
+
+    def test_nosources(self):
         with pytest.raises(ValueError):
-            props = source_properties(IMAGE, SEGM, labels=-1)
+            source_properties(IMAGE, SEGM, labels=-1)
 
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
@@ -432,6 +441,8 @@ class TestSourceCatalog:
         assert len(cat) == 1
         assert len(cat2) == 1
 
+        with pytest.raises(ValueError):
+            SourceCatalog([])
         with pytest.raises(ValueError):
             SourceCatalog('a')
 
