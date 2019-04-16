@@ -1418,6 +1418,8 @@ class SourceCatalog:
         if isinstance(properties_list, SourceProperties):
             self._data = [properties_list]
         elif isinstance(properties_list, list):
+            if len(properties_list) == 0:
+                raise ValueError('properties_list must not be an empty list.')
             self._data = properties_list
         else:
             raise ValueError('invalid input.')

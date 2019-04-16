@@ -77,6 +77,9 @@ class TestSourceProperties:
         assert props.sky_bbox_lr is not None
         assert props.sky_bbox_ur is not None
 
+        tbl = props.to_table()
+        assert len(tbl) == 1
+
     def test_nowcs(self):
         props = SourceProperties(IMAGE, SEGM, wcs=None, label=1)
         assert props.sky_centroid_icrs is None
@@ -201,8 +204,8 @@ class TestSourcePropertiesFunctionInputs:
         assert props[0].id == 1
 
     def test_invalidlabels(self):
-        props = source_properties(IMAGE, SEGM, labels=-1)
-        assert len(props) == 0
+        with pytest.raises(ValueError):
+            props = source_properties(IMAGE, SEGM, labels=-1)
 
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
@@ -460,11 +463,6 @@ class TestSourceCatalog:
         assert len(t) == 1
         with pytest.raises(KeyError):
             t['id']
-
-    def test_table_empty_props(self):
-        cat = source_properties(IMAGE, SEGM, labels=-1)
-        with pytest.raises(ValueError):
-            cat.to_table()
 
     def test_table_wcs(self):
         mywcs = WCS.WCS(naxis=2)
