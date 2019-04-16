@@ -49,7 +49,7 @@ BACKGRD_VALS = [None, 0., 1., 3.5]
 class TestSourceProperties:
     def test_segment_shape(self):
         with pytest.raises(ValueError):
-            SourceProperties(IMAGE, np.zeros((2, 2)), label=1)
+            SourceProperties(IMAGE, np.eye(3, dtype=int), label=1)
 
     @pytest.mark.parametrize('label', (0, -1))
     def test_label_invalid(self, label):
@@ -177,22 +177,22 @@ class TestSourceProperties:
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSourcePropertiesFunctionInputs:
     def test_segment_shape(self):
-        wrong_shape = np.zeros((2, 2))
+        wrong_shape = np.eye(3, dtype=int)
         with pytest.raises(ValueError):
             source_properties(IMAGE, wrong_shape)
 
     def test_error_shape(self):
-        wrong_shape = np.zeros((2, 2))
+        wrong_shape = np.ones((2, 2))
         with pytest.raises(ValueError):
             source_properties(IMAGE, SEGM, error=wrong_shape)
 
     def test_background_shape(self):
-        wrong_shape = np.zeros((2, 2))
+        wrong_shape = np.ones((2, 2))
         with pytest.raises(ValueError):
             source_properties(IMAGE, SEGM, background=wrong_shape)
 
     def test_mask_shape(self):
-        wrong_shape = np.zeros((2, 2))
+        wrong_shape = np.zeros((2, 2)).astype(bool)
         with pytest.raises(ValueError):
             source_properties(IMAGE, SEGM, mask=wrong_shape)
 

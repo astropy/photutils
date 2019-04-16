@@ -105,7 +105,7 @@ class TestDeblendSources:
         assert result.nlabels == 2
 
     def test_segment_img_badshape(self):
-        segm_wrong = np.zeros((2, 2))
+        segm_wrong = np.ones((2, 2))
         with pytest.raises(ValueError):
             deblend_sources(self.data, segm_wrong, self.npixels)
 
