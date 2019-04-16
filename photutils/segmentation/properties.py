@@ -454,20 +454,36 @@ class SourceProperties:
         return self.background_cutout_ma.compressed()
 
     @lazyproperty
-    def coords(self):
+    def indices(self):
         """
         A tuple of two `~numpy.ndarray` containing the ``y`` and ``x``
-        pixel coordinates of unmasked pixels within the source segment.
+        pixel indices, respectively, of unmasked pixels within the
+        source segment.
 
-        Non-finite pixel values (e.g. NaN, infs) are excluded
-        (automatically masked).
+        Non-finite ``data`` values (e.g. NaN, infs) are excluded.
 
-        If all pixels are masked, ``coords`` will be a tuple of
-        two empty arrays.
+        If all ``data`` pixels are masked, a tuple of two empty arrays
+        will be returned.
         """
 
         yy, xx = np.nonzero(self.data_cutout_ma)
         return (yy + self._slice[0].start, xx + self._slice[1].start)
+
+    @lazyproperty
+    @deprecated('0.7', 'indices')
+    def coords(self):
+        """
+        A tuple of two `~numpy.ndarray` containing the ``y`` and ``x``
+        pixel indices, respectively, of unmasked pixels within the
+        source segment.
+
+        Non-finite ``data`` values (e.g. NaN, infs) are excluded.
+
+        If all ``data`` pixels are masked, a tuple of two empty arrays
+        will be returned.
+        """
+
+        return self.indices  # pragma: no cover
 
     @lazyproperty
     def moments(self):
