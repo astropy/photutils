@@ -24,8 +24,7 @@ class TestDetectSources:
     def setup_class(self):
         self.data = np.array([[0, 1, 0], [0, 2, 0],
                               [0, 0, 0]]).astype(np.float)
-        self.ref1 = np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
-        self.ref2 = np.array([[0, 1, 0], [0, 1, 0], [0, 0, 0]])
+        self.refdata = np.array([[0, 1, 0], [0, 1, 0], [0, 0, 0]])
 
         fwhm2sigma = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
         filter_kernel = Gaussian2DKernel(2. * fwhm2sigma, x_size=3, y_size=3)
@@ -36,13 +35,16 @@ class TestDetectSources:
         """Test basic detection."""
 
         segm = detect_sources(self.data, threshold=0.9, npixels=2)
-        assert_array_equal(segm.data, self.ref2)
+        assert_array_equal(segm.data, self.refdata)
 
     def test_small_sources(self):
         """Test detection where sources are smaller than npixels size."""
 
-        segm = detect_sources(self.data, threshold=0.9, npixels=5)
-        assert_array_equal(segm.data, self.ref1)
+        with catch_warnings(AstropyUserWarning) as warning_lines:
+            detect_sources(self.data, threshold=0.9, npixels=5)
+
+            assert warning_lines[0].category == AstropyUserWarning
+            assert ('No sources were found.' in str(warning_lines[0].message))
 
     def test_npixels(self):
         """
@@ -74,20 +76,24 @@ class TestDetectSources:
             assert(segm.nlabels == 1)
             assert(segm.areas[0] == 13)
 
-        segm = detect_sources(data, 0, npixels=14)
-        assert(segm.nlabels == 0)
+        with catch_warnings(AstropyUserWarning) as warning_lines:
+            detect_sources(data, 0, npixels=14)
+            assert warning_lines[0].category == AstropyUserWarning
+            assert ('No sources were found.' in str(warning_lines[0].message))
 
     def test_zerothresh(self):
         """Test detection with zero threshold."""
 
         segm = detect_sources(self.data, threshold=0., npixels=2)
-        assert_array_equal(segm.data, self.ref2)
+        assert_array_equal(segm.data, self.refdata)
 
     def test_zerodet(self):
         """Test detection with large snr_threshold giving no detections."""
 
-        segm = detect_sources(self.data, threshold=7, npixels=2)
-        assert_array_equal(segm.data, self.ref1)
+        with catch_warnings(AstropyUserWarning) as warning_lines:
+            detect_sources(self.data, threshold=7, npixels=2)
+            assert warning_lines[0].category == AstropyUserWarning
+            assert ('No sources were found.' in str(warning_lines[0].message))
 
     def test_8connectivity(self):
         """Test detection with connectivity=8."""
