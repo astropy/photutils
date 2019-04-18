@@ -413,7 +413,16 @@ class EllipseGeometry:
         # vectorized version. This is necessary for
         # now so we don't pay a heavy speed penalty
         # that is incurred when using vectorized code.
+        #
+        # The split in two separate functions helps in
+        # the profiling analysis.
+
         if type(x) == type(1) or type(x) == type(1.0):
+            self._to_polar_scalar(x, y)
+        else:
+            self._to_polar_vectorized(x, y)
+
+    def _to_polar_scalar(self, x, y):
 
             x1 = x - self.x0
             y1 = y - self.y0
@@ -442,7 +451,7 @@ class EllipseGeometry:
 
             return radius, angle
 
-        else:
+    def _to_polar_vectorized(self, x, y):
 
             x1 = np.atleast_2d(x) - self.x0
             y1 = np.atleast_2d(y) - self.y0
