@@ -415,12 +415,13 @@ class EllipseGeometry:
         # that is incurred when using vectorized code.
         #
         # The split in two separate functions helps in
-        # the profiling analysis.
+        # the profiling analysis: most of the time is
+        # spent in the scalar function.
 
         if type(x) == type(1) or type(x) == type(1.0):
-            self._to_polar_scalar(x, y)
+            return self._to_polar_scalar(x, y)
         else:
-            self._to_polar_vectorized(x, y)
+            return self._to_polar_vectorized(x,y)
 
     def _to_polar_scalar(self, x, y):
 
