@@ -4,6 +4,11 @@
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.isophote``
+
+  - Significantly improved the performance (~5 times faster) of
+    ellipse fitting. [#826]
+
 - ``photutils.segmentation``
 
   - Significantly improved the performance of relabeling in
