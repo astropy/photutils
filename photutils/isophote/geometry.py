@@ -409,77 +409,77 @@ class EllipseGeometry:
         radius, angle : float
             The ellipse radius and polar angle.
         """
-        # We split in between a scalar version and a 
+        # We split in between a scalar version and a
         # vectorized version. This is necessary for
         # now so we don't pay a heavy speed penalty
         # that is incurred when using vectorized code.
-        #
+
         # The split in two separate functions helps in
         # the profiling analysis: most of the time is
         # spent in the scalar function.
 
-        if type(x) == type(1) or type(x) == type(1.0):
+        if isinstance(x, int) or isinstance(x, float):
             return self._to_polar_scalar(x, y)
         else:
-            return self._to_polar_vectorized(x,y)
+            return self._to_polar_vectorized(x, y)
 
     def _to_polar_scalar(self, x, y):
 
-            x1 = x - self.x0
-            y1 = y - self.y0
+        x1 = x - self.x0
+        y1 = y - self.y0
 
-            radius = x1**2 + y1**2
-            if radius > 0.0:
-                radius = math.sqrt(radius)
-                angle = math.asin(abs(y1) / radius)
-            else:
-                radius = 0.
-                angle = 1.
+        radius = x1**2 + y1**2
+        if radius > 0.0:
+            radius = math.sqrt(radius)
+            angle = math.asin(abs(y1) / radius)
+        else:
+            radius = 0.
+            angle = 1.
 
-            if x1 >= 0. and y1 < 0.:
-                angle = 2*np.pi - angle
-            elif x1 < 0. and y1 >= 0.:
-                angle = np.pi - angle
-            elif x1 < 0. and y1 < 0.:
-                angle = np.pi + angle
+        if x1 >= 0. and y1 < 0.:
+            angle = 2*np.pi - angle
+        elif x1 < 0. and y1 >= 0.:
+            angle = np.pi - angle
+        elif x1 < 0. and y1 < 0.:
+            angle = np.pi + angle
 
-            pa1 = self.pa
-            if self.pa < 0.:
-                pa1 = self.pa + 2*np.pi
-            angle = angle - pa1
-            if angle < 0.:
-                angle = angle + 2*np.pi
+        pa1 = self.pa
+        if self.pa < 0.:
+            pa1 = self.pa + 2*np.pi
+        angle = angle - pa1
+        if angle < 0.:
+            angle = angle + 2*np.pi
 
-            return radius, angle
+        return radius, angle
 
     def _to_polar_vectorized(self, x, y):
 
-            x1 = np.atleast_2d(x) - self.x0
-            y1 = np.atleast_2d(y) - self.y0
+        x1 = np.atleast_2d(x) - self.x0
+        y1 = np.atleast_2d(y) - self.y0
 
-            radius = x1**2 + y1**2
-            angle = np.ones(radius.shape)
+        radius = x1**2 + y1**2
+        angle = np.ones(radius.shape)
 
-            imask = (radius > 0.0)
-            radius[imask] = np.sqrt(radius[imask])
-            angle[imask] = np.arcsin(np.abs(y1[imask]) / radius[imask])
-            radius[~imask] = 0.
-            angle[~imask] = 1.
+        imask = (radius > 0.0)
+        radius[imask] = np.sqrt(radius[imask])
+        angle[imask] = np.arcsin(np.abs(y1[imask]) / radius[imask])
+        radius[~imask] = 0.
+        angle[~imask] = 1.
 
-            idx = (x1 >= 0.) & (y1 < 0)
-            angle[idx] = 2*np.pi - angle[idx]
-            idx = (x1 < 0.) & (y1 >= 0.)
-            angle[idx] = np.pi - angle[idx]
-            idx = (x1 < 0.) & (y1 < 0.)
-            angle[idx] = np.pi + angle[idx]
+        idx = (x1 >= 0.) & (y1 < 0)
+        angle[idx] = 2*np.pi - angle[idx]
+        idx = (x1 < 0.) & (y1 >= 0.)
+        angle[idx] = np.pi - angle[idx]
+        idx = (x1 < 0.) & (y1 < 0.)
+        angle[idx] = np.pi + angle[idx]
 
-            pa1 = self.pa
-            if self.pa < 0.:
-                pa1 = self.pa + 2*np.pi
-            angle = angle - pa1
-            angle[angle < 0] += 2*np.pi
+        pa1 = self.pa
+        if self.pa < 0.:
+            pa1 = self.pa + 2*np.pi
+        angle = angle - pa1
+        angle[angle < 0] += 2*np.pi
 
-            return radius, angle
+        return radius, angle
 
     def update_sma(self, step):
         """
