@@ -213,7 +213,7 @@ class _StarCutout:
 class _DAOFind_Properties:
     """
     Class to calculate the properties of each detected star, as defined
-    by `DAOFIND`_.
+    by `DAOFIND <http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind>`__.
 
     Parameters
     ----------
@@ -229,7 +229,6 @@ class _DAOFind_Properties:
         calculate the source peak value, flux, and magnitude.  The
         default is 0.
 
-    .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
     """
 
     def __init__(self, star_cutout, kernel, sky=0.):
@@ -618,8 +617,9 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
     exclude_border : bool, optional
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders.  The default is
-        `False`, which is the mode used by IRAF's `DAOFIND`_ and
-        `starfind`_ tasks.
+        `False`, which is the mode used by IRAF's
+        `DAOFIND <http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind>`__ and
+        `starfind <http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind>`__ tasks.
 
     Returns
     -------
@@ -627,8 +627,6 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
         A list of `_StarCutout` objects containing the image cutout for
         each source.
 
-    .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
-    .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
     """
 
     convolved_data = filter_data(data, kernel.data, mode='constant',
@@ -754,14 +752,15 @@ class DAOStarFinder(StarFinderBase):
     ``DAOStarFinder`` calculates the object roundness using two methods. The
     ``roundlo`` and ``roundhi`` bounds are applied to both measures of
     roundness.  The first method (``roundness1``; called ``SROUND`` in
-    `DAOFIND`_) is based on the source symmetry and is the ratio of a
-    measure of the object's bilateral (2-fold) to four-fold symmetry.
-    The second roundness statistic (``roundness2``; called ``GROUND`` in
-    `DAOFIND`_) measures the ratio of the difference in the height of
-    the best fitting Gaussian function in x minus the best fitting
-    Gaussian function in y, divided by the average of the best fitting
-    Gaussian functions in x and y.  A circular source will have a zero
-    roundness.  A source extended in x or y will have a negative or
+    `DAOFIND <http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind>`__) is based
+    on the source symmetry and is the ratio of a measure of the object's bilateral
+    (2-fold) to four-fold symmetry. The second roundness statistic (``roundness2``;
+    called ``GROUND`` in
+    `DAOFIND <http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind>`__) measures the
+    ratio of the difference in the height of the best fitting Gaussian
+    function in x minus the best fitting Gaussian function in y, divided by the average
+    of the best fitting Gaussian functions in x and y.  A circular source will have a
+    zero roundness.  A source extended in x or y will have a negative or
     positive roundness, respectively.
 
     The sharpness statistic measures the ratio of the difference between
@@ -810,12 +809,14 @@ class DAOStarFinder(StarFinderBase):
         The background sky level of the image.  Setting ``sky`` affects
         only the output values of the object ``peak``, ``flux``, and
         ``mag`` values.  The default is 0.0, which should be used to
-        replicate the results from `DAOFIND`_.
+        replicate the results from
+        `DAOFIND <http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind>`__.
 
     exclude_border : bool, optional
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders.  The default is
-        `False`, which is the mode used by `DAOFIND`_.
+        `False`, which is the mode used by
+        `DAOFIND <http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind>`__.
 
     brightest : int, None, optional
         Number of brightest objects to keep after sorting the full object list.
@@ -839,7 +840,8 @@ class DAOStarFinder(StarFinderBase):
     Notes
     -----
     For the convolution step, this routine sets pixels beyond the image
-    borders to 0.0.  The equivalent parameters in `DAOFIND`_ are
+    borders to 0.0.  The equivalent parameters in
+    `DAOFIND <http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind>`__ are
     ``boundary='constant'`` and ``constant=0.0``.
 
     The main differences between `~photutils.detection.DAOStarFinder`
@@ -858,7 +860,6 @@ class DAOStarFinder(StarFinderBase):
     .. [1] Stetson, P. 1987; PASP 99, 191 (http://adsabs.harvard.edu/abs/1987PASP...99..191S)
     .. [2] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
 
-    .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
     """
 
     def __init__(self, threshold, fwhm, ratio=1.0, theta=0.0,
@@ -922,14 +923,16 @@ class DAOStarFinder(StarFinderBase):
             * ``peak``: the peak, sky-subtracted, pixel value of the object.
             * ``flux``: the object flux calculated as the peak density in
               the convolved image divided by the detection threshold.  This
-              derivation matches that of `DAOFIND`_ if ``sky`` is 0.0.
+              derivation matches that of
+              `DAOFIND <http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind>`__
+              if ``sky`` is 0.0.
             * ``mag``: the object instrumental magnitude calculated as
               ``-2.5 * log10(flux)``.  The derivation matches that of
-              `DAOFIND`_ if ``sky`` is 0.0.
+              `DAOFIND <http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind>`__
+              if ``sky`` is 0.0.
 
             If no stars are found then an empty table is returned.
 
-        .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
         """
 
         star_cutouts = _find_stars(data, self.kernel, self.threshold_eff,
@@ -1036,12 +1039,15 @@ class IRAFStarFinder(StarFinderBase):
         will override the background sky estimate.  Setting ``sky``
         affects only the output values of the object ``peak``, ``flux``,
         and ``mag`` values.  The default is ``None``, which means the
-        sky value will be estimated using the `starfind`_ method.
+        sky value will be estimated using the
+        `starfind <http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind>`__
+        method.
 
     exclude_border : bool, optional
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders.  The default is
-        `False`, which is the mode used by `starfind`_.
+        `False`, which is the mode used by
+        `starfind <http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind>`__.
 
     brightest : int, None, optional
         Number of brightest objects to keep after sorting the full object list.
@@ -1061,12 +1067,13 @@ class IRAFStarFinder(StarFinderBase):
     Notes
     -----
     For the convolution step, this routine sets pixels beyond the image
-    borders to 0.0.  The equivalent parameters in IRAF's `starfind`_ are
+    borders to 0.0.  The equivalent parameters in IRAF's
+    `starfind <http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind>`__ are
     ``boundary='constant'`` and ``constant=0.0``.
 
-    IRAF's `starfind`_ uses ``hwhmpsf``, ``fradius``, and ``sepmin`` as
-    input parameters.  The equivalent input values for
-    `IRAFStarFinder` are:
+    IRAF's `starfind <http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind>`__
+    uses ``hwhmpsf``, ``fradius``, and ``sepmin`` as input parameters.  The
+    equivalent input values for `IRAFStarFinder` are:
 
     * ``fwhm = hwhmpsf * 2``
     * ``sigma_radius = fradius * sqrt(2.0*log(2.0))``
@@ -1091,7 +1098,6 @@ class IRAFStarFinder(StarFinderBase):
     ----------
     .. [1] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
 
-    .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
     """
 
     def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
@@ -1158,7 +1164,6 @@ class IRAFStarFinder(StarFinderBase):
 
             If no stars are found then an empty table is returned.
 
-        .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
         """
 
         star_cutouts = _find_stars(data, self.kernel, self.threshold,
