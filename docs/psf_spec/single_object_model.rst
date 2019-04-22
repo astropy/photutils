@@ -7,7 +7,7 @@ effects of the PSF, extending the ``psf_model`` block of the PSF
 fitting routine to include non-point sources. This method may be subject
 to API changes in future versions and should not be considered final.
 
-This block is an additional step between the PSF (or PRF) 
+This block is an additional step between the PSF (or PRF)
 `~astropy.modeling.Fittable2DModel` and the
 `~astropy.modeling.fitting.Fitter` instance, to allow for cases
 where the images being fit contain sources other than point sources. In
