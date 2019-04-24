@@ -15,9 +15,12 @@ environment:
 
 
   matrix:
-      - PYTHON_VERSION: "3.6"
+      - PYTHON_VERSION: "3.7"
         ASTROPY_VERSION: "stable"
         NUMPY_VERSION: "stable"
+
+matrix:
+    fast_finish: true
 
 platform:
     -x64
