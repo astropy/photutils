@@ -7,6 +7,7 @@ import numpy as np
 from astropy.table import Table
 from astropy.modeling import models
 from astropy.nddata.utils import add_array, extract_array
+from astropy.nddata import NDData
 
 
 __all__ = ['prepare_psf_model', 'get_grouped_psf_model', 'subtract_psf']
@@ -207,10 +208,13 @@ def subtract_psf(data, psf, posflux, subshape=None):
 
     Returns
     -------
-    subdata : same shape and type as ``data``
+    subbeddata : same shape and type as ``data``
         The image with the PSF subtracted
     """
 
+    # if data has been passed as an NDData object, extract the data portion
+    if isinstance(data, NDData):
+        data = data.data
     if data.ndim != 2:
         raise ValueError('{0}-d array not supported. Only 2-d arrays can be '
                          'passed to subtract_psf.'.format(data.ndim))
@@ -226,13 +230,15 @@ def subtract_psf(data, psf, posflux, subshape=None):
     else:
         posflux = Table(names=['x_fit', 'y_fit', 'flux_fit'], data=posflux)
 
-    # Set up contstants across the loop
+    # Set up constants across the loop
     psf = psf.copy()
     xname, yname, fluxname = _extract_psf_fitting_names(psf)
     indices = np.indices(data.shape)
     subbeddata = data.copy()
 
-    if subshape is None:
+    # data shape being exactly the same as subshape in both dimensions is equivalent to subtracting
+    # from the entire image, with no need to call extract_array and add_array
+    if subshape is None or all(data.shape[ind] == subshape[ind] for ind in [0, 1]):
         indicies_reversed = indices[::-1]
 
         for row in posflux:
