@@ -929,7 +929,6 @@ class DAOStarFinder(StarFinderBase):
 
             If no stars are found then an empty table is returned.
 
-        .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
         """
 
         star_cutouts = _find_stars(data, self.kernel, self.threshold_eff,
@@ -1158,7 +1157,6 @@ class IRAFStarFinder(StarFinderBase):
 
             If no stars are found then an empty table is returned.
 
-        .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
         """
 
         star_cutouts = _find_stars(data, self.kernel, self.threshold,
