@@ -188,12 +188,12 @@ class EPSFFitter:
             x0 = 0
             y0 = 0
 
-        scaled_data = data / epsf._oversampling**2
+        scaled_data = data / np.prod(epsf._oversampling)
 
         # define positions in the ePSF oversampled grid
         yy, xx = np.indices(data.shape, dtype=np.float)
-        xx = (xx - (star.cutout_center[0] - x0)) * epsf._oversampling
-        yy = (yy - (star.cutout_center[1] - y0)) * epsf._oversampling
+        xx = (xx - (star.cutout_center[0] - x0)) * epsf._oversampling[0]
+        yy = (yy - (star.cutout_center[1] - y0)) * epsf._oversampling[1]
 
         # define the initial guesses for fitted flux and shifts
         epsf.flux = star.flux
@@ -223,9 +223,9 @@ class EPSFFitter:
 
         # compute the star's fitted position
         x_center = (star.cutout_center[0] +
-                    (fitted_epsf.x_0.value / epsf._oversampling))
+                    (fitted_epsf.x_0.value / epsf._oversampling[0]))
         y_center = (star.cutout_center[1] +
-                    (fitted_epsf.y_0.value / epsf._oversampling))
+                    (fitted_epsf.y_0.value / epsf._oversampling[1]))
 
         star = copy.deepcopy(star)
         star.cutout_center = (x_center, y_center)
@@ -248,9 +248,13 @@ class EPSFBuilder:
 
     Parameters
     ----------
-    oversampling : float, optional
-        The oversampling factor of the ePSF relative to the input
-        ``stars`` along the x and y axes.
+    oversampling : float or tuple of two floats, optional
+        The oversampling factor(s) of the ePSF relative to the input
+        ``stars`` along the x and y axes. The ``oversampling`` can
+        either be a single float or a tuple of two floats of the form
+        ``(x_oversamp, y_oversamp)``.  If ``oversampling`` is a scalar
+        then the oversampling will be the same for both the x and y
+        axes.
 
     shape : float, tuple of two floats, or `None`, optional
         The shape of the output ePSF.  If the ``shape`` is not `None`,
@@ -316,6 +320,9 @@ class EPSFBuilder:
 
         if oversampling <= 0.0:
             raise ValueError('oversampling must be a positive number.')
+        oversampling = np.atleast_1d(oversampling).astype(float)
+        if len(oversampling) == 1:
+            oversampling = np.repeat(oversampling, 2)
         self.oversampling = oversampling
         self.shape = self._init_img_params(shape)
         if self.shape is not None:
@@ -399,19 +406,16 @@ class EPSFBuilder:
         oversampling = self.oversampling
         shape = self.shape
 
-        if oversampling is None:
-            raise ValueError('Oversampling must be input.')
-
         # define the ePSF shape
         if shape is not None:
             shape = np.atleast_1d(shape).astype(int)
             if len(shape) == 1:
                 shape = np.repeat(shape, 2)
         else:
-            x_shape = np.int(np.ceil(stars._max_shape[0] *
-                                     oversampling))
-            y_shape = np.int(np.ceil(stars._max_shape[1] *
-                                     oversampling))
+            x_shape = np.int(np.ceil(stars._max_shape[1] *
+                                     oversampling[0]))
+            y_shape = np.int(np.ceil(stars._max_shape[0] *
+                                     oversampling[1]))
             shape = np.array((y_shape, x_shape))
 
         # ensure odd sizes
@@ -454,8 +458,8 @@ class EPSFBuilder:
 
         # find the integer index of EPSFStar pixels in the oversampled
         # ePSF grid
-        x = epsf._oversampling * star._xidx_centered
-        y = epsf._oversampling * star._yidx_centered
+        x = epsf._oversampling[0] * star._xidx_centered
+        y = epsf._oversampling[1] * star._yidx_centered
         epsf_xcenter, epsf_ycenter = epsf.origin
         xidx = _py2intround(x + epsf_xcenter)
         yidx = _py2intround(y + epsf_ycenter)
@@ -471,7 +475,7 @@ class EPSFBuilder:
         # normalized residual image in the oversampled ePSF grid.
         # [(star - (epsf * xov * yov)) / (xov * yov)]
         # --> [(star / (xov * yov)) - epsf]
-        stardata = ((star._data_values_normalized / epsf._oversampling**2) -
+        stardata = ((star._data_values_normalized / np.prod(epsf._oversampling)) -
                     epsf.evaluate(x=x, y=y, flux=1.0, x_0=0.0, y_0=0.0,
                                   use_oversampling=False))
 

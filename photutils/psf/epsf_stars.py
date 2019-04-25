@@ -196,10 +196,10 @@ class EPSFStar:
         """
 
         yy, xx = np.indices(self.shape, dtype=np.float)
-        xx = epsf._oversampling * (xx - self.cutout_center[0])
-        yy = epsf._oversampling * (yy - self.cutout_center[1])
+        xx = epsf._oversampling[0] * (xx - self.cutout_center[0])
+        yy = epsf._oversampling[1] * (yy - self.cutout_center[1])
 
-        return (self.flux * epsf._oversampling**2 *
+        return (self.flux * np.prod(epsf._oversampling) *
                 epsf.evaluate(xx, yy, flux=1.0, x_0=0.0, y_0=0.0))
 
     def compute_residual_image(self, epsf):
