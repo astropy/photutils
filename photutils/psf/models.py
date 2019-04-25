@@ -106,6 +106,12 @@ class FittableImageModel(Fittable2DModel):
         `compute_interpolator` method. See `compute_interpolator` for more
         details.
 
+    oversampling : float or tuple of two floats, optional
+        The oversampling factor(s) of the model in the ``x`` and ``y`` directions.
+        If ``oversampling`` is a scalar it will be treated as being the same in both
+        x and y; otherwise a tuple of two floats will be treated as
+        ``(x_oversamp, y_oversamp)``.
+
     """
     flux = Parameter(description='Intensity scaling factor for image data.',
                      default=1.0)
@@ -228,15 +234,18 @@ class FittableImageModel(Fittable2DModel):
 
     def _set_oversampling(self, value):
         """
-        This is a private method because it's used in the initializer but the
+        This is a private method because it's used in the initializer by the
         ``oversampling``
         """
+
         try:
-            value = float(value)
+            value = np.atleast_1d(value).astype(float)
+            if len(value) == 1:
+                value = np.repeat(value, 2)
         except ValueError:
-            raise ValueError('Oversampling factor must be a scalar')
-        if value <= 0:
-            raise ValueError('Oversampling factor must be greater than 0')
+            raise ValueError('Oversampling factors must be float')
+        if np.any(value <= 0):
+            raise ValueError('Oversampling factors must be greater than 0')
 
         self._oversampling = value
 
@@ -456,8 +465,8 @@ class FittableImageModel(Fittable2DModel):
         """
 
         if use_oversampling:
-            xi = self._oversampling * (np.asarray(x) - x_0)
-            yi = self._oversampling * (np.asarray(y) - y_0)
+            xi = self._oversampling[0] * (np.asarray(x) - x_0)
+            yi = self._oversampling[1] * (np.asarray(y) - y_0)
         else:
             xi = np.asarray(x) - x_0
             yi = np.asarray(y) - y_0
