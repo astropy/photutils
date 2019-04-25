@@ -10,7 +10,7 @@ import pytest
 from ..core import (centroid_com, centroid_1dg, centroid_2dg,
                     gaussian1d_moments, fit_2dgaussian,
                     centroid_epsf)
-
+from ...psf import IntegratedGaussianPRF
 
 try:
     # the fitting routines in astropy use scipy.optimize
@@ -81,11 +81,14 @@ def test_centroids_oversampling(xc_ref, yc_ref, x_stddev, y_stddev, theta):
     mask = np.zeros_like(data, dtype=bool)
     data[10, 10] = 1.e5
     mask[10, 10] = True
-    oversampling = 4
-
-    xc, yc = centroid_com(data, mask=mask, oversampling=oversampling)
-    assert_allclose([xc, yc], [xc_ref / oversampling, yc_ref / oversampling],
-                    rtol=0, atol=1.e-3)
+    for oversampling in [4, (4, 6)]:
+        if not hasattr(oversampling, '__len__'):
+            _oversampling = (oversampling, oversampling)
+        else:
+            _oversampling = oversampling
+        xc, yc = centroid_com(data, mask=mask, oversampling=oversampling)
+        assert_allclose([xc, yc], [xc_ref / _oversampling[0], yc_ref / _oversampling[1]],
+                        rtol=0, atol=1.e-3)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -222,7 +225,32 @@ def test_fit2dgaussian_dof():
         fit_2dgaussian(data)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_centroid_epsf():
+    sigma = 0.5
+    psf = IntegratedGaussianPRF(sigma=sigma)
+    for oversampling in [4, (4, 6)]:
+        if not hasattr(oversampling, '__len__'):
+            _oversampling = (oversampling, oversampling)
+        else:
+            _oversampling = oversampling
+        x = np.arange(1 + 25 * _oversampling[0]) / _oversampling[0]
+        x0 = x[-1] / 2
+        x -= x0
+        y = np.arange(1 + 25 * _oversampling[1]) / _oversampling[1]
+        y0 = y[-1] / 2
+        y -= y0
+        offsets = np.array([0.1, 0.03])
+        data = psf.evaluate(x=x.reshape(1, -1), y=y.reshape(-1, 1), flux=1, x_0=offsets[0],
+                            y_0=offsets[1], sigma=sigma)
+
+        mask = np.zeros(data.shape, np.bool)
+        mask[0, 0] = 1
+        centers = centroid_epsf(data, mask=mask, oversampling=oversampling)
+        assert_allclose(centers, offsets+x0, rtol=1e-3, atol=1e-2)
+
+
+def test_centroid_exceptions():
     data = np.ones((5, 5), dtype=float)
     mask = np.zeros((4, 5), dtype=int)
     mask[2, 2] = 1
@@ -235,7 +263,9 @@ def test_centroid_epsf():
         centroid_epsf(data, shift_val=-1)
 
     with pytest.raises(ValueError):
-        centroid_epsf(data, oversampling=None)
+        centroid_epsf(data, oversampling=-1)
+    with pytest.raises(ValueError):
+        centroid_com(data, oversampling=-1)
 
     data = np.ones((21, 21), dtype=float)
     data[10, 10] = np.inf
