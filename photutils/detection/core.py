@@ -4,12 +4,12 @@
 import warnings
 
 import numpy as np
-from astropy.coordinates import SkyCoord
 from astropy.stats import sigma_clipped_stats
 from astropy.table import Table
-from astropy.utils.exceptions import AstropyUserWarning
 from astropy.version import version as astropy_version
 from astropy.wcs.utils import pixel_to_skycoord
+
+from ..utils.exceptions import NoDetectionsWarning
 
 
 __all__ = ['detect_threshold', 'find_peaks']
@@ -209,51 +209,24 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
 
     Returns
     -------
-    output : `~astropy.table.Table`
+    output : `~astropy.table.Table` or `None`
         A table containing the x and y pixel location of the peaks and
         their values.  If ``centroid_func`` is input, then the table
         will also contain the centroid position.  If no peaks are found
-        then an empty table is returned.
+        then `None` is returned.
     """
 
     from scipy.ndimage import maximum_filter
 
     data = np.asanyarray(data)
 
-    # Define an empty table with the expected column names and types.
-    # This is done only so that we can return an empty table if no peaks
-    # are found.
-    columns = ['x_peak', 'y_peak', 'peak_value']
-    coltypes = [np.float_, np.float_, np.float_]
-
-    if centroid_func is not None or subpixel:
-        columns.extend(['x_centroid', 'y_centroid'])
-        coltypes.extend([np.float_, np.float_])
-
-    if subpixel:
-        columns.append('fit_peak_value')
-        coltypes.append(np.float_)
-
-    empty_table = Table(names=columns, dtype=coltypes)
-
-    # now add SkyCoord mixin columns
-    if wcs is not None:
-        empty_table.add_column(SkyCoord([], [], unit='deg'),
-                               name='skycoord_peak', index=2)
-
-        if (centroid_func is not None or subpixel):
-            idx = empty_table.colnames.index('y_centroid')
-            empty_table.add_column(SkyCoord([], [], unit='deg'),
-                                   name='skycoord_centroid', index=idx+1)
-
     if np.all(data == data.flat[0]):
         warnings.warn('Input data is constant. No local peaks can be found.',
-                      AstropyUserWarning)
-        return empty_table
+                      NoDetectionsWarning)
+        return None
 
     if not np.isscalar(threshold):
         threshold = np.asanyarray(threshold)
-
         if data.shape != threshold.shape:
             raise ValueError('A threshold array must have the same shape as '
                              'the input data.')
@@ -298,8 +271,8 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         peak_values = peak_values[idx]
 
     if nxpeaks == 0:
-        warnings.warn('No local peaks were found.', AstropyUserWarning)
-        return empty_table
+        warnings.warn('No local peaks were found.', NoDetectionsWarning)
+        return None
 
     # construct the output Table
     colnames = ['x_peak', 'y_peak', 'peak_value']
@@ -315,7 +288,7 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         from ..centroids import centroid_sources  # prevents circular import
 
         if not callable(centroid_func):
-            raise ValueError('centroid_func must be a callable object')
+            raise TypeError('centroid_func must be a callable object')
 
         x_centroids, y_centroids = centroid_sources(
             data, x_peaks, y_peaks, box_size=box_size,

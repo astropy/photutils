@@ -659,9 +659,13 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
                                 constant_values=[0.])
 
     # find local peaks in the convolved data
-    tbl = find_peaks(convolved_data, threshold_eff, footprint=footprint,
-                     mask=mask)
-    if len(tbl) == 0:
+    with warnings.catch_warnings():
+        # suppress any NoDetectionsWarning from find_peaks
+        warnings.filterwarnings('ignore', category=NoDetectionsWarning)
+        tbl = find_peaks(convolved_data, threshold_eff, footprint=footprint,
+                         mask=mask)
+
+    if tbl is None:
         return None
 
     coords = np.transpose([tbl['y_peak'], tbl['x_peak']])

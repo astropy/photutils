@@ -5,9 +5,12 @@ from numpy.testing import assert_array_equal, assert_allclose
 import pytest
 import warnings
 
+from astropy.tests.helper import catch_warnings
+
 from ..core import detect_threshold, find_peaks
 from ...centroids import centroid_com
 from ...datasets import make_4gaussians_image, make_wcs
+from ...utils.exceptions import NoDetectionsWarning
 
 try:
     import scipy    # noqa
@@ -164,9 +167,13 @@ class TestFindPeaks:
 
     def test_border_width(self):
         """Test border exclusion."""
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
+            tbl = find_peaks(PEAKDATA, 0.1, box_size=3, border_width=3)
+            assert tbl is None
 
-        tbl = find_peaks(PEAKDATA, 0.1, box_size=3, border_width=3)
-        assert len(tbl) == 0
+            assert warning_lines[0].category == NoDetectionsWarning
+            assert ('No local peaks were found.' in
+                    str(warning_lines[0].message))
 
     def test_box_size_int(self):
         """Test non-integer box_size."""
@@ -178,7 +185,7 @@ class TestFindPeaks:
     def test_centroid_func_callable(self):
         """Test that centroid_func is callable."""
 
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             find_peaks(PEAKDATA, 0.1, box_size=2, centroid_func=True)
 
     def test_wcs(self):
@@ -196,9 +203,13 @@ class TestFindPeaks:
         """Test for empty output table when data is constant."""
 
         data = np.ones((10, 10))
-        tbl = find_peaks(data, 0.)
-        assert len(tbl) == 0
-        assert set(tbl.colnames) == {'x_peak', 'y_peak', 'peak_value'}
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
+            tbl = find_peaks(data, 0.)
+            assert tbl is None
+
+            assert warning_lines[0].category == NoDetectionsWarning
+            assert ('Input data is constant.' in
+                    str(warning_lines[0].message))
 
     def test_no_peaks(self):
         """
@@ -209,23 +220,17 @@ class TestFindPeaks:
         data = make_4gaussians_image()
         wcs = make_wcs(data.shape)
 
-        tbl1 = find_peaks(data, 100)
-        tbl2 = find_peaks(data, 10000)
-        assert set(tbl1.colnames) == set(tbl2.colnames)
+        tbl = find_peaks(data, 10000)
+        assert tbl is None
 
-        tbl1 = find_peaks(data, 100, centroid_func=centroid_com)
-        tbl2 = find_peaks(data, 100000, centroid_func=centroid_com)
-        assert set(tbl1.colnames) == set(tbl2.colnames)
+        tbl = find_peaks(data, 100000, centroid_func=centroid_com)
+        assert tbl is None
 
-        assert set(tbl1.colnames) == set(tbl2.colnames)
+        tbl = find_peaks(data, 100000, wcs=wcs)
+        assert tbl is None
 
-        tbl1 = find_peaks(data, 100, wcs=wcs)
-        tbl2 = find_peaks(data, 100000, wcs=wcs)
-        assert set(tbl1.colnames) == set(tbl2.colnames)
-
-        tbl1 = find_peaks(data, 100, wcs=wcs, centroid_func=centroid_com)
-        tbl2 = find_peaks(data, 100000, wcs=wcs, centroid_func=centroid_com)
-        assert set(tbl1.colnames) == set(tbl2.colnames)
+        tbl = find_peaks(data, 100000, wcs=wcs, centroid_func=centroid_com)
+        assert tbl is None
 
     def test_data_nans(self):
         """Test that data with NaNs does not issue Runtime warning."""
