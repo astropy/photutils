@@ -14,12 +14,12 @@ import warnings
 import numpy as np
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.table import Table
-from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils import lazyproperty
 
 from .core import find_peaks
 from ..utils._moments import _moments, _moments_central
 from ..utils.convolution import filter_data
+from ..utils.exceptions import NoDetectionsWarning
 from ..utils.misc import _ABCMetaAndInheritDocstrings
 
 
@@ -943,7 +943,7 @@ class DAOStarFinder(StarFinderBase):
                     np.float_)
 
         if len(star_cutouts) == 0:
-            warnings.warn('No sources were found.', AstropyUserWarning)
+            warnings.warn('No sources were found.', NoDetectionsWarning)
             return Table(names=columns, dtype=coltypes)
 
         star_props = []
@@ -973,7 +973,7 @@ class DAOStarFinder(StarFinderBase):
         nstars = len(star_props)
         if nstars == 0:
             warnings.warn('Sources were found, but none pass the sharpness '
-                          'and roundness criteria.', AstropyUserWarning)
+                          'and roundness criteria.', NoDetectionsWarning)
             return Table(names=columns, dtype=coltypes)
 
         if self.brightest is not None:
@@ -1172,7 +1172,7 @@ class IRAFStarFinder(StarFinderBase):
                     np.float_, np.float_)
 
         if len(star_cutouts) == 0:
-            warnings.warn('No sources were found.', AstropyUserWarning)
+            warnings.warn('No sources were found.', NoDetectionsWarning)
             return Table(names=columns, dtype=coltypes)
 
         star_props = []
@@ -1200,7 +1200,7 @@ class IRAFStarFinder(StarFinderBase):
         nstars = len(star_props)
         if nstars == 0:
             warnings.warn('Sources were found, but none pass the sharpness '
-                          'and roundness criteria.', AstropyUserWarning)
+                          'and roundness criteria.', NoDetectionsWarning)
             return Table(names=columns, dtype=coltypes)
 
         if self.brightest is not None:
