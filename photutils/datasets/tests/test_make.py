@@ -11,8 +11,10 @@ from astropy.version import version as astropy_version
 from .. import (make_noise_image, apply_poisson_noise,
                 make_gaussian_sources_image, make_random_gaussians_table,
                 make_4gaussians_image, make_100gaussians_image,
+                make_4gaussians_cube, make_100gaussians_cube,
                 make_random_models_table, make_model_sources_image,
-                make_wcs, make_gaussian_prf_sources_image)
+                make_imagehdu, make_cubehdu, make_wcs,
+                make_gaussian_prf_sources_image)
 
 try:
     import scipy    # noqa
@@ -49,6 +51,13 @@ def test_make_noise_image_poisson():
     assert image.shape == shape
     assert_allclose(image.mean(), 1., atol=1.)
 
+
+def test_make_noise_image_unktype():
+    """Test if ValueError raises if type is not valid."""
+
+    with pytest.raises(ValueError):
+        shape = (100, 100)
+        make_noise_image(shape, 'invalid_type', mean=0., stddev=1.)
 
 def test_make_noise_image_nomean():
     """Test if ValueError raises if mean is not input."""
@@ -156,6 +165,22 @@ def test_make_100gaussians_image():
     assert_allclose(image.sum(), data_sum, rtol=1.e-6)
 
 
+def test_make_4gaussians_cube():
+    shape = (1000, 100, 200)
+    data_sum = 176219180.59091496
+    cube = make_4gaussians_cube()
+    assert cube.shape == shape
+    assert_allclose(cube.sum(), data_sum, rtol=1.e-6)
+
+
+def test_make_100gaussians_cube():
+    shape = (1000, 300, 500)
+    data_sum = 826182245.01251709
+    cube = make_100gaussians_cube()
+    assert cube.shape == shape
+    assert_allclose(cube.sum(), data_sum, rtol=1.e-6)
+
+
 def test_make_random_models_table():
     model = Moffat2D(amplitude=1)
     param_ranges = {'x_0': (0, 300), 'y_0': (0, 500),
@@ -169,7 +194,9 @@ def test_make_random_models_table():
 
 
 def test_make_wcs():
+
     shape = (100, 200)
+
     wcs = make_wcs(shape)
 
     if astropy_version < '3.1':
@@ -183,3 +210,47 @@ def test_make_wcs():
     wcs = make_wcs(shape, galactic=True)
     assert wcs.wcs.ctype[0] == 'GLON-CAR'
     assert wcs.wcs.ctype[1] == 'GLAT-CAR'
+
+
+def test_make_wcs_3D():
+
+    shape = (1000, 100, 200)
+
+    wcs = make_wcs(shape)
+
+    if astropy_version < '3.1':
+        assert wcs._naxis1 == shape[2]
+        assert wcs._naxis2 == shape[1]
+    else:
+        assert wcs.pixel_shape == shape[1:][::-1]
+
+    assert wcs.wcs.radesys == 'ICRS'
+
+    wcs = make_wcs(shape, galactic=True)
+    assert wcs.wcs.ctype[0] == 'GLON-CAR'
+    assert wcs.wcs.ctype[1] == 'GLAT-CAR'
+
+
+def test_make_wcs_shape():
+    """Test if ValueError raises if shape is not 2D or 3D."""
+
+    with pytest.raises(ValueError):
+        shape = (100, 200, 1, 1)
+        wcs = make_wcs(shape)
+
+
+def test_make_imagehdu_wrongshape():
+    """Test if ValueError raises if shape is not 3D."""
+
+    with pytest.raises(ValueError):
+        data = np.empty(10)
+        image = make_imagehdu(data)
+
+
+def test_make_cubehdu_wrongshape():
+    """Test if ValueError raises if shape is not 3D."""
+
+    with pytest.raises(ValueError):
+        shape = (5, 2)
+        data = np.empty(10).reshape(*shape)
+        cube = make_cubehdu(data)

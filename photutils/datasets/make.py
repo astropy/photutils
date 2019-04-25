@@ -20,7 +20,11 @@ __all__ = ['apply_poisson_noise', 'make_noise_image',
            'make_random_models_table', 'make_random_gaussians_table',
            'make_model_sources_image', 'make_gaussian_sources_image',
            'make_4gaussians_image', 'make_100gaussians_image',
-           'make_wcs', 'make_imagehdu', 'make_gaussian_prf_sources_image']
+           'make_4gaussians_cube', 'make_100gaussians_cube',
+           'make_wcs', 'make_imagehdu', 'make_cubehdu',
+           'make_gaussian_prf_sources_image'
+          ]
+
 
 
 def apply_poisson_noise(data, random_state=None):
@@ -151,7 +155,7 @@ def make_noise_image(shape, type='gaussian', mean=None, stddev=None,
         image = prng.poisson(lam=mean, size=shape)
     else:
         raise ValueError('Invalid type: {0}. Use one of '
-                         '{"gaussian", "poisson"}.'.format(type))
+                         '{{"gaussian", "poisson"}}.'.format(type))
 
     return image
 
@@ -555,6 +559,7 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
                                     oversample=oversample)
 
 
+
 def make_gaussian_prf_sources_image(shape, source_table):
     """
     Make an image containing 2D Gaussian sources.
@@ -633,6 +638,7 @@ def make_gaussian_prf_sources_image(shape, source_table):
 
     return make_model_sources_image(shape, model, source_table,
                                     oversample=1)
+
 
 
 def make_4gaussians_image(noise=True):
@@ -749,7 +755,169 @@ def make_100gaussians_image(noise=True):
     return data
 
 
+
+def make_4gaussians_cube(noise=True):
+    """
+    Make an example datacube containing four 2D Gaussians plus a constant
+    background.
+
+    The background has a mean of 5.
+
+    If ``noise`` is `True`, then Gaussian noise with a mean of 0 and a
+    standard deviation of 5 is added to the output image.
+
+    Parameters
+    ----------
+    noise : bool, optional
+        Whether to include noise in the output image (default is
+        `True`).
+
+    Returns
+    -------
+    datacube : 3D `~numpy.ndarray`
+        Image containing four 2D Gaussian sources.
+
+    See Also
+    --------
+    make_100gaussians_cube
+
+    Examples
+    --------
+    .. plot::
+        :include-source:
+
+        from photutils import datasets
+        image = datasets.make_4gaussians_image()
+        plt.imshow(image, origin='lower', interpolation='nearest')
+    """
+
+    table = Table()
+    table['amplitude'] = [50, 70, 150, 210]
+    table['x_mean'] = [160, 25, 150, 90]
+    table['y_mean'] = [70, 40, 25, 60]
+    table['x_stddev'] = [15.2, 5.1, 3., 8.1]
+    table['y_stddev'] = [2.6, 2.5, 3., 4.7]
+    table['theta'] = np.array([145., 20., 0., 60.]) * np.pi / 180.
+
+    shape = (1000, 100, 200)
+    data = np.empty(shape)
+    data[:, :, :] = make_gaussian_sources_image(shape[-2:], table)[None, :, :] + 5.
+
+    if noise:
+        data += make_noise_image(shape[-2:], type='gaussian', mean=0.,
+                                 stddev=5., random_state=12345)[None, :, :]
+
+    return data
+
+
+def make_100gaussians_cube(noise=True):
+    """
+    Make an example datacube containing 100 2D Gaussians plus a constant
+    background.
+
+    The background has a mean of 5.
+
+    If ``noise`` is `True`, then Gaussian noise with a mean of 0 and a
+    standard deviation of 2 is added to the output image.
+
+    Parameters
+    ----------
+    noise : bool, optional
+        Whether to include noise in the output image (default is
+        `True`).
+
+    Returns
+    -------
+    datacube : 3D `~numpy.ndarray`
+        Datacube containing 100 2D Gaussian sources.
+
+    See Also
+    --------
+    make_4gaussians_cube
+
+    Examples
+    --------
+    .. plot::
+        :include-source:
+
+        from photutils import datasets
+        image = datasets.make_100gaussians_image()
+        plt.imshow(image, origin='lower', interpolation='nearest')
+    """
+
+    n_sources = 100
+    flux_range = [500, 1000]
+    xmean_range = [0, 500]
+    ymean_range = [0, 300]
+    xstddev_range = [1, 5]
+    ystddev_range = [1, 5]
+    params = OrderedDict([('flux', flux_range),
+                          ('x_mean', xmean_range),
+                          ('y_mean', ymean_range),
+                          ('x_stddev', xstddev_range),
+                          ('y_stddev', ystddev_range),
+                          ('theta', [0, 2*np.pi])])
+
+    sources = make_random_gaussians_table(n_sources, params,
+                                          random_state=12345)
+
+    shape = (1000, 300, 500)
+    data = np.empty(shape)
+    data[:, :, :] = make_gaussian_sources_image(
+        shape[-2:], sources)[None, :, :] + 5.
+
+    if noise:
+        data += make_noise_image(shape[-2:], type='gaussian', mean=0.,
+                                 stddev=2., random_state=12345)[None, :, :]
+
+    return data
+
+
 def make_wcs(shape, galactic=False):
+    """
+    Create a simple celestial WCS object in either the ICRS or Galactic
+    coordinate frame. A wrapper to both `_make_wcs_2D` and `_make_wcs_3D`.
+
+    Parameters
+    ----------
+    shape : 2-tuple of int
+        The shape of the 2D array to be used with the output
+        `~astropy.wcs.WCS` object.
+
+    galactic : bool, optional
+        If `True`, then the output WCS will be in the Galactic
+        coordinate frame.  If `False` (default), then the output WCS
+        will be in the ICRS coordinate frame.
+
+    Returns
+    -------
+    wcs : `~astropy.wcs.WCS` object
+        The world coordinate system (WCS) transformation.
+
+    See Also
+    --------
+    make_imagehdu, make_cubehdu
+
+    Examples
+    --------
+    >>> from photutils.datasets import make_wcs
+    >>> shape = (100, 100)
+    >>> wcs = make_wcs(shape)
+    >>> print(wcs.wcs.crpix)  # doctest: +FLOAT_CMP
+    [50. 50.]
+    >>> print(wcs.wcs.crval)  # doctest: +FLOAT_CMP
+    [197.8925      -1.36555556]
+    """
+
+    if len(shape) == 2:
+        return _make_wcs_2D(shape, galactic=galactic)
+    elif len(shape) == 3:
+        return _make_wcs_3D(shape, galactic=galactic)
+    else:
+        raise ValueError('`shape` must correspond to a 2D or 3D array')
+
+
+def _make_wcs_2D(shape, galactic=False):
     """
     Create a simple celestial WCS object in either the ICRS or Galactic
     coordinate frame.
@@ -809,6 +977,64 @@ def make_wcs(shape, galactic=False):
     return wcs
 
 
+def _make_wcs_3D(shape, galactic=False):
+    """
+    Create a simple celestial WCS object in either the ICRS or Galactic
+    coordinate frame.
+
+    Parameters
+    ----------
+    shape : 3-tuple of int
+        The shape of the 3D array to be used with the output
+        `~astropy.wcs.WCS` object.
+
+    galactic : bool, optional
+        If `True`, then the output WCS will be in the Galactic
+        coordinate frame.  If `False` (default), then the output WCS
+        will be in the ICRS coordinate frame.
+
+    Returns
+    -------
+    wcs : `~astropy.wcs.WCS` object
+        The world coordinate system (WCS) transformation.
+
+    See Also
+    --------
+    make_imagehdu
+
+    Examples
+    --------
+    >>> from photutils.datasets import make_wcs
+    >>> shape = (1000, 100, 100)
+    >>> wcs = make_wcs(shape)
+    >>> print(wcs.wcs.crpix)  # doctest: +FLOAT_CMP
+    [50. 50. 500.]
+    >>> print(wcs.wcs.crval)  # doctest: +FLOAT_CMP
+    [197.8925  -1.36555556  4861.]
+    """
+
+    wcs = WCS(naxis=3)
+    rho = np.pi / 3.
+    scale = 0.1 / 3600.
+    delta_wave = 0.5
+    wcs._naxis1 = shape[2]     # nx
+    wcs._naxis2 = shape[1]     # ny
+    wcs._naxis3 = shape[0]     # nz
+    wcs.wcs.crpix = [shape[2] / 2, shape[1] / 2, shape[0] / 2]     # 1-indexed (x, y, z)
+    wcs.wcs.crval = [197.8925, -1.36555556, 4861.]
+    wcs.wcs.cunit = ['deg', 'deg', 'nm']
+    wcs.wcs.cd = [[-scale * np.cos(rho), scale * np.sin(rho),         0.],
+                  [ scale * np.sin(rho), scale * np.cos(rho),         0.],
+                  [                  0.,                  0., delta_wave]]
+    if not galactic:
+        wcs.wcs.radesys = 'ICRS'
+        wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN', 'WAVE']
+    else:
+        wcs.wcs.ctype = ['GLON-CAR', 'GLAT-CAR', 'WAVE']
+
+    return wcs
+
+
 def make_imagehdu(data, wcs=None):
     """
     Create a FITS `~astropy.io.fits.ImageHDU` containing the input 2D
@@ -846,6 +1072,53 @@ def make_imagehdu(data, wcs=None):
     data = np.asanyarray(data)
     if data.ndim != 2:
         raise ValueError('data must be a 2D array')
+
+    if wcs is not None:
+        header = wcs.to_header()
+    else:
+        header = None
+
+    return fits.ImageHDU(data, header=header)
+
+
+
+def make_cubehdu(data, wcs=None):
+    """
+    Create a FITS `~astropy.io.fits.ImageHDU` containing the input 3D
+    datacube.
+
+    Parameters
+    ----------
+    data : 3D array-like
+        The input 3D data.
+
+    wcs : `~astropy.wcs.WCS`, optional
+        The world coordinate system (WCS) transformation to include in
+        the output FITS header.
+
+    Returns
+    -------
+    image_hdu : `~astropy.io.fits.ImageHDU`
+        The FITS `~astropy.io.fits.ImageHDU`.
+
+    See Also
+    --------
+    make_wcs
+
+    Examples
+    --------
+    >>> from photutils.datasets import make_cubehdu, make_wcs
+    >>> shape = (1000, 100, 100)
+    >>> data = np.ones(shape)
+    >>> wcs = make_wcs(shape)
+    >>> hdu = make_cubehdu(data, wcs=wcs)
+    >>> print(hdu.data.shape)
+    (1000, 100, 100)
+    """
+
+    data = np.asanyarray(data)
+    if data.ndim != 3:
+        raise ValueError('data must be a 3D array')
 
     if wcs is not None:
         header = wcs.to_header()

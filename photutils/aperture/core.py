@@ -384,21 +384,22 @@ class PixelAperture(Aperture):
 
         aperture_sums = []
         aperture_sum_errs = []
+        output_shape = (1,) if data.ndim==2 else data.shape[0]
         for mask in self.to_mask(method=method, subpixels=subpixels):
             data_cutout = mask.cutout(data)
 
             if data_cutout is None:
-                aperture_sums.append(np.nan)
+                aperture_sums.append(np.repeat(np.nan, output_shape))
             else:
-                aperture_sums.append(np.sum(data_cutout * mask.data))
+                aperture_sums.append(np.sum(data_cutout * mask.data, axis=(-2,-1)))
 
             if error is not None:
                 error_cutout = mask.cutout(error)
 
                 if error_cutout is None:
-                    aperture_sum_errs.append(np.nan)
+                    aperture_sum_errs.append(np.repeat(np.nan, output_shape))
                 else:
-                    aperture_var = np.sum(error_cutout ** 2 * mask.data)
+                    aperture_var = np.sum(error_cutout ** 2 * mask.data, axis=(-2,-1))
                     aperture_sum_errs.append(np.sqrt(aperture_var))
 
         # handle Quantity objects and input units
@@ -714,8 +715,8 @@ def _prepare_photometry_input(data, error, mask, wcs, unit):
             pass
 
     data = np.asanyarray(data)
-    if data.ndim != 2:
-        raise ValueError('data must be a 2D array.')
+    if (data.ndim != 2) and (data.ndim !=3):
+        raise ValueError('data must be a 2D or 3D array.')
 
     if unit is not None:
         unit = u.Unit(unit, parse_strict='warn')
