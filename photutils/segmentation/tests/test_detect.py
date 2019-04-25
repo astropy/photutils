@@ -11,6 +11,7 @@ from astropy.stats import gaussian_fwhm_to_sigma
 
 from ..detect import detect_sources, make_source_mask
 from ...datasets import make_4gaussians_image
+from ...utils.exceptions import NoDetectionsWarning
 
 try:
     import scipy    # noqa
@@ -40,10 +41,9 @@ class TestDetectSources:
     def test_small_sources(self):
         """Test detection where sources are smaller than npixels size."""
 
-        with catch_warnings(AstropyUserWarning) as warning_lines:
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
             detect_sources(self.data, threshold=0.9, npixels=5)
-
-            assert warning_lines[0].category == AstropyUserWarning
+            assert warning_lines[0].category == NoDetectionsWarning
             assert ('No sources were found.' in str(warning_lines[0].message))
 
     def test_npixels(self):
@@ -76,9 +76,9 @@ class TestDetectSources:
             assert(segm.nlabels == 1)
             assert(segm.areas[0] == 13)
 
-        with catch_warnings(AstropyUserWarning) as warning_lines:
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
             detect_sources(data, 0, npixels=14)
-            assert warning_lines[0].category == AstropyUserWarning
+            assert warning_lines[0].category == NoDetectionsWarning
             assert ('No sources were found.' in str(warning_lines[0].message))
 
     def test_zerothresh(self):
@@ -90,9 +90,9 @@ class TestDetectSources:
     def test_zerodet(self):
         """Test detection with large snr_threshold giving no detections."""
 
-        with catch_warnings(AstropyUserWarning) as warning_lines:
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
             detect_sources(self.data, threshold=7, npixels=2)
-            assert warning_lines[0].category == AstropyUserWarning
+            assert warning_lines[0].category == NoDetectionsWarning
             assert ('No sources were found.' in str(warning_lines[0].message))
 
     def test_8connectivity(self):

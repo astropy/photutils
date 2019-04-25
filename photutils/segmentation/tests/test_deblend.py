@@ -11,6 +11,7 @@ from astropy.modeling import models
 from ..core import SegmentationImage
 from ..deblend import deblend_sources
 from ..detect import detect_sources
+from ...utils.exceptions import NoDetectionsWarning
 
 try:
     import scipy    # noqa
@@ -193,8 +194,8 @@ class TestDeblendSources:
         Test for case where no sources are detected at one of the
         threshold levels.
 
-        For this case, no warnings should be raised when deblending
-        sources.
+        For this case, a `NoDetectionsWarning` should not be raised when
+        deblending sources.
         """
 
         data = np.copy(self.data3)
@@ -202,6 +203,6 @@ class TestDeblendSources:
         data[50, 70] = 500.
         self.segm = detect_sources(data, self.threshold, self.npixels)
 
-        with catch_warnings(AstropyUserWarning) as warning_lines:
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
             deblend_sources(data, self.segm, self.npixels)
             assert len(warning_lines) == 0

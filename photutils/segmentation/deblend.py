@@ -9,6 +9,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from .core import SegmentationImage
 from .detect import detect_sources
 from ..utils.convolution import filter_data
+from ..utils.exceptions import NoDetectionsWarning
 
 
 __all__ = ['deblend_sources']
@@ -245,28 +246,25 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
         raise ValueError('"{0}" is an invalid mode; mode must be '
                          '"exponential" or "linear"')
 
+    # suppress NoDetectionsWarning during deblending
+    warnings.filterwarnings('ignore', category=NoDetectionsWarning)
+
     # create top-down tree of local peaks
     segm_tree = []
     mask = ~segm_mask
     for level in thresholds[::-1]:
-        # suppress warnings for no detections during deblending
-        with warnings.catch_warnings():
-            message = 'No sources were found'
-            warnings.filterwarnings('ignore', message=message,
-                                    category=AstropyUserWarning)
-            segm_tmp = detect_sources(data, level, npixels=npixels,
-                                      connectivity=connectivity, mask=mask)
+        segm_tmp = detect_sources(data, level, npixels=npixels,
+                                  connectivity=connectivity, mask=mask)
 
-        if segm_tmp is None:  # no sources found at this threshold level
+        if segm_tmp is None or segm_tmp.nlabels < 2:
             continue
 
-        if segm_tmp.nlabels >= 2:
-            fluxes = []
-            for i in segm_tmp.labels:
-                fluxes.append(np.nansum(data[segm_tmp == i]))
-            idx = np.where((np.array(fluxes) / source_sum) >= contrast)[0]
-            if len(idx >= 2):
-                segm_tree.append(segm_tmp)
+        fluxes = []
+        for i in segm_tmp.labels:
+            fluxes.append(np.nansum(data[segm_tmp == i]))
+        idx = np.where((np.array(fluxes) / source_sum) >= contrast)[0]
+        if len(idx >= 2):
+            segm_tree.append(segm_tmp)
 
     nbranch = len(segm_tree)
     if nbranch == 0:

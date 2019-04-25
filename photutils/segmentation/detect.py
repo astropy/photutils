@@ -5,11 +5,11 @@ import warnings
 import numpy as np
 from astropy.convolution import Gaussian2DKernel
 from astropy.stats import gaussian_fwhm_to_sigma
-from astropy.utils.exceptions import AstropyUserWarning
 
 from .core import SegmentationImage
 from ..detection import detect_threshold
 from ..utils.convolution import filter_data
+from ..utils.exceptions import NoDetectionsWarning
 
 
 __all__ = ['detect_sources', 'make_source_mask']
@@ -161,7 +161,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
     segm_img, nobj = ndimage.label(segm_img, structure=selem)
 
     if nobj == 0:
-        warnings.warn('No sources were found.', AstropyUserWarning)
+        warnings.warn('No sources were found.', NoDetectionsWarning)
         return None
     else:
         return SegmentationImage(segm_img)
