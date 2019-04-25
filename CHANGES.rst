@@ -78,8 +78,8 @@ API changes
 
 - ``photutils.psf``
 
-  - ``FittableImageModel`` and subclasses now allow for two-dimensional
-    ``oversampling`` factors, specifying both oversampling in x and y. [#834]
+  - ``FittableImageModel`` and subclasses now allow for different ``oversampling``
+    factors to be specified in x and y directions. [#834]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
