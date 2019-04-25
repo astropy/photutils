@@ -54,24 +54,28 @@ class SourceProperties:
         which to calculate the source centroid and morphological
         properties.  The kernel used to perform the filtering should be
         the same one used in defining the source segments (e.g., see
-        :func:`~photutils.detect_sources`).  Non-finite
-        ``filtered_data`` values (NaN and +/- inf) are not automatically
-        masked, unless they are at the same position of non-finite
-        values in the input ``data`` array.  Such pixels can be masked
-        using the ``mask`` keyword.  If `None`, then the unfiltered
-        ``data`` will be used instead.
+        :func:`~photutils.detect_sources`).  If ``data`` is a
+        `~astropy.units.Quantity` array then ``filtered_data`` must be a
+        `~astropy.units.Quantity` array (and vise versa) with identical
+        units.  Non-finite ``filtered_data`` values (NaN and +/- inf)
+        are not automatically masked, unless they are at the same
+        position of non-finite values in the input ``data`` array.  Such
+        pixels can be masked using the ``mask`` keyword.  If `None`,
+        then the unfiltered ``data`` will be used instead.
 
     error : array_like or `~astropy.units.Quantity`, optional
         The total error array corresponding to the input ``data`` array.
         ``error`` is assumed to include *all* sources of error,
         including the Poisson error of the sources (see
         `~photutils.utils.calc_total_error`) .  ``error`` must have the
-        same shape as the input ``data``.  Non-finite ``error`` values
-        (NaN and +/- inf) are not automatically masked, unless they are
-        at the same position of non-finite values in the input ``data``
-        array.  Such pixels can be masked using the ``mask`` keyword.
-        See the Notes section below for details on the error
-        propagation.
+        same shape as the input ``data``.  If ``data`` is a
+        `~astropy.units.Quantity` array then ``error`` must be a
+        `~astropy.units.Quantity` array (and vise versa) with identical
+        units.  Non-finite ``error`` values (NaN and +/- inf) are not
+        automatically masked, unless they are at the same position of
+        non-finite values in the input ``data`` array.  Such pixels can
+        be masked using the ``mask`` keyword.  See the Notes section
+        below for details on the error propagation.
 
     mask : array_like (bool), optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -83,14 +87,17 @@ class SourceProperties:
     background : float, array_like, or `~astropy.units.Quantity`, optional
         The background level that was *previously* present in the input
         ``data``.  ``background`` may either be a scalar value or a 2D
-        image with the same shape as the input ``data``.  Inputting the
-        ``background`` merely allows for its properties to be measured
-        within each source segment.  The input ``background`` does *not*
-        get subtracted from the input ``data``, which should already be
-        background-subtracted.  Non-finite ``background`` values (NaN
-        and +/- inf) are not automatically masked, unless they are at
-        the same position of non-finite values in the input ``data``
-        array.  Such pixels can be masked using the ``mask`` keyword.
+        image with the same shape as the input ``data``.  If ``data`` is
+        a `~astropy.units.Quantity` array then ``background`` must be a
+        `~astropy.units.Quantity` array (and vise versa) with identical
+        units.  Inputting the ``background`` merely allows for its
+        properties to be measured within each source segment.  The input
+        ``background`` does *not* get subtracted from the input
+        ``data``, which should already be background-subtracted.
+        Non-finite ``background`` values (NaN and +/- inf) are not
+        automatically masked, unless they are at the same position of
+        non-finite values in the input ``data`` array.  Such pixels can
+        be masked using the ``mask`` keyword.
 
     wcs : `~astropy.wcs.WCS`
         The WCS transformation to use.  If `None`, then any sky-based
@@ -98,6 +105,9 @@ class SourceProperties:
 
     Notes
     -----
+    ``data`` (and optional ``filtered_data``) should be
+    background-subtracted for accurate source photometry and properties.
+
     `SExtractor`_'s centroid and morphological parameters are always
     calculated from a filtered "detection" image, i.e. the image used to
     define the segmentation image.  The usual downside of the filtering
@@ -150,16 +160,30 @@ class SourceProperties:
         if segment_img.shape != data.shape:
             raise ValueError('segment_img and data must have the same shape.')
 
+        inputs = (data, filtered_data, error, background)
+        has_unit = [hasattr(x, 'unit') for x in inputs if x is not None]
+        use_units = all(has_unit)
+        if any(has_unit) and not use_units:
+            raise ValueError('If any of data, filtered_data, error, or '
+                             'background has units, then they all must have '
+                             'the same units.')
+
+        if use_units:
+            self._data_unit = data.unit
+        else:
+            self._data_unit = 1
+
         if error is not None:
-            error = np.atleast_1d(error)
-            if len(error) == 1:
-                error = np.zeros(data.shape) + error
+            error = np.asanyarray(error)
             if error.shape != data.shape:
                 raise ValueError('error and data must have the same shape.')
+            if use_units and error.unit != self._data_unit:
+                raise ValueError('error and data must have the same units.')
 
         if mask is np.ma.nomask:
-            mask = np.zeros(data.shape).astype(bool)
+            mask = None
         if mask is not None:
+            mask = np.asanyarray(mask)
             if mask.shape != data.shape:
                 raise ValueError('mask and data must have the same shape.')
 
@@ -167,40 +191,37 @@ class SourceProperties:
             background = np.atleast_1d(background)
             if len(background) == 1:
                 background = np.zeros(data.shape) + background
-            if background.shape != data.shape:
+            else:
+                background = np.asanyarray(background)
+                if background.shape != data.shape:
+                    raise ValueError('background and data must have the same '
+                                     'shape.')
+            if use_units and background.unit != self._data_unit:
                 raise ValueError('background and data must have the same '
+                                 'units.')
+
+        if filtered_data is not None:
+            filtered_data = np.asanyarray(filtered_data)
+            if filtered_data.shape != data.shape:
+                raise ValueError('filtered_data and data must have the same '
                                  'shape.')
-
-        # data and filtered_data should be background-subtracted
-        # for accurate source photometry and properties
-        self._data = data
-        try:
-            self._data_unit = self._data.unit
-        except AttributeError:
-            self._data_unit = 1
-
-        if filtered_data is None:
-            self._filtered_data = data
-        else:
+            if use_units and filtered_data.unit != self._data_unit:
+                raise ValueError('filtered_data and data must have the same '
+                                 'units.')
             self._filtered_data = filtered_data
+        else:
+            self._filtered_data = data
 
-        self._error = error    # total error; 2D array
-        try:
-            self._error_unit = self._error.unit
-        except AttributeError:
-            self._error_unit = 1
-
-        self._background = background    # 2D array
-        try:
-            self._background_unit = self._background.unit
-        except AttributeError:
-            self._background_unit = 1
+        self._data = data
+        self._segment_img = segment_img
+        self._error = error
+        self._mask = mask
+        self._background = background  # 2D array
+        self._wcs = wcs
 
         segment_img.check_labels(label)
         self.label = label
-        self._segment_img = segment_img
-        self._mask = mask
-        self._wcs = wcs
+
         self.segment = segment_img[segment_img.get_index(label)]
         self.slices = self.segment.slices
 
@@ -284,8 +305,8 @@ class SourceProperties:
         A 2D `~numpy.ndarray` cutout from the input ``data`` where any
         masked pixels (``_segment_mask``, ``_input_mask``, or
         ``_data_mask``) are set to zero.  Invalid values (NaN and +/-
-        inf) are set to zero via the ``_data_mask``.  Units are dropped
-        on the input ``data``.
+        inf) are set to zero via the ``_data_mask``.  Any units are
+        dropped on the input ``data``.
 
         This is a 2D array representation (with zeros as placeholders
         for the masked/removed values) of the 1D ``_data_values``
@@ -307,7 +328,7 @@ class SourceProperties:
         (or ``data`` if ``filtered_data`` is `None`) where any masked
         pixels (``_segment_mask``, ``_input_mask``, or ``_data_mask``)
         are set to zero.  Invalid values (NaN and +/- inf) are set to
-        zero.  Units are dropped on the input ``filtered_data`` (or
+        zero.  Any units are dropped on the input ``filtered_data`` (or
         ``data``).
 
         Negative data values are also set to zero because negative
@@ -956,7 +977,7 @@ class SourceProperties:
 
         if self._error is not None:
             if self._is_completely_masked:
-                return np.nan * self._error_unit  # table output needs unit
+                return np.nan * self._data_unit  # table output needs unit
             else:
                 return np.sqrt(np.sum(self._error_values ** 2))
         else:
@@ -974,7 +995,7 @@ class SourceProperties:
 
         if self._background is not None:
             if self._is_completely_masked:
-                return np.nan * self._background_unit  # unit for table
+                return np.nan * self._data_unit  # unit for table
             else:
                 return np.sum(self._background_values)
         else:
@@ -992,7 +1013,7 @@ class SourceProperties:
 
         if self._background is not None:
             if self._is_completely_masked:
-                return np.nan * self._background_unit  # unit for table
+                return np.nan * self._data_unit  # unit for table
             else:
                 return np.mean(self._background_values)
         else:
@@ -1014,14 +1035,14 @@ class SourceProperties:
             # centroid can still be NaN if all data values are <= 0
             if (self._is_completely_masked or
                     np.any(~np.isfinite(self.centroid))):
-                return np.nan * self._background_unit  # unit for table
+                return np.nan * self._data_unit  # unit for table
             else:
                 value = map_coordinates(self._background,
                                         [[self.ycentroid.value],
                                          [self.xcentroid.value]], order=1,
                                         mode='nearest')[0]
 
-                return value * self._background_unit
+                return value * self._data_unit
         else:
             return None
 

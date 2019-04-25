@@ -43,9 +43,40 @@ BACKGRD_VALS = [None, 0., 1., 3.5]
 
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSourceProperties:
-    def test_segment_shape(self):
+    def test_invalid_shapes(self):
+        wrong_shape = np.ones((3, 3))
         with pytest.raises(ValueError):
             SourceProperties(IMAGE, np.eye(3, dtype=int), label=1)
+
+        with pytest.raises(ValueError):
+            SourceProperties(IMAGE, SEGM, label=1, filtered_data=wrong_shape)
+
+        with pytest.raises(ValueError):
+            SourceProperties(IMAGE, SEGM, label=1, error=wrong_shape)
+
+        with pytest.raises(ValueError):
+            SourceProperties(IMAGE, SEGM, label=1, background=wrong_shape)
+
+    def test_invalid_units(self):
+        unit = u.uJy
+        wrong_unit = u.km
+
+        with pytest.raises(ValueError):
+            SourceProperties(IMAGE*unit, SEGM, label=1,
+                             filtered_data=IMAGE*wrong_unit)
+
+        with pytest.raises(ValueError):
+            SourceProperties(IMAGE*unit, SEGM, label=1,
+                             error=IMAGE*wrong_unit)
+
+        with pytest.raises(ValueError):
+            SourceProperties(IMAGE*unit, SEGM, label=1,
+                             background=IMAGE*wrong_unit)
+
+        # all array inputs must have the same unit
+        with pytest.raises(ValueError):
+            SourceProperties(IMAGE*unit, SEGM, label=1,
+                             filtered_data=IMAGE)
 
     @pytest.mark.parametrize('label', (0, -1))
     def test_label_invalid(self, label):
@@ -278,8 +309,9 @@ class TestSourcePropertiesFunction:
         assert_allclose(props[0].background_at_centroid, value)
 
     def test_properties_background_units(self):
-        value = 1. * u.uJy
-        props = source_properties(IMAGE, SEGM, background=value)
+        unit = u.uJy
+        value = 1. * unit
+        props = source_properties(IMAGE * unit, SEGM, background=value)
         assert props[0].background_mean == value
         assert_allclose(props[0].background_at_centroid, value)
 
@@ -338,14 +370,6 @@ class TestSourcePropertiesFunction:
                     'ellipticity', 'elongation', 'cxx', 'cxy', 'cyy']
         for prop in proplist:
             assert np.isnan(getattr(props[0], prop))
-
-    def test_scalar_error(self):
-        error_value = 2.5
-        error = np.ones_like(IMAGE) * error_value
-        props = source_properties(IMAGE, SEGM, error=error_value)
-        props2 = source_properties(IMAGE, SEGM, error)
-        assert_quantity_allclose(props.source_sum, props2.source_sum)
-        assert_quantity_allclose(props.source_sum_err, props2.source_sum_err)
 
     def test_mask(self):
         data = np.zeros((3, 3))
