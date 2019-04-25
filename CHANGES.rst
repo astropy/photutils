@@ -57,6 +57,10 @@ Bug Fixes
 API changes
 ^^^^^^^^^^^
 
+- ``photutils.detection``
+
+  - Removed deprecated ``subpixel`` keyword for ``find_peaks``. [#835]
+
 - ``photutils.segmentation``
 
   - Removed deprecated ``SegmentationImage`` attributes
@@ -75,6 +79,8 @@ API changes
 - ``photutils.utils``
 
   - Renamed ``random_cmap`` to ``make_random_cmap``. [#825]
+
+  - Removed deprecated ``cutout_footprint`` function. [#835]
 
 - ``photutils.psf``
 
