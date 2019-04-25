@@ -618,20 +618,28 @@ def test_psf_output_cols(sigma_psf, sources):
                               random_state=1) +
              make_noise_image(tshape, type='gaussian', mean=0.,
                               stddev=2., random_state=1))
-    dao_phot = DAOPhotPSFPhotometry(crit_separation=8, threshold=40,
-                                    fwhm=2*2*np.sqrt(2*np.log(2)), psf_model=psf_model,
-                                    fitshape=(11, 11),
-                                    output_cols=['sharpness', 'roundness1', 'roundness2'])
-    phot_results = dao_phot(image)
-    assert np.all([name in phot_results.colnames for name in ['sharpness', 'roundness1', 'roundness2']])
-    assert len(phot_results) == 2
 
-    dao_phot = DAOPhotPSFPhotometry(crit_separation=8, threshold=40,
-                                    fwhm=2*2*np.sqrt(2*np.log(2)), psf_model=psf_model,
-                                    fitshape=(11, 11),
-                                    output_cols=['sharpness', 'roundness1', 'roundness2'])
-    phot_results = dao_phot(image, init_guesses=Table(names=['x_0', 'y_0', 'sharpness',
-                                                             'roundness1', 'roundness2'],
-                                                      data=[[17.4], [16], [0.4], [0], [0]]))
-    assert np.all([name in phot_results.colnames for name in ['sharpness', 'roundness1', 'roundness2']])
-    assert len(phot_results) == 2
+    init_guess1 = None
+    init_guess2 = Table(names=['x_0', 'y_0', 'sharpness', 'roundness1', 'roundness2'],
+                        data=[[17.4], [16], [0.4], [0], [0]])
+    init_guess3 = Table(names=['x_0', 'y_0'],
+                        data=[[17.4], [16]])
+    init_guess4 = Table(names=['x_0', 'y_0', 'sharpness'],
+                        data=[[17.4], [16], [0.4]])
+    for init_guesses in [init_guess1, init_guess2, init_guess3]:
+        dao_phot = DAOPhotPSFPhotometry(crit_separation=8, threshold=40,
+                                        fwhm=2*2*np.sqrt(2*np.log(2)), psf_model=psf_model,
+                                        fitshape=(11, 11),
+                                        output_cols=['sharpness', 'roundness1', 'roundness2'])
+        phot_results = dao_phot(image, init_guesses=init_guesses)
+        assert np.all([name in phot_results.colnames for name in ['sharpness', 'roundness1',
+                                                                  'roundness2']])
+        assert len(phot_results) == 2
+        # checks to verify that half-passing init_guesses results in NaN output for output_cols
+        # not passed as initial guesses
+        if init_guesses == init_guess3:
+            assert(np.all(np.all(np.isnan(phot_results[o])) for o in ['sharpness', 'roundness1',
+                                                                      'roundness2']))
+        if init_guesses == init_guess4:
+            assert(np.all(np.all(np.isnan(phot_results[o])) for o in ['roundness1', 'roundness2']))
+            assert(np.all(~np.isnan(phot_results['sharpness'])))
