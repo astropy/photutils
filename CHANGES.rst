@@ -76,6 +76,11 @@ API changes
 
   - Renamed ``random_cmap`` to ``make_random_cmap``. [#825]
 
+- ``photutils.psf``
+
+  - ``FittableImageModel`` and subclasses now allow for different ``oversampling``
+    factors to be specified in x and y directions. [#834]
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

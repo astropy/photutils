@@ -208,7 +208,7 @@ class EPSFFitter:
         # of the ePSF and EPSFStar pixel scales.  This allows for
         # oversampling factors that differ between stars and also for
         # the factor to be different along the x and y axes.
-        epsf._oversampling = 1.
+        epsf._oversampling = np.array([1., 1.])
 
         try:
             fitted_epsf = fitter(model=epsf, x=xx, y=yy, z=scaled_data,
