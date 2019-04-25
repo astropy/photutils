@@ -16,6 +16,7 @@ from .utils import (get_grouped_psf_model, subtract_psf,
 from ..aperture import CircularAperture, aperture_photometry
 from ..background import MMMBackground
 from ..detection import DAOStarFinder
+from ..utils.exceptions import NoDetectionsWarning
 
 
 __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',
@@ -696,7 +697,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         sources = self.finder(self._residual_image)
 
         n = n_start
-        while(len(sources) > 0 and
+        while(sources is not None and
               (self.niters is None or n <= self.niters)):
             apertures = CircularAperture((sources['xcentroid'],
                                           sources['ycentroid']),
@@ -731,7 +732,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
 
             # do not warn if no sources are found beyond the first iteration
             with warnings.catch_warnings():
-                warnings.simplefilter('ignore', AstropyUserWarning)
+                warnings.simplefilter('ignore', NoDetectionsWarning)
                 sources = self.finder(self._residual_image)
 
             n += 1

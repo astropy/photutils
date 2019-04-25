@@ -67,7 +67,7 @@ class TestDAOStarFinder:
         with catch_warnings(NoDetectionsWarning) as warning_lines:
             starfinder = DAOStarFinder(threshold=10, fwhm=1)
             t = starfinder(data)
-            assert len(t) == 0
+            assert t is None
 
             assert warning_lines[0].category == NoDetectionsWarning
             assert ('No sources were found.' in str(warning_lines[0].message))
@@ -77,7 +77,7 @@ class TestDAOStarFinder:
         with catch_warnings(NoDetectionsWarning) as warning_lines:
             starfinder = DAOStarFinder(threshold=50, fwhm=1.0, sharplo=1.)
             t = starfinder(DATA)
-            assert len(t) == 0
+            assert t is None
 
             assert warning_lines[0].category == NoDetectionsWarning
             assert ('Sources were found, but none pass the sharpness and '
@@ -88,7 +88,7 @@ class TestDAOStarFinder:
         with catch_warnings(NoDetectionsWarning) as warning_lines:
             starfinder = DAOStarFinder(threshold=50, fwhm=1.0, roundlo=1.)
             t = starfinder(DATA)
-            assert len(t) == 0
+            assert t is None
 
             assert warning_lines[0].category == NoDetectionsWarning
             assert ('Sources were found, but none pass the sharpness and '
@@ -188,7 +188,7 @@ class TestIRAFStarFinder:
         with catch_warnings(NoDetectionsWarning) as warning_lines:
             starfinder = IRAFStarFinder(threshold=10, fwhm=1)
             t = starfinder(data)
-            assert len(t) == 0
+            assert t is None
 
             assert warning_lines[0].category == NoDetectionsWarning
             assert ('No sources were found.' in str(warning_lines[0].message))
@@ -198,7 +198,7 @@ class TestIRAFStarFinder:
         with catch_warnings(NoDetectionsWarning) as warning_lines:
             starfinder = IRAFStarFinder(threshold=50, fwhm=1.0, sharplo=2.)
             t = starfinder(DATA)
-            assert len(t) == 0
+            assert t is None
 
             assert warning_lines[0].category == NoDetectionsWarning
             assert ('Sources were found, but none pass the sharpness and '
@@ -209,7 +209,7 @@ class TestIRAFStarFinder:
         with catch_warnings(NoDetectionsWarning) as warning_lines:
             starfinder = IRAFStarFinder(threshold=50, fwhm=1.0, roundlo=1.)
             t = starfinder(DATA)
-            assert len(t) == 0
+            assert t is None
 
             assert warning_lines[0].category == NoDetectionsWarning
             assert ('Sources were found, but none pass the sharpness and '
@@ -224,7 +224,7 @@ class TestIRAFStarFinder:
         with catch_warnings(NoDetectionsWarning) as warning_lines:
             starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0, sky=100.)
             t = starfinder(DATA)
-            assert len(t) == 0
+            assert t is None
 
             assert warning_lines[0].category == NoDetectionsWarning
             assert ('Sources were found, but none pass the sharpness and '

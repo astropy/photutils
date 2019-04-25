@@ -662,7 +662,7 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
     tbl = find_peaks(convolved_data, threshold_eff, footprint=footprint,
                      mask=mask)
     if len(tbl) == 0:
-        return []
+        return None
 
     coords = np.transpose([tbl['y_peak'], tbl['x_peak']])
 
@@ -907,7 +907,7 @@ class DAOStarFinder(StarFinderBase):
 
         Returns
         -------
-        table : `~astropy.table.Table`
+        table : `~astropy.table.Table` or `None`
             A table of found stars with the following parameters:
 
             * ``id``: unique object identification number.
@@ -927,24 +927,19 @@ class DAOStarFinder(StarFinderBase):
               ``-2.5 * log10(flux)``.  The derivation matches that of
               `DAOFIND`_ if ``sky`` is 0.0.
 
-            If no stars are found then an empty table is returned.
+            `None` is returned if no stars are found.
 
         """
 
         star_cutouts = _find_stars(data, self.kernel, self.threshold_eff,
                                    mask=mask,
                                    exclude_border=self.exclude_border)
-        self._star_cutouts = star_cutouts
 
-        columns = ('id', 'xcentroid', 'ycentroid', 'sharpness', 'roundness1',
-                   'roundness2', 'npix', 'sky', 'peak', 'flux', 'mag')
-        coltypes = (np.int_, np.float_, np.float_, np.float_, np.float_,
-                    np.float_, np.int_, np.float_, np.float_, np.float_,
-                    np.float_)
-
-        if len(star_cutouts) == 0:
+        if star_cutouts is None:
             warnings.warn('No sources were found.', NoDetectionsWarning)
-            return Table(names=columns, dtype=coltypes)
+            return None
+
+        self._star_cutouts = star_cutouts
 
         star_props = []
         for star_cutout in star_cutouts:
@@ -974,7 +969,7 @@ class DAOStarFinder(StarFinderBase):
         if nstars == 0:
             warnings.warn('Sources were found, but none pass the sharpness '
                           'and roundness criteria.', NoDetectionsWarning)
-            return Table(names=columns, dtype=coltypes)
+            return None
 
         if self.brightest is not None:
             fluxes = [props.flux for props in star_props]
@@ -984,7 +979,9 @@ class DAOStarFinder(StarFinderBase):
 
         table = Table()
         table['id'] = np.arange(nstars) + 1
-        for column in columns[1:]:
+        columns = ('xcentroid', 'ycentroid', 'sharpness', 'roundness1',
+                   'roundness2', 'npix', 'sky', 'peak', 'flux', 'mag')
+        for column in columns:
             table[column] = [getattr(props, column) for props in star_props]
 
         return table
@@ -1138,7 +1135,7 @@ class IRAFStarFinder(StarFinderBase):
 
         Returns
         -------
-        table : `~astropy.table.Table`
+        table : `~astropy.table.Table` or `None`
             A table of found objects with the following parameters:
 
             * ``id``: unique object identification number.
@@ -1155,7 +1152,7 @@ class IRAFStarFinder(StarFinderBase):
             * ``mag``: the object instrumental magnitude calculated as
               ``-2.5 * log10(flux)``.
 
-            If no stars are found then an empty table is returned.
+            `None` is returned if no stars are found.
 
         """
 
@@ -1163,17 +1160,12 @@ class IRAFStarFinder(StarFinderBase):
                                    min_separation=self.min_separation,
                                    mask=mask,
                                    exclude_border=self.exclude_border)
-        self._star_cutouts = star_cutouts
 
-        columns = ('id', 'xcentroid', 'ycentroid', 'fwhm', 'sharpness',
-                   'roundness', 'pa', 'npix', 'sky', 'peak', 'flux', 'mag')
-        coltypes = (np.int_, np.float_, np.float_, np.float_, np.float_,
-                    np.float_, np.float_, np.int_, np.float_, np.float_,
-                    np.float_, np.float_)
-
-        if len(star_cutouts) == 0:
+        if star_cutouts is None:
             warnings.warn('No sources were found.', NoDetectionsWarning)
-            return Table(names=columns, dtype=coltypes)
+            return None
+
+        self._star_cutouts = star_cutouts
 
         star_props = []
         for star_cutout in star_cutouts:
@@ -1201,7 +1193,7 @@ class IRAFStarFinder(StarFinderBase):
         if nstars == 0:
             warnings.warn('Sources were found, but none pass the sharpness '
                           'and roundness criteria.', NoDetectionsWarning)
-            return Table(names=columns, dtype=coltypes)
+            return None
 
         if self.brightest is not None:
             fluxes = [props.flux for props in star_props]
@@ -1211,7 +1203,9 @@ class IRAFStarFinder(StarFinderBase):
 
         table = Table()
         table['id'] = np.arange(nstars) + 1
-        for column in columns[1:]:
+        columns = ('xcentroid', 'ycentroid', 'fwhm', 'sharpness', 'roundness',
+                   'pa', 'npix', 'sky', 'peak', 'flux', 'mag')
+        for column in columns:
             table[column] = [getattr(props, column) for props in star_props]
 
         return table
