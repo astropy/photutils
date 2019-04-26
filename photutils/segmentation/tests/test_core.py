@@ -18,6 +18,7 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
+
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSegmentationImage:
     def setup_class(self):
@@ -40,7 +41,26 @@ class TestSegmentationImage:
         segm.data[0, 0] = 100.
         assert segm.data[0, 0] != segm2.data[0, 0]
 
-    def test_negative_data(self):
+    def test_invalid_data(self):
+        # contains all zeros
+        data = np.zeros((3, 3))
+        with pytest.raises(ValueError):
+            SegmentationImage(data)
+
+        # contains a NaN
+        data = np.zeros((5, 5))
+        data[2, 2] = np.nan
+        with pytest.raises(ValueError):
+            SegmentationImage(data)
+
+        # contains an inf
+        data = np.zeros((5, 5))
+        data[2, 2] = np.inf
+        data[0, 0] = -np.inf
+        with pytest.raises(ValueError):
+            SegmentationImage(data)
+
+        # contains a negative value
         data = np.arange(-1, 8).reshape(3, 3)
         with pytest.raises(ValueError):
             SegmentationImage(data)

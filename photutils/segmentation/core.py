@@ -159,11 +159,13 @@ class SegmentationImage:
     data : array_like (int)
         A 2D segmentation image where source regions are labeled by
         different positive integer values.  A value of zero is reserved
-        for the background.
+        for the background.  The segmentation image must contain at
+        least one non-zero pixel and must not contain any non-finite
+        values (e.g. NaN, inf).
     """
 
     def __init__(self, data):
-        self.data = np.asanyarray(data, dtype=np.int)
+        self.data = data
 
     def __getitem__(self, index):
         return self.segments[index]
@@ -276,6 +278,15 @@ class SegmentationImage:
 
     @data.setter
     def data(self, value):
+        if np.any(~np.isfinite(value)):
+            raise ValueError('data must not contain any non-finite values '
+                             '(e.g. NaN, inf)')
+
+        value = np.asanyarray(value, dtype=np.int)
+        if not np.any(value):
+            raise ValueError('The segmentation image must contain at least '
+                             'one non-zero pixel.')
+
         if np.min(value) < 0:
             raise ValueError('The segmentation image cannot contain '
                              'negative integers.')

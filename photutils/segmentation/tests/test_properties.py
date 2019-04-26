@@ -6,10 +6,11 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from astropy.tests.helper import assert_quantity_allclose
 from astropy.modeling import models
 from astropy.table import QTable
+from astropy.tests.helper import assert_quantity_allclose, catch_warnings
 import astropy.units as u
+from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils.misc import isiterable
 import astropy.wcs as WCS
 
@@ -49,7 +50,7 @@ BACKGRD_VALS = [None, 0., 1., 3.5]
 class TestSourceProperties:
     def test_segment_shape(self):
         with pytest.raises(ValueError):
-            SourceProperties(IMAGE, np.zeros((2, 2)), label=1)
+            SourceProperties(IMAGE, np.eye(3, dtype=int), label=1)
 
     @pytest.mark.parametrize('label', (0, -1))
     def test_label_invalid(self, label):
@@ -76,6 +77,9 @@ class TestSourceProperties:
         assert props.sky_bbox_ul is not None
         assert props.sky_bbox_lr is not None
         assert props.sky_bbox_ur is not None
+
+        tbl = props.to_table()
+        assert len(tbl) == 1
 
     def test_nowcs(self):
         props = SourceProperties(IMAGE, SEGM, wcs=None, label=1)
@@ -177,22 +181,22 @@ class TestSourceProperties:
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSourcePropertiesFunctionInputs:
     def test_segment_shape(self):
-        wrong_shape = np.zeros((2, 2))
+        wrong_shape = np.eye(3, dtype=int)
         with pytest.raises(ValueError):
             source_properties(IMAGE, wrong_shape)
 
     def test_error_shape(self):
-        wrong_shape = np.zeros((2, 2))
+        wrong_shape = np.ones((2, 2))
         with pytest.raises(ValueError):
             source_properties(IMAGE, SEGM, error=wrong_shape)
 
     def test_background_shape(self):
-        wrong_shape = np.zeros((2, 2))
+        wrong_shape = np.ones((2, 2))
         with pytest.raises(ValueError):
             source_properties(IMAGE, SEGM, background=wrong_shape)
 
     def test_mask_shape(self):
-        wrong_shape = np.zeros((2, 2))
+        wrong_shape = np.zeros((2, 2)).astype(bool)
         with pytest.raises(ValueError):
             source_properties(IMAGE, SEGM, mask=wrong_shape)
 
@@ -201,8 +205,16 @@ class TestSourcePropertiesFunctionInputs:
         assert props[0].id == 1
 
     def test_invalidlabels(self):
-        props = source_properties(IMAGE, SEGM, labels=-1)
-        assert len(props) == 0
+        with catch_warnings(AstropyUserWarning) as warning_lines:
+            source_properties(IMAGE, SEGM, labels=[-1, 1])
+
+            assert warning_lines[0].category == AstropyUserWarning
+            assert ('label -1 is not in the segmentation image.' in
+                    str(warning_lines[0].message))
+
+    def test_nosources(self):
+        with pytest.raises(ValueError):
+            source_properties(IMAGE, SEGM, labels=-1)
 
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
@@ -430,6 +442,8 @@ class TestSourceCatalog:
         assert len(cat2) == 1
 
         with pytest.raises(ValueError):
+            SourceCatalog([])
+        with pytest.raises(ValueError):
             SourceCatalog('a')
 
     def test_table(self):
@@ -460,11 +474,6 @@ class TestSourceCatalog:
         assert len(t) == 1
         with pytest.raises(KeyError):
             t['id']
-
-    def test_table_empty_props(self):
-        cat = source_properties(IMAGE, SEGM, labels=-1)
-        with pytest.raises(ValueError):
-            cat.to_table()
 
     def test_table_wcs(self):
         mywcs = WCS.WCS(naxis=2)

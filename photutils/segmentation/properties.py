@@ -1406,6 +1406,9 @@ def source_properties(data, segment_img, error=None, mask=None,
             data, segment_img, label, filtered_data=filtered_data,
             error=error, mask=mask, background=background, wcs=wcs))
 
+    if len(sources_props) == 0:
+        raise ValueError('No sources are defined.')
+
     return SourceCatalog(sources_props, wcs=wcs)
 
 
@@ -1418,6 +1421,8 @@ class SourceCatalog:
         if isinstance(properties_list, SourceProperties):
             self._data = [properties_list]
         elif isinstance(properties_list, list):
+            if len(properties_list) == 0:
+                raise ValueError('properties_list must not be an empty list.')
             self._data = properties_list
         else:
             raise ValueError('invalid input.')
@@ -1458,6 +1463,14 @@ class SourceCatalog:
             return self._cache[attr]
 
     @lazyproperty
+    def _none_list(self):
+        """
+        Return a list of `None` values, used by SkyCoord properties if
+        ``wcs`` is `None`.
+        """
+        return [None] * len(self._data)
+
+    @lazyproperty
     def sky_centroid(self):
         if self.wcs is not None:
             # For a large catalog, it's much faster to calculate world
@@ -1470,14 +1483,14 @@ class SourceCatalog:
             return pixel_to_skycoord(self.xcentroid, self.ycentroid,
                                      self.wcs, origin=0)
         else:
-            return None
+            return self._none_list
 
     @lazyproperty
     def sky_centroid_icrs(self):
         if self.wcs is not None:
             return self.sky_centroid.icrs
         else:
-            return None
+            return self._none_list
 
     @lazyproperty
     def sky_bbox_ll(self):
@@ -1486,7 +1499,7 @@ class SourceCatalog:
                                      self.ymin.value - 0.5,
                                      self.wcs, origin=0)
         else:
-            return None
+            return self._none_list
 
     @lazyproperty
     def sky_bbox_ul(self):
@@ -1495,7 +1508,7 @@ class SourceCatalog:
                                      self.ymax.value + 0.5,
                                      self.wcs, origin=0)
         else:
-            return None
+            return self._none_list
 
     @lazyproperty
     def sky_bbox_lr(self):
@@ -1504,7 +1517,7 @@ class SourceCatalog:
                                      self.ymin.value - 0.5,
                                      self.wcs, origin=0)
         else:
-            return None
+            return self._none_list
 
     @lazyproperty
     def sky_bbox_ur(self):
@@ -1513,7 +1526,7 @@ class SourceCatalog:
                                      self.ymax.value + 0.5,
                                      self.wcs, origin=0)
         else:
-            return None
+            return self._none_list
 
     def to_table(self, columns=None, exclude_columns=None):
         """
@@ -1594,9 +1607,29 @@ class SourceCatalog:
 
 
 def _properties_table(obj, columns=None, exclude_columns=None):
+    """
+    Construct a `~astropy.table.QTable` of source properties from a
+    `SourceProperties` or `SourceCatalog` object.
 
-    if isinstance(obj, SourceCatalog) and len(obj) == 0:
-        raise ValueError('SourceCatalog contains no sources.')
+    Parameters
+    ----------
+    obj : `SourceProperties` or `SourceCatalog` instance
+        The object containing the source properties.
+
+    columns : str or list of str, optional
+        Names of columns, in order, to include in the output
+        `~astropy.table.QTable`.  The allowed column names are any
+        of the attributes of `SourceProperties`.
+
+    exclude_columns : str or list of str, optional
+        Names of columns to exclude from the default properties list
+        in the output `~astropy.table.QTable`.
+
+    Returns
+    -------
+    table : `~astropy.table.QTable`
+        A table of source properties with one row per source.
+    """
 
     # default properties
     columns_all = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
@@ -1624,16 +1657,16 @@ def _properties_table(obj, columns=None, exclude_columns=None):
         values = getattr(obj, column)
 
         if isinstance(obj, SourceProperties):
+            # turn scalar values into length-1 arrays because QTable
+            # column assignment requires an object with a length
             values = np.atleast_1d(values)
-            if isinstance(values[0], u.Quantity):
-                # turn list of Quantities into a Quantity array
-                values = u.Quantity(values)
-            if isinstance(values[0], SkyCoord):  # pragma: no cover
-                # turn list of SkyCoord into a SkyCoord array
-                values = SkyCoord(values)
 
-        if isinstance(obj, SourceCatalog) and values is None:
-            values = [None] * len(obj)
+            # Unfortunately np.atleast_1d creates an array of SkyCoord
+            # instead of a SkyCoord array (Quantity does work correctly
+            # with np.atleast_1d).  Here we make a SkyCoord array for
+            # the output table column.
+            if isinstance(values[0], SkyCoord):
+                values = SkyCoord(values)  # length-1 SkyCoord array
 
         tbl[column] = values
 
