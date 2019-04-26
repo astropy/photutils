@@ -27,6 +27,10 @@ New Features
   - Added ``__repr__`` and ``__str__`` methods to
     ``SegmentationImage``. [#825]
 
+- ``photutils.utils``
+
+  - Added ``NoDetectionsWarning`` class. [#836]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -61,6 +65,10 @@ API changes
 
   - Removed deprecated ``subpixel`` keyword for ``find_peaks``. [#835]
 
+  - ``DAOStarFinder``, ``IRAFStarFinder``, and ``find_peaks`` now return
+    ``None`` if no source/peaks are found.  Also, for this case a
+    ``NoDetectionsWarning`` is issued. [#836]
+
 - ``photutils.segmentation``
 
   - Removed deprecated ``SegmentationImage`` attributes
@@ -75,6 +83,17 @@ API changes
   - The ``SegmentationImage`` ``segments`` and ``slices`` attributes
     now have the same length as ``labels`` (no ``None`` placeholders).
     [#825]
+
+  - ``detect_sources`` now returns ``None`` is no sources are found.
+    Also, for this case a ``NoDetectionsWarning`` is issued. [#836]
+
+  - The ``SegmentationImage`` input ``data`` array must contain at
+    least one non-zero pixel and must not contain any non-finite values.
+    [#836]
+
+  - A ``ValueError`` is raised if an empty list is input into
+    ``SourceCatalog`` or no valid sources are defined in
+    ``source_properties``. [#836]
 
 - ``photutils.utils``
 
