@@ -188,34 +188,28 @@ class EPSFFitter:
             x0 = 0
             y0 = 0
 
-        x_oversamp = star.pixel_scale[0] / epsf.pixel_scale[0]
-        y_oversamp = star.pixel_scale[1] / epsf.pixel_scale[1]
-        scaled_data = data / (x_oversamp * y_oversamp)
+        scaled_data = data / np.prod(epsf._oversampling)
 
         # define positions in the ePSF oversampled grid
         yy, xx = np.indices(data.shape, dtype=np.float)
-        xx = (xx - (star.cutout_center[0] - x0)) * x_oversamp
-        yy = (yy - (star.cutout_center[1] - y0)) * y_oversamp
+        xx = (xx - (star.cutout_center[0] - x0)) * epsf._oversampling[0]
+        yy = (yy - (star.cutout_center[1] - y0)) * epsf._oversampling[1]
 
         # define the initial guesses for fitted flux and shifts
         epsf.flux = star.flux
         epsf.x_0 = 0.0
         epsf.y_0 = 0.0
 
-        # The oversampling factor is used in the FittableImageModel
-        # evaluate method (which is use when fitting).  We do not want
-        # to use oversampling here because it has been set by the ratio
-        # of the ePSF and EPSFStar pixel scales.  This allows for
-        # oversampling factors that differ between stars and also for
-        # the factor to be different along the x and y axes.
-        epsf._oversampling = np.array([1., 1.])
+        # create copy to avoid overwriting original oversampling factor
+        _epsf = epsf.copy()
+        _epsf._oversampling = np.array([1., 1.])
 
         try:
-            fitted_epsf = fitter(model=epsf, x=xx, y=yy, z=scaled_data,
+            fitted_epsf = fitter(model=_epsf, x=xx, y=yy, z=scaled_data,
                                  weights=weights, **fitter_kwargs)
         except TypeError:
             # fitter doesn't support weights
-            fitted_epsf = fitter(model=epsf, x=xx, y=yy, z=scaled_data,
+            fitted_epsf = fitter(model=_epsf, x=xx, y=yy, z=scaled_data,
                                  **fitter_kwargs)
 
         fit_error_status = 0
@@ -229,9 +223,9 @@ class EPSFFitter:
 
         # compute the star's fitted position
         x_center = (star.cutout_center[0] +
-                    (fitted_epsf.x_0.value / x_oversamp))
+                    (fitted_epsf.x_0.value / epsf._oversampling[0]))
         y_center = (star.cutout_center[1] +
-                    (fitted_epsf.y_0.value / y_oversamp))
+                    (fitted_epsf.y_0.value / epsf._oversampling[1]))
 
         star = copy.deepcopy(star)
         star.cutout_center = (x_center, y_center)
@@ -254,35 +248,13 @@ class EPSFBuilder:
 
     Parameters
     ----------
-    pixel_scale : float or tuple of two floats, optional
-        .. warning::
-
-            The ``pixel_scale`` keyword is now deprecated (since v0.6)
-            and will likely be removed in v0.7.  Use the
-            ``oversampling`` keyword instead.
-
-        The pixel scale (in arbitrary units) of the output ePSF.  The
-        ``pixel_scale`` can either be a single float or tuple of two
-        floats of the form ``(x_pixscale, y_pixscale)``.  If
-        ``pixel_scale`` is a scalar then the pixel scale will be the
-        same for both the x and y axes.  The ePSF ``pixel_scale`` is
-        used in conjunction with the star pixel scale when building and
-        fitting the ePSF.  This allows for building (and fitting) a ePSF
-        using images of stars with different pixel scales (e.g. velocity
-        aberrations).  Either ``oversampling`` or ``pixel_scale`` must
-        be input.  If both are input, ``pixel_scale`` will override the
-        input ``oversampling``.
-
     oversampling : float or tuple of two floats, optional
         The oversampling factor(s) of the ePSF relative to the input
-        ``stars`` along the x and y axes.  The ``oversampling`` can
+        ``stars`` along the x and y axes. The ``oversampling`` can
         either be a single float or a tuple of two floats of the form
         ``(x_oversamp, y_oversamp)``.  If ``oversampling`` is a scalar
         then the oversampling will be the same for both the x and y
-        axes.  The ``oversampling`` factor will be used with the minimum
-        pixel scale of all input stars to calculate the ePSF pixel
-        scale.  Either ``oversampling`` or ``pixel_scale`` must be
-        input.  If both are input, ``oversampling`` will be ignored.
+        axes.
 
     shape : float, tuple of two floats, or `None`, optional
         The shape of the output ePSF.  If the ``shape`` is not `None`,
@@ -341,24 +313,16 @@ class EPSFBuilder:
         The default is `True`.
     """
 
-    def __init__(self, pixel_scale=None, oversampling=4., shape=None,
-                 smoothing_kernel='quartic', recentering_func=centroid_com,
-                 recentering_boxsize=(5, 5), recentering_maxiters=20,
-                 fitter=EPSFFitter(), center_accuracy=1.0e-3, maxiters=10,
-                 progress_bar=True):
+    def __init__(self, oversampling=4., shape=None, smoothing_kernel='quartic',
+                 recentering_func=centroid_com, recentering_boxsize=(5, 5),
+                 recentering_maxiters=20, fitter=EPSFFitter(), center_accuracy=1.0e-3,
+                 maxiters=10, progress_bar=True):
 
-        if pixel_scale is None and oversampling is None:
-            raise ValueError('Either pixel_scale or oversampling must be '
-                             'input.')
-
-        if pixel_scale is not None:
-            warnings.warn('The pixel_scale keyword is deprecated and will '
-                          'likely be removed in v0.7.  Use the oversampling '
-                          'keyword instead.', AstropyDeprecationWarning)
-
-        self.pixel_scale = self._init_img_params(pixel_scale)
         if oversampling <= 0.0:
             raise ValueError('oversampling must be a positive number.')
+        oversampling = np.atleast_1d(oversampling).astype(float)
+        if len(oversampling) == 1:
+            oversampling = np.repeat(oversampling, 2)
         self.oversampling = oversampling
         self.shape = self._init_img_params(shape)
         if self.shape is not None:
@@ -420,9 +384,7 @@ class EPSFBuilder:
         """
         Create an initial `EPSFModel` object.
 
-        The initial ePSF data are all zeros.  The ePSF pixel scale is
-        determined either from the ``pixel_scale`` or ``oversampling``
-        values.
+        The initial ePSF data are all zeros.
 
         If ``shape`` is not specified, the shape of the ePSF data array
         is determined from the shape of the input ``stars`` and the
@@ -441,29 +403,8 @@ class EPSFBuilder:
             The initial ePSF model.
         """
 
-        pixel_scale = self.pixel_scale
         oversampling = self.oversampling
         shape = self.shape
-
-        if pixel_scale is None and oversampling is None:
-            raise ValueError('Either pixel_scale or oversampling must be '
-                             'input.')
-
-        # define the ePSF pixel scale
-        if pixel_scale is not None:
-            pixel_scale = np.atleast_1d(pixel_scale).astype(float)
-            if len(pixel_scale) == 1:
-                pixel_scale = np.repeat(pixel_scale, 2)
-
-            oversampling = (stars._min_pixel_scale[0] / pixel_scale[0],
-                            stars._min_pixel_scale[1] / pixel_scale[1])
-        else:
-            oversampling = np.atleast_1d(oversampling).astype(float)
-            if len(oversampling) == 1:
-                oversampling = np.repeat(oversampling, 2)
-
-            pixel_scale = (stars._min_pixel_scale[0] / oversampling[0],
-                           stars._min_pixel_scale[1] / oversampling[1])
 
         # define the ePSF shape
         if shape is not None:
@@ -471,10 +412,10 @@ class EPSFBuilder:
             if len(shape) == 1:
                 shape = np.repeat(shape, 2)
         else:
-            x_shape = np.int(np.ceil(stars._max_shape[0] *
-                                     oversampling[1]))
-            y_shape = np.int(np.ceil(stars._max_shape[1] *
+            x_shape = np.int(np.ceil(stars._max_shape[1] *
                                      oversampling[0]))
+            y_shape = np.int(np.ceil(stars._max_shape[0] *
+                                     oversampling[1]))
             shape = np.array((y_shape, x_shape))
 
         # ensure odd sizes
@@ -484,12 +425,8 @@ class EPSFBuilder:
         xcenter = (shape[1] - 1) / 2.
         ycenter = (shape[0] - 1) / 2.
 
-        # FittableImageModel requires a scalar oversampling factor
-        oversampling = np.mean(oversampling)
-
         epsf = EPSFModel(data=data, origin=(xcenter, ycenter),
                          normalize=False, oversampling=oversampling)
-        epsf._pixel_scale = pixel_scale
 
         return epsf
 
@@ -521,10 +458,8 @@ class EPSFBuilder:
 
         # find the integer index of EPSFStar pixels in the oversampled
         # ePSF grid
-        x_oversamp = star.pixel_scale[0] / epsf.pixel_scale[0]
-        y_oversamp = star.pixel_scale[1] / epsf.pixel_scale[1]
-        x = x_oversamp * star._xidx_centered
-        y = y_oversamp * star._yidx_centered
+        x = epsf._oversampling[0] * star._xidx_centered
+        y = epsf._oversampling[1] * star._yidx_centered
         epsf_xcenter, epsf_ycenter = epsf.origin
         xidx = _py2intround(x + epsf_xcenter)
         yidx = _py2intround(y + epsf_ycenter)
@@ -540,8 +475,7 @@ class EPSFBuilder:
         # normalized residual image in the oversampled ePSF grid.
         # [(star - (epsf * xov * yov)) / (xov * yov)]
         # --> [(star / (xov * yov)) - epsf]
-        stardata = ((star._data_values_normalized /
-                     (x_oversamp * y_oversamp)) -
+        stardata = ((star._data_values_normalized / np.prod(epsf._oversampling)) -
                     epsf.evaluate(x=x, y=y, flux=1.0, x_0=0.0, y_0=0.0,
                                   use_oversampling=False))
 
@@ -686,10 +620,8 @@ class EPSFBuilder:
         # Define an EPSFModel for the input data.  This EPSFModel will be
         # used to evaluate the model on a shifted pixel grid to place the
         # centroid at the array center.
-        pixel_scale = epsf.pixel_scale
         epsf = EPSFModel(data=epsf_data, origin=epsf.origin, normalize=False,
                          oversampling=epsf.oversampling)
-        epsf._pixel_scale = pixel_scale
 
         epsf.fill_value = 0.0
         xcenter, ycenter = epsf.origin
@@ -820,7 +752,6 @@ class EPSFBuilder:
 
         epsf_new = EPSFModel(data=new_epsf, origin=(xcenter, ycenter),
                              normalize=False, oversampling=epsf.oversampling)
-        epsf_new._pixel_scale = epsf.pixel_scale
 
         return epsf_new
 

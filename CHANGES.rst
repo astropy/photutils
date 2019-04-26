@@ -106,6 +106,9 @@ API changes
   - ``FittableImageModel`` and subclasses now allow for different ``oversampling``
     factors to be specified in x and y directions. [#834]
 
+  - Removed ``pixel_scale`` keyword from ``EPSFStar``, ``EPSFBuilder``,
+    and ``EPSFModel``. [#815]
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
