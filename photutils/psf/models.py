@@ -10,8 +10,7 @@ import warnings
 import numpy as np
 from astropy.nddata import NDData
 from astropy.modeling import Parameter, Fittable2DModel
-from astropy.utils.exceptions import (AstropyWarning,
-                                      AstropyDeprecationWarning)
+from astropy.utils.exceptions import AstropyWarning
 
 
 __all__ = ['NonNormalizable', 'FittableImageModel', 'EPSFModel',
