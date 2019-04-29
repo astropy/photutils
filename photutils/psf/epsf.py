@@ -12,8 +12,7 @@ import numpy as np
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
                                   NoOverlapError)
-from astropy.utils.exceptions import (AstropyUserWarning,
-                                      AstropyDeprecationWarning)
+from astropy.utils.exceptions import AstropyUserWarning
 
 from .epsf_stars import EPSFStar, LinkedEPSFStar, EPSFStars
 from .models import EPSFModel
