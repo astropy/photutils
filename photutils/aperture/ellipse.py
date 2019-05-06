@@ -423,7 +423,7 @@ class SkyEllipticalAnnulus(SkyAperture):
     a_out : `~astropy.units.Quantity`
         The outer semimajor axis, either in angular or pixel units.
 
-    b_out : float
+    b_out : `~astropy.units.Quantity`
         The outer semiminor axis, either in angular or pixel units.  The
         inner semiminor axis is calculated as:
 
