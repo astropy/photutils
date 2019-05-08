@@ -385,21 +385,21 @@ class PixelAperture(Aperture):
         aperture_sums = []
         aperture_sum_errs = []
         for mask in self.to_mask(method=method, subpixels=subpixels):
-            data_cutout = mask.cutout(data)
+            data_weighted = mask.multiply(data)
 
-            if data_cutout is None:
+            if data_weighted is None:
                 aperture_sums.append(np.nan)
             else:
-                aperture_sums.append(np.sum(data_cutout * mask.data))
+                aperture_sums.append(np.sum(data_weighted))
 
             if error is not None:
-                error_cutout = mask.cutout(error)
+                variance_weighted = mask.multiply(error**2)
 
-                if error_cutout is None:
+                if variance_weighted is None:
                     aperture_sum_errs.append(np.nan)
                 else:
-                    aperture_var = np.sum(error_cutout ** 2 * mask.data)
-                    aperture_sum_errs.append(np.sqrt(aperture_var))
+                    aperture_sum_errs.append(
+                        np.sqrt(np.sum(variance_weighted)))
 
         # handle Quantity objects and input units
         aperture_sums = self._prepare_photometry_output(aperture_sums,

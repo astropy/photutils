@@ -13,11 +13,11 @@ class ApertureMask:
 
     Parameters
     ----------
-    mask : array_like
-        A 2D array of an aperture mask representing the fractional
-        overlap of the aperture on the pixel grid.  This should be the
-        full-sized (i.e. not truncated) array that is the direct output
-        of one of the low-level `photutils.geometry` functions.
+    data : array_like
+        A 2D array representing the fractional overlap of an aperture on
+        the pixel grid.  This should be the full-sized (i.e. not
+        truncated) array that is the direct output of one of the
+        low-level `photutils.geometry` functions.
 
     bbox : `photutils.BoundingBox`
         The bounding box object defining the aperture minimal bounding
@@ -30,6 +30,7 @@ class ApertureMask:
             raise ValueError('mask data and bounding box must have the same '
                              'shape')
         self.bbox = bbox
+        self._mask = (self.data == 0)
 
     def __array__(self):
         """
@@ -225,7 +226,7 @@ class ApertureMask:
 
         Returns
         -------
-        result : `~numpy.ndarray`
+        result : `~numpy.ndarray` or `None`
             A 2D mask-weighted cutout from the input ``data``.  If there
             is a partial overlap of the aperture mask with the input
             data, pixels outside of the data will be assigned to
@@ -234,8 +235,14 @@ class ApertureMask:
             input ``data``.
         """
 
-        cutout = self.cutout(data, fill_value=fill_value)
+        # make a copy to prevent changing the input data
+        cutout = self.cutout(data, fill_value=fill_value, copy=True)
+
         if cutout is None:
             return None
         else:
+            # needed to zero out non-finite data values outside of the
+            # aperture mask but within the bounding box
+            cutout[self._mask] = 0.
+
             return cutout * self.data
