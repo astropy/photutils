@@ -43,6 +43,10 @@ Bug Fixes
     NaN for non-finite data values outside the aperture but within the
     aperture bounding box. [#843]
 
+  - Fixed an issue where the ``celestial_center`` column (for sky
+    apertures) would be a length-1 array containing a ``SkyCoord``
+    object instead of a length-1 ``SkyCoord`` object. [#844]
+
 - ``photutils.segmentation``
 
   - Fixed an issue where ``deblend_sources`` could fail for sources

@@ -924,6 +924,7 @@ def test_scalar_aperture():
                           'aperture_sum_err_0', 'aperture_sum_1',
                           'aperture_sum_err_1'])
 
+
 def test_nan_in_bbox():
     """
     Regression test that non-finite data values outside of the aperture
@@ -949,5 +950,19 @@ def test_nan_in_bbox():
 
     tbl3 = aperture_photometry(data1, aper2, error=error)
     tbl4 = aperture_photometry(data2, aper2, error=error)
-    assert_allclose(tbl1['aperture_sum'], tbl2['aperture_sum'])
-    assert_allclose(tbl1['aperture_sum_err'], tbl2['aperture_sum_err'])
+    assert_allclose(tbl3['aperture_sum'], tbl4['aperture_sum'])
+    assert_allclose(tbl3['aperture_sum_err'], tbl4['aperture_sum_err'])
+
+
+def test_scalar_skycoord():
+    """
+    Regression test to check that scalar SkyCoords are added to the table
+    as a length-1 SkyCoord array.
+    """
+
+    data = make_4gaussians_image()
+    wcs = make_wcs(data.shape)
+    skycoord = pixel_to_skycoord(90, 60, wcs)
+    aper = SkyCircularAperture(skycoord, r=0.1*u.arcsec)
+    tbl = aperture_photometry(data, aper, wcs=wcs)
+    assert isinstance(tbl['celestial_center'], SkyCoord)

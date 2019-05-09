@@ -282,7 +282,7 @@ class PixelAperture(Aperture):
                 unit = None
 
         if isinstance(_list[0], u.Quantity):
-            # list of Quantity -> Quantity array
+            # turn list of Quantities into a Quantity array
             output = u.Quantity(_list)
 
             if unit is not None:
@@ -922,7 +922,8 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
     if skyaper:
         if skycoord_pos.isscalar:
-            tbl['celestial_center'] = (skycoord_pos,)
+            # create length-1 SkyCoord array
+            tbl['celestial_center'] = skycoord_pos.reshape((-1,))
         else:
             tbl['celestial_center'] = skycoord_pos
 
