@@ -39,6 +39,10 @@ Bug Fixes
   - Fixed an issue where the ``ApertureMask.cutout`` method would drop
     the data units when ``copy=True``. [#842]
 
+  - Fixed a corner-case issue where aperture photometry would return
+    NaN for non-finite data values outside the aperture but within the
+    aperture bounding box. [#843]
+
 - ``photutils.segmentation``
 
   - Fixed an issue where ``deblend_sources`` could fail for sources

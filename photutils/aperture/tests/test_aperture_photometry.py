@@ -923,3 +923,31 @@ def test_scalar_aperture():
     assert (colnames3 == ['id', 'xcenter', 'ycenter', 'aperture_sum_0',
                           'aperture_sum_err_0', 'aperture_sum_1',
                           'aperture_sum_err_1'])
+
+def test_nan_in_bbox():
+    """
+    Regression test that non-finite data values outside of the aperture
+    mask but within the bounding box do not affect the photometry.
+    """
+
+    data1 = np.ones((101, 101))
+    data2 = data1.copy()
+    data1[33, 33] = np.nan
+    data1[67, 67] = np.inf
+    data1[33, 67] = -np.inf
+    data1[22, 22] = np.nan
+    data1[22, 23] = np.inf
+    error = data1.copy()
+
+    aper1 = CircularAperture((50, 50), r=20.)
+    aper2 = CircularAperture((5, 5), r=20.)
+
+    tbl1 = aperture_photometry(data1, aper1, error=error)
+    tbl2 = aperture_photometry(data2, aper1, error=error)
+    assert_allclose(tbl1['aperture_sum'], tbl2['aperture_sum'])
+    assert_allclose(tbl1['aperture_sum_err'], tbl2['aperture_sum_err'])
+
+    tbl3 = aperture_photometry(data1, aper2, error=error)
+    tbl4 = aperture_photometry(data2, aper2, error=error)
+    assert_allclose(tbl1['aperture_sum'], tbl2['aperture_sum'])
+    assert_allclose(tbl1['aperture_sum_err'], tbl2['aperture_sum_err'])
