@@ -116,7 +116,7 @@ class PixelAperture(Aperture):
         if mode == 'subpixels':
             if not isinstance(subpixels, int) or subpixels <= 0:
                 raise ValueError('subpixels must be a strictly positive '
-                                 'integer'.format(subpixels))
+                                 'integer')
 
         if mode == 'center':
             use_exact = 0
@@ -271,7 +271,7 @@ class PixelAperture(Aperture):
 
     @staticmethod
     def _prepare_photometry_output(_list, unit=None):
-        if len(_list) == 0:   # if error is not input
+        if not _list:  # if error is not input
             return _list
 
         if unit is not None:
@@ -384,8 +384,8 @@ class PixelAperture(Aperture):
 
         aperture_sums = []
         aperture_sum_errs = []
-        for mask in self.to_mask(method=method, subpixels=subpixels):
-            data_weighted = mask.multiply(data)
+        for apermask in self.to_mask(method=method, subpixels=subpixels):
+            data_weighted = apermask.multiply(data)
 
             if data_weighted is None:
                 aperture_sums.append(np.nan)
@@ -393,7 +393,7 @@ class PixelAperture(Aperture):
                 aperture_sums.append(np.sum(data_weighted))
 
             if error is not None:
-                variance_weighted = mask.multiply(error**2)
+                variance_weighted = apermask.multiply(error**2)
 
                 if variance_weighted is None:
                     aperture_sum_errs.append(np.nan)
@@ -684,12 +684,12 @@ def _prepare_photometry_input(data, error, mask, wcs, unit):
     """
 
     if isinstance(data, fits.HDUList):
-        for i in range(len(data)):
-            if data[i].data is not None:
+        for i, hdu in enumerate(data):
+            if hdu.data is not None:
                 warnings.warn("Input data is a HDUList object, photometry is "
                               "run only for the {0} HDU."
                               .format(i), AstropyUserWarning)
-                data = data[i]
+                data = hdu
                 break
 
     if isinstance(data, (fits.PrimaryHDU, fits.ImageHDU)):
