@@ -1,5 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
+import astropy.units as u
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
@@ -57,6 +58,17 @@ def test_mask_cutout_copy():
     assert cutout[10, 10] == 1.
 
 
+def test_mask_cutout_copy_quantity():
+    data = np.ones((50, 50)) * u.adu
+    aper = CircularAperture((25, 25), r=10.)
+    mask = aper.to_mask()[0]
+    cutout = mask.cutout(data, copy=True)
+    assert cutout.unit == data.unit
+
+    data[25, 25] = 100. * u.adu
+    assert cutout[10, 10].value == 1.
+
+
 @pytest.mark.parametrize('position', POSITIONS)
 def test_mask_cutout_no_overlap(position):
     data = np.ones((50, 50))
@@ -87,3 +99,31 @@ def test_mask_cutout_partial_overlap(position):
 
     image = mask.to_image(data.shape)
     assert image.shape == data.shape
+
+
+def test_mask_multiply():
+    radius = 10.
+    data = np.ones((50, 50))
+    aper = CircularAperture((25, 25), r=radius)
+    mask = aper.to_mask()[0]
+    data_weighted = mask.multiply(data)
+    assert np.sum(data_weighted) == radius**2 * np.pi
+
+    # test that multiply() returns a copy
+    data[25, 25] = 100.
+    assert data_weighted[10, 10] == 1.
+
+
+def test_mask_multiply_quantity():
+    radius = 10.
+    data = np.ones((50, 50)) * u.adu
+    aper = CircularAperture((25, 25), r=radius)
+    mask = aper.to_mask()[0]
+
+    data_weighted = mask.multiply(data)
+    assert data_weighted.unit == u.adu
+    assert np.sum(data_weighted.value) == radius**2 * np.pi
+
+    # test that multiply() returns a copy
+    data[25, 25] = 100. * u.adu
+    assert data_weighted[10, 10].value == 1.

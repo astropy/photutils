@@ -187,7 +187,7 @@ class ApertureMask:
             # try this for speed -- the result may still be a partial
             # overlap, in which case the next block will be triggered
             if copy:
-                cutout = np.copy(data[self.bbox.slices])
+                cutout = data[self.bbox.slices].copy()  # preserves Quantity
             else:
                 cutout = data[self.bbox.slices]
 
