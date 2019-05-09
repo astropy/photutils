@@ -522,11 +522,11 @@ class TestSourceCatalog:
         mywcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
 
         cat = source_properties(IMAGE, SEGM, wcs=mywcs)
-        columns = ['sky_centroid', 'sky_centroid_icrs', 'icrs_centroid',
-                   'ra_icrs_centroid', 'dec_icrs_centroid', 'sky_bbox_ll',
+        columns = ['sky_centroid', 'sky_centroid_icrs', 'sky_bbox_ll',
                    'sky_bbox_ul', 'sky_bbox_lr', 'sky_bbox_ur']
         t = cat.to_table(columns=columns)
-        assert t[0]['sky_centroid'] is not None
+        for column in columns:
+            assert t[0][column] is not None
         assert t.colnames == columns
 
         obj = cat[0]
@@ -545,11 +545,11 @@ class TestSourceCatalog:
 
     def test_table_no_wcs(self):
         cat = source_properties(IMAGE, SEGM)
-        columns = ['sky_centroid', 'sky_centroid_icrs', 'icrs_centroid',
-                   'ra_icrs_centroid', 'dec_icrs_centroid', 'sky_bbox_ll',
+        columns = ['sky_centroid', 'sky_centroid_icrs', 'sky_bbox_ll',
                    'sky_bbox_ul', 'sky_bbox_lr', 'sky_bbox_ur']
         t = cat.to_table(columns=columns)
-        assert t[0]['sky_centroid'] is None
+        for column in columns:
+            assert t[0][column] is None
         assert t.colnames == columns
 
     def test_repr_str(self):

@@ -1601,8 +1601,7 @@ class SourceCatalog:
         return self.__str__()
 
     def __getattr__(self, attr):
-        exclude = ['sky_centroid', 'sky_centroid_icrs', 'icrs_centroid',
-                   'ra_icrs_centroid', 'dec_icrs_centroid', 'sky_bbox_ll',
+        exclude = ['sky_centroid', 'sky_centroid_icrs', 'sky_bbox_ll',
                    'sky_bbox_ul', 'sky_bbox_lr', 'sky_bbox_ur']
         if attr not in exclude:
             if attr not in self._cache:
@@ -1612,7 +1611,7 @@ class SourceCatalog:
                     # turn list of Quantities into a Quantity array
                     values = u.Quantity(values)
                 if isinstance(values[0], SkyCoord):  # pragma: no cover
-                    # turn list of SkyCoord into a SkyCoord array
+                    # failsafe: turn list of SkyCoord into a SkyCoord array
                     values = SkyCoord(values)
 
                 self._cache[attr] = values
