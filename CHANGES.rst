@@ -34,6 +34,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Fixed an issue where the ``ApertureMask.cutout`` method would drop
+    the data units when ``copy=True``. [#842]
+
 - ``photutils.segmentation``
 
   - Fixed an issue where ``deblend_sources`` could fail for sources
