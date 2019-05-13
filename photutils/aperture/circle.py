@@ -94,12 +94,15 @@ class CircularMaskMixin:
 
 class CircularAperture(CircularMaskMixin, PixelAperture):
     """
-    Circular aperture(s), defined in pixel coordinates.
+    A circular aperture defined in pixel coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : array_like or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s) in one of the
+        The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` tuple
@@ -112,7 +115,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         rows of (x, y) coordinates.
 
     r : float
-        The radius of the aperture(s), in pixels.
+        The radius of the circle in pixels.
 
     Raises
     ------
@@ -181,12 +184,15 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
 
 class CircularAnnulus(CircularMaskMixin, PixelAperture):
     """
-    Circular annulus aperture(s), defined in pixel coordinates.
+    A circular annulus aperture defined in pixel coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : array_like or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s) in one of the
+        The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` tuple
@@ -199,10 +205,10 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         rows of (x, y) coordinates.
 
     r_in : float
-        The inner radius of the annulus.
+        The inner radius of the circular annulus in pixels.
 
     r_out : float
-        The outer radius of the annulus.
+        The outer radius of the circular annulus in pixels.
 
     Raises
     ------
@@ -278,16 +284,19 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
 
 class SkyCircularAperture(SkyAperture):
     """
-    Circular aperture(s), defined in sky coordinates.
+    A circular aperture defined in sky coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be
+        The celestial coordinates of the aperture center(s). This can be
         either scalar coordinates or an array of coordinates.
 
-    r : `~astropy.units.Quantity`
-        The radius of the aperture(s), either in angular or pixel units.
+    r : scalar `~astropy.units.Quantity`
+        The radius of the circle, either in angular or pixel units.
     """
 
     def __init__(self, positions, r):
@@ -327,21 +336,24 @@ class SkyCircularAperture(SkyAperture):
 
 class SkyCircularAnnulus(SkyAperture):
     """
-    Circular annulus aperture(s), defined in sky coordinates.
+    A circular annulus aperture defined in sky coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be
+        The celestial coordinates of the aperture center(s). This can be
         either scalar coordinates or an array of coordinates.
 
-    r_in : `~astropy.units.Quantity`
-        The inner radius of the annulus, either in angular or pixel
-        units.
+    r_in : scalar `~astropy.units.Quantity`
+        The inner radius of the circular annulus, either in angular or
+        pixel units.
 
-    r_out : `~astropy.units.Quantity`
-        The outer radius of the annulus, either in angular or pixel
-        units.
+    r_out : scalar `~astropy.units.Quantity`
+        The outer radius of the circular annulus, either in angular or
+        pixel units.
     """
 
     def __init__(self, positions, r_in, r_out):
