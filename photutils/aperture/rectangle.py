@@ -102,12 +102,15 @@ class RectangularMaskMixin:
 
 class RectangularAperture(RectangularMaskMixin, PixelAperture):
     """
-    Rectangular aperture(s), defined in pixel coordinates.
+    A rectangular aperture defined in pixel coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : array_like or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s) in one of the
+        The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` tuple
@@ -120,16 +123,16 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         rows of (x, y) coordinates.
 
     w : float
-        The full width of the aperture.  For ``theta=0`` the width side
-        is along the ``x`` axis.
+        The full width of the rectangle in pixels.  For ``theta=0`` the
+        width side is along the ``x`` axis.
 
     h : float
-        The full height of the aperture.  For ``theta=0`` the height
-        side is along the ``y`` axis.
+        The full height of the rectangle in pixels.  For ``theta=0`` the
+        height side is along the ``y`` axis.
 
     theta : float, optional
-        The rotation angle in radians of the width (``w``) side from the
-        positive ``x`` axis.  The rotation angle increases
+        The rotation angle in radians of the rectangle "width" side from
+        the positive ``x`` axis.  The rotation angle increases
         counterclockwise.  The default is 0.
 
     Raises
@@ -224,12 +227,15 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
 class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     """
-    Rectangular annulus aperture(s), defined in pixel coordinates.
+    A rectangular annulus aperture defined in pixel coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : array_like or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s) in one of the
+        The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` tuple
@@ -242,16 +248,16 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         rows of (x, y) coordinates.
 
     w_in : float
-        The inner full width of the aperture.  For ``theta=0`` the width
-        side is along the ``x`` axis.
+        The inner full width of the rectangular annulus in pixels.  For
+        ``theta=0`` the width side is along the ``x`` axis.
 
     w_out : float
-        The outer full width of the aperture.  For ``theta=0`` the width
-        side is along the ``x`` axis.
+        The outer full width of the rectangular annulus in pixels.  For
+        ``theta=0`` the width side is along the ``x`` axis.
 
     h_out : float
-        The outer full height of the aperture.  The inner full height is
-        calculated as:
+        The outer full height of the rectangular annulus in pixels.  The
+        inner full height is calculated as:
 
             .. math:: h_{in} = h_{out}
                 \\left(\\frac{w_{in}}{w_{out}}\\right)
@@ -259,8 +265,8 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         For ``theta=0`` the height side is along the ``y`` axis.
 
     theta : float, optional
-        The rotation angle in radians of the width side from the
-        positive ``x`` axis.  The rotation angle increases
+        The rotation angle in radians of the rectangle "width" side from
+        the positive ``x`` axis.  The rotation angle increases
         counterclockwise.  The default is 0.
 
     Raises
@@ -378,29 +384,32 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
 class SkyRectangularAperture(SkyAperture):
     """
-    Rectangular aperture(s), defined in sky coordinates.
+    A rectangular aperture defined in sky coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be
+        The celestial coordinates of the aperture center(s). This can be
         either scalar coordinates or an array of coordinates.
 
-    w : `~astropy.units.Quantity`
-        The full width of the aperture, either in angular or pixel
+    w : scalar `~astropy.units.Quantity`
+        The full width of the rectangle, either in angular or pixel
         units.  For ``theta=0`` the width side is along the North-South
         axis.
 
-    h :  `~astropy.units.Quantity`
-        The full height of the aperture, either in angular or pixel
+    h :  scalar `~astropy.units.Quantity`
+        The full height of the rectangle, either in angular or pixel
         units.  For ``theta=0`` the height side is along the East-West
         axis.
 
-    theta : `~astropy.units.Quantity`, optional
-        The position angle (in angular units) of the width side.  For a
-        right-handed world coordinate system, the position angle
-        increases counterclockwise from North (PA=0).  The default is 0
-        degrees.
+    theta : scalar `~astropy.units.Quantity`, optional
+        The position angle (in angular units) of the rectangle "width"
+        side.  For a right-handed world coordinate system, the position
+        angle increases counterclockwise from North (PA=0).  The default
+        is 0 degrees.
     """
 
     def __init__(self, positions, w, h, theta=0.*u.deg):
@@ -449,38 +458,41 @@ class SkyRectangularAperture(SkyAperture):
 
 class SkyRectangularAnnulus(SkyAperture):
     """
-    Rectangular annulus aperture(s), defined in sky coordinates.
+    A rectangular annulus aperture defined in sky coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be
+        The celestial coordinates of the aperture center(s). This can be
         either scalar coordinates or an array of coordinates.
 
-    w_in : `~astropy.units.Quantity`
-        The inner full width of the aperture, either in angular or pixel
-        units.  For ``theta=0`` the width side is along the North-South
-        axis.
+    w_in : scalar `~astropy.units.Quantity`
+        The inner full width of the rectangular annulus, either in
+        angular or pixel units.  For ``theta=0`` the width side is along
+        the North-South axis.
 
-    w_out : `~astropy.units.Quantity`
-        The outer full width of the aperture, either in angular or pixel
-        units.  For ``theta=0`` the width side is along the North-South
-        axis.
+    w_out : scalar `~astropy.units.Quantity`
+        The outer full width of the rectangular annulus, either in
+        angular or pixel units.  For ``theta=0`` the width side is along
+        the North-South axis.
 
-    h_out : `~astropy.units.Quantity`
-        The outer full height of the aperture, either in angular or
-        pixel units.  The inner full height is calculated as:
+    h_out : scalar `~astropy.units.Quantity`
+        The outer full height of the rectangular annulus, either in
+        angular or pixel units.  The inner full height is calculated as:
 
             .. math:: h_{in} = h_{out}
                 \\left(\\frac{w_{in}}{w_{out}}\\right)
 
         For ``theta=0`` the height side is along the East-West axis.
 
-    theta : `~astropy.units.Quantity`, optional
-        The position angle (in angular units) of the width side.  For a
-        right-handed world coordinate system, the position angle
-        increases counterclockwise from North (PA=0).  The default is 0
-        degrees.
+    theta : scalar `~astropy.units.Quantity`, optional
+        The position angle (in angular units) of the rectangle "width"
+        side.  For a right-handed world coordinate system, the position
+        angle increases counterclockwise from North (PA=0).  The default
+        is 0 degrees.
     """
 
     def __init__(self, positions, w_in, w_out, h_out, theta=0.*u.deg):
