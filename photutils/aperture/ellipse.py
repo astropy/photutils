@@ -100,12 +100,15 @@ class EllipticalMaskMixin:
 
 class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
     """
-    Elliptical aperture(s), defined in pixel coordinates.
+    An elliptical aperture defined in pixel coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : array_like or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s) in one of the
+        The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` tuple
@@ -118,14 +121,14 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         rows of (x, y) coordinates.
 
     a : float
-        The semimajor axis.
+        The semimajor axis of the ellipse in pixels.
 
     b : float
-        The semiminor axis.
+        The semiminor axis of the ellipse in pixels.
 
     theta : float, optional
-        The rotation angle in radians of the semimajor axis from the
-        positive ``x`` axis.  The rotation angle increases
+        The rotation angle in radians of the ellipse semimajor axis from
+        the positive ``x`` axis.  The rotation angle increases
         counterclockwise.  The default is 0.
 
     Raises
@@ -211,12 +214,15 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
 class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
     """
-    Elliptical annulus aperture(s), defined in pixel coordinates.
+    An elliptical annulus aperture defined in pixel coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : array_like or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s) in one of the
+        The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` tuple
@@ -229,21 +235,21 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         rows of (x, y) coordinates.
 
     a_in : float
-        The inner semimajor axis.
+        The inner semimajor axis of the elliptical annulus in pixels.
 
     a_out : float
-        The outer semimajor axis.
+        The outer semimajor axis of the elliptical annulus in pixels.
 
     b_out : float
-        The outer semiminor axis.  The inner semiminor axis is
-        calculated as:
+        The outer semiminor axis of the elliptical annulus in pixels.
+        The inner semiminor axis is calculated as:
 
             .. math:: b_{in} = b_{out}
                 \\left(\\frac{a_{in}}{a_{out}}\\right)
 
     theta : float, optional
-        The rotation angle in radians of the semimajor axis from the
-        positive ``x`` axis.  The rotation angle increases
+        The rotation angle in radians of the ellipse semimajor axis from
+        the positive ``x`` axis.  The rotation angle increases
         counterclockwise.  The default is 0.
 
     Raises
@@ -342,25 +348,30 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
 class SkyEllipticalAperture(SkyAperture):
     """
-    Elliptical aperture(s), defined in sky coordinates.
+    An elliptical aperture defined in sky coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be
+        The celestial coordinates of the aperture center(s). This can be
         either scalar coordinates or an array of coordinates.
 
-    a : `~astropy.units.Quantity`
-        The semimajor axis, either in angular or pixel units.
+    a : scalar `~astropy.units.Quantity`
+        The semimajor axis of the ellipse, either in angular or pixel
+        units.
 
-    b : `~astropy.units.Quantity`
-        The semiminor axis, either in angular or pixel units.
+    b : scalar `~astropy.units.Quantity`
+        The semiminor axis of the ellipse, either in angular or pixel
+        units.
 
-    theta : `~astropy.units.Quantity`, optional
-        The position angle (in angular units) of the semimajor axis.
-        For a right-handed world coordinate system, the position angle
-        increases counterclockwise from North (PA=0).  The default is 0
-        degrees.
+    theta : scalar `~astropy.units.Quantity`, optional
+        The position angle (in angular units) of the ellipse semimajor
+        axis.  For a right-handed world coordinate system, the position
+        angle increases counterclockwise from North (PA=0).  The default
+        is 0 degrees.
     """
 
     def __init__(self, positions, a, b, theta=0.*u.deg):
@@ -409,32 +420,35 @@ class SkyEllipticalAperture(SkyAperture):
 
 class SkyEllipticalAnnulus(SkyAperture):
     """
-    Elliptical annulus aperture(s), defined in sky coordinates.
+    An elliptical annulus aperture defined in sky coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be
+        The celestial coordinates of the aperture center(s). This can be
         either scalar coordinates or an array of coordinates.
 
-    a_in : `~astropy.units.Quantity`
+    a_in : scalar `~astropy.units.Quantity`
         The inner semimajor axis, either in angular or pixel units.
 
-    a_out : `~astropy.units.Quantity`
+    a_out : scalar `~astropy.units.Quantity`
         The outer semimajor axis, either in angular or pixel units.
 
-    b_out : `~astropy.units.Quantity`
+    b_out : scalar `~astropy.units.Quantity`
         The outer semiminor axis, either in angular or pixel units.  The
         inner semiminor axis is calculated as:
 
             .. math:: b_{in} = b_{out}
                 \\left(\\frac{a_{in}}{a_{out}}\\right)
 
-    theta : `~astropy.units.Quantity`, optional
-        The position angle (in angular units) of the semimajor axis.
-        For a right-handed world coordinate system, the position angle
-        increases counterclockwise from North (PA=0).  The default is 0
-        degrees.
+    theta : scalar `~astropy.units.Quantity`, optional
+        The position angle (in angular units) of the ellipse semimajor
+        axis.  For a right-handed world coordinate system, the position
+        angle increases counterclockwise from North (PA=0).  The default
+        is 0 degrees.
     """
 
     def __init__(self, positions, a_in, a_out, b_out, theta=0.*u.deg):
