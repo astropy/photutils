@@ -113,6 +113,24 @@ class PositiveScalar(ApertureAttribute):
             raise ValueError(f'{self.name} must be a positive scalar')
 
 
+class AngleScalarQuantity(ApertureAttribute):
+    """
+    Check that value is either an angular scalar
+    `~astropy.units.Quantity`.
+    """
+
+    def _validate(self, value):
+        if isinstance(value, u.Quantity):
+            if not value.isscalar:
+                raise ValueError(f'{self.name} must be a scalar')
+
+            if not value.unit.physical_type == 'angle':
+                raise ValueError(f'{self.name} must have angular units')
+        else:
+            raise TypeError(f'{self.name} must be an astropy Quantity '
+                            'instance')
+
+
 class AngleOrPixelScalarQuantity(ApertureAttribute):
     """
     Check that value is either an angular or a pixel scalar
