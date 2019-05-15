@@ -18,7 +18,7 @@ from astropy.wcs.utils import (skycoord_to_pixel, pixel_to_skycoord,
 
 from ..utils import get_version_info
 from ..utils.misc import _ABCMetaAndInheritDocstrings
-from ..utils.wcs_helpers import pixel_scale_angle_at_skycoord
+from ..utils._wcs_helpers import _pixel_scale_angle_at_skycoord
 
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture', 'aperture_photometry']
@@ -524,7 +524,7 @@ class PixelAperture(Aperture):
         # Here, we define the scale at the WCS CRVAL position.
         crval = SkyCoord(*wcs.wcs.crval, frame=wcs_to_celestial_frame(wcs),
                          unit=wcs.wcs.cunit)
-        scale, angle = pixel_scale_angle_at_skycoord(crval, wcs)
+        scale, angle = _pixel_scale_angle_at_skycoord(crval, wcs)
 
         params = self._params[:]
         theta_key = 'theta'
@@ -599,7 +599,7 @@ class SkyAperture(Aperture):
         # Here, we define the scale at the WCS CRVAL position.
         crval = SkyCoord(*wcs.wcs.crval, frame=wcs_to_celestial_frame(wcs),
                          unit=wcs.wcs.cunit)
-        scale, angle = pixel_scale_angle_at_skycoord(crval, wcs)
+        scale, angle = _pixel_scale_angle_at_skycoord(crval, wcs)
 
         params = self._params[:]
         theta_key = 'theta'
