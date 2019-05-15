@@ -72,36 +72,6 @@ class PixelAperture(Aperture):
     """
 
     @staticmethod
-    def _sanitize_positions(positions):
-        if isinstance(positions, u.Quantity):
-            if positions.unit == u.pixel:
-                positions = np.atleast_2d(positions.value)
-            else:
-                raise u.UnitsError('positions should be in pixel units')
-        elif isinstance(positions, (list, tuple, np.ndarray)):
-            positions = np.atleast_2d(positions)
-            if positions.shape[1] != 2:
-                if positions.shape[0] == 2:
-                    positions = np.transpose(positions)
-                else:
-                    raise TypeError('List or array of (x, y) pixel '
-                                    'coordinates is expected, got "{0}".'
-                                    .format(positions))
-        elif isinstance(positions, zip):
-            # This is needed for zip to work seamlessly in Python 3
-            # (e.g. positions = zip(xpos, ypos))
-            positions = np.atleast_2d(list(positions))
-        else:
-            raise TypeError('List or array of (x, y) pixel coordinates '
-                            'is expected, got "{0}".'.format(positions))
-
-        if positions.ndim > 2:
-            raise ValueError('{0}D position array is not supported. Only 2D '
-                             'arrays are supported.'.format(positions.ndim))
-
-        return positions
-
-    @staticmethod
     def _translate_mask_mode(mode, subpixels, rectangle=False):
         if mode not in ('center', 'subpixel', 'exact'):
             raise ValueError('Invalid mask mode: {0}'.format(mode))
