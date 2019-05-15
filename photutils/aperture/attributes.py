@@ -10,6 +10,10 @@ import astropy.units as u
 import numpy as np
 
 
+__all__ = ['ApertureAttribute', 'PixelPositions', 'SkyCoordPositions',
+           'Scalar', 'PositiveScalar', 'AngleOrPixelScalarQuantity']
+
+
 class ApertureAttribute:
     """
     Base descriptor class for aperture attribute validation.
@@ -41,6 +45,50 @@ class ApertureAttribute:
         raise NotImplementedError
 
 
+class PixelPositions(ApertureAttribute):
+    """
+    Validate and set positions for pixel-based apertures.
+
+    In all cases, pixel positions are converted to a 2D `~numpy.ndarray`
+    (without units).
+    """
+
+    def __set__(self, instance, value):
+        # This is needed for zip to work seamlessly in Python 3
+        # (e.g. positions = zip(xpos, ypos))
+        if isinstance(value, zip):
+            value = tuple(value)
+
+        value = np.atleast_2d(value)  # np.ndarray
+        self._validate(value)
+
+        if isinstance(value, u.Quantity):
+            value = value.value
+
+        if value.shape[1] != 2 and value.shape[0] == 2:
+            value = np.transpose(value)
+
+        self.values[instance] = value
+
+    def _validate(self, value):
+        if isinstance(value, u.Quantity) and value.unit != u.pixel:
+            raise u.UnitsError(f'{self.name} must be in pixel units')
+
+        if (value.shape[1] != 2 and value.shape[0] != 2) or value.ndim > 2:
+            raise TypeError(f'{self.name} must be an (x, y) pixel position '
+                            'or a list or array of (x, y) pixel positions.')
+
+
+class SkyCoordPositions(ApertureAttribute):
+    """
+    Check that value is a `~astropy.coordinates.SkyCoord`.
+    """
+
+    def _validate(self, value):
+        if not isinstance(value, SkyCoord):
+            raise ValueError(f'{self.name} must be a SkyCoord instance')
+
+
 class Scalar(ApertureAttribute):
     """
     Check that value is a scalar.
@@ -59,16 +107,6 @@ class PositiveScalar(ApertureAttribute):
     def _validate(self, value):
         if not np.isscalar(value) or value <= 0:
             raise ValueError(f'{self.name} must be a positive scalar')
-
-
-class SkyCoordPosition(ApertureAttribute):
-    """
-    Check that value is a `~astropy.coordinates.SkyCoord`.
-    """
-
-    def _validate(self, value):
-        if not isinstance(value, SkyCoord):
-            raise ValueError(f'{self.name} must be a SkyCoord instance')
 
 
 class AngleOrPixelScalarQuantity(ApertureAttribute):
