@@ -59,7 +59,7 @@ class PixelPositions(ApertureAttribute):
         if isinstance(value, zip):
             value = tuple(value)
 
-        value = np.atleast_2d(value)  # np.ndarray
+        value = np.atleast_2d(value).astype(float)  # np.ndarray
         self._validate(value)
 
         if isinstance(value, u.Quantity):
@@ -77,6 +77,10 @@ class PixelPositions(ApertureAttribute):
         if (value.shape[1] != 2 and value.shape[0] != 2) or value.ndim > 2:
             raise TypeError(f'{self.name} must be an (x, y) pixel position '
                             'or a list or array of (x, y) pixel positions.')
+
+        if np.any(~np.isfinite(value)):
+            raise ValueError(f'{self.name} must not contain any non-finite '
+                             '(e.g. NaN or inf) positions')
 
 
 class SkyCoordPositions(ApertureAttribute):
