@@ -552,7 +552,7 @@ class PixelAperture(Aperture):
         # The aperture object must have a single value for each shape
         # parameter so we must use a single pixel scale for all positions.
         # Here, we define the scale at the WCS CRVAL position.
-        crval = SkyCoord([wcs.wcs.crval], frame=wcs_to_celestial_frame(wcs),
+        crval = SkyCoord(*wcs.wcs.crval, frame=wcs_to_celestial_frame(wcs),
                          unit=wcs.wcs.cunit)
         scale, angle = pixel_scale_angle_at_skycoord(crval, wcs)
 
@@ -627,7 +627,7 @@ class SkyAperture(Aperture):
         # The aperture object must have a single value for each shape
         # parameter so we must use a single pixel scale for all positions.
         # Here, we define the scale at the WCS CRVAL position.
-        crval = SkyCoord([wcs.wcs.crval], frame=wcs_to_celestial_frame(wcs),
+        crval = SkyCoord(*wcs.wcs.crval, frame=wcs_to_celestial_frame(wcs),
                          unit=wcs.wcs.cunit)
         scale, angle = pixel_scale_angle_at_skycoord(crval, wcs)
 
