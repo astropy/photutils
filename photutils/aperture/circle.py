@@ -4,11 +4,12 @@ import math
 
 from astropy.coordinates import SkyCoord
 
+from .attributes import (PositiveScalar, AngleOrPixelScalarQuantity,
+                         SkyCoordPosition)
 from .core import PixelAperture, SkyAperture
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import circular_overlap_grid
-from ..utils.wcs_helpers import assert_angle_or_pixel
 
 
 __all__ = ['CircularMaskMixin', 'CircularAperture', 'CircularAnnulus',
@@ -123,12 +124,11 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         If the input radius, ``r``, is negative.
     """
 
-    def __init__(self, positions, r):
-        if r < 0:
-            raise ValueError('r must be non-negative')
+    r = PositiveScalar('r')
 
+    def __init__(self, positions, r):
         self.positions = self._sanitize_positions(positions)
-        self.r = float(r)
+        self.r = r
         self._params = ['r']
 
     # TODO: make lazyproperty?, but update if positions or radius change
@@ -219,15 +219,16 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         If inner radius (``r_in``) is negative.
     """
 
+    r_in = PositiveScalar('r_in')
+    r_out = PositiveScalar('r_out')
+
     def __init__(self, positions, r_in, r_out):
         if not (r_out > r_in):
             raise ValueError('r_out must be greater than r_in')
-        if r_in < 0:
-            raise ValueError('r_in must be non-negative')
 
         self.positions = self._sanitize_positions(positions)
-        self.r_in = float(r_in)
-        self.r_out = float(r_out)
+        self.r_in = r_in
+        self.r_out = r_out
         self._params = ['r_in', 'r_out']
 
     @property
@@ -299,13 +300,11 @@ class SkyCircularAperture(SkyAperture):
         The radius of the circle, either in angular or pixel units.
     """
 
-    def __init__(self, positions, r):
-        if isinstance(positions, SkyCoord):
-            self.positions = positions
-        else:
-            raise TypeError('positions must be a SkyCoord object')
+    positions = SkyCoordPosition('positions')
+    r = AngleOrPixelScalarQuantity('r')
 
-        assert_angle_or_pixel('r', r)
+    def __init__(self, positions, r):
+        self.positions = positions
         self.r = r
         self._params = ['r']
 
@@ -356,19 +355,16 @@ class SkyCircularAnnulus(SkyAperture):
         pixel units.
     """
 
+    positions = SkyCoordPosition('positions')
+    r_in = AngleOrPixelScalarQuantity('r_in')
+    r_out = AngleOrPixelScalarQuantity('r_out')
+
     def __init__(self, positions, r_in, r_out):
-        if isinstance(positions, SkyCoord):
-            self.positions = positions
-        else:
-            raise TypeError('positions must be a SkyCoord object')
-
-        assert_angle_or_pixel('r_in', r_in)
-        assert_angle_or_pixel('r_out', r_out)
-
         if r_in.unit.physical_type != r_out.unit.physical_type:
             raise ValueError("r_in and r_out should either both be angles "
                              "or in pixels.")
 
+        self.positions = positions
         self.r_in = r_in
         self.r_out = r_out
         self._params = ['r_in', 'r_out']
