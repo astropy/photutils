@@ -3,10 +3,12 @@
 Descriptor classes for aperture attribute validation.
 """
 
+import warnings
 import weakref
 
 from astropy.coordinates import SkyCoord
 import astropy.units as u
+from astropy.utils.exceptions import AstropyDeprecationWarning
 import numpy as np
 
 
@@ -66,6 +68,11 @@ class PixelPositions(ApertureAttribute):
             value = value.value
 
         if value.shape[1] != 2 and value.shape[0] == 2:
+            warnings.warn('Inputing positions shaped as 2xN is deprecated '
+                          'and will be removed in v0.8.  Positions should be '
+                          'a (x, y) pixel position or a list or array of '
+                          '(x, y) pixel positions, e.g. [(x1, y1), '
+                          '(x2, y2), (x3, y3)].', AstropyDeprecationWarning)
             value = np.transpose(value)
 
         self.values[instance] = value
