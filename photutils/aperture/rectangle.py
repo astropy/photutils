@@ -3,14 +3,15 @@
 import math
 
 import numpy as np
-from astropy.coordinates import SkyCoord
 import astropy.units as u
 
+from .attributes import (PixelPositions, SkyCoordPositions, Scalar,
+                         PositiveScalar, AngleScalarQuantity,
+                         AngleOrPixelScalarQuantity)
 from .core import PixelAperture, SkyAperture
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import rectangular_overlap_grid
-from ..utils.wcs_helpers import assert_angle, assert_angle_or_pixel
 
 
 __all__ = ['RectangularMaskMixin', 'RectangularAperture',
@@ -141,14 +142,16 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         If either width (``w``) or height (``h``) is negative.
     """
 
-    def __init__(self, positions, w, h, theta=0.):
-        if w < 0 or h < 0:
-            raise ValueError("'w' and 'h' must be nonnegative.")
+    positions = PixelPositions('positions')
+    w = PositiveScalar('w')
+    h = PositiveScalar('h')
+    theta = Scalar('theta')
 
-        self.positions = self._sanitize_positions(positions)
-        self.w = float(w)
-        self.h = float(h)
-        self.theta = float(theta)
+    def __init__(self, positions, w, h, theta=0.):
+        self.positions = positions
+        self.w = w
+        self.h = h
+        self.theta = theta
         self._params = ['w', 'h', 'theta']
 
     @property
@@ -280,18 +283,22 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         (``h_out``) is negative.
     """
 
-    def __init__(self, positions, w_in, w_out, h_out, theta=0.):
-        if not (w_out > w_in):
-            raise ValueError("'w_out' must be greater than 'w_in'")
-        if w_in < 0 or h_out < 0:
-            raise ValueError("'w_in' and 'h_out' must be non-negative")
+    positions = PixelPositions('positions')
+    w_in = PositiveScalar('w_in')
+    w_out = PositiveScalar('w_out')
+    h_out = PositiveScalar('h_out')
+    theta = Scalar('theta')
 
-        self.positions = self._sanitize_positions(positions)
-        self.w_in = float(w_in)
-        self.w_out = float(w_out)
-        self.h_out = float(h_out)
+    def __init__(self, positions, w_in, w_out, h_out, theta=0.):
+        if not w_out > w_in:
+            raise ValueError("'w_out' must be greater than 'w_in'")
+
+        self.positions = positions
+        self.w_in = w_in
+        self.w_out = w_out
+        self.h_out = h_out
         self.h_in = self.w_in * self.h_out / self.w_out
-        self.theta = float(theta)
+        self.theta = theta
         self._params = ['w_in', 'w_out', 'h_out', 'theta']
 
     @property
@@ -412,20 +419,17 @@ class SkyRectangularAperture(SkyAperture):
         is 0 degrees.
     """
 
+    positions = SkyCoordPositions('positions')
+    w = AngleOrPixelScalarQuantity('w')
+    h = AngleOrPixelScalarQuantity('h')
+    theta = AngleScalarQuantity('theta')
+
     def __init__(self, positions, w, h, theta=0.*u.deg):
-        if isinstance(positions, SkyCoord):
-            self.positions = positions
-        else:
-            raise TypeError('positions must be a SkyCoord instance')
-
-        assert_angle_or_pixel('w', w)
-        assert_angle_or_pixel('h', h)
-        assert_angle('theta', theta)
-
         if w.unit.physical_type != h.unit.physical_type:
             raise ValueError("'w' and 'h' should either both be angles or "
                              "in pixels")
 
+        self.positions = positions
         self.w = w
         self.h = h
         self.theta = theta
@@ -495,17 +499,13 @@ class SkyRectangularAnnulus(SkyAperture):
         is 0 degrees.
     """
 
+    positions = SkyCoordPositions('positions')
+    w_in = AngleOrPixelScalarQuantity('w_in')
+    w_out = AngleOrPixelScalarQuantity('w_out')
+    h_out = AngleOrPixelScalarQuantity('h_out')
+    theta = AngleScalarQuantity('theta')
+
     def __init__(self, positions, w_in, w_out, h_out, theta=0.*u.deg):
-        if isinstance(positions, SkyCoord):
-            self.positions = positions
-        else:
-            raise TypeError('positions must be a SkyCoord instance')
-
-        assert_angle_or_pixel('w_in', w_in)
-        assert_angle_or_pixel('w_out', w_out)
-        assert_angle_or_pixel('h_out', h_out)
-        assert_angle('theta', theta)
-
         if w_in.unit.physical_type != w_out.unit.physical_type:
             raise ValueError("w_in and w_out should either both be angles or "
                              "in pixels")
@@ -514,9 +514,11 @@ class SkyRectangularAnnulus(SkyAperture):
             raise ValueError("w_out and h_out should either both be angles "
                              "or in pixels")
 
+        self.positions = positions
         self.w_in = w_in
         self.w_out = w_out
         self.h_out = h_out
+        self.h_in = self.w_in * self.h_out / self.w_out
         self.theta = theta
         self._params = ['w_in', 'w_out', 'h_out', 'theta']
 

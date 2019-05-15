@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Descriptor class(es) for aperture attribute validation.
+Descriptor classes for aperture attribute validation.
 """
 
 import weakref
