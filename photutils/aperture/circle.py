@@ -104,14 +104,10 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
-            * single ``(x, y)`` tuple
-            * list of ``(x, y)`` tuples
-            * ``Nx2`` or ``2xN`` `~numpy.ndarray`
-            * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
-
-        Note that a ``2x2`` `~numpy.ndarray` or
-        `~astropy.units.Quantity` is interpreted as ``Nx2``, i.e. two
-        rows of (x, y) coordinates.
+            * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
+            * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
+            * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
+              pixel units
 
     r : float
         The radius of the circle in pixels.
@@ -120,6 +116,18 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
     ------
     ValueError : `ValueError`
         If the input radius, ``r``, is negative.
+
+    Examples
+    --------
+    >>> from photutils import CircularAperture
+    >>> aper = CircularAperture([10., 20.], 3.)
+    >>> aper = CircularAperture((10., 20.), 3.)
+
+    >>> pos1 = (10., 20.)  # (x, y)
+    >>> pos2 = (30., 40.)
+    >>> pos3 = (50., 60.)
+    >>> aper = CircularAperture([pos1, pos2, pos3], 3.)
+    >>> aper = CircularAperture((pos1, pos2, pos3), 3.)
     """
 
     positions = PixelPositions('positions')
@@ -192,14 +200,10 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
-            * single ``(x, y)`` tuple
-            * list of ``(x, y)`` tuples
-            * ``Nx2`` or ``2xN`` `~numpy.ndarray`
-            * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
-
-        Note that a ``2x2`` `~numpy.ndarray` or
-        `~astropy.units.Quantity` is interpreted as ``Nx2``, i.e. two
-        rows of (x, y) coordinates.
+            * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
+            * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
+            * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
+              pixel units
 
     r_in : float
         The inner radius of the circular annulus in pixels.
@@ -214,6 +218,18 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
 
     ValueError : `ValueError`
         If inner radius (``r_in``) is negative.
+
+    Examples
+    --------
+    >>> from photutils import CircularAnnulus
+    >>> aper = CircularAnnulus([10., 20.], 3., 5.)
+    >>> aper = CircularAnnulus((10., 20.), 3., 5.)
+
+    >>> pos1 = (10., 20.)  # (x, y)
+    >>> pos2 = (30., 40.)
+    >>> pos3 = (50., 60.)
+    >>> aper = CircularAnnulus([pos1, pos2, pos3], 3., 5.)
+    >>> aper = CircularAnnulus((pos1, pos2, pos3), 3., 5.)
     """
 
     positions = PixelPositions('positions')
@@ -221,7 +237,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
     r_out = PositiveScalar('r_out')
 
     def __init__(self, positions, r_in, r_out):
-        if not (r_out > r_in):
+        if not r_out > r_in:
             raise ValueError('r_out must be greater than r_in')
 
         self.positions = positions
@@ -296,6 +312,14 @@ class SkyCircularAperture(SkyAperture):
 
     r : scalar `~astropy.units.Quantity`
         The radius of the circle, either in angular or pixel units.
+
+    Examples
+    --------
+    >>> from astropy.coordinates import SkyCoord
+    >>> import astropy.units as u
+    >>> from photutils import SkyCircularAperture
+    >>> positions = SkyCoord(ra=[10., 20.], dec=[30., 40.], unit='deg')
+    >>> aper = SkyCircularAperture(positions, 0.5*u.arcsec)
     """
 
     positions = SkyCoordPositions('positions')
@@ -351,6 +375,14 @@ class SkyCircularAnnulus(SkyAperture):
     r_out : scalar `~astropy.units.Quantity`
         The outer radius of the circular annulus, either in angular or
         pixel units.
+
+    Examples
+    --------
+    >>> from astropy.coordinates import SkyCoord
+    >>> import astropy.units as u
+    >>> from photutils import SkyCircularAnnulus
+    >>> positions = SkyCoord(ra=[10., 20.], dec=[30., 40.], unit='deg')
+    >>> aper = SkyCircularAnnulus(positions, 0.5*u.arcsec, 1.0*u.arcsec)
     """
 
     positions = SkyCoordPositions('positions')

@@ -69,8 +69,8 @@ class RectangularMaskMixin:
             A list of aperture mask objects.
         """
 
-        use_exact, subpixels = self._translate_mask_mode(method, subpixels,
-                                                         rectangle=True)
+        _, subpixels = self._translate_mask_mode(method, subpixels,
+                                                 rectangle=True)
 
         if hasattr(self, 'w'):
             w = self.w
@@ -114,14 +114,10 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
-            * single ``(x, y)`` tuple
-            * list of ``(x, y)`` tuples
-            * ``Nx2`` or ``2xN`` `~numpy.ndarray`
-            * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
-
-        Note that a ``2x2`` `~numpy.ndarray` or
-        `~astropy.units.Quantity` is interpreted as ``Nx2``, i.e. two
-        rows of (x, y) coordinates.
+            * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
+            * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
+            * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
+              pixel units
 
     w : float
         The full width of the rectangle in pixels.  For ``theta=0`` the
@@ -140,6 +136,18 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
     ------
     ValueError : `ValueError`
         If either width (``w``) or height (``h``) is negative.
+
+    Examples
+    --------
+    >>> from photutils import RectangularAperture
+    >>> aper = RectangularAperture([10., 20.], 5., 3.)
+    >>> aper = RectangularAperture((10., 20.), 5., 3., theta=np.pi)
+
+    >>> pos1 = (10., 20.)  # (x, y)
+    >>> pos2 = (30., 40.)
+    >>> pos3 = (50., 60.)
+    >>> aper = RectangularAperture([pos1, pos2, pos3], 5., 3.)
+    >>> aper = RectangularAperture((pos1, pos2, pos3), 5., 3., theta=np.pi)
     """
 
     positions = PixelPositions('positions')
@@ -241,14 +249,10 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
-            * single ``(x, y)`` tuple
-            * list of ``(x, y)`` tuples
-            * ``Nx2`` or ``2xN`` `~numpy.ndarray`
-            * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
-
-        Note that a ``2x2`` `~numpy.ndarray` or
-        `~astropy.units.Quantity` is interpreted as ``Nx2``, i.e. two
-        rows of (x, y) coordinates.
+            * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
+            * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
+            * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
+              pixel units
 
     w_in : float
         The inner full width of the rectangular annulus in pixels.  For
@@ -281,6 +285,18 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     ValueError : `ValueError`
         If either the inner width (``w_in``) or the outer height
         (``h_out``) is negative.
+
+    Examples
+    --------
+    >>> from photutils import RectangularAnnulus
+    >>> aper = RectangularAnnulus([10., 20.], 3., 8., 5.)
+    >>> aper = RectangularAnnulus((10., 20.), 3., 8., 5., theta=np.pi)
+
+    >>> pos1 = (10., 20.)  # (x, y)
+    >>> pos2 = (30., 40.)
+    >>> pos3 = (50., 60.)
+    >>> aper = RectangularAnnulus([pos1, pos2, pos3], 3., 8., 5.)
+    >>> aper = RectangularAnnulus((pos1, pos2, pos3), 3., 8., 5., theta=np.pi)
     """
 
     positions = PixelPositions('positions')
@@ -417,6 +433,14 @@ class SkyRectangularAperture(SkyAperture):
         side.  For a right-handed world coordinate system, the position
         angle increases counterclockwise from North (PA=0).  The default
         is 0 degrees.
+
+    Examples
+    --------
+    >>> from astropy.coordinates import SkyCoord
+    >>> import astropy.units as u
+    >>> from photutils import SkyRectangularAperture
+    >>> positions = SkyCoord(ra=[10., 20.], dec=[30., 40.], unit='deg')
+    >>> aper = SkyRectangularAperture(positions, 1.0*u.arcsec, 0.5*u.arcsec)
     """
 
     positions = SkyCoordPositions('positions')
@@ -497,6 +521,15 @@ class SkyRectangularAnnulus(SkyAperture):
         side.  For a right-handed world coordinate system, the position
         angle increases counterclockwise from North (PA=0).  The default
         is 0 degrees.
+
+    Examples
+    --------
+    >>> from astropy.coordinates import SkyCoord
+    >>> import astropy.units as u
+    >>> from photutils import SkyRectangularAnnulus
+    >>> positions = SkyCoord(ra=[10., 20.], dec=[30., 40.], unit='deg')
+    >>> aper = SkyRectangularAnnulus(positions, 3.0*u.arcsec, 8.0*u.arcsec,
+    ...                              5.0*u.arcsec)
     """
 
     positions = SkyCoordPositions('positions')

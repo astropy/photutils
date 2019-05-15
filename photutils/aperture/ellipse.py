@@ -111,14 +111,10 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
-            * single ``(x, y)`` tuple
-            * list of ``(x, y)`` tuples
-            * ``Nx2`` or ``2xN`` `~numpy.ndarray`
-            * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
-
-        Note that a ``2x2`` `~numpy.ndarray` or
-        `~astropy.units.Quantity` is interpreted as ``Nx2``, i.e. two
-        rows of (x, y) coordinates.
+            * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
+            * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
+            * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
+              pixel units
 
     a : float
         The semimajor axis of the ellipse in pixels.
@@ -135,6 +131,18 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
     ------
     ValueError : `ValueError`
         If either axis (``a`` or ``b``) is negative.
+
+    Examples
+    --------
+    >>> from photutils import EllipticalAperture
+    >>> aper = EllipticalAperture([10., 20.], 5., 3.)
+    >>> aper = EllipticalAperture((10., 20.), 5., 3., theta=np.pi)
+
+    >>> pos1 = (10., 20.)  # (x, y)
+    >>> pos2 = (30., 40.)
+    >>> pos3 = (50., 60.)
+    >>> aper = EllipticalAperture([pos1, pos2, pos3], 5., 3.)
+    >>> aper = EllipticalAperture((pos1, pos2, pos3), 5., 3., theta=np.pi)
     """
 
     positions = PixelPositions('positions')
@@ -227,14 +235,10 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
-            * single ``(x, y)`` tuple
-            * list of ``(x, y)`` tuples
-            * ``Nx2`` or ``2xN`` `~numpy.ndarray`
-            * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
-
-        Note that a ``2x2`` `~numpy.ndarray` or
-        `~astropy.units.Quantity` is interpreted as ``Nx2``, i.e. two
-        rows of (x, y) coordinates.
+            * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
+            * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
+            * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
+              pixel units
 
     a_in : float
         The inner semimajor axis of the elliptical annulus in pixels.
@@ -263,6 +267,18 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
     ValueError : `ValueError`
         If either the inner semimajor axis (``a_in``) or the outer semiminor
         axis (``b_out``) is negative.
+
+    Examples
+    --------
+    >>> from photutils import EllipticalAnnulus
+    >>> aper = EllipticalAnnulus([10., 20.], 3., 8., 5.)
+    >>> aper = EllipticalAnnulus((10., 20.), 3., 8., 5., theta=np.pi)
+
+    >>> pos1 = (10., 20.)  # (x, y)
+    >>> pos2 = (30., 40.)
+    >>> pos3 = (50., 60.)
+    >>> aper = EllipticalAnnulus([pos1, pos2, pos3], 3., 8., 5.)
+    >>> aper = EllipticalAnnulus((pos1, pos2, pos3), 3., 8., 5., theta=np.pi)
     """
 
     positions = PixelPositions('positions')
@@ -378,6 +394,14 @@ class SkyEllipticalAperture(SkyAperture):
         axis.  For a right-handed world coordinate system, the position
         angle increases counterclockwise from North (PA=0).  The default
         is 0 degrees.
+
+    Examples
+    --------
+    >>> from astropy.coordinates import SkyCoord
+    >>> import astropy.units as u
+    >>> from photutils import SkyEllipticalAperture
+    >>> positions = SkyCoord(ra=[10., 20.], dec=[30., 40.], unit='deg')
+    >>> aper = SkyEllipticalAperture(positions, 1.0*u.arcsec, 0.5*u.arcsec)
     """
 
     positions = SkyCoordPositions('positions')
@@ -452,6 +476,15 @@ class SkyEllipticalAnnulus(SkyAperture):
         axis.  For a right-handed world coordinate system, the position
         angle increases counterclockwise from North (PA=0).  The default
         is 0 degrees.
+
+    Examples
+    --------
+    >>> from astropy.coordinates import SkyCoord
+    >>> import astropy.units as u
+    >>> from photutils import SkyEllipticalAnnulus
+    >>> positions = SkyCoord(ra=[10., 20.], dec=[30., 40.], unit='deg')
+    >>> aper = SkyEllipticalAnnulus(positions, 0.5*u.arcsec, 2.0*u.arcsec,
+    ...                             1.0*u.arcsec)
     """
 
     positions = SkyCoordPositions('positions')
