@@ -61,6 +61,16 @@ class PositiveScalar(ApertureAttribute):
             raise ValueError(f'{self.name} must be a positive scalar')
 
 
+class SkyCoordPosition(ApertureAttribute):
+    """
+    Check that value is a `~astropy.coordinates.SkyCoord`.
+    """
+
+    def _validate(self, value):
+        if not isinstance(value, SkyCoord):
+            raise ValueError(f'{self.name} must be a SkyCoord instance')
+
+
 class AngleOrPixelScalarQuantity(ApertureAttribute):
     """
     Check that value is either an angular or a pixel scalar
