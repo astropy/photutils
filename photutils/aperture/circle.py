@@ -2,10 +2,8 @@
 
 import math
 
-from astropy.coordinates import SkyCoord
-
-from .attributes import (PositiveScalar, AngleOrPixelScalarQuantity,
-                         SkyCoordPosition)
+from .attributes import (PixelPositions, SkyCoordPositions, PositiveScalar,
+                         AngleOrPixelScalarQuantity)
 from .core import PixelAperture, SkyAperture
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
@@ -124,14 +122,14 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         If the input radius, ``r``, is negative.
     """
 
+    positions = PixelPositions('positions')
     r = PositiveScalar('r')
 
     def __init__(self, positions, r):
-        self.positions = self._sanitize_positions(positions)
+        self.positions = positions
         self.r = r
         self._params = ['r']
 
-    # TODO: make lazyproperty?, but update if positions or radius change
     @property
     def bounding_boxes(self):
         xmin = self.positions[:, 0] - self.r
@@ -142,7 +140,6 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         return [BoundingBox._from_float(x0, x1, y0, y1)
                 for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
 
-    # TODO: make lazyproperty?, but update if positions or radius change
     def area(self):
         return math.pi * self.r ** 2
 
@@ -219,6 +216,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         If inner radius (``r_in``) is negative.
     """
 
+    positions = PixelPositions('positions')
     r_in = PositiveScalar('r_in')
     r_out = PositiveScalar('r_out')
 
@@ -226,7 +224,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         if not (r_out > r_in):
             raise ValueError('r_out must be greater than r_in')
 
-        self.positions = self._sanitize_positions(positions)
+        self.positions = positions
         self.r_in = r_in
         self.r_out = r_out
         self._params = ['r_in', 'r_out']
@@ -300,7 +298,7 @@ class SkyCircularAperture(SkyAperture):
         The radius of the circle, either in angular or pixel units.
     """
 
-    positions = SkyCoordPosition('positions')
+    positions = SkyCoordPositions('positions')
     r = AngleOrPixelScalarQuantity('r')
 
     def __init__(self, positions, r):
@@ -355,7 +353,7 @@ class SkyCircularAnnulus(SkyAperture):
         pixel units.
     """
 
-    positions = SkyCoordPosition('positions')
+    positions = SkyCoordPositions('positions')
     r_in = AngleOrPixelScalarQuantity('r_in')
     r_out = AngleOrPixelScalarQuantity('r_out')
 
