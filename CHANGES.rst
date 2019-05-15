@@ -78,6 +78,11 @@ Bug Fixes
 API changes
 ^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Deprecated inputting aperture pixel positions shaped as 2xN.
+    [#847]
+
 - ``photutils.detection``
 
   - Removed deprecated ``subpixel`` keyword for ``find_peaks``. [#835]
