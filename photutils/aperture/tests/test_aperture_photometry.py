@@ -944,4 +944,4 @@ def test_scalar_skycoord():
     skycoord = pixel_to_skycoord(90, 60, wcs)
     aper = SkyCircularAperture(skycoord, r=0.1*u.arcsec)
     tbl = aperture_photometry(data, aper, wcs=wcs)
-    assert isinstance(tbl['celestial_center'], SkyCoord)
+    assert isinstance(tbl['sky_center'], SkyCoord)
