@@ -824,8 +824,8 @@ def aperture_photometry(data, apertures, error=None, mask=None,
               The ``x`` and ``y`` pixel coordinates of the input
               aperture center(s).
 
-            * ``'celestial_center'``:
-              The celestial coordinates of the input aperture center(s).
+            * ``'sky_center'``:
+              The sky coordinates of the input aperture center(s).
               Returned only if the input ``apertures`` is a
               `SkyAperture` object.
 
@@ -896,9 +896,9 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     if skyaper:
         if skycoord_pos.isscalar:
             # create length-1 SkyCoord array
-            tbl['celestial_center'] = skycoord_pos.reshape((-1,))
+            tbl['sky_center'] = skycoord_pos.reshape((-1,))
         else:
-            tbl['celestial_center'] = skycoord_pos
+            tbl['sky_center'] = skycoord_pos
 
     for i, aper in enumerate(apertures):
         aper_sum, aper_sum_err = aper.do_photometry(data, error=error,

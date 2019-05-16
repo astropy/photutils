@@ -78,6 +78,11 @@ Bug Fixes
 API changes
 ^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Renamed the ``celestial_center`` column to ``sky_center`` in the
+    ``aperture_photometry`` output table. [#848]
+
 - ``photutils.detection``
 
   - Removed deprecated ``subpixel`` keyword for ``find_peaks``. [#835]
