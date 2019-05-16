@@ -2,6 +2,7 @@
 
 import numpy as np
 from astropy.io.fits.util import _is_int
+from astropy.utils import deprecated
 
 
 __all__ = ['BoundingBox']
@@ -177,14 +178,34 @@ class BoundingBox:
             self.iymax - 0.5,
         )
 
-    def as_patch(self, **kwargs):
+    @deprecated('0.7', alternative='as_artist')
+    def as_patch(self, **kwargs):  # pragma: no cover
         """
         Return a `matplotlib.patches.Rectangle` that represents the
         bounding box.
 
         Parameters
         ----------
-        kwargs
+        kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
+
+        Returns
+        -------
+        result : `matplotlib.patches.Rectangle`
+            A matplotlib rectangular patch.
+        """
+
+        return self.as_artist(**kwargs)
+
+    def as_artist(self, **kwargs):
+        """
+        Return a `matplotlib.patches.Rectangle` that represents the
+        bounding box.
+
+        Parameters
+        ----------
+        kwargs : `dict`
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -206,7 +227,7 @@ class BoundingBox:
             np.random.seed(12345)
             ax.imshow(np.random.random((10, 10)), interpolation='nearest',
                       cmap='viridis')
-            ax.add_patch(bbox.as_patch(facecolor='none', edgecolor='white',
+            ax.add_patch(bbox.as_artist(facecolor='none', edgecolor='white',
                          lw=2.))
         """
 
@@ -226,9 +247,9 @@ class BoundingBox:
         xpos = (self.extent[1] + self.extent[0]) / 2.
         ypos = (self.extent[3] + self.extent[2]) / 2.
         xypos = (xpos, ypos)
-        h, w = self.shape
+        height, width = self.shape
 
-        return RectangularAperture(xypos, w=w, h=h, theta=0.)
+        return RectangularAperture(xypos, w=width, h=height, theta=0.)
 
     def plot(self, origin=(0, 0), ax=None, fill=False, **kwargs):
         """
@@ -249,7 +270,7 @@ class BoundingBox:
             Set whether to fill the aperture patch.  The default is
             `False`.
 
-        kwargs
+        kwargs : `dict`
             Any keyword arguments accepted by `matplotlib.patches.Patch`.
         """
 

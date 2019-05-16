@@ -90,10 +90,10 @@ def test_bounding_box_extent():
 
 
 @pytest.mark.skipif('not HAS_MATPLOTLIB')
-def test_bounding_box_as_patch():
+def test_bounding_box_as_artist():
     bbox = BoundingBox(1, 10, 2, 20)
 
-    patch = bbox.as_patch()
+    patch = bbox.as_artist()
     assert_allclose(patch.get_xy(), (0.5, 1.5))
     assert_allclose(patch.get_width(), 9)
     assert_allclose(patch.get_height(), 18)
