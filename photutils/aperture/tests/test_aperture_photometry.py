@@ -87,18 +87,16 @@ def test_aperture_plots(aperture_class, params):
 
 def test_aperture_pixel_positions():
     pos1 = (10, 20)
-    pos2 = u.Quantity((10, 20), unit=u.pixel)
-    pos3 = ((10, 20, 30), (10, 20, 30))
-    pos3_pairs = ((10, 10), (20, 20), (30, 30))
+    pos2 = [(10, 20)]
+    pos3 = u.Quantity((10, 20), unit=u.pixel)
 
     r = 3
     ap1 = CircularAperture(pos1, r)
     ap2 = CircularAperture(pos2, r)
     ap3 = CircularAperture(pos3, r)
 
-    assert_allclose(np.atleast_2d(pos1), ap1.positions)
-    assert_allclose(np.atleast_2d(pos2.value), ap2.positions)
-    assert_allclose(pos3_pairs, ap3.positions)
+    assert_allclose(ap1.positions, ap2.positions)
+    assert_allclose(ap1.positions, ap3.positions)
 
 
 class BaseTestAperturePhotometry:

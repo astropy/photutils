@@ -80,6 +80,9 @@ API changes
 
 - ``photutils.aperture``
 
+  - Deprecated inputting aperture pixel positions shaped as 2xN.
+    [#847]
+
   - Renamed the ``celestial_center`` column to ``sky_center`` in the
     ``aperture_photometry`` output table. [#848]
 

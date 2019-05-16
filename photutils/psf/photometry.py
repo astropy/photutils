@@ -257,8 +257,9 @@ class BasicPSFPhotometry:
                               'going to be ignored.', AstropyUserWarning)
 
             if 'flux_0' not in init_guesses.colnames:
-                apertures = CircularAperture((init_guesses['x_0'],
-                                              init_guesses['y_0']),
+                positions = np.transpose((init_guesses['x_0'],
+                                          init_guesses['y_0']))
+                apertures = CircularAperture(positions,
                                              r=self.aperture_radius)
 
                 init_guesses['flux_0'] = aperture_photometry(
@@ -269,8 +270,9 @@ class BasicPSFPhotometry:
                                  'not given.')
             sources = self.finder(image)
             if len(sources) > 0:
-                apertures = CircularAperture((sources['xcentroid'],
-                                              sources['ycentroid']),
+                positions = np.transpose((sources['xcentroid'],
+                                          sources['ycentroid']))
+                apertures = CircularAperture(positions,
                                              r=self.aperture_radius)
 
                 sources['aperture_flux'] = aperture_photometry(
@@ -699,8 +701,9 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         n = n_start
         while(sources is not None and
               (self.niters is None or n <= self.niters)):
-            apertures = CircularAperture((sources['xcentroid'],
-                                          sources['ycentroid']),
+            positions = np.transpose((sources['xcentroid'],
+                                      sources['ycentroid']))
+            apertures = CircularAperture(positions,
                                          r=self.aperture_radius)
             sources['aperture_flux'] = aperture_photometry(
                 self._residual_image, apertures)['aperture_sum']
