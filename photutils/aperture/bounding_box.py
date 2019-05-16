@@ -131,6 +131,9 @@ class BoundingBox:
             (self.iymax == other.iymax)
         )
 
+    def __or__(self, bbox):
+        return self.union(bbox)
+
     def __repr__(self):
         data = self.__dict__
         data['name'] = self.__class__.__name__
@@ -276,3 +279,30 @@ class BoundingBox:
 
         aper = self.to_aperture()
         aper.plot(origin=origin, ax=ax, fill=fill, **kwargs)
+
+    def union(self, bbox):
+        """
+        Return a `BoundingBox` representing the union of this
+        `BoundingBox` with another `BoundingBox`.
+
+        Parameters
+        ----------
+        bbox : `~photutils.BoundingBox`
+            The `BoundingBox` to join with this one.
+
+        Returns
+        -------
+        result : `~photutils.BoundingBox`
+            A `BoundingBox` representing the union of the input ``bbox``
+            with this one.
+        """
+
+        if not isinstance(bbox, BoundingBox):
+            raise TypeError('bbox must be a BoundingBox instance')
+
+        ixmin = min((self.ixmin, bbox.ixmin))
+        ixmax = max((self.ixmax, bbox.ixmax))
+        iymin = min((self.iymin, bbox.iymin))
+        iymax = max((self.iymax, bbox.iymax))
+
+        return BoundingBox(ixmin=ixmin, ixmax=ixmax, iymin=iymin, iymax=iymax)
