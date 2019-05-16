@@ -178,7 +178,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         ymin = self.positions[:, 1] - dy
         ymax = self.positions[:, 1] + dy
 
-        return [BoundingBox._from_float(x0, x1, y0, y1)
+        return [BoundingBox.from_float(x0, x1, y0, y1)
                 for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
 
     def area(self):
@@ -320,7 +320,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         ymin = self.positions[:, 1] - dy
         ymax = self.positions[:, 1] + dy
 
-        return [BoundingBox._from_float(x0, x1, y0, y1)
+        return [BoundingBox.from_float(x0, x1, y0, y1)
                 for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
 
     def area(self):

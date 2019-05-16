@@ -145,7 +145,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         ymin = self.positions[:, 1] - self.r
         ymax = self.positions[:, 1] + self.r
 
-        return [BoundingBox._from_float(x0, x1, y0, y1)
+        return [BoundingBox.from_float(x0, x1, y0, y1)
                 for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
 
     def area(self):
@@ -252,7 +252,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         ymin = self.positions[:, 1] - self.r_out
         ymax = self.positions[:, 1] + self.r_out
 
-        return [BoundingBox._from_float(x0, x1, y0, y1)
+        return [BoundingBox.from_float(x0, x1, y0, y1)
                 for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
 
     def area(self):

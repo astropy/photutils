@@ -47,10 +47,10 @@ def test_bounding_box_inputs():
 
 def test_bounding_box_from_float():
     # This is the example from the method docstring
-    bbox = BoundingBox._from_float(xmin=1.0, xmax=10.0, ymin=2.0, ymax=20.0)
+    bbox = BoundingBox.from_float(xmin=1.0, xmax=10.0, ymin=2.0, ymax=20.0)
     assert bbox == BoundingBox(ixmin=1, ixmax=11, iymin=2, iymax=21)
 
-    bbox = BoundingBox._from_float(xmin=1.4, xmax=10.4, ymin=1.6, ymax=10.6)
+    bbox = BoundingBox.from_float(xmin=1.4, xmax=10.4, ymin=1.6, ymax=10.6)
     assert bbox == BoundingBox(ixmin=1, ixmax=11, iymin=2, iymax=12)
 
 
