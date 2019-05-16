@@ -3,14 +3,15 @@
 import math
 
 import numpy as np
-from astropy.coordinates import SkyCoord
 import astropy.units as u
 
+from .attributes import (PixelPositions, SkyCoordPositions, Scalar,
+                         PositiveScalar, AngleScalarQuantity,
+                         AngleOrPixelScalarQuantity)
 from .core import PixelAperture, SkyAperture
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import elliptical_overlap_grid
-from ..utils.wcs_helpers import assert_angle, assert_angle_or_pixel
 
 
 __all__ = ['EllipticalMaskMixin', 'EllipticalAperture', 'EllipticalAnnulus',
@@ -75,7 +76,6 @@ class EllipticalMaskMixin:
         elif hasattr(self, 'a_in'):    # annulus
             a = self.a_out
             b = self.b_out
-            b_in = self.a_in * self.b_out / self.a_out
         else:
             raise ValueError('Cannot determine the aperture shape.')
 
@@ -90,8 +90,8 @@ class EllipticalMaskMixin:
             if hasattr(self, 'a_in'):
                 mask -= elliptical_overlap_grid(edges[0], edges[1], edges[2],
                                                 edges[3], nx, ny, self.a_in,
-                                                b_in, self.theta, use_exact,
-                                                subpixels)
+                                                self.b_in, self.theta,
+                                                use_exact, subpixels)
 
             masks.append(ApertureMask(mask, bbox))
 
@@ -100,12 +100,15 @@ class EllipticalMaskMixin:
 
 class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
     """
-    Elliptical aperture(s), defined in pixel coordinates.
+    An elliptical aperture defined in pixel coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : array_like or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s) in one of the
+        The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` tuple
@@ -118,14 +121,14 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         rows of (x, y) coordinates.
 
     a : float
-        The semimajor axis.
+        The semimajor axis of the ellipse in pixels.
 
     b : float
-        The semiminor axis.
+        The semiminor axis of the ellipse in pixels.
 
     theta : float, optional
-        The rotation angle in radians of the semimajor axis from the
-        positive ``x`` axis.  The rotation angle increases
+        The rotation angle in radians of the ellipse semimajor axis from
+        the positive ``x`` axis.  The rotation angle increases
         counterclockwise.  The default is 0.
 
     Raises
@@ -134,14 +137,16 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         If either axis (``a`` or ``b``) is negative.
     """
 
-    def __init__(self, positions, a, b, theta=0.):
-        if a < 0 or b < 0:
-            raise ValueError("'a' and 'b' must be non-negative.")
+    positions = PixelPositions('positions')
+    a = PositiveScalar('a')
+    b = PositiveScalar('b')
+    theta = Scalar('theta')
 
-        self.positions = self._sanitize_positions(positions)
-        self.a = float(a)
-        self.b = float(b)
-        self.theta = float(theta)
+    def __init__(self, positions, a, b, theta=0.):
+        self.positions = positions
+        self.a = a
+        self.b = b
+        self.theta = theta
         self._params = ['a', 'b', 'theta']
 
     @property
@@ -211,12 +216,15 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
 class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
     """
-    Elliptical annulus aperture(s), defined in pixel coordinates.
+    An elliptical annulus aperture defined in pixel coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : array_like or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s) in one of the
+        The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` tuple
@@ -229,21 +237,21 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         rows of (x, y) coordinates.
 
     a_in : float
-        The inner semimajor axis.
+        The inner semimajor axis of the elliptical annulus in pixels.
 
     a_out : float
-        The outer semimajor axis.
+        The outer semimajor axis of the elliptical annulus in pixels.
 
     b_out : float
-        The outer semiminor axis.  The inner semiminor axis is
-        calculated as:
+        The outer semiminor axis of the elliptical annulus in pixels.
+        The inner semiminor axis is calculated as:
 
             .. math:: b_{in} = b_{out}
                 \\left(\\frac{a_{in}}{a_{out}}\\right)
 
     theta : float, optional
-        The rotation angle in radians of the semimajor axis from the
-        positive ``x`` axis.  The rotation angle increases
+        The rotation angle in radians of the ellipse semimajor axis from
+        the positive ``x`` axis.  The rotation angle increases
         counterclockwise.  The default is 0.
 
     Raises
@@ -257,18 +265,22 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         axis (``b_out``) is negative.
     """
 
-    def __init__(self, positions, a_in, a_out, b_out, theta=0.):
-        if not (a_out > a_in):
-            raise ValueError('"a_out" must be greater than "a_in".')
-        if a_in < 0 or b_out < 0:
-            raise ValueError('"a_in" and "b_out" must be non-negative.')
+    positions = PixelPositions('positions')
+    a_in = PositiveScalar('a_in')
+    a_out = PositiveScalar('a_out')
+    b_out = PositiveScalar('b_out')
+    theta = Scalar('theta')
 
-        self.positions = self._sanitize_positions(positions)
-        self.a_in = float(a_in)
-        self.a_out = float(a_out)
-        self.b_out = float(b_out)
+    def __init__(self, positions, a_in, a_out, b_out, theta=0.):
+        if not a_out > a_in:
+            raise ValueError('"a_out" must be greater than "a_in".')
+
+        self.positions = positions
+        self.a_in = a_in
+        self.a_out = a_out
+        self.b_out = b_out
         self.b_in = self.b_out * self.a_in / self.a_out
-        self.theta = float(theta)
+        self.theta = theta
         self._params = ['a_in', 'a_out', 'b_out', 'theta']
 
     @property
@@ -342,41 +354,43 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
 class SkyEllipticalAperture(SkyAperture):
     """
-    Elliptical aperture(s), defined in sky coordinates.
+    An elliptical aperture defined in sky coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be
+        The celestial coordinates of the aperture center(s). This can be
         either scalar coordinates or an array of coordinates.
 
-    a : `~astropy.units.Quantity`
-        The semimajor axis, either in angular or pixel units.
+    a : scalar `~astropy.units.Quantity`
+        The semimajor axis of the ellipse, either in angular or pixel
+        units.
 
-    b : `~astropy.units.Quantity`
-        The semiminor axis, either in angular or pixel units.
+    b : scalar `~astropy.units.Quantity`
+        The semiminor axis of the ellipse, either in angular or pixel
+        units.
 
-    theta : `~astropy.units.Quantity`, optional
-        The position angle (in angular units) of the semimajor axis.
-        For a right-handed world coordinate system, the position angle
-        increases counterclockwise from North (PA=0).  The default is 0
-        degrees.
+    theta : scalar `~astropy.units.Quantity`, optional
+        The position angle (in angular units) of the ellipse semimajor
+        axis.  For a right-handed world coordinate system, the position
+        angle increases counterclockwise from North (PA=0).  The default
+        is 0 degrees.
     """
 
+    positions = SkyCoordPositions('positions')
+    a = AngleOrPixelScalarQuantity('a')
+    b = AngleOrPixelScalarQuantity('b')
+    theta = AngleScalarQuantity('theta')
+
     def __init__(self, positions, a, b, theta=0.*u.deg):
-        if isinstance(positions, SkyCoord):
-            self.positions = positions
-        else:
-            raise TypeError('positions must be a SkyCoord instance')
-
-        assert_angle_or_pixel('a', a)
-        assert_angle_or_pixel('b', b)
-        assert_angle('theta', theta)
-
         if a.unit.physical_type != b.unit.physical_type:
             raise ValueError("a and b should either both be angles "
                              "or in pixels")
 
+        self.positions = positions
         self.a = a
         self.b = b
         self.theta = theta
@@ -409,45 +423,44 @@ class SkyEllipticalAperture(SkyAperture):
 
 class SkyEllipticalAnnulus(SkyAperture):
     """
-    Elliptical annulus aperture(s), defined in sky coordinates.
+    An elliptical annulus aperture defined in sky coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be
+        The celestial coordinates of the aperture center(s). This can be
         either scalar coordinates or an array of coordinates.
 
-    a_in : `~astropy.units.Quantity`
+    a_in : scalar `~astropy.units.Quantity`
         The inner semimajor axis, either in angular or pixel units.
 
-    a_out : `~astropy.units.Quantity`
+    a_out : scalar `~astropy.units.Quantity`
         The outer semimajor axis, either in angular or pixel units.
 
-    b_out : `~astropy.units.Quantity`
+    b_out : scalar `~astropy.units.Quantity`
         The outer semiminor axis, either in angular or pixel units.  The
         inner semiminor axis is calculated as:
 
             .. math:: b_{in} = b_{out}
                 \\left(\\frac{a_{in}}{a_{out}}\\right)
 
-    theta : `~astropy.units.Quantity`, optional
-        The position angle (in angular units) of the semimajor axis.
-        For a right-handed world coordinate system, the position angle
-        increases counterclockwise from North (PA=0).  The default is 0
-        degrees.
+    theta : scalar `~astropy.units.Quantity`, optional
+        The position angle (in angular units) of the ellipse semimajor
+        axis.  For a right-handed world coordinate system, the position
+        angle increases counterclockwise from North (PA=0).  The default
+        is 0 degrees.
     """
 
+    positions = SkyCoordPositions('positions')
+    a_in = AngleOrPixelScalarQuantity('a_in')
+    a_out = AngleOrPixelScalarQuantity('a_out')
+    b_out = AngleOrPixelScalarQuantity('b_out')
+    theta = AngleScalarQuantity('theta')
+
     def __init__(self, positions, a_in, a_out, b_out, theta=0.*u.deg):
-        if isinstance(positions, SkyCoord):
-            self.positions = positions
-        else:
-            raise TypeError('positions must be a SkyCoord instance')
-
-        assert_angle_or_pixel('a_in', a_in)
-        assert_angle_or_pixel('a_out', a_out)
-        assert_angle_or_pixel('b_out', b_out)
-        assert_angle('theta', theta)
-
         if a_in.unit.physical_type != a_out.unit.physical_type:
             raise ValueError("a_in and a_out should either both be angles "
                              "or in pixels")
@@ -456,9 +469,11 @@ class SkyEllipticalAnnulus(SkyAperture):
             raise ValueError("a_out and b_out should either both be angles "
                              "or in pixels")
 
+        self.positions = positions
         self.a_in = a_in
         self.a_out = a_out
         self.b_out = b_out
+        self.b_in = self.b_out * self.a_in / self.a_out
         self.theta = theta
         self._params = ['a_in', 'a_out', 'b_out', 'theta']
 

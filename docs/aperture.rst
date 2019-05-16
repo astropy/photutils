@@ -51,7 +51,7 @@ coordinates using the :class:`~photutils.CircularAperture` class::
 
     >>> from photutils import CircularAperture
     >>> positions = [(30., 30.), (40., 40.)]
-    >>> apertures = CircularAperture(positions, r=3.)
+    >>> aperture = CircularAperture(positions, r=3.)
 
 The positions should be either a single tuple of ``(x, y)``, a list of
 ``(x, y)`` tuples, or an array with shape ``Nx2``, where ``N`` is the
@@ -70,7 +70,7 @@ object::
     >>> from photutils import SkyCircularAperture
     >>> positions = SkyCoord(l=[1.2, 2.3] * u.deg, b=[0.1, 0.2] * u.deg,
     ...                      frame='galactic')
-    >>> apertures = SkyCircularAperture(positions, r=4. * u.arcsec)
+    >>> aperture = SkyCircularAperture(positions, r=4. * u.arcsec)
 
 .. note::
     Sky apertures are not defined completely in celestial coordinates.
@@ -110,10 +110,11 @@ Performing Aperture Photometry
 
 After the aperture object is created, we can then perform the
 photometry using the :func:`~photutils.aperture_photometry` function.
-We start by defining the apertures as described above::
+We start by defining the aperture (at two positions) as described
+above::
 
     >>> positions = [(30., 30.), (40., 40.)]
-    >>> apertures = CircularAperture(positions, r=3.)
+    >>> aperture = CircularAperture(positions, r=3.)
 
 and then we call the :func:`~photutils.aperture_photometry` function
 with the data and the apertures::
@@ -121,7 +122,7 @@ with the data and the apertures::
     >>> import numpy as np
     >>> from photutils import aperture_photometry
     >>> data = np.ones((100, 100))
-    >>> phot_table = aperture_photometry(data, apertures)
+    >>> phot_table = aperture_photometry(data, aperture)
     >>> phot_table['aperture_sum'].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
      id xcenter ycenter aperture_sum
@@ -144,7 +145,7 @@ area of a circle with a radius of 3::
 Aperture and Pixel Overlap
 --------------------------
 
-The overlap of the apertures with the data pixels can be handled in
+The overlap of the aperture with the data pixels can be handled in
 different ways.  For the default method (``method='exact'``), the
 exact intersection of the aperture with each pixel is calculated.  The
 other options, ``'center'`` and ``'subpixel'``, are faster, but with
@@ -158,7 +159,7 @@ subpixels needs to be set with the ``subpixels`` keyword.
 This example uses the ``'subpixel'`` method where pixels are resampled
 by a factor of 5 (``subpixels=5``) in each dimension::
 
-    >>> phot_table = aperture_photometry(data, apertures, method='subpixel',
+    >>> phot_table = aperture_photometry(data, aperture, method='subpixel',
     ...                                  subpixels=5)
     >>> print(phot_table)  # doctest: +SKIP
      id xcenter ycenter aperture_sum
@@ -181,11 +182,12 @@ Multiple Apertures at Each Position
 -----------------------------------
 
 While the `~photutils.Aperture` objects support multiple positions,
-they must have a fixed shape, e.g. radius, size, and orientation.
+they must have a fixed size and shape, e.g. radius and orientation.
 
 To perform photometry in multiple apertures at each position, one may
 input a list of aperture objects to the
-:func:`~photutils.aperture_photometry` function.
+:func:`~photutils.aperture_photometry` function.  In this case, the
+apertures must all have identical position(s).
 
 Suppose that we wish to use three circular apertures, with radii of 3,
 4, and 5 pixels, on each source::
@@ -255,7 +257,7 @@ representing the background of the data (determined by
 `~photutils.background.Background2D` or an external function), simply
 subtract the background::
 
-    >>> phot_table = aperture_photometry(data - bkg, apertures)  # doctest: +SKIP
+    >>> phot_table = aperture_photometry(data - bkg, aperture)  # doctest: +SKIP
 
 
 Local Background Subtraction
@@ -280,12 +282,12 @@ radius 6 pixels and outer radius 8 pixels.  We start by defining the
 apertures::
 
     >>> from photutils import CircularAnnulus
-    >>> apertures = CircularAperture(positions, r=3)
-    >>> annulus_apertures = CircularAnnulus(positions, r_in=6., r_out=8.)
+    >>> aperture = CircularAperture(positions, r=3)
+    >>> annulus_aperture = CircularAnnulus(positions, r_in=6., r_out=8.)
 
 We then perform the photometry in both apertures::
 
-    >>> apers = [apertures, annulus_apertures]
+    >>> apers = [aperture, annulus_aperture]
     >>> phot_table = aperture_photometry(data, apers)
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
@@ -307,12 +309,12 @@ aperture, we need to divide its sum by its area.  The mean value can
 be calculated by using the :meth:`~photutils.CircularAnnulus.area`
 method::
 
-    >>> bkg_mean = phot_table['aperture_sum_1'] / annulus_apertures.area()
+    >>> bkg_mean = phot_table['aperture_sum_1'] / annulus_aperture.area()
 
 The total background within the circular aperture is then the mean local
 background times the circular aperture area::
 
-    >>> bkg_sum = bkg_mean * apertures.area()
+    >>> bkg_sum = bkg_mean * aperture.area()
     >>> final_sum = phot_table['aperture_sum_0'] - bkg_sum
     >>> phot_table['residual_aperture_sum'] = final_sum
     >>> phot_table['residual_aperture_sum'].info.format = '%.8g'  # for consistent table output
@@ -333,14 +335,14 @@ For this example we perform the photometry in a circular aperture with
 a radius of 5 pixels.  The local background level around each source
 is estimated as the sigma-clipped median value within a circular
 annulus of inner radius 10 pixels and outer radius 15 pixels.  We
-start by defining an example image and apertures for three sources::
+start by defining an example image and an aperture for three sources::
 
     >>> from photutils.datasets import make_100gaussians_image
     >>> from photutils import CircularAperture, CircularAnnulus
     >>> data = make_100gaussians_image()
     >>> positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
-    >>> apertures = CircularAperture(positions, r=5)
-    >>> annulus_apertures = CircularAnnulus(positions, r_in=10, r_out=15)
+    >>> aperture = CircularAperture(positions, r=5)
+    >>> annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
 
 Let's plot the circular apertures (white) and circular annulus
 apertures (red) on the image:
@@ -353,20 +355,20 @@ apertures (red) on the image:
 
    data = make_100gaussians_image()
    positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
-   apertures = CircularAperture(positions, r=5)
-   annulus_apertures = CircularAnnulus(positions, r_in=10, r_out=15)
+   aperture = CircularAperture(positions, r=5)
+   annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
 
    norm = simple_norm(data, 'sqrt', percent=99)
    plt.imshow(data, norm=norm)
-   apertures.plot(color='white', lw=2)
-   annulus_apertures.plot(color='red', lw=2)
+   aperture.plot(color='white', lw=2)
+   annulus_aperture.plot(color='red', lw=2)
    plt.xlim(0, 170)
    plt.ylim(130, 250)
 
 We can use aperture masks to directly access the pixel values in any
-aperture.  Let's do that for the annulus apertures::
+aperture.  Let's do that for the annulus aperture::
 
-   >>> annulus_masks = annulus_apertures.to_mask(method='center')
+   >>> annulus_masks = annulus_aperture.to_mask(method='center')
 
 The result is a list of `~photutils.aperture.ApertureMask` objects,
 one for each aperture position.  The values in these aperture masks
@@ -392,9 +394,9 @@ Let's focus on just the first annulus.  Let's plot its aperture mask:
     from photutils import CircularAperture, CircularAnnulus
     import matplotlib.pyplot as plt
     positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
-    apertures = CircularAperture(positions, r=5)
-    annulus_apertures = CircularAnnulus(positions, r_in=10, r_out=15)
-    annulus_masks = annulus_apertures.to_mask(method='center')
+    aperture = CircularAperture(positions, r=5)
+    annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
+    annulus_masks = annulus_aperture.to_mask(method='center')
     plt.imshow(annulus_masks[0])
     plt.colorbar()
 
@@ -413,9 +415,9 @@ Let's plot the annulus data:
     from photutils.datasets import make_100gaussians_image
     import matplotlib.pyplot as plt
     positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
-    apertures = CircularAperture(positions, r=5)
-    annulus_apertures = CircularAnnulus(positions, r_in=10, r_out=15)
-    annulus_masks = annulus_apertures.to_mask(method='center')
+    aperture = CircularAperture(positions, r=5)
+    annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
+    annulus_masks = annulus_aperture.to_mask(method='center')
     data = make_100gaussians_image()
     annulus_data = annulus_masks[0].multiply(data)
     plt.imshow(annulus_data)
@@ -442,7 +444,7 @@ median::
 The total background within the circular aperture is then the local background
 level times the circular aperture area::
 
-   >>> background = median_sigclip * apertures.area()
+   >>> background = median_sigclip * aperture.area()
    >>> print(background)  # doctest: +FLOAT_CMP
    380.7777584296913
 
@@ -460,9 +462,9 @@ each source::
     >>>
     >>> data = make_100gaussians_image()
     >>> positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
-    >>> apertures = CircularAperture(positions, r=5)
-    >>> annulus_apertures = CircularAnnulus(positions, r_in=10, r_out=15)
-    >>> annulus_masks = annulus_apertures.to_mask(method='center')
+    >>> aperture = CircularAperture(positions, r=5)
+    >>> annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
+    >>> annulus_masks = annulus_aperture.to_mask(method='center')
     >>>
     >>> bkg_median = []
     >>> for mask in annulus_masks:
@@ -471,9 +473,9 @@ each source::
     ...     _, median_sigclip, _ = sigma_clipped_stats(annulus_data_1d)
     ...     bkg_median.append(median_sigclip)
     >>> bkg_median = np.array(bkg_median)
-    >>> phot = aperture_photometry(data, apertures)
+    >>> phot = aperture_photometry(data, aperture)
     >>> phot['annulus_median'] = bkg_median
-    >>> phot['aper_bkg'] = bkg_median * apertures.area()
+    >>> phot['aper_bkg'] = bkg_median * aperture.area()
     >>> phot['aper_sum_bkgsub'] = phot['aperture_sum'] - phot['aper_bkg']
     >>> for col in phot.colnames:
     ...     phot[col].info.format = '%.8g'  # for consistent table output
@@ -501,11 +503,11 @@ For example, suppose we have previously calculated the error on each
 pixel's value and saved it in the array ``error``::
 
     >>> positions = [(30., 30.), (40., 40.)]
-    >>> apertures = CircularAperture(positions, r=3.)
+    >>> aperture = CircularAperture(positions, r=3.)
     >>> data = np.ones((100, 100))
     >>> error = 0.1 * data
 
-    >>> phot_table = aperture_photometry(data, apertures, error=error)
+    >>> phot_table = aperture_photometry(data, aperture, error=error)
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
@@ -540,7 +542,7 @@ time as the effective gain::
     >>> from photutils.utils import calc_total_error
     >>> effective_gain = 500   # seconds
     >>> error = calc_total_error(data, bkg_error, effective_gain)    # doctest: +SKIP
-    >>> phot_table = aperture_photometry(data - bkg, apertures, error=error)    # doctest: +SKIP
+    >>> phot_table = aperture_photometry(data - bkg, aperture, error=error)    # doctest: +SKIP
 
 
 Pixel Masking
@@ -594,7 +596,7 @@ official Spitzer data reduction.  We define the apertures positions
 based on the existing catalog positions::
 
     >>> positions = SkyCoord(catalog['l'], catalog['b'], frame='galactic')   # doctest: +REMOTE_DATA
-    >>> apertures = SkyCircularAperture(positions, r=4.8 * u.arcsec)   # doctest: +REMOTE_DATA
+    >>> aperture = SkyCircularAperture(positions, r=4.8 * u.arcsec)   # doctest: +REMOTE_DATA
 
 Now perform the photometry in these apertures using the ``hdu``.  The
 ``hdu`` object is a FITS HDU that contains the data and a header
@@ -604,7 +606,7 @@ pixel coordinates.  The `~photutils.aperture_photometry` function uses
 the WCS information to automatically convert the apertures defined in
 celestial coordinates into pixel coordinates::
 
-    >>> phot_table = aperture_photometry(hdu, apertures)    # doctest: +REMOTE_DATA
+    >>> phot_table = aperture_photometry(hdu, aperture)    # doctest: +REMOTE_DATA
 
 The Spitzer catalog also contains the official fluxes for the sources,
 so we can compare to our fluxes.  Because the Spitzer catalog fluxes
@@ -640,8 +642,8 @@ Finally, we can plot the comparison of the photometry:
 
   # Set up apertures
   positions = SkyCoord(catalog['l'], catalog['b'], frame='galactic')
-  apertures = SkyCircularAperture(positions, r=4.8 * u.arcsec)
-  phot_table = aperture_photometry(hdu, apertures)
+  aperture = SkyCircularAperture(positions, r=4.8 * u.arcsec)
+  phot_table = aperture_photometry(hdu, aperture)
 
   # Convert to correct units
   factor = (1.2 * u.arcsec) ** 2 / u.pixel
@@ -684,7 +686,7 @@ Let's start by creating an aperture object::
 
     >>> from photutils import CircularAperture
     >>> positions = [(30., 30.), (40., 40.)]
-    >>> apertures = CircularAperture(positions, r=3.)
+    >>> aperture = CircularAperture(positions, r=3.)
 
 Now let's create a list of `~photutils.ApertureMask` objects using the
 :meth:`~photutils.PixelAperture.to_mask` method::

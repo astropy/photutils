@@ -4,6 +4,10 @@
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Added parameter validation for all aperture classes. [#846]
+
 - ``photutils.isophote``
 
   - Significantly improved the performance (~5 times faster) of
@@ -113,6 +117,10 @@ API changes
   - Renamed ``random_cmap`` to ``make_random_cmap``. [#825]
 
   - Removed deprecated ``cutout_footprint`` function. [#835]
+
+  - Deprecated the ``wcs_helpers`` functions
+    ``pixel_scale_angle_at_skycoord``, ``assert_angle_or_pixel``,
+    ``assert_angle``, and ``pixel_to_icrs_coords``. [#846]
 
 - ``photutils.psf``
 

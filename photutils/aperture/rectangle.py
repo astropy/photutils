@@ -3,14 +3,15 @@
 import math
 
 import numpy as np
-from astropy.coordinates import SkyCoord
 import astropy.units as u
 
+from .attributes import (PixelPositions, SkyCoordPositions, Scalar,
+                         PositiveScalar, AngleScalarQuantity,
+                         AngleOrPixelScalarQuantity)
 from .core import PixelAperture, SkyAperture
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import rectangular_overlap_grid
-from ..utils.wcs_helpers import assert_angle, assert_angle_or_pixel
 
 
 __all__ = ['RectangularMaskMixin', 'RectangularAperture',
@@ -102,12 +103,15 @@ class RectangularMaskMixin:
 
 class RectangularAperture(RectangularMaskMixin, PixelAperture):
     """
-    Rectangular aperture(s), defined in pixel coordinates.
+    A rectangular aperture defined in pixel coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : array_like or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s) in one of the
+        The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` tuple
@@ -120,16 +124,16 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         rows of (x, y) coordinates.
 
     w : float
-        The full width of the aperture.  For ``theta=0`` the width side
-        is along the ``x`` axis.
+        The full width of the rectangle in pixels.  For ``theta=0`` the
+        width side is along the ``x`` axis.
 
     h : float
-        The full height of the aperture.  For ``theta=0`` the height
-        side is along the ``y`` axis.
+        The full height of the rectangle in pixels.  For ``theta=0`` the
+        height side is along the ``y`` axis.
 
     theta : float, optional
-        The rotation angle in radians of the width (``w``) side from the
-        positive ``x`` axis.  The rotation angle increases
+        The rotation angle in radians of the rectangle "width" side from
+        the positive ``x`` axis.  The rotation angle increases
         counterclockwise.  The default is 0.
 
     Raises
@@ -138,14 +142,16 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         If either width (``w``) or height (``h``) is negative.
     """
 
-    def __init__(self, positions, w, h, theta=0.):
-        if w < 0 or h < 0:
-            raise ValueError("'w' and 'h' must be nonnegative.")
+    positions = PixelPositions('positions')
+    w = PositiveScalar('w')
+    h = PositiveScalar('h')
+    theta = Scalar('theta')
 
-        self.positions = self._sanitize_positions(positions)
-        self.w = float(w)
-        self.h = float(h)
-        self.theta = float(theta)
+    def __init__(self, positions, w, h, theta=0.):
+        self.positions = positions
+        self.w = w
+        self.h = h
+        self.theta = theta
         self._params = ['w', 'h', 'theta']
 
     @property
@@ -224,12 +230,15 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
 class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     """
-    Rectangular annulus aperture(s), defined in pixel coordinates.
+    A rectangular annulus aperture defined in pixel coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : array_like or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s) in one of the
+        The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` tuple
@@ -242,16 +251,16 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         rows of (x, y) coordinates.
 
     w_in : float
-        The inner full width of the aperture.  For ``theta=0`` the width
-        side is along the ``x`` axis.
+        The inner full width of the rectangular annulus in pixels.  For
+        ``theta=0`` the width side is along the ``x`` axis.
 
     w_out : float
-        The outer full width of the aperture.  For ``theta=0`` the width
-        side is along the ``x`` axis.
+        The outer full width of the rectangular annulus in pixels.  For
+        ``theta=0`` the width side is along the ``x`` axis.
 
     h_out : float
-        The outer full height of the aperture.  The inner full height is
-        calculated as:
+        The outer full height of the rectangular annulus in pixels.  The
+        inner full height is calculated as:
 
             .. math:: h_{in} = h_{out}
                 \\left(\\frac{w_{in}}{w_{out}}\\right)
@@ -259,8 +268,8 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         For ``theta=0`` the height side is along the ``y`` axis.
 
     theta : float, optional
-        The rotation angle in radians of the width side from the
-        positive ``x`` axis.  The rotation angle increases
+        The rotation angle in radians of the rectangle "width" side from
+        the positive ``x`` axis.  The rotation angle increases
         counterclockwise.  The default is 0.
 
     Raises
@@ -274,18 +283,22 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         (``h_out``) is negative.
     """
 
-    def __init__(self, positions, w_in, w_out, h_out, theta=0.):
-        if not (w_out > w_in):
-            raise ValueError("'w_out' must be greater than 'w_in'")
-        if w_in < 0 or h_out < 0:
-            raise ValueError("'w_in' and 'h_out' must be non-negative")
+    positions = PixelPositions('positions')
+    w_in = PositiveScalar('w_in')
+    w_out = PositiveScalar('w_out')
+    h_out = PositiveScalar('h_out')
+    theta = Scalar('theta')
 
-        self.positions = self._sanitize_positions(positions)
-        self.w_in = float(w_in)
-        self.w_out = float(w_out)
-        self.h_out = float(h_out)
+    def __init__(self, positions, w_in, w_out, h_out, theta=0.):
+        if not w_out > w_in:
+            raise ValueError("'w_out' must be greater than 'w_in'")
+
+        self.positions = positions
+        self.w_in = w_in
+        self.w_out = w_out
+        self.h_out = h_out
         self.h_in = self.w_in * self.h_out / self.w_out
-        self.theta = float(theta)
+        self.theta = theta
         self._params = ['w_in', 'w_out', 'h_out', 'theta']
 
     @property
@@ -378,45 +391,45 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
 class SkyRectangularAperture(SkyAperture):
     """
-    Rectangular aperture(s), defined in sky coordinates.
+    A rectangular aperture defined in sky coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be
+        The celestial coordinates of the aperture center(s). This can be
         either scalar coordinates or an array of coordinates.
 
-    w : `~astropy.units.Quantity`
-        The full width of the aperture, either in angular or pixel
+    w : scalar `~astropy.units.Quantity`
+        The full width of the rectangle, either in angular or pixel
         units.  For ``theta=0`` the width side is along the North-South
         axis.
 
-    h :  `~astropy.units.Quantity`
-        The full height of the aperture, either in angular or pixel
+    h :  scalar `~astropy.units.Quantity`
+        The full height of the rectangle, either in angular or pixel
         units.  For ``theta=0`` the height side is along the East-West
         axis.
 
-    theta : `~astropy.units.Quantity`, optional
-        The position angle (in angular units) of the width side.  For a
-        right-handed world coordinate system, the position angle
-        increases counterclockwise from North (PA=0).  The default is 0
-        degrees.
+    theta : scalar `~astropy.units.Quantity`, optional
+        The position angle (in angular units) of the rectangle "width"
+        side.  For a right-handed world coordinate system, the position
+        angle increases counterclockwise from North (PA=0).  The default
+        is 0 degrees.
     """
 
+    positions = SkyCoordPositions('positions')
+    w = AngleOrPixelScalarQuantity('w')
+    h = AngleOrPixelScalarQuantity('h')
+    theta = AngleScalarQuantity('theta')
+
     def __init__(self, positions, w, h, theta=0.*u.deg):
-        if isinstance(positions, SkyCoord):
-            self.positions = positions
-        else:
-            raise TypeError('positions must be a SkyCoord instance')
-
-        assert_angle_or_pixel('w', w)
-        assert_angle_or_pixel('h', h)
-        assert_angle('theta', theta)
-
         if w.unit.physical_type != h.unit.physical_type:
             raise ValueError("'w' and 'h' should either both be angles or "
                              "in pixels")
 
+        self.positions = positions
         self.w = w
         self.h = h
         self.theta = theta
@@ -449,51 +462,50 @@ class SkyRectangularAperture(SkyAperture):
 
 class SkyRectangularAnnulus(SkyAperture):
     """
-    Rectangular annulus aperture(s), defined in sky coordinates.
+    A rectangular annulus aperture defined in sky coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be
+        The celestial coordinates of the aperture center(s). This can be
         either scalar coordinates or an array of coordinates.
 
-    w_in : `~astropy.units.Quantity`
-        The inner full width of the aperture, either in angular or pixel
-        units.  For ``theta=0`` the width side is along the North-South
-        axis.
+    w_in : scalar `~astropy.units.Quantity`
+        The inner full width of the rectangular annulus, either in
+        angular or pixel units.  For ``theta=0`` the width side is along
+        the North-South axis.
 
-    w_out : `~astropy.units.Quantity`
-        The outer full width of the aperture, either in angular or pixel
-        units.  For ``theta=0`` the width side is along the North-South
-        axis.
+    w_out : scalar `~astropy.units.Quantity`
+        The outer full width of the rectangular annulus, either in
+        angular or pixel units.  For ``theta=0`` the width side is along
+        the North-South axis.
 
-    h_out : `~astropy.units.Quantity`
-        The outer full height of the aperture, either in angular or
-        pixel units.  The inner full height is calculated as:
+    h_out : scalar `~astropy.units.Quantity`
+        The outer full height of the rectangular annulus, either in
+        angular or pixel units.  The inner full height is calculated as:
 
             .. math:: h_{in} = h_{out}
                 \\left(\\frac{w_{in}}{w_{out}}\\right)
 
         For ``theta=0`` the height side is along the East-West axis.
 
-    theta : `~astropy.units.Quantity`, optional
-        The position angle (in angular units) of the width side.  For a
-        right-handed world coordinate system, the position angle
-        increases counterclockwise from North (PA=0).  The default is 0
-        degrees.
+    theta : scalar `~astropy.units.Quantity`, optional
+        The position angle (in angular units) of the rectangle "width"
+        side.  For a right-handed world coordinate system, the position
+        angle increases counterclockwise from North (PA=0).  The default
+        is 0 degrees.
     """
 
+    positions = SkyCoordPositions('positions')
+    w_in = AngleOrPixelScalarQuantity('w_in')
+    w_out = AngleOrPixelScalarQuantity('w_out')
+    h_out = AngleOrPixelScalarQuantity('h_out')
+    theta = AngleScalarQuantity('theta')
+
     def __init__(self, positions, w_in, w_out, h_out, theta=0.*u.deg):
-        if isinstance(positions, SkyCoord):
-            self.positions = positions
-        else:
-            raise TypeError('positions must be a SkyCoord instance')
-
-        assert_angle_or_pixel('w_in', w_in)
-        assert_angle_or_pixel('w_out', w_out)
-        assert_angle_or_pixel('h_out', h_out)
-        assert_angle('theta', theta)
-
         if w_in.unit.physical_type != w_out.unit.physical_type:
             raise ValueError("w_in and w_out should either both be angles or "
                              "in pixels")
@@ -502,9 +514,11 @@ class SkyRectangularAnnulus(SkyAperture):
             raise ValueError("w_out and h_out should either both be angles "
                              "or in pixels")
 
+        self.positions = positions
         self.w_in = w_in
         self.w_out = w_out
         self.h_out = h_out
+        self.h_in = self.w_in * self.h_out / self.w_out
         self.theta = theta
         self._params = ['w_in', 'w_out', 'h_out', 'theta']
 

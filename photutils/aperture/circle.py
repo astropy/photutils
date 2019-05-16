@@ -2,13 +2,12 @@
 
 import math
 
-from astropy.coordinates import SkyCoord
-
+from .attributes import (PixelPositions, SkyCoordPositions, PositiveScalar,
+                         AngleOrPixelScalarQuantity)
 from .core import PixelAperture, SkyAperture
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import circular_overlap_grid
-from ..utils.wcs_helpers import assert_angle_or_pixel
 
 
 __all__ = ['CircularMaskMixin', 'CircularAperture', 'CircularAnnulus',
@@ -94,12 +93,15 @@ class CircularMaskMixin:
 
 class CircularAperture(CircularMaskMixin, PixelAperture):
     """
-    Circular aperture(s), defined in pixel coordinates.
+    A circular aperture defined in pixel coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : array_like or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s) in one of the
+        The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` tuple
@@ -112,7 +114,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         rows of (x, y) coordinates.
 
     r : float
-        The radius of the aperture(s), in pixels.
+        The radius of the circle in pixels.
 
     Raises
     ------
@@ -120,15 +122,14 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         If the input radius, ``r``, is negative.
     """
 
-    def __init__(self, positions, r):
-        if r < 0:
-            raise ValueError('r must be non-negative')
+    positions = PixelPositions('positions')
+    r = PositiveScalar('r')
 
-        self.positions = self._sanitize_positions(positions)
-        self.r = float(r)
+    def __init__(self, positions, r):
+        self.positions = positions
+        self.r = r
         self._params = ['r']
 
-    # TODO: make lazyproperty?, but update if positions or radius change
     @property
     def bounding_boxes(self):
         xmin = self.positions[:, 0] - self.r
@@ -139,7 +140,6 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         return [BoundingBox._from_float(x0, x1, y0, y1)
                 for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
 
-    # TODO: make lazyproperty?, but update if positions or radius change
     def area(self):
         return math.pi * self.r ** 2
 
@@ -181,12 +181,15 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
 
 class CircularAnnulus(CircularMaskMixin, PixelAperture):
     """
-    Circular annulus aperture(s), defined in pixel coordinates.
+    A circular annulus aperture defined in pixel coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : array_like or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s) in one of the
+        The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
             * single ``(x, y)`` tuple
@@ -199,10 +202,10 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         rows of (x, y) coordinates.
 
     r_in : float
-        The inner radius of the annulus.
+        The inner radius of the circular annulus in pixels.
 
     r_out : float
-        The outer radius of the annulus.
+        The outer radius of the circular annulus in pixels.
 
     Raises
     ------
@@ -213,15 +216,17 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         If inner radius (``r_in``) is negative.
     """
 
+    positions = PixelPositions('positions')
+    r_in = PositiveScalar('r_in')
+    r_out = PositiveScalar('r_out')
+
     def __init__(self, positions, r_in, r_out):
         if not (r_out > r_in):
             raise ValueError('r_out must be greater than r_in')
-        if r_in < 0:
-            raise ValueError('r_in must be non-negative')
 
-        self.positions = self._sanitize_positions(positions)
-        self.r_in = float(r_in)
-        self.r_out = float(r_out)
+        self.positions = positions
+        self.r_in = r_in
+        self.r_out = r_out
         self._params = ['r_in', 'r_out']
 
     @property
@@ -278,25 +283,26 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
 
 class SkyCircularAperture(SkyAperture):
     """
-    Circular aperture(s), defined in sky coordinates.
+    A circular aperture defined in sky coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be
+        The celestial coordinates of the aperture center(s). This can be
         either scalar coordinates or an array of coordinates.
 
-    r : `~astropy.units.Quantity`
-        The radius of the aperture(s), either in angular or pixel units.
+    r : scalar `~astropy.units.Quantity`
+        The radius of the circle, either in angular or pixel units.
     """
 
-    def __init__(self, positions, r):
-        if isinstance(positions, SkyCoord):
-            self.positions = positions
-        else:
-            raise TypeError('positions must be a SkyCoord object')
+    positions = SkyCoordPositions('positions')
+    r = AngleOrPixelScalarQuantity('r')
 
-        assert_angle_or_pixel('r', r)
+    def __init__(self, positions, r):
+        self.positions = positions
         self.r = r
         self._params = ['r']
 
@@ -327,36 +333,36 @@ class SkyCircularAperture(SkyAperture):
 
 class SkyCircularAnnulus(SkyAperture):
     """
-    Circular annulus aperture(s), defined in sky coordinates.
+    A circular annulus aperture defined in sky coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be
+        The celestial coordinates of the aperture center(s). This can be
         either scalar coordinates or an array of coordinates.
 
-    r_in : `~astropy.units.Quantity`
-        The inner radius of the annulus, either in angular or pixel
-        units.
+    r_in : scalar `~astropy.units.Quantity`
+        The inner radius of the circular annulus, either in angular or
+        pixel units.
 
-    r_out : `~astropy.units.Quantity`
-        The outer radius of the annulus, either in angular or pixel
-        units.
+    r_out : scalar `~astropy.units.Quantity`
+        The outer radius of the circular annulus, either in angular or
+        pixel units.
     """
 
+    positions = SkyCoordPositions('positions')
+    r_in = AngleOrPixelScalarQuantity('r_in')
+    r_out = AngleOrPixelScalarQuantity('r_out')
+
     def __init__(self, positions, r_in, r_out):
-        if isinstance(positions, SkyCoord):
-            self.positions = positions
-        else:
-            raise TypeError('positions must be a SkyCoord object')
-
-        assert_angle_or_pixel('r_in', r_in)
-        assert_angle_or_pixel('r_out', r_out)
-
         if r_in.unit.physical_type != r_out.unit.physical_type:
             raise ValueError("r_in and r_out should either both be angles "
                              "or in pixels.")
 
+        self.positions = positions
         self.r_in = r_in
         self.r_out = r_out
         self._params = ['r_in', 'r_out']

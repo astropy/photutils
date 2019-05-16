@@ -3,9 +3,12 @@
 import numpy as np
 from astropy import units as u
 from astropy.coordinates import UnitSphericalRepresentation
+from astropy.utils import deprecated
 from astropy.wcs.utils import skycoord_to_pixel, pixel_to_skycoord
 
 
+@deprecated('0.7', 'The pixel_scale_angle_at_skycoord function is deprecated '
+            'and will be removed in v0.8')
 def pixel_scale_angle_at_skycoord(skycoord, wcs, offset=1. * u.arcsec):
     """
     Calculate the pixel scale and WCS rotation angle at the position of
@@ -62,6 +65,8 @@ def pixel_scale_angle_at_skycoord(skycoord, wcs, offset=1. * u.arcsec):
     return scale, angle
 
 
+@deprecated('0.7', 'The assert_angle_or_pixel function is deprecated and '
+            'will be removed in v0.8')
 def assert_angle_or_pixel(name, q):
     """
     Check that ``q`` is either an angular or a pixel
@@ -78,6 +83,8 @@ def assert_angle_or_pixel(name, q):
         raise TypeError("{0} should be a Quantity instance".format(name))
 
 
+@deprecated('0.7', 'The assert_angle function is deprecated and will be '
+            'removed in v0.8')
 def assert_angle(name, q):
     """
     Check that ``q`` is an angular :class:`~astropy.units.Quantity`.
@@ -92,6 +99,8 @@ def assert_angle(name, q):
         raise TypeError("{0} should be a Quantity instance".format(name))
 
 
+@deprecated('0.7', 'The pixel_to_icrs_coords function is deprecated and will '
+            'be removed in v0.8')
 def pixel_to_icrs_coords(x, y, wcs):
     """
     Convert pixel coordinates to ICRS Right Ascension and Declination.

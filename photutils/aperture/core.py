@@ -18,7 +18,7 @@ from astropy.wcs.utils import (skycoord_to_pixel, pixel_to_skycoord,
 
 from ..utils import get_version_info
 from ..utils.misc import _ABCMetaAndInheritDocstrings
-from ..utils.wcs_helpers import pixel_scale_angle_at_skycoord
+from ..utils._wcs_helpers import _pixel_scale_angle_at_skycoord
 
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture', 'aperture_photometry']
@@ -70,36 +70,6 @@ class PixelAperture(Aperture):
     """
     Abstract base class for apertures defined in pixel coordinates.
     """
-
-    @staticmethod
-    def _sanitize_positions(positions):
-        if isinstance(positions, u.Quantity):
-            if positions.unit == u.pixel:
-                positions = np.atleast_2d(positions.value)
-            else:
-                raise u.UnitsError('positions should be in pixel units')
-        elif isinstance(positions, (list, tuple, np.ndarray)):
-            positions = np.atleast_2d(positions)
-            if positions.shape[1] != 2:
-                if positions.shape[0] == 2:
-                    positions = np.transpose(positions)
-                else:
-                    raise TypeError('List or array of (x, y) pixel '
-                                    'coordinates is expected, got "{0}".'
-                                    .format(positions))
-        elif isinstance(positions, zip):
-            # This is needed for zip to work seamlessly in Python 3
-            # (e.g. positions = zip(xpos, ypos))
-            positions = np.atleast_2d(list(positions))
-        else:
-            raise TypeError('List or array of (x, y) pixel coordinates '
-                            'is expected, got "{0}".'.format(positions))
-
-        if positions.ndim > 2:
-            raise ValueError('{0}D position array is not supported. Only 2D '
-                             'arrays are supported.'.format(positions.ndim))
-
-        return positions
 
     @staticmethod
     def _translate_mask_mode(mode, subpixels, rectangle=False):
@@ -173,7 +143,7 @@ class PixelAperture(Aperture):
 
     def mask_area(self, method='exact', subpixels=5):
         """
-        Return the area of the aperture(s) mask.
+        Return the area of the aperture masks (one per position).
 
         For ``method`` other than ``'exact'``, this area will be less
         than the exact analytical area (e.g. the ``area`` method).  Note
@@ -216,7 +186,7 @@ class PixelAperture(Aperture):
         Returns
         -------
         area : float
-            A list of the mask area of the aperture(s).
+            A list of the mask area (one per position) of the aperture.
         """
 
         mask = self.to_mask(method=method, subpixels=subpixels)
@@ -439,7 +409,7 @@ class PixelAperture(Aperture):
     def _prepare_plot(self, origin=(0, 0), indices=None, ax=None,
                       fill=False, **kwargs):
         """
-        Prepare to plot the aperture(s) on a matplotlib
+        Prepare to plot the aperture on a matplotlib
         `~matplotlib.axes.Axes` instance.
 
         Parameters
@@ -449,7 +419,7 @@ class PixelAperture(Aperture):
             image.
 
         indices : int or array of int, optional
-            The indices of the aperture(s) to plot.
+            The indices of the aperture position(s) to plot.
 
         ax : `matplotlib.axes.Axes` instance, optional
             If `None`, then the current `~matplotlib.axes.Axes` instance
@@ -465,8 +435,8 @@ class PixelAperture(Aperture):
         Returns
         -------
         plot_positions : `~numpy.ndarray`
-            The positions of the apertures to plot, after any
-            ``indices`` slicing and ``origin`` shift.
+            The aperture position(s) to plot, after any ``indices``
+            slicing and ``origin`` shift.
 
         ax : `matplotlib.axes.Axes` instance, optional
             The `~matplotlib.axes.Axes` on which to plot.
@@ -497,7 +467,7 @@ class PixelAperture(Aperture):
     def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
              **kwargs):
         """
-        Plot the aperture(s) on a matplotlib `~matplotlib.axes.Axes`
+        Plot the aperture on a matplotlib `~matplotlib.axes.Axes`
         instance.
 
         Parameters
@@ -506,8 +476,9 @@ class PixelAperture(Aperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        indices : int or array of int, optional
-            The indices of the aperture(s) to plot.
+        indices : int, array of int, or `None`, optional
+            The indices of the aperture position(s) to plot.  If `None`
+            (default) then all aperture positions will be plotted.
 
         ax : `matplotlib.axes.Axes` instance, optional
             If `None`, then the current `~matplotlib.axes.Axes` instance
@@ -551,9 +522,9 @@ class PixelAperture(Aperture):
         # The aperture object must have a single value for each shape
         # parameter so we must use a single pixel scale for all positions.
         # Here, we define the scale at the WCS CRVAL position.
-        crval = SkyCoord([wcs.wcs.crval], frame=wcs_to_celestial_frame(wcs),
+        crval = SkyCoord(*wcs.wcs.crval, frame=wcs_to_celestial_frame(wcs),
                          unit=wcs.wcs.cunit)
-        scale, angle = pixel_scale_angle_at_skycoord(crval, wcs)
+        scale, angle = _pixel_scale_angle_at_skycoord(crval, wcs)
 
         params = self._params[:]
         theta_key = 'theta'
@@ -626,9 +597,9 @@ class SkyAperture(Aperture):
         # The aperture object must have a single value for each shape
         # parameter so we must use a single pixel scale for all positions.
         # Here, we define the scale at the WCS CRVAL position.
-        crval = SkyCoord([wcs.wcs.crval], frame=wcs_to_celestial_frame(wcs),
+        crval = SkyCoord(*wcs.wcs.crval, frame=wcs_to_celestial_frame(wcs),
                          unit=wcs.wcs.cunit)
-        scale, angle = pixel_scale_angle_at_skycoord(crval, wcs)
+        scale, angle = _pixel_scale_angle_at_skycoord(crval, wcs)
 
         params = self._params[:]
         theta_key = 'theta'
@@ -778,8 +749,10 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         `~astropy.io.fits.ImageHDU` or `~astropy.io.fits.HDUList`, the
         unit is determined from the ``'BUNIT'`` header keyword.
 
-    apertures : `~photutils.Aperture`
-        The aperture(s) to use for the photometry.
+    apertures : `~photutils.Aperture` or list of `~photutils.Aperture`
+        The aperture(s) to use for the photometry.  If ``apertures`` is
+        a list of `~photutils.Aperture` then they all must have the same
+        position(s).
 
     error : array_like or `~astropy.units.Quantity`, optional
         The pixel-wise Gaussian 1-sigma errors of the input ``data``.
