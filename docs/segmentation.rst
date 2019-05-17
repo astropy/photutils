@@ -385,7 +385,7 @@ orientation (`~photutils.segmentation.SourceProperties.orientation`):
     >>> r = 3.    # approximate isophotal extent
     >>> apertures = []
     >>> for obj in cat:
-    ...     position = (obj.xcentroid.value, obj.ycentroid.value)
+    ...     position = np.transpose((obj.xcentroid.value, obj.ycentroid.value))
     ...     a = obj.semimajor_axis_sigma.value * r
     ...     b = obj.semiminor_axis_sigma.value * r
     ...     theta = obj.orientation.value
@@ -441,7 +441,7 @@ Now let's plot the derived elliptical apertures on the data:
     r = 3.    # approximate isophotal extent
     apertures = []
     for obj in cat:
-        position = (obj.xcentroid.value, obj.ycentroid.value)
+        position = np.transpose((obj.xcentroid.value, obj.ycentroid.value))
         a = obj.semimajor_axis_sigma.value * r
         b = obj.semiminor_axis_sigma.value * r
         theta = obj.orientation.value

@@ -59,7 +59,7 @@ the photometry:
 .. doctest-requires:: scipy
 
     >>> from photutils import aperture_photometry, CircularAperture
-    >>> positions = (sources['xcentroid'], sources['ycentroid'])    # doctest: +REMOTE_DATA
+    >>> positions = np.transpose((sources['xcentroid'], sources['ycentroid']))    # doctest: +REMOTE_DATA
     >>> apertures = CircularAperture(positions, r=4.)    # doctest: +REMOTE_DATA
     >>> phot_table = aperture_photometry(image, apertures)    # doctest: +REMOTE_DATA
     >>> for col in phot_table.colnames:  # doctest: +REMOTE_DATA
@@ -104,7 +104,7 @@ apertures:
     bkg_sigma = mad_std(image)
     daofind = DAOStarFinder(fwhm=4., threshold=3.*bkg_sigma)
     sources = daofind(image)
-    positions = (sources['xcentroid'], sources['ycentroid'])
+    positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
     apertures = CircularAperture(positions, r=4.)
     phot_table = aperture_photometry(image, apertures)
     brightest_source_id = phot_table['aperture_sum'].argmax()
