@@ -134,6 +134,9 @@ class BoundingBox:
     def __or__(self, bbox):
         return self.union(bbox)
 
+    def __and__(self, bbox):
+        return self.intersection(bbox)
+
     def __repr__(self):
         data = self.__dict__
         data['name'] = self.__class__.__name__
@@ -304,5 +307,34 @@ class BoundingBox:
         ixmax = max((self.ixmax, bbox.ixmax))
         iymin = min((self.iymin, bbox.iymin))
         iymax = max((self.iymax, bbox.iymax))
+
+        return BoundingBox(ixmin=ixmin, ixmax=ixmax, iymin=iymin, iymax=iymax)
+
+    def intersection(self, bbox):
+        """
+        Return a `BoundingBox` representing the intersection of this
+        `BoundingBox` with another `BoundingBox`.
+
+        Parameters
+        ----------
+        bbox : `~photutils.BoundingBox`
+            The `BoundingBox` to intersect with this one.
+
+        Returns
+        -------
+        result : `~photutils.BoundingBox`
+            A `BoundingBox` representing the intersection of the input
+            ``bbox`` with this one.
+        """
+
+        if not isinstance(bbox, BoundingBox):
+            raise TypeError('bbox must be a BoundingBox instance')
+
+        ixmin = max(self.ixmin, bbox.ixmin)
+        ixmax = min(self.ixmax, bbox.ixmax)
+        iymin = max(self.iymin, bbox.iymin)
+        iymax = min(self.iymax, bbox.iymax)
+        if ixmax < ixmin or iymax < iymin:
+            return None
 
         return BoundingBox(ixmin=ixmin, ixmax=ixmax, iymin=iymin, iymax=iymax)
