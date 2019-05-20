@@ -2,6 +2,7 @@
 
 import numpy as np
 from astropy.io.fits.util import _is_int
+from astropy.utils import deprecated
 
 
 __all__ = ['BoundingBox']
@@ -70,7 +71,7 @@ class BoundingBox:
         self.iymax = iymax
 
     @classmethod
-    def _from_float(cls, xmin, xmax, ymin, ymax):
+    def from_float(cls, xmin, xmax, ymin, ymax):
         """
         Return the smallest bounding box that fully contains a given
         rectangle defined by float coordinate values.
@@ -104,10 +105,10 @@ class BoundingBox:
         Examples
         --------
         >>> from photutils import BoundingBox
-        >>> BoundingBox._from_float(xmin=1.0, xmax=10.0, ymin=2.0, ymax=20.0)
+        >>> BoundingBox.from_float(xmin=1.0, xmax=10.0, ymin=2.0, ymax=20.0)
         BoundingBox(ixmin=1, ixmax=11, iymin=2, iymax=21)
 
-        >>> BoundingBox._from_float(xmin=1.4, xmax=10.4, ymin=1.6, ymax=10.6)
+        >>> BoundingBox.from_float(xmin=1.4, xmax=10.4, ymin=1.6, ymax=10.6)
         BoundingBox(ixmin=1, ixmax=11, iymin=2, iymax=12)
         """
 
@@ -129,6 +130,12 @@ class BoundingBox:
             (self.iymin == other.iymin) and
             (self.iymax == other.iymax)
         )
+
+    def __or__(self, bbox):
+        return self.union(bbox)
+
+    def __and__(self, bbox):
+        return self.intersection(bbox)
 
     def __repr__(self):
         data = self.__dict__
@@ -177,14 +184,34 @@ class BoundingBox:
             self.iymax - 0.5,
         )
 
-    def as_patch(self, **kwargs):
+    @deprecated('0.7', alternative='as_artist')
+    def as_patch(self, **kwargs):  # pragma: no cover
         """
         Return a `matplotlib.patches.Rectangle` that represents the
         bounding box.
 
         Parameters
         ----------
-        kwargs
+        kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
+
+        Returns
+        -------
+        result : `matplotlib.patches.Rectangle`
+            A matplotlib rectangular patch.
+        """
+
+        return self.as_artist(**kwargs)
+
+    def as_artist(self, **kwargs):
+        """
+        Return a `matplotlib.patches.Rectangle` that represents the
+        bounding box.
+
+        Parameters
+        ----------
+        kwargs : `dict`
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -206,7 +233,7 @@ class BoundingBox:
             np.random.seed(12345)
             ax.imshow(np.random.random((10, 10)), interpolation='nearest',
                       cmap='viridis')
-            ax.add_patch(bbox.as_patch(facecolor='none', edgecolor='white',
+            ax.add_patch(bbox.as_artist(facecolor='none', edgecolor='white',
                          lw=2.))
         """
 
@@ -226,9 +253,9 @@ class BoundingBox:
         xpos = (self.extent[1] + self.extent[0]) / 2.
         ypos = (self.extent[3] + self.extent[2]) / 2.
         xypos = (xpos, ypos)
-        h, w = self.shape
+        height, width = self.shape
 
-        return RectangularAperture(xypos, w=w, h=h, theta=0.)
+        return RectangularAperture(xypos, w=width, h=height, theta=0.)
 
     def plot(self, origin=(0, 0), ax=None, fill=False, **kwargs):
         """
@@ -249,9 +276,65 @@ class BoundingBox:
             Set whether to fill the aperture patch.  The default is
             `False`.
 
-        kwargs
+        kwargs : `dict`
             Any keyword arguments accepted by `matplotlib.patches.Patch`.
         """
 
         aper = self.to_aperture()
         aper.plot(origin=origin, ax=ax, fill=fill, **kwargs)
+
+    def union(self, bbox):
+        """
+        Return a `BoundingBox` representing the union of this
+        `BoundingBox` with another `BoundingBox`.
+
+        Parameters
+        ----------
+        bbox : `~photutils.BoundingBox`
+            The `BoundingBox` to join with this one.
+
+        Returns
+        -------
+        result : `~photutils.BoundingBox`
+            A `BoundingBox` representing the union of the input ``bbox``
+            with this one.
+        """
+
+        if not isinstance(bbox, BoundingBox):
+            raise TypeError('bbox must be a BoundingBox instance')
+
+        ixmin = min((self.ixmin, bbox.ixmin))
+        ixmax = max((self.ixmax, bbox.ixmax))
+        iymin = min((self.iymin, bbox.iymin))
+        iymax = max((self.iymax, bbox.iymax))
+
+        return BoundingBox(ixmin=ixmin, ixmax=ixmax, iymin=iymin, iymax=iymax)
+
+    def intersection(self, bbox):
+        """
+        Return a `BoundingBox` representing the intersection of this
+        `BoundingBox` with another `BoundingBox`.
+
+        Parameters
+        ----------
+        bbox : `~photutils.BoundingBox`
+            The `BoundingBox` to intersect with this one.
+
+        Returns
+        -------
+        result : `~photutils.BoundingBox`
+            A `BoundingBox` representing the intersection of the input
+            ``bbox`` with this one.
+        """
+
+        if not isinstance(bbox, BoundingBox):
+            raise TypeError('bbox must be a BoundingBox instance')
+
+        ixmin = max(self.ixmin, bbox.ixmin)
+        ixmax = min(self.ixmax, bbox.ixmax)
+        iymin = max(self.iymin, bbox.iymin)
+        iymax = min(self.iymax, bbox.iymax)
+        if ixmax < ixmin or iymax < iymin:
+            return None
+
+        return BoundingBox(ixmin=ixmin, ixmax=ixmax, iymin=iymin, iymax=iymax)
