@@ -84,6 +84,7 @@ Let's plot the image and mark the location of detected sources:
 
 .. doctest-skip::
 
+    >>> import numpy as np
     >>> import matplotlib.pyplot as plt
     >>> from astropy.visualization import SqrtStretch
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
@@ -96,6 +97,7 @@ Let's plot the image and mark the location of detected sources:
 
 .. plot::
 
+    import numpy as np
     import matplotlib.pyplot as plt
     from astropy.stats import sigma_clipped_stats
     from astropy.visualization import SqrtStretch
@@ -137,6 +139,7 @@ regions.  No sources will be detected in the masked regions:
 
 .. plot::
 
+    import numpy as np
     import matplotlib.pyplot as plt
     from astropy.stats import sigma_clipped_stats
     from astropy.visualization import SqrtStretch
@@ -215,6 +218,7 @@ And let's plot the location of the detected peaks in the image:
 
 .. doctest-skip::
 
+    >>> import numpy as np
     >>> import matplotlib.pyplot as plt
     >>> from astropy.visualization import simple_norm
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
@@ -229,6 +233,7 @@ And let's plot the location of the detected peaks in the image:
 
 .. plot::
 
+    import numpy as np
     from astropy.stats import sigma_clipped_stats
     from photutils import find_peaks, CircularAperture
     from photutils.datasets import make_100gaussians_image

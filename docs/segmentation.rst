@@ -380,6 +380,7 @@ orientation (`~photutils.segmentation.SourceProperties.orientation`):
 
 .. doctest-requires:: scipy, skimage
 
+    >>> import numpy as np
     >>> from photutils import source_properties, EllipticalAperture
     >>> cat = source_properties(data, segm_deblend)
     >>> r = 3.    # approximate isophotal extent

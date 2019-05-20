@@ -144,6 +144,7 @@ in the same group have the same aperture color:
 
 .. doctest-skip::
 
+    >>> import numpy as np
     >>> from photutils import CircularAperture
     >>> from photutils.utils import make_random_cmap
     >>> plt.imshow(sim_image, origin='lower', interpolation='nearest',

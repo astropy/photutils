@@ -6,7 +6,7 @@ astronomical image and perform circular aperture photometry on them.
 
 We start by loading an image from the bundled datasets and selecting a
 subset of the image.  We then subtract a rough estimate of the
-background, calculated using the image median:
+background, calculated using the image median::
 
     >>> import numpy as np
     >>> from photutils import datasets
