@@ -8,6 +8,9 @@ New Features
 
   - Added parameter validation for all aperture classes. [#846]
 
+  - Added ``from_float``, ``as_artist``, ``union`` and
+    ``intersection`` methods to ``BoundingBox`` class. [#851]
+
 - ``photutils.isophote``
 
   - Significantly improved the performance (~5 times faster) of
@@ -93,6 +96,9 @@ API changes
   - ``DAOStarFinder``, ``IRAFStarFinder``, and ``find_peaks`` now return
     ``None`` if no source/peaks are found.  Also, for this case a
     ``NoDetectionsWarning`` is issued. [#836]
+
+  - Deprecated the ``BoundingBox`` ``as_patch`` method (instead use
+    ``as_artist``). [#851]
 
 - ``photutils.segmentation``
 
