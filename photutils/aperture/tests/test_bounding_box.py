@@ -63,6 +63,9 @@ def test_bounding_box_eq():
     assert bbox != BoundingBox(1, 10, 9, 20)
     assert bbox != BoundingBox(1, 10, 2, 99)
 
+    with pytest.raises(TypeError):
+        bbox == (1, 10, 2, 20)
+
 
 def test_bounding_box_repr():
     bbox = BoundingBox(1, 10, 2, 20)
@@ -97,3 +100,32 @@ def test_bounding_box_as_artist():
     assert_allclose(patch.get_xy(), (0.5, 1.5))
     assert_allclose(patch.get_width(), 9)
     assert_allclose(patch.get_height(), 18)
+
+
+def test_bounding_box_union():
+    bbox1 = BoundingBox(1, 10, 2, 20)
+    bbox2 = BoundingBox(5, 21, 7, 32)
+    bbox_union_expected = BoundingBox(1, 21, 2, 32)
+    bbox_union1 = bbox1 | bbox2
+    bbox_union2 = bbox1.union(bbox2)
+
+    assert bbox_union1 == bbox_union_expected
+    assert bbox_union1 == bbox_union2
+
+    with pytest.raises(TypeError):
+        bbox1.union((5, 21, 7, 32))
+
+def test_bounding_box_intersect():
+    bbox1 = BoundingBox(1, 10, 2, 20)
+    bbox2 = BoundingBox(5, 21, 7, 32)
+    bbox_intersect_expected = BoundingBox(5, 10, 7, 20)
+    bbox_intersect1 = bbox1 & bbox2
+    bbox_intersect2 = bbox1.intersection(bbox2)
+
+    assert bbox_intersect1 == bbox_intersect_expected
+    assert bbox_intersect1 == bbox_intersect2
+
+    with pytest.raises(TypeError):
+        bbox1.intersection((5, 21, 7, 32))
+
+    assert bbox1.intersection(BoundingBox(30, 40, 50, 60)) is None
