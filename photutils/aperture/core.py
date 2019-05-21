@@ -32,7 +32,21 @@ class Aperture(metaclass=_ABCMetaAndInheritDocstrings):
     def __len__(self):
         if isinstance(self, SkyAperture) and self.positions.isscalar:
             return 1
-        return len(self.positions)
+        else:
+            if self.positions.shape[0] == 1:
+                raise TypeError('Scalar {0!r} object has no len()'
+                                .format(self.__class__.__name__))
+            return self.positions.shape[0]
+
+    def __getitem__(self, index):
+        kwargs = dict()
+        for param in self._params:
+            kwargs[param] = getattr(self, param)
+        return self.__class__(self.positions[index], **kwargs)
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self.__getitem__(i)
 
     def _positions_str(self, prefix=None):
         if isinstance(self, PixelAperture):
@@ -856,8 +870,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     scalar_aperture = False
     if isinstance(apertures, Aperture):
         scalar_aperture = True
-
-    apertures = np.atleast_1d(apertures)
+        apertures = (apertures,)
 
     # convert sky to pixel apertures
     skyaper = False
