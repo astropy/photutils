@@ -180,10 +180,11 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         dx = max(dx1, dx2)
         dy = max(dy1, dy2)
 
-        xmin = self.positions[:, 0] - dx
-        xmax = self.positions[:, 0] + dx
-        ymin = self.positions[:, 1] - dy
-        ymax = self.positions[:, 1] + dy
+        positions = np.atleast_2d(self.positions)
+        xmin = positions[:, 0] - dx
+        xmax = positions[:, 0] + dx
+        ymin = positions[:, 1] - dy
+        ymax = positions[:, 1] + dy
 
         return [BoundingBox.from_float(x0, x1, y0, y1)
                 for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
@@ -336,10 +337,11 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         dx = max(dx1, dx2)
         dy = max(dy1, dy2)
 
-        xmin = self.positions[:, 0] - dx
-        xmax = self.positions[:, 0] + dx
-        ymin = self.positions[:, 1] - dy
-        ymax = self.positions[:, 1] + dy
+        positions = np.atleast_2d(self.positions)
+        xmin = positions[:, 0] - dx
+        xmax = positions[:, 0] + dx
+        ymin = positions[:, 1] - dy
+        ymax = positions[:, 1] + dy
 
         return [BoundingBox.from_float(x0, x1, y0, y1)
                 for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]

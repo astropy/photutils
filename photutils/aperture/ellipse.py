@@ -173,10 +173,11 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         dx = np.sqrt(ax*ax + bx*bx)
         dy = np.sqrt(ay*ay + by*by)
 
-        xmin = self.positions[:, 0] - dx
-        xmax = self.positions[:, 0] + dx
-        ymin = self.positions[:, 1] - dy
-        ymax = self.positions[:, 1] + dy
+        positions = np.atleast_2d(self.positions)
+        xmin = positions[:, 0] - dx
+        xmax = positions[:, 0] + dx
+        ymin = positions[:, 1] - dy
+        ymax = positions[:, 1] + dy
 
         return [BoundingBox.from_float(x0, x1, y0, y1)
                 for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
@@ -315,10 +316,11 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         dx = np.sqrt(ax*ax + bx*bx)
         dy = np.sqrt(ay*ay + by*by)
 
-        xmin = self.positions[:, 0] - dx
-        xmax = self.positions[:, 0] + dx
-        ymin = self.positions[:, 1] - dy
-        ymax = self.positions[:, 1] + dy
+        positions = np.atleast_2d(self.positions)
+        xmin = positions[:, 0] - dx
+        xmax = positions[:, 0] + dx
+        ymin = positions[:, 1] - dy
+        ymax = positions[:, 1] + dy
 
         return [BoundingBox.from_float(x0, x1, y0, y1)
                 for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]

@@ -139,7 +139,8 @@ class PixelAperture(Aperture):
         """
 
         edges = []
-        for position, bbox in zip(self.positions, self.bounding_boxes):
+        for position, bbox in zip(np.atleast_2d(self.positions),
+                                  self.bounding_boxes):
             xmin = bbox.ixmin - 0.5 - position[0]
             xmax = bbox.ixmax - 0.5 - position[0]
             ymin = bbox.iymin - 0.5 - position[1]
@@ -473,7 +474,7 @@ class PixelAperture(Aperture):
         # is ``fill=True``.  Here we make the default ``fill=False``.
         kwargs['fill'] = fill
 
-        plot_positions = copy.deepcopy(self.positions)
+        plot_positions = copy.deepcopy(np.atleast_2d(self.positions))
         if indices is not None:
             plot_positions = plot_positions[np.atleast_1d(indices)]
 
@@ -905,9 +906,11 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     meta['aperture_photometry_args'] = calling_args
 
     tbl = QTable(meta=meta)
-    tbl['id'] = np.arange(len(apertures[0]), dtype=int) + 1
 
-    xypos_pixel = np.transpose(apertures[0].positions) * u.pixel
+    positions = np.atleast_2d(apertures[0].positions)
+    tbl['id'] = np.arange(positions.shape[0], dtype=int) + 1
+
+    xypos_pixel = np.transpose(positions) * u.pixel
     tbl['xcenter'] = xypos_pixel[0]
     tbl['ycenter'] = xypos_pixel[1]
 
