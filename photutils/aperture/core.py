@@ -30,13 +30,10 @@ class Aperture(metaclass=_ABCMetaAndInheritDocstrings):
     """
 
     def __len__(self):
-        if isinstance(self, SkyAperture) and self.positions.isscalar:
-            return 1
-        else:
-            if self.positions.shape[0] == 1:
-                raise TypeError('Scalar {0!r} object has no len()'
-                                .format(self.__class__.__name__))
-            return self.positions.shape[0]
+        if self.isscalar:
+            raise TypeError('Scalar {0!r} object has no len()'
+                            .format(self.__class__.__name__))
+        return self.shape[0]
 
     def __getitem__(self, index):
         kwargs = dict()
@@ -78,6 +75,14 @@ class Aperture(metaclass=_ABCMetaAndInheritDocstrings):
         fmt = ['{0}: {1}'.format(key, val) for key, val in cls_info]
 
         return '\n'.join(fmt)
+
+    @property
+    def shape(self):
+        return self.positions.shape[:-1]
+
+    @property
+    def isscalar(self):
+        return self.shape == ()
 
 
 class PixelAperture(Aperture):
@@ -867,9 +872,9 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         if (int(subpixels) != subpixels) or (subpixels <= 0):
             raise ValueError('subpixels must be a positive integer.')
 
-    scalar_aperture = False
+    single_aperture = False
     if isinstance(apertures, Aperture):
-        scalar_aperture = True
+        single_aperture = True
         apertures = (apertures,)
 
     # convert sky to pixel apertures
@@ -920,7 +925,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
         sum_key = 'aperture_sum'
         sum_err_key = 'aperture_sum_err'
-        if not scalar_aperture:
+        if not single_aperture:
             sum_key += '_{}'.format(i)
             sum_err_key += '_{}'.format(i)
 
