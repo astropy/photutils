@@ -89,14 +89,17 @@ def test_aperture_pixel_positions():
     pos1 = (10, 20)
     pos2 = [(10, 20)]
     pos3 = u.Quantity((10, 20), unit=u.pixel)
+    pos4 = u.Quantity([(10, 20)], unit=u.pixel)
 
     r = 3
     ap1 = CircularAperture(pos1, r)
     ap2 = CircularAperture(pos2, r)
     ap3 = CircularAperture(pos3, r)
+    ap4 = CircularAperture(pos4, r)
 
-    assert_allclose(ap1.positions, ap2.positions)
+    assert not np.array_equal(ap1.positions, ap2.positions)
     assert_allclose(ap1.positions, ap3.positions)
+    assert_allclose(ap2.positions, ap4.positions)
 
 
 class BaseTestAperturePhotometry:
@@ -868,7 +871,7 @@ def test_position_units():
     pos = (10, 10) * u.pix
     pos = np.sqrt(pos**2)
     ap = CircularAperture(pos, r=3.)
-    assert_allclose(ap.positions, np.array([[10, 10]]))
+    assert_allclose(ap.positions, np.array([10, 10]))
 
 
 def test_radius_units():
