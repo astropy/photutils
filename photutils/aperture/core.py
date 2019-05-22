@@ -374,7 +374,12 @@ class PixelAperture(Aperture):
 
         aperture_sums = []
         aperture_sum_errs = []
-        for apermask in self.to_mask(method=method, subpixels=subpixels):
+
+        masks = self.to_mask(method=method, subpixels=subpixels)
+        if self.isscalar:
+            masks = (masks,)
+
+        for apermask in masks:
             data_weighted = apermask.multiply(data)
 
             if data_weighted is None:

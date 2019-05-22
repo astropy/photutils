@@ -95,7 +95,10 @@ class EllipticalMaskMixin:
 
             masks.append(ApertureMask(mask, bbox))
 
-        return masks
+        if self.isscalar:
+            return masks[0]
+        else:
+            return masks
 
 
 class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
