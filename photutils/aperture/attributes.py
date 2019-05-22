@@ -61,13 +61,13 @@ class PixelPositions(ApertureAttribute):
         if isinstance(value, zip):
             value = tuple(value)
 
-        value = np.atleast_2d(value).astype(float)  # np.ndarray
+        value = np.asanyarray(value).astype(float)  # np.ndarray
         self._validate(value)
 
         if isinstance(value, u.Quantity):
             value = value.value
 
-        if value.shape[1] != 2 and value.shape[0] == 2:
+        if value.ndim == 2 and value.shape[1] != 2 and value.shape[0] == 2:
             warnings.warn('Inputing positions shaped as 2xN is deprecated '
                           'and will be removed in v0.8.  Positions should be '
                           'a (x, y) pixel position or a list or array of '
@@ -81,14 +81,15 @@ class PixelPositions(ApertureAttribute):
         if isinstance(value, u.Quantity) and value.unit != u.pixel:
             raise u.UnitsError('{} must be in pixel units'.format(self.name))
 
+        if np.any(~np.isfinite(value)):
+            raise ValueError('{} must not contain any non-finite (e.g. NaN '
+                             'or inf) positions'.format(self.name))
+
+        value = np.atleast_2d(value)
         if (value.shape[1] != 2 and value.shape[0] != 2) or value.ndim > 2:
             raise TypeError('{} must be an (x, y) pixel position or a list '
                             'or array of (x, y) pixel positions.'
                             .format(self.name))
-
-        if np.any(~np.isfinite(value)):
-            raise ValueError('{} must not contain any non-finite (e.g. NaN '
-                             'or inf) positions'.format(self.name))
 
 
 class SkyCoordPositions(ApertureAttribute):
