@@ -140,7 +140,7 @@ class PixelAperture(Aperture):
 
         edges = []
         for position, bbox in zip(np.atleast_2d(self.positions),
-                                  self.bounding_boxes):
+                                  np.atleast_1d(self.bounding_boxes)):
             xmin = bbox.ixmin - 0.5 - position[0]
             xmax = bbox.ixmax - 0.5 - position[0]
             ymin = bbox.iymin - 0.5 - position[1]

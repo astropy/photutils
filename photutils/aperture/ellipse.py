@@ -80,7 +80,8 @@ class EllipticalMaskMixin:
             raise ValueError('Cannot determine the aperture shape.')
 
         masks = []
-        for bbox, edges in zip(self.bounding_boxes, self._centered_edges):
+        for bbox, edges in zip(np.atleast_1d(self.bounding_boxes),
+                               self._centered_edges):
             ny, nx = bbox.shape
             mask = elliptical_overlap_grid(edges[0], edges[1], edges[2],
                                            edges[3], nx, ny, a, b, self.theta,
@@ -182,8 +183,13 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         ymin = positions[:, 1] - dy
         ymax = positions[:, 1] + dy
 
-        return [BoundingBox.from_float(x0, x1, y0, y1)
-                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+        bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
+                  for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+
+        if self.isscalar:
+            return bboxes[0]
+        else:
+            return bboxes
 
     def area(self):
         return math.pi * self.a * self.b
@@ -325,8 +331,13 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         ymin = positions[:, 1] - dy
         ymax = positions[:, 1] + dy
 
-        return [BoundingBox.from_float(x0, x1, y0, y1)
-                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+        bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
+                  for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+
+        if self.isscalar:
+            return bboxes[0]
+        else:
+            return bboxes
 
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)

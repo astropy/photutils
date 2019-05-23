@@ -76,7 +76,8 @@ class CircularMaskMixin:
             raise ValueError('Cannot determine the aperture radius.')
 
         masks = []
-        for bbox, edges in zip(self.bounding_boxes, self._centered_edges):
+        for bbox, edges in zip(np.atleast_1d(self.bounding_boxes),
+                               self._centered_edges):
             ny, nx = bbox.shape
             mask = circular_overlap_grid(edges[0], edges[1], edges[2],
                                          edges[3], nx, ny, radius, use_exact,
@@ -151,8 +152,13 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         ymin = positions[:, 1] - self.r
         ymax = positions[:, 1] + self.r
 
-        return [BoundingBox.from_float(x0, x1, y0, y1)
-                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+        bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
+                  for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+
+        if self.isscalar:
+            return bboxes[0]
+        else:
+            return bboxes
 
     def area(self):
         return math.pi * self.r ** 2
@@ -259,8 +265,13 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         ymin = positions[:, 1] - self.r_out
         ymax = positions[:, 1] + self.r_out
 
-        return [BoundingBox.from_float(x0, x1, y0, y1)
-                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+        bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
+                  for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+
+        if self.isscalar:
+            return bboxes[0]
+        else:
+            return bboxes
 
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
