@@ -767,26 +767,26 @@ def test_rectangular_bbox():
     width = 7
     height = 3
     a = RectangularAperture((50, 50), w=width, h=height, theta=0)
-    assert a.bounding_boxes[0].shape == (height, width)
+    assert a.bounding_boxes.shape == (height, width)
 
     a = RectangularAperture((50.5, 50.5), w=width, h=height, theta=0)
-    assert a.bounding_boxes[0].shape == (height + 1, width + 1)
+    assert a.bounding_boxes.shape == (height + 1, width + 1)
 
     a = RectangularAperture((50, 50), w=width, h=height, theta=90.*np.pi/180.)
-    assert a.bounding_boxes[0].shape == (width, height)
+    assert a.bounding_boxes.shape == (width, height)
 
     # even sizes
     width = 8
     height = 4
     a = RectangularAperture((50, 50), w=width, h=height, theta=0)
-    assert a.bounding_boxes[0].shape == (height + 1, width + 1)
+    assert a.bounding_boxes.shape == (height + 1, width + 1)
 
     a = RectangularAperture((50.5, 50.5), w=width, h=height, theta=0)
-    assert a.bounding_boxes[0].shape == (height, width)
+    assert a.bounding_boxes.shape == (height, width)
 
     a = RectangularAperture((50.5, 50.5), w=width, h=height,
                             theta=90.*np.pi/180.)
-    assert a.bounding_boxes[0].shape == (width, height)
+    assert a.bounding_boxes.shape == (width, height)
 
 
 def test_elliptical_bbox():
@@ -794,25 +794,25 @@ def test_elliptical_bbox():
     a = 7
     b = 3
     ap = EllipticalAperture((50, 50), a=a, b=b, theta=0)
-    assert ap.bounding_boxes[0].shape == (2*b + 1, 2*a + 1)
+    assert ap.bounding_boxes.shape == (2*b + 1, 2*a + 1)
 
     ap = EllipticalAperture((50.5, 50.5), a=a, b=b, theta=0)
-    assert ap.bounding_boxes[0].shape == (2*b, 2*a)
+    assert ap.bounding_boxes.shape == (2*b, 2*a)
 
     ap = EllipticalAperture((50, 50), a=a, b=b, theta=90.*np.pi/180.)
-    assert ap.bounding_boxes[0].shape == (2*a + 1, 2*b + 1)
+    assert ap.bounding_boxes.shape == (2*a + 1, 2*b + 1)
 
     # fractional axes
     a = 7.5
     b = 4.5
     ap = EllipticalAperture((50, 50), a=a, b=b, theta=0)
-    assert ap.bounding_boxes[0].shape == (2*b, 2*a)
+    assert ap.bounding_boxes.shape == (2*b, 2*a)
 
     ap = EllipticalAperture((50.5, 50.5), a=a, b=b, theta=0)
-    assert ap.bounding_boxes[0].shape == (2*b + 1, 2*a + 1)
+    assert ap.bounding_boxes.shape == (2*b + 1, 2*a + 1)
 
     ap = EllipticalAperture((50, 50), a=a, b=b, theta=90.*np.pi/180.)
-    assert ap.bounding_boxes[0].shape == (2*a, 2*b)
+    assert ap.bounding_boxes.shape == (2*a, 2*b)
 
 
 def test_to_sky_pixel():
