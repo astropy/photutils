@@ -52,7 +52,7 @@ def test_mask_cutout_shape():
 def test_mask_cutout_copy():
     data = np.ones((50, 50))
     aper = CircularAperture((25, 25), r=10.)
-    mask = aper.to_mask()[0]
+    mask = aper.to_mask()
     cutout = mask.cutout(data, copy=True)
     data[25, 25] = 100.
     assert cutout[10, 10] == 1.
@@ -61,7 +61,7 @@ def test_mask_cutout_copy():
 def test_mask_cutout_copy_quantity():
     data = np.ones((50, 50)) * u.adu
     aper = CircularAperture((25, 25), r=10.)
-    mask = aper.to_mask()[0]
+    mask = aper.to_mask()
     cutout = mask.cutout(data, copy=True)
     assert cutout.unit == data.unit
 
@@ -73,7 +73,7 @@ def test_mask_cutout_copy_quantity():
 def test_mask_cutout_no_overlap(position):
     data = np.ones((50, 50))
     aper = CircularAperture(position, r=10.)
-    mask = aper.to_mask()[0]
+    mask = aper.to_mask()
 
     cutout = mask.cutout(data)
     assert cutout is None
@@ -89,7 +89,7 @@ def test_mask_cutout_no_overlap(position):
 def test_mask_cutout_partial_overlap(position):
     data = np.ones((50, 50))
     aper = CircularAperture(position, r=30.)
-    mask = aper.to_mask()[0]
+    mask = aper.to_mask()
 
     cutout = mask.cutout(data)
     assert cutout.shape == mask.shape
@@ -105,7 +105,7 @@ def test_mask_multiply():
     radius = 10.
     data = np.ones((50, 50))
     aper = CircularAperture((25, 25), r=radius)
-    mask = aper.to_mask()[0]
+    mask = aper.to_mask()
     data_weighted = mask.multiply(data)
     assert np.sum(data_weighted) == radius**2 * np.pi
 
@@ -118,7 +118,7 @@ def test_mask_multiply_quantity():
     radius = 10.
     data = np.ones((50, 50)) * u.adu
     aper = CircularAperture((25, 25), r=radius)
-    mask = aper.to_mask()[0]
+    mask = aper.to_mask()
 
     data_weighted = mask.multiply(data)
     assert data_weighted.unit == u.adu
