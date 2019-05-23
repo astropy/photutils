@@ -78,7 +78,10 @@ class Aperture(metaclass=_ABCMetaAndInheritDocstrings):
 
     @property
     def shape(self):
-        return self.positions.shape[:-1]
+        if isinstance(self.positions, SkyCoord):
+            return self.positions.shape
+        else:
+            return self.positions.shape[:-1]
 
     @property
     def isscalar(self):
