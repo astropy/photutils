@@ -102,6 +102,23 @@ class EllipticalMaskMixin:
         else:
             return masks
 
+    @staticmethod
+    def _extents(semimajor_axis, semiminor_axis, theta):
+        """
+        Calculate half of the bounding box extents of an ellipse.
+        """
+
+        cos_theta = np.cos(theta)
+        sin_theta = np.sin(theta)
+        semimajor_x = semimajor_axis * cos_theta
+        semimajor_y = semimajor_axis * sin_theta
+        semiminor_x = semiminor_axis * -sin_theta
+        semiminor_y = semiminor_axis * cos_theta
+        x_extent = np.sqrt(semimajor_x**2 + semiminor_x**2)
+        y_extent = np.sqrt(semimajor_y**2 + semiminor_y**2)
+
+        return x_extent, y_extent
+
 
 class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
     """
@@ -169,20 +186,12 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         for each position, enclosing the exact elliptical apertures.
         """
 
-        cos_theta = np.cos(self.theta)
-        sin_theta = np.sin(self.theta)
-        ax = self.a * cos_theta
-        ay = self.a * sin_theta
-        bx = self.b * -sin_theta
-        by = self.b * cos_theta
-        dx = np.sqrt(ax*ax + bx*bx)
-        dy = np.sqrt(ay*ay + by*by)
-
         positions = np.atleast_2d(self.positions)
-        xmin = positions[:, 0] - dx
-        xmax = positions[:, 0] + dx
-        ymin = positions[:, 1] - dy
-        ymax = positions[:, 1] + dy
+        x_delta, y_delta = self._extents(self.a, self.b, self.theta)
+        xmin = positions[:, 0] - x_delta
+        xmax = positions[:, 0] + x_delta
+        ymin = positions[:, 1] - y_delta
+        ymax = positions[:, 1] + y_delta
 
         bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
                   for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
@@ -345,20 +354,12 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         for each position, enclosing the exact elliptical apertures.
         """
 
-        cos_theta = np.cos(self.theta)
-        sin_theta = np.sin(self.theta)
-        ax = self.a_out * cos_theta
-        ay = self.a_out * sin_theta
-        bx = self.b_out * -sin_theta
-        by = self.b_out * cos_theta
-        dx = np.sqrt(ax*ax + bx*bx)
-        dy = np.sqrt(ay*ay + by*by)
-
         positions = np.atleast_2d(self.positions)
-        xmin = positions[:, 0] - dx
-        xmax = positions[:, 0] + dx
-        ymin = positions[:, 1] - dy
-        ymax = positions[:, 1] + dy
+        x_delta, y_delta = self._extents(self.a_out, self.b_out, self.theta)
+        xmin = positions[:, 0] - x_delta
+        xmax = positions[:, 0] + x_delta
+        ymin = positions[:, 1] - y_delta
+        ymax = positions[:, 1] + y_delta
 
         bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
                   for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
