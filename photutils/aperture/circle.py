@@ -191,27 +191,30 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
 
         import matplotlib.patches as mpatches
 
-        xy_positions, patch_params = self._define_patch_params(
+        xy_positions, patch_kwargs = self._define_patch_params(
             origin=origin, indices=indices, **kwargs)
 
         patches = []
         for xy_position in xy_positions:
-            patches.append(mpatches.Circle(xy_position, self.r, **kwargs))
+            patches.append(mpatches.Circle(xy_position, self.r,
+                                           **patch_kwargs))
 
         if self.isscalar:
             return patches[0]
         else:
             return patches
 
-    def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
-             **kwargs):
-        import matplotlib.patches as mpatches
+    def plot(self, origin=(0, 0), indices=None, ax=None, **kwargs):
+        import matplotlib.pyplot as plt
 
-        plot_positions, ax, kwargs = self._prepare_plot(
-            origin, indices, ax, fill, **kwargs)
+        if ax is None:
+            ax = plt.gca()
 
-        for position in plot_positions:
-            patch = mpatches.Circle(position, self.r, **kwargs)
+        patches = self._to_patch(origin=origin, indices=indices, **kwargs)
+        if self.isscalar:
+            patches = (patches,)
+
+        for patch in patches:
             ax.add_patch(patch)
 
     def to_sky(self, wcs, mode='all'):
