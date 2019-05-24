@@ -106,6 +106,16 @@ API changes
 
   - Deprecated the Aperture ``mask_area`` method. [#853]
 
+  - Aperture ``area`` is now an attribute instead of a method. [#854]
+
+  - The Aperture plot keyword ``ax`` was deprecated and renamed to
+    ``axes``. [#854]
+
+- ``photutils.background``
+
+  - The ``Background2D`` ``plot_meshes`` keyword ``ax`` was deprecated
+    and renamed to ``axes``. [#854]
+
 - ``photutils.detection``
 
   - Removed deprecated ``subpixel`` keyword for ``find_peaks``. [#835]
