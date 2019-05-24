@@ -94,6 +94,19 @@ class PixelAperture(Aperture):
     Abstract base class for apertures defined in pixel coordinates.
     """
 
+    @property
+    def _default_patch_properties(self):
+        """
+        A dictionary of default matplotlib.patches.Patch properties.
+        """
+
+        mpl_params = dict()
+
+        # matplotlib.patches.Patch default is ``fill=True``
+        mpl_params['fill'] = False
+
+        return mpl_params
+
     @staticmethod
     def _translate_mask_mode(mode, subpixels, rectangle=False):
         if mode not in ('center', 'subpixel', 'exact'):
@@ -443,11 +456,10 @@ class PixelAperture(Aperture):
 
         return mpath.Path(verts, codes)
 
-    def _prepare_plot(self, origin=(0, 0), indices=None, ax=None,
-                      fill=False, **kwargs):
+    def _define_patch_params(self, origin=(0, 0), indices=None, **kwargs):
         """
-        Prepare to plot the aperture on a matplotlib
-        `~matplotlib.axes.Axes` instance.
+        Define the aperture patch position and set any default
+        matplotlib patch keywords (e.g. ``fill=False``).
 
         Parameters
         ----------
@@ -456,49 +468,33 @@ class PixelAperture(Aperture):
             image.
 
         indices : int or array of int, optional
-            The indices of the aperture position(s) to plot.
+            The indices of the aperture positions to plot.
 
-        ax : `matplotlib.axes.Axes` instance, optional
-            If `None`, then the current `~matplotlib.axes.Axes` instance
-            is used.
-
-        fill : bool, optional
-            Set whether to fill the aperture patch.  The default is
-            `False`.
-
-        kwargs
-            Any keyword arguments accepted by `matplotlib.patches.Patch`.
+        kwargs : dict
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
 
         Returns
         -------
-        plot_positions : `~numpy.ndarray`
-            The aperture position(s) to plot, after any ``indices``
-            slicing and ``origin`` shift.
+        xy_positions : `~numpy.ndarray`
+            The aperture patch positions.
 
-        ax : `matplotlib.axes.Axes` instance, optional
-            The `~matplotlib.axes.Axes` on which to plot.
-
-        kwargs
-            Any keyword arguments accepted by `matplotlib.patches.Patch`.
+        patch_params : dict
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
         """
 
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            ax = plt.gca()
-
-        # This is necessary because the `matplotlib.patches.Patch` default
-        # is ``fill=True``.  Here we make the default ``fill=False``.
-        kwargs['fill'] = fill
-
-        plot_positions = copy.deepcopy(np.atleast_2d(self.positions))
+        xy_positions = copy.deepcopy(np.atleast_2d(self.positions))
         if indices is not None:
-            plot_positions = plot_positions[np.atleast_1d(indices)]
+            xy_positions = xy_positions[np.atleast_1d(indices)]
 
-        plot_positions[:, 0] -= origin[0]
-        plot_positions[:, 1] -= origin[1]
+        xy_positions[:, 0] -= origin[0]
+        xy_positions[:, 1] -= origin[1]
 
-        return plot_positions, ax, kwargs
+        patch_params = self._default_patch_properties
+        patch_params.update(kwargs)
+
+        return xy_positions, patch_params
 
     @abc.abstractmethod
     def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
