@@ -88,6 +88,15 @@ class Aperture(metaclass=_ABCMetaAndInheritDocstrings):
     def isscalar(self):
         return self.shape == ()
 
+    @property
+    @abc.abstractmethod
+    def positions(self):
+        """
+        The aperture positions.
+        """
+
+        raise NotImplementedError('Needs to be implemented in a subclass.')
+
 
 class PixelAperture(Aperture):
     """
@@ -135,7 +144,8 @@ class PixelAperture(Aperture):
 
         return use_exact, subpixels
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def bounding_boxes(self):
         """
         The minimal bounding box for the aperture.
