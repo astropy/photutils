@@ -9,6 +9,7 @@ from itertools import product
 import numpy as np
 from numpy.lib.index_tricks import index_exp
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated_renamed_argument
 
 from .core import SExtractorBackground, StdBackgroundRMS
 from ..utils import ShepardIDWInterpolator
@@ -795,7 +796,8 @@ class Background2D:
 
         return self.interpolator(self.background_rms_mesh, self)
 
-    def plot_meshes(self, ax=None, marker='+', color='blue', outlines=False,
+    @deprecated_renamed_argument('ax', 'axes', '0.7')
+    def plot_meshes(self, axes=None, marker='+', color='blue', outlines=False,
                     **kwargs):
         """
         Plot the low-resolution mesh boxes on a matplotlib Axes
@@ -803,8 +805,9 @@ class Background2D:
 
         Parameters
         ----------
-        ax : `matplotlib.axes.Axes` instance, optional
-            If `None`, then the current ``Axes`` instance is used.
+        axes : `matplotlib.axes.Axes` or `None`, optional
+            The matplotlib axes on which to plot.  If `None`, then the
+            current `~matplotlib.axes.Axes` instance is used.
 
         marker : str, optional
             The marker to use to mark the center of the boxes.  Default
@@ -818,7 +821,7 @@ class Background2D:
             Whether or not to plot the box outlines in addition to the
             box centers.
 
-        kwargs
+        kwargs : `dict`
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.  Used only if ``outlines`` is
             True.
@@ -827,13 +830,13 @@ class Background2D:
         import matplotlib.pyplot as plt
 
         kwargs['color'] = color
-        if ax is None:
-            ax = plt.gca()
-        ax.scatter(self.x, self.y, marker=marker, color=color)
+        if axes is None:
+            axes = plt.gca()
+        axes.scatter(self.x, self.y, marker=marker, color=color)
         if outlines:
             from ..aperture import RectangularAperture
             xy = np.column_stack([self.x, self.y])
             apers = RectangularAperture(xy, self.box_size[1],
                                         self.box_size[0], 0.)
-            apers.plot(ax=ax, **kwargs)
+            apers.plot(axes=axes, **kwargs)
         return
