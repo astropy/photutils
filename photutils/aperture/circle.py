@@ -2,6 +2,8 @@
 
 import math
 
+import numpy as np
+
 from .attributes import (PixelPositions, SkyCoordPositions, PositiveScalar,
                          AngleOrPixelScalarQuantity)
 from .core import PixelAperture, SkyAperture
@@ -74,7 +76,8 @@ class CircularMaskMixin:
             raise ValueError('Cannot determine the aperture radius.')
 
         masks = []
-        for bbox, edges in zip(self.bounding_boxes, self._centered_edges):
+        for bbox, edges in zip(np.atleast_1d(self.bounding_boxes),
+                               self._centered_edges):
             ny, nx = bbox.shape
             mask = circular_overlap_grid(edges[0], edges[1], edges[2],
                                          edges[3], nx, ny, radius, use_exact,
@@ -88,7 +91,10 @@ class CircularMaskMixin:
 
             masks.append(ApertureMask(mask, bbox))
 
-        return masks
+        if self.isscalar:
+            return masks[0]
+        else:
+            return masks
 
 
 class CircularAperture(CircularMaskMixin, PixelAperture):
@@ -140,13 +146,19 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
 
     @property
     def bounding_boxes(self):
-        xmin = self.positions[:, 0] - self.r
-        xmax = self.positions[:, 0] + self.r
-        ymin = self.positions[:, 1] - self.r
-        ymax = self.positions[:, 1] + self.r
+        positions = np.atleast_2d(self.positions)
+        xmin = positions[:, 0] - self.r
+        xmax = positions[:, 0] + self.r
+        ymin = positions[:, 1] - self.r
+        ymax = positions[:, 1] + self.r
 
-        return [BoundingBox.from_float(x0, x1, y0, y1)
-                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+        bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
+                  for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+
+        if self.isscalar:
+            return bboxes[0]
+        else:
+            return bboxes
 
     def area(self):
         return math.pi * self.r ** 2
@@ -247,13 +259,19 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
 
     @property
     def bounding_boxes(self):
-        xmin = self.positions[:, 0] - self.r_out
-        xmax = self.positions[:, 0] + self.r_out
-        ymin = self.positions[:, 1] - self.r_out
-        ymax = self.positions[:, 1] + self.r_out
+        positions = np.atleast_2d(self.positions)
+        xmin = positions[:, 0] - self.r_out
+        xmax = positions[:, 0] + self.r_out
+        ymin = positions[:, 1] - self.r_out
+        ymax = positions[:, 1] + self.r_out
 
-        return [BoundingBox.from_float(x0, x1, y0, y1)
-                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+        bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
+                  for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+
+        if self.isscalar:
+            return bboxes[0]
+        else:
+            return bboxes
 
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)

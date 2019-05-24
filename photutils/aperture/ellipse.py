@@ -80,7 +80,8 @@ class EllipticalMaskMixin:
             raise ValueError('Cannot determine the aperture shape.')
 
         masks = []
-        for bbox, edges in zip(self.bounding_boxes, self._centered_edges):
+        for bbox, edges in zip(np.atleast_1d(self.bounding_boxes),
+                               self._centered_edges):
             ny, nx = bbox.shape
             mask = elliptical_overlap_grid(edges[0], edges[1], edges[2],
                                            edges[3], nx, ny, a, b, self.theta,
@@ -95,7 +96,10 @@ class EllipticalMaskMixin:
 
             masks.append(ApertureMask(mask, bbox))
 
-        return masks
+        if self.isscalar:
+            return masks[0]
+        else:
+            return masks
 
 
 class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
@@ -173,13 +177,19 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         dx = np.sqrt(ax*ax + bx*bx)
         dy = np.sqrt(ay*ay + by*by)
 
-        xmin = self.positions[:, 0] - dx
-        xmax = self.positions[:, 0] + dx
-        ymin = self.positions[:, 1] - dy
-        ymax = self.positions[:, 1] + dy
+        positions = np.atleast_2d(self.positions)
+        xmin = positions[:, 0] - dx
+        xmax = positions[:, 0] + dx
+        ymin = positions[:, 1] - dy
+        ymax = positions[:, 1] + dy
 
-        return [BoundingBox.from_float(x0, x1, y0, y1)
-                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+        bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
+                  for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+
+        if self.isscalar:
+            return bboxes[0]
+        else:
+            return bboxes
 
     def area(self):
         return math.pi * self.a * self.b
@@ -315,13 +325,19 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         dx = np.sqrt(ax*ax + bx*bx)
         dy = np.sqrt(ay*ay + by*by)
 
-        xmin = self.positions[:, 0] - dx
-        xmax = self.positions[:, 0] + dx
-        ymin = self.positions[:, 1] - dy
-        ymax = self.positions[:, 1] + dy
+        positions = np.atleast_2d(self.positions)
+        xmin = positions[:, 0] - dx
+        xmax = positions[:, 0] + dx
+        ymin = positions[:, 1] - dy
+        ymax = positions[:, 1] + dy
 
-        return [BoundingBox.from_float(x0, x1, y0, y1)
-                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+        bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
+                  for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+
+        if self.isscalar:
+            return bboxes[0]
+        else:
+            return bboxes
 
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)

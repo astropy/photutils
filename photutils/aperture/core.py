@@ -30,9 +30,20 @@ class Aperture(metaclass=_ABCMetaAndInheritDocstrings):
     """
 
     def __len__(self):
-        if isinstance(self, SkyAperture) and self.positions.isscalar:
-            return 1
-        return len(self.positions)
+        if self.isscalar:
+            raise TypeError('Scalar {0!r} object has no len()'
+                            .format(self.__class__.__name__))
+        return self.shape[0]
+
+    def __getitem__(self, index):
+        kwargs = dict()
+        for param in self._params:
+            kwargs[param] = getattr(self, param)
+        return self.__class__(self.positions[index], **kwargs)
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self.__getitem__(i)
 
     def _positions_str(self, prefix=None):
         if isinstance(self, PixelAperture):
@@ -64,6 +75,17 @@ class Aperture(metaclass=_ABCMetaAndInheritDocstrings):
         fmt = ['{0}: {1}'.format(key, val) for key, val in cls_info]
 
         return '\n'.join(fmt)
+
+    @property
+    def shape(self):
+        if isinstance(self.positions, SkyCoord):
+            return self.positions.shape
+        else:
+            return self.positions.shape[:-1]
+
+    @property
+    def isscalar(self):
+        return self.shape == ()
 
 
 class PixelAperture(Aperture):
@@ -120,7 +142,8 @@ class PixelAperture(Aperture):
         """
 
         edges = []
-        for position, bbox in zip(self.positions, self.bounding_boxes):
+        for position, bbox in zip(np.atleast_2d(self.positions),
+                                  np.atleast_1d(self.bounding_boxes)):
             xmin = bbox.ixmin - 0.5 - position[0]
             xmax = bbox.ixmax - 0.5 - position[0]
             ymin = bbox.iymin - 0.5 - position[1]
@@ -354,7 +377,12 @@ class PixelAperture(Aperture):
 
         aperture_sums = []
         aperture_sum_errs = []
-        for apermask in self.to_mask(method=method, subpixels=subpixels):
+
+        masks = self.to_mask(method=method, subpixels=subpixels)
+        if self.isscalar:
+            masks = (masks,)
+
+        for apermask in masks:
             data_weighted = apermask.multiply(data)
 
             if data_weighted is None:
@@ -454,7 +482,7 @@ class PixelAperture(Aperture):
         # is ``fill=True``.  Here we make the default ``fill=False``.
         kwargs['fill'] = fill
 
-        plot_positions = copy.deepcopy(self.positions)
+        plot_positions = copy.deepcopy(np.atleast_2d(self.positions))
         if indices is not None:
             plot_positions = plot_positions[np.atleast_1d(indices)]
 
@@ -853,11 +881,10 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         if (int(subpixels) != subpixels) or (subpixels <= 0):
             raise ValueError('subpixels must be a positive integer.')
 
-    scalar_aperture = False
+    single_aperture = False
     if isinstance(apertures, Aperture):
-        scalar_aperture = True
-
-    apertures = np.atleast_1d(apertures)
+        single_aperture = True
+        apertures = (apertures,)
 
     # convert sky to pixel apertures
     skyaper = False
@@ -887,9 +914,11 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     meta['aperture_photometry_args'] = calling_args
 
     tbl = QTable(meta=meta)
-    tbl['id'] = np.arange(len(apertures[0]), dtype=int) + 1
 
-    xypos_pixel = np.transpose(apertures[0].positions) * u.pixel
+    positions = np.atleast_2d(apertures[0].positions)
+    tbl['id'] = np.arange(positions.shape[0], dtype=int) + 1
+
+    xypos_pixel = np.transpose(positions) * u.pixel
     tbl['xcenter'] = xypos_pixel[0]
     tbl['ycenter'] = xypos_pixel[1]
 
@@ -907,7 +936,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
         sum_key = 'aperture_sum'
         sum_err_key = 'aperture_sum_err'
-        if not scalar_aperture:
+        if not single_aperture:
             sum_key += '_{}'.format(i)
             sum_err_key += '_{}'.format(i)
 
