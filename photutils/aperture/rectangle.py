@@ -105,6 +105,24 @@ class RectangularMaskMixin:
         else:
             return masks
 
+    @staticmethod
+    def _lower_left_positions(positions, width, height, theta):
+        """
+        Calculate lower-left positions from the input center positions.
+
+        Used for creating `~matplotlib.patches.Rectangle` patch for the
+        aperture.
+        """
+
+        half_width = width / 2.
+        half_height = height / 2.
+        sin_theta = math.sin(theta)
+        cos_theta = math.cos(theta)
+        xshift = (half_height * sin_theta) - (half_width * cos_theta)
+        yshift = -(half_height * cos_theta) - (half_width * sin_theta)
+
+        return np.atleast_2d(positions) + np.array([xshift, yshift])
+
 
 class RectangularAperture(RectangularMaskMixin, PixelAperture):
     """
@@ -174,14 +192,14 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         for each position, enclosing the exact rectangular apertures.
         """
 
-        w2 = self.w / 2.
-        h2 = self.h / 2.
+        half_width = self.w / 2.
+        half_height = self.h / 2.
         cos_theta = math.cos(self.theta)
         sin_theta = math.sin(self.theta)
-        dx1 = abs(w2 * cos_theta - h2 * sin_theta)
-        dy1 = abs(w2 * sin_theta + h2 * cos_theta)
-        dx2 = abs(w2 * cos_theta + h2 * sin_theta)
-        dy2 = abs(w2 * sin_theta - h2 * cos_theta)
+        dx1 = abs(half_width * cos_theta - half_height * sin_theta)
+        dy1 = abs(half_width * sin_theta + half_height * cos_theta)
+        dx2 = abs(half_width * cos_theta + half_height * sin_theta)
+        dy2 = abs(half_width * sin_theta - half_height * cos_theta)
         dx = max(dx1, dx2)
         dy = max(dy1, dy2)
 
@@ -202,25 +220,48 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
     def area(self):
         return self.w * self.h
 
-    def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
-             **kwargs):
+    def _to_patch(self, origin=(0, 0), indices=None, **kwargs):
+        """
+        Return a `~matplotlib.patches.patch` for the aperture.
+
+        Parameters
+        ----------
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        indices : int or array of int, optional
+            The indices of the aperture positions to plot.
+
+        kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
+
+        Returns
+        -------
+        patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
+            A patch for the aperture.  If the aperture is scalar then a
+            single `~matplotlib.patches.patch` is returned, otherwise a
+            list of `~matplotlib.patches.patch` is returned.
+        """
+
         import matplotlib.patches as mpatches
 
-        plot_positions, ax, kwargs = self._prepare_plot(
-            origin, indices, ax, fill, **kwargs)
+        xy_positions, patch_kwargs = self._define_patch_params(
+            origin=origin, indices=indices, **kwargs)
+        xy_positions = self._lower_left_positions(xy_positions, self.w,
+                                                  self.h, self.theta)
 
-        hw = self.w / 2.
-        hh = self.h / 2.
-        sint = math.sin(self.theta)
-        cost = math.cos(self.theta)
-        dx = (hh * sint) - (hw * cost)
-        dy = -(hh * cost) - (hw * sint)
-        plot_positions = plot_positions + np.array([dx, dy])
+        patches = []
         theta_deg = self.theta * 180. / np.pi
-        for position in plot_positions:
-            patch = mpatches.Rectangle(position, self.w, self.h, theta_deg,
-                                       **kwargs)
-            ax.add_patch(patch)
+        for xy_position in xy_positions:
+            patches.append(mpatches.Rectangle(xy_position, self.w, self.h,
+                                              theta_deg, **patch_kwargs))
+
+        if self.isscalar:
+            return patches[0]
+        else:
+            return patches
 
     def to_sky(self, wcs, mode='all'):
         """
@@ -336,14 +377,14 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         "exact" case.
         """
 
-        w2 = self.w_out / 2.
-        h2 = self.h_out / 2.
+        half_width = self.w_out / 2.
+        half_height = self.h_out / 2.
         cos_theta = math.cos(self.theta)
         sin_theta = math.sin(self.theta)
-        dx1 = abs(w2 * cos_theta - h2 * sin_theta)
-        dy1 = abs(w2 * sin_theta + h2 * cos_theta)
-        dx2 = abs(w2 * cos_theta + h2 * sin_theta)
-        dy2 = abs(w2 * sin_theta - h2 * cos_theta)
+        dx1 = abs(half_width * cos_theta - half_height * sin_theta)
+        dy1 = abs(half_width * sin_theta + half_height * cos_theta)
+        dx2 = abs(half_width * cos_theta + half_height * sin_theta)
+        dy2 = abs(half_width * sin_theta - half_height * cos_theta)
         dx = max(dx1, dx2)
         dy = max(dy1, dy2)
 
@@ -364,38 +405,57 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     def area(self):
         return self.w_out * self.h_out - self.w_in * self.h_in
 
-    def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
-             **kwargs):
+    def _to_patch(self, origin=(0, 0), indices=None, **kwargs):
+        """
+        Return a `~matplotlib.patches.patch` for the aperture.
+
+        Parameters
+        ----------
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        indices : int or array of int, optional
+            The indices of the aperture positions to plot.
+
+        kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
+
+        Returns
+        -------
+        patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
+            A patch for the aperture.  If the aperture is scalar then a
+            single `~matplotlib.patches.patch` is returned, otherwise a
+            list of `~matplotlib.patches.patch` is returned.
+        """
+
         import matplotlib.patches as mpatches
 
-        plot_positions, ax, kwargs = self._prepare_plot(
-            origin, indices, ax, fill, **kwargs)
+        xy_positions, patch_kwargs = self._define_patch_params(
+            origin=origin, indices=indices, **kwargs)
+        inner_xy_positions = self._lower_left_positions(xy_positions,
+                                                        self.w_in, self.h_in,
+                                                        self.theta)
+        outer_xy_positions = self._lower_left_positions(xy_positions,
+                                                        self.w_out,
+                                                        self.h_out,
+                                                        self.theta)
 
-        sint = math.sin(self.theta)
-        cost = math.cos(self.theta)
+        patches = []
         theta_deg = self.theta * 180. / np.pi
-
-        hw_inner = self.w_in / 2.
-        hh_inner = self.h_in / 2.
-        dx_inner = (hh_inner * sint) - (hw_inner * cost)
-        dy_inner = -(hh_inner * cost) - (hw_inner * sint)
-        positions_inner = plot_positions + np.array([dx_inner, dy_inner])
-        hw_outer = self.w_out / 2.
-        hh_outer = self.h_out / 2.
-        dx_outer = (hh_outer * sint) - (hw_outer * cost)
-        dy_outer = -(hh_outer * cost) - (hw_outer * sint)
-        positions_outer = plot_positions + np.array([dx_outer, dy_outer])
-
-        for i, position_inner in enumerate(positions_inner):
-            patch_inner = mpatches.Rectangle(position_inner,
-                                             self.w_in, self.h_in,
-                                             theta_deg, **kwargs)
-            patch_outer = mpatches.Rectangle(positions_outer[i],
-                                             self.w_out, self.h_out,
-                                             theta_deg, **kwargs)
+        for xy_in, xy_out in zip(inner_xy_positions, outer_xy_positions):
+            patch_inner = mpatches.Rectangle(xy_in, self.w_in, self.h_in,
+                                             theta_deg)
+            patch_outer = mpatches.Rectangle(xy_out, self.w_out, self.h_out,
+                                             theta_deg)
             path = self._make_annulus_path(patch_inner, patch_outer)
-            patch = mpatches.PathPatch(path, **kwargs)
-            ax.add_patch(patch)
+            patches.append(mpatches.PathPatch(path, **patch_kwargs))
+
+        if self.isscalar:
+            return patches[0]
+        else:
+            return patches
 
     def to_sky(self, wcs, mode='all'):
         """
