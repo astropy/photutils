@@ -26,8 +26,7 @@ class EllipticalMaskMixin:
 
     def to_mask(self, method='exact', subpixels=5):
         """
-        Return a list of `~photutils.ApertureMask` objects, one for each
-        aperture position.
+        Return a mask for the aperture.
 
         Parameters
         ----------
@@ -64,8 +63,10 @@ class EllipticalMaskMixin:
 
         Returns
         -------
-        mask : list of `~photutils.ApertureMask`
-            A list of aperture mask objects.
+        mask : `~photutils.ApertureMask` or list of `~photutils.ApertureMask`
+            A mask for the aperture.  If the aperture is scalar then a
+            single `~photutils.ApertureMask` is returned, otherwise a
+            list of `~photutils.ApertureMask` is returned.
         """
 
         use_exact, subpixels = self._translate_mask_mode(method, subpixels)
