@@ -12,6 +12,7 @@ from astropy.nddata import support_nddata
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import deprecated
+from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
 from astropy.wcs.utils import (skycoord_to_pixel, pixel_to_skycoord,
@@ -88,11 +89,33 @@ class Aperture(metaclass=_ABCMetaAndInheritDocstrings):
     def isscalar(self):
         return self.shape == ()
 
+    @property
+    @abc.abstractmethod
+    def positions(self):
+        """
+        The aperture positions.
+        """
+
+        raise NotImplementedError('Needs to be implemented in a subclass.')
+
 
 class PixelAperture(Aperture):
     """
     Abstract base class for apertures defined in pixel coordinates.
     """
+
+    @property
+    def _default_patch_properties(self):
+        """
+        A dictionary of default matplotlib.patches.Patch properties.
+        """
+
+        mpl_params = dict()
+
+        # matplotlib.patches.Patch default is ``fill=True``
+        mpl_params['fill'] = False
+
+        return mpl_params
 
     @staticmethod
     def _translate_mask_mode(mode, subpixels, rectangle=False):
@@ -122,7 +145,8 @@ class PixelAperture(Aperture):
 
         return use_exact, subpixels
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def bounding_boxes(self):
         """
         The minimal bounding box for the aperture.
@@ -156,6 +180,7 @@ class PixelAperture(Aperture):
 
         return edges
 
+    @property
     def area(self):
         """
         Return the exact area of the aperture shape.
@@ -443,11 +468,10 @@ class PixelAperture(Aperture):
 
         return mpath.Path(verts, codes)
 
-    def _prepare_plot(self, origin=(0, 0), indices=None, ax=None,
-                      fill=False, **kwargs):
+    def _define_patch_params(self, origin=(0, 0), indices=None, **kwargs):
         """
-        Prepare to plot the aperture on a matplotlib
-        `~matplotlib.axes.Axes` instance.
+        Define the aperture patch position and set any default
+        matplotlib patch keywords (e.g. ``fill=False``).
 
         Parameters
         ----------
@@ -456,59 +480,78 @@ class PixelAperture(Aperture):
             image.
 
         indices : int or array of int, optional
-            The indices of the aperture position(s) to plot.
+            The indices of the aperture positions to plot.
 
-        ax : `matplotlib.axes.Axes` instance, optional
-            If `None`, then the current `~matplotlib.axes.Axes` instance
-            is used.
-
-        fill : bool, optional
-            Set whether to fill the aperture patch.  The default is
-            `False`.
-
-        kwargs
-            Any keyword arguments accepted by `matplotlib.patches.Patch`.
+        kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
 
         Returns
         -------
-        plot_positions : `~numpy.ndarray`
-            The aperture position(s) to plot, after any ``indices``
-            slicing and ``origin`` shift.
+        xy_positions : `~numpy.ndarray`
+            The aperture patch positions.
 
-        ax : `matplotlib.axes.Axes` instance, optional
-            The `~matplotlib.axes.Axes` on which to plot.
-
-        kwargs
-            Any keyword arguments accepted by `matplotlib.patches.Patch`.
+        patch_params : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
         """
 
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            ax = plt.gca()
-
-        # This is necessary because the `matplotlib.patches.Patch` default
-        # is ``fill=True``.  Here we make the default ``fill=False``.
-        kwargs['fill'] = fill
-
-        plot_positions = copy.deepcopy(np.atleast_2d(self.positions))
+        xy_positions = copy.deepcopy(np.atleast_2d(self.positions))
         if indices is not None:
-            plot_positions = plot_positions[np.atleast_1d(indices)]
+            xy_positions = xy_positions[np.atleast_1d(indices)]
 
-        plot_positions[:, 0] -= origin[0]
-        plot_positions[:, 1] -= origin[1]
+        xy_positions[:, 0] -= origin[0]
+        xy_positions[:, 1] -= origin[1]
 
-        return plot_positions, ax, kwargs
+        patch_params = self._default_patch_properties
+        patch_params.update(kwargs)
+
+        return xy_positions, patch_params
 
     @abc.abstractmethod
-    def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
-             **kwargs):
+    def _to_patch(self, origin=(0, 0), indices=None, **kwargs):
+        """
+        Return a `~matplotlib.patches.patch` for the aperture.
+
+        Parameters
+        ----------
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        indices : int or array of int, optional
+            The indices of the aperture positions to plot.
+
+        kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
+
+        Returns
+        -------
+        patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
+            A patch for the aperture.  If the aperture is scalar then a
+            single `~matplotlib.patches.patch` is returned, otherwise a
+            list of `~matplotlib.patches.patch` is returned.
+        """
+
+        raise NotImplementedError('Needs to be implemented in a subclass.')
+
+    @deprecated_renamed_argument('ax', 'axes', '0.7')
+    @deprecated_renamed_argument('indices', None, '0.7',
+                                 alternative=('indices directly on the '
+                                              'aperture object '
+                                              '(e.g. aper[idx].plot())'))
+    def plot(self, axes=None, origin=(0, 0), indices=None, **kwargs):
         """
         Plot the aperture on a matplotlib `~matplotlib.axes.Axes`
         instance.
 
         Parameters
         ----------
+        axes : `matplotlib.axes.Axes` or `None`, optional
+            The matplotlib axes on which to plot.  If `None`, then the
+            current `~matplotlib.axes.Axes` instance is used.
+
         origin : array_like, optional
             The ``(x, y)`` position of the origin of the displayed
             image.
@@ -517,19 +560,22 @@ class PixelAperture(Aperture):
             The indices of the aperture position(s) to plot.  If `None`
             (default) then all aperture positions will be plotted.
 
-        ax : `matplotlib.axes.Axes` instance, optional
-            If `None`, then the current `~matplotlib.axes.Axes` instance
-            is used.
-
-        fill : bool, optional
-            Set whether to fill the aperture patch.  The default is
-            `False`.
-
-        kwargs
-            Any keyword arguments accepted by `matplotlib.patches.Patch`.
+        kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
         """
 
-        raise NotImplementedError('Needs to be implemented in a subclass.')
+        import matplotlib.pyplot as plt
+
+        if axes is None:
+            axes = plt.gca()
+
+        patches = self._to_patch(origin=origin, indices=indices, **kwargs)
+        if self.isscalar:
+            patches = (patches,)
+
+        for patch in patches:
+            axes.add_patch(patch)
 
     def _to_sky_params(self, wcs, mode='all'):
         """
@@ -548,7 +594,7 @@ class PixelAperture(Aperture):
 
         Returns
         -------
-        sky_params : dict
+        sky_params : `dict`
             A dictionary of parameters for an equivalent sky aperture.
         """
 
@@ -623,7 +669,7 @@ class SkyAperture(Aperture):
 
         Returns
         -------
-        pixel_params : dict
+        pixel_params : `dict`
             A dictionary of parameters for an equivalent pixel aperture.
         """
 

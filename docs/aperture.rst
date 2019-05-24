@@ -309,12 +309,12 @@ aperture, we need to divide its sum by its area.  The mean value can
 be calculated by using the :meth:`~photutils.CircularAnnulus.area`
 method::
 
-    >>> bkg_mean = phot_table['aperture_sum_1'] / annulus_aperture.area()
+    >>> bkg_mean = phot_table['aperture_sum_1'] / annulus_aperture.area
 
 The total background within the circular aperture is then the mean local
 background times the circular aperture area::
 
-    >>> bkg_sum = bkg_mean * aperture.area()
+    >>> bkg_sum = bkg_mean * aperture.area
     >>> final_sum = phot_table['aperture_sum_0'] - bkg_sum
     >>> phot_table['residual_aperture_sum'] = final_sum
     >>> phot_table['residual_aperture_sum'].info.format = '%.8g'  # for consistent table output
@@ -444,7 +444,7 @@ median::
 The total background within the circular aperture is then the local background
 level times the circular aperture area::
 
-   >>> background = median_sigclip * aperture.area()
+   >>> background = median_sigclip * aperture.area
    >>> print(background)  # doctest: +FLOAT_CMP
    380.7777584296913
 
@@ -475,7 +475,7 @@ each source::
     >>> bkg_median = np.array(bkg_median)
     >>> phot = aperture_photometry(data, aperture)
     >>> phot['annulus_median'] = bkg_median
-    >>> phot['aper_bkg'] = bkg_median * aperture.area()
+    >>> phot['aper_bkg'] = bkg_median * aperture.area
     >>> phot['aper_sum_bkgsub'] = phot['aperture_sum'] - phot['aper_bkg']
     >>> for col in phot.colnames:
     ...     phot[col].info.format = '%.8g'  # for consistent table output
@@ -722,21 +722,22 @@ functionality: a new type of aperture photometry simply requires the
 definition of a new `~photutils.Aperture` subclass.
 
 All `~photutils.PixelAperture` subclasses must define a
-``bounding_boxes`` property, ``to_mask()`` and ``plot()`` methods, and
-optionally an ``area()`` method.  All `~photutils.SkyAperture`
-subclasses must implement only a ``to_pixel()`` method.
+``bounding_boxes`` property and ``to_mask()`` and ``plot()`` methods.
+They may also optionally define an ``area`` property.  All
+`~photutils.SkyAperture` subclasses must only implement a
+``to_pixel()`` method.
 
     * ``bounding_boxes``:  The minimal bounding box for the aperture.
       If the aperture is scalar then a single `~photutils.BoundingBox`
       is returned, otherwise a list of `~photutils.BoundingBox` is
       returned.
 
+    * ``area``: An optional property defining the exact analytical
+      area (in pixels**2) of the aperture.
+
     * ``to_mask()``: Return a mask for the aperture.  If the aperture
       is scalar then a single `~photutils.ApertureMask` is returned,
       otherwise a list of `~photutils.ApertureMask` is returned.
-
-    * ``area()``: A method to return the exact analytical area (in
-      pixels**2) of the aperture.
 
     * ``plot()``: A method to plot the aperture on a
       `matplotlib.axes.Axes` instance.

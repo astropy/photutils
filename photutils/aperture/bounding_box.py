@@ -3,6 +3,7 @@
 import numpy as np
 from astropy.io.fits.util import _is_int
 from astropy.utils import deprecated
+from astropy.utils.decorators import deprecated_renamed_argument
 
 
 __all__ = ['BoundingBox']
@@ -257,31 +258,28 @@ class BoundingBox:
 
         return RectangularAperture(xypos, w=width, h=height, theta=0.)
 
-    def plot(self, origin=(0, 0), ax=None, fill=False, **kwargs):
+    @deprecated_renamed_argument('ax', 'axes', '0.7')
+    def plot(self, axes=None, origin=(0, 0), **kwargs):
         """
         Plot the `BoundingBox` on a matplotlib `~matplotlib.axes.Axes`
         instance.
 
         Parameters
         ----------
+        axes : `matplotlib.axes.Axes` or `None`, optional
+            The matplotlib axes on which to plot.  If `None`, then the
+            current `~matplotlib.axes.Axes` instance is used.
+
         origin : array_like, optional
             The ``(x, y)`` position of the origin of the displayed
             image.
-
-        ax : `matplotlib.axes.Axes` instance, optional
-            If `None`, then the current `~matplotlib.axes.Axes` instance
-            is used.
-
-        fill : bool, optional
-            Set whether to fill the aperture patch.  The default is
-            `False`.
 
         kwargs : `dict`
             Any keyword arguments accepted by `matplotlib.patches.Patch`.
         """
 
         aper = self.to_aperture()
-        aper.plot(origin=origin, ax=ax, fill=fill, **kwargs)
+        aper.plot(axes=axes, origin=origin, **kwargs)
 
     def union(self, bbox):
         """

@@ -161,19 +161,49 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         else:
             return bboxes
 
+    @property
     def area(self):
         return math.pi * self.r ** 2
 
-    def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
-             **kwargs):
+    def _to_patch(self, origin=(0, 0), indices=None, **kwargs):
+        """
+        Return a `~matplotlib.patches.patch` for the aperture.
+
+        Parameters
+        ----------
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        indices : int or array of int, optional
+            The indices of the aperture positions to plot.
+
+        kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
+
+        Returns
+        -------
+        patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
+            A patch for the aperture.  If the aperture is scalar then a
+            single `~matplotlib.patches.patch` is returned, otherwise a
+            list of `~matplotlib.patches.patch` is returned.
+        """
+
         import matplotlib.patches as mpatches
 
-        plot_positions, ax, kwargs = self._prepare_plot(
-            origin, indices, ax, fill, **kwargs)
+        xy_positions, patch_kwargs = self._define_patch_params(
+            origin=origin, indices=indices, **kwargs)
 
-        for position in plot_positions:
-            patch = mpatches.Circle(position, self.r, **kwargs)
-            ax.add_patch(patch)
+        patches = []
+        for xy_position in xy_positions:
+            patches.append(mpatches.Circle(xy_position, self.r,
+                                           **patch_kwargs))
+
+        if self.isscalar:
+            return patches[0]
+        else:
+            return patches
 
     def to_sky(self, wcs, mode='all'):
         """
@@ -274,22 +304,51 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         else:
             return bboxes
 
+    @property
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
-    def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
-             **kwargs):
+    def _to_patch(self, origin=(0, 0), indices=None, **kwargs):
+        """
+        Return a `~matplotlib.patches.patch` for the aperture.
+
+        Parameters
+        ----------
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        indices : int or array of int, optional
+            The indices of the aperture positions to plot.
+
+        kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
+
+        Returns
+        -------
+        patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
+            A patch for the aperture.  If the aperture is scalar then a
+            single `~matplotlib.patches.patch` is returned, otherwise a
+            list of `~matplotlib.patches.patch` is returned.
+        """
+
         import matplotlib.patches as mpatches
 
-        plot_positions, ax, kwargs = self._prepare_plot(
-            origin, indices, ax, fill, **kwargs)
+        xy_positions, patch_kwargs = self._define_patch_params(
+            origin=origin, indices=indices, **kwargs)
 
-        for position in plot_positions:
-            patch_inner = mpatches.Circle(position, self.r_in)
-            patch_outer = mpatches.Circle(position, self.r_out)
+        patches = []
+        for xy_position in xy_positions:
+            patch_inner = mpatches.Circle(xy_position, self.r_in)
+            patch_outer = mpatches.Circle(xy_position, self.r_out)
             path = self._make_annulus_path(patch_inner, patch_outer)
-            patch = mpatches.PathPatch(path, **kwargs)
-            ax.add_patch(patch)
+            patches.append(mpatches.PathPatch(path, **patch_kwargs))
+
+        if self.isscalar:
+            return patches[0]
+        else:
+            return patches
 
     def to_sky(self, wcs, mode='all'):
         """
