@@ -180,6 +180,7 @@ class PixelAperture(Aperture):
 
         return edges
 
+    @property
     def area(self):
         """
         Return the exact area of the aperture shape.

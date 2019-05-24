@@ -226,6 +226,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         else:
             return bboxes
 
+    @property
     def area(self):
         return self.w * self.h
 
@@ -401,6 +402,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         else:
             return bboxes
 
+    @property
     def area(self):
         return self.w_out * self.h_out - self.w_in * self.h_in
 

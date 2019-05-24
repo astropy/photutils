@@ -161,6 +161,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         else:
             return bboxes
 
+    @property
     def area(self):
         return math.pi * self.r ** 2
 
@@ -303,6 +304,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         else:
             return bboxes
 
+    @property
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 

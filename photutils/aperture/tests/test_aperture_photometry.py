@@ -66,7 +66,7 @@ def test_inside_array_simple(aperture_class, params):
     table2 = aperture_photometry(data, aperture, method='subpixel',
                                  subpixels=10)
     table3 = aperture_photometry(data, aperture, method='exact', subpixels=10)
-    true_flux = aperture.area()
+    true_flux = aperture.area
 
     if not isinstance(aperture, (RectangularAperture, RectangularAnnulus)):
         assert_allclose(table3['aperture_sum'], true_flux)

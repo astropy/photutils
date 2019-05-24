@@ -201,6 +201,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         else:
             return bboxes
 
+    @property
     def area(self):
         return math.pi * self.a * self.b
 
@@ -369,6 +370,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         else:
             return bboxes
 
+    @property
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
