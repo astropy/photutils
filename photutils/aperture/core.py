@@ -124,8 +124,11 @@ class PixelAperture(Aperture):
     @abc.abstractproperty
     def bounding_boxes(self):
         """
-        A list of minimal bounding boxes (`~photutils.BoundingBox`), one
-        for each position, for the aperture.
+        The minimal bounding box for the aperture.
+
+        If the aperture is scalar then a single `~photutils.BoundingBox`
+        is returned, otherwise a list of `~photutils.BoundingBox` is
+        returned.
         """
 
         raise NotImplementedError('Needs to be implemented in a subclass.')
