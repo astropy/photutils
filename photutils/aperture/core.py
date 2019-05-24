@@ -12,6 +12,7 @@ from astropy.nddata import support_nddata
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import deprecated
+from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
 from astropy.wcs.utils import (skycoord_to_pixel, pixel_to_skycoord,
@@ -534,6 +535,10 @@ class PixelAperture(Aperture):
 
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
+    @deprecated_renamed_argument('indices', None, '0.7',
+                                 alternative=('indices directly on the '
+                                              'aperture object '
+                                              '(e.g. aper[idx].plot())'))
     def plot(self, origin=(0, 0), indices=None, ax=None, **kwargs):
         """
         Plot the aperture on a matplotlib `~matplotlib.axes.Axes`
