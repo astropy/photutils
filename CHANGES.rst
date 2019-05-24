@@ -104,6 +104,8 @@ API changes
     an ``ApertureMask`` object instead of a length-1 list containing
     an ``ApertureMask``. [#852]
 
+  - Deprecated the Aperture ``mask_area`` method. [#853]
+
 - ``photutils.detection``
 
   - Removed deprecated ``subpixel`` keyword for ``find_peaks``. [#835]

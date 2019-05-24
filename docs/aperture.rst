@@ -726,12 +726,14 @@ All `~photutils.PixelAperture` subclasses must define a
 optionally an ``area()`` method.  All `~photutils.SkyAperture`
 subclasses must implement only a ``to_pixel()`` method.
 
-    * ``bounding_boxes``:  A property defining a list of minimal
-      `~photutils.BoundingBox` objects for the aperture, one at each
-      aperture position.
+    * ``bounding_boxes``:  The minimal bounding box for the aperture.
+      If the aperture is scalar then a single `~photutils.BoundingBox`
+      is returned, otherwise a list of `~photutils.BoundingBox` is
+      returned.
 
-    * ``to_mask()``: A method to return a list of
-      `~photutils.ApertureMask` objects, one for each aperture position.
+    * ``to_mask()``: Return a mask for the aperture.  If the aperture
+      is scalar then a single `~photutils.ApertureMask` is returned,
+      otherwise a list of `~photutils.ApertureMask` is returned.
 
     * ``area()``: A method to return the exact analytical area (in
       pixels**2) of the aperture.
