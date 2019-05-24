@@ -2,8 +2,6 @@
 
 from astropy.coordinates import SkyCoord
 from astropy.tests.helper import assert_quantity_allclose
-import astropy.units as u
-import numpy as np
 from numpy.testing import assert_array_equal
 
 
