@@ -106,6 +106,25 @@ class RectangularMaskMixin:
             return masks
 
     @staticmethod
+    def _extents(width, height, theta):
+        """
+        Calculate half of the bounding box extents of an ellipse.
+        """
+
+        half_width = width / 2.
+        half_height = height / 2.
+        sin_theta = math.sin(theta)
+        cos_theta = math.cos(theta)
+        x_extent1 = abs((half_width * cos_theta) - (half_height * sin_theta))
+        x_extent2 = abs((half_width * cos_theta) + (half_height * sin_theta))
+        y_extent1 = abs((half_width * sin_theta) + (half_height * cos_theta))
+        y_extent2 = abs((half_width * sin_theta) - (half_height * cos_theta))
+        x_extent = max(x_extent1, x_extent2)
+        y_extent = max(y_extent1, y_extent2)
+
+        return x_extent, y_extent
+
+    @staticmethod
     def _lower_left_positions(positions, width, height, theta):
         """
         Calculate lower-left positions from the input center positions.
@@ -192,22 +211,12 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         for each position, enclosing the exact rectangular apertures.
         """
 
-        half_width = self.w / 2.
-        half_height = self.h / 2.
-        cos_theta = math.cos(self.theta)
-        sin_theta = math.sin(self.theta)
-        dx1 = abs(half_width * cos_theta - half_height * sin_theta)
-        dy1 = abs(half_width * sin_theta + half_height * cos_theta)
-        dx2 = abs(half_width * cos_theta + half_height * sin_theta)
-        dy2 = abs(half_width * sin_theta - half_height * cos_theta)
-        dx = max(dx1, dx2)
-        dy = max(dy1, dy2)
-
         positions = np.atleast_2d(self.positions)
-        xmin = positions[:, 0] - dx
-        xmax = positions[:, 0] + dx
-        ymin = positions[:, 1] - dy
-        ymax = positions[:, 1] + dy
+        x_delta, y_delta = self._extents(self.w, self.h, self.theta)
+        xmin = positions[:, 0] - x_delta
+        xmax = positions[:, 0] + x_delta
+        ymin = positions[:, 1] - y_delta
+        ymax = positions[:, 1] + y_delta
 
         bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
                   for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
@@ -377,22 +386,12 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         "exact" case.
         """
 
-        half_width = self.w_out / 2.
-        half_height = self.h_out / 2.
-        cos_theta = math.cos(self.theta)
-        sin_theta = math.sin(self.theta)
-        dx1 = abs(half_width * cos_theta - half_height * sin_theta)
-        dy1 = abs(half_width * sin_theta + half_height * cos_theta)
-        dx2 = abs(half_width * cos_theta + half_height * sin_theta)
-        dy2 = abs(half_width * sin_theta - half_height * cos_theta)
-        dx = max(dx1, dx2)
-        dy = max(dy1, dy2)
-
         positions = np.atleast_2d(self.positions)
-        xmin = positions[:, 0] - dx
-        xmax = positions[:, 0] + dx
-        ymin = positions[:, 1] - dy
-        ymax = positions[:, 1] + dy
+        x_delta, y_delta = self._extents(self.w_out, self.h_out, self.theta)
+        xmin = positions[:, 0] - x_delta
+        xmax = positions[:, 0] + x_delta
+        ymin = positions[:, 1] - y_delta
+        ymax = positions[:, 1] + y_delta
 
         bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
                   for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
