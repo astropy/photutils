@@ -177,7 +177,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         indices : int or array of int, optional
             The indices of the aperture positions to plot.
 
-        kwargs : dict
+        kwargs : `dict`
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
 
@@ -203,19 +203,6 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
             return patches[0]
         else:
             return patches
-
-    def plot(self, origin=(0, 0), indices=None, ax=None, **kwargs):
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            ax = plt.gca()
-
-        patches = self._to_patch(origin=origin, indices=indices, **kwargs)
-        if self.isscalar:
-            patches = (patches,)
-
-        for patch in patches:
-            ax.add_patch(patch)
 
     def to_sky(self, wcs, mode='all'):
         """
