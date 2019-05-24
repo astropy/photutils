@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 from astropy.coordinates import SkyCoord
+from astropy.tests.helper import assert_quantity_allclose
 import astropy.units as u
 import numpy as np
 from numpy.testing import assert_array_equal
@@ -19,8 +20,9 @@ class BaseTestAperture(BaseTestApertureParams):
         assert aper.isscalar
         expected_positions = self.aperture.positions[self.index]
         if isinstance(expected_positions, SkyCoord):
-            assert u.allclose(aper.positions.ra, expected_positions.ra)
-            assert u.allclose(aper.positions.dec, expected_positions.dec)
+            assert_quantity_allclose(aper.positions.ra, expected_positions.ra)
+            assert_quantity_allclose(aper.positions.dec,
+                                     expected_positions.dec)
         else:
             assert_array_equal(aper.positions, expected_positions)
             for param in aper._params:
@@ -33,8 +35,9 @@ class BaseTestAperture(BaseTestApertureParams):
 
         expected_positions = self.aperture.positions[self.slc]
         if isinstance(self.aperture.positions, SkyCoord):
-            assert u.allclose(aper.positions.ra, expected_positions.ra)
-            assert u.allclose(aper.positions.dec, expected_positions.dec)
+            assert_quantity_allclose(aper.positions.ra, expected_positions.ra)
+            assert_quantity_allclose(aper.positions.dec,
+                                     expected_positions.dec)
         else:
             assert_array_equal(aper.positions, expected_positions)
             for param in aper._params:
