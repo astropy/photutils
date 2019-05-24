@@ -11,6 +11,7 @@ from astropy.io import fits
 from astropy.nddata import support_nddata
 from astropy.table import QTable
 import astropy.units as u
+from astropy.utils import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
 from astropy.wcs.utils import (skycoord_to_pixel, pixel_to_skycoord,
@@ -167,9 +168,11 @@ class PixelAperture(Aperture):
 
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
+    @deprecated('0.7', alternative=('e.g. np.sum(aper.to_mask().data) for a '
+                                    'scalar aperture'))
     def mask_area(self, method='exact', subpixels=5):
         """
-        Return the area of the aperture masks (one per position).
+        Return the area of the aperture mask.
 
         For ``method`` other than ``'exact'``, this area will be less
         than the exact analytical area (e.g. the ``area`` method).  Note
@@ -215,8 +218,10 @@ class PixelAperture(Aperture):
             A list of the mask area (one per position) of the aperture.
         """
 
-        mask = self.to_mask(method=method, subpixels=subpixels)
-        return [np.sum(m.data) for m in mask]
+        masks = self.to_mask(method=method, subpixels=subpixels)
+        if self.isscalar:
+            masks = (masks,)
+        return [np.sum(mask.data) for mask in masks]
 
     @abc.abstractmethod
     def to_mask(self, method='exact', subpixels=5):
