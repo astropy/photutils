@@ -11,6 +11,9 @@ New Features
   - Added ``from_float``, ``as_artist``, ``union`` and
     ``intersection`` methods to ``BoundingBox`` class. [#851]
 
+  - Added ``shape`` and ``isscalar`` properties to Aperture objects.
+    [#852]
+
 - ``photutils.isophote``
 
   - Significantly improved the performance (~5 times faster) of
@@ -88,6 +91,18 @@ API changes
 
   - Renamed the ``celestial_center`` column to ``sky_center`` in the
     ``aperture_photometry`` output table. [#848]
+
+  - Aperture objects defined with a single (x, y) position (input as
+    1D) are now considered scalar objects, which can be checked with
+    the new ``isscalar`` Aperture property. [#852]
+
+  - Non-scalar Aperture objects can now be index, sliced, and
+    iterated. [#852]
+
+  - Scalar Aperture objects now return scalar ``positions`` and
+    ``bounding_boxes`` properties and its ``to_mask`` method returns
+    an ``ApertureMask`` object instead of a length-1 list containing
+    an ``ApertureMask``. [#852]
 
 - ``photutils.detection``
 
