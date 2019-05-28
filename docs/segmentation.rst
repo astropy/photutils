@@ -408,8 +408,8 @@ Now let's plot the derived elliptical apertures on the data:
     >>> ax2.imshow(segm_deblend, origin='lower', cmap=cmap)
     >>> ax2.set_title('Segmentation Image')
     >>> for aperture in apertures:
-    ...     aperture.plot(color='white', lw=1.5, ax=ax1)
-    ...     aperture.plot(color='white', lw=1.5, ax=ax2)
+    ...     aperture.plot(axes=ax1, color='white', lw=1.5)
+    ...     aperture.plot(axes=ax2, color='white', lw=1.5)
 
 .. plot::
 
@@ -455,8 +455,8 @@ Now let's plot the derived elliptical apertures on the data:
     ax2.imshow(segm_deblend, origin='lower', cmap=cmap)
     ax2.set_title('Segmentation Image')
     for aperture in apertures:
-        aperture.plot(color='white', lw=1.5, ax=ax1)
-        aperture.plot(color='white', lw=1.5, ax=ax2)
+        aperture.plot(axes=ax1, color='white', lw=1.5)
+        aperture.plot(axes=ax2, color='white', lw=1.5)
     plt.tight_layout()
 
 We can also specify a specific subset of sources, defined by their
