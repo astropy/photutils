@@ -65,11 +65,12 @@ del intersphinx_mapping['h5py']
 # We currently want to link to the latest development version of the
 # astropy docs, so we override the `intersphinx_mapping` entry pointing to
 # the stable docs version that is listed in `astropy/sphinx/conf.py`.
-intersphinx_mapping['astropy'] = ('http://docs.astropy.org/en/latest/', None)
+intersphinx_mapping['astropy'] = ('https://docs.astropy.org/en/latest/', None)
 
 # Extend astropy intersphinx_mapping with packages we use here
-intersphinx_mapping['skimage'] = ('http://scikit-image.org/docs/stable/', None)
-intersphinx_mapping['gwcs'] = ('http://gwcs.readthedocs.io/en/latest/', None)
+intersphinx_mapping['skimage'] = ('https://scikit-image.org/docs/stable/',
+                                  None)
+intersphinx_mapping['gwcs'] = ('https://gwcs.readthedocs.io/en/latest/', None)
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
