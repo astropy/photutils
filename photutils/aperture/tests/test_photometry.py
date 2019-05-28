@@ -41,10 +41,12 @@ APERTURE_CL = [CircularAperture,
                RectangularAperture,
                RectangularAnnulus]
 
-TEST_APERTURES = list(zip(APERTURE_CL, ((3.,), (3., 5.),
-                                        (3., 5., 1.), (3., 5., 4., 1.),
+TEST_APERTURES = list(zip(APERTURE_CL, ((3.,),
+                                        (3., 5.),
+                                        (3., 5., 1.),
+                                        (3., 5., 4., 12./5., 1.),
                                         (5, 8, np.pi / 4),
-                                        (8, 12, 8, np.pi / 8))))
+                                        (8, 12, 8, 16./3., np.pi / 8))))
 
 
 @pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
@@ -60,17 +62,18 @@ def test_outside_array(aperture_class, params):
 def test_inside_array_simple(aperture_class, params):
     data = np.ones((40, 40), dtype=float)
     aperture = aperture_class((20., 20.), *params)
-    table1 = aperture_photometry(data, aperture, method='center', subpixels=10)
+    table1 = aperture_photometry(data, aperture, method='center',
+                                 subpixels=10)
     table2 = aperture_photometry(data, aperture, method='subpixel',
                                  subpixels=10)
     table3 = aperture_photometry(data, aperture, method='exact', subpixels=10)
     true_flux = aperture.area
+    assert table1['aperture_sum'] < table3['aperture_sum']
 
     if not isinstance(aperture, (RectangularAperture, RectangularAnnulus)):
         assert_allclose(table3['aperture_sum'], true_flux)
         assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
                         atol=0.1)
-    assert table1['aperture_sum'] < table3['aperture_sum']
 
 
 @pytest.mark.skipif('not HAS_MATPLOTLIB')
@@ -195,7 +198,7 @@ class TestElliptical(BaseTestAperturePhotometry):
         a = 10.
         b = 5.
         theta = -np.pi / 4.
-        self.aperture = EllipticalAperture(position, a, b, theta)
+        self.aperture = EllipticalAperture(position, a, b, theta=theta)
         self.area = np.pi * a * b
         self.true_flux = self.area
 
@@ -209,7 +212,8 @@ class TestEllipticalAnnulus(BaseTestAperturePhotometry):
         a_out = 8.
         b_out = 5.
         theta = -np.pi / 4.
-        self.aperture = EllipticalAnnulus(position, a_in, a_out, b_out, theta)
+        self.aperture = EllipticalAnnulus(position, a_in, a_out, b_out,
+                                          theta=theta)
         self.area = (np.pi * (a_out * b_out) -
                      np.pi * (a_in * b_out * a_in / a_out))
         self.true_flux = self.area
@@ -223,7 +227,7 @@ class TestRectangularAperture(BaseTestAperturePhotometry):
         h = 5.
         w = 8.
         theta = np.pi / 4.
-        self.aperture = RectangularAperture(position, w, h, theta)
+        self.aperture = RectangularAperture(position, w, h, theta=theta)
         self.area = h * w
         self.true_flux = self.area
 
@@ -238,7 +242,8 @@ class TestRectangularAnnulus(BaseTestAperturePhotometry):
         w_out = 12.
         h_in = w_in * h_out / w_out
         theta = np.pi / 8.
-        self.aperture = RectangularAnnulus(position, w_in, w_out, h_out, theta)
+        self.aperture = RectangularAnnulus(position, w_in, w_out, h_out,
+                                           theta=theta)
         self.area = h_out * w_out - h_in * w_in
         self.true_flux = self.area
 
@@ -368,19 +373,24 @@ def test_wcs_based_photometry():
 
     photometry_skycoord_ell = aperture_photometry(
         data, SkyEllipticalAperture(pos_skycoord, 3 * u.arcsec,
-                                    3.0001 * u.arcsec, 45 * u.arcsec), wcs=wcs)
+                                    3.0001 * u.arcsec, theta=45 * u.arcsec),
+        wcs=wcs)
     photometry_skycoord_ell_2 = aperture_photometry(
         data, SkyEllipticalAperture(pos_skycoord, 2 * u.arcsec,
-                                    2.0001 * u.arcsec, 45 * u.arcsec), wcs=wcs)
+                                    2.0001 * u.arcsec, theta=45 * u.arcsec),
+        wcs=wcs)
     photometry_skycoord_ell_s = aperture_photometry(
         data, SkyEllipticalAperture(pos_skycoord_s, 3 * u.arcsec,
-                                    3.0001 * u.arcsec, 45 * u.arcsec), wcs=wcs)
+                                    3.0001 * u.arcsec, theta=45 * u.arcsec),
+        wcs=wcs)
     photometry_skycoord_ell_ann = aperture_photometry(
         data, SkyEllipticalAnnulus(pos_skycoord, 2 * u.arcsec, 3 * u.arcsec,
-                                   3.0001 * u.arcsec, 45 * u.arcsec), wcs=wcs)
+                                   3.0001 * u.arcsec, theta=45 * u.arcsec),
+        wcs=wcs)
     photometry_skycoord_ell_ann_s = aperture_photometry(
         data, SkyEllipticalAnnulus(pos_skycoord_s, 2 * u.arcsec, 3 * u.arcsec,
-                                   3.0001 * u.arcsec, 45 * u.arcsec), wcs=wcs)
+                                   3.0001 * u.arcsec, theta=45 * u.arcsec),
+        wcs=wcs)
 
     assert_allclose(photometry_skycoord_ell['aperture_sum'][2],
                     photometry_skycoord_ell_s['aperture_sum'])
@@ -412,11 +422,12 @@ def test_wcs_based_photometry():
         method='subpixel', subpixels=20, wcs=wcs)
     photometry_skycoord_rec_ann = aperture_photometry(
         data, SkyRectangularAnnulus(pos_skycoord, 4 * u.arcsec, 6 * u.arcsec,
-                                    6 * u.arcsec, 0 * u.arcsec),
+                                    6 * u.arcsec, theta=0 * u.arcsec),
         method='subpixel', subpixels=20, wcs=wcs)
     photometry_skycoord_rec_ann_s = aperture_photometry(
         data, SkyRectangularAnnulus(pos_skycoord_s, 4 * u.arcsec,
-                                    6 * u.arcsec, 6 * u.arcsec, 0 * u.arcsec),
+                                    6 * u.arcsec, 6 * u.arcsec,
+                                    theta=0 * u.arcsec),
         method='subpixel', subpixels=20, wcs=wcs)
 
     assert_allclose(photometry_skycoord_rec['aperture_sum'][2],
@@ -635,19 +646,21 @@ def test_sky_aperture_repr():
     if NUMPY_LT_1_14:
         a_repr = ('<SkyEllipticalAnnulus(<SkyCoord (ICRS): (ra, dec) in '
                   'deg\n    [( 1.,  3.), ( 2.,  4.)]>, a_in=3.0 pix, '
-                  'a_out=5.0 pix, b_out=3.0 pix, theta=15.0 deg)>')
+                  'a_out=5.0 pix, b_in=1.8 pix, b_out=3.0 pix, '
+                  'theta=15.0 deg)>')
         a_str = ('Aperture: SkyEllipticalAnnulus\npositions: <SkyCoord '
                  '(ICRS): (ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\n'
-                 'a_in: 3.0 pix\na_out: 5.0 pix\nb_out: 3.0 pix\n'
-                 'theta: 15.0 deg')
+                 'a_in: 3.0 pix\na_out: 5.0 pix\nb_in=1.8: 1.8 pix\n'
+                 'b_out: 3.0 pix\ntheta: 15.0 deg')
     else:
         a_repr = ('<SkyEllipticalAnnulus(<SkyCoord (ICRS): (ra, dec) in '
                   'deg\n    [(1., 3.), (2., 4.)]>, a_in=3.0 pix, '
-                  'a_out=5.0 pix, b_out=3.0 pix, theta=15.0 deg)>')
+                  'a_out=5.0 pix, b_in=1.8 pix, b_out=3.0 pix, '
+                  'theta=15.0 deg)>')
         a_str = ('Aperture: SkyEllipticalAnnulus\npositions: <SkyCoord '
                  '(ICRS): (ra, dec) in deg\n    [(1., 3.), (2., 4.)]>\n'
-                 'a_in: 3.0 pix\na_out: 5.0 pix\nb_out: 3.0 pix\n'
-                 'theta: 15.0 deg')
+                 'a_in: 3.0 pix\na_out: 5.0 pix\nb_in: 1.8 pix\n'
+                 'b_out: 3.0 pix\ntheta: 15.0 deg')
 
     assert repr(aper) == a_repr
     assert str(aper) == a_str
@@ -671,24 +684,26 @@ def test_sky_aperture_repr():
     assert repr(aper) == a_repr
     assert str(aper) == a_str
 
-    aper = SkyRectangularAnnulus(s, w_in=3*u.pix, w_out=3.4*u.pix,
-                                 h_out=5*u.pix, theta=15*u.deg)
+    aper = SkyRectangularAnnulus(s, w_in=5*u.pix, w_out=10*u.pix,
+                                 h_out=6*u.pix, theta=15*u.deg)
     if NUMPY_LT_1_14:
         a_repr = ('<SkyRectangularAnnulus(<SkyCoord (ICRS): (ra, dec) in deg'
-                  '\n    [( 1.,  3.), ( 2.,  4.)]>, w_in=3.0 pix, '
-                  'w_out=3.4 pix, h_out=5.0 pix, theta=15.0 deg)>')
+                  '\n    [( 1.,  3.), ( 2.,  4.)]>, w_in=5.0 pix, '
+                  'w_out=10.0 pix, h_in=3.0 pix, h_out=6.0 pix, '
+                  'theta=15.0 deg)>')
         a_str = ('Aperture: SkyRectangularAnnulus\npositions: <SkyCoord '
                  '(ICRS): (ra, dec) in deg\n    [( 1.,  3.), ( 2.,  4.)]>\n'
-                 'w_in: 3.0 pix\nw_out: 3.4 pix\nh_out: 5.0 pix\n'
-                 'theta: 15.0 deg')
+                 'w_in: 5.0 pix\nw_out: 10.0 pix\nh_in: 3.0 pix\n'
+                 'h_out: 6.0 pix\ntheta: 15.0 deg')
     else:
         a_repr = ('<SkyRectangularAnnulus(<SkyCoord (ICRS): (ra, dec) in deg'
-                  '\n    [(1., 3.), (2., 4.)]>, w_in=3.0 pix, '
-                  'w_out=3.4 pix, h_out=5.0 pix, theta=15.0 deg)>')
+                  '\n    [(1., 3.), (2., 4.)]>, w_in=5.0 pix, '
+                  'w_out=10.0 pix, h_in=3.0 pix, h_out=6.0 pix, '
+                  'theta=15.0 deg)>')
         a_str = ('Aperture: SkyRectangularAnnulus\npositions: <SkyCoord '
                  '(ICRS): (ra, dec) in deg\n    [(1., 3.), (2., 4.)]>\n'
-                 'w_in: 3.0 pix\nw_out: 3.4 pix\nh_out: 5.0 pix\n'
-                 'theta: 15.0 deg')
+                 'w_in: 5.0 pix\nw_out: 10.0 pix\nh_in: 3.0 pix\n'
+                 'h_out: 6.0 pix\ntheta: 15.0 deg')
 
     assert repr(aper) == a_repr
     assert str(aper) == a_str
