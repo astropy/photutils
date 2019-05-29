@@ -1045,19 +1045,18 @@ class SourceProperties:
         determined using bilinear interpolation.
         """
 
-        from scipy.ndimage import map_coordinates
-
         if self._background is not None:
-            # centroid can still be NaN if all data values are <= 0
-            if (self._is_completely_masked or
-                    np.any(~np.isfinite(self.centroid))):
+            from scipy.ndimage import map_coordinates
+
+            # centroid can be NaN if segment is completely masked or if
+            # all data values are <= 0
+            if np.any(~np.isfinite(self.centroid)):
                 return np.nan * self._data_unit  # unit for table
             else:
                 value = map_coordinates(self._background,
                                         [[self.ycentroid.value],
                                          [self.xcentroid.value]], order=1,
                                         mode='nearest')[0]
-
                 return value * self._data_unit
         else:
             return None
@@ -1642,6 +1641,24 @@ class SourceCatalog:
         ``wcs`` is `None`.
         """
         return [None] * len(self._data)
+
+    @lazyproperty
+    def background_at_centroid(self):
+        background = self._data[0]._background
+        if background is not None:
+            from scipy.ndimage import map_coordinates
+
+            values = map_coordinates(background,
+                                     [[self.ycentroid.value],
+                                      [self.xcentroid.value]], order=1,
+                                     mode='nearest')[0]
+
+            mask = np.isfinite(self.xcentroid) & np.isfinite(self.ycentroid)
+            values[~mask] = np.nan
+
+            return values * self._data[0]._data_unit
+        else:
+            return self._none_list
 
     @lazyproperty
     def sky_centroid(self):
