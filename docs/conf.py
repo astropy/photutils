@@ -76,7 +76,7 @@ intersphinx_mapping['gwcs'] = ('https://gwcs.readthedocs.io/en/latest/', None)
 # directories to ignore when looking for source files.
 exclude_patterns.append('_templates')
 # Exclusion of template PSF block specification documentation
-exclude_patterns.append('psf_spec/*')
+# exclude_patterns.append('psf_spec/*')
 
 # This is added to the end of RST files - a good place to put substitutions to
 # be used globally.
