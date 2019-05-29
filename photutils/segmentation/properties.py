@@ -554,8 +554,9 @@ class SourceProperties:
         will be returned.
         """
 
-        yy, xx = np.nonzero(self.data_cutout_ma)
-        return (yy + self.slices[0].start, xx + self.slices[1].start)
+        yindices, xindices = np.nonzero(self.data_cutout_ma)
+        return (yindices + self.slices[0].start,
+                xindices + self.slices[1].start)
 
     @lazyproperty
     @deprecated('0.7', 'indices')
@@ -606,10 +607,10 @@ class SourceProperties:
         the centroid within the source segment.
         """
 
-        m = self.moments
-        if m[0, 0] != 0:
-            ycentroid = m[1, 0] / m[0, 0]
-            xcentroid = m[0, 1] / m[0, 0]
+        moments = self.moments
+        if moments[0, 0] != 0:
+            ycentroid = moments[1, 0] / moments[0, 0]
+            xcentroid = moments[0, 1] / moments[0, 0]
             return (ycentroid, xcentroid) * u.pix
         else:
             return (np.nan, np.nan) * u.pix
@@ -864,9 +865,9 @@ class SourceProperties:
         if self._is_completely_masked:
             return (np.nan, np.nan) * u.pix
         else:
-            yp, xp = self.minval_cutout_pos.value
-            return (yp + self.slices[0].start,
-                    xp + self.slices[1].start) * u.pix
+            yposition, xposition = self.minval_cutout_pos.value
+            return (yposition + self.slices[0].start,
+                    xposition + self.slices[1].start) * u.pix
 
     @lazyproperty
     def maxval_pos(self):
@@ -881,9 +882,9 @@ class SourceProperties:
         if self._is_completely_masked:
             return (np.nan, np.nan) * u.pix
         else:
-            yp, xp = self.maxval_cutout_pos.value
-            return (yp + self.slices[0].start,
-                    xp + self.slices[1].start) * u.pix
+            yposition, xposition = self.maxval_cutout_pos.value
+            return (yposition + self.slices[0].start,
+                    xposition + self.slices[1].start) * u.pix
 
     @lazyproperty
     def minval_xpos(self):
@@ -1101,7 +1102,6 @@ class SourceProperties:
             selem = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
             data_eroded = binary_erosion(data, selem, border_value=0)
             border = np.logical_xor(data, data_eroded).astype(np.int)
-            self._border = border
 
             kernel = np.array([[10, 2, 10], [2, 1, 2], [10, 2, 10]])
             perimeter_data = convolve(border, kernel, mode='constant', cval=0)
@@ -1124,11 +1124,11 @@ class SourceProperties:
         center of mass.
         """
 
-        mu = self.moments_central
-        a = mu[0, 2]
-        b = -mu[1, 1]
-        c = mu[2, 0]
-        return np.array([[a, b], [b, c]]) * u.pix**2
+        moments = self.moments_central
+        mu_02 = moments[0, 2]
+        mu_11 = -moments[1, 1]
+        mu_20 = moments[2, 0]
+        return np.array([[mu_02, mu_11], [mu_11, mu_20]]) * u.pix**2
 
     @lazyproperty
     def covariance(self):
@@ -1137,11 +1137,12 @@ class SourceProperties:
         same second-order moments as the source.
         """
 
-        mu = self.moments_central
-        if mu[0, 0] != 0:
-            m = mu / mu[0, 0]
+        moments = self.moments_central
+        if moments[0, 0] != 0:
+            mu_norm = moments / moments[0, 0]
             covariance = self._check_covariance(
-                np.array([[m[0, 2], m[1, 1]], [m[1, 1], m[2, 0]]]))
+                np.array([[mu_norm[0, 2], mu_norm[1, 1]],
+                          [mu_norm[1, 1], mu_norm[2, 0]]]))
             return covariance * u.pix**2
         else:
             return np.empty((2, 2)) * np.nan * u.pix**2
@@ -1155,16 +1156,16 @@ class SourceProperties:
         by 1/12.
         """
 
-        p = 1. / 12     # arbitrary SExtractor value
-        val = (covariance[0, 0] * covariance[1, 1]) - covariance[0, 1]**2
-        if val >= p**2:
+        increment = 1. / 12     # arbitrary SExtractor value
+        value = (covariance[0, 0] * covariance[1, 1]) - covariance[0, 1]**2
+        if value >= increment**2:
             return covariance
         else:
             covar = np.copy(covariance)
-            while val < p**2:
-                covar[0, 0] += p
-                covar[1, 1] += p
-                val = (covar[0, 0] * covar[1, 1]) - covar[0, 1]**2
+            while value < increment**2:
+                covar[0, 0] += increment
+                covar[1, 1] += increment
+                value = (covar[0, 0] * covar[1, 1]) - covar[0, 1]**2
             return covar
 
     @lazyproperty
@@ -1219,10 +1220,10 @@ class SourceProperties:
         and semiminor axes, respectively.
         """
 
-        l1, l2 = self.covariance_eigvals
-        if l1 == 0:
+        semimajor_var, semiminor_var = self.covariance_eigvals
+        if semimajor_var == 0:
             return 0.  # pragma: no cover
-        return np.sqrt(1. - (l2 / l1))
+        return np.sqrt(1. - (semiminor_var / semimajor_var))
 
     @lazyproperty
     def orientation(self):
@@ -1233,10 +1234,10 @@ class SourceProperties:
         counter-clockwise direction.
         """
 
-        a, b, b, c = self.covariance.flat
-        if a < 0 or c < 0:    # negative variance
+        covar_00, covar_01, _, covar_11 = self.covariance.flat
+        if covar_00 < 0 or covar_11 < 0:    # negative variance
             return np.nan * u.rad  # pragma: no cover
-        return 0.5 * np.arctan2(2. * b, (a - c))
+        return 0.5 * np.arctan2(2. * covar_01, (covar_00 - covar_11))
 
     @lazyproperty
     def elongation(self):
@@ -1553,7 +1554,7 @@ def source_properties(data, segment_img, error=None, mask=None,
             data, segment_img, label, filtered_data=filtered_data,
             error=error, mask=mask, background=background, wcs=wcs))
 
-    if len(sources_props) == 0:
+    if not sources_props:
         raise ValueError('No sources are defined.')
 
     return SourceCatalog(sources_props, wcs=wcs)
@@ -1568,7 +1569,7 @@ class SourceCatalog:
         if isinstance(properties_list, SourceProperties):
             self._data = [properties_list]
         elif isinstance(properties_list, list):
-            if len(properties_list) == 0:
+            if not properties_list:
                 raise ValueError('properties_list must not be an empty list.')
             self._data = properties_list
         else:
@@ -1601,22 +1602,19 @@ class SourceCatalog:
         return self.__str__()
 
     def __getattr__(self, attr):
-        exclude = ['sky_centroid', 'sky_centroid_icrs', 'sky_bbox_ll',
-                   'sky_bbox_ul', 'sky_bbox_lr', 'sky_bbox_ur']
-        if attr not in exclude:
-            if attr not in self._cache:
-                values = [getattr(p, attr) for p in self._data]
+        if attr not in self._cache:
+            values = [getattr(p, attr) for p in self._data]
 
-                if isinstance(values[0], u.Quantity):
-                    # turn list of Quantities into a Quantity array
-                    values = u.Quantity(values)
-                if isinstance(values[0], SkyCoord):  # pragma: no cover
-                    # failsafe: turn list of SkyCoord into a SkyCoord array
-                    values = SkyCoord(values)
+            if isinstance(values[0], u.Quantity):
+                # turn list of Quantities into a Quantity array
+                values = u.Quantity(values)
+            if isinstance(values[0], SkyCoord):  # pragma: no cover
+                # failsafe: turn list of SkyCoord into a SkyCoord array
+                values = SkyCoord(values)
 
-                self._cache[attr] = values
+            self._cache[attr] = values
 
-            return self._cache[attr]
+        return self._cache[attr]
 
     @lazyproperty
     def _none_list(self):
