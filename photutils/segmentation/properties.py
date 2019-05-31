@@ -1236,8 +1236,12 @@ class SourceProperties:
 
         covar_00, covar_01, _, covar_11 = self.covariance.flat
         if covar_00 < 0 or covar_11 < 0:    # negative variance
-            return np.nan * u.rad  # pragma: no cover
-        return 0.5 * np.arctan2(2. * covar_01, (covar_00 - covar_11))
+            return np.nan * u.deg  # pragma: no cover
+
+        # Quantity output in radians because inputs are Quantities
+        orient_radians = 0.5 * np.arctan2(2. * covar_01,
+                                          (covar_00 - covar_11))
+        return orient_radians.to(u.deg)
 
     @lazyproperty
     def elongation(self):
@@ -1523,7 +1527,7 @@ def source_properties(data, segment_img, error=None, mask=None,
     >>> props[1].perimeter    # doctest: +FLOAT_CMP
     <Quantity 5.41421356 pix>
     >>> props[1].orientation    # doctest: +FLOAT_CMP
-    <Quantity -0.74175931 rad>
+    <Quantity -42.4996777 deg>
     """
 
     if not isinstance(segment_img, SegmentationImage):
@@ -1716,7 +1720,7 @@ class SourceCatalog:
             'min_value', 'max_value', 'minval_xpos', 'minval_ypos',
             'maxval_xpos', 'maxval_ypos', 'area', 'equivalent_radius',
             'perimeter', 'semimajor_axis_sigma', 'semiminor_axis_sigma',
-            'eccentricity', 'orientation', 'ellipticity', 'elongation',
+            'orientation', 'eccentricity', 'ellipticity', 'elongation',
             'covar_sigx2', 'covar_sigxy', 'covar_sigy2', 'cxx', 'cxy',
             'cyy'
 
@@ -1794,7 +1798,7 @@ def _properties_table(obj, columns=None, exclude_columns=None):
                    'minval_ypos', 'maxval_xpos', 'maxval_ypos', 'area',
                    'equivalent_radius', 'perimeter',
                    'semimajor_axis_sigma', 'semiminor_axis_sigma',
-                   'eccentricity', 'orientation', 'ellipticity',
+                   'orientation', 'eccentricity', 'ellipticity',
                    'elongation', 'covar_sigx2', 'covar_sigxy',
                    'covar_sigy2', 'cxx', 'cxy', 'cyy']
 
