@@ -23,6 +23,18 @@ __doctest_requires__ = {('SourceProperties', 'SourceProperties.*',
                          'source_properties', 'properties_table'):
                         ['scipy']}
 
+# default table columns for `to_table()` output
+DEFAULT_COLUMNS = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
+                   'sky_centroid_icrs', 'source_sum', 'source_sum_err',
+                   'background_sum', 'background_mean',
+                   'background_at_centroid', 'xmin', 'xmax', 'ymin', 'ymax',
+                   'min_value', 'max_value', 'minval_xpos', 'minval_ypos',
+                   'maxval_xpos', 'maxval_ypos', 'area', 'equivalent_radius',
+                   'perimeter', 'semimajor_axis_sigma',
+                   'semiminor_axis_sigma', 'orientation', 'eccentricity',
+                   'ellipticity', 'elongation', 'covar_sigx2', 'covar_sigxy',
+                   'covar_sigy2', 'cxx', 'cxy', 'cyy']
+
 
 class SourceProperties:
     """
@@ -408,8 +420,11 @@ class SourceProperties:
             of the attributes of `SourceProperties`.
 
         exclude_columns : str or list of str, optional
-            Names of columns to exclude from the default properties list
-            in the output `~astropy.table.QTable`.
+            Names of columns to exclude from the default columns in the
+            output `~astropy.table.QTable`.  The default columns are
+            defined in the
+            `photutils.segmentation.properties.DEFAULT_COLUMNS`
+            variable.
 
         Returns
         -------
@@ -1709,20 +1724,11 @@ class SourceCatalog:
             of the attributes of `SourceProperties`.
 
         exclude_columns : str or list of str, optional
-            Names of columns to exclude from the default properties list
-            in the output `~astropy.table.QTable`.  The default
-            properties are:
-
-            'id', 'xcentroid', 'ycentroid', 'sky_centroid',
-            'sky_centroid_icrs', 'source_sum', 'source_sum_err',
-            'background_sum', 'background_mean',
-            'background_at_centroid', 'xmin', 'xmax', 'ymin', 'ymax',
-            'min_value', 'max_value', 'minval_xpos', 'minval_ypos',
-            'maxval_xpos', 'maxval_ypos', 'area', 'equivalent_radius',
-            'perimeter', 'semimajor_axis_sigma', 'semiminor_axis_sigma',
-            'orientation', 'eccentricity', 'ellipticity', 'elongation',
-            'covar_sigx2', 'covar_sigxy', 'covar_sigy2', 'cxx', 'cxy',
-            'cyy'
+            Names of columns to exclude from the default columns in the
+            output `~astropy.table.QTable`.  The default columns are
+            defined in the
+            `photutils.segmentation.properties.DEFAULT_COLUMNS`
+            variable.
 
         Returns
         -------
@@ -1780,8 +1786,10 @@ def _properties_table(obj, columns=None, exclude_columns=None):
         of the attributes of `SourceProperties`.
 
     exclude_columns : str or list of str, optional
-        Names of columns to exclude from the default properties list
-        in the output `~astropy.table.QTable`.
+        Names of columns to exclude from the default columns in the
+        output `~astropy.table.QTable`.  The default columns are defined
+        in the `photutils.segmentation.properties.DEFAULT_COLUMNS`
+        variable.
 
     Returns
     -------
@@ -1789,18 +1797,8 @@ def _properties_table(obj, columns=None, exclude_columns=None):
         A table of source properties with one row per source.
     """
 
-    # default properties
-    columns_all = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
-                   'sky_centroid_icrs', 'source_sum', 'source_sum_err',
-                   'background_sum', 'background_mean',
-                   'background_at_centroid', 'xmin', 'xmax', 'ymin',
-                   'ymax', 'min_value', 'max_value', 'minval_xpos',
-                   'minval_ypos', 'maxval_xpos', 'maxval_ypos', 'area',
-                   'equivalent_radius', 'perimeter',
-                   'semimajor_axis_sigma', 'semiminor_axis_sigma',
-                   'orientation', 'eccentricity', 'ellipticity',
-                   'elongation', 'covar_sigx2', 'covar_sigxy',
-                   'covar_sigy2', 'cxx', 'cxy', 'cyy']
+    # start with the default columns
+    columns_all = DEFAULT_COLUMNS
 
     table_columns = None
     if exclude_columns is not None:
