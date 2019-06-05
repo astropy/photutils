@@ -206,3 +206,9 @@ class TestDeblendSources:
         with catch_warnings(NoDetectionsWarning) as warning_lines:
             deblend_sources(data, self.segm, self.npixels)
             assert len(warning_lines) == 0
+
+    def test_nonconsecutive_labels(self):
+        segm = self.segm.copy()
+        segm.reassign_label(1, 1000)
+        result = deblend_sources(self.data, segm, self.npixels)
+        assert result.nlabels == 2

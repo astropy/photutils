@@ -5,6 +5,7 @@ import warnings
 import numpy as np
 from astropy.convolution import Gaussian2DKernel
 from astropy.stats import gaussian_fwhm_to_sigma
+from astropy.utils.decorators import deprecated_renamed_argument
 
 from .core import SegmentationImage
 from ..detection import detect_threshold
@@ -167,6 +168,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         return SegmentationImage(segm_img)
 
 
+@deprecated_renamed_argument('mask_value', None, 0.7)
 def make_source_mask(data, snr, npixels, mask=None, mask_value=None,
                      filter_fwhm=None, filter_size=3, filter_kernel=None,
                      sigclip_sigma=3.0, sigclip_iters=5, dilate_size=11):
@@ -194,6 +196,7 @@ def make_source_mask(data, snr, npixels, mask=None, mask_value=None,
         statistics.
 
     mask_value : float, optional
+        Deprecated.
         An image data value (e.g., ``0.0``) that is ignored when
         computing the image background statistics.  ``mask_value`` will
         be ignored if ``mask`` is input.

@@ -14,8 +14,9 @@ from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils.misc import isiterable
 import astropy.wcs as WCS
 
-from ..properties import (SegmentationImage, SourceProperties,
-                          source_properties, SourceCatalog)
+from ..core import SegmentationImage
+from ..detect import detect_sources
+from ..properties import SourceProperties, source_properties, SourceCatalog
 
 try:
     import scipy    # noqa
@@ -23,34 +24,59 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
-try:
-    import skimage    # noqa
-    HAS_SKIMAGE = True
-except ImportError:
-    HAS_SKIMAGE = False
-
-
 XCEN = 51.
 YCEN = 52.7
 MAJOR_SIG = 8.
 MINOR_SIG = 3.
 THETA = np.pi / 6.
-g = models.Gaussian2D(111., XCEN, YCEN, MAJOR_SIG, MINOR_SIG, theta=THETA)
+g1 = models.Gaussian2D(111., XCEN, YCEN, MAJOR_SIG, MINOR_SIG, theta=THETA)
+g2 = models.Gaussian2D(50, 20, 80, 5.1, 4.5)
+g3 = models.Gaussian2D(70, 75, 18, 9.2, 4.5)
 y, x = np.mgrid[0:100, 0:100]
-IMAGE = g(x, y)
+IMAGE = g1(x, y) + g2(x, y) + g3(x, y)
 THRESHOLD = 0.1
-SEGM = (IMAGE >= THRESHOLD).astype(np.int)
+SEGM = detect_sources(IMAGE, THRESHOLD, npixels=5)
 
 ERR_VALS = [0., 2.5]
 BACKGRD_VALS = [None, 0., 1., 3.5]
 
 
-@pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSourceProperties:
-    def test_segment_shape(self):
+    def test_invalid_shapes(self):
+        wrong_shape = np.ones((3, 3))
         with pytest.raises(ValueError):
             SourceProperties(IMAGE, np.eye(3, dtype=int), label=1)
+
+        with pytest.raises(ValueError):
+            SourceProperties(IMAGE, SEGM, label=1, filtered_data=wrong_shape)
+
+        with pytest.raises(ValueError):
+            SourceProperties(IMAGE, SEGM, label=1, error=wrong_shape)
+
+        with pytest.raises(ValueError):
+            SourceProperties(IMAGE, SEGM, label=1, background=wrong_shape)
+
+    def test_invalid_units(self):
+        unit = u.uJy
+        wrong_unit = u.km
+
+        with pytest.raises(ValueError):
+            SourceProperties(IMAGE*unit, SEGM, label=1,
+                             filtered_data=IMAGE*wrong_unit)
+
+        with pytest.raises(ValueError):
+            SourceProperties(IMAGE*unit, SEGM, label=1,
+                             error=IMAGE*wrong_unit)
+
+        with pytest.raises(ValueError):
+            SourceProperties(IMAGE*unit, SEGM, label=1,
+                             background=IMAGE*wrong_unit)
+
+        # all array inputs must have the same unit
+        with pytest.raises(ValueError):
+            SourceProperties(IMAGE*unit, SEGM, label=1,
+                             filtered_data=IMAGE)
 
     @pytest.mark.parametrize('label', (0, -1))
     def test_label_invalid(self, label):
@@ -60,9 +86,10 @@ class TestSourceProperties:
     @pytest.mark.parametrize('label', (0, -1))
     def test_label_missing(self, label):
         segm = SEGM.copy()
-        segm[0:2, 0:2] = 3   # skip label 2
+        segm.remove_label(2)
         with pytest.raises(ValueError):
             SourceProperties(IMAGE, segm, label=2)
+            SourceProperties(IMAGE, segm, label=label)
 
     def test_wcs(self):
         mywcs = WCS.WCS(naxis=2)
@@ -90,7 +117,7 @@ class TestSourceProperties:
         assert props.sky_bbox_ur is None
 
     def test_to_table(self):
-        props = SourceProperties(IMAGE, SEGM, label=1)
+        props = SourceProperties(IMAGE, SEGM, label=2)
         t1 = props.to_table()
         assert isinstance(t1, QTable)
         assert len(t1) == 1
@@ -115,15 +142,19 @@ class TestSourceProperties:
         data[60, 60:65] = np.inf
         data[65, 65:70] = -np.inf
 
-        props = SourceProperties(data, SEGM, label=1, error=error,
+        props = SourceProperties(data, SEGM, label=2, error=error,
                                  background=background, mask=mask)
 
         # ensure mask is identical for data, error, and background
         assert props.data_cutout_ma.compressed().size == 677
         assert (props.data_cutout_ma.compressed().size ==
+                props.filtered_data_cutout_ma.compressed().size)
+        assert (props.data_cutout_ma.compressed().size ==
                 props.error_cutout_ma.compressed().size)
         assert (props.data_cutout_ma.compressed().size ==
                 props.background_cutout_ma.compressed().size)
+        assert (len(props._filtered_data_values) ==
+                props.filtered_data_cutout_ma.compressed().size)
 
         # test for non-finite values in error and/or background outside
         # of the data mask
@@ -176,8 +207,15 @@ class TestSourceProperties:
         assert np.all(np.isnan(obj.minval_cutout_pos.value))
         assert np.all(np.isnan(obj.maxval_cutout_pos.value))
 
+    def test_repr_str(self):
+        props = SourceProperties(IMAGE, SEGM, label=1)
+        assert repr(props) == str(props)
 
-@pytest.mark.skipif('not HAS_SKIMAGE')
+        attrs = ['label', 'centroid', 'sky_centroid']
+        for attr in attrs:
+            assert '{}:'.format(attr) in repr(props)
+
+
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSourcePropertiesFunctionInputs:
     def test_segment_shape(self):
@@ -217,28 +255,26 @@ class TestSourcePropertiesFunctionInputs:
             source_properties(IMAGE, SEGM, labels=-1)
 
 
-@pytest.mark.skipif('not HAS_SKIMAGE')
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSourcePropertiesFunction:
     def test_properties(self):
-        props = source_properties(IMAGE, SEGM)
-        assert props[0].id == 1
-        assert_quantity_allclose(props[0].xcentroid, XCEN*u.pix,
+        obj = source_properties(IMAGE, SEGM)[1]
+        assert obj.id == 2
+        assert_quantity_allclose(obj.xcentroid, XCEN*u.pix,
                                  rtol=1.e-2)
-        assert_quantity_allclose(props[0].ycentroid, YCEN*u.pix,
+        assert_quantity_allclose(obj.ycentroid, YCEN*u.pix,
                                  rtol=1.e-2)
-        assert_allclose(props[0].source_sum, IMAGE[IMAGE >= THRESHOLD].sum())
-        assert_quantity_allclose(props[0].semimajor_axis_sigma,
+        assert_allclose(obj.source_sum, 16723.388)
+        assert_quantity_allclose(obj.semimajor_axis_sigma,
                                  MAJOR_SIG*u.pix, rtol=1.e-2)
-        assert_quantity_allclose(props[0].semiminor_axis_sigma,
+        assert_quantity_allclose(obj.semiminor_axis_sigma,
                                  MINOR_SIG*u.pix, rtol=1.e-2)
-        assert_quantity_allclose(props[0].orientation, THETA*u.rad,
+        assert_quantity_allclose(obj.orientation, THETA*u.rad,
                                  rtol=1.e-3)
-        assert_allclose(props[0].bbox.value, [35, 25, 70, 77])
-        assert_quantity_allclose(props[0].area, 1058.0*u.pix**2)
-        assert_allclose(len(props[0].values), props[0].area.value)
-        assert_allclose(len(props[0].coords), 2)
-        assert_allclose(len(props[0].coords[0]), props[0].area.value)
+        assert_allclose(obj.bbox.value, [35, 25, 70, 77])
+        assert_quantity_allclose(obj.area, 1058.0*u.pix**2)
+        assert_allclose(len(obj.indices), 2)
+        assert_allclose(len(obj.indices[0]), obj.area.value)
 
         properties = ['background_at_centroid', 'background_mean',
                       'eccentricity', 'ellipticity', 'elongation',
@@ -248,21 +284,21 @@ class TestSourcePropertiesFunction:
                       'covar_sigx2', 'covar_sigxy', 'covar_sigy2', 'xmax',
                       'xmin', 'ymax', 'ymin']
         for propname in properties:
-            assert not isiterable(getattr(props[0], propname))
+            assert not isiterable(getattr(obj, propname))
 
         properties = ['centroid', 'covariance_eigvals', 'cutout_centroid',
                       'maxval_cutout_pos', 'minval_cutout_pos']
-        shapes = [getattr(props[0], p).shape for p in properties]
+        shapes = [getattr(obj, p).shape for p in properties]
         for shape in shapes:
             assert shape == (2,)
 
         properties = ['covariance', 'inertia_tensor']
-        shapes = [getattr(props[0], p).shape for p in properties]
+        shapes = [getattr(obj, p).shape for p in properties]
         for shape in shapes:
             assert shape == (2, 2)
 
         properties = ['moments', 'moments_central']
-        shapes = [getattr(props[0], p).shape for p in properties]
+        shapes = [getattr(obj, p).shape for p in properties]
         for shape in shapes:
             assert shape == (4, 4)
 
@@ -273,8 +309,9 @@ class TestSourcePropertiesFunction:
         assert_allclose(props[0].background_at_centroid, value)
 
     def test_properties_background_units(self):
-        value = 1. * u.uJy
-        props = source_properties(IMAGE, SEGM, background=value)
+        unit = u.uJy
+        value = 1. * unit
+        props = source_properties(IMAGE * unit, SEGM, background=value)
         assert props[0].background_mean == value
         assert_allclose(props[0].background_at_centroid, value)
 
@@ -306,25 +343,25 @@ class TestSourcePropertiesFunction:
         error = np.ones_like(IMAGE) * error_value
         props = source_properties(IMAGE, SEGM, error=error,
                                   background=background)
-        assert_quantity_allclose(props[0].xcentroid, XCEN*u.pix, rtol=1.e-2)
-        assert_quantity_allclose(props[0].ycentroid, YCEN*u.pix, rtol=1.e-2)
-        assert_quantity_allclose(props[0].semimajor_axis_sigma,
+        obj = props[1]
+        assert_quantity_allclose(obj.xcentroid, XCEN*u.pix, rtol=1.e-2)
+        assert_quantity_allclose(obj.ycentroid, YCEN*u.pix, rtol=1.e-2)
+        assert_quantity_allclose(obj.semimajor_axis_sigma,
                                  MAJOR_SIG*u.pix, rtol=1.e-2)
-        assert_quantity_allclose(props[0].semiminor_axis_sigma,
+        assert_quantity_allclose(obj.semiminor_axis_sigma,
                                  MINOR_SIG*u.pix, rtol=1.e-2)
-        assert_quantity_allclose(props[0].orientation, THETA*u.rad,
+        assert_quantity_allclose(obj.orientation, THETA*u.rad,
                                  rtol=1.e-3)
-        assert_allclose(props[0].bbox.value, [35, 25, 70, 77])
-        area = props[0].area.value
+        assert_allclose(obj.bbox.value, [35, 25, 70, 77])
+        area = obj.area.value
         assert_allclose(area, 1058.0)
 
         if background is not None:
-            assert_allclose(props[0].background_sum, area * background)
-        true_sum = IMAGE[IMAGE >= THRESHOLD].sum()
-        assert_allclose(props[0].source_sum, true_sum)
+            assert_allclose(obj.background_sum, area * background)
+        assert_allclose(obj.source_sum, 16723.388)
 
-        true_error = np.sqrt(props[0].area.value) * error_value
-        assert_allclose(props[0].source_sum_err, true_error)
+        true_error = np.sqrt(obj.area.value) * error_value
+        assert_allclose(obj.source_sum_err, true_error)
 
     def test_data_allzero(self):
         props = source_properties(IMAGE*0., SEGM)
@@ -333,14 +370,6 @@ class TestSourcePropertiesFunction:
                     'ellipticity', 'elongation', 'cxx', 'cxy', 'cyy']
         for prop in proplist:
             assert np.isnan(getattr(props[0], prop))
-
-    def test_scalar_error(self):
-        error_value = 2.5
-        error = np.ones_like(IMAGE) * error_value
-        props = source_properties(IMAGE, SEGM, error=error_value)
-        props2 = source_properties(IMAGE, SEGM, error)
-        assert_quantity_allclose(props.source_sum, props2.source_sum)
-        assert_quantity_allclose(props.source_sum_err, props2.source_sum_err)
 
     def test_mask(self):
         data = np.zeros((3, 3))
@@ -415,8 +444,17 @@ class TestSourcePropertiesFunction:
         props = source_properties(data, segm)
         assert_quantity_allclose(props.minval_xpos, [1, 7]*u.pix)
 
+    def test_nonconsecutive_labels(self):
+        segm = SEGM.copy()
+        segm.reassign_label(1, 1000)
+        cat = source_properties(IMAGE, segm)
+        assert len(cat) == 3
+        assert cat.id == [2, 3, 1000]
+        assert cat[0].id == 2
+        assert cat[1].id == 3
+        assert cat[segm.get_index(label=1000)].id == 1000
 
-@pytest.mark.skipif('not HAS_SKIMAGE')
+
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestSourceCatalog:
     def test_basic(self):
@@ -438,7 +476,7 @@ class TestSourceCatalog:
     def test_inputs(self):
         cat = source_properties(IMAGE, SEGM)
         cat2 = SourceCatalog(cat[0])
-        assert len(cat) == 1
+        assert len(cat) == 3
         assert len(cat2) == 1
 
         with pytest.raises(ValueError):
@@ -450,14 +488,14 @@ class TestSourceCatalog:
         cat = source_properties(IMAGE, SEGM)
         t = cat.to_table()
         assert isinstance(t, QTable)
-        assert len(t) == 1
+        assert len(t) == 3
 
     def test_table_include(self):
         cat = source_properties(IMAGE, SEGM)
         columns = ['id', 'xcentroid']
         t = cat.to_table(columns=columns)
         assert isinstance(t, QTable)
-        assert len(t) == 1
+        assert len(t) == 3
         assert t.colnames == columns
 
     def test_table_include_invalidname(self):
@@ -471,7 +509,7 @@ class TestSourceCatalog:
         exclude = ['id', 'xcentroid']
         t = cat.to_table(exclude_columns=exclude)
         assert isinstance(t, QTable)
-        assert len(t) == 1
+        assert len(t) == 3
         with pytest.raises(KeyError):
             t['id']
 
@@ -484,11 +522,11 @@ class TestSourceCatalog:
         mywcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
 
         cat = source_properties(IMAGE, SEGM, wcs=mywcs)
-        columns = ['sky_centroid', 'sky_centroid_icrs', 'icrs_centroid',
-                   'ra_icrs_centroid', 'dec_icrs_centroid', 'sky_bbox_ll',
+        columns = ['sky_centroid', 'sky_centroid_icrs', 'sky_bbox_ll',
                    'sky_bbox_ul', 'sky_bbox_lr', 'sky_bbox_ur']
         t = cat.to_table(columns=columns)
-        assert t[0]['sky_centroid'] is not None
+        for column in columns:
+            assert t[0][column] is not None
         assert t.colnames == columns
 
         obj = cat[0]
@@ -507,9 +545,18 @@ class TestSourceCatalog:
 
     def test_table_no_wcs(self):
         cat = source_properties(IMAGE, SEGM)
-        columns = ['sky_centroid', 'sky_centroid_icrs', 'icrs_centroid',
-                   'ra_icrs_centroid', 'dec_icrs_centroid', 'sky_bbox_ll',
+        columns = ['sky_centroid', 'sky_centroid_icrs', 'sky_bbox_ll',
                    'sky_bbox_ul', 'sky_bbox_lr', 'sky_bbox_ur']
         t = cat.to_table(columns=columns)
-        assert t[0]['sky_centroid'] is None
+        for column in columns:
+            assert t[0][column] is None
         assert t.colnames == columns
+
+    def test_repr_str(self):
+        segm = np.zeros(IMAGE.shape)
+        x = y = np.arange(0, 100, 10)
+        segm[y, x] = np.arange(10)
+        cat = source_properties(IMAGE, segm)
+
+        assert repr(cat) == str(cat)
+        assert 'Catalog length:' in repr(cat)

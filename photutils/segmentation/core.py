@@ -295,7 +295,7 @@ class SegmentationImage:
             # needed only when data is reassigned, not on init
             self._reset_lazy_properties()
 
-        self._data = value
+        self._data = value  # pylint: disable=attribute-defined-outside-init
 
     @lazyproperty
     def data_ma(self):
@@ -457,10 +457,7 @@ class SegmentationImage:
         image are consecutive (i.e. no missing values).
         """
 
-        if (self.labels[-1] - self.labels[0] + 1) == self.nlabels:
-            return True
-        else:
-            return False
+        return (self.labels[-1] - self.labels[0] + 1) == self.nlabels
 
     @lazyproperty
     def missing_labels(self):
@@ -470,8 +467,8 @@ class SegmentationImage:
         label number.
         """
 
-        return np.array(sorted(set(range(0, self.max_label + 1)).
-                               difference(np.insert(self.labels, 0, 0))))
+        return np.array(sorted(set(range(0, self.max_label + 1))
+                               .difference(np.insert(self.labels, 0, 0))))
 
     def copy(self):
         """Return a deep copy of this class instance."""
@@ -523,7 +520,7 @@ class SegmentationImage:
         # check if label is in the segmentation image
         bad_labels.update(np.setdiff1d(labels, self.labels))
 
-        if len(bad_labels) > 0:
+        if bad_labels:
             if len(bad_labels) == 1:
                 raise ValueError('label {} is invalid'.format(bad_labels))
             else:

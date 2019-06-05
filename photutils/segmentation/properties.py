@@ -6,7 +6,7 @@ import numpy as np
 import astropy.units as u
 from astropy.coordinates import SkyCoord
 from astropy.table import QTable
-from astropy.utils import lazyproperty
+from astropy.utils import lazyproperty, deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import pixel_to_skycoord
 
@@ -21,7 +21,7 @@ __all__ = ['SourceProperties', 'source_properties', 'SourceCatalog']
 __doctest_requires__ = {('SourceProperties', 'SourceProperties.*',
                          'SourceCatalog', 'SourceCatalog.*',
                          'source_properties', 'properties_table'):
-                        ['scipy', 'skimage']}
+                        ['scipy']}
 
 
 class SourceProperties:
@@ -38,7 +38,7 @@ class SourceProperties:
         morphological properties.  Source photometry is always measured
         from ``data``.  For accurate source properties and photometry,
         ``data`` should be background-subtracted.  Non-finite ``data``
-        values (e.g. NaN or inf) are automatically masked.
+        values (NaN and +/- inf) are automatically masked.
 
     segment_img : `SegmentationImage` or array_like (int)
         A 2D segmentation image, either as a `SegmentationImage` object
@@ -54,43 +54,50 @@ class SourceProperties:
         which to calculate the source centroid and morphological
         properties.  The kernel used to perform the filtering should be
         the same one used in defining the source segments (e.g., see
-        :func:`~photutils.detect_sources`).  Non-finite
-        ``filtered_data`` values (e.g. NaN or inf) are not automatically
-        masked, unless they are at the same position of non-finite
-        values in the input ``data`` array.  Such pixels can be masked
-        using the ``mask`` keyword.  If `None`, then the unfiltered
-        ``data`` will be used instead.
+        :func:`~photutils.detect_sources`).  If ``data`` is a
+        `~astropy.units.Quantity` array then ``filtered_data`` must be a
+        `~astropy.units.Quantity` array (and vise versa) with identical
+        units.  Non-finite ``filtered_data`` values (NaN and +/- inf)
+        are not automatically masked, unless they are at the same
+        position of non-finite values in the input ``data`` array.  Such
+        pixels can be masked using the ``mask`` keyword.  If `None`,
+        then the unfiltered ``data`` will be used instead.
 
     error : array_like or `~astropy.units.Quantity`, optional
         The total error array corresponding to the input ``data`` array.
         ``error`` is assumed to include *all* sources of error,
         including the Poisson error of the sources (see
         `~photutils.utils.calc_total_error`) .  ``error`` must have the
-        same shape as the input ``data``.  Non-finite ``error`` values
-        (e.g. NaN or inf) are not automatically masked, unless they are
-        at the same position of non-finite values in the input ``data``
-        array.  Such pixels can be masked using the ``mask`` keyword.
-        See the Notes section below for details on the error
-        propagation.
+        same shape as the input ``data``.  If ``data`` is a
+        `~astropy.units.Quantity` array then ``error`` must be a
+        `~astropy.units.Quantity` array (and vise versa) with identical
+        units.  Non-finite ``error`` values (NaN and +/- inf) are not
+        automatically masked, unless they are at the same position of
+        non-finite values in the input ``data`` array.  Such pixels can
+        be masked using the ``mask`` keyword.  See the Notes section
+        below for details on the error propagation.
 
     mask : array_like (bool), optional
         A boolean mask with the same shape as ``data`` where a `True`
         value indicates the corresponding element of ``data`` is masked.
         Masked data are excluded from all calculations.  Non-finite
-        values (e.g. NaN or inf) in the input ``data`` are automatically
+        values (NaN and +/- inf) in the input ``data`` are automatically
         masked.
 
     background : float, array_like, or `~astropy.units.Quantity`, optional
         The background level that was *previously* present in the input
         ``data``.  ``background`` may either be a scalar value or a 2D
-        image with the same shape as the input ``data``.  Inputting the
-        ``background`` merely allows for its properties to be measured
-        within each source segment.  The input ``background`` does *not*
-        get subtracted from the input ``data``, which should already be
-        background-subtracted.  Non-finite ``background`` values (e.g.
-        NaN or inf) are not automatically masked, unless they are at the
-        same position of non-finite values in the input ``data`` array.
-        Such pixels can be masked using the ``mask`` keyword.
+        image with the same shape as the input ``data``.  If ``data`` is
+        a `~astropy.units.Quantity` array then ``background`` must be a
+        `~astropy.units.Quantity` array (and vise versa) with identical
+        units.  Inputting the ``background`` merely allows for its
+        properties to be measured within each source segment.  The input
+        ``background`` does *not* get subtracted from the input
+        ``data``, which should already be background-subtracted.
+        Non-finite ``background`` values (NaN and +/- inf) are not
+        automatically masked, unless they are at the same position of
+        non-finite values in the input ``data`` array.  Such pixels can
+        be masked using the ``mask`` keyword.
 
     wcs : `~astropy.wcs.WCS`
         The WCS transformation to use.  If `None`, then any sky-based
@@ -98,6 +105,9 @@ class SourceProperties:
 
     Notes
     -----
+    ``data`` (and optional ``filtered_data``) should be
+    background-subtracted for accurate source photometry and properties.
+
     `SExtractor`_'s centroid and morphological parameters are always
     calculated from a filtered "detection" image, i.e. the image used to
     define the segmentation image.  The usual downside of the filtering
@@ -135,8 +145,8 @@ class SourceProperties:
     `~photutils.SourceProperties.background_cutout_ma` properties, which
     are 2D `~numpy.ma.MaskedArray` cutout versions of the input
     ``error`` and ``background``.  The mask is `True` for pixels outside
-    of the source segment, masked pixels from the ``mask`` input, or
-    any non-finite ``data`` values (e.g. NaN or inf).
+    of the source segment, masked pixels from the ``mask`` input, or any
+    non-finite ``data`` values (NaN and +/- inf).
 
     .. _SExtractor: http://www.astromatic.net/software/sextractor
     """
@@ -150,16 +160,30 @@ class SourceProperties:
         if segment_img.shape != data.shape:
             raise ValueError('segment_img and data must have the same shape.')
 
+        inputs = (data, filtered_data, error, background)
+        has_unit = [hasattr(x, 'unit') for x in inputs if x is not None]
+        use_units = all(has_unit)
+        if any(has_unit) and not use_units:
+            raise ValueError('If any of data, filtered_data, error, or '
+                             'background has units, then they all must have '
+                             'the same units.')
+
+        if use_units:
+            self._data_unit = data.unit
+        else:
+            self._data_unit = 1
+
         if error is not None:
-            error = np.atleast_1d(error)
-            if len(error) == 1:
-                error = np.zeros(data.shape) + error
+            error = np.asanyarray(error)
             if error.shape != data.shape:
                 raise ValueError('error and data must have the same shape.')
+            if use_units and error.unit != self._data_unit:
+                raise ValueError('error and data must have the same units.')
 
         if mask is np.ma.nomask:
-            mask = np.zeros(data.shape).astype(bool)
+            mask = None
         if mask is not None:
+            mask = np.asanyarray(mask)
             if mask.shape != data.shape:
                 raise ValueError('mask and data must have the same shape.')
 
@@ -167,67 +191,93 @@ class SourceProperties:
             background = np.atleast_1d(background)
             if len(background) == 1:
                 background = np.zeros(data.shape) + background
-            if background.shape != data.shape:
+            else:
+                background = np.asanyarray(background)
+                if background.shape != data.shape:
+                    raise ValueError('background and data must have the same '
+                                     'shape.')
+            if use_units and background.unit != self._data_unit:
                 raise ValueError('background and data must have the same '
+                                 'units.')
+
+        if filtered_data is not None:
+            filtered_data = np.asanyarray(filtered_data)
+            if filtered_data.shape != data.shape:
+                raise ValueError('filtered_data and data must have the same '
                                  'shape.')
-
-        # data and filtered_data should be background-subtracted
-        # for accurate source photometry and properties
-        self._data = data
-        try:
-            self._data_unit = self._data.unit
-        except AttributeError:
-            self._data_unit = 1
-
-        if filtered_data is None:
-            self._filtered_data = data
-        else:
+            if use_units and filtered_data.unit != self._data_unit:
+                raise ValueError('filtered_data and data must have the same '
+                                 'units.')
             self._filtered_data = filtered_data
+        else:
+            self._filtered_data = data
 
-        self._error = error    # total error; 2D array
-        try:
-            self._error_unit = self._error.unit
-        except AttributeError:
-            self._error_unit = 1
-
-        self._background = background    # 2D array
-        try:
-            self._background_unit = self._background.unit
-        except AttributeError:
-            self._background_unit = 1
+        self._data = data
+        self._segment_img = segment_img
+        self._error = error
+        self._mask = mask
+        self._background = background  # 2D array
+        self._wcs = wcs
 
         segment_img.check_labels(label)
         self.label = label
-        self._slice = segment_img.slices[segment_img.get_index(label)]
-        self._segment_img = segment_img
-        self._mask = mask
-        self._wcs = wcs
+
+        self.segment = segment_img[segment_img.get_index(label)]
+        self.slices = self.segment.slices
+
+    def __str__(self):
+        cls_name = '<{0}.{1}>'.format(self.__class__.__module__,
+                                      self.__class__.__name__)
+
+        cls_info = []
+        params = ['label', 'sky_centroid']
+        for param in params:
+            cls_info.append((param, getattr(self, param)))
+        fmt = (['{0}: {1}'.format(key, val) for key, val in cls_info])
+        fmt.insert(1, 'centroid (x, y): ({0:0.4f}, {1:0.4f})'
+                   .format(self.xcentroid.value, self.ycentroid.value))
+
+        return '{}\n'.format(cls_name) + '\n'.join(fmt)
+
+    def __repr__(self):
+        return self.__str__()
 
     @lazyproperty
     def _segment_mask(self):
         """
-        _segment_mask is `True` for all pixels outside of the source
+        Boolean mask for source segment.
+
+        ``_segment_mask`` is `True` for all pixels outside of the source
         segment for this label.  Pixels from other source segments
         within the rectangular cutout are `True`.
         """
 
-        return self._segment_img.data[self._slice] != self.label
+        return self._segment_img.data[self.slices] != self.label
 
     @lazyproperty
     def _input_mask(self):
+        """
+        Boolean mask for the user-input mask.
+        """
+
         if self._mask is not None:
-            return self._mask[self._slice]
+            return self._mask[self.slices]
         else:
             return None
 
     @lazyproperty
     def _data_mask(self):
+        """
+        Boolean mask for non-finite (NaN and +/- inf) ``data`` values.
+        """
+
         return ~np.isfinite(self.data_cutout)
 
     @lazyproperty
     def _total_mask(self):
         """
-        Combination of the _segment_mask, _input_mask, and _data_mask.
+        Boolean mask representing the combination of the
+        ``_segment_mask``, ``_input_mask``, and ``_data_mask``.
 
         This mask is applied to ``data``, ``error``, and ``background``
         inputs when calculating properties.
@@ -242,15 +292,27 @@ class SourceProperties:
 
     @lazyproperty
     def _is_completely_masked(self):
+        """
+        `True` if all pixels within the source segment are masked,
+        otherwise `False`.
+        """
+
         return np.all(self._total_mask)
 
     @lazyproperty
     def _data_zeroed(self):
         """
-        A 2D `~numpy.nddarray` cutout from the input ``data`` where any
-        masked pixels (_segment_mask, _input_mask, or _data_mask) are
-        set to zero.  Invalid values (e.g. NaNs or infs) are set to
-        zero.  Units are dropped on the input ``data``.
+        A 2D `~numpy.ndarray` cutout from the input ``data`` where any
+        masked pixels (``_segment_mask``, ``_input_mask``, or
+        ``_data_mask``) are set to zero.  Invalid values (NaN and +/-
+        inf) are set to zero via the ``_data_mask``.  Any units are
+        dropped on the input ``data``.
+
+        This is a 2D array representation (with zeros as placeholders
+        for the masked/removed values) of the 1D ``_data_values``
+        property, which is used for ``source_sum``, ``area``,
+        ``min_value``, ``max_value``, ``minval_pos``, ``maxval_pos``,
+        etc.
         """
 
         # NOTE: using np.where is faster than
@@ -262,18 +324,21 @@ class SourceProperties:
     @lazyproperty
     def _filtered_data_zeroed(self):
         """
-        A 2D `~numpy.nddarray` cutout from the input ``filtered_data``
+        A 2D `~numpy.ndarray` cutout from the input ``filtered_data``
         (or ``data`` if ``filtered_data`` is `None`) where any masked
-        pixels (_segment_mask, _input_mask, or _data_mask) are set to
-        zero.  Invalid values (e.g. NaNs or infs) are set to zero.
-        Units are dropped on the input ``filtered_data`` (or ``data``).
+        pixels (``_segment_mask``, ``_input_mask``, or ``_data_mask``)
+        are set to zero.  Invalid values (NaN and +/- inf) are set to
+        zero.  Any units are dropped on the input ``filtered_data`` (or
+        ``data``).
 
         Negative data values are also set to zero because negative
         pixels (especially at large radii) can result in image moments
         that result in negative variances.
+
+        This array is used for moment-based properties.
         """
 
-        filt_data = self._filtered_data[self._slice]
+        filt_data = self._filtered_data[self.slices]
         filt_data = np.where(self._total_mask, 0., filt_data)  # copy
         filt_data[filt_data < 0] = 0.
         return filt_data.astype(np.float64)
@@ -292,7 +357,7 @@ class SourceProperties:
         a `~numpy.ma.MaskedArray`.  The mask is `True` for pixels
         outside of the source segment (labeled region of interest),
         masked pixels from the ``mask`` input, or any non-finite
-        ``data`` values (e.g. NaN or inf).  The data part of the masked
+        ``data`` values (NaN and +/- inf).  The data part of the masked
         array is a view (not a copy) of the input ``data``.
 
         Parameters
@@ -306,8 +371,8 @@ class SourceProperties:
             If `True` then a `~numpy.ma.MaskedArray` will be returned,
             where the mask is `True` for pixels outside of the source
             segment (labeled region of interest), masked pixels from the
-            ``mask`` input, or any non-finite ``data`` values (e.g. NaN
-            or inf).  If `False`, then a `~numpy.ndarray` will be
+            ``mask`` input, or any non-finite ``data`` values (NaN and
+            +/- inf).  If `False`, then a `~numpy.ndarray` will be
             returned.
 
         Returns
@@ -322,10 +387,10 @@ class SourceProperties:
                              'segmentation image input to SourceProperties')
 
         if masked_array:
-            return np.ma.masked_array(data[self._slice],
+            return np.ma.masked_array(data[self.slices],
                                       mask=self._total_mask)
         else:
-            return data[self._slice]
+            return data[self.slices]
 
     def to_table(self, columns=None, exclude_columns=None):
         """
@@ -362,19 +427,35 @@ class SourceProperties:
         bounding box of the source segment.
         """
 
-        return self._data[self._slice]
+        return self._data[self.slices]
 
     @lazyproperty
     def data_cutout_ma(self):
         """
-        A 2D `~numpy.ma.MaskedArray` cutout from the data.
+        A 2D `~numpy.ma.MaskedArray` cutout from the ``data``.
 
         The mask is `True` for pixels outside of the source segment
         (labeled region of interest), masked pixels from the ``mask``
-        input, or any non-finite ``data`` values (e.g. NaN or inf).
+        input, or any non-finite ``data`` values (NaN and +/- inf).
         """
 
-        return np.ma.masked_array(self._data[self._slice],
+        return np.ma.masked_array(self._data[self.slices],
+                                  mask=self._total_mask)
+
+    @lazyproperty
+    def filtered_data_cutout_ma(self):
+        """
+        A 2D `~numpy.ma.MaskedArray` cutout from the ``filtered_data``.
+
+        If ``filtered_data`` was not input, then the cutout will be from
+        the input ``data``.
+
+        The mask is `True` for pixels outside of the source segment
+        (labeled region of interest), masked pixels from the ``mask``
+        input, or any non-finite ``data`` values (NaN and +/- inf).
+        """
+
+        return np.ma.masked_array(self._filtered_data[self.slices],
                                   mask=self._total_mask)
 
     @lazyproperty
@@ -385,7 +466,7 @@ class SourceProperties:
 
         The mask is `True` for pixels outside of the source segment
         (labeled region of interest), masked pixels from the ``mask``
-        input, or any non-finite ``data`` values (e.g. NaN or inf).
+        input, or any non-finite ``data`` values (NaN and +/- inf).
 
         If ``error`` is `None`, then ``error_cutout_ma`` is also `None`.
         """
@@ -393,7 +474,7 @@ class SourceProperties:
         if self._error is None:
             return None
         else:
-            return np.ma.masked_array(self._error[self._slice],
+            return np.ma.masked_array(self._error[self.slices],
                                       mask=self._total_mask)
 
     @lazyproperty
@@ -404,7 +485,7 @@ class SourceProperties:
 
         The mask is `True` for pixels outside of the source segment
         (labeled region of interest), masked pixels from the ``mask``
-        input, or any non-finite ``data`` values (e.g. NaN or inf).
+        input, or any non-finite ``data`` values (NaN and +/- inf).
 
         If ``background`` is `None`, then ``background_cutout_ma`` is
         also `None`.
@@ -413,22 +494,44 @@ class SourceProperties:
         if self._background is None:
             return None
         else:
-            return np.ma.masked_array(self._background[self._slice],
+            return np.ma.masked_array(self._background[self.slices],
                                       mask=self._total_mask)
 
     @lazyproperty
+    @deprecated('0.7')
     def values(self):
         """
-        A 1D `~numpy.ndarray` of the unmasked pixel values within the
+        A 1D `~numpy.ndarray` of the unmasked ``data`` values within the
         source segment.
 
-        Non-finite pixel values (e.g. NaN, infs) are excluded
+        Non-finite pixel values (NaN and +/- inf) are excluded
         (automatically masked).
 
         If all pixels are masked, ``values`` will be an empty array.
         """
 
+        return self._data_values  # pragma: no cover
+
+    @lazyproperty
+    def _data_values(self):
+        """
+        A 1D `~numpy.ndarray` of the unmasked ``data`` values within the
+        source segment.
+
+        Non-finite pixel values (NaN and +/- inf) are excluded
+        (automatically masked) via the ``_data_mask``.
+
+        If all pixels are masked, an empty array will be returned.
+
+        This array is used for ``source_sum``, ``area``, ``min_value``,
+        ``max_value``, ``minval_pos``, ``maxval_pos``, etc.
+        """
+
         return self.data_cutout_ma.compressed()
+
+    @lazyproperty
+    def _filtered_data_values(self):
+        return self.filtered_data_cutout_ma.compressed()
 
     @lazyproperty
     def _error_values(self):
@@ -439,20 +542,37 @@ class SourceProperties:
         return self.background_cutout_ma.compressed()
 
     @lazyproperty
+    def indices(self):
+        """
+        A tuple of two `~numpy.ndarray` containing the ``y`` and ``x``
+        pixel indices, respectively, of unmasked pixels within the
+        source segment.
+
+        Non-finite ``data`` values (NaN and +/- inf) are excluded.
+
+        If all ``data`` pixels are masked, a tuple of two empty arrays
+        will be returned.
+        """
+
+        yindices, xindices = np.nonzero(self.data_cutout_ma)
+        return (yindices + self.slices[0].start,
+                xindices + self.slices[1].start)
+
+    @lazyproperty
+    @deprecated('0.7', 'indices')
     def coords(self):
         """
         A tuple of two `~numpy.ndarray` containing the ``y`` and ``x``
-        pixel coordinates of unmasked pixels within the source segment.
+        pixel indices, respectively, of unmasked pixels within the
+        source segment.
 
-        Non-finite pixel values (e.g. NaN, infs) are excluded
-        (automatically masked).
+        Non-finite ``data`` values (NaN and +/- inf) are excluded.
 
-        If all pixels are masked, ``coords`` will be a tuple of
-        two empty arrays.
+        If all ``data`` pixels are masked, a tuple of two empty arrays
+        will be returned.
         """
 
-        yy, xx = np.nonzero(self.data_cutout_ma)
-        return (yy + self._slice[0].start, xx + self._slice[1].start)
+        return self.indices  # pragma: no cover
 
     @lazyproperty
     def moments(self):
@@ -487,10 +607,10 @@ class SourceProperties:
         the centroid within the source segment.
         """
 
-        m = self.moments
-        if m[0, 0] != 0:
-            ycentroid = m[1, 0] / m[0, 0]
-            xcentroid = m[0, 1] / m[0, 0]
+        moments = self.moments
+        if moments[0, 0] != 0:
+            ycentroid = moments[1, 0] / moments[0, 0]
+            xcentroid = moments[0, 1] / moments[0, 0]
             return (ycentroid, xcentroid) * u.pix
         else:
             return (np.nan, np.nan) * u.pix
@@ -503,8 +623,8 @@ class SourceProperties:
         """
 
         ycen, xcen = self.cutout_centroid.value
-        return (ycen + self._slice[0].start,
-                xcen + self._slice[1].start) * u.pix
+        return (ycen + self.slices[0].start,
+                xcen + self.slices[1].start) * u.pix
 
     @lazyproperty
     def xcentroid(self):
@@ -559,8 +679,8 @@ class SourceProperties:
         """
 
         # (stop - 1) to return the max pixel location, not the slice index
-        return (self._slice[0].start, self._slice[1].start,
-                self._slice[0].stop - 1, self._slice[1].stop - 1) * u.pix
+        return (self.slices[0].start, self.slices[1].start,
+                self.slices[0].stop - 1, self.slices[1].stop - 1) * u.pix
 
     @lazyproperty
     def xmin(self):
@@ -680,7 +800,7 @@ class SourceProperties:
         if self._is_completely_masked:
             return np.nan * self._data_unit
         else:
-            return np.min(self.values)
+            return np.min(self._data_values)
 
     @lazyproperty
     def max_value(self):
@@ -692,7 +812,7 @@ class SourceProperties:
         if self._is_completely_masked:
             return np.nan * self._data_unit
         else:
-            return np.max(self.values)
+            return np.max(self._data_values)
 
     @lazyproperty
     def minval_cutout_pos(self):
@@ -709,7 +829,7 @@ class SourceProperties:
         else:
             arr = self.data_cutout_ma
             # multiplying by unit converts int to float, but keep as
-            # float in case of NaNs
+            # float in case the array contains a NaN
             return np.asarray(np.unravel_index(np.argmin(arr),
                                                arr.shape)) * u.pix
 
@@ -728,7 +848,7 @@ class SourceProperties:
         else:
             arr = self.data_cutout_ma
             # multiplying by unit converts int to float, but keep as
-            # float in case of NaNs
+            # float in case the array contains a NaN
             return np.asarray(np.unravel_index(np.argmax(arr),
                                                arr.shape)) * u.pix
 
@@ -745,9 +865,9 @@ class SourceProperties:
         if self._is_completely_masked:
             return (np.nan, np.nan) * u.pix
         else:
-            yp, xp = self.minval_cutout_pos.value
-            return (yp + self._slice[0].start,
-                    xp + self._slice[1].start) * u.pix
+            yposition, xposition = self.minval_cutout_pos.value
+            return (yposition + self.slices[0].start,
+                    xposition + self.slices[1].start) * u.pix
 
     @lazyproperty
     def maxval_pos(self):
@@ -762,9 +882,9 @@ class SourceProperties:
         if self._is_completely_masked:
             return (np.nan, np.nan) * u.pix
         else:
-            yp, xp = self.maxval_cutout_pos.value
-            return (yp + self._slice[0].start,
-                    xp + self._slice[1].start) * u.pix
+            yposition, xposition = self.maxval_cutout_pos.value
+            return (yposition + self.slices[0].start,
+                    xposition + self.slices[1].start) * u.pix
 
     @lazyproperty
     def minval_xpos(self):
@@ -825,14 +945,14 @@ class SourceProperties:
         ``data``, and :math:`S` are the unmasked pixels in the source
         segment.
 
-        Non-finite pixel values (e.g. NaN, infs) are excluded
+        Non-finite pixel values (NaN and +/- inf) are excluded
         (automatically masked).
         """
 
         if self._is_completely_masked:
             return np.nan * self._data_unit  # table output needs unit
         else:
-            return np.sum(self.values)
+            return np.sum(self._data_values)
 
     @lazyproperty
     def source_sum_err(self):
@@ -852,13 +972,13 @@ class SourceProperties:
         segment.
 
         Pixel values that are masked in the input ``data``, including
-        any non-finite pixel values (i.e. NaN, infs) that are
+        any non-finite pixel values (NaN and +/- inf) that are
         automatically masked, are also masked in the error array.
         """
 
         if self._error is not None:
             if self._is_completely_masked:
-                return np.nan * self._error_unit  # table output needs unit
+                return np.nan * self._data_unit  # table output needs unit
             else:
                 return np.sqrt(np.sum(self._error_values ** 2))
         else:
@@ -870,13 +990,13 @@ class SourceProperties:
         The sum of ``background`` values within the source segment.
 
         Pixel values that are masked in the input ``data``, including
-        any non-finite pixel values (i.e. NaN, infs) that are
+        any non-finite pixel values (NaN and +/- inf) that are
         automatically masked, are also masked in the background array.
         """
 
         if self._background is not None:
             if self._is_completely_masked:
-                return np.nan * self._background_unit  # unit for table
+                return np.nan * self._data_unit  # unit for table
             else:
                 return np.sum(self._background_values)
         else:
@@ -888,13 +1008,13 @@ class SourceProperties:
         The mean of ``background`` values within the source segment.
 
         Pixel values that are masked in the input ``data``, including
-        any non-finite pixel values (i.e. NaN, infs) that are
+        any non-finite pixel values (NaN and +/- inf) that are
         automatically masked, are also masked in the background array.
         """
 
         if self._background is not None:
             if self._is_completely_masked:
-                return np.nan * self._background_unit  # unit for table
+                return np.nan * self._data_unit  # unit for table
             else:
                 return np.mean(self._background_values)
         else:
@@ -916,14 +1036,14 @@ class SourceProperties:
             # centroid can still be NaN if all data values are <= 0
             if (self._is_completely_masked or
                     np.any(~np.isfinite(self.centroid))):
-                return np.nan * self._background_unit  # unit for table
+                return np.nan * self._data_unit  # unit for table
             else:
                 value = map_coordinates(self._background,
                                         [[self.ycentroid.value],
                                          [self.xcentroid.value]], order=1,
                                         mode='nearest')[0]
 
-                return value * self._background_unit
+                return value * self._data_unit
         else:
             return None
 
@@ -936,13 +1056,13 @@ class SourceProperties:
         Note that the source area may be smaller than its segment area
         if a mask is input to `SourceProperties` or `source_properties`,
         or if the ``data`` within the segment contains invalid values
-        (e.g. NaN or infs).
+        (NaN and +/- inf).
         """
 
         if self._is_completely_masked:
             return np.nan * u.pix**2
         else:
-            return len(self.values) * u.pix**2
+            return len(self._data_values) * u.pix**2
 
     @lazyproperty
     def equivalent_radius(self):
@@ -956,19 +1076,46 @@ class SourceProperties:
     @lazyproperty
     def perimeter(self):
         """
-        The total perimeter of the source segment, approximated lines
-        through the centers of the border pixels using a 4-connectivity.
+        The perimeter of the source segment, approximated as the total
+        length of lines connecting the centers of the border pixels
+        defined by a 4-pixel connectivity.
 
         If any masked pixels make holes within the source segment, then
         the perimeter around the inner hole (e.g. an annulus) will also
         contribute to the total perimeter.
+
+        References
+        ----------
+        .. [1] K. Benkrid, D. Crookes, and A. Benkrid.  "Design and FPGA
+               Implementation of a Perimeter Estimator".  Proceedings of
+               the Irish Machine Vision and Image Processing Conference,
+               pp. 51-57 (2000).
+               http://www.cs.qub.ac.uk/~d.crookes/webpubs/papers/perimeter.doc
         """
 
         if self._is_completely_masked:
             return np.nan * u.pix  # unit for table
         else:
-            from skimage.measure import perimeter
-            return perimeter(~self._total_mask, neighbourhood=4) * u.pix
+            from scipy.ndimage import binary_erosion, convolve
+
+            data = ~self._total_mask
+            selem = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
+            data_eroded = binary_erosion(data, selem, border_value=0)
+            border = np.logical_xor(data, data_eroded).astype(np.int)
+
+            kernel = np.array([[10, 2, 10], [2, 1, 2], [10, 2, 10]])
+            perimeter_data = convolve(border, kernel, mode='constant', cval=0)
+
+            size = 34
+            perimeter_hist = np.bincount(perimeter_data.ravel(),
+                                         minlength=size)
+
+            weights = np.zeros(size, dtype=np.float)
+            weights[[5, 7, 15, 17, 25, 27]] = 1.
+            weights[[21, 33]] = np.sqrt(2.)
+            weights[[13, 23]] = (1 + np.sqrt(2.)) / 2.
+
+            return (perimeter_hist[0:size] @ weights) * u.pix
 
     @lazyproperty
     def inertia_tensor(self):
@@ -977,11 +1124,11 @@ class SourceProperties:
         center of mass.
         """
 
-        mu = self.moments_central
-        a = mu[0, 2]
-        b = -mu[1, 1]
-        c = mu[2, 0]
-        return np.array([[a, b], [b, c]]) * u.pix**2
+        moments = self.moments_central
+        mu_02 = moments[0, 2]
+        mu_11 = -moments[1, 1]
+        mu_20 = moments[2, 0]
+        return np.array([[mu_02, mu_11], [mu_11, mu_20]]) * u.pix**2
 
     @lazyproperty
     def covariance(self):
@@ -990,11 +1137,12 @@ class SourceProperties:
         same second-order moments as the source.
         """
 
-        mu = self.moments_central
-        if mu[0, 0] != 0:
-            m = mu / mu[0, 0]
+        moments = self.moments_central
+        if moments[0, 0] != 0:
+            mu_norm = moments / moments[0, 0]
             covariance = self._check_covariance(
-                np.array([[m[0, 2], m[1, 1]], [m[1, 1], m[2, 0]]]))
+                np.array([[mu_norm[0, 2], mu_norm[1, 1]],
+                          [mu_norm[1, 1], mu_norm[2, 0]]]))
             return covariance * u.pix**2
         else:
             return np.empty((2, 2)) * np.nan * u.pix**2
@@ -1008,16 +1156,16 @@ class SourceProperties:
         by 1/12.
         """
 
-        p = 1. / 12     # arbitrary SExtractor value
-        val = (covariance[0, 0] * covariance[1, 1]) - covariance[0, 1]**2
-        if val >= p**2:
+        increment = 1. / 12     # arbitrary SExtractor value
+        value = (covariance[0, 0] * covariance[1, 1]) - covariance[0, 1]**2
+        if value >= increment**2:
             return covariance
         else:
             covar = np.copy(covariance)
-            while val < p**2:
-                covar[0, 0] += p
-                covar[1, 1] += p
-                val = (covar[0, 0] * covar[1, 1]) - covar[0, 1]**2
+            while value < increment**2:
+                covar[0, 0] += increment
+                covar[1, 1] += increment
+                value = (covar[0, 0] * covar[1, 1]) - covar[0, 1]**2
             return covar
 
     @lazyproperty
@@ -1027,13 +1175,13 @@ class SourceProperties:
         order.
         """
 
-        if not np.isnan(np.sum(self.covariance)):
+        if np.any(~np.isfinite(self.covariance)):
+            return (np.nan, np.nan) * u.pix**2
+        else:
             eigvals = np.linalg.eigvals(self.covariance)
-            if np.any(eigvals < 0):    # negative variance
+            if np.any(eigvals < 0):  # negative variance
                 return (np.nan, np.nan) * u.pix**2  # pragma: no cover
             return (np.max(eigvals), np.min(eigvals)) * u.pix**2
-        else:
-            return (np.nan, np.nan) * u.pix**2
 
     @lazyproperty
     def semimajor_axis_sigma(self):
@@ -1072,10 +1220,10 @@ class SourceProperties:
         and semiminor axes, respectively.
         """
 
-        l1, l2 = self.covariance_eigvals
-        if l1 == 0:
+        semimajor_var, semiminor_var = self.covariance_eigvals
+        if semimajor_var == 0:
             return 0.  # pragma: no cover
-        return np.sqrt(1. - (l2 / l1))
+        return np.sqrt(1. - (semiminor_var / semimajor_var))
 
     @lazyproperty
     def orientation(self):
@@ -1086,10 +1234,10 @@ class SourceProperties:
         counter-clockwise direction.
         """
 
-        a, b, b, c = self.covariance.flat
-        if a < 0 or c < 0:    # negative variance
+        covar_00, covar_01, _, covar_11 = self.covariance.flat
+        if covar_00 < 0 or covar_11 < 0:    # negative variance
             return np.nan * u.rad  # pragma: no cover
-        return 0.5 * np.arctan2(2. * b, (a - c))
+        return 0.5 * np.arctan2(2. * covar_01, (covar_00 - covar_11))
 
     @lazyproperty
     def elongation(self):
@@ -1232,7 +1380,7 @@ def source_properties(data, segment_img, error=None, mask=None,
     data : array_like or `~astropy.units.Quantity`
         The 2D array from which to calculate the source photometry and
         properties.  ``data`` should be background-subtracted.
-        Non-finite ``data`` values (e.g. NaN or inf) are automatically
+        Non-finite ``data`` values (NaN and +/- inf) are automatically
         masked.
 
     segment_img : `SegmentationImage` or array_like (int)
@@ -1247,7 +1395,7 @@ def source_properties(data, segment_img, error=None, mask=None,
         including the Poisson error of the sources (see
         `~photutils.utils.calc_total_error`) .  ``error`` must have the
         same shape as the input ``data``.  Non-finite ``error`` values
-        (e.g. NaN or inf) are not automatically masked, unless they are
+        (NaN and +/- inf) are not automatically masked, unless they are
         at the same position of non-finite values in the input ``data``
         array.  Such pixels can be masked using the ``mask`` keyword.
         See the Notes section below for details on the error
@@ -1257,7 +1405,7 @@ def source_properties(data, segment_img, error=None, mask=None,
         A boolean mask with the same shape as ``data`` where a `True`
         value indicates the corresponding element of ``data`` is masked.
         Masked data are excluded from all calculations.  Non-finite
-        values (e.g. NaN or inf) in the input ``data`` are automatically
+        values (NaN and +/- inf) in the input ``data`` are automatically
         masked.
 
     background : float, array_like, or `~astropy.units.Quantity`, optional
@@ -1267,10 +1415,10 @@ def source_properties(data, segment_img, error=None, mask=None,
         ``background`` merely allows for its properties to be measured
         within each source segment.  The input ``background`` does *not*
         get subtracted from the input ``data``, which should already be
-        background-subtracted.  Non-finite ``background`` values (e.g.
-        NaN or inf) are not automatically masked, unless they are at the
-        same position of non-finite values in the input ``data`` array.
-        Such pixels can be masked using the ``mask`` keyword.
+        background-subtracted.  Non-finite ``background`` values (NaN
+        and +/- inf) are not automatically masked, unless they are at
+        the same position of non-finite values in the input ``data``
+        array.  Such pixels can be masked using the ``mask`` keyword.
 
     filter_kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
         The 2D array of the kernel used to filter the data prior to
@@ -1406,7 +1554,7 @@ def source_properties(data, segment_img, error=None, mask=None,
             data, segment_img, label, filtered_data=filtered_data,
             error=error, mask=mask, background=background, wcs=wcs))
 
-    if len(sources_props) == 0:
+    if not sources_props:
         raise ValueError('No sources are defined.')
 
     return SourceCatalog(sources_props, wcs=wcs)
@@ -1421,7 +1569,7 @@ class SourceCatalog:
         if isinstance(properties_list, SourceProperties):
             self._data = [properties_list]
         elif isinstance(properties_list, list):
-            if len(properties_list) == 0:
+            if not properties_list:
                 raise ValueError('properties_list must not be an empty list.')
             self._data = properties_list
         else:
@@ -1443,24 +1591,30 @@ class SourceCatalog:
         for i in self._data:
             yield i
 
+    def __str__(self):
+        cls_name = '<{0}.{1}>'.format(self.__class__.__module__,
+                                      self.__class__.__name__)
+        fmt = ['Catalog length: {0}'.format(len(self))]
+
+        return '{}\n'.format(cls_name) + '\n'.join(fmt)
+
+    def __repr__(self):
+        return self.__str__()
+
     def __getattr__(self, attr):
-        exclude = ['sky_centroid', 'sky_centroid_icrs', 'icrs_centroid',
-                   'ra_icrs_centroid', 'dec_icrs_centroid', 'sky_bbox_ll',
-                   'sky_bbox_ul', 'sky_bbox_lr', 'sky_bbox_ur']
-        if attr not in exclude:
-            if attr not in self._cache:
-                values = [getattr(p, attr) for p in self._data]
+        if attr not in self._cache:
+            values = [getattr(p, attr) for p in self._data]
 
-                if isinstance(values[0], u.Quantity):
-                    # turn list of Quantities into a Quantity array
-                    values = u.Quantity(values)
-                if isinstance(values[0], SkyCoord):  # pragma: no cover
-                    # turn list of SkyCoord into a SkyCoord array
-                    values = SkyCoord(values)
+            if isinstance(values[0], u.Quantity):
+                # turn list of Quantities into a Quantity array
+                values = u.Quantity(values)
+            if isinstance(values[0], SkyCoord):  # pragma: no cover
+                # failsafe: turn list of SkyCoord into a SkyCoord array
+                values = SkyCoord(values)
 
-                self._cache[attr] = values
+            self._cache[attr] = values
 
-            return self._cache[attr]
+        return self._cache[attr]
 
     @lazyproperty
     def _none_list(self):

@@ -22,7 +22,7 @@ New Features
 - ``photutils.segmentation``
 
   - Significantly improved the performance of relabeling in
-    segmentation images (e.g.  ``remove_labels``, ``keep_labels``).
+    segmentation images (e.g. ``remove_labels``, ``keep_labels``).
     [#810]
 
   - Added new ``background_area`` attribute to ``SegmentationImage``.
@@ -36,6 +36,12 @@ New Features
 
   - Added ``__repr__`` and ``__str__`` methods to
     ``SegmentationImage``. [#825]
+
+  - Added ``slices``, ``indices``, and ``filtered_data_cutout_ma``
+    attributes to ``SourceProperties``. [#858]
+
+  - Added ``__repr__`` and ``__str__`` methods to ``SourceProperties``
+    and ``SourceCatalog``. [#858]
 
 - ``photutils.utils``
 
@@ -152,6 +158,12 @@ API changes
   - A ``ValueError`` is raised if an empty list is input into
     ``SourceCatalog`` or no valid sources are defined in
     ``source_properties``. [#836]
+
+  - Deprecated the ``values`` and ``coords`` attributes in
+    ``SourceProperties``. [#858]
+
+  - Deprecated the unused ``mask_value`` keyword in
+    ``make_source_mask``. [#858]
 
 - ``photutils.utils``
 

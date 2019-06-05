@@ -284,7 +284,7 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
                 # higher level, and relabel.
                 segm_tree[j].remove_labels(intersect_labels)
                 new_segments = segm_tree[j].data + segm_tree[j - 1].data
-                new_segm, nsegm = ndimage.label(new_segments)
+                new_segm, _ = ndimage.label(new_segments)
                 segm_tree[j - 1] = SegmentationImage(new_segm)
 
         return SegmentationImage(watershed(-data, segm_tree[0].data,

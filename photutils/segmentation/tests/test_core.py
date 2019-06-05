@@ -153,7 +153,7 @@ class TestSegmentationImage:
         assert self.segm.background_area == 18
 
     def test_is_consecutive(self):
-        assert self.segm.is_consecutive is False
+        assert not self.segm.is_consecutive
 
     def test_missing_labels(self):
         assert_allclose(self.segm.missing_labels, [2, 6])
