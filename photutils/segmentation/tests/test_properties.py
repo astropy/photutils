@@ -271,7 +271,11 @@ class TestSourcePropertiesFunction:
                                  MINOR_SIG*u.pix, rtol=1.e-2)
         assert_quantity_allclose(obj.orientation, THETA*u.rad,
                                  rtol=1.e-3)
-        assert_allclose(obj.bbox.value, [35, 25, 70, 77])
+        assert obj.xmin.value == 25
+        assert obj.xmax.value == 77
+        assert obj.ymin.value == 35
+        assert obj.ymax.value == 70
+
         assert_quantity_allclose(obj.area, 1058.0*u.pix**2)
         assert_allclose(len(obj.indices), 2)
         assert_allclose(len(obj.indices[0]), obj.area.value)
@@ -323,13 +327,12 @@ class TestSourcePropertiesFunction:
     def test_cutout_shapes(self):
         error = np.ones_like(IMAGE) * 1.
         props = source_properties(IMAGE, SEGM, error=error, background=1.)
-        bbox = props[0].bbox.value
-        true_shape = (bbox[2] - bbox[0] + 1, bbox[3] - bbox[1] + 1)
+        bbox = props[0].bbox
         properties = ['background_cutout_ma', 'data_cutout',
                       'data_cutout_ma', 'error_cutout_ma']
         shapes = [getattr(props[0], p).shape for p in properties]
         for shape in shapes:
-            assert shape == true_shape
+            assert shape == bbox.shape
 
     def test_make_cutout(self):
         props = source_properties(IMAGE, SEGM)
@@ -352,7 +355,11 @@ class TestSourcePropertiesFunction:
                                  MINOR_SIG*u.pix, rtol=1.e-2)
         assert_quantity_allclose(obj.orientation, THETA*u.rad,
                                  rtol=1.e-3)
-        assert_allclose(obj.bbox.value, [35, 25, 70, 77])
+        assert obj.xmin.value == 25
+        assert obj.xmax.value == 77
+        assert obj.ymin.value == 35
+        assert obj.ymax.value == 70
+
         area = obj.area.value
         assert_allclose(area, 1058.0)
 

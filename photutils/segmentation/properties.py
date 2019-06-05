@@ -12,6 +12,7 @@ from astropy.wcs.utils import pixel_to_skycoord
 
 
 from .core import SegmentationImage
+from ..aperture import BoundingBox
 from ..utils.convolution import filter_data
 from ..utils._moments import _moments, _moments_central
 
@@ -689,13 +690,12 @@ class SourceProperties:
     @lazyproperty
     def bbox(self):
         """
-        The bounding box ``(ymin, xmin, ymax, xmax)`` of the minimal
-        rectangular region containing the source segment.
+        The `~photutils.BoundingBox` of the minimal rectangular region
+        containing the source segment.
         """
 
-        # (stop - 1) to return the max pixel location, not the slice index
-        return (self.slices[0].start, self.slices[1].start,
-                self.slices[0].stop - 1, self.slices[1].stop - 1) * u.pix
+        return BoundingBox(self.slices[1].start, self.slices[1].stop,
+                           self.slices[0].start, self.slices[0].stop)
 
     @lazyproperty
     def xmin(self):
@@ -704,7 +704,7 @@ class SourceProperties:
         (`~photutils.SourceProperties.bbox`) of the source segment.
         """
 
-        return self.bbox[1]
+        return self.bbox.ixmin * u.pix
 
     @lazyproperty
     def xmax(self):
@@ -713,7 +713,7 @@ class SourceProperties:
         (`~photutils.SourceProperties.bbox`) of the source segment.
         """
 
-        return self.bbox[3]
+        return (self.bbox.ixmax - 1) * u.pix
 
     @lazyproperty
     def ymin(self):
@@ -722,7 +722,7 @@ class SourceProperties:
         (`~photutils.SourceProperties.bbox`) of the source segment.
         """
 
-        return self.bbox[0]
+        return self.bbox.iymin * u.pix
 
     @lazyproperty
     def ymax(self):
@@ -731,7 +731,7 @@ class SourceProperties:
         (`~photutils.SourceProperties.bbox`) of the source segment.
         """
 
-        return self.bbox[2]
+        return (self.bbox.iymax - 1) * u.pix
 
     @lazyproperty
     def sky_bbox_ll(self):
