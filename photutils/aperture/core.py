@@ -326,7 +326,7 @@ class PixelAperture(Aperture):
         return output
 
     def do_photometry(self, data, error=None, mask=None, method='exact',
-                      subpixels=5, unit=None):
+                      subpixels=5, unit=None, variance=None):
         """
         Perform aperture photometry on the input data.
 
@@ -387,6 +387,16 @@ class PixelAperture(Aperture):
             already have a different unit, the input ``unit`` will not
             be used and a warning will be raised.
 
+        variance : array_like or `~astropy.units.Quantity`, optional
+            The pixel-wise Gaussian 1-sigma variance of the input
+            ``data``.  ``variance`` is assumed to include *all* sources
+            of error, including the Poisson error of the sources (see
+            `~photutils.utils.calc_total_error`) .  ``variance`` must
+            have the same shape as the input ``data``.  Either
+            ``variance`` or ``error`` should be input, not both.  Using
+            ``variance`` instead of ``error`` will result in faster
+            computation.
+
         Returns
         -------
         aperture_sums : `~numpy.ndarray` or `~astropy.units.Quantity`
@@ -398,16 +408,21 @@ class PixelAperture(Aperture):
 
         data = np.asanyarray(data)
 
+        if variance is not None and error is not None:
+            raise ValueError('error or variance should be entered, not both.')
+        if error is not None:
+            variance = error**2
+
         if mask is not None:
             mask = np.asanyarray(mask)
 
             data = copy.deepcopy(data)    # do not modify input data
             data[mask] = 0
 
-            if error is not None:
+            if variance is not None:
                 # do not modify input data
-                error = copy.deepcopy(np.asanyarray(error))
-                error[mask] = 0.
+                variance = copy.deepcopy(np.asanyarray(variance))
+                variance[mask] = 0.
 
         aperture_sums = []
         aperture_sum_errs = []
@@ -424,8 +439,8 @@ class PixelAperture(Aperture):
             else:
                 aperture_sums.append(np.sum(data_weighted))
 
-            if error is not None:
-                variance_weighted = apermask.multiply(error**2)
+            if variance is not None:
+                variance_weighted = apermask.multiply(variance)
 
                 if variance_weighted is None:
                     aperture_sum_errs.append(np.nan)
@@ -984,13 +999,21 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         else:
             tbl['sky_center'] = skycoord_pos
 
-    for i, aper in enumerate(apertures):
-        aper_sum, aper_sum_err = aper.do_photometry(data, error=error,
-                                                    mask=mask, method=method,
-                                                    subpixels=subpixels)
+    if error is None:
+        variance = None
+    else:
+        variance = error**2
 
-        sum_key = 'aperture_sum'
-        sum_err_key = 'aperture_sum_err'
+    sum_key_main = 'aperture_sum'
+    sum_err_key_main = 'aperture_sum_err'
+    for i, aper in enumerate(apertures):
+        aper_sum, aper_sum_err = aper.do_photometry(data, error=None,
+                                                    mask=mask, method=method,
+                                                    subpixels=subpixels,
+                                                    variance=variance)
+
+        sum_key = sum_key_main
+        sum_err_key = sum_err_key_main
         if not single_aperture:
             sum_key += '_{}'.format(i)
             sum_err_key += '_{}'.format(i)
