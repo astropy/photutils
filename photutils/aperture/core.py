@@ -326,8 +326,8 @@ class PixelAperture(Aperture):
 
         # apply units
         if unit is not None:
-            aperture_sums *= unit
-            aperture_sum_errs *= unit
+            aperture_sums = aperture_sums * unit  # can't use *= w/old numpy
+            aperture_sum_errs = aperture_sum_errs * unit
 
         return aperture_sums, aperture_sum_errs
 
