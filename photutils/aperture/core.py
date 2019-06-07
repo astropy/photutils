@@ -331,6 +331,7 @@ class PixelAperture(Aperture):
 
         return aperture_sums, aperture_sum_errs
 
+    @deprecated_renamed_argument('unit', None, '0.7')
     def do_photometry(self, data, error=None, mask=None, method='exact',
                       subpixels=5, unit=None):
         """
@@ -386,6 +387,7 @@ class PixelAperture(Aperture):
             ``subpixels ** 2`` subpixels.
 
         unit : `~astropy.units.UnitBase` object or str, optional
+            Deprecated in v0.7.
             An object that represents the unit associated with the input
             ``data`` and ``error`` arrays.  Must be a
             `~astropy.units.UnitBase` object or a string parseable by
@@ -949,7 +951,11 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         have a different unit, the input ``unit`` will not be used and a
         warning will be raised.  If ``data`` is an
         `~astropy.io.fits.ImageHDU` or `~astropy.io.fits.HDUList`,
-        ``unit`` will override the ``'BUNIT'`` header keyword.
+        ``unit`` will override the ``'BUNIT'`` header keyword.  This
+        keyword should be used sparingly (it exists to support the input
+        of `~astropy.nddata.NDData` objects).  Instead one should input
+        the ``data`` (and optional ``error``) as
+        `~astropy.unit.Quantity` objects.
 
     wcs : `~astropy.wcs.WCS`, optional
         The WCS transformation to use if the input ``apertures`` is a
