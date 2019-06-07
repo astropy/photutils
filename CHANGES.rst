@@ -14,6 +14,10 @@ New Features
   - Added ``shape`` and ``isscalar`` properties to Aperture objects.
     [#852]
 
+  - Significantly improved the performance (~10-20 times faster) of
+    aperture photometry, especially when using ``errors`` and
+    ``Quantity`` inputs with many aperture positions. [#861]
+
 - ``photutils.isophote``
 
   - Significantly improved the performance (~5 times faster) of
@@ -116,6 +120,9 @@ API changes
 
   - The Aperture plot keyword ``ax`` was deprecated and renamed to
     ``axes``. [#854]
+
+  - Deprecated the ``units`` keyword for the
+    ``PixelAperture.do_photometry`` method. [#861]
 
 - ``photutils.background``
 
