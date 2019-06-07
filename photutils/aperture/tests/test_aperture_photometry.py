@@ -104,42 +104,6 @@ def test_aperture_pixel_positions():
 
 class BaseTestAperturePhotometry:
 
-    def test_scalar_error(self):
-        # Scalar error
-        error = 1.
-        if not hasattr(self, 'mask'):
-            mask = None
-            true_error = np.sqrt(self.area)
-        else:
-            mask = self.mask
-            # 1 masked pixel
-            true_error = np.sqrt(self.area - 1)
-
-        table1 = aperture_photometry(self.data,
-                                     self.aperture, method='center',
-                                     mask=mask, error=error)
-        table2 = aperture_photometry(self.data,
-                                     self.aperture,
-                                     method='subpixel', subpixels=12,
-                                     mask=mask, error=error)
-        table3 = aperture_photometry(self.data,
-                                     self.aperture, method='exact',
-                                     mask=mask, error=error)
-
-        if not isinstance(self.aperture, (RectangularAperture,
-                                          RectangularAnnulus)):
-            assert_allclose(table3['aperture_sum'], self.true_flux)
-            assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
-                            atol=0.1)
-        assert np.all(table1['aperture_sum'] < table3['aperture_sum'])
-
-        if not isinstance(self.aperture, (RectangularAperture,
-                                          RectangularAnnulus)):
-            assert_allclose(table3['aperture_sum_err'], true_error)
-            assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
-                            atol=0.1)
-        assert np.all(table1['aperture_sum_err'] < table3['aperture_sum_err'])
-
     def test_array_error(self):
         # Array error
         error = np.ones(self.data.shape, dtype=np.float)

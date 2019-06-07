@@ -296,51 +296,6 @@ class PixelAperture(Aperture):
 
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
-    @staticmethod
-    def zz_prepare_photometry_data(data, error, mask):
-        data = np.asanyarray(data)
-
-        if error is not None:
-            variance = np.asanyarray(error) ** 2
-        else:
-            variance = None
-
-        if mask is not None:
-            mask = np.asanyarray(mask)
-            data = data.copy()  # do not modify input data
-            data[mask] = 0.
-
-            if variance is not None:
-                variance[mask] = 0.
-
-        return data, variance
-
-    @staticmethod
-    def _handle_units(values, unit=None):
-        if unit is not None:
-            unit = u.Unit(unit, parse_strict='warn')
-            if isinstance(unit, u.UnrecognizedUnit):
-                warnings.warn('The input unit is not parseable as a valid '
-                              'unit.', AstropyUserWarning)
-                unit = None
-
-        if isinstance(values[0], u.Quantity):
-            # turn list of Quantities into a Quantity array
-            output = u.Quantity(values)
-
-            if unit is not None:
-                if output.unit != unit:
-                    warnings.warn('The input unit does not agree with the '
-                                  'data and/or error unit.',
-                                  AstropyUserWarning)
-        else:
-            if unit is not None:
-                output = u.Quantity(values, unit=unit)
-            else:
-                output = np.array(values)
-
-        return output
-
     def _do_photometry(self, data, variance, method='exact', subpixels=5,
                        unit=None):
 
@@ -366,11 +321,13 @@ class PixelAperture(Aperture):
                     aperture_sum_errs.append(
                         np.sqrt(np.sum(variance_weighted)))
 
-        # handle Quantity objects and/or units
-        aperture_sums = self._handle_units(aperture_sums, unit=unit)
-        if aperture_sum_errs:
-            aperture_sum_errs = self._handle_units(aperture_sum_errs,
-                                                   unit=unit)
+        aperture_sums = np.array(aperture_sums)
+        aperture_sum_errs = np.array(aperture_sum_errs)
+
+        # apply units
+        if unit is not None:
+            aperture_sums *= unit
+            aperture_sum_errs *= unit
 
         return aperture_sums, aperture_sum_errs
 
@@ -445,7 +402,16 @@ class PixelAperture(Aperture):
             The errors on the sums within each aperture.
         """
 
+        # validate inputs
+        data, error = _validate_inputs(data, error)
+
+        # handle data, error, and unit inputs
+        # output data and error are ndarray without units
+        data, error, unit = _handle_units(data, error, unit)
+
+        # compute variance and apply input mask
         data, variance = _prepare_photometry_data(data, error, mask)
+
         return self._do_photometry(data, variance, method=method,
                                    subpixels=subpixels, unit=unit)
 
@@ -733,42 +699,33 @@ class SkyAperture(Aperture):
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
-def _prepare_photometry_data(data, error, mask):
-    data = np.asanyarray(data)
-
-    if error is not None:
-        variance = np.asanyarray(error) ** 2
-    else:
-        variance = None
-
-    if mask is not None:
-        mask = np.asanyarray(mask)
-        data = data.copy()  # do not modify input data
-        data[mask] = 0.
-
-        if variance is not None:
-            variance[mask] = 0.
-
-    return data, variance
-
-
-def _prepare_aperture_photometry_input(data, error, mask, wcs, unit):
+def _handle_hdu_input(data):
     """
-    Parse the inputs to `aperture_photometry`.
+    Convert FITS HDU ``data`` to a `~numpy.ndarray` (and optional unit).
 
-    `aperture_photometry` accepts a wide range of inputs, e.g. ``data``
-    could be a numpy array, a Quantity array, or a fits HDU.  This
-    requires some parsing and validation to ensure that all inputs are
-    complete and consistent.  For example, the data could carry a unit
-    and the wcs itself, so we need to check that it is consistent with
-    the unit and wcs given as input parameters.
+    Used to parse ``data`` input to `aperture_photometry`.
+
+    Parameters
+    ----------
+    data : array_like, `~astropy.units.Quantity`, `~astropy.io.fits.ImageHDU`, or `~astropy.io.fits.HDUList`
+        The 2D data array.
+
+    Returns
+    -------
+    data : `~numpy.ndarray`
+        The 2D data array.
+
+    unit : `~astropy.unit.Unit` or `None`
+        The unit for the data.
     """
+
+    bunit = None
 
     if isinstance(data, fits.HDUList):
         for i, hdu in enumerate(data):
             if hdu.data is not None:
-                warnings.warn("Input data is a HDUList object, photometry is "
-                              "run only for the {0} HDU."
+                warnings.warn('Input data is a HDUList object.  Doing '
+                              'photometry only on the {0} HDU.'
                               .format(i), AstropyUserWarning)
                 data = hdu
                 break
@@ -783,20 +740,51 @@ def _prepare_aperture_photometry_input(data, error, mask, wcs, unit):
                 warnings.warn('The BUNIT in the header of the input data is '
                               'not parseable as a valid unit.',
                               AstropyUserWarning)
-            else:
-                data = u.Quantity(data, unit=bunit)
 
-    if wcs is None:
-        try:
-            wcs = WCS(header)
-        except Exception:
-            # A valid WCS was not found in the header.  Let the calling
-            # application raise an exception if it needs a WCS.
-            pass
+    try:
+        fits_wcs = WCS(header)
+    except Exception:
+        # A valid WCS was not found in the header.  Let the calling
+        # application raise an exception if it needs a WCS.
+        fits_wcs = None
+
+    return data, bunit, fits_wcs
+
+
+def _validate_inputs(data, error):
+    """
+    Validate inputs.
+
+    ``data`` and ``error`` are converted to a `~numpy.ndarray`, if
+    necessary.
+
+    Used to parse inputs to `aperture_photometry` and
+    `PixelAperture.do_photometry`.
+    """
 
     data = np.asanyarray(data)
     if data.ndim != 2:
         raise ValueError('data must be a 2D array.')
+
+    if error is not None:
+        error = np.asanyarray(error)
+        if error.shape != data.shape:
+            raise ValueError('error and data must have the same shape.')
+
+    return data, error
+
+
+def _handle_units(data, error, unit):
+    """
+    Handle Quantity inputs and the ``unit`` keyword.
+
+    Any units on ``data`` and ``error` are removed.  ``data`` and
+    ``error`` are returned as `~numpy.ndarray`.  The returned ``unit``
+    represents the unit for both ``data`` and ``error``.
+
+    Used to parse inputs to `aperture_photometry` and
+    `PixelAperture.do_photometry`.
+    """
 
     if unit is not None:
         unit = u.Unit(unit, parse_strict='warn')
@@ -805,41 +793,83 @@ def _prepare_aperture_photometry_input(data, error, mask, wcs, unit):
                           'unit.', AstropyUserWarning)
             unit = None
 
-    if isinstance(data, u.Quantity):
+    # check Quantity inputs
+    inputs = (data, error)
+    has_unit = [hasattr(x, 'unit') for x in inputs if x is not None]
+    use_units = all(has_unit)
+    if any(has_unit) and not use_units:
+        raise ValueError('If data or error has units, then they both must '
+                         'have the same units.')
+
+    # handle Quantity inputs
+    if use_units:
         if unit is not None and data.unit != unit:
             warnings.warn('The input unit does not agree with the data '
-                          'unit.', AstropyUserWarning)
-    else:
-        if unit is not None:
-            data = u.Quantity(data, unit=unit)
+                          'unit.  Using the data unit.', AstropyUserWarning)
+            unit = data.unit
+
+        # strip data and error units for performance
+        unit = data.unit
+        data = data.value
+
+        if error is not None:
+            if unit != error.unit:
+                raise ValueError('data and error must have the same units.')
+            error = error.value
+
+    return data, error, unit
+
+
+def _prepare_photometry_data(data, error, mask):
+    """
+    Prepare data and error arrays for photometry.
+
+    Error is converted to variance and masked values are set to zero in
+    the output data and variance arrays.
+
+    Used to parse inputs to `aperture_photometry` and
+    `PixelAperture.do_photometry`.
+
+    Parameters
+    ----------
+    data : `~numpy.ndarray`
+        The 2D array on which to perform photometry.
+
+    error : `~numpy.ndarray` or `None`
+        The pixel-wise Gaussian 1-sigma errors of the input ``data``.
+
+    mask : array_like (bool) or `None`
+        A boolean mask with the same shape as ``data`` where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+
+    Returns
+    -------
+    data : `~numpy.ndarray`
+        The 2D array on which to perform photometry, where masked values
+        have been set to zero.
+
+    variance : `~numpy.ndarray` or `None`
+        The pixel-wise Gaussian 1-sigma variance of the input ``data``,
+        where masked values have been set to zero.
+    """
 
     if error is not None:
-        if isinstance(error, u.Quantity):
-            if unit is not None and error.unit != unit:
-                warnings.warn('The input unit does not agree with the error '
-                              'unit.', AstropyUserWarning)
-
-            if np.isscalar(error.value):
-                error = u.Quantity(np.broadcast_arrays(error, data),
-                                   unit=error.unit)[0]
-        else:
-            if np.isscalar(error):
-                error = np.broadcast_arrays(error, data)[0]
-
-            if unit is not None:
-                error = u.Quantity(error, unit=unit)
-
-            error = np.asanyarray(error)
-
-        if error.shape != data.shape:
-            raise ValueError('error and data must have the same shape.')
+        variance = error ** 2
+    else:
+        variance = None
 
     if mask is not None:
         mask = np.asanyarray(mask)
         if mask.shape != data.shape:
             raise ValueError('mask and data must have the same shape.')
 
-    return data, error, mask, wcs
+        data = data.copy()  # do not modify input data
+        data[mask] = 0.
+
+        if variance is not None:
+            variance[mask] = 0.
+
+    return data, variance
 
 
 @support_nddata
@@ -858,6 +888,9 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         array) or the ``unit`` keyword.  If ``data`` is an
         `~astropy.io.fits.ImageHDU` or `~astropy.io.fits.HDUList`, the
         unit is determined from the ``'BUNIT'`` header keyword.
+        If ``data`` is a `~astropy.units.Quantity` array, then ``error``
+        (if input) must also be a `~astropy.units.Quantity` array with
+        the same units.
 
     apertures : `~photutils.Aperture` or list of `~photutils.Aperture`
         The aperture(s) to use for the photometry.  If ``apertures`` is
@@ -869,7 +902,9 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         ``error`` is assumed to include *all* sources of error,
         including the Poisson error of the sources (see
         `~photutils.utils.calc_total_error`) .  ``error`` must have the
-        same shape as the input ``data``.
+        same shape as the input ``data``.  If a
+        `~astropy.units.Quantity` array, then ``data`` must also be a
+        `~astropy.units.Quantity` array with the same units.
 
     mask : array_like (bool), optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -956,12 +991,24 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     thus supports `~astropy.nddata.NDData` objects as input.
     """
 
-    data, error, mask, wcs = _prepare_aperture_photometry_input(
-        data, error, mask, wcs, unit)
+    # handle FITS HDU input data
+    data, bunit, fits_wcs = _handle_hdu_input(data)
+    # NOTE: input unit overrides bunit
+    if unit is None:
+        unit = bunit
+    # NOTE: input wcs overrides FITS WCS
+    if not wcs:
+        wcs = fits_wcs
 
-    if method == 'subpixel':
-        if (int(subpixels) != subpixels) or (subpixels <= 0):
-            raise ValueError('subpixels must be a positive integer.')
+    # validate inputs
+    data, error = _validate_inputs(data, error)
+
+    # handle data, error, and unit inputs
+    # output data and error are ndarray without units
+    data, error, unit = _handle_units(data, error, unit)
+
+    # compute variance and apply input mask
+    data, variance = _prepare_photometry_data(data, error, mask)
 
     single_aperture = False
     if isinstance(apertures, Aperture):
@@ -1012,14 +1059,13 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         else:
             tbl['sky_center'] = skycoord_pos
 
-    data, variance = _prepare_photometry_data(data, error, mask)
-
     sum_key_main = 'aperture_sum'
     sum_err_key_main = 'aperture_sum_err'
     for i, aper in enumerate(apertures):
         aper_sum, aper_sum_err = aper._do_photometry(data, variance,
                                                      method=method,
-                                                     subpixels=subpixels)
+                                                     subpixels=subpixels,
+                                                     unit=unit)
 
         sum_key = sum_key_main
         sum_err_key = sum_err_key_main
