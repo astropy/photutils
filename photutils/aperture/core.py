@@ -955,7 +955,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         keyword should be used sparingly (it exists to support the input
         of `~astropy.nddata.NDData` objects).  Instead one should input
         the ``data`` (and optional ``error``) as
-        `~astropy.unit.Quantity` objects.
+        `~astropy.units.Quantity` objects.
 
     wcs : `~astropy.wcs.WCS`, optional
         The WCS transformation to use if the input ``apertures`` is a
