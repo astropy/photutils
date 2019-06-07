@@ -297,10 +297,26 @@ class PixelAperture(Aperture):
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
     @staticmethod
-    def _prepare_photometry_output(_list, unit=None):
-        if not _list:  # if error is not input
-            return _list
+    def zz_prepare_photometry_data(data, error, mask):
+        data = np.asanyarray(data)
 
+        if error is not None:
+            variance = np.asanyarray(error) ** 2
+        else:
+            variance = None
+
+        if mask is not None:
+            mask = np.asanyarray(mask)
+            data = data.copy()  # do not modify input data
+            data[mask] = 0.
+
+            if variance is not None:
+                variance[mask] = 0.
+
+        return data, variance
+
+    @staticmethod
+    def _handle_units(values, unit=None):
         if unit is not None:
             unit = u.Unit(unit, parse_strict='warn')
             if isinstance(unit, u.UnrecognizedUnit):
@@ -308,9 +324,9 @@ class PixelAperture(Aperture):
                               'unit.', AstropyUserWarning)
                 unit = None
 
-        if isinstance(_list[0], u.Quantity):
+        if isinstance(values[0], u.Quantity):
             # turn list of Quantities into a Quantity array
-            output = u.Quantity(_list)
+            output = u.Quantity(values)
 
             if unit is not None:
                 if output.unit != unit:
@@ -319,14 +335,47 @@ class PixelAperture(Aperture):
                                   AstropyUserWarning)
         else:
             if unit is not None:
-                output = u.Quantity(_list, unit=unit)
+                output = u.Quantity(values, unit=unit)
             else:
-                output = np.array(_list)
+                output = np.array(values)
 
         return output
 
+    def _do_photometry(self, data, variance, method='exact', subpixels=5,
+                       unit=None):
+
+        aperture_sums = []
+        aperture_sum_errs = []
+
+        masks = self.to_mask(method=method, subpixels=subpixels)
+        if self.isscalar:
+            masks = (masks,)
+
+        for apermask in masks:
+            data_weighted = apermask.multiply(data)
+            if data_weighted is None:
+                aperture_sums.append(np.nan)
+            else:
+                aperture_sums.append(np.sum(data_weighted))
+
+            if variance is not None:
+                variance_weighted = apermask.multiply(variance)
+                if variance_weighted is None:
+                    aperture_sum_errs.append(np.nan)
+                else:
+                    aperture_sum_errs.append(
+                        np.sqrt(np.sum(variance_weighted)))
+
+        # handle Quantity objects and/or units
+        aperture_sums = self._handle_units(aperture_sums, unit=unit)
+        if aperture_sum_errs:
+            aperture_sum_errs = self._handle_units(aperture_sum_errs,
+                                                   unit=unit)
+
+        return aperture_sums, aperture_sum_errs
+
     def do_photometry(self, data, error=None, mask=None, method='exact',
-                      subpixels=5, unit=None, variance=None):
+                      subpixels=5, unit=None):
         """
         Perform aperture photometry on the input data.
 
@@ -387,16 +436,6 @@ class PixelAperture(Aperture):
             already have a different unit, the input ``unit`` will not
             be used and a warning will be raised.
 
-        variance : array_like or `~astropy.units.Quantity`, optional
-            The pixel-wise Gaussian 1-sigma variance of the input
-            ``data``.  ``variance`` is assumed to include *all* sources
-            of error, including the Poisson error of the sources (see
-            `~photutils.utils.calc_total_error`) .  ``variance`` must
-            have the same shape as the input ``data``.  Either
-            ``variance`` or ``error`` should be input, not both.  Using
-            ``variance`` instead of ``error`` will result in faster
-            computation.
-
         Returns
         -------
         aperture_sums : `~numpy.ndarray` or `~astropy.units.Quantity`
@@ -406,55 +445,9 @@ class PixelAperture(Aperture):
             The errors on the sums within each aperture.
         """
 
-        data = np.asanyarray(data)
-
-        if variance is not None and error is not None:
-            raise ValueError('error or variance should be entered, not both.')
-        if error is not None:
-            variance = error**2
-
-        if mask is not None:
-            mask = np.asanyarray(mask)
-
-            data = copy.deepcopy(data)    # do not modify input data
-            data[mask] = 0
-
-            if variance is not None:
-                # do not modify input data
-                variance = copy.deepcopy(np.asanyarray(variance))
-                variance[mask] = 0.
-
-        aperture_sums = []
-        aperture_sum_errs = []
-
-        masks = self.to_mask(method=method, subpixels=subpixels)
-        if self.isscalar:
-            masks = (masks,)
-
-        for apermask in masks:
-            data_weighted = apermask.multiply(data)
-
-            if data_weighted is None:
-                aperture_sums.append(np.nan)
-            else:
-                aperture_sums.append(np.sum(data_weighted))
-
-            if variance is not None:
-                variance_weighted = apermask.multiply(variance)
-
-                if variance_weighted is None:
-                    aperture_sum_errs.append(np.nan)
-                else:
-                    aperture_sum_errs.append(
-                        np.sqrt(np.sum(variance_weighted)))
-
-        # handle Quantity objects and input units
-        aperture_sums = self._prepare_photometry_output(aperture_sums,
-                                                        unit=unit)
-        aperture_sum_errs = self._prepare_photometry_output(aperture_sum_errs,
-                                                            unit=unit)
-
-        return aperture_sums, aperture_sum_errs
+        data, variance = _prepare_photometry_data(data, error, mask)
+        return self._do_photometry(data, variance, method=method,
+                                   subpixels=subpixels, unit=unit)
 
     @staticmethod
     def _make_annulus_path(patch_inner, patch_outer):
@@ -740,7 +733,26 @@ class SkyAperture(Aperture):
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
-def _prepare_photometry_input(data, error, mask, wcs, unit):
+def _prepare_photometry_data(data, error, mask):
+    data = np.asanyarray(data)
+
+    if error is not None:
+        variance = np.asanyarray(error) ** 2
+    else:
+        variance = None
+
+    if mask is not None:
+        mask = np.asanyarray(mask)
+        data = data.copy()  # do not modify input data
+        data[mask] = 0.
+
+        if variance is not None:
+            variance[mask] = 0.
+
+    return data, variance
+
+
+def _prepare_aperture_photometry_input(data, error, mask, wcs, unit):
     """
     Parse the inputs to `aperture_photometry`.
 
@@ -944,8 +956,8 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     thus supports `~astropy.nddata.NDData` objects as input.
     """
 
-    data, error, mask, wcs = _prepare_photometry_input(data, error, mask,
-                                                       wcs, unit)
+    data, error, mask, wcs = _prepare_aperture_photometry_input(
+        data, error, mask, wcs, unit)
 
     if method == 'subpixel':
         if (int(subpixels) != subpixels) or (subpixels <= 0):
@@ -964,23 +976,24 @@ def aperture_photometry(data, apertures, error=None, mask=None,
                              'data or the wcs keyword when using a '
                              'SkyAperture object.')
 
+        # used to include SkyCoord position in the output table
         skyaper = True
         skycoord_pos = apertures[0].positions
 
-        pix_aper = [aper.to_pixel(wcs) for aper in apertures]
-        apertures = pix_aper
+        apertures = [aper.to_pixel(wcs) for aper in apertures]
 
-    # do comparison in pixels to avoid comparing SkyCoord objects
+    # compare positions in pixels to avoid comparing SkyCoord objects
     positions = apertures[0].positions
     for aper in apertures[1:]:
         if not np.array_equal(aper.positions, positions):
             raise ValueError('Input apertures must all have identical '
                              'positions.')
 
+    # define output table meta data
     meta = OrderedDict()
     meta['name'] = 'Aperture photometry results'
     meta['version'] = get_version_info()
-    calling_args = ("method='{0}', subpixels={1}".format(method, subpixels))
+    calling_args = "method='{0}', subpixels={1}".format(method, subpixels)
     meta['aperture_photometry_args'] = calling_args
 
     tbl = QTable(meta=meta)
@@ -999,18 +1012,14 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         else:
             tbl['sky_center'] = skycoord_pos
 
-    if error is None:
-        variance = None
-    else:
-        variance = error**2
+    data, variance = _prepare_photometry_data(data, error, mask)
 
     sum_key_main = 'aperture_sum'
     sum_err_key_main = 'aperture_sum_err'
     for i, aper in enumerate(apertures):
-        aper_sum, aper_sum_err = aper.do_photometry(data, error=None,
-                                                    mask=mask, method=method,
-                                                    subpixels=subpixels,
-                                                    variance=variance)
+        aper_sum, aper_sum_err = aper._do_photometry(data, variance,
+                                                     method=method,
+                                                     subpixels=subpixels)
 
         sum_key = sum_key_main
         sum_err_key = sum_err_key_main
