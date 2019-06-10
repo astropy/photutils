@@ -8,7 +8,7 @@ from collections import OrderedDict
 import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
-from astropy.nddata import support_nddata
+from astropy.nddata import NDData
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import deprecated
@@ -874,7 +874,6 @@ def _prepare_photometry_data(data, error, mask):
     return data, variance
 
 
-@support_nddata
 def aperture_photometry(data, apertures, error=None, mask=None,
                         method='exact', subpixels=5, unit=None, wcs=None):
     """
@@ -990,12 +989,15 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
         The table metadata includes the Astropy and Photutils version
         numbers and the `aperture_photometry` calling arguments.
-
-    Notes
-    -----
-    This function is decorated with `~astropy.nddata.support_nddata` and
-    thus supports `~astropy.nddata.NDData` objects as input.
     """
+
+    if isinstance(data, NDData):
+        mask = data.mask
+        wcs = data.wcs
+        if data.unit is not None:
+            data = u.Quantity(data.data, unit=data.unit)
+        else:
+            data = data.data
 
     # handle FITS HDU input data
     data, bunit, fits_wcs = _handle_hdu_input(data)
