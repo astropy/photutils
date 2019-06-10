@@ -54,6 +54,9 @@ New Features
     in a publicly-accessible variable called
     ``photutils.segmentation.properties.DEFAULT_COLUMNS``. [#863]
 
+  - Added the ``gini`` source property representing the Gini
+    coefficient. [#864]
+
 - ``photutils.utils``
 
   - Added ``NoDetectionsWarning`` class. [#836]
