@@ -47,6 +47,13 @@ New Features
   - Added ``__repr__`` and ``__str__`` methods to ``SourceProperties``
     and ``SourceCatalog``. [#858]
 
+  - Significantly improved the performance of calculating the
+    ``background_at_centroid`` property in ``SourceCatalog``. [#863]
+
+  - The default output table columns (source properties) are defined
+    in a publicly-accessible variable called
+    ``photutils.segmentation.properties.DEFAULT_COLUMNS``. [#863]
+
 - ``photutils.utils``
 
   - Added ``NoDetectionsWarning`` class. [#836]
@@ -171,6 +178,16 @@ API changes
 
   - Deprecated the unused ``mask_value`` keyword in
     ``make_source_mask``. [#858]
+
+  - The ``bbox`` property now returns a ``BoundingBox`` instance.
+    [#863]
+
+  - The ``xmin/ymin`` and ``xmax/ymax`` properties have been
+    deprecated with the replacements having a ``bbox_`` prefix (e.g.
+    ``bbox_xmin``). [#863]
+
+  - The ``orientation`` property is now returned as a ``Quantity``
+    instance in units of degrees. [#863]
 
 - ``photutils.utils``
 
