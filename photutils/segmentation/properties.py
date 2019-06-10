@@ -425,7 +425,7 @@ class SourceProperties:
             Names of columns to exclude from the default columns in the
             output `~astropy.table.QTable`.  The default columns are
             defined in the
-            `photutils.segmentation.properties.DEFAULT_COLUMNS`
+            ``photutils.segmentation.properties.DEFAULT_COLUMNS``
             variable.
 
         Returns
@@ -1793,7 +1793,7 @@ class SourceCatalog:
             Names of columns to exclude from the default columns in the
             output `~astropy.table.QTable`.  The default columns are
             defined in the
-            `photutils.segmentation.properties.DEFAULT_COLUMNS`
+            ``photutils.segmentation.properties.DEFAULT_COLUMNS``
             variable.
 
         Returns
@@ -1854,7 +1854,7 @@ def _properties_table(obj, columns=None, exclude_columns=None):
     exclude_columns : str or list of str, optional
         Names of columns to exclude from the default columns in the
         output `~astropy.table.QTable`.  The default columns are defined
-        in the `photutils.segmentation.properties.DEFAULT_COLUMNS`
+        in the ``photutils.segmentation.properties.DEFAULT_COLUMNS``
         variable.
 
     Returns
