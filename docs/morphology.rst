@@ -36,7 +36,7 @@ First, we create the source image and subtract its background::
 
 Then, calculate its properties:
 
-.. doctest-requires:: scipy, skimage
+.. doctest-requires:: scipy
 
     >>> from photutils import data_properties
     >>> cat = data_properties(data)
