@@ -12,6 +12,7 @@ from astropy.wcs.utils import pixel_to_skycoord
 
 
 from .core import SegmentationImage
+from ..aperture import BoundingBox
 from ..utils.convolution import filter_data
 from ..utils._moments import _moments, _moments_central
 
@@ -22,6 +23,19 @@ __doctest_requires__ = {('SourceProperties', 'SourceProperties.*',
                          'SourceCatalog', 'SourceCatalog.*',
                          'source_properties', 'properties_table'):
                         ['scipy']}
+
+# default table columns for `to_table()` output
+DEFAULT_COLUMNS = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
+                   'sky_centroid_icrs', 'source_sum', 'source_sum_err',
+                   'background_sum', 'background_mean',
+                   'background_at_centroid', 'bbox_xmin', 'bbox_xmax',
+                   'bbox_ymin', 'bbox_ymax', 'min_value', 'max_value',
+                   'minval_xpos', 'minval_ypos', 'maxval_xpos', 'maxval_ypos',
+                   'area', 'equivalent_radius', 'perimeter',
+                   'semimajor_axis_sigma', 'semiminor_axis_sigma',
+                   'orientation', 'eccentricity', 'ellipticity', 'elongation',
+                   'covar_sigx2', 'covar_sigxy', 'covar_sigy2', 'cxx', 'cxy',
+                   'cyy']
 
 
 class SourceProperties:
@@ -408,8 +422,11 @@ class SourceProperties:
             of the attributes of `SourceProperties`.
 
         exclude_columns : str or list of str, optional
-            Names of columns to exclude from the default properties list
-            in the output `~astropy.table.QTable`.
+            Names of columns to exclude from the default columns in the
+            output `~astropy.table.QTable`.  The default columns are
+            defined in the
+            ``photutils.segmentation.properties.DEFAULT_COLUMNS``
+            variable.
 
         Returns
         -------
@@ -674,49 +691,96 @@ class SourceProperties:
     @lazyproperty
     def bbox(self):
         """
-        The bounding box ``(ymin, xmin, ymax, xmax)`` of the minimal
-        rectangular region containing the source segment.
+        The `~photutils.BoundingBox` of the minimal rectangular region
+        containing the source segment.
         """
 
-        # (stop - 1) to return the max pixel location, not the slice index
-        return (self.slices[0].start, self.slices[1].start,
-                self.slices[0].stop - 1, self.slices[1].stop - 1) * u.pix
+        return BoundingBox(self.slices[1].start, self.slices[1].stop,
+                           self.slices[0].start, self.slices[0].stop)
 
     @lazyproperty
+    def bbox_xmin(self):
+        """
+        The minimum ``x`` pixel location within the minimal bounding box
+        containing the source segment.
+        """
+
+        return self.bbox.ixmin * u.pix
+
+    @lazyproperty
+    def bbox_xmax(self):
+        """
+        The maximum ``x`` pixel location within the minimal bounding box
+        containing the source segment.
+
+        Note that this value is inclusive, unlike numpy slice indices.
+        """
+
+        return (self.bbox.ixmax - 1) * u.pix
+
+    @lazyproperty
+    def bbox_ymin(self):
+        """
+        The minimum ``y`` pixel location within the minimal bounding box
+        containing the source segment.
+        """
+
+        return self.bbox.iymin * u.pix
+
+    @lazyproperty
+    def bbox_ymax(self):
+        """
+        The maximum ``y`` pixel location within the minimal bounding box
+        containing the source segment.
+
+        Note that this value is inclusive, unlike numpy slice indices.
+        """
+
+        return (self.bbox.iymax - 1) * u.pix
+
+    @lazyproperty
+    @deprecated('0.7', 'bbox_xmin')
     def xmin(self):
         """
-        The minimum ``x`` pixel location of the minimal bounding box
-        (`~photutils.SourceProperties.bbox`) of the source segment.
+        The minimum ``x`` pixel location within the minimal bounding box
+        containing the source segment.
         """
 
-        return self.bbox[1]
+        return self.bbox_xmin  # pragma: no cover
 
     @lazyproperty
+    @deprecated('0.7', 'bbox_xmax')
     def xmax(self):
         """
-        The maximum ``x`` pixel location of the minimal bounding box
-        (`~photutils.SourceProperties.bbox`) of the source segment.
+        The maximum ``x`` pixel location within the minimal bounding box
+        containing the source segment.
+
+        Note that this value is inclusive, unlike numpy slice indices.
         """
 
-        return self.bbox[3]
+        return self.bbox_xmax  # pragma: no cover
 
     @lazyproperty
+    @deprecated('0.7', 'bbox_ymin')
     def ymin(self):
         """
-        The minimum ``y`` pixel location of the minimal bounding box
-        (`~photutils.SourceProperties.bbox`) of the source segment.
+        The minimum ``y`` pixel location within the minimal bounding box
+        containing the source segment.
         """
 
-        return self.bbox[0]
+        return self.bbox_ymin  # pragma: no cover
 
     @lazyproperty
+    @deprecated('0.7', 'bbox_ymax')
     def ymax(self):
         """
-        The maximum ``y`` pixel location of the minimal bounding box
-        (`~photutils.SourceProperties.bbox`) of the source segment.
+        The maximum``y`` pixel location within the minimal bounding box
+        containing the source segment.
+
+        Note that this value is inclusive, unlike numpy slice indices.
         """
 
-        return self.bbox[2]
+        return self.bbox_ymax  # pragma: no cover
 
     @lazyproperty
     def sky_bbox_ll(self):
@@ -730,8 +794,8 @@ class SourceProperties:
         """
 
         if self._wcs is not None:
-            return pixel_to_skycoord(self.xmin.value - 0.5,
-                                     self.ymin.value - 0.5,
+            return pixel_to_skycoord(self.bbox_xmin.value - 0.5,
+                                     self.bbox_ymin.value - 0.5,
                                      self._wcs, origin=0)
         else:
             return None
@@ -748,8 +812,8 @@ class SourceProperties:
         """
 
         if self._wcs is not None:
-            return pixel_to_skycoord(self.xmin.value - 0.5,
-                                     self.ymax.value + 0.5,
+            return pixel_to_skycoord(self.bbox_xmin.value - 0.5,
+                                     self.bbox_ymax.value + 0.5,
                                      self._wcs, origin=0)
         else:
             return None
@@ -766,8 +830,8 @@ class SourceProperties:
         """
 
         if self._wcs is not None:
-            return pixel_to_skycoord(self.xmax.value + 0.5,
-                                     self.ymin.value - 0.5,
+            return pixel_to_skycoord(self.bbox_xmax.value + 0.5,
+                                     self.bbox_ymin.value - 0.5,
                                      self._wcs, origin=0)
         else:
             return None
@@ -784,8 +848,8 @@ class SourceProperties:
         """
 
         if self._wcs is not None:
-            return pixel_to_skycoord(self.xmax.value + 0.5,
-                                     self.ymax.value + 0.5,
+            return pixel_to_skycoord(self.bbox_xmax.value + 0.5,
+                                     self.bbox_ymax.value + 0.5,
                                      self._wcs, origin=0)
         else:
             return None
@@ -1030,19 +1094,18 @@ class SourceProperties:
         determined using bilinear interpolation.
         """
 
-        from scipy.ndimage import map_coordinates
-
         if self._background is not None:
-            # centroid can still be NaN if all data values are <= 0
-            if (self._is_completely_masked or
-                    np.any(~np.isfinite(self.centroid))):
+            from scipy.ndimage import map_coordinates
+
+            # centroid can be NaN if segment is completely masked or if
+            # all data values are <= 0
+            if np.any(~np.isfinite(self.centroid)):
                 return np.nan * self._data_unit  # unit for table
             else:
                 value = map_coordinates(self._background,
                                         [[self.ycentroid.value],
                                          [self.xcentroid.value]], order=1,
                                         mode='nearest')[0]
-
                 return value * self._data_unit
         else:
             return None
@@ -1236,8 +1299,12 @@ class SourceProperties:
 
         covar_00, covar_01, _, covar_11 = self.covariance.flat
         if covar_00 < 0 or covar_11 < 0:    # negative variance
-            return np.nan * u.rad  # pragma: no cover
-        return 0.5 * np.arctan2(2. * covar_01, (covar_00 - covar_11))
+            return np.nan * u.deg  # pragma: no cover
+
+        # Quantity output in radians because inputs are Quantities
+        orient_radians = 0.5 * np.arctan2(2. * covar_01,
+                                          (covar_00 - covar_11))
+        return orient_radians.to(u.deg)
 
     @lazyproperty
     def elongation(self):
@@ -1523,7 +1590,7 @@ def source_properties(data, segment_img, error=None, mask=None,
     >>> props[1].perimeter    # doctest: +FLOAT_CMP
     <Quantity 5.41421356 pix>
     >>> props[1].orientation    # doctest: +FLOAT_CMP
-    <Quantity -0.74175931 rad>
+    <Quantity -42.4996777 deg>
     """
 
     if not isinstance(segment_img, SegmentationImage):
@@ -1625,6 +1692,24 @@ class SourceCatalog:
         return [None] * len(self._data)
 
     @lazyproperty
+    def background_at_centroid(self):
+        background = self._data[0]._background
+        if background is not None:
+            from scipy.ndimage import map_coordinates
+
+            values = map_coordinates(background,
+                                     [[self.ycentroid.value],
+                                      [self.xcentroid.value]], order=1,
+                                     mode='nearest')[0]
+
+            mask = np.isfinite(self.xcentroid) & np.isfinite(self.ycentroid)
+            values[~mask] = np.nan
+
+            return values * self._data[0]._data_unit
+        else:
+            return self._none_list
+
+    @lazyproperty
     def sky_centroid(self):
         if self.wcs is not None:
             # For a large catalog, it's much faster to calculate world
@@ -1649,8 +1734,8 @@ class SourceCatalog:
     @lazyproperty
     def sky_bbox_ll(self):
         if self.wcs is not None:
-            return pixel_to_skycoord(self.xmin.value - 0.5,
-                                     self.ymin.value - 0.5,
+            return pixel_to_skycoord(self.bbox_xmin.value - 0.5,
+                                     self.bbox_ymin.value - 0.5,
                                      self.wcs, origin=0)
         else:
             return self._none_list
@@ -1658,8 +1743,8 @@ class SourceCatalog:
     @lazyproperty
     def sky_bbox_ul(self):
         if self.wcs is not None:
-            return pixel_to_skycoord(self.xmin.value - 0.5,
-                                     self.ymax.value + 0.5,
+            return pixel_to_skycoord(self.bbox_xmin.value - 0.5,
+                                     self.bbox_ymax.value + 0.5,
                                      self.wcs, origin=0)
         else:
             return self._none_list
@@ -1667,8 +1752,8 @@ class SourceCatalog:
     @lazyproperty
     def sky_bbox_lr(self):
         if self.wcs is not None:
-            return pixel_to_skycoord(self.xmax.value + 0.5,
-                                     self.ymin.value - 0.5,
+            return pixel_to_skycoord(self.bbox_xmax.value + 0.5,
+                                     self.bbox_ymin.value - 0.5,
                                      self.wcs, origin=0)
         else:
             return self._none_list
@@ -1676,8 +1761,8 @@ class SourceCatalog:
     @lazyproperty
     def sky_bbox_ur(self):
         if self.wcs is not None:
-            return pixel_to_skycoord(self.xmax.value + 0.5,
-                                     self.ymax.value + 0.5,
+            return pixel_to_skycoord(self.bbox_xmax.value + 0.5,
+                                     self.bbox_ymax.value + 0.5,
                                      self.wcs, origin=0)
         else:
             return self._none_list
@@ -1705,20 +1790,11 @@ class SourceCatalog:
             of the attributes of `SourceProperties`.
 
         exclude_columns : str or list of str, optional
-            Names of columns to exclude from the default properties list
-            in the output `~astropy.table.QTable`.  The default
-            properties are:
-
-            'id', 'xcentroid', 'ycentroid', 'sky_centroid',
-            'sky_centroid_icrs', 'source_sum', 'source_sum_err',
-            'background_sum', 'background_mean',
-            'background_at_centroid', 'xmin', 'xmax', 'ymin', 'ymax',
-            'min_value', 'max_value', 'minval_xpos', 'minval_ypos',
-            'maxval_xpos', 'maxval_ypos', 'area', 'equivalent_radius',
-            'perimeter', 'semimajor_axis_sigma', 'semiminor_axis_sigma',
-            'eccentricity', 'orientation', 'ellipticity', 'elongation',
-            'covar_sigx2', 'covar_sigxy', 'covar_sigy2', 'cxx', 'cxy',
-            'cyy'
+            Names of columns to exclude from the default columns in the
+            output `~astropy.table.QTable`.  The default columns are
+            defined in the
+            ``photutils.segmentation.properties.DEFAULT_COLUMNS``
+            variable.
 
         Returns
         -------
@@ -1776,8 +1852,10 @@ def _properties_table(obj, columns=None, exclude_columns=None):
         of the attributes of `SourceProperties`.
 
     exclude_columns : str or list of str, optional
-        Names of columns to exclude from the default properties list
-        in the output `~astropy.table.QTable`.
+        Names of columns to exclude from the default columns in the
+        output `~astropy.table.QTable`.  The default columns are defined
+        in the ``photutils.segmentation.properties.DEFAULT_COLUMNS``
+        variable.
 
     Returns
     -------
@@ -1785,18 +1863,8 @@ def _properties_table(obj, columns=None, exclude_columns=None):
         A table of source properties with one row per source.
     """
 
-    # default properties
-    columns_all = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
-                   'sky_centroid_icrs', 'source_sum', 'source_sum_err',
-                   'background_sum', 'background_mean',
-                   'background_at_centroid', 'xmin', 'xmax', 'ymin',
-                   'ymax', 'min_value', 'max_value', 'minval_xpos',
-                   'minval_ypos', 'maxval_xpos', 'maxval_ypos', 'area',
-                   'equivalent_radius', 'perimeter',
-                   'semimajor_axis_sigma', 'semiminor_axis_sigma',
-                   'eccentricity', 'orientation', 'ellipticity',
-                   'elongation', 'covar_sigx2', 'covar_sigxy',
-                   'covar_sigy2', 'cxx', 'cxy', 'cyy']
+    # start with the default columns
+    columns_all = DEFAULT_COLUMNS
 
     table_columns = None
     if exclude_columns is not None:
