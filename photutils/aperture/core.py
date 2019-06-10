@@ -8,7 +8,7 @@ from collections import OrderedDict
 import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
-from astropy.nddata import NDData
+from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import deprecated
@@ -882,16 +882,18 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
     Parameters
     ----------
-    data : array_like, `~astropy.units.Quantity`, `~astropy.io.fits.ImageHDU`, or `~astropy.io.fits.HDUList`
+    data : array_like, `~astropy.units.Quantity`, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`, or `~astropy.nddata.NDData`
         The 2D array on which to perform photometry. ``data`` should be
         background-subtracted.  Units can be used during the photometry,
-        either provided with the data (i.e. a `~astropy.units.Quantity`
-        array) or the ``unit`` keyword.  If ``data`` is an
-        `~astropy.io.fits.ImageHDU` or `~astropy.io.fits.HDUList`, the
-        unit is determined from the ``'BUNIT'`` header keyword.
-        If ``data`` is a `~astropy.units.Quantity` array, then ``error``
-        (if input) must also be a `~astropy.units.Quantity` array with
-        the same units.
+        either provided with the data (e.g. `~astropy.units.Quantity` or
+        `~astropy.nddata.NDData` inputs) or the ``unit`` keyword.  If
+        ``data`` is an `~astropy.io.fits.ImageHDU` or
+        `~astropy.io.fits.HDUList`, the unit is determined from the
+        ``'BUNIT'`` header keyword.  If ``data`` is a
+        `~astropy.units.Quantity` array, then ``error`` (if input) must
+        also be a `~astropy.units.Quantity` array with the same units.
+        See the Notes section below for more information about
+        `~astropy.nddata.NDData` input.
 
     apertures : `~photutils.Aperture` or list of `~photutils.Aperture`
         The aperture(s) to use for the photometry.  If ``apertures`` is
@@ -989,15 +991,40 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
         The table metadata includes the Astropy and Photutils version
         numbers and the `aperture_photometry` calling arguments.
+
+    Notes
+    -----
+    If the input ``data`` is a `~astropy.nddata.NDData` instance, then
+    the ``error``, ``mask``, ``unit``, and ``wcs`` keyword inputs are
+    ignored.  Instead, these values should be defined as attributes in
+    the `~astropy.nddata.NDData` object.  In the case of ``error``, it
+    must be defined in the ``uncertainty`` attribute with a
+    `~astropy.nddata.StdDevUncertainty` instance.
     """
 
     if isinstance(data, NDData):
+        nddata_attr = {'error': error, 'mask': mask, 'unit': unit, 'wcs': wcs}
+        for key, value in nddata_attr.items():
+            if value is not None:
+                warnings.warn('The {0!r} keyword is be ignored.  Its value '
+                              'is obtained from the input NDData object.'
+                              .format(key), AstropyUserWarning)
+
         mask = data.mask
         wcs = data.wcs
+        if isinstance(data.uncertainty, StdDevUncertainty):
+            if data.uncertainty.unit is not None:
+                error = data.uncertainty.quantity
+            else:
+                error = data.uncertainty.array
         if data.unit is not None:
             data = u.Quantity(data.data, unit=data.unit)
         else:
             data = data.data
+
+        return aperture_photometry(data, apertures, error=error, mask=mask,
+                                   method=method, subpixels=subpixels,
+                                   wcs=wcs)
 
     # handle FITS HDU input data
     data, bunit, fits_wcs = _handle_hdu_input(data)
