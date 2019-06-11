@@ -631,19 +631,14 @@ class Background2D:
         """
 
         from scipy.ndimage import generic_filter
-        try:
-            nanmedian_func = np.nanmedian    # numpy >= 1.9
-        except AttributeError:    # pragma: no cover
-            from scipy.stats import nanmedian
-            nanmedian_func = nanmedian
 
         if self.filter_threshold is None:
             # filter the entire arrays
             self.background_mesh = generic_filter(
-                self.background_mesh, nanmedian_func, size=self.filter_size,
+                self.background_mesh, np.nanmedian, size=self.filter_size,
                 mode='constant', cval=np.nan)
             self.background_rms_mesh = generic_filter(
-                self.background_rms_mesh, nanmedian_func,
+                self.background_rms_mesh, np.nanmedian,
                 size=self.filter_size, mode='constant', cval=np.nan)
         else:
             # selectively filter
