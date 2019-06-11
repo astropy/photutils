@@ -350,21 +350,22 @@ properties that are calculated for each source:
     >>> tbl['cxx'].info.format = '.2f'
     >>> tbl['cxy'].info.format = '.2f'
     >>> tbl['cyy'].info.format = '.2f'
+    >>> tbl['gini'].info.format = '.2f'
     >>> print(tbl)
-     id xcentroid ycentroid sky_centroid ...   cxx      cxy      cyy
+     id xcentroid ycentroid sky_centroid ...   cxx      cxy      cyy    gini
            pix       pix                 ... 1 / pix2 1 / pix2 1 / pix2
-    --- --------- --------- ------------ ... -------- -------- --------
-      1    235.22      1.25         None ...     0.17    -0.20     0.99
-      2    493.82      5.77         None ...     0.16    -0.32     0.61
-      3    207.30     10.02         None ...     0.37     0.49     0.30
-      4    364.75     11.13         None ...     0.39    -0.33     0.18
-      5    258.37     11.77         None ...     0.37     0.15     0.16
-    ...       ...       ...          ... ...      ...      ...      ...
-     92    427.01    147.45         None ...     0.26    -0.07     0.12
-     93    426.60    211.14         None ...     0.67     0.24     0.35
-     94    419.79    216.68         None ...     0.17    -0.19     0.27
-     95    433.91    280.73         None ...     0.52    -0.83     0.49
-     96    434.11    288.90         None ...     0.18    -0.19     0.30
+    --- --------- --------- ------------ ... -------- -------- -------- ----
+      1    235.22      1.25         None ...     0.17    -0.20     0.99 0.18
+      2    493.82      5.77         None ...     0.16    -0.32     0.61 0.13
+      3    207.30     10.02         None ...     0.37     0.49     0.30 0.16
+      4    364.75     11.13         None ...     0.39    -0.33     0.18 0.13
+      5    258.37     11.77         None ...     0.37     0.15     0.16 0.13
+    ...       ...       ...          ... ...      ...      ...      ...  ...
+     92    427.01    147.45         None ...     0.26    -0.07     0.12 0.12
+     93    426.60    211.14         None ...     0.67     0.24     0.35 0.41
+     94    419.79    216.68         None ...     0.17    -0.19     0.27 0.14
+     95    433.91    280.73         None ...     0.52    -0.83     0.49 0.23
+     96    434.11    288.90         None ...     0.18    -0.19     0.30 0.24
     Length = 96 rows
 
 Let's use the measured morphological properties to define approximate
@@ -472,16 +473,17 @@ label numbers in the segmentation image:
     >>> tbl2['cxx'].info.format = '.2f'
     >>> tbl2['cxy'].info.format = '.2f'
     >>> tbl2['cyy'].info.format = '.2f'
+    >>> tbl2['gini'].info.format = '.2f'
     >>> print(tbl2)
-     id xcentroid ycentroid sky_centroid ...   cxx      cxy      cyy
+     id xcentroid ycentroid sky_centroid ...   cxx      cxy      cyy    gini
            pix       pix                 ... 1 / pix2 1 / pix2 1 / pix2
-    --- --------- --------- ------------ ... -------- -------- --------
-      1    235.22      1.25         None ...     0.17    -0.20     0.99
-      5    258.37     11.77         None ...     0.37     0.15     0.16
-     20    347.00     66.94         None ...     0.15    -0.01     0.21
-     50    145.06    168.55         None ...     0.66     0.05     0.71
-     75    301.86    239.25         None ...     0.47    -0.05     0.28
-     80     43.20    250.01         None ...     0.18    -0.08     0.34
+    --- --------- --------- ------------ ... -------- -------- -------- ----
+      1    235.22      1.25         None ...     0.17    -0.20     0.99 0.18
+      5    258.37     11.77         None ...     0.37     0.15     0.16 0.13
+     20    347.00     66.94         None ...     0.15    -0.01     0.21 0.11
+     50    145.06    168.55         None ...     0.66     0.05     0.71 0.45
+     75    301.86    239.25         None ...     0.47    -0.05     0.28 0.08
+     80     43.20    250.01         None ...     0.18    -0.08     0.34 0.11
 
 By default, the :meth:`~photutils.SourceCatalog.to_table` method will
 include most scalar-valued properties from

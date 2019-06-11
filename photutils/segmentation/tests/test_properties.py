@@ -206,6 +206,7 @@ class TestSourceProperties:
         assert np.isnan(obj.maxval_ypos.value)
         assert np.all(np.isnan(obj.minval_cutout_pos.value))
         assert np.all(np.isnan(obj.maxval_cutout_pos.value))
+        assert np.isnan(obj.gini)
 
     def test_repr_str(self):
         props = SourceProperties(IMAGE, SEGM, label=1)
