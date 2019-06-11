@@ -61,6 +61,10 @@ New Features
 
   - Added ``NoDetectionsWarning`` class. [#836]
 
+- ``photutils.psf``
+
+  - Added new centroiding function ``centroid_epsf``. [#816]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -209,6 +213,8 @@ API changes
 
   - Removed ``pixel_scale`` keyword from ``EPSFStar``, ``EPSFBuilder``,
     and ``EPSFModel``. [#815]
+
+  - Added ``oversampling`` keyword to ``centroid_com``. [#816]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
