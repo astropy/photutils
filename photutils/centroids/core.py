@@ -496,7 +496,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
 def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
     """
     Calculates centering shift of data using pixel symmetry, as described by Anderson
-    and King (2000; PASP 112, 1360).
+    and King (2000; PASP 112, 1360) in their ePSF-fitting algorithm.
 
     Calculate the shift of a 2-dimensional symmetric image based on the asymmetry between
     f(x, N) and f(x, -N), along with the differential df/dy(x, shift_val) and
