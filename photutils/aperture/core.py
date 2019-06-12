@@ -874,6 +874,7 @@ def _prepare_photometry_data(data, error, mask):
     return data, variance
 
 
+@deprecated_renamed_argument('unit', None, '0.7')
 def aperture_photometry(data, apertures, error=None, mask=None,
                         method='exact', subpixels=5, unit=None, wcs=None):
     """
@@ -945,6 +946,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         ** 2`` subpixels.
 
     unit : `~astropy.units.UnitBase` object or str, optional
+        Deprecated in v0.7.
         An object that represents the unit associated with the input
         ``data`` and ``error`` arrays.  Must be a
         `~astropy.units.UnitBase` object or a string parseable by the
