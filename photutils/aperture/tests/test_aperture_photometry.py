@@ -12,7 +12,7 @@ from numpy.testing import (assert_allclose, assert_array_equal,
 
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
-from astropy.nddata import NDData
+from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import Table
 import astropy.units as u
 from astropy.utils import minversion
@@ -263,7 +263,7 @@ class BaseTestDifferentData:
     def test_basic_circular_aperture_photometry(self):
         aperture = CircularAperture(self.position, self.radius)
         table = aperture_photometry(self.data, aperture,
-                                    method='exact', unit='adu')
+                                    method='exact')
 
         assert_allclose(table['aperture_sum'].value, self.true_flux)
         assert table['aperture_sum'].unit, self.fluxunit
@@ -277,7 +277,7 @@ class BaseTestDifferentData:
 class TestInputPrimaryHDU(BaseTestDifferentData):
 
     def setup_class(self):
-        data = np.ones((40, 40), dtype=np.float)
+        data = np.ones((40, 40), dtype=np.float) * u.adu
         self.data = fits.ImageHDU(data=data)
         self.data.header['BUNIT'] = 'adu'
         self.radius = 3
@@ -292,24 +292,13 @@ class TestInputHDUList(BaseTestDifferentData):
         data0 = np.ones((40, 40), dtype=np.float)
         data1 = np.empty((40, 40), dtype=np.float)
         data1.fill(2)
-        self.data = fits.HDUList([fits.ImageHDU(data=data0),
-                                  fits.ImageHDU(data=data1)])
+        hdu1 = fits.ImageHDU(data=data0)
+        hdu1.header['BUNIT'] = 'adu'
+        self.data = fits.HDUList([hdu1, fits.ImageHDU(data=data1)])
         self.radius = 3
         self.position = (20, 20)
         # It should stop at the first extension
         self.true_flux = np.pi * self.radius * self.radius
-
-
-class TestInputHDUDifferentBUNIT(BaseTestDifferentData):
-
-    def setup_class(self):
-        data = np.ones((40, 40), dtype=np.float)
-        self.data = fits.ImageHDU(data=data)
-        self.data.header['BUNIT'] = 'Jy'
-        self.radius = 3
-        self.position = (20, 20)
-        self.true_flux = np.pi * self.radius * self.radius
-        self.fluxunit = u.adu
 
 
 class TestInputNDData(BaseTestDifferentData):
@@ -465,20 +454,18 @@ def test_wcs_based_photometry():
 
 def test_basic_circular_aperture_photometry_unit():
     data1 = np.ones((40, 40), dtype=np.float)
-    data2 = u.Quantity(data1, unit=u.adu)
+    data2 = u.Quantity(data1*u.adu)
 
     radius = 3
     position = (20, 20)
     true_flux = np.pi * radius * radius
     unit = u.adu
 
-    table1 = aperture_photometry(data1, CircularAperture(position, radius),
-                                 unit=unit)
+    table1 = aperture_photometry(data1, CircularAperture(position, radius))
     table2 = aperture_photometry(data2, CircularAperture(position, radius))
 
-    assert_allclose(table1['aperture_sum'].value, true_flux)
+    assert_allclose(table1['aperture_sum'], true_flux)
     assert_allclose(table2['aperture_sum'].value, true_flux)
-    assert table1['aperture_sum'].unit == unit
     assert table2['aperture_sum'].unit == data2.unit == unit
 
 
@@ -912,3 +899,27 @@ def test_scalar_skycoord():
     aper = SkyCircularAperture(skycoord, r=0.1*u.arcsec)
     tbl = aperture_photometry(data, aper, wcs=wcs)
     assert isinstance(tbl['sky_center'], SkyCoord)
+
+
+def test_nddata_input():
+    data = np.arange(400).reshape((20, 20))
+    error = np.sqrt(data)
+    mask = np.zeros((20, 20), dtype=bool)
+    mask[8:13, 8:13] = True
+    unit = 'adu'
+    wcs = make_wcs(data.shape)
+    skycoord = pixel_to_skycoord(10, 10, wcs)
+    aper = SkyCircularAperture(skycoord, r=0.7*u.arcsec)
+
+    tbl1 = aperture_photometry(data*u.adu, aper, error=error*u.adu, mask=mask,
+                               wcs=wcs)
+
+    uncertainty = StdDevUncertainty(error)
+    nddata = NDData(data, uncertainty=uncertainty, mask=mask, wcs=wcs,
+                    unit=unit)
+    tbl2 = aperture_photometry(nddata, aper)
+
+    for column in tbl1.columns:
+        if column == 'sky_center':  # cannot test SkyCoord equality
+            continue
+        assert_allclose(tbl1[column], tbl2[column])

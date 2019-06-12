@@ -18,6 +18,9 @@ New Features
     aperture photometry, especially when using ``errors`` and
     ``Quantity`` inputs with many aperture positions. [#861]
 
+  - ``aperture_phometry`` now supports ``NDData`` with
+    ``StdDevUncertainty`` to input errors. [#866]
+
 - ``photutils.isophote``
 
   - Significantly improved the performance (~5 times faster) of
@@ -135,8 +138,8 @@ API changes
   - The Aperture plot keyword ``ax`` was deprecated and renamed to
     ``axes``. [#854]
 
-  - Deprecated the ``units`` keyword for the
-    ``PixelAperture.do_photometry`` method. [#861]
+  - Deprecated the ``units`` keyword in ``aperture_photometry``
+    and the ``PixelAperture.do_photometry`` method. [#866, #861]
 
 - ``photutils.background``
 
