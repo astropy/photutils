@@ -702,7 +702,7 @@ class SkyAperture(Aperture):
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
-def _handle_hdu_input(data):
+def _handle_hdu_input(data):  # pragma: no cover
     """
     Convert FITS HDU ``data`` to a `~numpy.ndarray` (and optional unit).
 
