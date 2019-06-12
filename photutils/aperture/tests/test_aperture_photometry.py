@@ -12,7 +12,7 @@ from numpy.testing import (assert_allclose, assert_array_equal,
 
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
-from astropy.nddata import NDData
+from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import Table
 import astropy.units as u
 from astropy.utils import minversion
@@ -912,3 +912,27 @@ def test_scalar_skycoord():
     aper = SkyCircularAperture(skycoord, r=0.1*u.arcsec)
     tbl = aperture_photometry(data, aper, wcs=wcs)
     assert isinstance(tbl['sky_center'], SkyCoord)
+
+
+def test_nddata_input():
+    data = np.arange(400).reshape((20, 20))
+    error = np.sqrt(data)
+    mask = np.zeros((20, 20), dtype=bool)
+    mask[8:13, 8:13] = True
+    unit = 'adu'
+    wcs = make_wcs(data.shape)
+    skycoord = pixel_to_skycoord(10, 10, wcs)
+    aper = SkyCircularAperture(skycoord, r=0.7*u.arcsec)
+
+    tbl1 = aperture_photometry(data*u.adu, aper, error=error*u.adu, mask=mask,
+                               wcs=wcs)
+
+    uncertainty = StdDevUncertainty(error)
+    nddata = NDData(data, uncertainty=uncertainty, mask=mask, wcs=wcs,
+                    unit=unit)
+    tbl2 = aperture_photometry(nddata, aper)
+
+    for column in tbl1.columns:
+        if column == 'sky_center':  # cannot test SkyCoord equality
+            continue
+        assert_allclose(tbl1[column], tbl2[column])
