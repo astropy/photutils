@@ -13,7 +13,8 @@ from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import deprecated
 from astropy.utils.decorators import deprecated_renamed_argument
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 from astropy.wcs import WCS
 from astropy.wcs.utils import (skycoord_to_pixel, pixel_to_skycoord,
                                wcs_to_celestial_frame)
@@ -723,6 +724,13 @@ def _handle_hdu_input(data):
 
     bunit = None
 
+    if isinstance(data, (fits.PrimaryHDU, fits.ImageHDU, fits.HDUList)):
+        warnings.warn('"astropy.io.fits.PrimaryHDU", '
+                      '"astropy.io.fits.ImageHDU", and '
+                      '"astropy.io.fits.HDUList" inputs are deprecated as of '
+                      'v0.7 and will not be allowed in future versions.',
+                      AstropyDeprecationWarning)
+
     if isinstance(data, fits.HDUList):
         for i, hdu in enumerate(data):
             if hdu.data is not None:
@@ -890,11 +898,12 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         `~astropy.nddata.NDData` inputs) or the ``unit`` keyword.  If
         ``data`` is an `~astropy.io.fits.ImageHDU` or
         `~astropy.io.fits.HDUList`, the unit is determined from the
-        ``'BUNIT'`` header keyword.  If ``data`` is a
-        `~astropy.units.Quantity` array, then ``error`` (if input) must
-        also be a `~astropy.units.Quantity` array with the same units.
-        See the Notes section below for more information about
-        `~astropy.nddata.NDData` input.
+        ``'BUNIT'`` header keyword.  `~astropy.io.fits.ImageHDU` or
+        `~astropy.io.fits.HDUList` inputs were deprecated in v0.7.  If
+        ``data`` is a `~astropy.units.Quantity` array, then ``error``
+        (if input) must also be a `~astropy.units.Quantity` array with
+        the same units.  See the Notes section below for more
+        information about `~astropy.nddata.NDData` input.
 
     apertures : `~photutils.Aperture` or list of `~photutils.Aperture`
         The aperture(s) to use for the photometry.  If ``apertures`` is
