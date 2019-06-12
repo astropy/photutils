@@ -1014,11 +1014,13 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
         mask = data.mask
         wcs = data.wcs
+
         if isinstance(data.uncertainty, StdDevUncertainty):
-            if data.uncertainty.unit is not None:
-                error = data.uncertainty.quantity
-            else:
+            if data.uncertainty.unit is None:
                 error = data.uncertainty.array
+            else:
+                error = data.uncertainty.array * data.uncertainty.unit
+
         if data.unit is not None:
             data = u.Quantity(data.data, unit=data.unit)
         else:
