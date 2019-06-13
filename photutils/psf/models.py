@@ -72,7 +72,7 @@ class FittableImageModel(Fittable2DModel):
         computed so that
 
         .. math::
-            N \\cdot C \\cdot \\Sigma_{i,j}D_{i,j} = 1,
+            N \\cdot C \\cdot \\sum\\limits_{i,j} D_{i,j} = 1,
 
         where *N* is the normalization constant, *C* is correction factor
         given by the parameter ``normalization_correction``, and
