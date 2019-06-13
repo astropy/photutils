@@ -141,6 +141,9 @@ API changes
   - Deprecated the ``units`` keyword in ``aperture_photometry``
     and the ``PixelAperture.do_photometry`` method. [#866, #861]
 
+  - Deprecated ``PrimaryHDU``, ``ImageHDU``, and ``HDUList`` inputs
+    to ``aperture_photometry``. [#867]
+
 - ``photutils.background``
 
   - The ``Background2D`` ``plot_meshes`` keyword ``ax`` was deprecated

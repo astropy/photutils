@@ -19,7 +19,7 @@ coordinates are:
     * `~photutils.RectangularAperture`
     * `~photutils.RectangularAnnulus`
 
-Each of these classes has a corresponding variant defined in celestial
+Each of these classes has a corresponding variant defined in sky
 coordinates:
 
     * `~photutils.SkyCircularAperture`
@@ -59,11 +59,10 @@ number of positions.  The above example defines two circular apertures
 located at pixel coordinates ``(30, 30)`` and ``(40, 40)`` with a
 radius of 3 pixels.
 
-Creating an aperture object in celestial coordinates is similar.  One
-first uses the :class:`~astropy.coordinates.SkyCoord` class to define
-celestial coordinates and then the
-:class:`~photutils.SkyCircularAperture` class to define the aperture
-object::
+Creating an aperture object in sky coordinates is similar.  One first
+uses the :class:`~astropy.coordinates.SkyCoord` class to define sky
+coordinates and then the :class:`~photutils.SkyCircularAperture` class
+to define the aperture object::
 
     >>> from astropy import units as u
     >>> from astropy.coordinates import SkyCoord
@@ -73,14 +72,13 @@ object::
     >>> aperture = SkyCircularAperture(positions, r=4. * u.arcsec)
 
 .. note::
-    Sky apertures are not defined completely in celestial coordinates.
-    They simply use celestial coordinates to define the central
-    position, and the remaining parameters are converted to pixels
-    using the pixel scale of the image at the central position.
-    Projection distortions are not taken into account.  If the
-    apertures were defined completely in celestial coordinates, their
-    shapes would not be preserved when converting to pixel
-    coordinates.
+    Sky apertures are not defined completely in sky coordinates.  They
+    simply use sky coordinates to define the central position, and the
+    remaining parameters are converted to pixels using the pixel scale
+    of the image at the central position.  Projection distortions are
+    not taken into account.  If the apertures were defined completely
+    in sky coordinates, their shapes would not be preserved when
+    converting to pixel coordinates.
 
 
 Converting Between Pixel and Sky Apertures
@@ -138,7 +136,7 @@ named ``'id'``, ``'xcenter'``, ``'ycenter'``, and ``'aperture_sum'``.
 Since all the data values are 1.0, the aperture sums are equal to the
 area of a circle with a radius of 3::
 
-    >>> print(np.pi * 3. ** 2)    # doctest: +FLOAT_CMP
+    >>> print(np.pi * 3. ** 2)  # doctest: +FLOAT_CMP
     28.2743338823
 
 
@@ -540,9 +538,9 @@ If our data are in units of electrons/s, we would use the exposure
 time as the effective gain::
 
     >>> from photutils.utils import calc_total_error
-    >>> effective_gain = 500   # seconds
-    >>> error = calc_total_error(data, bkg_error, effective_gain)    # doctest: +SKIP
-    >>> phot_table = aperture_photometry(data - bkg, aperture, error=error)    # doctest: +SKIP
+    >>> effective_gain = 500  # seconds
+    >>> error = calc_total_error(data, bkg_error, effective_gain)  # doctest: +SKIP
+    >>> phot_table = aperture_photometry(data - bkg, aperture, error=error)  # doctest: +SKIP
 
 
 Pixel Masking
@@ -554,7 +552,7 @@ photometry by providing an image mask via the ``mask`` keyword::
     >>> data = np.ones((5, 5))
     >>> aperture = CircularAperture((2, 2), 2.)
     >>> mask = np.zeros_like(data, dtype=bool)
-    >>> data[2, 2] = 100.   # bad pixel
+    >>> data[2, 2] = 100.  # bad pixel
     >>> mask[2, 2] = True
     >>> t1 = aperture_photometry(data, aperture, mask=mask)
     >>> t1['aperture_sum'].info.format = '%.8g'  # for consistent table output
@@ -577,8 +575,8 @@ Aperture Photometry Using Sky Coordinates
 -----------------------------------------
 
 As mentioned in :ref:`creating-aperture-objects`, performing
-photometry using apertures defined in celestial coordinates simply
-requires defining a "sky" aperture at positions defined by a
+photometry using apertures defined in sky coordinates simply requires
+defining a "sky" aperture at positions defined by a
 :class:`~astropy.coordinates.SkyCoord` object.  Here we show an
 example of photometry on real data using a
 `~photutils.SkyCircularAperture`.
@@ -586,27 +584,31 @@ example of photometry on real data using a
 We start by loading a Spitzer 4.5 micron image of a region of the
 Galactic plane::
 
+    >>> import astropy.units as u
+    >>> from astropy.wcs import WCS
     >>> from photutils import datasets
-    >>> hdu = datasets.load_spitzer_image()   # doctest: +REMOTE_DATA
-    >>> catalog = datasets.load_spitzer_catalog()   # doctest: +REMOTE_DATA
+    >>> hdu = datasets.load_spitzer_image()  # doctest: +REMOTE_DATA
+    >>> data = u.Quantity(hdu.data, unit=hdu.header['BUNIT'])  # doctest: +REMOTE_DATA
+    >>> wcs = WCS(hdu.header)  # doctest: +REMOTE_DATA
+    >>> catalog = datasets.load_spitzer_catalog()  # doctest: +REMOTE_DATA
 
 The catalog contains (among other things) the Galactic coordinates of
 the sources in the image as well as the PSF-fitted fluxes from the
 official Spitzer data reduction.  We define the apertures positions
 based on the existing catalog positions::
 
-    >>> positions = SkyCoord(catalog['l'], catalog['b'], frame='galactic')   # doctest: +REMOTE_DATA
-    >>> aperture = SkyCircularAperture(positions, r=4.8 * u.arcsec)   # doctest: +REMOTE_DATA
+    >>> positions = SkyCoord(catalog['l'], catalog['b'], frame='galactic')  # doctest: +REMOTE_DATA
+    >>> aperture = SkyCircularAperture(positions, r=4.8 * u.arcsec)  # doctest: +REMOTE_DATA
 
-Now perform the photometry in these apertures using the ``hdu``.  The
-``hdu`` object is a FITS HDU that contains the data and a header
-describing the WCS transformation of the image.  The WCS includes the
-coordinate frame of the image and the projection from celestial to
-pixel coordinates.  The `~photutils.aperture_photometry` function uses
-the WCS information to automatically convert the apertures defined in
-celestial coordinates into pixel coordinates::
+Now perform the photometry in these apertures on the ``data``.  The
+``wcs`` object contains the WCS transformation of the image obtained
+from the FITS header.  It includes the coordinate frame of the image
+and the projection from sky to pixel coordinates.  The
+`~photutils.aperture_photometry` function uses the WCS information to
+automatically convert the apertures defined in sky coordinates into
+pixel coordinates::
 
-    >>> phot_table = aperture_photometry(hdu, aperture)    # doctest: +REMOTE_DATA
+    >>> phot_table = aperture_photometry(data, aperture, wcs=wcs)  # doctest: +REMOTE_DATA
 
 The Spitzer catalog also contains the official fluxes for the sources,
 so we can compare to our fluxes.  Because the Spitzer catalog fluxes
@@ -616,9 +618,9 @@ pixel scale of 1.2 arcsec/pixel.
 
     >>> import astropy.units as u
     >>> factor = (1.2 * u.arcsec) ** 2 / u.pixel
-    >>> fluxes_catalog = catalog['f4_5']   # doctest: +REMOTE_DATA
+    >>> fluxes_catalog = catalog['f4_5']  # doctest: +REMOTE_DATA
     >>> converted_aperture_sum = (phot_table['aperture_sum'] *
-    ...                           factor).to(u.mJy / u.pixel)   # doctest: +REMOTE_DATA
+    ...                           factor).to(u.mJy / u.pixel)  # doctest: +REMOTE_DATA
 
 Finally, we can plot the comparison of the photometry:
 
@@ -633,17 +635,20 @@ Finally, we can plot the comparison of the photometry:
 
   from astropy import units as u
   from astropy.coordinates import SkyCoord
+  from astropy.wcs import WCS
   from photutils import aperture_photometry, SkyCircularAperture
 
   # Load dataset
   from photutils import datasets
   hdu = datasets.load_spitzer_image()
+  data = u.Quantity(hdu.data, unit=hdu.header['BUNIT'])
+  wcs = WCS(hdu.header)
   catalog = datasets.load_spitzer_catalog()
 
   # Set up apertures
   positions = SkyCoord(catalog['l'], catalog['b'], frame='galactic')
   aperture = SkyCircularAperture(positions, r=4.8 * u.arcsec)
-  phot_table = aperture_photometry(hdu, aperture)
+  phot_table = aperture_photometry(data, aperture, wcs=wcs)
 
   # Convert to correct units
   factor = (1.2 * u.arcsec) ** 2 / u.pixel
