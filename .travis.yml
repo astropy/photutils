@@ -29,7 +29,7 @@ env:
         - PYTHON_VERSION=3.6
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
-        - CONDA_CHANNELS='astropy-ci-extras astropy'
+        # - CONDA_CHANNELS='astropy-ci-extras astropy'
         - CONDA_DEPENDENCIES='Cython scipy scikit-learn matplotlib'
         - PIP_DEPENDENCIES='scikit-image>0.14.1'
         - CONDA_REQUIRED_DEPENDENCIES='Cython'
