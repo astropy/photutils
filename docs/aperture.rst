@@ -84,7 +84,7 @@ to define the aperture object::
 Converting Between Pixel and Sky Apertures
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The pixel apertures can be converted to sky apertures, and visa versa.
+The pixel apertures can be converted to sky apertures, and vice versa.
 To accomplish this, use the :meth:`~photutils.PixelAperture.to_sky`
 method for pixel apertures, e.g.:
 
