@@ -38,15 +38,15 @@ quality (e.g. no cosmic rays, detector artifacts, etc.).
 Let's start by loading a simulated HST/WFC3 image in the F160W band::
 
     >>> from photutils import datasets
-    >>> hdu = datasets.load_simulated_hst_star_image()
-    >>> data = hdu.data
+    >>> hdu = datasets.load_simulated_hst_star_image()  # doctest: +REMOTE_DATA
+    >>> data = hdu.data  # doctest: +REMOTE_DATA
 
 The simulated image does not contain any background or noise, so let's add
 those to the image::
 
     >>> from photutils.datasets import make_noise_image
     >>> data +=  make_noise_image(data.shape, type='gaussian', mean=10.,
-    ...                           stddev=5., random_state=12345)
+    ...                           stddev=5., random_state=12345)  # doctest: +REMOTE_DATA
 
 Let's show the image:
 
@@ -76,9 +76,9 @@ stars:
 .. doctest-requires:: scipy
 
     >>> from photutils import find_peaks
-    >>> peaks_tbl = find_peaks(data, threshold=500.)
-    >>> peaks_tbl['peak_value'].info.format = '%.8g'  # for consistent table output
-    >>> print(peaks_tbl)
+    >>> peaks_tbl = find_peaks(data, threshold=500.)  # doctest: +REMOTE_DATA
+    >>> peaks_tbl['peak_value'].info.format = '%.8g'  # for consistent table output  # doctest: +REMOTE_DATA
+    >>> print(peaks_tbl)  # doctest: +REMOTE_DATA
     x_peak y_peak peak_value
     ------ ------ ----------
        849      2  1077.6815
@@ -109,8 +109,8 @@ table:
 
     >>> from astropy.table import Table
     >>> stars_tbl = Table()
-    >>> stars_tbl['x'] = peaks_tbl['x_peak']
-    >>> stars_tbl['y'] = peaks_tbl['y_peak']
+    >>> stars_tbl['x'] = peaks_tbl['x_peak']  # doctest: +REMOTE_DATA
+    >>> stars_tbl['y'] = peaks_tbl['y_peak']  # doctest: +REMOTE_DATA
 
 The star cutouts from which we build the ePSF must have the background
 subtracted.  Here we'll use the sigma-clipped median value as the
@@ -121,8 +121,8 @@ image, one should use more sophisticated methods (e.g.
 Let's subtract the background from the image::
 
     >>> from astropy.stats import sigma_clipped_stats
-    >>> mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.)
-    >>> data -= median_val
+    >>> mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.)  # doctest: +REMOTE_DATA
+    >>> data -= median_val  # doctest: +REMOTE_DATA
 
 The :func:`~photutils.psf.extract_stars` function requires the input
 data as an `~astropy.nddata.NDData` object.  An
@@ -130,7 +130,7 @@ data as an `~astropy.nddata.NDData` object.  An
 array::
 
     >>> from astropy.nddata import NDData
-    >>> nddata = NDData(data=data)
+    >>> nddata = NDData(data=data)  # doctest: +REMOTE_DATA
 
 We are now ready to create our star cutouts using the
 :func:`~photutils.psf.extract_stars` function.  For this simple
@@ -150,7 +150,7 @@ Let's extract 25 x 25 pixel cutouts of our selected stars:
 .. doctest-requires:: scipy
 
     >>> from photutils.psf import extract_stars
-    >>> stars = extract_stars(nddata, stars_tbl, size=25)
+    >>> stars = extract_stars(nddata, stars_tbl, size=25)  # doctest: +REMOTE_DATA
 
 The function returns a `~photutils.psf.EPSFStars` object containing
 the cutouts of our selected stars.  The function extracted 403 stars,
@@ -227,8 +227,8 @@ stars to the instance:
 
     >>> from photutils import EPSFBuilder
     >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
-    ...                            progress_bar=False)
-    >>> epsf, fitted_stars = epsf_builder(stars)
+    ...                            progress_bar=False)  # doctest: +REMOTE_DATA
+    >>> epsf, fitted_stars = epsf_builder(stars)  # doctest: +REMOTE_DATA
 
 The returned values are the ePSF, as an
 :class:`~photutils.psf.EPSFModel` object, and our input stars fitted
