@@ -45,8 +45,8 @@ The simulated image does not contain any background or noise, so let's add
 those to the image::
 
     >>> from photutils.datasets import make_noise_image
-    >>> data +=  make_noise_image(data.shape, type='gaussian', mean=10.,
-    ...                           stddev=5., random_state=12345)  # doctest: +REMOTE_DATA
+    >>> data +=  make_noise_image(data.shape, distribution='gaussian',
+    ...                           mean=10., stddev=5., random_state=12345)  # doctest: +REMOTE_DATA
 
 Let's show the image:
 
@@ -60,7 +60,7 @@ Let's show the image:
 
     hdu = datasets.load_simulated_hst_star_image()
     data = hdu.data
-    data +=  make_noise_image(data.shape, type='gaussian', mean=10.,
+    data +=  make_noise_image(data.shape, distribution='gaussian', mean=10.,
                               stddev=5., random_state=12345)
     norm = simple_norm(data, 'sqrt', percent=99.)
     plt.imshow(data, norm=norm, origin='lower', cmap='viridis')
@@ -177,7 +177,7 @@ from which we'll build our ePSF.  Let's show the first 25 of them:
     hdu = datasets.load_simulated_hst_star_image()
     data = hdu.data
     from photutils.datasets import make_noise_image
-    data +=  make_noise_image(data.shape, type='gaussian', mean=10.,
+    data +=  make_noise_image(data.shape, distribution='gaussian', mean=10.,
                               stddev=5., random_state=12345)
 
     from photutils import find_peaks
@@ -253,7 +253,7 @@ Finally, let's show the constructed ePSF:
     hdu = datasets.load_simulated_hst_star_image()
     data = hdu.data
     from photutils.datasets import make_noise_image
-    data +=  make_noise_image(data.shape, type='gaussian', mean=10.,
+    data +=  make_noise_image(data.shape, distribution='gaussian', mean=10.,
                               stddev=5., random_state=12345)
 
     from photutils import find_peaks

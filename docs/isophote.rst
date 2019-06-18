@@ -21,7 +21,7 @@ For this example, let's create a simple simulated galaxy image::
     >>> g = Gaussian2D(100., 75, 75, 20, 12, theta=40.*np.pi/180.)
     >>> ny = nx = 150
     >>> y, x = np.mgrid[0:ny, 0:nx]
-    >>> noise = make_noise_image((ny, nx), type='gaussian', mean=0.,
+    >>> noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.,
     ...                          stddev=2., random_state=12345)
     >>> data = g(x, y) + noise
 
@@ -34,7 +34,7 @@ For this example, let's create a simple simulated galaxy image::
     g = Gaussian2D(100., 75, 75, 20, 12, theta=40.*np.pi/180.)
     ny = nx = 150
     y, x = np.mgrid[0:ny, 0:nx]
-    noise = make_noise_image((ny, nx), type='gaussian', mean=0.,
+    noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.,
                              stddev=2., random_state=12345)
     data = g(x, y) + noise
     plt.imshow(data, origin='lower')
@@ -72,7 +72,7 @@ Let's show this initial ellipse guess:
     g = Gaussian2D(100., 75, 75, 20, 12, theta=40.*np.pi/180.)
     ny = nx = 150
     y, x = np.mgrid[0:ny, 0:nx]
-    noise = make_noise_image((ny, nx), type='gaussian', mean=0.,
+    noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.,
                              stddev=2., random_state=12345)
     data = g(x, y) + noise
 
@@ -151,7 +151,7 @@ position as a function of the semimajor axis length:
     g = Gaussian2D(100., 75, 75, 20, 12, theta=40.*np.pi/180.)
     ny = nx = 150
     y, x = np.mgrid[0:ny, 0:nx]
-    noise = make_noise_image((ny, nx), type='gaussian', mean=0.,
+    noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.,
                              stddev=2., random_state=12345)
     data = g(x, y) + noise
     geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
@@ -211,7 +211,7 @@ isophotes, the elliptical model image, and the residual image:
     g = Gaussian2D(100., 75, 75, 20, 12, theta=40.*np.pi/180.)
     ny = nx = 150
     y, x = np.mgrid[0:ny, 0:nx]
-    noise = make_noise_image((ny, nx), type='gaussian', mean=0.,
+    noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.,
                              stddev=2., random_state=12345)
     data = g(x, y) + noise
     geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,

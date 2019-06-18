@@ -12,6 +12,7 @@ from astropy.io import fits
 from astropy.modeling import models
 from astropy.table import Table
 import astropy.units as u
+from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.version import version as astropy_version
 from astropy.wcs import WCS
 import numpy as np
@@ -84,7 +85,8 @@ def apply_poisson_noise(data, random_state=None):
     return prng.poisson(data)
 
 
-def make_noise_image(shape, type='gaussian', mean=None, stddev=None,
+@deprecated_renamed_argument('type', 'distribution', 0.7)
+def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
                      random_state=None):
     """
     Make a noise image containing Gaussian or Poisson noise.
@@ -94,7 +96,7 @@ def make_noise_image(shape, type='gaussian', mean=None, stddev=None,
     shape : 2-tuple of int
         The shape of the output 2D image.
 
-    type : {'gaussian', 'poisson'}
+    distribution : {'gaussian', 'poisson'}
         The distribution used to generate the random noise:
 
             * ``'gaussian'``: Gaussian distributed noise.
@@ -132,8 +134,9 @@ def make_noise_image(shape, type='gaussian', mean=None, stddev=None,
         # make Gaussian and Poisson noise images
         from photutils.datasets import make_noise_image
         shape = (100, 100)
-        image1 = make_noise_image(shape, type='gaussian', mean=0., stddev=5.)
-        image2 = make_noise_image(shape, type='poisson', mean=5.)
+        image1 = make_noise_image(shape, distribution='gaussian', mean=0.,
+                                  stddev=5.)
+        image2 = make_noise_image(shape, distribution='poisson', mean=5.)
 
         # plot the images
         import matplotlib.pyplot as plt
@@ -149,15 +152,15 @@ def make_noise_image(shape, type='gaussian', mean=None, stddev=None,
 
     prng = check_random_state(random_state)
 
-    if type == 'gaussian':
+    if distribution == 'gaussian':
         if stddev is None:
             raise ValueError('"stddev" must be input for Gaussian noise')
         image = prng.normal(loc=mean, scale=stddev, size=shape)
-    elif type == 'poisson':
+    elif distribution == 'poisson':
         image = prng.poisson(lam=mean, size=shape)
     else:
-        raise ValueError('Invalid type: {0}. Use either "gaussian" or '
-                         '"poisson".'.format(type))
+        raise ValueError('Invalid distribution: {0}. Use either "gaussian" '
+                         'or "poisson".'.format(distribution))
 
     return image
 
@@ -523,9 +526,10 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
         from photutils.datasets import make_noise_image
         shape = (100, 200)
         image1 = make_gaussian_sources_image(shape, table)
-        image2 = image1 + make_noise_image(shape, type='gaussian', mean=5.,
-                                           stddev=5.)
-        image3 = image1 + make_noise_image(shape, type='poisson', mean=5.)
+        image2 = image1 + make_noise_image(shape, distribution='gaussian',
+                                           mean=5., stddev=5.)
+        image3 = image1 + make_noise_image(shape, distribution='poisson',
+                                           mean=5.)
 
         # plot the images
         import matplotlib.pyplot as plt
@@ -607,9 +611,10 @@ def make_gaussian_prf_sources_image(shape, source_table):
         from photutils.datasets import make_noise_image
         shape = (100, 200)
         image1 = make_gaussian_prf_sources_image(shape, table)
-        image2 = image1 + make_noise_image(shape, type='gaussian', mean=5.,
-                                           stddev=5.)
-        image3 = image1 + make_noise_image(shape, type='poisson', mean=5.)
+        image2 = (image1 + make_noise_image(shape, distribution='gaussian',
+                                            mean=5., stddev=5.))
+        image3 =  (image1 + make_noise_image(shape, distribution='poisson',
+                                             mean=5.))
 
         # plot the images
         import matplotlib.pyplot as plt
@@ -687,7 +692,7 @@ def make_4gaussians_image(noise=True):
     data = make_gaussian_sources_image(shape, table) + 5.
 
     if noise:
-        data += make_noise_image(shape, type='gaussian', mean=0.,
+        data += make_noise_image(shape, distribution='gaussian', mean=0.,
                                  stddev=5., random_state=12345)
 
     return data
@@ -748,7 +753,7 @@ def make_100gaussians_image(noise=True):
     data = make_gaussian_sources_image(shape, sources) + 5.
 
     if noise:
-        data += make_noise_image(shape, type='gaussian', mean=0.,
+        data += make_noise_image(shape, distribution='gaussian', mean=0.,
                                  stddev=2., random_state=12345)
 
     return data

@@ -104,7 +104,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         from photutils.datasets import make_noise_image
         shape = (100, 200)
         sources = make_gaussian_sources_image(shape, table)
-        noise = make_noise_image(shape, type='gaussian', mean=0.,
+        noise = make_noise_image(shape, distribution='gaussian', mean=0.,
                                  stddev=5., random_state=12345)
         image = sources + noise
 

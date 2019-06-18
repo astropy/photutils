@@ -16,7 +16,7 @@ from ...datasets.make import make_noise_image
 
 BKG = 0.0
 STD = 0.5
-DATA = make_noise_image((100, 100), type='gaussian', mean=BKG,
+DATA = make_noise_image((100, 100), distribution='gaussian', mean=BKG,
                         stddev=STD, random_state=12345)
 
 BKG_CLASS0 = [MeanBackground, MedianBackground, ModeEstimatorBackground,

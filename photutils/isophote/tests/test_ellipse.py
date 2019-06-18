@@ -118,7 +118,7 @@ class TestEllipse:
         nx = 150
         g = Gaussian2D(100., nx / 2., ny / 2., 20, 12, theta=40.*np.pi/180.)
         y, x = np.mgrid[0:ny, 0:nx]
-        noise = make_noise_image((ny, nx), type='gaussian', mean=0.,
+        noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.,
                                  stddev=2., random_state=12345)
         data = g(x, y) + noise
         ellipse = Ellipse(data)  # estimates initial center

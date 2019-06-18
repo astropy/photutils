@@ -121,9 +121,9 @@ def test_psf_photometry_niters(sigma_psf, sources):
     # generate image with read-out noise (Gaussian) and
     # background noise (Poisson)
     image = (make_gaussian_prf_sources_image(img_shape, sources) +
-             make_noise_image(img_shape, type='poisson', mean=6.,
+             make_noise_image(img_shape, distribution='poisson', mean=6.,
                               random_state=1) +
-             make_noise_image(img_shape, type='gaussian', mean=0.,
+             make_noise_image(img_shape, distribution='gaussian', mean=0.,
                               stddev=2., random_state=1))
     cp_image = image.copy()
     sigma_clip = SigmaClip(sigma=3.)
@@ -177,9 +177,9 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
     # generate image with read-out noise (Gaussian) and
     # background noise (Poisson)
     image = (make_gaussian_prf_sources_image(img_shape, sources) +
-             make_noise_image(img_shape, type='poisson', mean=6.,
+             make_noise_image(img_shape, distribution='poisson', mean=6.,
                               random_state=1) +
-             make_noise_image(img_shape, type='gaussian', mean=0.,
+             make_noise_image(img_shape, distribution='gaussian', mean=0.,
                               stddev=2., random_state=1))
     cp_image = image.copy()
 
@@ -313,7 +313,7 @@ def test_finder_positions_warning():
     positions['y_0'] = [15.7, 16.5, 25.1]
 
     image = (make_gaussian_prf_sources_image((32, 32), sources1) +
-             make_noise_image((32, 32), type='poisson', mean=6.,
+             make_noise_image((32, 32), distribution='poisson', mean=6.,
                               random_state=1))
 
     with catch_warnings(AstropyUserWarning):
@@ -335,9 +335,9 @@ def test_aperture_radius():
     # generate image with read-out noise (Gaussian) and
     # background noise (Poisson)
     image = (make_gaussian_prf_sources_image(img_shape, sources1) +
-             make_noise_image(img_shape, type='poisson', mean=6.,
+             make_noise_image(img_shape, distribution='poisson', mean=6.,
                               random_state=1) +
-             make_noise_image(img_shape, type='gaussian', mean=0.,
+             make_noise_image(img_shape, distribution='gaussian', mean=0.,
                               stddev=2., random_state=1))
 
     basic_phot_obj = make_psf_photometry_objs()[0]
