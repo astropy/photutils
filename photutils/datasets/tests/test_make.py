@@ -15,10 +15,16 @@ from .. import (make_noise_image, apply_poisson_noise,
                 make_wcs, make_gwcs, make_gaussian_prf_sources_image)
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
+
+try:
+    import gwcs  # noqa
+    HAS_GWCS = True
+except ImportError:
+    HAS_GWCS = False
 
 SOURCE_TABLE = Table()
 SOURCE_TABLE['flux'] = [1, 2, 3]
@@ -185,6 +191,7 @@ def test_make_wcs():
     assert wcs.wcs.ctype[1] == 'GLAT-CAR'
 
 
+@pytest.mark.skipif('not HAS_GWCS')
 def test_make_gwcs():
     shape = (100, 200)
 
@@ -201,6 +208,7 @@ def test_make_gwcs():
     assert wcs.output_frame.axes_names == ('lon', 'lat')
 
 
+@pytest.mark.skipif('not HAS_GWCS')
 def test_make_wcs_compare():
     shape = (200, 300)
     wcs = make_wcs(shape)

@@ -26,6 +26,8 @@ __all__ = ['apply_poisson_noise', 'make_noise_image',
            'make_wcs', 'make_gwcs', 'make_imagehdu',
            'make_gaussian_prf_sources_image']
 
+__doctest_requires__ = {('make_gwcs'): ['gwcs']}
+
 
 def apply_poisson_noise(data, random_state=None):
     """
