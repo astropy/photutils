@@ -12,13 +12,19 @@ from .. import (make_noise_image, apply_poisson_noise,
                 make_gaussian_sources_image, make_random_gaussians_table,
                 make_4gaussians_image, make_100gaussians_image,
                 make_random_models_table, make_model_sources_image,
-                make_wcs, make_gaussian_prf_sources_image)
+                make_wcs, make_gwcs, make_gaussian_prf_sources_image)
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
+
+try:
+    import gwcs  # noqa
+    HAS_GWCS = True
+except ImportError:
+    HAS_GWCS = False
 
 SOURCE_TABLE = Table()
 SOURCE_TABLE['flux'] = [1, 2, 3]
@@ -183,3 +189,32 @@ def test_make_wcs():
     wcs = make_wcs(shape, galactic=True)
     assert wcs.wcs.ctype[0] == 'GLON-CAR'
     assert wcs.wcs.ctype[1] == 'GLAT-CAR'
+
+
+@pytest.mark.skipif('not HAS_GWCS')
+def test_make_gwcs():
+    shape = (100, 200)
+
+    wcs = make_gwcs(shape)
+    assert wcs.pixel_n_dim == 2
+    assert wcs.available_frames == ['detector', 'icrs']
+    assert wcs.output_frame.name == 'icrs'
+    assert wcs.output_frame.axes_names == ('lon', 'lat')
+
+    wcs = make_gwcs(shape, galactic=True)
+    assert wcs.pixel_n_dim == 2
+    assert wcs.available_frames == ['detector', 'galactic']
+    assert wcs.output_frame.name == 'galactic'
+    assert wcs.output_frame.axes_names == ('lon', 'lat')
+
+
+@pytest.mark.skipif('not HAS_GWCS')
+def test_make_wcs_compare():
+    shape = (200, 300)
+    wcs = make_wcs(shape)
+    gwcs = make_gwcs(shape)
+    sc1 = wcs.pixel_to_world((50, 75), (50, 100))
+    sc2 = gwcs.pixel_to_world((50, 75), (50, 100))
+
+    assert_allclose(sc1.ra, sc2.ra)
+    assert_allclose(sc1.dec, sc2.dec)
