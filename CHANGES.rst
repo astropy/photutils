@@ -21,6 +21,11 @@ New Features
   - ``aperture_phometry`` now supports ``NDData`` with
     ``StdDevUncertainty`` to input errors. [#866]
 
+- ``photutils.datasets``
+
+  - Added ``make_gwcs`` function to create an example ``gwcs.wcs.WCS``
+    object. [#871]
+
 - ``photutils.isophote``
 
   - Significantly improved the performance (~5 times faster) of
