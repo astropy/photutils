@@ -4,6 +4,7 @@ import warnings
 
 import numpy as np
 from astropy.convolution import Kernel2D
+from astropy.units import Quantity
 from astropy.utils.exceptions import AstropyUserWarning
 
 
@@ -55,12 +56,24 @@ def filter_data(data, kernel, mode='constant', fill_value=0.0,
                 warnings.warn('The kernel is not normalized.',
                               AstropyUserWarning)
 
+        # scipy.ndimage.convolve currently strips units, but be explicit
+        # in case that behavior changes
+        unit = None
+        if isinstance(data, Quantity):
+            unit = data.unit
+            data = data.value
+
         # NOTE:  astropy.convolution.convolve fails with zero-sum
         # kernels (used in findstars) (cf. astropy #1647)
         # NOTE: if data is int and kernel is float, ndimage.convolve
         # will return an int image - here we make the data float so
         # that a float image is always returned
-        return ndimage.convolve(data.astype(float), kernel_array, mode=mode,
-                                cval=fill_value)
+        result = ndimage.convolve(data.astype(float), kernel_array,
+                                  mode=mode, cval=fill_value)
+
+        if unit is not None:
+            result = result * unit  # can't use *= with older astropy
+
+        return result
     else:
         return data
