@@ -292,7 +292,6 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
     ``param_ranges`` must be input as an `~collections.OrderedDict` with
     the same parameter ranges and ``random_state`` must be the same.
 
-
     Examples
     --------
     >>> from collections import OrderedDict
@@ -755,8 +754,8 @@ def make_100gaussians_image(noise=True):
 
 def make_wcs(shape, galactic=False):
     """
-    Create a simple celestial WCS object in either the ICRS or Galactic
-    coordinate frame.
+    Create a simple celestial `~astropy.wcs.WCS` object in either the
+    ICRS or Galactic coordinate frame.
 
     Parameters
     ----------
@@ -771,12 +770,17 @@ def make_wcs(shape, galactic=False):
 
     Returns
     -------
-    wcs : `~astropy.wcs.WCS` object
+    wcs : `astropy.wcs.WCS` object
         The world coordinate system (WCS) transformation.
 
     See Also
     --------
     make_gwcs, make_imagehdu
+
+    Notes
+    -----
+    The `make_gwcs` function returns an equivalent WCS transformation to
+    this one, but in a `gwcs.wcs.WCS` object.
 
     Examples
     --------
@@ -833,12 +837,17 @@ def make_gwcs(shape, galactic=False):
 
     Returns
     -------
-    wcs : `~gwcs.wcs.WCS` object
+    wcs : `gwcs.wcs.WCS` object
         The generalized world coordinate system (WCS) transformation.
 
     See Also
     --------
     make_wcs, make_imagehdu
+
+    Notes
+    -----
+    The `make_wcs` function returns an equivalent WCS transformation to
+    this one, but in an `astropy.wcs.WCS` object.
 
     Examples
     --------
