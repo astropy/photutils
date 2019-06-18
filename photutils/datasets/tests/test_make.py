@@ -199,3 +199,14 @@ def test_make_gwcs():
     assert wcs.available_frames == ['detector', 'galactic']
     assert wcs.output_frame.name == 'galactic'
     assert wcs.output_frame.axes_names == ('lon', 'lat')
+
+
+def test_make_wcs_compare():
+    shape = (200, 300)
+    wcs = make_wcs(shape)
+    gwcs = make_gwcs(shape)
+    sc1 = wcs.pixel_to_world((50, 75), (50, 100))
+    sc2 = gwcs.pixel_to_world((50, 75), (50, 100))
+
+    assert_allclose(sc1.ra, sc2.ra)
+    assert_allclose(sc1.dec, sc2.dec)
