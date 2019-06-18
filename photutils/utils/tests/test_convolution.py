@@ -5,6 +5,7 @@ from numpy.testing import assert_allclose
 import pytest
 from astropy.convolution import Gaussian2DKernel
 from astropy.tests.helper import catch_warnings
+import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
 
 from ..convolution import filter_data
@@ -24,30 +25,36 @@ class TestFilterData:
         self.kernel = Gaussian2DKernel(3., x_size=3, y_size=3)
 
     def test_filter_data(self):
-        fdata1 = filter_data(self.data, self.kernel)
-        fdata2 = filter_data(self.data, self.kernel.array)
-        assert_allclose(fdata1, fdata2)
+        filt_data1 = filter_data(self.data, self.kernel)
+        filt_data2 = filter_data(self.data, self.kernel.array)
+        assert_allclose(filt_data1, filt_data2)
+
+    def test_filter_data_units(self):
+        unit = u.electron
+        filt_data = filter_data(self.data * unit, self.kernel)
+        assert isinstance(filt_data, u.Quantity)
+        assert filt_data.unit == unit
 
     def test_filter_data_types(self):
         """
         Test to ensure output is a float array for integer input data.
         """
 
-        fdata = filter_data(self.data.astype(int),
-                            self.kernel.array.astype(int))
-        assert fdata.dtype == np.float64
+        filt_data = filter_data(self.data.astype(int),
+                                self.kernel.array.astype(int))
+        assert filt_data.dtype == np.float64
 
-        fdata = filter_data(self.data.astype(int),
-                            self.kernel.array.astype(float))
-        assert fdata.dtype == np.float64
+        filt_data = filter_data(self.data.astype(int),
+                                self.kernel.array.astype(float))
+        assert filt_data.dtype == np.float64
 
-        fdata = filter_data(self.data.astype(float),
-                            self.kernel.array.astype(int))
-        assert fdata.dtype == np.float64
+        filt_data = filter_data(self.data.astype(float),
+                                self.kernel.array.astype(int))
+        assert filt_data.dtype == np.float64
 
-        fdata = filter_data(self.data.astype(float),
-                            self.kernel.array.astype(float))
-        assert fdata.dtype == np.float64
+        filt_data = filter_data(self.data.astype(float),
+                                self.kernel.array.astype(float))
+        assert filt_data.dtype == np.float64
 
     def test_filter_data_kernel_none(self):
         """
@@ -55,8 +62,8 @@ class TestFilterData:
         """
 
         kernel = None
-        fdata = filter_data(self.data, kernel)
-        assert_allclose(fdata, self.data)
+        filt_data = filter_data(self.data, kernel)
+        assert_allclose(filt_data, self.data)
 
     def test_filter_data_check_normalization(self):
         """

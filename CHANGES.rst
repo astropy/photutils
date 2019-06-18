@@ -113,6 +113,12 @@ Bug Fixes
   - Fixed ``SegmentationImage`` ``outline_segments`` to include
     outlines along the image boundaries. [#825]
 
+- ``photutils.segmentation``
+
+  - Fixed a bug in ``filter_data`` where units were dropped for data
+    ``Quantity`` objects. [#872]
+
+
 API changes
 ^^^^^^^^^^^
 
