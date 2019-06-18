@@ -156,8 +156,8 @@ def make_noise_image(shape, type='gaussian', mean=None, stddev=None,
     elif type == 'poisson':
         image = prng.poisson(lam=mean, size=shape)
     else:
-        raise ValueError('Invalid type: {0}. Use one of '
-                         '{"gaussian", "poisson"}.'.format(type))
+        raise ValueError('Invalid type: {0}. Use either "gaussian" or '
+                         '"poisson".'.format(type))
 
     return image
 
@@ -356,11 +356,11 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
         if 'x_stddev' in sources.colnames:
             xstd = sources['x_stddev']
         else:
-            xstd = model.x_stddev.value    # default
+            xstd = model.x_stddev.value  # default
         if 'y_stddev' in sources.colnames:
             ystd = sources['y_stddev']
         else:
-            ystd = model.y_stddev.value    # default
+            ystd = model.y_stddev.value  # default
 
         sources = sources.copy()
         sources['amplitude'] = sources['flux'] / (2. * np.pi * xstd * ystd)
@@ -434,7 +434,7 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
     """
 
     image = np.zeros(shape, dtype=np.float64)
-    y, x = np.indices(shape)
+    yidx, xidx = np.indices(shape)
 
     params_to_set = []
     for param in source_table.colnames:
@@ -448,12 +448,12 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
     init_params = {param: getattr(model, param) for param in params_to_set}
 
     try:
-        for i, source in enumerate(source_table):
+        for source in source_table:
             for param in params_to_set:
                 setattr(model, param, source[param])
 
             if oversample == 1:
-                image += model(x, y)
+                image += model(xidx, yidx)
             else:
                 image += discretize_model(model, (0, shape[1]),
                                           (0, shape[0]), mode='oversample',
@@ -544,11 +544,11 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
     if 'x_stddev' in source_table.colnames:
         xstd = source_table['x_stddev']
     else:
-        xstd = model.x_stddev.value    # default
+        xstd = model.x_stddev.value  # default
     if 'y_stddev' in source_table.colnames:
         ystd = source_table['y_stddev']
     else:
-        ystd = model.y_stddev.value    # default
+        ystd = model.y_stddev.value  # default
 
     colnames = source_table.colnames
     if 'flux' in colnames and 'amplitude' not in colnames:
@@ -628,7 +628,7 @@ def make_gaussian_prf_sources_image(shape, source_table):
     if 'sigma' in source_table.colnames:
         sigma = source_table['sigma']
     else:
-        sigma = model.sigma.value    # default
+        sigma = model.sigma.value  # default
 
     colnames = source_table.colnames
     if 'flux' not in colnames and 'amplitude' in colnames:
