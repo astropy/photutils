@@ -85,6 +85,7 @@ matrix:
 
         # Test with optional dependencies disabled
         - env: CONDA_DEPENDENCIES=$CONDA_REQUIRED_DEPENDENCIES
+               PIP_DEPENDENCIES=''
 
         # Test with Astropy dev version and the latest Python
         - stage: Comprehensive tests
