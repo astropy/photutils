@@ -813,7 +813,7 @@ def make_wcs(shape, galactic=False):
     return wcs
 
 
-def make_gwcs(shape):
+def make_gwcs(shape, galactic=False):
     """
     Create a simple celestial gWCS object in the ICRS coordinate frame.
 
@@ -825,6 +825,11 @@ def make_gwcs(shape):
     shape : 2-tuple of int
         The shape of the 2D array to be used with the output
         `~astropy.wcs.WCS` object.
+
+    galactic : bool, optional
+        If `True`, then the output WCS will be in the Galactic
+        coordinate frame.  If `False` (default), then the output WCS
+        will be in the ICRS coordinate frame.
 
     Returns
     -------
@@ -872,8 +877,13 @@ def make_gwcs(shape):
 
     detector_frame = cf.Frame2D(name='detector', axes_names=('x', 'y'),
                                 unit=(u.pix, u.pix))
-    sky_frame = cf.CelestialFrame(reference_frame=coord.ICRS(), name='icrs',
-                                  unit=(u.deg, u.deg))
+
+    if galactic:
+        sky_frame = cf.CelestialFrame(reference_frame=coord.Galactic(),
+                                      name='galactic', unit=(u.deg, u.deg))
+    else:
+        sky_frame = cf.CelestialFrame(reference_frame=coord.ICRS(),
+                                      name='icrs', unit=(u.deg, u.deg))
 
     pipeline = [(detector_frame, det2sky), (sky_frame, None)]
 
