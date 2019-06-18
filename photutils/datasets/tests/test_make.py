@@ -12,7 +12,7 @@ from .. import (make_noise_image, apply_poisson_noise,
                 make_gaussian_sources_image, make_random_gaussians_table,
                 make_4gaussians_image, make_100gaussians_image,
                 make_random_models_table, make_model_sources_image,
-                make_wcs, make_gaussian_prf_sources_image)
+                make_wcs, make_gwcs, make_gaussian_prf_sources_image)
 
 try:
     import scipy    # noqa
@@ -183,3 +183,19 @@ def test_make_wcs():
     wcs = make_wcs(shape, galactic=True)
     assert wcs.wcs.ctype[0] == 'GLON-CAR'
     assert wcs.wcs.ctype[1] == 'GLAT-CAR'
+
+
+def test_make_gwcs():
+    shape = (100, 200)
+
+    wcs = make_gwcs(shape)
+    assert wcs.pixel_n_dim == 2
+    assert wcs.available_frames == ['detector', 'icrs']
+    assert wcs.output_frame.name == 'icrs'
+    assert wcs.output_frame.axes_names == ('lon', 'lat')
+
+    wcs = make_gwcs(shape, galactic=True)
+    assert wcs.pixel_n_dim == 2
+    assert wcs.available_frames == ['detector', 'galactic']
+    assert wcs.output_frame.name == 'galactic'
+    assert wcs.output_frame.axes_names == ('lon', 'lat')
