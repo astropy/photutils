@@ -347,8 +347,7 @@ class PixelAperture(Aperture):
         masks = self.to_mask(method=method, subpixels=subpixels)
         if self.isscalar:
             masks = (masks,)
-        masks_overlap = [mask.multiply(np.ones_like(data)) for mask in masks]
-        areas = [mask_overlap.sum() for mask_overlap in masks_overlap]
+        areas = [mask.multiply(np.ones_like(data)).sum() for mask in masks]
         if self.isscalar:
             return areas[0]
         else:
