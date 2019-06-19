@@ -19,11 +19,11 @@ users' forks of the `Photutils repository
 <https://github.com/astropy/photutils>`_. If you're new to this style
 of development, you'll want to read over the `Astropy development
 workflow
-<http://docs.astropy.org/en/latest/development/workflow/development_workflow.html>`_).
+<http://docs.astropy.org/en/latest/development/workflow/development_workflow.html>`_.
 
 Once you open a pull request (which should be opened against the
-``master`` branch, not against any of the other branches), please make
-sure that you include the following:
+``master`` branch, not against any other branch), please make sure
+that you include the following:
 
 - **Code**: the code you are adding, which should follow as much as
   possible the `Astropy coding guidelines <http://docs.astropy.org/en/latest/development/codeguide.html>`_.
@@ -41,7 +41,7 @@ sure that you include the following:
   more information, please see the detailed `Astropy documentation
   guidelines <http://docs.astropy.org/en/latest/development/docguide.html>`_.
 
-- **Changelog entry**: whether you are fixing a bug or adding new
+- **Changelog entry**: if you are fixing a bug or adding new
   functionality, you should add an entry to the ``CHANGES.rst`` file
   that includes the PR number and if possible the issue number (if you
   are opening a pull request you may not know this yet, but you can
@@ -106,9 +106,8 @@ in the package.
 **Code Quality**
 
 * Are the `Astropy coding guidelines <http://docs.astropy.org/en/latest/development/codeguide.html>`_ followed?
-* Is the code compatible with Python 2.7 and >=3.4?
 * Are there dependencies other than the Astropy core, the Python
-  Standard Library, and NumPy 1.9.0 or later?
+  Standard Library, and NumPy?
 
   - Is the package importable even if the C-extensions are not built?
   - Are additional dependencies handled appropriately?
@@ -142,11 +141,11 @@ in the package.
 
 **License**
 
-* Is the astropy license included at the top of the file?
+* Is the photutils license included at the top of the file?
 * Are there any conflicts with this code and existing codes?
 
 **Photutils requirements**
 
-* Do all the Travis CI, AppVeyor, and CircleCI tests pass?
+* Do all of the Travis CI, AppVeyor, and CircleCI tests pass?
 * If applicable, has an entry been added into the changelog?
 * Can you checkout the pull request and repeat the examples and tests?
