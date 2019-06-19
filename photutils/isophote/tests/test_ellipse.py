@@ -15,7 +15,7 @@ from ..isophote import Isophote, IsophoteList
 from ...datasets import get_path, make_noise_image
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
@@ -121,7 +121,7 @@ class TestEllipse:
         noise = make_noise_image((ny, nx), type='gaussian', mean=0.,
                                  stddev=2., random_state=12345)
         data = g(x, y) + noise
-        ellipse = Ellipse(data)    # estimates initial center
+        ellipse = Ellipse(data)  # estimates initial center
         isolist = ellipse.fit_image()
         assert len(isolist) == 54
 

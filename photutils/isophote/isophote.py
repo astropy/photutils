@@ -252,7 +252,7 @@ class Isophote:
             a_err = abs(a) * np.sqrt((ce[1] / c[1])**2 + gre**2)
             b_err = abs(b) * np.sqrt((ce[2] / c[2])**2 + gre**2)
 
-        except Exception:    # we want to catch everything
+        except Exception:  # we want to catch everything
             a = b = a_err = b_err = None
 
         return a, b, a_err, b_err
@@ -292,7 +292,7 @@ class Isophote:
                                    self.grad / (1. - (1. - eps)**2)))
             else:
                 self.pa_err = 0.
-        except Exception:    # we want to catch everything
+        except Exception:  # we want to catch everything
             self.x0_err = self.y0_err = self.pa_err = self.ellip_err = 0.
 
     def fix_geometry(self, isophote):
@@ -462,7 +462,7 @@ class IsophoteList(Isophote, list):
         return self
 
     def __add__(self, value):
-        temp = self._list[:]    # shallow copy
+        temp = self._list[:]  # shallow copy
         temp.extend(value._list)
         return IsophoteList(temp)
 

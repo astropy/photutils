@@ -18,7 +18,7 @@ from ..sample import CentralEllipseSample, EllipseSample
 from ...datasets import get_path
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
@@ -143,13 +143,13 @@ def test_fitting_all():
     assert isophote.stop_code == 0
 
     g = isophote.sample.geometry
-    assert g.x0 >= (POS - 1.5)      # position within 1.5 pixel
+    assert g.x0 >= (POS - 1.5)  # position within 1.5 pixel
     assert g.x0 <= (POS + 1.5)
     assert g.y0 >= (POS - 1.5)
     assert g.y0 <= (POS + 1.5)
-    assert g.eps >= (EPS - 0.01)    # eps within 0.01
+    assert g.eps >= (EPS - 0.01)  # eps within 0.01
     assert g.eps <= (EPS + 0.01)
-    assert g.pa >= (ANGLE - 0.05)   # pa within 5 deg
+    assert g.pa >= (ANGLE - 0.05)  # pa within 5 deg
     assert g.pa <= (ANGLE + 0.05)
 
     sample_m = EllipseSample(data, sma, position_angle=(1.2 * ANGLE),

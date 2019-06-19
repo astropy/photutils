@@ -14,7 +14,7 @@ from ..model import build_ellipse_model
 from ...datasets import get_path
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

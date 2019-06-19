@@ -306,9 +306,9 @@ class EllipseSample:
         # estimate is available, guess it.
         previous_gradient = self.gradient
         if not previous_gradient:
-            previous_gradient = -0.05    # good enough, based on usage
+            previous_gradient = -0.05  # good enough, based on usage
 
-        if gradient >= (previous_gradient / 3.):   # gradient is negative!
+        if gradient >= (previous_gradient / 3.):  # gradient is negative!
             gradient, gradient_error = self._get_gradient(2 * step)
 
         # If still no meaningful gradient can be measured, try with

@@ -13,7 +13,7 @@ from ..harmonics import (first_and_second_harmonic_function,
 from ..sample import EllipseSample
 
 try:
-    from scipy.optimize import leastsq    # noqa
+    from scipy.optimize import leastsq  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

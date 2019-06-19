@@ -15,7 +15,7 @@ from ..sample import EllipseSample
 from ...datasets import get_path
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
@@ -73,7 +73,7 @@ class TestIsophote:
 
         # geometry
         g = iso.sample.geometry
-        assert g.x0 >= (257 - 1.5)   # position within 1.5 pixel
+        assert g.x0 >= (257 - 1.5)  # position within 1.5 pixel
         assert g.x0 <= (257 + 1.5)
         assert g.y0 >= (259 - 1.5)
         assert g.y0 <= (259 + 2.0)
