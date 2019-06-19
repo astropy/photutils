@@ -1,21 +1,23 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the models module.
+"""
 
 from itertools import product
-
-import numpy as np
-from numpy.testing import assert_allclose
-import pytest
 
 from astropy.modeling.models import Gaussian2D, Moffat2D
 from astropy.nddata import NDData
 import astropy.units as u
+import numpy as np
+from numpy.testing import assert_allclose
+import pytest
 
 from ..models import (FittableImageModel, GriddedPSFModel,
                       IntegratedGaussianPRF, PRFAdapter)
 from ...segmentation import detect_sources, source_properties
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

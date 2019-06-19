@@ -1,20 +1,20 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tools to build and fit an effective PSF (ePSF) based on Anderson and
-King (2000; PASP 112, 1360).
+This module provides tools to build and fit an effective PSF (ePSF)
+based on Anderson and King (2000; PASP 112, 1360).
 """
 
 import copy
 import time
 import warnings
 
-import numpy as np
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
                                   NoOverlapError)
 from astropy.utils.exceptions import AstropyUserWarning
+import numpy as np
 
-from .epsf_stars import EPSFStar, LinkedEPSFStar, EPSFStars
+from .epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
 from .models import EPSFModel
 from ..centroids import centroid_com
 from ..extern.sigma_clipping import SigmaClip
@@ -24,7 +24,6 @@ try:
     HAS_BOTTLENECK = True
 except ImportError:
     HAS_BOTTLENECK = False
-
 
 __all__ = ['EPSFFitter', 'EPSFBuilder']
 

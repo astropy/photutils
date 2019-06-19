@@ -1,19 +1,21 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the utils module.
+"""
 
+from astropy.convolution.utils import discretize_model
+from astropy.modeling.models import Gaussian2D
+from astropy.table import Table
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from astropy.modeling.models import Gaussian2D
-from astropy.convolution.utils import discretize_model
-from astropy.table import Table
-
 from ..models import IntegratedGaussianPRF
 from ..sandbox import DiscretePRF
-from ..utils import prepare_psf_model, get_grouped_psf_model, subtract_psf
+from ..utils import get_grouped_psf_model, prepare_psf_model, subtract_psf
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

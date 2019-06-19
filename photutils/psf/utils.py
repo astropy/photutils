@@ -1,13 +1,12 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Utilities for PSF fitting photometry.
+This module provides utilities for PSF-fitting photometry.
 """
 
-import numpy as np
 from astropy.table import Table
 from astropy.modeling import models
 from astropy.nddata.utils import add_array, extract_array
-
+import numpy as np
 
 __all__ = ['prepare_psf_model', 'get_grouped_psf_model', 'subtract_psf']
 

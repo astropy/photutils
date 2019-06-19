@@ -5,15 +5,14 @@ for prime-time (i.e., is not considered a stable public API), but is
 included either for experimentation or as legacy code.
 """
 
-import numpy as np
-from astropy.table import Table
-from astropy.modeling import Parameter, Fittable2DModel
-from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.nddata.utils import subpixel_indices, extract_array
 from astropy import wcs as fitswcs
+from astropy.modeling import Fittable2DModel, Parameter
+from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.nddata.utils import extract_array, subpixel_indices
+from astropy.table import Table
+import numpy as np
 
 from ..utils import mask_to_mirrored_num
-
 
 __all__ = ['DiscretePRF', 'Reproject']
 

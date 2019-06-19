@@ -1,23 +1,24 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-"""Module which provides classes to perform PSF Photometry"""
+"""
+This module provides classes to perform PSF-fitting photometry.
+"""
 
-import numpy as np
 import warnings
 
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import overlap_slices
-from astropy.stats import gaussian_sigma_to_fwhm, SigmaClip
-from astropy.table import Table, Column, vstack, hstack
+from astropy.stats import SigmaClip, gaussian_sigma_to_fwhm
+from astropy.table import Column, Table, hstack, vstack
 from astropy.utils.exceptions import AstropyUserWarning
+import numpy as np
 
 from .groupstars import DAOGroup
-from .utils import (get_grouped_psf_model, subtract_psf,
-                    _extract_psf_fitting_names)
+from .utils import (_extract_psf_fitting_names, get_grouped_psf_model,
+                    subtract_psf)
 from ..aperture import CircularAperture, aperture_photometry
 from ..background import MMMBackground
 from ..detection import DAOStarFinder
 from ..utils.exceptions import NoDetectionsWarning
-
 
 __all__ = ['BasicPSFPhotometry', 'IterativelySubtractedPSFPhotometry',
            'DAOPhotPSFPhotometry']

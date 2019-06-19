@@ -1,22 +1,21 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tools to extract cutouts of stars and data structures to hold the
-cutouts for fitting and building ePSFs.
+This module provides tools to extract cutouts of stars and data
+structures to hold the cutouts for fitting and building ePSFs.
 """
 
 import warnings
 
-import numpy as np
 from astropy.nddata import NDData
-from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
-                                  NoOverlapError)
+from astropy.nddata.utils import (overlap_slices, NoOverlapError,
+                                  PartialOverlapError)
 from astropy.table import Table
-from astropy.utils import lazyproperty, deprecated
+from astropy.utils import deprecated, lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import skycoord_to_pixel
+import numpy as np
 
 from ..aperture import BoundingBox
-
 
 __all__ = ['EPSFStar', 'EPSFStars', 'LinkedEPSFStar', 'extract_stars',
            'Star', 'Stars', 'LinkedStar']
