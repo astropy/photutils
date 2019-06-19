@@ -16,7 +16,7 @@ if astropy_version < '3.1':
     from astropy.stats import SigmaClip
     SIGMA_CLIP = SigmaClip(sigma=3.0, iters=10)
 else:
-    from ..extern import SigmaClip
+    from ..extern.sigma_clipping import SigmaClip
     SIGMA_CLIP = SigmaClip(sigma=3.0, maxiters=10)
 
 __all__ = ['BackgroundBase', 'BackgroundRMSBase', 'MeanBackground',

@@ -17,7 +17,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from .epsf_stars import EPSFStar, LinkedEPSFStar, EPSFStars
 from .models import EPSFModel
 from ..centroids import centroid_com
-from ..extern import SigmaClip
+from ..extern.sigma_clipping import SigmaClip
 
 try:
     import bottleneck  # pylint: disable=W0611
