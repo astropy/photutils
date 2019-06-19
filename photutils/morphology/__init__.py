@@ -4,5 +4,5 @@ This subpackage contains tools for measuring morphological properties of
 objects in an astronomical image.
 """
 
-from .core import *              # noqa
-from .non_parametric import *    # noqa
+from .core import *  # noqa
+from .non_parametric import *  # noqa

@@ -1,11 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Functions for measuring morphological properties of objects in an
-astronomical image using image moments.
+This module provides tools for measuring morphological properties of
+sources.
 """
 
 import numpy as np
-
 
 __all__ = ['data_properties']
 

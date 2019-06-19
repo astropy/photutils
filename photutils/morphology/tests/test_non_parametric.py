@@ -1,4 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the non_parametric module.
+"""
 
 import numpy as np
 
@@ -7,7 +10,7 @@ from ..non_parametric import gini
 
 def test_gini():
     """
-    Test Gini coefficient measurement.
+    Test Gini coefficient calculation.
     """
 
     data_evenly_distributed = np.ones((100, 100))
