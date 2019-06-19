@@ -1,15 +1,15 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module defines background classes to estimate the 2D background and
-background RMS in a 2D image.
+This module defines classes to estimate the 2D background and background
+RMS in an image.
 """
 
 from itertools import product
 
-import numpy as np
 from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.version import version as astropy_version
+import numpy as np
 from numpy.lib.index_tricks import index_exp
 
 from .core import SExtractorBackground, StdBackgroundRMS

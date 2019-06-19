@@ -1,9 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module defines background classes to estimate a scalar background
-and background RMS from an array (which may be masked) of any dimension.
-These classes were designed as part of an object-oriented interface for
-the tools in the PSF subpackage.
+This module defines classes to estimate the background and background
+RMS in an array of any dimension.
 """
 
 import abc
