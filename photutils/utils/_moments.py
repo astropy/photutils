@@ -1,7 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provide tools for calculating image moments.
+"""
 
 import numpy as np
-
 
 __all__ = ['_moments_central', '_moments']
 

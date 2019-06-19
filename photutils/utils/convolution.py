@@ -1,12 +1,14 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides tools for convolving images with a kernel.
+"""
 
 import warnings
 
-import numpy as np
 from astropy.convolution import Kernel2D
 from astropy.units import Quantity
 from astropy.utils.exceptions import AstropyUserWarning
-
+import numpy as np
 
 __all__ = ['filter_data']
 

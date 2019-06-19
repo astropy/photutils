@@ -1,10 +1,13 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides WCS helper tools.
+"""
 
-import numpy as np
 from astropy import units as u
 from astropy.coordinates import UnitSphericalRepresentation
 from astropy.utils import deprecated
 from astropy.wcs.utils import skycoord_to_pixel, pixel_to_skycoord
+import numpy as np
 
 
 @deprecated('0.7', 'The pixel_scale_angle_at_skycoord function is deprecated '

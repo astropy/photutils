@@ -1,4 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the random_state module.
+"""
 
 import numpy as np
 import pytest

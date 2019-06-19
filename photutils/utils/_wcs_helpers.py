@@ -1,9 +1,12 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides WCS helper tools.
+"""
 
-import numpy as np
 from astropy import units as u
 from astropy.coordinates import UnitSphericalRepresentation
 from astropy.wcs.utils import skycoord_to_pixel
+import numpy as np
 
 
 def _pixel_scale_angle_at_skycoord(skycoord, wcs, offset=1. * u.arcsec):

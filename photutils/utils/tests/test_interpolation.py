@@ -1,11 +1,14 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the interpolation module.
+"""
 
 import warnings
 
+from astropy.utils.exceptions import AstropyDeprecationWarning
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from .. import ShepardIDWInterpolator as idw
 from .. import interpolate_masked_data, mask_to_mirrored_num
@@ -19,7 +22,7 @@ except ImportError:
 
 SHAPE = (5, 5)
 DATA = np.ones(SHAPE) * 2.0
-MASK = np.zeros_like(DATA, dtype=bool)
+MASK = np.zeros(DATA.shape, dtype=bool)
 MASK[2, 2] = True
 ERROR = np.ones(SHAPE)
 BACKGROUND = np.ones(SHAPE)
@@ -167,7 +170,7 @@ class TestMaskToMirroredNum:
         """
         center = (1.5, 1.5)
         data = np.arange(16).reshape(4, 4)
-        mask = np.zeros_like(data, dtype=bool)
+        mask = np.zeros(data.shape, dtype=bool)
         mask[0, 0] = True
         mask[1, 1] = True
         data_ref = data.copy()
@@ -183,7 +186,7 @@ class TestMaskToMirroredNum:
         """
         center = (2.5, 2.5)
         data = np.arange(16).reshape(4, 4)
-        mask = np.zeros_like(data, dtype=bool)
+        mask = np.zeros(data.shape, dtype=bool)
         mask[0, 0] = True
         mask[1, 1] = True
         data_ref = data.copy()
@@ -199,7 +202,7 @@ class TestMaskToMirroredNum:
         center = (0.5, 0.5)
         data = np.arange(16).reshape(4, 4)
         data[0, 0] = 100
-        mask = np.zeros_like(data, dtype=bool)
+        mask = np.zeros(data.shape, dtype=bool)
         mask[0, 0] = True
         mask[1, 1] = True
         data_ref = data.copy()
@@ -215,7 +218,7 @@ class TestMaskToMirroredNum:
         center = (1.5, 1.5)
         data = np.arange(16).reshape(4, 4)
         data[0, 0] = 100
-        mask = np.zeros_like(data, dtype=bool)
+        mask = np.zeros(data.shape, dtype=bool)
         mask[0, 0] = True
         mask[1, 1] = True
         data_ref = data.copy()

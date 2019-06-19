@@ -1,9 +1,12 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides tools to return the installed astropy and photutils
+versions.
+"""
 
 import abc
 
 from astropy.utils.misc import InheritDocstrings
-
 
 __all__ = ['get_version_info']
 

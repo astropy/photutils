@@ -1,7 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides custom exceptions.
+"""
 
 from astropy.utils.exceptions import AstropyWarning
-
 
 __all__ = ['NoDetectionsWarning']
 

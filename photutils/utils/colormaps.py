@@ -1,10 +1,12 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides tools for generating matplotlib colormaps.
+"""
 
-import numpy as np
 from astropy.utils import deprecated
+import numpy as np
 
 from .check_random_state import check_random_state
-
 
 __all__ = ['make_random_cmap']
 

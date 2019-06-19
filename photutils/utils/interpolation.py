@@ -1,11 +1,13 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides tools for interpolating data.
+"""
 
 import warnings
 
-import numpy as np
 from astropy.utils import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
-
+import numpy as np
 
 __all__ = ['ShepardIDWInterpolator', 'interpolate_masked_data',
            'mask_to_mirrored_num']
@@ -91,9 +93,9 @@ class ShepardIDWInterpolator:
         >>> x = np.random.random(100)
         >>> y = np.sin(x)
         >>> f = idw(x, y)
-        >>> f(0.4)    # doctest: +FLOAT_CMP
+        >>> f(0.4)  # doctest: +FLOAT_CMP
         0.38862424043228855
-        >>> np.sin(0.4)   # doctest: +FLOAT_CMP
+        >>> np.sin(0.4)  # doctest: +FLOAT_CMP
         0.3894183423086505
 
         >>> xi = np.random.random(4)
@@ -405,7 +407,7 @@ def mask_to_mirrored_num(image, mask_image, center_position, bbox=None):
     >>> import numpy as np
     >>> from photutils.utils import mask_to_mirrored_num
     >>> image = np.arange(16).reshape(4, 4)
-    >>> mask = np.zeros_like(image, dtype=bool)
+    >>> mask = np.zeros(image.shape, dtype=bool)
     >>> mask[0, 0] = True
     >>> mask[1, 1] = True
     >>> mask_to_mirrored_num(image, mask, (1.5, 1.5))

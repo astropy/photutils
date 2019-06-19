@@ -1,12 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Utilities for calculating errors.
+This module provides tools for calculating total error arrays.
 """
 
-import numpy as np
 import astropy.units as u
 from astropy.utils.misc import isiterable
-
+import numpy as np
 
 __all__ = ['calc_total_error']
 
