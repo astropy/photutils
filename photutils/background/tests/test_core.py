@@ -1,22 +1,20 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
-import pytest
+from astropy.stats import SigmaClip
 import numpy as np
 from numpy.testing import assert_allclose
-from astropy.stats import SigmaClip
+import pytest
 
+from ..core import (BiweightLocationBackground, BiweightScaleBackgroundRMS,
+                    MADStdBackgroundRMS, MeanBackground, MedianBackground,
+                    MMMBackground, ModeEstimatorBackground,
+                    SExtractorBackground, StdBackgroundRMS)
 from ...datasets.make import make_noise_image
-from ..core import (MeanBackground, MedianBackground,
-                    ModeEstimatorBackground, MMMBackground,
-                    SExtractorBackground, BiweightLocationBackground,
-                    StdBackgroundRMS, MADStdBackgroundRMS,
-                    BiweightScaleBackgroundRMS)
-
 
 BKG = 0.0
 STD = 0.5
-DATA = make_noise_image((100, 100), type='gaussian', mean=BKG, stddev=STD,
-                        random_state=12345)
+DATA = make_noise_image((100, 100), type='gaussian', mean=BKG,
+                        stddev=STD, random_state=12345)
 
 BKG_CLASS0 = [MeanBackground, MedianBackground, ModeEstimatorBackground,
               MMMBackground, SExtractorBackground]

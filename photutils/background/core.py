@@ -8,9 +8,9 @@ the tools in the PSF subpackage.
 
 import abc
 
-import numpy as np
 from astropy.stats import biweight_location, biweight_scale, mad_std
 from astropy.version import version as astropy_version
+import numpy as np
 
 from ..utils.misc import _ABCMetaAndInheritDocstrings
 
@@ -20,7 +20,6 @@ if astropy_version < '3.1':
 else:
     from ..extern import SigmaClip
     SIGMA_CLIP = SigmaClip(sigma=3.0, maxiters=10)
-
 
 __all__ = ['BackgroundBase', 'BackgroundRMSBase', 'MeanBackground',
            'MedianBackground', 'ModeEstimatorBackground',
@@ -173,14 +172,14 @@ class MeanBackground(BackgroundBase):
     `calc_background` method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
 
     Alternatively, the background value can be calculated by calling the
     class instance as a function, e.g.:
 
     >>> bkg_value = bkg(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
     """
 
@@ -216,14 +215,14 @@ class MedianBackground(BackgroundBase):
     `calc_background` method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
 
     Alternatively, the background value can be calculated by calling the
     class instance as a function, e.g.:
 
     >>> bkg_value = bkg(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
     """
 
@@ -264,14 +263,14 @@ class ModeEstimatorBackground(BackgroundBase):
     `calc_background` method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
 
     Alternatively, the background value can be calculated by calling the
     class instance as a function, e.g.:
 
     >>> bkg_value = bkg(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
     """
 
@@ -316,14 +315,14 @@ class MMMBackground(ModeEstimatorBackground):
     method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
 
     Alternatively, the background value can be calculated by calling the
     class instance as a function, e.g.:
 
     >>> bkg_value = bkg(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
     """
 
@@ -367,14 +366,14 @@ class SExtractorBackground(BackgroundBase):
     `calc_background` method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
 
     Alternatively, the background value can be calculated by calling the
     class instance as a function, e.g.:
 
     >>> bkg_value = bkg(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
     """
 
@@ -431,14 +430,14 @@ class BiweightLocationBackground(BackgroundBase):
     `calc_background` method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
 
     Alternatively, the background value can be calculated by calling the
     class instance as a function, e.g.:
 
     >>> bkg_value = bkg(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
     """
 
@@ -479,14 +478,14 @@ class StdBackgroundRMS(BackgroundRMSBase):
     `calc_background_rms` method, e.g.:
 
     >>> bkgrms_value = bkgrms.calc_background_rms(data)
-    >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
+    >>> print(bkgrms_value)  # doctest: +FLOAT_CMP
     28.86607004772212
 
     Alternatively, the background RMS value can be calculated by calling
     the class instance as a function, e.g.:
 
     >>> bkgrms_value = bkgrms(data)
-    >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
+    >>> print(bkgrms_value)  # doctest: +FLOAT_CMP
     28.86607004772212
     """
 
@@ -533,14 +532,14 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
     `calc_background_rms` method, e.g.:
 
     >>> bkgrms_value = bkgrms.calc_background_rms(data)
-    >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
+    >>> print(bkgrms_value)  # doctest: +FLOAT_CMP
     37.06505546264005
 
     Alternatively, the background RMS value can be calculated by calling
     the class instance as a function, e.g.:
 
     >>> bkgrms_value = bkgrms(data)
-    >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
+    >>> print(bkgrms_value)  # doctest: +FLOAT_CMP
     37.06505546264005
     """
 
@@ -582,14 +581,14 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
     `calc_background_rms` method, e.g.:
 
     >>> bkgrms_value = bkgrms.calc_background_rms(data)
-    >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
+    >>> print(bkgrms_value)  # doctest: +FLOAT_CMP
     30.09433848589339
 
     Alternatively, the background RMS value can be calculated by calling
     the class instance as a function, e.g.:
 
     >>> bkgrms_value = bkgrms(data)
-    >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
+    >>> print(bkgrms_value)  # doctest: +FLOAT_CMP
     30.09433848589339
     """
 

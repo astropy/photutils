@@ -7,10 +7,10 @@ background RMS in a 2D image.
 from itertools import product
 
 import numpy as np
-from numpy.lib.index_tricks import index_exp
 from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.version import version as astropy_version
+from numpy.lib.index_tricks import index_exp
 
 from .core import SExtractorBackground, StdBackgroundRMS
 from ..utils import ShepardIDWInterpolator
@@ -21,7 +21,6 @@ if astropy_version < '3.1':
 else:
     from ..extern import SigmaClip
     SIGMA_CLIP = SigmaClip(sigma=3.0, maxiters=10)
-
 
 __all__ = ['BkgZoomInterpolator', 'BkgIDWInterpolator', 'Background2D']
 
@@ -446,7 +445,7 @@ class Background2D:
         #     (second conditional needed for exclude_percentile=100)
         threshold_npixels = self.exclude_percentile / 100. * self.box_npixels
         mesh_idx = np.where((nmasked <= threshold_npixels) &
-                            (nmasked != self.box_npixels))[0]    # good meshes
+                            (nmasked != self.box_npixels))[0]  # good meshes
 
         if mesh_idx.size == 0:
             raise ValueError('All meshes contain > {0} ({1} percent per '
@@ -670,8 +669,8 @@ class Background2D:
         # preform mesh rejection on sigma-clipped data (i.e. for any
         # newly-masked pixels)
         idx = self._select_meshes(data_sigclip)
-        self.mesh_idx = self.mesh_idx[idx]    # indices for the output mesh
-        self._data_sigclip = data_sigclip[idx]    # always a 2D masked array
+        self.mesh_idx = self.mesh_idx[idx]  # indices for the output mesh
+        self._data_sigclip = data_sigclip[idx]  # always a 2D masked array
 
         self._mesh_shape = (self.nyboxes, self.nxboxes)
         self.mesh_yidx, self.mesh_xidx = np.unravel_index(self.mesh_idx,
@@ -745,7 +744,7 @@ class Background2D:
         if len(self._bkg1d) == self.nboxes:
             return self.background_mesh
         else:
-            return self._make_2d_array(self._bkg1d)    # masked array
+            return self._make_2d_array(self._bkg1d)  # masked array
 
     @lazyproperty
     def background_rms_mesh_ma(self):
@@ -758,7 +757,7 @@ class Background2D:
         if len(self._bkgrms1d) == self.nboxes:
             return self.background_rms_mesh
         else:
-            return self._make_2d_array(self._bkgrms1d)    # masked array
+            return self._make_2d_array(self._bkgrms1d)  # masked array
 
     @lazyproperty
     def background_median(self):

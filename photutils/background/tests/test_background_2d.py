@@ -11,13 +11,13 @@ from ..background_2d import (BkgZoomInterpolator, BkgIDWInterpolator,
                              Background2D)
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
 
 try:
-    import matplotlib    # noqa
+    import matplotlib  # noqa
     HAS_MATPLOTLIB = True
 except ImportError:
     HAS_MATPLOTLIB = False
@@ -91,7 +91,7 @@ class TestBackground2D:
 
         data = np.copy(DATA)
         data[25:50, 25:50] = 100.
-        mask = np.zeros_like(DATA, dtype=np.bool)
+        mask = np.zeros(DATA.shape, dtype=bool)
         mask[25:50, 25:50] = True
         b = Background2D(data, box_size, filter_size=(1, 1), mask=mask,
                          bkg_estimator=MeanBackground())
@@ -106,7 +106,7 @@ class TestBackground2D:
     def test_mask(self):
         data = np.copy(DATA)
         data[25:50, 25:50] = 100.
-        mask = np.zeros_like(DATA, dtype=np.bool)
+        mask = np.zeros(DATA.shape, dtype=bool)
         mask[25:50, 25:50] = True
         b1 = Background2D(data, (25, 25), filter_size=(1, 1), mask=None,
                           bkg_estimator=MeanBackground())
@@ -124,7 +124,7 @@ class TestBackground2D:
 
     def test_completely_masked(self):
         with pytest.raises(ValueError):
-            mask = np.ones_like(DATA, dtype=np.bool)
+            mask = np.ones(DATA.shape, dtype=bool)
             Background2D(DATA, (25, 25), mask=mask)
 
     def test_zero_padding(self):
@@ -146,7 +146,7 @@ class TestBackground2D:
         assert_allclose(b.background, DATA)
         assert_allclose(b.background_mesh, BKG_MESH)
         b2 = Background2D(data, (25, 25), filter_size=(3, 3),
-                          filter_threshold=11.)   # no filtering
+                          filter_threshold=11.)  # no filtering
         assert b2.background_mesh[1, 2] == 10
 
     def test_filter_threshold_high(self):
