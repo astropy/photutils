@@ -11,7 +11,6 @@ intersection of a triangle with a unit circle.
 import numpy as np
 cimport numpy as np
 
-
 __all__ = ['elliptical_overlap_grid']
 
 

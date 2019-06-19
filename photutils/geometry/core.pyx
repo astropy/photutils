@@ -7,7 +7,6 @@ The functions here are the core geometry functions.
 import numpy as np
 cimport numpy as np
 
-
 __all__ = ['elliptical_overlap_grid']
 
 

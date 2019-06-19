@@ -8,7 +8,6 @@ overlap of a rectangle and a circle (written by Thomas Robitaille).
 import numpy as np
 cimport numpy as np
 
-
 __all__ = ['circular_overlap_grid']
 
 
