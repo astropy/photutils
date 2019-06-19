@@ -179,8 +179,7 @@ class TestIsophoteList:
         outer_list = self.isolist_sma100[:]
         assert len(inner_list) == self.slen
         assert len(outer_list) == self.slen
-        dummy = inner_list.extend(outer_list)
-        assert not dummy
+        inner_list.extend(outer_list)
         assert len(inner_list) == 2 * self.slen
 
         # the __iadd__ operator should behave like the

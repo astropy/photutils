@@ -185,6 +185,7 @@ class Ellipse:
             _y0 = image.shape[0] / 2
             self._geometry = EllipseGeometry(_x0, _y0, 10., eps=0.2,
                                              pa=np.pi/2)
+        self.set_threshold(threshold)
 
     def set_threshold(self, threshold):
         """
@@ -562,7 +563,7 @@ class Ellipse:
 
         # if available, geometry from last fitted isophote will be
         # used as initial guess for next isophote.
-        if isophote_list is not None and len(isophote_list) > 0:
+        if isophote_list:
             geometry = isophote_list[-1].sample.geometry
 
         # do the fit
@@ -611,8 +612,9 @@ class Ellipse:
 
         return isophote
 
-    def _fix_last_isophote(self, isophote_list, index):
-        if len(isophote_list) > 0:
+    @staticmethod
+    def _fix_last_isophote(isophote_list, index):
+        if isophote_list:
             isophote = isophote_list.pop()
 
             # check if isophote is bad; if so, fix its geometry

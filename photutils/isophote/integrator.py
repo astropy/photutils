@@ -7,7 +7,7 @@ import math
 
 import numpy.ma as ma
 
-__all__ = ['integrators', 'NEAREST_NEIGHBOR', 'BILINEAR', 'MEAN', 'MEDIAN']
+__all__ = ['INTEGRATORS', 'NEAREST_NEIGHBOR', 'BILINEAR', 'MEAN', 'MEDIAN']
 
 
 # integration modes
@@ -215,7 +215,7 @@ class _AreaIntegrator(_Integrator):
 
         # build auxiliary bilinear integrator to be used when
         # sector areas contain a too small number of valid pixels.
-        self._bilinear_integrator = integrators[BILINEAR](image, geometry,
+        self._bilinear_integrator = INTEGRATORS[BILINEAR](image, geometry,
                                                           angles, radii,
                                                           intensities)
 
@@ -294,7 +294,7 @@ class _AreaIntegrator(_Integrator):
                 self._store_results(phi, radius, sample_value)
 
     def get_polar_angle_step(self):
-        phi1, phi2 = self._geometry.polar_angle_sector_limits()
+        _, phi2 = self._geometry.polar_angle_sector_limits()
         phistep = self._geometry.sector_angular_width / 2. + phi2 - self._phi
         return phistep
 
@@ -348,7 +348,7 @@ class _MedianIntegrator(_AreaIntegrator):
 
 
 # Specific integrator subclasses can be instantiated from here.
-integrators = {
+INTEGRATORS = {
     NEAREST_NEIGHBOR: _NearestNeighborIntegrator,
     BILINEAR: _BiLinearIntegrator,
     MEAN: _MeanIntegrator,

@@ -126,33 +126,33 @@ def test_fitting_xy():
 def test_fitting_all():
     # build test image that is off from the defaults
     # assumed by the EllipseSample constructor.
-    POS = DEFAULT_POS - 5
-    ANGLE = np.pi / 4
-    EPS = 2 * 0.2
-    data = make_test_image(x0=POS, y0=POS, eps=EPS, pa=ANGLE,
+    pos = DEFAULT_POS - 5
+    angle = np.pi / 4
+    eps = 2 * 0.2
+    data = make_test_image(x0=pos, y0=pos, eps=eps, pa=angle,
                            random_state=123)
     sma = 60.
 
     # initial guess is off in all parameters. We find that the initial
     # guesses, especially for position angle, must be kinda close to the
     # actual value. 20% off max seems to work in this case of high SNR.
-    sample = EllipseSample(data, sma, position_angle=(1.2 * ANGLE))
+    sample = EllipseSample(data, sma, position_angle=(1.2 * angle))
     fitter = EllipseFitter(sample)
     isophote = fitter.fit()
 
     assert isophote.stop_code == 0
 
     g = isophote.sample.geometry
-    assert g.x0 >= (POS - 1.5)  # position within 1.5 pixel
-    assert g.x0 <= (POS + 1.5)
-    assert g.y0 >= (POS - 1.5)
-    assert g.y0 <= (POS + 1.5)
-    assert g.eps >= (EPS - 0.01)  # eps within 0.01
-    assert g.eps <= (EPS + 0.01)
-    assert g.pa >= (ANGLE - 0.05)  # pa within 5 deg
-    assert g.pa <= (ANGLE + 0.05)
+    assert g.x0 >= (pos - 1.5)  # position within 1.5 pixel
+    assert g.x0 <= (pos + 1.5)
+    assert g.y0 >= (pos - 1.5)
+    assert g.y0 <= (pos + 1.5)
+    assert g.eps >= (eps - 0.01)  # eps within 0.01
+    assert g.eps <= (eps + 0.01)
+    assert g.pa >= (angle - 0.05)  # pa within 5 deg
+    assert g.pa <= (angle + 0.05)
 
-    sample_m = EllipseSample(data, sma, position_angle=(1.2 * ANGLE),
+    sample_m = EllipseSample(data, sma, position_angle=(1.2 * angle),
                              integrmode=MEAN)
     fitter_m = EllipseFitter(sample_m)
     isophote_m = fitter_m.fit()

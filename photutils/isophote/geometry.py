@@ -359,7 +359,7 @@ class EllipseGeometry:
             define the annulus bounding ellipses.
         """
 
-        if (self.linear_growth):
+        if self.linear_growth:
             a1 = self.sma - self.astep / 2.
             a2 = self.sma + self.astep / 2.
         else:
@@ -422,7 +422,7 @@ class EllipseGeometry:
         # the profiling analysis: most of the time is
         # spent in the scalar function.
 
-        if isinstance(x, int) or isinstance(x, float):
+        if isinstance(x, (int, float)):
             return self._to_polar_scalar(x, y)
         else:
             return self._to_polar_vectorized(x, y)

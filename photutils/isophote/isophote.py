@@ -145,6 +145,7 @@ class Isophote:
     def __lt__(self, other):
         if hasattr(other, 'sma'):
             return self.sma < other.sma
+        raise ValueError('Comparison object does not have a "sma" attribute.')
 
     def __str__(self):
         return str(self.to_table())
@@ -287,7 +288,7 @@ class Isophote:
             self.y0_err = np.sqrt((ea * np.sin(pa))**2 + (eb * np.cos(pa))**2)
             self.ellip_err = (abs(2. * errors[4] * (1. - eps) / self.sma /
                                   self.grad))
-            if (abs(eps) > np.finfo(float).resolution):
+            if abs(eps) > np.finfo(float).resolution:
                 self.pa_err = (abs(2. * errors[3] * (1. - eps) / self.sma /
                                    self.grad / (1. - (1. - eps)**2)))
             else:

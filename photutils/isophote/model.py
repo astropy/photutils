@@ -112,7 +112,7 @@ def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
         # full coverage.
         r = sma0
         phi = 0.
-        while (phi <= 2*np.pi + geometry._phi_min):
+        while phi <= 2*np.pi + geometry._phi_min:
             # we might want to add the third and fourth harmonics
             # to the basic isophotal intensity.
             harm = 0.

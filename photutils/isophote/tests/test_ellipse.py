@@ -36,7 +36,7 @@ OFFSET_GALAXY = make_test_image(x0=POS, y0=POS, pa=PA, noise=1.e-12,
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestEllipse:
     def setup_class(self):
-        # centered, tilted galaxy.
+        # centered, tilted galaxy
         self.data = make_test_image(pa=PA, random_state=123)
 
     @pytest.mark.remote_data

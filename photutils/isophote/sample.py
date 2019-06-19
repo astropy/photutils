@@ -8,7 +8,7 @@ import copy
 import numpy as np
 
 from .geometry import EllipseGeometry
-from .integrator import integrators
+from .integrator import INTEGRATORS
 
 __all__ = ['EllipseSample']
 
@@ -175,7 +175,7 @@ class EllipseSample:
         self.actual_points = 0
 
         # build integrator
-        integrator = integrators[self.integrmode](self.image, self.geometry,
+        integrator = INTEGRATORS[self.integrmode](self.image, self.geometry,
                                                   angles, radii, intensities)
 
         # initialize walk along elliptical path
@@ -198,10 +198,10 @@ class EllipseSample:
             radii = []
             intensities = []
             if area < 1.0:
-                integrator = integrators['bilinear'](
+                integrator = INTEGRATORS['bilinear'](
                     self.image, self.geometry, angles, radii, intensities)
             else:
-                integrator = integrators[self.integrmode](self.image,
+                integrator = INTEGRATORS[self.integrmode](self.image,
                                                           self.geometry,
                                                           angles, radii,
                                                           intensities)
@@ -209,7 +209,7 @@ class EllipseSample:
         # walk along elliptical path, integrating at specified
         # places defined by polar vector. Need to go a bit beyond
         # full circle to ensure full coverage.
-        while (phi <= np.pi*2. + phi_min):
+        while phi <= np.pi*2. + phi_min:
             # do the integration at phi-radius position, and append
             # results to the angles, radii, and intensities lists.
             integrator.integrate(radius, phi)
@@ -245,7 +245,7 @@ class EllipseSample:
 
     def _sigma_clip(self, angles, radii, intensities):
         if self.nclip > 0:
-            for iter in range(self.nclip):
+            for i in range(self.nclip):
                 # do not use list.copy()! must be python2-compliant.
                 angles, radii, intensities = self._iter_sigma_clip(
                     angles[:], radii[:], intensities[:])
@@ -404,7 +404,7 @@ class CentralEllipseSample(EllipseSample):
         radii = []
         intensities = []
 
-        integrator = integrators['bilinear'](self.image, self.geometry,
+        integrator = INTEGRATORS['bilinear'](self.image, self.geometry,
                                              angles, radii, intensities)
         integrator.integrate(0.0, 0.0)
 
