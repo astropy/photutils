@@ -1,8 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the load module.
+"""
 
 import pytest
 
-from .. import load, get_path
+from .. import get_path, load
 
 
 def test_get_path():

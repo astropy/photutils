@@ -1,18 +1,21 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the make module.
+"""
 
+from astropy.modeling.models import Moffat2D
+from astropy.table import Table
+from astropy.version import version as astropy_version
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from astropy.table import Table
-from astropy.modeling.models import Moffat2D
-from astropy.version import version as astropy_version
-
-from .. import (make_noise_image, apply_poisson_noise,
-                make_gaussian_sources_image, make_random_gaussians_table,
-                make_4gaussians_image, make_100gaussians_image,
-                make_random_models_table, make_model_sources_image,
-                make_wcs, make_gwcs, make_gaussian_prf_sources_image)
+from .. import (apply_poisson_noise, make_4gaussians_image,
+                make_100gaussians_image, make_gaussian_prf_sources_image,
+                make_gaussian_sources_image, make_gwcs,
+                make_model_sources_image, make_noise_image,
+                make_random_gaussians_table, make_random_models_table,
+                make_wcs)
 
 try:
     import scipy  # noqa
@@ -212,9 +215,9 @@ def test_make_gwcs():
 def test_make_wcs_compare():
     shape = (200, 300)
     wcs = make_wcs(shape)
-    gwcs = make_gwcs(shape)
+    gwcs_obj = make_gwcs(shape)
     sc1 = wcs.pixel_to_world((50, 75), (50, 100))
-    sc2 = gwcs.pixel_to_world((50, 75), (50, 100))
+    sc2 = gwcs_obj.pixel_to_world((50, 75), (50, 100))
 
     assert_allclose(sc1.ra, sc2.ra)
     assert_allclose(sc1.dec, sc2.dec)

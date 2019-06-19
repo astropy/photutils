@@ -1,11 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Make example datasets.
+This module provides tools for making example datasets for examples and
+tests.
 """
 
 from collections import OrderedDict
 
-import numpy as np
 from astropy import coordinates as coord
 from astropy.convolution import discretize_model
 from astropy.io import fits
@@ -14,10 +14,10 @@ from astropy.table import Table
 import astropy.units as u
 from astropy.version import version as astropy_version
 from astropy.wcs import WCS
+import numpy as np
 
-from ..utils import check_random_state
 from ..psf import IntegratedGaussianPRF
-
+from ..utils import check_random_state
 
 __all__ = ['apply_poisson_noise', 'make_noise_image',
            'make_random_models_table', 'make_random_gaussians_table',
