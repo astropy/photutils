@@ -1,11 +1,14 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the core module.
+"""
 
-import numpy as np
-from numpy.testing import assert_array_equal, assert_allclose
-import pytest
 import warnings
 
 from astropy.tests.helper import catch_warnings
+import numpy as np
+from numpy.testing import assert_allclose, assert_array_equal
+import pytest
 
 from ..core import detect_threshold, find_peaks
 from ...centroids import centroid_com
@@ -138,7 +141,7 @@ class TestFindPeaks:
     def test_mask(self):
         """Test with mask."""
 
-        mask = np.zeros_like(PEAKDATA, dtype=bool)
+        mask = np.zeros(PEAKDATA.shape, dtype=bool)
         mask[0, 0] = True
         tbl = find_peaks(PEAKDATA, 0.1, box_size=3, mask=mask)
         assert len(tbl) == 1

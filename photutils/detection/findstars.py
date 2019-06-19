@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 This module implements classes for detecting stars in an astronomical
-image. The convention is that all star-finding classes are subclasses of
+image.  The convention is that all star-finding classes are subclasses of
 an abstract base class called ``StarFinderBase``.  Each star-finding
 class should define a method called ``find_stars`` that finds stars in
 an image.
@@ -11,17 +11,16 @@ import abc
 import math
 import warnings
 
-import numpy as np
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.table import Table
 from astropy.utils import lazyproperty
+import numpy as np
 
 from .core import find_peaks
 from ..utils._moments import _moments, _moments_central
 from ..utils.convolution import filter_data
 from ..utils.exceptions import NoDetectionsWarning
 from ..utils.misc import _ABCMetaAndInheritDocstrings
-
 
 __all__ = ['StarFinderBase', 'DAOStarFinder', 'IRAFStarFinder']
 
@@ -152,8 +151,6 @@ class _StarFinderKernel:
 
         self.shape = self.data.shape
 
-        return
-
 
 class _StarCutout:
     """
@@ -210,7 +207,7 @@ class _StarCutout:
         self.data_masked = self.data * self.mask
 
 
-class _DAOFind_Properties:
+class _DAOFindProperties:
     """
     Class to calculate the properties of each detected star, as defined
     by `DAOFIND`_.
@@ -465,7 +462,7 @@ class _DAOFind_Properties:
             return -2.5 * np.log10(self.flux)
 
 
-class _IRAFStarFind_Properties:
+class _IRAFStarFindProperties:
     """
     Class to calculate the properties of each detected star, as defined
     by IRAF's ``starfind`` task.
@@ -893,6 +890,7 @@ class DAOStarFinder(StarFinderBase):
         self.threshold_eff = self.threshold * self.kernel.relerr
         self.brightest = brightest
         self.peakmax = peakmax
+        self._star_cutouts = None
 
     def find_stars(self, data, mask=None):
         """
@@ -947,7 +945,7 @@ class DAOStarFinder(StarFinderBase):
 
         star_props = []
         for star_cutout in star_cutouts:
-            props = _DAOFind_Properties(star_cutout, self.kernel, self.sky)
+            props = _DAOFindProperties(star_cutout, self.kernel, self.sky)
 
             if np.isnan(props.dx_hx).any() or np.isnan(props.dy_hy).any():
                 continue
@@ -1121,6 +1119,7 @@ class IRAFStarFinder(StarFinderBase):
                                         sigma_radius=self.sigma_radius)
         self.brightest = brightest
         self.peakmax = peakmax
+        self._star_cutouts = None
 
     def find_stars(self, data, mask=None):
         """
@@ -1173,8 +1172,8 @@ class IRAFStarFinder(StarFinderBase):
 
         star_props = []
         for star_cutout in star_cutouts:
-            props = _IRAFStarFind_Properties(star_cutout, self.kernel,
-                                             self.sky)
+            props = _IRAFStarFindProperties(star_cutout, self.kernel,
+                                            self.sky)
 
             # star cutout needs more than one non-zero value
             if np.count_nonzero(props.data) <= 1:
