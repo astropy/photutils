@@ -1,21 +1,23 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides tools for calculating the properties of sources
+defined by a segmentation image.
+"""
 
 import warnings
 
-import numpy as np
-import astropy.units as u
 from astropy.coordinates import SkyCoord
 from astropy.table import QTable
-from astropy.utils import lazyproperty, deprecated
+import astropy.units as u
+from astropy.utils import deprecated, lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import pixel_to_skycoord
-
+import numpy as np
 
 from .core import SegmentationImage
 from ..aperture import BoundingBox
-from ..utils.convolution import filter_data
 from ..utils._moments import _moments, _moments_central
-
+from ..utils.convolution import filter_data
 
 __all__ = ['SourceProperties', 'source_properties', 'SourceCatalog']
 

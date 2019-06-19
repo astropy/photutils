@@ -1,4 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the core module.
+"""
 
 import numpy as np
 from numpy.testing import assert_allclose
@@ -280,7 +283,7 @@ class TestSegmentationImage:
                              [7, 7, 0, 5, 5, 5],
                              [7, 7, 0, 0, 5, 5]])
         segm = SegmentationImage(self.data)
-        mask = np.zeros_like(segm.data, dtype=np.bool)
+        mask = np.zeros(segm.data.shape, dtype=bool)
         mask[0, :] = True
         segm.remove_masked_labels(mask)
         assert_allclose(segm.data, ref_data)
@@ -293,7 +296,7 @@ class TestSegmentationImage:
                              [7, 7, 0, 5, 5, 5],
                              [7, 7, 0, 0, 5, 5]])
         segm = SegmentationImage(self.data)
-        mask = np.zeros_like(segm.data, dtype=np.bool)
+        mask = np.zeros(segm.data.shape, dtype=bool)
         mask[0, :] = True
         segm.remove_masked_labels(mask, partial_overlap=False)
         assert_allclose(segm.data, ref_data)

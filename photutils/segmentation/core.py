@@ -1,13 +1,16 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides classes for a segmentation image and a single
+segment within a segmentation image.
+"""
 
 from copy import deepcopy
 
-import numpy as np
 from astropy.utils import lazyproperty, deprecated
+import numpy as np
 
 from ..aperture import BoundingBox
 from ..utils.colormaps import make_random_cmap
-
 
 __all__ = ['Segment', 'SegmentationImage']
 
@@ -514,7 +517,7 @@ class SegmentationImage:
 
         # check for positive label numbers
         idx = np.where(labels <= 0)[0]
-        if len(idx) > 0:
+        if idx.size > 0:
             bad_labels.update(labels[idx])
 
         # check if label is in the segmentation image
@@ -750,7 +753,7 @@ class SegmentationImage:
         self.check_labels(labels)
 
         labels = np.atleast_1d(labels)
-        if len(labels) == 0:
+        if labels.size == 0:
             return
 
         idx = np.zeros(self.max_label + 1, dtype=int)
@@ -1115,7 +1118,7 @@ class SegmentationImage:
         ...                           [7, 0, 0, 0, 0, 5],
         ...                           [7, 7, 0, 5, 5, 5],
         ...                           [7, 7, 0, 0, 5, 5]])
-        >>> mask = np.zeros_like(segm.data, dtype=np.bool)
+        >>> mask = np.zeros(segm.data.shape, dtype=bool)
         >>> mask[0, :] = True    # mask the first row
         >>> segm.remove_masked_labels(mask)
         >>> segm.data

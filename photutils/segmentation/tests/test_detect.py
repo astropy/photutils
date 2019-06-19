@@ -1,17 +1,19 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the detect module.
+"""
 
-import numpy as np
-from numpy.testing import assert_array_equal, assert_allclose
-import pytest
-
-from astropy.tests.helper import catch_warnings
-from astropy.utils.exceptions import AstropyUserWarning
 from astropy.convolution import Gaussian2DKernel
 from astropy.stats import gaussian_fwhm_to_sigma
+from astropy.tests.helper import catch_warnings
+from astropy.utils.exceptions import AstropyUserWarning
+import numpy as np
+from numpy.testing import assert_allclose, assert_array_equal
+import pytest
 
+from ...utils.exceptions import NoDetectionsWarning
 from ..detect import detect_sources, make_source_mask
 from ...datasets import make_4gaussians_image
-from ...utils.exceptions import NoDetectionsWarning
 
 try:
     import scipy    # noqa
@@ -44,7 +46,7 @@ class TestDetectSources:
         with catch_warnings(NoDetectionsWarning) as warning_lines:
             detect_sources(self.data, threshold=0.9, npixels=5)
             assert warning_lines[0].category == NoDetectionsWarning
-            assert ('No sources were found.' in str(warning_lines[0].message))
+            assert 'No sources were found.' in str(warning_lines[0].message)
 
     def test_npixels(self):
         """
@@ -59,9 +61,9 @@ class TestDetectSources:
         data[3:, 3] = 2
 
         segm = detect_sources(data, 0, npixels=8)
-        assert(segm.nlabels == 1)
+        assert segm.nlabels == 1
         segm = detect_sources(data, 0, npixels=9)
-        assert(segm.nlabels == 1)
+        assert segm.nlabels == 1
 
         data = np.zeros((8, 8))
         data[0:4, 0] = 1
@@ -73,13 +75,13 @@ class TestDetectSources:
         npixels = np.arange(9, 14)
         for npixels in np.arange(9, 14):
             segm = detect_sources(data, 0, npixels=npixels)
-            assert(segm.nlabels == 1)
-            assert(segm.areas[0] == 13)
+            assert segm.nlabels == 1
+            assert segm.areas[0] == 13
 
         with catch_warnings(NoDetectionsWarning) as warning_lines:
             detect_sources(data, 0, npixels=14)
             assert warning_lines[0].category == NoDetectionsWarning
-            assert ('No sources were found.' in str(warning_lines[0].message))
+            assert 'No sources were found.' in str(warning_lines[0].message)
 
     def test_zerothresh(self):
         """Test detection with zero threshold."""
@@ -93,7 +95,7 @@ class TestDetectSources:
         with catch_warnings(NoDetectionsWarning) as warning_lines:
             detect_sources(self.data, threshold=7, npixels=2)
             assert warning_lines[0].category == NoDetectionsWarning
-            assert ('No sources were found.' in str(warning_lines[0].message))
+            assert 'No sources were found.' in str(warning_lines[0].message)
 
     def test_8connectivity(self):
         """Test detection with connectivity=8."""
@@ -160,7 +162,7 @@ class TestDetectSources:
     def test_mask(self):
         data = np.zeros((11, 11))
         data[3:8, 3:8] = 5.
-        mask = np.zeros_like(data, dtype=bool)
+        mask = np.zeros(data.shape, dtype=bool)
         mask[4:6, 4:6] = True
         segm1 = detect_sources(data, 1., 1.)
         segm2 = detect_sources(data, 1., 1., mask=mask)

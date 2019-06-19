@@ -1,12 +1,14 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the deblend module.
+"""
 
+from astropy.modeling import models
+from astropy.tests.helper import catch_warnings
+from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
-
-from astropy.tests.helper import catch_warnings
-from astropy.utils.exceptions import AstropyUserWarning
-from astropy.modeling import models
 
 from ..core import SegmentationImage
 from ..deblend import deblend_sources
@@ -155,7 +157,7 @@ class TestDeblendSources:
         data[0, 0] = 2
         data[1, 1] = 2
         data[2, 2] = 1
-        segm = np.zeros_like(data)
+        segm = np.zeros(data.shape, dtype=int)
         segm[data.nonzero()] = 1
         segm = SegmentationImage(segm)
         data = data * 100.

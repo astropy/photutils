@@ -1,17 +1,19 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides tools for detecting sources in an image.
+"""
 
 import warnings
 
-import numpy as np
 from astropy.convolution import Gaussian2DKernel
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.utils.decorators import deprecated_renamed_argument
+import numpy as np
 
 from .core import SegmentationImage
 from ..detection import detect_threshold
 from ..utils.convolution import filter_data
 from ..utils.exceptions import NoDetectionsWarning
-
 
 __all__ = ['detect_sources', 'make_source_mask']
 
@@ -110,7 +112,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         from photutils import detect_threshold, detect_sources
         threshold = detect_threshold(image, snr=3)
         from astropy.convolution import Gaussian2DKernel
-        sigma = 3.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))   # FWHM = 3
+        sigma = 3.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))  # FWHM = 3
         kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
         kernel.normalize()
         segm = detect_sources(image, threshold, npixels=5,

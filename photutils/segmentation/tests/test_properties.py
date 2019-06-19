@@ -1,22 +1,24 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the properties module.
+"""
 
 import itertools
 
-import numpy as np
-from numpy.testing import assert_allclose
-import pytest
-
+import astropy.units as u
+import astropy.wcs as WCS
 from astropy.modeling import models
 from astropy.table import QTable
 from astropy.tests.helper import assert_quantity_allclose, catch_warnings
-import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils.misc import isiterable
-import astropy.wcs as WCS
+from numpy.testing import assert_allclose
+import numpy as np
+import pytest
 
 from ..core import SegmentationImage
 from ..detect import detect_sources
-from ..properties import SourceProperties, source_properties, SourceCatalog
+from ..properties import SourceCatalog, SourceProperties, source_properties
 
 try:
     import scipy    # noqa
@@ -29,14 +31,15 @@ YCEN = 52.7
 MAJOR_SIG = 8.
 MINOR_SIG = 3.
 THETA = np.pi / 6.
-g1 = models.Gaussian2D(111., XCEN, YCEN, MAJOR_SIG, MINOR_SIG, theta=THETA)
-g2 = models.Gaussian2D(50, 20, 80, 5.1, 4.5)
-g3 = models.Gaussian2D(70, 75, 18, 9.2, 4.5)
-y, x = np.mgrid[0:100, 0:100]
-IMAGE = g1(x, y) + g2(x, y) + g3(x, y)
+G1 = models.Gaussian2D(111., XCEN, YCEN, MAJOR_SIG, MINOR_SIG, theta=THETA)
+G2 = models.Gaussian2D(50, 20, 80, 5.1, 4.5)
+G3 = models.Gaussian2D(70, 75, 18, 9.2, 4.5)
+Y, X = np.mgrid[0:100, 0:100]
+IMAGE = G1(X, Y) + G2(X, Y) + G3(X, Y)
 THRESHOLD = 0.1
 ERR_VALS = [0., 2.5]
 BACKGRD_VALS = [None, 0., 1., 3.5]
+FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -132,10 +135,10 @@ class TestSourceProperties:
         NaN, inf) values in the data array.
         """
 
-        error = np.ones_like(IMAGE) * 5.1
+        error = np.ones(IMAGE.shape) * 5.1
         error[41, 35] = np.nan
         error[42, 36] = np.inf
-        background = np.ones_like(IMAGE) * 1.2
+        background = np.ones(IMAGE.shape) * 1.2
         background[62, 55] = np.nan
         background[63, 56] = np.inf
         mask = np.zeros(IMAGE.shape).astype(bool)
@@ -187,8 +190,8 @@ class TestSourceProperties:
     def test_completely_masked(self):
         """Test case where a source is completely masked."""
 
-        error = np.ones_like(IMAGE) * 5.1
-        background = np.ones_like(IMAGE) * 1.2
+        error = np.ones(IMAGE.shape) * 5.1
+        background = np.ones(IMAGE.shape) * 1.2
         mask = np.ones(IMAGE.shape).astype(bool)
         obj = source_properties(IMAGE, self.segm, error=error,
                                 background=background, mask=mask)[0]
@@ -334,7 +337,7 @@ class TestSourcePropertiesFunction:
         assert props[0].error_cutout_ma is None
 
     def test_cutout_shapes(self):
-        error = np.ones_like(IMAGE) * 1.
+        error = np.ones(IMAGE.shape, dtype=float)
         props = source_properties(IMAGE, self.segm, error=error, background=1.)
         bbox = props[0].bbox
         properties = ['background_cutout_ma', 'data_cutout',
@@ -352,7 +355,7 @@ class TestSourcePropertiesFunction:
     @pytest.mark.parametrize(('error_value', 'background'),
                              list(itertools.product(ERR_VALS, BACKGRD_VALS)))
     def test_segmentation_inputs(self, error_value, background):
-        error = np.ones_like(IMAGE) * error_value
+        error = np.ones(IMAGE.shape) * error_value
         props = source_properties(IMAGE, self.segm, error=error,
                                   background=background)
         obj = props[1]
@@ -391,7 +394,7 @@ class TestSourcePropertiesFunction:
         data = np.zeros((3, 3))
         data[0, 1] = 1.
         data[1, 1] = 1.
-        mask = np.zeros_like(data, dtype=np.bool)
+        mask = np.zeros(data.shape, dtype=bool)
         mask[0, 1] = True
         segm = data.astype(np.int)
         props = source_properties(data, segm, mask=mask)
@@ -409,14 +412,13 @@ class TestSourcePropertiesFunction:
         assert_quantity_allclose(props.source_sum, props2.source_sum)
 
     def test_single_pixel_segment(self):
-        segm = np.zeros_like(self.segm)
+        segm = np.zeros(self.segm.shape, dtype=int)
         segm[50, 50] = 1
         props = source_properties(IMAGE, segm)
         assert props[0].eccentricity == 0
 
     def test_filtering(self):
         from astropy.convolution import Gaussian2DKernel
-        FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
         filter_kernel = Gaussian2DKernel(2.*FWHM2SIGMA, x_size=3, y_size=3)
         error = np.sqrt(IMAGE)
         props1 = source_properties(IMAGE, self.segm, error=error)
@@ -434,7 +436,6 @@ class TestSourcePropertiesFunction:
         data = np.zeros((3, 3))
         data[1, 1] = 1.
         from astropy.convolution import Gaussian2DKernel
-        FWHM2SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
         filter_kernel = Gaussian2DKernel(2.*FWHM2SIGMA, x_size=3, y_size=3)
         error = np.sqrt(IMAGE)
         props1 = source_properties(IMAGE, self.segm, error=error)
