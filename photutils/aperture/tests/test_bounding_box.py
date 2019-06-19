@@ -1,4 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the bounding_box module.
+"""
 
 from numpy.testing import assert_allclose
 import pytest

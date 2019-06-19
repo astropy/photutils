@@ -1,8 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-The tests in this file test the accuracy of the photometric results.
-Here we test directly with aperture objects since we are checking the
-algorithms in aperture_photometry, not in the wrappers.
+Tests for the photometry module.
 """
 
 import pytest
@@ -19,7 +17,7 @@ from astropy.utils import minversion
 from astropy.wcs import WCS
 from astropy.wcs.utils import pixel_to_skycoord
 
-from ..core import aperture_photometry
+from ..photometry import aperture_photometry
 from ..circle import (CircularAperture, CircularAnnulus, SkyCircularAperture,
                       SkyCircularAnnulus)
 from ..ellipse import (EllipticalAperture, EllipticalAnnulus,

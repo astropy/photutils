@@ -1,4 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the mask module.
+"""
 
 import astropy.units as u
 import numpy as np
