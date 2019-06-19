@@ -1,18 +1,21 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module defines rectangular and rectangular-annulus apertures in
+both pixel and sky coordinates.
+"""
 
 import math
 
-import numpy as np
 import astropy.units as u
+import numpy as np
 
-from .attributes import (PixelPositions, SkyCoordPositions, Scalar,
-                         PositiveScalar, AngleScalarQuantity,
-                         AngleOrPixelScalarQuantity)
-from .core import PixelAperture, SkyAperture
+from .attributes import (AngleOrPixelScalarQuantity, AngleScalarQuantity,
+                         PixelPositions, PositiveScalar, Scalar,
+                         SkyCoordPositions)
 from .bounding_box import BoundingBox
+from .core import PixelAperture, SkyAperture
 from .mask import ApertureMask
 from ..geometry import rectangular_overlap_grid
-
 
 __all__ = ['RectangularMaskMixin', 'RectangularAperture',
            'RectangularAnnulus', 'SkyRectangularAperture',
