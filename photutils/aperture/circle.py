@@ -71,7 +71,7 @@ class CircularMaskMixin:
 
         if hasattr(self, 'r'):
             radius = self.r
-        elif hasattr(self, 'r_out'):    # annulus
+        elif hasattr(self, 'r_out'):  # annulus
             radius = self.r_out
         else:
             raise ValueError('Cannot determine the aperture radius.')

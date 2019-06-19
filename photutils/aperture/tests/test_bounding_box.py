@@ -7,7 +7,7 @@ from ..bounding_box import BoundingBox
 from ..rectangle import RectangularAperture
 
 try:
-    import matplotlib    # noqa
+    import matplotlib  # noqa
     HAS_MATPLOTLIB = True
 except ImportError:
     HAS_MATPLOTLIB = False

@@ -29,7 +29,7 @@ from ..rectangle import (RectangularAperture, RectangularAnnulus,
 from ...datasets import get_path, make_4gaussians_image, make_wcs
 
 try:
-    import matplotlib    # noqa
+    import matplotlib  # noqa
     HAS_MATPLOTLIB = True
 except ImportError:
     HAS_MATPLOTLIB = False
@@ -473,7 +473,7 @@ def test_aperture_photometry_inputs_with_mask():
     data = np.ones((5, 5))
     aperture = CircularAperture((2, 2), 2.)
     mask = np.zeros_like(data, dtype=bool)
-    data[2, 2] = 100.   # bad pixel
+    data[2, 2] = 100.  # bad pixel
     mask[2, 2] = True
     error = np.sqrt(data)
     data_in = data.copy()

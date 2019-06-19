@@ -10,7 +10,7 @@ from ..circle import CircularAperture
 from ..mask import ApertureMask
 
 try:
-    import matplotlib    # noqa
+    import matplotlib  # noqa
     HAS_MATPLOTLIB = True
 except ImportError:
     HAS_MATPLOTLIB = False

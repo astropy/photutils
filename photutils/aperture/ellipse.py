@@ -74,7 +74,7 @@ class EllipticalMaskMixin:
         if hasattr(self, 'a'):
             a = self.a
             b = self.b
-        elif hasattr(self, 'a_in'):    # annulus
+        elif hasattr(self, 'a_in'):  # annulus
             a = self.a_out
             b = self.b_out
         else:

@@ -11,7 +11,6 @@ import astropy.units as u
 from astropy.utils.exceptions import AstropyDeprecationWarning
 import numpy as np
 
-
 __all__ = ['ApertureAttribute', 'PixelPositions', 'SkyCoordPositions',
            'Scalar', 'PositiveScalar', 'AngleOrPixelScalarQuantity']
 
