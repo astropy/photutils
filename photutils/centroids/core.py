@@ -1,21 +1,18 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Functions for centroiding sources and measuring their morphological
-properties.
+The module contains tools for centroiding sources.
 """
 
 import inspect
-import sys
 import warnings
 
-import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
-from astropy.modeling.models import (Gaussian1D, Gaussian2D, Const1D,
-                                     Const2D, CONSTRAINTS_DOC)
 from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.models import (CONSTRAINTS_DOC, Const1D, Const2D,
+                                     Gaussian1D, Gaussian2D)
 from astropy.nddata.utils import overlap_slices
 from astropy.utils.exceptions import AstropyUserWarning
-
+import numpy as np
 
 __all__ = ['GaussianConst2D', 'centroid_com', 'gaussian1d_moments',
            'fit_2dgaussian', 'centroid_1dg', 'centroid_2dg',
@@ -30,20 +27,26 @@ class GaussianConst2D(Fittable2DModel):
     ----------
     constant : float
         Value of the constant.
+
     amplitude : float
         Amplitude of the Gaussian.
+
     x_mean : float
         Mean of the Gaussian in x.
+
     y_mean : float
         Mean of the Gaussian in y.
+
     x_stddev : float
         Standard deviation of the Gaussian in x.
         ``x_stddev`` and ``y_stddev`` must be specified unless a covariance
         matrix (``cov_matrix``) is input.
+
     y_stddev : float
         Standard deviation of the Gaussian in y.
         ``x_stddev`` and ``y_stddev`` must be specified unless a covariance
         matrix (``cov_matrix``) is input.
+
     theta : float, optional
         Rotation angle in radians. The rotation angle increases
         counterclockwise.
@@ -244,7 +247,7 @@ def fit_2dgaussian(data, error=None, mask=None):
     # values can yield undefined Gaussian parameters, e.g. x/y_stddev).
     props = data_properties(data - np.min(data), mask=mask)
 
-    init_const = 0.    # subtracted data minimum above
+    init_const = 0.  # subtracted data minimum above
     init_amplitude = np.ptp(data)
     g_init = GaussianConst2D(constant=init_const, amplitude=init_amplitude,
                              x_mean=props.xcentroid.value,
@@ -438,12 +441,12 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
     if footprint is None:
         if box_size is None:
             raise ValueError('box_size or footprint must be defined.')
-        else:
-            box_size = np.atleast_1d(box_size)
-            if len(box_size) == 1:
-                box_size = np.repeat(box_size, 2)
-            if len(box_size) != 2:
-                raise ValueError('box_size must have 1 or 2 elements.')
+
+        box_size = np.atleast_1d(box_size)
+        if len(box_size) == 1:
+            box_size = np.repeat(box_size, 2)
+        if len(box_size) != 2:
+            raise ValueError('box_size must have 1 or 2 elements.')
 
         footprint = np.ones(box_size, dtype=bool)
     else:

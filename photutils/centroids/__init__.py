@@ -1,7 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This subpackage contains tools for centroiding objects in an
-astronomical image.
+This subpackage contains tools for centroiding sources.
 """
 
-from .core import *    # noqa
+from .core import *  # noqa
