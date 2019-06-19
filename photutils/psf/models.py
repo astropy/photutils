@@ -682,7 +682,7 @@ class GriddedPSFModel(Fittable2DModel):
 
         xyref = [tuple(i) for i in xyref]
         idx = sorted(range(len(xyref)), key=xyref.__getitem__)
-        xyref = sorted(xyref)   # sort by x, then y
+        xyref = sorted(xyref)  # sort by x, then y
         (x0, y0), (_x0, y1), (x1, _y0), (_x1, _y1) = xyref
 
         if x0 != _x0 or x1 != _x1 or y0 != _y0 or y1 != _y1:
