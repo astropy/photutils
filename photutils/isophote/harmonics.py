@@ -1,7 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides tools for computing and fitting harmonic functions.
+"""
 
 import numpy as np
-
 
 __all__ = ['first_and_second_harmonic_function',
            'fit_first_and_second_harmonics', 'fit_upper_harmonic']

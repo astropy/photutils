@@ -1,16 +1,20 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides a class to fit ellipses.
+"""
+
+import math
 
 from astropy import log
-import math
 import numpy as np
 
-from .harmonics import (fit_first_and_second_harmonics,
-                        first_and_second_harmonic_function)
-from .isophote import Isophote, CentralPixel
+from .harmonics import (first_and_second_harmonic_function,
+                        fit_first_and_second_harmonics)
+from .isophote import CentralPixel, Isophote
 from .sample import EllipseSample
 
-
 __all__ = ['EllipseFitter']
+
 __doctest_skip__ = ['EllipseFitter.fit']
 
 

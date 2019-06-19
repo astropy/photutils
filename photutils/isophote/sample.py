@@ -1,4 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides a class to sample data along an elliptical path.
+"""
 
 import copy
 
@@ -6,7 +9,6 @@ import numpy as np
 
 from .geometry import EllipseGeometry
 from .integrator import integrators
-
 
 __all__ = ['EllipseSample']
 

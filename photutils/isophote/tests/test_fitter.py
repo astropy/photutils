@@ -1,18 +1,20 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the fitter module.
+"""
 
+from astropy.io import fits
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from astropy.io import fits
-
 from .make_test_data import make_test_image
-from ..fitter import EllipseFitter, CentralEllipseFitter
+from ..fitter import CentralEllipseFitter, EllipseFitter
 from ..geometry import EllipseGeometry
 from ..harmonics import fit_first_and_second_harmonics
 from ..integrator import MEAN
 from ..isophote import Isophote
-from ..sample import EllipseSample, CentralEllipseSample
+from ..sample import CentralEllipseSample, EllipseSample
 from ...datasets import get_path
 
 try:

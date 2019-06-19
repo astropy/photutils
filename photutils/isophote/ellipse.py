@@ -1,18 +1,20 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides a class to fit elliptical isophotes.
+"""
 
 import warnings
 
-import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
+import numpy as np
 
-from .fitter import (EllipseFitter, CentralEllipseFitter,
-                     DEFAULT_CONVERGENCE, DEFAULT_MINIT, DEFAULT_MAXIT,
-                     DEFAULT_FFLAG, DEFAULT_MAXGERR)
+from .fitter import (DEFAULT_CONVERGENCE, DEFAULT_FFLAG, DEFAULT_MAXGERR,
+                     DEFAULT_MAXIT, DEFAULT_MINIT, CentralEllipseFitter,
+                     EllipseFitter)
 from .geometry import EllipseGeometry
 from .integrator import BILINEAR
 from .isophote import Isophote, IsophoteList
-from .sample import EllipseSample, CentralEllipseSample
-
+from .sample import CentralEllipseSample, EllipseSample
 
 __all__ = ['Ellipse']
 

@@ -1,9 +1,13 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides a container class to store parameters for the
+geometry of an ellipse.
+"""
 
 import math
-import numpy as np
-from astropy import log
 
+from astropy import log
+import numpy as np
 
 __all__ = ['EllipseGeometry']
 

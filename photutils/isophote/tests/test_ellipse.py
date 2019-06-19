@@ -1,17 +1,18 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
-import numpy as np
-import pytest
+"""
+Tests for the ellipse module.
+"""
 
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
+import numpy as np
+import pytest
 
 from .make_test_data import make_test_image
 from ..ellipse import Ellipse
 from ..geometry import EllipseGeometry
 from ..isophote import Isophote, IsophoteList
 from ...datasets import get_path, make_noise_image
-
 
 try:
     import scipy    # noqa

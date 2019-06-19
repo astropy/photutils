@@ -1,16 +1,20 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module profiles tools for building a model elliptical galaxy image
+from a list of isophotes.
+"""
+
 
 import numpy as np
 
 from .geometry import EllipseGeometry
-
 
 __all__ = ['build_ellipse_model']
 
 
 def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
     """
-    Build an elliptical model galaxy image from a list of isophotes.
+    Build a model elliptical galaxy image from a list of isophotes.
 
     For each ellipse in the input isophote list the algorithm fills the
     output image array with the corresponding isophotal intensity.

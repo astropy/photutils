@@ -47,12 +47,12 @@ reference for the regression.
 """
 
 import math
-import numpy as np
 import os.path as op
-import pytest
 
 from astropy.io import fits
 from astropy.table import Table
+import numpy as np
+import pytest
 
 from ..ellipse import Ellipse
 from ..integrator import BILINEAR

@@ -1,4 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the geometry module.
+"""
 
 import numpy as np
 from numpy.testing import assert_allclose

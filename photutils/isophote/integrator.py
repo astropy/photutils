@@ -1,8 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides tools for pixel integration.
+"""
 
 import math
-import numpy.ma as ma
 
+import numpy.ma as ma
 
 __all__ = ['integrators', 'NEAREST_NEIGHBOR', 'BILINEAR', 'MEAN', 'MEDIAN']
 

@@ -1,15 +1,16 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides classes to store the results of isophote fits.
+"""
 
 from collections import OrderedDict
 
-import numpy as np
 from astropy.table import QTable
 import astropy.units as u
+import numpy as np
 
-from .harmonics import (fit_first_and_second_harmonics,
-                        first_and_second_harmonic_function,
-                        fit_upper_harmonic)
-
+from .harmonics import (first_and_second_harmonic_function,
+                        fit_first_and_second_harmonics, fit_upper_harmonic)
 
 __all__ = ['Isophote', 'IsophoteList']
 
