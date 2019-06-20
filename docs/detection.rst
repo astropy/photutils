@@ -129,7 +129,7 @@ regions.  No sources will be detected in the masked regions:
 
    >>> from photutils import DAOStarFinder
    >>> daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)
-   >>> mask = np.zeros_like(data, dtype=bool)
+   >>> mask = np.zeros(data.shape, dtype=bool)
    >>> mask[50:151, 50:351] = True
    >>> mask[250:351, 150:351] = True
    >>> sources = daofind(data - median, mask=mask)
@@ -151,7 +151,7 @@ regions.  No sources will be detected in the masked regions:
     data = hdu.data[0:401, 0:401]
     mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)
-    mask = np.zeros_like(data, dtype=bool)
+    mask = np.zeros(data.shape, dtype=bool)
     mask[50:151, 50:351] = True
     mask[250:351, 150:351] = True
     sources = daofind(data - median, mask=mask)
