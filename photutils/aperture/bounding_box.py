@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Class defining a rectangular bounding box.
+This module defines a class for a rectangular bounding box.
 """
 
 from astropy.io.fits.util import _is_int
@@ -251,7 +251,7 @@ class BoundingBox:
         represents the bounding box.
         """
 
-        from .rectangle import RectangularAperture
+        from .rectangle import RectangularAperture  # prevent circular import
 
         xpos = (self.extent[1] + self.extent[0]) / 2.
         ypos = (self.extent[3] + self.extent[2]) / 2.

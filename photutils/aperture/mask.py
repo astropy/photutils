@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Module to define an aperture mask.
+This module defines a class for aperture masks.
 """
 
 import astropy.units as u

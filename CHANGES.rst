@@ -155,6 +155,9 @@ API changes
   - Deprecated ``PrimaryHDU``, ``ImageHDU``, and ``HDUList`` inputs
     to ``aperture_photometry``. [#867]
 
+  - The ``aperture_photometry`` function moved to a new
+    ``photutils.aperture.photometry`` module. [#876]
+
 - ``photutils.background``
 
   - The ``Background2D`` ``plot_meshes`` keyword ``ax`` was deprecated

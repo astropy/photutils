@@ -1,4 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the ellipse module.
+"""
 
 from astropy.coordinates import SkyCoord
 import astropy.units as u
