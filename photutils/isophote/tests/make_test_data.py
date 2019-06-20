@@ -67,7 +67,7 @@ def make_test_image(nx=512, ny=512, x0=None, y0=None,
                                    image[int(xcen), int(ycen - 1)] +
                                    image[int(xcen), int(ycen + 1)]) / 4.
 
-    image += make_noise_image(image.shape, type='gaussian', mean=0.,
+    image += make_noise_image(image.shape, distribution='gaussian', mean=0.,
                               stddev=noise, random_state=random_state)
 
     return image

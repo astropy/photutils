@@ -219,9 +219,9 @@ First let's create an image with four overlapping stars::
     >>> sources['id'] = [1, 2, 3, 4]
     >>> tshape = (32, 32)
     >>> image = (make_gaussian_sources_image(tshape, sources) +
-    ...          make_noise_image(tshape, type='poisson', mean=6.,
+    ...          make_noise_image(tshape, distribution='poisson', mean=6.,
     ...                           random_state=1) +
-    ...          make_noise_image(tshape, type='gaussian', mean=0.,
+    ...          make_noise_image(tshape, distribution='gaussian', mean=0.,
     ...                           stddev=2., random_state=1))
 
 .. doctest-requires:: matplotlib
@@ -253,9 +253,9 @@ First let's create an image with four overlapping stars::
     sources['id'] = [1, 2, 3, 4]
     tshape = (32, 32)
     image = (make_gaussian_sources_image(tshape, sources) +
-             make_noise_image(tshape, type='poisson', mean=6.,
+             make_noise_image(tshape, distribution='poisson', mean=6.,
                               random_state=1) +
-             make_noise_image(tshape, type='gaussian', mean=0.,
+             make_noise_image(tshape, distribution='gaussian', mean=0.,
                               stddev=2., random_state=1))
 
     from matplotlib import rcParams
@@ -345,9 +345,9 @@ Now, let's compare the simulated and the residual images:
     sources['id'] = [1, 2, 3, 4]
     tshape = (32, 32)
     image = (make_gaussian_sources_image(tshape, sources) +
-             make_noise_image(tshape, type='poisson', mean=6.,
+             make_noise_image(tshape, distribution='poisson', mean=6.,
                               random_state=1) +
-             make_noise_image(tshape, type='gaussian', mean=0.,
+             make_noise_image(tshape, distribution='gaussian', mean=0.,
                               stddev=2., random_state=1))
 
     from photutils.detection import IRAFStarFinder
@@ -454,9 +454,9 @@ Consider the previous example after the line
     sources['id'] = [1, 2, 3, 4]
     tshape = (32, 32)
     image = (make_gaussian_sources_image(tshape, sources) +
-             make_noise_image(tshape, type='poisson', mean=6.,
+             make_noise_image(tshape, distribution='poisson', mean=6.,
                               random_state=1) +
-             make_noise_image(tshape, type='gaussian', mean=0.,
+             make_noise_image(tshape, distribution='gaussian', mean=0.,
                               stddev=2., random_state=1))
 
     from photutils.detection import IRAFStarFinder
@@ -572,9 +572,9 @@ star as well. Also, note that both of the stars have ``sigma=2.0``.
     sources['theta'] = [0] * 2
     tshape = (32, 32)
     image = (make_gaussian_sources_image(tshape, sources) +
-             make_noise_image(tshape, type='poisson', mean=6.,
+             make_noise_image(tshape, distribution='poisson', mean=6.,
                               random_state=1) +
-             make_noise_image(tshape, type='gaussian', mean=0.,
+             make_noise_image(tshape, distribution='gaussian', mean=0.,
                               stddev=2., random_state=1))
 
     vmin, vmax = np.percentile(image, [5, 95])
@@ -649,9 +649,9 @@ Let's take a look at the residual image::
     sources['theta'] = [0] * 2
     tshape = (32, 32)
     image = (make_gaussian_sources_image(tshape, sources) +
-             make_noise_image(tshape, type='poisson', mean=6.,
+             make_noise_image(tshape, distribution='poisson', mean=6.,
                               random_state=1) +
-             make_noise_image(tshape, type='gaussian', mean=0.,
+             make_noise_image(tshape, distribution='gaussian', mean=0.,
                               stddev=2., random_state=1))
 
     daogroup = DAOGroup(crit_separation=8)
