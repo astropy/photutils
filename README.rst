@@ -28,10 +28,11 @@ the following acknowledgment::
     detection and photometry of astronomical sources (Bradley et al.
     20XX).
 
-where (Bradley et al. 20XX) is a citation to the Zenodo record of the
-Photutils version that was used.  We also encourage citations in the
-main text wherever appropriate.  Please see the `CITATION
-<CITATION.rst>`_ file for details and an example BibTeX entry.
+where (Bradley et al. 20XX) is a citation to the `Zenodo record
+<https://doi.org/10.5281/zenodo.596036>`_ of the Photutils version
+that was used.  We also encourage citations in the main text wherever
+appropriate.  Please see the `CITATION <CITATION.rst>`_ file for
+details and an example BibTeX entry.
 
 
 License
