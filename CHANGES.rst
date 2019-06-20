@@ -163,6 +163,11 @@ API changes
   - The ``Background2D`` ``plot_meshes`` keyword ``ax`` was deprecated
     and renamed to ``axes``. [#854]
 
+- ``photutils.datasets``
+
+  - The ``make_noise_image`` ``type`` keyword was deprecated and
+    renamed to ``distribution``. [#877]
+
 - ``photutils.detection``
 
   - Removed deprecated ``subpixel`` keyword for ``find_peaks``. [#835]
