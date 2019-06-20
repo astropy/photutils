@@ -1,9 +1,12 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Functions for measuring non-parametric morphology.
+This module provides functions for measuring non-parametric morphologies
+of sources.
 """
 
 import numpy as np
+
+__all__ = ['gini']
 
 
 def gini(data):
@@ -50,4 +53,5 @@ def gini(data):
     npix = np.size(flattened)
     normalization = np.abs(np.mean(flattened)) * npix * (npix - 1)
     kernel = (2. * np.arange(1, npix + 1) - npix - 1) * np.abs(flattened)
+
     return np.sum(kernel) / normalization

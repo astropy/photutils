@@ -1,16 +1,19 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the harmonics module.
+"""
 
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
 from .make_test_data import make_test_image
-from ..harmonics import (fit_first_and_second_harmonics, fit_upper_harmonic,
-                         first_and_second_harmonic_function)
+from ..harmonics import (first_and_second_harmonic_function,
+                         fit_first_and_second_harmonics, fit_upper_harmonic)
 from ..sample import EllipseSample
 
 try:
-    from scipy.optimize import leastsq    # noqa
+    from scipy.optimize import leastsq  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

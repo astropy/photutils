@@ -1,16 +1,20 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides a class to fit ellipses.
+"""
+
+import math
 
 from astropy import log
-import math
 import numpy as np
 
-from .harmonics import (fit_first_and_second_harmonics,
-                        first_and_second_harmonic_function)
-from .isophote import Isophote, CentralPixel
+from .harmonics import (first_and_second_harmonic_function,
+                        fit_first_and_second_harmonics)
+from .isophote import CentralPixel, Isophote
 from .sample import EllipseSample
 
-
 __all__ = ['EllipseFitter']
+
 __doctest_skip__ = ['EllipseFitter.fit']
 
 
@@ -134,7 +138,7 @@ class EllipseFitter:
         minimum_amplitude_value = np.Inf
         minimum_amplitude_sample = None
 
-        for iter in range(maxit):
+        for i in range(maxit):
             # Force the sample to compute its gradient and associated values.
             sample.update()
 
@@ -152,7 +156,7 @@ class EllipseFitter:
                 coeffs = fit_first_and_second_harmonics(values[0], values[2])
             except Exception as e:
                 log.info(e)
-                return Isophote(sample, iter+1, False, 3)
+                return Isophote(sample, i + 1, False, 3)
 
             coeffs = coeffs[0]
 
@@ -174,9 +178,9 @@ class EllipseFitter:
                     > np.abs(largest_harmonic)):
                 # Got a valid solution. But before returning, ensure
                 # that a minimum of iterations has run.
-                if iter >= minit-1:
+                if i >= minit - 1:
                     sample.update()
-                    return Isophote(sample, iter+1, True, 0)
+                    return Isophote(sample, i + 1, True, 0)
 
             # it may not have converged yet, but the sample contains too
             # many invalid data points: return.
@@ -184,10 +188,10 @@ class EllipseFitter:
                 # when too many data points were flagged, return the
                 # best fit sample instead of the current one.
                 minimum_amplitude_sample.update()
-                return Isophote(minimum_amplitude_sample, iter+1, True, 1)
+                return Isophote(minimum_amplitude_sample, i + 1, True, 1)
 
             # pick appropriate corrector code.
-            corrector = _correctors[largest_harmonic_index]
+            corrector = _CORRECTORS[largest_harmonic_index]
 
             # generate *NEW* EllipseSample instance with corrected
             # parameter.  Note that this instance is still devoid of other
@@ -208,7 +212,7 @@ class EllipseFitter:
 
             if not proceed:
                 sample.update()
-                return Isophote(sample, iter+1, True, -1)
+                return Isophote(sample, i + 1, True, -1)
 
         # Got to the maximum number of iterations. Return with
         # code 2, and handle it as a valid isophote. Use the
@@ -216,7 +220,8 @@ class EllipseFitter:
         minimum_amplitude_sample.update()
         return Isophote(minimum_amplitude_sample, maxit, True, 2)
 
-    def _check_conditions(self, sample, maxgerr, going_inwards, lexceed):
+    @staticmethod
+    def _check_conditions(sample, maxgerr, going_inwards, lexceed):
         proceed = True
 
         # If center wandered more than allowed, put it back
@@ -230,9 +235,9 @@ class EllipseFitter:
 
         # check if an acceptable gradient value could be computed.
         if sample.gradient_error:
-            if (not going_inwards and
-                (sample.gradient_relative_error > maxgerr or
-                 sample.gradient >= 0.)):
+            if not going_inwards and (
+                    sample.gradient_relative_error > maxgerr
+                    or sample.gradient >= 0.0):
                 if lexceed:
                     proceed = False
                 else:
@@ -274,7 +279,8 @@ class _ParameterCorrector:
 
 class _PositionCorrector(_ParameterCorrector):
 
-    def finalize_correction(self, dx, dy, sample):
+    @staticmethod
+    def finalize_correction(dx, dy, sample):
         new_x0 = sample.geometry.x0 + dx
         new_y0 = sample.geometry.y0 + dy
 
@@ -287,7 +293,7 @@ class _PositionCorrector(_ParameterCorrector):
                              integrmode=sample.integrmode)
 
 
-class _PositionCorrector_0(_PositionCorrector):
+class _PositionCorrector0(_PositionCorrector):
 
     def correct(self, sample, harmonic):
         aux = -harmonic * (1. - sample.geometry.eps) / sample.gradient
@@ -298,7 +304,7 @@ class _PositionCorrector_0(_PositionCorrector):
         return self.finalize_correction(dx, dy, sample)
 
 
-class _PositionCorrector_1(_PositionCorrector):
+class _PositionCorrector1(_PositionCorrector):
 
     def correct(self, sample, harmonic):
         aux = -harmonic / sample.gradient
@@ -352,7 +358,7 @@ class _EllipticityCorrector(_ParameterCorrector):
 
 
 # instances of corrector code live here:
-_correctors = [_PositionCorrector_0(), _PositionCorrector_1(),
+_CORRECTORS = [_PositionCorrector0(), _PositionCorrector1(),
                _AngleCorrector(), _EllipticityCorrector()]
 
 

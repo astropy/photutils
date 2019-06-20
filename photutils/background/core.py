@@ -1,26 +1,23 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module defines background classes to estimate a scalar background
-and background RMS from an array (which may be masked) of any dimension.
-These classes were designed as part of an object-oriented interface for
-the tools in the PSF subpackage.
+This module defines classes to estimate the background and background
+RMS in an array of any dimension.
 """
 
 import abc
 
-import numpy as np
 from astropy.stats import biweight_location, biweight_scale, mad_std
+from astropy.version import version as astropy_version
+import numpy as np
 
 from ..utils.misc import _ABCMetaAndInheritDocstrings
 
-from astropy.version import version as astropy_version
 if astropy_version < '3.1':
     from astropy.stats import SigmaClip
-    SIGMA_CLIP = SigmaClip(sigma=3., iters=10)
+    SIGMA_CLIP = SigmaClip(sigma=3.0, iters=10)
 else:
-    from ..extern import SigmaClip
-    SIGMA_CLIP = SigmaClip(sigma=3., maxiters=10)
-
+    from ..extern.sigma_clipping import SigmaClip
+    SIGMA_CLIP = SigmaClip(sigma=3.0, maxiters=10)
 
 __all__ = ['BackgroundBase', 'BackgroundRMSBase', 'MeanBackground',
            'MedianBackground', 'ModeEstimatorBackground',
@@ -72,7 +69,7 @@ class BackgroundBase(metaclass=_ABCMetaAndInheritDocstrings):
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters.  If `None` then no sigma clipping will be
         performed.  The default is to perform sigma clipping with
-        ``sigma=3.`` and ``maxiters=5``.
+        ``sigma=3.0`` and ``maxiters=5``.
     """
 
     def __init__(self, sigma_clip=SIGMA_CLIP):
@@ -115,7 +112,7 @@ class BackgroundRMSBase(metaclass=_ABCMetaAndInheritDocstrings):
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters.  If `None` then no sigma clipping will be
         performed.  The default is to perform sigma clipping with
-        ``sigma=3.`` and ``maxiters=5``.
+        ``sigma=3.0`` and ``maxiters=5``.
     """
 
     def __init__(self, sigma_clip=SIGMA_CLIP):
@@ -159,28 +156,28 @@ class MeanBackground(BackgroundBase):
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters.  If `None` then no sigma clipping will be
         performed.  The default is to perform sigma clipping with
-        ``sigma=3.`` and ``maxiters=5``.
+        ``sigma=3.0`` and ``maxiters=5``.
 
     Examples
     --------
     >>> from astropy.stats import SigmaClip
     >>> from photutils import MeanBackground
     >>> data = np.arange(100)
-    >>> sigma_clip = SigmaClip(sigma=3.)
+    >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkg = MeanBackground(sigma_clip)
 
     The background value can be calculated by using the
     `calc_background` method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
 
     Alternatively, the background value can be calculated by calling the
     class instance as a function, e.g.:
 
     >>> bkg_value = bkg(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
     """
 
@@ -202,28 +199,28 @@ class MedianBackground(BackgroundBase):
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters.  If `None` then no sigma clipping will be
         performed.  The default is to perform sigma clipping with
-        ``sigma=3.`` and ``maxiters=5``.
+        ``sigma=3.0`` and ``maxiters=5``.
 
     Examples
     --------
     >>> from astropy.stats import SigmaClip
     >>> from photutils import MedianBackground
     >>> data = np.arange(100)
-    >>> sigma_clip = SigmaClip(sigma=3.)
+    >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkg = MedianBackground(sigma_clip)
 
     The background value can be calculated by using the
     `calc_background` method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
 
     Alternatively, the background value can be calculated by calling the
     class instance as a function, e.g.:
 
     >>> bkg_value = bkg(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
     """
 
@@ -249,33 +246,33 @@ class ModeEstimatorBackground(BackgroundBase):
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters.  If `None` then no sigma clipping will be
         performed.  The default is to perform sigma clipping with
-        ``sigma=3.`` and ``maxiters=5``.
+        ``sigma=3.0`` and ``maxiters=5``.
 
     Examples
     --------
     >>> from astropy.stats import SigmaClip
     >>> from photutils import ModeEstimatorBackground
     >>> data = np.arange(100)
-    >>> sigma_clip = SigmaClip(sigma=3.)
-    >>> bkg = ModeEstimatorBackground(median_factor=3., mean_factor=2.,
+    >>> sigma_clip = SigmaClip(sigma=3.0)
+    >>> bkg = ModeEstimatorBackground(median_factor=3.0, mean_factor=2.0,
     ...                               sigma_clip=sigma_clip)
 
     The background value can be calculated by using the
     `calc_background` method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
 
     Alternatively, the background value can be calculated by calling the
     class instance as a function, e.g.:
 
     >>> bkg_value = bkg(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
     """
 
-    def __init__(self, median_factor=3., mean_factor=2., **kwargs):
+    def __init__(self, median_factor=3.0, mean_factor=2.0, **kwargs):
         super().__init__(**kwargs)
         self.median_factor = median_factor
         self.mean_factor = mean_factor
@@ -301,14 +298,14 @@ class MMMBackground(ModeEstimatorBackground):
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters.  If `None` then no sigma clipping will be
         performed.  The default is to perform sigma clipping with
-        ``sigma=3.`` and ``maxiters=5``.
+        ``sigma=3.0`` and ``maxiters=5``.
 
     Examples
     --------
     >>> from astropy.stats import SigmaClip
     >>> from photutils import MMMBackground
     >>> data = np.arange(100)
-    >>> sigma_clip = SigmaClip(sigma=3.)
+    >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkg = MMMBackground(sigma_clip=sigma_clip)
 
     The background value can be calculated by using the
@@ -316,14 +313,14 @@ class MMMBackground(ModeEstimatorBackground):
     method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
 
     Alternatively, the background value can be calculated by calling the
     class instance as a function, e.g.:
 
     >>> bkg_value = bkg(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
     """
 
@@ -353,28 +350,28 @@ class SExtractorBackground(BackgroundBase):
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters.  If `None` then no sigma clipping will be
         performed.  The default is to perform sigma clipping with
-        ``sigma=3.`` and ``maxiters=5``.
+        ``sigma=3.0`` and ``maxiters=5``.
 
     Examples
     --------
     >>> from astropy.stats import SigmaClip
     >>> from photutils import SExtractorBackground
     >>> data = np.arange(100)
-    >>> sigma_clip = SigmaClip(sigma=3.)
+    >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkg = SExtractorBackground(sigma_clip)
 
     The background value can be calculated by using the
     `calc_background` method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
 
     Alternatively, the background value can be calculated by calling the
     class instance as a function, e.g.:
 
     >>> bkg_value = bkg(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
     """
 
@@ -417,28 +414,28 @@ class BiweightLocationBackground(BackgroundBase):
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters.  If `None` then no sigma clipping will be
         performed.  The default is to perform sigma clipping with
-        ``sigma=3.`` and ``maxiters=5``.
+        ``sigma=3.0`` and ``maxiters=5``.
 
     Examples
     --------
     >>> from astropy.stats import SigmaClip
     >>> from photutils import BiweightLocationBackground
     >>> data = np.arange(100)
-    >>> sigma_clip = SigmaClip(sigma=3.)
+    >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkg = BiweightLocationBackground(sigma_clip=sigma_clip)
 
     The background value can be calculated by using the
     `calc_background` method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
 
     Alternatively, the background value can be calculated by calling the
     class instance as a function, e.g.:
 
     >>> bkg_value = bkg(data)
-    >>> print(bkg_value)    # doctest: +FLOAT_CMP
+    >>> print(bkg_value)  # doctest: +FLOAT_CMP
     49.5
     """
 
@@ -465,28 +462,28 @@ class StdBackgroundRMS(BackgroundRMSBase):
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters.  If `None` then no sigma clipping will be
         performed.  The default is to perform sigma clipping with
-        ``sigma=3.`` and ``maxiters=5``.
+        ``sigma=3.0`` and ``maxiters=5``.
 
     Examples
     --------
     >>> from astropy.stats import SigmaClip
     >>> from photutils import StdBackgroundRMS
     >>> data = np.arange(100)
-    >>> sigma_clip = SigmaClip(sigma=3.)
+    >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkgrms = StdBackgroundRMS(sigma_clip)
 
     The background RMS value can be calculated by using the
     `calc_background_rms` method, e.g.:
 
     >>> bkgrms_value = bkgrms.calc_background_rms(data)
-    >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
+    >>> print(bkgrms_value)  # doctest: +FLOAT_CMP
     28.86607004772212
 
     Alternatively, the background RMS value can be calculated by calling
     the class instance as a function, e.g.:
 
     >>> bkgrms_value = bkgrms(data)
-    >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
+    >>> print(bkgrms_value)  # doctest: +FLOAT_CMP
     28.86607004772212
     """
 
@@ -519,28 +516,28 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters.  If `None` then no sigma clipping will be
         performed.  The default is to perform sigma clipping with
-        ``sigma=3.`` and ``maxiters=5``.
+        ``sigma=3.0`` and ``maxiters=5``.
 
     Examples
     --------
     >>> from astropy.stats import SigmaClip
     >>> from photutils import MADStdBackgroundRMS
     >>> data = np.arange(100)
-    >>> sigma_clip = SigmaClip(sigma=3.)
+    >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkgrms = MADStdBackgroundRMS(sigma_clip)
 
     The background RMS value can be calculated by using the
     `calc_background_rms` method, e.g.:
 
     >>> bkgrms_value = bkgrms.calc_background_rms(data)
-    >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
+    >>> print(bkgrms_value)  # doctest: +FLOAT_CMP
     37.06505546264005
 
     Alternatively, the background RMS value can be calculated by calling
     the class instance as a function, e.g.:
 
     >>> bkgrms_value = bkgrms(data)
-    >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
+    >>> print(bkgrms_value)  # doctest: +FLOAT_CMP
     37.06505546264005
     """
 
@@ -568,28 +565,28 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters.  If `None` then no sigma clipping will be
         performed.  The default is to perform sigma clipping with
-        ``sigma=3.`` and ``maxiters=5``.
+        ``sigma=3.0`` and ``maxiters=5``.
 
     Examples
     --------
     >>> from astropy.stats import SigmaClip
     >>> from photutils import BiweightScaleBackgroundRMS
     >>> data = np.arange(100)
-    >>> sigma_clip = SigmaClip(sigma=3.)
+    >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkgrms = BiweightScaleBackgroundRMS(sigma_clip=sigma_clip)
 
     The background RMS value can be calculated by using the
     `calc_background_rms` method, e.g.:
 
     >>> bkgrms_value = bkgrms.calc_background_rms(data)
-    >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
+    >>> print(bkgrms_value)  # doctest: +FLOAT_CMP
     30.09433848589339
 
     Alternatively, the background RMS value can be calculated by calling
     the class instance as a function, e.g.:
 
     >>> bkgrms_value = bkgrms(data)
-    >>> print(bkgrms_value)    # doctest: +FLOAT_CMP
+    >>> print(bkgrms_value)  # doctest: +FLOAT_CMP
     30.09433848589339
     """
 

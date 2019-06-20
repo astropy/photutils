@@ -1,14 +1,17 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the windows module.
+"""
 
-import pytest
 import numpy as np
 from numpy.testing import assert_allclose
+import pytest
 
-from ..windows import (HanningWindow, TukeyWindow, CosineBellWindow,
-                       SplitCosineBellWindow, TopHatWindow)
+from ..windows import (CosineBellWindow, HanningWindow, SplitCosineBellWindow,
+                       TopHatWindow, TukeyWindow)
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

@@ -1,9 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides tools to seed a RandomState instance.
+"""
 
 import numbers
 
 import numpy as np
-
 
 __all__ = ['check_random_state']
 

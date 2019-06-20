@@ -1,13 +1,14 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-"""Module which provides classes to perform source grouping."""
+"""
+This module provides classes to perform grouping of stars.
+"""
 
 import abc
 
-import numpy as np
 from astropy.table import Column
+import numpy as np
 
 from ..utils.misc import _ABCMetaAndInheritDocstrings
-
 
 __all__ = ['DAOGroup', 'DBSCANGroup', 'GroupStarsBase']
 

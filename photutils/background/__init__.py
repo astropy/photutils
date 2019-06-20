@@ -1,8 +1,8 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This subpackage contains modules and packages for background and
-background rms estimation.
+This subpackage contains tools to estimate the background and background
+RMS in an image.
 """
 
-from .core import *             # noqa
-from .background_2d import *    # noqa
+from .background_2d import *  # noqa
+from .core import *  # noqa

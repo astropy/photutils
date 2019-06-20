@@ -1,15 +1,16 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides classes to store the results of isophote fits.
+"""
 
 from collections import OrderedDict
 
-import numpy as np
 from astropy.table import QTable
 import astropy.units as u
+import numpy as np
 
-from .harmonics import (fit_first_and_second_harmonics,
-                        first_and_second_harmonic_function,
-                        fit_upper_harmonic)
-
+from .harmonics import (first_and_second_harmonic_function,
+                        fit_first_and_second_harmonics, fit_upper_harmonic)
 
 __all__ = ['Isophote', 'IsophoteList']
 
@@ -144,6 +145,7 @@ class Isophote:
     def __lt__(self, other):
         if hasattr(other, 'sma'):
             return self.sma < other.sma
+        raise ValueError('Comparison object does not have a "sma" attribute.')
 
     def __str__(self):
         return str(self.to_table())
@@ -251,7 +253,7 @@ class Isophote:
             a_err = abs(a) * np.sqrt((ce[1] / c[1])**2 + gre**2)
             b_err = abs(b) * np.sqrt((ce[2] / c[2])**2 + gre**2)
 
-        except Exception:    # we want to catch everything
+        except Exception:  # we want to catch everything
             a = b = a_err = b_err = None
 
         return a, b, a_err, b_err
@@ -286,12 +288,12 @@ class Isophote:
             self.y0_err = np.sqrt((ea * np.sin(pa))**2 + (eb * np.cos(pa))**2)
             self.ellip_err = (abs(2. * errors[4] * (1. - eps) / self.sma /
                                   self.grad))
-            if (abs(eps) > np.finfo(float).resolution):
+            if abs(eps) > np.finfo(float).resolution:
                 self.pa_err = (abs(2. * errors[3] * (1. - eps) / self.sma /
                                    self.grad / (1. - (1. - eps)**2)))
             else:
                 self.pa_err = 0.
-        except Exception:    # we want to catch everything
+        except Exception:  # we want to catch everything
             self.x0_err = self.y0_err = self.pa_err = self.ellip_err = 0.
 
     def fix_geometry(self, isophote):
@@ -404,7 +406,7 @@ class CentralPixel(Isophote):
         return self.sample.geometry.x0
 
 
-class IsophoteList(Isophote, list):
+class IsophoteList(Isophote):
     """
     Container class that provides the same attributes as the
     `~photutils.isophote.Isophote` class, but for a list of isophotes.
@@ -461,7 +463,7 @@ class IsophoteList(Isophote, list):
         return self
 
     def __add__(self, value):
-        temp = self._list[:]    # shallow copy
+        temp = self._list[:]  # shallow copy
         temp.extend(value._list)
         return IsophoteList(temp)
 

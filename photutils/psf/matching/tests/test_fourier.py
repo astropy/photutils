@@ -1,16 +1,19 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the fourier module.
+"""
 
-import pytest
-import numpy as np
-from numpy.testing import assert_allclose
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.modeling.models import Gaussian2D
+import numpy as np
+from numpy.testing import assert_allclose
+import pytest
 
-from ..fourier import resize_psf, create_matching_kernel
+from ..fourier import create_matching_kernel, resize_psf
 from ..windows import SplitCosineBellWindow
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

@@ -1,9 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
-import numpy as np
-import pytest
+"""
+Tests for the model module.
+"""
 
 from astropy.io import fits
+import numpy as np
+import pytest
 
 from .make_test_data import make_test_image
 from ..ellipse import Ellipse
@@ -12,7 +14,7 @@ from ..model import build_ellipse_model
 from ...datasets import get_path
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

@@ -10,8 +10,8 @@ from ..ellipse import (EllipticalAperture, EllipticalAnnulus,
 
 
 POSITIONS = [(10, 20), (30, 40), (50, 60), (70, 80)]
-ra, dec = np.transpose(POSITIONS)
-SKYCOORD = SkyCoord(ra=ra, dec=dec, unit='deg')
+RA, DEC = np.transpose(POSITIONS)
+SKYCOORD = SkyCoord(ra=RA, dec=DEC, unit='deg')
 UNIT = u.arcsec
 
 

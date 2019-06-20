@@ -1,10 +1,12 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
-import numpy as np
-import pytest
+"""
+Tests for the ellipse module.
+"""
 
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
+import numpy as np
+import pytest
 
 from .make_test_data import make_test_image
 from ..ellipse import Ellipse
@@ -12,9 +14,8 @@ from ..geometry import EllipseGeometry
 from ..isophote import Isophote, IsophoteList
 from ...datasets import get_path, make_noise_image
 
-
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
@@ -35,7 +36,7 @@ OFFSET_GALAXY = make_test_image(x0=POS, y0=POS, pa=PA, noise=1.e-12,
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestEllipse:
     def setup_class(self):
-        # centered, tilted galaxy.
+        # centered, tilted galaxy
         self.data = make_test_image(pa=PA, random_state=123)
 
     @pytest.mark.remote_data
@@ -120,7 +121,7 @@ class TestEllipse:
         noise = make_noise_image((ny, nx), type='gaussian', mean=0.,
                                  stddev=2., random_state=12345)
         data = g(x, y) + noise
-        ellipse = Ellipse(data)    # estimates initial center
+        ellipse = Ellipse(data)  # estimates initial center
         isolist = ellipse.fit_image()
         assert len(isolist) == 54
 

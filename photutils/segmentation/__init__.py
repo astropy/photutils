@@ -5,7 +5,7 @@ segmentation and measuring their centroids, photometry, and
 morphological properties.
 """
 
-from .core import *          # noqa
-from .deblend import *       # noqa
-from .detect import *        # noqa
-from .properties import *    # noqa
+from .core import *  # noqa
+from .deblend import *  # noqa
+from .detect import *  # noqa
+from .properties import *  # noqa

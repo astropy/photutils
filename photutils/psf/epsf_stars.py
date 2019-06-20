@@ -1,22 +1,21 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tools to extract cutouts of stars and data structures to hold the
-cutouts for fitting and building ePSFs.
+This module provides tools to extract cutouts of stars and data
+structures to hold the cutouts for fitting and building ePSFs.
 """
 
 import warnings
 
-import numpy as np
 from astropy.nddata import NDData
-from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
-                                  NoOverlapError)
+from astropy.nddata.utils import (overlap_slices, NoOverlapError,
+                                  PartialOverlapError)
 from astropy.table import Table
-from astropy.utils import lazyproperty, deprecated
+from astropy.utils import deprecated, lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import skycoord_to_pixel
+import numpy as np
 
 from ..aperture import BoundingBox
-
 
 __all__ = ['EPSFStar', 'EPSFStars', 'LinkedEPSFStar', 'extract_stars',
            'Star', 'Stars', 'LinkedStar']
@@ -133,7 +132,7 @@ class EPSFStar:
         center in the original (large) image (not the cutout image).
         """
 
-        return (self.cutout_center + self.origin)
+        return self.cutout_center + self.origin
 
     @lazyproperty
     def slices(self):
@@ -300,8 +299,7 @@ class EPSFStars:
     """
 
     def __init__(self, stars_list):
-        if (isinstance(stars_list, EPSFStar) or
-                isinstance(stars_list, LinkedEPSFStar)):
+        if isinstance(stars_list, (EPSFStar, LinkedEPSFStar)):
             self._data = [stars_list]
         elif isinstance(stars_list, list):
             self._data = stars_list
@@ -483,11 +481,11 @@ class LinkedEPSFStar(EPSFStars):
         coordinates of the linked stars.
         """
 
-        if len(self._data) < 2:   # no linked stars
+        if len(self._data) < 2:  # no linked stars
             return
 
         idx = np.logical_not(self._excluded_from_fit).nonzero()[0]
-        if len(idx) == 0:
+        if idx.size == 0:
             warnings.warn('Cannot constrain centers of linked stars because '
                           'all the stars have been excluded during the ePSF '
                           'build process.', AstropyUserWarning)
@@ -658,8 +656,8 @@ def extract_stars(data, catalogs, size=(11, 11)):
         for star in stars:
             good_stars = [i for i in star if i is not None]
             n_extracted += len(good_stars)
-            if len(good_stars) == 0:
-                continue    # no overlap in any image
+            if not good_stars:
+                continue  # no overlap in any image
             elif len(good_stars) == 1:
                 good_stars = good_stars[0]  # only one star, cannot be linked
             else:
@@ -757,9 +755,8 @@ def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
     stars = []
     for xcenter, ycenter, obj_id in zip(xcenters, ycenters, ids):
         try:
-            large_slc, small_slc = overlap_slices(data.data.shape, size,
-                                                  (ycenter, xcenter),
-                                                  mode='strict')
+            large_slc, _ = overlap_slices(data.data.shape, size,
+                                          (ycenter, xcenter), mode='strict')
             data_cutout = data.data[large_slc]
             weights_cutout = weights[large_slc]
         except (PartialOverlapError, NoOverlapError):

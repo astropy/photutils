@@ -1,10 +1,12 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the isophote module.
+"""
 
+from astropy.io import fits
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
-
-from astropy.io import fits
 
 from .make_test_data import make_test_image
 from ..fitter import EllipseFitter
@@ -13,7 +15,7 @@ from ..sample import EllipseSample
 from ...datasets import get_path
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
@@ -71,7 +73,7 @@ class TestIsophote:
 
         # geometry
         g = iso.sample.geometry
-        assert g.x0 >= (257 - 1.5)   # position within 1.5 pixel
+        assert g.x0 >= (257 - 1.5)  # position within 1.5 pixel
         assert g.x0 <= (257 + 1.5)
         assert g.y0 >= (259 - 1.5)
         assert g.y0 <= (259 + 2.0)
@@ -177,8 +179,7 @@ class TestIsophoteList:
         outer_list = self.isolist_sma100[:]
         assert len(inner_list) == self.slen
         assert len(outer_list) == self.slen
-        dummy = inner_list.extend(outer_list)
-        assert not dummy
+        inner_list.extend(outer_list)
         assert len(inner_list) == 2 * self.slen
 
         # the __iadd__ operator should behave like the

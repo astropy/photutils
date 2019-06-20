@@ -1,18 +1,20 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides a class to fit elliptical isophotes.
+"""
 
 import warnings
 
-import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
+import numpy as np
 
-from .fitter import (EllipseFitter, CentralEllipseFitter,
-                     DEFAULT_CONVERGENCE, DEFAULT_MINIT, DEFAULT_MAXIT,
-                     DEFAULT_FFLAG, DEFAULT_MAXGERR)
+from .fitter import (DEFAULT_CONVERGENCE, DEFAULT_FFLAG, DEFAULT_MAXGERR,
+                     DEFAULT_MAXIT, DEFAULT_MINIT, CentralEllipseFitter,
+                     EllipseFitter)
 from .geometry import EllipseGeometry
 from .integrator import BILINEAR
 from .isophote import Isophote, IsophoteList
-from .sample import EllipseSample, CentralEllipseSample
-
+from .sample import CentralEllipseSample, EllipseSample
 
 __all__ = ['Ellipse']
 
@@ -183,6 +185,7 @@ class Ellipse:
             _y0 = image.shape[0] / 2
             self._geometry = EllipseGeometry(_x0, _y0, 10., eps=0.2,
                                              pa=np.pi/2)
+        self.set_threshold(threshold)
 
     def set_threshold(self, threshold):
         """
@@ -560,7 +563,7 @@ class Ellipse:
 
         # if available, geometry from last fitted isophote will be
         # used as initial guess for next isophote.
-        if isophote_list is not None and len(isophote_list) > 0:
+        if isophote_list:
             geometry = isophote_list[-1].sample.geometry
 
         # do the fit
@@ -609,8 +612,9 @@ class Ellipse:
 
         return isophote
 
-    def _fix_last_isophote(self, isophote_list, index):
-        if len(isophote_list) > 0:
+    @staticmethod
+    def _fix_last_isophote(isophote_list, index):
+        if isophote_list:
             isophote = isophote_list.pop()
 
             # check if isophote is bad; if so, fix its geometry

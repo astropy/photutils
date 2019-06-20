@@ -1,18 +1,21 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module defines elliptical and elliptical-annulus apertures in both
+pixel and sky coordinates.
+"""
 
 import math
 
-import numpy as np
 import astropy.units as u
+import numpy as np
 
-from .attributes import (PixelPositions, SkyCoordPositions, Scalar,
-                         PositiveScalar, AngleScalarQuantity,
-                         AngleOrPixelScalarQuantity)
-from .core import PixelAperture, SkyAperture
+from .attributes import (AngleOrPixelScalarQuantity, AngleScalarQuantity,
+                         PixelPositions, PositiveScalar, Scalar,
+                         SkyCoordPositions)
 from .bounding_box import BoundingBox
+from .core import PixelAperture, SkyAperture
 from .mask import ApertureMask
 from ..geometry import elliptical_overlap_grid
-
 
 __all__ = ['EllipticalMaskMixin', 'EllipticalAperture', 'EllipticalAnnulus',
            'SkyEllipticalAperture', 'SkyEllipticalAnnulus']
@@ -74,7 +77,7 @@ class EllipticalMaskMixin:
         if hasattr(self, 'a'):
             a = self.a
             b = self.b
-        elif hasattr(self, 'a_in'):    # annulus
+        elif hasattr(self, 'a_in'):  # annulus
             a = self.a_out
             b = self.b_out
         else:

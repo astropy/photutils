@@ -1,16 +1,18 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
-import numpy as np
-import pytest
+"""
+Tests for the epsf_stars module.
+"""
 
 from astropy.modeling.models import Moffat2D
 from astropy.nddata import NDData
 from astropy.table import Table
+import numpy as np
+import pytest
 
 from ..epsf_stars import extract_stars, EPSFStar, EPSFStars
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

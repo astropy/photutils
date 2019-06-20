@@ -1,14 +1,16 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the integrator module.
+"""
 
+from astropy.io import fits
 import numpy as np
 import numpy.ma as ma
 from numpy.testing import assert_allclose
 import pytest
 
-from astropy.io import fits
-
+from ..integrator import BILINEAR, MEAN, MEDIAN, NEAREST_NEIGHBOR
 from ..sample import EllipseSample
-from ..integrator import NEAREST_NEIGHBOR, BILINEAR, MEAN, MEDIAN
 from ...datasets import get_path
 
 

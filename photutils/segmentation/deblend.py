@@ -1,16 +1,19 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module provides tools for deblending overlapping sources labeled in
+a segmentation image.
+"""
 
 from copy import deepcopy
 import warnings
 
-import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
+import numpy as np
 
 from .core import SegmentationImage
 from .detect import detect_sources
 from ..utils.convolution import filter_data
 from ..utils.exceptions import NoDetectionsWarning
-
 
 __all__ = ['deblend_sources']
 
@@ -263,7 +266,7 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
         for i in segm_tmp.labels:
             fluxes.append(np.nansum(data[segm_tmp == i]))
         idx = np.where((np.array(fluxes) / source_sum) >= contrast)[0]
-        if len(idx >= 2):
+        if idx.size >= 2:
             segm_tree.append(segm_tmp)
 
     nbranch = len(segm_tree)

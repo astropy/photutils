@@ -1,20 +1,22 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the core module.
+"""
 
 import itertools
 
+from astropy.modeling.models import Gaussian1D, Gaussian2D
 import numpy as np
 from numpy.testing import assert_allclose
-from astropy.modeling.models import Gaussian1D, Gaussian2D
 import pytest
 
-from ..core import (centroid_com, centroid_1dg, centroid_2dg,
-                    gaussian1d_moments, fit_2dgaussian,
-                    centroid_epsf)
+from ..core import (centroid_1dg, centroid_2dg, centroid_com, centroid_epsf,
+                    fit_2dgaussian, gaussian1d_moments)
 from ...psf import IntegratedGaussianPRF
 
 try:
     # the fitting routines in astropy use scipy.optimize
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
@@ -78,7 +80,7 @@ def test_centroids_oversampling(xc_ref, yc_ref, x_stddev, y_stddev, theta):
                        y_stddev=y_stddev, theta=theta)
     y, x = np.mgrid[0:50, 0:50]
     data = model(x, y)
-    mask = np.zeros_like(data, dtype=bool)
+    mask = np.zeros(data.shape, dtype=bool)
     data[10, 10] = 1.e5
     mask[10, 10] = True
     for oversampling in [4, (4, 6)]:
@@ -97,7 +99,7 @@ def test_centroids_withmask():
     model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
     y, x = np.mgrid[0:50, 0:50]
     data = model(x, y)
-    mask = np.zeros_like(data, dtype=bool)
+    mask = np.zeros(data.shape, dtype=bool)
     data[10, 10] = 1.e5
     mask[10, 10] = True
 
@@ -132,7 +134,7 @@ def test_centroids_nan_withmask(use_mask):
     data = model(x, y)
     data[20, :] = np.nan
     if use_mask:
-        mask = np.zeros_like(data, dtype=bool)
+        mask = np.zeros(data.shape, dtype=bool)
         mask[20, :] = True
     else:
         mask = None
@@ -206,13 +208,13 @@ def test_gaussian1d_moments():
     assert_allclose(result, desired, rtol=0, atol=1.e-6)
 
     data[0] = 1.e5
-    mask = np.zeros_like(data).astype(bool)
+    mask = np.zeros(data.shape).astype(bool)
     mask[0] = True
     result = gaussian1d_moments(data, mask=mask)
     assert_allclose(result, desired, rtol=0, atol=1.e-6)
 
     data[0] = np.nan
-    mask = np.zeros_like(data).astype(bool)
+    mask = np.zeros(data.shape).astype(bool)
     mask[0] = True
     result = gaussian1d_moments(data, mask=mask)
     assert_allclose(result, desired, rtol=0, atol=1.e-6)

@@ -1,14 +1,14 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Load example datasets.
+This module provides tools for loading example datasets, from both
+within photutils and remote servers.
 """
 
 from urllib.error import HTTPError, URLError
 
 from astropy.io import fits
 from astropy.table import Table
-from astropy.utils.data import get_pkg_data_filename, download_file
-
+from astropy.utils.data import download_file, get_pkg_data_filename
 
 __all__ = ['get_path', 'load_spitzer_image', 'load_spitzer_catalog',
            'load_irac_psf', 'load_fermi_image', 'load_star_image',
@@ -53,24 +53,24 @@ def get_path(filename, location='local', cache=True, show_progress=False):
 
     if location == 'local':
         path = get_pkg_data_filename('data/' + filename)
-    elif location == 'remote':    # pragma: no cover
+    elif location == 'remote':  # pragma: no cover
         try:
             url = 'https://data.astropy.org/photometry/{0}'.format(filename)
             path = download_file(url, cache=cache,
                                  show_progress=show_progress)
-        except (URLError, HTTPError):   # timeout or not found
+        except (URLError, HTTPError):  # timeout or not found
             path = download_file(datasets_url, cache=cache,
                                  show_progress=show_progress)
-    elif location == 'photutils-datasets':    # pragma: no cover
-            path = download_file(datasets_url, cache=cache,
-                                 show_progress=show_progress)
+    elif location == 'photutils-datasets':  # pragma: no cover
+        path = download_file(datasets_url, cache=cache,
+                             show_progress=show_progress)
     else:
         raise ValueError('Invalid location: {0}'.format(location))
 
     return path
 
 
-def load_spitzer_image(show_progress=False):    # pragma: no cover
+def load_spitzer_image(show_progress=False):  # pragma: no cover
     """
     Load a 4.5 micron Spitzer image.
 
@@ -109,7 +109,7 @@ def load_spitzer_image(show_progress=False):    # pragma: no cover
     return hdu
 
 
-def load_spitzer_catalog(show_progress=False):    # pragma: no cover
+def load_spitzer_catalog(show_progress=False):  # pragma: no cover
     """
     Load a 4.5 micron Spitzer catalog.
 
@@ -152,7 +152,7 @@ def load_spitzer_catalog(show_progress=False):    # pragma: no cover
     return table
 
 
-def load_irac_psf(channel, show_progress=False):    # pragma: no cover
+def load_irac_psf(channel, show_progress=False):  # pragma: no cover
     """
     Load a Spitzer IRAC PSF image.
 
@@ -210,8 +210,8 @@ def load_irac_psf(channel, show_progress=False):    # pragma: no cover
     if channel < 1 or channel > 4:
         raise ValueError('channel must be 1, 2, 3, or 4')
 
-    fn = 'irac_ch{0}_flight.fits'.format(channel)
-    path = get_path(fn, location='remote', show_progress=show_progress)
+    filepath = 'irac_ch{0}_flight.fits'.format(channel)
+    path = get_path(filepath, location='remote', show_progress=show_progress)
     hdu = fits.open(path)[0]
 
     return hdu
@@ -249,7 +249,7 @@ def load_fermi_image(show_progress=False):
     return hdu
 
 
-def load_star_image(show_progress=False):    # pragma: no cover
+def load_star_image(show_progress=False):  # pragma: no cover
     """
     Load an optical image of stars.
 

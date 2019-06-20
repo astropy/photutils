@@ -1,11 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tools for matching PSFs using Fourier methods.
+This module provides tools for matching PSFs using Fourier methods.
 """
 
 import numpy as np
 from numpy.fft import fft2, ifft2, fftshift, ifftshift
-
 
 __all__ = ['resize_psf', 'create_matching_kernel']
 

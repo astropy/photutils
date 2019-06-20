@@ -1,16 +1,19 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module defines circular and circular-annulus apertures in both
+pixel and sky coordinates.
+"""
 
 import math
 
 import numpy as np
 
-from .attributes import (PixelPositions, SkyCoordPositions, PositiveScalar,
-                         AngleOrPixelScalarQuantity)
-from .core import PixelAperture, SkyAperture
+from .attributes import (AngleOrPixelScalarQuantity, PixelPositions,
+                         PositiveScalar, SkyCoordPositions)
 from .bounding_box import BoundingBox
+from .core import PixelAperture, SkyAperture
 from .mask import ApertureMask
 from ..geometry import circular_overlap_grid
-
 
 __all__ = ['CircularMaskMixin', 'CircularAperture', 'CircularAnnulus',
            'SkyCircularAperture', 'SkyCircularAnnulus']
@@ -71,7 +74,7 @@ class CircularMaskMixin:
 
         if hasattr(self, 'r'):
             radius = self.r
-        elif hasattr(self, 'r_out'):    # annulus
+        elif hasattr(self, 'r_out'):  # annulus
             radius = self.r_out
         else:
             raise ValueError('Cannot determine the aperture radius.')

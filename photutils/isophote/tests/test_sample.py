@@ -1,10 +1,13 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the sample module.
+"""
 
 import numpy as np
 import pytest
 
 from .make_test_data import make_test_image
-from ..integrator import MEDIAN, MEAN, BILINEAR, NEAREST_NEIGHBOR
+from ..integrator import BILINEAR, MEAN, MEDIAN, NEAREST_NEIGHBOR
 from ..isophote import Isophote
 from ..sample import EllipseSample
 

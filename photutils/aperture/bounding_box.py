@@ -1,10 +1,12 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Class defining a rectangular bounding box.
+"""
 
-import numpy as np
 from astropy.io.fits.util import _is_int
 from astropy.utils import deprecated
 from astropy.utils.decorators import deprecated_renamed_argument
-
+import numpy as np
 
 __all__ = ['BoundingBox']
 

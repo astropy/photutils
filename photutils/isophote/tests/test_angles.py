@@ -1,6 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the angles module.
+"""
 
 import math
+
 import numpy as np
 
 
@@ -9,7 +13,7 @@ def sector_area(a, eps, phi, r):
     saux = aux / abs(aux)
     if abs(aux) >= 1.:
         aux = saux
-    return (abs(a ** 2 * (1. - eps) / 2. * math.acos(aux)))
+    return abs(a ** 2 * (1. - eps) / 2. * math.acos(aux))
 
 
 def test_angles(phi_min=0.05, phi_max=0.2):
@@ -53,7 +57,7 @@ def test_angles(phi_min=0.05, phi_max=0.2):
 
         ncount += 1
 
-        assert area > 11.0 and area < 12.4
+        assert 11.0 < area < 12.4
 
         phi = phi + min(phistep, 0.5)
         # r = (a * (1. - eps) / np.sqrt(((1. - eps) * np.cos(phi))**2 +

@@ -1,30 +1,29 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tools to build and fit an effective PSF (ePSF) based on Anderson and
-King (2000; PASP 112, 1360).
+This module provides tools to build and fit an effective PSF (ePSF)
+based on Anderson and King (2000; PASP 112, 1360).
 """
 
 import copy
 import time
 import warnings
 
-import numpy as np
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
                                   NoOverlapError)
 from astropy.utils.exceptions import AstropyUserWarning
+import numpy as np
 
-from .epsf_stars import EPSFStar, LinkedEPSFStar, EPSFStars
+from .epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
 from .models import EPSFModel
 from ..centroids import centroid_com
-from ..extern import SigmaClip
+from ..extern.sigma_clipping import SigmaClip
 
 try:
     import bottleneck  # pylint: disable=W0611
     HAS_BOTTLENECK = True
 except ImportError:
     HAS_BOTTLENECK = False
-
 
 __all__ = ['EPSFFitter', 'EPSFBuilder']
 
@@ -156,10 +155,9 @@ class EPSFFitter:
         if fit_boxsize is not None:
             try:
                 xcenter, ycenter = star.cutout_center
-                large_slc, small_slc = overlap_slices(star.shape,
-                                                      fit_boxsize,
-                                                      (ycenter, xcenter),
-                                                      mode='strict')
+                large_slc, _ = overlap_slices(star.shape, fit_boxsize,
+                                              (ycenter, xcenter),
+                                              mode='strict')
             except (PartialOverlapError, NoOverlapError):
                 warnings.warn('The star at ({0}, {1}) cannot be fit because '
                               'its fitting region extends beyond the star '
@@ -639,9 +637,8 @@ class EPSFBuilder:
             iter_num += 1
 
             # extract a cutout from the ePSF
-            slices_large, slices_small = overlap_slices(epsf_data.shape,
-                                                        box_size,
-                                                        (ycenter, xcenter))
+            slices_large, _ = overlap_slices(epsf_data.shape, box_size,
+                                             (ycenter, xcenter))
             epsf_cutout = epsf_data[slices_large]
             mask = ~np.isfinite(epsf_cutout)
 
@@ -787,8 +784,8 @@ class EPSFBuilder:
         dt = 0.
 
         while (iter_num < self.maxiters and
-                np.max(center_dist_sq) >= self.center_accuracy_sq and
-                not np.all(fit_failed)):
+               np.max(center_dist_sq) >= self.center_accuracy_sq and
+               not np.all(fit_failed)):
 
             t_start = time.time()
             iter_num += 1

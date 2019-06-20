@@ -1,8 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Module to define an aperture mask.
+"""
 
-import numpy as np
 import astropy.units as u
-
+import numpy as np
 
 __all__ = ['ApertureMask']
 
@@ -103,7 +105,7 @@ class ApertureMask:
         slices_large, slices_small = self._overlap_slices(image.shape)
 
         if slices_small is None:
-            return None    # no overlap
+            return None  # no overlap
 
         # insert the mask into the output image
         image[slices_large] = self.data[slices_small]
@@ -136,7 +138,7 @@ class ApertureMask:
 
         try:
             image[self.bbox.slices] = self.data
-        except ValueError:    # partial or no overlap
+        except ValueError:  # partial or no overlap
             image = self._to_image_partial_overlap(image)
 
         return image
@@ -196,7 +198,7 @@ class ApertureMask:
             slices_large, slices_small = self._overlap_slices(data.shape)
 
             if slices_small is None:
-                return None    # no overlap
+                return None  # no overlap
 
             # cutout is a copy
             cutout = np.zeros(self.shape, dtype=data.dtype)

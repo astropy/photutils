@@ -1,11 +1,9 @@
-# import os
-
-# If this package has test data in the tests/data directory, add them to
-# the paths here - see commented example
-paths = ['coveragerc',
-         # os.path.join('data', '*fits'),
-         ]
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+This module extends the package setup parameters to include data files.
+"""
 
 
 def get_package_data():
-    return {_ASTROPY_PACKAGE_NAME_ + '.tests': paths}  # noqa
+    """Include additional data files."""
+    return {'photutils.tests': ['coveragerc']}

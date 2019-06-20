@@ -1,12 +1,15 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the convolution module.
+"""
 
-import numpy as np
-from numpy.testing import assert_allclose
-import pytest
 from astropy.convolution import Gaussian2DKernel
 from astropy.tests.helper import catch_warnings
 import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
+import numpy as np
+from numpy.testing import assert_allclose
+import pytest
 
 from ..convolution import filter_data
 from ...datasets import make_100gaussians_image

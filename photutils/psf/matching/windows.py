@@ -1,10 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Window (or tapering) functions for matching PSFs using Fourier methods.
+This module provides window (or tapering) functions for matching PSFs
+using Fourier methods.
 """
 
 import numpy as np
-
 
 __all__ = ['SplitCosineBellWindow', 'HanningWindow', 'TukeyWindow',
            'CosineBellWindow', 'TopHatWindow']
@@ -143,8 +143,7 @@ class HanningWindow(SplitCosineBellWindow):
     """
 
     def __init__(self):
-        self.alpha = 1.0
-        self.beta = 0.0
+        super().__init__(alpha=1.0, beta=0.0)
 
 
 class TukeyWindow(SplitCosineBellWindow):
@@ -187,8 +186,7 @@ class TukeyWindow(SplitCosineBellWindow):
     """
 
     def __init__(self, alpha):
-        self.alpha = alpha
-        self.beta = 1. - self.alpha
+        super().__init__(alpha=alpha, beta=1.0 - alpha)
 
 
 class CosineBellWindow(SplitCosineBellWindow):
@@ -225,8 +223,7 @@ class CosineBellWindow(SplitCosineBellWindow):
     """
 
     def __init__(self, alpha):
-        self.alpha = alpha
-        self.beta = 0.0
+        super().__init__(alpha=alpha, beta=0.0)
 
 
 class TopHatWindow(SplitCosineBellWindow):
@@ -265,5 +262,4 @@ class TopHatWindow(SplitCosineBellWindow):
     """
 
     def __init__(self, beta):
-        self.alpha = 0.0
-        self.beta = beta
+        super().__init__(alpha=0.0, beta=beta)

@@ -1,12 +1,14 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
-import numpy as np
-from numpy.testing import assert_allclose
-import pytest
+"""
+Tests for the epsf module.
+"""
 
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata import NDData
 from astropy.table import Table
+import numpy as np
+from numpy.testing import assert_allclose
+import pytest
 
 from ..epsf import EPSFBuilder, EPSFFitter
 from ..epsf_stars import extract_stars, EPSFStar, EPSFStars
@@ -14,7 +16,7 @@ from ...centroids import gaussian1d_moments
 from ...datasets import make_gaussian_sources_image
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

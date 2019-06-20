@@ -1,8 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
-import numpy as np
+"""
+This module provides tools for making a simulated image for tests.
+"""
 
 from astropy.io import fits
+import numpy as np
 
 from ..geometry import EllipseGeometry
 from ...datasets import make_noise_image
@@ -94,7 +96,7 @@ def make_fits_test_image(name, nx=512, ny=512, x0=None, y0=None,
         name += '.fits'
 
     array = make_test_image(nx, ny, x0, y0, background, noise, i0, sma, eps,
-                            pa)
+                            pa, random_state=random_state)
 
     hdu = fits.PrimaryHDU(array)
     hdulist = fits.HDUList([hdu])

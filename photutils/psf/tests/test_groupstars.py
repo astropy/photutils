@@ -1,15 +1,17 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the groupstars module.
+"""
 
+from astropy.table import Table, vstack
 import numpy as np
 from numpy.testing import assert_almost_equal
 import pytest
 
-from astropy.table import Table, vstack
-
 from ..groupstars import DAOGroup, DBSCANGroup
 
 try:
-    import sklearn.cluster    # noqa
+    import sklearn.cluster  # noqa
     HAS_SKLEARN = True
 except ImportError:
     HAS_SKLEARN = False

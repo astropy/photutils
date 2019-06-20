@@ -1,22 +1,21 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+The module contains tools for sigma clipping data.  This module can be
+removed when photutils depends on astropy >= 3.1.
+"""
 
 import warnings
-
-import numpy as np
 
 from astropy.utils import isiterable
 from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
-
+import numpy as np
 
 try:
     import bottleneck  # pylint: disable=W0611
     HAS_BOTTLENECK = True
 except ImportError:
     HAS_BOTTLENECK = False
-
-
-__all__ = ['SigmaClip', 'sigma_clip', 'sigma_clipped_stats']
 
 
 def _move_tuple_axes_first(array, axis):
@@ -221,7 +220,8 @@ class SigmaClip:
             lines.append('    {0}: {1}'.format(attr, getattr(self, attr)))
         return '\n'.join(lines)
 
-    def _parse_cenfunc(self, cenfunc):
+    @staticmethod
+    def _parse_cenfunc(cenfunc):
         if isinstance(cenfunc, str):
             if cenfunc == 'median':
                 if HAS_BOTTLENECK:
@@ -240,7 +240,8 @@ class SigmaClip:
 
         return cenfunc
 
-    def _parse_stdfunc(self, stdfunc):
+    @staticmethod
+    def _parse_stdfunc(stdfunc):
         if isinstance(stdfunc, str):
             if stdfunc != 'std':
                 raise ValueError('{} is an invalid stdfunc.'.format(stdfunc))
@@ -322,7 +323,7 @@ class SigmaClip:
         """
 
         # float array type is needed to insert nans into the array
-        filtered_data = data.astype(float)    # also makes a copy
+        filtered_data = data.astype(float)  # also makes a copy
 
         # remove invalid values
         bad_mask = ~np.isfinite(filtered_data)
@@ -375,9 +376,9 @@ class SigmaClip:
                 with np.errstate(invalid='ignore'):
                     out = np.ma.masked_invalid(data, copy=False)
 
-                    filtered_data = np.ma.masked_where(np.logical_or(
-                        out < self._min_value, out > self._max_value),
-                        out, copy=False)
+                    filtered_data = np.ma.masked_where(
+                        np.logical_or(out < self._min_value,
+                                      out > self._max_value), out, copy=False)
 
         if return_bounds:
             return filtered_data, self._min_value, self._max_value

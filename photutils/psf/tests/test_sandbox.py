@@ -1,12 +1,14 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the sandbox module.
+"""
 
+from astropy.convolution.utils import discretize_model
+from astropy.modeling.models import Gaussian2D
+from astropy.table import Table
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
-
-from astropy.modeling.models import Gaussian2D
-from astropy.convolution.utils import discretize_model
-from astropy.table import Table
 
 from ..sandbox import DiscretePRF
 

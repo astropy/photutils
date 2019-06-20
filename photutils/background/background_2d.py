@@ -1,27 +1,26 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-This module defines background classes to estimate the 2D background and
-background RMS in a 2D image.
+This module defines classes to estimate the 2D background and background
+RMS in an image.
 """
 
 from itertools import product
 
-import numpy as np
-from numpy.lib.index_tricks import index_exp
 from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
+from astropy.version import version as astropy_version
+import numpy as np
+from numpy.lib.index_tricks import index_exp
 
 from .core import SExtractorBackground, StdBackgroundRMS
 from ..utils import ShepardIDWInterpolator
 
-from astropy.version import version as astropy_version
 if astropy_version < '3.1':
     from astropy.stats import SigmaClip
-    SIGMA_CLIP = SigmaClip(sigma=3., iters=10)
+    SIGMA_CLIP = SigmaClip(sigma=3.0, iters=10)
 else:
-    from ..extern import SigmaClip
-    SIGMA_CLIP = SigmaClip(sigma=3., maxiters=10)
-
+    from ..extern.sigma_clipping import SigmaClip
+    SIGMA_CLIP = SigmaClip(sigma=3.0, maxiters=10)
 
 __all__ = ['BkgZoomInterpolator', 'BkgIDWInterpolator', 'Background2D']
 
@@ -161,10 +160,11 @@ class BkgIDWInterpolator:
             return np.zeros_like(bkg2d_obj.data) + np.min(mesh)
 
         mesh1d = mesh[bkg2d_obj.mesh_yidx, bkg2d_obj.mesh_xidx]
-        f = ShepardIDWInterpolator(bkg2d_obj.yx, mesh1d,
-                                   leafsize=self.leafsize)
-        data = f(bkg2d_obj.data_coords, n_neighbors=self.n_neighbors,
-                 power=self.power, reg=self.reg)
+        interp_func = ShepardIDWInterpolator(bkg2d_obj.yx, mesh1d,
+                                             leafsize=self.leafsize)
+        data = interp_func(bkg2d_obj.data_coords,
+                           n_neighbors=self.n_neighbors, power=self.power,
+                           reg=self.reg)
 
         return data.reshape(bkg2d_obj.data.shape)
 
@@ -215,7 +215,7 @@ class Background2D:
         completely masked meshes are *always* excluded.  For best
         results, ``exclude_percentile`` should be kept as low as
         possible (as long as there are sufficient pixels for reasonable
-        statistical estimates).  The default is 10.
+        statistical estimates).  The default is 10.0.
 
     filter_size : int or array_like (int), optional
         The window size of the 2D median filter to apply to the
@@ -246,7 +246,7 @@ class Background2D:
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters.  If `None` then no sigma clipping will be
         performed.  The default is to perform sigma clipping with
-        ``sigma=3.`` and ``maxiters=10``.
+        ``sigma=3.0`` and ``maxiters=10``.
 
     bkg_estimator : callable, optional
         A callable object (a function or e.g., an instance of any
@@ -288,7 +288,7 @@ class Background2D:
     """
 
     def __init__(self, data, box_size, mask=None,
-                 exclude_percentile=10., filter_size=(3, 3),
+                 exclude_percentile=10.0, filter_size=(3, 3),
                  filter_threshold=None, edge_method='pad',
                  sigma_clip=SIGMA_CLIP,
                  bkg_estimator=SExtractorBackground(sigma_clip=None),
@@ -331,6 +331,9 @@ class Background2D:
         self.bkgrms_estimator = bkgrms_estimator
         self.interpolator = interpolator
 
+        self.background_mesh = None
+        self.background_rms_mesh = None
+
         self._prepare_data()
         self._calc_bkg_bkgrms()
         self._calc_coordinates()
@@ -371,11 +374,11 @@ class Background2D:
                       constant_values=[1.e10])
 
         # mask the padded regions
-        pad_mask = np.zeros_like(data)
-        y0 = data.shape[0] - ypad
-        x0 = data.shape[1] - xpad
-        pad_mask[y0:, :] = True
-        pad_mask[:, x0:] = True
+        pad_mask = np.zeros(data.shape, dtype=bool)
+        yidx = data.shape[0] - ypad
+        xidx = data.shape[1] - xpad
+        pad_mask[yidx:, :] = True
+        pad_mask[:, xidx:] = True
 
         # pad the input mask separately (there is no np.ma.pad function)
         if self.mask is not None:
@@ -442,9 +445,9 @@ class Background2D:
         #     (second conditional needed for exclude_percentile=100)
         threshold_npixels = self.exclude_percentile / 100. * self.box_npixels
         mesh_idx = np.where((nmasked <= threshold_npixels) &
-                            (nmasked != self.box_npixels))[0]    # good meshes
+                            (nmasked != self.box_npixels))[0]  # good meshes
 
-        if len(mesh_idx) == 0:
+        if mesh_idx.size == 0:
             raise ValueError('All meshes contain > {0} ({1} percent per '
                              'mesh) masked pixels.  Please check your data '
                              'or decrease "exclude_percentile".'
@@ -489,15 +492,16 @@ class Background2D:
         self.nboxes = self.nxboxes * self.nyboxes
 
         # a reshaped 2D masked array with mesh data along the x axis
-        mesh_data = np.ma.swapaxes(data_ma.reshape(
-            self.nyboxes, self.box_size[0], self.nxboxes, self.box_size[1]),
-            1, 2).reshape(self.nyboxes * self.nxboxes, self.box_npixels)
+        mesh_data = np.ma.swapaxes(
+                        data_ma.reshape(
+                            self.nyboxes, self.box_size[0],
+                            self.nxboxes, self.box_size[1]),
+                        1, 2).reshape(self.nyboxes * self.nxboxes,
+                                      self.box_npixels)
 
         # first cut on rejecting meshes
         self.mesh_idx = self._select_meshes(mesh_data)
         self._mesh_data = mesh_data[self.mesh_idx, :]
-
-        return
 
     def _make_2d_array(self, data):
         """
@@ -535,8 +539,8 @@ class Background2D:
 
             return np.ma.masked_array(data2d, mask=mask2d)
 
-    def _interpolate_meshes(self, data, n_neighbors=10, eps=0., power=1.,
-                            reg=0.):
+    def _interpolate_meshes(self, data, n_neighbors=10, eps=0.0, power=1.0,
+                            reg=0.0):
         """
         Use IDW interpolation to fill in any masked pixels in the
         low-resolution 2D mesh background and background RMS images.
@@ -578,9 +582,9 @@ class Background2D:
         yx = np.column_stack([self.mesh_yidx, self.mesh_xidx])
         coords = np.array(list(product(range(self.nyboxes),
                                        range(self.nxboxes))))
-        f = ShepardIDWInterpolator(yx, data)
-        img1d = f(coords, n_neighbors=n_neighbors, power=power, eps=eps,
-                  reg=reg)
+        interp_func = ShepardIDWInterpolator(yx, data)
+        img1d = interp_func(coords, n_neighbors=n_neighbors, power=power,
+                            eps=eps, reg=reg)
 
         return img1d.reshape(self._mesh_shape)
 
@@ -611,9 +615,11 @@ class Background2D:
         for i, j in zip(*indices):
             yfs, xfs = self.filter_size
             hyfs, hxfs = yfs // 2, xfs // 2
-            y0, y1 = max(i - hyfs, 0), min(i - hyfs + yfs, data.shape[0])
-            x0, x1 = max(j - hxfs, 0), min(j - hxfs + xfs, data.shape[1])
-            data_out[i, j] = np.median(data[y0:y1, x0:x1])
+            yidx0 = max(i - hyfs, 0)
+            yidx1 = min(i - hyfs + yfs, data.shape[0])
+            xidx0 = max(j - hxfs, 0)
+            xidx1 = min(j - hxfs + xfs, data.shape[1])
+            data_out[i, j] = np.median(data[yidx0:yidx1, xidx0:xidx1])
 
         return data_out
 
@@ -624,19 +630,14 @@ class Background2D:
         """
 
         from scipy.ndimage import generic_filter
-        try:
-            nanmedian_func = np.nanmedian    # numpy >= 1.9
-        except AttributeError:    # pragma: no cover
-            from scipy.stats import nanmedian
-            nanmedian_func = nanmedian
 
         if self.filter_threshold is None:
             # filter the entire arrays
             self.background_mesh = generic_filter(
-                self.background_mesh, nanmedian_func, size=self.filter_size,
+                self.background_mesh, np.nanmedian, size=self.filter_size,
                 mode='constant', cval=np.nan)
             self.background_rms_mesh = generic_filter(
-                self.background_rms_mesh, nanmedian_func,
+                self.background_rms_mesh, np.nanmedian,
                 size=self.filter_size, mode='constant', cval=np.nan)
         else:
             # selectively filter
@@ -645,8 +646,6 @@ class Background2D:
                 self.background_mesh, indices)
             self.background_rms_mesh = self._selective_filter(
                 self.background_rms_mesh, indices)
-
-        return
 
     def _calc_bkg_bkgrms(self):
         """
@@ -670,8 +669,8 @@ class Background2D:
         # preform mesh rejection on sigma-clipped data (i.e. for any
         # newly-masked pixels)
         idx = self._select_meshes(data_sigclip)
-        self.mesh_idx = self.mesh_idx[idx]    # indices for the output mesh
-        self._data_sigclip = data_sigclip[idx]    # always a 2D masked array
+        self.mesh_idx = self.mesh_idx[idx]  # indices for the output mesh
+        self._data_sigclip = data_sigclip[idx]  # always a 2D masked array
 
         self._mesh_shape = (self.nyboxes, self.nxboxes)
         self.mesh_yidx, self.mesh_xidx = np.unravel_index(self.mesh_idx,
@@ -700,8 +699,6 @@ class Background2D:
         # filter the 2D mesh arrays
         if not np.array_equal(self.filter_size, [1, 1]):
             self._filter_meshes()
-
-        return
 
     def _calc_coordinates(self):
         """
@@ -747,7 +744,7 @@ class Background2D:
         if len(self._bkg1d) == self.nboxes:
             return self.background_mesh
         else:
-            return self._make_2d_array(self._bkg1d)    # masked array
+            return self._make_2d_array(self._bkg1d)  # masked array
 
     @lazyproperty
     def background_rms_mesh_ma(self):
@@ -760,7 +757,7 @@ class Background2D:
         if len(self._bkgrms1d) == self.nboxes:
             return self.background_rms_mesh
         else:
-            return self._make_2d_array(self._bkgrms1d)    # masked array
+            return self._make_2d_array(self._bkgrms1d)  # masked array
 
     @lazyproperty
     def background_median(self):
@@ -839,4 +836,3 @@ class Background2D:
             apers = RectangularAperture(xy, self.box_size[1],
                                         self.box_size[0], 0.)
             apers.plot(axes=axes, **kwargs)
-        return

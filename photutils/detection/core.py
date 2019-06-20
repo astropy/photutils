@@ -1,16 +1,18 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-"""Functions for detecting sources in an astronomical image."""
+"""
+This modules provides tools for detecting sources in an astronomical
+image.
+"""
 
 import warnings
 
-import numpy as np
 from astropy.stats import sigma_clipped_stats
 from astropy.table import Table
 from astropy.version import version as astropy_version
 from astropy.wcs.utils import pixel_to_skycoord
+import numpy as np
 
 from ..utils.exceptions import NoDetectionsWarning
-
 
 __all__ = ['detect_threshold', 'find_peaks']
 
@@ -90,11 +92,11 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
 
     if background is None or error is None:
         if astropy_version < '3.1':
-            data_mean, data_median, data_std = sigma_clipped_stats(
+            data_mean, _, data_std = sigma_clipped_stats(
                 data, mask=mask, mask_value=mask_value, sigma=sigclip_sigma,
                 iters=sigclip_iters)
         else:
-            data_mean, data_median, data_std = sigma_clipped_stats(
+            data_mean, _, data_std = sigma_clipped_stats(
                 data, mask=mask, mask_value=mask_value, sigma=sigclip_sigma,
                 maxiters=sigclip_iters)
 

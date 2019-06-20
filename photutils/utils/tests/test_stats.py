@@ -1,4 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the stats module.
+"""
 
 import numpy as np
 from numpy.testing import assert_allclose
@@ -17,7 +20,7 @@ def test_std_blocksum():
     expected = np.array([stddev, stddev, stddev])
     assert_allclose(stds / block_sizes, expected, atol=0.2)
 
-    mask = np.zeros_like(data, dtype=np.bool)
+    mask = np.zeros(data.shape, dtype=bool)
     mask[25:50, 25:50] = True
     stds2 = std_blocksum(data, block_sizes, mask=mask)
     assert_allclose(stds2 / block_sizes, expected, atol=0.3)

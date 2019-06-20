@@ -1,17 +1,16 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Models for doing PSF/PRF fitting photometry on image data.
+This module provides models for doing PSF/PRF-fitting photometry.
 """
 
 import copy
 import itertools
 import warnings
 
-import numpy as np
+from astropy.modeling import Fittable2DModel, Parameter
 from astropy.nddata import NDData
-from astropy.modeling import Parameter, Fittable2DModel
 from astropy.utils.exceptions import AstropyWarning
-
+import numpy as np
 
 __all__ = ['NonNormalizable', 'FittableImageModel', 'EPSFModel',
            'GriddedPSFModel', 'IntegratedGaussianPRF', 'PRFAdapter']
@@ -683,7 +682,7 @@ class GriddedPSFModel(Fittable2DModel):
 
         xyref = [tuple(i) for i in xyref]
         idx = sorted(range(len(xyref)), key=xyref.__getitem__)
-        xyref = sorted(xyref)   # sort by x, then y
+        xyref = sorted(xyref)  # sort by x, then y
         (x0, y0), (_x0, y1), (x1, _y0), (_x1, _y1) = xyref
 
         if x0 != _x0 or x1 != _x1 or y0 != _y0 or y1 != _y1:

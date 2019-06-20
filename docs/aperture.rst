@@ -551,7 +551,7 @@ photometry by providing an image mask via the ``mask`` keyword::
 
     >>> data = np.ones((5, 5))
     >>> aperture = CircularAperture((2, 2), 2.)
-    >>> mask = np.zeros_like(data, dtype=bool)
+    >>> mask = np.zeros(data.shape, dtype=bool)
     >>> data[2, 2] = 100.  # bad pixel
     >>> mask[2, 2] = True
     >>> t1 = aperture_photometry(data, aperture, mask=mask)

@@ -47,19 +47,19 @@ reference for the regression.
 """
 
 import math
-import numpy as np
 import os.path as op
-import pytest
 
 from astropy.io import fits
 from astropy.table import Table
+import numpy as np
+import pytest
 
 from ..ellipse import Ellipse
 from ..integrator import BILINEAR
 from ...datasets import get_path
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
@@ -181,11 +181,11 @@ def test_regression(name, integrmode=BILINEAR, verbose=False):
 
             if not math.isnan(ellip_d):
                 if sma_i > 3.:
-                    assert abs(ellip_d) <= 1.   # 1%
+                    assert abs(ellip_d) <= 1.  # 1%
                 else:
                     assert abs(ellip_d) <= 20.  # 20%
             if not math.isnan(pa_d):
                 if sma_i > 3.:
-                    assert abs(pa_d) <= 1.      # 1 deg.
+                    assert abs(pa_d) <= 1.  # 1 deg.
                 else:
-                    assert abs(pa_d) <= 20.     # 20 deg.
+                    assert abs(pa_d) <= 20.  # 20 deg.

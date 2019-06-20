@@ -1,21 +1,18 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Functions for centroiding sources and measuring their morphological
-properties.
+The module contains tools for centroiding sources.
 """
 
 import inspect
-import sys
 import warnings
 
-import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
-from astropy.modeling.models import (Gaussian1D, Gaussian2D, Const1D,
-                                     Const2D, CONSTRAINTS_DOC)
 from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.models import (CONSTRAINTS_DOC, Const1D, Const2D,
+                                     Gaussian1D, Gaussian2D)
 from astropy.nddata.utils import overlap_slices
 from astropy.utils.exceptions import AstropyUserWarning
-
+import numpy as np
 
 __all__ = ['GaussianConst2D', 'centroid_com', 'gaussian1d_moments',
            'fit_2dgaussian', 'centroid_1dg', 'centroid_2dg',
@@ -30,20 +27,26 @@ class GaussianConst2D(Fittable2DModel):
     ----------
     constant : float
         Value of the constant.
+
     amplitude : float
         Amplitude of the Gaussian.
+
     x_mean : float
         Mean of the Gaussian in x.
+
     y_mean : float
         Mean of the Gaussian in y.
+
     x_stddev : float
         Standard deviation of the Gaussian in x.
         ``x_stddev`` and ``y_stddev`` must be specified unless a covariance
         matrix (``cov_matrix``) is input.
+
     y_stddev : float
         Standard deviation of the Gaussian in y.
         ``x_stddev`` and ``y_stddev`` must be specified unless a covariance
         matrix (``cov_matrix``) is input.
+
     theta : float, optional
         Rotation angle in radians. The rotation angle increases
         counterclockwise.
@@ -244,7 +247,7 @@ def fit_2dgaussian(data, error=None, mask=None):
     # values can yield undefined Gaussian parameters, e.g. x/y_stddev).
     props = data_properties(data - np.min(data), mask=mask)
 
-    init_const = 0.    # subtracted data minimum above
+    init_const = 0.  # subtracted data minimum above
     init_amplitude = np.ptp(data)
     g_init = GaussianConst2D(constant=init_const, amplitude=init_amplitude,
                              x_mean=props.xcentroid.value,
@@ -438,12 +441,12 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
     if footprint is None:
         if box_size is None:
             raise ValueError('box_size or footprint must be defined.')
-        else:
-            box_size = np.atleast_1d(box_size)
-            if len(box_size) == 1:
-                box_size = np.repeat(box_size, 2)
-            if len(box_size) != 2:
-                raise ValueError('box_size must have 1 or 2 elements.')
+
+        box_size = np.atleast_1d(box_size)
+        if len(box_size) == 1:
+            box_size = np.repeat(box_size, 2)
+        if len(box_size) != 2:
+            raise ValueError('box_size must have 1 or 2 elements.')
 
         footprint = np.ones(box_size, dtype=bool)
     else:
@@ -495,13 +498,14 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
 
 def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
     """
-    Calculates centering shift of data using pixel symmetry, as described by Anderson
-    and King (2000; PASP 112, 1360) in their ePSF-fitting algorithm.
+    Calculates centering shift of data using pixel symmetry, as
+    described by Anderson and King (2000; PASP 112, 1360) in their
+    ePSF-fitting algorithm.
 
-    Calculate the shift of a 2-dimensional symmetric image based on the asymmetry between
-    f(x, N) and f(x, -N), along with the differential df/dy(x, shift_val) and
-    df/dy(x, -shift_val). Invalid values (e.g. NaNs or infs) in the ``data`` array are
-    automatically masked.
+    Calculate the shift of a 2-dimensional symmetric image based on the
+    asymmetry between f(x, N) and f(x, -N), along with the differential
+    df/dy(x, shift_val) and df/dy(x, -shift_val). Invalid values (e.g.
+    NaNs or infs) in the ``data`` array are automatically masked.
 
     Parameters
     ----------
@@ -511,12 +515,14 @@ def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
     oversampling : float or tuple of two floats, optional
-        Oversampling factors of pixel indices. If ``oversampling`` is a scalar
-        this is treated as both x and y directions having the same oversampling
-        factor; otherwise it is treated as ``(x_oversamp, y_oversamp)``.
+        Oversampling factors of pixel indices. If ``oversampling`` is a
+        scalar this is treated as both x and y directions having the
+        same oversampling factor.  Otherwise it is treated as
+        ``(x_oversamp, y_oversamp)``.
     shift_val : float, optional
-        The undersampled value at which to compute the shifts. Default is half a
-        pixel. If supplied, must be a strictly positive number.
+        The undersampled value at which to compute the shifts. Default
+        is half a pixel. If supplied, must be a strictly positive
+        number.
 
     Returns
     -------
@@ -550,22 +556,27 @@ def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
     x_shiftidx = np.around((shift_val * oversampling[0])).astype(int)
     y_shiftidx = np.around((shift_val * oversampling[0])).astype(int)
 
-    badidx = ~np.isfinite([data[y, x] for x in [xidx_0, xidx_0+x_shiftidx, xidx_0+x_shiftidx-1,
-                                                xidx_0+x_shiftidx+1]
-                           for y in [yidx_0, yidx_0+y_shiftidx, yidx_0+y_shiftidx-1,
+    badidx = ~np.isfinite([data[y, x]
+                           for x in [xidx_0, xidx_0+x_shiftidx,
+                                     xidx_0+x_shiftidx-1, xidx_0+x_shiftidx+1]
+                           for y in [yidx_0, yidx_0+y_shiftidx,
+                                     yidx_0+y_shiftidx-1,
                                      yidx_0+y_shiftidx+1]])
     if np.any(badidx):
-        raise ValueError('One or more centroiding pixels is set to a bad value, '
-                         'e.g., NaN or inf.')
+        raise ValueError('One or more centroiding pixels is set to a bad '
+                         'value, e.g., NaN or inf.')
 
-    # In Anderson & King (2000) notation this is psi_E(0.5, 0.0) and values used to
-    # compute derivatives.
+    # In Anderson & King (2000) notation this is psi_E(0.5, 0.0) and
+    # values used to compute derivatives.
     psi_pos_x = data[yidx_0, xidx_0 + x_shiftidx]
     psi_pos_x_m1 = data[yidx_0, xidx_0 + x_shiftidx - 1]
     psi_pos_x_p1 = data[yidx_0, xidx_0 + x_shiftidx + 1]
-    # Our derivatives are simple differences across two data points, but this must
-    # be in units of the undersampled grid, so 2 pixels becomes 2/oversampling pixels
+
+    # Our derivatives are simple differences across two data points, but
+    # this must be in units of the undersampled grid, so 2 pixels becomes
+    # 2/oversampling pixels
     dpsi_pos_x = np.abs(psi_pos_x_p1 - psi_pos_x_m1) / (2. / oversampling[0])
+
     # psi_E(-0.5, 0.0) and derivative components.
     psi_neg_x = data[yidx_0, xidx_0 - x_shiftidx]
     psi_neg_x_m1 = data[yidx_0, xidx_0 - x_shiftidx - 1]
@@ -579,6 +590,7 @@ def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
     psi_pos_y_m1 = data[yidx_0 + y_shiftidx - 1, xidx_0]
     psi_pos_y_p1 = data[yidx_0 + y_shiftidx + 1, xidx_0]
     dpsi_pos_y = np.abs(psi_pos_y_p1 - psi_pos_y_m1) / (2. / oversampling[1])
+
     # psi_E(0.0, -0.5) and derivative components.
     psi_neg_y = data[yidx_0 - y_shiftidx, xidx_0]
     psi_neg_y_m1 = data[yidx_0 - y_shiftidx - 1, xidx_0]
@@ -587,4 +599,4 @@ def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
 
     y_shift = (psi_pos_y - psi_neg_y) / (dpsi_pos_y + dpsi_neg_y)
 
-    return x_0+x_shift, y_0+y_shift
+    return x_0 + x_shift, y_0 + y_shift
