@@ -4,6 +4,7 @@ include CHANGES.rst
 include LONG_DESCRIPTION.rst
 include CODE_OF_CONDUCT.rst
 include CONTRIBUTING.rst
+include CITATION.rst
 
 include ah_bootstrap.py
 include setup.cfg
