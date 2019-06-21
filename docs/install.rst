@@ -42,7 +42,7 @@ either with `pip`_ or `conda`_.
 Using pip
 ---------
 
-To install ``photutils`` with `pip`_, run::
+To install Photutils with `pip`_, run::
 
     pip install photutils
 
