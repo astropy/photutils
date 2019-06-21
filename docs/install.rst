@@ -20,13 +20,13 @@ the test suite.
 Additionally, some functionality is available only if the following
 optional dependencies are installed:
 
-* `Scipy`_ 0.16 or later
+* `Scipy`_ 0.19 or later
 
-* `scikit-image`_ 0.11 or later
+* `scikit-image`_ 0.13 or later
 
-* `scikit-learn <http://scikit-learn.org/>`_ 0.18 or later
+* `scikit-learn <http://scikit-learn.org/>`_ 0.19 or later
 
-* `matplotlib <http://matplotlib.org/>`_ 1.3 or later
+* `matplotlib <http://matplotlib.org/>`_ 2.2 or later
 
 .. warning::
 
