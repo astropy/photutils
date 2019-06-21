@@ -2,16 +2,20 @@ Getting Started with Photutils
 ==============================
 
 The following example uses Photutils to find sources in an
-astronomical image and perform circular aperture photometry on them.
+astronomical image and then perform circular aperture photometry on
+them.
 
 We start by loading an image from the bundled datasets and selecting a
-subset of the image.  We then subtract a rough estimate of the
-background, calculated using the image median::
+subset of the image::
 
     >>> import numpy as np
     >>> from photutils import datasets
     >>> hdu = datasets.load_star_image()    # doctest: +REMOTE_DATA
     >>> image = hdu.data[500:700, 500:700].astype(float)    # doctest: +REMOTE_DATA
+
+We then subtract a rough estimate of the background, calculated using
+the image median::
+
     >>> image -= np.median(image)    # doctest: +REMOTE_DATA
 
 In the remainder of this example, we assume that the data is
@@ -50,11 +54,12 @@ detected sources are returned as an Astropy `~astropy.table.Table`:
     152 111.52575  195.73192 0.45827852 ...   0 8109 7.9278607    -2.24789
     Length = 152 rows
 
-Using the list of source locations (``xcentroid`` and ``ycentroid``),
-we now compute the sum of the pixel values in circular apertures with
-a radius of 4 pixels.  The :func:`~photutils.aperture_photometry`
-function returns an Astropy `~astropy.table.Table` with the results of
-the photometry:
+Using the source locations (i.e. the ``xcentroid`` and ``ycentroid``
+columns), we now define circular apertures centered at these positions
+with a radius of 4 pixels and compute the sum of the pixel values
+within the apertures.  The :func:`~photutils.aperture_photometry`
+function returns an Astropy `~astropy.table.QTable` with the results
+of the photometry:
 
 .. doctest-requires:: scipy
 
@@ -82,8 +87,9 @@ the photometry:
     Length = 152 rows
 
 The sum of the pixel values within the apertures are given in the
-column ``aperture_sum``.  We now plot the image and the defined
-apertures:
+``aperture_sum`` column.
+
+Finally, we plot the image and the defined apertures:
 
 .. doctest-skip::
 
