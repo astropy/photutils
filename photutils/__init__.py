@@ -17,7 +17,7 @@ from ._astropy_init import *       # noqa
 import sys
 
 __minimum_python_version__ = '3.5'
-__minimum_numpy_version__ = '1.11'
+__minimum_numpy_version__ = '1.13'
 
 
 class UnsupportedPythonError(Exception):
