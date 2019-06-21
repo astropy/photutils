@@ -111,7 +111,7 @@ matrix:
 
         # Test with numpy pre-release version
         - stage: Comprehensive tests
-          env: NUMPY_VERSION=prerelease
+          env: NUMPY_VERSION=dev
                EVENT_TYPE='push pull_request cron'
 
         # Test with MacOS X
@@ -120,7 +120,7 @@ matrix:
           env: SETUP_CMD='test' EVENT_TYPE='cron'
 
     allow_failures:
-        - env: NUMPY_VERSION=prerelease
+        - env: NUMPY_VERSION=dev
                EVENT_TYPE='push pull_request cron'
 
 install:
