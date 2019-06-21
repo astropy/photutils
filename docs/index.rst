@@ -21,10 +21,15 @@ Photutils
 
 
 **Photutils** is an  `affiliated package
-<http://www.astropy.org/affiliated/index.html>`_ of `Astropy`_ to
-provide tools for detecting and performing photometry of astronomical
-sources.  It is an open source (BSD licensed) Python package.  Bug
-reports, comments, and help with development are very welcome.
+<https://www.astropy.org/affiliated/index.html>`_ of `Astropy`_ that
+primarily provides tools for detecting and performing photometry of
+astronomical sources.  It is an open source Python package and is
+licensed under a :ref:`3-clause BSD license <photutils_license>`.
+
+.. Important::
+    If you use Photutils for a project that leads to a publication,
+    whether directly or as a dependency of another package, please
+    include an :doc:`acknowledgment and/or citation <citation>`.
 
 
 Photutils at a glance
@@ -36,6 +41,8 @@ Photutils at a glance
     install.rst
     overview.rst
     getting_started.rst
+    citation.rst
+    license.rst
     changelog
 
 
