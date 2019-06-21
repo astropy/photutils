@@ -102,15 +102,29 @@ Next, we need to extract cutouts of the stars using the
 :func:`~photutils.psf.extract_stars` function.  This function requires
 a table of star positions either in pixel or sky coordinates.  For
 this example we are using the pixel coordinates, which need to be in
-table columns called simply ``x`` and ``y``.  Let's create that
-table:
+table columns called simply ``x`` and ``y``.
+
+We plan to extract 25 x 25 pixel cutouts of our selected stars, so
+let's explicitly exclude stars that are too close to the image
+boundaries (because they cannot be extracted):
+
+.. doctest-requires:: scipy
+
+    >>> size = 25
+    >>> hsize = (size - 1) / 2
+    >>> x = peaks_tbl['x_peak']  # doctest: +REMOTE_DATA
+    >>> y = peaks_tbl['y_peak']  # doctest: +REMOTE_DATA
+    >>> mask = ((x > hsize) & (x < (data.shape[1] -1 - hsize)) &
+    ...         (y > hsize) & (y < (data.shape[0] -1 - hsize)))  # doctest: +REMOTE_DATA
+
+Now let's create the table of good star positions:
 
 .. doctest-requires:: scipy
 
     >>> from astropy.table import Table
     >>> stars_tbl = Table()
-    >>> stars_tbl['x'] = peaks_tbl['x_peak']  # doctest: +REMOTE_DATA
-    >>> stars_tbl['y'] = peaks_tbl['y_peak']  # doctest: +REMOTE_DATA
+    >>> stars_tbl['x'] = x[mask]  # doctest: +REMOTE_DATA
+    >>> stars_tbl['y'] = y[mask]  # doctest: +REMOTE_DATA
 
 The star cutouts from which we build the ePSF must have the background
 subtracted.  Here we'll use the sigma-clipped median value as the
@@ -145,7 +159,7 @@ objects) and the `~astropy.nddata.NDData` objects must contain valid
 will be "linked" across images, meaning it will be constrained to have
 the same sky coordinate in each input image.
 
-Let's extract 25 x 25 pixel cutouts of our selected stars:
+Let's extract the 25 x 25 pixel cutouts of our selected stars:
 
 .. doctest-requires:: scipy
 
@@ -183,10 +197,17 @@ from which we'll build our ePSF.  Let's show the first 25 of them:
     from photutils import find_peaks
     peaks_tbl = find_peaks(data, threshold=500.)
 
+    size = 25
+    hsize = (size - 1) / 2
+    x = peaks_tbl['x_peak']
+    y = peaks_tbl['y_peak']
+    mask = ((x > hsize) & (x < (data.shape[1] -1 - hsize)) &
+            (y > hsize) & (y < (data.shape[0] -1 - hsize)))
+
     from astropy.table import Table
     stars_tbl = Table()
-    stars_tbl['x'] = peaks_tbl['x_peak']
-    stars_tbl['y'] = peaks_tbl['y_peak']
+    stars_tbl['x'] = x[mask]
+    stars_tbl['y'] = y[mask]
 
     from astropy.stats import sigma_clipped_stats
     mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.)
@@ -259,10 +280,17 @@ Finally, let's show the constructed ePSF:
     from photutils import find_peaks
     peaks_tbl = find_peaks(data, threshold=500.)
 
+    size = 25
+    hsize = (size - 1) / 2
+    x = peaks_tbl['x_peak']
+    y = peaks_tbl['y_peak']
+    mask = ((x > hsize) & (x < (data.shape[1] -1 - hsize)) &
+            (y > hsize) & (y < (data.shape[0] -1 - hsize)))
+
     from astropy.table import Table
     stars_tbl = Table()
-    stars_tbl['x'] = peaks_tbl['x_peak']
-    stars_tbl['y'] = peaks_tbl['y_peak']
+    stars_tbl['x'] = x[mask]
+    stars_tbl['y'] = y[mask]
 
     from astropy.stats import sigma_clipped_stats
     mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.)
