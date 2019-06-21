@@ -3,7 +3,9 @@ Citing Photutils
 
 If you use Photutils for a project that leads to a publication,
 whether directly or as a dependency of another package, please include
-the following acknowledgment::
+the following acknowledgment:
+
+.. code-block:: text
 
     This research made use of Photutils, an Astropy package for
     detection and photometry of astronomical sources (Bradley et al.
@@ -15,7 +17,9 @@ that was used.  We also encourage citations in the main text wherever
 appropriate.
 
 For example, for Photutils v0.6 one would cite Bradley et al. 2019
-with the BibTeX entry (https://zenodo.org/record/2533376/export/hx)::
+with the BibTeX entry (https://zenodo.org/record/2533376/export/hx):
+
+.. code-block:: text
 
   @misc{Bradley_2019_2533376,
      author = {Larry Bradley and Brigitta Sip{\H o}cz and Thomas Robitaille and

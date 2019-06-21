@@ -7,112 +7,95 @@ Requirements
 
 Photutils has the following strict requirements:
 
-* `Python <http://www.python.org/>`_ |minimum_python_version| or later
+* `Python <https://www.python.org/>`_ |minimum_python_version| or later
 
-* `Numpy <http://www.numpy.org/>`_ |minimum_numpy_version| or later
+* `Numpy <https://www.numpy.org/>`_ |minimum_numpy_version| or later
 
 * `Astropy`_ 2.0 or later
 
-Photutils also depends on `pytest-astropy
+Photutils also optionally depends on other packages for some features:
+
+* `Scipy <https://www.scipy.org/>`_ 0.19 or later:  To power a variety of features in several
+  modules (strongly recommended).
+
+* `matplotlib <https://matplotlib.org/>`_ 2.2 or later:  To power a
+  variety of plotting features (e.g. plotting apertures).
+
+* `scikit-image <https://scikit-image.org/>`_ 0.13 or later:  Used in
+  `~photutils.segmentation.deblend_sources` for deblending segmented
+  sources.
+
+* `scikit-learn <https://scikit-learn.org/>`_ 0.19 or later:  Used in
+  `~photutils.psf.DBSCANGroup` to create star groups.
+
+Photutils depends on `pytest-astropy
 <https://github.com/astropy/pytest-astropy>`_ (0.4 or later) to run
 the test suite.
-
-Additionally, some functionality is available only if the following
-optional dependencies are installed:
-
-* `Scipy`_ 0.16 or later
-
-* `scikit-image`_ 0.11 or later
-
-* `scikit-learn <http://scikit-learn.org/>`_ 0.18 or later
-
-* `matplotlib <http://matplotlib.org/>`_ 1.3 or later
-
-.. warning::
-
-    While Photutils will import even if these optional dependencies
-    are not installed, the functionality will be severely limited.  It
-    is very strongly recommended that you install `Scipy`_ and
-    `scikit-image`_ to use Photutils.  Both are easily installed via
-    `conda`_ or `pip`_.
 
 
 Installing the latest released version
 ======================================
 
 The latest released (stable) version of Photutils can be installed
-either with `conda`_ or `pip`_.
-
-
-Using conda
------------
-
-Photutils can be installed with `conda`_ using the `astropy Anaconda
-channel <https://anaconda.org/astropy>`_::
-
-    conda install -c astropy photutils
-
+either with `pip`_ or `conda`_.
 
 Using pip
 ---------
 
-Before you can install Photutils using `pip`_, you will need to
-install a C compiler (e.g. ``gcc`` or ``clang``).  After you have
-installed a C compiler, simply run::
+To install ``photutils`` with `pip`_, run::
 
-    pip install --no-deps photutils
+    pip install photutils
 
-.. note::
+If you want to make sure that none of your existing dependencies get
+upgraded, instead you can do::
 
-    The ``--no-deps`` flag is optional, but highly recommended if you
-    already have Numpy and Astropy installed, since otherwise pip will
-    sometimes try to "help" you by upgrading your Numpy and Astropy
-    installations, which may not always be desired.
+    pip install astropy --no-deps
 
-.. note::
+Note that you will generally need a C compiler (e.g. ``gcc`` or
+``clang``) to be installed for the installation to succeed.
 
-    If you get a ``PermissionError`` this means that you do not have
-    the required administrative access to install new packages to your
-    Python installation.  In this case you may consider using the
-    ``--user`` option to install the package into your home directory.
-    You can read more about how to do this in the `pip documentation
-    <http://www.pip-installer.org/en/1.2.1/other-tools.html#using-pip-with-the-user-scheme>`_.
+If you get a ``PermissionError`` this means that you do not have the
+required administrative access to install new packages to your Python
+installation.  In this case you may consider using the ``--user``
+option to install the package into your home directory.  You can read
+more about how to do this in the `pip documentation
+<https://pip.pypa.io/en/stable/user_guide/#user-installs>`_.
 
-    Do **not** install Photutils or other third-party packages using
-    ``sudo`` unless you are fully aware of the risks.
+Do **not** install Photutils or other third-party packages using
+``sudo`` unless you are fully aware of the risks.
+
+Using conda
+-----------
+
+Photutils can be installed with `conda`_ if you have installed
+`Anaconda <https://www.anaconda.com/distribution/>`_ or `Miniconda
+<https://docs.conda.io/en/latest/miniconda.html>`_.  To install
+Photutils using the `astropy Anaconda channel
+<https://anaconda.org/astropy>`_, run::
+
+    conda install photutils -c astropy
 
 
-Installing the latest development version
-=========================================
-
+Installing the latest development version from Source
+=====================================================
 
 Prerequisites
 -------------
 
-You will need `Cython`_ (0.15 or later), a compiler suite, and the
-development headers for Python and Numpy in order to build Photutils
-from the source distribution.  On Linux, using the package manager for
-your distribution will usually be the easiest route, while on MacOS X
-you will need the XCode command line tools.
+You will need `Cython <https://cython.org/>`_ (0.28 or later), a
+compiler suite, and the development headers for Python and Numpy in
+order to build Photutils from the source distribution.  On Linux,
+using the package manager for your distribution will usually be the
+easiest route.
 
-The `instructions for building Numpy from source
-<http://docs.scipy.org/doc/numpy/user/install.html>`_ are also a good
-resource for setting up your environment to build Python packages.
+On MacOS X you will need the `XCode`_ command-line tools, which can be
+installed using::
 
-.. note::
+    xcode-select --install
 
-    If you are using MacOS X, you will need to the XCode command line
-    tools.  One way to get them is to install `XCode
-    <https://developer.apple.com/xcode/>`_. If you are using OS X 10.7
-    (Lion) or later, you must also explicitly install the command line
-    tools. You can do this by opening the XCode application, going to
-    **Preferences**, then **Downloads**, and then under
-    **Components**, click on the Install button to the right of
-    **Command Line Tools**.  Alternatively, on 10.7 (Lion) or later,
-    you do not need to install XCode, you can download just the
-    command line tools from
-    https://developer.apple.com/downloads/index.action (requires an
-    Apple developer account).
+Follow the onscreen instructions to install the command-line tools
+required.  Note that you do not need to install the full `XCode`_
+distribution (assuming you are using MacOS X 10.9 or later).
 
 
 Building and installing manually
@@ -123,8 +106,7 @@ version of the Photutils source code can be retrieved using git::
 
     git clone https://github.com/astropy/photutils.git
 
-Then, to build and install Photutils (from the root of the source
-tree)::
+Then to build and install Photutils, run::
 
     cd photutils
     python setup.py install
@@ -136,26 +118,12 @@ Building and installing using pip
 Alternatively, `pip`_ can be used to retrieve, build, and install the
 latest development version from `github`_::
 
-    pip install --no-deps git+https://github.com/astropy/photutils.git
+    pip install git+https://github.com/astropy/photutils.git
 
-.. note::
+Again, if you want to make sure that none of your existing
+dependencies get upgraded, instead you can do::
 
-    The ``--no-deps`` flag is optional, but highly recommended if you
-    already have Numpy and Astropy installed, since otherwise pip will
-    sometimes try to "help" you by upgrading your Numpy and Astropy
-    installations, which may not always be desired.
-
-.. note::
-
-    If you get a ``PermissionError`` this means that you do not have
-    the required administrative access to install new packages to your
-    Python installation.  In this case you may consider using the
-    ``--user`` option to install the package into your home directory.
-    You can read more about how to do this in the `pip documentation
-    <http://www.pip-installer.org/en/1.2.1/other-tools.html#using-pip-with-the-user-scheme>`_.
-
-    Do **not** install Photutils or other third-party packages using
-    ``sudo`` unless you are fully aware of the risks.
+    pip install git+https://github.com/astropy/photutils.git --no-deps
 
 
 Testing an installed Photutils
@@ -169,19 +137,15 @@ correctly is to use the :func:`photutils.test()` function:
     >>> import photutils
     >>> photutils.test()
 
+Note that this may not work if you start Python from within the
+Photutils source distribution directory.
+
 The tests should run and report any failures, which you can report to
 the `Photutils issue tracker
-<http://github.com/astropy/photutils/issues>`_.
-
-.. note::
-
-    This way of running the tests may not work if you start Python
-    from within the Photutils source distribution directory.
+<https://github.com/astropy/photutils/issues>`_.
 
 
-.. _Scipy: http://www.scipy.org/
-.. _scikit-image: http://scikit-image.org/
 .. _pip: https://pip.pypa.io/en/latest/
-.. _conda: http://conda.pydata.org/docs/
-.. _Cython: http://cython.org
+.. _conda: https://conda.pydata.org/docs/
 .. _github: https://github.com/astropy/photutils
+.. _Xcode: https://developer.apple.com/xcode/
