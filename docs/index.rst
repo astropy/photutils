@@ -32,14 +32,15 @@ licensed under a :ref:`3-clause BSD license <photutils_license>`.
     include an :doc:`acknowledgment and/or citation <citation>`.
 
 
-Photutils at a glance
-=====================
+Getting Started
+===============
 
 .. toctree::
     :maxdepth: 1
 
     install.rst
     overview.rst
+    pixel_conventions.rst
     getting_started.rst
     contributing.rst
     citation.rst
