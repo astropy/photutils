@@ -2,13 +2,14 @@
 
 import math
 
-from astropy.coordinates import SkyCoord
+import numpy as np
 
+from .attributes import (PixelPositions, SkyCoordPositions, PositiveScalar,
+                         AngleOrPixelScalarQuantity)
 from .core import PixelAperture, SkyAperture
 from .bounding_box import BoundingBox
 from .mask import ApertureMask
 from ..geometry import circular_overlap_grid
-from ..utils.wcs_helpers import assert_angle_or_pixel
 
 
 __all__ = ['CircularMaskMixin', 'CircularAperture', 'CircularAnnulus',
@@ -23,8 +24,7 @@ class CircularMaskMixin:
 
     def to_mask(self, method='exact', subpixels=5):
         """
-        Return a list of `~photutils.ApertureMask` objects, one for each
-        aperture position.
+        Return a mask for the aperture.
 
         Parameters
         ----------
@@ -61,8 +61,10 @@ class CircularMaskMixin:
 
         Returns
         -------
-        mask : list of `~photutils.ApertureMask`
-            A list of aperture mask objects.
+        mask : `~photutils.ApertureMask` or list of `~photutils.ApertureMask`
+            A mask for the aperture.  If the aperture is scalar then a
+            single `~photutils.ApertureMask` is returned, otherwise a
+            list of `~photutils.ApertureMask` is returned.
         """
 
         use_exact, subpixels = self._translate_mask_mode(method, subpixels)
@@ -75,7 +77,8 @@ class CircularMaskMixin:
             raise ValueError('Cannot determine the aperture radius.')
 
         masks = []
-        for bbox, edges in zip(self.bounding_boxes, self._centered_edges):
+        for bbox, edges in zip(np.atleast_1d(self.bounding_boxes),
+                               self._centered_edges):
             ny, nx = bbox.shape
             mask = circular_overlap_grid(edges[0], edges[1], edges[2],
                                          edges[3], nx, ny, radius, use_exact,
@@ -89,70 +92,118 @@ class CircularMaskMixin:
 
             masks.append(ApertureMask(mask, bbox))
 
-        return masks
+        if self.isscalar:
+            return masks[0]
+        else:
+            return masks
 
 
 class CircularAperture(CircularMaskMixin, PixelAperture):
     """
-    Circular aperture(s), defined in pixel coordinates.
+    A circular aperture defined in pixel coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : array_like or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s) in one of the
+        The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
-            * single ``(x, y)`` tuple
-            * list of ``(x, y)`` tuples
-            * ``Nx2`` or ``2xN`` `~numpy.ndarray`
-            * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
-
-        Note that a ``2x2`` `~numpy.ndarray` or
-        `~astropy.units.Quantity` is interpreted as ``Nx2``, i.e. two
-        rows of (x, y) coordinates.
+            * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
+            * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
+            * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
+              pixel units
 
     r : float
-        The radius of the aperture(s), in pixels.
+        The radius of the circle in pixels.
 
     Raises
     ------
     ValueError : `ValueError`
         If the input radius, ``r``, is negative.
+
+    Examples
+    --------
+    >>> from photutils import CircularAperture
+    >>> aper = CircularAperture([10., 20.], 3.)
+    >>> aper = CircularAperture((10., 20.), 3.)
+
+    >>> pos1 = (10., 20.)  # (x, y)
+    >>> pos2 = (30., 40.)
+    >>> pos3 = (50., 60.)
+    >>> aper = CircularAperture([pos1, pos2, pos3], 3.)
+    >>> aper = CircularAperture((pos1, pos2, pos3), 3.)
     """
 
-    def __init__(self, positions, r):
-        if r < 0:
-            raise ValueError('r must be non-negative')
+    positions = PixelPositions('positions')
+    r = PositiveScalar('r')
 
-        self.positions = self._sanitize_positions(positions)
-        self.r = float(r)
+    def __init__(self, positions, r):
+        self.positions = positions
+        self.r = r
         self._params = ['r']
 
-    # TODO: make lazyproperty?, but update if positions or radius change
     @property
     def bounding_boxes(self):
-        xmin = self.positions[:, 0] - self.r
-        xmax = self.positions[:, 0] + self.r
-        ymin = self.positions[:, 1] - self.r
-        ymax = self.positions[:, 1] + self.r
+        positions = np.atleast_2d(self.positions)
+        xmin = positions[:, 0] - self.r
+        xmax = positions[:, 0] + self.r
+        ymin = positions[:, 1] - self.r
+        ymax = positions[:, 1] + self.r
 
-        return [BoundingBox._from_float(x0, x1, y0, y1)
-                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+        bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
+                  for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
 
-    # TODO: make lazyproperty?, but update if positions or radius change
+        if self.isscalar:
+            return bboxes[0]
+        else:
+            return bboxes
+
+    @property
     def area(self):
         return math.pi * self.r ** 2
 
-    def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
-             **kwargs):
+    def _to_patch(self, origin=(0, 0), indices=None, **kwargs):
+        """
+        Return a `~matplotlib.patches.patch` for the aperture.
+
+        Parameters
+        ----------
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        indices : int or array of int, optional
+            The indices of the aperture positions to plot.
+
+        kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
+
+        Returns
+        -------
+        patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
+            A patch for the aperture.  If the aperture is scalar then a
+            single `~matplotlib.patches.patch` is returned, otherwise a
+            list of `~matplotlib.patches.patch` is returned.
+        """
+
         import matplotlib.patches as mpatches
 
-        plot_positions, ax, kwargs = self._prepare_plot(
-            origin, indices, ax, fill, **kwargs)
+        xy_positions, patch_kwargs = self._define_patch_params(
+            origin=origin, indices=indices, **kwargs)
 
-        for position in plot_positions:
-            patch = mpatches.Circle(position, self.r, **kwargs)
-            ax.add_patch(patch)
+        patches = []
+        for xy_position in xy_positions:
+            patches.append(mpatches.Circle(xy_position, self.r,
+                                           **patch_kwargs))
+
+        if self.isscalar:
+            return patches[0]
+        else:
+            return patches
 
     def to_sky(self, wcs, mode='all'):
         """
@@ -181,28 +232,27 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
 
 class CircularAnnulus(CircularMaskMixin, PixelAperture):
     """
-    Circular annulus aperture(s), defined in pixel coordinates.
+    A circular annulus aperture defined in pixel coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : array_like or `~astropy.units.Quantity`
-        Pixel coordinates of the aperture center(s) in one of the
+        The pixel coordinates of the aperture center(s) in one of the
         following formats:
 
-            * single ``(x, y)`` tuple
-            * list of ``(x, y)`` tuples
-            * ``Nx2`` or ``2xN`` `~numpy.ndarray`
-            * ``Nx2`` or ``2xN`` `~astropy.units.Quantity` in pixel units
-
-        Note that a ``2x2`` `~numpy.ndarray` or
-        `~astropy.units.Quantity` is interpreted as ``Nx2``, i.e. two
-        rows of (x, y) coordinates.
+            * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
+            * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
+            * `~astropy.units.Quantity` instance of ``(x, y)`` pairs in
+              pixel units
 
     r_in : float
-        The inner radius of the annulus.
+        The inner radius of the circular annulus in pixels.
 
     r_out : float
-        The outer radius of the annulus.
+        The outer radius of the circular annulus in pixels.
 
     Raises
     ------
@@ -211,45 +261,94 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
 
     ValueError : `ValueError`
         If inner radius (``r_in``) is negative.
+
+    Examples
+    --------
+    >>> from photutils import CircularAnnulus
+    >>> aper = CircularAnnulus([10., 20.], 3., 5.)
+    >>> aper = CircularAnnulus((10., 20.), 3., 5.)
+
+    >>> pos1 = (10., 20.)  # (x, y)
+    >>> pos2 = (30., 40.)
+    >>> pos3 = (50., 60.)
+    >>> aper = CircularAnnulus([pos1, pos2, pos3], 3., 5.)
+    >>> aper = CircularAnnulus((pos1, pos2, pos3), 3., 5.)
     """
 
-    def __init__(self, positions, r_in, r_out):
-        if not (r_out > r_in):
-            raise ValueError('r_out must be greater than r_in')
-        if r_in < 0:
-            raise ValueError('r_in must be non-negative')
+    positions = PixelPositions('positions')
+    r_in = PositiveScalar('r_in')
+    r_out = PositiveScalar('r_out')
 
-        self.positions = self._sanitize_positions(positions)
-        self.r_in = float(r_in)
-        self.r_out = float(r_out)
+    def __init__(self, positions, r_in, r_out):
+        if not r_out > r_in:
+            raise ValueError('r_out must be greater than r_in')
+
+        self.positions = positions
+        self.r_in = r_in
+        self.r_out = r_out
         self._params = ['r_in', 'r_out']
 
     @property
     def bounding_boxes(self):
-        xmin = self.positions[:, 0] - self.r_out
-        xmax = self.positions[:, 0] + self.r_out
-        ymin = self.positions[:, 1] - self.r_out
-        ymax = self.positions[:, 1] + self.r_out
+        positions = np.atleast_2d(self.positions)
+        xmin = positions[:, 0] - self.r_out
+        xmax = positions[:, 0] + self.r_out
+        ymin = positions[:, 1] - self.r_out
+        ymax = positions[:, 1] + self.r_out
 
-        return [BoundingBox._from_float(x0, x1, y0, y1)
-                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+        bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
+                  for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
 
+        if self.isscalar:
+            return bboxes[0]
+        else:
+            return bboxes
+
+    @property
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
-    def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
-             **kwargs):
+    def _to_patch(self, origin=(0, 0), indices=None, **kwargs):
+        """
+        Return a `~matplotlib.patches.patch` for the aperture.
+
+        Parameters
+        ----------
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        indices : int or array of int, optional
+            The indices of the aperture positions to plot.
+
+        kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
+
+        Returns
+        -------
+        patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
+            A patch for the aperture.  If the aperture is scalar then a
+            single `~matplotlib.patches.patch` is returned, otherwise a
+            list of `~matplotlib.patches.patch` is returned.
+        """
+
         import matplotlib.patches as mpatches
 
-        plot_positions, ax, kwargs = self._prepare_plot(
-            origin, indices, ax, fill, **kwargs)
+        xy_positions, patch_kwargs = self._define_patch_params(
+            origin=origin, indices=indices, **kwargs)
 
-        for position in plot_positions:
-            patch_inner = mpatches.Circle(position, self.r_in)
-            patch_outer = mpatches.Circle(position, self.r_out)
+        patches = []
+        for xy_position in xy_positions:
+            patch_inner = mpatches.Circle(xy_position, self.r_in)
+            patch_outer = mpatches.Circle(xy_position, self.r_out)
             path = self._make_annulus_path(patch_inner, patch_outer)
-            patch = mpatches.PathPatch(path, **kwargs)
-            ax.add_patch(patch)
+            patches.append(mpatches.PathPatch(path, **patch_kwargs))
+
+        if self.isscalar:
+            return patches[0]
+        else:
+            return patches
 
     def to_sky(self, wcs, mode='all'):
         """
@@ -278,25 +377,34 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
 
 class SkyCircularAperture(SkyAperture):
     """
-    Circular aperture(s), defined in sky coordinates.
+    A circular aperture defined in sky coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be
+        The celestial coordinates of the aperture center(s). This can be
         either scalar coordinates or an array of coordinates.
 
-    r : `~astropy.units.Quantity`
-        The radius of the aperture(s), either in angular or pixel units.
+    r : scalar `~astropy.units.Quantity`
+        The radius of the circle, either in angular or pixel units.
+
+    Examples
+    --------
+    >>> from astropy.coordinates import SkyCoord
+    >>> import astropy.units as u
+    >>> from photutils import SkyCircularAperture
+    >>> positions = SkyCoord(ra=[10., 20.], dec=[30., 40.], unit='deg')
+    >>> aper = SkyCircularAperture(positions, 0.5*u.arcsec)
     """
 
-    def __init__(self, positions, r):
-        if isinstance(positions, SkyCoord):
-            self.positions = positions
-        else:
-            raise TypeError('positions must be a SkyCoord object')
+    positions = SkyCoordPositions('positions')
+    r = AngleOrPixelScalarQuantity('r')
 
-        assert_angle_or_pixel('r', r)
+    def __init__(self, positions, r):
+        self.positions = positions
         self.r = r
         self._params = ['r']
 
@@ -327,36 +435,44 @@ class SkyCircularAperture(SkyAperture):
 
 class SkyCircularAnnulus(SkyAperture):
     """
-    Circular annulus aperture(s), defined in sky coordinates.
+    A circular annulus aperture defined in sky coordinates.
+
+    The aperture has a single fixed size/shape, but it can have multiple
+    positions (see the ``positions`` input).
 
     Parameters
     ----------
     positions : `~astropy.coordinates.SkyCoord`
-        Celestial coordinates of the aperture center(s). This can be
+        The celestial coordinates of the aperture center(s). This can be
         either scalar coordinates or an array of coordinates.
 
-    r_in : `~astropy.units.Quantity`
-        The inner radius of the annulus, either in angular or pixel
-        units.
+    r_in : scalar `~astropy.units.Quantity`
+        The inner radius of the circular annulus, either in angular or
+        pixel units.
 
-    r_out : `~astropy.units.Quantity`
-        The outer radius of the annulus, either in angular or pixel
-        units.
+    r_out : scalar `~astropy.units.Quantity`
+        The outer radius of the circular annulus, either in angular or
+        pixel units.
+
+    Examples
+    --------
+    >>> from astropy.coordinates import SkyCoord
+    >>> import astropy.units as u
+    >>> from photutils import SkyCircularAnnulus
+    >>> positions = SkyCoord(ra=[10., 20.], dec=[30., 40.], unit='deg')
+    >>> aper = SkyCircularAnnulus(positions, 0.5*u.arcsec, 1.0*u.arcsec)
     """
 
+    positions = SkyCoordPositions('positions')
+    r_in = AngleOrPixelScalarQuantity('r_in')
+    r_out = AngleOrPixelScalarQuantity('r_out')
+
     def __init__(self, positions, r_in, r_out):
-        if isinstance(positions, SkyCoord):
-            self.positions = positions
-        else:
-            raise TypeError('positions must be a SkyCoord object')
-
-        assert_angle_or_pixel('r_in', r_in)
-        assert_angle_or_pixel('r_out', r_out)
-
         if r_in.unit.physical_type != r_out.unit.physical_type:
             raise ValueError("r_in and r_out should either both be angles "
                              "or in pixels.")
 
+        self.positions = positions
         self.r_in = r_in
         self.r_out = r_out
         self._params = ['r_in', 'r_out']

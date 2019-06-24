@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 import numpy as np
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_almost_equal
 import pytest
 
 from astropy.table import Table, vstack
@@ -13,6 +13,13 @@ try:
     HAS_SKLEARN = True
 except ImportError:
     HAS_SKLEARN = False
+
+
+def assert_table_almost_equal(table1, table2):
+    assert table1.colnames == table2.colnames
+    assert table1.meta == table2.meta
+    for colname in table1.colnames:
+        assert_almost_equal(table1[colname], table2[colname])
 
 
 class TestDAOGROUP:
@@ -53,7 +60,7 @@ class TestDAOGROUP:
         starlist = vstack([first_group, second_group])
         daogroup = DAOGroup(crit_separation=0.6)
         test_starlist = daogroup(starlist['x_0', 'y_0', 'id'])
-        assert_array_equal(starlist, test_starlist)
+        assert_table_almost_equal(starlist, test_starlist)
 
     def test_daogroup_two(self):
         """
@@ -84,7 +91,7 @@ class TestDAOGROUP:
         starlist = vstack([first_group, second_group])
         daogroup = DAOGroup(crit_separation=0.3)
         test_starlist = daogroup(starlist['x_0', 'y_0', 'id'])
-        assert_array_equal(starlist, test_starlist)
+        assert_table_almost_equal(starlist, test_starlist)
 
     def test_daogroup_three(self):
         """
@@ -115,7 +122,7 @@ class TestDAOGROUP:
         starlist = vstack([first_group, second_group])
         daogroup = DAOGroup(crit_separation=0.3)
         test_starlist = daogroup(starlist['x_0', 'y_0', 'id'])
-        assert_array_equal(starlist, test_starlist)
+        assert_table_almost_equal(starlist, test_starlist)
 
     def test_daogroup_four(self):
         """
@@ -149,7 +156,7 @@ class TestDAOGROUP:
                          names=('x_0', 'y_0', 'id', 'group_id'))
         daogroup = DAOGroup(crit_separation=2.5)
         test_starlist = daogroup(starlist['x_0', 'y_0', 'id'])
-        assert_array_equal(starlist, test_starlist)
+        assert_table_almost_equal(starlist, test_starlist)
 
     def test_daogroup_five(self):
         """
@@ -187,7 +194,7 @@ class TestDAOGROUP:
                            fourth_group])
         daogroup = DAOGroup(crit_separation=0.3)
         test_starlist = daogroup(starlist['x_0', 'y_0', 'id'])
-        assert_array_equal(starlist, test_starlist)
+        assert_table_almost_equal(starlist, test_starlist)
 
     def test_daogroup_six(self):
         """
@@ -227,7 +234,7 @@ class TestDAOGROUP:
         starlist = vstack([first_group, second_group, third_group])
         daogroup = DAOGroup(crit_separation=0.6)
         test_starlist = daogroup(starlist['x_0', 'y_0', 'id'])
-        assert_array_equal(starlist, test_starlist)
+        assert_table_almost_equal(starlist, test_starlist)
 
     def test_isolated_sources(self):
         """
@@ -242,7 +249,7 @@ class TestDAOGROUP:
                          names=('x_0', 'y_0', 'id', 'group_id'))
         daogroup = DAOGroup(crit_separation=0.01)
         test_starlist = daogroup(starlist['x_0', 'y_0', 'id'])
-        assert_array_equal(starlist, test_starlist)
+        assert_table_almost_equal(starlist, test_starlist)
 
     def test_id_column(self):
         x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
@@ -254,7 +261,7 @@ class TestDAOGROUP:
                          names=('x_0', 'y_0', 'id', 'group_id'))
         daogroup = DAOGroup(crit_separation=0.01)
         test_starlist = daogroup(starlist['x_0', 'y_0'])
-        assert_array_equal(starlist, test_starlist)
+        assert_table_almost_equal(starlist, test_starlist)
 
     def test_id_column_raise_error(self):
         x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
@@ -286,7 +293,7 @@ class TestDBSCANGroup:
         starlist = vstack([first_group, second_group])
         dbscan = DBSCANGroup(crit_separation=0.6)
         test_starlist = dbscan(starlist['x_0', 'y_0', 'id'])
-        assert_array_equal(starlist, test_starlist)
+        assert_table_almost_equal(starlist, test_starlist)
 
     def test_group_stars_two(object):
         first_group = Table([1.5*np.ones(5), np.linspace(0, 1, 5),
@@ -305,7 +312,7 @@ class TestDBSCANGroup:
                            fourth_group])
         dbscan = DBSCANGroup(crit_separation=0.3)
         test_starlist = dbscan(starlist['x_0', 'y_0', 'id'])
-        assert_array_equal(starlist, test_starlist)
+        assert_table_almost_equal(starlist, test_starlist)
 
     def test_isolated_sources(self):
         """
@@ -320,7 +327,7 @@ class TestDBSCANGroup:
                          names=('x_0', 'y_0', 'id', 'group_id'))
         dbscan = DBSCANGroup(crit_separation=0.01)
         test_starlist = dbscan(starlist['x_0', 'y_0', 'id'])
-        assert_array_equal(starlist, test_starlist)
+        assert_table_almost_equal(starlist, test_starlist)
 
     def test_id_column(self):
         x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,
@@ -332,7 +339,7 @@ class TestDBSCANGroup:
                          names=('x_0', 'y_0', 'id', 'group_id'))
         dbscan = DBSCANGroup(crit_separation=0.01)
         test_starlist = dbscan(starlist['x_0', 'y_0'])
-        assert_array_equal(starlist, test_starlist)
+        assert_table_almost_equal(starlist, test_starlist)
 
     def test_id_column_raise_error(self):
         x_0 = np.array([0, np.sqrt(2)/4, np.sqrt(2)/4, -np.sqrt(2)/4,

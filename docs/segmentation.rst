@@ -102,7 +102,8 @@ segmentation image showing the detected sources:
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     >>> ax1.set_title('Data')
-    >>> ax2.imshow(segm, origin='lower', cmap=segm.cmap(random_state=12345))
+    >>> cmap = segm.make_cmap(random_state=12345)
+    >>> ax2.imshow(segm, origin='lower', cmap=cmap)
     >>> ax2.set_title('Segmentation Image')
 
 .. plot::
@@ -125,7 +126,8 @@ segmentation image showing the detected sources:
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     ax1.set_title('Data')
-    ax2.imshow(segm, origin='lower', cmap=segm.cmap(random_state=12345))
+    cmap = segm.make_cmap(random_state=12345)
+    ax2.imshow(segm, origin='lower', cmap=cmap)
     ax2.set_title('Segmentation Image')
     plt.tight_layout()
 
@@ -193,8 +195,8 @@ the deblended segmentation image:
 
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, ax = plt.subplots(1, 1, figsize=(10, 6.5))
-    ax.imshow(segm_deblend, origin='lower',
-              cmap=segm_deblend.cmap(random_state=12345))
+    cmap = segm_deblend.make_cmap(random_state=12345)
+    ax.imshow(segm_deblend, origin='lower', cmap=cmap)
     ax.set_title('Deblended Segmentation Image')
     plt.tight_layout()
 
@@ -223,11 +225,11 @@ Let's plot one of the deblended sources:
     slc = (slice(273, 297), slice(425, 444))
     ax1.imshow(data[slc], origin='lower')
     ax1.set_title('Data')
-    ax2.imshow(segm.data[slc], origin='lower',
-               cmap=segm.cmap(random_state=123))
+    cmap1 = segm.make_cmap(random_state=123)
+    ax2.imshow(segm.data[slc], origin='lower', cmap=cmap1)
     ax2.set_title('Original Segment')
-    ax3.imshow(segm_deblend.data[slc], origin='lower',
-               cmap=segm_deblend.cmap(random_state=123))
+    cmap2 = segm_deblend.make_cmap(random_state=123)
+    ax3.imshow(segm_deblend.data[slc], origin='lower', cmap=cmap2)
     ax3.set_title('Deblended Segments')
     plt.tight_layout()
 
@@ -240,17 +242,18 @@ several methods that can be used to visualize or modify itself (e.g.,
 combining labels, removing labels, removing border segments) prior to
 measuring source photometry and other source properties, including:
 
-  * :meth:`~photutils.segmentation.SegmentationImage.relabel`:
-    Relabel one or more label numbers.
+  * :meth:`~photutils.segmentation.SegmentationImage.reassign_label`:
+    Reassign one or more label numbers.
 
-  * :meth:`~photutils.segmentation.SegmentationImage.relabel_sequential`:
-    Relable the label numbers sequentially.
+  * :meth:`~photutils.segmentation.SegmentationImage.relabel_consecutive`:
+    Reassign the label numbers consecutively, such that there are no
+    missing label numbers (up to the maximum label number).
 
   * :meth:`~photutils.segmentation.SegmentationImage.keep_labels`:
-    Keep only certain label numbers.
+    Keep only the specified labels.
 
   * :meth:`~photutils.segmentation.SegmentationImage.remove_labels`:
-    Remove one or more label numbers.
+    Remove one or more labels.
 
   * :meth:`~photutils.segmentation.SegmentationImage.remove_border_labels`:
     Remove labeled segments near the image border.
@@ -347,21 +350,22 @@ properties that are calculated for each source:
     >>> tbl['cxx'].info.format = '.2f'
     >>> tbl['cxy'].info.format = '.2f'
     >>> tbl['cyy'].info.format = '.2f'
+    >>> tbl['gini'].info.format = '.2f'
     >>> print(tbl)
-     id xcentroid ycentroid sky_centroid ...   cxx      cxy      cyy
+     id xcentroid ycentroid sky_centroid ...   cxx      cxy      cyy    gini
            pix       pix                 ... 1 / pix2 1 / pix2 1 / pix2
-    --- --------- --------- ------------ ... -------- -------- --------
-      1    235.22      1.25         None ...     0.17    -0.20     0.99
-      2    493.82      5.77         None ...     0.16    -0.32     0.61
-      3    207.30     10.02         None ...     0.37     0.49     0.30
-      4    364.75     11.13         None ...     0.39    -0.33     0.18
-      5    258.37     11.77         None ...     0.37     0.15     0.16
-    ...       ...       ...          ... ...      ...      ...      ...
-     92    427.01    147.45         None ...     0.26    -0.07     0.12
-     93    426.60    211.14         None ...     0.67     0.24     0.35
-     94    419.79    216.68         None ...     0.17    -0.19     0.27
-     95    433.91    280.73         None ...     0.52    -0.83     0.49
-     96    434.11    288.90         None ...     0.18    -0.19     0.30
+    --- --------- --------- ------------ ... -------- -------- -------- ----
+      1    235.22      1.25         None ...     0.17    -0.20     0.99 0.18
+      2    493.82      5.77         None ...     0.16    -0.32     0.61 0.13
+      3    207.30     10.02         None ...     0.37     0.49     0.30 0.16
+      4    364.75     11.13         None ...     0.39    -0.33     0.18 0.13
+      5    258.37     11.77         None ...     0.37     0.15     0.16 0.13
+    ...       ...       ...          ... ...      ...      ...      ...  ...
+     92    427.01    147.45         None ...     0.26    -0.07     0.12 0.12
+     93    426.60    211.14         None ...     0.67     0.24     0.35 0.41
+     94    419.79    216.68         None ...     0.17    -0.19     0.27 0.14
+     95    433.91    280.73         None ...     0.52    -0.83     0.49 0.23
+     96    434.11    288.90         None ...     0.18    -0.19     0.30 0.24
     Length = 96 rows
 
 Let's use the measured morphological properties to define approximate
@@ -377,12 +381,13 @@ orientation (`~photutils.segmentation.SourceProperties.orientation`):
 
 .. doctest-requires:: scipy, skimage
 
+    >>> import numpy as np
     >>> from photutils import source_properties, EllipticalAperture
     >>> cat = source_properties(data, segm_deblend)
     >>> r = 3.    # approximate isophotal extent
     >>> apertures = []
     >>> for obj in cat:
-    ...     position = (obj.xcentroid.value, obj.ycentroid.value)
+    ...     position = np.transpose((obj.xcentroid.value, obj.ycentroid.value))
     ...     a = obj.semimajor_axis_sigma.value * r
     ...     b = obj.semiminor_axis_sigma.value * r
     ...     theta = obj.orientation.value
@@ -400,12 +405,12 @@ Now let's plot the derived elliptical apertures on the data:
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     >>> ax1.set_title('Data')
-    >>> ax2.imshow(segm_deblend, origin='lower',
-    ...            cmap=segm_deblend.cmap(random_state=12345))
+    >>> cmap = segm_deblend.make_cmap(random_state=12345)
+    >>> ax2.imshow(segm_deblend, origin='lower', cmap=cmap)
     >>> ax2.set_title('Segmentation Image')
     >>> for aperture in apertures:
-    ...     aperture.plot(color='white', lw=1.5, ax=ax1)
-    ...     aperture.plot(color='white', lw=1.5, ax=ax2)
+    ...     aperture.plot(axes=ax1, color='white', lw=1.5)
+    ...     aperture.plot(axes=ax2, color='white', lw=1.5)
 
 .. plot::
 
@@ -438,7 +443,7 @@ Now let's plot the derived elliptical apertures on the data:
     r = 3.    # approximate isophotal extent
     apertures = []
     for obj in cat:
-        position = (obj.xcentroid.value, obj.ycentroid.value)
+        position = np.transpose((obj.xcentroid.value, obj.ycentroid.value))
         a = obj.semimajor_axis_sigma.value * r
         b = obj.semiminor_axis_sigma.value * r
         theta = obj.orientation.value
@@ -447,12 +452,12 @@ Now let's plot the derived elliptical apertures on the data:
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     ax1.set_title('Data')
-    ax2.imshow(segm_deblend, origin='lower',
-               cmap=segm_deblend.cmap(random_state=12345))
+    cmap = segm_deblend.make_cmap(random_state=12345)
+    ax2.imshow(segm_deblend, origin='lower', cmap=cmap)
     ax2.set_title('Segmentation Image')
     for aperture in apertures:
-        aperture.plot(color='white', lw=1.5, ax=ax1)
-        aperture.plot(color='white', lw=1.5, ax=ax2)
+        aperture.plot(axes=ax1, color='white', lw=1.5)
+        aperture.plot(axes=ax2, color='white', lw=1.5)
     plt.tight_layout()
 
 We can also specify a specific subset of sources, defined by their
@@ -468,16 +473,17 @@ label numbers in the segmentation image:
     >>> tbl2['cxx'].info.format = '.2f'
     >>> tbl2['cxy'].info.format = '.2f'
     >>> tbl2['cyy'].info.format = '.2f'
+    >>> tbl2['gini'].info.format = '.2f'
     >>> print(tbl2)
-     id xcentroid ycentroid sky_centroid ...   cxx      cxy      cyy
+     id xcentroid ycentroid sky_centroid ...   cxx      cxy      cyy    gini
            pix       pix                 ... 1 / pix2 1 / pix2 1 / pix2
-    --- --------- --------- ------------ ... -------- -------- --------
-      1    235.22      1.25         None ...     0.17    -0.20     0.99
-      5    258.37     11.77         None ...     0.37     0.15     0.16
-     20    347.00     66.94         None ...     0.15    -0.01     0.21
-     50    145.06    168.55         None ...     0.66     0.05     0.71
-     75    301.86    239.25         None ...     0.47    -0.05     0.28
-     80     43.20    250.01         None ...     0.18    -0.08     0.34
+    --- --------- --------- ------------ ... -------- -------- -------- ----
+      1    235.22      1.25         None ...     0.17    -0.20     0.99 0.18
+      5    258.37     11.77         None ...     0.37     0.15     0.16 0.13
+     20    347.00     66.94         None ...     0.15    -0.01     0.21 0.11
+     50    145.06    168.55         None ...     0.66     0.05     0.71 0.45
+     75    301.86    239.25         None ...     0.47    -0.05     0.28 0.08
+     80     43.20    250.01         None ...     0.18    -0.08     0.34 0.11
 
 By default, the :meth:`~photutils.SourceCatalog.to_table` method will
 include most scalar-valued properties from
@@ -536,12 +542,12 @@ properties for each source will also be calculated:
     >>> print(tbl4)
      id background_at_centroid background_mean background_sum
     --- ---------------------- --------------- --------------
-      1           5.2020410556    5.2021662094 187.2779835383
-      5           5.2140028193    5.2139893924 302.4113847608
-     20           5.2787978012    5.2785772173 385.3361368595
-     50           5.1896627086    5.1895516008 171.2552028270
-     75           5.1409594224    5.1408425626 185.0703322539
-     80           5.2109825281    5.2108402505 286.5962137759
+      1           5.2020428266    5.2021662094 187.2779835383
+      5           5.2140031370    5.2139893924 302.4113847608
+     20           5.2787968578    5.2785772173 385.3361368595
+     50           5.1896511123    5.1895516008 171.2552028270
+     75           5.1409531509    5.1408425626 185.0703322539
+     80           5.2109780136    5.2108402505 286.5962137759
 
 Photometric Errors
 ^^^^^^^^^^^^^^^^^^

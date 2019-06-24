@@ -2,17 +2,17 @@
 
 import os.path as op
 import itertools
-import warnings
 
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
 from astropy.table import Table
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.tests.helper import catch_warnings
 
 from ..findstars import DAOStarFinder, IRAFStarFinder
 from ...datasets import make_100gaussians_image
+from ...utils.exceptions import NoDetectionsWarning
 
 try:
     import scipy    # noqa
@@ -24,7 +24,6 @@ except ImportError:
 DATA = make_100gaussians_image()
 THRESHOLDS = [8.0, 10.0]
 FWHMS = [1.0, 1.5, 2.0]
-warnings.simplefilter('always', AstropyUserWarning)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -64,21 +63,35 @@ class TestDAOStarFinder:
 
     def test_daofind_nosources(self):
         data = np.ones((3, 3))
-        starfinder = DAOStarFinder(threshold=10, fwhm=1)
-        t = starfinder(data)
-        assert len(t) == 0
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
+            starfinder = DAOStarFinder(threshold=10, fwhm=1)
+            t = starfinder(data)
+            assert t is None
+
+            assert warning_lines[0].category == NoDetectionsWarning
+            assert ('No sources were found.' in str(warning_lines[0].message))
 
     def test_daofind_sharpness(self):
         """Sources found, but none pass the sharpness criteria."""
-        starfinder = DAOStarFinder(threshold=50, fwhm=1.0, sharplo=1.)
-        t = starfinder(DATA)
-        assert len(t) == 0
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
+            starfinder = DAOStarFinder(threshold=50, fwhm=1.0, sharplo=1.)
+            t = starfinder(DATA)
+            assert t is None
+
+            assert warning_lines[0].category == NoDetectionsWarning
+            assert ('Sources were found, but none pass the sharpness and '
+                    'roundness criteria.' in str(warning_lines[0].message))
 
     def test_daofind_roundness(self):
         """Sources found, but none pass the roundness criteria."""
-        starfinder = DAOStarFinder(threshold=50, fwhm=1.0, roundlo=1.)
-        t = starfinder(DATA)
-        assert len(t) == 0
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
+            starfinder = DAOStarFinder(threshold=50, fwhm=1.0, roundlo=1.)
+            t = starfinder(DATA)
+            assert t is None
+
+            assert warning_lines[0].category == NoDetectionsWarning
+            assert ('Sources were found, but none pass the sharpness and '
+                    'roundness criteria.' in str(warning_lines[0].message))
 
     def test_daofind_flux_negative(self):
         """Test handling of negative flux (here created by large sky)."""
@@ -171,21 +184,35 @@ class TestIRAFStarFinder:
 
     def test_irafstarfind_nosources(self):
         data = np.ones((3, 3))
-        starfinder = IRAFStarFinder(threshold=10, fwhm=1)
-        t = starfinder(data)
-        assert len(t) == 0
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
+            starfinder = IRAFStarFinder(threshold=10, fwhm=1)
+            t = starfinder(data)
+            assert t is None
+
+            assert warning_lines[0].category == NoDetectionsWarning
+            assert ('No sources were found.' in str(warning_lines[0].message))
 
     def test_irafstarfind_sharpness(self):
         """Sources found, but none pass the sharpness criteria."""
-        starfinder = IRAFStarFinder(threshold=50, fwhm=1.0, sharplo=2.)
-        t = starfinder(DATA)
-        assert len(t) == 0
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
+            starfinder = IRAFStarFinder(threshold=50, fwhm=1.0, sharplo=2.)
+            t = starfinder(DATA)
+            assert t is None
+
+            assert warning_lines[0].category == NoDetectionsWarning
+            assert ('Sources were found, but none pass the sharpness and '
+                    'roundness criteria.' in str(warning_lines[0].message))
 
     def test_irafstarfind_roundness(self):
         """Sources found, but none pass the roundness criteria."""
-        starfinder = IRAFStarFinder(threshold=50, fwhm=1.0, roundlo=1.)
-        t = starfinder(DATA)
-        assert len(t) == 0
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
+            starfinder = IRAFStarFinder(threshold=50, fwhm=1.0, roundlo=1.)
+            t = starfinder(DATA)
+            assert t is None
+
+            assert warning_lines[0].category == NoDetectionsWarning
+            assert ('Sources were found, but none pass the sharpness and '
+                    'roundness criteria.' in str(warning_lines[0].message))
 
     def test_irafstarfind_sky(self):
         starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0, sky=10.)
@@ -193,9 +220,14 @@ class TestIRAFStarFinder:
         assert len(t) == 4
 
     def test_irafstarfind_largesky(self):
-        starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0, sky=100.)
-        t = starfinder(DATA)
-        assert len(t) == 0
+        with catch_warnings(NoDetectionsWarning) as warning_lines:
+            starfinder = IRAFStarFinder(threshold=25.0, fwhm=2.0, sky=100.)
+            t = starfinder(DATA)
+            assert t is None
+
+            assert warning_lines[0].category == NoDetectionsWarning
+            assert ('Sources were found, but none pass the sharpness and '
+                    'roundness criteria.' in str(warning_lines[0].message))
 
     def test_irafstarfind_peakmax_filtering(self):
         """

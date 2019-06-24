@@ -35,11 +35,11 @@ carefully with undersampled data or detectors with significant intra-pixel
 sensitivity variations. For a more detailed description of this formalism, see
 `Anderson & King 2000 <http://adsabs.harvard.edu/abs/2000PASP..112.1360A>`_.
 
-All this said, in colloquial usage "PSF photometry" sometimes means model-fitting
-photometry (with the effects of the PSF either implicitly or explicitly included
-in the models), regardless to exactly what kind of model is actually being fit.
-We follow this usage, use "PSF photometry" as shorthand for the general
-approach.
+All this said, in colloquial usage "PSF photometry" sometimes refers to the more
+general task of model-fitting photometry (with the effects of the PSF either
+implicitly or explicitly included in the models), regardless of exactly what
+kind of model is actually being fit. For brevity (e.g., ``photutils.psf``), we
+use "PSF photometry"  in this way, as a shorthand for the general approach.
 
 
 Building an effective PSF (ePSF)
@@ -277,7 +277,7 @@ Then let's import the required classes to set up a `~photutils.psf.IterativelySu
 
 Let's then instantiate and use the objects:
 
-.. doctest-requires:: scipy, skimage
+.. doctest-requires:: scipy
 
     >>> bkgrms = MADStdBackgroundRMS()
     >>> std = bkgrms(image)
@@ -584,7 +584,7 @@ star as well. Also, note that both of the stars have ``sigma=2.0``.
 Let's instantiate the necessary objects in order to use an
 `~photutils.psf.IterativelySubtractedPSFPhotometry` to perform photometry:
 
-.. doctest-requires:: scipy, skimage
+.. doctest-requires:: scipy
 
     >>> daogroup = DAOGroup(crit_separation=8)
     >>> mmm_bkg = MMMBackground()
@@ -602,7 +602,7 @@ Let's instantiate the necessary objects in order to use an
 
 Now, let's use the callable ``itr_phot_obj`` to perform photometry:
 
-.. doctest-requires:: scipy, skimage
+.. doctest-requires:: scipy
 
     >>> phot_results = itr_phot_obj(image)
     >>> phot_results['id', 'group_id', 'iter_detected', 'x_0', 'y_0', 'flux_0'] #doctest: +SKIP

@@ -10,8 +10,7 @@ import warnings
 import numpy as np
 from astropy.nddata import NDData
 from astropy.modeling import Parameter, Fittable2DModel
-from astropy.utils.exceptions import (AstropyWarning,
-                                      AstropyDeprecationWarning)
+from astropy.utils.exceptions import AstropyWarning
 
 
 __all__ = ['NonNormalizable', 'FittableImageModel', 'EPSFModel',
@@ -73,7 +72,7 @@ class FittableImageModel(Fittable2DModel):
         computed so that
 
         .. math::
-            N \\cdot C \\cdot \\Sigma_{i,j}D_{i,j} = 1,
+            N \\cdot C \\cdot \\sum\\limits_{i,j} D_{i,j} = 1,
 
         where *N* is the normalization constant, *C* is correction factor
         given by the parameter ``normalization_correction``, and
@@ -105,6 +104,12 @@ class FittableImageModel(Fittable2DModel):
         Additional optional keyword arguments to be passed directly to the
         `compute_interpolator` method. See `compute_interpolator` for more
         details.
+
+    oversampling : float or tuple of two floats, optional
+        The oversampling factor(s) of the model in the ``x`` and ``y`` directions.
+        If ``oversampling`` is a scalar it will be treated as being the same in both
+        x and y; otherwise a tuple of two floats will be treated as
+        ``(x_oversamp, y_oversamp)``.
 
     """
     flux = Parameter(description='Intensity scaling factor for image data.',
@@ -228,15 +233,18 @@ class FittableImageModel(Fittable2DModel):
 
     def _set_oversampling(self, value):
         """
-        This is a private method because it's used in the initializer but the
+        This is a private method because it's used in the initializer by the
         ``oversampling``
         """
+
         try:
-            value = float(value)
+            value = np.atleast_1d(value).astype(float)
+            if len(value) == 1:
+                value = np.repeat(value, 2)
         except ValueError:
-            raise ValueError('Oversampling factor must be a scalar')
-        if value <= 0:
-            raise ValueError('Oversampling factor must be greater than 0')
+            raise ValueError('Oversampling factors must be float')
+        if np.any(value <= 0):
+            raise ValueError('Oversampling factors must be greater than 0')
 
         self._oversampling = value
 
@@ -456,8 +464,8 @@ class FittableImageModel(Fittable2DModel):
         """
 
         if use_oversampling:
-            xi = self._oversampling * (np.asarray(x) - x_0)
-            yi = self._oversampling * (np.asarray(y) - y_0)
+            xi = self._oversampling[0] * (np.asarray(x) - x_0)
+            yi = self._oversampling[1] * (np.asarray(y) - y_0)
         else:
             xi = np.asarray(x) - x_0
             yi = np.asarray(y) - y_0
@@ -480,75 +488,17 @@ class FittableImageModel(Fittable2DModel):
 
 class EPSFModel(FittableImageModel):
     """
-    A subclass of `FittableImageModel`.
-
-    Parameters
-    ----------
-    pixel_scale : float, tuple of two floats or `None`, optional
-        .. warning::
-
-            The ``pixel_scale`` keyword is now deprecated (since v0.6)
-            and will likely be removed in v0.7.  Use the
-            ``oversampling`` keyword instead.
-
-        The pixel scale (in arbitrary units) of the ePSF.  The
-        ``pixel_scale`` can either be a single float or tuple of two
-        floats of the form ``(x_pixscale, y_pixscale)``.  If
-        ``pixel_scale`` is a scalar then the pixel scale will be the
-        same for both the x and y axes.  The default is `None`, which
-        means it will be set to the inverse of the ``oversampling``
-        factor.
-
-        The ePSF ``pixel_scale`` is used only when building the ePSF and
-        when fitting the ePSF to `Star` objects with `EPSFFitter`.  In
-        those cases, the ``pixel_scale`` is used in conjunction with the
-        `Star` pixel scale when building and fitting the ePSF.  This
-        allows for building (and fitting) a ePSF using images of stars
-        with different pixel scales (e.g. velocity aberrations).  The
-        ``oversampling`` factor is ignored in these cases.
-
-        If you are not using `EPSFBuilder` or `EPSFFitter`, then you
-        must set the ``oversampling`` factor.  The ``pixel_scale`` will
-        be ignored.
+    A subclass of `FittableImageModel`. A fittable ePSF model.
     """
 
     def __init__(self, data, flux=1.0, x_0=0, y_0=0, normalize=True,
                  normalization_correction=1.0, origin=None, oversampling=1.,
-                 pixel_scale=None, fill_value=0., ikwargs={}):
-
-        if pixel_scale is None:
-            pixel_scale = 1. / oversampling
-        else:
-            warnings.warn('The pixel_scale keyword is deprecated and will '
-                          'likely be removed in v0.7.  Use the oversampling '
-                          'keyword instead.', AstropyDeprecationWarning)
+                 fill_value=0., ikwargs={}):
 
         super().__init__(
             data=data, flux=flux, x_0=x_0, y_0=y_0, normalize=normalize,
             normalization_correction=normalization_correction, origin=origin,
             oversampling=oversampling, fill_value=fill_value, ikwargs=ikwargs)
-
-        self._pixel_scale = pixel_scale
-
-    @property
-    def pixel_scale(self):
-        """
-        The ``(x, y)`` pixel scale (in arbitrary units) of the PSF.
-        """
-
-        return self._pixel_scale
-
-    @pixel_scale.setter
-    def pixel_scale(self, pixel_scale):
-        if pixel_scale is not None:
-            pixel_scale = np.atleast_1d(pixel_scale)
-            if len(pixel_scale) == 1:
-                pixel_scale = np.repeat(pixel_scale, 2).astype(float)
-            elif len(pixel_scale) > 2:
-                raise ValueError('pixel_scale must be a scalar or tuple '
-                                 'of two floats.')
-
-        self._pixel_scale = pixel_scale
 
 
 class GriddedPSFModel(Fittable2DModel):

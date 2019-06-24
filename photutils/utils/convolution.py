@@ -57,7 +57,10 @@ def filter_data(data, kernel, mode='constant', fill_value=0.0,
 
         # NOTE:  astropy.convolution.convolve fails with zero-sum
         # kernels (used in findstars) (cf. astropy #1647)
-        return ndimage.convolve(data, kernel_array, mode=mode,
+        # NOTE: if data is int and kernel is float, ndimage.convolve
+        # will return an int image - here we make the data float so
+        # that a float image is always returned
+        return ndimage.convolve(data.astype(float), kernel_array, mode=mode,
                                 cval=fill_value)
     else:
         return data

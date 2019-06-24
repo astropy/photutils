@@ -9,6 +9,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from .core import SegmentationImage
 from .detect import detect_sources
 from ..utils.convolution import filter_data
+from ..utils.exceptions import NoDetectionsWarning
 
 
 __all__ = ['deblend_sources']
@@ -114,7 +115,7 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
     last_label = segment_img.max_label
     segm_deblended = deepcopy(segment_img)
     for label in labels:
-        source_slice = segment_img.slices[label - 1]
+        source_slice = segment_img.slices[segment_img.get_index(label)]
         source_data = data[source_slice]
         source_segm = SegmentationImage(np.copy(
             segment_img.data[source_slice]))
@@ -225,7 +226,7 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     source_max = np.nanmax(source_values)
     if source_min == source_max:
         return segment_img     # no deblending
-    if source_min < 0:
+    if mode == 'exponential' and source_min < 0:
         warnings.warn('Source "{0}" contains negative values, setting '
                       'deblending mode to "linear"'.format(
                           segment_img.labels[0]), AstropyUserWarning)
@@ -245,25 +246,31 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
         raise ValueError('"{0}" is an invalid mode; mode must be '
                          '"exponential" or "linear"')
 
+    # suppress NoDetectionsWarning during deblending
+    warnings.filterwarnings('ignore', category=NoDetectionsWarning)
+
     # create top-down tree of local peaks
     segm_tree = []
     mask = ~segm_mask
     for level in thresholds[::-1]:
         segm_tmp = detect_sources(data, level, npixels=npixels,
                                   connectivity=connectivity, mask=mask)
-        if segm_tmp.nlabels >= 2:
-            fluxes = []
-            for i in segm_tmp.labels:
-                fluxes.append(np.nansum(data[segm_tmp == i]))
-            idx = np.where((np.array(fluxes) / source_sum) >= contrast)[0]
-            if len(idx >= 2):
-                segm_tree.append(segm_tmp)
+
+        if segm_tmp is None or segm_tmp.nlabels < 2:
+            continue
+
+        fluxes = []
+        for i in segm_tmp.labels:
+            fluxes.append(np.nansum(data[segm_tmp == i]))
+        idx = np.where((np.array(fluxes) / source_sum) >= contrast)[0]
+        if len(idx >= 2):
+            segm_tree.append(segm_tmp)
 
     nbranch = len(segm_tree)
     if nbranch == 0:
         return segment_img
     else:
-        for j in np.arange(nbranch - 1, 0, -1):
+        for j in range(nbranch - 1, 0, -1):
             intersect_mask = (segm_tree[j].data *
                               segm_tree[j - 1].data).astype(bool)
             intersect_labels = np.unique(segm_tree[j].data[intersect_mask])
@@ -277,9 +284,9 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
                 # higher level, and relabel.
                 segm_tree[j].remove_labels(intersect_labels)
                 new_segments = segm_tree[j].data + segm_tree[j - 1].data
-                new_segm, nsegm = ndimage.label(new_segments)
+                new_segm, _ = ndimage.label(new_segments)
                 segm_tree[j - 1] = SegmentationImage(new_segm)
 
         return SegmentationImage(watershed(-data, segm_tree[0].data,
-                                           mask=segment_img.data,
+                                           mask=segment_img.data.astype(bool),
                                            connectivity=selem))

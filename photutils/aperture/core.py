@@ -8,17 +8,20 @@ from collections import OrderedDict
 import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
-from astropy.nddata import support_nddata
+from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable
 import astropy.units as u
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils import deprecated
+from astropy.utils.decorators import deprecated_renamed_argument
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 from astropy.wcs import WCS
 from astropy.wcs.utils import (skycoord_to_pixel, pixel_to_skycoord,
                                wcs_to_celestial_frame)
 
 from ..utils import get_version_info
 from ..utils.misc import _ABCMetaAndInheritDocstrings
-from ..utils.wcs_helpers import pixel_scale_angle_at_skycoord
+from ..utils._wcs_helpers import _pixel_scale_angle_at_skycoord
 
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture', 'aperture_photometry']
@@ -30,9 +33,20 @@ class Aperture(metaclass=_ABCMetaAndInheritDocstrings):
     """
 
     def __len__(self):
-        if isinstance(self, SkyAperture) and self.positions.isscalar:
-            return 1
-        return len(self.positions)
+        if self.isscalar:
+            raise TypeError('Scalar {0!r} object has no len()'
+                            .format(self.__class__.__name__))
+        return self.shape[0]
+
+    def __getitem__(self, index):
+        kwargs = dict()
+        for param in self._params:
+            kwargs[param] = getattr(self, param)
+        return self.__class__(self.positions[index], **kwargs)
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self.__getitem__(i)
 
     def _positions_str(self, prefix=None):
         if isinstance(self, PixelAperture):
@@ -65,41 +79,44 @@ class Aperture(metaclass=_ABCMetaAndInheritDocstrings):
 
         return '\n'.join(fmt)
 
+    @property
+    def shape(self):
+        if isinstance(self.positions, SkyCoord):
+            return self.positions.shape
+        else:
+            return self.positions.shape[:-1]
+
+    @property
+    def isscalar(self):
+        return self.shape == ()
+
+    @property
+    @abc.abstractmethod
+    def positions(self):
+        """
+        The aperture positions.
+        """
+
+        raise NotImplementedError('Needs to be implemented in a subclass.')
+
 
 class PixelAperture(Aperture):
     """
     Abstract base class for apertures defined in pixel coordinates.
     """
 
-    @staticmethod
-    def _sanitize_positions(positions):
-        if isinstance(positions, u.Quantity):
-            if positions.unit == u.pixel:
-                positions = np.atleast_2d(positions.value)
-            else:
-                raise u.UnitsError('positions should be in pixel units')
-        elif isinstance(positions, (list, tuple, np.ndarray)):
-            positions = np.atleast_2d(positions)
-            if positions.shape[1] != 2:
-                if positions.shape[0] == 2:
-                    positions = np.transpose(positions)
-                else:
-                    raise TypeError('List or array of (x, y) pixel '
-                                    'coordinates is expected, got "{0}".'
-                                    .format(positions))
-        elif isinstance(positions, zip):
-            # This is needed for zip to work seamlessly in Python 3
-            # (e.g. positions = zip(xpos, ypos))
-            positions = np.atleast_2d(list(positions))
-        else:
-            raise TypeError('List or array of (x, y) pixel coordinates '
-                            'is expected, got "{0}".'.format(positions))
+    @property
+    def _default_patch_properties(self):
+        """
+        A dictionary of default matplotlib.patches.Patch properties.
+        """
 
-        if positions.ndim > 2:
-            raise ValueError('{0}D position array is not supported. Only 2D '
-                             'arrays are supported.'.format(positions.ndim))
+        mpl_params = dict()
 
-        return positions
+        # matplotlib.patches.Patch default is ``fill=True``
+        mpl_params['fill'] = False
+
+        return mpl_params
 
     @staticmethod
     def _translate_mask_mode(mode, subpixels, rectangle=False):
@@ -116,7 +133,7 @@ class PixelAperture(Aperture):
         if mode == 'subpixels':
             if not isinstance(subpixels, int) or subpixels <= 0:
                 raise ValueError('subpixels must be a strictly positive '
-                                 'integer'.format(subpixels))
+                                 'integer')
 
         if mode == 'center':
             use_exact = 0
@@ -129,11 +146,15 @@ class PixelAperture(Aperture):
 
         return use_exact, subpixels
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def bounding_boxes(self):
         """
-        A list of minimal bounding boxes (`~photutils.BoundingBox`), one
-        for each position, for the aperture.
+        The minimal bounding box for the aperture.
+
+        If the aperture is scalar then a single `~photutils.BoundingBox`
+        is returned, otherwise a list of `~photutils.BoundingBox` is
+        returned.
         """
 
         raise NotImplementedError('Needs to be implemented in a subclass.')
@@ -150,7 +171,8 @@ class PixelAperture(Aperture):
         """
 
         edges = []
-        for position, bbox in zip(self.positions, self.bounding_boxes):
+        for position, bbox in zip(np.atleast_2d(self.positions),
+                                  np.atleast_1d(self.bounding_boxes)):
             xmin = bbox.ixmin - 0.5 - position[0]
             xmax = bbox.ixmax - 0.5 - position[0]
             ymin = bbox.iymin - 0.5 - position[1]
@@ -159,6 +181,7 @@ class PixelAperture(Aperture):
 
         return edges
 
+    @property
     def area(self):
         """
         Return the exact area of the aperture shape.
@@ -171,9 +194,11 @@ class PixelAperture(Aperture):
 
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
+    @deprecated('0.7', alternative=('e.g. np.sum(aper.to_mask().data) for a '
+                                    'scalar aperture'))
     def mask_area(self, method='exact', subpixels=5):
         """
-        Return the area of the aperture(s) mask.
+        Return the area of the aperture mask.
 
         For ``method`` other than ``'exact'``, this area will be less
         than the exact analytical area (e.g. the ``area`` method).  Note
@@ -216,17 +241,18 @@ class PixelAperture(Aperture):
         Returns
         -------
         area : float
-            A list of the mask area of the aperture(s).
+            A list of the mask area (one per position) of the aperture.
         """
 
-        mask = self.to_mask(method=method, subpixels=subpixels)
-        return [np.sum(m.data) for m in mask]
+        masks = self.to_mask(method=method, subpixels=subpixels)
+        if self.isscalar:
+            masks = (masks,)
+        return [np.sum(mask.data) for mask in masks]
 
     @abc.abstractmethod
     def to_mask(self, method='exact', subpixels=5):
         """
-        Return a list of `~photutils.ApertureMask` objects, one for each
-        aperture position.
+        Return a mask for the aperture.
 
         Parameters
         ----------
@@ -263,41 +289,86 @@ class PixelAperture(Aperture):
 
         Returns
         -------
-        mask : list of `~photutils.ApertureMask`
-            A list of aperture mask objects.
+        mask : `~photutils.ApertureMask` or list of `~photutils.ApertureMask`
+            A mask for the aperture.  If the aperture is scalar then a
+            single `~photutils.ApertureMask` is returned, otherwise a
+            list of `~photutils.ApertureMask` is returned.
         """
 
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
-    @staticmethod
-    def _prepare_photometry_output(_list, unit=None):
-        if len(_list) == 0:   # if error is not input
-            return _list
+    def _do_photometry(self, data, variance, method='exact', subpixels=5,
+                       unit=None):
 
-        if unit is not None:
-            unit = u.Unit(unit, parse_strict='warn')
-            if isinstance(unit, u.UnrecognizedUnit):
-                warnings.warn('The input unit is not parseable as a valid '
-                              'unit.', AstropyUserWarning)
-                unit = None
 
-        if isinstance(_list[0], u.Quantity):
-            # list of Quantity -> Quantity array
-            output = u.Quantity(_list)
+        """
+        data = np.asanyarray(data)
 
-            if unit is not None:
-                if output.unit != unit:
-                    warnings.warn('The input unit does not agree with the '
-                                  'data and/or error unit.',
-                                  AstropyUserWarning)
-        else:
-            if unit is not None:
-                output = u.Quantity(_list, unit=unit)
+        if mask is not None:
+            mask = np.asanyarray(mask)
+
+            data = copy.deepcopy(data)    # do not modify input data
+            data[mask] = 0
+
+            if error is not None:
+                # do not modify input data
+                error = copy.deepcopy(np.asanyarray(error))
+                error[mask] = 0.
+
+        aperture_sums = []
+        aperture_sum_errs = []
+        output_shape = (1,) if data.ndim==2 else data.shape[0]
+        for mask in self.to_mask(method=method, subpixels=subpixels):
+            data_cutout = mask.cutout(data)
+
+            if data_cutout is None:
+                aperture_sums.append(np.repeat(np.nan, output_shape))
             else:
-                output = np.array(_list)
+                aperture_sums.append(np.sum(data_cutout * mask.data, axis=(-2,-1)))
 
-        return output
+            if error is not None:
+                error_cutout = mask.cutout(error)
 
+                if error_cutout is None:
+                    aperture_sum_errs.append(np.repeat(np.nan, output_shape))
+                else:
+                    aperture_var = np.sum(error_cutout ** 2 * mask.data, axis=(-2,-1))
+                    aperture_sum_errs.append(np.sqrt(aperture_var))
+        """
+
+        aperture_sums = []
+        aperture_sum_errs = []
+
+        masks = self.to_mask(method=method, subpixels=subpixels)
+        if self.isscalar:
+            masks = (masks,)
+
+        for apermask in masks:
+            data_weighted = apermask.multiply(data)
+            if data_weighted is None:
+                aperture_sums.append(np.nan)
+            else:
+                aperture_sums.append(np.sum(data_weighted))
+
+            if variance is not None:
+                variance_weighted = apermask.multiply(variance)
+                if variance_weighted is None:
+                    aperture_sum_errs.append(np.nan)
+                else:
+                    aperture_sum_errs.append(
+                        np.sqrt(np.sum(variance_weighted)))
+
+        aperture_sums = np.array(aperture_sums)
+        aperture_sum_errs = np.array(aperture_sum_errs)
+
+        # apply units
+        if unit is not None:
+            aperture_sums = aperture_sums * unit  # can't use *= w/old numpy
+            aperture_sum_errs = aperture_sum_errs * unit
+
+        return aperture_sums, aperture_sum_errs
+
+    @deprecated_renamed_argument('unit', None, '0.7')
     def do_photometry(self, data, error=None, mask=None, method='exact',
                       subpixels=5, unit=None):
         """
@@ -353,6 +424,7 @@ class PixelAperture(Aperture):
             ``subpixels ** 2`` subpixels.
 
         unit : `~astropy.units.UnitBase` object or str, optional
+            Deprecated in v0.7.
             An object that represents the unit associated with the input
             ``data`` and ``error`` arrays.  Must be a
             `~astropy.units.UnitBase` object or a string parseable by
@@ -369,46 +441,18 @@ class PixelAperture(Aperture):
             The errors on the sums within each aperture.
         """
 
-        data = np.asanyarray(data)
+        # validate inputs
+        data, error = _validate_inputs(data, error)
 
-        if mask is not None:
-            mask = np.asanyarray(mask)
+        # handle data, error, and unit inputs
+        # output data and error are ndarray without units
+        data, error, unit = _handle_units(data, error, unit)
 
-            data = copy.deepcopy(data)    # do not modify input data
-            data[mask] = 0
+        # compute variance and apply input mask
+        data, variance = _prepare_photometry_data(data, error, mask)
 
-            if error is not None:
-                # do not modify input data
-                error = copy.deepcopy(np.asanyarray(error))
-                error[mask] = 0.
-
-        aperture_sums = []
-        aperture_sum_errs = []
-        output_shape = (1,) if data.ndim==2 else data.shape[0]
-        for mask in self.to_mask(method=method, subpixels=subpixels):
-            data_cutout = mask.cutout(data)
-
-            if data_cutout is None:
-                aperture_sums.append(np.repeat(np.nan, output_shape))
-            else:
-                aperture_sums.append(np.sum(data_cutout * mask.data, axis=(-2,-1)))
-
-            if error is not None:
-                error_cutout = mask.cutout(error)
-
-                if error_cutout is None:
-                    aperture_sum_errs.append(np.repeat(np.nan, output_shape))
-                else:
-                    aperture_var = np.sum(error_cutout ** 2 * mask.data, axis=(-2,-1))
-                    aperture_sum_errs.append(np.sqrt(aperture_var))
-
-        # handle Quantity objects and input units
-        aperture_sums = self._prepare_photometry_output(aperture_sums,
-                                                        unit=unit)
-        aperture_sum_errs = self._prepare_photometry_output(aperture_sum_errs,
-                                                            unit=unit)
-
-        return aperture_sums, aperture_sum_errs
+        return self._do_photometry(data, variance, method=method,
+                                   subpixels=subpixels, unit=unit)
 
     @staticmethod
     def _make_annulus_path(patch_inner, patch_outer):
@@ -437,11 +481,10 @@ class PixelAperture(Aperture):
 
         return mpath.Path(verts, codes)
 
-    def _prepare_plot(self, origin=(0, 0), indices=None, ax=None,
-                      fill=False, **kwargs):
+    def _define_patch_params(self, origin=(0, 0), indices=None, **kwargs):
         """
-        Prepare to plot the aperture(s) on a matplotlib
-        `~matplotlib.axes.Axes` instance.
+        Define the aperture patch position and set any default
+        matplotlib patch keywords (e.g. ``fill=False``).
 
         Parameters
         ----------
@@ -450,79 +493,102 @@ class PixelAperture(Aperture):
             image.
 
         indices : int or array of int, optional
-            The indices of the aperture(s) to plot.
+            The indices of the aperture positions to plot.
 
-        ax : `matplotlib.axes.Axes` instance, optional
-            If `None`, then the current `~matplotlib.axes.Axes` instance
-            is used.
-
-        fill : bool, optional
-            Set whether to fill the aperture patch.  The default is
-            `False`.
-
-        kwargs
-            Any keyword arguments accepted by `matplotlib.patches.Patch`.
+        kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
 
         Returns
         -------
-        plot_positions : `~numpy.ndarray`
-            The positions of the apertures to plot, after any
-            ``indices`` slicing and ``origin`` shift.
+        xy_positions : `~numpy.ndarray`
+            The aperture patch positions.
 
-        ax : `matplotlib.axes.Axes` instance, optional
-            The `~matplotlib.axes.Axes` on which to plot.
-
-        kwargs
-            Any keyword arguments accepted by `matplotlib.patches.Patch`.
+        patch_params : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
         """
 
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            ax = plt.gca()
-
-        # This is necessary because the `matplotlib.patches.Patch` default
-        # is ``fill=True``.  Here we make the default ``fill=False``.
-        kwargs['fill'] = fill
-
-        plot_positions = copy.deepcopy(self.positions)
+        xy_positions = copy.deepcopy(np.atleast_2d(self.positions))
         if indices is not None:
-            plot_positions = plot_positions[np.atleast_1d(indices)]
+            xy_positions = xy_positions[np.atleast_1d(indices)]
 
-        plot_positions[:, 0] -= origin[0]
-        plot_positions[:, 1] -= origin[1]
+        xy_positions[:, 0] -= origin[0]
+        xy_positions[:, 1] -= origin[1]
 
-        return plot_positions, ax, kwargs
+        patch_params = self._default_patch_properties
+        patch_params.update(kwargs)
+
+        return xy_positions, patch_params
 
     @abc.abstractmethod
-    def plot(self, origin=(0, 0), indices=None, ax=None, fill=False,
-             **kwargs):
+    def _to_patch(self, origin=(0, 0), indices=None, **kwargs):
         """
-        Plot the aperture(s) on a matplotlib `~matplotlib.axes.Axes`
+        Return a `~matplotlib.patches.patch` for the aperture.
+
+        Parameters
+        ----------
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image.
+
+        indices : int or array of int, optional
+            The indices of the aperture positions to plot.
+
+        kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
+
+        Returns
+        -------
+        patch : `~matplotlib.patches.patch` or list of `~matplotlib.patches.patch`
+            A patch for the aperture.  If the aperture is scalar then a
+            single `~matplotlib.patches.patch` is returned, otherwise a
+            list of `~matplotlib.patches.patch` is returned.
+        """
+
+        raise NotImplementedError('Needs to be implemented in a subclass.')
+
+    @deprecated_renamed_argument('ax', 'axes', '0.7')
+    @deprecated_renamed_argument('indices', None, '0.7',
+                                 alternative=('indices directly on the '
+                                              'aperture object '
+                                              '(e.g. aper[idx].plot())'))
+    def plot(self, axes=None, origin=(0, 0), indices=None, **kwargs):
+        """
+        Plot the aperture on a matplotlib `~matplotlib.axes.Axes`
         instance.
 
         Parameters
         ----------
+        axes : `matplotlib.axes.Axes` or `None`, optional
+            The matplotlib axes on which to plot.  If `None`, then the
+            current `~matplotlib.axes.Axes` instance is used.
+
         origin : array_like, optional
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        indices : int or array of int, optional
-            The indices of the aperture(s) to plot.
+        indices : int, array of int, or `None`, optional
+            The indices of the aperture position(s) to plot.  If `None`
+            (default) then all aperture positions will be plotted.
 
-        ax : `matplotlib.axes.Axes` instance, optional
-            If `None`, then the current `~matplotlib.axes.Axes` instance
-            is used.
-
-        fill : bool, optional
-            Set whether to fill the aperture patch.  The default is
-            `False`.
-
-        kwargs
-            Any keyword arguments accepted by `matplotlib.patches.Patch`.
+        kwargs : `dict`
+            Any keyword arguments accepted by
+            `matplotlib.patches.Patch`.
         """
 
-        raise NotImplementedError('Needs to be implemented in a subclass.')
+        import matplotlib.pyplot as plt
+
+        if axes is None:
+            axes = plt.gca()
+
+        patches = self._to_patch(origin=origin, indices=indices, **kwargs)
+        if self.isscalar:
+            patches = (patches,)
+
+        for patch in patches:
+            axes.add_patch(patch)
 
     def _to_sky_params(self, wcs, mode='all'):
         """
@@ -541,7 +607,7 @@ class PixelAperture(Aperture):
 
         Returns
         -------
-        sky_params : dict
+        sky_params : `dict`
             A dictionary of parameters for an equivalent sky aperture.
         """
 
@@ -552,9 +618,9 @@ class PixelAperture(Aperture):
         # The aperture object must have a single value for each shape
         # parameter so we must use a single pixel scale for all positions.
         # Here, we define the scale at the WCS CRVAL position.
-        crval = SkyCoord([wcs.wcs.crval], frame=wcs_to_celestial_frame(wcs),
+        crval = SkyCoord(*wcs.wcs.crval, frame=wcs_to_celestial_frame(wcs),
                          unit=wcs.wcs.cunit)
-        scale, angle = pixel_scale_angle_at_skycoord(crval, wcs)
+        scale, angle = _pixel_scale_angle_at_skycoord(crval, wcs)
 
         params = self._params[:]
         theta_key = 'theta'
@@ -616,7 +682,7 @@ class SkyAperture(Aperture):
 
         Returns
         -------
-        pixel_params : dict
+        pixel_params : `dict`
             A dictionary of parameters for an equivalent pixel aperture.
         """
 
@@ -627,9 +693,9 @@ class SkyAperture(Aperture):
         # The aperture object must have a single value for each shape
         # parameter so we must use a single pixel scale for all positions.
         # Here, we define the scale at the WCS CRVAL position.
-        crval = SkyCoord([wcs.wcs.crval], frame=wcs_to_celestial_frame(wcs),
+        crval = SkyCoord(*wcs.wcs.crval, frame=wcs_to_celestial_frame(wcs),
                          unit=wcs.wcs.cunit)
-        scale, angle = pixel_scale_angle_at_skycoord(crval, wcs)
+        scale, angle = _pixel_scale_angle_at_skycoord(crval, wcs)
 
         params = self._params[:]
         theta_key = 'theta'
@@ -672,25 +738,42 @@ class SkyAperture(Aperture):
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
-def _prepare_photometry_input(data, error, mask, wcs, unit):
+def _handle_hdu_input(data):  # pragma: no cover
     """
-    Parse the inputs to `aperture_photometry`.
+    Convert FITS HDU ``data`` to a `~numpy.ndarray` (and optional unit).
 
-    `aperture_photometry` accepts a wide range of inputs, e.g. ``data``
-    could be a numpy array, a Quantity array, or a fits HDU.  This
-    requires some parsing and validation to ensure that all inputs are
-    complete and consistent.  For example, the data could carry a unit
-    and the wcs itself, so we need to check that it is consistent with
-    the unit and wcs given as input parameters.
+    Used to parse ``data`` input to `aperture_photometry`.
+
+    Parameters
+    ----------
+    data : array_like, `~astropy.units.Quantity`, `~astropy.io.fits.ImageHDU`, or `~astropy.io.fits.HDUList`
+        The 2D data array.
+
+    Returns
+    -------
+    data : `~numpy.ndarray`
+        The 2D data array.
+
+    unit : `~astropy.unit.Unit` or `None`
+        The unit for the data.
     """
+
+    bunit = None
+
+    if isinstance(data, (fits.PrimaryHDU, fits.ImageHDU, fits.HDUList)):
+        warnings.warn('"astropy.io.fits.PrimaryHDU", '
+                      '"astropy.io.fits.ImageHDU", and '
+                      '"astropy.io.fits.HDUList" inputs are deprecated as of '
+                      'v0.7 and will not be allowed in future versions.',
+                      AstropyDeprecationWarning)
 
     if isinstance(data, fits.HDUList):
-        for i in range(len(data)):
-            if data[i].data is not None:
-                warnings.warn("Input data is a HDUList object, photometry is "
-                              "run only for the {0} HDU."
+        for i, hdu in enumerate(data):
+            if hdu.data is not None:
+                warnings.warn('Input data is a HDUList object.  Doing '
+                              'photometry only on the {0} HDU.'
                               .format(i), AstropyUserWarning)
-                data = data[i]
+                data = hdu
                 break
 
     if isinstance(data, (fits.PrimaryHDU, fits.ImageHDU)):
@@ -703,20 +786,51 @@ def _prepare_photometry_input(data, error, mask, wcs, unit):
                 warnings.warn('The BUNIT in the header of the input data is '
                               'not parseable as a valid unit.',
                               AstropyUserWarning)
-            else:
-                data = u.Quantity(data, unit=bunit)
 
-    if wcs is None:
-        try:
-            wcs = WCS(header)
-        except Exception:
-            # A valid WCS was not found in the header.  Let the calling
-            # application raise an exception if it needs a WCS.
-            pass
+    try:
+        fits_wcs = WCS(header)
+    except Exception:
+        # A valid WCS was not found in the header.  Let the calling
+        # application raise an exception if it needs a WCS.
+        fits_wcs = None
+
+    return data, bunit, fits_wcs
+
+
+def _validate_inputs(data, error):
+    """
+    Validate inputs.
+
+    ``data`` and ``error`` are converted to a `~numpy.ndarray`, if
+    necessary.
+
+    Used to parse inputs to `aperture_photometry` and
+    `PixelAperture.do_photometry`.
+    """
 
     data = np.asanyarray(data)
     if (data.ndim != 2) and (data.ndim !=3):
         raise ValueError('data must be a 2D or 3D array.')
+
+    if error is not None:
+        error = np.asanyarray(error)
+        if error.shape != data.shape:
+            raise ValueError('error and data must have the same shape.')
+
+    return data, error
+
+
+def _handle_units(data, error, unit):
+    """
+    Handle Quantity inputs and the ``unit`` keyword.
+
+    Any units on ``data`` and ``error` are removed.  ``data`` and
+    ``error`` are returned as `~numpy.ndarray`.  The returned ``unit``
+    represents the unit for both ``data`` and ``error``.
+
+    Used to parse inputs to `aperture_photometry` and
+    `PixelAperture.do_photometry`.
+    """
 
     if unit is not None:
         unit = u.Unit(unit, parse_strict='warn')
@@ -725,44 +839,86 @@ def _prepare_photometry_input(data, error, mask, wcs, unit):
                           'unit.', AstropyUserWarning)
             unit = None
 
-    if isinstance(data, u.Quantity):
+    # check Quantity inputs
+    inputs = (data, error)
+    has_unit = [hasattr(x, 'unit') for x in inputs if x is not None]
+    use_units = all(has_unit)
+    if any(has_unit) and not use_units:
+        raise ValueError('If data or error has units, then they both must '
+                         'have the same units.')
+
+    # handle Quantity inputs
+    if use_units:
         if unit is not None and data.unit != unit:
             warnings.warn('The input unit does not agree with the data '
-                          'unit.', AstropyUserWarning)
-    else:
-        if unit is not None:
-            data = u.Quantity(data, unit=unit)
+                          'unit.  Using the data unit.', AstropyUserWarning)
+            unit = data.unit
+
+        # strip data and error units for performance
+        unit = data.unit
+        data = data.value
+
+        if error is not None:
+            if unit != error.unit:
+                raise ValueError('data and error must have the same units.')
+            error = error.value
+
+    return data, error, unit
+
+
+def _prepare_photometry_data(data, error, mask):
+    """
+    Prepare data and error arrays for photometry.
+
+    Error is converted to variance and masked values are set to zero in
+    the output data and variance arrays.
+
+    Used to parse inputs to `aperture_photometry` and
+    `PixelAperture.do_photometry`.
+
+    Parameters
+    ----------
+    data : `~numpy.ndarray`
+        The 2D array on which to perform photometry.
+
+    error : `~numpy.ndarray` or `None`
+        The pixel-wise Gaussian 1-sigma errors of the input ``data``.
+
+    mask : array_like (bool) or `None`
+        A boolean mask with the same shape as ``data`` where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+
+    Returns
+    -------
+    data : `~numpy.ndarray`
+        The 2D array on which to perform photometry, where masked values
+        have been set to zero.
+
+    variance : `~numpy.ndarray` or `None`
+        The pixel-wise Gaussian 1-sigma variance of the input ``data``,
+        where masked values have been set to zero.
+    """
 
     if error is not None:
-        if isinstance(error, u.Quantity):
-            if unit is not None and error.unit != unit:
-                warnings.warn('The input unit does not agree with the error '
-                              'unit.', AstropyUserWarning)
-
-            if np.isscalar(error.value):
-                error = u.Quantity(np.broadcast_arrays(error, data),
-                                   unit=error.unit)[0]
-        else:
-            if np.isscalar(error):
-                error = np.broadcast_arrays(error, data)[0]
-
-            if unit is not None:
-                error = u.Quantity(error, unit=unit)
-
-            error = np.asanyarray(error)
-
-        if error.shape != data.shape:
-            raise ValueError('error and data must have the same shape.')
+        variance = error ** 2
+    else:
+        variance = None
 
     if mask is not None:
         mask = np.asanyarray(mask)
         if mask.shape != data.shape:
             raise ValueError('mask and data must have the same shape.')
 
-    return data, error, mask, wcs
+        data = data.copy()  # do not modify input data
+        data[mask] = 0.
+
+        if variance is not None:
+            variance[mask] = 0.
+
+    return data, variance
 
 
-@support_nddata
+@deprecated_renamed_argument('unit', None, '0.7')
 def aperture_photometry(data, apertures, error=None, mask=None,
                         method='exact', subpixels=5, unit=None, wcs=None):
     """
@@ -771,23 +927,33 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
     Parameters
     ----------
-    data : array_like, `~astropy.units.Quantity`, `~astropy.io.fits.ImageHDU`, or `~astropy.io.fits.HDUList`
+    data : array_like, `~astropy.units.Quantity`, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`, or `~astropy.nddata.NDData`
         The 2D array on which to perform photometry. ``data`` should be
         background-subtracted.  Units can be used during the photometry,
-        either provided with the data (i.e. a `~astropy.units.Quantity`
-        array) or the ``unit`` keyword.  If ``data`` is an
-        `~astropy.io.fits.ImageHDU` or `~astropy.io.fits.HDUList`, the
-        unit is determined from the ``'BUNIT'`` header keyword.
+        either provided with the data (e.g. `~astropy.units.Quantity` or
+        `~astropy.nddata.NDData` inputs) or the ``unit`` keyword.  If
+        ``data`` is an `~astropy.io.fits.ImageHDU` or
+        `~astropy.io.fits.HDUList`, the unit is determined from the
+        ``'BUNIT'`` header keyword.  `~astropy.io.fits.ImageHDU` or
+        `~astropy.io.fits.HDUList` inputs were deprecated in v0.7.  If
+        ``data`` is a `~astropy.units.Quantity` array, then ``error``
+        (if input) must also be a `~astropy.units.Quantity` array with
+        the same units.  See the Notes section below for more
+        information about `~astropy.nddata.NDData` input.
 
-    apertures : `~photutils.Aperture`
-        The aperture(s) to use for the photometry.
+    apertures : `~photutils.Aperture` or list of `~photutils.Aperture`
+        The aperture(s) to use for the photometry.  If ``apertures`` is
+        a list of `~photutils.Aperture` then they all must have the same
+        position(s).
 
     error : array_like or `~astropy.units.Quantity`, optional
         The pixel-wise Gaussian 1-sigma errors of the input ``data``.
         ``error`` is assumed to include *all* sources of error,
         including the Poisson error of the sources (see
         `~photutils.utils.calc_total_error`) .  ``error`` must have the
-        same shape as the input ``data``.
+        same shape as the input ``data``.  If a
+        `~astropy.units.Quantity` array, then ``data`` must also be a
+        `~astropy.units.Quantity` array with the same units.
 
     mask : array_like (bool), optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -825,6 +991,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         ** 2`` subpixels.
 
     unit : `~astropy.units.UnitBase` object or str, optional
+        Deprecated in v0.7.
         An object that represents the unit associated with the input
         ``data`` and ``error`` arrays.  Must be a
         `~astropy.units.UnitBase` object or a string parseable by the
@@ -832,7 +999,11 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         have a different unit, the input ``unit`` will not be used and a
         warning will be raised.  If ``data`` is an
         `~astropy.io.fits.ImageHDU` or `~astropy.io.fits.HDUList`,
-        ``unit`` will override the ``'BUNIT'`` header keyword.
+        ``unit`` will override the ``'BUNIT'`` header keyword.  This
+        keyword should be used sparingly (it exists to support the input
+        of `~astropy.nddata.NDData` objects).  Instead one should input
+        the ``data`` (and optional ``error``) as
+        `~astropy.units.Quantity` objects.
 
     wcs : `~astropy.wcs.WCS`, optional
         The WCS transformation to use if the input ``apertures`` is a
@@ -852,8 +1023,8 @@ def aperture_photometry(data, apertures, error=None, mask=None,
               The ``x`` and ``y`` pixel coordinates of the input
               aperture center(s).
 
-            * ``'celestial_center'``:
-              The celestial coordinates of the input aperture center(s).
+            * ``'sky_center'``:
+              The sky coordinates of the input aperture center(s).
               Returned only if the input ``apertures`` is a
               `SkyAperture` object.
 
@@ -870,22 +1041,63 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
     Notes
     -----
-    This function is decorated with `~astropy.nddata.support_nddata` and
-    thus supports `~astropy.nddata.NDData` objects as input.
+    If the input ``data`` is a `~astropy.nddata.NDData` instance, then
+    the ``error``, ``mask``, ``unit``, and ``wcs`` keyword inputs are
+    ignored.  Instead, these values should be defined as attributes in
+    the `~astropy.nddata.NDData` object.  In the case of ``error``, it
+    must be defined in the ``uncertainty`` attribute with a
+    `~astropy.nddata.StdDevUncertainty` instance.
     """
 
-    data, error, mask, wcs = _prepare_photometry_input(data, error, mask,
-                                                       wcs, unit)
+    if isinstance(data, NDData):
+        nddata_attr = {'error': error, 'mask': mask, 'unit': unit, 'wcs': wcs}
+        for key, value in nddata_attr.items():
+            if value is not None:
+                warnings.warn('The {0!r} keyword is be ignored.  Its value '
+                              'is obtained from the input NDData object.'
+                              .format(key), AstropyUserWarning)
 
-    if method == 'subpixel':
-        if (int(subpixels) != subpixels) or (subpixels <= 0):
-            raise ValueError('subpixels must be a positive integer.')
+        mask = data.mask
+        wcs = data.wcs
 
-    scalar_aperture = False
+        if isinstance(data.uncertainty, StdDevUncertainty):
+            if data.uncertainty.unit is None:
+                error = data.uncertainty.array
+            else:
+                error = data.uncertainty.array * data.uncertainty.unit
+
+        if data.unit is not None:
+            data = u.Quantity(data.data, unit=data.unit)
+        else:
+            data = data.data
+
+        return aperture_photometry(data, apertures, error=error, mask=mask,
+                                   method=method, subpixels=subpixels,
+                                   wcs=wcs)
+
+    # handle FITS HDU input data
+    data, bunit, fits_wcs = _handle_hdu_input(data)
+    # NOTE: input unit overrides bunit
+    if unit is None:
+        unit = bunit
+    # NOTE: input wcs overrides FITS WCS
+    if not wcs:
+        wcs = fits_wcs
+
+    # validate inputs
+    data, error = _validate_inputs(data, error)
+
+    # handle data, error, and unit inputs
+    # output data and error are ndarray without units
+    data, error, unit = _handle_units(data, error, unit)
+
+    # compute variance and apply input mask
+    data, variance = _prepare_photometry_data(data, error, mask)
+
+    single_aperture = False
     if isinstance(apertures, Aperture):
-        scalar_aperture = True
-
-    apertures = np.atleast_1d(apertures)
+        single_aperture = True
+        apertures = (apertures,)
 
     # convert sky to pixel apertures
     skyaper = False
@@ -895,46 +1107,53 @@ def aperture_photometry(data, apertures, error=None, mask=None,
                              'data or the wcs keyword when using a '
                              'SkyAperture object.')
 
+        # used to include SkyCoord position in the output table
         skyaper = True
         skycoord_pos = apertures[0].positions
 
-        pix_aper = [aper.to_pixel(wcs) for aper in apertures]
-        apertures = pix_aper
+        apertures = [aper.to_pixel(wcs) for aper in apertures]
 
-    # do comparison in pixels to avoid comparing SkyCoord objects
+    # compare positions in pixels to avoid comparing SkyCoord objects
     positions = apertures[0].positions
     for aper in apertures[1:]:
         if not np.array_equal(aper.positions, positions):
             raise ValueError('Input apertures must all have identical '
                              'positions.')
 
+    # define output table meta data
     meta = OrderedDict()
     meta['name'] = 'Aperture photometry results'
     meta['version'] = get_version_info()
-    calling_args = ("method='{0}', subpixels={1}".format(method, subpixels))
+    calling_args = "method='{0}', subpixels={1}".format(method, subpixels)
     meta['aperture_photometry_args'] = calling_args
 
     tbl = QTable(meta=meta)
-    tbl['id'] = np.arange(len(apertures[0]), dtype=int) + 1
 
-    xypos_pixel = np.transpose(apertures[0].positions) * u.pixel
+    positions = np.atleast_2d(apertures[0].positions)
+    tbl['id'] = np.arange(positions.shape[0], dtype=int) + 1
+
+    xypos_pixel = np.transpose(positions) * u.pixel
     tbl['xcenter'] = xypos_pixel[0]
     tbl['ycenter'] = xypos_pixel[1]
 
     if skyaper:
         if skycoord_pos.isscalar:
-            tbl['celestial_center'] = (skycoord_pos,)
+            # create length-1 SkyCoord array
+            tbl['sky_center'] = skycoord_pos.reshape((-1,))
         else:
-            tbl['celestial_center'] = skycoord_pos
+            tbl['sky_center'] = skycoord_pos
 
+    sum_key_main = 'aperture_sum'
+    sum_err_key_main = 'aperture_sum_err'
     for i, aper in enumerate(apertures):
-        aper_sum, aper_sum_err = aper.do_photometry(data, error=error,
-                                                    mask=mask, method=method,
-                                                    subpixels=subpixels)
+        aper_sum, aper_sum_err = aper._do_photometry(data, variance,
+                                                     method=method,
+                                                     subpixels=subpixels,
+                                                     unit=unit)
 
-        sum_key = 'aperture_sum'
-        sum_err_key = 'aperture_sum_err'
-        if not scalar_aperture:
+        sum_key = sum_key_main
+        sum_err_key = sum_err_key_main
+        if not single_aperture:
             sum_key += '_{}'.format(i)
             sum_err_key += '_{}'.format(i)
 

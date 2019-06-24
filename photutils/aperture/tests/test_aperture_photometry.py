@@ -12,10 +12,11 @@ from numpy.testing import (assert_allclose, assert_array_equal,
 
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
-from astropy.nddata import NDData
+from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import Table
 import astropy.units as u
 from astropy.utils import minversion
+from astropy.wcs import WCS
 from astropy.wcs.utils import pixel_to_skycoord
 
 from ..core import aperture_photometry
@@ -25,8 +26,7 @@ from ..ellipse import (EllipticalAperture, EllipticalAnnulus,
                        SkyEllipticalAperture, SkyEllipticalAnnulus)
 from ..rectangle import (RectangularAperture, RectangularAnnulus,
                          SkyRectangularAperture, SkyRectangularAnnulus)
-from ...datasets import (get_path, make_4gaussians_image, make_wcs,
-                         make_imagehdu)
+from ...datasets import get_path, make_4gaussians_image, make_wcs
 
 try:
     import matplotlib    # noqa
@@ -66,7 +66,7 @@ def test_inside_array_simple(aperture_class, params):
     table2 = aperture_photometry(data, aperture, method='subpixel',
                                  subpixels=10)
     table3 = aperture_photometry(data, aperture, method='exact', subpixels=10)
-    true_flux = aperture.area()
+    true_flux = aperture.area
 
     if not isinstance(aperture, (RectangularAperture, RectangularAnnulus)):
         assert_allclose(table3['aperture_sum'], true_flux)
@@ -87,57 +87,22 @@ def test_aperture_plots(aperture_class, params):
 
 def test_aperture_pixel_positions():
     pos1 = (10, 20)
-    pos2 = u.Quantity((10, 20), unit=u.pixel)
-    pos3 = ((10, 20, 30), (10, 20, 30))
-    pos3_pairs = ((10, 10), (20, 20), (30, 30))
+    pos2 = [(10, 20)]
+    pos3 = u.Quantity((10, 20), unit=u.pixel)
+    pos4 = u.Quantity([(10, 20)], unit=u.pixel)
 
     r = 3
     ap1 = CircularAperture(pos1, r)
     ap2 = CircularAperture(pos2, r)
     ap3 = CircularAperture(pos3, r)
+    ap4 = CircularAperture(pos4, r)
 
-    assert_allclose(np.atleast_2d(pos1), ap1.positions)
-    assert_allclose(np.atleast_2d(pos2.value), ap2.positions)
-    assert_allclose(pos3_pairs, ap3.positions)
+    assert not np.array_equal(ap1.positions, ap2.positions)
+    assert_allclose(ap1.positions, ap3.positions)
+    assert_allclose(ap2.positions, ap4.positions)
 
 
 class BaseTestAperturePhotometry:
-
-    def test_scalar_error(self):
-        # Scalar error
-        error = 1.
-        if not hasattr(self, 'mask'):
-            mask = None
-            true_error = np.sqrt(self.area)
-        else:
-            mask = self.mask
-            # 1 masked pixel
-            true_error = np.sqrt(self.area - 1)
-
-        table1 = aperture_photometry(self.data,
-                                     self.aperture, method='center',
-                                     mask=mask, error=error)
-        table2 = aperture_photometry(self.data,
-                                     self.aperture,
-                                     method='subpixel', subpixels=12,
-                                     mask=mask, error=error)
-        table3 = aperture_photometry(self.data,
-                                     self.aperture, method='exact',
-                                     mask=mask, error=error)
-
-        if not isinstance(self.aperture, (RectangularAperture,
-                                          RectangularAnnulus)):
-            assert_allclose(table3['aperture_sum'], self.true_flux)
-            assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
-                            atol=0.1)
-        assert np.all(table1['aperture_sum'] < table3['aperture_sum'])
-
-        if not isinstance(self.aperture, (RectangularAperture,
-                                          RectangularAnnulus)):
-            assert_allclose(table3['aperture_sum_err'], true_error)
-            assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
-                            atol=0.1)
-        assert np.all(table1['aperture_sum_err'] < table3['aperture_sum_err'])
 
     def test_array_error(self):
         # Array error
@@ -298,7 +263,7 @@ class BaseTestDifferentData:
     def test_basic_circular_aperture_photometry(self):
         aperture = CircularAperture(self.position, self.radius)
         table = aperture_photometry(self.data, aperture,
-                                    method='exact', unit='adu')
+                                    method='exact')
 
         assert_allclose(table['aperture_sum'].value, self.true_flux)
         assert table['aperture_sum'].unit, self.fluxunit
@@ -307,44 +272,6 @@ class BaseTestDifferentData:
                       np.transpose(self.position)[0])
         assert np.all(table['ycenter'].value ==
                       np.transpose(self.position)[1])
-
-
-class TestInputPrimaryHDU(BaseTestDifferentData):
-
-    def setup_class(self):
-        data = np.ones((40, 40), dtype=np.float)
-        self.data = fits.ImageHDU(data=data)
-        self.data.header['BUNIT'] = 'adu'
-        self.radius = 3
-        self.position = (20, 20)
-        self.true_flux = np.pi * self.radius * self.radius
-        self.fluxunit = u.adu
-
-
-class TestInputHDUList(BaseTestDifferentData):
-
-    def setup_class(self):
-        data0 = np.ones((40, 40), dtype=np.float)
-        data1 = np.empty((40, 40), dtype=np.float)
-        data1.fill(2)
-        self.data = fits.HDUList([fits.ImageHDU(data=data0),
-                                  fits.ImageHDU(data=data1)])
-        self.radius = 3
-        self.position = (20, 20)
-        # It should stop at the first extension
-        self.true_flux = np.pi * self.radius * self.radius
-
-
-class TestInputHDUDifferentBUNIT(BaseTestDifferentData):
-
-    def setup_class(self):
-        data = np.ones((40, 40), dtype=np.float)
-        self.data = fits.ImageHDU(data=data)
-        self.data.header['BUNIT'] = 'Jy'
-        self.radius = 3
-        self.position = (20, 20)
-        self.true_flux = np.pi * self.radius * self.radius
-        self.fluxunit = u.adu
 
 
 class TestInputNDData(BaseTestDifferentData):
@@ -363,6 +290,8 @@ def test_wcs_based_photometry_to_catalogue():
     pathcat = get_path('spitzer_example_catalog.xml', location='remote')
     pathhdu = get_path('spitzer_example_image.fits', location='remote')
     hdu = fits.open(pathhdu)
+    data = u.Quantity(hdu[0].data, unit=hdu[0].header['BUNIT'])
+    wcs = WCS(hdu[0].header)
     scale = hdu[0].header['PIXSCAL1']
 
     catalog = Table.read(pathcat)
@@ -370,10 +299,11 @@ def test_wcs_based_photometry_to_catalogue():
     pos_skycoord = SkyCoord(catalog['l'], catalog['b'], frame='galactic')
 
     photometry_skycoord = aperture_photometry(
-        hdu, SkyCircularAperture(pos_skycoord, 4 * u.arcsec))
+        data, SkyCircularAperture(pos_skycoord, 4 * u.arcsec), wcs=wcs)
 
     photometry_skycoord_pix = aperture_photometry(
-        hdu, SkyCircularAperture(pos_skycoord, 4. / scale * u.pixel))
+        data, SkyCircularAperture(pos_skycoord, 4. / scale * u.pixel),
+        wcs=wcs)
 
     assert_allclose(photometry_skycoord['aperture_sum'],
                     photometry_skycoord_pix['aperture_sum'])
@@ -399,7 +329,6 @@ def test_wcs_based_photometry_to_catalogue():
 def test_wcs_based_photometry():
     data = make_4gaussians_image()
     wcs = make_wcs(data.shape)
-    hdu = make_imagehdu(data, wcs=wcs)
 
     # hard wired positions in make_4gaussian_image
     pos_orig_pixel = u.Quantity(([160., 25., 150., 90.],
@@ -410,19 +339,21 @@ def test_wcs_based_photometry():
     pos_skycoord_s = pos_skycoord[2]
 
     photometry_skycoord_circ = aperture_photometry(
-        hdu, SkyCircularAperture(pos_skycoord, 3 * u.arcsec))
+        data, SkyCircularAperture(pos_skycoord, 3 * u.arcsec), wcs=wcs)
     photometry_skycoord_circ_2 = aperture_photometry(
-        hdu, SkyCircularAperture(pos_skycoord, 2 * u.arcsec))
+        data, SkyCircularAperture(pos_skycoord, 2 * u.arcsec), wcs=wcs)
     photometry_skycoord_circ_s = aperture_photometry(
-        hdu, SkyCircularAperture(pos_skycoord_s, 3 * u.arcsec))
+        data, SkyCircularAperture(pos_skycoord_s, 3 * u.arcsec), wcs=wcs)
 
     assert_allclose(photometry_skycoord_circ['aperture_sum'][2],
                     photometry_skycoord_circ_s['aperture_sum'])
 
     photometry_skycoord_circ_ann = aperture_photometry(
-        hdu, SkyCircularAnnulus(pos_skycoord, 2 * u.arcsec, 3 * u.arcsec))
+        data, SkyCircularAnnulus(pos_skycoord, 2 * u.arcsec, 3 * u.arcsec),
+        wcs=wcs)
     photometry_skycoord_circ_ann_s = aperture_photometry(
-        hdu, SkyCircularAnnulus(pos_skycoord_s, 2 * u.arcsec, 3 * u.arcsec))
+        data, SkyCircularAnnulus(pos_skycoord_s, 2 * u.arcsec, 3 * u.arcsec),
+        wcs=wcs)
 
     assert_allclose(photometry_skycoord_circ_ann['aperture_sum'][2],
                     photometry_skycoord_circ_ann_s['aperture_sum'])
@@ -432,20 +363,20 @@ def test_wcs_based_photometry():
                     photometry_skycoord_circ_2['aperture_sum'])
 
     photometry_skycoord_ell = aperture_photometry(
-        hdu, SkyEllipticalAperture(pos_skycoord, 3 * u.arcsec,
-                                   3.0001 * u.arcsec, 45 * u.arcsec))
+        data, SkyEllipticalAperture(pos_skycoord, 3 * u.arcsec,
+                                    3.0001 * u.arcsec, 45 * u.arcsec), wcs=wcs)
     photometry_skycoord_ell_2 = aperture_photometry(
-        hdu, SkyEllipticalAperture(pos_skycoord, 2 * u.arcsec,
-                                   2.0001 * u.arcsec, 45 * u.arcsec))
+        data, SkyEllipticalAperture(pos_skycoord, 2 * u.arcsec,
+                                    2.0001 * u.arcsec, 45 * u.arcsec), wcs=wcs)
     photometry_skycoord_ell_s = aperture_photometry(
-        hdu, SkyEllipticalAperture(pos_skycoord_s, 3 * u.arcsec,
-                                   3.0001 * u.arcsec, 45 * u.arcsec))
+        data, SkyEllipticalAperture(pos_skycoord_s, 3 * u.arcsec,
+                                    3.0001 * u.arcsec, 45 * u.arcsec), wcs=wcs)
     photometry_skycoord_ell_ann = aperture_photometry(
-        hdu, SkyEllipticalAnnulus(pos_skycoord, 2 * u.arcsec, 3 * u.arcsec,
-                                  3.0001 * u.arcsec, 45 * u.arcsec))
+        data, SkyEllipticalAnnulus(pos_skycoord, 2 * u.arcsec, 3 * u.arcsec,
+                                   3.0001 * u.arcsec, 45 * u.arcsec), wcs=wcs)
     photometry_skycoord_ell_ann_s = aperture_photometry(
-        hdu, SkyEllipticalAnnulus(pos_skycoord_s, 2 * u.arcsec, 3 * u.arcsec,
-                                  3.0001 * u.arcsec, 45 * u.arcsec))
+        data, SkyEllipticalAnnulus(pos_skycoord_s, 2 * u.arcsec, 3 * u.arcsec,
+                                   3.0001 * u.arcsec, 45 * u.arcsec), wcs=wcs)
 
     assert_allclose(photometry_skycoord_ell['aperture_sum'][2],
                     photometry_skycoord_ell_s['aperture_sum'])
@@ -461,28 +392,28 @@ def test_wcs_based_photometry():
                     photometry_skycoord_ell_2['aperture_sum'], rtol=1e-4)
 
     photometry_skycoord_rec = aperture_photometry(
-        hdu, SkyRectangularAperture(pos_skycoord,
-                                    6 * u.arcsec, 6 * u.arcsec,
-                                    0 * u.arcsec),
-        method='subpixel', subpixels=20)
+        data, SkyRectangularAperture(pos_skycoord,
+                                     6 * u.arcsec, 6 * u.arcsec,
+                                     0 * u.arcsec),
+        method='subpixel', subpixels=20, wcs=wcs)
     photometry_skycoord_rec_4 = aperture_photometry(
-        hdu, SkyRectangularAperture(pos_skycoord,
-                                    4 * u.arcsec, 4 * u.arcsec,
-                                    0 * u.arcsec),
-        method='subpixel', subpixels=20)
+        data, SkyRectangularAperture(pos_skycoord,
+                                     4 * u.arcsec, 4 * u.arcsec,
+                                     0 * u.arcsec),
+        method='subpixel', subpixels=20, wcs=wcs)
     photometry_skycoord_rec_s = aperture_photometry(
-        hdu, SkyRectangularAperture(pos_skycoord_s,
-                                    6 * u.arcsec, 6 * u.arcsec,
-                                    0 * u.arcsec),
-        method='subpixel', subpixels=20)
+        data, SkyRectangularAperture(pos_skycoord_s,
+                                     6 * u.arcsec, 6 * u.arcsec,
+                                     0 * u.arcsec),
+        method='subpixel', subpixels=20, wcs=wcs)
     photometry_skycoord_rec_ann = aperture_photometry(
-        hdu, SkyRectangularAnnulus(pos_skycoord, 4 * u.arcsec, 6 * u.arcsec,
-                                   6 * u.arcsec, 0 * u.arcsec),
-        method='subpixel', subpixels=20)
+        data, SkyRectangularAnnulus(pos_skycoord, 4 * u.arcsec, 6 * u.arcsec,
+                                    6 * u.arcsec, 0 * u.arcsec),
+        method='subpixel', subpixels=20, wcs=wcs)
     photometry_skycoord_rec_ann_s = aperture_photometry(
-        hdu, SkyRectangularAnnulus(pos_skycoord_s, 4 * u.arcsec, 6 * u.arcsec,
-                                   6 * u.arcsec, 0 * u.arcsec),
-        method='subpixel', subpixels=20)
+        data, SkyRectangularAnnulus(pos_skycoord_s, 4 * u.arcsec,
+                                    6 * u.arcsec, 6 * u.arcsec, 0 * u.arcsec),
+        method='subpixel', subpixels=20, wcs=wcs)
 
     assert_allclose(photometry_skycoord_rec['aperture_sum'][2],
                     photometry_skycoord_rec_s['aperture_sum'])
@@ -500,20 +431,18 @@ def test_wcs_based_photometry():
 
 def test_basic_circular_aperture_photometry_unit():
     data1 = np.ones((40, 40), dtype=np.float)
-    data2 = u.Quantity(data1, unit=u.adu)
+    data2 = u.Quantity(data1*u.adu)
 
     radius = 3
     position = (20, 20)
     true_flux = np.pi * radius * radius
     unit = u.adu
 
-    table1 = aperture_photometry(data1, CircularAperture(position, radius),
-                                 unit=unit)
+    table1 = aperture_photometry(data1, CircularAperture(position, radius))
     table2 = aperture_photometry(data2, CircularAperture(position, radius))
 
-    assert_allclose(table1['aperture_sum'].value, true_flux)
+    assert_allclose(table1['aperture_sum'], true_flux)
     assert_allclose(table2['aperture_sum'].value, true_flux)
-    assert table1['aperture_sum'].unit == unit
     assert table2['aperture_sum'].unit == data2.unit == unit
 
 
@@ -614,49 +543,30 @@ def test_aperture_partial_overlap():
 
 def test_pixel_aperture_repr():
     aper = CircularAperture((10, 20), r=3.0)
-    a_repr = '<CircularAperture([[10, 20]], r=3.0)>'
-    a_str = 'Aperture: CircularAperture\npositions: [[10, 20]]\nr: 3.0'
-    assert repr(aper) == a_repr
-    assert str(aper) == a_str
+    assert '<CircularAperture(' in repr(aper)
+    assert 'Aperture: CircularAperture' in str(aper)
 
     aper = CircularAnnulus((10, 20), r_in=3.0, r_out=5.0)
-    a_repr = '<CircularAnnulus([[10, 20]], r_in=3.0, r_out=5.0)>'
-    a_str = ('Aperture: CircularAnnulus\npositions: [[10, 20]]\nr_in: 3.0\n'
-             'r_out: 5.0')
-    assert repr(aper) == a_repr
-    assert str(aper) == a_str
+    assert '<CircularAnnulus(' in repr(aper)
+    assert 'Aperture: CircularAnnulus' in str(aper)
 
     aper = EllipticalAperture((10, 20), a=5.0, b=3.0, theta=15.0)
-    a_repr = '<EllipticalAperture([[10, 20]], a=5.0, b=3.0, theta=15.0)>'
-    a_str = ('Aperture: EllipticalAperture\npositions: [[10, 20]]\n'
-             'a: 5.0\nb: 3.0\ntheta: 15.0')
-    assert repr(aper) == a_repr
-    assert str(aper) == a_str
+    assert '<EllipticalAperture(' in repr(aper)
+    assert 'Aperture: EllipticalAperture' in str(aper)
 
     aper = EllipticalAnnulus((10, 20), a_in=4.0, a_out=8.0, b_out=4.0,
                              theta=15.0)
-    a_repr = ('<EllipticalAnnulus([[10, 20]], a_in=4.0, a_out=8.0, b_out='
-              '4.0, theta=15.0)>')
-    a_str = ('Aperture: EllipticalAnnulus\npositions: [[10, 20]]\na_in: '
-             '4.0\na_out: 8.0\nb_out: 4.0\ntheta: 15.0')
-    assert repr(aper) == a_repr
-    assert str(aper) == a_str
+    assert '<EllipticalAnnulus(' in repr(aper)
+    assert 'Aperture: EllipticalAnnulus' in str(aper)
 
     aper = RectangularAperture((10, 20), w=5.0, h=3.0, theta=15.0)
-    a_repr = '<RectangularAperture([[10, 20]], w=5.0, h=3.0, theta=15.0)>'
-    a_str = ('Aperture: RectangularAperture\npositions: [[10, 20]]\n'
-             'w: 5.0\nh: 3.0\ntheta: 15.0')
-    assert repr(aper) == a_repr
-    assert str(aper) == a_str
+    assert '<RectangularAperture(' in repr(aper)
+    assert 'Aperture: RectangularAperture' in str(aper)
 
     aper = RectangularAnnulus((10, 20), w_in=4.0, w_out=8.0, h_out=4.0,
                               theta=15.0)
-    a_repr = ('<RectangularAnnulus([[10, 20]], w_in=4.0, w_out=8.0, '
-              'h_out=4.0, theta=15.0)>')
-    a_str = ('Aperture: RectangularAnnulus\npositions: [[10, 20]]\n'
-             'w_in: 4.0\nw_out: 8.0\nh_out: 4.0\ntheta: 15.0')
-    assert repr(aper) == a_repr
-    assert str(aper) == a_str
+    assert '<RectangularAnnulus(' in repr(aper)
+    assert 'Aperture: RectangularAnnulus' in str(aper)
 
 
 def test_sky_aperture_repr():
@@ -785,26 +695,26 @@ def test_rectangular_bbox():
     width = 7
     height = 3
     a = RectangularAperture((50, 50), w=width, h=height, theta=0)
-    assert a.bounding_boxes[0].shape == (height, width)
+    assert a.bounding_boxes.shape == (height, width)
 
     a = RectangularAperture((50.5, 50.5), w=width, h=height, theta=0)
-    assert a.bounding_boxes[0].shape == (height + 1, width + 1)
+    assert a.bounding_boxes.shape == (height + 1, width + 1)
 
     a = RectangularAperture((50, 50), w=width, h=height, theta=90.*np.pi/180.)
-    assert a.bounding_boxes[0].shape == (width, height)
+    assert a.bounding_boxes.shape == (width, height)
 
     # even sizes
     width = 8
     height = 4
     a = RectangularAperture((50, 50), w=width, h=height, theta=0)
-    assert a.bounding_boxes[0].shape == (height + 1, width + 1)
+    assert a.bounding_boxes.shape == (height + 1, width + 1)
 
     a = RectangularAperture((50.5, 50.5), w=width, h=height, theta=0)
-    assert a.bounding_boxes[0].shape == (height, width)
+    assert a.bounding_boxes.shape == (height, width)
 
     a = RectangularAperture((50.5, 50.5), w=width, h=height,
                             theta=90.*np.pi/180.)
-    assert a.bounding_boxes[0].shape == (width, height)
+    assert a.bounding_boxes.shape == (width, height)
 
 
 def test_elliptical_bbox():
@@ -812,25 +722,25 @@ def test_elliptical_bbox():
     a = 7
     b = 3
     ap = EllipticalAperture((50, 50), a=a, b=b, theta=0)
-    assert ap.bounding_boxes[0].shape == (2*b + 1, 2*a + 1)
+    assert ap.bounding_boxes.shape == (2*b + 1, 2*a + 1)
 
     ap = EllipticalAperture((50.5, 50.5), a=a, b=b, theta=0)
-    assert ap.bounding_boxes[0].shape == (2*b, 2*a)
+    assert ap.bounding_boxes.shape == (2*b, 2*a)
 
     ap = EllipticalAperture((50, 50), a=a, b=b, theta=90.*np.pi/180.)
-    assert ap.bounding_boxes[0].shape == (2*a + 1, 2*b + 1)
+    assert ap.bounding_boxes.shape == (2*a + 1, 2*b + 1)
 
     # fractional axes
     a = 7.5
     b = 4.5
     ap = EllipticalAperture((50, 50), a=a, b=b, theta=0)
-    assert ap.bounding_boxes[0].shape == (2*b, 2*a)
+    assert ap.bounding_boxes.shape == (2*b, 2*a)
 
     ap = EllipticalAperture((50.5, 50.5), a=a, b=b, theta=0)
-    assert ap.bounding_boxes[0].shape == (2*b + 1, 2*a + 1)
+    assert ap.bounding_boxes.shape == (2*b + 1, 2*a + 1)
 
     ap = EllipticalAperture((50, 50), a=a, b=b, theta=90.*np.pi/180.)
-    assert ap.bounding_boxes[0].shape == (2*a, 2*b)
+    assert ap.bounding_boxes.shape == (2*a, 2*b)
 
 
 def test_to_sky_pixel():
@@ -889,7 +799,7 @@ def test_position_units():
     pos = (10, 10) * u.pix
     pos = np.sqrt(pos**2)
     ap = CircularAperture(pos, r=3.)
-    assert_allclose(ap.positions, np.array([[10, 10]]))
+    assert_allclose(ap.positions, np.array([10, 10]))
 
 
 def test_radius_units():
@@ -923,3 +833,70 @@ def test_scalar_aperture():
     assert (colnames3 == ['id', 'xcenter', 'ycenter', 'aperture_sum_0',
                           'aperture_sum_err_0', 'aperture_sum_1',
                           'aperture_sum_err_1'])
+
+
+def test_nan_in_bbox():
+    """
+    Regression test that non-finite data values outside of the aperture
+    mask but within the bounding box do not affect the photometry.
+    """
+
+    data1 = np.ones((101, 101))
+    data2 = data1.copy()
+    data1[33, 33] = np.nan
+    data1[67, 67] = np.inf
+    data1[33, 67] = -np.inf
+    data1[22, 22] = np.nan
+    data1[22, 23] = np.inf
+    error = data1.copy()
+
+    aper1 = CircularAperture((50, 50), r=20.)
+    aper2 = CircularAperture((5, 5), r=20.)
+
+    tbl1 = aperture_photometry(data1, aper1, error=error)
+    tbl2 = aperture_photometry(data2, aper1, error=error)
+    assert_allclose(tbl1['aperture_sum'], tbl2['aperture_sum'])
+    assert_allclose(tbl1['aperture_sum_err'], tbl2['aperture_sum_err'])
+
+    tbl3 = aperture_photometry(data1, aper2, error=error)
+    tbl4 = aperture_photometry(data2, aper2, error=error)
+    assert_allclose(tbl3['aperture_sum'], tbl4['aperture_sum'])
+    assert_allclose(tbl3['aperture_sum_err'], tbl4['aperture_sum_err'])
+
+
+def test_scalar_skycoord():
+    """
+    Regression test to check that scalar SkyCoords are added to the table
+    as a length-1 SkyCoord array.
+    """
+
+    data = make_4gaussians_image()
+    wcs = make_wcs(data.shape)
+    skycoord = pixel_to_skycoord(90, 60, wcs)
+    aper = SkyCircularAperture(skycoord, r=0.1*u.arcsec)
+    tbl = aperture_photometry(data, aper, wcs=wcs)
+    assert isinstance(tbl['sky_center'], SkyCoord)
+
+
+def test_nddata_input():
+    data = np.arange(400).reshape((20, 20))
+    error = np.sqrt(data)
+    mask = np.zeros((20, 20), dtype=bool)
+    mask[8:13, 8:13] = True
+    unit = 'adu'
+    wcs = make_wcs(data.shape)
+    skycoord = pixel_to_skycoord(10, 10, wcs)
+    aper = SkyCircularAperture(skycoord, r=0.7*u.arcsec)
+
+    tbl1 = aperture_photometry(data*u.adu, aper, error=error*u.adu, mask=mask,
+                               wcs=wcs)
+
+    uncertainty = StdDevUncertainty(error)
+    nddata = NDData(data, uncertainty=uncertainty, mask=mask, wcs=wcs,
+                    unit=unit)
+    tbl2 = aperture_photometry(nddata, aper)
+
+    for column in tbl1.columns:
+        if column == 'sky_center':  # cannot test SkyCoord equality
+            continue
+        assert_allclose(tbl1[column], tbl2[column])

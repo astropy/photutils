@@ -1,7 +1,231 @@
 0.7 (unreleased)
 ----------------
 
-- No changes yet
+New Features
+^^^^^^^^^^^^
+
+- ``photutils.aperture``
+
+  - Added parameter validation for all aperture classes. [#846]
+
+  - Added ``from_float``, ``as_artist``, ``union`` and
+    ``intersection`` methods to ``BoundingBox`` class. [#851]
+
+  - Added ``shape`` and ``isscalar`` properties to Aperture objects.
+    [#852]
+
+  - Significantly improved the performance (~10-20 times faster) of
+    aperture photometry, especially when using ``errors`` and
+    ``Quantity`` inputs with many aperture positions. [#861]
+
+  - ``aperture_phometry`` now supports ``NDData`` with
+    ``StdDevUncertainty`` to input errors. [#866]
+
+- ``photutils.isophote``
+
+  - Significantly improved the performance (~5 times faster) of
+    ellipse fitting. [#826]
+
+- ``photutils.segmentation``
+
+  - Significantly improved the performance of relabeling in
+    segmentation images (e.g. ``remove_labels``, ``keep_labels``).
+    [#810]
+
+  - Added new ``background_area`` attribute to ``SegmentationImage``.
+    [#825]
+
+  - Added new ``data_ma`` attribute to ``Segment``. [#825]
+
+  - Added new ``SegmentationImage`` methods:  ``find_index``,
+    ``find_indices``, ``find_areas``, ``check_label``, ``keep_label``,
+    ``remove_label``, and ``reassign_labels``. [#825]
+
+  - Added ``__repr__`` and ``__str__`` methods to
+    ``SegmentationImage``. [#825]
+
+  - Added ``slices``, ``indices``, and ``filtered_data_cutout_ma``
+    attributes to ``SourceProperties``. [#858]
+
+  - Added ``__repr__`` and ``__str__`` methods to ``SourceProperties``
+    and ``SourceCatalog``. [#858]
+
+  - Significantly improved the performance of calculating the
+    ``background_at_centroid`` property in ``SourceCatalog``. [#863]
+
+  - The default output table columns (source properties) are defined
+    in a publicly-accessible variable called
+    ``photutils.segmentation.properties.DEFAULT_COLUMNS``. [#863]
+
+  - Added the ``gini`` source property representing the Gini
+    coefficient. [#864]
+
+- ``photutils.utils``
+
+  - Added ``NoDetectionsWarning`` class. [#836]
+
+- ``photutils.psf``
+
+  - Added new centroiding function ``centroid_epsf``. [#816]
+
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.aperture``
+
+  - Fixed an issue where the ``ApertureMask.cutout`` method would drop
+    the data units when ``copy=True``. [#842]
+
+  - Fixed a corner-case issue where aperture photometry would return
+    NaN for non-finite data values outside the aperture but within the
+    aperture bounding box. [#843]
+
+  - Fixed an issue where the ``celestial_center`` column (for sky
+    apertures) would be a length-1 array containing a ``SkyCoord``
+    object instead of a length-1 ``SkyCoord`` object. [#844]
+
+- ``photutils.segmentation``
+
+  - Fixed an issue where ``deblend_sources`` could fail for sources
+    with labels that are a power of 2 and greater than 255. [#806]
+
+  - ``SourceProperties`` and ``source_properties`` will no longer
+    raise an exception if a source is completely masked. [#822]
+
+  - Fixed an issue in ``SourceProperties`` and ``source_properties``
+    where inf values in the data array were not automatically masked.
+    [#822]
+
+  - ``error`` and ``background`` arrays are now always masked
+    identically to the input ``data``. [#822]
+
+  - Fixed the ``perimeter`` property to take into account the source
+    mask. [#822]
+
+  - Fixed the ``background_at_centroid`` source property to use
+    bilinear interpolation. [#822]
+
+  - Fixed ``SegmentationImage`` ``outline_segments`` to include
+    outlines along the image boundaries. [#825]
+
+API changes
+^^^^^^^^^^^
+
+- ``photutils.aperture``
+
+  - Deprecated inputting aperture pixel positions shaped as 2xN.
+    [#847]
+
+  - Renamed the ``celestial_center`` column to ``sky_center`` in the
+    ``aperture_photometry`` output table. [#848]
+
+  - Aperture objects defined with a single (x, y) position (input as
+    1D) are now considered scalar objects, which can be checked with
+    the new ``isscalar`` Aperture property. [#852]
+
+  - Non-scalar Aperture objects can now be index, sliced, and
+    iterated. [#852]
+
+  - Scalar Aperture objects now return scalar ``positions`` and
+    ``bounding_boxes`` properties and its ``to_mask`` method returns
+    an ``ApertureMask`` object instead of a length-1 list containing
+    an ``ApertureMask``. [#852]
+
+  - Deprecated the Aperture ``mask_area`` method. [#853]
+
+  - Aperture ``area`` is now an attribute instead of a method. [#854]
+
+  - The Aperture plot keyword ``ax`` was deprecated and renamed to
+    ``axes``. [#854]
+
+  - Deprecated the ``units`` keyword in ``aperture_photometry``
+    and the ``PixelAperture.do_photometry`` method. [#866, #861]
+
+  - Deprecated ``PrimaryHDU``, ``ImageHDU``, and ``HDUList`` inputs
+    to ``aperture_photometry``. [#867]
+
+- ``photutils.background``
+
+  - The ``Background2D`` ``plot_meshes`` keyword ``ax`` was deprecated
+    and renamed to ``axes``. [#854]
+
+- ``photutils.detection``
+
+  - Removed deprecated ``subpixel`` keyword for ``find_peaks``. [#835]
+
+  - ``DAOStarFinder``, ``IRAFStarFinder``, and ``find_peaks`` now return
+    ``None`` if no source/peaks are found.  Also, for this case a
+    ``NoDetectionsWarning`` is issued. [#836]
+
+  - Deprecated the ``BoundingBox`` ``as_patch`` method (instead use
+    ``as_artist``). [#851]
+
+- ``photutils.segmentation``
+
+  - Removed deprecated ``SegmentationImage`` attributes
+    ``data_masked``, ``max``, and ``is_sequential``  and methods
+    ``area`` and ``relabel_sequential``. [#825]
+
+  - Renamed ``SegmentationImage`` methods ``cmap`` (deprecated) to
+    ``make_cmap`` and ``relabel`` (deprecated) to ``reassign_label``.
+    The new ``reassign_label`` method gains a ``relabel`` keyword.
+    [#825]
+
+  - The ``SegmentationImage`` ``segments`` and ``slices`` attributes
+    now have the same length as ``labels`` (no ``None`` placeholders).
+    [#825]
+
+  - ``detect_sources`` now returns ``None`` is no sources are found.
+    Also, for this case a ``NoDetectionsWarning`` is issued. [#836]
+
+  - The ``SegmentationImage`` input ``data`` array must contain at
+    least one non-zero pixel and must not contain any non-finite values.
+    [#836]
+
+  - A ``ValueError`` is raised if an empty list is input into
+    ``SourceCatalog`` or no valid sources are defined in
+    ``source_properties``. [#836]
+
+  - Deprecated the ``values`` and ``coords`` attributes in
+    ``SourceProperties``. [#858]
+
+  - Deprecated the unused ``mask_value`` keyword in
+    ``make_source_mask``. [#858]
+
+  - The ``bbox`` property now returns a ``BoundingBox`` instance.
+    [#863]
+
+  - The ``xmin/ymin`` and ``xmax/ymax`` properties have been
+    deprecated with the replacements having a ``bbox_`` prefix (e.g.
+    ``bbox_xmin``). [#863]
+
+  - The ``orientation`` property is now returned as a ``Quantity``
+    instance in units of degrees. [#863]
+
+- ``photutils.utils``
+
+  - Renamed ``random_cmap`` to ``make_random_cmap``. [#825]
+
+  - Removed deprecated ``cutout_footprint`` function. [#835]
+
+  - Deprecated the ``wcs_helpers`` functions
+    ``pixel_scale_angle_at_skycoord``, ``assert_angle_or_pixel``,
+    ``assert_angle``, and ``pixel_to_icrs_coords``. [#846]
+
+- ``photutils.psf``
+
+  - ``FittableImageModel`` and subclasses now allow for different ``oversampling``
+    factors to be specified in x and y directions. [#834]
+
+  - Removed ``pixel_scale`` keyword from ``EPSFStar``, ``EPSFBuilder``,
+    and ``EPSFModel``. [#815]
+
+  - Added ``oversampling`` keyword to ``centroid_com``. [#816]
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+-
 
 
 0.6 (2018-12-11)

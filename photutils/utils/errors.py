@@ -1,4 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Utilities for calculating errors.
+"""
 
 import numpy as np
 import astropy.units as u
@@ -49,35 +52,52 @@ def calc_total_error(data, bkg_error, effective_gain):
 
     The total error array, :math:`\\sigma_{\\mathrm{tot}}` is:
 
-    .. math:: \\sigma_{\\mathrm{tot}} = \\sqrt{\\sigma_{\\mathrm{b}}^2 +
-                  \\frac{I}{g}}
+    .. math:: \\sigma_{\\mathrm{tot}} = \\sqrt{\\sigma_{\\mathrm{bkg}}^2 +
+                  \\frac{I}{g_{\\mathrm{eff}}}}
 
-    where :math:`\\sigma_b`, :math:`I`, and :math:`g` are the background
-    ``bkg_error`` image, ``data`` image, and ``effective_gain``,
+    where :math:`\\sigma_{\\mathrm{bkg}}`, :math:`I`, and
+    :math:`g_{\\mathrm{eff}}` are the background ``bkg_error`` image,
+    ``data`` image, and ``effective_gain`` (image or scalar),
     respectively.
 
-    Pixels where ``data`` (:math:`I_i)` is negative do not contribute
-    additional Poisson noise to the total error, i.e.
-    :math:`\\sigma_{\\mathrm{tot}, i} = \\sigma_{\\mathrm{b}, i}`.  Note
-    that this is different from `SExtractor`_, which sums the total
-    variance in the segment, including pixels where :math:`I_i` is
-    negative.  In such cases, `SExtractor`_ underestimates the total
-    errors.  Also note that SExtractor computes Poisson errors from
-    background-subtracted data, which also results in an underestimation
-    of the Poisson noise.
-
     ``effective_gain`` can either be a scalar value or a 2D image with
-    the same shape as the ``data``.  A 2D image is useful with mosaic
-    images that have variable depths (i.e., exposure times) across the
-    field.  For example, one should use an exposure-time map as the
-    ``effective_gain`` for a variable depth mosaic image in count-rate
-    units.
+    the same shape as the ``data``.  For example, if your input ``data``
+    are in units of electrons/s then ``effective_gain`` should be the
+    exposure time or an exposure-time map.  A 2D ``effective_gain``
+    image is useful with a ``data`` image that has variable depths
+    across the field (e.g. a mosaic image with non-uniform exposure
+    times).  As an example, if your input ``data`` is a variable-depth
+    mosaic image in units of electrons/s, then ``effective_gain`` should
+    be an exposure time map.
 
-    As an example, if your input ``data`` are in units of ADU, then
-    ``effective_gain`` should be in units of electrons/ADU (or
-    photons/ADU).  If your input ``data`` are in units of electrons/s
-    then ``effective_gain`` should be the exposure time or an exposure
-    time map (e.g., for mosaics with non-uniform exposure times).
+    Pixels where ``data`` (:math:`I_i)` is negative are excluded from
+    the total error calculation, i.e.  :math:`\\sigma_{\\mathrm{tot}, i}
+    = \\sigma_{\\mathrm{bkg}, i}`.  Note that this is different from
+    `SExtractor`_, which includes pixels where :math:`I_i` is negative
+    and therefore can underestimate the total errors in such cases.
+
+    To replicate `SExtractor`_ errors when it is configured to consider
+    weight maps as gain maps (i.e. 'WEIGHT_GAIN=Y'; which is the
+    default), one should input an ``effective_gain`` calculated as:
+
+    .. math:: g_{\\mathrm{eff}}^{\\prime} = g_{\\mathrm{eff}} \\left(
+       \\frac{\\mathrm{RMS_{\\mathrm{median}}^2}}{\\sigma_{\\mathrm{bkg}}^2} \\right)
+
+    where :math:`\\sigma_{\\mathrm{bkg}}` are the background-only
+    errors, :math:`g_{\\mathrm{eff}}` is the effective gain, and
+    :math:`\\mathrm{RMS_{\\mathrm{median}}}` is the median value of the
+    low-resolution background RMS map. In `SExtractor`_ this value is
+    printed to stdout as "(M+D) RMS: <value>".  If you are using
+    `~photutils.Background2D`, the median value of the low-resolution
+    background RMS map is returned via the
+    `~photutils.Background2D.background_rms_median` attribute.
+
+    In that case the total error is:
+
+    .. math:: \\sigma_{\\mathrm{tot}} = \\sqrt{\\sigma_{\\mathrm{bkg}}^2 +
+        \\left(\\frac{I}{g_{\\mathrm{eff}}}\\right)
+        \\left(\\frac{\\sigma_{\\mathrm{bkg}}^2}
+        {\\mathrm{RMS_{\\mathrm{median}}^2}}\\right)}
 
     .. _SExtractor: http://www.astromatic.net/software/sextractor
     """

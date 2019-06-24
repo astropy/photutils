@@ -1,12 +1,16 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
+import warnings
+
 import numpy as np
-from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.convolution import Gaussian2DKernel
+from astropy.stats import gaussian_fwhm_to_sigma
+from astropy.utils.decorators import deprecated_renamed_argument
 
 from .core import SegmentationImage
 from ..detection import detect_threshold
 from ..utils.convolution import filter_data
+from ..utils.exceptions import NoDetectionsWarning
 
 
 __all__ = ['detect_sources', 'make_source_mask']
@@ -64,10 +68,11 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
 
     Returns
     -------
-    segment_image : `~photutils.segmentation.SegmentationImage`
+    segment_image : `~photutils.segmentation.SegmentationImage` or `None`
         A 2D segmentation image, with the same shape as ``data``, where
         sources are marked by different positive integer values.  A
-        value of zero is reserved for the background.
+        value of zero is reserved for the background.  If no sources
+        are found then `None` is returned.
 
     See Also
     --------
@@ -156,9 +161,14 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
     # now relabel to make consecutive label indices
     segm_img, nobj = ndimage.label(segm_img, structure=selem)
 
-    return SegmentationImage(segm_img)
+    if nobj == 0:
+        warnings.warn('No sources were found.', NoDetectionsWarning)
+        return None
+    else:
+        return SegmentationImage(segm_img)
 
 
+@deprecated_renamed_argument('mask_value', None, 0.7)
 def make_source_mask(data, snr, npixels, mask=None, mask_value=None,
                      filter_fwhm=None, filter_size=3, filter_kernel=None,
                      sigclip_sigma=3.0, sigclip_iters=5, dilate_size=11):
@@ -186,6 +196,7 @@ def make_source_mask(data, snr, npixels, mask=None, mask_value=None,
         statistics.
 
     mask_value : float, optional
+        Deprecated.
         An image data value (e.g., ``0.0``) that is ignored when
         computing the image background statistics.  ``mask_value`` will
         be ignored if ``mask`` is input.

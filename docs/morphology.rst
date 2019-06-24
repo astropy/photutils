@@ -31,12 +31,12 @@ First, we create the source image and subtract its background::
     >>> from photutils.datasets import make_4gaussians_image
     >>> from astropy.stats import sigma_clipped_stats
     >>> data = make_4gaussians_image()[43:79, 76:104]
-    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, iters=5)
+    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     >>> data -= median    # subtract background
 
 Then, calculate its properties:
 
-.. doctest-requires:: scipy, skimage
+.. doctest-requires:: scipy
 
     >>> from photutils import data_properties
     >>> cat = data_properties(data)
@@ -48,10 +48,10 @@ Then, calculate its properties:
     >>> tbl['semiminor_axis_sigma'].info.format = '.10f'
     >>> tbl['orientation'].info.format = '.10f'
     >>> print(tbl)
-     id   xcentroid     ycentroid   ... semiminor_axis_sigma orientation
-             pix           pix      ...         pix              rad
-    --- ------------- ------------- ... -------------------- ------------
-      1 14.0225090502 16.9901801466 ...         3.6977761870 1.0494368937
+     id   xcentroid     ycentroid   ... semiminor_axis_sigma  orientation
+             pix           pix      ...         pix               deg
+    --- ------------- ------------- ... -------------------- -------------
+      1 14.0225090502 16.9901801466 ...         3.6977761870 60.1283048753
 
 Now let's use the measured morphological properties to define an
 approximate isophotal ellipse for the source:

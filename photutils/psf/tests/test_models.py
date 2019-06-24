@@ -99,6 +99,20 @@ class TestFittableImageModel:
         assert_allclose(val36, model_oversampled(2.5 + 0.66, -3.5 + 0.66),
                         rtol=1.e-6)
 
+    def test_oversampling_inputs(self):
+        data = np.arange(30).reshape(5, 6)
+        for oversampling in [4, (3, 3), (3, 4), '1', ('1', '2')]:
+            fim = FittableImageModel(data, oversampling=oversampling)
+            if not hasattr(oversampling, '__len__'):
+                _oversamp = float(oversampling)
+            else:
+                _oversamp = tuple(float(o) for o in oversampling)
+            assert np.all(fim._oversampling == _oversamp)
+
+        for oversampling in ['a', ('b', 2), (-1, 3), -1]:
+            with pytest.raises(ValueError):
+                fim = FittableImageModel(data, oversampling=oversampling)
+
 
 class TestGriddedPSFModel:
     def setup_class(self):

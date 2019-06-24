@@ -84,11 +84,12 @@ Let's plot the image and mark the location of detected sources:
 
 .. doctest-skip::
 
+    >>> import numpy as np
     >>> import matplotlib.pyplot as plt
     >>> from astropy.visualization import SqrtStretch
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> from photutils import CircularAperture
-    >>> positions = (sources['xcentroid'], sources['ycentroid'])
+    >>> positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
     >>> apertures = CircularAperture(positions, r=4.)
     >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> plt.imshow(data, cmap='Greys', origin='lower', norm=norm)
@@ -96,6 +97,7 @@ Let's plot the image and mark the location of detected sources:
 
 .. plot::
 
+    import numpy as np
     import matplotlib.pyplot as plt
     from astropy.stats import sigma_clipped_stats
     from astropy.visualization import SqrtStretch
@@ -107,7 +109,7 @@ Let's plot the image and mark the location of detected sources:
     mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)
     sources = daofind(data - median)
-    positions = (sources['xcentroid'], sources['ycentroid'])
+    positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
     apertures = CircularAperture(positions, r=4.)
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data, cmap='Greys', origin='lower', norm=norm)
@@ -137,6 +139,7 @@ regions.  No sources will be detected in the masked regions:
 
 .. plot::
 
+    import numpy as np
     import matplotlib.pyplot as plt
     from astropy.stats import sigma_clipped_stats
     from astropy.visualization import SqrtStretch
@@ -152,7 +155,7 @@ regions.  No sources will be detected in the masked regions:
     mask[50:151, 50:351] = True
     mask[250:351, 150:351] = True
     sources = daofind(data - median, mask=mask)
-    positions = (sources['xcentroid'], sources['ycentroid'])
+    positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
     apertures = CircularAperture(positions, r=4.)
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data, cmap='Greys', origin='lower', norm=norm)
@@ -215,11 +218,12 @@ And let's plot the location of the detected peaks in the image:
 
 .. doctest-skip::
 
+    >>> import numpy as np
     >>> import matplotlib.pyplot as plt
     >>> from astropy.visualization import simple_norm
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> from photutils import CircularAperture
-    >>> positions = (tbl['x_peak'], tbl['y_peak'])
+    >>> positions = np.transpose((tbl['x_peak'], tbl['y_peak']))
     >>> apertures = CircularAperture(positions, r=5.)
     >>> norm = simple_norm(data, 'sqrt', percent=99.9)
     >>> plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm)
@@ -229,6 +233,7 @@ And let's plot the location of the detected peaks in the image:
 
 .. plot::
 
+    import numpy as np
     from astropy.stats import sigma_clipped_stats
     from photutils import find_peaks, CircularAperture
     from photutils.datasets import make_100gaussians_image
@@ -239,7 +244,7 @@ And let's plot the location of the detected peaks in the image:
 
     import matplotlib.pyplot as plt
     from astropy.visualization import simple_norm
-    positions = (tbl['x_peak'], tbl['y_peak'])
+    positions = np.transpose((tbl['x_peak'], tbl['y_peak']))
     apertures = CircularAperture(positions, r=5.)
     norm = simple_norm(data, 'sqrt', percent=99.9)
     plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm)
