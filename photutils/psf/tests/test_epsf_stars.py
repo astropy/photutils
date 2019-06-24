@@ -3,13 +3,15 @@
 Tests for the epsf_stars module.
 """
 
-from astropy.modeling.models import Moffat2D
+from astropy.modeling.models import Moffat2D, Gaussian2D
 from astropy.nddata import NDData
 from astropy.table import Table
 import numpy as np
+from numpy.testing import assert_allclose
 import pytest
 
 from ..epsf_stars import extract_stars, EPSFStar, EPSFStars
+from ..models import EPSFModel
 
 try:
     import scipy  # noqa
@@ -57,3 +59,23 @@ class TestExtractStars:
 
         with pytest.raises(ValueError):
             extract_stars([self.nddata, self.nddata], self.stars_tbl)
+
+
+def test_epsf_star_residual_image():
+    """
+    Test to ensure ``compute_residual_image`` gives correct residuals.
+    """
+
+    size = 100
+    yy, xx, = np.mgrid[0:size, 0:size]
+    gmodel = Gaussian2D(100, 50, 50, 10, 10)(xx, yy)
+    epsf = EPSFModel(gmodel, oversampling=4)
+    data = np.zeros((size, size))
+    data += epsf.evaluate(x=xx, y=yy, flux=16, x_0=50, y_0=50)
+    tbl = Table()
+    tbl['x'] = [50.]
+    tbl['y'] = [50.]
+    stars = extract_stars(NDData(data), tbl, size=25)
+    residual = stars[0].compute_residual_image(epsf)
+
+    assert_allclose(np.sum(residual), 0., atol=1.e-6)
