@@ -89,6 +89,11 @@ Bug Fixes
     apertures) would be a length-1 array containing a ``SkyCoord``
     object instead of a length-1 ``SkyCoord`` object. [#844]
 
+- ``photutils.psf``
+
+  - Fixed a bug in the ``EPSFStar`` ``register_epsf`` and
+    ``compute_residual_image`` computations. [#885]
+
 - ``photutils.segmentation``
 
   - Fixed an issue where ``deblend_sources`` could fail for sources

@@ -198,7 +198,8 @@ class EPSFStar:
         yy = epsf._oversampling[1] * (yy - self.cutout_center[1])
 
         return (self.flux * np.prod(epsf._oversampling) *
-                epsf.evaluate(xx, yy, flux=1.0, x_0=0.0, y_0=0.0))
+                epsf.evaluate(xx, yy, flux=1.0, x_0=0.0, y_0=0.0,
+                              use_oversampling=False))
 
     def compute_residual_image(self, epsf):
         """
