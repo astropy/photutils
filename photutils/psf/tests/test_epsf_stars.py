@@ -61,6 +61,7 @@ class TestExtractStars:
             extract_stars([self.nddata, self.nddata], self.stars_tbl)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_epsf_star_residual_image():
     """
     Test to ensure ``compute_residual_image`` gives correct residuals.
