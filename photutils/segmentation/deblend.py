@@ -289,8 +289,12 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
                 # intersected label(s) with the level below, then remove
                 # the intersected label(s) in the lower level, add the
                 # higher level, and relabel.
-                segm_tree[j].remove_labels(intersect_labels)
-                new_segments = segm_tree[j].data + segm_tree[j - 1].data
+                if len(set(segm_tree[j].labels)
+                       .difference(set(intersect_labels))) > 0:
+                    segm_tree[j].remove_labels(intersect_labels)
+                    new_segments = segm_tree[j].data + segm_tree[j - 1].data
+                else:
+                    new_segments = segm_tree[j - 1].data
                 new_segm, _ = ndimage.label(new_segments)
                 segm_tree[j - 1] = SegmentationImage(new_segm)
 
