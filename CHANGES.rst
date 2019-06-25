@@ -118,6 +118,9 @@ Bug Fixes
   - Fixed ``SegmentationImage`` ``outline_segments`` to include
     outlines along the image boundaries. [#825]
 
+  - Fixed ``SegmentationImage.is_consecutive`` to return ``True`` only
+    if the labels are consecutive and start with label=1. [#886]
+
 - ``photutils.segmentation``
 
   - Fixed a bug in ``filter_data`` where units were dropped for data
