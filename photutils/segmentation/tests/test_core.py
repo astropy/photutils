@@ -158,6 +158,13 @@ class TestSegmentationImage:
     def test_is_consecutive(self):
         assert not self.segm.is_consecutive
 
+        data = [[2, 2, 0], [0, 3, 3], [0, 0, 4]]
+        segm = SegmentationImage(data)
+        assert not segm.is_consecutive  # does not start with label=1
+
+        segm.relabel_consecutive(start_label=1)
+        assert segm.is_consecutive
+
     def test_missing_labels(self):
         assert_allclose(self.segm.missing_labels, [2, 6])
 

@@ -457,16 +457,17 @@ class SegmentationImage:
     def is_consecutive(self):
         """
         Determine whether or not the non-zero labels in the segmentation
-        image are consecutive (i.e. no missing values).
+        image are consecutive and start from 1.
         """
 
-        return (self.labels[-1] - self.labels[0] + 1) == self.nlabels
+        return ((self.labels[-1] - self.labels[0] + 1) == self.nlabels and
+                self.labels[0] == 1)
 
     @lazyproperty
     def missing_labels(self):
         """
         A 1D `~numpy.ndarray` of the sorted non-zero labels that are
-        missing in the consecutive sequence from zero to the maximum
+        missing in the consecutive sequence from one to the maximum
         label number.
         """
 
@@ -768,14 +769,14 @@ class SegmentationImage:
 
     def relabel_consecutive(self, start_label=1):
         """
-        Reassign the label numbers consecutively, such that there are no
-        missing label numbers.
+        Reassign the label numbers consecutively starting from a given
+        label number.
 
         Parameters
         ----------
         start_label : int, optional
-            The starting label number, which should be a positive
-            integer.  The default is 1.
+            The starting label number, which should be a strictly
+            positive integer.  The default is 1.
 
         Examples
         --------
@@ -799,7 +800,8 @@ class SegmentationImage:
         if start_label <= 0:
             raise ValueError('start_label must be > 0.')
 
-        if self.is_consecutive and (self.labels[0] == start_label):
+        if ((self.labels[-1] - self.labels[0] + 1) == self.nlabels and
+                (self.labels[0] == start_label)):
             return
 
         new_labels = np.zeros(self.max_label + 1, dtype=np.int)
