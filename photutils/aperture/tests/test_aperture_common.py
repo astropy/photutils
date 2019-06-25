@@ -26,8 +26,9 @@ class BaseTestAperture(BaseTestApertureParams):
                                      expected_positions.dec)
         else:
             assert_array_equal(aper.positions, expected_positions)
-            for param in aper._params:
-                assert getattr(aper, param) == getattr(self.aperture, param)
+            for shape_param in aper._shape_params:
+                assert (getattr(aper, shape_param) ==
+                        getattr(self.aperture, shape_param))
 
     def test_slice(self):
         aper = self.aperture[self.slc]
@@ -41,5 +42,6 @@ class BaseTestAperture(BaseTestApertureParams):
                                      expected_positions.dec)
         else:
             assert_array_equal(aper.positions, expected_positions)
-            for param in aper._params:
-                assert getattr(aper, param) == getattr(self.aperture, param)
+            for shape_param in aper._shape_params:
+                assert (getattr(aper, shape_param) ==
+                        getattr(self.aperture, shape_param))
