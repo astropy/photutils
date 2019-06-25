@@ -140,13 +140,13 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
     >>> aper = CircularAperture((pos1, pos2, pos3), 3.)
     """
 
+    _shape_params = ('r',)
     positions = PixelPositions('positions')
     r = PositiveScalar('r')
 
     def __init__(self, positions, r):
         self.positions = positions
         self.r = r
-        self._params = ['r']
 
     @property
     def bounding_boxes(self):
@@ -278,6 +278,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
     >>> aper = CircularAnnulus((pos1, pos2, pos3), 3., 5.)
     """
 
+    _shape_params = ('r_in', 'r_out')
     positions = PixelPositions('positions')
     r_in = PositiveScalar('r_in')
     r_out = PositiveScalar('r_out')
@@ -289,7 +290,6 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         self.positions = positions
         self.r_in = r_in
         self.r_out = r_out
-        self._params = ['r_in', 'r_out']
 
     @property
     def bounding_boxes(self):
@@ -403,13 +403,13 @@ class SkyCircularAperture(SkyAperture):
     >>> aper = SkyCircularAperture(positions, 0.5*u.arcsec)
     """
 
+    _shape_params = ('r',)
     positions = SkyCoordPositions('positions')
     r = AngleOrPixelScalarQuantity('r')
 
     def __init__(self, positions, r):
         self.positions = positions
         self.r = r
-        self._params = ['r']
 
     def to_pixel(self, wcs, mode='all'):
         """
@@ -466,6 +466,7 @@ class SkyCircularAnnulus(SkyAperture):
     >>> aper = SkyCircularAnnulus(positions, 0.5*u.arcsec, 1.0*u.arcsec)
     """
 
+    _shape_params = ('r_in', 'r_out')
     positions = SkyCoordPositions('positions')
     r_in = AngleOrPixelScalarQuantity('r_in')
     r_out = AngleOrPixelScalarQuantity('r_out')
@@ -478,7 +479,6 @@ class SkyCircularAnnulus(SkyAperture):
         self.positions = positions
         self.r_in = r_in
         self.r_out = r_out
-        self._params = ['r_in', 'r_out']
 
     def to_pixel(self, wcs, mode='all'):
         """
