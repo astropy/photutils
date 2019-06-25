@@ -134,11 +134,11 @@ class BoundingBox:
             (self.iymax == other.iymax)
         )
 
-    def __or__(self, bbox):
-        return self.union(bbox)
+    def __or__(self, other):
+        return self.union(other)
 
-    def __and__(self, bbox):
-        return self.intersection(bbox)
+    def __and__(self, other):
+        return self.intersection(other)
 
     def __repr__(self):
         data = self.__dict__
@@ -283,57 +283,59 @@ class BoundingBox:
         aper = self.to_aperture()
         aper.plot(axes=axes, origin=origin, **kwargs)
 
-    def union(self, bbox):
+    def union(self, other):
         """
         Return a `BoundingBox` representing the union of this
         `BoundingBox` with another `BoundingBox`.
 
         Parameters
         ----------
-        bbox : `~photutils.BoundingBox`
+        other : `~photutils.BoundingBox`
             The `BoundingBox` to join with this one.
 
         Returns
         -------
         result : `~photutils.BoundingBox`
-            A `BoundingBox` representing the union of the input ``bbox``
-            with this one.
+            A `BoundingBox` representing the union of the input
+            `BoundingBox` with this one.
         """
 
-        if not isinstance(bbox, BoundingBox):
-            raise TypeError('bbox must be a BoundingBox instance')
+        if not isinstance(other, BoundingBox):
+            raise TypeError('BoundingBox can be joined only with another '
+                            'BoundingBox.')
 
-        ixmin = min((self.ixmin, bbox.ixmin))
-        ixmax = max((self.ixmax, bbox.ixmax))
-        iymin = min((self.iymin, bbox.iymin))
-        iymax = max((self.iymax, bbox.iymax))
+        ixmin = min((self.ixmin, other.ixmin))
+        ixmax = max((self.ixmax, other.ixmax))
+        iymin = min((self.iymin, other.iymin))
+        iymax = max((self.iymax, other.iymax))
 
         return BoundingBox(ixmin=ixmin, ixmax=ixmax, iymin=iymin, iymax=iymax)
 
-    def intersection(self, bbox):
+    def intersection(self, other):
         """
         Return a `BoundingBox` representing the intersection of this
         `BoundingBox` with another `BoundingBox`.
 
         Parameters
         ----------
-        bbox : `~photutils.BoundingBox`
+        other : `~photutils.BoundingBox`
             The `BoundingBox` to intersect with this one.
 
         Returns
         -------
         result : `~photutils.BoundingBox`
             A `BoundingBox` representing the intersection of the input
-            ``bbox`` with this one.
+            `BoundingBox` with this one.
         """
 
-        if not isinstance(bbox, BoundingBox):
-            raise TypeError('bbox must be a BoundingBox instance')
+        if not isinstance(other, BoundingBox):
+            raise TypeError('BoundingBox can be intersected only with '
+                            'another BoundingBox.')
 
-        ixmin = max(self.ixmin, bbox.ixmin)
-        ixmax = min(self.ixmax, bbox.ixmax)
-        iymin = max(self.iymin, bbox.iymin)
-        iymax = min(self.iymax, bbox.iymax)
+        ixmin = max(self.ixmin, other.ixmin)
+        ixmax = min(self.ixmax, other.ixmax)
+        iymin = max(self.iymin, other.iymin)
+        iymax = min(self.iymax, other.iymax)
         if ixmax < ixmin or iymax < iymin:
             return None
 

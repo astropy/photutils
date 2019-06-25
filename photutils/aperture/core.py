@@ -30,6 +30,10 @@ class Aperture(metaclass=_ABCMetaAndInheritDocstrings):
     Abstract base class for all apertures.
     """
 
+    _shape_params = ()
+    positions = np.array(())
+    theta = None
+
     def __len__(self):
         if self.isscalar:
             raise TypeError('Scalar {0!r} object has no len()'
@@ -38,7 +42,7 @@ class Aperture(metaclass=_ABCMetaAndInheritDocstrings):
 
     def __getitem__(self, index):
         kwargs = dict()
-        for param in self._params:
+        for param in self._shape_params:
             kwargs[param] = getattr(self, param)
         return self.__class__(self.positions[index], **kwargs)
 
@@ -58,20 +62,20 @@ class Aperture(metaclass=_ABCMetaAndInheritDocstrings):
 
     def __repr__(self):
         prefix = '<{0}('.format(self.__class__.__name__)
-        params = [self._positions_str(prefix)]
-        for param in self._params:
-            params.append('{0}={1}'.format(param, getattr(self, param)))
-        params = ', '.join(params)
+        cls_info = [self._positions_str(prefix)]
+        for param in self._shape_params:
+            cls_info.append('{0}={1}'.format(param, getattr(self, param)))
+        cls_info = ', '.join(cls_info)
 
-        return '{0}{1})>'.format(prefix, params)
+        return '{0}{1})>'.format(prefix, cls_info)
 
     def __str__(self):
         prefix = 'positions'
         cls_info = [
             ('Aperture', self.__class__.__name__),
             (prefix, self._positions_str(prefix + ': '))]
-        if self._params is not None:
-            for param in self._params:
+        if self._shape_params is not None:
+            for param in self._shape_params:
                 cls_info.append((param, getattr(self, param)))
         fmt = ['{0}: {1}'.format(key, val) for key, val in cls_info]
 
@@ -79,6 +83,10 @@ class Aperture(metaclass=_ABCMetaAndInheritDocstrings):
 
     @property
     def shape(self):
+        """
+        The shape of the instance.
+        """
+
         if isinstance(self.positions, SkyCoord):
             return self.positions.shape
         else:
@@ -86,16 +94,11 @@ class Aperture(metaclass=_ABCMetaAndInheritDocstrings):
 
     @property
     def isscalar(self):
+        """
+        Whether the instance is scalar (i.e. a single position).
+        """
+
         return self.shape == ()
-
-    @property
-    @abc.abstractmethod
-    def positions(self):
-        """
-        The aperture positions.
-        """
-
-        raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
 class PixelAperture(Aperture):
@@ -574,25 +577,27 @@ class PixelAperture(Aperture):
         """
 
         sky_params = {}
-        x, y = np.transpose(self.positions)
-        sky_params['positions'] = pixel_to_skycoord(x, y, wcs, mode=mode)
+        xpos, ypos = np.transpose(self.positions)
+        sky_params['positions'] = pixel_to_skycoord(xpos, ypos, wcs,
+                                                    mode=mode)
 
         # The aperture object must have a single value for each shape
         # parameter so we must use a single pixel scale for all positions.
         # Here, we define the scale at the WCS CRVAL position.
         crval = SkyCoord(*wcs.wcs.crval, frame=wcs_to_celestial_frame(wcs),
                          unit=wcs.wcs.cunit)
-        scale, angle = _pixel_scale_angle_at_skycoord(crval, wcs)
+        pixscale, angle = _pixel_scale_angle_at_skycoord(crval, wcs)
 
-        params = self._params[:]
+        shape_params = list(self._shape_params)
+
         theta_key = 'theta'
-        if theta_key in self._params:
+        if theta_key in shape_params:
             sky_params[theta_key] = (self.theta * u.rad) - angle.to(u.rad)
-            params.remove(theta_key)
+            shape_params.remove(theta_key)
 
-        param_vals = [getattr(self, param) for param in params]
-        for param, param_val in zip(params, param_vals):
-            sky_params[param] = (param_val * u.pix * scale).to(u.arcsec)
+        for shape_param in shape_params:
+            value = getattr(self, shape_param)
+            sky_params[shape_param] = (value * u.pix * pixscale).to(u.arcsec)
 
         return sky_params
 
@@ -649,29 +654,30 @@ class SkyAperture(Aperture):
         """
 
         pixel_params = {}
-        x, y = skycoord_to_pixel(self.positions, wcs, mode=mode)
-        pixel_params['positions'] = np.array([x, y]).transpose()
+        xpos, ypos = skycoord_to_pixel(self.positions, wcs, mode=mode)
+        pixel_params['positions'] = np.array([xpos, ypos]).transpose()
 
         # The aperture object must have a single value for each shape
         # parameter so we must use a single pixel scale for all positions.
         # Here, we define the scale at the WCS CRVAL position.
         crval = SkyCoord(*wcs.wcs.crval, frame=wcs_to_celestial_frame(wcs),
                          unit=wcs.wcs.cunit)
-        scale, angle = _pixel_scale_angle_at_skycoord(crval, wcs)
+        pixscale, angle = _pixel_scale_angle_at_skycoord(crval, wcs)
 
-        params = self._params[:]
+        shape_params = list(self._shape_params)
+
         theta_key = 'theta'
-        if theta_key in self._params:
+        if theta_key in shape_params:
             pixel_params[theta_key] = (self.theta + angle).to(u.radian).value
-            params.remove(theta_key)
+            shape_params.remove(theta_key)
 
-        param_vals = [getattr(self, param) for param in params]
-        if param_vals[0].unit.physical_type == 'angle':
-            for param, param_val in zip(params, param_vals):
-                pixel_params[param] = (param_val / scale).to(u.pixel).value
-        else:    # pixels
-            for param, param_val in zip(params, param_vals):
-                pixel_params[param] = param_val.value
+        for shape_param in shape_params:
+            value = getattr(self, shape_param)
+            if value.unit.physical_type == 'angle':
+                pixel_params[shape_param] = ((value / pixscale)
+                                             .to(u.pixel).value)
+            else:
+                pixel_params[shape_param] = value.value
 
         return pixel_params
 

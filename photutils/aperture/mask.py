@@ -237,14 +237,14 @@ class ApertureMask:
             input ``data``.
         """
 
-        # make a copy to prevent changing the input data
-        cutout = self.cutout(data, fill_value=fill_value, copy=True)
-
+        cutout = self.cutout(data, fill_value=fill_value)
         if cutout is None:
             return None
         else:
-            # needed to zero out non-finite data values outside of the
-            # aperture mask but within the bounding box
-            cutout[self._mask] = 0.
+            weighted_cutout = cutout * self.data
 
-            return cutout * self.data
+            # needed to zero out non-finite data values outside of the
+            # mask but within the bounding box
+            weighted_cutout[self._mask] = 0.
+
+            return weighted_cutout

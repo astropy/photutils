@@ -170,6 +170,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
     >>> aper = EllipticalAperture((pos1, pos2, pos3), 5., 3., theta=np.pi)
     """
 
+    _shape_params = ('a', 'b', 'theta')
     positions = PixelPositions('positions')
     a = PositiveScalar('a')
     b = PositiveScalar('b')
@@ -180,7 +181,6 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         self.a = a
         self.b = b
         self.theta = theta
-        self._params = ['a', 'b', 'theta']
 
     @property
     def bounding_boxes(self):
@@ -333,6 +333,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
     >>> aper = EllipticalAnnulus((pos1, pos2, pos3), 3., 8., 5., theta=np.pi)
     """
 
+    _shape_params = ('a_in', 'a_out', 'b_out', 'theta')
     positions = PixelPositions('positions')
     a_in = PositiveScalar('a_in')
     a_out = PositiveScalar('a_out')
@@ -349,7 +350,6 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         self.b_out = b_out
         self.b_in = self.b_out * self.a_in / self.a_out
         self.theta = theta
-        self._params = ['a_in', 'a_out', 'b_out', 'theta']
 
     @property
     def bounding_boxes(self):
@@ -483,6 +483,7 @@ class SkyEllipticalAperture(SkyAperture):
     >>> aper = SkyEllipticalAperture(positions, 1.0*u.arcsec, 0.5*u.arcsec)
     """
 
+    _shape_params = ('a', 'b', 'theta')
     positions = SkyCoordPositions('positions')
     a = AngleOrPixelScalarQuantity('a')
     b = AngleOrPixelScalarQuantity('b')
@@ -497,7 +498,6 @@ class SkyEllipticalAperture(SkyAperture):
         self.a = a
         self.b = b
         self.theta = theta
-        self._params = ['a', 'b', 'theta']
 
     def to_pixel(self, wcs, mode='all'):
         """
@@ -566,6 +566,7 @@ class SkyEllipticalAnnulus(SkyAperture):
     ...                             1.0*u.arcsec)
     """
 
+    _shape_params = ('a_in', 'a_out', 'b_out', 'theta')
     positions = SkyCoordPositions('positions')
     a_in = AngleOrPixelScalarQuantity('a_in')
     a_out = AngleOrPixelScalarQuantity('a_out')
@@ -587,7 +588,6 @@ class SkyEllipticalAnnulus(SkyAperture):
         self.b_out = b_out
         self.b_in = self.b_out * self.a_in / self.a_out
         self.theta = theta
-        self._params = ['a_in', 'a_out', 'b_out', 'theta']
 
     def to_pixel(self, wcs, mode='all'):
         """

@@ -195,6 +195,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
     >>> aper = RectangularAperture((pos1, pos2, pos3), 5., 3., theta=np.pi)
     """
 
+    _shape_params = ('w', 'h', 'theta')
     positions = PixelPositions('positions')
     w = PositiveScalar('w')
     h = PositiveScalar('h')
@@ -205,7 +206,6 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         self.w = w
         self.h = h
         self.theta = theta
-        self._params = ['w', 'h', 'theta']
 
     @property
     def bounding_boxes(self):
@@ -364,6 +364,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     >>> aper = RectangularAnnulus((pos1, pos2, pos3), 3., 8., 5., theta=np.pi)
     """
 
+    _shape_params = ('w_in', 'w_out', 'h_out', 'theta')
     positions = PixelPositions('positions')
     w_in = PositiveScalar('w_in')
     w_out = PositiveScalar('w_out')
@@ -380,7 +381,6 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         self.h_out = h_out
         self.h_in = self.w_in * self.h_out / self.w_out
         self.theta = theta
-        self._params = ['w_in', 'w_out', 'h_out', 'theta']
 
     @property
     def bounding_boxes(self):
@@ -524,6 +524,7 @@ class SkyRectangularAperture(SkyAperture):
     >>> aper = SkyRectangularAperture(positions, 1.0*u.arcsec, 0.5*u.arcsec)
     """
 
+    _shape_params = ('w', 'h', 'theta')
     positions = SkyCoordPositions('positions')
     w = AngleOrPixelScalarQuantity('w')
     h = AngleOrPixelScalarQuantity('h')
@@ -538,7 +539,6 @@ class SkyRectangularAperture(SkyAperture):
         self.w = w
         self.h = h
         self.theta = theta
-        self._params = ['w', 'h', 'theta']
 
     def to_pixel(self, wcs, mode='all'):
         """
@@ -613,6 +613,7 @@ class SkyRectangularAnnulus(SkyAperture):
     ...                              5.0*u.arcsec)
     """
 
+    _shape_params = ('w_in', 'w_out', 'h_out', 'theta')
     positions = SkyCoordPositions('positions')
     w_in = AngleOrPixelScalarQuantity('w_in')
     w_out = AngleOrPixelScalarQuantity('w_out')
@@ -634,7 +635,6 @@ class SkyRectangularAnnulus(SkyAperture):
         self.h_out = h_out
         self.h_in = self.w_in * self.h_out / self.w_out
         self.theta = theta
-        self._params = ['w_in', 'w_out', 'h_out', 'theta']
 
     def to_pixel(self, wcs, mode='all'):
         """

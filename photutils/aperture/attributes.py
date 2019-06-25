@@ -5,7 +5,6 @@ validation.
 """
 
 import warnings
-import weakref
 
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -23,19 +22,20 @@ class ApertureAttribute:
 
     def __init__(self, name):
         self.name = name
-        self.values = weakref.WeakKeyDictionary()
 
     def __get__(self, instance, owner):
         if instance is None:
             return self
-        return self.values.get(instance, None)
+        return instance.__dict__[self.name]
 
     def __set__(self, instance, value):
         self._validate(value)
-        if isinstance(value, (u.Quantity, SkyCoord)):
-            self.values[instance] = value
-        else:
-            self.values[instance] = float(value)
+        if not isinstance(value, (u.Quantity, SkyCoord)):
+            value = float(value)
+        instance.__dict__[self.name] = value
+
+    def __delete__(self, instance):
+        del instance.__dict__[self.name]
 
     def _validate(self, value):
         """
@@ -75,7 +75,7 @@ class PixelPositions(ApertureAttribute):
                           '(x2, y2), (x3, y3)].', AstropyDeprecationWarning)
             value = np.transpose(value)
 
-        self.values[instance] = value
+        instance.__dict__[self.name] = value
 
     def _validate(self, value):
         if isinstance(value, u.Quantity) and value.unit != u.pixel:
