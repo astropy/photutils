@@ -215,13 +215,17 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
         raise ValueError('contrast must be >= 0 or <= 1, got '
                          '"{0}"'.format(contrast))
 
-    if connectivity == 4:
-        selem = ndimage.generate_binary_structure(2, 1)
-    elif connectivity == 8:
-        selem = ndimage.generate_binary_structure(2, 2)
+    ndim = data.ndim
+    if ndim == 1:
+        selem = ndimage.generate_binary_structure(ndim, 1)
     else:
-        raise ValueError('Invalid connectivity={0}.  '
-                         'Options are 4 or 8'.format(connectivity))
+        if connectivity == 4:
+            selem = ndimage.generate_binary_structure(ndim, 1)
+        elif connectivity == 8:
+            selem = ndimage.generate_binary_structure(ndim, 2)
+        else:
+            raise ValueError('Invalid connectivity={0}.  '
+                             'Options are 4 or 8'.format(connectivity))
 
     segm_mask = (segment_img.data > 0)
     source_values = data[segm_mask]

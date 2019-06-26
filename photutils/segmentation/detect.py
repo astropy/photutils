@@ -140,13 +140,17 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
                              'image.')
         image &= ~mask
 
-    if connectivity == 4:
-        selem = ndimage.generate_binary_structure(2, 1)
-    elif connectivity == 8:
-        selem = ndimage.generate_binary_structure(2, 2)
+    ndim = image.ndim
+    if ndim == 1:
+        selem = ndimage.generate_binary_structure(ndim, 1)
     else:
-        raise ValueError('Invalid connectivity={0}.  '
-                         'Options are 4 or 8'.format(connectivity))
+        if connectivity == 4:
+            selem = ndimage.generate_binary_structure(ndim, 1)
+        elif connectivity == 8:
+            selem = ndimage.generate_binary_structure(ndim, 2)
+        else:
+            raise ValueError('Invalid connectivity={0}.  '
+                             'Options are 4 or 8'.format(connectivity))
 
     segm_img, nobj = ndimage.label(image, structure=selem)
 
