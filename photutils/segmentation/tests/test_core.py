@@ -113,7 +113,7 @@ class TestSegmentationImage:
     def test_segment_repr_str(self):
         assert repr(self.segm[0]) == str(self.segm[0])
 
-        props = ['label', 'slices', 'bbox', 'area']
+        props = ['label', 'slices', 'area']
         for prop in props:
             assert '{}:'.format(prop) in repr(self.segm[0])
 
