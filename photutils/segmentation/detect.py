@@ -152,7 +152,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
             raise ValueError('Invalid connectivity={0}.  '
                              'Options are 4 or 8'.format(connectivity))
 
-    segm_img, nobj = ndimage.label(image, structure=selem)
+    segm_img, _ = ndimage.label(image, structure=selem)
 
     # remove objects with less than npixels
     # NOTE:  for typical data, making the cutout images is ~10x faster
@@ -164,14 +164,13 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         if np.count_nonzero(segment_mask) < npixels:
             cutout[segment_mask] = 0
 
-    # now relabel to make consecutive label indices
-    segm_img, nobj = ndimage.label(segm_img, structure=selem)
-
-    if nobj == 0:
+    if np.sum(segm_img) == 0:
         warnings.warn('No sources were found.', NoDetectionsWarning)
         return None
     else:
-        return SegmentationImage(segm_img)
+        segm = SegmentationImage(segm_img)
+        segm.relabel_consecutive()
+        return segm
 
 
 @deprecated_renamed_argument('mask_value', None, 0.7)
