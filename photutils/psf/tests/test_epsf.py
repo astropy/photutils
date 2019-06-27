@@ -36,7 +36,7 @@ class TestEPSFBuild:
         # define random star positions
         nstars = 50
         from astropy.utils.misc import NumpyRNGContext
-        with NumpyRNGContext(12345):    # seed for repeatability
+        with NumpyRNGContext(12345):  # seed for repeatability
             xx = np.random.uniform(low=0, high=shape[1], size=nstars)
             yy = np.random.uniform(low=0, high=shape[0], size=nstars)
 
@@ -50,7 +50,7 @@ class TestEPSFBuild:
                 coords.append(newcoord)
         yy, xx = np.transpose(coords)
 
-        with NumpyRNGContext(12345):    # seed for repeatability
+        with NumpyRNGContext(12345):  # seed for repeatability
             zz = np.random.uniform(low=0, high=200000., size=len(xx))
 
         # define a table of model parameters

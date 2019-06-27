@@ -1221,7 +1221,7 @@ class SourceProperties:
         by 1/12.
         """
 
-        increment = 1. / 12     # arbitrary SExtractor value
+        increment = 1. / 12  # arbitrary SExtractor value
         value = (covariance[0, 0] * covariance[1, 1]) - covariance[0, 1]**2
         if value >= increment**2:
             return covariance
@@ -1300,7 +1300,7 @@ class SourceProperties:
         """
 
         covar_00, covar_01, _, covar_11 = self.covariance.flat
-        if covar_00 < 0 or covar_11 < 0:    # negative variance
+        if covar_00 < 0 or covar_11 < 0:  # negative variance
             return np.nan * u.deg  # pragma: no cover
 
         # Quantity output in radians because inputs are Quantities
@@ -1606,27 +1606,27 @@ def source_properties(data, segment_img, error=None, mask=None,
     Print some properties of the first object (labeled with ``1`` in the
     segmentation image):
 
-    >>> props[0].id    # id corresponds to segment label number
+    >>> props[0].id  # id corresponds to segment label number
     1
-    >>> props[0].centroid    # doctest: +FLOAT_CMP
+    >>> props[0].centroid  # doctest: +FLOAT_CMP
     <Quantity [0.8, 0.2] pix>
-    >>> props[0].source_sum    # doctest: +FLOAT_CMP
+    >>> props[0].source_sum  # doctest: +FLOAT_CMP
     5.0
-    >>> props[0].area    # doctest: +FLOAT_CMP
+    >>> props[0].area  # doctest: +FLOAT_CMP
     <Quantity 3. pix2>
-    >>> props[0].max_value    # doctest: +FLOAT_CMP
+    >>> props[0].max_value  # doctest: +FLOAT_CMP
     4.0
 
     Print some properties of the second object (labeled with ``2`` in
     the segmentation image):
 
-    >>> props[1].id    # id corresponds to segment label number
+    >>> props[1].id  # id corresponds to segment label number
     2
-    >>> props[1].centroid    # doctest: +FLOAT_CMP
+    >>> props[1].centroid  # doctest: +FLOAT_CMP
     <Quantity [2.36363636, 2.09090909] pix>
-    >>> props[1].perimeter    # doctest: +FLOAT_CMP
+    >>> props[1].perimeter  # doctest: +FLOAT_CMP
     <Quantity 5.41421356 pix>
-    >>> props[1].orientation    # doctest: +FLOAT_CMP
+    >>> props[1].orientation  # doctest: +FLOAT_CMP
     <Quantity -42.4996777 deg>
     """
 

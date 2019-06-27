@@ -146,7 +146,7 @@ Note that the output matching kernel from
 :func:`~photutils.psf.matching.create_matching_kernel` is always
 normalized such that the kernel array sums to 1::
 
-    >>> print(kernel.sum())    # doctest: +FLOAT_CMP
+    >>> print(kernel.sum())  # doctest: +FLOAT_CMP
     1.0
 
 Let's display the new matching kernel:
@@ -215,10 +215,10 @@ microns) PSF.  We load the PSFs using the
 :func:`~photutils.datasets.load_irac_psf` convenience function::
 
     >>> from photutils.datasets import load_irac_psf
-    >>> ch1_hdu = load_irac_psf(channel=1)    # doctest: +REMOTE_DATA
-    >>> ch4_hdu = load_irac_psf(channel=4)    # doctest: +REMOTE_DATA
-    >>> ch1 = ch1_hdu.data    # doctest: +REMOTE_DATA
-    >>> ch4 = ch4_hdu.data    # doctest: +REMOTE_DATA
+    >>> ch1_hdu = load_irac_psf(channel=1)  # doctest: +REMOTE_DATA
+    >>> ch4_hdu = load_irac_psf(channel=4)  # doctest: +REMOTE_DATA
+    >>> ch1 = ch1_hdu.data  # doctest: +REMOTE_DATA
+    >>> ch4 = ch4_hdu.data  # doctest: +REMOTE_DATA
 
 Let's display the images:
 

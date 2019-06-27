@@ -14,7 +14,7 @@ from .. import ShepardIDWInterpolator as idw
 from .. import interpolate_masked_data, mask_to_mirrored_num
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

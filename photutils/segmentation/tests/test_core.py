@@ -10,13 +10,13 @@ import pytest
 from ..core import Segment, SegmentationImage
 
 try:
-    import matplotlib    # noqa
+    import matplotlib  # noqa
     HAS_MATPLOTLIB = True
 except ImportError:
     HAS_MATPLOTLIB = False
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

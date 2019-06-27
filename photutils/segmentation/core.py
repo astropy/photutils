@@ -1121,7 +1121,7 @@ class SegmentationImage:
         ...                           [7, 7, 0, 5, 5, 5],
         ...                           [7, 7, 0, 0, 5, 5]])
         >>> mask = np.zeros(segm.data.shape, dtype=bool)
-        >>> mask[0, :] = True    # mask the first row
+        >>> mask[0, :] = True  # mask the first row
         >>> segm.remove_masked_labels(mask)
         >>> segm.data
         array([[0, 0, 0, 0, 0, 0],

@@ -10,13 +10,13 @@ subset of the image::
 
     >>> import numpy as np
     >>> from photutils import datasets
-    >>> hdu = datasets.load_star_image()    # doctest: +REMOTE_DATA
-    >>> image = hdu.data[500:700, 500:700].astype(float)    # doctest: +REMOTE_DATA
+    >>> hdu = datasets.load_star_image()  # doctest: +REMOTE_DATA
+    >>> image = hdu.data[500:700, 500:700].astype(float)  # doctest: +REMOTE_DATA
 
 We then subtract a rough estimate of the background, calculated using
 the image median::
 
-    >>> image -= np.median(image)    # doctest: +REMOTE_DATA
+    >>> image -= np.median(image)  # doctest: +REMOTE_DATA
 
 In the remainder of this example, we assume that the data is
 background-subtracted.
@@ -32,12 +32,12 @@ detected sources are returned as an Astropy `~astropy.table.Table`:
 
     >>> from photutils import DAOStarFinder
     >>> from astropy.stats import mad_std
-    >>> bkg_sigma = mad_std(image)    # doctest: +REMOTE_DATA
-    >>> daofind = DAOStarFinder(fwhm=4., threshold=3.*bkg_sigma)    # doctest: +REMOTE_DATA
-    >>> sources = daofind(image)    # doctest: +REMOTE_DATA
+    >>> bkg_sigma = mad_std(image)  # doctest: +REMOTE_DATA
+    >>> daofind = DAOStarFinder(fwhm=4., threshold=3.*bkg_sigma)  # doctest: +REMOTE_DATA
+    >>> sources = daofind(image)  # doctest: +REMOTE_DATA
     >>> for col in sources.colnames:  # doctest: +REMOTE_DATA
     ...     sources[col].info.format = '%.8g'  # for consistent table output
-    >>> print(sources)    # doctest: +REMOTE_DATA
+    >>> print(sources)  # doctest: +REMOTE_DATA
      id xcentroid ycentroid  sharpness  ... sky peak    flux       mag
     --- --------- ---------- ---------- ... --- ---- --------- -----------
       1 182.83866 0.16767019 0.85099873 ...   0 3824 2.8028346  -1.1189937
@@ -64,9 +64,9 @@ of the photometry:
 .. doctest-requires:: scipy
 
     >>> from photutils import aperture_photometry, CircularAperture
-    >>> positions = np.transpose((sources['xcentroid'], sources['ycentroid']))    # doctest: +REMOTE_DATA
-    >>> apertures = CircularAperture(positions, r=4.)    # doctest: +REMOTE_DATA
-    >>> phot_table = aperture_photometry(image, apertures)    # doctest: +REMOTE_DATA
+    >>> positions = np.transpose((sources['xcentroid'], sources['ycentroid']))  # doctest: +REMOTE_DATA
+    >>> apertures = CircularAperture(positions, r=4.)  # doctest: +REMOTE_DATA
+    >>> phot_table = aperture_photometry(image, apertures)  # doctest: +REMOTE_DATA
     >>> for col in phot_table.colnames:  # doctest: +REMOTE_DATA
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)  # doctest: +REMOTE_DATA

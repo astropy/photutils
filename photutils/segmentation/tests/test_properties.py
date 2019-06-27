@@ -21,7 +21,7 @@ from ..detect import detect_sources
 from ..properties import SourceCatalog, SourceProperties, source_properties
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

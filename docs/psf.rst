@@ -230,9 +230,9 @@ First let's create an image with four overlapping stars::
     >>> rcParams['font.size'] = 13
     >>> import matplotlib.pyplot as plt
     >>> plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
-    ...            origin='lower') # doctest: +SKIP
-    >>> plt.title('Simulated data') # doctest: +SKIP
-    >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04) # doctest: +SKIP
+    ...            origin='lower')  # doctest: +SKIP
+    >>> plt.title('Simulated data')  # doctest: +SKIP
+    >>> plt.colorbar(orientation='horizontal', fraction=0.046, pad=0.04)  # doctest: +SKIP
 
 .. plot::
 
@@ -605,12 +605,12 @@ Now, let's use the callable ``itr_phot_obj`` to perform photometry:
 .. doctest-requires:: scipy
 
     >>> phot_results = itr_phot_obj(image)
-    >>> phot_results['id', 'group_id', 'iter_detected', 'x_0', 'y_0', 'flux_0'] #doctest: +SKIP
+    >>> phot_results['id', 'group_id', 'iter_detected', 'x_0', 'y_0', 'flux_0']  #doctest: +SKIP
          id group_id iter_detected      x_0           y_0          flux_0
         --- -------- ------------- ------------- ------------- -------------
           1        1             1 18.0045935148 17.0060558543 9437.07321281
           1        1             2 9.06141447183 21.0680052846 977.163727416
-    >>> phot_results['sigma_0', 'sigma_fit', 'x_fit', 'y_fit', 'flux_fit'] #doctest: +SKIP
+    >>> phot_results['sigma_0', 'sigma_fit', 'x_fit', 'y_fit', 'flux_fit']  #doctest: +SKIP
         sigma_0   sigma_fit       x_fit         y_fit        flux_fit
         ------- ------------- ------------- ------------- -------------
            2.05 1.98092026939 17.9995106906 17.0039419384 10016.4470148
@@ -622,7 +622,7 @@ to the value we used when creating the PSF model.
 Let's take a look at the residual image::
 
     >>> plt.imshow(itr_phot_obj.get_residual_image(), cmap='viridis',
-    ... aspect=1, interpolation='nearest', origin='lower') #doctest: +SKIP
+    ... aspect=1, interpolation='nearest', origin='lower')  #doctest: +SKIP
 
 .. plot::
 

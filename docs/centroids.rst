@@ -35,19 +35,19 @@ subtract the background)::
     >>> data = make_4gaussians_image()[43:79, 76:104]
 
     >>> x1, y1 = centroid_com(data)
-    >>> print((x1, y1))    # doctest: +FLOAT_CMP
+    >>> print((x1, y1))  # doctest: +FLOAT_CMP
     (13.93157998341213, 17.051234441067088)
 
 .. doctest-requires:: scipy
 
     >>> x2, y2 = centroid_1dg(data)
-    >>> print((x2, y2))    # doctest: +FLOAT_CMP
+    >>> print((x2, y2))  # doctest: +FLOAT_CMP
     (14.040352707371396, 16.962306463644801)
 
 .. doctest-requires:: scipy
 
     >>> x3, y3 = centroid_2dg(data)
-    >>> print((x3, y3))    # doctest: +FLOAT_CMP
+    >>> print((x3, y3))  # doctest: +FLOAT_CMP
     (14.002212073733611, 16.996134592982017)
 
 Now let's plot the results.  Because the centroids are all very
@@ -60,7 +60,7 @@ similar, we also include an inset plot zoomed in near the centroid:
     from photutils import centroid_com, centroid_1dg, centroid_2dg
     import matplotlib.pyplot as plt
 
-    data = make_4gaussians_image()[43:79, 76:104]    # extract single object
+    data = make_4gaussians_image()[43:79, 76:104]  # extract single object
     x1, y1 = centroid_com(data)
     x2, y2 = centroid_1dg(data)
     x3, y3 = centroid_2dg(data)

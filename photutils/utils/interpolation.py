@@ -331,7 +331,7 @@ def interpolate_masked_data(data, mask, error=None, background=None):
     if data.shape != mask.shape:
         raise ValueError('data and mask must have the same shape')
 
-    data_out = np.copy(data)    # do not alter input data
+    data_out = np.copy(data)  # do not alter input data
     mask_idx = mask.nonzero()
 
     if mask_idx[0].size == 0:

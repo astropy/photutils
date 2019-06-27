@@ -122,7 +122,7 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
         source_data = data[source_slice]
         source_segm = SegmentationImage(np.copy(
             segment_img.data[source_slice]))
-        source_segm.keep_labels(label)    # include only one label
+        source_segm.keep_labels(label)  # include only one label
         source_deblended = _deblend_source(
             source_data, source_segm, npixels, nlevels=nlevels,
             contrast=contrast, mode=mode, connectivity=connectivity)
@@ -141,7 +141,7 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
             segm_tmp = segm_deblended.data
             segm_tmp[source_slice][source_mask] = (
                 source_deblended.data[source_mask] + last_label)
-            segm_deblended.data = segm_tmp    # needed to call data setter
+            segm_deblended.data = segm_tmp  # needed to call data setter
             last_label += source_deblended.nlabels
 
     if relabel:
@@ -228,7 +228,7 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     source_min = np.nanmin(source_values)
     source_max = np.nanmax(source_values)
     if source_min == source_max:
-        return segment_img     # no deblending
+        return segment_img  # no deblending
     if mode == 'exponential' and source_min < 0:
         warnings.warn('Source "{0}" contains negative values, setting '
                       'deblending mode to "linear"'.format(

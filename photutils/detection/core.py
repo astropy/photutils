@@ -246,7 +246,7 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         data_max = maximum_filter(data, size=box_size, mode='constant',
                                   cval=0.0)
 
-    peak_goodmask = (data == data_max)    # good pixels are True
+    peak_goodmask = (data == data_max)  # good pixels are True
 
     if mask is not None:
         mask = np.asanyarray(mask)

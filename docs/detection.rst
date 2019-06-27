@@ -45,10 +45,10 @@ background noise using sigma-clipped statistics::
 
     >>> from astropy.stats import sigma_clipped_stats
     >>> from photutils import datasets
-    >>> hdu = datasets.load_star_image()    # doctest: +REMOTE_DATA
-    >>> data = hdu.data[0:401, 0:401]    # doctest: +REMOTE_DATA
-    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)    # doctest: +REMOTE_DATA
-    >>> print((mean, median, std))    # doctest: +REMOTE_DATA, +FLOAT_CMP
+    >>> hdu = datasets.load_star_image()  # doctest: +REMOTE_DATA
+    >>> data = hdu.data[0:401, 0:401]  # doctest: +REMOTE_DATA
+    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)  # doctest: +REMOTE_DATA
+    >>> print((mean, median, std))  # doctest: +REMOTE_DATA, +FLOAT_CMP
     (3668.09661145823, 3649.0, 204.41388592022315)
 
 Now we will subtract the background and use an instance of
@@ -60,11 +60,11 @@ above the background. Running this class on the data yields an astropy
 .. doctest-requires:: scipy
 
     >>> from photutils import DAOStarFinder
-    >>> daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)    # doctest: +REMOTE_DATA
-    >>> sources = daofind(data - median)    # doctest: +REMOTE_DATA
-    >>> for col in sources.colnames:    # doctest: +REMOTE_DATA
+    >>> daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)  # doctest: +REMOTE_DATA
+    >>> sources = daofind(data - median)  # doctest: +REMOTE_DATA
+    >>> for col in sources.colnames:  # doctest: +REMOTE_DATA
     ...     sources[col].info.format = '%.8g'  # for consistent table output
-    >>> print(sources)    # doctest: +REMOTE_DATA
+    >>> print(sources)  # doctest: +REMOTE_DATA
      id xcentroid ycentroid sharpness  ... sky peak    flux       mag
     --- --------- --------- ---------- ... --- ---- --------- ------------
       1 144.24757 6.3797904 0.58156257 ...   0 6903 5.6976747   -1.8892441
@@ -200,7 +200,7 @@ sigma above the background and a separated by at least 5 pixels:
     >>> threshold = median + (5. * std)
     >>> tbl = find_peaks(data, threshold, box_size=11)
     >>> tbl['peak_value'].info.format = '%.8g'  # for consistent table output
-    >>> print(tbl[:10])    # print only the first 10 peaks
+    >>> print(tbl[:10])  # print only the first 10 peaks
     x_peak y_peak peak_value
     ------ ------ ----------
        233      0  27.477852

@@ -105,7 +105,7 @@ semimajor axis length.  Let's print the fit position angles
 
 .. doctest-requires:: scipy
 
-    >>> print(isolist.pa)    # doctest: +SKIP
+    >>> print(isolist.pa)  # doctest: +SKIP
     [ 0.          0.16838914  0.18453378  0.20310945  0.22534975  0.25007781
       0.28377499  0.32494582  0.38589202  0.40480013  0.39527698  0.38448771
       0.40207495  0.40207495  0.28201524  0.28201524  0.19889817  0.1364335
@@ -121,7 +121,7 @@ by the semimajor axis length (``sma``):
 
 .. doctest-requires:: scipy
 
-    >>> print(isolist.to_table())    # doctest: +SKIP
+    >>> print(isolist.to_table())  # doctest: +SKIP
          sma            intens        intens_err   ... flag niter stop_code
                                                    ...
     -------------- --------------- --------------- ... ---- ----- ---------

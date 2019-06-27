@@ -16,13 +16,13 @@ from ..detect import detect_sources
 from ...utils.exceptions import NoDetectionsWarning
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
 
 try:
-    import skimage    # noqa
+    import skimage  # noqa
     HAS_SKIMAGE = True
 except ImportError:
     HAS_SKIMAGE = False

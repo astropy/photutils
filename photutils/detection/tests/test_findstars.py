@@ -17,7 +17,7 @@ from ...datasets import make_100gaussians_image
 from ...utils.exceptions import NoDetectionsWarning
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

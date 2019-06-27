@@ -55,7 +55,7 @@ and background-only error image (e.g., from your data reduction or by
 using :class:`~photutils.background.Background2D`).  In that case, a
 2-sigma threshold image is simply::
 
-    >>> threshold = bkg + (2.0 * bkg_rms)    # doctest: +SKIP
+    >>> threshold = bkg + (2.0 * bkg_rms)  # doctest: +SKIP
 
 Note that if the threshold includes the background level (as above),
 then the image input into
@@ -81,7 +81,7 @@ pixels to smooth the image some prior to thresholding:
     >>> from astropy.convolution import Gaussian2DKernel
     >>> from astropy.stats import gaussian_fwhm_to_sigma
     >>> from photutils import detect_sources
-    >>> sigma = 3.0 * gaussian_fwhm_to_sigma    # FWHM = 3.
+    >>> sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
     >>> kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     >>> kernel.normalize()
     >>> segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
@@ -118,7 +118,7 @@ segmentation image showing the detected sources:
     from photutils import detect_threshold, detect_sources
     data = make_100gaussians_image()
     threshold = detect_threshold(data, snr=2.)
-    sigma = 3.0 * gaussian_fwhm_to_sigma    # FWHM = 3.
+    sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     kernel.normalize()
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
@@ -187,7 +187,7 @@ the deblended segmentation image:
 
     data = make_100gaussians_image()
     threshold = detect_threshold(data, snr=2.)
-    sigma = 3.0 * gaussian_fwhm_to_sigma    # FWHM = 3.
+    sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     kernel.normalize()
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
@@ -215,7 +215,7 @@ Let's plot one of the deblended sources:
 
     data = make_100gaussians_image()
     threshold = detect_threshold(data, snr=2.)
-    sigma = 3.0 * gaussian_fwhm_to_sigma    # FWHM = 3.
+    sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     kernel.normalize()
     segm = detect_sources(data, threshold, npixels=5, filter_kernel=kernel)
@@ -314,7 +314,7 @@ a FWHM of 3 pixels to filter the image prior to thresholding:
 .. doctest-requires:: scipy, skimage
 
     >>> from astropy.stats import gaussian_fwhm_to_sigma
-    >>> sigma = 3.0 * gaussian_fwhm_to_sigma    # FWHM = 3.
+    >>> sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
     >>> kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     >>> kernel.normalize()
     >>> npixels = 5
@@ -384,7 +384,7 @@ orientation (`~photutils.segmentation.SourceProperties.orientation`):
     >>> import numpy as np
     >>> from photutils import source_properties, EllipticalAperture
     >>> cat = source_properties(data, segm_deblend)
-    >>> r = 3.    # approximate isophotal extent
+    >>> r = 3.  # approximate isophotal extent
     >>> apertures = []
     >>> for obj in cat:
     ...     position = np.transpose((obj.xcentroid.value, obj.ycentroid.value))
@@ -430,7 +430,7 @@ Now let's plot the derived elliptical apertures on the data:
     bkg = Background2D(data, (50, 50), filter_size=(3, 3),
                        bkg_estimator=bkg_estimator)
     threshold = bkg.background + (2. * bkg.background_rms)
-    sigma = 3.0 * gaussian_fwhm_to_sigma    # FWHM = 3.
+    sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     kernel.normalize()
     npixels = 5
@@ -440,7 +440,7 @@ Now let's plot the derived elliptical apertures on the data:
                                    filter_kernel=kernel, nlevels=32,
                                    contrast=0.001)
     cat = source_properties(data, segm_deblend)
-    r = 3.    # approximate isophotal extent
+    r = 3.  # approximate isophotal extent
     apertures = []
     for obj in cat:
         position = np.transpose((obj.xcentroid.value, obj.ycentroid.value))

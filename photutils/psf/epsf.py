@@ -214,7 +214,7 @@ class EPSFFitter:
             fit_info = copy.copy(fitter.fit_info)
 
             if 'ierr' in fit_info and fit_info['ierr'] not in [1, 2, 3, 4]:
-                fit_error_status = 2    # fit solution was not found
+                fit_error_status = 2  # fit solution was not found
         else:
             fit_info = None
 
@@ -658,7 +658,7 @@ class EPSFBuilder:
             # Resample the ePSF data to a shifted grid to place the
             # centroid in the center of the central pixel.  The shift is
             # always performed on the input epsf_data.
-            dx_total += dx    # accumulated shifts for the input epsf_data
+            dx_total += dx  # accumulated shifts for the input epsf_data
             dy_total += dy
             epsf_data = epsf.evaluate(x=x, y=y, flux=1.0,
                                       x_0=xcenter + dx_total,

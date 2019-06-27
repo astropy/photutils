@@ -32,7 +32,7 @@ First, we create the source image and subtract its background::
     >>> from astropy.stats import sigma_clipped_stats
     >>> data = make_4gaussians_image()[43:79, 76:104]
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
-    >>> data -= median    # subtract background
+    >>> data -= median  # subtract background
 
 Then, calculate its properties:
 
@@ -60,7 +60,7 @@ approximate isophotal ellipse for the source:
 
     >>> from photutils import EllipticalAperture
     >>> position = (cat.xcentroid.value, cat.ycentroid.value)
-    >>> r = 3.0    # approximate isophotal extent
+    >>> r = 3.0  # approximate isophotal extent
     >>> a = cat.semimajor_axis_sigma.value * r
     >>> b = cat.semiminor_axis_sigma.value * r
     >>> theta = cat.orientation.value
@@ -75,12 +75,12 @@ approximate isophotal ellipse for the source:
     from photutils import data_properties, EllipticalAperture
     from photutils.datasets import make_4gaussians_image
 
-    data = make_4gaussians_image()[43:79, 76:104]    # extract single object
+    data = make_4gaussians_image()[43:79, 76:104]  # extract single object
     cat = data_properties(data)
     columns = ['id', 'xcentroid', 'ycentroid', 'semimajor_axis_sigma',
                'semiminor_axis_sigma', 'orientation']
     tbl = cat.to_table(columns=columns)
-    r = 2.5    # approximate isophotal extent
+    r = 2.5  # approximate isophotal extent
     position = (cat.xcentroid.value, cat.ycentroid.value)
     a = cat.semimajor_axis_sigma.value * r
     b = cat.semiminor_axis_sigma.value * r

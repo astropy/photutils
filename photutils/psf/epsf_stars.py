@@ -635,10 +635,10 @@ def extract_stars(data, catalogs, size=(11, 11)):
     if size[0] < min_size or size[1] < min_size:
         raise ValueError('size must be >= {} for x and y'.format(min_size))
 
-    if len(catalogs) == 1:    # may included linked stars
+    if len(catalogs) == 1:  # may included linked stars
         use_xy = True
         if len(data) > 1:
-            use_xy = False    # linked stars require skycoord positions
+            use_xy = False  # linked stars require skycoord positions
 
         stars = []
         # stars is a list of lists, one list of stars in each image
@@ -665,7 +665,7 @@ def extract_stars(data, catalogs, size=(11, 11)):
                 good_stars = LinkedEPSFStar(good_stars)
 
             stars_out.append(good_stars)
-    else:    # no linked stars
+    else:  # no linked stars
         stars_out = []
         for img, cat in zip(data, catalogs):
             stars_out.extend(_extract_stars(img, cat, size=size, use_xy=True))

@@ -130,9 +130,9 @@ release = package.__version__
 #html_theme = None
 
 html_theme_options = {
-    'logotext1': 'phot',   # white, semi-bold
+    'logotext1': 'phot',  # white, semi-bold
     'logotext2': 'utils',  # orange, light
-    'logotext3': ''        # white, light
+    'logotext3': ''  # white, light
 }
 
 # Custom sidebar templates, maps document names to template names.

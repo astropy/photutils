@@ -16,7 +16,7 @@ from ..detect import detect_sources, make_source_mask
 from ...datasets import make_4gaussians_image
 
 try:
-    import scipy    # noqa
+    import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False

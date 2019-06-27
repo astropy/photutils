@@ -194,16 +194,16 @@ class _StarCutout:
         self.threshold_eff = threshold_eff
 
         self.shape = data.shape
-        self.nx = self.shape[1]    # always odd
-        self.ny = self.shape[0]    # always odd
+        self.nx = self.shape[1]  # always odd
+        self.ny = self.shape[0]  # always odd
         self.cutout_xcenter = int(self.nx // 2)
         self.cutout_ycenter = int(self.ny // 2)
 
-        self.xorigin = self.slices[1].start    # in original image
-        self.yorigin = self.slices[0].start    # in original image
+        self.xorigin = self.slices[1].start  # in original image
+        self.yorigin = self.slices[0].start  # in original image
 
-        self.mask = kernel.mask    # kernel mask
-        self.npixels = kernel.npixels    # unmasked pixels
+        self.mask = kernel.mask  # kernel mask
+        self.npixels = kernel.npixels  # unmasked pixels
         self.data_masked = self.data * self.mask
 
 
@@ -238,11 +238,11 @@ class _DAOFindProperties:
 
         self.cutout = star_cutout
         self.kernel = kernel
-        self.sky = sky    # DAOFIND has no sky input -> same as sky=0.
+        self.sky = sky  # DAOFIND has no sky input -> same as sky=0.
 
         self.data = star_cutout.data
         self.data_masked = star_cutout.data_masked
-        self.npixels = star_cutout.npixels    # unmasked pixels
+        self.npixels = star_cutout.npixels  # unmasked pixels
         self.nx = star_cutout.nx
         self.ny = star_cutout.ny
         self.xcenter = star_cutout.cutout_xcenter
@@ -280,7 +280,7 @@ class _DAOFindProperties:
 
     @lazyproperty
     def sharpness(self):
-        npixels = self.npixels - 1    # exclude the peak pixel
+        npixels = self.npixels - 1  # exclude the peak pixel
         data_mean = (np.sum(self.data_masked) - self.data_peak) / npixels
 
         return (self.data_peak - data_mean) / self.conv_peak
@@ -320,16 +320,16 @@ class _DAOFindProperties:
         y = self.ycenter - np.abs(np.arange(self.ny) - self.ycenter) + 1
         xwt, ywt = np.meshgrid(x, y)
 
-        if axis == 0:    # marginal distributions along x axis
-            wt = xwt[0]    # 1D
-            wts = ywt    # 2D
+        if axis == 0:  # marginal distributions along x axis
+            wt = xwt[0]  # 1D
+            wts = ywt  # 2D
             size = self.nx
             center = self.xcenter
             sigma = self.kernel.xsigma
             dxx = center - np.arange(size)
-        elif axis == 1:    # marginal distributions along y axis
-            wt = np.transpose(ywt)[0]    # 1D
-            wts = xwt    # 2D
+        elif axis == 1:  # marginal distributions along y axis
+            wt = np.transpose(ywt)[0]  # 1D
+            wts = xwt  # 2D
             size = self.ny
             center = self.ycenter
             sigma = self.kernel.ysigma
@@ -493,7 +493,7 @@ class _IRAFStarFindProperties:
         self.kernel = kernel
 
         if sky is None:
-            skymask = ~self.kernel.mask.astype(np.bool)   # 1=sky, 0=obj
+            skymask = ~self.kernel.mask.astype(np.bool)  # 1=sky, 0=obj
             nsky = np.count_nonzero(skymask)
             if nsky == 0:
                 mean_sky = (np.max(self.cutout.data) -
@@ -632,7 +632,7 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
                                  fill_value=0.0, check_normalization=False)
 
     # define a local footprint for the peak finder
-    if min_separation is None:   # daofind
+    if min_separation is None:  # daofind
         footprint = kernel.mask.astype(np.bool)
     else:
         # define a circular footprint
@@ -677,9 +677,9 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
         y1 = ypeak + kernel.yradius + 1
 
         if x0 < 0 or x1 > data.shape[1]:
-            continue    # pragma: no cover
+            continue  # pragma: no cover
         if y0 < 0 or y1 > data.shape[0]:
-            continue    # pragma: no cover
+            continue  # pragma: no cover
 
         slices = (slice(y0, y1), slice(x0, x1))
         data_cutout = data[slices]
