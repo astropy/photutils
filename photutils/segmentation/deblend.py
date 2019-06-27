@@ -276,6 +276,8 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
 
         # at least 2 segment meet the contrast requirement
         if idx.size >= 2:
+            # keep only the labels that meet the contrast criterion
+            segm_tmp.keep_labels(segm_tmp.labels[idx])
             level_segms.append(segm_tmp)
 
     nlevels = len(level_segms)
