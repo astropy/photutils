@@ -259,7 +259,7 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     # suppress NoDetectionsWarning during deblending
     warnings.filterwarnings('ignore', category=NoDetectionsWarning)
 
-    level_segms = []
+    segments = []
     mask = ~segm_mask
     for level in thresholds:
         segm_tmp = detect_sources(data, level, npixels=npixels,
@@ -270,29 +270,22 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
         if segm_tmp is None or segm_tmp.nlabels == 1:
             continue
 
-        fluxes = np.array([np.nansum(data[segm_tmp == i])
-                           for i in segm_tmp.labels])
-        idx = np.where((fluxes / source_sum) >= contrast)[0]
+        segments.append(segm_tmp)
 
-        # at least 2 segment meet the contrast requirement
-        if idx.size >= 2:
-            # keep only the labels that meet the contrast criterion
-            segm_tmp.keep_labels(segm_tmp.labels[idx])
-            level_segms.append(segm_tmp)
-
-    nlevels = len(level_segms)
-    if nlevels == 0:  # no deblending
+    # define the sources (markers) for the watershed algorithm
+    nsegments = len(segments)
+    if nsegments == 0:  # no deblending
         return segment_img
     else:
-        for i in range(nlevels - 1):
-            segm_lower = level_segms[i].data
-            segm_upper = level_segms[i + 1].data
+        for i in range(nsegments - 1):
+            segm_lower = segments[i].data
+            segm_upper = segments[i + 1].data
             relabel = False
             # if the are more sources at the upper level, then
             # remove the parent source(s) from the lower level,
             # but keep any sources in the lower level that do not have
             # multiple children in the upper level
-            for label in level_segms[i].labels:
+            for label in segments[i].labels:
                 mask = (segm_lower == label)
                 # checks for 1-to-1 label mapping n -> m (where m >= 0)
                 upper_labels = segm_upper[mask]
@@ -302,11 +295,29 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
                     segm_lower[mask] = segm_upper[mask]
 
             if relabel:
-                level_segms[i + 1] = SegmentationImage(
+                segments[i + 1] = SegmentationImage(
                     ndimage.label(segm_lower, structure=selem)[0])
             else:
-                level_segms[i + 1] = level_segms[i]
+                segments[i + 1] = segments[i]
 
-        return SegmentationImage(watershed(-data, level_segms[-1].data,
-                                           mask=segment_img.data.astype(bool),
-                                           connectivity=selem))
+        # Deblend using watershed.  If any sources do not meet the
+        # contrast criterion, then remove the faintest such source and
+        # repeat until all sources meet the contrast criterion.
+        markers = segments[-1].data
+        mask = segment_img.data.astype(bool)
+        remove_marker = True
+        while remove_marker:
+            markers = watershed(-data, markers, mask=mask, connectivity=selem)
+
+            labels = np.unique(markers[markers != 0])
+            flux_frac = np.array([np.sum(data[markers == label])
+                                  for label in labels]) / source_sum
+            remove_marker = any(flux_frac < contrast)
+
+            if remove_marker:
+                # remove only the faintest source (one at a time)
+                # because several faint sources could combine to meet the
+                # constrast criterion
+                markers[markers == labels[np.argmin(flux_frac)]] = 0.
+
+        return SegmentationImage(markers)
