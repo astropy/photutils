@@ -131,8 +131,12 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         raise ValueError('npixels must be a positive integer, got '
                          '"{0}"'.format(npixels))
 
-    image = (filter_data(data, filter_kernel, mode='constant', fill_value=0.0,
-                         check_normalization=True) > threshold)
+    image = filter_data(data, filter_kernel, mode='constant', fill_value=0.0,
+                        check_normalization=True)
+    # ignore RuntimeWarning caused by > when image contains NaNs
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', category=RuntimeWarning)
+        image = image > threshold
 
     if mask is not None:
         if mask.shape != image.shape:
