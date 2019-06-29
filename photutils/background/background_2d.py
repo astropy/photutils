@@ -720,8 +720,11 @@ class Background2D:
 
         # the position coordinates used when calling an interpolator
         nx, ny = self.data.shape
+        # Create an array consisting of all combinations of pixels up to max(nx, ny)
+        # then filter based on if nx and ny are not equal to each other.
         self.data_coords = np.array(list(itertools.combinations(range(max(nx, ny)), 2)))
-        self.data_coords[np.logical_and(self.data_coords[:, 0] < ny, self.data_coords[:, 1] < nx)]
+        if nx != ny:
+            self.data_coords[np.logical_and(self.data_coords[:, 0] < ny, self.data_coords[:, 1] < nx)]
         
     @lazyproperty
     def mesh_nmasked(self):
