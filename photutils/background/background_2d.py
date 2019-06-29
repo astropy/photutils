@@ -4,7 +4,7 @@ This module defines classes to estimate the 2D background and background
 RMS in an image.
 """
 
-from itertools import product
+from itertools import product, combinations
 
 from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
@@ -720,8 +720,9 @@ class Background2D:
 
         # the position coordinates used when calling an interpolator
         nx, ny = self.data.shape
-        self.data_coords = np.array(list(product(range(ny), range(nx))))
-
+        self.data_coords = np.array(list(itertools.combinations(range(max(nx, ny)), 2)))
+        self.data_coords[np.logical_and(self.data_coords[:, 0] < ny, self.data_coords[:, 1] < nx)]
+        
     @lazyproperty
     def mesh_nmasked(self):
         """
