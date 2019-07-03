@@ -131,8 +131,12 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         raise ValueError('npixels must be a positive integer, got '
                          '"{0}"'.format(npixels))
 
-    image = (filter_data(data, filter_kernel, mode='constant', fill_value=0.0,
-                         check_normalization=True) > threshold)
+    image = filter_data(data, filter_kernel, mode='constant', fill_value=0.0,
+                        check_normalization=True)
+    # ignore RuntimeWarning caused by > when image contains NaNs
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', category=RuntimeWarning)
+        image = image > threshold
 
     if mask is not None:
         if mask.shape != image.shape:
@@ -140,15 +144,19 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
                              'image.')
         image &= ~mask
 
-    if connectivity == 4:
-        selem = ndimage.generate_binary_structure(2, 1)
-    elif connectivity == 8:
-        selem = ndimage.generate_binary_structure(2, 2)
+    ndim = image.ndim
+    if ndim == 1:
+        selem = ndimage.generate_binary_structure(ndim, 1)
     else:
-        raise ValueError('Invalid connectivity={0}.  '
-                         'Options are 4 or 8'.format(connectivity))
+        if connectivity == 4:
+            selem = ndimage.generate_binary_structure(ndim, 1)
+        elif connectivity == 8:
+            selem = ndimage.generate_binary_structure(ndim, 2)
+        else:
+            raise ValueError('Invalid connectivity={0}.  '
+                             'Options are 4 or 8'.format(connectivity))
 
-    segm_img, nobj = ndimage.label(image, structure=selem)
+    segm_img, _ = ndimage.label(image, structure=selem)
 
     # remove objects with less than npixels
     # NOTE:  for typical data, making the cutout images is ~10x faster
@@ -160,14 +168,13 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         if np.count_nonzero(segment_mask) < npixels:
             cutout[segment_mask] = 0
 
-    # now relabel to make consecutive label indices
-    segm_img, nobj = ndimage.label(segm_img, structure=selem)
-
-    if nobj == 0:
+    if np.sum(segm_img) == 0:
         warnings.warn('No sources were found.', NoDetectionsWarning)
         return None
     else:
-        return SegmentationImage(segm_img)
+        segm = SegmentationImage(segm_img)
+        segm.relabel_consecutive()
+        return segm
 
 
 @deprecated_renamed_argument('mask_value', None, 0.7)

@@ -27,16 +27,15 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
     Sources are deblended using a combination of multi-thresholding and
     `watershed segmentation
     <https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_.  In
-    order to deblend sources, they must be separated enough such that
-    there is a saddle between them.
+    order to deblend sources, there must be a saddle between them.
 
     Parameters
     ----------
     data : array_like
-        The 2D array of the image.
+        The data array.
 
     segment_img : `~photutils.segmentation.SegmentationImage` or array_like (int)
-        A 2D segmentation image, either as a
+        A segmentation image, either as a
         `~photutils.segmentation.SegmentationImage` object or an
         `~numpy.ndarray`, with the same shape as ``data`` where sources
         are labeled by different positive integer values.  A value of
@@ -47,8 +46,8 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
         that an object must have to be detected.  ``npixels`` must be a
         positive integer.
 
-    filter_kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
-        The 2D array of the kernel used to filter the image before
+    filter_kernel : array-like or `~astropy.convolution.Kernel2D`, optional
+        The array of the kernel used to filter the image before
         thresholding.  Filtering the image will smooth the noise and
         maximize detectability of objects with a shape similar to the
         kernel.
@@ -59,18 +58,19 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
 
     nlevels : int, optional
         The number of multi-thresholding levels to use.  Each source
-        will be re-thresholded at ``nlevels``, spaced exponentially or
-        linearly (see the ``mode`` keyword), between its minimum and
-        maximum values within the source segment.
+        will be re-thresholded at ``nlevels`` levels spaced
+        exponentially or linearly (see the ``mode`` keyword) between its
+        minimum and maximum values within the source segment.
 
     contrast : float, optional
         The fraction of the total (blended) source flux that a local
-        peak must have to be considered as a separate object.
-        ``contrast`` must be between 0 and 1, inclusive.  If ``contrast
-        = 0`` then every local peak will be made a separate object
-        (maximum deblending).  If ``contrast = 1`` then no deblending
-        will occur.  The default is 0.001, which will deblend sources
-        with a magnitude difference of about 7.5.
+        peak must have (at any one of the multi-thresholds) to be
+        considered as a separate object.  ``contrast`` must be between 0
+        and 1, inclusive.  If ``contrast = 0`` then every local peak
+        will be made a separate object (maximum deblending).  If
+        ``contrast = 1`` then no deblending will occur.  The default is
+        0.001, which will deblend sources with a 7.5 magnitude
+        difference.
 
     mode : {'exponential', 'linear'}, optional
         The mode used in defining the spacing between the
@@ -92,7 +92,7 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
     Returns
     -------
     segment_image : `~photutils.segmentation.SegmentationImage`
-        A 2D segmentation image, with the same shape as ``data``, where
+        A segmentation image, with the same shape as ``data``, where
         sources are marked by different positive integer values.  A
         value of zero is reserved for the background.
 
@@ -158,9 +158,9 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     Parameters
     ----------
     data : array_like
-        The 2D array of the image.  The should be a cutout for a single
-        source.  ``data`` should already be smoothed by the same filter
-        used in :func:`~photutils.detect_sources`, if applicable.
+        The cutout data array for a single source.  ``data`` should also
+        already be smoothed by the same filter used in
+        :func:`~photutils.detect_sources`, if applicable.
 
     segment_img : `~photutils.segmentation.SegmentationImage`
         A cutout `~photutils.segmentation.SegmentationImage` object with
@@ -174,34 +174,36 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
 
     nlevels : int, optional
         The number of multi-thresholding levels to use.  Each source
-        will be re-thresholded at ``nlevels``, spaced exponentially or
-        linearly (see the ``mode`` keyword), between its minimum and
-        maximum values within the source segment.
+        will be re-thresholded at ``nlevels`` levels spaced
+        exponentially or linearly (see the ``mode`` keyword) between its
+        minimum and maximum values within the source segment.
 
     contrast : float, optional
         The fraction of the total (blended) source flux that a local
-        peak must have to be considered as a separate object.
-        ``contrast`` must be between 0 and 1, inclusive.  If ``contrast
-        = 0`` then every local peak will be made a separate object
-        (maximum deblending).  If ``contrast = 1`` then no deblending
-        will occur.  The default is 0.001, which will deblend sources with
-        a magnitude differences of about 7.5.
+        peak must have (at any one of the multi-thresholds) to be
+        considered as a separate object.  ``contrast`` must be between 0
+        and 1, inclusive.  If ``contrast = 0`` then every local peak
+        will be made a separate object (maximum deblending).  If
+        ``contrast = 1`` then no deblending will occur.  The default is
+        0.001, which will deblend sources with a 7.5 magnitude
+        difference.
 
     mode : {'exponential', 'linear'}, optional
         The mode used in defining the spacing between the
-        multi-thresholding levels (see the ``nlevels`` keyword).
+        multi-thresholding levels (see the ``nlevels`` keyword).  The
+        default is 'exponential'.
 
-    connectivity : {4, 8}, optional
+    connectivity : {8, 4}, optional
         The type of pixel connectivity used in determining how pixels
-        are grouped into a detected source.  The options are 4 or 8
-        (default).  4-connected pixels touch along their edges.
-        8-connected pixels touch along their edges or corners.  For
-        reference, SExtractor uses 8-connected pixels.
+        are grouped into a detected source.  The options are 8 (default)
+        or 4.  8-connected pixels touch along their edges or corners.
+        4-connected pixels touch along their edges.  For reference,
+        SExtractor uses 8-connected pixels.
 
     Returns
     -------
     segment_image : `~photutils.segmentation.SegmentationImage`
-        A 2D segmentation image, with the same shape as ``data``, where
+        A segmentation image, with the same shape as ``data``, where
         sources are marked by different positive integer values.  A
         value of zero is reserved for the background.
     """
@@ -212,29 +214,34 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     if nlevels < 1:
         raise ValueError('nlevels must be >= 1, got "{0}"'.format(nlevels))
     if contrast < 0 or contrast > 1:
-        raise ValueError('contrast must be >= 0 or <= 1, got '
+        raise ValueError('contrast must be >= 0 and <= 1, got '
                          '"{0}"'.format(contrast))
 
-    if connectivity == 4:
-        selem = ndimage.generate_binary_structure(2, 1)
-    elif connectivity == 8:
-        selem = ndimage.generate_binary_structure(2, 2)
+    ndim = data.ndim
+    if ndim == 1:
+        selem = ndimage.generate_binary_structure(ndim, 1)
     else:
-        raise ValueError('Invalid connectivity={0}.  '
-                         'Options are 4 or 8'.format(connectivity))
+        if connectivity == 4:
+            selem = ndimage.generate_binary_structure(ndim, 1)
+        elif connectivity == 8:
+            selem = ndimage.generate_binary_structure(ndim, 2)
+        else:
+            raise ValueError('Invalid connectivity={0}.  '
+                             'Options are 4 or 8'.format(connectivity))
 
     segm_mask = (segment_img.data > 0)
     source_values = data[segm_mask]
+    source_sum = float(np.nansum(source_values))
     source_min = np.nanmin(source_values)
     source_max = np.nanmax(source_values)
     if source_min == source_max:
         return segment_img  # no deblending
+
     if mode == 'exponential' and source_min < 0:
         warnings.warn('Source "{0}" contains negative values, setting '
                       'deblending mode to "linear"'.format(
                           segment_img.labels[0]), AstropyUserWarning)
         mode = 'linear'
-    source_sum = float(np.nansum(source_values))
 
     steps = np.arange(1., nlevels + 1)
     if mode == 'exponential':
@@ -247,49 +254,70 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
                                    (nlevels + 1)) * steps
     else:
         raise ValueError('"{0}" is an invalid mode; mode must be '
-                         '"exponential" or "linear"')
+                         '"exponential" or "linear"'.format(mode))
 
     # suppress NoDetectionsWarning during deblending
     warnings.filterwarnings('ignore', category=NoDetectionsWarning)
 
-    # create top-down tree of local peaks
-    segm_tree = []
+    segments = []
     mask = ~segm_mask
-    for level in thresholds[::-1]:
+    for level in thresholds:
         segm_tmp = detect_sources(data, level, npixels=npixels,
                                   connectivity=connectivity, mask=mask)
 
-        if segm_tmp is None or segm_tmp.nlabels < 2:
+        # NOTE: higher threshold levels may not meet 'npixels' criterion
+        # resulting in no detections
+        if segm_tmp is None or segm_tmp.nlabels == 1:
             continue
 
-        fluxes = []
-        for i in segm_tmp.labels:
-            fluxes.append(np.nansum(data[segm_tmp == i]))
-        idx = np.where((np.array(fluxes) / source_sum) >= contrast)[0]
-        if idx.size >= 2:
-            segm_tree.append(segm_tmp)
+        segments.append(segm_tmp)
 
-    nbranch = len(segm_tree)
-    if nbranch == 0:
+    # define the sources (markers) for the watershed algorithm
+    nsegments = len(segments)
+    if nsegments == 0:  # no deblending
         return segment_img
     else:
-        for j in range(nbranch - 1, 0, -1):
-            intersect_mask = (segm_tree[j].data *
-                              segm_tree[j - 1].data).astype(bool)
-            intersect_labels = np.unique(segm_tree[j].data[intersect_mask])
+        for i in range(nsegments - 1):
+            segm_lower = segments[i].data
+            segm_upper = segments[i + 1].data
+            relabel = False
+            # if the are more sources at the upper level, then
+            # remove the parent source(s) from the lower level,
+            # but keep any sources in the lower level that do not have
+            # multiple children in the upper level
+            for label in segments[i].labels:
+                mask = (segm_lower == label)
+                # checks for 1-to-1 label mapping n -> m (where m >= 0)
+                upper_labels = segm_upper[mask]
+                upper_labels = np.unique(upper_labels[upper_labels != 0])
+                if upper_labels.size >= 2:
+                    relabel = True
+                    segm_lower[mask] = segm_upper[mask]
 
-            if segm_tree[j - 1].nlabels <= len(intersect_labels):
-                segm_tree[j - 1] = segm_tree[j]
+            if relabel:
+                segments[i + 1] = SegmentationImage(
+                    ndimage.label(segm_lower, structure=selem)[0])
             else:
-                # If a higher tree level has more peaks than in the
-                # intersected label(s) with the level below, then remove
-                # the intersected label(s) in the lower level, add the
-                # higher level, and relabel.
-                segm_tree[j].remove_labels(intersect_labels)
-                new_segments = segm_tree[j].data + segm_tree[j - 1].data
-                new_segm, _ = ndimage.label(new_segments)
-                segm_tree[j - 1] = SegmentationImage(new_segm)
+                segments[i + 1] = segments[i]
 
-        return SegmentationImage(watershed(-data, segm_tree[0].data,
-                                           mask=segment_img.data.astype(bool),
-                                           connectivity=selem))
+        # Deblend using watershed.  If any sources do not meet the
+        # contrast criterion, then remove the faintest such source and
+        # repeat until all sources meet the contrast criterion.
+        markers = segments[-1].data
+        mask = segment_img.data.astype(bool)
+        remove_marker = True
+        while remove_marker:
+            markers = watershed(-data, markers, mask=mask, connectivity=selem)
+
+            labels = np.unique(markers[markers != 0])
+            flux_frac = np.array([np.sum(data[markers == label])
+                                  for label in labels]) / source_sum
+            remove_marker = any(flux_frac < contrast)
+
+            if remove_marker:
+                # remove only the faintest source (one at a time)
+                # because several faint sources could combine to meet the
+                # constrast criterion
+                markers[markers == labels[np.argmin(flux_frac)]] = 0.
+
+        return SegmentationImage(markers)

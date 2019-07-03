@@ -3,7 +3,7 @@
 Tests for the deblend module.
 """
 
-from astropy.modeling import models
+from astropy.modeling.models import Gaussian2D
 from astropy.tests.helper import catch_warnings
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
@@ -32,9 +32,9 @@ except ImportError:
 @pytest.mark.skipif('not HAS_SKIMAGE')
 class TestDeblendSources:
     def setup_class(self):
-        g1 = models.Gaussian2D(100, 50, 50, 5, 5)
-        g2 = models.Gaussian2D(100, 35, 50, 5, 5)
-        g3 = models.Gaussian2D(30, 70, 50, 5, 5)
+        g1 = Gaussian2D(100, 50, 50, 5, 5)
+        g2 = Gaussian2D(100, 35, 50, 5, 5)
+        g3 = Gaussian2D(30, 70, 50, 5, 5)
         y, x = np.mgrid[0:100, 0:100]
         self.x = x
         self.y = y
@@ -58,10 +58,10 @@ class TestDeblendSources:
         assert_allclose(np.nonzero(self.segm), np.nonzero(result))
 
     def test_deblend_multiple_sources(self):
-        g4 = models.Gaussian2D(100, 50, 15, 5, 5)
-        g5 = models.Gaussian2D(100, 35, 15, 5, 5)
-        g6 = models.Gaussian2D(100, 50, 85, 5, 5)
-        g7 = models.Gaussian2D(100, 35, 85, 5, 5)
+        g4 = Gaussian2D(100, 50, 15, 5, 5)
+        g5 = Gaussian2D(100, 35, 15, 5, 5)
+        g6 = Gaussian2D(100, 50, 85, 5, 5)
+        g7 = Gaussian2D(100, 35, 85, 5, 5)
         x = self.x
         y = self.y
         data = self.data + g4(x, y) + g5(x, y) + g6(x, y) + g7(x, y)
@@ -76,9 +76,9 @@ class TestDeblendSources:
         assert result.areas[0] == result.areas[5]
 
     def test_deblend_multiple_sources_with_neighbor(self):
-        g1 = models.Gaussian2D(100, 50, 50, 20, 5, theta=45)
-        g2 = models.Gaussian2D(100, 35, 50, 5, 5)
-        g3 = models.Gaussian2D(100, 60, 20, 5, 5)
+        g1 = Gaussian2D(100, 50, 50, 20, 5, theta=45)
+        g2 = Gaussian2D(100, 35, 50, 5, 5)
+        g3 = Gaussian2D(100, 60, 20, 5, 5)
 
         x = self.x
         y = self.y
@@ -86,6 +86,50 @@ class TestDeblendSources:
         segm = detect_sources(data, self.threshold, self.npixels)
         result = deblend_sources(data, segm, self.npixels)
         assert result.nlabels == 3
+
+    @pytest.mark.parametrize('contrast, nlabels',
+                             ((0.001, 6), (0.017, 5), (0.06, 4), (0.1, 3),
+                              (0.15, 2), (0.45, 1)))
+    def test_deblend_contrast(self, contrast, nlabels):
+        y, x = np.mgrid[0:51, 0:151]
+        y0 = 25
+        data = (Gaussian2D(9.5, 16, y0, 5, 5)(x, y) +
+                Gaussian2D(51, 30, y0, 3, 3)(x, y) +
+                Gaussian2D(30, 42, y0, 5, 5)(x, y) +
+                Gaussian2D(80, 66, y0, 8, 8)(x, y) +
+                Gaussian2D(71, 88, y0, 8, 8)(x, y) +
+                Gaussian2D(18, 119, y0, 7, 7)(x, y))
+
+        npixels = 5
+        segm = detect_sources(data, 1.0, npixels)
+        segm2 = deblend_sources(data, segm, npixels, mode='linear',
+                                nlevels=32, contrast=contrast)
+        assert segm2.nlabels == nlabels
+
+    def test_deblend_connectivity(self):
+        data = np.zeros((51, 51))
+        data[15:36, 15:36] = 10.
+        data[14, 36] = 1.
+        data[13, 37] = 10
+        data[14, 14] = 5.
+        data[13, 13] = 10.
+        data[36, 14] = 10.
+        data[37, 13] = 10.
+        data[36, 36] = 10.
+        data[37, 37] = 10.
+
+        segm = detect_sources(data, 0.1, 1, connectivity=4)
+        assert segm.nlabels == 9
+        segm2 = deblend_sources(data, segm, 1, mode='linear', connectivity=4)
+        assert segm2.nlabels == 9
+
+        segm = detect_sources(data, 0.1, 1, connectivity=8)
+        assert segm.nlabels == 1
+        segm2 = deblend_sources(data, segm, 1, mode='linear', connectivity=8)
+        assert segm2.nlabels == 3
+
+        with pytest.raises(ValueError):
+            deblend_sources(data, segm, 1, mode='linear', connectivity=4)
 
     @pytest.mark.parametrize('mode', ['exponential', 'linear'])
     def test_deblend_sources_norelabel(self, mode):

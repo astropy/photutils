@@ -25,8 +25,8 @@ class Segment:
 
     Parameters
     ----------
-    segment_img : 2D int `~numpy.ndarray`
-        A 2D segmentation image where source regions are labeled by
+    segment_data : int `~numpy.ndarray`
+        A segmentation array where source regions are labeled by
         different positive integer values.  A value of zero is reserved
         for the background.
 
@@ -41,8 +41,8 @@ class Segment:
         The area of the segment in pixels**2.
     """
 
-    def __init__(self, segment_img, label, slices, area):
-        self._segment_img = segment_img
+    def __init__(self, segment_data, label, slices, area):
+        self._segment_data = segment_data
         self.label = label
         self.slices = slices
         self.area = area
@@ -52,7 +52,7 @@ class Segment:
                                       self.__class__.__name__)
 
         cls_info = []
-        params = ['label', 'slices', 'bbox', 'area']
+        params = ['label', 'slices', 'area']
         for param in params:
             cls_info.append((param, getattr(self, param)))
         fmt = ['{0}: {1}'.format(key, val) for key, val in cls_info]
@@ -73,13 +73,13 @@ class Segment:
     @lazyproperty
     def data(self):
         """
-        A 2D cutout image of the segment using the minimal bounding box,
+        A cutout array of the segment using the minimal bounding box,
         where pixels outside of the labeled region are set to zero (i.e.
-        neighboring segments within the rectangular cutout image are not
+        neighboring segments within the rectangular cutout array are not
         shown).
         """
 
-        cutout = np.copy(self._segment_img[self.slices])
+        cutout = np.copy(self._segment_data[self.slices])
         cutout[cutout != self.label] = 0
 
         return cutout
@@ -87,16 +87,16 @@ class Segment:
     @lazyproperty
     def data_ma(self):
         """
-        A 2D `~numpy.ma.MaskedArray` cutout image of the segment using
-        the minimal bounding box.
+        A `~numpy.ma.MaskedArray` cutout array of the segment using the
+        minimal bounding box.
 
         The mask is `True` for pixels outside of the source segment
-        (i.e. neighboring segments within the rectangular cutout image
+        (i.e. neighboring segments within the rectangular cutout array
         are masked).
         """
 
-        mask = (self._segment_img[self.slices] != self.label)
-        return np.ma.masked_array(self._segment_img[self.slices], mask=mask)
+        mask = (self._segment_data[self.slices] != self.label)
+        return np.ma.masked_array(self._segment_data[self.slices], mask=mask)
 
     @lazyproperty
     def bbox(self):
@@ -104,6 +104,10 @@ class Segment:
         The `~photutils.BoundingBox` of the minimal rectangular region
         containing the source segment.
         """
+
+        if self._segment_data.ndim != 2:
+            raise ValueError('The "bbox" attribute requires a 2D '
+                             'segmentation image.')
 
         return BoundingBox(self.slices[1].start, self.slices[1].stop,
                            self.slices[0].start, self.slices[0].stop)
@@ -125,9 +129,9 @@ class Segment:
 
         Parameters
         ----------
-        data : 2D array-like
+        data : array-like
             The data array from which to create the masked cutout array.
-            ``data`` must have the same shape as the segmentation image.
+            ``data`` must have the same shape as the segmentation array.
 
         masked_array : bool, optional
             If `True` then a `~numpy.ma.MaskedArray` will be created
@@ -137,17 +141,17 @@ class Segment:
 
         Returns
         -------
-        result : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-            The 2D cutout array.
+        result : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+            The cutout array.
         """
 
         data = np.asanyarray(data)
-        if data.shape != self._segment_img.shape:
+        if data.shape != self._segment_data.shape:
             raise ValueError('data must have the same shape as the '
-                             'segmentation image.')
+                             'segmentation array.')
 
         if masked_array:
-            mask = (self._segment_img[self.slices] != self.label)
+            mask = (self._segment_data[self.slices] != self.label)
             return np.ma.masked_array(data[self.slices], mask=mask)
         else:
             return data[self.slices]
@@ -160,7 +164,7 @@ class SegmentationImage:
     Parameters
     ----------
     data : array_like (int)
-        A 2D segmentation image where source regions are labeled by
+        A segmentation array where source regions are labeled by
         different positive integer values.  A value of zero is reserved
         for the background.  The segmentation image must contain at
         least one non-zero pixel and must not contain any non-finite
@@ -194,7 +198,7 @@ class SegmentationImage:
 
     def __array__(self):
         """
-        Array representation of the segmentation image (e.g., for
+        Array representation of the segmentation array (e.g., for
         matplotlib).
         """
 
@@ -212,7 +216,7 @@ class SegmentationImage:
         """
         A matplotlib colormap consisting of (random) muted colors.
 
-        This is very useful for plotting the segmentation image.
+        This is very useful for plotting the segmentation array.
         """
 
         return self.make_cmap(background_color='#000000', random_state=1234)
@@ -226,7 +230,7 @@ class SegmentationImage:
         Parameters
         ----------
         data : array_like (int)
-            A 2D segmentation image where source regions are labeled by
+            A segmentation array where source regions are labeled by
             different positive integer values.  A value of zero is
             reserved for the background.
 
@@ -239,7 +243,7 @@ class SegmentationImage:
         -----
         This is a static method so it can be used in
         :meth:`remove_masked_labels` on a masked version of the
-        segmentation image.
+        segmentation array.
 
         Examples
         --------
@@ -275,7 +279,7 @@ class SegmentationImage:
 
     @property
     def data(self):
-        """The 2D segmentation image."""
+        """The segmentation array."""
 
         return self._data
 
@@ -303,7 +307,7 @@ class SegmentationImage:
     @lazyproperty
     def data_ma(self):
         """
-        A `~numpy.ma.MaskedArray` version of the segmentation image
+        A `~numpy.ma.MaskedArray` version of the segmentation array
         where the background (label = 0) has been masked.
         """
 
@@ -311,25 +315,31 @@ class SegmentationImage:
 
     @lazyproperty
     def shape(self):
-        """The shape of the 2D segmentation image."""
+        """The shape of the segmentation array."""
 
         return self._data.shape
 
     @lazyproperty
+    def _ndim(self):
+        """The number of array dimensions of the segmentation array."""
+
+        return self._data.ndim
+
+    @lazyproperty
     def labels(self):
-        """The sorted non-zero labels in the segmentation image."""
+        """The sorted non-zero labels in the segmentation array."""
 
         return self._get_labels(self.data)
 
     @lazyproperty
     def nlabels(self):
-        """The number of non-zero labels in the segmentation image."""
+        """The number of non-zero labels in the segmentation array."""
 
         return len(self.labels)
 
     @lazyproperty
     def max_label(self):
-        """The maximum non-zero label in the segmentation image."""
+        """The maximum non-zero label in the segmentation array."""
 
         return np.max(self.labels)
 
@@ -457,7 +467,7 @@ class SegmentationImage:
     def is_consecutive(self):
         """
         Determine whether or not the non-zero labels in the segmentation
-        image are consecutive and start from 1.
+        array are consecutive and start from 1.
         """
 
         return ((self.labels[-1] - self.labels[0] + 1) == self.nlabels and
@@ -482,7 +492,7 @@ class SegmentationImage:
     def check_label(self, label):
         """
         Check that the input label is a valid label number within the
-        segmentation image.
+        segmentation array.
 
         Parameters
         ----------
@@ -500,7 +510,7 @@ class SegmentationImage:
     def check_labels(self, labels):
         """
         Check that the input label(s) are valid label numbers within the
-        segmentation image.
+        segmentation array.
 
         Parameters
         ----------
@@ -521,7 +531,7 @@ class SegmentationImage:
         if idx.size > 0:
             bad_labels.update(labels[idx])
 
-        # check if label is in the segmentation image
+        # check if label is in the segmentation array
         bad_labels.update(np.setdiff1d(labels, self.labels))
 
         if bad_labels:
@@ -536,7 +546,7 @@ class SegmentationImage:
         Define a matplotlib colormap consisting of (random) muted
         colors.
 
-        This is very useful for plotting the segmentation image.
+        This is very useful for plotting the segmentation array.
 
         Parameters
         ----------
@@ -544,7 +554,7 @@ class SegmentationImage:
             A hex string in the "#rrggbb" format defining the first
             color in the colormap.  This color will be used as the
             background color (label = 0) when plotting the segmentation
-            image.  The default is black ('#000000').
+            array.  The default is black ('#000000').
 
         random_state : int or `~numpy.random.RandomState`, optional
             The pseudo-random number generator state used for random
@@ -560,7 +570,7 @@ class SegmentationImage:
         Define a matplotlib colormap consisting of (random) muted
         colors.
 
-        This is very useful for plotting the segmentation image.
+        This is very useful for plotting the segmentation array.
 
         Parameters
         ----------
@@ -568,7 +578,7 @@ class SegmentationImage:
             A hex string in the "#rrggbb" format defining the first
             color in the colormap.  This color will be used as the
             background color (label = 0) when plotting the segmentation
-            image.  The default is black ('#000000').
+            array.  The default is black ('#000000').
 
         random_state : int or `~numpy.random.RandomState`, optional
             The pseudo-random number generator state used for random
@@ -613,7 +623,7 @@ class SegmentationImage:
         """
         Reassign a label number to a new number.
 
-        If ``new_label`` is already present in the segmentation image,
+        If ``new_label`` is already present in the segmentation array,
         then it will be combined with the input ``label`` number.
 
         Parameters
@@ -625,7 +635,7 @@ class SegmentationImage:
             The newly assigned label number.
 
         relabel : bool, optional
-            If `True`, then the segmentation image will be relabeled
+            If `True`, then the segmentation array will be relabeled
             such that the labels are in consecutive order starting from
             1.
 
@@ -686,7 +696,7 @@ class SegmentationImage:
 
         Multiple input ``labels`` will all be reassigned to the same
         ``new_label`` number.  If ``new_label`` is already present in
-        the segmentation image, then it will be combined with the input
+        the segmentation array, then it will be combined with the input
         ``labels``.
 
         Parameters
@@ -698,7 +708,7 @@ class SegmentationImage:
             The reassigned label number.
 
         relabel : bool, optional
-            If `True`, then the segmentation image will be relabeled
+            If `True`, then the segmentation array will be relabeled
             such that the labels are in consecutive order starting from
             1.
 
@@ -867,7 +877,7 @@ class SegmentationImage:
             The label number(s) to keep.
 
         relabel : bool, optional
-            If `True`, then the segmentation image will be relabeled
+            If `True`, then the segmentation array will be relabeled
             such that the labels are in consecutive order starting from
             1.
 
@@ -924,7 +934,7 @@ class SegmentationImage:
             The label number to remove.
 
         relabel : bool, optional
-            If `True`, then the segmentation image will be relabeled
+            If `True`, then the segmentation array will be relabeled
             such that the labels are in consecutive order starting from
             1.
 
@@ -976,7 +986,7 @@ class SegmentationImage:
             The label number(s) to remove.
 
         relabel : bool, optional
-            If `True`, then the segmentation image will be relabeled
+            If `True`, then the segmentation array will be relabeled
             such that the labels are in consecutive order starting from
             1.
 
@@ -1023,7 +1033,7 @@ class SegmentationImage:
     def remove_border_labels(self, border_width, partial_overlap=True,
                              relabel=False):
         """
-        Remove labeled segments near the image border.
+        Remove labeled segments near the array border.
 
         Labels within the defined border region will be removed.
 
@@ -1039,7 +1049,7 @@ class SegmentationImage:
             always removed.
 
         relabel : bool, optional
-            If `True`, then the segmentation image will be relabeled
+            If `True`, then the segmentation array will be relabeled
             such that the labels are in consecutive order starting from
             1.
 
@@ -1080,13 +1090,17 @@ class SegmentationImage:
 
         if border_width >= min(self.shape) / 2:
             raise ValueError('border_width must be smaller than half the '
-                             'image size in either dimension')
-        border = np.zeros(self.shape, dtype=np.bool)
-        border[:border_width, :] = True
-        border[-border_width:, :] = True
-        border[:, :border_width] = True
-        border[:, -border_width:] = True
-        self.remove_masked_labels(border, partial_overlap=partial_overlap,
+                             'array size in any dimension')
+
+        border_mask = np.zeros(self.shape, dtype=bool)
+        for i in range(border_mask.ndim):
+            border_mask = border_mask.swapaxes(0, i)
+            border_mask[:border_width] = True
+            border_mask[-border_width:] = True
+            border_mask = border_mask.swapaxes(0, i)
+
+        self.remove_masked_labels(border_mask,
+                                  partial_overlap=partial_overlap,
                                   relabel=relabel)
 
     def remove_masked_labels(self, mask, partial_overlap=True,
@@ -1098,7 +1112,7 @@ class SegmentationImage:
         ----------
         mask : array_like (bool)
             A boolean mask, with the same shape as the segmentation
-            image, where `True` values indicate masked pixels.
+            array, where `True` values indicate masked pixels.
 
         partial_overlap : bool, optional
             If this is set to `True` (default), a segment that partially
@@ -1107,7 +1121,7 @@ class SegmentationImage:
             removed.
 
         relabel : bool, optional
-            If `True`, then the segmentation image will be relabeled
+            If `True`, then the segmentation array will be relabeled
             such that the labels are in consecutive order starting from
             1.
 
@@ -1149,7 +1163,7 @@ class SegmentationImage:
 
         if mask.shape != self.shape:
             raise ValueError('mask must have the same shape as the '
-                             'segmentation image')
+                             'segmentation array')
         remove_labels = self._get_labels(self.data[mask])
         if not partial_overlap:
             interior_labels = self._get_labels(self.data[~mask])
@@ -1167,16 +1181,16 @@ class SegmentationImage:
         ----------
         mask_background : bool, optional
             Set to `True` to mask the background pixels (labels = 0) in
-            the returned image.  This is useful for overplotting the
-            segment outlines on an image.  The default is `False`.
+            the returned array.  This is useful for overplotting the
+            segment outlines.  The default is `False`.
 
         Returns
         -------
-        boundaries : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-            An image with the same shape of the segmentation image
+        boundaries : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+            An array with the same shape of the segmentation array
             containing only the outlines of the labeled segments.  The
             pixel values in the outlines correspond to the labels in the
-            segmentation image.  If ``mask_background`` is `True`, then
+            segmentation array.  If ``mask_background`` is `True`, then
             a `~numpy.ma.MaskedArray` is returned.
 
         Examples
@@ -1197,10 +1211,11 @@ class SegmentationImage:
                [0, 0, 0, 0, 0, 0]])
         """
 
-        from scipy.ndimage import grey_erosion, grey_dilation
+        from scipy.ndimage import (generate_binary_structure, grey_dilation,
+                                   grey_erosion)
 
-        # mode='constant' ensures outline is included on the image borders
-        selem = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
+        # mode='constant' ensures outline is included on the array borders
+        selem = generate_binary_structure(self._ndim, 1)  # edge connectivity
         eroded = grey_erosion(self.data, footprint=selem, mode='constant',
                               cval=0.)
         dilated = grey_dilation(self.data, footprint=selem, mode='constant',
