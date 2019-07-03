@@ -126,6 +126,13 @@ Bug Fixes
   - Fixed a bug in ``filter_data`` where units were dropped for data
     ``Quantity`` objects. [#872]
 
+  - Fixed a bug in ``deblend_sources`` where sources could be
+    deblended too much when ``connectivity=8``. [#890]
+
+  - Fixed a bug in ``deblend_sources`` where the ``contrast``
+    parameter had little effect if the original segment contained
+    three or more sources. [#890]
+
 
 API changes
 ^^^^^^^^^^^
