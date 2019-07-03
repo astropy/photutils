@@ -106,6 +106,31 @@ class TestDeblendSources:
                                 nlevels=32, contrast=contrast)
         assert segm2.nlabels == nlabels
 
+    def test_deblend_connectivity(self):
+        data = np.zeros((51, 51))
+        data[15:36, 15:36] = 10.
+        data[14, 36] = 1.
+        data[13, 37] = 10
+        data[14, 14] = 5.
+        data[13, 13] = 10.
+        data[36, 14] = 10.
+        data[37, 13] = 10.
+        data[36, 36] = 10.
+        data[37, 37] = 10.
+
+        segm = detect_sources(data, 0.1, 1, connectivity=4)
+        assert segm.nlabels == 9
+        segm2 = deblend_sources(data, segm, 1, mode='linear', connectivity=4)
+        assert segm2.nlabels == 9
+
+        segm = detect_sources(data, 0.1, 1, connectivity=8)
+        assert segm.nlabels == 1
+        segm2 = deblend_sources(data, segm, 1, mode='linear', connectivity=8)
+        assert segm2.nlabels == 3
+
+        with pytest.raises(ValueError):
+            deblend_sources(data, segm, 1, mode='linear', connectivity=4)
+
     @pytest.mark.parametrize('mode', ['exponential', 'linear'])
     def test_deblend_sources_norelabel(self, mode):
         result = deblend_sources(self.data, self.segm, self.npixels,
