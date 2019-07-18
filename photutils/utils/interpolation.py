@@ -3,14 +3,9 @@
 This module provides tools for interpolating data.
 """
 
-import warnings
-
-from astropy.utils import deprecated
-from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
-__all__ = ['ShepardIDWInterpolator', 'interpolate_masked_data',
-           'mask_to_mirrored_num']
+__all__ = ['ShepardIDWInterpolator', 'mask_to_mirrored_num']
 
 __doctest_requires__ = {('ShepardIDWInterpolator'): ['scipy']}
 
@@ -285,91 +280,6 @@ class ShepardIDWInterpolator:
             return interp_values[0]
         else:
             return interp_values
-
-
-@deprecated('0.4')
-def interpolate_masked_data(data, mask, error=None, background=None):
-    """
-    Interpolate over masked pixels in data and optional error or
-    background images.
-
-    The value of masked pixels are replaced by the mean value of the
-    connected neighboring non-masked pixels.  This function is intended
-    for single, isolated masked pixels (e.g. hot/warm pixels).
-
-    Parameters
-    ----------
-    data : array_like or `~astropy.units.Quantity`
-        The data array.
-
-    mask : array_like (bool)
-        A boolean mask, with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is masked.
-
-    error : array_like or `~astropy.units.Quantity`, optional
-        The pixel-wise Gaussian 1-sigma errors of the input ``data``.
-        ``error`` must have the same shape as ``data``.
-
-    background : array_like, or `~astropy.units.Quantity`, optional
-        The pixel-wise background level of the input ``data``.
-        ``background`` must have the same shape as ``data``.
-
-    Returns
-    -------
-    data : `~numpy.ndarray` or `~astropy.units.Quantity`
-        Input ``data`` with interpolated masked pixels.
-
-    error : `~numpy.ndarray` or `~astropy.units.Quantity`
-        Input ``error`` with interpolated masked pixels.  `None` if
-        input ``error`` is not input.
-
-    background : `~numpy.ndarray` or `~astropy.units.Quantity`
-        Input ``background`` with interpolated masked pixels.  `None` if
-        input ``background`` is not input.
-    """
-
-    if data.shape != mask.shape:
-        raise ValueError('data and mask must have the same shape')
-
-    data_out = np.copy(data)  # do not alter input data
-    mask_idx = mask.nonzero()
-
-    if mask_idx[0].size == 0:
-        raise ValueError('All items in data are masked')
-
-    for x in zip(*mask_idx):
-        X = np.array([[max(x[i] - 1, 0), min(x[i] + 1, data.shape[i] - 1)]
-                      for i in range(len(data.shape))])
-        goodpix = ~mask[X]
-
-        if not np.any(goodpix):
-            warnings.warn('The masked pixel at "{}" is completely '
-                          'surrounded by (connected) masked pixels, '
-                          'thus unable to interpolate'.format(x,),
-                          AstropyUserWarning)
-            continue
-
-        data_out[x] = np.mean(data[X][goodpix])
-
-        if background is not None:
-            if background.shape != data.shape:
-                raise ValueError('background and data must have the same '
-                                 'shape')
-            background_out = np.copy(background)
-            background_out[x] = np.mean(background[X][goodpix])
-        else:
-            background_out = None
-
-        if error is not None:
-            if error.shape != data.shape:
-                raise ValueError('error and data must have the same '
-                                 'shape')
-            error_out = np.copy(error)
-            error_out[x] = np.sqrt(np.mean(error[X][goodpix]**2))
-        else:
-            error_out = None
-
-    return data_out, error_out, background_out
 
 
 def mask_to_mirrored_num(image, mask_image, center_position, bbox=None):
