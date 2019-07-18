@@ -406,7 +406,7 @@ class CentralPixel(Isophote):
         return self.sample.geometry.x0
 
 
-class IsophoteList(Isophote):
+class IsophoteList:
     """
     Container class that provides the same attributes as the
     `~photutils.isophote.Isophote` class, but for a list of isophotes.
