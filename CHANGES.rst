@@ -31,6 +31,10 @@ New Features
   - Significantly improved the performance (~5 times faster) of
     ellipse fitting. [#826]
 
+- ``photutils.psf``
+
+  - Added new centroiding function ``centroid_epsf``. [#816]
+
 - ``photutils.segmentation``
 
   - Significantly improved the performance of relabeling in
@@ -68,10 +72,6 @@ New Features
 - ``photutils.utils``
 
   - Added ``NoDetectionsWarning`` class. [#836]
-
-- ``photutils.psf``
-
-  - Added new centroiding function ``centroid_epsf``. [#816]
 
 Bug Fixes
 ^^^^^^^^^
@@ -121,11 +121,6 @@ Bug Fixes
   - Fixed ``SegmentationImage.is_consecutive`` to return ``True`` only
     if the labels are consecutive and start with label=1. [#886]
 
-- ``photutils.segmentation``
-
-  - Fixed a bug in ``filter_data`` where units were dropped for data
-    ``Quantity`` objects. [#872]
-
   - Fixed a bug in ``deblend_sources`` where sources could be
     deblended too much when ``connectivity=8``. [#890]
 
@@ -133,6 +128,10 @@ Bug Fixes
     parameter had little effect if the original segment contained
     three or more sources. [#890]
 
+- ``photutils.utils``
+
+  - Fixed a bug in ``filter_data`` where units were dropped for data
+    ``Quantity`` objects. [#872]
 
 API changes
 ^^^^^^^^^^^
@@ -194,6 +193,20 @@ API changes
   - Deprecated the ``BoundingBox`` ``as_patch`` method (instead use
     ``as_artist``). [#851]
 
+- ``photutils.psf``
+
+  - ``FittableImageModel`` and subclasses now allow for different
+    ``oversampling`` factors to be specified in x and y directions.
+    [#834]
+
+  - Removed ``pixel_scale`` keyword from ``EPSFStar``, ``EPSFBuilder``,
+    and ``EPSFModel``. [#815]
+
+  - Added ``oversampling`` keyword to ``centroid_com``. [#816]
+
+  - Removed deprecated ``Star``, ``Stars``, and ``LinkedStar``
+    classes. [#894]
+
 - ``photutils.segmentation``
 
   - Removed deprecated ``SegmentationImage`` attributes
@@ -249,20 +262,6 @@ API changes
   - Removed deprecated ``interpolate_masked_data`` function. [#895]
 
   - Deprecated the ``mask_to_mirrored_num`` function. [#895]
-
-- ``photutils.psf``
-
-  - ``FittableImageModel`` and subclasses now allow for different
-    ``oversampling`` factors to be specified in x and y directions.
-    [#834]
-
-  - Removed ``pixel_scale`` keyword from ``EPSFStar``, ``EPSFBuilder``,
-    and ``EPSFModel``. [#815]
-
-  - Added ``oversampling`` keyword to ``centroid_com``. [#816]
-
-  - Removed deprecated ``Star``, ``Stars``, and ``LinkedStar``
-    classes. [#894]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
