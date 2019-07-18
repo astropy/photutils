@@ -12,7 +12,6 @@ import numpy as np
 from .attributes import (AngleOrPixelScalarQuantity, AngleScalarQuantity,
                          PixelPositions, PositiveScalar, Scalar,
                          SkyCoordPositions)
-from .bounding_box import BoundingBox
 from .core import PixelAperture, SkyAperture
 from .mask import ApertureMask
 from ..geometry import rectangular_overlap_grid
@@ -109,7 +108,7 @@ class RectangularMaskMixin:
             return masks
 
     @staticmethod
-    def _extents(width, height, theta):
+    def _calc_extents(width, height, theta):
         """
         Calculate half of the bounding box extents of an ellipse.
         """
@@ -208,26 +207,8 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         self.theta = theta
 
     @property
-    def bounding_boxes(self):
-        """
-        A list of minimal bounding boxes (`~photutils.BoundingBox`), one
-        for each position, enclosing the exact rectangular apertures.
-        """
-
-        positions = np.atleast_2d(self.positions)
-        x_delta, y_delta = self._extents(self.w, self.h, self.theta)
-        xmin = positions[:, 0] - x_delta
-        xmax = positions[:, 0] + x_delta
-        ymin = positions[:, 1] - y_delta
-        ymax = positions[:, 1] + y_delta
-
-        bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
-                  for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
-
-        if self.isscalar:
-            return bboxes[0]
-        else:
-            return bboxes
+    def _xy_extents(self):
+        return self._calc_extents(self.w, self.h, self.theta)
 
     @property
     def area(self):
@@ -383,27 +364,8 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         self.theta = theta
 
     @property
-    def bounding_boxes(self):
-        """
-        A list of minimal bounding boxes (`~photutils.BoundingBox`), one
-        for each position, enclosing the rectangular apertures for the
-        "exact" case.
-        """
-
-        positions = np.atleast_2d(self.positions)
-        x_delta, y_delta = self._extents(self.w_out, self.h_out, self.theta)
-        xmin = positions[:, 0] - x_delta
-        xmax = positions[:, 0] + x_delta
-        ymin = positions[:, 1] - y_delta
-        ymax = positions[:, 1] + y_delta
-
-        bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
-                  for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
-
-        if self.isscalar:
-            return bboxes[0]
-        else:
-            return bboxes
+    def _xy_extents(self):
+        return self._calc_extents(self.w_out, self.h_out, self.theta)
 
     @property
     def area(self):

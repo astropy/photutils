@@ -10,7 +10,6 @@ import numpy as np
 
 from .attributes import (AngleOrPixelScalarQuantity, PixelPositions,
                          PositiveScalar, SkyCoordPositions)
-from .bounding_box import BoundingBox
 from .core import PixelAperture, SkyAperture
 from .mask import ApertureMask
 from ..geometry import circular_overlap_grid
@@ -149,20 +148,8 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         self.r = r
 
     @property
-    def bounding_boxes(self):
-        positions = np.atleast_2d(self.positions)
-        xmin = positions[:, 0] - self.r
-        xmax = positions[:, 0] + self.r
-        ymin = positions[:, 1] - self.r
-        ymax = positions[:, 1] + self.r
-
-        bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
-                  for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
-
-        if self.isscalar:
-            return bboxes[0]
-        else:
-            return bboxes
+    def _xy_extents(self):
+        return self.r, self.r
 
     @property
     def area(self):
@@ -292,20 +279,8 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         self.r_out = r_out
 
     @property
-    def bounding_boxes(self):
-        positions = np.atleast_2d(self.positions)
-        xmin = positions[:, 0] - self.r_out
-        xmax = positions[:, 0] + self.r_out
-        ymin = positions[:, 1] - self.r_out
-        ymax = positions[:, 1] + self.r_out
-
-        bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
-                  for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
-
-        if self.isscalar:
-            return bboxes[0]
-        else:
-            return bboxes
+    def _xy_extents(self):
+        return self.r_out, self.r_out
 
     @property
     def area(self):

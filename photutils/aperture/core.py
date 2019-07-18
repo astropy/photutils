@@ -16,6 +16,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import (skycoord_to_pixel, pixel_to_skycoord,
                                wcs_to_celestial_frame)
 
+from .bounding_box import BoundingBox
 from ._photometry_utils import (_handle_units, _prepare_photometry_data,
                                 _validate_inputs)
 from ..utils.misc import _ABCMetaAndInheritDocstrings
@@ -149,6 +150,18 @@ class PixelAperture(Aperture):
 
     @property
     @abc.abstractmethod
+    def _xy_extents(self):
+        """
+        The (x, y) extents of the aperture measured from the center
+        position.
+
+        In other words, the (x, y) extents are half of the aperture
+        minimal bounding box size in each dimension.
+        """
+
+        raise NotImplementedError('Needs to be implemented in a subclass.')
+
+    @property
     def bounding_boxes(self):
         """
         The minimal bounding box for the aperture.
@@ -158,7 +171,20 @@ class PixelAperture(Aperture):
         returned.
         """
 
-        raise NotImplementedError('Needs to be implemented in a subclass.')
+        positions = np.atleast_2d(self.positions)
+        x_delta, y_delta = self._xy_extents
+        xmin = positions[:, 0] - x_delta
+        xmax = positions[:, 0] + x_delta
+        ymin = positions[:, 1] - y_delta
+        ymax = positions[:, 1] + y_delta
+
+        bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
+                  for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
+
+        if self.isscalar:
+            return bboxes[0]
+        else:
+            return bboxes
 
     @property
     def _centered_edges(self):
