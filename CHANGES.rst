@@ -246,6 +246,10 @@ API changes
     ``pixel_scale_angle_at_skycoord``, ``assert_angle_or_pixel``,
     ``assert_angle``, and ``pixel_to_icrs_coords``. [#846]
 
+  - Removed deprecated ``interpolate_masked_data`` function. [#895]
+
+  - Deprecated the ``mask_to_mirrored_num`` function. [#895]
+
 - ``photutils.psf``
 
   - ``FittableImageModel`` and subclasses now allow for different
