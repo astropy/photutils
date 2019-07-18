@@ -172,6 +172,9 @@ API changes
   - The ``aperture_photometry`` function moved to a new
     ``photutils.aperture.photometry`` module. [#876]
 
+  - Renamed the ``bounding_boxes`` attribute for pixel-based apertures
+    to ``bbox`` for consistency. [#896]
+
 - ``photutils.background``
 
   - The ``Background2D`` ``plot_meshes`` keyword ``ax`` was deprecated
