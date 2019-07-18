@@ -10,15 +10,14 @@ from astropy.nddata import NDData
 from astropy.nddata.utils import (overlap_slices, NoOverlapError,
                                   PartialOverlapError)
 from astropy.table import Table
-from astropy.utils import deprecated, lazyproperty
+from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import skycoord_to_pixel
 import numpy as np
 
 from ..aperture import BoundingBox
 
-__all__ = ['EPSFStar', 'EPSFStars', 'LinkedEPSFStar', 'extract_stars',
-           'Star', 'Stars', 'LinkedStar']
+__all__ = ['EPSFStar', 'EPSFStars', 'LinkedEPSFStar', 'extract_stars']
 
 
 class EPSFStar:
@@ -773,18 +772,3 @@ def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
         stars.append(star)
 
     return stars
-
-
-@deprecated('0.6', alternative='EPSFStar')
-class Star(EPSFStar):
-    pass
-
-
-@deprecated('0.6', alternative='EPSFStars')
-class Stars(EPSFStars):
-    pass
-
-
-@deprecated('0.6', alternative='LinkedEPSFStar')
-class LinkedStar(LinkedEPSFStar):
-    pass
