@@ -9,6 +9,7 @@ import numpy as np
 __all__ = ['ShepardIDWInterpolator', 'mask_to_mirrored_num']
 
 __doctest_requires__ = {('ShepardIDWInterpolator'): ['scipy']}
+__doctest_skip__ = ['mask_to_mirrored_num']
 
 
 class ShepardIDWInterpolator:
