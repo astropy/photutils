@@ -3,6 +3,7 @@
 This module provides tools for interpolating data.
 """
 
+from astropy.utils import deprecated
 import numpy as np
 
 __all__ = ['ShepardIDWInterpolator', 'mask_to_mirrored_num']
@@ -282,6 +283,7 @@ class ShepardIDWInterpolator:
             return interp_values
 
 
+@deprecated(0.7)
 def mask_to_mirrored_num(image, mask_image, center_position, bbox=None):
     """
     Replace masked pixels with the value of the pixel mirrored across a
