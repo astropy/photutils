@@ -444,7 +444,8 @@ class Ellipse:
 
         # if user asked for minsma=0, extract special isophote there
         if minsma == 0.0:
-            isophote = self.fit_isophote(0.0, isophote_list=isophote_list)
+            # isophote is appended to isophote_list
+            _ = self.fit_isophote(0.0, isophote_list=isophote_list)
 
         # sort list of isophotes according to sma
         isophote_list.sort()
