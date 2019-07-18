@@ -12,7 +12,6 @@ import numpy as np
 from .attributes import (AngleOrPixelScalarQuantity, AngleScalarQuantity,
                          PixelPositions, PositiveScalar, Scalar,
                          SkyCoordPositions)
-from .bounding_box import BoundingBox
 from .core import PixelAperture, SkyAperture
 from .mask import ApertureMask
 from ..geometry import elliptical_overlap_grid
@@ -84,7 +83,7 @@ class EllipticalMaskMixin:
             raise ValueError('Cannot determine the aperture shape.')
 
         masks = []
-        for bbox, edges in zip(np.atleast_1d(self.bounding_boxes),
+        for bbox, edges in zip(np.atleast_1d(self.bbox),
                                self._centered_edges):
             ny, nx = bbox.shape
             mask = elliptical_overlap_grid(edges[0], edges[1], edges[2],
@@ -106,7 +105,7 @@ class EllipticalMaskMixin:
             return masks
 
     @staticmethod
-    def _extents(semimajor_axis, semiminor_axis, theta):
+    def _calc_extents(semimajor_axis, semiminor_axis, theta):
         """
         Calculate half of the bounding box extents of an ellipse.
         """
@@ -183,26 +182,8 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         self.theta = theta
 
     @property
-    def bounding_boxes(self):
-        """
-        A list of minimal bounding boxes (`~photutils.BoundingBox`), one
-        for each position, enclosing the exact elliptical apertures.
-        """
-
-        positions = np.atleast_2d(self.positions)
-        x_delta, y_delta = self._extents(self.a, self.b, self.theta)
-        xmin = positions[:, 0] - x_delta
-        xmax = positions[:, 0] + x_delta
-        ymin = positions[:, 1] - y_delta
-        ymax = positions[:, 1] + y_delta
-
-        bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
-                  for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
-
-        if self.isscalar:
-            return bboxes[0]
-        else:
-            return bboxes
+    def _xy_extents(self):
+        return self._calc_extents(self.a, self.b, self.theta)
 
     @property
     def area(self):
@@ -352,26 +333,8 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         self.theta = theta
 
     @property
-    def bounding_boxes(self):
-        """
-        A list of minimal bounding boxes (`~photutils.BoundingBox`), one
-        for each position, enclosing the exact elliptical apertures.
-        """
-
-        positions = np.atleast_2d(self.positions)
-        x_delta, y_delta = self._extents(self.a_out, self.b_out, self.theta)
-        xmin = positions[:, 0] - x_delta
-        xmax = positions[:, 0] + x_delta
-        ymin = positions[:, 1] - y_delta
-        ymax = positions[:, 1] + y_delta
-
-        bboxes = [BoundingBox.from_float(x0, x1, y0, y1)
-                  for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax)]
-
-        if self.isscalar:
-            return bboxes[0]
-        else:
-            return bboxes
+    def _xy_extents(self):
+        return self._calc_extents(self.a_out, self.b_out, self.theta)
 
     @property
     def area(self):
