@@ -248,13 +248,17 @@ API changes
 
 - ``photutils.psf``
 
-  - ``FittableImageModel`` and subclasses now allow for different ``oversampling``
-    factors to be specified in x and y directions. [#834]
+  - ``FittableImageModel`` and subclasses now allow for different
+    ``oversampling`` factors to be specified in x and y directions.
+    [#834]
 
   - Removed ``pixel_scale`` keyword from ``EPSFStar``, ``EPSFBuilder``,
     and ``EPSFModel``. [#815]
 
   - Added ``oversampling`` keyword to ``centroid_com``. [#816]
+
+  - Removed deprecated ``Star``, ``Stars``, and ``LinkedStar``
+    classes. [#894]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
