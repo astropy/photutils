@@ -779,7 +779,6 @@ class EPSFBuilder:
         centers = stars.cutout_center_flat
         n_stars = stars.n_stars
         fit_failed = np.zeros(n_stars, dtype=bool)
-        dx_dy = np.zeros((n_stars, 2), dtype=np.float)
         epsf = init_epsf
         dt = 0.
 
