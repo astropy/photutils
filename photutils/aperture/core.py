@@ -162,7 +162,12 @@ class PixelAperture(Aperture):
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
     @property
+    @deprecated('0.7', alternative='bbox')
     def bounding_boxes(self):
+        return self.bbox
+
+    @property
+    def bbox(self):
         """
         The minimal bounding box for the aperture.
 
@@ -199,7 +204,7 @@ class PixelAperture(Aperture):
 
         edges = []
         for position, bbox in zip(np.atleast_2d(self.positions),
-                                  np.atleast_1d(self.bounding_boxes)):
+                                  np.atleast_1d(self.bbox)):
             xmin = bbox.ixmin - 0.5 - position[0]
             xmax = bbox.ixmax - 0.5 - position[0]
             ymin = bbox.iymin - 0.5 - position[1]

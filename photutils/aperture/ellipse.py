@@ -83,7 +83,7 @@ class EllipticalMaskMixin:
             raise ValueError('Cannot determine the aperture shape.')
 
         masks = []
-        for bbox, edges in zip(np.atleast_1d(self.bounding_boxes),
+        for bbox, edges in zip(np.atleast_1d(self.bbox),
                                self._centered_edges):
             ny, nx = bbox.shape
             mask = elliptical_overlap_grid(edges[0], edges[1], edges[2],
