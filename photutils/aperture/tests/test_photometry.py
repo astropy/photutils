@@ -332,7 +332,13 @@ def test_wcs_based_photometry():
     pos_orig_pixel = u.Quantity(([160., 25., 150., 90.],
                                  [70., 40., 25., 60.]), unit=u.pixel)
 
-    pos_skycoord = pixel_to_skycoord(pos_orig_pixel[0], pos_orig_pixel[1], wcs)
+    try:
+        pos_skycoord = wcs.pixel_to_world(pos_orig_pixel[0],
+                                          pos_orig_pixel[1])
+    except AttributeError:
+        # for Astropy < 3.1
+        pos_skycoord = pixel_to_skycoord(pos_orig_pixel[0],
+                                         pos_orig_pixel[1], wcs)
 
     pos_skycoord_s = pos_skycoord[2]
 
@@ -870,7 +876,13 @@ def test_scalar_skycoord():
 
     data = make_4gaussians_image()
     wcs = make_wcs(data.shape)
-    skycoord = pixel_to_skycoord(90, 60, wcs)
+
+    try:
+        skycoord = wcs.pixel_to_world(90, 60)
+    except AttributeError:
+        # for Astropy < 3.1
+        skycoord = pixel_to_skycoord(90, 60, wcs)
+
     aper = SkyCircularAperture(skycoord, r=0.1*u.arcsec)
     tbl = aperture_photometry(data, aper, wcs=wcs)
     assert isinstance(tbl['sky_center'], SkyCoord)
@@ -883,7 +895,12 @@ def test_nddata_input():
     mask[8:13, 8:13] = True
     unit = 'adu'
     wcs = make_wcs(data.shape)
-    skycoord = pixel_to_skycoord(10, 10, wcs)
+    try:
+        skycoord = wcs.pixel_to_world(10, 10)
+    except AttributeError:
+        # for Astropy < 3.1
+        skycoord = pixel_to_skycoord(10, 10, wcs)
+
     aper = SkyCircularAperture(skycoord, r=0.7*u.arcsec)
 
     tbl1 = aperture_photometry(data*u.adu, aper, error=error*u.adu, mask=mask,

@@ -257,20 +257,18 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         else:
             return patches
 
-    def to_sky(self, wcs, mode='all'):
+    def to_sky(self, wcs):
         """
         Convert the aperture to a `SkyRectangularAperture` object
         defined in celestial coordinates.
 
         Parameters
         ----------
-        wcs : `~astropy.wcs.WCS`
-            The world coordinate system (WCS) transformation to use.
-
-        mode : {'all', 'wcs'}, optional
-            Whether to do the transformation including distortions
-            (``'all'``; default) or only including only the core WCS
-            transformation (``'wcs'``).
+        wcs : WCS object
+            A world coordinate system (WCS) transformation that supports
+            the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -278,8 +276,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
             A `SkyRectangularAperture` object.
         """
 
-        sky_params = self._to_sky_params(wcs, mode=mode)
-        return SkyRectangularAperture(**sky_params)
+        return SkyRectangularAperture(**self._to_sky_params(wcs))
 
 
 class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
@@ -423,20 +420,18 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         else:
             return patches
 
-    def to_sky(self, wcs, mode='all'):
+    def to_sky(self, wcs):
         """
         Convert the aperture to a `SkyRectangularAnnulus` object
         defined in celestial coordinates.
 
         Parameters
         ----------
-        wcs : `~astropy.wcs.WCS`
-            The world coordinate system (WCS) transformation to use.
-
-        mode : {'all', 'wcs'}, optional
-            Whether to do the transformation including distortions
-            (``'all'``; default) or only including only the core WCS
-            transformation (``'wcs'``).
+        wcs : WCS object
+            A world coordinate system (WCS) transformation that supports
+            the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -444,8 +439,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
             A `SkyRectangularAnnulus` object.
         """
 
-        sky_params = self._to_sky_params(wcs, mode=mode)
-        return SkyRectangularAnnulus(**sky_params)
+        return SkyRectangularAnnulus(**self._to_sky_params(wcs))
 
 
 class SkyRectangularAperture(SkyAperture):
@@ -502,20 +496,18 @@ class SkyRectangularAperture(SkyAperture):
         self.h = h
         self.theta = theta
 
-    def to_pixel(self, wcs, mode='all'):
+    def to_pixel(self, wcs):
         """
         Convert the aperture to a `RectangularAperture` object defined
         in pixel coordinates.
 
         Parameters
         ----------
-        wcs : `~astropy.wcs.WCS`
-            The world coordinate system (WCS) transformation to use.
-
-        mode : {'all', 'wcs'}, optional
-            Whether to do the transformation including distortions
-            (``'all'``; default) or only including only the core WCS
-            transformation (``'wcs'``).
+        wcs : WCS object
+            A world coordinate system (WCS) transformation that supports
+            the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -523,8 +515,7 @@ class SkyRectangularAperture(SkyAperture):
             A `RectangularAperture` object.
         """
 
-        pixel_params = self._to_pixel_params(wcs, mode=mode)
-        return RectangularAperture(**pixel_params)
+        return RectangularAperture(**self._to_pixel_params(wcs))
 
 
 class SkyRectangularAnnulus(SkyAperture):
@@ -598,20 +589,18 @@ class SkyRectangularAnnulus(SkyAperture):
         self.h_in = self.w_in * self.h_out / self.w_out
         self.theta = theta
 
-    def to_pixel(self, wcs, mode='all'):
+    def to_pixel(self, wcs):
         """
         Convert the aperture to a `RectangularAnnulus` object defined in
         pixel coordinates.
 
         Parameters
         ----------
-        wcs : `~astropy.wcs.WCS`
-            The world coordinate system (WCS) transformation to use.
-
-        mode : {'all', 'wcs'}, optional
-            Whether to do the transformation including distortions
-            (``'all'``; default) or only including only the core WCS
-            transformation (``'wcs'``).
+        wcs : WCS object
+            A world coordinate system (WCS) transformation that supports
+            the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -619,5 +608,4 @@ class SkyRectangularAnnulus(SkyAperture):
             A `RectangularAnnulus` object.
         """
 
-        pixel_params = self._to_pixel_params(wcs, mode=mode)
-        return RectangularAnnulus(**pixel_params)
+        return RectangularAnnulus(**self._to_pixel_params(wcs))

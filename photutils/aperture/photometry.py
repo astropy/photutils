@@ -108,10 +108,13 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         the ``data`` (and optional ``error``) as
         `~astropy.units.Quantity` objects.
 
-    wcs : `~astropy.wcs.WCS`, optional
-        The WCS transformation to use if the input ``apertures`` is a
-        `SkyAperture` object.  If ``data`` is an
-        `~astropy.io.fits.ImageHDU` or `~astropy.io.fits.HDUList`,
+    wcs : WCS object, optional
+        A world coordinate system (WCS) transformation that supports the
+        `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).  Used only if the input
+        ``apertures`` contains a `SkyAperture` object.  If ``data`` is
+        an `~astropy.io.fits.ImageHDU` or `~astropy.io.fits.HDUList`,
         ``wcs`` overrides any WCS transformation present in the header.
 
     Returns

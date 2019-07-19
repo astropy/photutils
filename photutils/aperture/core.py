@@ -13,14 +13,14 @@ import astropy.units as u
 from astropy.utils import deprecated
 from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.wcs.utils import (skycoord_to_pixel, pixel_to_skycoord,
-                               wcs_to_celestial_frame)
+from astropy.wcs.utils import wcs_to_celestial_frame
 
 from .bounding_box import BoundingBox
 from ._photometry_utils import (_handle_units, _prepare_photometry_data,
                                 _validate_inputs)
-from ..utils._wcs_helpers import _pixel_scale_angle_at_skycoord
-
+from ..utils._wcs_helpers import (_pixel_to_world,
+                                  _pixel_scale_angle_at_skycoord,
+                                  _world_to_pixel)
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture']
 
@@ -585,20 +585,18 @@ class PixelAperture(Aperture):
         for patch in patches:
             axes.add_patch(patch)
 
-    def _to_sky_params(self, wcs, mode='all'):
+    def _to_sky_params(self, wcs):
         """
         Convert the pixel aperture parameters to those for a sky
         aperture.
 
         Parameters
         ----------
-        wcs : `~astropy.wcs.WCS`
-            The world coordinate system (WCS) transformation to use.
-
-        mode : {'all', 'wcs'}, optional
-            Whether to do the transformation including distortions
-            (``'all'``; default) or only including only the core WCS
-            transformation (``'wcs'``).
+        wcs : WCS object
+            A world coordinate system (WCS) transformation that supports
+            the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -608,8 +606,7 @@ class PixelAperture(Aperture):
 
         sky_params = {}
         xpos, ypos = np.transpose(self.positions)
-        sky_params['positions'] = pixel_to_skycoord(xpos, ypos, wcs,
-                                                    mode=mode)
+        sky_params['positions'] = _pixel_to_world(xpos, ypos, wcs)
 
         # The aperture object must have a single value for each shape
         # parameter so we must use a single pixel scale for all positions.
@@ -632,20 +629,18 @@ class PixelAperture(Aperture):
         return sky_params
 
     @abc.abstractmethod
-    def to_sky(self, wcs, mode='all'):
+    def to_sky(self, wcs):
         """
         Convert the aperture to a `SkyAperture` object defined in
         celestial coordinates.
 
         Parameters
         ----------
-        wcs : `~astropy.wcs.WCS` object
-            The world coordinate system (WCS) transformation to use.
-
-        mode : {'all', 'wcs'}, optional
-            Whether to do the transformation including distortions
-            (``'all'``; default) or including only the core WCS
-            transformation (``'wcs'``).
+        wcs : WCS object
+            A world coordinate system (WCS) transformation that supports
+            the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -662,20 +657,18 @@ class SkyAperture(Aperture):
     coordinates.
     """
 
-    def _to_pixel_params(self, wcs, mode='all'):
+    def _to_pixel_params(self, wcs):
         """
         Convert the sky aperture parameters to those for a pixel
         aperture.
 
         Parameters
         ----------
-        wcs : `~astropy.wcs.WCS`
-            The world coordinate system (WCS) transformation to use.
-
-        mode : {'all', 'wcs'}, optional
-            Whether to do the transformation including distortions
-            (``'all'``; default) or only including only the core WCS
-            transformation (``'wcs'``).
+        wcs : WCS object
+            A world coordinate system (WCS) transformation that supports
+            the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -684,7 +677,8 @@ class SkyAperture(Aperture):
         """
 
         pixel_params = {}
-        xpos, ypos = skycoord_to_pixel(self.positions, wcs, mode=mode)
+
+        xpos, ypos = _world_to_pixel(self.positions, wcs)
         pixel_params['positions'] = np.array([xpos, ypos]).transpose()
 
         # The aperture object must have a single value for each shape
@@ -712,20 +706,18 @@ class SkyAperture(Aperture):
         return pixel_params
 
     @abc.abstractmethod
-    def to_pixel(self, wcs, mode='all'):
+    def to_pixel(self, wcs):
         """
         Convert the aperture to a `PixelAperture` object defined in
         pixel coordinates.
 
         Parameters
         ----------
-        wcs : `~astropy.wcs.WCS` object
-            The world coordinate system (WCS) transformation to use.
-
-        mode : {'all', 'wcs'}, optional
-            Whether to do the transformation including distortions
-            (``'all'``; default) or including only the core WCS
-            transformation (``'wcs'``).
+        wcs : WCS object
+            A world coordinate system (WCS) transformation that supports
+            the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------

@@ -230,20 +230,18 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         else:
             return patches
 
-    def to_sky(self, wcs, mode='all'):
+    def to_sky(self, wcs):
         """
         Convert the aperture to a `SkyEllipticalAperture` object defined
         in celestial coordinates.
 
         Parameters
         ----------
-        wcs : `~astropy.wcs.WCS`
-            The world coordinate system (WCS) transformation to use.
-
-        mode : {'all', 'wcs'}, optional
-            Whether to do the transformation including distortions
-            (``'all'``; default) or only including only the core WCS
-            transformation (``'wcs'``).
+        wcs : WCS object
+            A world coordinate system (WCS) transformation that supports
+            the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -251,8 +249,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
             A `SkyEllipticalAperture` object.
         """
 
-        sky_params = self._to_sky_params(wcs, mode=mode)
-        return SkyEllipticalAperture(**sky_params)
+        return SkyEllipticalAperture(**self._to_sky_params(wcs))
 
 
 class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
@@ -385,20 +382,18 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         else:
             return patches
 
-    def to_sky(self, wcs, mode='all'):
+    def to_sky(self, wcs):
         """
         Convert the aperture to a `SkyEllipticalAnnulus` object defined
         in celestial coordinates.
 
         Parameters
         ----------
-        wcs : `~astropy.wcs.WCS`
-            The world coordinate system (WCS) transformation to use.
-
-        mode : {'all', 'wcs'}, optional
-            Whether to do the transformation including distortions
-            (``'all'``; default) or only including only the core WCS
-            transformation (``'wcs'``).
+        wcs : WCS object
+            A world coordinate system (WCS) transformation that supports
+            the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -406,8 +401,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
             A `SkyEllipticalAnnulus` object.
         """
 
-        sky_params = self._to_sky_params(wcs, mode=mode)
-        return SkyEllipticalAnnulus(**sky_params)
+        return SkyEllipticalAnnulus(**self._to_sky_params(wcs))
 
 
 class SkyEllipticalAperture(SkyAperture):
@@ -462,20 +456,18 @@ class SkyEllipticalAperture(SkyAperture):
         self.b = b
         self.theta = theta
 
-    def to_pixel(self, wcs, mode='all'):
+    def to_pixel(self, wcs):
         """
         Convert the aperture to an `EllipticalAperture` object defined
         in pixel coordinates.
 
         Parameters
         ----------
-        wcs : `~astropy.wcs.WCS`
-            The world coordinate system (WCS) transformation to use.
-
-        mode : {'all', 'wcs'}, optional
-            Whether to do the transformation including distortions
-            (``'all'``; default) or only including only the core WCS
-            transformation (``'wcs'``).
+        wcs : WCS object
+            A world coordinate system (WCS) transformation that supports
+            the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -483,8 +475,7 @@ class SkyEllipticalAperture(SkyAperture):
             An `EllipticalAperture` object.
         """
 
-        pixel_params = self._to_pixel_params(wcs, mode=mode)
-        return EllipticalAperture(**pixel_params)
+        return EllipticalAperture(**self._to_pixel_params(wcs))
 
 
 class SkyEllipticalAnnulus(SkyAperture):
@@ -552,20 +543,18 @@ class SkyEllipticalAnnulus(SkyAperture):
         self.b_in = self.b_out * self.a_in / self.a_out
         self.theta = theta
 
-    def to_pixel(self, wcs, mode='all'):
+    def to_pixel(self, wcs):
         """
         Convert the aperture to an `EllipticalAnnulus` object defined in
         pixel coordinates.
 
         Parameters
         ----------
-        wcs : `~astropy.wcs.WCS`
-            The world coordinate system (WCS) transformation to use.
-
-        mode : {'all', 'wcs'}, optional
-            Whether to do the transformation including distortions
-            (``'all'``; default) or only including only the core WCS
-            transformation (``'wcs'``).
+        wcs : WCS object
+            A world coordinate system (WCS) transformation that supports
+            the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -573,5 +562,4 @@ class SkyEllipticalAnnulus(SkyAperture):
             An `EllipticalAnnulus` object.
         """
 
-        pixel_params = self._to_pixel_params(wcs, mode=mode)
-        return EllipticalAnnulus(**pixel_params)
+        return EllipticalAnnulus(**self._to_pixel_params(wcs))
