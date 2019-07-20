@@ -4,15 +4,7 @@ This module provides tools to return the installed astropy and photutils
 versions.
 """
 
-import abc
-
-from astropy.utils.misc import InheritDocstrings
-
 __all__ = ['get_version_info']
-
-
-class _ABCMetaAndInheritDocstrings(InheritDocstrings, abc.ABCMeta):
-    pass
 
 
 def get_version_info():

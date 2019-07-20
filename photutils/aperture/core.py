@@ -19,14 +19,13 @@ from astropy.wcs.utils import (skycoord_to_pixel, pixel_to_skycoord,
 from .bounding_box import BoundingBox
 from ._photometry_utils import (_handle_units, _prepare_photometry_data,
                                 _validate_inputs)
-from ..utils.misc import _ABCMetaAndInheritDocstrings
 from ..utils._wcs_helpers import _pixel_scale_angle_at_skycoord
 
 
 __all__ = ['Aperture', 'SkyAperture', 'PixelAperture']
 
 
-class Aperture(metaclass=_ABCMetaAndInheritDocstrings):
+class Aperture(metaclass=abc.ABCMeta):
     """
     Abstract base class for all apertures.
     """

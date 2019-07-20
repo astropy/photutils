@@ -20,7 +20,6 @@ from .core import find_peaks
 from ..utils._moments import _moments, _moments_central
 from ..utils.convolution import filter_data
 from ..utils.exceptions import NoDetectionsWarning
-from ..utils.misc import _ABCMetaAndInheritDocstrings
 
 __all__ = ['StarFinderBase', 'DAOStarFinder', 'IRAFStarFinder']
 
@@ -701,7 +700,7 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
     return star_cutouts
 
 
-class StarFinderBase(metaclass=_ABCMetaAndInheritDocstrings):
+class StarFinderBase(metaclass=abc.ABCMeta):
     """
     Abstract base class for star finders.
     """
