@@ -9,10 +9,10 @@ import warnings
 from astropy.stats import sigma_clipped_stats
 from astropy.table import Table
 from astropy.version import version as astropy_version
-from astropy.wcs.utils import pixel_to_skycoord
 import numpy as np
 
 from ..utils.exceptions import NoDetectionsWarning
+from ..utils._wcs_helpers import _pixel_to_world
 
 __all__ = ['detect_threshold', 'find_peaks']
 
@@ -204,10 +204,13 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         ``error`` is used only if ``centroid_func`` is input (the
         ``error`` array is passed directly to the ``centroid_func``).
 
-    wcs : `~astropy.wcs.WCS`
-        The WCS transformation to use to convert from pixel to sky
-        coordinates.  If `None`, then the sky coordinates will not be
-        returned in the output `~astropy.table.Table`.
+    wcs : `None` or WCS object, optional
+        A world coordinate system (WCS) transformation that supports the
+        `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).  If `None`, then the sky
+        coordinates will not be returned in the output
+        `~astropy.table.Table`.
 
     Returns
     -------
@@ -282,7 +285,7 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
     table = Table(coldata, names=colnames)
 
     if wcs is not None:
-        skycoord_peaks = pixel_to_skycoord(x_peaks, y_peaks, wcs, origin=0)
+        skycoord_peaks = _pixel_to_world(x_peaks, y_peaks, wcs)
         table.add_column(skycoord_peaks, name='skycoord_peak', index=2)
 
     # perform centroiding
@@ -301,8 +304,7 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         table['y_centroid'] = y_centroids
 
     if (centroid_func is not None or subpixel) and wcs is not None:
-        skycoord_centroids = pixel_to_skycoord(x_centroids, y_centroids,
-                                               wcs, origin=0)
+        skycoord_centroids = _pixel_to_world(x_centroids, y_centroids, wcs)
         idx = table.colnames.index('y_centroid')
         table.add_column(skycoord_centroids, name='skycoord_centroid',
                          index=idx+1)

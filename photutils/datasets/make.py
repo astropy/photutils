@@ -787,7 +787,7 @@ def make_wcs(shape, galactic=False):
     Notes
     -----
     The `make_gwcs` function returns an equivalent WCS transformation to
-    this one, but in a `gwcs.wcs.WCS` object.
+    this one, but as a `gwcs.wcs.WCS` object.
 
     Examples
     --------
@@ -835,7 +835,7 @@ def make_gwcs(shape, galactic=False):
     ----------
     shape : 2-tuple of int
         The shape of the 2D array to be used with the output
-        `~astropy.wcs.WCS` object.
+        `~gwcs.wcs.WCS` object.
 
     galactic : bool, optional
         If `True`, then the output WCS will be in the Galactic
@@ -854,7 +854,7 @@ def make_gwcs(shape, galactic=False):
     Notes
     -----
     The `make_wcs` function returns an equivalent WCS transformation to
-    this one, but in an `astropy.wcs.WCS` object.
+    this one, but as an `astropy.wcs.WCS` object.
 
     Examples
     --------
@@ -916,7 +916,7 @@ def make_imagehdu(data, wcs=None):
     data : 2D array-like
         The input 2D data.
 
-    wcs : `~astropy.wcs.WCS`, optional
+    wcs : `None` or `~astropy.wcs.WCS`, optional
         The world coordinate system (WCS) transformation to include in
         the output FITS header.
 

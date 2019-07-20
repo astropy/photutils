@@ -1,6 +1,13 @@
 0.7 (unreleased)
 ----------------
 
+General
+^^^^^^^
+
+ - Any WCS object that supports the `astropy shared interface for WCS
+   <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ is now
+   supported. [#899]
+
 New Features
 ^^^^^^^^^^^^
 
@@ -20,6 +27,10 @@ New Features
 
   - ``aperture_phometry`` now supports ``NDData`` with
     ``StdDevUncertainty`` to input errors. [#866]
+
+  - The ``mode`` keyword in the ``to_sky`` and ``to_pixel`` aperture
+    methods was removed to implement the shared WCS interface.  All
+    WCS transforms now include distortions (if present). [#899]
 
 - ``photutils.datasets``
 

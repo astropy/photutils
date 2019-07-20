@@ -11,13 +11,13 @@ from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import deprecated, lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.wcs.utils import pixel_to_skycoord
 import numpy as np
 
 from .core import SegmentationImage
 from ..aperture import BoundingBox
 from ..utils._moments import _moments, _moments_central
 from ..utils.convolution import filter_data
+from ..utils._wcs_helpers import _pixel_to_world
 
 __all__ = ['SourceProperties', 'source_properties', 'SourceCatalog']
 
@@ -115,8 +115,11 @@ class SourceProperties:
         non-finite values in the input ``data`` array.  Such pixels can
         be masked using the ``mask`` keyword.
 
-    wcs : `~astropy.wcs.WCS`
-        The WCS transformation to use.  If `None`, then any sky-based
+    wcs : WCS object or `None`, optional
+        A world coordinate system (WCS) transformation that supports the
+        `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).  If `None`, then all sky-based
         properties will be set to `None`.
 
     Notes
@@ -670,12 +673,8 @@ class SourceProperties:
         The output coordinate frame is the same as the input WCS.
         """
 
-        if self._wcs is not None:
-            return pixel_to_skycoord(self.xcentroid.value,
-                                     self.ycentroid.value,
-                                     self._wcs, origin=0)
-        else:
-            return None
+        return _pixel_to_world(self.xcentroid.value, self.ycentroid.value,
+                               self._wcs)
 
     @lazyproperty
     def sky_centroid_icrs(self):
@@ -685,10 +684,10 @@ class SourceProperties:
         returned as a `~astropy.coordinates.SkyCoord` object.
         """
 
-        if self._wcs is not None:
-            return self.sky_centroid.icrs
-        else:
+        if self._wcs is None:
             return None
+        else:
+            return self.sky_centroid.icrs
 
     @lazyproperty
     def bbox(self):
@@ -795,12 +794,7 @@ class SourceProperties:
         their entirety, thus the vertices are at the pixel *corners*.
         """
 
-        if self._wcs is not None:
-            return pixel_to_skycoord(self.bbox_xmin.value - 0.5,
-                                     self.bbox_ymin.value - 0.5,
-                                     self._wcs, origin=0)
-        else:
-            return None
+        return _calc_sky_bbox_corner(self.bbox, 'll', self._wcs)
 
     @lazyproperty
     def sky_bbox_ul(self):
@@ -813,12 +807,7 @@ class SourceProperties:
         their entirety, thus the vertices are at the pixel *corners*.
         """
 
-        if self._wcs is not None:
-            return pixel_to_skycoord(self.bbox_xmin.value - 0.5,
-                                     self.bbox_ymax.value + 0.5,
-                                     self._wcs, origin=0)
-        else:
-            return None
+        return _calc_sky_bbox_corner(self.bbox, 'ul', self._wcs)
 
     @lazyproperty
     def sky_bbox_lr(self):
@@ -831,12 +820,7 @@ class SourceProperties:
         their entirety, thus the vertices are at the pixel *corners*.
         """
 
-        if self._wcs is not None:
-            return pixel_to_skycoord(self.bbox_xmax.value + 0.5,
-                                     self.bbox_ymin.value - 0.5,
-                                     self._wcs, origin=0)
-        else:
-            return None
+        return _calc_sky_bbox_corner(self.bbox, 'lr', self._wcs)
 
     @lazyproperty
     def sky_bbox_ur(self):
@@ -849,12 +833,7 @@ class SourceProperties:
         their entirety, thus the vertices are at the pixel *corners*.
         """
 
-        if self._wcs is not None:
-            return pixel_to_skycoord(self.bbox_xmax.value + 0.5,
-                                     self.bbox_ymax.value + 0.5,
-                                     self._wcs, origin=0)
-        else:
-            return None
+        return _calc_sky_bbox_corner(self.bbox, 'ur', self._wcs)
 
     @lazyproperty
     def min_value(self):
@@ -1532,8 +1511,11 @@ def source_properties(data, segment_img, error=None, mask=None,
         :func:`~photutils.detect_sources`).  If `None`, then the
         unfiltered ``data`` will be used instead.
 
-    wcs : `~astropy.wcs.WCS`
-        The WCS transformation to use.  If `None`, then any sky-based
+    wcs : `None` or WCS object, optional
+        A world coordinate system (WCS) transformation that supports the
+        `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).  If `None`, then all sky-based
         properties will be set to `None`.
 
     labels : int, array-like (1D, int)
@@ -1726,12 +1708,15 @@ class SourceCatalog:
         Return a list of `None` values, used by SkyCoord properties if
         ``wcs`` is `None`.
         """
+
         return [None] * len(self._data)
 
     @lazyproperty
     def background_at_centroid(self):
         background = self._data[0]._background
-        if background is not None:
+        if background is None:
+            return self._none_list
+        else:
             from scipy.ndimage import map_coordinates
 
             values = map_coordinates(background,
@@ -1743,12 +1728,12 @@ class SourceCatalog:
             values[~mask] = np.nan
 
             return values * self._data[0]._data_unit
-        else:
-            return self._none_list
 
     @lazyproperty
     def sky_centroid(self):
-        if self.wcs is not None:
+        if self.wcs is None:
+            return self._none_list
+        else:
             # For a large catalog, it's much faster to calculate world
             # coordinates using the complete list of (x, y) instead of
             # looping through the individual (x, y).  It's also much
@@ -1756,53 +1741,42 @@ class SourceCatalog:
             # SkyCoord array from a loop-generated SkyCoord list.  The
             # assumption here is that the wcs is the same for each
             # SourceProperties instance.
-            return pixel_to_skycoord(self.xcentroid, self.ycentroid,
-                                     self.wcs, origin=0)
-        else:
-            return self._none_list
+            return _pixel_to_world(self.xcentroid, self.ycentroid, self.wcs)
 
     @lazyproperty
     def sky_centroid_icrs(self):
-        if self.wcs is not None:
-            return self.sky_centroid.icrs
-        else:
+        if self.wcs is None:
             return self._none_list
+        else:
+            return self.sky_centroid.icrs
 
     @lazyproperty
     def sky_bbox_ll(self):
-        if self.wcs is not None:
-            return pixel_to_skycoord(self.bbox_xmin.value - 0.5,
-                                     self.bbox_ymin.value - 0.5,
-                                     self.wcs, origin=0)
-        else:
+        if self.wcs is None:
             return self._none_list
+        else:
+            return _calc_sky_bbox_corner(self.bbox, 'll', self.wcs)
 
     @lazyproperty
     def sky_bbox_ul(self):
-        if self.wcs is not None:
-            return pixel_to_skycoord(self.bbox_xmin.value - 0.5,
-                                     self.bbox_ymax.value + 0.5,
-                                     self.wcs, origin=0)
-        else:
+        if self.wcs is None:
             return self._none_list
+        else:
+            return _calc_sky_bbox_corner(self.bbox, 'ul', self.wcs)
 
     @lazyproperty
     def sky_bbox_lr(self):
-        if self.wcs is not None:
-            return pixel_to_skycoord(self.bbox_xmax.value + 0.5,
-                                     self.bbox_ymin.value - 0.5,
-                                     self.wcs, origin=0)
-        else:
+        if self.wcs is None:
             return self._none_list
+        else:
+            return _calc_sky_bbox_corner(self.bbox, 'lr', self.wcs)
 
     @lazyproperty
     def sky_bbox_ur(self):
-        if self.wcs is not None:
-            return pixel_to_skycoord(self.bbox_xmax.value + 0.5,
-                                     self.bbox_ymax.value + 0.5,
-                                     self.wcs, origin=0)
-        else:
+        if self.wcs is None:
             return self._none_list
+        else:
+            return _calc_sky_bbox_corner(self.bbox, 'ur', self.wcs)
 
     def to_table(self, columns=None, exclude_columns=None):
         """
@@ -1930,3 +1904,54 @@ def _properties_table(obj, columns=None, exclude_columns=None):
         tbl[column] = values
 
     return tbl
+
+
+def _calc_sky_bbox_corner(bbox, corner, wcs):
+    """
+    Calculate the sky coordinates at the corner of a minimal bounding
+    box.
+
+    The bounding box encloses all of the source segment pixels in their
+    entirety, thus the vertices are at the pixel *corners*.
+
+    Parameters
+    ----------
+    bbox : `~photutils.BoundingBox`
+        The source bounding box.
+
+    corner : {'ll', 'ul', 'lr', 'ur'}
+        The desired bounding box corner:
+            * 'll':  lower left
+            * 'ul':  upper left
+            * 'lr':  lower right
+            * 'ur':  upper right
+
+    wcs : `None` or WCS object
+        A world coordinate system (WCS) transformation that supports the
+        `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+
+    Returns
+    -------
+    skycoord : `~astropy.coordinates.SkyCoord` or `None`
+        The sky coordinate at the bounding box corner.  If ``wcs`` is
+        `None`, then `None` will be returned.
+    """
+
+    if corner == 'll':
+        xpos = bbox.ixmin - 0.5
+        ypos = bbox.iymin - 0.5
+    elif corner == 'ul':
+        xpos = bbox.ixmin - 0.5
+        ypos = bbox.iymax + 0.5
+    elif corner == 'lr':
+        xpos = bbox.ixmax + 0.5
+        ypos = bbox.iymin - 0.5
+    elif corner == 'ur':
+        xpos = bbox.ixmax + 0.5
+        ypos = bbox.iymax + 0.5
+    else:
+        raise ValueError('Invalid corner name.')
+
+    return _pixel_to_world(xpos, ypos, wcs)
