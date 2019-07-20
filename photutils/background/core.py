@@ -10,8 +10,6 @@ from astropy.stats import biweight_location, biweight_scale, mad_std
 from astropy.version import version as astropy_version
 import numpy as np
 
-from ..utils.misc import _ABCMetaAndInheritDocstrings
-
 if astropy_version < '3.1':
     from astropy.stats import SigmaClip
     SIGMA_CLIP = SigmaClip(sigma=3.0, iters=10)
@@ -59,7 +57,7 @@ def _masked_median(data, axis=None):
     return _median
 
 
-class BackgroundBase(metaclass=_ABCMetaAndInheritDocstrings):
+class BackgroundBase(metaclass=abc.ABCMeta):
     """
     Base class for classes that estimate scalar background values.
 
@@ -102,7 +100,7 @@ class BackgroundBase(metaclass=_ABCMetaAndInheritDocstrings):
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
 
-class BackgroundRMSBase(metaclass=_ABCMetaAndInheritDocstrings):
+class BackgroundRMSBase(metaclass=abc.ABCMeta):
     """
     Base class for classes that estimate scalar background RMS values.
 

@@ -53,7 +53,7 @@ plot_formats = ['png', 'hires.png', 'pdf', 'svg']
 highlight_language = 'python3'
 
 # If your documentation needs a minimal Sphinx version, state it here.
-#needs_sphinx = '1.2'
+needs_sphinx = '1.7'
 
 # To perform a Sphinx version check that needs to be more specific than
 # major.minor, call `check_sphinx_version("x.y.z")` here.
