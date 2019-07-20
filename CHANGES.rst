@@ -25,7 +25,7 @@ New Features
     aperture photometry, especially when using ``errors`` and
     ``Quantity`` inputs with many aperture positions. [#861]
 
-  - ``aperture_phometry`` now supports ``NDData`` with
+  - ``aperture_photometry`` now supports ``NDData`` with
     ``StdDevUncertainty`` to input errors. [#866]
 
   - The ``mode`` keyword in the ``to_sky`` and ``to_pixel`` aperture
@@ -159,7 +159,7 @@ API changes
     1D) are now considered scalar objects, which can be checked with
     the new ``isscalar`` Aperture property. [#852]
 
-  - Non-scalar Aperture objects can now be index, sliced, and
+  - Non-scalar Aperture objects can now be indexed, sliced, and
     iterated. [#852]
 
   - Scalar Aperture objects now return scalar ``positions`` and
@@ -210,8 +210,8 @@ API changes
 - ``photutils.psf``
 
   - ``FittableImageModel`` and subclasses now allow for different
-    ``oversampling`` factors to be specified in x and y directions.
-    [#834]
+    ``oversampling`` factors to be specified in the x and y
+    directions. [#834]
 
   - Removed ``pixel_scale`` keyword from ``EPSFStar``, ``EPSFBuilder``,
     and ``EPSFModel``. [#815]
@@ -236,7 +236,7 @@ API changes
     now have the same length as ``labels`` (no ``None`` placeholders).
     [#825]
 
-  - ``detect_sources`` now returns ``None`` is no sources are found.
+  - ``detect_sources`` now returns ``None`` if no sources are found.
     Also, for this case a ``NoDetectionsWarning`` is issued. [#836]
 
   - The ``SegmentationImage`` input ``data`` array must contain at
@@ -578,7 +578,7 @@ New Features
   - The ``properties_table`` function is now deprecated.  Use the
     ``SourceCatalog.to_table()`` method instead. [#608]
 
-- ``phtotutils.psf``
+- ``photutils.psf``
 
   - Uncertainties on fitted parameters are added to the final table. [#516]
 
