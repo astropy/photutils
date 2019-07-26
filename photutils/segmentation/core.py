@@ -4,6 +4,7 @@ This module provides classes for a segmentation image and a single
 segment within a segmentation image.
 """
 
+import inspect
 from copy import deepcopy
 
 from astropy.utils import lazyproperty, deprecated
@@ -16,6 +17,10 @@ __all__ = ['Segment', 'SegmentationImage']
 
 __doctest_requires__ = {('SegmentationImage', 'SegmentationImage.*'):
                         ['scipy']}
+
+
+def is_lazyproperty(_):
+    return isinstance(_, lazyproperty)
 
 
 class Segment:
@@ -207,9 +212,8 @@ class SegmentationImage:
     def _reset_lazy_properties(self):
         """Reset all lazy properties."""
 
-        for key, value in self.__class__.__dict__.items():
-            if isinstance(value, lazyproperty):
-                self.__dict__.pop(key, None)
+        for key, value in inspect.getmembers(self.__class__, is_lazyproperty):
+            self.__dict__.pop(key, None)
 
     @lazyproperty
     def _cmap(self):
@@ -284,7 +288,12 @@ class SegmentationImage:
         return self._data
 
     @data.setter
-    def data(self, value):
+    def data(self, data):
+        self.set_data(data)
+
+    def set_data(self, value):
+        # subclasses can over-write this function to implement stuff
+        # without touching the property definition above.
         if np.any(~np.isfinite(value)):
             raise ValueError('data must not contain any non-finite values '
                              '(e.g. NaN, inf)')
