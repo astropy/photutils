@@ -105,6 +105,9 @@ Bug Fixes
   - Fixed a bug in the ``EPSFStar`` ``register_epsf`` and
     ``compute_residual_image`` computations. [#885]
 
+  - A ValueError is raised if ``aperture_radius`` is not input and
+    cannot be determined from the input ``psf_model``. [#903]
+
 - ``photutils.segmentation``
 
   - Fixed an issue where ``deblend_sources`` could fail for sources

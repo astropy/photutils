@@ -88,10 +88,14 @@ class BasicPSFPhotometry:
         Fitter object used to compute the optimized centroid positions
         and/or flux of the identified sources. See
         `~astropy.modeling.fitting` for more details on fitters.
-    aperture_radius : float or None
+    aperture_radius : `None` or float
         The radius (in units of pixels) used to compute initial
-        estimates for the fluxes of sources. If ``None``, one FWHM will
-        be used if it can be determined from the ``psf_model``.
+        estimates for the fluxes of sources.  ``aperture_radius`` must
+        be set if initial flux guesses are not input to the photometry
+        class via the ``init_guesses`` keyword.  For tabular PSF models
+        (e.g. an `EPSFModel`), you must input the ``aperture_radius``
+        keyword.  For analytical PSF models, alternatively you may
+        define a FWHM attribute on your input psf_model.
 
     Notes
     -----
@@ -164,9 +168,7 @@ class BasicPSFPhotometry:
         elif value is None:
             self._aperture_radius = value
         else:
-            raise ValueError('aperture_radius must be a real-valued '
-                             'number, received aperture_radius = {}'
-                             .format(value))
+            raise ValueError('aperture_radius must be a positive number')
 
     def get_residual_image(self):
         """
@@ -241,16 +243,33 @@ class BasicPSFPhotometry:
                 self.aperture_radius = (self.psf_model.sigma.value *
                                         gaussian_sigma_to_fwhm)
 
+        if self.aperture_radius is None:
+            if init_guesses is None:
+                raise ValueError('aperture_radius was not input and could '
+                                 'not be determined by the input psf_model '
+                                 '(e.g. an EPSFModel).  For tabular PSF '
+                                 'models, you must input the aperture_radius '
+                                 'keyword.  For analytical PSF models, you '
+                                 'must either input the aperture_radius '
+                                 'keyword or define a fwhm or sigma '
+                                 'attribute on your input psf_model.')
+
+            if (init_guesses is not None and
+                    'flux_0' not in init_guesses.colnames):
+                raise ValueError('init_guesses were input, but the "flux_0" '
+                                 'column was not present.  Initial fluxes '
+                                 'cannot be calculated because '
+                                 'aperture_radius must was not input and '
+                                 'could not be determined by the input '
+                                 'psf_model (e.g. an EPSFModel).  For '
+                                 'analytical PSF models, you must either '
+                                 'input the aperture_radius keyword or '
+                                 'define a fwhm or sigma attribute on your '
+                                 'input psf_model.')
+
         if init_guesses is not None:
             # make sure the code does not modify user's input
             init_guesses = init_guesses.copy()
-            if self.aperture_radius is None:
-                if 'flux_0' not in init_guesses.colnames:
-                    raise ValueError('aperture_radius is None and could not '
-                                     'be determined by psf_model. Please, '
-                                     'either provided a value for '
-                                     'aperture_radius or define fwhm/sigma '
-                                     'at psf_model.')
 
             if self.finder is not None:
                 warnings.warn('Both init_guesses and finder are different '
