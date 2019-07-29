@@ -88,10 +88,14 @@ class BasicPSFPhotometry:
         Fitter object used to compute the optimized centroid positions
         and/or flux of the identified sources. See
         `~astropy.modeling.fitting` for more details on fitters.
-    aperture_radius : float or None
+    aperture_radius : `None` or float
         The radius (in units of pixels) used to compute initial
-        estimates for the fluxes of sources. If ``None``, one FWHM will
-        be used if it can be determined from the ``psf_model``.
+        estimates for the fluxes of sources.  ``aperture_radius`` must
+        be set if initial flux guesses are not input to the photometry
+        class via the ``init_guesses`` keyword.  For tabular PSF models
+        (e.g. an `EPSFModel`), you must input the ``aperture_radius``
+        keyword.  For analytical PSF models, alternatively you may
+        define a FWHM attribute on your input psf_model.
 
     Notes
     -----
