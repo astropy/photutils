@@ -45,7 +45,7 @@ def apply_poisson_noise(data, random_state=None):
         The array on which to apply Poisson noise.  Every pixel in the
         array must have a positive value (i.e. counts).
 
-    random_state : int or `~numpy.random.RandomState`, optional
+    random_state : int or `~numpy.random.mtrand.RandomState`, optional
         Pseudo-random number generator state used for random sampling.
 
     Returns
@@ -112,7 +112,7 @@ def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
         Poisson noise (the variance of the Poisson distribution is equal
         to its mean).
 
-    random_state : int or `~numpy.random.RandomState`, optional
+    random_state : int or `~numpy.random.mtrand.RandomState`, optional
         Pseudo-random number generator state used for random sampling.
         Separate function calls with the same noise parameters and
         ``random_state`` will generate the identical noise image.
@@ -187,7 +187,7 @@ def make_random_models_table(n_sources, param_ranges, random_state=None):
         as a `dict` mapping the parameter name to its ``(lower, upper)``
         bounds.
 
-    random_state : int or `~numpy.random.RandomState`, optional
+    random_state : int or `~numpy.random.mtrand.RandomState`, optional
         Pseudo-random number generator state used for random sampling.
 
     Returns
@@ -277,7 +277,7 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
         ignored.  Model parameters not defined in ``param_ranges`` will
         be set to the default value.
 
-    random_state : int or `~numpy.random.RandomState`, optional
+    random_state : int or `~numpy.random.mtrand.RandomState`, optional
         Pseudo-random number generator state used for random sampling.
 
     Returns

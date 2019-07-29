@@ -23,7 +23,7 @@ def random_cmap(ncolors=256, random_state=None):
     ncolors : int, optional
         The number of colors in the colormap.  The default is 256.
 
-    random_state : int or `~numpy.random.RandomState`, optional
+    random_state : int or `~numpy.random.mtrand.RandomState`, optional
         The pseudo-random number generator state used for random
         sampling.  Separate function calls with the same
         ``random_state`` will generate the same colormap.
@@ -48,7 +48,7 @@ def make_random_cmap(ncolors=256, random_state=None):
     ncolors : int, optional
         The number of colors in the colormap.  The default is 256.
 
-    random_state : int or `~numpy.random.RandomState`, optional
+    random_state : int or `~numpy.random.mtrand.RandomState`, optional
         The pseudo-random number generator state used for random
         sampling.  Separate function calls with the same
         ``random_state`` will generate the same colormap.

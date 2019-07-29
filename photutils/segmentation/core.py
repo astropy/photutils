@@ -556,7 +556,7 @@ class SegmentationImage:
             background color (label = 0) when plotting the segmentation
             array.  The default is black ('#000000').
 
-        random_state : int or `~numpy.random.RandomState`, optional
+        random_state : int or `~numpy.random.mtrand.RandomState`, optional
             The pseudo-random number generator state used for random
             sampling.  Separate function calls with the same
             ``random_state`` will generate the same colormap.
@@ -580,7 +580,7 @@ class SegmentationImage:
             background color (label = 0) when plotting the segmentation
             array.  The default is black ('#000000').
 
-        random_state : int or `~numpy.random.RandomState`, optional
+        random_state : int or `~numpy.random.mtrand.RandomState`, optional
             The pseudo-random number generator state used for random
             sampling.  Separate function calls with the same
             ``random_state`` will generate the same colormap.
