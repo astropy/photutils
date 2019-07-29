@@ -125,6 +125,21 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         ax2.imshow(segm.data, origin='lower', interpolation='nearest')
     """
 
+    segm_img = detect_array(data, threshold, npixels, filter_kernel,
+                            connectivity, mask)
+    if np.sum(segm_img) == 0:
+        warnings.warn('No sources were found.', NoDetectionsWarning)
+        return None
+    else:
+        segm = SegmentationImage(segm_img)
+        segm.relabel_consecutive()
+        return segm
+
+
+def detect_array(data, threshold, npixels, filter_kernel=None, connectivity=8,
+                 mask=None):
+    """always return an array"""
+
     from scipy import ndimage
 
     if (npixels <= 0) or (int(npixels) != npixels):
@@ -164,17 +179,11 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
     segm_slices = ndimage.find_objects(segm_img)
     for i, slices in enumerate(segm_slices):
         cutout = segm_img[slices]
-        segment_mask = (cutout == (i+1))
+        segment_mask = (cutout == (i + 1))
         if np.count_nonzero(segment_mask) < npixels:
             cutout[segment_mask] = 0
 
-    if np.sum(segm_img) == 0:
-        warnings.warn('No sources were found.', NoDetectionsWarning)
-        return None
-    else:
-        segm = SegmentationImage(segm_img)
-        segm.relabel_consecutive()
-        return segm
+    return segm_img
 
 
 @deprecated_renamed_argument('mask_value', None, 0.7)
@@ -264,7 +273,7 @@ def make_source_mask(data, snr, npixels, mask=None, mask_value=None,
     if kernel is not None:
         kernel.normalize()
 
-    segm = detect_sources(data, threshold, npixels, filter_kernel=kernel)
+    segm = detect_array(data, threshold, npixels, filter_kernel=kernel)
 
     selem = np.ones((dilate_size, dilate_size))
-    return ndimage.binary_dilation(segm.data.astype(np.bool), selem)
+    return ndimage.binary_dilation(segm.astype(np.bool), selem)
