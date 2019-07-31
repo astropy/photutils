@@ -58,12 +58,13 @@ approximate isophotal ellipse for the source:
 
 .. doctest-skip::
 
+    >>> import astropy.units as u
     >>> from photutils import EllipticalAperture
     >>> position = (cat.xcentroid.value, cat.ycentroid.value)
     >>> r = 3.0  # approximate isophotal extent
     >>> a = cat.semimajor_axis_sigma.value * r
     >>> b = cat.semiminor_axis_sigma.value * r
-    >>> theta = cat.orientation.value
+    >>> theta = cat.orientation.to(u.rad).value
     >>> apertures = EllipticalAperture(position, a, b, theta=theta)
     >>> plt.imshow(data, origin='lower', cmap='viridis',
     ...            interpolation='nearest')
@@ -71,6 +72,7 @@ approximate isophotal ellipse for the source:
 
 .. plot::
 
+    import astropy.units as u
     import matplotlib.pyplot as plt
     from photutils import data_properties, EllipticalAperture
     from photutils.datasets import make_4gaussians_image
@@ -84,7 +86,7 @@ approximate isophotal ellipse for the source:
     position = (cat.xcentroid.value, cat.ycentroid.value)
     a = cat.semimajor_axis_sigma.value * r
     b = cat.semiminor_axis_sigma.value * r
-    theta = cat.orientation.value
+    theta = cat.orientation.to(u.rad).value
     apertures = EllipticalAperture(position, a, b, theta=theta)
     plt.imshow(data, origin='lower', cmap='viridis', interpolation='nearest')
     apertures.plot(color='#d62728')
