@@ -382,6 +382,7 @@ orientation (`~photutils.segmentation.SourceProperties.orientation`):
 .. doctest-requires:: scipy, skimage
 
     >>> import numpy as np
+    >>> import astropy.units as u
     >>> from photutils import source_properties, EllipticalAperture
     >>> cat = source_properties(data, segm_deblend)
     >>> r = 3.  # approximate isophotal extent
@@ -390,7 +391,7 @@ orientation (`~photutils.segmentation.SourceProperties.orientation`):
     ...     position = np.transpose((obj.xcentroid.value, obj.ycentroid.value))
     ...     a = obj.semimajor_axis_sigma.value * r
     ...     b = obj.semiminor_axis_sigma.value * r
-    ...     theta = obj.orientation.value
+    ...     theta = obj.orientation.to(u.rad).value
     ...     apertures.append(EllipticalAperture(position, a, b, theta=theta))
 
 Now let's plot the derived elliptical apertures on the data:
@@ -418,6 +419,7 @@ Now let's plot the derived elliptical apertures on the data:
     import matplotlib.pyplot as plt
     from astropy.stats import gaussian_fwhm_to_sigma
     from astropy.convolution import Gaussian2DKernel
+    import astropy.units as u
     from astropy.visualization import SqrtStretch
     from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.datasets import make_100gaussians_image
@@ -446,7 +448,7 @@ Now let's plot the derived elliptical apertures on the data:
         position = np.transpose((obj.xcentroid.value, obj.ycentroid.value))
         a = obj.semimajor_axis_sigma.value * r
         b = obj.semiminor_axis_sigma.value * r
-        theta = obj.orientation.value
+        theta = obj.orientation.to(u.rad).value
         apertures.append(EllipticalAperture(position, a, b, theta=theta))
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
