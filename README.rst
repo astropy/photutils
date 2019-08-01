@@ -4,7 +4,7 @@ Photutils
 
 |PyPI Version| |Anaconda Version| |Anaconda Downloads| |Astropy|
 
-|Travis Status| |Coveralls Status| |CircleCI Status| |AppVeyor Status| |Latest RTD Status|
+|Travis Status| |Coveralls Status| |CircleCI Status| |Latest RTD Status|
 
 Photutils is an `Astropy`_ package for detection and photometry of
 astronomical sources.
@@ -73,10 +73,6 @@ Photutils is licensed under a 3-clause BSD license.  Please see the
 .. |CircleCI Status| image:: https://circleci.com/gh/astropy/photutils.svg?style=svg
     :target: https://circleci.com/gh/astropy/photutils
     :alt: CircleCI Status
-
-.. |AppVeyor Status| image:: https://ci.appveyor.com/api/projects/status/by27a71echj18b4f/branch/master?svg=true
-    :target: https://ci.appveyor.com/project/astropy/photutils/branch/master
-    :alt: AppVeyor Status
 
 .. |Stable RTD Status| image:: https://readthedocs.org/projects/photutils/badge/?version=stable
     :target: https://photutils.readthedocs.io/en/stable/
