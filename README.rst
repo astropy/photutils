@@ -62,7 +62,7 @@ Photutils is licensed under a 3-clause BSD license.  Please see the
     :target: https://zenodo.org/badge/latestdoi/2640766
     :alt: Zenodo Latest DOI
 
-.. |Travis Status| image:: https://travis-ci.org/astropy/photutils.svg?branch=master
+.. |Travis Status| image:: https://img.shields.io/travis/astropy/photutils/master?label=Travis%20CI
     :target: https://travis-ci.org/astropy/photutils
     :alt: Travis CI Status
 
