@@ -114,6 +114,12 @@ matrix:
           env: NUMPY_VERSION=dev
                EVENT_TYPE='push pull_request cron'
 
+        # Test with Windows
+        - os: windows
+          stage: Comprehensive tests
+          env: CONDA_DEPENDENCIES=''
+               PIP_DEPENDENCIES='Cython scipy scikit-learn matplotlib scikit-image>0.14.1'
+
         # Test with MacOS X
         - stage: Cron tests
           os: osx

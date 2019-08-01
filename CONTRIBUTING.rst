@@ -72,8 +72,7 @@ Other Tips
 
         $ git commit --amend
 
-- To skip only the AppVeyor (Windows) CI builds you can use ``[skip
-  appveyor]``, and to skip testing on Travis CI use ``[skip travis]``.
+- To skip only the testing on Travis CI use ``[skip travis]``.
 
 - If your commit makes substantial changes to the documentation, but no code
   changes, the you can use ``[docs only]``, that will skip all but the
