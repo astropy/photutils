@@ -2,9 +2,9 @@
 Photutils
 =========
 
-|PyPI Version| |Anaconda Version| |Anaconda Downloads| |Astropy|
+|PyPI Version| |Conda Version| |Conda Downloads| |Astropy|
 
-|Travis Status| |Coveralls Status| |CircleCI Status| |Latest RTD Status|
+|Travis Status| |CircleCI Status| |Coveralls Status| |Latest RTD Status| |LGTM Grade|
 
 Photutils is an `Astropy`_ package for detection and photometry of
 astronomical sources.
@@ -42,17 +42,17 @@ Photutils is licensed under a 3-clause BSD license.  Please see the
 `LICENSE <LICENSE.rst>`_ file for details.
 
 
-.. |PyPI Version| image:: https://img.shields.io/pypi/v/photutils.svg
+.. |PyPI Version| image:: https://img.shields.io/pypi/v/photutils?label=pypi%20package
     :target: https://pypi.org/project/photutils/
     :alt: PyPI Latest Release
 
-.. |Anaconda Version| image:: https://anaconda.org/astropy/photutils/badges/version.svg
+.. |Conda Version| image:: https://img.shields.io/conda/vn/astropy/photutils?label=conda%20package
     :target: https://anaconda.org/astropy/photutils
-    :alt: Anaconda Latest Release
+    :alt: Conda Latest Release
 
-.. |Anaconda Downloads| image:: https://anaconda.org/astropy/photutils/badges/downloads.svg
+.. |Conda Downloads| image:: https://img.shields.io/conda/dn/astropy/photutils?label=conda%20downloads
     :target: https://anaconda.org/astropy/photutils
-    :alt: Anaconda Downloads
+    :alt: Conda Downloads
 
 .. |Astropy| image:: https://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
     :target: https://www.astropy.org/
@@ -62,7 +62,7 @@ Photutils is licensed under a 3-clause BSD license.  Please see the
     :target: https://zenodo.org/badge/latestdoi/2640766
     :alt: Zenodo Latest DOI
 
-.. |Travis Status| image:: https://travis-ci.org/astropy/photutils.svg?branch=master
+.. |Travis Status| image:: https://img.shields.io/travis/astropy/photutils/master?label=Travis%20CI
     :target: https://travis-ci.org/astropy/photutils
     :alt: Travis CI Status
 
@@ -70,7 +70,7 @@ Photutils is licensed under a 3-clause BSD license.  Please see the
     :target: https://coveralls.io/github/astropy/photutils
     :alt: Coveralls Status
 
-.. |CircleCI Status| image:: https://circleci.com/gh/astropy/photutils.svg?style=svg
+.. |CircleCI Status| image:: https://img.shields.io/circleci/build/github/astropy/photutils/master?label=CircleCI
     :target: https://circleci.com/gh/astropy/photutils
     :alt: CircleCI Status
 
@@ -81,5 +81,9 @@ Photutils is licensed under a 3-clause BSD license.  Please see the
 .. |Latest RTD Status| image:: https://readthedocs.org/projects/photutils/badge/?version=latest
     :target: https://photutils.readthedocs.io/en/latest/
     :alt: Latest Documentation Status
+
+.. |LGTM Grade| image:: https://img.shields.io/lgtm/grade/python/g/astropy/photutils.svg?logo=lgtm&logoWidth=18
+    :target: https://lgtm.com/projects/g/astropy/photutils/context:python
+    :alt: LGTM Grade
 
 .. _Astropy: https://www.astropy.org/
