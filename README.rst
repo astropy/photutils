@@ -42,7 +42,7 @@ Photutils is licensed under a 3-clause BSD license.  Please see the
 `LICENSE <LICENSE.rst>`_ file for details.
 
 
-.. |PyPI Version| image:: https://img.shields.io/pypi/v/photutils.svg
+.. |PyPI Version| image:: https://img.shields.io/pypi/v/photutils?label=pypi%20package
     :target: https://pypi.org/project/photutils/
     :alt: PyPI Latest Release
 
