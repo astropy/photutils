@@ -201,6 +201,10 @@ class EPSFFitter:
         _epsf = epsf.copy()
         _epsf._oversampling = np.array([1., 1.])
 
+        # Weights should be pulled from ``EPSFStar`` instance, where the
+        # weights are determined from an NDData.uncertainty array if its
+        # uncertainty type is `weight`, or inverse uncertainty if type is
+        # `std`; otherwise unity weights are used.
         try:
             fitted_epsf = fitter(model=_epsf, x=xx, y=yy, z=scaled_data,
                                  weights=weights, **fitter_kwargs)

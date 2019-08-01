@@ -4,7 +4,7 @@ Tests for the epsf module.
 """
 
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.nddata import NDData
+from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import Table
 import numpy as np
 from numpy.testing import assert_allclose
@@ -79,6 +79,30 @@ class TestEPSFBuild:
         assert isinstance(stars, EPSFStars)
         assert isinstance(stars[0], EPSFStar)
         assert stars[0].data.shape == (size, size)
+
+    def test_extract_stars_stddev_weights(self):
+        size = 25
+        data = NDData(self.nddata.data,
+                      uncertainty=StdDevUncertainty(np.sqrt(self.nddata.data)))
+        stars = extract_stars(data, self.init_stars, size=size)
+
+        assert len(stars) == 41
+        assert isinstance(stars, EPSFStars)
+        assert isinstance(stars[0], EPSFStar)
+        assert stars[0].data.shape == (size, size)
+
+    def test_extract_stars_inputs(self):
+        with pytest.raises(ValueError):
+            extract_stars(np.ones(3), self.init_stars)
+
+        with pytest.raises(ValueError):
+            extract_stars(self.nddata, [(1, 1), (2, 2), (3, 3)])
+
+        with pytest.raises(ValueError):
+            extract_stars(self.nddata, [self.init_stars, self.init_stars])
+
+        with pytest.raises(ValueError):
+            extract_stars([self.nddata, self.nddata], self.init_stars)
 
     def test_epsf_build(self):
         """

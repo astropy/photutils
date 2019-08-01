@@ -370,6 +370,9 @@ Other Changes and Additions
   to support both their ``iters`` (for astropy < 3.1) and ``maxiters``
   keywords. [#726]
 
+- Added the option for ``EPSFStar`` to have ``weights`` based on an
+  ``astropy.nddata.StdDevUncertainty`` object. [#739]
+
 
 0.5 (2018-08-06)
 ----------------
