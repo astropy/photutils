@@ -5,7 +5,6 @@ for prime-time (i.e., is not considered a stable public API), but is
 included either for experimentation or as legacy code.
 """
 
-from astropy import wcs as fitswcs
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import extract_array, subpixel_indices
