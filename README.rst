@@ -2,7 +2,7 @@
 Photutils
 =========
 
-|PyPI Version| |Anaconda Version| |Anaconda Downloads| |Astropy|
+|PyPI Version| |Conda Version| |Conda Downloads| |Astropy|
 
 |Travis Status| |CircleCI Status| |Coveralls Status| |Latest RTD Status| |LGTM Grade|
 
@@ -46,13 +46,13 @@ Photutils is licensed under a 3-clause BSD license.  Please see the
     :target: https://pypi.org/project/photutils/
     :alt: PyPI Latest Release
 
-.. |Anaconda Version| image:: https://anaconda.org/astropy/photutils/badges/version.svg
+.. |Conda Version| image:: https://img.shields.io/conda/vn/astropy/photutils?label=conda%20package
     :target: https://anaconda.org/astropy/photutils
-    :alt: Anaconda Latest Release
+    :alt: Conda Latest Release
 
-.. |Anaconda Downloads| image:: https://anaconda.org/astropy/photutils/badges/downloads.svg
+.. |Conda Downloads| image:: https://img.shields.io/conda/dn/astropy/photutils?label=conda%20downloads
     :target: https://anaconda.org/astropy/photutils
-    :alt: Anaconda Downloads
+    :alt: Conda Downloads
 
 .. |Astropy| image:: https://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
     :target: https://www.astropy.org/
