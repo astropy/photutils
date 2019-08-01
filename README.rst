@@ -4,7 +4,7 @@ Photutils
 
 |PyPI Version| |Anaconda Version| |Anaconda Downloads| |Astropy|
 
-|Travis Status| |Coveralls Status| |CircleCI Status| |Latest RTD Status|
+|Travis Status| |Coveralls Status| |CircleCI Status| |Latest RTD Status| |LGTM Grade|
 
 Photutils is an `Astropy`_ package for detection and photometry of
 astronomical sources.
@@ -81,5 +81,9 @@ Photutils is licensed under a 3-clause BSD license.  Please see the
 .. |Latest RTD Status| image:: https://readthedocs.org/projects/photutils/badge/?version=latest
     :target: https://photutils.readthedocs.io/en/latest/
     :alt: Latest Documentation Status
+
+.. |LGTM Grade| image:: https://img.shields.io/lgtm/grade/python/g/astropy/photutils.svg?logo=lgtm&logoWidth=18
+    :target: https://lgtm.com/projects/g/astropy/photutils/context:python
+    :alt: LGTM Grade
 
 .. _Astropy: https://www.astropy.org/
