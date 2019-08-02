@@ -203,7 +203,7 @@ class Ellipse:
                   conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,
                   maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG,
                   maxgerr=DEFAULT_MAXGERR, sclip=3., nclip=0,
-                  integrmode=BILINEAR, linear=False, maxrit=None):
+                  integrmode=BILINEAR, linear=None, maxrit=None):
         # This parameter list is quite large and should in principle be
         # simplified by re-distributing these controls to somewhere else.
         # We keep this design though because it better mimics the flat
@@ -354,6 +354,12 @@ class Ellipse:
                 sma = 10.
         else:
             sma = sma0
+
+        # Override geometry instance with parameters set at the call.
+        if isinstance(linear, bool):
+            self._geometry.linear_growth = linear
+        else:
+            linear = self._geometry.linear_growth
 
         # first, go from initial sma outwards until
         # hitting one of several stopping criteria.

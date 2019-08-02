@@ -3,6 +3,7 @@
 Tests for the ellipse module.
 """
 
+import math
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
 import numpy as np
@@ -66,6 +67,19 @@ class TestEllipse:
         # the fit should stop where gradient looses reliability.
         assert len(isophote_list) == 67
         assert isophote_list[-1].stop_code == 5
+
+    def test_linear(self):
+        ellipse = Ellipse(self.data)
+        isophote_list = ellipse.fit_image(linear=True, step=2.)
+
+        # verify that the list is properly sorted in sem-major axis length
+        assert isophote_list[-1] > isophote_list[0]
+
+        # difference in sma between successive isohpotes must be constant.
+        step = isophote_list[-1].sma - isophote_list[-2].sma
+        assert math.isclose((isophote_list[-2].sma - isophote_list[-3].sma), step, rel_tol=0.01)
+        assert math.isclose((isophote_list[-3].sma - isophote_list[-4].sma), step, rel_tol=0.01)
+        assert math.isclose((isophote_list[2].sma - isophote_list[1].sma), step, rel_tol=0.01)
 
     def test_fit_one_ellipse(self):
         ellipse = Ellipse(self.data)
