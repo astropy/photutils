@@ -11,8 +11,5 @@ flake8:
     - W504  # we've been perpetually annoyed by W504 "line break after binary operator", since there's often no real alternative
 
   exclude:
-    - ez_setup.py
-    - ah_bootstrap.py
-    - astropy_helpers/
     - _astropy_init.py
     - version.py

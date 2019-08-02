@@ -75,10 +75,6 @@ Other Tips
 
 - To skip only the testing on Travis CI use ``[skip travis]``.
 
-- If your commit makes substantial changes to the documentation, but
-  no code changes, then you can use ``[docs only]``, that will skip all
-  but the documentation building jobs on Travis.
-
 - When contributing trivial documentation fixes (i.e. fixes to typos,
   spelling, grammar) that do not contain any special markup and are
   not associated with code changes, please include the string ``[docs
@@ -107,7 +103,7 @@ in the package.
 
 * Are the `Astropy coding guidelines <https://docs.astropy.org/en/latest/development/codeguide.html>`_ followed?
 * Are there dependencies other than the Astropy core, the Python
-  Standard Library, and NumPy?
+  Standard Library, and Numpy?
 
   - Is the package importable even if the C-extensions are not built?
   - Are additional dependencies handled appropriately?
@@ -122,7 +118,7 @@ in the package.
 * Are there tests for the expected performance?
 * Are the sources for the tests documented?
 * Are the tests that require an `optional dependency <https://docs.astropy.org/en/latest/development/testguide.html#tests-requiring-optional-dependencies>`_ marked as such?
-* Does "``python setup.py test``" run without failures?
+* Does "``tox -e test``" run without failures?
 
 **Documentation**
 
@@ -138,14 +134,9 @@ in the package.
 
 * Is there any information needed to be added to the docs to describe the function or class?
 * Does the documentation build without errors or warnings?
+* If applicable, has an entry been added into the changelog?
 
 **License**
 
 * Is the photutils license included at the top of the file?
 * Are there any conflicts with this code and existing codes?
-
-**Photutils requirements**
-
-* Do all the Travis CI, AppVeyor, and CircleCI tests pass?
-* If applicable, has an entry been added into the changelog?
-* Can you checkout the pull request and repeat the examples and tests?

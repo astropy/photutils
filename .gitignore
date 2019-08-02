@@ -19,8 +19,7 @@ htmlcov
 benchmarks/_results
 
 # Sphinx
-_build
-_generated
+docs/_build
 docs/api
 
 # Packages/installer info
@@ -44,7 +43,6 @@ pip-wheel-metadata
 .tox
 .*.sw[op]
 *~
-.idea
 .project
 .pydevproject
 .settings
@@ -52,6 +50,12 @@ pip-wheel-metadata
 # Mac OSX
 .DS_Store
 
+# PyCharm
+.idea
+
 # Pytest
 .pytest_cache
 v
+
+# VSCode
+.vscode

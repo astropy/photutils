@@ -1,1 +1,1 @@
-See https://github.com/astropy/photutils/blob/master/photutils/CITATION
+See https://github.com/astropy/photutils/blob/master/photutils/CITATION.rst
