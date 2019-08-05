@@ -215,6 +215,11 @@ API changes
   - Deprecated the ``BoundingBox`` ``as_patch`` method (instead use
     ``as_artist``). [#851]
 
+- ``photutils.isophote``
+
+  - Isophote central values and intensity gradients are now returned
+    in the output table. [#892]
+
 - ``photutils.psf``
 
   - ``FittableImageModel`` and subclasses now allow for different
