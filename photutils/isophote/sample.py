@@ -278,7 +278,7 @@ class EllipseSample:
 
         return r_angles, r_radii, r_intensities
 
-    def update(self):
+    def update(self, fixed_parameters):
         """
         Update this `~photutils.isophote.EllipseSample` instance.
 
@@ -288,6 +288,7 @@ class EllipseSample:
         then computes the the mean intensity, local gradient, and other
         associated quantities.
         """
+        self.geometry.fix = fixed_parameters
 
         step = self.geometry.astep
 
@@ -385,11 +386,13 @@ class CentralEllipseSample(EllipseSample):
     the special case of the central pixel in the galaxy image.
     """
 
-    def update(self):
+    def update(self, fixed_parameters):
         """
         Update this `~photutils.isophote.EllipseSample` instance with
         the intensity integrated at the (x0, y0) center position using
         bilinear integration. The local gradient is set to `None`.
+
+        'fixed_parameters' is ignored in this subclass.
         """
 
         s = self.extract()

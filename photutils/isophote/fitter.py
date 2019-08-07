@@ -7,6 +7,7 @@ import math
 
 from astropy import log
 import numpy as np
+import numpy.ma as ma
 
 from .harmonics import (first_and_second_harmonic_function,
                         fit_first_and_second_harmonics)
@@ -138,9 +139,12 @@ class EllipseFitter:
         minimum_amplitude_value = np.Inf
         minimum_amplitude_sample = None
 
+        # these must be passed throughout the execution chain.
+        fixed_parameters = self._sample.geometry.fix
+
         for i in range(maxit):
             # Force the sample to compute its gradient and associated values.
-            sample.update()
+            sample.update(fixed_parameters)
 
             # The extract() method returns sampled values as a 2-d numpy array
             # with the following structure:
@@ -154,15 +158,20 @@ class EllipseFitter:
             # marked as invalid.
             try:
                 coeffs = fit_first_and_second_harmonics(values[0], values[2])
+                coeffs = coeffs[0]
             except Exception as e:
                 log.info(e)
+                sample.geometry.fix = fixed_parameters
                 return Isophote(sample, i + 1, False, 3)
 
-            coeffs = coeffs[0]
+            # Mask out coefficients that control fixed ellipse parameters.
+            free_coeffs = ma.masked_array(coeffs[1:], mask=fixed_parameters)
 
-            # largest harmonic in absolute value drives the correction.
-            largest_harmonic_index = np.argmax(np.abs(coeffs[1:]))
-            largest_harmonic = coeffs[1:][largest_harmonic_index]
+            print ('@@@@@@     line: 166  - ', free_coeffs, "  -   ", np.argmax(np.abs(free_coeffs)))
+
+            # Largest non-masked harmonic in absolute value drives the correction.
+            largest_harmonic_index = np.argmax(np.abs(free_coeffs))
+            largest_harmonic = free_coeffs[largest_harmonic_index]
 
             # see if the amplitude decreased; if yes, keep the
             # corresponding sample for eventual later use.
@@ -179,7 +188,7 @@ class EllipseFitter:
                 # Got a valid solution. But before returning, ensure
                 # that a minimum of iterations has run.
                 if i >= minit - 1:
-                    sample.update()
+                    sample.update(fixed_parameters)
                     return Isophote(sample, i + 1, True, 0)
 
             # it may not have converged yet, but the sample contains too
@@ -187,7 +196,7 @@ class EllipseFitter:
             if sample.actual_points < (sample.total_points * fflag):
                 # when too many data points were flagged, return the
                 # best fit sample instead of the current one.
-                minimum_amplitude_sample.update()
+                minimum_amplitude_sample.update(fixed_parameters)
                 return Isophote(minimum_amplitude_sample, i + 1, True, 1)
 
             # pick appropriate corrector code.
@@ -203,7 +212,7 @@ class EllipseFitter:
             # (hopefully smaller) price here, by having multiple calls to
             # the EllipseSample constructor.
             sample = corrector.correct(sample, largest_harmonic)
-            sample.update()
+            sample.update(fixed_parameters)
 
             # see if any abnormal (or unusual) conditions warrant
             # the change to non-iterative mode, or go-inwards mode.
@@ -211,13 +220,13 @@ class EllipseFitter:
                 sample, maxgerr, going_inwards, lexceed)
 
             if not proceed:
-                sample.update()
+                sample.update(fixed_parameters)
                 return Isophote(sample, i + 1, True, -1)
 
         # Got to the maximum number of iterations. Return with
         # code 2, and handle it as a valid isophote. Use the
         # best fit sample instead of the current one.
-        minimum_amplitude_sample.update()
+        minimum_amplitude_sample.update(fixed_parameters)
         return Isophote(minimum_amplitude_sample, maxit, True, 2)
 
     @staticmethod
@@ -388,6 +397,8 @@ class CentralEllipseFitter(EllipseFitter):
             at the central position.  Thus, most of its attributes are
             hardcoded to `None` or other default value when appropriate.
         """
+        # default values
+        fixed_parameters = np.array([False, False, False, False])
 
-        self._sample.update()
+        self._sample.update(fixed_parameters)
         return CentralPixel(self._sample)

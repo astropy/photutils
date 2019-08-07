@@ -108,7 +108,8 @@ class EllipseGeometry:
         `False`.
     """
 
-    def __init__(self, x0, y0, sma, eps, pa, astep=0.1, linear_growth=False):
+    def __init__(self, x0, y0, sma, eps, pa, astep=0.1, linear_growth=False,
+                 fix_center=False, fix_pa=False, fix_eps=False):
         self.x0 = x0
         self.y0 = y0
         self.sma = sma
@@ -117,6 +118,11 @@ class EllipseGeometry:
 
         self.astep = astep
         self.linear_growth = linear_growth
+
+        # Fixed parameters are flagged in here. Note that the
+        # ordering must follow the same ordering used in the
+        # fitter._CORRECTORS list.
+        self.fix = np.array([fix_center, fix_center, fix_pa, fix_eps])
 
         # limits for sector angular width
         self._phi_min = 0.05

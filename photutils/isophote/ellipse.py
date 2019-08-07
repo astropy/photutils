@@ -573,6 +573,9 @@ class Ellipse:
         if isophote_list:
             geometry = isophote_list[-1].sample.geometry
 
+        print ('@@@@@@     line: 576  - ', geometry.fix, self._geometry.fix, "   sma = ", sma)
+
+
         # do the fit
         if noniterate or (maxrit and sma > maxrit):
             isophote = self._non_iterative(sma, step, linear, geometry,
@@ -632,7 +635,7 @@ class Ellipse:
             # force new extraction of raw data, since
             # geometry changed.
             isophote.sample.values = None
-            isophote.sample.update()
+            isophote.sample.update(isophote.sample.geometry.fix)
 
             # we take the opportunity to change an eventual
             # negative stop code to its' positive equivalent.
