@@ -35,8 +35,7 @@ class EPSFFitter:
     Parameters
     ----------
     fitter : `astropy.modeling.fitting.Fitter`, optional
-        A `~astropy.modeling.fitting.Fitter` object.  The default is
-        `~astropy.modeling.fitting.LevMarLSQFitter`.
+        A `~astropy.modeling.fitting.Fitter` object.
 
     fit_boxsize : int, tuple of int, or `None`, optional
         The size (in pixels) of the box centered on the star to be used
@@ -46,8 +45,7 @@ class EPSFFitter:
         of size ``fit_boxsize`` will be used.  If ``fit_boxsize`` has
         two elements, they should be in ``(ny, nx)`` order.  The size
         must be greater than or equal to 3 pixels for both axes.  If
-        `None`, the fitter will use the entire star image.  The default
-        is 5.
+        `None`, the fitter will use the entire star image.
 
     fitter_kwargs : dict-like, optional
         Any additional keyword arguments (except ``x``, ``y``, ``z``, or
@@ -256,14 +254,14 @@ class EPSFBuilder:
         pixel.
 
     norm_radius : float, optional
-        The pixel radius over which the ePSF is normalized. Defaults to 5.5 pix.
+        The pixel radius over which the ePSF is normalized.
 
     smoothing_kernel : {'quartic', 'quadratic'}, 2D `~numpy.ndarray`, or `None`
         The smoothing kernel to apply to the ePSF.  The predefined
         ``'quartic'`` and ``'quadratic'`` kernels are derived from
         fourth and second degree polynomials, respectively.
         Alternatively, a custom 2D array can be input.  If `None` then
-        no smoothing will be performed.  The default is ``'quartic'``.
+        no smoothing will be performed.
 
     recentering_func : callable, optional
         A callable object (e.g. function or class) that is used to
@@ -271,24 +269,23 @@ class EPSFBuilder:
         a 2D `~numpy.ndarray`, have a ``mask`` keyword and optionally
         ``error`` and ``oversampling`` keywords.  The callable object must return
         a tuple of two 1D `~numpy.ndarray` variables, representing the x and y
-        centroids. The default is `~photutils.centroids.centroid_epsf`.
+        centroids.
 
     recentering_maxiters : int, optional
         The maximum number of recentering iterations to perform during
-        each ePSF build iteration.  The default is 20.
+        each ePSF build iteration.
 
     fitter : `EPSFFitter` object, optional
-        A `EPSFFitter` object use to fit the ePSF to stars.  The default
-        fitter used by `EPSFFitter` is
-        `~astropy.modeling.fitting.LevMarLSQFitter`.  See the
-        `EPSFFitter` documentation its options.
+        A `EPSFFitter` object use to fit the ePSF to stars.  To set fitter
+        options, a new object with specific options should be passed in - the
+        default uses simply the default options.  To see more of these options,
+        see the `EPSFFitter` documentation.
 
     maxiters : int, optional
-        The maximum number of iterations to perform. The default is 10.
+        The maximum number of iterations to perform.
 
     progress_bar : bool, option
         Whether to print the progress bar during the build iterations.
-        The default is `True`.
     """
 
     def __init__(self, oversampling=4., shape=None,
@@ -570,8 +567,7 @@ class EPSFBuilder:
             accept a 2D `~numpy.ndarray`, have a ``mask`` keyword and
             optionally an ``error`` keyword.  The callable object must
             return a tuple of two 1D `~numpy.ndarray` variables, representing
-            the x and y centroids.  The default is
-            `~photutils.centroids.centroid_epsf`.
+            the x and y centroids.
 
         Returns
         -------
