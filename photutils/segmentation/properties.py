@@ -16,7 +16,7 @@ import numpy as np
 from .core import SegmentationImage
 from ..aperture import BoundingBox
 from ..utils._moments import _moments, _moments_central
-from ..utils.convolution import filter_data
+from ..utils.convolution import _filter_data
 from ..utils._wcs_helpers import _pixel_to_world
 
 __all__ = ['SourceProperties', 'source_properties', 'SourceCatalog']
@@ -1620,8 +1620,8 @@ def source_properties(data, segment_img, error=None, mask=None,
 
     # filter the data once, instead of repeating for each source
     if filter_kernel is not None:
-        filtered_data = filter_data(data, filter_kernel, mode='constant',
-                                    fill_value=0.0, check_normalization=True)
+        filtered_data = _filter_data(data, filter_kernel, mode='constant',
+                                     fill_value=0.0, check_normalization=True)
     else:
         filtered_data = None
 
