@@ -299,6 +299,9 @@ API changes
 
   - Deprecated the ``mask_to_mirrored_num`` function. [#895]
 
+  - Deprecated the ``get_version_info``, ``filter_data``, and
+    ``std_blocksum`` functions. [#918]
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
