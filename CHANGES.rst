@@ -80,6 +80,9 @@ New Features
   - Added the ``gini`` source property representing the Gini
     coefficient. [#864]
 
+  - Cached (lazy) properties can now be reset in ``SegmentationImage``
+    subclasses. [#916]
+
 - ``photutils.utils``
 
   - Added ``NoDetectionsWarning`` class. [#836]
