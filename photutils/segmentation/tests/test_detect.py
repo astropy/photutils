@@ -90,7 +90,7 @@ class TestDetectSources:
         assert_array_equal(segm.data, self.refdata)
 
     def test_zerodet(self):
-        """Test detection with large snr_threshold giving no detections."""
+        """Test detection with large threshold giving no detections."""
 
         with catch_warnings(NoDetectionsWarning) as warning_lines:
             detect_sources(self.data, threshold=7, npixels=2)

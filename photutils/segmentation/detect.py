@@ -110,10 +110,10 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
 
         # detect the sources
         from photutils import detect_threshold, detect_sources
-        threshold = detect_threshold(image, snr=3)
+        threshold = detect_threshold(image, nsigma=3)
         from astropy.convolution import Gaussian2DKernel
-        sigma = 3.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))  # FWHM = 3
-        kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
+        kernel_sigma = 3.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))  # FWHM = 3
+        kernel = Gaussian2DKernel(kernel_sigma, x_size=3, y_size=3)
         kernel.normalize()
         segm = detect_sources(image, threshold, npixels=5,
                               filter_kernel=kernel)
@@ -177,8 +177,9 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         return segm
 
 
+@deprecated_renamed_argument('snr', 'nsigma', 0.7)
 @deprecated_renamed_argument('mask_value', None, 0.7)
-def make_source_mask(data, snr, npixels, mask=None, mask_value=None,
+def make_source_mask(data, nsigma, npixels, mask=None, mask_value=None,
                      filter_fwhm=None, filter_size=3, filter_kernel=None,
                      sigclip_sigma=3.0, sigclip_iters=5, dilate_size=11):
     """
@@ -189,9 +190,10 @@ def make_source_mask(data, snr, npixels, mask=None, mask_value=None,
     data : array_like
         The 2D array of the image.
 
-    snr : float
-        The signal-to-noise ratio per pixel above the ``background`` for
-        which to consider a pixel as possibly being part of a source.
+    nsigma : float
+        The number of standard deviations per pixel above the
+        ``background`` for which to consider a pixel as possibly being
+        part of a source.
 
     npixels : int
         The number of connected pixels, each greater than ``threshold``,
@@ -249,7 +251,7 @@ def make_source_mask(data, snr, npixels, mask=None, mask_value=None,
 
     from scipy import ndimage
 
-    threshold = detect_threshold(data, snr, background=None, error=None,
+    threshold = detect_threshold(data, nsigma, background=None, error=None,
                                  mask=mask, mask_value=None,
                                  sigclip_sigma=sigclip_sigma,
                                  sigclip_iters=sigclip_iters)
@@ -258,8 +260,8 @@ def make_source_mask(data, snr, npixels, mask=None, mask_value=None,
     if filter_kernel is not None:
         kernel = filter_kernel
     if filter_fwhm is not None:
-        sigma = filter_fwhm * gaussian_fwhm_to_sigma
-        kernel = Gaussian2DKernel(sigma, x_size=filter_size,
+        kernel_sigma = filter_fwhm * gaussian_fwhm_to_sigma
+        kernel = Gaussian2DKernel(kernel_sigma, x_size=filter_size,
                                   y_size=filter_size)
     if kernel is not None:
         kernel.normalize()
