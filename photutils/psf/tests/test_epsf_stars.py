@@ -3,7 +3,7 @@
 Tests for the epsf_stars module.
 """
 
-from astropy.modeling.models import Moffat2D, Gaussian2D
+from astropy.modeling.models import Moffat2D
 from astropy.nddata import NDData
 from astropy.table import Table
 import numpy as np
@@ -11,7 +11,7 @@ from numpy.testing import assert_allclose
 import pytest
 
 from ..epsf_stars import extract_stars, EPSFStar, EPSFStars
-from ..models import EPSFModel
+from ..models import EPSFModel, IntegratedGaussianPRF
 
 try:
     import scipy  # noqa
@@ -68,15 +68,20 @@ def test_epsf_star_residual_image():
     """
 
     size = 100
-    yy, xx, = np.mgrid[0:size, 0:size]
-    gmodel = Gaussian2D(100, 50, 50, 10, 10)(xx, yy)
-    epsf = EPSFModel(gmodel, oversampling=4)
-    data = np.zeros((size, size))
-    data += epsf.evaluate(x=xx, y=yy, flux=16, x_0=50, y_0=50)
+    yy, xx, = np.mgrid[0:size+1, 0:size+1] / 4
+    gmodel = IntegratedGaussianPRF().evaluate(xx, yy, 1, 12.5, 12.5, 2.5)
+    epsf = EPSFModel(gmodel, oversampling=4, norm_radius=100)
+    _size = 25
+    data = np.zeros((_size, _size))
+    _yy, _xx, = np.mgrid[0:_size, 0:_size]
+    data += epsf.evaluate(x=_xx, y=_yy, flux=16, x_0=12, y_0=12)
     tbl = Table()
-    tbl['x'] = [50.]
-    tbl['y'] = [50.]
-    stars = extract_stars(NDData(data), tbl, size=25)
+    tbl['x'] = [12]
+    tbl['y'] = [12]
+    stars = extract_stars(NDData(data), tbl, size=23)
     residual = stars[0].compute_residual_image(epsf)
-
-    assert_allclose(np.sum(residual), 0., atol=1.e-6)
+    # As current EPSFStar instances cannot accept IntegratedGaussianPRF as input,
+    # we have to accept some loss of precision from the conversion to ePSF, and
+    # spline fitting (twice), so assert_allclose cannot be more more precise than
+    # 0.001 currently.
+    assert_allclose(np.sum(residual), 0., atol=1.e-3, rtol=1e-3)

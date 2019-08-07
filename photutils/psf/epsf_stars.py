@@ -196,12 +196,10 @@ class EPSFStar:
         """
 
         yy, xx = np.indices(self.shape, dtype=np.float)
-        xx = epsf._oversampling[0] * (xx - self.cutout_center[0])
-        yy = epsf._oversampling[1] * (yy - self.cutout_center[1])
+        xx = xx - self.cutout_center[0]
+        yy = yy - self.cutout_center[1]
 
-        return (self.flux * np.prod(epsf._oversampling) *
-                epsf.evaluate(xx, yy, flux=1.0, x_0=0.0, y_0=0.0,
-                              use_oversampling=False))
+        return (self.flux * epsf.evaluate(xx, yy, flux=1.0, x_0=0.0, y_0=0.0))
 
     def compute_residual_image(self, epsf):
         """
@@ -431,7 +429,6 @@ class EPSFStars:
         count.
         """
 
-        # return np.count_nonzero(~self._excluded_from_fit.ravel())
         return len(self.all_good_stars)
 
     @lazyproperty
@@ -593,6 +590,8 @@ def extract_stars(data, catalogs, size=(11, 11)):
         scalar then a square box of size ``size`` will be used.  If
         ``size`` has two elements, they should be in ``(ny, nx)`` order.
         The size must be greater than or equal to 3 pixel for both axes.
+        Size must be odd in both axes; if either is even, it is padded
+        by one to force oddness.
 
     Returns
     -------
@@ -648,6 +647,10 @@ def extract_stars(data, catalogs, size=(11, 11)):
     size = np.atleast_1d(size)
     if len(size) == 1:
         size = np.repeat(size, 2)
+
+    # Force size to odd numbers such that there is always a central pixel with
+    # even spacing either side of the pixel.
+    size = tuple(_size+1 if _size % 2 == 0 else _size for _size in size)
 
     min_size = 3
     if size[0] < min_size or size[1] < min_size:
@@ -729,6 +732,8 @@ def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
         scalar then a square box of size ``size`` will be used.  If
         ``size`` has two elements, they should be in ``(ny, nx)`` order.
         The size must be greater than or equal to 3 pixel for both axes.
+        Size must be odd in both axes; if either is even, it is padded
+        by one to force oddness.
 
     use_xy : bool, optional
         Whether to use the ``x`` and ``y`` pixel positions when both
@@ -742,6 +747,13 @@ def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
     stars : list of `EPSFStar` objects
         A list of `EPSFStar` instances containing the extracted stars.
     """
+
+    # Force size to odd numbers such that there is always a central pixel with
+    # even spacing either side of the pixel.
+    if np.isscalar(size):
+        size = size+1 if size % 2 == 0 else size
+    else:
+        size = tuple(_size+1 if _size % 2 == 0 else _size for _size in size)
 
     colnames = catalog.colnames
     if ('x' not in colnames or 'y' not in colnames) or not use_xy:

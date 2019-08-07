@@ -116,6 +116,9 @@ Bug Fixes
   - A ValueError is raised if ``aperture_radius`` is not input and
     cannot be determined from the input ``psf_model``. [#903]
 
+  - Fixed normalization of ePSF model, now correctly normalizing on
+    undersampled pixel grid. [#817]
+
 - ``photutils.segmentation``
 
   - Fixed an issue where ``deblend_sources`` could fail for sources
