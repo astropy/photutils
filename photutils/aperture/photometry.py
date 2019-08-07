@@ -16,7 +16,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from .core import Aperture, SkyAperture
 from ._photometry_utils import (_handle_hdu_input, _handle_units,
                                 _prepare_photometry_data, _validate_inputs)
-from ..utils import get_version_info
+from ..utils.misc import _get_version_info
 
 __all__ = ['aperture_photometry']
 
@@ -229,7 +229,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     # define output table meta data
     meta = OrderedDict()
     meta['name'] = 'Aperture photometry results'
-    meta['version'] = get_version_info()
+    meta['version'] = _get_version_info()
     calling_args = "method='{0}', subpixels={1}".format(method, subpixels)
     meta['aperture_photometry_args'] = calling_args
 
