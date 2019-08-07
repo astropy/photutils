@@ -243,7 +243,7 @@ def make_source_mask(data, snr, npixels, mask=None, mask_value=None,
 
     Returns
     -------
-    mask : 2D `~numpy.ndarray`, bool
+    mask : 2D bool `~numpy.ndarray`
         A 2D boolean image containing the source mask.
     """
 
@@ -265,6 +265,8 @@ def make_source_mask(data, snr, npixels, mask=None, mask_value=None,
         kernel.normalize()
 
     segm = detect_sources(data, threshold, npixels, filter_kernel=kernel)
+    if segm is None:
+        return np.zeros(data.shape, dtype=bool)
 
     selem = np.ones((dilate_size, dilate_size))
-    return ndimage.binary_dilation(segm.data.astype(np.bool), selem)
+    return ndimage.binary_dilation(segm.data.astype(bool), selem)
