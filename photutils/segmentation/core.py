@@ -803,8 +803,8 @@ class SegmentationImage:
         if start_label <= 0:
             raise ValueError('start_label must be > 0.')
 
-        if ((self.labels[-1] - self.labels[0] + 1) == self.nlabels and
-                (self.labels[0] == start_label)):
+        if ((self.labels[0] == start_label) and
+                (self.labels[-1] - self.labels[0] + 1) == self.nlabels):
             return
 
         new_labels = np.zeros(self.max_label + 1, dtype=np.int)
