@@ -764,8 +764,9 @@ class SegmentationImage:
         idx[self.labels] = self.labels
         idx[labels] = new_label
 
-        # calling the data setter resets all cached properties
-        self.data = idx[self.data]
+        data_new = idx[self.data]
+        self.__dict__ = {}  # reset all cached properties
+        self._data = data_new  # use _data to avoid validation
 
         if relabel:
             self.relabel_consecutive()
@@ -809,7 +810,10 @@ class SegmentationImage:
 
         new_labels = np.zeros(self.max_label + 1, dtype=np.int)
         new_labels[self.labels] = np.arange(self.nlabels) + start_label
-        self.data = new_labels[self.data]
+
+        data_new = new_labels[self.data]
+        self.__dict__ = {}  # reset all cached properties
+        self._data = data_new  # use _data to avoid validation
 
     def keep_label(self, label, relabel=False):
         """
