@@ -497,8 +497,12 @@ class FittableImageModel(Fittable2DModel):
 
 class EPSFModel(FittableImageModel):
     """
-    A subclass of `FittableImageModel`. A fittable ePSF model.
+    A class that models an effective PSF (ePSF). This is a subclass of
+    `FittableImageModel`, and is very similar but contains a few additional
+    parameters relevant specifically for ePSF's.
 
+    Parameters
+    ----------
     oversampling : int or tuple of two int, optional
         The oversampling factor(s) of the model in the ``x`` and ``y`` directions.
         If ``oversampling`` is a scalar it will be treated as being the same in both
