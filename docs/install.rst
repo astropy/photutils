@@ -28,6 +28,10 @@ Photutils also optionally depends on other packages for some features:
 * `scikit-learn <https://scikit-learn.org/>`_ 0.19 or later:  Used in
   `~photutils.psf.DBSCANGroup` to create star groups.
 
+* `gwcs <https://github.com/spacetelescope/gwcs>`_ 0.11 or later:
+  Used in `~photutils.datasets.make_gwcs` to create a simple celestial
+  gwcs object.
+
 Photutils depends on `pytest-astropy
 <https://github.com/astropy/pytest-astropy>`_ (0.4 or later) to run
 the test suite.
