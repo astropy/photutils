@@ -12,7 +12,7 @@ import numpy as np
 
 from .core import SegmentationImage
 from ..detection import detect_threshold
-from ..utils.convolution import filter_data
+from ..utils.convolution import _filter_data
 from ..utils.exceptions import NoDetectionsWarning
 
 __all__ = ['detect_sources', 'make_source_mask']
@@ -131,8 +131,8 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         raise ValueError('npixels must be a positive integer, got '
                          '"{0}"'.format(npixels))
 
-    image = filter_data(data, filter_kernel, mode='constant', fill_value=0.0,
-                        check_normalization=True)
+    image = _filter_data(data, filter_kernel, mode='constant', fill_value=0.0,
+                         check_normalization=True)
     # ignore RuntimeWarning caused by > when image contains NaNs
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', category=RuntimeWarning)

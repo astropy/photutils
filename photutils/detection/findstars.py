@@ -18,7 +18,7 @@ import numpy as np
 
 from .core import find_peaks
 from ..utils._moments import _moments, _moments_central
-from ..utils.convolution import filter_data
+from ..utils.convolution import _filter_data
 from ..utils.exceptions import NoDetectionsWarning
 
 __all__ = ['StarFinderBase', 'DAOStarFinder', 'IRAFStarFinder']
@@ -627,8 +627,8 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
     .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
     """
 
-    convolved_data = filter_data(data, kernel.data, mode='constant',
-                                 fill_value=0.0, check_normalization=False)
+    convolved_data = _filter_data(data, kernel.data, mode='constant',
+                                  fill_value=0.0, check_normalization=False)
 
     # define a local footprint for the peak finder
     if min_separation is None:  # daofind
