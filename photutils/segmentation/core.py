@@ -282,7 +282,7 @@ class SegmentationImage:
             raise ValueError('data must not contain any non-finite values '
                              '(e.g. NaN, inf)')
 
-        value = np.asanyarray(value, dtype=np.int)
+        value = np.asarray(value, dtype=int)
         if not np.any(value):
             raise ValueError('The segmentation image must contain at least '
                              'one non-zero pixel.')
