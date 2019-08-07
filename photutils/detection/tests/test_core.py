@@ -40,61 +40,61 @@ FITSWCS = make_wcs(IMAGE.shape)
 
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestDetectThreshold:
-    def test_snr(self):
-        """Test basic snr."""
+    def test_nsigma(self):
+        """Test basic nsigma."""
 
-        threshold = detect_threshold(DATA, snr=0.1)
+        threshold = detect_threshold(DATA, nsigma=0.1)
         ref = 0.4 * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
-    def test_snr_zero(self):
-        """Test snr=0."""
+    def test_nsigma_zero(self):
+        """Test nsigma=0."""
 
-        threshold = detect_threshold(DATA, snr=0.0)
+        threshold = detect_threshold(DATA, nsigma=0.0)
         ref = (1. / 3.) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
     def test_background(self):
-        threshold = detect_threshold(DATA, snr=1.0, background=1)
+        threshold = detect_threshold(DATA, nsigma=1.0, background=1)
         ref = (5. / 3.) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
     def test_background_image(self):
         background = np.ones((3, 3))
-        threshold = detect_threshold(DATA, snr=1.0, background=background)
+        threshold = detect_threshold(DATA, nsigma=1.0, background=background)
         ref = (5. / 3.) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
     def test_background_badshape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
-            detect_threshold(DATA, snr=2., background=wrong_shape)
+            detect_threshold(DATA, nsigma=2., background=wrong_shape)
 
     def test_error(self):
-        threshold = detect_threshold(DATA, snr=1.0, error=1)
+        threshold = detect_threshold(DATA, nsigma=1.0, error=1)
         ref = (4. / 3.) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
     def test_error_image(self):
         error = np.ones((3, 3))
-        threshold = detect_threshold(DATA, snr=1.0, error=error)
+        threshold = detect_threshold(DATA, nsigma=1.0, error=error)
         ref = (4. / 3.) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
     def test_error_badshape(self):
         wrong_shape = np.zeros((2, 2))
         with pytest.raises(ValueError):
-            detect_threshold(DATA, snr=2., error=wrong_shape)
+            detect_threshold(DATA, nsigma=2., error=wrong_shape)
 
     def test_background_error(self):
-        threshold = detect_threshold(DATA, snr=2.0, background=10., error=1.)
+        threshold = detect_threshold(DATA, nsigma=2.0, background=10., error=1.)
         ref = 12. * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
     def test_background_error_images(self):
         background = np.ones((3, 3)) * 10.
         error = np.ones((3, 3))
-        threshold = detect_threshold(DATA, snr=2.0, background=background,
+        threshold = detect_threshold(DATA, nsigma=2.0, background=background,
                                      error=error)
         ref = 12. * np.ones((3, 3))
         assert_allclose(threshold, ref)
@@ -102,7 +102,7 @@ class TestDetectThreshold:
     def test_mask_value(self):
         """Test detection with mask_value."""
 
-        threshold = detect_threshold(DATA, snr=1.0, mask_value=0.0)
+        threshold = detect_threshold(DATA, nsigma=1.0, mask_value=0.0)
         ref = 2. * np.ones((3, 3))
         assert_array_equal(threshold, ref)
 
@@ -114,7 +114,7 @@ class TestDetectThreshold:
         """
 
         mask = REF1.astype(np.bool)
-        threshold = detect_threshold(DATA, snr=1., error=0, mask=mask,
+        threshold = detect_threshold(DATA, nsigma=1., error=0, mask=mask,
                                      sigclip_sigma=10, sigclip_iters=1)
         ref = (1. / 8.) * np.ones((3, 3))
         assert_array_equal(threshold, ref)
@@ -123,7 +123,7 @@ class TestDetectThreshold:
         """Test that image_mask overrides mask_value."""
 
         mask = REF1.astype(np.bool)
-        threshold = detect_threshold(DATA, snr=0.1, error=0, mask_value=0.0,
+        threshold = detect_threshold(DATA, nsigma=0.1, error=0, mask_value=0.0,
                                      mask=mask, sigclip_sigma=10,
                                      sigclip_iters=1)
         ref = np.ones((3, 3))

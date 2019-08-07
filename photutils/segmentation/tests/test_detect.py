@@ -90,7 +90,7 @@ class TestDetectSources:
         assert_array_equal(segm.data, self.refdata)
 
     def test_zerodet(self):
-        """Test detection with large snr_threshold giving no detections."""
+        """Test detection with large threshold giving no detections."""
 
         with catch_warnings(NoDetectionsWarning) as warning_lines:
             detect_sources(self.data, threshold=7, npixels=2)
@@ -190,3 +190,7 @@ class TestMakeSourceMask:
         kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
         mask2 = make_source_mask(self.data, 5, 10, filter_kernel=kernel)
         assert_allclose(mask1, mask2)
+
+    def test_no_detections(self):
+        mask = make_source_mask(self.data, 100, 100)
+        assert np.count_nonzero(mask) == 0
