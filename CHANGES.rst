@@ -218,6 +218,9 @@ API changes
   - Deprecated the ``BoundingBox`` ``as_patch`` method (instead use
     ``as_artist``). [#851]
 
+  - Renamed the ``snr`` (deprecated) keyword to ``nsigma`` in
+    ``detect_threshold``. [#917]
+
 - ``photutils.isophote``
 
   - Isophote central values and intensity gradients are now returned
@@ -278,6 +281,9 @@ API changes
 
   - The ``orientation`` property is now returned as a ``Quantity``
     instance in units of degrees. [#863]
+
+  - Renamed the ``snr`` (deprecated) keyword to ``nsigma`` in
+    ``make_source_mask``. [#917]
 
 - ``photutils.utils``
 
