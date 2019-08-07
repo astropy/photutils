@@ -762,14 +762,17 @@ class SegmentationImage:
 
         idx = np.zeros(self.max_label + 1, dtype=int)
         idx[self.labels] = self.labels
-        idx[labels] = new_label
+        idx[labels] = new_label  # reassign labels
+
+        if relabel:
+            labels = np.unique(idx[idx != 0])
+            idx2 = np.zeros(max(labels) + 1, dtype=np.int)
+            idx2[labels] = np.arange(len(labels)) + 1
+            idx = idx2[idx]
 
         data_new = idx[self.data]
         self.__dict__ = {}  # reset all cached properties
         self._data = data_new  # use _data to avoid validation
-
-        if relabel:
-            self.relabel_consecutive()
 
     def relabel_consecutive(self, start_label=1):
         """
