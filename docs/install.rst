@@ -21,7 +21,7 @@ Photutils also optionally depends on other packages for some features:
 * `matplotlib <https://matplotlib.org/>`_ 2.2 or later:  To power a
   variety of plotting features (e.g. plotting apertures).
 
-* `scikit-image <https://scikit-image.org/>`_ 0.13 or later:  Used in
+* `scikit-image <https://scikit-image.org/>`_ 0.14.2 or later:  Used in
   `~photutils.segmentation.deblend_sources` for deblending segmented
   sources.
 
