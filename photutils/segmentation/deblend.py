@@ -120,8 +120,10 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
     for label in labels:
         source_slice = segment_img.slices[segment_img.get_index(label)]
         source_data = data[source_slice]
-        source_segm = SegmentationImage(np.copy(
-            segment_img.data[source_slice]))
+
+        source_segm = object.__new__(SegmentationImage)
+        source_segm._data = np.copy(segment_img.data[source_slice])
+
         source_segm.keep_labels(label)  # include only one label
         source_deblended = _deblend_source(
             source_data, source_segm, npixels, nlevels=nlevels,
@@ -141,7 +143,10 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
             segm_tmp = segm_deblended.data
             segm_tmp[source_slice][source_mask] = (
                 source_deblended.data[source_mask] + last_label)
-            segm_deblended.data = segm_tmp  # needed to call data setter
+
+            segm_deblended.__dict__ = {}  # reset cached properties
+            segm_deblended._data = segm_tmp
+
             last_label += source_deblended.nlabels
 
     if relabel:
@@ -295,8 +300,9 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
                     segm_lower[mask] = segm_upper[mask]
 
             if relabel:
-                segments[i + 1] = SegmentationImage(
-                    ndimage.label(segm_lower, structure=selem)[0])
+                segm_new = object.__new__(SegmentationImage)
+                segm_new._data = ndimage.label(segm_lower, structure=selem)[0]
+                segments[i + 1] = segm_new
             else:
                 segments[i + 1] = segments[i]
 
@@ -320,4 +326,6 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
                 # constrast criterion
                 markers[markers == labels[np.argmin(flux_frac)]] = 0.
 
-        return SegmentationImage(markers)
+        segm_new = object.__new__(SegmentationImage)
+        segm_new._data = markers
+        return segm_new
