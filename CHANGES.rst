@@ -100,6 +100,11 @@ Bug Fixes
     apertures) would be a length-1 array containing a ``SkyCoord``
     object instead of a length-1 ``SkyCoord`` object. [#844]
 
+- ``photutils.isophote``
+
+  - Fixed an issue where the linear fitting mode was not working.
+    [#912]
+
 - ``photutils.psf``
 
   - Fixed a bug in the ``EPSFStar`` ``register_epsf`` and
@@ -209,6 +214,11 @@ API changes
 
   - Deprecated the ``BoundingBox`` ``as_patch`` method (instead use
     ``as_artist``). [#851]
+
+- ``photutils.isophote``
+
+  - Isophote central values and intensity gradients are now returned
+    in the output table. [#892]
 
 - ``photutils.psf``
 
