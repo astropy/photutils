@@ -256,8 +256,7 @@ class EPSFBuilder:
         pixel.
 
     norm_radius : float, optional
-        The pixel radius over which the ePSF is normalized. If `None` or
-        not provided, defaults to 5.5 pixels.
+        The pixel radius over which the ePSF is normalized. Defaults to 5.5 pix.
 
     smoothing_kernel : {'quartic', 'quadratic'}, 2D `~numpy.ndarray`, or `None`
         The smoothing kernel to apply to the ePSF.  The predefined
