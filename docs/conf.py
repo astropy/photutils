@@ -83,11 +83,8 @@ exclude_patterns.append('psf_spec/*')
 import photutils
 
 rst_epilog += """
-.. |minimum_python_version| replace:: {0}
-.. |minimum_numpy_version| replace:: {1}
 .. _Photutils: high-level_API.html
-""".format(photutils.__minimum_python_version__,
-           photutils.__minimum_numpy_version__)
+"""
 
 # -- Project information ------------------------------------------------------
 
