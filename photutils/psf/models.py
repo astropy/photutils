@@ -991,11 +991,11 @@ class IntegratedGaussianPRF(Fittable2DModel):
     ----------
     sigma : float
         Width of the Gaussian PSF.
-    flux : float (default 1)
+    flux : float, optional
         Total integrated flux over the entire PSF
-    x_0 : float (default 0)
+    x_0 : float, optional
         Position of the peak in x direction.
-    y_0 : float (default 0)
+    y_0 : float, optional
         Position of the peak in y direction.
 
     Notes
