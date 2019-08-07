@@ -8,6 +8,7 @@ import warnings
 
 from astropy.stats import sigma_clipped_stats
 from astropy.table import Table
+from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.version import version as astropy_version
 import numpy as np
 
@@ -17,7 +18,8 @@ from ..utils._wcs_helpers import _pixel_to_world
 __all__ = ['detect_threshold', 'find_peaks']
 
 
-def detect_threshold(data, snr, background=None, error=None, mask=None,
+@deprecated_renamed_argument('snr', 'nsigma', 0.7)
+def detect_threshold(data, nsigma, background=None, error=None, mask=None,
                      mask_value=None, sigclip_sigma=3.0, sigclip_iters=None):
     """
     Calculate a pixel-wise threshold image that can be used to detect
@@ -28,9 +30,10 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
     data : array_like
         The 2D array of the image.
 
-    snr : float
-        The signal-to-noise ratio per pixel above the ``background`` for
-        which to consider a pixel as possibly being part of a source.
+    nsigma : float
+        The number of standard deviations per pixel above the
+        ``background`` for which to consider a pixel as possibly being
+        part of a source.
 
     background : float or array_like, optional
         The background value(s) of the input ``data``.  ``background``
@@ -125,7 +128,7 @@ def detect_threshold(data, snr, background=None, error=None, mask=None,
                                  'must have the same shape as the input '
                                  'data.')
 
-    return background + (error * snr)
+    return background + (error * nsigma)
 
 
 def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
