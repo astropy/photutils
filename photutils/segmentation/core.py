@@ -1025,10 +1025,7 @@ class SegmentationImage:
         """
 
         self.check_labels(labels)
-
-        self.reassign_label(labels, new_label=0)
-        if relabel:
-            self.relabel_consecutive()
+        self.reassign_labels(labels, new_label=0, relabel=relabel)
 
     def remove_border_labels(self, border_width, partial_overlap=True,
                              relabel=False):
