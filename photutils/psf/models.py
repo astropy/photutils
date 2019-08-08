@@ -497,8 +497,14 @@ class FittableImageModel(Fittable2DModel):
 
 class EPSFModel(FittableImageModel):
     """
-    A subclass of `FittableImageModel`. A fittable ePSF model.
+    A class that models an effective PSF (ePSF).
 
+    While this class is a subclass of `FittableImageModel`, it is very similar.
+    The primary differences/motivation are a few additional  parameters necesary
+    specifically for ePSFs.
+
+    Parameters
+    ----------
     oversampling : int or tuple of two int, optional
         The oversampling factor(s) of the model in the ``x`` and ``y`` directions.
         If ``oversampling`` is a scalar it will be treated as being the same in both
@@ -987,11 +993,11 @@ class IntegratedGaussianPRF(Fittable2DModel):
     ----------
     sigma : float
         Width of the Gaussian PSF.
-    flux : float (default 1)
+    flux : float, optional
         Total integrated flux over the entire PSF
-    x_0 : float (default 0)
+    x_0 : float, optional
         Position of the peak in x direction.
-    y_0 : float (default 0)
+    y_0 : float, optional
         Position of the peak in y direction.
 
     Notes
