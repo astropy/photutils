@@ -497,9 +497,11 @@ class FittableImageModel(Fittable2DModel):
 
 class EPSFModel(FittableImageModel):
     """
-    A class that models an effective PSF (ePSF). This is a subclass of
-    `FittableImageModel`, and is very similar but contains a few additional
-    parameters relevant specifically for ePSFs.
+    A class that models an effective PSF (ePSF).
+
+    While this class is a subclass of `FittableImageModel`, it is very similar.
+    The primary differences/motivation are a few additional  parameters necesary
+    specifically for ePSFs.
 
     Parameters
     ----------
