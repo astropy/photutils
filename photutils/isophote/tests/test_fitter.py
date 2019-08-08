@@ -27,10 +27,12 @@ except ImportError:
 DATA = make_test_image(random_state=123)
 DEFAULT_POS = 256
 
+DEFAULT_FIX = np.array([False,False,False,False])
+
 
 def test_gradient():
     sample = EllipseSample(DATA, 40.)
-    sample.update()
+    sample.update(DEFAULT_FIX)
 
     assert_allclose(sample.mean, 200.02, atol=0.01)
     assert_allclose(sample.gradient, -4.222, atol=0.001)
@@ -49,7 +51,7 @@ def test_fitting_raw():
     # pick first guess ellipse that is off in just
     # one of the parameters (eps).
     sample = EllipseSample(DATA, 40., eps=2*0.2)
-    sample.update()
+    sample.update(DEFAULT_FIX)
     s = sample.extract()
 
     harmonics = fit_first_and_second_harmonics(s[0], s[2])
