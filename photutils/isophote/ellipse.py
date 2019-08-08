@@ -217,14 +217,14 @@ class Ellipse:
         isophote at each sma.  The entire set of isophotes is returned
         in an `~photutils.isophote.IsophoteList` instance.
 
-        Note that the `fix_XXX` parameters act in unison. Meaning, if one
+        Note that the fix_XXX parameters act in unison. Meaning, if one
         of them is set via this call, the others will assume their default
         (False) values. This effectively overrides any settings that are
         present in the internal `~photutils.isophote.EllipseGeometry`
         instance that is carried along as a property of this class. If an
         instance of `~photutils.isophote.EllipseGeometry` was passed to this
         class' constructor, that instance will be effectively overriden by
-        the `fix_XXX` parameters in this call.
+        the fix_XXX parameters in this call.
 
         Parameters
         ----------
