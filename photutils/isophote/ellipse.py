@@ -203,7 +203,8 @@ class Ellipse:
                   conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,
                   maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG,
                   maxgerr=DEFAULT_MAXGERR, sclip=3., nclip=0,
-                  integrmode=BILINEAR, linear=None, maxrit=None):
+                  integrmode=BILINEAR, linear=None, maxrit=None,
+                  fix_center=False, fix_pa=False, fix_eps=False):
         # This parameter list is quite large and should in principle be
         # simplified by re-distributing these controls to somewhere else.
         # We keep this design though because it better mimics the flat
@@ -215,6 +216,15 @@ class Ellipse:
         length (constructed from the input parameters), fitting a single
         isophote at each sma.  The entire set of isophotes is returned
         in an `~photutils.isophote.IsophoteList` instance.
+
+        Note that the `fix_XXX` parameters act in unison. Meaning, if one
+        of them is set via this call, the others will assume their default
+        (False) values. This effectively overrides any settings that are
+        present in the internal `~photutils.isophote.EllipseGeometry`
+        instance that is carried along as a property of this class. If an
+        instance of `~photutils.isophote.EllipseGeometry` was passed to this
+        class' constructor, that instance will be effectively overriden by
+        the `fix_XXX` parameters in this call.
 
         Parameters
         ----------
@@ -334,6 +344,13 @@ class Ellipse:
             whenever the ellipticity exceeds 1.0 or the ellipse center
             crosses the image boundaries.  If `None` (default), then no
             maximum value is used.
+        fix_center : bool, optional
+            Keep center of ellipse fixed during fit? The default is False.
+        fix_pa : bool, optional
+            Keep position angle of semi-major axis of ellipse fixed during fit?
+            The default is False.
+        fix_eps : bool, optional
+            Keep ellipticity of ellipse fixed during fit? The default is False.
 
         Returns
         -------
@@ -360,6 +377,13 @@ class Ellipse:
             self._geometry.linear_growth = linear
         else:
             linear = self._geometry.linear_growth
+        if fix_center and fix_pa and fix_eps:
+            warnings.warn(': Everything is fixed. Fit not possible.',
+                          AstropyUserWarning)
+            return IsophoteList([])
+        if fix_center or fix_pa or fix_eps:
+            # Note that this overrides the geometry instance for good.
+            self._geometry.fix = np.array([fix_center, fix_center, fix_pa, fix_eps])
 
         # first, go from initial sma outwards until
         # hitting one of several stopping criteria.
@@ -572,9 +596,6 @@ class Ellipse:
         # used as initial guess for next isophote.
         if isophote_list:
             geometry = isophote_list[-1].sample.geometry
-
-        print ('@@@@@@     line: 576  - ', geometry.fix, self._geometry.fix, "   sma = ", sma)
-
 
         # do the fit
         if noniterate or (maxrit and sma > maxrit):

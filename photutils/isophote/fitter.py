@@ -167,8 +167,6 @@ class EllipseFitter:
             # Mask out coefficients that control fixed ellipse parameters.
             free_coeffs = ma.masked_array(coeffs[1:], mask=fixed_parameters)
 
-            print ('@@@@@@     line: 166  - ', free_coeffs, "  -   ", np.argmax(np.abs(free_coeffs)))
-
             # Largest non-masked harmonic in absolute value drives the correction.
             largest_harmonic_index = np.argmax(np.abs(free_coeffs))
             largest_harmonic = free_coeffs[largest_harmonic_index]

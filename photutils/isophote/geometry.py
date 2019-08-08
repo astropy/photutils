@@ -104,8 +104,15 @@ class EllipseGeometry:
         as a relative value (when ``linear_growth=False``).  The default
         is 0.1.
     linear_growth : bool, optional
-        The semimajor axis growing/shrinking mode.  The default is
+        The semimajor axis growing/shrinking mode. The default is
         `False`.
+    fix_center : bool, optional
+        Keep center of ellipse fixed during fit? The default is False.
+    fix_pa : bool, optional
+        Keep position angle of semi-major axis of ellipse fixed during fit?
+        The default is False.
+    fix_eps : bool, optional
+        Keep ellipticity of ellipse fixed during fit? The default is False.
     """
 
     def __init__(self, x0, y0, sma, eps, pa, astep=0.1, linear_growth=False,
