@@ -636,7 +636,7 @@ class Ellipse:
         sample = EllipseSample(self.image, sma, astep=step, sclip=sclip,
                                nclip=nclip, linear_growth=linear,
                                geometry=geometry, integrmode=integrmode)
-        sample.update()
+        sample.update(geometry.fix)
 
         # build isophote without iterating with an EllipseFitter
         isophote = Isophote(sample, 0, True, stop_code=4)
