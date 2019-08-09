@@ -27,7 +27,7 @@ except ImportError:
 DATA = make_test_image(random_state=123)
 DEFAULT_POS = 256
 
-DEFAULT_FIX = np.array([False,False,False,False])
+DEFAULT_FIX = np.array([False, False, False, False])
 
 
 def test_gradient():

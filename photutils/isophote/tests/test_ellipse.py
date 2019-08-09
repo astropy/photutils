@@ -77,9 +77,12 @@ class TestEllipse:
 
         # difference in sma between successive isohpotes must be constant.
         step = isophote_list[-1].sma - isophote_list[-2].sma
-        assert math.isclose((isophote_list[-2].sma - isophote_list[-3].sma), step, rel_tol=0.01)
-        assert math.isclose((isophote_list[-3].sma - isophote_list[-4].sma), step, rel_tol=0.01)
-        assert math.isclose((isophote_list[2].sma - isophote_list[1].sma), step, rel_tol=0.01)
+        assert math.isclose((isophote_list[-2].sma - isophote_list[-3].sma),
+                            step, rel_tol=0.01)
+        assert math.isclose((isophote_list[-3].sma - isophote_list[-4].sma),
+                            step, rel_tol=0.01)
+        assert math.isclose((isophote_list[2].sma - isophote_list[1].sma),
+                            step, rel_tol=0.01)
 
     def test_fit_one_ellipse(self):
         ellipse = Ellipse(self.data)

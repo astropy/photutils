@@ -14,7 +14,7 @@ from ..isophote import Isophote, IsophoteList
 from ..sample import EllipseSample
 from ...datasets import get_path
 
-DEFAULT_FIX = np.array([False,False,False,False])
+DEFAULT_FIX = np.array([False, False, False, False])
 
 try:
     import scipy  # noqa

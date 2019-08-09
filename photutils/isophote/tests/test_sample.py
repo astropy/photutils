@@ -11,7 +11,7 @@ from ..integrator import BILINEAR, MEAN, MEDIAN, NEAREST_NEIGHBOR
 from ..isophote import Isophote
 from ..sample import EllipseSample
 
-DEFAULT_FIX = np.array([False,False,False,False])
+DEFAULT_FIX = np.array([False, False, False, False])
 
 DATA = make_test_image(background=100., i0=0., noise=10., random_state=123)
 
