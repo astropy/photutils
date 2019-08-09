@@ -18,6 +18,47 @@ from ..utils.exceptions import NoDetectionsWarning
 __all__ = ['detect_sources', 'make_source_mask']
 
 
+def _make_binary_structure(ndim, connectivity):
+    """
+    Make a binary structure element.
+
+    Parameters
+    ----------
+    ndim : int
+        The number of array dimensions.
+
+    connectivity : {4, 8}
+        For the case of ``ndim=2``, the type of pixel connectivity used
+        in determining how pixels are grouped into a detected source.
+        The options are 4 or 8 (default).  4-connected pixels touch
+        along their edges.  8-connected pixels touch along their edges
+        or corners.  For reference, SExtractor uses 8-connected pixels.
+
+    Returns
+    -------
+    array : ndarray of int or bool
+        The binary structure element.  If ``ndim <= 2`` an array of int
+        is returned, otherwise an array of bool is returned.
+    """
+
+    from scipy.ndimage import generate_binary_structure
+
+    if ndim == 1:
+        selem = np.array((1, 1, 1))
+    elif ndim == 2:
+        if connectivity == 4:
+            selem = np.array(((0, 1, 0), (1, 1, 1), (0, 1, 0)))
+        elif connectivity == 8:
+            selem = np.ones((3, 3), dtype=int)
+        else:
+            raise ValueError('Invalid connectivity={0}.  '
+                             'Options are 4 or 8'.format(connectivity))
+    else:
+        selem = generate_binary_structure(ndim, 1)
+
+    return selem
+
+
 def detect_sources(data, threshold, npixels, filter_kernel=None,
                    connectivity=8, mask=None):
     """
@@ -151,18 +192,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         warnings.warn('No sources were found.', NoDetectionsWarning)
         return None
 
-    ndim = data.ndim
-    if ndim == 1:
-        selem = ndimage.generate_binary_structure(ndim, 1)
-    else:
-        if connectivity == 4:
-            selem = ndimage.generate_binary_structure(ndim, 1)
-        elif connectivity == 8:
-            selem = ndimage.generate_binary_structure(ndim, 2)
-        else:
-            raise ValueError('Invalid connectivity={0}.  '
-                             'Options are 4 or 8'.format(connectivity))
-
+    selem = _make_binary_structure(data.ndim, connectivity)
     segm_img, _ = ndimage.label(data, structure=selem)
 
     # remove objects with less than npixels

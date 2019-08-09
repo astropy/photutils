@@ -10,7 +10,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from .core import SegmentationImage
-from .detect import detect_sources
+from .detect import _make_binary_structure, detect_sources
 from ..utils.convolution import _filter_data
 from ..utils.exceptions import NoDetectionsWarning
 
@@ -215,7 +215,7 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
         value of zero is reserved for the background.
     """
 
-    from scipy import ndimage
+    from scipy.ndimage import label as ndilabel
     from skimage.morphology import watershed
 
     if nlevels < 1:
@@ -223,18 +223,6 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     if contrast < 0 or contrast > 1:
         raise ValueError('contrast must be >= 0 and <= 1, got '
                          '"{0}"'.format(contrast))
-
-    ndim = data.ndim
-    if ndim == 1:
-        selem = ndimage.generate_binary_structure(ndim, 1)
-    else:
-        if connectivity == 4:
-            selem = ndimage.generate_binary_structure(ndim, 1)
-        elif connectivity == 8:
-            selem = ndimage.generate_binary_structure(ndim, 2)
-        else:
-            raise ValueError('Invalid connectivity={0}.  '
-                             'Options are 4 or 8'.format(connectivity))
 
     segm_mask = (segment_img.data > 0)
     source_values = data[segm_mask]
@@ -279,6 +267,8 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
 
         segments.append(segm_tmp)
 
+    selem = _make_binary_structure(data.ndim, connectivity)
+
     # define the sources (markers) for the watershed algorithm
     nsegments = len(segments)
     if nsegments == 0:  # no deblending
@@ -303,7 +293,7 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
 
             if relabel:
                 segm_new = object.__new__(SegmentationImage)
-                segm_new._data = ndimage.label(segm_lower, structure=selem)[0]
+                segm_new._data = ndilabel(segm_lower, structure=selem)[0]
                 segments[i + 1] = segm_new
             else:
                 segments[i + 1] = segments[i]
