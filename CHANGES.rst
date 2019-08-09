@@ -9,7 +9,7 @@ General
    supported. [#899]
 
  - Added a new ``photutils.__citation__`` and ``photutils.__bibtex__``
-   attributes which give a citation for astroquery in bibtex format. [#926]
+   attributes which give a citation for photutils in bibtex format. [#926]
 
 
 New Features
