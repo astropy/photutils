@@ -199,7 +199,7 @@ class EPSFStar:
         xx = xx - self.cutout_center[0]
         yy = yy - self.cutout_center[1]
 
-        return (self.flux * epsf.evaluate(xx, yy, flux=1.0, x_0=0.0, y_0=0.0))
+        return self.flux * epsf.evaluate(xx, yy, flux=1.0, x_0=0.0, y_0=0.0)
 
     def compute_residual_image(self, epsf):
         """
