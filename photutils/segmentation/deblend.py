@@ -10,7 +10,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from .core import SegmentationImage
-from .detect import _make_binary_structure, detect_sources
+from .detect import _make_binary_structure, _detect_sources
 from ..utils.convolution import _filter_data
 from ..utils.exceptions import NoDetectionsWarning
 
@@ -254,18 +254,10 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     # suppress NoDetectionsWarning during deblending
     warnings.filterwarnings('ignore', category=NoDetectionsWarning)
 
-    segments = []
     mask = ~segm_mask
-    for level in thresholds:
-        segm_tmp = detect_sources(data, level, npixels=npixels,
-                                  connectivity=connectivity, mask=mask)
-
-        # NOTE: higher threshold levels may not meet 'npixels' criterion
-        # resulting in no detections
-        if segm_tmp is None or segm_tmp.nlabels == 1:
-            continue
-
-        segments.append(segm_tmp)
+    segments = _detect_sources(data, thresholds, npixels=npixels,
+                               connectivity=connectivity, mask=mask,
+                               deblend_skip=True)
 
     selem = _make_binary_structure(data.ndim, connectivity)
 
