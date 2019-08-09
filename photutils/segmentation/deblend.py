@@ -112,7 +112,9 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
     labels = np.atleast_1d(labels)
     segment_img.check_labels(labels)
 
-    data = _filter_data(data, filter_kernel, mode='constant', fill_value=0.0)
+    if filter_kernel is not None:
+        data = _filter_data(data, filter_kernel, mode='constant',
+                            fill_value=0.0)
 
     last_label = segment_img.max_label
     segm_deblended = object.__new__(SegmentationImage)

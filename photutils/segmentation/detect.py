@@ -131,25 +131,27 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         raise ValueError('npixels must be a positive integer, got '
                          '"{0}"'.format(npixels))
 
-    image = _filter_data(data, filter_kernel, mode='constant', fill_value=0.0,
-                         check_normalization=True)
-    # ignore RuntimeWarning caused by > when image contains NaNs
+    if filter_kernel is not None:
+        data = _filter_data(data, filter_kernel, mode='constant',
+                            fill_value=0.0, check_normalization=True)
+
+    # ignore RuntimeWarning caused by > comparison when data contains NaNs
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', category=RuntimeWarning)
-        image = image > threshold
+        data = data > threshold
 
     if mask is not None:
-        if mask.shape != image.shape:
+        if mask.shape != data.shape:
             raise ValueError('mask must have the same shape as the input '
                              'image.')
-        image &= ~mask
+        data &= ~mask
 
     # return if threshold was too high to detect any sources
-    if np.count_nonzero(image) == 0:
+    if np.count_nonzero(data) == 0:
         warnings.warn('No sources were found.', NoDetectionsWarning)
         return None
 
-    ndim = image.ndim
+    ndim = data.ndim
     if ndim == 1:
         selem = ndimage.generate_binary_structure(ndim, 1)
     else:
@@ -161,7 +163,7 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
             raise ValueError('Invalid connectivity={0}.  '
                              'Options are 4 or 8'.format(connectivity))
 
-    segm_img, _ = ndimage.label(image, structure=selem)
+    segm_img, _ = ndimage.label(data, structure=selem)
 
     # remove objects with less than npixels
     # NOTE:  for typical data, making the cutout images is ~10x faster
