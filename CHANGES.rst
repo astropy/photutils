@@ -42,6 +42,9 @@ New Features
   - Significantly improved the performance (~5 times faster) of
     ellipse fitting. [#826]
 
+  - Added the ability to individually fix the ellipse-fitting
+    parameters. [#922]
+
 - ``photutils.psf``
 
   - Added new centroiding function ``centroid_epsf``. [#816]
