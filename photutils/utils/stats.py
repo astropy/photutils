@@ -3,6 +3,7 @@
 This module provides tools to calculate statistics.
 """
 
+from astropy.utils import deprecated
 import numpy as np
 
 __all__ = ['std_blocksum']
@@ -52,7 +53,40 @@ def _mesh_values(data, box_size):
     return data[idx]
 
 
+@deprecated('0.7')
 def std_blocksum(data, block_sizes, mask=None):
+    """
+    Calculate the standard deviation of block-summed data values at
+    sizes of ``block_sizes``.
+
+    Values from incomplete blocks, either because of the image edges or
+    masked pixels, are not included.
+
+    Parameters
+    ----------
+    data : array-like
+        The 2D array to block sum.
+
+    block_sizes : int, array-like of int
+        An array of integer (square) block sizes.
+
+    mask : array-like (bool), optional
+        A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Blocks that contain *any* masked data are excluded from
+        calculations.
+
+    Returns
+    -------
+    result : `~numpy.ndarray`
+        An array of the standard deviations of the block-summed array
+        for the input ``block_sizes``.
+    """
+
+    return _std_blocksum(data, block_sizes, mask=mask)
+
+
+def _std_blocksum(data, block_sizes, mask=None):
     """
     Calculate the standard deviation of block-summed data values at
     sizes of ``block_sizes``.

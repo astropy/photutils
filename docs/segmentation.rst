@@ -43,12 +43,13 @@ a convenience function called
 detection threshold image using simple sigma-clipped statistics to
 estimate the background level and RMS.
 
-The threshold level is calculated using the ``snr`` input as the sigma
-level above the background.  Here we generate a simple threshold at 2
-sigma (per pixel) above the background::
+The threshold level is calculated using the ``nsigma`` input as the
+number of standard deviations (per pixel) above the background.  Here
+we generate a simple threshold at 2 sigma (per pixel) above the
+background::
 
     >>> from photutils import detect_threshold
-    >>> threshold = detect_threshold(data, snr=2.)
+    >>> threshold = detect_threshold(data, nsigma=2.)
 
 For more sophisticated analyses, one should generate a 2D background
 and background-only error image (e.g., from your data reduction or by
@@ -117,7 +118,7 @@ segmentation image showing the detected sources:
     from photutils.datasets import make_100gaussians_image
     from photutils import detect_threshold, detect_sources
     data = make_100gaussians_image()
-    threshold = detect_threshold(data, snr=2.)
+    threshold = detect_threshold(data, nsigma=2.)
     sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     kernel.normalize()
@@ -186,7 +187,7 @@ the deblended segmentation image:
     from photutils import detect_threshold, detect_sources, deblend_sources
 
     data = make_100gaussians_image()
-    threshold = detect_threshold(data, snr=2.)
+    threshold = detect_threshold(data, nsigma=2.)
     sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     kernel.normalize()
@@ -214,7 +215,7 @@ Let's plot one of the deblended sources:
     from photutils import detect_threshold, detect_sources, deblend_sources
 
     data = make_100gaussians_image()
-    threshold = detect_threshold(data, snr=2.)
+    threshold = detect_threshold(data, nsigma=2.)
     sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     kernel.normalize()

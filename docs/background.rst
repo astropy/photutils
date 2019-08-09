@@ -130,7 +130,7 @@ source detections and dilate using a 11x11 box:
 .. doctest-requires:: scipy
 
     >>> from photutils import make_source_mask
-    >>> mask = make_source_mask(data, snr=2, npixels=5, dilate_size=11)
+    >>> mask = make_source_mask(data, nsigma=2, npixels=5, dilate_size=11)
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, mask=mask)
     >>> print((mean, median, std))  # doctest: +FLOAT_CMP
     (5.001013475475569, 5.000584905604376, 1.970887100626572)

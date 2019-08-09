@@ -204,13 +204,6 @@ class SegmentationImage:
 
         return self._data
 
-    def _reset_lazy_properties(self):
-        """Reset all lazy properties."""
-
-        for key, value in self.__class__.__dict__.items():
-            if isinstance(value, lazyproperty):
-                self.__dict__.pop(key, None)
-
     @lazyproperty
     def _cmap(self):
         """
@@ -300,7 +293,7 @@ class SegmentationImage:
 
         if '_data' in self.__dict__:
             # needed only when data is reassigned, not on init
-            self._reset_lazy_properties()
+            self.__dict__ = {}
 
         self._data = value  # pylint: disable=attribute-defined-outside-init
 

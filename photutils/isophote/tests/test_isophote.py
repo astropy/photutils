@@ -14,6 +14,8 @@ from ..isophote import Isophote, IsophoteList
 from ..sample import EllipseSample
 from ...datasets import get_path
 
+DEFAULT_FIX = np.array([False, False, False, False])
+
 try:
     import scipy  # noqa
     HAS_SCIPY = True
@@ -126,7 +128,7 @@ class TestIsophoteList:
         iso_list = []
         for k in range(slen):
             sample = EllipseSample(data, float(k + sma0))
-            sample.update()
+            sample.update(DEFAULT_FIX)
             iso_list.append(Isophote(sample, k, True, 0))
         result = IsophoteList(iso_list)
         return result

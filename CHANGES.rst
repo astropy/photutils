@@ -42,6 +42,9 @@ New Features
   - Significantly improved the performance (~5 times faster) of
     ellipse fitting. [#826]
 
+  - Added the ability to individually fix the ellipse-fitting
+    parameters. [#922]
+
 - ``photutils.psf``
 
   - Added new centroiding function ``centroid_epsf``. [#816]
@@ -80,6 +83,9 @@ New Features
   - Added the ``gini`` source property representing the Gini
     coefficient. [#864]
 
+  - Cached (lazy) properties can now be reset in ``SegmentationImage``
+    subclasses. [#916]
+
 - ``photutils.utils``
 
   - Added ``NoDetectionsWarning`` class. [#836]
@@ -112,6 +118,9 @@ Bug Fixes
 
   - A ValueError is raised if ``aperture_radius`` is not input and
     cannot be determined from the input ``psf_model``. [#903]
+
+  - Fixed normalization of ePSF model, now correctly normalizing on
+    undersampled pixel grid. [#817]
 
 - ``photutils.segmentation``
 
@@ -215,6 +224,9 @@ API changes
   - Deprecated the ``BoundingBox`` ``as_patch`` method (instead use
     ``as_artist``). [#851]
 
+  - Renamed the ``snr`` (deprecated) keyword to ``nsigma`` in
+    ``detect_threshold``. [#917]
+
 - ``photutils.isophote``
 
   - Isophote central values and intensity gradients are now returned
@@ -276,6 +288,9 @@ API changes
   - The ``orientation`` property is now returned as a ``Quantity``
     instance in units of degrees. [#863]
 
+  - Renamed the ``snr`` (deprecated) keyword to ``nsigma`` in
+    ``make_source_mask``. [#917]
+
 - ``photutils.utils``
 
   - Renamed ``random_cmap`` to ``make_random_cmap``. [#825]
@@ -289,6 +304,9 @@ API changes
   - Removed deprecated ``interpolate_masked_data`` function. [#895]
 
   - Deprecated the ``mask_to_mirrored_num`` function. [#895]
+
+  - Deprecated the ``get_version_info``, ``filter_data``, and
+    ``std_blocksum`` functions. [#918]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^

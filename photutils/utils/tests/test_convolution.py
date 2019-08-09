@@ -11,7 +11,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from ..convolution import filter_data
+from ..convolution import _filter_data
 from ...datasets import make_100gaussians_image
 
 try:
@@ -28,13 +28,13 @@ class TestFilterData:
         self.kernel = Gaussian2DKernel(3., x_size=3, y_size=3)
 
     def test_filter_data(self):
-        filt_data1 = filter_data(self.data, self.kernel)
-        filt_data2 = filter_data(self.data, self.kernel.array)
+        filt_data1 = _filter_data(self.data, self.kernel)
+        filt_data2 = _filter_data(self.data, self.kernel.array)
         assert_allclose(filt_data1, filt_data2)
 
     def test_filter_data_units(self):
         unit = u.electron
-        filt_data = filter_data(self.data * unit, self.kernel)
+        filt_data = _filter_data(self.data * unit, self.kernel)
         assert isinstance(filt_data, u.Quantity)
         assert filt_data.unit == unit
 
@@ -43,19 +43,19 @@ class TestFilterData:
         Test to ensure output is a float array for integer input data.
         """
 
-        filt_data = filter_data(self.data.astype(int),
+        filt_data = _filter_data(self.data.astype(int),
                                 self.kernel.array.astype(int))
         assert filt_data.dtype == np.float64
 
-        filt_data = filter_data(self.data.astype(int),
+        filt_data = _filter_data(self.data.astype(int),
                                 self.kernel.array.astype(float))
         assert filt_data.dtype == np.float64
 
-        filt_data = filter_data(self.data.astype(float),
+        filt_data = _filter_data(self.data.astype(float),
                                 self.kernel.array.astype(int))
         assert filt_data.dtype == np.float64
 
-        filt_data = filter_data(self.data.astype(float),
+        filt_data = _filter_data(self.data.astype(float),
                                 self.kernel.array.astype(float))
         assert filt_data.dtype == np.float64
 
@@ -65,7 +65,7 @@ class TestFilterData:
         """
 
         kernel = None
-        filt_data = filter_data(self.data, kernel)
+        filt_data = _filter_data(self.data, kernel)
         assert_allclose(filt_data, self.data)
 
     def test_filter_data_check_normalization(self):
@@ -74,5 +74,5 @@ class TestFilterData:
         """
 
         with catch_warnings(AstropyUserWarning) as w:
-            filter_data(self.data, self.kernel, check_normalization=True)
+            _filter_data(self.data, self.kernel, check_normalization=True)
             assert len(w) == 1

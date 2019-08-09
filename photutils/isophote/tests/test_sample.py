@@ -11,6 +11,7 @@ from ..integrator import BILINEAR, MEAN, MEDIAN, NEAREST_NEIGHBOR
 from ..isophote import Isophote
 from ..sample import EllipseSample
 
+DEFAULT_FIX = np.array([False, False, False, False])
 
 DATA = make_test_image(background=100., i0=0., noise=10., random_state=123)
 
@@ -32,7 +33,7 @@ def test_scatter(integrmode, amin, amax):
     """
 
     sample = EllipseSample(DATA, 50., astep=0.2, integrmode=integrmode)
-    sample.update()
+    sample.update(DEFAULT_FIX)
     iso = Isophote(sample, 0, True, 0)
 
     assert iso.pix_stddev < amax
@@ -41,7 +42,7 @@ def test_scatter(integrmode, amin, amax):
 
 def test_coordinates():
     sample = EllipseSample(DATA, 50.)
-    sample.update()
+    sample.update(DEFAULT_FIX)
     x, y = sample.coordinates()
 
     assert isinstance(x, np.ndarray)
@@ -50,7 +51,7 @@ def test_coordinates():
 
 def test_sclip():
     sample = EllipseSample(DATA, 50., nclip=3)
-    sample.update()
+    sample.update(DEFAULT_FIX)
     x, y = sample.coordinates()
 
     assert isinstance(x, np.ndarray)
