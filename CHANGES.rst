@@ -83,6 +83,10 @@ New Features
   - Cached (lazy) properties can now be reset in ``SegmentationImage``
     subclasses. [#916]
 
+  - Significantly improved the performance of ``deblend_sources``.  It
+    is ~40-50% faster for large images (e.g. 4k x 4k) with a few
+    thousand of sources. [#924]
+
 - ``photutils.utils``
 
   - Added ``NoDetectionsWarning`` class. [#836]
