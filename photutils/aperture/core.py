@@ -492,6 +492,12 @@ class PixelAperture(Aperture):
         kwargs : `dict`
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
+
+        Returns
+        -------
+        patch : list of `~matplotlib.patches.Patch`
+            A list of matplotlib patches for the plotted aperture. The
+            patches can be used, for example, when adding a plot legend.
         """
 
         import matplotlib.pyplot as plt
@@ -505,6 +511,8 @@ class PixelAperture(Aperture):
 
         for patch in patches:
             axes.add_patch(patch)
+
+        return patches
 
     def _to_sky_params(self, wcs):
         """
