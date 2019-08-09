@@ -144,6 +144,11 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
                              'image.')
         image &= ~mask
 
+    # return if threshold was too high to detect any sources
+    if np.count_nonzero(image) == 0:
+        warnings.warn('No sources were found.', NoDetectionsWarning)
+        return None
+
     ndim = image.ndim
     if ndim == 1:
         selem = ndimage.generate_binary_structure(ndim, 1)
@@ -168,13 +173,15 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
         if np.count_nonzero(segment_mask) < npixels:
             cutout[segment_mask] = 0
 
-    if np.sum(segm_img) == 0:
+    if np.count_nonzero(segm_img) == 0:
         warnings.warn('No sources were found.', NoDetectionsWarning)
         return None
-    else:
-        segm = SegmentationImage(segm_img)
-        segm.relabel_consecutive()
-        return segm
+
+    segm = object.__new__(SegmentationImage)
+    segm._data = segm_img
+    segm.relabel_consecutive()
+
+    return segm
 
 
 @deprecated_renamed_argument('snr', 'nsigma', 0.7)
