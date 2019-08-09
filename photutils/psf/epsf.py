@@ -544,7 +544,7 @@ class EPSFBuilder:
                   -0.07428311]])
 
         elif isinstance(self.smoothing_kernel, np.ndarray):
-            kernel = self.kernel
+            kernel = self.smoothing_kernel
 
         else:
             raise TypeError('Unsupported kernel.')
