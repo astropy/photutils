@@ -3,7 +3,8 @@ include README.rst
 include CHANGES.rst
 include CODE_OF_CONDUCT.rst
 include CONTRIBUTING.rst
-include CITATION.rst
+include CITATION
+inclide photutils/CITATION
 
 include ah_bootstrap.py
 include setup.cfg
