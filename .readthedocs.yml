@@ -10,6 +10,7 @@ python:
       path: .
       extra_requirements:
         - docs
+    - requirements: docs/rtd_requirements.txt
 
 submodules:
   include: all
