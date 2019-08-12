@@ -1,8 +1,0 @@
-python:
-  version: 3.5
-  pip_install: true
-
-# Don't build any extra formats
-formats: []
-
-requirements_file: requirements.txt

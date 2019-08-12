@@ -45,7 +45,7 @@ class TestEPSFBuild:
         coords = [(yy[0], xx[0])]
         for xxi, yyi in zip(xx, yy):
             newcoord = [yyi, xxi]
-            dist, distidx = cKDTree([newcoord]).query(coords, 1)
+            dist, _ = cKDTree([newcoord]).query(coords, 1)
             if np.min(dist) > min_dist:
                 coords.append(newcoord)
         yy, xx = np.transpose(coords)
@@ -118,7 +118,7 @@ class TestEPSFBuild:
         # With a boxsize larger than the cutout we expect the fitting to
         # fail for all stars, due to star._fit_error_status
         with pytest.raises(ValueError):
-            epsf, fitted_stars = epsf_builder(stars)
+            epsf_builder(stars)
 
     def test_epsf_build_invalid_fitter(self):
         """
@@ -137,34 +137,38 @@ class TestEPSFBuild:
 
 def test_epsfbuilder_inputs():
     with pytest.raises(ValueError):
-        epsf_builder = EPSFBuilder(oversampling=None)
+        EPSFBuilder(oversampling=None)
     with pytest.raises(ValueError):
-        epsf_builder = EPSFBuilder(oversampling=-1)
+        EPSFBuilder(oversampling=-1)
     with pytest.raises(ValueError):
-        epsf_builder = EPSFBuilder(maxiters=-1)
+        EPSFBuilder(maxiters=-1)
     with pytest.raises(ValueError):
-        epsf_builder = EPSFBuilder(oversampling=3)
+        EPSFBuilder(oversampling=3)
     with pytest.raises(ValueError):
-        epsf_builder = EPSFBuilder(oversampling=[3, 6])
+        EPSFBuilder(oversampling=[3, 6])
     with pytest.raises(ValueError):
-        epsf_builder = EPSFBuilder(oversampling=[-1, 4])
+        EPSFBuilder(oversampling=[-1, 4])
 
 
 def test_epsfmodel_inputs():
     data = np.array([[], []])
     with pytest.raises(ValueError):
-        epsf_model = EPSFModel(data)
+        EPSFModel(data)
+
     data = np.ones((5, 5), dtype=float)
     data[2, 2] = np.inf
     with pytest.raises(ValueError):
-        epsf_model = EPSFModel(data)
+        EPSFModel(data)
+
     data[2, 2] = np.finfo(np.float64).max * 2
     with pytest.raises(ValueError):
-        epsf_model = EPSFModel(data, flux=None)
+        EPSFModel(data, flux=None)
+
     data[2, 2] = 1
     for oversampling in [3, np.NaN, 'a', -1, [3, 4], [-2, 4]]:
         with pytest.raises(ValueError):
-            epsf_model = EPSFModel(data, oversampling=oversampling)
+            EPSFModel(data, oversampling=oversampling)
+
     for origin in ['a', (1, 2, 3)]:
         with pytest.raises(TypeError):
-            epsf_model = EPSFModel(data, origin=origin)
+            EPSFModel(data, origin=origin)
