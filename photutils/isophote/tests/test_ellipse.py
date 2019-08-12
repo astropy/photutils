@@ -64,9 +64,9 @@ class TestEllipse:
         # verify that the list is properly sorted in sem-major axis length
         assert isophote_list[-1] > isophote_list[0]
 
-        # the fit should stop where gradient looses reliability.
-        assert len(isophote_list) == 67
-        assert isophote_list[-1].stop_code == 5
+        # the fit should stop where data loses reliability.
+        assert len(isophote_list) == 69
+        assert isophote_list[-1].stop_code == 1
 
     def test_linear(self):
         ellipse = Ellipse(self.data)
@@ -158,7 +158,7 @@ class TestEllipseOnRealData:
         ellipse = Ellipse(data, geometry=g)
         isophote_list = ellipse.fit_image()
 
-        assert len(isophote_list) == 57
+        assert len(isophote_list) == 64
 
         # check that isophote at about sma=70 got an uneventful fit
         assert isophote_list.get_closest(70.).stop_code == 0
