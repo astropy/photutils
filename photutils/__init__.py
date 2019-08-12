@@ -6,6 +6,9 @@ has tools for background estimation, ePSF building, PSF matching,
 centroiding, and morphological measurements.
 """
 
+import os
+
+
 # Affiliated packages may add whatever they like to this file, but
 # should keep this content at the top.
 # ----------------------------------------------------------------------------
@@ -20,3 +23,17 @@ if not _ASTROPY_SETUP_:  # noqa
     from .morphology import *  # noqa
     from .psf import *  # noqa
     from .segmentation import *  # noqa
+
+
+# Set the bibtex entry to the article referenced in CITATION.
+def _get_bibtex():
+    citation_file = os.path.join(os.path.dirname(__file__), 'CITATION')
+
+    with open(citation_file, 'r') as citation:
+        refs = citation.read().split('@misc')[1:]
+        if len(refs) == 0: return ''
+        bibtexreference = "@misc{0}".format(refs[0])
+    return bibtexreference
+
+
+__citation__ = __bibtex__ = _get_bibtex()
