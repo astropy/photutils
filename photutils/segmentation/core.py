@@ -282,7 +282,7 @@ class SegmentationImage:
             raise ValueError('data must not contain any non-finite values '
                              '(e.g. NaN, inf)')
 
-        value = np.asanyarray(value, dtype=np.int)
+        value = np.asarray(value, dtype=int)
         if not np.any(value):
             raise ValueError('The segmentation image must contain at least '
                              'one non-zero pixel.')
@@ -762,13 +762,17 @@ class SegmentationImage:
 
         idx = np.zeros(self.max_label + 1, dtype=int)
         idx[self.labels] = self.labels
-        idx[labels] = new_label
-
-        # calling the data setter resets all cached properties
-        self.data = idx[self.data]
+        idx[labels] = new_label  # reassign labels
 
         if relabel:
-            self.relabel_consecutive()
+            labels = np.unique(idx[idx != 0])
+            idx2 = np.zeros(max(labels) + 1, dtype=np.int)
+            idx2[labels] = np.arange(len(labels)) + 1
+            idx = idx2[idx]
+
+        data_new = idx[self.data]
+        self.__dict__ = {}  # reset all cached properties
+        self._data = data_new  # use _data to avoid validation
 
     def relabel_consecutive(self, start_label=1):
         """
@@ -803,13 +807,16 @@ class SegmentationImage:
         if start_label <= 0:
             raise ValueError('start_label must be > 0.')
 
-        if ((self.labels[-1] - self.labels[0] + 1) == self.nlabels and
-                (self.labels[0] == start_label)):
+        if ((self.labels[0] == start_label) and
+                (self.labels[-1] - self.labels[0] + 1) == self.nlabels):
             return
 
         new_labels = np.zeros(self.max_label + 1, dtype=np.int)
         new_labels[self.labels] = np.arange(self.nlabels) + start_label
-        self.data = new_labels[self.data]
+
+        data_new = new_labels[self.data]
+        self.__dict__ = {}  # reset all cached properties
+        self._data = data_new  # use _data to avoid validation
 
     def keep_label(self, label, relabel=False):
         """
@@ -1018,10 +1025,7 @@ class SegmentationImage:
         """
 
         self.check_labels(labels)
-
-        self.reassign_label(labels, new_label=0)
-        if relabel:
-            self.relabel_consecutive()
+        self.reassign_labels(labels, new_label=0, relabel=relabel)
 
     def remove_border_labels(self, border_width, partial_overlap=True,
                              relabel=False):

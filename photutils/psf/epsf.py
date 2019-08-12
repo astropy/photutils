@@ -299,7 +299,7 @@ class EPSFBuilder:
         if len(oversampling) == 1:
             oversampling = np.repeat(oversampling, 2)
         if np.any(oversampling % 2 != 0):
-                raise ValueError('Oversampling factor must be a multiple of two')
+            raise ValueError('Oversampling factor must be a multiple of two')
         if np.any(oversampling <= 0.0):
             raise ValueError('oversampling must be a positive number.')
         self._norm_radius = norm_radius
@@ -544,7 +544,7 @@ class EPSFBuilder:
                   -0.07428311]])
 
         elif isinstance(self.smoothing_kernel, np.ndarray):
-            kernel = self.kernel
+            kernel = self.smoothing_kernel
 
         else:
             raise TypeError('Unsupported kernel.')

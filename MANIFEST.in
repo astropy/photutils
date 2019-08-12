@@ -1,7 +1,6 @@
 include LICENSE.rst
 include README.rst
 include CHANGES.rst
-include LONG_DESCRIPTION.rst
 include CODE_OF_CONDUCT.rst
 include CONTRIBUTING.rst
 include CITATION.rst

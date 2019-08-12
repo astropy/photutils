@@ -83,16 +83,13 @@ exclude_patterns.append('psf_spec/*')
 import photutils
 
 rst_epilog += """
-.. |minimum_python_version| replace:: {0}
-.. |minimum_numpy_version| replace:: {1}
 .. _Photutils: high-level_API.html
-""".format(photutils.__minimum_python_version__,
-           photutils.__minimum_numpy_version__)
+"""
 
 # -- Project information ------------------------------------------------------
 
 # This does not *have* to match the package name, but typically does
-project = setup_cfg['package_name']
+project = setup_cfg['name']
 author = setup_cfg['author']
 copyright = '{0}, {1}'.format(
     datetime.datetime.now().year, setup_cfg['author'])
@@ -102,7 +99,7 @@ copyright = '{0}, {1}'.format(
 # built documents.
 
 # Note: photutils was explicitly imported above
-package = sys.modules[setup_cfg['package_name']]
+package = sys.modules[setup_cfg['name']]
 
 # The short X.Y version.
 version = package.__version__.split('-', 1)[0]
@@ -187,7 +184,7 @@ man_pages = [('index', project.lower(), project + u' Documentation',
 if eval(setup_cfg.get('edit_on_github')):
     extensions += ['sphinx_astropy.ext.edit_on_github']
 
-    versionmod = __import__(setup_cfg['package_name'] + '.version')
+    versionmod = __import__(setup_cfg['name'] + '.version')
     edit_on_github_project = setup_cfg['github_project']
     if versionmod.release:
         edit_on_github_branch = "v" + versionmod.version

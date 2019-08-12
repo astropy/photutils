@@ -4,14 +4,13 @@ This module provides tools for deblending overlapping sources labeled in
 a segmentation image.
 """
 
-from copy import deepcopy
 import warnings
 
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from .core import SegmentationImage
-from .detect import detect_sources
+from .detect import _make_binary_structure, _detect_sources
 from ..utils.convolution import _filter_data
 from ..utils.exceptions import NoDetectionsWarning
 
@@ -113,15 +112,20 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
     labels = np.atleast_1d(labels)
     segment_img.check_labels(labels)
 
-    data = _filter_data(data, filter_kernel, mode='constant', fill_value=0.0)
+    if filter_kernel is not None:
+        data = _filter_data(data, filter_kernel, mode='constant',
+                            fill_value=0.0)
 
     last_label = segment_img.max_label
-    segm_deblended = deepcopy(segment_img)
+    segm_deblended = object.__new__(SegmentationImage)
+    segm_deblended._data = np.copy(segment_img.data)
     for label in labels:
         source_slice = segment_img.slices[segment_img.get_index(label)]
         source_data = data[source_slice]
-        source_segm = SegmentationImage(np.copy(
-            segment_img.data[source_slice]))
+
+        source_segm = object.__new__(SegmentationImage)
+        source_segm._data = np.copy(segment_img.data[source_slice])
+
         source_segm.keep_labels(label)  # include only one label
         source_deblended = _deblend_source(
             source_data, source_segm, npixels, nlevels=nlevels,
@@ -141,7 +145,10 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
             segm_tmp = segm_deblended.data
             segm_tmp[source_slice][source_mask] = (
                 source_deblended.data[source_mask] + last_label)
-            segm_deblended.data = segm_tmp  # needed to call data setter
+
+            segm_deblended.__dict__ = {}  # reset cached properties
+            segm_deblended._data = segm_tmp
+
             last_label += source_deblended.nlabels
 
     if relabel:
@@ -208,7 +215,7 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
         value of zero is reserved for the background.
     """
 
-    from scipy import ndimage
+    from scipy.ndimage import label as ndilabel
     from skimage.morphology import watershed
 
     if nlevels < 1:
@@ -216,18 +223,6 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     if contrast < 0 or contrast > 1:
         raise ValueError('contrast must be >= 0 and <= 1, got '
                          '"{0}"'.format(contrast))
-
-    ndim = data.ndim
-    if ndim == 1:
-        selem = ndimage.generate_binary_structure(ndim, 1)
-    else:
-        if connectivity == 4:
-            selem = ndimage.generate_binary_structure(ndim, 1)
-        elif connectivity == 8:
-            selem = ndimage.generate_binary_structure(ndim, 2)
-        else:
-            raise ValueError('Invalid connectivity={0}.  '
-                             'Options are 4 or 8'.format(connectivity))
 
     segm_mask = (segment_img.data > 0)
     source_values = data[segm_mask]
@@ -259,18 +254,12 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     # suppress NoDetectionsWarning during deblending
     warnings.filterwarnings('ignore', category=NoDetectionsWarning)
 
-    segments = []
     mask = ~segm_mask
-    for level in thresholds:
-        segm_tmp = detect_sources(data, level, npixels=npixels,
-                                  connectivity=connectivity, mask=mask)
+    segments = _detect_sources(data, thresholds, npixels=npixels,
+                               connectivity=connectivity, mask=mask,
+                               deblend_skip=True)
 
-        # NOTE: higher threshold levels may not meet 'npixels' criterion
-        # resulting in no detections
-        if segm_tmp is None or segm_tmp.nlabels == 1:
-            continue
-
-        segments.append(segm_tmp)
+    selem = _make_binary_structure(data.ndim, connectivity)
 
     # define the sources (markers) for the watershed algorithm
     nsegments = len(segments)
@@ -295,8 +284,9 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
                     segm_lower[mask] = segm_upper[mask]
 
             if relabel:
-                segments[i + 1] = SegmentationImage(
-                    ndimage.label(segm_lower, structure=selem)[0])
+                segm_new = object.__new__(SegmentationImage)
+                segm_new._data = ndilabel(segm_lower, structure=selem)[0]
+                segments[i + 1] = segm_new
             else:
                 segments[i + 1] = segments[i]
 
@@ -320,4 +310,6 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
                 # constrast criterion
                 markers[markers == labels[np.argmin(flux_frac)]] = 0.
 
-        return SegmentationImage(markers)
+        segm_new = object.__new__(SegmentationImage)
+        segm_new._data = markers
+        return segm_new
