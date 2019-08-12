@@ -11,7 +11,7 @@ from numpy.testing import assert_allclose
 import pytest
 
 from .. import ShepardIDWInterpolator as idw
-from .. import mask_to_mirrored_num
+from ..interpolation import _mask_to_mirrored_num
 
 try:
     import scipy  # noqa
@@ -131,7 +131,7 @@ class TestMaskToMirroredNum:
         data_ref = data.copy()
         data_ref[0, 0] = data[3, 3]
         data_ref[1, 1] = data[2, 2]
-        mirror_data = mask_to_mirrored_num(data, mask, center)
+        mirror_data = _mask_to_mirrored_num(data, mask, center)
         assert_allclose(mirror_data, data_ref, rtol=0, atol=1.e-6)
 
     def test_mask_to_mirrored_num_range(self):
@@ -147,7 +147,7 @@ class TestMaskToMirroredNum:
         data_ref = data.copy()
         data_ref[0, 0] = 0.
         data_ref[1, 1] = 0.
-        mirror_data = mask_to_mirrored_num(data, mask, center)
+        mirror_data = _mask_to_mirrored_num(data, mask, center)
         assert_allclose(mirror_data, data_ref, rtol=0, atol=1.e-6)
 
     def test_mask_to_mirrored_num_masked(self):
@@ -163,7 +163,7 @@ class TestMaskToMirroredNum:
         data_ref = data.copy()
         data_ref[0, 0] = 0.
         data_ref[1, 1] = 0.
-        mirror_data = mask_to_mirrored_num(data, mask, center)
+        mirror_data = _mask_to_mirrored_num(data, mask, center)
         assert_allclose(mirror_data, data_ref, rtol=0, atol=1.e-6)
 
     def test_mask_to_mirrored_num_bbox(self):
@@ -179,5 +179,5 @@ class TestMaskToMirroredNum:
         data_ref = data.copy()
         data_ref[1, 1] = data[2, 2]
         bbox = (1, 2, 1, 2)
-        mirror_data = mask_to_mirrored_num(data, mask, center, bbox=bbox)
+        mirror_data = _mask_to_mirrored_num(data, mask, center, bbox=bbox)
         assert_allclose(mirror_data, data_ref, rtol=0, atol=1.e-6)
