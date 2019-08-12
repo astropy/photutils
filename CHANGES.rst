@@ -115,7 +115,7 @@ Bug Fixes
   - Fixed an issue where the linear fitting mode was not working. 
     [#912]
 
-  - Fixed radial gradient computation. [#]
+  - Fixed radial gradient computation. [#929]
 
 - ``photutils.psf``
 
