@@ -87,6 +87,12 @@ matrix:
         - env: CONDA_DEPENDENCIES=$CONDA_REQUIRED_DEPENDENCIES
                PIP_DEPENDENCIES=''
 
+        # Test with Windows
+        - stage: Comprehensive tests
+          os: windows
+          env: CONDA_DEPENDENCIES=''
+               PIP_DEPENDENCIES='Cython scipy scikit-learn matplotlib scikit-image>0.14.1'
+
         # Test with other Python versions
         - stage: Comprehensive tests
           env: PYTHON_VERSION=3.7
@@ -113,12 +119,6 @@ matrix:
         - stage: Comprehensive tests
           env: NUMPY_VERSION=dev
                EVENT_TYPE='push pull_request cron'
-
-        # Test with Windows
-        - os: windows
-          stage: Comprehensive tests
-          env: CONDA_DEPENDENCIES=''
-               PIP_DEPENDENCIES='Cython scipy scikit-learn matplotlib scikit-image>0.14.1'
 
         # Test with MacOS X
         - stage: Cron tests
