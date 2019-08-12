@@ -126,6 +126,9 @@ matrix:
           env: SETUP_CMD='test' EVENT_TYPE='cron'
 
     allow_failures:
+        - env: ASTROPY_VERSION=development
+               EVENT_TYPE='pull_request push cron'
+
         - env: NUMPY_VERSION=dev
                EVENT_TYPE='push pull_request cron'
 
