@@ -519,16 +519,7 @@ class EPSFModel(FittableImageModel):
         ePSF centroid corrections.
     """
 
-    flux = Parameter(description='Intensity scaling factor for image data.',
-                     default=1.0)
-    x_0 = Parameter(description='X-position of a feature in the image in '
-                    'the output coordinate grid on which the model is '
-                    'evaluated.', default=0.0)
-    y_0 = Parameter(description='Y-position of a feature in the image in '
-                    'the output coordinate grid on which the model is '
-                    'evaluated.', default=0.0)
-
-    def __init__(self, data, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
+    def __init__(self, data, flux=1.0, x_0=0.0, y_0=0.0,
                  origin=None, oversampling=1, fill_value=0.0, norm_radius=5.5,
                  shift_val=0.5, normalize=True, normalization_correction=1.0,
                  ikwargs={}):
