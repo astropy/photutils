@@ -36,13 +36,13 @@ class FittableImageModel(Fittable2DModel):
     provided by :py:class:`~scipy.interpolate.RectBivariateSpline`.
 
     The fittable model provided by this class has three model parameters:
-    an image intensity scaling factor (`flux`) which is applied to
-    (normalized) image, and two positional parameters (`x_0` and `y_0`)
+    an image intensity scaling factor (``flux``) which is applied to
+    (normalized) image, and two positional parameters (``x_0`` and ``y_0``)
     indicating the location of a feature in the coordinate grid on which
     the model is to be evaluated.
 
-    If this class is initialized with `flux` (intensity scaling factor)
-    set to `None`, then `flux` is going to be estimated as ``sum(data)``.
+    If this class is initialized with ``flux`` (intensity scaling factor)
+    set to `None`, then ``flux`` is going to be estimated as ``sum(data)``.
 
     Parameters
     ----------
@@ -53,16 +53,16 @@ class FittableImageModel(Fittable2DModel):
         A reference point in the input image ``data`` array. When origin is
         `None`, origin will be set at the middle of the image array.
 
-        If `origin` represents the location of a feature (e.g., the position
+        If ``origin`` represents the location of a feature (e.g., the position
         of an intensity peak) in the input ``data``, then model parameters
-        `x_0` and `y_0` show the location of this peak in an another target
+        ``x_0`` and ``y_0`` show the location of this peak in an another target
         image to which this model was fitted. Fundamentally, it is the
         coordinate in the model's image data that should map to
-        coordinate (`x_0`, `y_0`) of the output coordinate system on which the
+        coordinate (``x_0``, ``y_0``) of the output coordinate system on which the
         model is evaluated.
 
-        Alternatively, when `origin` is set to ``(0,0)``, then model parameters
-        `x_0` and `y_0` are shifts by which model's image should be translated
+        Alternatively, when ``origin`` is set to ``(0,0)``, then model parameters
+        ``x_0`` and ``y_0`` are shifts by which model's image should be translated
         in order to match a target image.
 
     normalize : bool, optional
@@ -89,7 +89,7 @@ class FittableImageModel(Fittable2DModel):
         ``normalization_correction`` in this case should be set to the
         ratio between the total flux of the PSF (including flux outside model's
         data) to the flux of model's data.
-        Then, best fitted value of the `flux` model
+        Then, best fitted value of the ``flux`` model
         parameter will represent an aperture-corrected flux of the target star.
         In the case of aperture correction, ``normalization_correction`` should
         be a value larger than one, as the total flux, including regions outside
@@ -337,8 +337,8 @@ class FittableImageModel(Fittable2DModel):
         (``(npix-1)/2.0``).
 
         .. warning::
-            Modifying `origin` will not adjust (modify) model's parameters
-            `x_0` and `y_0`.
+            Modifying ``origin`` will not adjust (modify) model's parameters
+            ``x_0`` and ``y_0``.
         """
         return (self._x_origin, self._y_origin)
 
