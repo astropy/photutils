@@ -329,14 +329,8 @@ class EPSFBuilder:
         # is available in astropy (>=3.1)
         self.sigclip = SigmaClip(sigma=2.5, cenfunc='mean', maxiters=10)
 
-        # store some data during each ePSF build iteration
-        self._nfit_failed = []
-        self._center_dist_sq = []
-        self._max_center_dist_sq = []
+        # store each ePSF build iteration
         self._epsf = []
-        self._residuals = []
-        self._residuals_sigclip = []
-        self._residuals_interp = []
 
     def __call__(self, stars):
         return self.build_epsf(stars)
@@ -644,7 +638,6 @@ class EPSFBuilder:
         for _ in range(self.recentering_maxiters):
             # compute a 3D stack of 2D residual images
             residuals = self._resample_residuals(stars, epsf)
-            self._residuals.append(residuals)
 
             # compute the sigma-clipped mean along the 3D stack
             with warnings.catch_warnings():
@@ -657,8 +650,6 @@ class EPSFBuilder:
                 else:
                     residuals = np.nanmean(residuals, axis=0)
 
-            self._residuals_sigclip.append(residuals)
-
             # interpolate any missing data (np.nan)
             mask = ~np.isfinite(residuals)
             if np.any(mask):
@@ -667,8 +658,6 @@ class EPSFBuilder:
 
                 # fill any remaining nans (outer points) with zeros
                 residuals[~np.isfinite(residuals)] = 0.
-
-            self._residuals_interp.append(residuals)
 
             # add the residuals to the previous ePSF image
             new_epsf = epsf._data + residuals
@@ -715,7 +704,6 @@ class EPSFBuilder:
         """
 
         iter_num = 0
-        centers = stars.cutout_center_flat
         n_stars = stars.n_stars
         fit_failed = np.zeros(n_stars, dtype=bool)
         epsf = init_epsf
@@ -760,14 +748,6 @@ class EPSFBuilder:
                 for i in idx:
                     stars.all_stars[i]._excluded_from_fit = True
 
-            dx_dy = stars.cutout_center_flat - centers
-            dx_dy = dx_dy[np.logical_not(fit_failed)]
-            center_dist_sq = np.sum(dx_dy * dx_dy, axis=1, dtype=np.float64)
-            centers = stars.cutout_center_flat
-
-            self._nfit_failed.append(np.count_nonzero(fit_failed))
-            self._center_dist_sq.append(center_dist_sq)
-            self._max_center_dist_sq.append(np.max(center_dist_sq))
             self._epsf.append(epsf)
 
             dt = time.time() - t_start
