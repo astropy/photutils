@@ -119,6 +119,8 @@ Bug Fixes
   - Fixed an issue where the linear fitting mode was not working.
     [#912]
 
+  - Fixed the radial gradient computation [#934].
+
 - ``photutils.psf``
 
   - Fixed a bug in the ``EPSFStar`` ``register_epsf`` and
@@ -239,6 +241,11 @@ API changes
 
   - Isophote central values and intensity gradients are now returned
     in the output table. [#892]
+
+  - The ``EllipseSample`` ``update`` method now needs to know the
+    fix/fit state of each individual parameter.  This can be passed to
+    it via a ``Geometry`` instance, e.g. ``update(geometry.fix)``.
+    [#922]
 
 - ``photutils.psf``
 

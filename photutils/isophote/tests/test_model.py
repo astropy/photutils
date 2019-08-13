@@ -44,10 +44,11 @@ def test_model():
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_model_simulated_data():
-    data = make_test_image(eps=0.5, pa=np.pi/3., noise=1.e-2,
+    data = make_test_image(nx=200, ny=200, i0=10., sma=5.,
+                           eps=0.5, pa=np.pi/3., noise=0.05,
                            random_state=123)
 
-    g = EllipseGeometry(256., 256., 10., 0.5, np.pi/3.)
+    g = EllipseGeometry(100., 100., 5., 0.5, np.pi/3.)
     ellipse = Ellipse(data, geometry=g, threshold=1.e5)
     isophote_list = ellipse.fit_image()
     model = build_ellipse_model(data.shape, isophote_list,

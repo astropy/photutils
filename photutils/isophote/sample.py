@@ -304,10 +304,14 @@ class EllipseSample:
         # another sample, this time using larger radius. Meaningful
         # gradient means something  shallower, but still close to within
         # a factor 3 from previous gradient estimate. If no previous
-        # estimate is available, guess it.
+        # estimate is available, guess it by adding the error to the
+        # current gradient.
         previous_gradient = self.gradient
         if not previous_gradient:
-            previous_gradient = -0.05  # good enough, based on usage
+            previous_gradient = gradient + gradient_error
+
+            # solution adopted before 08/12/2019
+            # previous_gradient = -0.05  # good enough, based on usage
 
         if gradient >= (previous_gradient / 3.):  # gradient is negative!
             gradient, gradient_error = self._get_gradient(2 * step)
