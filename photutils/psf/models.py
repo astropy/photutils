@@ -519,10 +519,10 @@ class EPSFModel(FittableImageModel):
         ePSF centroid corrections.
     """
 
-    def __init__(self, data, flux=1.0, x_0=0.0, y_0=0.0,
-                 origin=None, oversampling=1, fill_value=0.0, norm_radius=5.5,
-                 shift_val=0.5, normalize=True, normalization_correction=1.0,
-                 ikwargs={}):
+    def __init__(self, data, flux=1.0, x_0=0.0, y_0=0.0, normalize=True,
+                 normalization_correction=1.0, origin=None, oversampling=1,
+                 fill_value=0.0, norm_radius=5.5, shift_val=0.5, ikwargs={}):
+
         self._norm_radius = norm_radius
         self._shift_val = shift_val
 
