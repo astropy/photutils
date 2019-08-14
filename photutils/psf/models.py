@@ -20,9 +20,7 @@ class NonNormalizable(AstropyWarning):
     """
     Used to indicate that a :py:class:`FittableImageModel` model is
     non-normalizable.
-
     """
-    pass
 
 
 class FittableImageModel(Fittable2DModel):
@@ -265,7 +263,7 @@ class FittableImageModel(Fittable2DModel):
     @property
     def normalized_data(self):
         """ Get normalized and/or intensity-corrected image data. """
-        return (self._normalization_constant * self._data)
+        return self._normalization_constant * self._data
 
     @property
     def normalization_constant(self):
