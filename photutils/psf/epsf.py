@@ -253,9 +253,6 @@ class EPSFBuilder:
         have odd sizes along both axes to ensure a well-defined central
         pixel.
 
-    norm_radius : float, optional
-        The pixel radius over which the ePSF is normalized.
-
     smoothing_kernel : {'quartic', 'quadratic'}, 2D `~numpy.ndarray`, or `None`
         The smoothing kernel to apply to the ePSF.  The predefined
         ``'quartic'`` and ``'quadratic'`` kernels are derived from
@@ -267,31 +264,34 @@ class EPSFBuilder:
         A callable object (e.g. function or class) that is used to
         calculate the centroid of a 2D array.  The callable must accept
         a 2D `~numpy.ndarray`, have a ``mask`` keyword and optionally
-        ``error`` and ``oversampling`` keywords.  The callable object must return
-        a tuple of two 1D `~numpy.ndarray` variables, representing the x and y
-        centroids.
+        ``error`` and ``oversampling`` keywords.  The callable object
+        must return a tuple of two 1D `~numpy.ndarray` variables,
+        representing the x and y centroids.
 
     recentering_maxiters : int, optional
         The maximum number of recentering iterations to perform during
         each ePSF build iteration.
 
     fitter : `EPSFFitter` object, optional
-        A `EPSFFitter` object use to fit the ePSF to stars.  To set fitter
-        options, a new object with specific options should be passed in - the
-        default uses simply the default options.  To see more of these options,
-        see the `EPSFFitter` documentation.
+        A `EPSFFitter` object use to fit the ePSF to stars.  To set
+        fitter options, a new object with specific options should be
+        passed in - the default uses simply the default options.  To see
+        more of these options, see the `EPSFFitter` documentation.
 
     maxiters : int, optional
         The maximum number of iterations to perform.
 
     progress_bar : bool, option
         Whether to print the progress bar during the build iterations.
+
+    norm_radius : float, optional
+        The pixel radius over which the ePSF is normalized.
     """
 
     def __init__(self, oversampling=4., shape=None,
-                 smoothing_kernel='quartic', norm_radius=5.5, shift_val=0.5,
-                 recentering_func=centroid_epsf, recentering_maxiters=20,
-                 fitter=EPSFFitter(), maxiters=10, progress_bar=True):
+                 smoothing_kernel='quartic', recentering_func=centroid_epsf,
+                 recentering_maxiters=20, fitter=EPSFFitter(), maxiters=10,
+                 progress_bar=True, norm_radius=5.5, shift_val=0.5):
 
         if oversampling is None:
             raise ValueError("'oversampling' must be specified.")
