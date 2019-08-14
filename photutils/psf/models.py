@@ -102,11 +102,10 @@ class FittableImageModel(Fittable2DModel):
         when evaluation is performed outside the definition domain of the
         model.
 
-    ikwargs : dict, optional
-
-        Additional optional keyword arguments to be passed directly to the
-        `compute_interpolator` method. See `compute_interpolator` for more
-        details.
+    kwargs : dict, optional
+        Additional optional keyword arguments to be passed directly to
+        the `compute_interpolator` method.  See `compute_interpolator`
+        for more details.
 
     oversampling : float or tuple of two floats, optional
         The oversampling factor(s) of the model in the ``x`` and ``y`` directions.
@@ -124,14 +123,15 @@ class FittableImageModel(Fittable2DModel):
                     'the output coordinate grid on which the model is '
                     'evaluated.', default=0.0)
 
-    def __init__(self, data, flux=flux.default,
-                 x_0=x_0.default, y_0=y_0.default,
-                 normalize=False, normalization_correction=1.0,
-                 origin=None, oversampling=1, fill_value=0.0, ikwargs={}):
+    def __init__(self, data, flux=flux.default, x_0=x_0.default,
+                 y_0=y_0.default, normalize=False,
+                 normalization_correction=1.0, origin=None, oversampling=1,
+                 fill_value=0.0, **kwargs):
+
         self._fill_value = fill_value
         self._img_norm = None
         self._normalization_status = 0 if normalize else 2
-        self._store_interpolator_kwargs(ikwargs)
+        self._store_interpolator_kwargs(**kwargs)
         self._set_oversampling(oversampling)
 
         if normalization_correction <= 0:
@@ -158,7 +158,7 @@ class FittableImageModel(Fittable2DModel):
         super().__init__(flux, x_0, y_0)
 
         # initialize interpolator:
-        self.compute_interpolator(ikwargs)
+        self.compute_interpolator(**kwargs)
 
     def _initial_norm(self, flux, normalize):
 
@@ -377,12 +377,12 @@ class FittableImageModel(Fittable2DModel):
     def fill_value(self, fill_value):
         self._fill_value = fill_value
 
-    def _store_interpolator_kwargs(self, ikwargs):
+    def _store_interpolator_kwargs(self, **kwargs):
         """
         This function should be called in a subclass whenever model's
         interpolator is (re-)computed.
         """
-        self._interpolator_kwargs = copy.deepcopy(ikwargs)
+        self._interpolator_kwargs = copy.deepcopy(kwargs)
 
     @property
     def interpolator_kwargs(self):
@@ -392,47 +392,47 @@ class FittableImageModel(Fittable2DModel):
         """
         return self._interpolator_kwargs
 
-    def compute_interpolator(self, ikwargs={}):
+    def compute_interpolator(self, **kwargs):
         """
         Compute/define the interpolating spline. This function can be overriden
         in a subclass to define custom interpolators.
 
         Parameters
         ----------
-        ikwargs : dict, optional
-
-            Additional optional keyword arguments. Possible values are:
+        kwargs : dict, optional
+            Additional optional keyword arguments:
 
             - **degree** : int, tuple, optional
-                Degree of the interpolating spline. A tuple can be used to
-                provide different degrees for the X- and Y-axes.
+                Degree of the interpolating spline. A tuple can be used
+                to provide different degrees for the X- and Y-axes.
                 Default value is degree=3.
 
             - **s** : float, optional
-                Non-negative smoothing factor. Default value s=0 corresponds to
-                interpolation.
-                See :py:class:`~scipy.interpolate.RectBivariateSpline` for more
-                details.
+                Non-negative smoothing factor. Default value s=0
+                corresponds to interpolation.  See
+                :py:class:`~scipy.interpolate.RectBivariateSpline` for
+                more details.
 
         Notes
         -----
-            * When subclassing :py:class:`FittableImageModel` for the
-              purpose of overriding :py:func:`compute_interpolator`,
-              the :py:func:`evaluate` may need to overriden as well depending
-              on the behavior of the new interpolator. In addition, for
-              improved future compatibility, make sure
-              that the overriding method stores keyword arguments ``ikwargs``
-              by calling ``_store_interpolator_kwargs`` method.
+        * When subclassing :py:class:`FittableImageModel` for the
+          purpose of overriding :py:func:`compute_interpolator`, the
+          :py:func:`evaluate` may need to overriden as well depending on
+          the behavior of the new interpolator. In addition, for
+          improved future compatibility, make sure that the overriding
+          method stores keyword arguments ``kwargs`` by calling
+          ``_store_interpolator_kwargs`` method.
 
-            * Use caution when modifying interpolator's degree or smoothness in
-              a computationally intensive part of the code as it may decrease
-              code performance due to the need to recompute interpolator.
-
+        * Use caution when modifying interpolator's degree or smoothness
+          in a computationally intensive part of the code as it may
+          decrease code performance due to the need to recompute
+          interpolator.
         """
+
         from scipy.interpolate import RectBivariateSpline
 
-        if 'degree' in ikwargs:
-            degree = ikwargs['degree']
+        if 'degree' in kwargs:
+            degree = kwargs['degree']
             if hasattr(degree, '__iter__') and len(degree) == 2:
                 degx = int(degree[0])
                 degy = int(degree[1])
@@ -446,8 +446,8 @@ class FittableImageModel(Fittable2DModel):
             degx = 3
             degy = 3
 
-        if 's' in ikwargs:
-            smoothness = ikwargs['s']
+        if 's' in kwargs:
+            smoothness = kwargs['s']
         else:
             smoothness = 0
 
@@ -457,7 +457,7 @@ class FittableImageModel(Fittable2DModel):
             x, y, self._data.T, kx=degx, ky=degy, s=smoothness
         )
 
-        self._store_interpolator_kwargs(ikwargs)
+        self._store_interpolator_kwargs(**kwargs)
 
     def evaluate(self, x, y, flux, x_0, y_0, use_oversampling=True):
         """
@@ -521,15 +521,16 @@ class EPSFModel(FittableImageModel):
 
     def __init__(self, data, flux=1.0, x_0=0.0, y_0=0.0, normalize=True,
                  normalization_correction=1.0, origin=None, oversampling=1,
-                 fill_value=0.0, norm_radius=5.5, shift_val=0.5, ikwargs={}):
+                 fill_value=0.0, norm_radius=5.5, shift_val=0.5, **kwargs):
 
         self._norm_radius = norm_radius
         self._shift_val = shift_val
 
-        super().__init__(data=data, flux=flux, x_0=x_0, y_0=y_0, normalize=normalize,
+        super().__init__(data=data, flux=flux, x_0=x_0, y_0=y_0,
+                         normalize=normalize,
                          normalization_correction=normalization_correction,
-                         origin=origin, oversampling=oversampling, fill_value=fill_value,
-                         ikwargs=ikwargs)
+                         origin=origin, oversampling=oversampling,
+                         fill_value=fill_value, **kwargs)
 
     def _initial_norm(self, flux, normalize):
         if flux is None:
@@ -638,45 +639,47 @@ class EPSFModel(FittableImageModel):
             raise TypeError("Parameter 'origin' must be either None or an "
                             "iterable with two elements.")
 
-    def compute_interpolator(self, ikwargs={}):
+    def compute_interpolator(self, **kwargs):
         """
         Compute/define the interpolating spline. This function can be overriden
         in a subclass to define custom interpolators.
 
         Parameters
         ----------
-        ikwargs : dict, optional
-
-            Additional optional keyword arguments. Possible values are:
+        kwargs : dict, optional
+            Additional optional keyword arguments:
 
             - **degree** : int, tuple, optional
-                Degree of the interpolating spline. A tuple can be used to
-                provide different degrees for the X- and Y-axes.
+                Degree of the interpolating spline. A tuple can be used
+                to provide different degrees for the X- and Y-axes.
                 Default value is degree=3.
 
             - **s** : float, optional
-                Non-negative smoothing factor. Default value s=0 corresponds to
-                interpolation.
-                See :py:class:`~scipy.interpolate.RectBivariateSpline` for more
-                details.
+                Non-negative smoothing factor. Default value s=0
+                corresponds to interpolation.  See
+                :py:class:`~scipy.interpolate.RectBivariateSpline` for
+                more details.
 
         Notes
         -----
-            * When subclassing :py:class:`FittableImageModel` for the
-              purpose of overriding :py:func:`compute_interpolator`,
-              the :py:func:`evaluate` may need to overriden as well depending
-              on the behavior of the new interpolator. In addition, for
-              improved future compatibility, make sure
-              that the overriding method stores keyword arguments ``ikwargs``
-              by calling ``_store_interpolator_kwargs`` method.
-            * Use caution when modifying interpolator's degree or smoothness in
-              a computationally intensive part of the code as it may decrease
-              code performance due to the need to recompute interpolator.
+        * When subclassing :py:class:`FittableImageModel` for the
+          purpose of overriding :py:func:`compute_interpolator`, the
+          :py:func:`evaluate` may need to overriden as well depending on
+          the behavior of the new interpolator. In addition, for
+          improved future compatibility, make sure that the overriding
+          method stores keyword arguments ``kwargs`` by calling
+          ``_store_interpolator_kwargs`` method.
+
+        * Use caution when modifying interpolator's degree or smoothness
+          in a computationally intensive part of the code as it may
+          decrease code performance due to the need to recompute
+          interpolator.
         """
+
         from scipy.interpolate import RectBivariateSpline
 
-        if 'degree' in ikwargs:
-            degree = ikwargs['degree']
+        if 'degree' in kwargs:
+            degree = kwargs['degree']
             if hasattr(degree, '__iter__') and len(degree) == 2:
                 degx = int(degree[0])
                 degy = int(degree[1])
@@ -690,8 +693,8 @@ class EPSFModel(FittableImageModel):
             degx = 3
             degy = 3
 
-        if 's' in ikwargs:
-            smoothness = ikwargs['s']
+        if 's' in kwargs:
+            smoothness = kwargs['s']
         else:
             smoothness = 0
 
@@ -702,7 +705,7 @@ class EPSFModel(FittableImageModel):
         self.interpolator = RectBivariateSpline(
             x, y, self._data.T, kx=degx, ky=degy, s=smoothness)
 
-        self._store_interpolator_kwargs(ikwargs)
+        self._store_interpolator_kwargs(**kwargs)
 
     def evaluate(self, x, y, flux, x_0, y_0):
         """
