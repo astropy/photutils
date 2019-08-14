@@ -286,6 +286,10 @@ class EPSFBuilder:
 
     norm_radius : float, optional
         The pixel radius over which the ePSF is normalized.
+
+    shift_val : float, optional
+        The undersampled value at which to compute the shifts.  It must
+        be a strictly positive number.
     """
 
     def __init__(self, oversampling=4., shape=None,
