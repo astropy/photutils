@@ -11,7 +11,6 @@ General
  - Added a new ``photutils.__citation__`` and ``photutils.__bibtex__``
    attributes which give a citation for photutils in bibtex format. [#926]
 
-
 New Features
 ^^^^^^^^^^^^
 
@@ -330,11 +329,6 @@ API changes
   - Deprecated the ``get_version_info``, ``filter_data``, and
     ``std_blocksum`` functions. [#918]
 
-Other Changes and Additions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
--
-
 
 0.6 (2018-12-11)
 ----------------
@@ -371,7 +365,6 @@ New Features
   - The ``pixel_scale`` keyword in ``EPSFStar``, ``EPSFBuilder`` and
     ``EPSFModel`` is now deprecated.  Use the ``oversampling`` keyword
     instead. [#780]
-
 
 API changes
 ^^^^^^^^^^^
@@ -437,7 +430,6 @@ General
 
 - The documentation build now uses the Sphinx configuration from
   ``sphinx-astropy`` rather than from ``astropy-helpers``. [#702]
-
 
 New Features
 ^^^^^^^^^^^^
@@ -637,7 +629,6 @@ New Features
 
   - Fitted results of any free parameter are added to the final table. [#471]
 
-
 API changes
 ^^^^^^^^^^^
 
@@ -777,9 +768,6 @@ Bug Fixes
 
 0.3 (2016-11-06)
 ----------------
-
-General
-^^^^^^^
 
 New Features
 ^^^^^^^^^^^^
