@@ -261,6 +261,13 @@ API changes
   - Removed deprecated ``Star``, ``Stars``, and ``LinkedStar``
     classes. [#894]
 
+  - Removed ``recentering_boxsize`` and ``center_accuracy`` keywords
+    and added ``norm_radius`` and ``shift_value`` keywords in
+    ``EPSFBuilder``. [#817]
+
+  - Added ``norm_radius`` and ``shift_value`` keywords to
+    ``EPSFModel``. [#817]
+
 - ``photutils.segmentation``
 
   - Removed deprecated ``SegmentationImage`` attributes
