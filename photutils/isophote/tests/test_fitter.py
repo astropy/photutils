@@ -201,7 +201,7 @@ class TestM51:
         isophote = fitter.fit()
 
         assert isophote.ndata == 382
-        assert_allclose(isophote.intens, 155.0, atol=0.1)
+        assert_allclose(isophote.intens, 156.3, atol=0.1)
 
     def test_m51_outer(self):
         # sample taken at the outskirts of the image, so many
