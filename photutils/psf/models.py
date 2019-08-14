@@ -164,14 +164,14 @@ class FittableImageModel(Fittable2DModel):
 
         if flux is None:
             if self._img_norm is None:
-                self._img_norm = self._compute_raw_image_norm(self._data)
+                self._img_norm = self._compute_raw_image_norm()
             flux = self._img_norm
 
         self._compute_normalization(normalize)
 
         return flux
 
-    def _compute_raw_image_norm(self, data):
+    def _compute_raw_image_norm(self):
         """
         Helper function that computes the uncorrected inverse normalization
         factor of input image data. This quantity is computed as the
@@ -215,7 +215,7 @@ class FittableImageModel(Fittable2DModel):
             # compute normalization constant so that
             # N*C*sum(data) = 1:
             if self._img_norm is None:
-                self._img_norm = self._compute_raw_image_norm(self._data)
+                self._img_norm = self._compute_raw_image_norm()
 
             if self._img_norm != 0.0 and np.isfinite(self._img_norm):
                 self._normalization_constant /= self._img_norm
@@ -535,17 +535,16 @@ class EPSFModel(FittableImageModel):
     def _initial_norm(self, flux, normalize):
         if flux is None:
             if self._img_norm is None:
-                self._img_norm = self._compute_raw_image_norm(self._data,
-                                                              self._norm_radius)
+                self._img_norm = self._compute_raw_image_norm(
+                    self._norm_radius)
             flux = self._img_norm
 
         if normalize:
             self._compute_normalization()
         else:
-            self._img_norm = self._compute_raw_image_norm(self._data,
-                                                          self._norm_radius)
+            self._img_norm = self._compute_raw_image_norm(self._norm_radius)
 
-    def _compute_raw_image_norm(self, data, radius):
+    def _compute_raw_image_norm(self, radius):
         """
         Helper function that computes the normalization of input image data.
         This quantity is computed as the sum of all undersampled integer pixel
@@ -574,9 +573,8 @@ class EPSFModel(FittableImageModel):
         cut = (((x.reshape(1, -1) - x_0)**2 + (y.reshape(-1, 1) - y_0)**2 <=
                 radius**2) & (x.reshape(1, -1) % 1.0 == over_index_middle) &
                (y.reshape(-1, 1) % 1.0 == over_index_middle))
-        data = self._data
 
-        return np.sum(data[cut], dtype=np.float64)
+        return np.sum(self._data[cut], dtype=np.float64)
 
     def _compute_normalization(self):
         """
@@ -590,8 +588,8 @@ class EPSFModel(FittableImageModel):
             if np.sum(self._data) == 0:
                 self._img_norm = 1
             else:
-                self._img_norm = self._compute_raw_image_norm(self._data,
-                                                              self._norm_radius)
+                self._img_norm = self._compute_raw_image_norm(
+                    self._norm_radius)
 
         if self._img_norm != 0.0 and np.isfinite(self._img_norm):
             self._data /= (self._img_norm * self._normalization_correction)
