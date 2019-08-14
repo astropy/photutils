@@ -158,7 +158,7 @@ class TestEllipseOnRealData:
         ellipse = Ellipse(data, geometry=g)
         isophote_list = ellipse.fit_image()
 
-        assert len(isophote_list) == 64
+        assert len(isophote_list) >= 60
 
         # check that isophote at about sma=70 got an uneventful fit
         assert isophote_list.get_closest(70.).stop_code == 0
