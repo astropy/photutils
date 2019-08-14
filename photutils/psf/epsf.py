@@ -583,18 +583,20 @@ class EPSFBuilder:
 
         try:
             # find a new center position
-            xcenter_new, ycenter_new = centroid_func(epsf._data, mask=mask,
-                                                     oversampling=epsf.oversampling,
-                                                     shift_val=epsf._shift_val)
+            xcenter_new, ycenter_new = centroid_func(
+                epsf._data, mask=mask, oversampling=epsf.oversampling,
+                shift_val=epsf._shift_val)
         except TypeError:
-            pass
-        try:
-            xcenter_new, ycenter_new = centroid_func(epsf._data, mask=mask,
-                                                     oversampling=epsf.oversampling)
-        # default centroid_epsf overloaded, or otherwise a function that does not accept
-        # oversampling or shift_val, in which case just pass data and mask
-        except TypeError:
-            xcenter_new, ycenter_new = centroid_func(epsf._data, mask=mask)
+            # centroid_func doesn't accept oversampling and/or shift_val
+            # keywords - try oversampling alone
+            try:
+                xcenter_new, ycenter_new = centroid_func(
+                    epsf._data, mask=mask, oversampling=epsf.oversampling)
+            except TypeError:
+                # centroid_func doesn't accept oversampling and
+                # shift_val
+                xcenter_new, ycenter_new = centroid_func(epsf._data,
+                                                         mask=mask)
 
         # Calculate the shift; dx = i - x_star so if dx was positively
         # incremented then x_star was negatively incremented for a given i.
