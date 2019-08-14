@@ -75,7 +75,7 @@ matrix:
         # All tests (with remote data) and coverage checks with the
         # latest Python version.  The duration of the slowest 50 tests
         # will also be listed.
-        - env: SETUP_CMD='test --coverage --remote-data=astropy -a "--durations=50"'
+        - env: SETUP_CMD='test --coverage --remote-data -a "--durations=50"'
                NUMPY_VERSION=1.14
 
         # Check for Sphinx doc build warnings
