@@ -28,19 +28,20 @@ class FittableImageModel(Fittable2DModel):
     A fittable 2D model of an image allowing for image intensity scaling
     and image translations.
 
-    This class takes 2D image data and computes the
-    values of the model at arbitrary locations (including at intra-pixel,
-    fractional positions) within this image using spline interpolation
-    provided by :py:class:`~scipy.interpolate.RectBivariateSpline`.
+    This class takes 2D image data and computes the values of the model
+    at arbitrary locations (including at intra-pixel, fractional
+    positions) within this image using spline interpolation provided by
+    :py:class:`~scipy.interpolate.RectBivariateSpline`.
 
-    The fittable model provided by this class has three model parameters:
-    an image intensity scaling factor (``flux``) which is applied to
-    (normalized) image, and two positional parameters (``x_0`` and ``y_0``)
-    indicating the location of a feature in the coordinate grid on which
-    the model is to be evaluated.
+    The fittable model provided by this class has three model
+    parameters: an image intensity scaling factor (``flux``) which is
+    applied to (normalized) image, and two positional parameters
+    (``x_0`` and ``y_0``) indicating the location of a feature in the
+    coordinate grid on which the model is to be evaluated.
 
-    If this class is initialized with ``flux`` (intensity scaling factor)
-    set to `None`, then ``flux`` is going to be estimated as ``sum(data)``.
+    If this class is initialized with ``flux`` (intensity scaling
+    factor) set to `None`, then ``flux`` is going to be estimated as
+    ``sum(data)``.
 
     Parameters
     ----------
@@ -48,57 +49,57 @@ class FittableImageModel(Fittable2DModel):
         Array containing 2D image.
 
     origin : tuple, None, optional
-        A reference point in the input image ``data`` array. When origin is
-        `None`, origin will be set at the middle of the image array.
+        A reference point in the input image ``data`` array. When origin
+        is `None`, origin will be set at the middle of the image array.
 
-        If ``origin`` represents the location of a feature (e.g., the position
-        of an intensity peak) in the input ``data``, then model parameters
-        ``x_0`` and ``y_0`` show the location of this peak in an another target
-        image to which this model was fitted. Fundamentally, it is the
-        coordinate in the model's image data that should map to
-        coordinate (``x_0``, ``y_0``) of the output coordinate system on which the
-        model is evaluated.
+        If ``origin`` represents the location of a feature (e.g., the
+        position of an intensity peak) in the input ``data``, then model
+        parameters ``x_0`` and ``y_0`` show the location of this peak in
+        an another target image to which this model was fitted.
+        Fundamentally, it is the coordinate in the model's image data
+        that should map to coordinate (``x_0``, ``y_0``) of the output
+        coordinate system on which the model is evaluated.
 
-        Alternatively, when ``origin`` is set to ``(0,0)``, then model parameters
-        ``x_0`` and ``y_0`` are shifts by which model's image should be translated
-        in order to match a target image.
+        Alternatively, when ``origin`` is set to ``(0,0)``, then model
+        parameters ``x_0`` and ``y_0`` are shifts by which model's image
+        should be translated in order to match a target image.
 
     normalize : bool, optional
         Indicates whether or not the model should be build on normalized
-        input image data. If true, then the normalization constant (*N*) is
-        computed so that
+        input image data. If true, then the normalization constant (*N*)
+        is computed so that
 
         .. math::
             N \\cdot C \\cdot \\sum\\limits_{i,j} D_{i,j} = 1,
 
-        where *N* is the normalization constant, *C* is correction factor
-        given by the parameter ``normalization_correction``, and
-        :math:`D_{i,j}` are the elements of the input image ``data`` array.
+        where *N* is the normalization constant, *C* is correction
+        factor given by the parameter ``normalization_correction``, and
+        :math:`D_{i,j}` are the elements of the input image ``data``
+        array.
 
     normalization_correction : float, optional
-        A strictly positive number that represents correction that needs to
-        be applied to model's data normalization (see *C* in the equation
-        in the comments to ``normalize`` for more details).
-
-        A possible application for this parameter is to account for aperture
-        correction. Assuming model's data represent a PSF to be fitted to
-        some target star, we set ``normalization_correction`` to the aperture
-        correction that needs to be applied to the model. That is,
-        ``normalization_correction`` in this case should be set to the
-        ratio between the total flux of the PSF (including flux outside model's
-        data) to the flux of model's data.
-        Then, best fitted value of the ``flux`` model
-        parameter will represent an aperture-corrected flux of the target star.
-        In the case of aperture correction, ``normalization_correction`` should
-        be a value larger than one, as the total flux, including regions outside
-        of the aperture, should be larger than the flux inside the aperture,
-        and thus the correction is applied as an inversely multiplied factor.
+        A strictly positive number that represents correction that needs
+        to be applied to model's data normalization (see *C* in the
+        equation in the comments to ``normalize`` for more details).  A
+        possible application for this parameter is to account for
+        aperture correction. Assuming model's data represent a PSF to be
+        fitted to some target star, we set ``normalization_correction``
+        to the aperture correction that needs to be applied to the
+        model. That is, ``normalization_correction`` in this case should
+        be set to the ratio between the total flux of the PSF (including
+        flux outside model's data) to the flux of model's data.  Then,
+        best fitted value of the ``flux`` model parameter will represent
+        an aperture-corrected flux of the target star.  In the case of
+        aperture correction, ``normalization_correction`` should be a
+        value larger than one, as the total flux, including regions
+        outside of the aperture, should be larger than the flux inside
+        the aperture, and thus the correction is applied as an inversely
+        multiplied factor.
 
     fill_value : float, optional
         The value to be returned by the `evaluate` or
-        ``astropy.modeling.Model.__call__`` methods
-        when evaluation is performed outside the definition domain of the
-        model.
+        ``astropy.modeling.Model.__call__`` methods when evaluation is
+        performed outside the definition domain of the model.
 
     kwargs : dict, optional
         Additional optional keyword arguments to be passed directly to
@@ -106,12 +107,12 @@ class FittableImageModel(Fittable2DModel):
         for more details.
 
     oversampling : float or tuple of two floats, optional
-        The oversampling factor(s) of the model in the ``x`` and ``y`` directions.
-        If ``oversampling`` is a scalar it will be treated as being the same in both
-        x and y; otherwise a tuple of two floats will be treated as
-        ``(x_oversamp, y_oversamp)``.
-
+        The oversampling factor(s) of the model in the ``x`` and ``y``
+        directions.  If ``oversampling`` is a scalar it will be treated
+        as being the same in both x and y; otherwise a tuple of two
+        floats will be treated as ``(x_oversamp, y_oversamp)``.
     """
+
     flux = Parameter(description='Intensity scaling factor for image data.',
                      default=1.0)
     x_0 = Parameter(description='X-position of a feature in the image in '
@@ -171,13 +172,14 @@ class FittableImageModel(Fittable2DModel):
 
     def _compute_raw_image_norm(self):
         """
-        Helper function that computes the uncorrected inverse normalization
-        factor of input image data. This quantity is computed as the
-        *sum of all pixel values*.
+        Helper function that computes the uncorrected inverse
+        normalization factor of input image data. This quantity is
+        computed as the *sum of all pixel values*.
 
         .. note::
-            This function is intended to be overriden in a subclass if one
-            desires to change the way the normalization factor is computed.
+            This function is intended to be overriden in a subclass if
+            one desires to change the way the normalization factor is
+            computed.
 
         """
         return np.sum(self._data, dtype=np.float64)
@@ -232,16 +234,17 @@ class FittableImageModel(Fittable2DModel):
     @property
     def oversampling(self):
         """
-        The factor by which the stored image is oversampled.  I.e., an input
-        to this model is multipled by this factor to yield the index into the
-        stored image.
+        The factor by which the stored image is oversampled.  I.e., an
+        input to this model is multipled by this factor to yield the
+        index into the stored image.
         """
+
         return self._oversampling
 
     def _set_oversampling(self, value):
         """
-        This is a private method because it's used in the initializer by the
-        ``oversampling``
+        This is a private method because it's used in the initializer by
+        the ``oversampling``
         """
 
         try:
@@ -250,6 +253,7 @@ class FittableImageModel(Fittable2DModel):
                 value = np.repeat(value, 2)
         except ValueError:
             raise ValueError('Oversampling factors must be float')
+
         if np.any(value <= 0):
             raise ValueError('Oversampling factors must be greater than 0')
 
@@ -262,7 +266,7 @@ class FittableImageModel(Fittable2DModel):
 
     @property
     def normalized_data(self):
-        """ Get normalized and/or intensity-corrected image data. """
+        """Get normalized and/or intensity-corrected image data."""
         return self._normalization_constant * self._data
 
     @property
@@ -276,11 +280,11 @@ class FittableImageModel(Fittable2DModel):
         Get normalization status. Possible status values are:
 
         - 0: **Performed**. Model has been successfuly normalized at
-          user's request.
+             user's request.
         - 1: **Failed**. Attempt to normalize has failed.
         - 2: **NotRequested**. User did not request model to be normalized.
-
         """
+
         return self._normalization_status
 
     @property
@@ -289,12 +293,12 @@ class FittableImageModel(Fittable2DModel):
         Set/Get flux correction factor.
 
         .. note::
-            When setting correction factor, model's flux will be adjusted
-            accordingly such that if this model was a good fit to some target
-            image before, then it will remain a good fit after correction
-            factor change.
-
+            When setting correction factor, model's flux will be
+            adjusted accordingly such that if this model was a good fit
+            to some target image before, then it will remain a good fit
+            after correction factor change.
         """
+
         return self._normalization_correction
 
     @normalization_correction.setter
@@ -303,14 +307,17 @@ class FittableImageModel(Fittable2DModel):
         self._normalization_correction = normalization_correction
         self._compute_normalization(normalize=self._normalization_status != 2)
 
-        # adjust model's flux so that if this model was a good fit to some
-        # target image, then it will remain a good fit after correction factor
-        # change:
+        # adjust model's flux so that if this model was a good fit to
+        # some target image, then it will remain a good fit after
+        # correction factor change:
         self.flux *= normalization_correction / old_cf
 
     @property
     def shape(self):
-        """A tuple of dimensions of the data array in numpy style (ny, nx)."""
+        """
+        A tuple of dimensions of the data array in numpy style (ny, nx).
+        """
+
         return self._shape
 
     @property
@@ -326,18 +333,19 @@ class FittableImageModel(Fittable2DModel):
     @property
     def origin(self):
         """
-        A tuple of ``x`` and ``y`` coordinates of the origin of the coordinate
-        system in terms of pixels of model's image.
+        A tuple of ``x`` and ``y`` coordinates of the origin of the
+        coordinate system in terms of pixels of model's image.
 
-        When setting the coordinate system origin, a tuple of two `int` or
-        `float` may be used. If origin is set to `None`, the origin of the
-        coordinate system will be set to the middle of the data array
-        (``(npix-1)/2.0``).
+        When setting the coordinate system origin, a tuple of two `int`
+        or `float` may be used. If origin is set to `None`, the origin
+        of the coordinate system will be set to the middle of the data
+        array (``(npix-1)/2.0``).
 
         .. warning::
-            Modifying ``origin`` will not adjust (modify) model's parameters
-            ``x_0`` and ``y_0``.
+            Modifying ``origin`` will not adjust (modify) model's
+            parameters ``x_0`` and ``y_0``.
         """
+
         return (self._x_origin, self._y_origin)
 
     @origin.setter
@@ -363,12 +371,13 @@ class FittableImageModel(Fittable2DModel):
 
     @property
     def fill_value(self):
-        """Fill value to be returned for coordinates outside of the domain of
-        definition of the interpolator. If ``fill_value`` is `None`, then
-        values outside of the domain of definition are the ones returned
-        by the interpolator.
-
         """
+        Fill value to be returned for coordinates outside of the domain
+        of definition of the interpolator. If ``fill_value`` is `None`,
+        then values outside of the domain of definition are the ones
+        returned by the interpolator.
+        """
+
         return self._fill_value
 
     @fill_value.setter
@@ -380,6 +389,7 @@ class FittableImageModel(Fittable2DModel):
         This function should be called in a subclass whenever model's
         interpolator is (re-)computed.
         """
+
         self._interpolator_kwargs = copy.deepcopy(kwargs)
 
     @property
@@ -388,12 +398,15 @@ class FittableImageModel(Fittable2DModel):
         Get current interpolator's arguments used when interpolator was
         created.
         """
+
         return self._interpolator_kwargs
 
     def compute_interpolator(self, **kwargs):
         """
-        Compute/define the interpolating spline. This function can be overriden
-        in a subclass to define custom interpolators.
+        Compute/define the interpolating spline.
+
+        This function can be overriden in a subclass to define custom
+        interpolators.
 
         Parameters
         ----------
@@ -494,24 +507,26 @@ class EPSFModel(FittableImageModel):
     """
     A class that models an effective PSF (ePSF).
 
-    While this class is a subclass of `FittableImageModel`, it is very similar.
-    The primary differences/motivation are a few additional  parameters necesary
-    specifically for ePSFs.
+    While this class is a subclass of `FittableImageModel`, it is very
+    similar.  The primary differences/motivation are a few additional
+    parameters necessary specifically for ePSFs.
 
     Parameters
     ----------
     oversampling : int or tuple of two int, optional
-        The oversampling factor(s) of the model in the ``x`` and ``y`` directions.
-        If ``oversampling`` is a scalar it will be treated as being the same in both
-        x and y; otherwise a tuple of two floats will be treated as
-        ``(x_oversamp, y_oversamp)``.
+        The oversampling factor(s) of the model in the ``x`` and ``y``
+        directions.  If ``oversampling`` is a scalar it will be treated
+        as being the same in both x and y; otherwise a tuple of two
+        floats will be treated as ``(x_oversamp, y_oversamp)``.
+
     norm_radius : float, optional
         The radius inside which the ePSF is normalized by the sum over
         undersampled integer pixel values inside a circular aperture.
+
     shift_val : float, optional
-        The fractional undersampled pixel amount (equivalent to an integer
-        oversampled pixel value) at which to evaluate the asymmetric
-        ePSF centroid corrections.
+        The fractional undersampled pixel amount (equivalent to an
+        integer oversampled pixel value) at which to evaluate the
+        asymmetric ePSF centroid corrections.
     """
 
     def __init__(self, data, flux=1.0, x_0=0.0, y_0=0.0, normalize=True,
@@ -539,29 +554,34 @@ class EPSFModel(FittableImageModel):
 
     def _compute_raw_image_norm(self):
         """
-        Helper function that computes the normalization of input image data.
-        This quantity is computed as the sum of all undersampled integer pixel
-        values within radius pixels of the center of the ePSF.
+        Helper function that computes the normalization of input image
+        data.  This quantity is computed as the sum of all undersampled
+        integer pixel values within radius pixels of the center of the
+        ePSF.
         """
 
-        # First need the indices of each axis at the oversampled resolution;
-        # if oversampling = 4 then x = [0, 0.25, 0.5, 0.75, ...]
+        # First need the indices of each axis at the oversampled
+        # resolution; if oversampling = 4 then x = [0, 0.25, 0.5, 0.75, ...]
         x = np.arange(self._nx, dtype=np.float64) / self.oversampling[0]
         y = np.arange(self._ny, dtype=np.float64) / self.oversampling[1]
-        # Take indices where the undersampled grid is an integer -- i.e., the
-        # actual undersampled grid -- and find the cut where
+
+        # Take indices where the undersampled grid is an integer --
+        # i.e., the actual undersampled grid -- and find the cut where
         # sqrt(dx**2 + dy**2) <= radius
         x_0, y_0 = int((self._nx - 1) / 2), int((self._ny - 1) / 2)
-        # However, as we are in units of the undersampled grid, we must convert
-        # to undersampled units by the same factor of oversampling
+
+        # However, as we are in units of the undersampled grid, we must
+        # convert to undersampled units by the same factor of oversampling
         x_0 /= self.oversampling[0]
         y_0 /= self.oversampling[1]
-        # When checking if the index is at the center of a pixel, we check such
-        # that the index number is half that of the oversampling -- if we
-        # oversample by a factor 4 then the middle pixel of the 0th large pixel
-        # is 2 ([0, 1, 2, 3, 4]). For this to work we require oversampling to be
-        # an even number; otherwise, the ``middle'' pixel will be halfway between
-        # two oversampled pixels.
+
+        # When checking if the index is at the center of a pixel, we
+        # check such that the index number is half that of the
+        # oversampling -- if we oversample by a factor 4 then the middle
+        # pixel of the 0th large pixel is 2 ([0, 1, 2, 3, 4]). For this to
+        # work we require oversampling to be an even number; otherwise,
+        # the ``middle'' pixel will be halfway between two oversampled
+        # pixels.
         over_index_middle = 1 / 2
         cut = (((x.reshape(1, -1) - x_0)**2 + (y.reshape(-1, 1) - y_0)**2 <=
                 self._norm_radius**2)
@@ -599,11 +619,12 @@ class EPSFModel(FittableImageModel):
             value = np.atleast_1d(value).astype(int)
             if len(value) == 1:
                 value = np.repeat(value, 2)
-            # We need oversampling to be a factor of 2 for ``middle of pixel''
-            # in the undersampled regime to have a pixel placed at it in the
-            # oversampled regime.
+            # We need oversampling to be a factor of 2 for ``middle of
+            # pixel'' in the undersampled regime to have a pixel placed at
+            # it in the oversampled regime.
             if np.any(value % 2 != 0) and np.logical_not(np.all(value == 1)):
-                raise ValueError('Oversampling factor must be a multiple of two')
+                raise ValueError('Oversampling factor must be a multiple of '
+                                 'two')
         except ValueError:
             raise ValueError('Oversampling factor must be a scalar')
         if np.any(value <= 0):
@@ -615,8 +636,10 @@ class EPSFModel(FittableImageModel):
         """
         Overloaded dummy function that also returns self._data, as the
         normalization occurs within _compute_normalization in EPSFModel,
-        and as such self._data will sum, accounting for under/oversampled
-        pixels, to 1/self._normalization_correction. """
+        and as such self._data will sum, accounting for
+        under/oversampled pixels, to 1/self._normalization_correction.
+        """
+
         return self._data
 
     @FittableImageModel.origin.setter
@@ -632,8 +655,10 @@ class EPSFModel(FittableImageModel):
 
     def compute_interpolator(self, **kwargs):
         """
-        Compute/define the interpolating spline. This function can be overriden
-        in a subclass to define custom interpolators.
+        Compute/define the interpolating spline.
+
+        This function can be overriden in a subclass to define custom
+        interpolators.
 
         Parameters
         ----------
@@ -689,8 +714,8 @@ class EPSFModel(FittableImageModel):
         else:
             smoothness = 0
 
-        # Interpolator must be set to interpolate on the undersampled pixel
-        # grid, going from 0 to len(undersampled_grid)
+        # Interpolator must be set to interpolate on the undersampled
+        # pixel grid, going from 0 to len(undersampled_grid)
         x = np.arange(self._nx, dtype=np.float) / self.oversampling[0]
         y = np.arange(self._ny, dtype=np.float) / self.oversampling[1]
         self.interpolator = RectBivariateSpline(
@@ -710,10 +735,12 @@ class EPSFModel(FittableImageModel):
         evaluated_model = flux * self.interpolator.ev(xi, yi)
 
         if self._fill_value is not None:
-            # find indices of pixels that are outside the input pixel grid and
-            # set these pixels to the 'fill_value':
-            invalid = (((xi < 0) | (xi > (self._nx - 1) / self.oversampling[0])) |
-                       ((yi < 0) | (yi > (self._ny - 1) / self.oversampling[1])))
+            # find indices of pixels that are outside the input pixel
+            # grid and set these pixels to the 'fill_value':
+            invalid = (((xi < 0) | (xi > (self._nx - 1)
+                                    / self.oversampling[0])) |
+                       ((yi < 0) | (yi > (self._ny - 1)
+                                    / self.oversampling[1])))
             evaluated_model[invalid] = self._fill_value
 
         return evaluated_model
@@ -962,9 +989,11 @@ class GriddedPSFModel(Fittable2DModel):
 
 class IntegratedGaussianPRF(Fittable2DModel):
     r"""
-    Circular Gaussian model integrated over pixels. Because it is
-    integrated, this model is considered a PRF, *not* a PSF (see
-    :ref:`psf-terminology` for more about the terminology used here.)
+    Circular Gaussian model integrated over pixels.
+
+    Because it is integrated, this model is considered a PRF, *not* a
+    PSF (see :ref:`psf-terminology` for more about the terminology used
+    here.)
 
     This model is a Gaussian *integrated* over an area of ``1`` (in
     units of the model input coordinates, e.g. 1 pixel).  This is in
@@ -1046,8 +1075,9 @@ class IntegratedGaussianPRF(Fittable2DModel):
 
 class PRFAdapter(Fittable2DModel):
     """
-    A model that adapts a supplied PSF model to act as a PRF. It
-    integrates the PSF model over pixel "boxes".  A critical built-in
+    A model that adapts a supplied PSF model to act as a PRF.
+
+    It integrates the PSF model over pixel "boxes".  A critical built-in
     assumption is that the PSF model scale and location parameters are
     in *pixel* units.
 

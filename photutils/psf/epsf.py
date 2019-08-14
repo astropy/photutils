@@ -387,21 +387,25 @@ class EPSFBuilder:
             if len(shape) == 1:
                 shape = np.repeat(shape, 2)
         else:
-            # Stars class should have odd-sized dimensions, and thus we get the
-            # oversampled shape as oversampling * len + 1; if len=25, then
-            # newlen=101, for example.
-            x_shape = np.int(np.ceil(stars._max_shape[0]) * oversampling[0] + 1)
-            y_shape = np.int(np.ceil(stars._max_shape[1]) * oversampling[1] + 1)
+            # Stars class should have odd-sized dimensions, and thus we
+            # get the oversampled shape as oversampling * len + 1; if
+            # len=25, then newlen=101, for example.
+            x_shape = np.int(np.ceil(stars._max_shape[0]) * oversampling[0]
+                             + 1)
+            y_shape = np.int(np.ceil(stars._max_shape[1]) * oversampling[1]
+                             + 1)
             shape = np.array((y_shape, x_shape))
 
         # verify odd sizes of shape
         shape = [(i + 1) if i % 2 == 0 else i for i in shape]
 
         data = np.zeros(shape, dtype=np.float)
-        # ePSF origin should be in the undersampled pixel units, not the oversampled
-        # grid units. The middle, fractional (as we wish for the center of the
-        # pixel, so the center should be at (v.5, w.5) detector pixels) value is
-        # simply the average of the two values at the extremes.
+
+        # ePSF origin should be in the undersampled pixel units, not the
+        # oversampled grid units. The middle, fractional (as we wish for
+        # the center of the pixel, so the center should be at (v.5, w.5)
+        # detector pixels) value is simply the average of the two values
+        # at the extremes.
         xcenter = stars._max_shape[0] / 2.
         ycenter = stars._max_shape[1] / 2.
 
@@ -452,8 +456,9 @@ class EPSFBuilder:
         x = star._xidx_centered
         y = star._yidx_centered
 
-        # Compute the normalized residual by subtracting the ePSF model from
-        # the normalized star at the location of the star in the undersampled grid.
+        # Compute the normalized residual by subtracting the ePSF model
+        # from the normalized star at the location of the star in the
+        # undersampled grid.
         stardata = (star._data_values_normalized -
                     epsf.evaluate(x=x, y=y, flux=1.0, x_0=0.0, y_0=0.0))
 
@@ -675,9 +680,11 @@ class EPSFBuilder:
 
             # smooth and recenter the ePSF
             epsf._data = self._smooth_epsf(epsf._data)
-            epsf._data = self._recenter_epsf(epsf, centroid_func=self.recentering_func)
+            epsf._data = self._recenter_epsf(
+                epsf, centroid_func=self.recentering_func)
 
-        # return the new ePSF object, but with undersampled grid pixel coordinates
+        # return the new ePSF object, but with undersampled grid pixel
+        # coordinates
         xcenter = (epsf._data.shape[1] - 1) / 2. / epsf.oversampling[0]
         ycenter = (epsf._data.shape[0] - 1) / 2. / epsf.oversampling[1]
 
