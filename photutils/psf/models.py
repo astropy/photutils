@@ -546,11 +546,14 @@ class EPSFModel(FittableImageModel):
         if flux is None:
             if self._img_norm is None:
                 self._img_norm = self._compute_raw_image_norm()
+            flux = self._img_norm
 
         if normalize:
             self._compute_normalization()
         else:
             self._img_norm = self._compute_raw_image_norm()
+
+        return flux
 
     def _compute_raw_image_norm(self):
         """
