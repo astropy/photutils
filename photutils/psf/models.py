@@ -446,10 +446,7 @@ class FittableImageModel(Fittable2DModel):
             degx = 3
             degy = 3
 
-        if 's' in kwargs:
-            smoothness = kwargs['s']
-        else:
-            smoothness = 0
+        smoothness = kwargs.get('s', 0)
 
         x = np.arange(self._nx, dtype=np.float)
         y = np.arange(self._ny, dtype=np.float)
