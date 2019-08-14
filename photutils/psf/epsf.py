@@ -253,9 +253,6 @@ class EPSFBuilder:
         have odd sizes along both axes to ensure a well-defined central
         pixel.
 
-    norm_radius : float, optional
-        The pixel radius over which the ePSF is normalized.
-
     smoothing_kernel : {'quartic', 'quadratic'}, 2D `~numpy.ndarray`, or `None`
         The smoothing kernel to apply to the ePSF.  The predefined
         ``'quartic'`` and ``'quadratic'`` kernels are derived from
@@ -267,31 +264,38 @@ class EPSFBuilder:
         A callable object (e.g. function or class) that is used to
         calculate the centroid of a 2D array.  The callable must accept
         a 2D `~numpy.ndarray`, have a ``mask`` keyword and optionally
-        ``error`` and ``oversampling`` keywords.  The callable object must return
-        a tuple of two 1D `~numpy.ndarray` variables, representing the x and y
-        centroids.
+        ``error`` and ``oversampling`` keywords.  The callable object
+        must return a tuple of two 1D `~numpy.ndarray` variables,
+        representing the x and y centroids.
 
     recentering_maxiters : int, optional
         The maximum number of recentering iterations to perform during
         each ePSF build iteration.
 
     fitter : `EPSFFitter` object, optional
-        A `EPSFFitter` object use to fit the ePSF to stars.  To set fitter
-        options, a new object with specific options should be passed in - the
-        default uses simply the default options.  To see more of these options,
-        see the `EPSFFitter` documentation.
+        A `EPSFFitter` object use to fit the ePSF to stars.  To set
+        fitter options, a new object with specific options should be
+        passed in - the default uses simply the default options.  To see
+        more of these options, see the `EPSFFitter` documentation.
 
     maxiters : int, optional
         The maximum number of iterations to perform.
 
     progress_bar : bool, option
         Whether to print the progress bar during the build iterations.
+
+    norm_radius : float, optional
+        The pixel radius over which the ePSF is normalized.
+
+    shift_val : float, optional
+        The undersampled value at which to compute the shifts.  It must
+        be a strictly positive number.
     """
 
     def __init__(self, oversampling=4., shape=None,
-                 smoothing_kernel='quartic', norm_radius=5.5, shift_val=0.5,
-                 recentering_func=centroid_epsf, recentering_maxiters=20,
-                 fitter=EPSFFitter(), maxiters=10, progress_bar=True):
+                 smoothing_kernel='quartic', recentering_func=centroid_epsf,
+                 recentering_maxiters=20, fitter=EPSFFitter(), maxiters=10,
+                 progress_bar=True, norm_radius=5.5, shift_val=0.5):
 
         if oversampling is None:
             raise ValueError("'oversampling' must be specified.")
@@ -383,21 +387,25 @@ class EPSFBuilder:
             if len(shape) == 1:
                 shape = np.repeat(shape, 2)
         else:
-            # Stars class should have odd-sized dimensions, and thus we get the
-            # oversampled shape as oversampling * len + 1; if len=25, then
-            # newlen=101, for example.
-            x_shape = np.int(np.ceil(stars._max_shape[0]) * oversampling[0] + 1)
-            y_shape = np.int(np.ceil(stars._max_shape[1]) * oversampling[1] + 1)
+            # Stars class should have odd-sized dimensions, and thus we
+            # get the oversampled shape as oversampling * len + 1; if
+            # len=25, then newlen=101, for example.
+            x_shape = np.int(np.ceil(stars._max_shape[0]) * oversampling[0]
+                             + 1)
+            y_shape = np.int(np.ceil(stars._max_shape[1]) * oversampling[1]
+                             + 1)
             shape = np.array((y_shape, x_shape))
 
         # verify odd sizes of shape
         shape = [(i + 1) if i % 2 == 0 else i for i in shape]
 
         data = np.zeros(shape, dtype=np.float)
-        # ePSF origin should be in the undersampled pixel units, not the oversampled
-        # grid units. The middle, fractional (as we wish for the center of the
-        # pixel, so the center should be at (v.5, w.5) detector pixels) value is
-        # simply the average of the two values at the extremes.
+
+        # ePSF origin should be in the undersampled pixel units, not the
+        # oversampled grid units. The middle, fractional (as we wish for
+        # the center of the pixel, so the center should be at (v.5, w.5)
+        # detector pixels) value is simply the average of the two values
+        # at the extremes.
         xcenter = stars._max_shape[0] / 2.
         ycenter = stars._max_shape[1] / 2.
 
@@ -448,8 +456,9 @@ class EPSFBuilder:
         x = star._xidx_centered
         y = star._yidx_centered
 
-        # Compute the normalized residual by subtracting the ePSF model from
-        # the normalized star at the location of the star in the undersampled grid.
+        # Compute the normalized residual by subtracting the ePSF model
+        # from the normalized star at the location of the star in the
+        # undersampled grid.
         stardata = (star._data_values_normalized -
                     epsf.evaluate(x=x, y=y, flux=1.0, x_0=0.0, y_0=0.0))
 
@@ -579,18 +588,20 @@ class EPSFBuilder:
 
         try:
             # find a new center position
-            xcenter_new, ycenter_new = centroid_func(epsf._data, mask=mask,
-                                                     oversampling=epsf.oversampling,
-                                                     shift_val=epsf._shift_val)
+            xcenter_new, ycenter_new = centroid_func(
+                epsf._data, mask=mask, oversampling=epsf.oversampling,
+                shift_val=epsf._shift_val)
         except TypeError:
-            pass
-        try:
-            xcenter_new, ycenter_new = centroid_func(epsf._data, mask=mask,
-                                                     oversampling=epsf.oversampling)
-        # default centroid_epsf overloaded, or otherwise a function that does not accept
-        # oversampling or shift_val, in which case just pass data and mask
-        except TypeError:
-            xcenter_new, ycenter_new = centroid_func(epsf._data, mask=mask)
+            # centroid_func doesn't accept oversampling and/or shift_val
+            # keywords - try oversampling alone
+            try:
+                xcenter_new, ycenter_new = centroid_func(
+                    epsf._data, mask=mask, oversampling=epsf.oversampling)
+            except TypeError:
+                # centroid_func doesn't accept oversampling and
+                # shift_val
+                xcenter_new, ycenter_new = centroid_func(epsf._data,
+                                                         mask=mask)
 
         # Calculate the shift; dx = i - x_star so if dx was positively
         # incremented then x_star was negatively incremented for a given i.
@@ -669,9 +680,11 @@ class EPSFBuilder:
 
             # smooth and recenter the ePSF
             epsf._data = self._smooth_epsf(epsf._data)
-            epsf._data = self._recenter_epsf(epsf, centroid_func=self.recentering_func)
+            epsf._data = self._recenter_epsf(
+                epsf, centroid_func=self.recentering_func)
 
-        # return the new ePSF object, but with undersampled grid pixel coordinates
+        # return the new ePSF object, but with undersampled grid pixel
+        # coordinates
         xcenter = (epsf._data.shape[1] - 1) / 2. / epsf.oversampling[0]
         ycenter = (epsf._data.shape[0] - 1) / 2. / epsf.oversampling[1]
 
