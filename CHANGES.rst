@@ -15,7 +15,7 @@ API changes
 
 - ``photutils.psf``
 
-  - Added ``output_cols`` as a parameter to ``BasicPSFPhotometry``,
+  - Added ``extra_output_cols`` as a parameter to ``BasicPSFPhotometry``,
     ``IterativelySubtractedPSFPhotometry`` and ``DAOPhotPSFPhotometry``. [#745]
 
 
