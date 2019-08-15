@@ -40,8 +40,9 @@ class EllipseFitter:
         The sample data to be fitted.
     """
 
-    def __init__(self, sample):
+    def __init__(self, sample, verbose=False):
         self._sample = sample
+        self._verbose = verbose
 
     def fit(self, conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,
             maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG, maxgerr=DEFAULT_MAXGERR,
@@ -142,7 +143,14 @@ class EllipseFitter:
         # these must be passed throughout the execution chain.
         fixed_parameters = self._sample.geometry.fix
 
+        if self._verbose:
+            print(".", end="")
+
         for i in range(maxit):
+
+            if self._verbose:
+                print(".", end="")
+
             # Force the sample to compute its gradient and associated values.
             sample.update(fixed_parameters)
 
@@ -162,6 +170,8 @@ class EllipseFitter:
             except Exception as e:
                 log.info(e)
                 sample.geometry.fix = fixed_parameters
+                if self._verbose:
+                    print("\r", end="")
                 return Isophote(sample, i + 1, False, 3)
 
             # Mask out coefficients that control fixed ellipse parameters.
@@ -187,6 +197,8 @@ class EllipseFitter:
                 # that a minimum of iterations has run.
                 if i >= minit - 1:
                     sample.update(fixed_parameters)
+                    if self._verbose:
+                        print("\r", end="")
                     return Isophote(sample, i + 1, True, 0)
 
             # it may not have converged yet, but the sample contains too
@@ -195,6 +207,8 @@ class EllipseFitter:
                 # when too many data points were flagged, return the
                 # best fit sample instead of the current one.
                 minimum_amplitude_sample.update(fixed_parameters)
+                if self._verbose:
+                    print("\r", end="")
                 return Isophote(minimum_amplitude_sample, i + 1, True, 1)
 
             # pick appropriate corrector code.
@@ -219,12 +233,16 @@ class EllipseFitter:
 
             if not proceed:
                 sample.update(fixed_parameters)
+                if self._verbose:
+                    print("\r", end="")
                 return Isophote(sample, i + 1, True, -1)
 
         # Got to the maximum number of iterations. Return with
         # code 2, and handle it as a valid isophote. Use the
         # best fit sample instead of the current one.
         minimum_amplitude_sample.update(fixed_parameters)
+        if self._verbose:
+            print("\r", end="")
         return Isophote(minimum_amplitude_sample, maxit, True, 2)
 
     @staticmethod

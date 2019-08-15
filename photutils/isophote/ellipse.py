@@ -16,6 +16,14 @@ from .integrator import BILINEAR
 from .isophote import Isophote, IsophoteList
 from .sample import CentralEllipseSample, EllipseSample
 
+# these are usd by verbose mode.
+REPORT_FORM = '{:8.2f}  {:8.2f}({:6.2f}) {:8.4f}({:3.2f}) {:4.1f}({:4.2f})' + \
+              '  {:5.2f}  {:4d}{:5d}    {:3d}    {:1d}'
+REPORT_HEADER = '   SMA        Intens.           Ellip.        PA       '+ \
+                'Grad.  Ndata Nflag Niter Stop' + '\n' + \
+                '                                                       ' + \
+                'r.err.'
+
 __all__ = ['Ellipse']
 
 
@@ -177,6 +185,7 @@ class Ellipse:
 
     def __init__(self, image, geometry=None, threshold=0.1):
         self.image = image
+        self._verbose = False
 
         if geometry is not None:
             self._geometry = geometry
@@ -204,7 +213,8 @@ class Ellipse:
                   maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG,
                   maxgerr=DEFAULT_MAXGERR, sclip=3., nclip=0,
                   integrmode=BILINEAR, linear=None, maxrit=None,
-                  fix_center=False, fix_pa=False, fix_eps=False):
+                  fix_center=False, fix_pa=False, fix_eps=False,
+                  verbose=False):
         # This parameter list is quite large and should in principle be
         # simplified by re-distributing these controls to somewhere else.
         # We keep this design though because it better mimics the flat
@@ -351,6 +361,13 @@ class Ellipse:
             The default is False.
         fix_eps : bool, optional
             Keep ellipticity of ellipse fixed during fit? The default is False.
+        verbose : bool, optional
+            Print progress information, and a one-line summary right after
+            the current ellipse finished fitting. The default is False. Notice
+            that some values reported at this stage may not be the final values
+            reported at the output isophote list. Check the stop code and other
+            output variables to have a sense of the reliability of the reported
+            values.
 
         Returns
         -------
@@ -358,6 +375,7 @@ class Ellipse:
             A list-like object of `~photutils.isophote.Isophote`
             instances, sorted by increasing semimajor axis length.
         """
+        self._verbose = verbose
 
         # multiple fitted isophotes will be stored here
         isophote_list = []
@@ -385,6 +403,9 @@ class Ellipse:
             # Note that this overrides the geometry instance for good.
             self._geometry.fix = np.array([fix_center, fix_center, fix_pa, fix_eps])
 
+        if self._verbose:
+            self._report(None)
+
         # first, go from initial sma outwards until
         # hitting one of several stopping criteria.
         noiter = False
@@ -399,6 +420,8 @@ class Ellipse:
                                          integrmode, linear, maxrit,
                                          noniterate=noiter,
                                          isophote_list=isophote_list)
+            if self._verbose:
+                self._report(isophote)
 
             # check for failed fit.
             if (isophote.stop_code < 0 or isophote.stop_code == 1):
@@ -457,6 +480,8 @@ class Ellipse:
                                          integrmode, linear, maxrit,
                                          going_inwards=True,
                                          isophote_list=isophote_list)
+            if self._verbose:
+                self._report(isophote)
 
             # if abnormal condition, fix isophote but keep going.
             if isophote.stop_code < 0:
@@ -620,7 +645,7 @@ class Ellipse:
             sample = EllipseSample(self.image, sma, astep=step, sclip=sclip,
                                    nclip=nclip, linear_growth=linear,
                                    geometry=geometry, integrmode=integrmode)
-            fitter = EllipseFitter(sample)
+            fitter = EllipseFitter(sample, verbose=self._verbose)
         else:
             # sma == 0 requires special handling
             sample = CentralEllipseSample(self.image, 0.0, geometry=geometry)
@@ -642,6 +667,26 @@ class Ellipse:
         isophote = Isophote(sample, 0, True, stop_code=4)
 
         return isophote
+
+    def _report(self, iso):
+        if iso is None:
+            print(REPORT_HEADER)
+        else:
+            # we want full control of the output format at stdout. So we forgo
+            # the __str__ function in the Isophote class, in favor of plain
+            # formatting here. __str__ relies on QTable formatting, which is
+            # not what we want here.
+            pa = iso.pa / 3.1415 * 180.
+            code = (5 if iso.stop_code < 0 else iso.stop_code)
+            grad_r_error = (0 if iso.grad_r_error is None else iso.grad_r_error)
+
+            print(REPORT_FORM.format(iso.sma,
+                          iso.intens, iso.int_err,
+                          iso.eps, iso.ellip_err,
+                          iso.pa, iso.pa_err,
+                          grad_r_error, iso.ndata,
+                          iso.nflag, iso.niter,
+                          code))
 
     @staticmethod
     def _fix_last_isophote(isophote_list, index):
