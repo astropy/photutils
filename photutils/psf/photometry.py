@@ -97,8 +97,9 @@ class BasicPSFPhotometry:
         keyword.  For analytical PSF models, alternatively you may
         define a FWHM attribute on your input psf_model.
     extra_output_cols : list of str, optional
-        List of additional columns for parameters derived by any of the intermediate
-        fitting steps (e.g., ``finder``), such as roundness or sharpness.
+        List of additional columns for parameters derived by any of the
+        intermediate fitting steps (e.g., ``finder``), such as roundness or
+        sharpness.
 
     Notes
     -----
@@ -225,8 +226,8 @@ class BasicPSFPhotometry:
             the initial guess for any parameters of the ``psf_model``
             model that are not fixed. If ``init_guesses`` supplied with
             ``extra_output_cols`` the initial values are used; if the columns
-            specified in ``extra_output_cols`` are not given in ``init_guesses``
-            then NaNs will be returned.
+            specified in ``extra_output_cols`` are not given in
+            ``init_guesses`` then NaNs will be returned.
 
         Returns
         -------
@@ -293,13 +294,14 @@ class BasicPSFPhotometry:
                 init_guesses['flux_0'] = aperture_photometry(
                     image, apertures)['aperture_sum']
 
-            # if extra_output_cols have been given, check whether init_guesses was
-            # supplied with extra_output_cols pre-attached and populate columns not
-            # given with NaNs
+            # if extra_output_cols have been given, check whether init_guesses
+            # was supplied with extra_output_cols pre-attached and populate
+            # columns not given with NaNs
             if self._extra_output_cols is not None:
                 for col_name in self._extra_output_cols:
                     if col_name not in init_guesses.colnames:
-                        init_guesses[col_name] = np.full(len(init_guesses), np.nan)
+                        init_guesses[col_name] = np.full(len(init_guesses),
+                                                         np.nan)
         else:
             if self.finder is None:
                 raise ValueError('Finder cannot be None if init_guesses are '
@@ -322,8 +324,9 @@ class BasicPSFPhotometry:
                                            sources['ycentroid'],
                                            sources['aperture_flux']])
 
-                # Currently only needed for the finder, as group_maker and nstar
-                # return the original Table with new columns, unlike finder
+                # Currently only needed for the finder, as group_maker and
+                # nstar return the original Table with new columns, unlike
+                # finder
                 self._get_additional_columns(sources, init_guesses)
 
         self._define_fit_param_names()
@@ -525,7 +528,8 @@ class BasicPSFPhotometry:
                                                            '_' + str(i)).value
         else:
             for param_tab_name, param_name in self._pars_to_output.items():
-                param_tab[param_tab_name] = getattr(fit_model, param_name).value
+                param_tab[param_tab_name] = getattr(fit_model,
+                                                    param_name).value
 
         return param_tab
 
@@ -599,8 +603,9 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         loop will never end if the PSF has structure that causes
         subtraction to create new sources infinitely.
     extra_output_cols : list of str, optional
-        List of additional columns for parameters derived by any of the intermediate
-        fitting steps (e.g., ``finder``), such as roundness or sharpness.
+        List of additional columns for parameters derived by any of the
+        intermediate fitting steps (e.g., ``finder``), such as roundness or
+        sharpness.
 
     Notes
     -----
@@ -687,8 +692,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             the initial guess for any parameters of the ``psf_model``
             model that are not fixed. If ``init_guesses`` supplied with
             ``extra_output_cols`` the initial values are used; if the columns
-            specified in ``extra_output_cols`` are not given in ``init_guesses``
-            then NaNs will be returned.
+            specified in ``extra_output_cols`` are not given in
+            ``init_guesses`` then NaNs will be returned.
 
         Returns
         -------
@@ -896,8 +901,9 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
         estimates for the fluxes of sources. If ``None``, one FWHM will
         be used if it can be determined from the ```psf_model``.
     extra_output_cols : list of str, optional
-        List of additional columns for parameters derived by any of the intermediate
-        fitting steps (e.g., ``finder``), such as roundness or sharpness.
+        List of additional columns for parameters derived by any of the
+        intermediate fitting steps (e.g., ``finder``), such as roundness or
+        sharpness.
 
     Notes
     -----
