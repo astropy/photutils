@@ -38,6 +38,8 @@ class EllipseFitter:
     ----------
     sample : `~photutils.isophote.EllipseSample` instance
         The sample data to be fitted.
+    verbose : bool, optional
+        Print progress information. The default is False.
     """
 
     def __init__(self, sample, verbose=False):
