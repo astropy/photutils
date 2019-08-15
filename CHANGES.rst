@@ -9,7 +9,7 @@ New Features
 
 - ``photutils.isophote``
 
-  - Added verbose mode to isophote fitting [#]
+  - Added verbose mode to isophote fitting [#947]
   
 Bug Fixes
 ^^^^^^^^^
