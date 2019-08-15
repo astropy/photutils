@@ -1,3 +1,6 @@
+scanner:
+    linter: flake8
+
 flake8:
   max-line-length: 120 # Default is 79 in PEP8
 
