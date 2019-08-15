@@ -674,6 +674,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         else:
             if self.bkg_estimator is not None:
                 self._residual_image = image - self.bkg_estimator(image)
+            else:
+                self._residual_image = image
 
             if self.aperture_radius is None:
                 if hasattr(self.psf_model, 'fwhm'):
