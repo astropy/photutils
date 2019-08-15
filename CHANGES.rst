@@ -15,6 +15,8 @@ Bug Fixes
   - Fix to ``IterativelySubtractedPSFPhotometry`` where the residual
     image was not initialized when ``bkg_estimator`` was not
     supplied. [#942]
+    
+- ``photutils.isophote``
 
   - Added verbose mode to isophote fitting [#]
 
