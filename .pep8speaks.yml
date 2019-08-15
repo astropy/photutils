@@ -2,7 +2,7 @@ scanner:
     linter: flake8
 
 flake8:
-  max-line-length: 100  # Default is 79 in PEP8
+  max-line-length: 79  # Using the default of 79 in PEP8
 
   ignore:
     - E741  # l and b are valid variable names for the galactic frame
