@@ -7,6 +7,10 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.isophote``
+
+  - Added verbose mode to isophote fitting [#]
+  
 Bug Fixes
 ^^^^^^^^^
 
@@ -16,9 +20,7 @@ Bug Fixes
     image was not initialized when ``bkg_estimator`` was not
     supplied. [#942]
     
-- ``photutils.isophote``
 
-  - Added verbose mode to isophote fitting [#]
 
 API changes
 ^^^^^^^^^^^
