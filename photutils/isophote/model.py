@@ -12,7 +12,8 @@ from .geometry import EllipseGeometry
 __all__ = ['build_ellipse_model']
 
 
-def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
+def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False,
+                        verbose=False):
     """
     Build a model elliptical galaxy image from a list of isophotes.
 
@@ -41,7 +42,8 @@ def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
         Whether to add the higher-order harmonics (i.e. ``a3``, ``b3``,
         ``a4``, and ``b4``; see `~photutils.isophote.Isophote` for
         details) to the result.
-
+    verbose : bool, optional
+        Print progress information. The default is False.
     Returns
     -------
     result : 2D `~numpy.ndarray`
@@ -100,6 +102,10 @@ def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
     # for index in range(len(finely_spaced_sma)):
     for index in range(1, len(finely_spaced_sma)):
         sma0 = finely_spaced_sma[index]
+
+        if verbose:
+            print('SMA = {:7.2f}\r'.format(sma0), end='')
+
         eps = eps_array[index]
         pa = pa_array[index]
         x0 = x0_array[index]

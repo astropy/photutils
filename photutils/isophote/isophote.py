@@ -761,7 +761,7 @@ def _isophote_list_to_table(isophote_list):
     properties['y0'] = 'y0'
     properties['y0_err'] = 'y0_err'
     properties['ndata'] = 'ndata'
-    properties['nflag'] = 'flag'
+    properties['nflag'] = 'nflag'
     properties['niter'] = 'niter'
     properties['stop_code'] = 'stop_code'
 
