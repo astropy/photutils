@@ -16,6 +16,8 @@ Bug Fixes
     image was not initialized when ``bkg_estimator`` was not
     supplied. [#942]
 
+  - Added verbose mode to isophote fitting [#]
+
 API changes
 ^^^^^^^^^^^
 
