@@ -4,6 +4,12 @@
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.psf``
+
+  - Fix to ``IterativelySubtractedPSFPhotometry`` where the residual
+    image was not initialized when ``bkg_estimator`` was not supplied.
+    [#942]
+
 
 0.7 (2019-08-14)
 ----------------
