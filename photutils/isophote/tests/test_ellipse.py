@@ -55,7 +55,8 @@ class TestEllipse:
 
     def test_basic(self):
         ellipse = Ellipse(self.data)
-        isophote_list = ellipse.fit_image()
+        # use verbose mode to increase code coverage
+        isophote_list = ellipse.fit_image(verbose=True)
 
         assert isinstance(isophote_list, IsophoteList)
         assert len(isophote_list) > 1
