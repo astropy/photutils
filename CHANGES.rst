@@ -49,6 +49,8 @@ New Features
   - Added the ability to individually fix the ellipse-fitting
     parameters. [#922]
 
+  - Added verbose mode to fitting and model building [#943]
+
 - ``photutils.psf``
 
   - Added new centroiding function ``centroid_epsf``. [#816]
