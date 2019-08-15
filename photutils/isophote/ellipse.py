@@ -19,7 +19,7 @@ from .sample import CentralEllipseSample, EllipseSample
 # these are usd by verbose mode.
 REPORT_FORM = '{:8.2f}  {:8.2f}({:6.2f}) {:8.4f}({:3.2f}) {:4.1f}({:4.2f})' + \
               '  {:5.2f}  {:4d}{:5d}    {:3d}    {:1d}'
-REPORT_HEADER = '   SMA        Intens.           Ellip.        PA       '+ \
+REPORT_HEADER = '   SMA        Intens.           Ellip.        PA       ' + \
                 'Grad.  Ndata Nflag Niter Stop' + '\n' + \
                 '                                                       ' + \
                 'r.err.'
@@ -678,15 +678,16 @@ class Ellipse:
             # not what we want here.
             pa = iso.pa / 3.1415 * 180.
             code = (5 if iso.stop_code < 0 else iso.stop_code)
-            grad_r_error = (0 if iso.grad_r_error is None else iso.grad_r_error)
+            grad_r_error = (0 if iso.grad_r_error is None else
+                            iso.grad_r_error)
 
             print(REPORT_FORM.format(iso.sma,
-                          iso.intens, iso.int_err,
-                          iso.eps, iso.ellip_err,
-                          iso.pa, iso.pa_err,
-                          grad_r_error, iso.ndata,
-                          iso.nflag, iso.niter,
-                          code))
+                                     iso.intens, iso.int_err,
+                                     iso.eps, iso.ellip_err,
+                                     iso.pa, iso.pa_err,
+                                     grad_r_error, iso.ndata,
+                                     iso.nflag, iso.niter,
+                                     code))
 
     @staticmethod
     def _fix_last_isophote(isophote_list, index):
