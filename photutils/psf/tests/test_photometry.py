@@ -606,17 +606,17 @@ def test_psf_fitting_data_on_edge():
 
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize("sigma_psf, sources", [(sigma_psfs[2], sources3)])
-def test_psf_output_cols(sigma_psf, sources):
+def test_psf_extra_output_cols(sigma_psf, sources):
     """
-    Test the handling of a non-None output_cols
+    Test the handling of a non-None extra_output_cols
     """
 
     psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
     tshape = (32, 32)
     image = (make_gaussian_prf_sources_image(tshape, sources) +
-             make_noise_image(tshape, type='poisson', mean=6.,
+             make_noise_image(tshape, distribution='poisson', mean=6.,
                               random_state=1) +
-             make_noise_image(tshape, type='gaussian', mean=0.,
+             make_noise_image(tshape, distribution='gaussian', mean=0.,
                               stddev=2., random_state=1))
 
     init_guess1 = None
@@ -630,13 +630,17 @@ def test_psf_output_cols(sigma_psf, sources):
         dao_phot = DAOPhotPSFPhotometry(crit_separation=8, threshold=40,
                                         fwhm=2*2*np.sqrt(2*np.log(2)), psf_model=psf_model,
                                         fitshape=(11, 11),
-                                        output_cols=['sharpness', 'roundness1', 'roundness2'])
+                                        extra_output_cols=['sharpness', 'roundness1',
+                                                           'roundness2'])
         phot_results = dao_phot(image, init_guesses=init_guesses)
+        # test that the original required columns are also passed back, as well
+        # as extra_output_cols
+        assert np.all([name in phot_results.colnames for name in ['x_0', 'y_0']])
         assert np.all([name in phot_results.colnames for name in ['sharpness', 'roundness1',
                                                                   'roundness2']])
         assert len(phot_results) == 2
-        # checks to verify that half-passing init_guesses results in NaN output for output_cols
-        # not passed as initial guesses
+        # checks to verify that half-passing init_guesses results in NaN output for
+        # extra_output_cols not passed as initial guesses
         if init_guesses == init_guess3:
             assert(np.all(np.all(np.isnan(phot_results[o])) for o in ['sharpness', 'roundness1',
                                                                       'roundness2']))

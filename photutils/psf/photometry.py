@@ -96,7 +96,7 @@ class BasicPSFPhotometry:
         (e.g. an `EPSFModel`), you must input the ``aperture_radius``
         keyword.  For analytical PSF models, alternatively you may
         define a FWHM attribute on your input psf_model.
-    output_cols : list of str, optional
+    extra_output_cols : list of str, optional
         List of additional columns for parameters derived by any of the intermediate
         fitting steps (e.g., ``finder``), such as roundness or sharpness.
 
@@ -123,7 +123,7 @@ class BasicPSFPhotometry:
 
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
                  finder=None, fitter=LevMarLSQFitter(), aperture_radius=None,
-                 output_cols=None):
+                 extra_output_cols=None):
         self.group_maker = group_maker
         self.bkg_estimator = bkg_estimator
         self.psf_model = psf_model
@@ -134,7 +134,7 @@ class BasicPSFPhotometry:
         self._pars_to_set = None
         self._pars_to_output = None
         self._residual_image = None
-        self._output_cols = output_cols
+        self._extra_output_cols = extra_output_cols
 
     @property
     def fitshape(self):
@@ -223,9 +223,10 @@ class BasicPSFPhotometry:
             used to estimate initial values for the fluxes. Additional
             columns of the form '<parametername>_0' will be used to set
             the initial guess for any parameters of the ``psf_model``
-            model that are not fixed. If ``init_guesses`` supplied with ``output_cols``
-            the initial values are used; if the columns specified in ``output_cols`` are
-            not given in ``init_guesses`` then NaNs will be returned.
+            model that are not fixed. If ``init_guesses`` supplied with
+            ``extra_output_cols`` the initial values are used; if the columns
+            specified in ``extra_output_cols`` are not given in ``init_guesses``
+            then NaNs will be returned.
 
         Returns
         -------
@@ -292,10 +293,11 @@ class BasicPSFPhotometry:
                 init_guesses['flux_0'] = aperture_photometry(
                     image, apertures)['aperture_sum']
 
-            # if output_cols have been given, check whether init_guesses was supplied with
-            # output_cols pre-attached and populate columns not given with NaNs
-            if self._output_cols is not None:
-                for col_name in self._output_cols:
+            # if extra_output_cols have been given, check whether init_guesses was
+            # supplied with extra_output_cols pre-attached and populate columns not
+            # given with NaNs
+            if self._extra_output_cols is not None:
+                for col_name in self._extra_output_cols:
                     if col_name not in init_guesses.colnames:
                         init_guesses[col_name] = np.full(len(init_guesses), np.nan)
         else:
@@ -424,8 +426,8 @@ class BasicPSFPhotometry:
 
         """
 
-        if self._output_cols is not None:
-            for col_name in self._output_cols:
+        if self._extra_output_cols is not None:
+            for col_name in self._extra_output_cols:
                 if col_name in in_table.colnames:
                     out_table[col_name] = in_table[col_name]
 
@@ -596,7 +598,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         stars remain.  Note that in this case it is *possible* that the
         loop will never end if the PSF has structure that causes
         subtraction to create new sources infinitely.
-    output_cols : list of str, optional
+    extra_output_cols : list of str, optional
         List of additional columns for parameters derived by any of the intermediate
         fitting steps (e.g., ``finder``), such as roundness or sharpness.
 
@@ -617,10 +619,10 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
 
     def __init__(self, group_maker, bkg_estimator, psf_model, fitshape,
                  finder, fitter=LevMarLSQFitter(), niters=3,
-                 aperture_radius=None, output_cols=None):
+                 aperture_radius=None, extra_output_cols=None):
 
         super().__init__(group_maker, bkg_estimator, psf_model, fitshape,
-                         finder, fitter, aperture_radius, output_cols)
+                         finder, fitter, aperture_radius, extra_output_cols)
         self.niters = niters
 
     @property
@@ -683,9 +685,10 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
             used to estimate initial values for the fluxes. Additional
             columns of the form '<parametername>_0' will be used to set
             the initial guess for any parameters of the ``psf_model``
-            model that are not fixed. If ``init_guesses`` supplied with ``output_cols``
-            the initial values are used; if the columns specified in ``output_cols`` are
-            not given in ``init_guesses`` then NaNs will be returned.
+            model that are not fixed. If ``init_guesses`` supplied with
+            ``extra_output_cols`` the initial values are used; if the columns
+            specified in ``extra_output_cols`` are not given in ``init_guesses``
+            then NaNs will be returned.
 
         Returns
         -------
@@ -892,7 +895,7 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
         The radius (in units of pixels) used to compute initial
         estimates for the fluxes of sources. If ``None``, one FWHM will
         be used if it can be determined from the ```psf_model``.
-    output_cols : list of str, optional
+    extra_output_cols : list of str, optional
         List of additional columns for parameters derived by any of the intermediate
         fitting steps (e.g., ``finder``), such as roundness or sharpness.
 
@@ -915,7 +918,7 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
                  sigma=3., ratio=1.0, theta=0.0, sigma_radius=1.5,
                  sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0,
                  fitter=LevMarLSQFitter(),
-                 niters=3, aperture_radius=None, output_cols=None):
+                 niters=3, aperture_radius=None, extra_output_cols=None):
 
         self.crit_separation = crit_separation
         self.threshold = threshold
@@ -940,4 +943,5 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
         super().__init__(group_maker=group_maker, bkg_estimator=bkg_estimator,
                          psf_model=psf_model, fitshape=fitshape,
                          finder=finder, fitter=fitter, niters=niters,
-                         aperture_radius=aperture_radius, output_cols=output_cols)
+                         aperture_radius=aperture_radius,
+                         extra_output_cols=extra_output_cols)
