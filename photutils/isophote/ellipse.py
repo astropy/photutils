@@ -684,7 +684,7 @@ class Ellipse:
             print(REPORT_FORM.format(iso.sma,
                                      iso.intens, iso.int_err,
                                      iso.eps, iso.ellip_err,
-                                     iso.pa, iso.pa_err,
+                                     pa, iso.pa_err,
                                      grad_r_error, iso.ndata,
                                      iso.nflag, iso.niter,
                                      code))
