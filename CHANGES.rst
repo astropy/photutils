@@ -19,6 +19,11 @@ Bug Fixes
 API changes
 ^^^^^^^^^^^
 
+- ``photutils.psf``
+
+  - Added ``extra_output_cols`` as a parameter to ``BasicPSFPhotometry``,
+    ``IterativelySubtractedPSFPhotometry`` and ``DAOPhotPSFPhotometry``. [#745]
+
 
 0.7 (2019-08-14)
 ----------------

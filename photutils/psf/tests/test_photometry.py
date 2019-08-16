@@ -602,3 +602,52 @@ def test_psf_fitting_data_on_edge():
     for n in ['x', 'y', 'flux']:
         assert_allclose(outtab[n + '_0'], outtab[n + '_fit'],
                         rtol=0.05, atol=0.1)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.parametrize("sigma_psf, sources", [(sigma_psfs[2], sources3)])
+def test_psf_extra_output_cols(sigma_psf, sources):
+    """
+    Test the handling of a non-None extra_output_cols
+    """
+
+    psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
+    tshape = (32, 32)
+    image = (make_gaussian_prf_sources_image(tshape, sources) +
+             make_noise_image(tshape, distribution='poisson', mean=6.,
+                              random_state=1) +
+             make_noise_image(tshape, distribution='gaussian', mean=0.,
+                              stddev=2., random_state=1))
+
+    init_guess1 = None
+    init_guess2 = Table(names=['x_0', 'y_0', 'sharpness', 'roundness1',
+                               'roundness2'],
+                        data=[[17.4], [16], [0.4], [0], [0]])
+    init_guess3 = Table(names=['x_0', 'y_0'],
+                        data=[[17.4], [16]])
+    init_guess4 = Table(names=['x_0', 'y_0', 'sharpness'],
+                        data=[[17.4], [16], [0.4]])
+    for init_guesses in [init_guess1, init_guess2, init_guess3]:
+        dao_phot = DAOPhotPSFPhotometry(crit_separation=8, threshold=40,
+                                        fwhm=2*2*np.sqrt(2*np.log(2)),
+                                        psf_model=psf_model, fitshape=(11, 11),
+                                        extra_output_cols=['sharpness',
+                                                           'roundness1',
+                                                           'roundness2'])
+        phot_results = dao_phot(image, init_guesses=init_guesses)
+        # test that the original required columns are also passed back, as well
+        # as extra_output_cols
+        assert np.all([name in phot_results.colnames for name in
+                       ['x_0', 'y_0']])
+        assert np.all([name in phot_results.colnames for name in
+                       ['sharpness', 'roundness1', 'roundness2']])
+        assert len(phot_results) == 2
+        # checks to verify that half-passing init_guesses results in NaN output
+        # for extra_output_cols not passed as initial guesses
+        if init_guesses == init_guess3:
+            assert(np.all(np.all(np.isnan(phot_results[o])) for o in
+                   ['sharpness', 'roundness1', 'roundness2']))
+        if init_guesses == init_guess4:
+            assert(np.all(np.all(np.isnan(phot_results[o])) for o in
+                   ['roundness1', 'roundness2']))
+            assert(np.all(~np.isnan(phot_results['sharpness'])))
