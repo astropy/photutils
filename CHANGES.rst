@@ -4,6 +4,10 @@
 General
 ^^^^^^^
 
+- The minimum required python version is >= 3.6. [#952]
+
+- The minimum required astropy version is >= 3.2. [#952]
+
 New Features
 ^^^^^^^^^^^^
 
