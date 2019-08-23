@@ -6,16 +6,11 @@ RMS in an array of any dimension.
 
 import abc
 
-from astropy.stats import biweight_location, biweight_scale, mad_std
-from astropy.version import version as astropy_version
+from astropy.stats import (biweight_location, biweight_scale, mad_std,
+                           SigmaClip)
 import numpy as np
 
-if astropy_version < '3.1':
-    from astropy.stats import SigmaClip
-    SIGMA_CLIP = SigmaClip(sigma=3.0, iters=10)
-else:
-    from ..extern.sigma_clipping import SigmaClip
-    SIGMA_CLIP = SigmaClip(sigma=3.0, maxiters=10)
+SIGMA_CLIP = SigmaClip(sigma=3.0, maxiters=10)
 
 __all__ = ['BackgroundBase', 'BackgroundRMSBase', 'MeanBackground',
            'MedianBackground', 'ModeEstimatorBackground',

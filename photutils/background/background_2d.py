@@ -6,20 +6,15 @@ RMS in an image.
 
 from itertools import product
 
+from astropy.stats import SigmaClip
 from astropy.utils import lazyproperty
-from astropy.version import version as astropy_version
 import numpy as np
 from numpy.lib.index_tricks import index_exp
 
 from .core import SExtractorBackground, StdBackgroundRMS
 from ..utils import ShepardIDWInterpolator
 
-if astropy_version < '3.1':
-    from astropy.stats import SigmaClip
-    SIGMA_CLIP = SigmaClip(sigma=3.0, iters=10)
-else:
-    from ..extern.sigma_clipping import SigmaClip
-    SIGMA_CLIP = SigmaClip(sigma=3.0, maxiters=10)
+SIGMA_CLIP = SigmaClip(sigma=3.0, maxiters=10)
 
 __all__ = ['BkgZoomInterpolator', 'BkgIDWInterpolator', 'Background2D']
 
