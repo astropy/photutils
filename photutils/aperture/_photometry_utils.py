@@ -3,73 +3,8 @@
 This module contains tools to validate and handle photometry inputs.
 """
 
-import warnings
 
 import numpy as np
-from astropy.io import fits
-import astropy.units as u
-from astropy.utils.exceptions import (AstropyDeprecationWarning,
-                                      AstropyUserWarning)
-from astropy.wcs import WCS
-
-
-def _handle_hdu_input(data):  # pragma: no cover
-    """
-    Convert FITS HDU ``data`` to a `~numpy.ndarray` (and optional unit).
-
-    Used to parse ``data`` input to `aperture_photometry`.
-
-    Parameters
-    ----------
-    data : array_like, `~astropy.units.Quantity`, `~astropy.io.fits.ImageHDU`, or `~astropy.io.fits.HDUList`
-        The 2D data array.
-
-    Returns
-    -------
-    data : `~numpy.ndarray`
-        The 2D data array.
-
-    unit : `~astropy.unit.Unit` or `None`
-        The unit for the data.
-    """
-
-    bunit = None
-
-    if isinstance(data, (fits.PrimaryHDU, fits.ImageHDU, fits.HDUList)):
-        warnings.warn('"astropy.io.fits.PrimaryHDU", '
-                      '"astropy.io.fits.ImageHDU", and '
-                      '"astropy.io.fits.HDUList" inputs are deprecated as of '
-                      'v0.7 and will not be allowed in future versions.',
-                      AstropyDeprecationWarning)
-
-    if isinstance(data, fits.HDUList):
-        for i, hdu in enumerate(data):
-            if hdu.data is not None:
-                warnings.warn('Input data is a HDUList object.  Doing '
-                              'photometry only on the {0} HDU.'
-                              .format(i), AstropyUserWarning)
-                data = hdu
-                break
-
-    if isinstance(data, (fits.PrimaryHDU, fits.ImageHDU)):
-        header = data.header
-        data = data.data
-
-        if 'BUNIT' in header:
-            bunit = u.Unit(header['BUNIT'], parse_strict='warn')
-            if isinstance(bunit, u.UnrecognizedUnit):
-                warnings.warn('The BUNIT in the header of the input data is '
-                              'not parseable as a valid unit.',
-                              AstropyUserWarning)
-
-    try:
-        fits_wcs = WCS(header)
-    except Exception:
-        # A valid WCS was not found in the header.  Let the calling
-        # application raise an exception if it needs a WCS.
-        fits_wcs = None
-
-    return data, bunit, fits_wcs
 
 
 def _validate_inputs(data, error):
@@ -95,9 +30,9 @@ def _validate_inputs(data, error):
     return data, error
 
 
-def _handle_units(data, error, unit):
+def _handle_units(data, error):
     """
-    Handle Quantity inputs and the ``unit`` keyword.
+    Handle Quantity inputs.
 
     Any units on ``data`` and ``error` are removed.  ``data`` and
     ``error`` are returned as `~numpy.ndarray`.  The returned ``unit``
@@ -107,13 +42,6 @@ def _handle_units(data, error, unit):
     `PixelAperture.do_photometry`.
     """
 
-    if unit is not None:
-        unit = u.Unit(unit, parse_strict='warn')
-        if isinstance(unit, u.UnrecognizedUnit):
-            warnings.warn('The input unit is not parseable as a valid '
-                          'unit.', AstropyUserWarning)
-            unit = None
-
     # check Quantity inputs
     inputs = (data, error)
     has_unit = [hasattr(x, 'unit') for x in inputs if x is not None]
@@ -122,21 +50,15 @@ def _handle_units(data, error, unit):
         raise ValueError('If data or error has units, then they both must '
                          'have the same units.')
 
-    # handle Quantity inputs
+    # strip data and error units for performance
     if use_units:
-        if unit is not None and data.unit != unit:
-            warnings.warn('The input unit does not agree with the data '
-                          'unit.  Using the data unit.', AstropyUserWarning)
-            unit = data.unit
-
-        # strip data and error units for performance
         unit = data.unit
         data = data.value
 
         if error is not None:
-            if unit != error.unit:
-                raise ValueError('data and error must have the same units.')
             error = error.value
+    else:
+        unit = None
 
     return data, error, unit
 
