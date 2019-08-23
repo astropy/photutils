@@ -9,14 +9,14 @@ import warnings
 from astropy.coordinates import SkyCoord
 from astropy.table import QTable
 import astropy.units as u
-from astropy.utils import deprecated, lazyproperty
+from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from .core import SegmentationImage
 from ..aperture import BoundingBox
+from ..utils._convolution import _filter_data
 from ..utils._moments import _moments, _moments_central
-from ..utils.convolution import _filter_data
 from ..utils._wcs_helpers import _pixel_to_world
 
 __all__ = ['SourceProperties', 'source_properties', 'SourceCatalog']
@@ -520,21 +520,6 @@ class SourceProperties:
                                       mask=self._total_mask)
 
     @lazyproperty
-    @deprecated('0.7')
-    def values(self):
-        """
-        A 1D `~numpy.ndarray` of the unmasked ``data`` values within the
-        source segment.
-
-        Non-finite pixel values (NaN and +/- inf) are excluded
-        (automatically masked).
-
-        If all pixels are masked, ``values`` will be an empty array.
-        """
-
-        return self._data_values  # pragma: no cover
-
-    @lazyproperty
     def _data_values(self):
         """
         A 1D `~numpy.ndarray` of the unmasked ``data`` values within the
@@ -579,22 +564,6 @@ class SourceProperties:
         yindices, xindices = np.nonzero(self.data_cutout_ma)
         return (yindices + self.slices[0].start,
                 xindices + self.slices[1].start)
-
-    @lazyproperty
-    @deprecated('0.7', 'indices')
-    def coords(self):
-        """
-        A tuple of two `~numpy.ndarray` containing the ``y`` and ``x``
-        pixel indices, respectively, of unmasked pixels within the
-        source segment.
-
-        Non-finite ``data`` values (NaN and +/- inf) are excluded.
-
-        If all ``data`` pixels are masked, a tuple of two empty arrays
-        will be returned.
-        """
-
-        return self.indices  # pragma: no cover
 
     @lazyproperty
     def moments(self):
@@ -738,50 +707,6 @@ class SourceProperties:
         """
 
         return (self.bbox.iymax - 1) * u.pix
-
-    @lazyproperty
-    @deprecated('0.7', 'bbox_xmin')
-    def xmin(self):
-        """
-        The minimum ``x`` pixel location within the minimal bounding box
-        containing the source segment.
-        """
-
-        return self.bbox_xmin  # pragma: no cover
-
-    @lazyproperty
-    @deprecated('0.7', 'bbox_xmax')
-    def xmax(self):
-        """
-        The maximum ``x`` pixel location within the minimal bounding box
-        containing the source segment.
-
-        Note that this value is inclusive, unlike numpy slice indices.
-        """
-
-        return self.bbox_xmax  # pragma: no cover
-
-    @lazyproperty
-    @deprecated('0.7', 'bbox_ymin')
-    def ymin(self):
-        """
-        The minimum ``y`` pixel location within the minimal bounding box
-        containing the source segment.
-        """
-
-        return self.bbox_ymin  # pragma: no cover
-
-    @lazyproperty
-    @deprecated('0.7', 'bbox_ymax')
-    def ymax(self):
-        """
-        The maximum``y`` pixel location within the minimal bounding box
-        containing the source segment.
-
-        Note that this value is inclusive, unlike numpy slice indices.
-        """
-
-        return self.bbox_ymax  # pragma: no cover
 
     @lazyproperty
     def sky_bbox_ll(self):

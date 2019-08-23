@@ -12,7 +12,6 @@ from astropy.io import fits
 from astropy.modeling import models
 from astropy.table import Table
 import astropy.units as u
-from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.version import version as astropy_version
 from astropy.wcs import WCS
 import numpy as np
@@ -85,7 +84,6 @@ def apply_poisson_noise(data, random_state=None):
     return prng.poisson(data)
 
 
-@deprecated_renamed_argument('type', 'distribution', 0.7)
 def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
                      random_state=None):
     """

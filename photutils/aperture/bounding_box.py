@@ -5,7 +5,6 @@ This module defines a class for a rectangular bounding box.
 
 from astropy.io.fits.util import _is_int
 from astropy.utils import deprecated
-from astropy.utils.decorators import deprecated_renamed_argument
 import numpy as np
 
 __all__ = ['BoundingBox']
@@ -260,7 +259,6 @@ class BoundingBox:
 
         return RectangularAperture(xypos, w=width, h=height, theta=0.)
 
-    @deprecated_renamed_argument('ax', 'axes', '0.7')
     def plot(self, axes=None, origin=(0, 0), **kwargs):
         """
         Plot the `BoundingBox` on a matplotlib `~matplotlib.axes.Axes`

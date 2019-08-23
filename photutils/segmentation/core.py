@@ -6,7 +6,7 @@ segment within a segmentation image.
 
 from copy import deepcopy
 
-from astropy.utils import lazyproperty, deprecated
+from astropy.utils import lazyproperty
 import numpy as np
 
 from ..aperture import BoundingBox
@@ -533,31 +533,6 @@ class SegmentationImage:
             else:
                 raise ValueError('labels {} are invalid'.format(bad_labels))
 
-    @deprecated('0.7', alternative='make_cmap')
-    def cmap(self, background_color='#000000', random_state=None):
-        """
-        Define a matplotlib colormap consisting of (random) muted
-        colors.
-
-        This is very useful for plotting the segmentation array.
-
-        Parameters
-        ----------
-        background_color : str or `None`, optional
-            A hex string in the "#rrggbb" format defining the first
-            color in the colormap.  This color will be used as the
-            background color (label = 0) when plotting the segmentation
-            array.  The default is black ('#000000').
-
-        random_state : int or `~numpy.random.mtrand.RandomState`, optional
-            The pseudo-random number generator state used for random
-            sampling.  Separate function calls with the same
-            ``random_state`` will generate the same colormap.
-        """
-
-        return self.make_cmap(background_color=background_color,
-                              random_state=random_state)  # pragma: no cover
-
     def make_cmap(self, background_color='#000000', random_state=None):
         """
         Define a matplotlib colormap consisting of (random) muted
@@ -592,25 +567,6 @@ class SegmentationImage:
             cmap.colors[0] = colors.hex2color(background_color)
 
         return cmap
-
-    @deprecated('0.7', alternative='reassign_labels')
-    def relabel(self, labels, new_label):
-        """
-        Reassign one or more label numbers.
-
-        Multiple input ``labels`` will all be reassigned to the same
-        ``new_label`` number.
-
-        Parameters
-        ----------
-        labels : int, array-like (1D, int)
-            The label numbers(s) to reassign.
-
-        new_label : int
-            The reassigned label number.
-        """
-
-        self.reassign_label(labels, new_label)  # pragma: no cover
 
     def reassign_label(self, label, new_label, relabel=False):
         """

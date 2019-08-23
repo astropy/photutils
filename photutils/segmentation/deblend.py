@@ -11,7 +11,7 @@ import numpy as np
 
 from .core import SegmentationImage
 from .detect import _make_binary_structure, _detect_sources
-from ..utils.convolution import _filter_data
+from ..utils._convolution import _filter_data
 from ..utils.exceptions import NoDetectionsWarning
 
 __all__ = ['deblend_sources']

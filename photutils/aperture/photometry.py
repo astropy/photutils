@@ -10,44 +10,36 @@ import numpy as np
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable
 import astropy.units as u
-from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
 from .core import Aperture, SkyAperture
-from ._photometry_utils import (_handle_hdu_input, _handle_units,
-                                _prepare_photometry_data, _validate_inputs)
-from ..utils.misc import _get_version_info
+from ._photometry_utils import (_handle_units, _prepare_photometry_data,
+                                _validate_inputs)
+from ..utils._misc import _get_version_info
 
 __all__ = ['aperture_photometry']
 
 
-@deprecated_renamed_argument('unit', None, '0.7')
 def aperture_photometry(data, apertures, error=None, mask=None,
-                        method='exact', subpixels=5, unit=None, wcs=None):
+                        method='exact', subpixels=5, wcs=None):
     """
     Perform aperture photometry on the input data by summing the flux
     within the given aperture(s).
 
     Parameters
     ----------
-    data : array_like, `~astropy.units.Quantity`, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`, or `~astropy.nddata.NDData`
+    data : array_like, `~astropy.units.Quantity`, `~astropy.nddata.NDData`
         The 2D array on which to perform photometry. ``data`` should be
-        background-subtracted.  Units can be used during the photometry,
-        either provided with the data (e.g. `~astropy.units.Quantity` or
-        `~astropy.nddata.NDData` inputs) or the ``unit`` keyword.  If
-        ``data`` is an `~astropy.io.fits.ImageHDU` or
-        `~astropy.io.fits.HDUList`, the unit is determined from the
-        ``'BUNIT'`` header keyword.  `~astropy.io.fits.ImageHDU` or
-        `~astropy.io.fits.HDUList` inputs were deprecated in v0.7.  If
-        ``data`` is a `~astropy.units.Quantity` array, then ``error``
-        (if input) must also be a `~astropy.units.Quantity` array with
-        the same units.  See the Notes section below for more
-        information about `~astropy.nddata.NDData` input.
+        background-subtracted.  If ``data`` is a
+        `~astropy.units.Quantity` array, then ``error`` (if input) must
+        also be a `~astropy.units.Quantity` array with the same units.
+        See the Notes section below for more information about
+        `~astropy.nddata.NDData` input.
 
     apertures : `~photutils.Aperture` or list of `~photutils.Aperture`
         The aperture(s) to use for the photometry.  If ``apertures`` is
-        a list of `~photutils.Aperture` then they all must have the same
-        position(s).
+        a list of `~photutils.aperture.Aperture` then they all must have
+        the same position(s).
 
     error : array_like or `~astropy.units.Quantity`, optional
         The pixel-wise Gaussian 1-sigma errors of the input ``data``.
@@ -93,29 +85,12 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         each dimension.  That is, each pixel is divided into ``subpixels
         ** 2`` subpixels.
 
-    unit : `~astropy.units.UnitBase` object or str, optional
-        Deprecated in v0.7.
-        An object that represents the unit associated with the input
-        ``data`` and ``error`` arrays.  Must be a
-        `~astropy.units.UnitBase` object or a string parseable by the
-        :mod:`~astropy.units` package.  If ``data`` or ``error`` already
-        have a different unit, the input ``unit`` will not be used and a
-        warning will be raised.  If ``data`` is an
-        `~astropy.io.fits.ImageHDU` or `~astropy.io.fits.HDUList`,
-        ``unit`` will override the ``'BUNIT'`` header keyword.  This
-        keyword should be used sparingly (it exists to support the input
-        of `~astropy.nddata.NDData` objects).  Instead one should input
-        the ``data`` (and optional ``error``) as
-        `~astropy.units.Quantity` objects.
-
     wcs : WCS object, optional
         A world coordinate system (WCS) transformation that supports the
         `astropy shared interface for WCS
         <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
         `astropy.wcs.WCS`, `gwcs.wcs.WCS`).  Used only if the input
-        ``apertures`` contains a `SkyAperture` object.  If ``data`` is
-        an `~astropy.io.fits.ImageHDU` or `~astropy.io.fits.HDUList`,
-        ``wcs`` overrides any WCS transformation present in the header.
+        ``apertures`` contains a `SkyAperture` object.
 
     Returns
     -------
@@ -148,15 +123,15 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     Notes
     -----
     If the input ``data`` is a `~astropy.nddata.NDData` instance, then
-    the ``error``, ``mask``, ``unit``, and ``wcs`` keyword inputs are
-    ignored.  Instead, these values should be defined as attributes in
-    the `~astropy.nddata.NDData` object.  In the case of ``error``, it
-    must be defined in the ``uncertainty`` attribute with a
+    the ``error``, ``mask``, and ``wcs`` keyword inputs are ignored.
+    Instead, these values should be defined as attributes in the
+    `~astropy.nddata.NDData` object.  In the case of ``error``, it must
+    be defined in the ``uncertainty`` attribute with a
     `~astropy.nddata.StdDevUncertainty` instance.
     """
 
     if isinstance(data, NDData):
-        nddata_attr = {'error': error, 'mask': mask, 'unit': unit, 'wcs': wcs}
+        nddata_attr = {'error': error, 'mask': mask, 'wcs': wcs}
         for key, value in nddata_attr.items():
             if value is not None:
                 warnings.warn('The {0!r} keyword is be ignored.  Its value '
@@ -181,21 +156,12 @@ def aperture_photometry(data, apertures, error=None, mask=None,
                                    method=method, subpixels=subpixels,
                                    wcs=wcs)
 
-    # handle FITS HDU input data
-    data, bunit, fits_wcs = _handle_hdu_input(data)
-    # NOTE: input unit overrides bunit
-    if unit is None:
-        unit = bunit
-    # NOTE: input wcs overrides FITS WCS
-    if not wcs:
-        wcs = fits_wcs
-
     # validate inputs
     data, error = _validate_inputs(data, error)
 
     # handle data, error, and unit inputs
     # output data and error are ndarray without units
-    data, error, unit = _handle_units(data, error, unit)
+    data, error, unit = _handle_units(data, error)
 
     # compute variance and apply input mask
     data, variance = _prepare_photometry_data(data, error, mask)

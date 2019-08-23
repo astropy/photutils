@@ -23,10 +23,65 @@ Bug Fixes
 API changes
 ^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Aperture pixel positions can no longer be shaped as 2xN. [#953]
+
+  - Removed the deprecated ``units`` keyword in ``aperture_photometry``
+    and ``PixelAperture.do_photometry``. [#953]
+
+  - ``PrimaryHDU``, ``ImageHDU``, and ``HDUList`` can no longer be
+    input to ``aperture_photometry``. [#953]
+
+  - Removed the deprecated the Aperture ``mask_area`` method. [#953]
+
+  - Removed the deprecated Aperture plot keywords ``ax`` and
+    ``indices``. [#953]
+
+- ``photutils.background``
+
+  - Removed the deprecated ``ax`` keyword in
+    ``Background2D.plot_meshes``. [#953]
+
+- ``photutils.datasets``
+
+  - Removed the deprecated ``type`` keyword in ``make_noise_image``.
+    [#953]
+
+- ``photutils.detection``
+
+  - Removed the deprecated ``snr`` keyword in ``detect_threshold``.
+    [#953]
+
 - ``photutils.psf``
 
-  - Added ``extra_output_cols`` as a parameter to ``BasicPSFPhotometry``,
-    ``IterativelySubtractedPSFPhotometry`` and ``DAOPhotPSFPhotometry``. [#745]
+  - Added ``extra_output_cols`` as a parameter to
+    ``BasicPSFPhotometry``, ``IterativelySubtractedPSFPhotometry`` and
+    ``DAOPhotPSFPhotometry``. [#745]
+
+- ``photutils.segmentation``
+
+  - Removed the deprecated ``SegmentationImage`` methods ``cmap`` and
+    ``relabel``. [#953]
+
+  - Removed the deprecated ``SourceProperties`` ``values`` and ``coords``
+    attributes. [#953]
+
+  - Removed the deprecated ``xmin/ymin`` and ``xmax/ymax`` properties.
+    [#953]
+
+  - Removed the deprecated ``snr`` and ``mask_value`` keywords in
+    ``make_source_mask``. [#953]
+
+- ``photutils.utils``
+
+  - Removed the deprecated ``random_cmap``, ``mask_to_mirrored_num``,
+    ``get_version_info``, ``filter_data``, and ``std_blocksum``
+    functions. [#953]
+
+  - Removed the deprecated ``wcs_helpers`` functions
+    ``pixel_scale_angle_at_skycoord``, ``assert_angle_or_pixel``,
+    ``assert_angle``, and ``pixel_to_icrs_coords``. [#953]
 
 
 0.7 (2019-08-14)
@@ -243,6 +298,9 @@ API changes
   - Renamed the ``bounding_boxes`` attribute for pixel-based apertures
     to ``bbox`` for consistency. [#896]
 
+  - Deprecated the ``BoundingBox`` ``as_patch`` method (instead use
+    ``as_artist``). [#851]
+
 - ``photutils.background``
 
   - The ``Background2D`` ``plot_meshes`` keyword ``ax`` was deprecated
@@ -260,9 +318,6 @@ API changes
   - ``DAOStarFinder``, ``IRAFStarFinder``, and ``find_peaks`` now return
     ``None`` if no source/peaks are found.  Also, for this case a
     ``NoDetectionsWarning`` is issued. [#836]
-
-  - Deprecated the ``BoundingBox`` ``as_patch`` method (instead use
-    ``as_artist``). [#851]
 
   - Renamed the ``snr`` (deprecated) keyword to ``nsigma`` in
     ``detect_threshold``. [#917]

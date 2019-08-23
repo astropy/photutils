@@ -214,7 +214,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
     def area(self):
         return self.w * self.h
 
-    def _to_patch(self, origin=(0, 0), indices=None, **kwargs):
+    def _to_patch(self, origin=(0, 0), **kwargs):
         """
         Return a `~matplotlib.patches.patch` for the aperture.
 
@@ -223,9 +223,6 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         origin : array_like, optional
             The ``(x, y)`` position of the origin of the displayed
             image.
-
-        indices : int or array of int, optional
-            The indices of the aperture positions to plot.
 
         kwargs : `dict`
             Any keyword arguments accepted by
@@ -241,8 +238,8 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
         import matplotlib.patches as mpatches
 
-        xy_positions, patch_kwargs = self._define_patch_params(
-            origin=origin, indices=indices, **kwargs)
+        xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
+                                                               **kwargs)
         xy_positions = self._lower_left_positions(xy_positions, self.w,
                                                   self.h, self.theta)
 
@@ -368,7 +365,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     def area(self):
         return self.w_out * self.h_out - self.w_in * self.h_in
 
-    def _to_patch(self, origin=(0, 0), indices=None, **kwargs):
+    def _to_patch(self, origin=(0, 0), **kwargs):
         """
         Return a `~matplotlib.patches.patch` for the aperture.
 
@@ -377,9 +374,6 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         origin : array_like, optional
             The ``(x, y)`` position of the origin of the displayed
             image.
-
-        indices : int or array of int, optional
-            The indices of the aperture positions to plot.
 
         kwargs : `dict`
             Any keyword arguments accepted by
@@ -395,8 +389,8 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
         import matplotlib.patches as mpatches
 
-        xy_positions, patch_kwargs = self._define_patch_params(
-            origin=origin, indices=indices, **kwargs)
+        xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
+                                                               **kwargs)
         inner_xy_positions = self._lower_left_positions(xy_positions,
                                                         self.w_in, self.h_in,
                                                         self.theta)

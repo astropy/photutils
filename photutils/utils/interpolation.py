@@ -3,13 +3,11 @@
 This module provides tools for interpolating data.
 """
 
-from astropy.utils import deprecated
 import numpy as np
 
-__all__ = ['ShepardIDWInterpolator', 'mask_to_mirrored_num']
+__all__ = ['ShepardIDWInterpolator']
 
 __doctest_requires__ = {('ShepardIDWInterpolator'): ['scipy']}
-__doctest_skip__ = ['mask_to_mirrored_num']
 
 
 class ShepardIDWInterpolator:
@@ -348,53 +346,3 @@ def _mask_to_mirrored_num(image, mask_image, center_position, bbox=None):
     outimage[bbox[2]:bbox[3]+1, bbox[0]:bbox[1]+1] = subdata
 
     return outimage
-
-
-@deprecated(0.7)
-def mask_to_mirrored_num(image, mask_image, center_position, bbox=None):
-    """
-    Replace masked pixels with the value of the pixel mirrored across a
-    given ``center_position``.  If the mirror pixel is unavailable (i.e.
-    itself masked or outside of the image), then the masked pixel value
-    is set to zero.
-
-    Parameters
-    ----------
-    image : `numpy.ndarray`, 2D
-        The 2D array of the image.
-
-    mask_image : array-like, bool
-        A boolean mask with the same shape as ``image``, where a `True`
-        value indicates the corresponding element of ``image`` is
-        considered bad.
-
-    center_position : 2-tuple
-        (x, y) center coordinates around which masked pixels will be
-        mirrored.
-
-    bbox : list, tuple, `numpy.ndarray`, optional
-        The bounding box (x_min, x_max, y_min, y_max) over which to
-        replace masked pixels.
-
-    Returns
-    -------
-    result : `numpy.ndarray`, 2D
-        A 2D array with replaced masked pixels.
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from photutils.utils import mask_to_mirrored_num
-    >>> image = np.arange(16).reshape(4, 4)
-    >>> mask = np.zeros(image.shape, dtype=bool)
-    >>> mask[0, 0] = True
-    >>> mask[1, 1] = True
-    >>> mask_to_mirrored_num(image, mask, (1.5, 1.5))
-    array([[15,  1,  2,  3],
-           [ 4, 10,  6,  7],
-           [ 8,  9, 10, 11],
-           [12, 13, 14, 15]])
-    """
-
-    return _mask_to_mirrored_num(image, mask_image, center_position,
-                                 bbox=bbox)

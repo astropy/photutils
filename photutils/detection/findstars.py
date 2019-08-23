@@ -17,8 +17,8 @@ from astropy.utils import lazyproperty
 import numpy as np
 
 from .core import find_peaks
+from ..utils._convolution import _filter_data
 from ..utils._moments import _moments, _moments_central
-from ..utils.convolution import _filter_data
 from ..utils.exceptions import NoDetectionsWarning
 
 __all__ = ['StarFinderBase', 'DAOStarFinder', 'IRAFStarFinder']

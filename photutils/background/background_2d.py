@@ -7,7 +7,6 @@ RMS in an image.
 from itertools import product
 
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.version import version as astropy_version
 import numpy as np
 from numpy.lib.index_tricks import index_exp
@@ -793,7 +792,6 @@ class Background2D:
 
         return self.interpolator(self.background_rms_mesh, self)
 
-    @deprecated_renamed_argument('ax', 'axes', '0.7')
     def plot_meshes(self, axes=None, marker='+', color='blue', outlines=False,
                     **kwargs):
         """
