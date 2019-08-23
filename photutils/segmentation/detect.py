@@ -12,7 +12,7 @@ import numpy as np
 
 from .core import SegmentationImage
 from ..detection import detect_threshold
-from ..utils.convolution import _filter_data
+from ..utils._convolution import _filter_data
 from ..utils.exceptions import NoDetectionsWarning
 
 __all__ = ['detect_sources', 'make_source_mask']

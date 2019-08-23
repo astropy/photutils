@@ -7,48 +7,8 @@ import warnings
 
 from astropy.convolution import Kernel2D
 from astropy.units import Quantity
-from astropy.utils import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
-
-__all__ = ['filter_data']
-
-
-@deprecated('0.7')
-def filter_data(data, kernel, mode='constant', fill_value=0.0,
-                check_normalization=False):
-    """
-    Convolve a 2D image with a 2D kernel.
-
-    The kernel may either be a 2D `~numpy.ndarray` or a
-    `~astropy.convolution.Kernel2D` object.
-
-    Parameters
-    ----------
-    data : array_like
-        The 2D array of the image.
-
-    kernel : array-like (2D) or `~astropy.convolution.Kernel2D`
-        The 2D kernel used to filter the input ``data``. Filtering the
-        ``data`` will smooth the noise and maximize detectability of
-        objects with a shape similar to the kernel.
-
-    mode : {'constant', 'reflect', 'nearest', 'mirror', 'wrap'}, optional
-        The ``mode`` determines how the array borders are handled.  For
-        the ``'constant'`` mode, values outside the array borders are
-        set to ``fill_value``.  The default is ``'constant'``.
-
-    fill_value : scalar, optional
-        Value to fill data values beyond the array borders if ``mode``
-        is ``'constant'``.  The default is ``0.0``.
-
-    check_normalization : bool, optional
-        If `True` then a warning will be issued if the kernel is not
-        normalized to 1.
-    """
-
-    return _filter_data(data, kernel, mode=mode, fill_value=fill_value,
-                        check_normalization=check_normalization)
 
 
 def _filter_data(data, kernel, mode='constant', fill_value=0.0,

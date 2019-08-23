@@ -11,7 +11,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from ..convolution import _filter_data
+from .._convolution import _filter_data
 from ...datasets import make_100gaussians_image
 
 try:
@@ -44,19 +44,19 @@ class TestFilterData:
         """
 
         filt_data = _filter_data(self.data.astype(int),
-                                self.kernel.array.astype(int))
+                                 self.kernel.array.astype(int))
         assert filt_data.dtype == np.float64
 
         filt_data = _filter_data(self.data.astype(int),
-                                self.kernel.array.astype(float))
+                                 self.kernel.array.astype(float))
         assert filt_data.dtype == np.float64
 
         filt_data = _filter_data(self.data.astype(float),
-                                self.kernel.array.astype(int))
+                                 self.kernel.array.astype(int))
         assert filt_data.dtype == np.float64
 
         filt_data = _filter_data(self.data.astype(float),
-                                self.kernel.array.astype(float))
+                                 self.kernel.array.astype(float))
         assert filt_data.dtype == np.float64
 
     def test_filter_data_kernel_none(self):

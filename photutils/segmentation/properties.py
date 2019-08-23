@@ -15,8 +15,8 @@ import numpy as np
 
 from .core import SegmentationImage
 from ..aperture import BoundingBox
+from ..utils._convolution import _filter_data
 from ..utils._moments import _moments, _moments_central
-from ..utils.convolution import _filter_data
 from ..utils._wcs_helpers import _pixel_to_world
 
 __all__ = ['SourceProperties', 'source_properties', 'SourceCatalog']
