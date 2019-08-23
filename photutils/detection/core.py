@@ -8,7 +8,6 @@ import warnings
 
 from astropy.stats import sigma_clipped_stats
 from astropy.table import Table
-from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.version import version as astropy_version
 import numpy as np
 
@@ -18,7 +17,6 @@ from ..utils._wcs_helpers import _pixel_to_world
 __all__ = ['detect_threshold', 'find_peaks']
 
 
-@deprecated_renamed_argument('snr', 'nsigma', 0.7)
 def detect_threshold(data, nsigma, background=None, error=None, mask=None,
                      mask_value=None, sigclip_sigma=3.0, sigclip_iters=None):
     """
