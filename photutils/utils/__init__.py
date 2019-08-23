@@ -8,5 +8,4 @@ from .colormaps import *  # noqa
 from .errors import *  # noqa
 from .exceptions import *  # noqa
 from .interpolation import *  # noqa
-from .misc import *  # noqa
 from .stats import *  # noqa
