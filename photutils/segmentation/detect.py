@@ -354,10 +354,10 @@ def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
         when calculating the image background statistics.
 
     sigclip_iters : int, optional
-       The number of iterations to perform sigma clipping, or `None` to
-       clip until convergence is achieved (i.e., continue until the last
-       iteration clips nothing) when calculating the image background
-       statistics.
+       The maximum number of iterations to perform sigma clipping, or
+       `None` to clip until convergence is achieved (i.e., continue
+       until the last iteration clips nothing) when calculating the
+       image background statistics.
 
     dilate_size : int, optional
         The size of the square array used to dilate the segmentation

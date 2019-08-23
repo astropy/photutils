@@ -5,7 +5,6 @@ Tests for the make module.
 
 from astropy.modeling.models import Moffat2D
 from astropy.table import Table
-from astropy.version import version as astropy_version
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
@@ -181,12 +180,7 @@ def test_make_wcs():
     shape = (100, 200)
     wcs = make_wcs(shape)
 
-    if astropy_version < '3.1':
-        assert wcs._naxis1 == shape[1]
-        assert wcs._naxis2 == shape[0]
-    else:
-        assert wcs.pixel_shape == shape
-
+    assert wcs.pixel_shape == shape
     assert wcs.wcs.radesys == 'ICRS'
 
     wcs = make_wcs(shape, galactic=True)

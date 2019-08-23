@@ -11,13 +11,13 @@ import warnings
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata.utils import (overlap_slices, PartialOverlapError,
                                   NoOverlapError)
+from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from .epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
 from .models import EPSFModel
 from ..centroids import centroid_epsf
-from ..extern.sigma_clipping import SigmaClip
 
 try:
     import bottleneck  # pylint: disable=W0611
@@ -329,8 +329,7 @@ class EPSFBuilder:
 
         self.progress_bar = progress_bar
 
-        # TODO: allow custom SigmaClip object after faster SigmaClip
-        # is available in astropy (>=3.1)
+        # TODO: allow custom SigmaClip object
         self.sigclip = SigmaClip(sigma=2.5, cenfunc='mean', maxiters=10)
 
         # store each ePSF build iteration
