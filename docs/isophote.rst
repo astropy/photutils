@@ -3,6 +3,7 @@ Elliptical Isophote Analysis (`photutils.isophote`)
 
 Introduction
 ------------
+
 The `~photutils.isophote` package provides tools to fit elliptical
 isophotes to a galaxy image.  The isophotes in the image are measured
 using an iterative method described by `Jedrzejewski (1987; MNRAS 226,
@@ -189,7 +190,7 @@ position as a function of the semimajor axis length:
 We can build an elliptical model image from the
 `~photutils.isophote.IsophoteList` object using the
 :func:`~photutils.isophote.build_ellipse_model` function ( NOTE: this
-function requires `scipy <http://www.scipy.org/>`_):
+function requires `scipy <https://www.scipy.org/>`_):
 
 .. doctest-requires:: scipy
 

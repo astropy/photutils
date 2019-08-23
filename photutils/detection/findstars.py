@@ -71,7 +71,7 @@ class _StarFinderKernel:
 
     References
     ----------
-    .. [1] http://en.wikipedia.org/wiki/Gaussian_function
+    .. [1] https://en.wikipedia.org/wiki/Gaussian_function
     """
 
     def __init__(self, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,

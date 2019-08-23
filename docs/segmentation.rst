@@ -9,7 +9,7 @@ Introduction
 Photutils includes a general-use function to detect sources (both
 point-like and extended) in an image using a process called `image
 segmentation <https://en.wikipedia.org/wiki/Image_segmentation>`_ in
-the `computer vision <http://en.wikipedia.org/wiki/Computer_vision>`_
+the `computer vision <https://en.wikipedia.org/wiki/Computer_vision>`_
 field.  After detecting sources using image segmentation, we can then
 measure their photometry, centroids, and morphological properties by
 using additional tools in Photutils.
@@ -143,7 +143,7 @@ Source Deblending
 In the example above, overlapping sources are detected as single
 sources.  Separating those sources requires a deblending procedure,
 such as a multi-thresholding technique used by `SExtractor
-<http://www.astromatic.net/software/sextractor>`_.  Photutils provides
+<https://www.astromatic.net/software/sextractor>`_.  Photutils provides
 a :func:`~photutils.segmentation.deblend_sources` function that
 deblends sources uses a combination of multi-thresholding and
 `watershed segmentation
@@ -645,4 +645,4 @@ Reference/API
     :no-heading:
 
 
-.. _SExtractor:  http://www.astromatic.net/software/sextractor
+.. _SExtractor:  https://www.astromatic.net/software/sextractor

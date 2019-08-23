@@ -751,13 +751,13 @@ They may also optionally define an ``area`` property.  All
 See Also
 --------
 
-1. `IRAF's APPHOT specification [PDF]`_ (Sec. 3.3.5.8 - 3.3.5.9)
+1. `IRAF's APPHOT package`_
 
 2. `SourceExtractor Manual [PDF]`_ (Sec. 9.4 p. 36)
 
-.. _SourceExtractor: http://www.astromatic.net/software/sextractor
+.. _SourceExtractor: https://www.astromatic.net/software/sextractor
 .. _SourceExtractor Manual [PDF]: https://www.astromatic.net/pubsvn/software/sextractor/trunk/doc/sextractor.pdf
-.. _IRAF's APPHOT specification [PDF]: http://iraf.net/irafdocs/apspec.pdf
+.. _IRAF's APPHOT package: http://iraf.noao.edu/scripts/irafhelp?apphot
 
 
 Reference/API

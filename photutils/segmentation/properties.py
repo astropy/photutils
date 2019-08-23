@@ -167,7 +167,7 @@ class SourceProperties:
     of the source segment, masked pixels from the ``mask`` input, or any
     non-finite ``data`` values (NaN and +/- inf).
 
-    .. _SExtractor: http://www.astromatic.net/software/sextractor
+    .. _SExtractor: https://www.astromatic.net/software/sextractor
     """
 
     def __init__(self, data, segment_img, label, filtered_data=None,
@@ -1488,7 +1488,7 @@ def source_properties(data, segment_img, error=None, mask=None,
     non-masked pixels in the source segment, and
     :math:`\\sigma_{\\mathrm{tot}, i}` is the input ``error`` array.
 
-    .. _SExtractor: http://www.astromatic.net/software/sextractor
+    .. _SExtractor: https://www.astromatic.net/software/sextractor
 
     See Also
     --------

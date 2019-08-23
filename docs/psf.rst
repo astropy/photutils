@@ -28,12 +28,13 @@ apparent). The convolution of the PSF and pixel response function, when
 discretized onto the detector (i.e. a rectilinear CCD grid), is the effective
 PSF (ePSF) or Point Response Function (PRF). (This latter terminology is the
 definition used by `Spitzer
-<http://irsa.ipac.caltech.edu/data/SPITZER/docs/dataanalysistools/tools/mopex/mopexusersguide/89/>`_.
-In many cases the PSF/ePSF/PRF distinction is unimportant, and the ePSF/PRF are
-simply called the "PSF", but the distinction can be critical when dealing
-carefully with undersampled data or detectors with significant intra-pixel
-sensitivity variations. For a more detailed description of this formalism, see
-`Anderson & King 2000 <http://adsabs.harvard.edu/abs/2000PASP..112.1360A>`_.
+<https://irsa.ipac.caltech.edu/data/SPITZER/docs/dataanalysistools/tools/mopex/mopexusersguide/89/>`_.
+In many cases the PSF/ePSF/PRF distinction is unimportant, and the
+ePSF/PRF are simply called the "PSF", but the distinction can be
+critical when dealing carefully with undersampled data or detectors
+with significant intra-pixel sensitivity variations. For a more
+detailed description of this formalism, see `Anderson & King 2000
+<http://adsabs.harvard.edu/abs/2000PASP..112.1360A>`_.
 
 All this said, in colloquial usage "PSF photometry" sometimes refers to the more
 general task of model-fitting photometry (with the effects of the PSF either
@@ -52,12 +53,13 @@ an ePSF.
 PSF Photometry
 --------------
 
-Photutils provides a modular set of tools to perform PSF photometry for
-different science cases. These are implemented as separate classes to do
-sub-tasks of PSF photometry. It also provides high-level classes that connect
-these pieces together. In particular, it contains an implementation of the
-DAOPHOT algorithm (`~photutils.psf.DAOPhotPSFPhotometry`) proposed by
-`Stetson in his seminal paper <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_
+Photutils provides a modular set of tools to perform PSF photometry
+for different science cases. These are implemented as separate classes
+to do sub-tasks of PSF photometry. It also provides high-level classes
+that connect these pieces together. In particular, it contains an
+implementation of the DAOPHOT algorithm
+(`~photutils.psf.DAOPhotPSFPhotometry`) proposed by `Stetson in his
+seminal paper <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_
 for crowded-field stellar photometry.
 
 The DAOPHOT algorithm consists in applying the loop FIND, GROUP, NSTAR,
@@ -683,10 +685,10 @@ References
 ----------
 
 `Spitzer PSF vs. PRF
-<http://irsa.ipac.caltech.edu/data/SPITZER/docs/files/spitzer/PRF_vs_PSF.pdf>`_
+<https://irsa.ipac.caltech.edu/data/SPITZER/docs/files/spitzer/PRF_vs_PSF.pdf>`_
 
 `Kepler PSF calibration
-<http://keplerscience.arc.nasa.gov/CalibrationPSF.shtml>`_
+<https://keplerscience.arc.nasa.gov/CalibrationPSF.shtml>`_
 
 `The Kepler Pixel Response Function
 <http://adsabs.harvard.edu/abs/2010ApJ...713L..97B>`_
@@ -694,10 +696,10 @@ References
 `Stetson, Astronomical Society of the Pacific, Publications, (ISSN 0004-6280),
 vol. 99, March 1987, p. 191-222. <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_
 
-
 `Anderson & King, Astronomical Society of the Pacific, Publications,
 Volume 112, Issue 776, pp. 1360-1382, Nov 2000
 <http://adsabs.harvard.edu/abs/2000PASP..112.1360A>`_
+
 
 Reference/API
 -------------

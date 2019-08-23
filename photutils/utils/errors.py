@@ -98,7 +98,7 @@ def calc_total_error(data, bkg_error, effective_gain):
         \\left(\\frac{\\sigma_{\\mathrm{bkg}}^2}
         {\\mathrm{RMS_{\\mathrm{median}}^2}}\\right)}
 
-    .. _SExtractor: http://www.astromatic.net/software/sextractor
+    .. _SExtractor: https://www.astromatic.net/software/sextractor
     """
 
     data = np.asanyarray(data)
