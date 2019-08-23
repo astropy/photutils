@@ -26,7 +26,7 @@ env:
         # The following versions are the 'default' for tests, unless
         # overridden underneath. They are defined here in order to save having
         # to repeat them for all configurations.
-        - PYTHON_VERSION=3.6
+        - PYTHON_VERSION=3.7
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
         - CONDA_CHANNELS='astropy-ci-extras astropy'
@@ -67,7 +67,7 @@ matrix:
     fast_finish: true
 
     include:
-        - env: PYTHON_VERSION=3.7 SETUP_CMD='egg_info'
+        - env: SETUP_CMD='egg_info'
 
         # PEP8/pyflakes test with flake8
         - env: MAIN_CMD="flake8 photutils --count $FLAKE8_OPT" SETUP_CMD=''
@@ -76,7 +76,6 @@ matrix:
         # latest Python version.  The duration of the slowest 50 tests
         # will also be listed.
         - env: SETUP_CMD='test --coverage --remote-data -a "--durations=50"'
-               NUMPY_VERSION=1.14
 
         # Check for Sphinx doc build warnings
         - env: SETUP_CMD='build_docs -w'
@@ -93,29 +92,21 @@ matrix:
           env: CONDA_DEPENDENCIES=''
                PIP_DEPENDENCIES='Cython scipy scikit-learn matplotlib scikit-image>0.14.1'
 
-        # Test with other Python versions
+        # Test with the oldest-supported Python and numpy versions
         - stage: Comprehensive tests
-          env: PYTHON_VERSION=3.7
-
-        # Test with Astropy LTS version and older numpy versions
-        - stage: Comprehensive tests
-          env: PYTHON_VERSION=3.5
+          env: PYTHON_VERSION=3.6
                NUMPY_VERSION=1.13
-               ASTROPY_VERSION=lts
-               PIP_DEPENDENCIES='pytest<3.10 scikit-image>0.14.1'
-               EVENT_TYPE='pull_request push cron'
 
-        # Test with other numpy versions
+        # Test with an older numpy version
         - stage: Comprehensive tests
-          env: PYTHON_VERSION=3.7
-               NUMPY_VERSION=1.15
+          env: NUMPY_VERSION=1.15
 
-        # Test with Astropy dev version
+        # Test with the Astropy development version
         - stage: Comprehensive tests
           env: ASTROPY_VERSION=development
                EVENT_TYPE='pull_request push cron'
 
-        # Test with numpy pre-release version
+        # Test with the numpy pre-release version
         - stage: Comprehensive tests
           env: NUMPY_VERSION=dev
                EVENT_TYPE='push pull_request cron'
