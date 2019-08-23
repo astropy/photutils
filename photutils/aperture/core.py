@@ -163,6 +163,10 @@ class PixelAperture(Aperture):
     @property
     @deprecated('0.7', alternative='bbox')
     def bounding_boxes(self):
+        """
+        The minimal bounding box for the aperture.
+        """
+
         return self.bbox
 
     @property
