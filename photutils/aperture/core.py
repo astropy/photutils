@@ -11,7 +11,6 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.utils import deprecated
-from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import wcs_to_celestial_frame
 
@@ -229,61 +228,6 @@ class PixelAperture(Aperture):
 
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
-    @deprecated('0.7', alternative=('e.g. np.sum(aper.to_mask().data) for a '
-                                    'scalar aperture'))
-    def mask_area(self, method='exact', subpixels=5):
-        """
-        Return the area of the aperture mask.
-
-        For ``method`` other than ``'exact'``, this area will be less
-        than the exact analytical area (e.g. the ``area`` method).  Note
-        that for these methods, the values can also differ because of
-        fractional pixel positions.
-
-        Parameters
-        ----------
-        method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the overlap of the aperture on
-            the pixel grid.  Not all options are available for all
-            aperture types.  Note that the more precise methods are
-            generally slower.  The following methods are available:
-
-                * ``'exact'`` (default):
-                  The the exact fractional overlap of the aperture and
-                  each pixel is calculated.  The returned mask will
-                  contain values between 0 and 1.
-
-                * ``'center'``:
-                  A pixel is considered to be entirely in or out of the
-                  aperture depending on whether its center is in or out
-                  of the aperture.  The returned mask will contain
-                  values only of 0 (out) and 1 (in).
-
-                * ``'subpixel'``:
-                  A pixel is divided into subpixels (see the
-                  ``subpixels`` keyword), each of which are considered
-                  to be entirely in or out of the aperture depending on
-                  whether its center is in or out of the aperture.  If
-                  ``subpixels=1``, this method is equivalent to
-                  ``'center'``.  The returned mask will contain values
-                  between 0 and 1.
-
-        subpixels : int, optional
-            For the ``'subpixel'`` method, resample pixels by this factor
-            in each dimension.  That is, each pixel is divided into
-            ``subpixels ** 2`` subpixels.
-
-        Returns
-        -------
-        area : float
-            A list of the mask area (one per position) of the aperture.
-        """
-
-        masks = self.to_mask(method=method, subpixels=subpixels)
-        if self.isscalar:
-            masks = (masks,)
-        return [np.sum(mask.data) for mask in masks]
-
     @abc.abstractmethod
     def to_mask(self, method='exact', subpixels=5):
         """
@@ -367,9 +311,8 @@ class PixelAperture(Aperture):
 
         return aperture_sums, aperture_sum_errs
 
-    @deprecated_renamed_argument('unit', None, '0.7')
     def do_photometry(self, data, error=None, mask=None, method='exact',
-                      subpixels=5, unit=None):
+                      subpixels=5):
         """
         Perform aperture photometry on the input data.
 
@@ -422,15 +365,6 @@ class PixelAperture(Aperture):
             in each dimension.  That is, each pixel is divided into
             ``subpixels ** 2`` subpixels.
 
-        unit : `~astropy.units.UnitBase` object or str, optional
-            Deprecated in v0.7.
-            An object that represents the unit associated with the input
-            ``data`` and ``error`` arrays.  Must be a
-            `~astropy.units.UnitBase` object or a string parseable by
-            the :mod:`~astropy.units` package.  If ``data`` or ``error``
-            already have a different unit, the input ``unit`` will not
-            be used and a warning will be raised.
-
         Returns
         -------
         aperture_sums : `~numpy.ndarray` or `~astropy.units.Quantity`
@@ -445,7 +379,7 @@ class PixelAperture(Aperture):
 
         # handle data, error, and unit inputs
         # output data and error are ndarray without units
-        data, error, unit = _handle_units(data, error, unit)
+        data, error, unit = _handle_units(data, error)
 
         # compute variance and apply input mask
         data, variance = _prepare_photometry_data(data, error, mask)
@@ -480,7 +414,7 @@ class PixelAperture(Aperture):
 
         return mpath.Path(verts, codes)
 
-    def _define_patch_params(self, origin=(0, 0), indices=None, **kwargs):
+    def _define_patch_params(self, origin=(0, 0), **kwargs):
         """
         Define the aperture patch position and set any default
         matplotlib patch keywords (e.g. ``fill=False``).
@@ -490,9 +424,6 @@ class PixelAperture(Aperture):
         origin : array_like, optional
             The ``(x, y)`` position of the origin of the displayed
             image.
-
-        indices : int or array of int, optional
-            The indices of the aperture positions to plot.
 
         kwargs : `dict`
             Any keyword arguments accepted by
@@ -509,9 +440,6 @@ class PixelAperture(Aperture):
         """
 
         xy_positions = copy.deepcopy(np.atleast_2d(self.positions))
-        if indices is not None:
-            xy_positions = xy_positions[np.atleast_1d(indices)]
-
         xy_positions[:, 0] -= origin[0]
         xy_positions[:, 1] -= origin[1]
 
@@ -521,7 +449,7 @@ class PixelAperture(Aperture):
         return xy_positions, patch_params
 
     @abc.abstractmethod
-    def _to_patch(self, origin=(0, 0), indices=None, **kwargs):
+    def _to_patch(self, origin=(0, 0), **kwargs):
         """
         Return a `~matplotlib.patches.patch` for the aperture.
 
@@ -530,9 +458,6 @@ class PixelAperture(Aperture):
         origin : array_like, optional
             The ``(x, y)`` position of the origin of the displayed
             image.
-
-        indices : int or array of int, optional
-            The indices of the aperture positions to plot.
 
         kwargs : `dict`
             Any keyword arguments accepted by
@@ -548,12 +473,7 @@ class PixelAperture(Aperture):
 
         raise NotImplementedError('Needs to be implemented in a subclass.')
 
-    @deprecated_renamed_argument('ax', 'axes', '0.7')
-    @deprecated_renamed_argument('indices', None, '0.7',
-                                 alternative=('indices directly on the '
-                                              'aperture object '
-                                              '(e.g. aper[idx].plot())'))
-    def plot(self, axes=None, origin=(0, 0), indices=None, **kwargs):
+    def plot(self, axes=None, origin=(0, 0), **kwargs):
         """
         Plot the aperture on a matplotlib `~matplotlib.axes.Axes`
         instance.
@@ -568,10 +488,6 @@ class PixelAperture(Aperture):
             The ``(x, y)`` position of the origin of the displayed
             image.
 
-        indices : int, array of int, or `None`, optional
-            The indices of the aperture position(s) to plot.  If `None`
-            (default) then all aperture positions will be plotted.
-
         kwargs : `dict`
             Any keyword arguments accepted by
             `matplotlib.patches.Patch`.
@@ -582,7 +498,7 @@ class PixelAperture(Aperture):
         if axes is None:
             axes = plt.gca()
 
-        patches = self._to_patch(origin=origin, indices=indices, **kwargs)
+        patches = self._to_patch(origin=origin, **kwargs)
         if self.isscalar:
             patches = (patches,)
 

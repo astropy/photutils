@@ -189,7 +189,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
     def area(self):
         return math.pi * self.a * self.b
 
-    def _to_patch(self, origin=(0, 0), indices=None, **kwargs):
+    def _to_patch(self, origin=(0, 0), **kwargs):
         """
         Return a `~matplotlib.patches.patch` for the aperture.
 
@@ -198,9 +198,6 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         origin : array_like, optional
             The ``(x, y)`` position of the origin of the displayed
             image.
-
-        indices : int or array of int, optional
-            The indices of the aperture positions to plot.
 
         kwargs : `dict`
             Any keyword arguments accepted by
@@ -216,8 +213,8 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
         import matplotlib.patches as mpatches
 
-        xy_positions, patch_kwargs = self._define_patch_params(
-            origin=origin, indices=indices, **kwargs)
+        xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
+                                                               **kwargs)
 
         patches = []
         theta_deg = self.theta * 180. / np.pi
@@ -337,7 +334,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
     def area(self):
         return math.pi * (self.a_out * self.b_out - self.a_in * self.b_in)
 
-    def _to_patch(self, origin=(0, 0), indices=None, **kwargs):
+    def _to_patch(self, origin=(0, 0), **kwargs):
         """
         Return a `~matplotlib.patches.patch` for the aperture.
 
@@ -346,9 +343,6 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         origin : array_like, optional
             The ``(x, y)`` position of the origin of the displayed
             image.
-
-        indices : int or array of int, optional
-            The indices of the aperture positions to plot.
 
         kwargs : `dict`
             Any keyword arguments accepted by
@@ -364,8 +358,8 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
         import matplotlib.patches as mpatches
 
-        xy_positions, patch_kwargs = self._define_patch_params(
-            origin=origin, indices=indices, **kwargs)
+        xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
+                                                               **kwargs)
 
         patches = []
         theta_deg = self.theta * 180. / np.pi

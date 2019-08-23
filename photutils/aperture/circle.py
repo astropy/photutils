@@ -155,7 +155,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
     def area(self):
         return math.pi * self.r ** 2
 
-    def _to_patch(self, origin=(0, 0), indices=None, **kwargs):
+    def _to_patch(self, origin=(0, 0), **kwargs):
         """
         Return a `~matplotlib.patches.patch` for the aperture.
 
@@ -164,9 +164,6 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         origin : array_like, optional
             The ``(x, y)`` position of the origin of the displayed
             image.
-
-        indices : int or array of int, optional
-            The indices of the aperture positions to plot.
 
         kwargs : `dict`
             Any keyword arguments accepted by
@@ -182,8 +179,8 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
 
         import matplotlib.patches as mpatches
 
-        xy_positions, patch_kwargs = self._define_patch_params(
-            origin=origin, indices=indices, **kwargs)
+        xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
+                                                               **kwargs)
 
         patches = []
         for xy_position in xy_positions:
@@ -283,7 +280,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
     def area(self):
         return math.pi * (self.r_out ** 2 - self.r_in ** 2)
 
-    def _to_patch(self, origin=(0, 0), indices=None, **kwargs):
+    def _to_patch(self, origin=(0, 0), **kwargs):
         """
         Return a `~matplotlib.patches.patch` for the aperture.
 
@@ -292,9 +289,6 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         origin : array_like, optional
             The ``(x, y)`` position of the origin of the displayed
             image.
-
-        indices : int or array of int, optional
-            The indices of the aperture positions to plot.
 
         kwargs : `dict`
             Any keyword arguments accepted by
@@ -310,8 +304,8 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
 
         import matplotlib.patches as mpatches
 
-        xy_positions, patch_kwargs = self._define_patch_params(
-            origin=origin, indices=indices, **kwargs)
+        xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
+                                                               **kwargs)
 
         patches = []
         for xy_position in xy_positions:
