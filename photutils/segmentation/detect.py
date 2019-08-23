@@ -7,7 +7,6 @@ import warnings
 
 from astropy.convolution import Gaussian2DKernel
 from astropy.stats import gaussian_fwhm_to_sigma
-from astropy.utils.decorators import deprecated_renamed_argument
 import numpy as np
 
 from .core import SegmentationImage
@@ -306,11 +305,9 @@ def detect_sources(data, threshold, npixels, filter_kernel=None,
                            connectivity=connectivity, mask=mask)[0]
 
 
-@deprecated_renamed_argument('snr', 'nsigma', 0.7)
-@deprecated_renamed_argument('mask_value', None, 0.7)
-def make_source_mask(data, nsigma, npixels, mask=None, mask_value=None,
-                     filter_fwhm=None, filter_size=3, filter_kernel=None,
-                     sigclip_sigma=3.0, sigclip_iters=5, dilate_size=11):
+def make_source_mask(data, nsigma, npixels, mask=None, filter_fwhm=None,
+                     filter_size=3, filter_kernel=None, sigclip_sigma=3.0,
+                     sigclip_iters=5, dilate_size=11):
     """
     Make a source mask using source segmentation and binary dilation.
 
@@ -334,12 +331,6 @@ def make_source_mask(data, nsigma, npixels, mask=None, mask_value=None,
         value indicates the corresponding element of ``data`` is masked.
         Masked pixels are ignored when computing the image background
         statistics.
-
-    mask_value : float, optional
-        Deprecated.
-        An image data value (e.g., ``0.0``) that is ignored when
-        computing the image background statistics.  ``mask_value`` will
-        be ignored if ``mask`` is input.
 
     filter_fwhm : float, optional
         The full-width at half-maximum (FWHM) of the Gaussian kernel to
@@ -381,8 +372,7 @@ def make_source_mask(data, nsigma, npixels, mask=None, mask_value=None,
     from scipy import ndimage
 
     threshold = detect_threshold(data, nsigma, background=None, error=None,
-                                 mask=mask, mask_value=None,
-                                 sigclip_sigma=sigclip_sigma,
+                                 mask=mask, sigclip_sigma=sigclip_sigma,
                                  sigclip_iters=sigclip_iters)
 
     kernel = None
