@@ -5,7 +5,6 @@ Tests for the interpolation module.
 
 import warnings
 
-from astropy.utils.exceptions import AstropyDeprecationWarning
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
@@ -115,10 +114,6 @@ class TestShepardIDWInterpolator:
 
 
 class TestMaskToMirroredNum:
-    def setup_class(cls):
-        """Ignore all deprecation warnings here."""
-        warnings.simplefilter('ignore', AstropyDeprecationWarning)
-
     def test_mask_to_mirrored_num(self):
         """
         Test mask_to_mirrored_num.
