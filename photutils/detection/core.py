@@ -8,7 +8,6 @@ import warnings
 
 from astropy.stats import sigma_clipped_stats
 from astropy.table import Table
-from astropy.version import version as astropy_version
 import numpy as np
 
 from ..utils.exceptions import NoDetectionsWarning
@@ -66,10 +65,10 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
         when calculating the image background statistics.
 
     sigclip_iters : int, optional
-       The number of iterations to perform sigma clipping, or `None` to
-       clip until convergence is achieved (i.e., continue until the last
-       iteration clips nothing) when calculating the image background
-       statistics.
+       The maximum number of iterations to perform sigma clipping, or
+       `None` to clip until convergence is achieved (i.e., continue
+       until the last iteration clips nothing) when calculating the
+       image background statistics.
 
     Returns
     -------
@@ -92,14 +91,9 @@ def detect_threshold(data, nsigma, background=None, error=None, mask=None,
     """
 
     if background is None or error is None:
-        if astropy_version < '3.1':
-            data_mean, _, data_std = sigma_clipped_stats(
-                data, mask=mask, mask_value=mask_value, sigma=sigclip_sigma,
-                iters=sigclip_iters)
-        else:
-            data_mean, _, data_std = sigma_clipped_stats(
-                data, mask=mask, mask_value=mask_value, sigma=sigclip_sigma,
-                maxiters=sigclip_iters)
+        data_mean, _, data_std = sigma_clipped_stats(
+            data, mask=mask, mask_value=mask_value, sigma=sigclip_sigma,
+            maxiters=sigclip_iters)
 
         bkgrd_image = np.zeros_like(data) + data_mean
         bkgrdrms_image = np.zeros_like(data) + data_std

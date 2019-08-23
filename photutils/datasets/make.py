@@ -12,7 +12,6 @@ from astropy.io import fits
 from astropy.modeling import models
 from astropy.table import Table
 import astropy.units as u
-from astropy.version import version as astropy_version
 from astropy.wcs import WCS
 import numpy as np
 
@@ -802,12 +801,7 @@ def make_wcs(shape, galactic=False):
     rho = np.pi / 3.
     scale = 0.1 / 3600.  # 0.1 arcsec/pixel in deg/pix
 
-    if astropy_version < '3.1':
-        wcs._naxis1 = shape[1]  # nx
-        wcs._naxis2 = shape[0]  # ny
-    else:
-        wcs.pixel_shape = shape
-
+    wcs.pixel_shape = shape
     wcs.wcs.crpix = [shape[1] / 2, shape[0] / 2]  # 1-indexed (x, y)
     wcs.wcs.crval = [197.8925, -1.36555556]
     wcs.wcs.cunit = ['deg', 'deg']
