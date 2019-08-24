@@ -204,7 +204,7 @@ class ShepardIDWInterpolator:
             singularities at the known data points, especially if
             ``reg`` is 0.0.
 
-        dtype : data-type
+        dtype : data-type, optional
             The data type of the output interpolated values. If `None`
             then the type will be inferred from the type of the
             ``values`` parameter used during the initialization of the
