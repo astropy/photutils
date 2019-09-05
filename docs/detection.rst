@@ -21,23 +21,23 @@ Detecting Stars
 Photutils includes two widely-used tools that are used to detect stars
 in an image, `DAOFIND`_ and IRAF's `starfind`_.
 
-:class:`~photutils.DAOStarFinder` is a class that provides an
-implementation of the `DAOFIND`_ algorithm (`Stetson 1987, PASP 99,
+:class:`~photutils.detection.DAOStarFinder` is a class that provides
+an implementation of the `DAOFIND`_ algorithm (`Stetson 1987, PASP 99,
 191 <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_).  It
 searches images for local density maxima that have a peak amplitude
 greater than a specified threshold (the threshold is applied to a
 convolved image) and have a size and shape similar to a defined 2D
-Gaussian kernel.  :class:`~photutils.DAOStarFinder` also provides an
-estimate of the objects' roundness and sharpness, whose lower and
-upper bounds can be specified.
+Gaussian kernel.  :class:`~photutils.detection.DAOStarFinder` also
+provides an estimate of the objects' roundness and sharpness, whose
+lower and upper bounds can be specified.
 
-:class:`~photutils.IRAFStarFinder` is a class that implements IRAF's
-`starfind`_ algorithm.  It is fundamentally similar to
-:class:`~photutils.DAOStarFinder`, but
-:class:`~photutils.DAOStarFinder` can use an elliptical Gaussian
-kernel. One other difference in :class:`~photutils.IRAFStarFinder` is
-that it calculates the objects' centroid, roundness, and sharpness
-using image moments.
+:class:`~photutils.detection.IRAFStarFinder` is a class that
+implements IRAF's `starfind`_ algorithm.  It is fundamentally similar
+to :class:`~photutils.detection.DAOStarFinder`, but
+:class:`~photutils.detection.DAOStarFinder` can use an elliptical
+Gaussian kernel. One other difference in
+:class:`~photutils.detection.IRAFStarFinder` is that it calculates the
+objects' centroid, roundness, and sharpness using image moments.
 
 As an example, let's load an image from the bundled datasets and
 select a subset of the image.  We will estimate the background and
@@ -52,10 +52,11 @@ background noise using sigma-clipped statistics::
     (3668.09661145823, 3649.0, 204.41388592022315)
 
 Now we will subtract the background and use an instance of
-:class:`~photutils.DAOStarFinder` to find the stars in the image that
-have FWHMs of around 3 pixels and have peaks approximately 5-sigma
-above the background. Running this class on the data yields an astropy
-`~astropy.table.Table` containing the results of the star finder:
+:class:`~photutils.detection.DAOStarFinder` to find the stars in the
+image that have FWHMs of around 3 pixels and have peaks approximately
+5-sigma above the background. Running this class on the data yields an
+astropy `~astropy.table.Table` containing the results of the star
+finder:
 
 .. doctest-requires:: scipy
 
@@ -120,10 +121,11 @@ Masking Regions
 ^^^^^^^^^^^^^^^
 
 Regions of the input image can be masked by using the ``mask`` keyword
-with the :class:`~photutils.DAOStarFinder` or
-:class:`~photutils.IRAFStarFinder` instance.  This simple examples
-uses :class:`~photutils.DAOStarFinder` and masks two rectangular
-regions.  No sources will be detected in the masked regions:
+with the :class:`~photutils.detection.DAOStarFinder` or
+:class:`~photutils.detection.IRAFStarFinder` instance.  This simple
+examples uses :class:`~photutils.detection.DAOStarFinder` and masks
+two rectangular regions.  No sources will be detected in the masked
+regions:
 
 .. doctest-skip::
 

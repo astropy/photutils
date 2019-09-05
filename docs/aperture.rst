@@ -685,8 +685,8 @@ contains a cutout of the aperture mask and a
 box where the mask is to be applied.  It also provides a
 :meth:`~photutils.aperture.ApertureMask.to_image` method to obtain an
 image of the mask in a 2D array of the given shape, a
-:meth:`~photutils.ApertureMask.cutout` method to create a cutout from
-the input data over the mask bounding box, and an
+:meth:`~photutils.aperture.ApertureMask.cutout` method to create a
+cutout from the input data over the mask bounding box, and an
 :meth:`~photutils.aperture.ApertureMask.multiply` method to multiply
 the aperture mask with the input data to create a mask-weighted data
 cutout.   All of these methods properly handle the cases of partial or
