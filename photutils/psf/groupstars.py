@@ -84,7 +84,7 @@ class DAOGroup(GroupStarsBase):
 
     See Also
     --------
-    photutils.DAOStarFinder
+    photutils.detection.DAOStarFinder
 
     References
     ----------
