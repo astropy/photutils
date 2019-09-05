@@ -39,7 +39,7 @@ biased by the presence of real sources.
 A slightly better method involves using statistics that are robust
 against the presence of outliers, such as the biweight location for
 the background level and biweight scale or `median absolute deviation
-(MAD) <https://en.wikipedia.org/wiki/Median_absolute_deviation>`_ for
+(MAD) <https://en.wikipedia.org/wiki/Median_absolute_deviation>`__ for
 the background noise estimation. However, for most astronomical scenes
 these methods will also be biased by the presence of astronomical
 sources in the image.
