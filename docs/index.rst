@@ -69,11 +69,6 @@ User Documentation
     datasets.rst
     utils.rst
 
-.. toctree::
-    :maxdepth: 1
-
-    high-level_API.rst
-
 .. note::
 
     Like much astronomy software, Photutils is an evolving package.
