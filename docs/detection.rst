@@ -260,5 +260,5 @@ Reference/API
     :no-heading:
 
 
-.. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
-.. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
+.. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
+.. _starfind: https://iraf.net/irafhelp.php?val=starfind
