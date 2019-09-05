@@ -5,7 +5,7 @@ Introduction
 ------------
 
 The `photutils.geometry` package contains low-level geometry functions
-used mainly by `~photutils.aperture_photometry`.
+used mainly by `~photutils.aperture.aperture_photometry`.
 
 
 Reference/API

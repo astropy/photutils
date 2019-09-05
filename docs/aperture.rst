@@ -4,30 +4,30 @@ Aperture Photometry (`photutils.aperture`)
 Introduction
 ------------
 
-In Photutils, the :func:`~photutils.aperture_photometry` function is
-the main tool to perform aperture photometry on an astronomical image
-for a given set of apertures.
+In Photutils, the :func:`~photutils.aperture.aperture_photometry`
+function is the main tool to perform aperture photometry on an
+astronomical image for a given set of apertures.
 
 Photutils provides several apertures defined in pixel or sky
 coordinates.  The aperture classes that are defined in pixel
 coordinates are:
 
-    * `~photutils.CircularAperture`
-    * `~photutils.CircularAnnulus`
-    * `~photutils.EllipticalAperture`
-    * `~photutils.EllipticalAnnulus`
-    * `~photutils.RectangularAperture`
-    * `~photutils.RectangularAnnulus`
+    * `~photutils.aperture.CircularAperture`
+    * `~photutils.aperture.CircularAnnulus`
+    * `~photutils.aperture.EllipticalAperture`
+    * `~photutils.aperture.EllipticalAnnulus`
+    * `~photutils.aperture.RectangularAperture`
+    * `~photutils.aperture.RectangularAnnulus`
 
 Each of these classes has a corresponding variant defined in sky
 coordinates:
 
-    * `~photutils.SkyCircularAperture`
-    * `~photutils.SkyCircularAnnulus`
-    * `~photutils.SkyEllipticalAperture`
-    * `~photutils.SkyEllipticalAnnulus`
-    * `~photutils.SkyRectangularAperture`
-    * `~photutils.SkyRectangularAnnulus`
+    * `~photutils.aperture.SkyCircularAperture`
+    * `~photutils.aperture.SkyCircularAnnulus`
+    * `~photutils.aperture.SkyEllipticalAperture`
+    * `~photutils.aperture.SkyEllipticalAnnulus`
+    * `~photutils.aperture.SkyRectangularAperture`
+    * `~photutils.aperture.SkyRectangularAnnulus`
 
 To perform aperture photometry with sky-based apertures, one will need
 to specify a WCS transformation.
@@ -47,7 +47,8 @@ list of positions) and parameters that define its size and possibly,
 orientation (e.g., an elliptical aperture).
 
 We start with an example of creating a circular aperture in pixel
-coordinates using the :class:`~photutils.CircularAperture` class::
+coordinates using the :class:`~photutils.aperture.CircularAperture`
+class::
 
     >>> from photutils import CircularAperture
     >>> positions = [(30., 30.), (40., 40.)]
@@ -61,8 +62,9 @@ radius of 3 pixels.
 
 Creating an aperture object in sky coordinates is similar.  One first
 uses the :class:`~astropy.coordinates.SkyCoord` class to define sky
-coordinates and then the :class:`~photutils.SkyCircularAperture` class
-to define the aperture object::
+coordinates and then the
+:class:`~photutils.aperture.SkyCircularAperture` class to define the
+aperture object::
 
     >>> from astropy import units as u
     >>> from astropy.coordinates import SkyCoord
@@ -85,16 +87,17 @@ Converting Between Pixel and Sky Apertures
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The pixel apertures can be converted to sky apertures, and vice versa.
-To accomplish this, use the :meth:`~photutils.PixelAperture.to_sky`
-method for pixel apertures, e.g.:
+To accomplish this, use the
+:meth:`~photutils.aperture.PixelAperture.to_sky` method for pixel
+apertures, e.g.:
 
 .. doctest-skip::
 
     >>> aperture = CircularAperture((10, 20), r=4.)
     >>> sky_aperture = aperture.to_sky(wcs)
 
-and the :meth:`~photutils.SkyAperture.to_pixel` method for sky
-apertures, e.g.:
+and the :meth:`~photutils.aperture.SkyAperture.to_pixel` method for
+sky apertures, e.g.:
 
 .. doctest-skip::
 
@@ -107,15 +110,15 @@ Performing Aperture Photometry
 ------------------------------
 
 After the aperture object is created, we can then perform the
-photometry using the :func:`~photutils.aperture_photometry` function.
-We start by defining the aperture (at two positions) as described
-above::
+photometry using the :func:`~photutils.aperture.aperture_photometry`
+function.  We start by defining the aperture (at two positions) as
+described above::
 
     >>> positions = [(30., 30.), (40., 40.)]
     >>> aperture = CircularAperture(positions, r=3.)
 
-and then we call the :func:`~photutils.aperture_photometry` function
-with the data and the apertures::
+and then we call the :func:`~photutils.aperture.aperture_photometry`
+function with the data and the apertures::
 
     >>> import numpy as np
     >>> from photutils import aperture_photometry
@@ -179,13 +182,14 @@ that computation time will be increased.
 Multiple Apertures at Each Position
 -----------------------------------
 
-While the `~photutils.Aperture` objects support multiple positions,
-they must have a fixed size and shape, e.g. radius and orientation.
+While the `~photutils.aperture.Aperture` objects support multiple
+positions, they must have a fixed size and shape, e.g. radius and
+orientation.
 
 To perform photometry in multiple apertures at each position, one may
 input a list of aperture objects to the
-:func:`~photutils.aperture_photometry` function.  In this case, the
-apertures must all have identical position(s).
+:func:`~photutils.aperture.aperture_photometry` function.  In this
+case, the apertures must all have identical position(s).
 
 Suppose that we wish to use three circular apertures, with radii of 3,
 4, and 5 pixels, on each source::
@@ -249,9 +253,9 @@ Background Subtraction
 Global Background Subtraction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-:func:`~photutils.aperture_photometry` assumes that the data have been
-background-subtracted.  If ``bkg`` is a float value or an array
-representing the background of the data (determined by
+:func:`~photutils.aperture.aperture_photometry` assumes that the data
+have been background-subtracted.  If ``bkg`` is a float value or an
+array representing the background of the data (determined by
 `~photutils.background.Background2D` or an external function), simply
 subtract the background::
 
@@ -304,8 +308,8 @@ sums because the apertures have different areas.
 
 To calculate the mean local background within the circular annulus
 aperture, we need to divide its sum by its area.  The mean value can
-be calculated by using the :meth:`~photutils.CircularAnnulus.area`
-method::
+be calculated by using the
+:meth:`~photutils.aperture.CircularAnnulus.area` attribute::
 
     >>> bkg_mean = phot_table['aperture_sum_1'] / annulus_aperture.area
 
@@ -398,10 +402,10 @@ Let's focus on just the first annulus.  Let's plot its aperture mask:
     plt.imshow(annulus_masks[0])
     plt.colorbar()
 
-We can now use the :meth:`photutils.ApertureMask.multiply` method to
-get the values of the aperture mask multiplied to the data. Since the
-mask values are 0 or 1, the result is simply the data values within
-the annulus aperture::
+We can now use the :meth:`photutils.aperture.ApertureMask.multiply`
+method to get the values of the aperture mask multiplied to the data.
+Since the mask values are 0 or 1, the result is simply the data values
+within the annulus aperture::
 
    >>> annulus_data = annulus_masks[0].multiply(data)
 
@@ -492,8 +496,8 @@ Error Estimation
 ----------------
 
 If and only if the ``error`` keyword is input to
-:func:`~photutils.aperture_photometry`, the returned table will
-include a ``'aperture_sum_err'`` column in addition to
+:func:`~photutils.aperture.aperture_photometry`, the returned table
+will include a ``'aperture_sum_err'`` column in addition to
 ``'aperture_sum'``.  ``'aperture_sum_err'`` provides the propagated
 uncertainty associated with ``'aperture_sum'``.
 
@@ -521,9 +525,9 @@ pixel's value and saved it in the array ``error``::
               \sigma_{\mathrm{tot}, i}^2}
 
 where :math:`\Delta F` is
-`~photutils.SourceProperties.source_sum_err`, :math:`A` are the
-non-masked pixels in the aperture, and :math:`\sigma_{\mathrm{tot},
-i}` is the input ``error`` array.
+`~photutils.segmentation.SourceProperties.source_sum_err`, :math:`A`
+are the non-masked pixels in the aperture, and
+:math:`\sigma_{\mathrm{tot}, i}` is the input ``error`` array.
 
 In the example above, it is assumed that the ``error`` keyword
 specifies the *total* error -- either it includes Poisson noise due to
@@ -579,7 +583,7 @@ photometry using apertures defined in sky coordinates simply requires
 defining a "sky" aperture at positions defined by a
 :class:`~astropy.coordinates.SkyCoord` object.  Here we show an
 example of photometry on real data using a
-`~photutils.SkyCircularAperture`.
+`~photutils.aperture.SkyCircularAperture`.
 
 We start by loading a Spitzer 4.5 micron image of a region of the
 Galactic plane::
@@ -604,9 +608,9 @@ Now perform the photometry in these apertures on the ``data``.  The
 ``wcs`` object contains the WCS transformation of the image obtained
 from the FITS header.  It includes the coordinate frame of the image
 and the projection from sky to pixel coordinates.  The
-`~photutils.aperture_photometry` function uses the WCS information to
-automatically convert the apertures defined in sky coordinates into
-pixel coordinates::
+`~photutils.aperture.aperture_photometry` function uses the WCS
+information to automatically convert the apertures defined in sky
+coordinates into pixel coordinates::
 
     >>> phot_table = aperture_photometry(data, aperture, wcs=wcs)  # doctest: +REMOTE_DATA
 
@@ -672,18 +676,19 @@ between the two measurements.
 Aperture Masks
 --------------
 
-All `~photutils.PixelAperture` objects have a
-:meth:`~photutils.PixelAperture.to_mask` method that returns a list of
-`~photutils.ApertureMask` objects, one for each aperture position.
-The `~photutils.ApertureMask` object contains a cutout of the aperture
-mask and a `~photutils.BoundingBox` object that provides the bounding
+All `~photutils.aperture.PixelAperture` objects have a
+:meth:`~photutils.aperture.PixelAperture.to_mask` method that returns
+a list of `~photutils.aperture.ApertureMask` objects, one for each
+aperture position.  The `~photutils.aperture.ApertureMask` object
+contains a cutout of the aperture mask and a
+`~photutils.aperture.BoundingBox` object that provides the bounding
 box where the mask is to be applied.  It also provides a
-:meth:`~photutils.ApertureMask.to_image` method to obtain an image of
-the mask in a 2D array of the given shape, a
-:meth:`~photutils.ApertureMask.cutout` method to create a cutout from
-the input data over the mask bounding box, and an
-:meth:`~photutils.ApertureMask.multiply` method to multiply the
-aperture mask with the input data to create a mask-weighted data
+:meth:`~photutils.aperture.ApertureMask.to_image` method to obtain an
+image of the mask in a 2D array of the given shape, a
+:meth:`~photutils.aperture.ApertureMask.cutout` method to create a
+cutout from the input data over the mask bounding box, and an
+:meth:`~photutils.aperture.ApertureMask.multiply` method to multiply
+the aperture mask with the input data to create a mask-weighted data
 cutout.   All of these methods properly handle the cases of partial or
 no overlap of the aperture mask with the data.
 
@@ -693,8 +698,8 @@ Let's start by creating an aperture object::
     >>> positions = [(30., 30.), (40., 40.)]
     >>> aperture = CircularAperture(positions, r=3.)
 
-Now let's create a list of `~photutils.ApertureMask` objects using the
-:meth:`~photutils.PixelAperture.to_mask` method::
+Now let's create a list of `~photutils.aperture.ApertureMask` objects
+using the :meth:`~photutils.aperture.PixelAperture.to_mask` method::
 
     >>> masks = aperture.to_mask(method='center')
 
@@ -719,30 +724,32 @@ circular aperture mask has been multiplied with the data::
 Defining Your Own Custom Apertures
 ----------------------------------
 
-The :func:`~photutils.aperture_photometry` function can perform
-aperture photometry in arbitrary apertures.  This function accepts any
-`~photutils.Aperture`-derived objects, such as
-`~photutils.CircularAperture`.  This makes it simple to extend
-functionality: a new type of aperture photometry simply requires the
-definition of a new `~photutils.Aperture` subclass.
+The :func:`~photutils.aperture.aperture_photometry` function can
+perform aperture photometry in arbitrary apertures.  This function
+accepts any `~photutils.aperture.Aperture`-derived objects, such as
+`~photutils.aperture.CircularAperture`.  This makes it simple to
+extend functionality: a new type of aperture photometry simply
+requires the definition of a new `~photutils.aperture.Aperture`
+subclass.
 
-All `~photutils.PixelAperture` subclasses must define a
+All `~photutils.aperture.PixelAperture` subclasses must define a
 ``bounding_boxes`` property and ``to_mask()`` and ``plot()`` methods.
 They may also optionally define an ``area`` property.  All
-`~photutils.SkyAperture` subclasses must only implement a
+`~photutils.aperture.SkyAperture` subclasses must only implement a
 ``to_pixel()`` method.
 
     * ``bounding_boxes``:  The minimal bounding box for the aperture.
-      If the aperture is scalar then a single `~photutils.BoundingBox`
-      is returned, otherwise a list of `~photutils.BoundingBox` is
-      returned.
+      If the aperture is scalar then a single
+      `~photutils.aperture.BoundingBox` is returned, otherwise a list
+      of `~photutils.aperture.BoundingBox` is returned.
 
     * ``area``: An optional property defining the exact analytical
       area (in pixels**2) of the aperture.
 
     * ``to_mask()``: Return a mask for the aperture.  If the aperture
-      is scalar then a single `~photutils.ApertureMask` is returned,
-      otherwise a list of `~photutils.ApertureMask` is returned.
+      is scalar then a single `~photutils.aperture.ApertureMask` is
+      returned, otherwise a list of `~photutils.aperture.ApertureMask`
+      is returned.
 
     * ``plot()``: A method to plot the aperture on a
       `matplotlib.axes.Axes` instance.
@@ -751,13 +758,13 @@ They may also optionally define an ``area`` property.  All
 See Also
 --------
 
-1. `IRAF's APPHOT specification [PDF]`_ (Sec. 3.3.5.8 - 3.3.5.9)
+1. `IRAF's APPHOT package`_
 
 2. `SourceExtractor Manual [PDF]`_ (Sec. 9.4 p. 36)
 
-.. _SourceExtractor: http://www.astromatic.net/software/sextractor
+.. _SourceExtractor: https://www.astromatic.net/software/sextractor
 .. _SourceExtractor Manual [PDF]: https://www.astromatic.net/pubsvn/software/sextractor/trunk/doc/sextractor.pdf
-.. _IRAF's APPHOT specification [PDF]: http://iraf.net/irafdocs/apspec.pdf
+.. _IRAF's APPHOT package: http://iraf.noao.edu/scripts/irafhelp?apphot
 
 
 Reference/API

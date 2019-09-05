@@ -1,3 +1,3 @@
-Photutils is an `Astropy <http://www.astropy.org/>`_  affiliated
+Photutils is an `Astropy <https://www.astropy.org/>`_  affiliated
 package and we follow the `Astropy Community Code of Conduct
-<http://www.astropy.org/code_of_conduct.html>`_.
+<https://www.astropy.org/code_of_conduct.html>`_.

@@ -170,9 +170,9 @@ class PixelAperture(Aperture):
         """
         The minimal bounding box for the aperture.
 
-        If the aperture is scalar then a single `~photutils.BoundingBox`
-        is returned, otherwise a list of `~photutils.BoundingBox` is
-        returned.
+        If the aperture is scalar then a single
+        `~photutils.aperture.BoundingBox` is returned, otherwise a list
+        of `~photutils.aperture.BoundingBox` is returned.
         """
 
         positions = np.atleast_2d(self.positions)
@@ -320,10 +320,11 @@ class PixelAperture(Aperture):
 
         Returns
         -------
-        mask : `~photutils.ApertureMask` or list of `~photutils.ApertureMask`
+        mask : `~photutils.aperture.ApertureMask` or list of `~photutils.aperture.ApertureMask`
             A mask for the aperture.  If the aperture is scalar then a
-            single `~photutils.ApertureMask` is returned, otherwise a
-            list of `~photutils.ApertureMask` is returned.
+            single `~photutils.aperture.ApertureMask` is returned,
+            otherwise a list of `~photutils.aperture.ApertureMask` is
+            returned.
         """
 
         raise NotImplementedError('Needs to be implemented in a subclass.')

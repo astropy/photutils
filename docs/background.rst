@@ -39,7 +39,7 @@ biased by the presence of real sources.
 A slightly better method involves using statistics that are robust
 against the presence of outliers, such as the biweight location for
 the background level and biweight scale or `median absolute deviation
-(MAD) <http://en.wikipedia.org/wiki/Median_absolute_deviation>`_ for
+(MAD) <https://en.wikipedia.org/wiki/Median_absolute_deviation>`__ for
 the background noise estimation. However, for most astronomical scenes
 these methods will also be biased by the presence of astronomical
 sources in the image.
@@ -139,7 +139,7 @@ Of course, the source detection and masking procedure can be iterated
 further.  Even with one iteration we are within 0.02% of the true
 background and 1.5% of the true background RMS.
 
-.. _scipy: http://www.scipy.org/
+.. _scipy: https://www.scipy.org/
 
 
 2D Background and Noise Estimation
@@ -183,7 +183,7 @@ The default is a `~photutils.background.SExtractorBackground`
 instance.  For this method, the background in each mesh is calculated
 as ``(2.5 * median) - (1.5 * mean)``.  However, if ``(mean - median) /
 std > 0.3`` then the ``median`` is used instead (despite what the
-`SExtractor <http://www.astromatic.net/software/sextractor>`_ User's
+`SExtractor <https://www.astromatic.net/software/sextractor>`_ User's
 Manual says, this is the method it always uses).
 
 Likewise, the background RMS level in each mesh is calculated using

@@ -57,9 +57,9 @@ detected sources are returned as an Astropy `~astropy.table.Table`:
 Using the source locations (i.e. the ``xcentroid`` and ``ycentroid``
 columns), we now define circular apertures centered at these positions
 with a radius of 4 pixels and compute the sum of the pixel values
-within the apertures.  The :func:`~photutils.aperture_photometry`
-function returns an Astropy `~astropy.table.QTable` with the results
-of the photometry:
+within the apertures.  The
+:func:`~photutils.aperture.aperture_photometry` function returns an
+Astropy `~astropy.table.QTable` with the results of the photometry:
 
 .. doctest-requires:: scipy
 

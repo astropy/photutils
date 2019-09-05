@@ -17,8 +17,8 @@ class ShepardIDWInterpolator:
     Class to perform Inverse Distance Weighted (IDW) interpolation.
 
     This interpolator uses a modified version of `Shepard's method
-    <http://en.wikipedia.org/wiki/Inverse_distance_weighting>`_ (see the
-    Notes section for details).
+    <https://en.wikipedia.org/wiki/Inverse_distance_weighting>`_ (see
+    the Notes section for details).
 
     Parameters
     ----------
@@ -63,7 +63,7 @@ class ShepardIDWInterpolator:
     Notes
     -----
     This interpolator uses a slightly modified version of `Shepard's
-    method <http://en.wikipedia.org/wiki/Inverse_distance_weighting>`_.
+    method <https://en.wikipedia.org/wiki/Inverse_distance_weighting>`_.
     The essential difference is the introduction of a "regularization"
     parameter (``reg``) that is used when computing the inverse distance
     weights:

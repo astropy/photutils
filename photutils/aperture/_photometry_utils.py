@@ -79,8 +79,8 @@ def _validate_inputs(data, error):
     ``data`` and ``error`` are converted to a `~numpy.ndarray`, if
     necessary.
 
-    Used to parse inputs to `aperture_photometry` and
-    `PixelAperture.do_photometry`.
+    Used to parse inputs to `~photutils.aperture.aperture_photometry`
+    and `~photutils.aperture.PixelAperture.do_photometry`.
     """
 
     data = np.asanyarray(data)
@@ -103,8 +103,8 @@ def _handle_units(data, error, unit):
     ``error`` are returned as `~numpy.ndarray`.  The returned ``unit``
     represents the unit for both ``data`` and ``error``.
 
-    Used to parse inputs to `aperture_photometry` and
-    `PixelAperture.do_photometry`.
+    Used to parse inputs to `~photutils.aperture.aperture_photometry`
+    and `~photutils.aperture.PixelAperture.do_photometry`.
     """
 
     if unit is not None:
@@ -148,8 +148,8 @@ def _prepare_photometry_data(data, error, mask):
     Error is converted to variance and masked values are set to zero in
     the output data and variance arrays.
 
-    Used to parse inputs to `aperture_photometry` and
-    `PixelAperture.do_photometry`.
+    Used to parse inputs to `~photutils.aperture.aperture_photometry`
+    and `~photutils.aperture.PixelAperture.do_photometry`.
 
     Parameters
     ----------

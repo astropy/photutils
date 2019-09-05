@@ -70,14 +70,14 @@ class SourceProperties:
         which to calculate the source centroid and morphological
         properties.  The kernel used to perform the filtering should be
         the same one used in defining the source segments (e.g., see
-        :func:`~photutils.detect_sources`).  If ``data`` is a
-        `~astropy.units.Quantity` array then ``filtered_data`` must be a
-        `~astropy.units.Quantity` array (and vise versa) with identical
-        units.  Non-finite ``filtered_data`` values (NaN and +/- inf)
-        are not automatically masked, unless they are at the same
-        position of non-finite values in the input ``data`` array.  Such
-        pixels can be masked using the ``mask`` keyword.  If `None`,
-        then the unfiltered ``data`` will be used instead.
+        :func:`~photutils.segmentation.detect_sources`).  If ``data`` is
+        a `~astropy.units.Quantity` array then ``filtered_data`` must be
+        a `~astropy.units.Quantity` array (and vise versa) with
+        identical units.  Non-finite ``filtered_data`` values (NaN and
+        +/- inf) are not automatically masked, unless they are at the
+        same position of non-finite values in the input ``data`` array.
+        Such pixels can be masked using the ``mask`` keyword.  If
+        `None`, then the unfiltered ``data`` will be used instead.
 
     error : array_like or `~astropy.units.Quantity`, optional
         The total error array corresponding to the input ``data`` array.
@@ -142,32 +142,33 @@ class SourceProperties:
     properties based on image moments.  Negative values could occur, for
     example, if the segmentation image was defined from a different
     image (e.g., different bandpass) or if the background was
-    oversubtracted. Note that `~photutils.SourceProperties.source_sum`
-    always includes the contribution of negative ``data`` values.
+    oversubtracted. Note that
+    `~photutils.segmentation.SourceProperties.source_sum` always
+    includes the contribution of negative ``data`` values.
 
     The input ``error`` array is assumed to include *all* sources of
     error, including the Poisson error of the sources.
-    `~photutils.SourceProperties.source_sum_err` is simply the
-    quadrature sum of the pixel-wise total errors over the non-masked
-    pixels within the source segment:
+    `~photutils.segmentation.SourceProperties.source_sum_err` is simply
+    the quadrature sum of the pixel-wise total errors over the
+    non-masked pixels within the source segment:
 
     .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
               \\sigma_{\\mathrm{tot}, i}^2}
 
     where :math:`\\Delta F` is
-    `~photutils.SourceProperties.source_sum_err`, :math:`S` are the
-    non-masked pixels in the source segment, and
+    `~photutils.segmentation.SourceProperties.source_sum_err`, :math:`S`
+    are the non-masked pixels in the source segment, and
     :math:`\\sigma_{\\mathrm{tot}, i}` is the input ``error`` array.
 
     Custom errors for source segments can be calculated using the
-    `~photutils.SourceProperties.error_cutout_ma` and
-    `~photutils.SourceProperties.background_cutout_ma` properties, which
-    are 2D `~numpy.ma.MaskedArray` cutout versions of the input
-    ``error`` and ``background``.  The mask is `True` for pixels outside
-    of the source segment, masked pixels from the ``mask`` input, or any
-    non-finite ``data`` values (NaN and +/- inf).
+    `~photutils.segmentation.SourceProperties.error_cutout_ma` and
+    `~photutils.segmentation.SourceProperties.background_cutout_ma`
+    properties, which are 2D `~numpy.ma.MaskedArray` cutout versions of
+    the input ``error`` and ``background``.  The mask is `True` for
+    pixels outside of the source segment, masked pixels from the
+    ``mask`` input, or any non-finite ``data`` values (NaN and +/- inf).
 
-    .. _SExtractor: http://www.astromatic.net/software/sextractor
+    .. _SExtractor: https://www.astromatic.net/software/sextractor
     """
 
     def __init__(self, data, segment_img, label, filtered_data=None,
@@ -692,8 +693,8 @@ class SourceProperties:
     @lazyproperty
     def bbox(self):
         """
-        The `~photutils.BoundingBox` of the minimal rectangular region
-        containing the source segment.
+        The `~photutils.aperture.BoundingBox` of the minimal rectangular
+        region containing the source segment.
         """
 
         return BoundingBox(self.slices[1].start, self.slices[1].stop,
@@ -1002,7 +1003,8 @@ class SourceProperties:
     @lazyproperty
     def source_sum_err(self):
         """
-        The uncertainty of `~photutils.SourceProperties.source_sum`,
+        The uncertainty of
+        `~photutils.segmentation.SourceProperties.source_sum`,
         propagated from the input ``error`` array.
 
         ``source_sum_err`` is the quadrature sum of the total errors
@@ -1508,8 +1510,8 @@ def source_properties(data, segment_img, error=None, mask=None,
         calculating the source centroid and morphological parameters.
         The kernel should be the same one used in defining the source
         segments, i.e. the detection image (e.g., see
-        :func:`~photutils.detect_sources`).  If `None`, then the
-        unfiltered ``data`` will be used instead.
+        :func:`~photutils.segmentation.detect_sources`).  If `None`,
+        then the unfiltered ``data`` will be used instead.
 
     wcs : `None` or WCS object, optional
         A world coordinate system (WCS) transformation that supports the
@@ -1546,24 +1548,25 @@ def source_properties(data, segment_img, error=None, mask=None,
     properties based on image moments.  Negative values could occur, for
     example, if the segmentation image was defined from a different
     image (e.g., different bandpass) or if the background was
-    oversubtracted. Note that `~photutils.SourceProperties.source_sum`
-    always includes the contribution of negative ``data`` values.
+    oversubtracted. Note that
+    `~photutils.segmentation.SourceProperties.source_sum` always
+    includes the contribution of negative ``data`` values.
 
     The input ``error`` is assumed to include *all* sources of error,
     including the Poisson error of the sources.
-    `~photutils.SourceProperties.source_sum_err` is simply the
-    quadrature sum of the pixel-wise total errors over the non-masked
-    pixels within the source segment:
+    `~photutils.segmentation.SourceProperties.source_sum_err` is simply
+    the quadrature sum of the pixel-wise total errors over the
+    non-masked pixels within the source segment:
 
     .. math:: \\Delta F = \\sqrt{\\sum_{i \\in S}
               \\sigma_{\\mathrm{tot}, i}^2}
 
     where :math:`\\Delta F` is
-    `~photutils.SourceProperties.source_sum_err`, :math:`S` are the
-    non-masked pixels in the source segment, and
+    `~photutils.segmentation.SourceProperties.source_sum_err`, :math:`S`
+    are the non-masked pixels in the source segment, and
     :math:`\\sigma_{\\mathrm{tot}, i}` is the input ``error`` array.
 
-    .. _SExtractor: http://www.astromatic.net/software/sextractor
+    .. _SExtractor: https://www.astromatic.net/software/sextractor
 
     See Also
     --------
@@ -1788,10 +1791,10 @@ class SourceCatalog:
         scalar-valued properties.
 
         Multi-dimensional properties, e.g.
-        `~photutils.SourceProperties.data_cutout`, can be included in
-        the ``columns`` input, but they will not be preserved when
-        writing the table to a file.  This is a limitation of
-        multi-dimensional columns in astropy tables.
+        `~photutils.segmentation.SourceProperties.data_cutout`, can be
+        included in the ``columns`` input, but they will not be
+        preserved when writing the table to a file.  This is a
+        limitation of multi-dimensional columns in astropy tables.
 
         Parameters
         ----------
@@ -1916,7 +1919,7 @@ def _calc_sky_bbox_corner(bbox, corner, wcs):
 
     Parameters
     ----------
-    bbox : `~photutils.BoundingBox`
+    bbox : `~photutils.aperture.BoundingBox`
         The source bounding box.
 
     corner : {'ll', 'ul', 'lr', 'ur'}

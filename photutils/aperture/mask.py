@@ -21,7 +21,7 @@ class ApertureMask:
         truncated) array that is the direct output of one of the
         low-level `photutils.geometry` functions.
 
-    bbox : `photutils.BoundingBox`
+    bbox : `photutils.aperture.BoundingBox`
         The bounding box object defining the aperture minimal bounding
         box.
     """

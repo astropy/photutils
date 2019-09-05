@@ -9,7 +9,7 @@ Photutils has the following strict requirements:
 
 * `Python <https://www.python.org/>`_ 3.5 or later
 
-* `Numpy <https://www.numpy.org/>`_ 1.13 or later
+* `Numpy <https://numpy.org/>`_ 1.13 or later
 
 * `Astropy`_ 2.0 or later
 
@@ -134,7 +134,7 @@ Testing an installed Photutils
 ==============================
 
 The easiest way to test your installed version of Photutils is running
-correctly is to use the :func:`photutils.test()` function:
+correctly is to use the :func:`photutils.test` function:
 
 .. doctest-skip::
 
@@ -150,6 +150,6 @@ the `Photutils issue tracker
 
 
 .. _pip: https://pip.pypa.io/en/latest/
-.. _conda: https://conda.pydata.org/docs/
+.. _conda: https://conda.io/en/latest/
 .. _github: https://github.com/astropy/photutils
 .. _Xcode: https://developer.apple.com/xcode/

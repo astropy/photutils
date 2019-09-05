@@ -87,9 +87,10 @@ def calc_total_error(data, bkg_error, effective_gain):
     :math:`\\mathrm{RMS_{\\mathrm{median}}}` is the median value of the
     low-resolution background RMS map. In `SExtractor`_ this value is
     printed to stdout as "(M+D) RMS: <value>".  If you are using
-    `~photutils.Background2D`, the median value of the low-resolution
-    background RMS map is returned via the
-    `~photutils.Background2D.background_rms_median` attribute.
+    `~photutils.background.Background2D`, the median value of the
+    low-resolution background RMS map is returned via the
+    `~photutils.background.Background2D.background_rms_median`
+    attribute.
 
     In that case the total error is:
 
@@ -98,7 +99,7 @@ def calc_total_error(data, bkg_error, effective_gain):
         \\left(\\frac{\\sigma_{\\mathrm{bkg}}^2}
         {\\mathrm{RMS_{\\mathrm{median}}^2}}\\right)}
 
-    .. _SExtractor: http://www.astromatic.net/software/sextractor
+    .. _SExtractor: https://www.astromatic.net/software/sextractor
     """
 
     data = np.asanyarray(data)
