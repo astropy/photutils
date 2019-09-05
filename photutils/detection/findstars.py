@@ -71,7 +71,7 @@ class _StarFinderKernel:
 
     References
     ----------
-    .. [1] http://en.wikipedia.org/wiki/Gaussian_function
+    .. [1] https://en.wikipedia.org/wiki/Gaussian_function
     """
 
     def __init__(self, fwhm, ratio=1.0, theta=0.0, sigma_radius=1.5,
@@ -225,7 +225,7 @@ class _DAOFindProperties:
         calculate the source peak value, flux, and magnitude.  The
         default is 0.
 
-    .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
+    .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
     """
 
     def __init__(self, star_cutout, kernel, sky=0.):
@@ -623,8 +623,8 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
         A list of `_StarCutout` objects containing the image cutout for
         each source.
 
-    .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
-    .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
+    .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
+    .. _starfind: https://iraf.net/irafhelp.php?val=starfind
     """
 
     convolved_data = _filter_data(data, kernel.data, mode='constant',
@@ -856,9 +856,9 @@ class DAOStarFinder(StarFinderBase):
     References
     ----------
     .. [1] Stetson, P. 1987; PASP 99, 191 (http://adsabs.harvard.edu/abs/1987PASP...99..191S)
-    .. [2] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
+    .. [2] https://iraf.net/irafhelp.php?val=daofind
 
-    .. _DAOFIND: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?daofind
+    .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
     """
 
     def __init__(self, threshold, fwhm, ratio=1.0, theta=0.0,
@@ -1086,9 +1086,9 @@ class IRAFStarFinder(StarFinderBase):
 
     References
     ----------
-    .. [1] http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
+    .. [1] https://iraf.net/irafhelp.php?val=starfind
 
-    .. _starfind: http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?starfind
+    .. _starfind: https://iraf.net/irafhelp.php?val=starfind
     """
 
     def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,

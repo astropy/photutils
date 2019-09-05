@@ -335,7 +335,7 @@ class SExtractorBackground(BackgroundBase):
     Despite what the `SExtractor`_ User's Manual says, this is the
     method it *always* uses.
 
-    .. _SExtractor: http://www.astromatic.net/software/sextractor
+    .. _SExtractor: https://www.astromatic.net/software/sextractor
 
     Parameters
     ----------
@@ -491,7 +491,7 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
     """
     Class to calculate the background RMS in an array as using the
     `median absolute deviation (MAD)
-    <http://en.wikipedia.org/wiki/Median_absolute_deviation>`_.
+    <https://en.wikipedia.org/wiki/Median_absolute_deviation>`_.
 
     The standard deviation estimator is given by:
 

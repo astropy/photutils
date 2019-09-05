@@ -50,7 +50,7 @@ class BasicPSFPhotometry:
         ``y_0``, and ``group_id``. The column ``group_id`` should cotain
         integers starting from ``1`` that indicate which group a given
         source belongs to. See, e.g., `~photutils.psf.DAOGroup`.
-    bkg_estimator : callable, instance of any `~photutils.BackgroundBase` subclass, or None
+    bkg_estimator : callable, instance of any `~photutils.background.BackgroundBase` subclass, or None
         ``bkg_estimator`` should be able to compute either a scalar
         background or a 2D background of a given 2D image. See, e.g.,
         `~photutils.background.MedianBackground`.  If None, no
@@ -555,7 +555,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         ``y_0``, and ``group_id``. The column ``group_id`` should cotain
         integers starting from ``1`` that indicate which group a given
         source belongs to. See, e.g., `~photutils.psf.DAOGroup`.
-    bkg_estimator : callable, instance of any `~photutils.BackgroundBase` subclass, or None
+    bkg_estimator : callable, instance of any `~photutils.background.BackgroundBase` subclass, or None
         ``bkg_estimator`` should be able to compute either a scalar
         background or a 2D background of a given 2D image. See, e.g.,
         `~photutils.background.MedianBackground`.  If None, no

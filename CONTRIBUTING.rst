@@ -19,14 +19,14 @@ users' forks of the `Photutils repository
 <https://github.com/astropy/photutils>`_. If you're new to this style
 of development, you'll want to read over the `Astropy development
 workflow
-<http://docs.astropy.org/en/latest/development/workflow/development_workflow.html>`_.
+<https://docs.astropy.org/en/latest/development/workflow/development_workflow.html>`_.
 
 Once you open a pull request (which should be opened against the
 ``master`` branch, not against any other branch), please make sure
 that you include the following:
 
 - **Code**: the code you are adding, which should follow as much as
-  possible the `Astropy coding guidelines <http://docs.astropy.org/en/latest/development/codeguide.html>`_.
+  possible the `Astropy coding guidelines <https://docs.astropy.org/en/latest/development/codeguide.html>`_.
 
 - **Tests**: these are either tests to ensure code that previously
   failed now works (regression tests) or tests that cover as much as
@@ -34,12 +34,12 @@ that you include the following:
   future.  The tests are also used to ensure consistent results on all
   platforms, since we run these tests on many
   platforms/configurations. For more information about how to write
-  tests, see the `Astropy testing guidelines <http://docs.astropy.org/en/latest/development/testguide.html>`_.
+  tests, see the `Astropy testing guidelines <https://docs.astropy.org/en/latest/development/testguide.html>`_.
 
 - **Documentation**: if you are adding new functionality, be sure to
   include a description in the main documentation (in ``docs/``). For
   more information, please see the detailed `Astropy documentation
-  guidelines <http://docs.astropy.org/en/latest/development/docguide.html>`_.
+  guidelines <https://docs.astropy.org/en/latest/development/docguide.html>`_.
 
 - **Changelog entry**: if you are fixing a bug or adding new
   functionality, you should add an entry to the ``CHANGES.rst`` file
@@ -104,7 +104,7 @@ in the package.
 
 **Code Quality**
 
-* Are the `Astropy coding guidelines <http://docs.astropy.org/en/latest/development/codeguide.html>`_ followed?
+* Are the `Astropy coding guidelines <https://docs.astropy.org/en/latest/development/codeguide.html>`_ followed?
 * Are there dependencies other than the Astropy core, the Python
   Standard Library, and NumPy?
 
@@ -115,18 +115,18 @@ in the package.
 
 **Testing**
 
-* Are the `Astropy testing guidelines <http://docs.astropy.org/en/latest/development/testguide.html>`_ followed?
+* Are the `Astropy testing guidelines <https://docs.astropy.org/en/latest/development/testguide.html>`_ followed?
 * Are the inputs to the functions and classes sufficiently tested?
 * Are there tests for any exceptions raised?
 * Are there tests for the expected performance?
 * Are the sources for the tests documented?
-* Are the tests that require an `optional dependency <http://docs.astropy.org/en/latest/development/testguide.html#tests-requiring-optional-dependencies>`_ marked as such?
+* Are the tests that require an `optional dependency <https://docs.astropy.org/en/latest/development/testguide.html#tests-requiring-optional-dependencies>`_ marked as such?
 * Does "``python setup.py test``" run without failures?
 
 **Documentation**
 
-* Are the `Astropy documentation guidelines <http://docs.astropy.org/en/latest/development/docguide.html>`_ followed?
-* Is there a `docstring <http://docs.astropy.org/en/latest/development/docrules.html>`_ in the functions and classes describing:
+* Are the `Astropy documentation guidelines <https://docs.astropy.org/en/latest/development/docguide.html>`_ followed?
+* Is there a `docstring <https://docs.astropy.org/en/latest/development/docrules.html>`_ in the functions and classes describing:
 
   - What the code does?
   - The format of the inputs of the function or class?

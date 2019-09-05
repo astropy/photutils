@@ -97,7 +97,7 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
 
     See Also
     --------
-    :func:`photutils.detect_sources`
+    :func:`photutils.segmentation.detect_sources`
     """
 
     if not isinstance(segment_img, SegmentationImage):
@@ -167,7 +167,7 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     data : array_like
         The cutout data array for a single source.  ``data`` should also
         already be smoothed by the same filter used in
-        :func:`~photutils.detect_sources`, if applicable.
+        :func:`~photutils.segmentation.detect_sources`, if applicable.
 
     segment_img : `~photutils.segmentation.SegmentationImage`
         A cutout `~photutils.segmentation.SegmentationImage` object with

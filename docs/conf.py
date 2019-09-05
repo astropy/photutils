@@ -82,7 +82,8 @@ exclude_patterns.append('psf_spec/*')
 # be used globally.
 import photutils
 
-rst_epilog += """
+rst_epilog = """
+.. _Astropy: https://www.astropy.org/
 .. _Photutils: high-level_API.html
 """
 

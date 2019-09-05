@@ -24,6 +24,8 @@ if not _ASTROPY_SETUP_:  # noqa
     from .psf import *  # noqa
     from .segmentation import *  # noqa
 
+__all__ = ['test']  # the test runner is defined in _astropy_init
+
 
 # Set the bibtex entry to the article referenced in CITATION.
 def _get_bibtex():

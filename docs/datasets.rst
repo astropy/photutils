@@ -59,4 +59,4 @@ Reference/API
     :no-heading:
 
 .. _astropy-data: https://github.com/astropy/astropy-data/
-.. _skymaker: http://www.astromatic.net/software/skymaker
+.. _skymaker: https://www.astromatic.net/software/skymaker

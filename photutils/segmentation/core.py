@@ -101,8 +101,8 @@ class Segment:
     @lazyproperty
     def bbox(self):
         """
-        The `~photutils.BoundingBox` of the minimal rectangular region
-        containing the source segment.
+        The `~photutils.aperture.BoundingBox` of the minimal rectangular
+        region containing the source segment.
         """
 
         if self._segment_data.ndim != 2:

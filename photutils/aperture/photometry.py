@@ -36,7 +36,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         See the Notes section below for more information about
         `~astropy.nddata.NDData` input.
 
-    apertures : `~photutils.Aperture` or list of `~photutils.Aperture`
+    apertures : `~photutils.aperture.Aperture` or list of `~photutils.aperture.Aperture`
         The aperture(s) to use for the photometry.  If ``apertures`` is
         a list of `~photutils.aperture.Aperture` then they all must have
         the same position(s).

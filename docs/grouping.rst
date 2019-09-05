@@ -87,7 +87,7 @@ Here we rename ``x_mean`` to ``x_0`` and ``y_mean`` to ``y_0``:
     >>> starlist['y_mean'].name = 'y_0'
 
 Now, let's find the stellar groups.  We start by creating a
-`~photutils.DAOGroup` object.  Here we set its ``crit_separation``
+`~photutils.psf.DAOGroup` object.  Here we set its ``crit_separation``
 parameter ``2.5 * fwhm``, where the stellar ``fwhm`` was defined above
 when we created the stars as 2D Gaussians.  In general one will need
 to measure the FWHM of the stellar profiles.
@@ -99,8 +99,8 @@ to measure the FWHM of the stellar profiles.
     >>> fwhm = sigma_psf * gaussian_sigma_to_fwhm
     >>> daogroup = DAOGroup(crit_separation=2.5*fwhm)
 
-``daogroup`` is a `~photutils.DAOGroup` instance that can be used as a
-calling function that receives as input a table of stars (e.g.
+``daogroup`` is a `~photutils.psf.DAOGroup` instance that can be used
+as a calling function that receives as input a table of stars (e.g.
 ``starlist``):
 
 .. doctest-skip::
@@ -220,7 +220,7 @@ than :class:`~photutils.psf.DAOGroup`.
 Here's a simple example using :class:`~photutils.psf.DBSCANGroup` with
 ``min_samples=1`` and ``metric=euclidean``.  With these parameters,
 the result is identical to the `~photutils.psf.DAOGroup` algorithm.
-Note that `scikit-learn <http://scikit-learn.org/>`_ must be installed
+Note that `scikit-learn <https://scikit-learn.org/>`_ must be installed
 to use :class:`~photutils.psf.DBSCANGroup`.
 
 .. plot::
