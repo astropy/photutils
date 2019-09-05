@@ -288,12 +288,12 @@ class BoundingBox:
 
         Parameters
         ----------
-        other : `~photutils.BoundingBox`
+        other : `BoundingBox`
             The `BoundingBox` to join with this one.
 
         Returns
         -------
-        result : `~photutils.BoundingBox`
+        result : `BoundingBox`
             A `BoundingBox` representing the union of the input
             `BoundingBox` with this one.
         """
@@ -316,12 +316,12 @@ class BoundingBox:
 
         Parameters
         ----------
-        other : `~photutils.BoundingBox`
+        other : `BoundingBox`
             The `BoundingBox` to intersect with this one.
 
         Returns
         -------
-        result : `~photutils.BoundingBox`
+        result : `BoundingBox`
             A `BoundingBox` representing the intersection of the input
             `BoundingBox` with this one.
         """

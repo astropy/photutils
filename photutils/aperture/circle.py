@@ -63,10 +63,11 @@ class CircularMaskMixin:
 
         Returns
         -------
-        mask : `~photutils.ApertureMask` or list of `~photutils.ApertureMask`
+        mask : `~photutils.aperture.ApertureMask` or list of `~photutils.aperture.ApertureMask`
             A mask for the aperture.  If the aperture is scalar then a
-            single `~photutils.ApertureMask` is returned, otherwise a
-            list of `~photutils.ApertureMask` is returned.
+            single `~photutils.aperture.ApertureMask` is returned,
+            otherwise a list of `~photutils.aperture.ApertureMask` is
+            returned.
         """
 
         use_exact, subpixels = self._translate_mask_mode(method, subpixels)
