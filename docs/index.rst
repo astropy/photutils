@@ -70,9 +70,9 @@ User Documentation
     utils.rst
 
 .. toctree::
-    :maxdepth: 1
+    :hidden:
 
-    high-level_API.rst
+    test_function.rst
 
 .. note::
 
