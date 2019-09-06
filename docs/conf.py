@@ -84,7 +84,7 @@ import photutils
 
 rst_epilog = """
 .. _Astropy: https://www.astropy.org/
-.. _Photutils: high-level_API.html
+.. _Photutils: index.html
 """
 
 # -- Project information ------------------------------------------------------
