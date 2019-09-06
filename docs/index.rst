@@ -69,6 +69,11 @@ User Documentation
     datasets.rst
     utils.rst
 
+.. toctree::
+    :hidden:
+
+    test_function.rst
+
 .. note::
 
     Like much astronomy software, Photutils is an evolving package.
