@@ -3,7 +3,7 @@ extraction:
     python_setup:
       version: 3
 
-  path_classifiers:
-    # these files are excluded from being analyzed
-    helpers:
-      - ah_bootstrap.py
+path_classifiers:
+  # these files are excluded from being analyzed
+  helpers:
+    - ah_bootstrap.py
