@@ -11,6 +11,15 @@ Bug Fixes
     [#942]
 
 
+0.7.1 (unreleased)
+------------------
+
+Bug Fixes
+^^^^^^^^^
+
+- Fixed a labeling bug in ``deblend_sources``. [#961]
+
+
 0.7 (2019-08-14)
 ----------------
 

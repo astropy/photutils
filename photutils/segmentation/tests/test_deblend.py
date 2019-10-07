@@ -131,6 +131,32 @@ class TestDeblendSources:
         with pytest.raises(ValueError):
             deblend_sources(data, segm, 1, mode='linear', connectivity=4)
 
+    def test_deblend_label_assignment(self):
+        """
+        Regression test to ensure newly-deblended labels are unique.
+        """
+
+        y, x = np.mgrid[0:201, 0:101]
+        y0a = 35
+        y1a = 60
+        yshift = 100
+        y0b = y0a + yshift
+        y1b = y1a + yshift
+        data = (Gaussian2D(80, 36, y0a, 8, 8)(x, y) +
+                Gaussian2D(71, 58, y1a, 8, 8)(x, y) +
+                Gaussian2D(30, 36, y1a, 7, 7)(x, y) +
+                Gaussian2D(30, 58, y0a, 7, 7)(x, y) +
+                Gaussian2D(80, 36, y0b, 8, 8)(x, y) +
+                Gaussian2D(71, 58, y1b, 8, 8)(x, y) +
+                Gaussian2D(30, 36, y1b, 7, 7)(x, y) +
+                Gaussian2D(30, 58, y0b, 7, 7)(x, y))
+
+        npixels = 5
+        segm1 = detect_sources(data, 5.0, npixels)
+        segm2 = deblend_sources(data, segm1, npixels, mode='linear',
+                                nlevels=32, contrast=0.3)
+        assert segm2.nlabels == 4
+
     @pytest.mark.parametrize('mode', ['exponential', 'linear'])
     def test_deblend_sources_norelabel(self, mode):
         result = deblend_sources(self.data, self.segm, self.npixels,

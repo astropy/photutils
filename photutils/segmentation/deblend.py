@@ -140,6 +140,8 @@ def deblend_sources(data, segment_img, npixels, filter_kernel=None,
                              'developers.'.format(label))
 
         if source_deblended.nlabels > 1:
+            source_deblended.relabel_consecutive(start_label=1)
+
             # replace the original source with the deblended source
             source_mask = (source_deblended.data > 0)
             segm_tmp = segm_deblended.data
@@ -212,7 +214,8 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     segment_image : `~photutils.segmentation.SegmentationImage`
         A segmentation image, with the same shape as ``data``, where
         sources are marked by different positive integer values.  A
-        value of zero is reserved for the background.
+        value of zero is reserved for the background.  Note that the
+        returned `SegmentationImage` may *not* have consecutive labels.
     """
 
     from scipy.ndimage import label as ndilabel
