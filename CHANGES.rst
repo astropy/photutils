@@ -84,6 +84,15 @@ API changes
     ``assert_angle``, and ``pixel_to_icrs_coords``. [#953]
 
 
+0.7.1 (unreleased)
+------------------
+
+Bug Fixes
+^^^^^^^^^
+
+- Fixed a labeling bug in ``deblend_sources``. [#961]
+
+
 0.7 (2019-08-14)
 ----------------
 
