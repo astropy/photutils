@@ -46,8 +46,8 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
     apertures : `~photutils.aperture.Aperture` or list of `~photutils.aperture.Aperture`
         The aperture(s) to use for the photometry.  If ``apertures`` is
-        a list of `~photutils.Aperture` then they all must have the same
-        position(s).
+        a list of `~photutils.aperture.Aperture` then they all must have
+        the same position(s).
 
     error : array_like or `~astropy.units.Quantity`, optional
         The pixel-wise Gaussian 1-sigma errors of the input ``data``.
