@@ -12,7 +12,10 @@ Bug Fixes
 
 - ``photutils.segmentation``
 
-  - Fixed a labeling bug in ``deblend_sources``. [#961]
+    - Fixed a labeling bug in ``deblend_sources``. [#961]
+
+    - Fixed an issue in ``source_properties`` when the input ``data``
+      is a ``Quantity`` array. [#963]
 
 
 0.7 (2019-08-14)

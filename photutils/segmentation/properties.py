@@ -335,11 +335,16 @@ class SourceProperties:
         etc.
         """
 
+        if isinstance(self.data_cutout, u.Quantity):
+            cutout = self.data_cutout.value
+        else:
+            cutout = self.data_cutout
+
         # NOTE: using np.where is faster than
         #     _data = np.copy(self.data_cutout)
         #     self._data[self._total_mask] = 0.
         return np.where(self._total_mask, 0,
-                        self.data_cutout).astype(np.float64)  # copy
+                        cutout).astype(np.float64)  # copy
 
     @lazyproperty
     def _filtered_data_zeroed(self):
@@ -359,6 +364,9 @@ class SourceProperties:
         """
 
         filt_data = self._filtered_data[self.slices]
+        if isinstance(filt_data, u.Quantity):
+            filt_data = filt_data.value
+
         filt_data = np.where(self._total_mask, 0., filt_data)  # copy
         filt_data[filt_data < 0] = 0.
         return filt_data.astype(np.float64)
@@ -1221,13 +1229,14 @@ class SourceProperties:
         order.
         """
 
-        if np.any(~np.isfinite(self.covariance)):
-            return (np.nan, np.nan) * u.pix**2
+        unit = u.pix**2  # eigvals unit
+        if np.any(~np.isfinite(self.covariance.value)):
+            return (np.nan, np.nan) * unit
         else:
-            eigvals = np.linalg.eigvals(self.covariance)
+            eigvals = np.linalg.eigvals(self.covariance.value)
             if np.any(eigvals < 0):  # negative variance
-                return (np.nan, np.nan) * u.pix**2  # pragma: no cover
-            return (np.max(eigvals), np.min(eigvals)) * u.pix**2
+                return (np.nan, np.nan) * unit  # pragma: no cover
+            return (np.max(eigvals), np.min(eigvals)) * unit
 
     @lazyproperty
     def semimajor_axis_sigma(self):
