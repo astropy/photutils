@@ -4,21 +4,15 @@
 General
 ^^^^^^^
 
-- The minimum required python version is >= 3.6. [#952]
+- The minimum required python version is 3.6. [#952]
 
-- The minimum required astropy version is >= 3.2. [#952]
+- The minimum required astropy version is 3.2. [#952]
 
 New Features
 ^^^^^^^^^^^^
 
 Bug Fixes
 ^^^^^^^^^
-
-- ``photutils.psf``
-
-  - Fix to ``IterativelySubtractedPSFPhotometry`` where the residual
-    image was not initialized when ``bkg_estimator`` was not
-    supplied. [#942]
 
 API changes
 ^^^^^^^^^^^
@@ -84,11 +78,17 @@ API changes
     ``assert_angle``, and ``pixel_to_icrs_coords``. [#953]
 
 
-0.7.1 (unreleased)
+0.7.1 (2019-10-09)
 ------------------
 
 Bug Fixes
 ^^^^^^^^^
+
+- ``photutils.psf``
+
+  - Fix to ``IterativelySubtractedPSFPhotometry`` where the residual
+    image was not initialized when ``bkg_estimator`` was not supplied.
+    [#942]
 
 - ``photutils.segmentation``
 
@@ -825,7 +825,16 @@ Bug Fixes
     in ``calc_total_error``. [#537]
 
 
-0.3.1 (unreleased)
+0.3.2 (2017-03-31)
+------------------
+
+General
+^^^^^^^
+
+- Fixed file permissions in the released source distribution.
+
+
+0.3.1 (2017-03-02)
 ------------------
 
 General
