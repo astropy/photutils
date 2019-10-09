@@ -627,7 +627,8 @@ def test_psf_extra_output_cols(sigma_psf, sources):
                         data=[[17.4], [16]])
     init_guess4 = Table(names=['x_0', 'y_0', 'sharpness'],
                         data=[[17.4], [16], [0.4]])
-    for init_guesses in [init_guess1, init_guess2, init_guess3]:
+    for i, init_guesses in enumerate([init_guess1, init_guess2, init_guess3,
+                                      init_guess4]):
         dao_phot = DAOPhotPSFPhotometry(crit_separation=8, threshold=40,
                                         fwhm=2*2*np.sqrt(2*np.log(2)),
                                         psf_model=psf_model, fitshape=(11, 11),
@@ -644,10 +645,10 @@ def test_psf_extra_output_cols(sigma_psf, sources):
         assert len(phot_results) == 2
         # checks to verify that half-passing init_guesses results in NaN output
         # for extra_output_cols not passed as initial guesses
-        if init_guesses == init_guess3:
+        if i == 2:  # init_guess3
             assert(np.all(np.all(np.isnan(phot_results[o])) for o in
                    ['sharpness', 'roundness1', 'roundness2']))
-        if init_guesses == init_guess4:
+        if i == 3:  # init_guess4
             assert(np.all(np.all(np.isnan(phot_results[o])) for o in
                    ['roundness1', 'roundness2']))
             assert(np.all(~np.isnan(phot_results['sharpness'])))
