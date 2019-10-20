@@ -324,7 +324,7 @@ class EPSFBuilder:
         if len(oversampling) == 1:
             oversampling = np.repeat(oversampling, 2)
         if np.any(oversampling % 2 != 0):
-            raise ValueError('Oversampling factor must be a multiple of two')
+            raise ValueError('Oversampling factor must be a multiple of two.')
         if np.any(oversampling <= 0.0):
             raise ValueError('oversampling must be a positive number.')
         self._norm_radius = norm_radius
@@ -356,6 +356,9 @@ class EPSFBuilder:
 
         self.progress_bar = progress_bar
 
+        if not isinstance(sigclip, SigmaClip):
+            raise ValueError("'sigclip' must be an astropy.stats.SigmaClip"
+                             " function.")
         self.sigclip = sigclip
 
         # store each ePSF build iteration
@@ -478,8 +481,11 @@ class EPSFBuilder:
 
         x = epsf.oversampling[0] * star._xidx_centered
         y = epsf.oversampling[1] * star._yidx_centered
-        epsf_xcenter, epsf_ycenter = (int((epsf.data.shape[1] - 1) / 2),
-                                      int((epsf.data.shape[0] - 1) / 2))
+
+        epsf_xcenter, epsf_ycenter = (int((epsf.data.shape[1] -
+                                           1) / 2),
+                                      int((epsf.data.shape[0] -
+                                           1) / 2))
         xidx = _py2intround(x + epsf_xcenter)
         yidx = _py2intround(y + epsf_ycenter)
 
@@ -731,16 +737,16 @@ class EPSFBuilder:
         # compute a 3D stack of 2D residual images
         residuals = self._resample_residuals(stars, epsf)
 
-        # compute the sigma-clipped mean along the 3D stack
+        # compute the sigma-clipped average along the 3D stack
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)
             warnings.simplefilter('ignore', category=AstropyUserWarning)
             residuals = self.sigclip(residuals, axis=0, masked=False,
                                      return_bounds=False)
             if HAS_BOTTLENECK:
-                residuals = bottleneck.nanmean(residuals, axis=0)
+                residuals = bottleneck.nanmedian(residuals, axis=0)
             else:
-                residuals = np.nanmean(residuals, axis=0)
+                residuals = np.nanmedian(residuals, axis=0)
 
         # interpolate any missing data (np.nan)
         mask = ~np.isfinite(residuals)
@@ -754,20 +760,21 @@ class EPSFBuilder:
         # add the residuals to the previous ePSF image
         new_epsf = epsf._data + residuals
 
+        # smooth and recenter the ePSF
+        new_epsf = self._smooth_epsf(new_epsf)
+
         epsf = EPSFModel(data=new_epsf, origin=epsf.origin,
                          oversampling=epsf.oversampling,
                          norm_radius=epsf._norm_radius,
                          shift_val=epsf._shift_val, normalize=False)
 
-        # smooth and recenter the ePSF
-        epsf._data = self._smooth_epsf(epsf._data)
         epsf._data = self._recenter_epsf(
             epsf, centroid_func=self.recentering_func,
             box_size=self.recentering_boxsize,
             maxiters=self.recentering_maxiters)
 
-        # return the new ePSF object, but with undersampled grid pixel
-        # coordinates
+        # Return the new ePSF object, but with undersampled grid pixel
+        # coordinates.
         xcenter = (epsf._data.shape[1] - 1) / 2. / epsf.oversampling[0]
         ycenter = (epsf._data.shape[0] - 1) / 2. / epsf.oversampling[1]
 

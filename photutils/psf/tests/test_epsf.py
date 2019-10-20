@@ -13,7 +13,8 @@ import pytest
 from ..epsf import EPSFBuilder, EPSFFitter
 from ..epsf_stars import extract_stars, EPSFStar, EPSFStars
 from ..models import IntegratedGaussianPRF, EPSFModel
-from ...datasets import make_gaussian_prf_sources_image
+from ...datasets import make_gaussian_prf_sources_image, apply_poisson_noise
+from ...centroids import centroid_com
 
 try:
     import scipy  # noqa
@@ -148,6 +149,9 @@ def test_epsfbuilder_inputs():
         EPSFBuilder(oversampling=[3, 6])
     with pytest.raises(ValueError):
         EPSFBuilder(oversampling=[-1, 4])
+    for sigclip in [None, [], 'a']:
+        with pytest.raises(ValueError):
+            EPSFBuilder(sigclip=sigclip)
 
 
 def test_epsfmodel_inputs():
@@ -172,3 +176,63 @@ def test_epsfmodel_inputs():
     for origin in ['a', (1, 2, 3)]:
         with pytest.raises(TypeError):
             EPSFModel(data, origin=origin)
+
+
+def test_epsf_build_with_noise():
+    oversampling  = 4
+    size = 25
+    sigma = 0.5
+
+    # should be "truth" ePSF
+    m = IntegratedGaussianPRF(sigma=sigma, x_0=12.5, y_0=12.5, flux=1)
+    yy, xx = np.mgrid[0:size*oversampling+1,
+                      0:size*oversampling+1]
+    xx = xx / oversampling
+    yy = yy / oversampling
+    truth_epsf = m(xx, yy)
+
+    Nstars = 16  # one star per oversampling=4 point, roughly
+    xdim = np.ceil(np.sqrt(Nstars)).astype(int)
+    ydim = np.ceil(Nstars / xdim).astype(int)
+    xarray = np.arange((size-1)/2+2, (size-1)/2+2 + xdim*size, size)
+    yarray = np.arange((size-1)/2+2, (size-1)/2+2 + ydim*size, size)
+    xarray, yarray = np.meshgrid(xarray, yarray)
+    xarray, yarray = xarray.ravel(), yarray.ravel()
+
+    np.random.seed(seed=76312)
+    xpos = np.random.uniform(-0.5, 0.5, Nstars)
+    ypos = np.random.uniform(-0.5, 0.5, Nstars)
+    amps = np.random.uniform(50, 1000, Nstars)
+
+    sources = Table()
+    sources['amplitude'] = amps
+    sources['x_0'] = xarray[:Nstars] + xpos
+    sources['y_0'] = yarray[:Nstars] + ypos
+    sources['sigma'] = [sigma]*Nstars
+
+    stars_tbl = Table()
+    stars_tbl['x'] = sources['x_0']
+    stars_tbl['y'] = sources['y_0']
+
+    data = make_gaussian_prf_sources_image((size*ydim+4,
+                                            size*xdim+4), sources)
+
+    data += 20  # counts/s
+    data *= 100  # seconds
+    data = apply_poisson_noise(data).astype(float)
+    data /= 100
+    data -= 20
+    nddata = NDData(data=data)
+
+    stars = extract_stars(nddata, stars_tbl, size=size)
+
+    for star in stars:
+        star.cutout_center = centroid_com(star.data)
+
+    epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=20,
+                               progress_bar=False, norm_radius=7.5,
+                               recentering_func=centroid_com,
+                               shift_val=0.5)
+    epsf, fitted_stars = epsf_builder(stars)
+    print(epsf.data, truth_epsf, np.amax(epsf.data), np.amax(truth_epsf))
+    assert_allclose(epsf.data, truth_epsf, rtol=1e-1, atol=5e-2)
