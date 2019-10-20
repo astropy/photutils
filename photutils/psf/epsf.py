@@ -603,15 +603,13 @@ class EPSFBuilder:
             centroid of the ePSF during each build iteration.  If a
             single integer number is provided, then a square box will be
             used.  If two values are provided, then they should be in
-            ``(ny, nx)`` order.  The default is 5.
+            ``(ny, nx)`` order.
         maxiters : int, optional
             The maximum number of recentering iterations to perform.
-            The default is 20.
         center_accuracy : float, optional
             The desired accuracy for the centers of stars.  The building
             iterations will stop if the center of the ePSF changes by
             less than ``center_accuracy`` pixels between iterations.
-            The default is 1.0e-4.
 
         Returns
         -------
