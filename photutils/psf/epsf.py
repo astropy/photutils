@@ -290,13 +290,18 @@ class EPSFBuilder:
     shift_val : float, optional
         The undersampled value at which to compute the shifts.  It must
         be a strictly positive number.
+
+    sigclip : `~astropy.stats.SigmaClip` object, optional
+        A `~astropy.stats.SigmaClip` object used to compute the residual
+        of ePSF grid points based on star sampling residuals.
     """
 
     def __init__(self, oversampling=4., shape=None,
                  smoothing_kernel='quartic', recentering_func=centroid_epsf,
                  recentering_maxiters=20, fitter=EPSFFitter(), maxiters=10,
                  progress_bar=True, norm_radius=5.5, shift_val=0.5,
-                 recentering_boxsize=(5, 5), center_accuracy=1.0e-3):
+                 recentering_boxsize=(5, 5), center_accuracy=1.0e-3,
+                 sigclip=SigmaClip(sigma=3, cenfunc='median', maxiters=10)):
 
         if oversampling is None:
             raise ValueError("'oversampling' must be specified.")
@@ -336,8 +341,7 @@ class EPSFBuilder:
 
         self.progress_bar = progress_bar
 
-        # TODO: allow custom SigmaClip object
-        self.sigclip = SigmaClip(sigma=2.5, cenfunc='mean', maxiters=10)
+        self.sigclip = sigclip
 
         # store each ePSF build iteration
         self._epsf = []
