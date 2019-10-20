@@ -291,6 +291,18 @@ class EPSFBuilder:
         The undersampled value at which to compute the shifts.  It must
         be a strictly positive number.
 
+    recentering_boxsize : float or tuple of two floats, optional
+            The size (in pixels) of the box used to calculate the centroid
+            of the ePSF during each build iteration.  If a single integer
+            number is provided, then a square box will be used.  If two
+            values are provided, then they should be in ``(ny, nx)`` order.
+
+    center_accuracy : float, optional
+            The desired accuracy for the centers of stars.  The building
+            iterations will stop if the centers of all the stars change by
+            less than ``center_accuracy`` pixels between iterations.  All
+            stars must meet this condition for the loop to exit.
+
     sigclip : `~astropy.stats.SigmaClip` object, optional
         A `~astropy.stats.SigmaClip` object used to compute the residual
         of ePSF grid points based on star sampling residuals.
@@ -465,8 +477,8 @@ class EPSFBuilder:
         y = epsf.oversampling[1] * star._yidx_centered
         epsf_xcenter, epsf_ycenter = (int((epsf.data.shape[1] - 1) / 2),
                                       int((epsf.data.shape[0] - 1) / 2))
-        _xidx = _py2intround(x + epsf_xcenter)
-        _yidx = _py2intround(y + epsf_ycenter)
+        xidx = _py2intround(x + epsf_xcenter)
+        yidx = _py2intround(y + epsf_ycenter)
 
         resampled_img = np.full(epsf.shape, np.nan)
 
@@ -659,8 +671,9 @@ class EPSFBuilder:
                     xcenter_new, ycenter_new = centroid_func(epsf_cutout,
                                                              mask=mask)
 
-            xcenter_new += slices_large[1].start/self.oversampling[0]
-            ycenter_new += slices_large[0].start/self.oversampling[1]
+            if self.recentering_func != centroid_epsf:
+                xcenter_new += slices_large[1].start/self.oversampling[0]
+                ycenter_new += slices_large[0].start/self.oversampling[1]
 
             # Calculate the shift; dx = i - x_star so if dx was positively
             # incremented then x_star was negatively incremented for a given i.
