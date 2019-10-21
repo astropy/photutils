@@ -178,6 +178,7 @@ def test_epsfmodel_inputs():
             EPSFModel(data, origin=origin)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_epsf_build_with_noise():
     oversampling = 4
     size = 25
