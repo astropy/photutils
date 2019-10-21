@@ -179,7 +179,7 @@ def test_epsfmodel_inputs():
 
 
 def test_epsf_build_with_noise():
-    oversampling  = 4
+    oversampling = 4
     size = 25
     sigma = 0.5
 
