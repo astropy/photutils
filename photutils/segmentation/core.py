@@ -722,7 +722,7 @@ class SegmentationImage:
 
         if relabel:
             labels = np.unique(idx[idx != 0])
-            idx2 = np.zeros(max(labels) + 1, dtype=np.int)
+            idx2 = np.zeros(max(labels) + 1, dtype=int)
             idx2[labels] = np.arange(len(labels)) + 1
             idx = idx2[idx]
 
@@ -767,7 +767,7 @@ class SegmentationImage:
                 (self.labels[-1] - self.labels[0] + 1) == self.nlabels):
             return
 
-        new_labels = np.zeros(self.max_label + 1, dtype=np.int)
+        new_labels = np.zeros(self.max_label + 1, dtype=int)
         new_labels[self.labels] = np.arange(self.nlabels) + start_label
 
         data_new = new_labels[self.data]

@@ -26,7 +26,7 @@ except ImportError:
 class TestDetectSources:
     def setup_class(self):
         self.data = np.array([[0, 1, 0], [0, 2, 0],
-                              [0, 0, 0]]).astype(np.float)
+                              [0, 0, 0]]).astype(float)
         self.refdata = np.array([[0, 1, 0], [0, 1, 0], [0, 0, 0]])
 
         fwhm2sigma = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))

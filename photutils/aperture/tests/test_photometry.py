@@ -49,7 +49,7 @@ TEST_APERTURES = list(zip(APERTURE_CL, ((3.,), (3., 5.),
 
 @pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
 def test_outside_array(aperture_class, params):
-    data = np.ones((10, 10), dtype=np.float)
+    data = np.ones((10, 10), dtype=float)
     aperture = aperture_class((-60, 60), *params)
     fluxtable = aperture_photometry(data, aperture)
     # aperture is fully outside array:
@@ -58,7 +58,7 @@ def test_outside_array(aperture_class, params):
 
 @pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
 def test_inside_array_simple(aperture_class, params):
-    data = np.ones((40, 40), dtype=np.float)
+    data = np.ones((40, 40), dtype=float)
     aperture = aperture_class((20., 20.), *params)
     table1 = aperture_photometry(data, aperture, method='center', subpixels=10)
     table2 = aperture_photometry(data, aperture, method='subpixel',
@@ -104,7 +104,7 @@ class BaseTestAperturePhotometry:
 
     def test_array_error(self):
         # Array error
-        error = np.ones(self.data.shape, dtype=np.float)
+        error = np.ones(self.data.shape, dtype=float)
         if not hasattr(self, 'mask'):
             mask = None
             true_error = np.sqrt(self.area)
@@ -142,7 +142,7 @@ class BaseTestAperturePhotometry:
 class TestCircular(BaseTestAperturePhotometry):
 
     def setup_class(self):
-        self.data = np.ones((40, 40), dtype=np.float)
+        self.data = np.ones((40, 40), dtype=float)
         position = (20., 20.)
         r = 10.
         self.aperture = CircularAperture(position, r)
@@ -153,7 +153,7 @@ class TestCircular(BaseTestAperturePhotometry):
 class TestCircularArray(BaseTestAperturePhotometry):
 
     def setup_class(self):
-        self.data = np.ones((40, 40), dtype=np.float)
+        self.data = np.ones((40, 40), dtype=float)
         position = ((20., 20.), (25., 25.))
         r = 10.
         self.aperture = CircularAperture(position, r)
@@ -165,7 +165,7 @@ class TestCircularArray(BaseTestAperturePhotometry):
 class TestCircularAnnulus(BaseTestAperturePhotometry):
 
     def setup_class(self):
-        self.data = np.ones((40, 40), dtype=np.float)
+        self.data = np.ones((40, 40), dtype=float)
         position = (20., 20.)
         r_in = 8.
         r_out = 10.
@@ -177,7 +177,7 @@ class TestCircularAnnulus(BaseTestAperturePhotometry):
 class TestCircularAnnulusArray(BaseTestAperturePhotometry):
 
     def setup_class(self):
-        self.data = np.ones((40, 40), dtype=np.float)
+        self.data = np.ones((40, 40), dtype=float)
         position = ((20., 20.), (25., 25.))
         r_in = 8.
         r_out = 10.
@@ -190,7 +190,7 @@ class TestCircularAnnulusArray(BaseTestAperturePhotometry):
 class TestElliptical(BaseTestAperturePhotometry):
 
     def setup_class(self):
-        self.data = np.ones((40, 40), dtype=np.float)
+        self.data = np.ones((40, 40), dtype=float)
         position = (20., 20.)
         a = 10.
         b = 5.
@@ -203,7 +203,7 @@ class TestElliptical(BaseTestAperturePhotometry):
 class TestEllipticalAnnulus(BaseTestAperturePhotometry):
 
     def setup_class(self):
-        self.data = np.ones((40, 40), dtype=np.float)
+        self.data = np.ones((40, 40), dtype=float)
         position = (20., 20.)
         a_in = 5.
         a_out = 8.
@@ -218,7 +218,7 @@ class TestEllipticalAnnulus(BaseTestAperturePhotometry):
 class TestRectangularAperture(BaseTestAperturePhotometry):
 
     def setup_class(self):
-        self.data = np.ones((40, 40), dtype=np.float)
+        self.data = np.ones((40, 40), dtype=float)
         position = (20., 20.)
         h = 5.
         w = 8.
@@ -231,7 +231,7 @@ class TestRectangularAperture(BaseTestAperturePhotometry):
 class TestRectangularAnnulus(BaseTestAperturePhotometry):
 
     def setup_class(self):
-        self.data = np.ones((40, 40), dtype=np.float)
+        self.data = np.ones((40, 40), dtype=float)
         position = (20., 20.)
         h_out = 8.
         w_in = 8.
@@ -246,7 +246,7 @@ class TestRectangularAnnulus(BaseTestAperturePhotometry):
 class TestMaskedSkipCircular(BaseTestAperturePhotometry):
 
     def setup_class(self):
-        self.data = np.ones((40, 40), dtype=np.float)
+        self.data = np.ones((40, 40), dtype=float)
         self.mask = np.zeros((40, 40), dtype=bool)
         self.mask[20, 20] = True
         position = (20., 20.)
@@ -275,7 +275,7 @@ class BaseTestDifferentData:
 class TestInputNDData(BaseTestDifferentData):
 
     def setup_class(self):
-        data = np.ones((40, 40), dtype=np.float)
+        data = np.ones((40, 40), dtype=float)
         self.data = NDData(data, unit=u.adu)
         self.radius = 3
         self.position = [(20, 20), (30, 30)]
@@ -434,7 +434,7 @@ def test_wcs_based_photometry():
 
 
 def test_basic_circular_aperture_photometry_unit():
-    data1 = np.ones((40, 40), dtype=np.float)
+    data1 = np.ones((40, 40), dtype=float)
     data2 = u.Quantity(data1*u.adu)
 
     radius = 3
@@ -453,7 +453,7 @@ def test_basic_circular_aperture_photometry_unit():
 def test_aperture_photometry_with_error_units():
     """Test aperture_photometry when error has units (see #176)."""
 
-    data1 = np.ones((40, 40), dtype=np.float)
+    data1 = np.ones((40, 40), dtype=float)
     data2 = u.Quantity(data1, unit=u.adu)
     error = u.Quantity(data1, unit=u.adu)
     radius = 3
@@ -822,7 +822,7 @@ def test_scalar_aperture():
     on the column names to be consistent with list inputs.
     """
 
-    data = np.ones((20, 20), dtype=np.float)
+    data = np.ones((20, 20), dtype=float)
 
     ap = CircularAperture((10, 10), r=3.)
     colnames1 = aperture_photometry(data, ap, error=data).colnames

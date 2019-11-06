@@ -29,7 +29,7 @@ DATA[1, 1] = 2.
 
 @pytest.mark.skipif('not HAS_SKIMAGE')
 def test_data_properties():
-    data = np.ones((2, 2)).astype(np.float)
+    data = np.ones((2, 2)).astype(float)
     mask = np.array([[False, False], [True, True]])
     props = data_properties(data, mask=None)
     props2 = data_properties(data, mask=mask)

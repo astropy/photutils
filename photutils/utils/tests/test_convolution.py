@@ -45,19 +45,19 @@ class TestFilterData:
 
         filt_data = _filter_data(self.data.astype(int),
                                  self.kernel.array.astype(int))
-        assert filt_data.dtype == np.float64
+        assert filt_data.dtype == float
 
         filt_data = _filter_data(self.data.astype(int),
                                  self.kernel.array.astype(float))
-        assert filt_data.dtype == np.float64
+        assert filt_data.dtype == float
 
         filt_data = _filter_data(self.data.astype(float),
                                  self.kernel.array.astype(int))
-        assert filt_data.dtype == np.float64
+        assert filt_data.dtype == float
 
         filt_data = _filter_data(self.data.astype(float),
                                  self.kernel.array.astype(float))
-        assert filt_data.dtype == np.float64
+        assert filt_data.dtype == float
 
     def test_filter_data_kernel_none(self):
         """

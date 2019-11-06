@@ -343,8 +343,7 @@ class SourceProperties:
         # NOTE: using np.where is faster than
         #     _data = np.copy(self.data_cutout)
         #     self._data[self._total_mask] = 0.
-        return np.where(self._total_mask, 0,
-                        cutout).astype(np.float64)  # copy
+        return np.where(self._total_mask, 0, cutout).astype(float)  # copy
 
     @lazyproperty
     def _filtered_data_zeroed(self):
@@ -369,7 +368,7 @@ class SourceProperties:
 
         filt_data = np.where(self._total_mask, 0., filt_data)  # copy
         filt_data[filt_data < 0] = 0.
-        return filt_data.astype(np.float64)
+        return filt_data.astype(float)
 
     def make_cutout(self, data, masked_array=False):
         """
@@ -1080,7 +1079,7 @@ class SourceProperties:
             data = ~self._total_mask
             selem = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
             data_eroded = binary_erosion(data, selem, border_value=0)
-            border = np.logical_xor(data, data_eroded).astype(np.int)
+            border = np.logical_xor(data, data_eroded).astype(int)
 
             kernel = np.array([[10, 2, 10], [2, 1, 2], [10, 2, 10]])
             perimeter_data = convolve(border, kernel, mode='constant', cval=0)
@@ -1089,7 +1088,7 @@ class SourceProperties:
             perimeter_hist = np.bincount(perimeter_data.ravel(),
                                          minlength=size)
 
-            weights = np.zeros(size, dtype=np.float)
+            weights = np.zeros(size, dtype=float)
             weights[[5, 7, 15, 17, 25, 27]] = 1.
             weights[[21, 33]] = np.sqrt(2.)
             weights[[13, 23]] = (1 + np.sqrt(2.)) / 2.

@@ -120,7 +120,7 @@ class DAOGroup(GroupStarsBase):
                                         data=np.arange(len(cstarlist)) + 1))
         cstarlist.add_column(Column(name='group_id',
                                     data=np.zeros(len(cstarlist),
-                                                  dtype=np.int)))
+                                                  dtype=int)))
 
         if not np.array_equal(cstarlist['id'], np.arange(len(cstarlist)) + 1):
             raise ValueError('id colum must be an integer-valued ' +
@@ -241,5 +241,5 @@ class DBSCANGroup(GroupStarsBase):
                         min_samples=self.min_samples, metric=self.metric,
                         algorithm=self.algorithm, leaf_size=self.leaf_size)
         cstarlist['group_id'] = (dbscan.fit(pos_stars).labels_ +
-                                 np.ones(len(cstarlist), dtype=np.int))
+                                 np.ones(len(cstarlist), dtype=int))
         return cstarlist

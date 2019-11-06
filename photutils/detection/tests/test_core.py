@@ -28,10 +28,10 @@ try:
 except ImportError:
     HAS_GWCS = False
 
-DATA = np.array([[0, 1, 0], [0, 2, 0], [0, 0, 0]]).astype(np.float)
+DATA = np.array([[0, 1, 0], [0, 2, 0], [0, 0, 0]]).astype(float)
 REF1 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
 
-PEAKDATA = np.array([[1, 0, 0], [0, 0, 0], [0, 0, 1]]).astype(np.float)
+PEAKDATA = np.array([[1, 0, 0], [0, 0, 0], [0, 0, 1]]).astype(float)
 PEAKREF1 = np.array([[0, 0], [2, 2]])
 
 IMAGE = make_4gaussians_image()
@@ -113,7 +113,7 @@ class TestDetectThreshold:
         applying the mask.
         """
 
-        mask = REF1.astype(np.bool)
+        mask = REF1.astype(bool)
         threshold = detect_threshold(DATA, nsigma=1., error=0, mask=mask,
                                      sigclip_sigma=10, sigclip_iters=1)
         ref = (1. / 8.) * np.ones((3, 3))
@@ -122,7 +122,7 @@ class TestDetectThreshold:
     def test_image_mask_override(self):
         """Test that image_mask overrides mask_value."""
 
-        mask = REF1.astype(np.bool)
+        mask = REF1.astype(bool)
         threshold = detect_threshold(DATA, nsigma=0.1, error=0, mask_value=0.0,
                                      mask=mask, sigclip_sigma=10,
                                      sigclip_iters=1)
