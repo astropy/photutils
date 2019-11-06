@@ -2,17 +2,17 @@
 # test infrastructure.
 import os
 
-# As of Astropy 3.0, the pytest plugins provided by Astropy are
-# automatically made available when Astropy is installed. This means it's
-# not necessary to import them here, but we still need to import global
-# variables that are used for configuration.
-from astropy.tests.plugins.display import (pytest_report_header,  # noqa
-                                           PYTEST_HEADER_MODULES,
+
+from pytest_astropy_header.display import (PYTEST_HEADER_MODULES,
                                            TESTED_VERSIONS)
 
 from astropy.tests.helper import enable_deprecations_as_exceptions
 
 from .version import version, astropy_helpers_version
+
+
+def pytest_configure(config):
+    config.option.astropy_header = True
 
 # Uncomment the following line to treat all DeprecationWarnings as
 # exceptions. For Astropy v2.0 or later, there are 2 additional keywords,
