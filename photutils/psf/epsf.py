@@ -187,7 +187,7 @@ class EPSFFitter:
         # Define positions in the undersampled grid. The fitter will
         # evaluate on the defined interpolation grid, currently in the
         # range [0, len(undersampled grid)].
-        yy, xx = np.indices(data.shape, dtype=np.float)
+        yy, xx = np.indices(data.shape, dtype=float)
         xx = xx + x0 - star.cutout_center[0]
         yy = yy + y0 - star.cutout_center[1]
 
@@ -422,16 +422,17 @@ class EPSFBuilder:
             # Stars class should have odd-sized dimensions, and thus we
             # get the oversampled shape as oversampling * len + 1; if
             # len=25, then newlen=101, for example.
-            x_shape = np.int(np.ceil(stars._max_shape[0]) * oversampling[0]
-                             + 1)
-            y_shape = np.int(np.ceil(stars._max_shape[1]) * oversampling[1]
-                             + 1)
+            x_shape = (np.ceil(stars._max_shape[0]) * oversampling[0] +
+                       1).astype(int)
+            y_shape = (np.ceil(stars._max_shape[1]) * oversampling[1] +
+                       1).astype(int)
+
             shape = np.array((y_shape, x_shape))
 
         # verify odd sizes of shape
         shape = [(i + 1) if i % 2 == 0 else i for i in shape]
 
-        data = np.zeros(shape, dtype=np.float)
+        data = np.zeros(shape, dtype=float)
 
         # ePSF origin should be in the undersampled pixel units, not the
         # oversampled grid units. The middle, fractional (as we wish for
@@ -639,7 +640,7 @@ class EPSFBuilder:
 
         xcenter, ycenter = epsf.origin
 
-        y, x = np.indices(epsf._data.shape, dtype=np.float)
+        y, x = np.indices(epsf._data.shape, dtype=float)
         x /= epsf.oversampling[0]
         y /= epsf.oversampling[1]
 

@@ -71,9 +71,9 @@ class EPSFStar:
             if weights.shape != data.shape:
                 raise ValueError('weights must have the same shape as the '
                                  'input data array.')
-            self.weights = np.asanyarray(weights, dtype=np.float).copy()
+            self.weights = np.asanyarray(weights, dtype=float).copy()
         else:
-            self.weights = np.ones_like(self._data, dtype=np.float)
+            self.weights = np.ones_like(self._data, dtype=float)
 
         self.mask = (self.weights <= 0.)
 
@@ -173,10 +173,10 @@ class EPSFStar:
             data_interp = _interpolate_missing_data(data_interp,
                                                     method='nearest',
                                                     mask=self.mask)
-            flux = np.sum(data_interp, dtype=np.float64)
+            flux = np.sum(data_interp, dtype=float)
 
         else:
-            flux = np.sum(self.data, dtype=np.float64)
+            flux = np.sum(self.data, dtype=float)
 
         return flux
 
@@ -195,7 +195,7 @@ class EPSFStar:
             A 2D array of the registered/scaled ePSF.
         """
 
-        yy, xx = np.indices(self.shape, dtype=np.float)
+        yy, xx = np.indices(self.shape, dtype=float)
         xx = xx - self.cutout_center[0]
         yy = yy - self.cutout_center[1]
 
@@ -765,19 +765,19 @@ def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
                                                    data.wcs, origin=0,
                                                    mode='all')
     else:
-        xcenters = catalog['x'].data.astype(np.float)
-        ycenters = catalog['y'].data.astype(np.float)
+        xcenters = catalog['x'].data.astype(float)
+        ycenters = catalog['y'].data.astype(float)
 
     if 'id' in colnames:
         ids = catalog['id']
     else:
-        ids = np.arange(len(catalog), dtype=np.int) + 1
+        ids = np.arange(len(catalog), dtype=int) + 1
 
     if data.uncertainty is None:
         weights = np.ones_like(data.data)
     else:
         if data.uncertainty.uncertainty_type == 'weights':
-            weights = np.asanyarray(data.uncertainty.array, dtype=np.float)
+            weights = np.asanyarray(data.uncertainty.array, dtype=float)
         else:
             warnings.warn('The data uncertainty attribute has an unsupported '
                           'type.  Only uncertainty_type="weights" can be '

@@ -176,7 +176,7 @@ def test_epsfmodel_inputs():
     with pytest.raises(ValueError):
         EPSFModel(data)
 
-    data[2, 2] = np.finfo(np.float64).max * 2
+    data[2, 2] = np.finfo(float).max * 2
     with pytest.raises(ValueError):
         EPSFModel(data, flux=None)
 
