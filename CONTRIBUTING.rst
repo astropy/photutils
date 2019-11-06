@@ -4,8 +4,8 @@ Contributing to Photutils
 Reporting Issues
 ----------------
 
-When opening an issue to report a problem, please try and provide a
-minimal code example that reproduces the issue. Also please include
+When opening an issue to report a problem, please try to provide a
+minimal code example that reproduces the issue.  Also, please include
 details of the operating system and the Python, Numpy, Astropy, and
 Photutils versions you are using.
 
@@ -31,10 +31,11 @@ that you include the following:
 - **Tests**: these are either tests to ensure code that previously
   failed now works (regression tests) or tests that cover as much as
   possible of the new functionality to make sure it doesn't break in
-  future.  The tests are also used to ensure consistent results on all
-  platforms, since we run these tests on many
+  the future.  The tests are also used to ensure consistent results on
+  all platforms, since we run these tests on many
   platforms/configurations. For more information about how to write
-  tests, see the `Astropy testing guidelines <https://docs.astropy.org/en/latest/development/testguide.html>`_.
+  tests, see the `Astropy testing guidelines
+  <https://docs.astropy.org/en/latest/development/testguide.html>`_.
 
 - **Documentation**: if you are adding new functionality, be sure to
   include a description in the main documentation (in ``docs/``). For
@@ -51,11 +52,11 @@ that you include the following:
 
   You do not need to include a changelog entry for fixes to bugs
   introduced in the developer version and therefore are not present in
-  the stable releases.  In general you do not need to include a
+  the stable releases.  In general, you do not need to include a
   changelog entry for minor documentation or test updates.  Only
   user-visible changes (new features/API changes, fixed issues) need
-  to be mentioned.  If in doubt ask the core maintainer reviewing your
-  changes.
+  to be mentioned.  If in doubt, ask the core maintainer reviewing
+  your changes.
 
 Other Tips
 ----------
@@ -74,9 +75,9 @@ Other Tips
 
 - To skip only the testing on Travis CI use ``[skip travis]``.
 
-- If your commit makes substantial changes to the documentation, but no code
-  changes, the you can use ``[docs only]``, that will skip all but the
-  documentation building jobs on Travis.
+- If your commit makes substantial changes to the documentation, but
+  no code changes, then you can use ``[docs only]``, that will skip all
+  but the documentation building jobs on Travis.
 
 - When contributing trivial documentation fixes (i.e. fixes to typos,
   spelling, grammar) that do not contain any special markup and are
@@ -145,6 +146,6 @@ in the package.
 
 **Photutils requirements**
 
-* Do all of the Travis CI, AppVeyor, and CircleCI tests pass?
+* Do all the Travis CI, AppVeyor, and CircleCI tests pass?
 * If applicable, has an entry been added into the changelog?
 * Can you checkout the pull request and repeat the examples and tests?

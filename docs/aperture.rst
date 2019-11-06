@@ -117,7 +117,7 @@ described above::
     >>> positions = [(30., 30.), (40., 40.)]
     >>> aperture = CircularAperture(positions, r=3.)
 
-and then we call the :func:`~photutils.aperture.aperture_photometry`
+We then call the :func:`~photutils.aperture.aperture_photometry`
 function with the data and the apertures::
 
     >>> import numpy as np
@@ -183,8 +183,8 @@ Multiple Apertures at Each Position
 -----------------------------------
 
 While the `~photutils.aperture.Aperture` objects support multiple
-positions, they must have a fixed size and shape, e.g. radius and
-orientation.
+positions, they must have a fixed size and shape (e.g., radius and
+orientation).
 
 To perform photometry in multiple apertures at each position, one may
 input a list of aperture objects to the
@@ -326,7 +326,7 @@ background times the circular aperture area::
            -7.1054274e-15
            -7.1054274e-15
 
-The result here should be zero because all of the data values are 1.0
+The result here should be zero because all the data values are 1.0
 (the tiny difference from 0.0 is due to numerical precision).
 
 
@@ -452,8 +452,8 @@ level times the circular aperture area::
 
 Above was a very pedagogical description of the underlying methods for
 local background subtraction for a single source.  However, it's quite
-straightforward to do this for all of the sources in just a few lines
-of code. For this example, we'll again use the sigma-clipped median of
+straightforward to do this for all the sources in just a few lines of
+code. For this example, we'll again use the sigma-clipped median of
 the pixels in the background annuli for the background estimates of
 each source::
 
@@ -739,17 +739,17 @@ They may also optionally define an ``area`` property.  All
 ``to_pixel()`` method.
 
     * ``bounding_boxes``:  The minimal bounding box for the aperture.
-      If the aperture is scalar then a single
-      `~photutils.aperture.BoundingBox` is returned, otherwise a list
+      If the aperture is scalar, then a single
+      `~photutils.aperture.BoundingBox` is returned.  Otherwise, a list
       of `~photutils.aperture.BoundingBox` is returned.
 
     * ``area``: An optional property defining the exact analytical
       area (in pixels**2) of the aperture.
 
     * ``to_mask()``: Return a mask for the aperture.  If the aperture
-      is scalar then a single `~photutils.aperture.ApertureMask` is
-      returned, otherwise a list of `~photutils.aperture.ApertureMask`
-      is returned.
+      is scalar, then a single `~photutils.aperture.ApertureMask` is
+      returned.  Otherwise, a list of
+      `~photutils.aperture.ApertureMask` is returned.
 
     * ``plot()``: A method to plot the aperture on a
       `matplotlib.axes.Axes` instance.

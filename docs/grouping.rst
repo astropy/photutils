@@ -25,13 +25,13 @@ DAOPHOT GROUP
 
 Stetson, in his seminal paper (`Stetson 1987, PASP 99, 191
 <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_), provided a
-simple and powerful grouping algorithm to decide whether or not the
-profile of a given star extends into the fitting region of any other
-star. Stetson defines this in terms of a "critical separation"
-parameter, which is defined as the minimal distance that any two stars
-must be separated by in order to be in different groups.  Stetson
-gives intuitive reasoning to suggest that the critical separation may
-be defined as a multiple of the stellar full width at half maximum
+simple and powerful grouping algorithm to decide whether the profile
+of a given star extends into the fitting region of any other star.
+Stetson defines this in terms of a "critical separation" parameter,
+which is defined as the minimal distance that any two stars must be
+separated by in order to be in different groups.  Stetson gives
+intuitive reasoning to suggest that the critical separation may be
+defined as a multiple of the stellar full width at half maximum
 (FWHM).
 
 Photutils provides an implementation of the DAOPHOT GROUP algorithm in

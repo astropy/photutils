@@ -58,7 +58,7 @@ upgraded, instead you can do::
 Note that you will generally need a C compiler (e.g. ``gcc`` or
 ``clang``) to be installed for the installation to succeed.
 
-If you get a ``PermissionError`` this means that you do not have the
+If you get a ``PermissionError``, this means that you do not have the
 required administrative access to install new packages to your Python
 installation.  In this case you may consider using the ``--user``
 option to install the package into your home directory.  You can read

@@ -248,10 +248,10 @@ Let's display the images:
 
 For this example, we will use the
 :class:`~photutils.psf.matching.CosineBellWindow` for the low-pass
-window.  Also note that these Spitzer/IRAC channel 1 and 4 PSFs have
-the same shape and pixel scale.  If that is not the case, one can use
-the :func:`~photutils.psf.matching.resize_psf` convenience function to
-resize a PSF image.  Typically one would interpolate the
+window.  Note that these Spitzer/IRAC channel 1 and 4 PSFs have the
+same shape and pixel scale.  If that is not the case, one can use the
+:func:`~photutils.psf.matching.resize_psf` convenience function to
+resize a PSF image.  Typically, one would interpolate the
 lower-resolution PSF to the same size as the higher-resolution PSF.
 
 .. doctest-skip::
