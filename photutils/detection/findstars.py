@@ -128,7 +128,7 @@ class _StarFinderKernel:
 
         self.mask = np.where(
             (self.elliptical_radius <= self.f) |
-            (self.circular_radius <= 2.0), 1, 0).astype(np.int)
+            (self.circular_radius <= 2.0), 1, 0).astype(int)
         self.npixels = self.mask.sum()
 
         # NOTE: the central (peak) pixel of gaussian_kernel has a value of 1.
@@ -492,7 +492,7 @@ class _IRAFStarFindProperties:
         self.kernel = kernel
 
         if sky is None:
-            skymask = ~self.kernel.mask.astype(np.bool)  # 1=sky, 0=obj
+            skymask = ~self.kernel.mask.astype(bool)  # 1=sky, 0=obj
             nsky = np.count_nonzero(skymask)
             if nsky == 0:
                 mean_sky = (np.max(self.cutout.data) -
@@ -632,7 +632,7 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
 
     # define a local footprint for the peak finder
     if min_separation is None:  # daofind
-        footprint = kernel.mask.astype(np.bool)
+        footprint = kernel.mask.astype(bool)
     else:
         # define a circular footprint
         idx = np.arange(-min_separation, min_separation + 1)

@@ -534,7 +534,7 @@ class Background2D:
             return data2d
         else:
             # some meshes were masked
-            mask2d = np.ones(data2d.shape).astype(np.bool)
+            mask2d = np.ones(data2d.shape).astype(bool)
             mask2d[self.mesh_yidx, self.mesh_xidx] = False
 
             return np.ma.masked_array(data2d, mask=mask2d)

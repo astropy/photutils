@@ -396,7 +396,7 @@ class TestSourcePropertiesFunction:
         data[1, 1] = 1.
         mask = np.zeros(data.shape, dtype=bool)
         mask[0, 1] = True
-        segm = data.astype(np.int)
+        segm = data.astype(int)
         props = source_properties(data, segm, mask=mask)
         assert_allclose(props[0].xcentroid.value, 1)
         assert_allclose(props[0].ycentroid.value, 1)

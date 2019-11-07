@@ -7,7 +7,6 @@ from astropy.convolution import Gaussian2DKernel
 from astropy.tests.helper import catch_warnings
 import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
-import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
@@ -44,20 +43,20 @@ class TestFilterData:
         """
 
         filt_data = _filter_data(self.data.astype(int),
-                                self.kernel.array.astype(int))
-        assert filt_data.dtype == np.float64
+                                 self.kernel.array.astype(int))
+        assert filt_data.dtype == float
 
         filt_data = _filter_data(self.data.astype(int),
-                                self.kernel.array.astype(float))
-        assert filt_data.dtype == np.float64
+                                 self.kernel.array.astype(float))
+        assert filt_data.dtype == float
 
         filt_data = _filter_data(self.data.astype(float),
-                                self.kernel.array.astype(int))
-        assert filt_data.dtype == np.float64
+                                 self.kernel.array.astype(int))
+        assert filt_data.dtype == float
 
         filt_data = _filter_data(self.data.astype(float),
-                                self.kernel.array.astype(float))
-        assert filt_data.dtype == np.float64
+                                 self.kernel.array.astype(float))
+        assert filt_data.dtype == float
 
     def test_filter_data_kernel_none(self):
         """

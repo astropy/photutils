@@ -310,7 +310,7 @@ class TestSegmentationImage:
 
     def test_remove_masked_segments_mask_shape(self):
         segm = SegmentationImage(np.ones((5, 5)))
-        mask = np.zeros((3, 3), dtype=np.bool)
+        mask = np.zeros((3, 3), dtype=bool)
         with pytest.raises(ValueError):
             segm.remove_masked_labels(mask)
 

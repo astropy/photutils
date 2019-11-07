@@ -153,7 +153,7 @@ def test_centroids_nan_withmask(use_mask):
 def test_centroid_com_mask():
     """Test centroid_com with and without an image_mask."""
 
-    data = np.ones((2, 2)).astype(np.float)
+    data = np.ones((2, 2)).astype(float)
     mask = [[False, False], [True, True]]
     centroid = centroid_com(data, mask=None)
     centroid_mask = centroid_com(data, mask=mask)
@@ -246,7 +246,7 @@ def test_centroid_epsf():
         data = psf.evaluate(x=x.reshape(1, -1), y=y.reshape(-1, 1), flux=1, x_0=offsets[0],
                             y_0=offsets[1], sigma=sigma)
 
-        mask = np.zeros(data.shape, np.bool)
+        mask = np.zeros(data.shape, dtype=bool)
         mask[0, 0] = 1
         centers = centroid_epsf(data, mask=mask, oversampling=oversampling)
         assert_allclose(centers, offsets+x0, rtol=1e-3, atol=1e-2)

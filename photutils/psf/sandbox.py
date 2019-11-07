@@ -242,7 +242,7 @@ class DiscretePRF(Fittable2DModel):
         prf_model = np.ndarray(shape=(subsampling, subsampling, size, size))
         positions_subpixel_indices = \
             np.array([subpixel_indices(_, subsampling) for _ in positions],
-                     dtype=np.int)
+                     dtype=int)
 
         for i in range(subsampling):
             for j in range(subsampling):

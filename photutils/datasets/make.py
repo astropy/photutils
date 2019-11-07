@@ -436,7 +436,7 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
         plt.imshow(data)
     """
 
-    image = np.zeros(shape, dtype=np.float64)
+    image = np.zeros(shape, dtype=float)
     yidx, xidx = np.indices(shape)
 
     params_to_set = []
