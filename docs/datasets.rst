@@ -7,8 +7,8 @@ Introduction
 ------------
 
 `photutils.datasets` gives easy access to load or make a few example
-datasets.  The datasets are are mostly images, but they also include
-PSF models and a source catalog.
+datasets.  The datasets are mostly images, but they also include PSF
+models and a source catalog.
 
 These datasets are useful for the Photutils documentation, tests, and
 benchmarks, but also for users that would like to try out or implement

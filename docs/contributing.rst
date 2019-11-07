@@ -4,17 +4,17 @@ Reporting Issues and Contributing
 Reporting Issues
 ----------------
 
-If you have found a bug in Photutils please report it by creating a
+If you have found a bug in Photutils, please report it by creating a
 new issue on the `Photutils GitHub issue tracker
 <https://github.com/astropy/photutils/issues>`_.  That requires
 creating a `free Github account <https://github.com/>`_ if you do not
 have one.
 
 Please include an example that demonstrates the issue and will allow
-the developers to reproduce and fix the problem.  You may be asked to
-also provide information about your operating system and a full Python
-stack trace.  The developers will walk you through obtaining a stack
-trace if it is necessary.
+the developers to reproduce and fix the problem.  You may be also
+asked to provide information about your operating system and a full
+Python stack trace.  The developers will walk you through obtaining a
+stack trace if it is necessary.
 
 
 Contributing

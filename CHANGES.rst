@@ -266,7 +266,7 @@ API changes
 - ``photutils.isophote``
 
   - Isophote central values and intensity gradients are now returned
-    in the output table. [#892]
+    to the output table. [#892]
 
   - The ``EllipseSample`` ``update`` method now needs to know the
     fix/fit state of each individual parameter.  This can be passed to
@@ -512,8 +512,8 @@ New Features
   - Added a ``Segment`` class to hold the cutout image and properties
     of single labeled region (source segment). [#662]
 
-  - Deprecated the ``SegmentationImage`` ``area`` method.  Instead use
-    the ``areas`` attribute. [#662]
+  - Deprecated the ``SegmentationImage`` ``area`` method.  Instead,
+    use the ``areas`` attribute. [#662]
 
   - Renamed ``SegmentationImage`` ``data_masked`` attribute to
     ``data_ma``.  ``data_masked`` is deprecated. [#662]
@@ -863,7 +863,7 @@ New Features
 
 - ``photutils.psf_match``
 
-  - Added ``create_matching_kernel`` and ``resize_psf`` functions.  Also
+  - Added ``create_matching_kernel`` and ``resize_psf`` functions.  Also,
     added ``CosineBellWindow``, ``HanningWindow``,
     ``SplitCosineBellWindow``, ``TopHatWindow``, and ``TukeyWindow``
     classes. [#403]
@@ -1093,8 +1093,8 @@ API changes
     methods (with slightly different names). [#306]
 
   - The ``SegmentProperties`` class has been renamed to
-    ``SourceProperties``.  Likewise the ``segment_properties`` function
-    has been renamed to ``source_properties``. [#306]
+    ``SourceProperties``.  Likewise, the ``segment_properties``
+    function has been renamed to ``source_properties``. [#306]
 
   - The ``segment_sum`` and ``segment_sum_err`` attributes have been
     renamed to ``source_sum`` and ``source_sum_err``, respectively. [#306]

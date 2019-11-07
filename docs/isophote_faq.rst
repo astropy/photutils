@@ -64,7 +64,7 @@ The radial intensity gradient is the most critical quantity computed
 by the fitting algorithm. As can be seen from the above formulae,
 small :math:`I'` values lead to large values for the correction terms.
 Thus, :math:`I'` errors may lead to large fluctuations in these terms,
-when :math:`I'` itself is small.  This happens usually at the fainter,
+when :math:`I'` itself is small.  This usually happens at the fainter,
 outer regions of galaxy images.  `Busko (1996; ASPC 101, 139)
 <http://adsabs.harvard.edu/abs/1996ASPC..101..139B>`_ found by
 numerical experiments that the precision to which a given ellipse can
@@ -196,13 +196,13 @@ and locates the pixel inside the scanned window where this criterion
 is a maximum. If the criterion so computed exceeds a given threshold,
 it assumes that a suitable object was detected at that position.
 
-The default threshold value is set to 0.1. This value, and the annuli
-and window sizes currently used, were found by trial and error using a
+The default threshold value is set to 0.1. This value and the annuli
+and window sizes currently used were found by trial and error using a
 number of both artificial and real galaxy images. It was found that
 very flattened galaxy images (ellipticity ~ 0.7) cannot be detected by
 such a simple algorithm. By increasing the threshold value the object
-locator becomes more strict, in the sense that it will not detect
-faint objects. To turn off the object locator, set the threshold to a
-value >> 1 in `~photutils.isophote.Ellipse`. This will prevent it from
+locator becomes stricter, in the sense that it will not detect faint
+objects. To turn off the object locator, set the threshold to a value
+>> 1 in `~photutils.isophote.Ellipse`. This will prevent it from
 modifying whatever values for the center coordinates were given to the
 `~photutils.isophote.Ellipse` algorithm.
