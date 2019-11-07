@@ -487,7 +487,7 @@ class IsophoteList:
         return self._list[index]
 
     def _collect_as_array(self, attr_name):
-        return np.array(self._collect_as_list(attr_name), dtype=np.float64)
+        return np.array(self._collect_as_list(attr_name), dtype=float)
 
     def _collect_as_list(self, attr_name):
         return [getattr(iso, attr_name) for iso in self._list]

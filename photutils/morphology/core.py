@@ -41,7 +41,7 @@ def data_properties(data, mask=None, background=None):
 
     from ..segmentation import SourceProperties  # prevent circular imports
 
-    segment_image = np.ones(data.shape, dtype=np.int)
+    segment_image = np.ones(data.shape, dtype=int)
 
     return SourceProperties(data, segment_image, label=1, mask=mask,
                             background=background)

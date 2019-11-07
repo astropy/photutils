@@ -110,7 +110,7 @@ def centroid_com(data, mask=None, oversampling=1.):
     oversampling = oversampling[::-1]
     if np.any(oversampling <= 0):
         raise ValueError('Oversampling factors must all be positive numbers.')
-    data = data.astype(np.float)
+    data = data.astype(float)
 
     if mask is not None and mask is not np.ma.nomask:
         mask = np.asarray(mask, dtype=bool)
@@ -536,7 +536,7 @@ def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
     if np.any(oversampling <= 0):
         raise ValueError('Oversampling factors must all be positive numbers.')
 
-    data = data.astype(np.float)
+    data = data.astype(float)
 
     if mask is not None and mask is not np.ma.nomask:
         mask = np.asarray(mask, dtype=bool)

@@ -90,7 +90,7 @@ class TestShepardIDWInterpolator:
 
     def test_dtype_none(self):
         result = self.f(0.5, dtype=None)
-        assert result.dtype.type == np.float64
+        assert result.dtype == float
 
     def test_positions_0d_nomatch(self):
         """test when position ndim doesn't match coordinates ndim"""

@@ -387,7 +387,7 @@ class BasicPSFPhotometry:
             group_psf = get_grouped_psf_model(self.psf_model,
                                               star_groups.groups[n],
                                               self._pars_to_set)
-            usepixel = np.zeros_like(image, dtype=np.bool)
+            usepixel = np.zeros_like(image, dtype=bool)
 
             for row in star_groups.groups[n]:
                 usepixel[overlap_slices(large_array_shape=image.shape,
