@@ -72,19 +72,21 @@ estimate of the positions of potential sources.
 This can be accomplished by using source detection algorithms,
 which are implemented in `~photutils.detection`.
 
-After finding sources one would apply a clustering algorithm in order to label
-the sources according to groups. Usually, those groups are formed by a
-distance criterion, which is the case of the grouping algorithm proposed
-by Stetson. In `~photutils.psf.DAOGroup`, we provide an implementation of
-that algorithm. In addition, `~photutils.psf.DBSCANGroup` can also be used to
-group sources with more complex distance criteria. The reason behind the
-construction of groups is illustrated as follows: imagine that one would like
-to fit 300 stars and the model for each star has three parameters to be
-fitted. If one constructs a single model to fit the 300 stars simultaneously,
-then the optimization algorithm will have to search for the solution in a 900
-dimensional space, which is computationally expensive and error-prone. Reducing the
-stars in groups effectively reduces the dimension of the parameter space,
-which facilitates the optimization process.
+After finding sources, one would apply a clustering algorithm in order
+to label the sources according to groups. Usually, those groups are
+formed by a distance criterion, which is the case of the grouping
+algorithm proposed by Stetson. In `~photutils.psf.DAOGroup`, we
+provide an implementation of that algorithm. In addition,
+`~photutils.psf.DBSCANGroup` can also be used to group sources with
+more complex distance criteria. The reason behind the construction of
+groups is illustrated as follows: imagine that one would like to fit
+300 stars and the model for each star has three parameters to be
+fitted. If one constructs a single model to fit the 300 stars
+simultaneously, then the optimization algorithm will have to search
+for the solution in a 900 dimensional space, which is computationally
+expensive and error-prone. Reducing the stars in groups effectively
+reduces the dimension of the parameter space, which facilitates the
+optimization process.
 
 Provided that the groups are available, the next step is to fit the sources
 simultaneously for each group. This task can be done using an astropy
@@ -122,21 +124,22 @@ workflow to make photometric measurements given an appropriate PSF (or other)
 model.
 
 `~photutils.psf.BasicPSFPhotometry` implements the minimum tools for
-model-fitting photometry. At its core, this involves finding sources in an
-image, grouping overlapping sources into a single model, fitting the model to the
-sources, and subtracting the models from the image.  In DAOPHOT parlance, this
-is essentially running the "FIND, GROUP, NSTAR, SUBTRACT" once. Because it is
-only a single cycle of that sequence, this class should be used when the degree
-of crowdedness of the field is not very high, for instance, when most stars are
+model-fitting photometry. At its core, this involves finding sources
+in an image, grouping overlapping sources into a single model, fitting
+the model to the sources, and subtracting the models from the image.
+In DAOPHOT parlance, this is essentially running the "FIND, GROUP,
+NSTAR, SUBTRACT" once. Because it is only a single cycle of that
+sequence, this class should be used when the degree of crowdedness of
+the field is not very high, for instance, when most stars are
 separated by a distance no less than one FWHM and their brightness are
 relatively uniform.  It is critical to understand, though, that
-`~photutils.psf.BasicPSFPhotometry` does not actually contain the functionality
-to *do* all these steps - that is provided by other objects (or can be
-user-written) functions.  Rather it provides the framework and data structures
-in which these operations run.  Because of this,
-`~photutils.psf.BasicPSFPhotometry` is particularly useful for build more
-complex workflows, as all of the stages can be turned on or off or
-replaced with different implementations as the user desires.
+`~photutils.psf.BasicPSFPhotometry` does not actually contain the
+functionality to *do* all these steps - that is provided by other
+objects (or can be user-written) functions.  Rather, it provides the
+framework and data structures in which these operations run.  Because
+of this, `~photutils.psf.BasicPSFPhotometry` is particularly useful
+for build more complex workflows, as all the stages can be turned on
+or off or replaced with different implementations as the user desires.
 
 `~photutils.psf.IterativelySubtractedPSFPhotometry` is similar to
 `~photutils.psf.BasicPSFPhotometry`, but it adds a parameter called
@@ -163,11 +166,12 @@ input the parameters of those classes to set up a
 `~photutils.psf.DAOPhotPSFPhotometry` object, rather than providing objects to
 do these stages (which is what the other classes require).
 
-Those classes and all of the classes they *use* for the steps in the
-photometry process can always be replaced by user-supplied functions if you wish
-to customize any stage of the photometry process.  This makes the machinery very
-flexible, while still providing a "batteries included" approach with a default
-implementation that's suitable for many use cases.
+Those classes and all the classes they *use* for the steps in the
+photometry process can always be replaced by user-supplied functions
+if you wish to customize any stage of the photometry process.  This
+makes the machinery very flexible, while still providing a "batteries
+included" approach with a default implementation that's suitable for
+many use cases.
 
 Basic Usage
 ^^^^^^^^^^^

@@ -198,7 +198,7 @@ For even more flexibility, users may input a custom function or
 callable object to the ``bkg_estimator`` and/or ``bkgrms_estimator``
 keywords.
 
-By default the ``bkg_estimator`` and ``bkgrms_estimator`` are applied
+By default, the ``bkg_estimator`` and ``bkgrms_estimator`` are applied
 to sigma clipped data.  Sigma clipping is defined by inputting a
 :class:`astropy.stats.SigmaClip` object to the ``sigma_clip`` keyword.
 The default is to perform sigma clipping with ``sigma=3`` and
@@ -337,7 +337,7 @@ prior to estimating the background levels.
 
 Additionally, input masks are often necessary if your data array
 includes regions without data coverage (e.g., from a rotated image or
-an image from a mosaic).  Otherwise the data values in the regions
+an image from a mosaic).  Otherwise, the data values in the regions
 without coverage (usually zeros or NaNs) will adversely contribute to
 the background statistics.
 
