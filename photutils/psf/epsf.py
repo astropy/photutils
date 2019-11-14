@@ -306,9 +306,11 @@ class EPSFBuilder:
             less than ``center_accuracy`` pixels between iterations.  All
             stars must meet this condition for the loop to exit.
 
-    sigclip : `~astropy.stats.SigmaClip` object, optional
-        A `~astropy.stats.SigmaClip` object used to compute the residual
-        of ePSF grid points based on star sampling residuals.
+    flux_residual_sigclip : `~astropy.stats.SigmaClip` object, optional
+        A `~astropy.stats.SigmaClip` object used to determine which pixels
+        are ignored based on the star sampling flux residuals, when
+        computing the average residual of ePSF grid points in each iteration
+        step.
     """
 
     def __init__(self, oversampling=4., shape=None,
@@ -316,7 +318,8 @@ class EPSFBuilder:
                  recentering_maxiters=20, fitter=EPSFFitter(), maxiters=10,
                  progress_bar=True, norm_radius=5.5, shift_val=0.5,
                  recentering_boxsize=(5, 5), center_accuracy=1.0e-3,
-                 sigclip=SigmaClip(sigma=3, cenfunc='median', maxiters=10)):
+                 flux_residual_sigclip=SigmaClip(sigma=3, cenfunc='median',
+                                                 maxiters=10)):
 
         if oversampling is None:
             raise ValueError("'oversampling' must be specified.")
@@ -356,10 +359,10 @@ class EPSFBuilder:
 
         self.progress_bar = progress_bar
 
-        if not isinstance(sigclip, SigmaClip):
-            raise ValueError("'sigclip' must be an astropy.stats.SigmaClip"
-                             " function.")
-        self.sigclip = sigclip
+        if not isinstance(flux_residual_sigclip, SigmaClip):
+            raise ValueError("'flux_residual_sigclip' must be an"
+                             " astropy.stats.SigmaClip function.")
+        self.flux_residual_sigclip = flux_residual_sigclip
 
         # store each ePSF build iteration
         self._epsf = []
@@ -741,8 +744,9 @@ class EPSFBuilder:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)
             warnings.simplefilter('ignore', category=AstropyUserWarning)
-            residuals = self.sigclip(residuals, axis=0, masked=False,
-                                     return_bounds=False)
+            residuals = self.flux_residual_sigclip(residuals, axis=0,
+                                                   masked=False,
+                                                   return_bounds=False)
             if HAS_BOTTLENECK:
                 residuals = bottleneck.nanmedian(residuals, axis=0)
             else:
