@@ -14,6 +14,12 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.psf``
+
+  - Fix to ``IterativelySubtractedPSFPhotometry`` where an error could
+    be thrown when a ``Finder`` was passed which did not return ``None``
+    if no sources were found. [#986]
+
 API changes
 ^^^^^^^^^^^
 
