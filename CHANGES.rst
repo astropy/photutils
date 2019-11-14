@@ -86,16 +86,8 @@ Bug Fixes
 
 - ``photutils.psf``
 
-  - Fix to algorithm in ``EPSFBuilder``, causing issues where ePSFs
-    failed to build. [#974]
-
-API changes
-^^^^^^^^^^^
-
-- ``photutils.psf``
-
-  - Added ``flux_residual_sigclip`` as an input parameter, allowing for
-    custom sigma clipping options in ``EPSFBuilder``. [#974]
+  - Fix to algorithm in ``EPSFBuilder``, addressing issues where ePSFs
+    failed to build (yielding striped ePSFs). [#974]
 
 
 0.7.1 (2019-10-09)
