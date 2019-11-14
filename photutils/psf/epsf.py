@@ -311,9 +311,8 @@ class EPSFBuilder:
                  smoothing_kernel='quartic', recentering_func=centroid_epsf,
                  recentering_maxiters=20, fitter=EPSFFitter(), maxiters=10,
                  progress_bar=True, norm_radius=5.5, shift_val=0.5,
-                 recentering_boxsize=(5, 5), center_accuracy=1.0e-3,
-                 cenfunc='median', maxiters=10):
-        flux_residual_sigclip = SigmaClip(sigma=3  # TODO: replace with kwarg in 8.0
+                 recentering_boxsize=(5, 5), center_accuracy=1.0e-3):
+        flux_residual_sigclip = SigmaClip(sigma=3, cenfunc='median', maxiters=10)  # TODO: replace with kwarg in 8.0
 
         if oversampling is None:
             raise ValueError("'oversampling' must be specified.")
