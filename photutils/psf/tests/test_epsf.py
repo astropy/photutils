@@ -149,9 +149,6 @@ def test_epsfbuilder_inputs():
         EPSFBuilder(oversampling=[3, 6])
     with pytest.raises(ValueError):
         EPSFBuilder(oversampling=[-1, 4])
-    for sigclip in [None, [], 'a']:
-        with pytest.raises(ValueError):
-            EPSFBuilder(flux_residual_sigclip=sigclip)
 
 
 def test_epsfmodel_inputs():
