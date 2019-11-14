@@ -230,10 +230,9 @@ def test_epsf_build_with_noise():
     for star in stars:
         star.cutout_center = centroid_com(star.data)
 
-    epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=20,
+    epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=5,
                                progress_bar=False, norm_radius=7.5,
                                recentering_func=centroid_com,
                                shift_val=0.5)
     epsf, fitted_stars = epsf_builder(stars)
-    print(epsf.data, truth_epsf, np.amax(epsf.data), np.amax(truth_epsf))
     assert_allclose(epsf.data, truth_epsf, rtol=1e-1, atol=5e-2)
