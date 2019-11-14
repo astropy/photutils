@@ -49,6 +49,9 @@ API changes
 
 - ``photutils.psf``
 
+  - Added ``flux_residual_sigclip`` as an input parameter, allowing for
+    custom sigma clipping options in ``EPSFBuilder``. [#984]
+
   - Added ``extra_output_cols`` as a parameter to
     ``BasicPSFPhotometry``, ``IterativelySubtractedPSFPhotometry`` and
     ``DAOPhotPSFPhotometry``. [#745]
@@ -86,8 +89,8 @@ Bug Fixes
 
 - ``photutils.psf``
 
-  - Fix to algorithm in ``EPSFBuilder``, addressing issues where ePSFs
-    failed to build (yielding striped ePSFs). [#974]
+  - Fix to algorithm in ``EPSFBuilder``, causing issues where ePSFs
+    failed to build. [#974]
 
   - Fix to ``IterativelySubtractedPSFPhotometry`` where an error could
     be thrown when a ``Finder`` was passed which did not return
