@@ -492,14 +492,15 @@ def test_default_aperture_radius():
     """
     def tophatfinder(image):
         """ Simple top hat finder function for use with a top hat PRF"""
-        fluxes = np.unique(image[image > 0])
+        fluxes = np.unique(image[image > 1])
         table = Table(names=['id', 'xcentroid', 'ycentroid', 'flux'],
                       dtype=[int, float, float, float])
         for n, f in enumerate(fluxes):
-            xs, ys = np.where(image == f)
+            ys, xs = np.where(image == f)
             x = np.mean(xs)
             y = np.mean(ys)
-            table.add_row([int(n+1), x, y, f])
+            table.add_row([int(n+1), x, y, f*9])
+        table.sort(['flux'])
 
         return table
 
@@ -508,42 +509,58 @@ def test_default_aperture_radius():
     prf = FittableImageModel(prf)
 
     img = np.zeros((50, 50), float)
-    x0 = [20, 35, 38]
-    y0 = [5, 40, 20]
-    f0 = [100, 200, 50]
+    x0 = [38, 20, 35]
+    y0 = [20, 5, 40]
+    f0 = [50, 100, 200]
     for x, y, f in zip(x0, y0, f0):
-        img[x+2:x+5, y+2:y+5] = f/9
+        img[y-1:y+2, x-1:x+2] = f/9
 
+    intab = Table(data=[[37, 19.6, 34.9], [19.6, 4.5, 40.1]],
+                  names=['x_0', 'y_0'])
+
+    basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
+                                    bkg_estimator=None, psf_model=prf,
+                                    fitshape=7, finder=tophatfinder)
+    # Test for init_guesses is None
+    with pytest.warns(AstropyUserWarning, match='aperture_radius is None and '
+                                                'could not be determined'):
+        results = basic_phot(image=img)
+    assert_allclose(results['flux_fit'], f0, rtol=0.05)
+
+    # Have to reset the object or it saves any updates, and we wish to
+    # re-verify the aperture_radius assignment
     basic_phot = BasicPSFPhotometry(group_maker=DAOGroup(2),
                                     bkg_estimator=None, psf_model=prf,
                                     fitshape=7)
 
-    intab = Table(data=[[19.6, 34.9, 37], [4.5, 40.1, 19.6]],
-                  names=['x_0', 'y_0'])
+    # Test for init_guesses is not None, but lacks a flux_0 column
     with pytest.warns(AstropyUserWarning, match='aperture_radius is None and '
                                                 'could not be determined'):
-        basic_phot(image=img, init_guesses=intab)
+        results = basic_phot(image=img, init_guesses=intab)
+    assert_allclose(results['flux_fit'], f0, rtol=0.05)
 
-    daofind = DAOStarFinder(threshold=5.0, fwhm=3)
-    iter_phot = IterativelySubtractedPSFPhotometry(finder=daofind,
-                                                   group_maker=DAOGroup(2),
-                                                   bkg_estimator=None,
-                                                   psf_model=prf,
-                                                   fitshape=7)
-
-    with pytest.warns(AstropyUserWarning, match='aperture_radius is None and '
-                                                'could not be determined'):
-        iter_phot(image=img, init_guesses=intab)
-    # Have to reset the object or it saves any updates, and we wish to
-    # re-verify the aperture_radius assignment
     iter_phot = IterativelySubtractedPSFPhotometry(finder=tophatfinder,
                                                    group_maker=DAOGroup(2),
                                                    bkg_estimator=None,
                                                    psf_model=prf,
                                                    fitshape=7, niters=2)
+    # Test for init_guesses is not None, but lacks a flux_0 column
     with pytest.warns(AstropyUserWarning, match='aperture_radius is None and '
                                                 'could not be determined'):
-        iter_phot(image=img)
+        results = iter_phot(image=img, init_guesses=intab)
+    assert_allclose(results['flux_fit'], f0, rtol=0.05)
+
+    iter_phot = IterativelySubtractedPSFPhotometry(finder=tophatfinder,
+                                                   group_maker=DAOGroup(2),
+                                                   bkg_estimator=None,
+                                                   psf_model=prf,
+                                                   fitshape=7, niters=2)
+
+    # Test for init_guesses is None
+    with pytest.warns(AstropyUserWarning, match='aperture_radius is None and '
+                                                'could not be determined'):
+        results = iter_phot(image=img)
+    assert_allclose(results['flux_fit'], f0, rtol=0.05)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

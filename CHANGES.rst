@@ -84,6 +84,9 @@ Bug Fixes
   - Fixed a bug that caused photometry to fail on an ``EPSFmodel`` with
     multiple stars in a group. [#1135]
 
+  - Added a fallback ``aperture_radius`` for PSF models without a FWHM
+    or sigma attribute, raising a warning. [#740]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceProperties`` ``local_background`` to work with

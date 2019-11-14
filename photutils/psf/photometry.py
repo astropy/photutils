@@ -192,6 +192,35 @@ class BasicPSFPhotometry:
 
         return self._residual_image
 
+    def set_aperture_radius(self):
+        """
+        Sets the fallback aperture radius for initial flux calculations
+        in cases where no flux is supplied for a given star.
+        """
+
+        if hasattr(self.psf_model, 'fwhm'):
+            self.aperture_radius = self.psf_model.fwhm.value
+        elif hasattr(self.psf_model, 'sigma'):
+            self.aperture_radius = (self.psf_model.sigma.value *
+                                    gaussian_sigma_to_fwhm)
+        # If PSF model doesn't have FWHM or sigma value -- as it
+        # is not a Gaussian; most likely because it's an ePSF --
+        # then we fall back on fitting a circle of the average
+        # size of the fitting box. As ``fitshape`` is the width
+        # of the box, we need (width-1)/2 as the radius.
+        else:
+            self.aperture_radius = float(np.amin((np.asanyarray(
+                                         self.fitshape) - 1) / 2))
+            warnings.warn('aperture_radius is None and could not '
+                          'be determined by psf_model. Setting '
+                          'radius to the smallest fitshape size. '
+                          'This aperture radius will be used if '
+                          'initial fluxes require computing for any '
+                          'input stars. If fitshape is significantly '
+                          'larger than the psf_model core lengthscale, '
+                          'consider supplying a specific aperture_radius.',
+                          AstropyUserWarning)
+
     def __call__(self, image, init_guesses=None):
         """
         Performs PSF photometry. See `do_photometry` for more details
@@ -251,30 +280,7 @@ class BasicPSFPhotometry:
             image = image - self.bkg_estimator(image)
 
         if self.aperture_radius is None:
-            if hasattr(self.psf_model, 'fwhm'):
-                self.aperture_radius = self.psf_model.fwhm.value
-            elif hasattr(self.psf_model, 'sigma'):
-                self.aperture_radius = (self.psf_model.sigma.value *
-                                        gaussian_sigma_to_fwhm)
-            # If PSF model doesn't have FWHM or sigma value -- as it
-            # is not a Gaussian; most likely because it's an ePSF --
-            # and if fluxes were not supplied in ``init_guesses`` then we fall
-            # back on fitting a circle of the average size of the fitting box.
-            # As ``fitshape`` is the width of the box, we need (width-1)/2 as
-            # the radius.
-            elif (init_guesses is not None and
-                  'flux_0' not in init_guesses.colnames):
-                self.aperture_radius = float(np.amin((np.asanyarray(
-                                             self.fitshape) - 1) / 2))
-                warnings.warn('init_guesses were input, but the flux_0 column '
-                              'was not provided. Initial fluxes cannot be '
-                              'calculated as aperture_radius is None and '
-                              'could not be determined by psf_model. Setting '
-                              'radius to the smallest fitshape size. '
-                              'If fitshape is significantly larger than '
-                              'the psf_model core lengthscale, consider '
-                              'supplying a specific aperture_radius.',
-                              AstropyUserWarning)
+            self.set_aperture_radius()
 
         if init_guesses is not None:
             # make sure the code does not modify user's input
@@ -731,29 +737,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                 self._residual_image = image
 
             if self.aperture_radius is None:
-                if hasattr(self.psf_model, 'fwhm'):
-                    self.aperture_radius = self.psf_model.fwhm.value
-                elif hasattr(self.psf_model, 'sigma'):
-                    self.aperture_radius = (self.psf_model.sigma.value *
-                                            gaussian_sigma_to_fwhm)
-                # If PSF model doesn't have FWHM or sigma value -- as it
-                # is not a Gaussian; most likely because it's an ePSF --
-                # then we fall back on fitting a circle of the average
-                # size of the fitting box. As ``fitshape`` is the width
-                # of the box, we need (width-1)/2 as the radius. As opposed to
-                # ``BasicPSFPhotometry``, we have to fallback on this even if
-                # fluxes were given in ``init_guesses``, as this will be used
-                # in subsequent iterations.
-                else:
-                    self.aperture_radius = float(np.amin((np.asanyarray(
-                                                 self.fitshape) - 1) / 2))
-                    warnings.warn('aperture_radius is None and could not '
-                                  'be determined by psf_model. Setting '
-                                  'radius to the smallest fitshape size. '
-                                  'If fitshape is significantly larger than '
-                                  'the psf_model core lengthscale, consider '
-                                  'supplying a specific aperture_radius.',
-                                  AstropyUserWarning)
+                self.set_aperture_radius()
 
             output_table = self._do_photometry()
         return output_table
