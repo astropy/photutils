@@ -144,10 +144,6 @@ def test_epsfbuilder_inputs():
     with pytest.raises(ValueError):
         EPSFBuilder(maxiters=-1)
     with pytest.raises(ValueError):
-        EPSFBuilder(oversampling=3)
-    with pytest.raises(ValueError):
-        EPSFBuilder(oversampling=[3, 6])
-    with pytest.raises(ValueError):
         EPSFBuilder(oversampling=[-1, 4])
 
 
@@ -166,7 +162,7 @@ def test_epsfmodel_inputs():
         EPSFModel(data, flux=None)
 
     data[2, 2] = 1
-    for oversampling in [3, np.NaN, 'a', -1, [3, 4], [-2, 4]]:
+    for oversampling in [np.NaN, 'a', -1, [-2, 4]]:
         with pytest.raises(ValueError):
             EPSFModel(data, oversampling=oversampling)
 
