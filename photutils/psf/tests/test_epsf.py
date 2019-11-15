@@ -233,3 +233,73 @@ def test_epsf_build_with_noise():
                                shift_val=0.5)
     epsf, fitted_stars = epsf_builder(stars)
     assert_allclose(epsf.data, truth_epsf, rtol=1e-1, atol=5e-2)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_epsf_offset():
+    size = 25
+    sigma = 0.5
+
+    Nstars = 40
+    xdim = np.ceil(np.sqrt(Nstars)).astype(int)
+    ydim = np.ceil(Nstars / xdim).astype(int)
+    xarray = np.arange((size-1)/2+2, (size-1)/2+2 + xdim*size, size)
+    yarray = np.arange((size-1)/2+2, (size-1)/2+2 + ydim*size, size)
+    xarray, yarray = np.meshgrid(xarray, yarray)
+    xarray, yarray = xarray.ravel(), yarray.ravel()
+
+    np.random.seed(seed=95758)
+    xpos = np.random.uniform(-0.5, 0.5, Nstars)
+    ypos = np.random.uniform(-0.5, 0.5, Nstars)
+    amps = np.random.uniform(50, 1000, Nstars)
+
+    sources = Table()
+    sources['amplitude'] = amps
+    sources['x_0'] = xarray[:Nstars] + xpos
+    sources['y_0'] = yarray[:Nstars] + ypos
+    sources['sigma'] = [sigma]*Nstars
+
+    stars_tbl = Table()
+    stars_tbl['x'] = sources['x_0']
+    stars_tbl['y'] = sources['y_0']
+
+    data = make_gaussian_prf_sources_image((size*ydim+4,
+                                            size*xdim+4), sources)
+
+    data += 20  # counts/s
+    data *= 100  # seconds
+    data = apply_poisson_noise(data).astype(float)
+    data /= 100
+    data -= 20
+    nddata = NDData(data=data)
+
+    for oversampling, offset in zip([4, 1, 3, 3], [None, None, None, 1/6]):
+        # should be "truth" ePSF
+        m = IntegratedGaussianPRF(sigma=sigma, x_0=12.5, y_0=12.5, flux=1)
+        extra_pixel = 1 if offset is not None else 0
+        yy, xx = np.mgrid[0:size*oversampling + extra_pixel,
+                          0:size*oversampling + extra_pixel]
+        xx = xx / oversampling + offset
+        yy = yy / oversampling + offset
+        truth_epsf = m(xx, yy)
+
+        stars = extract_stars(nddata, stars_tbl, size=size)
+
+        for star in stars:
+            star.cutout_center = centroid_com(star.data)
+
+        epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=5,
+                                   progress_bar=False, norm_radius=7.5,
+                                   recentering_func=centroid_com,
+                                   grid_offset=offset)
+        epsf, fitted_stars = epsf_builder(stars)
+        # Test built ePSF via EPSFBuilder
+        assert np.all(epsf.data.shape == truth_epsf.shape)
+        assert_allclose(epsf.data, truth_epsf, rtol=1e-1, atol=5e-2)
+
+        # Test ePSF via re-creation through EPSFModel independently
+        new_epsf = EPSFModel(epsf.data, oversampling=oversampling,
+                             grid_offset=offset)
+        epsf_data = new_epsf.evaluate(xx, yy, 1, 0, 0)
+        assert np.all(epsf_data.shape == truth_epsf.shape)
+        assert_allclose(epsf_data, truth_epsf, rtol=1e-1, atol=5e-2)
