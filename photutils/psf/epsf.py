@@ -548,9 +548,9 @@ class EPSFBuilder:
         epsf_ycenter = int((epsf.data.shape[0] - y_extra_pix) /
                            2) / self.oversampling[1]
 
-        _xvals, _yvals = (np.arange(epsf.data.shape[1], float) /
+        _xvals, _yvals = (np.arange(epsf.data.shape[1], dtype=float) /
                           self.oversampling[0] + self.grid_offset[0],
-                          np.arange(epsf.data.shape[0], float) /
+                          np.arange(epsf.data.shape[0], dtype=float) /
                           self.oversampling[1] + self.grid_offset[1])
         xidx = _nearestfloatidx(x + epsf_xcenter, _xvals)
         yidx = _nearestfloatidx(y + epsf_ycenter, _yvals)
@@ -972,7 +972,7 @@ def _nearestfloatidx(a, b):
     of ``a``.
     """
 
-    idxs = np.array([np.abs(a - b[i]).argmin() for i in range(len(b))])
+    idxs = np.array([np.abs(b - a[i]).argmin() for i in range(len(a))])
 
     return idxs
 

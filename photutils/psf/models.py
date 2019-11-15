@@ -560,7 +560,7 @@ class EPSFModel(FittableImageModel):
                                          self.oversampling])
         else:
             try:
-                grid_offset = np.asleast_1d(grid_offset).astype(float)
+                grid_offset = np.atleast_1d(grid_offset).astype(float)
                 if len(grid_offset) == 1:
                     grid_offset = np.repeat(grid_offset, 2)
             except ValueError:
