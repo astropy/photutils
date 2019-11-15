@@ -18,7 +18,7 @@ import numpy as np
 
 from .epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
 from .models import EPSFModel
-from ..centroids import centroid_epsf
+from ..centroids import centroid_epsf, centroid_com
 
 try:
     import bottleneck  # pylint: disable=W0611
@@ -315,7 +315,7 @@ class EPSFBuilder:
     """
 
     def __init__(self, oversampling=4., shape=None,
-                 smoothing_kernel='quartic', recentering_func=centroid_epsf,
+                 smoothing_kernel='quartic', recentering_func=centroid_com,
                  recentering_maxiters=20, fitter=EPSFFitter(), maxiters=10,
                  progress_bar=True, norm_radius=5.5, shift_val=0.5,
                  recentering_boxsize=(5, 5), center_accuracy=1.0e-3,
@@ -357,6 +357,19 @@ class EPSFBuilder:
                                  'or equal to zero, and less than '
                                  '1/oversampling.')
             self.grid_offset = grid_offset
+
+        # To use centroid_epsf as the centroiding algorithm for EPSFBuilder
+        # requires even oversampling with zero offset, such that there
+        # is a grid point exactly on top of the middle of the central
+        # detector pixel.
+        if (recentering_func is centroid_epsf and
+                np.any((self.oversampling % 2 != 0) |
+                       (self.grid_offset > 0))):
+            raise TypeError('centroid_epsf cannot be used if '
+                            'oversampling is not even and grid '
+                            'offset is not zero. Please select '
+                            'a different centroiding algorithm '
+                            'or change oversampling/offset factors.')
 
         self.shape = self._init_img_params(shape)
         if self.shape is not None:
