@@ -16,6 +16,10 @@ Bug Fixes
   - Fix to algorithm in ``EPSFBuilder``, addressing issues where ePSFs
     failed to build (yielding striped ePSFs). [#974]
 
+  - Fix to ``IterativelySubtractedPSFPhotometry`` where an error could
+    be thrown when a ``Finder`` was passed which did not return ``None``
+    if no sources were found. [#986]
+
 
 0.7.1 (2019-10-09)
 ------------------

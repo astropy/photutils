@@ -16,7 +16,7 @@ from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 import pytest
 
 from ..groupstars import DAOGroup
-from ..models import IntegratedGaussianPRF
+from ..models import IntegratedGaussianPRF, FittableImageModel
 from ..photometry import (BasicPSFPhotometry, DAOPhotPSFPhotometry,
                           IterativelySubtractedPSFPhotometry)
 from ..sandbox import DiscretePRF
@@ -602,3 +602,48 @@ def test_psf_fitting_data_on_edge():
     for n in ['x', 'y', 'flux']:
         assert_allclose(outtab[n + '_0'], outtab[n + '_fit'],
                         rtol=0.05, atol=0.1)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_finder_return_none():
+    """
+    Test psf_photometry with finder that does not return None if no
+    sources are detected, to test Iterative PSF fitting.
+    """
+    def tophatfinder(image):
+        """ Simple top hat finder function for use with a top hat PRF"""
+        fluxes = np.unique(image[image > 1])
+        table = Table(names=['id', 'xcentroid', 'ycentroid', 'flux'],
+                      dtype=[int, float, float, float])
+        for n, f in enumerate(fluxes):
+            ys, xs = np.where(image == f)
+            x = np.mean(xs)
+            y = np.mean(ys)
+            table.add_row([int(n+1), x, y, f*9])
+        table.sort(['flux'])
+
+        return table
+
+    prf = np.zeros((7, 7), float)
+    prf[2:5, 2:5] = 1/9
+    prf = FittableImageModel(prf)
+
+    img = np.zeros((50, 50), float)
+    x0 = [38, 20, 35]
+    y0 = [20, 5, 40]
+    f0 = [50, 100, 200]
+    for x, y, f in zip(x0, y0, f0):
+        img[y-1:y+2, x-1:x+2] = f/9
+
+    intab = Table(data=[[37, 19.6, 34.9], [19.6, 4.5, 40.1], [45, 103, 210]],
+                  names=['x_0', 'y_0', 'flux_0'])
+
+    iter_phot = IterativelySubtractedPSFPhotometry(finder=tophatfinder,
+                                                   group_maker=DAOGroup(2),
+                                                   bkg_estimator=None,
+                                                   psf_model=prf,
+                                                   fitshape=7, niters=2,
+                                                   aperture_radius=3)
+
+    results = iter_phot(image=img, init_guesses=intab)
+    assert_allclose(results['flux_fit'], f0, rtol=0.05)

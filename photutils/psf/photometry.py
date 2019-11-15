@@ -721,7 +721,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         sources = self.finder(self._residual_image)
 
         n = n_start
-        while(sources is not None and
+        while((sources is not None and len(sources) > 0) and
               (self.niters is None or n <= self.niters)):
             positions = np.transpose((sources['xcentroid'],
                                       sources['ycentroid']))
