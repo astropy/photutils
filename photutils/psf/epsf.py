@@ -740,7 +740,8 @@ class EPSFBuilder:
                 # keywords - try oversampling alone
                 try:
                     xcenter_new, ycenter_new = centroid_func(
-                        epsf_cutout, mask=mask, oversampling=epsf.oversampling)
+                        epsf_cutout, mask=mask,
+                        oversampling=epsf.oversampling)
                 except TypeError:
                     # centroid_func doesn't accept oversampling and
                     # shift_val
@@ -750,6 +751,14 @@ class EPSFBuilder:
             if self.recentering_func != centroid_epsf:
                 xcenter_new += slices_large[1].start/self.oversampling[0]
                 ycenter_new += slices_large[0].start/self.oversampling[1]
+
+            # Default centroiding algorithm, centroid_com, cannot handle
+            # grid offsets, as it assumes indices to detector pixel mapping
+            # is index / oversampling (i.e., zero-indexed fractions). We
+            # therefore correct for this here
+            if self.recentering_func == centroid_com:
+                xcenter_new += self.grid_offset[0]
+                ycenter_new += self.grid_offset[1]
 
             # Calculate the shift; dx = i - x_star so if dx was positively
             # incremented then x_star was negatively incremented for a given i.
