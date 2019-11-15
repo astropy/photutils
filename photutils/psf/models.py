@@ -544,11 +544,11 @@ class EPSFModel(FittableImageModel):
         self._norm_radius = norm_radius
         self._shift_val = shift_val
 
-        super().__init__(data=data, flux=flux, x_0=x_0, y_0=y_0,
-                         normalize=normalize,
-                         normalization_correction=normalization_correction,
-                         origin=origin, oversampling=oversampling,
-                         fill_value=fill_value, **kwargs)
+        # Require an initial oversampling check, although there's one in
+        # FittableImageModel's __init__, as we need the 2D broadcasting
+        # before we can set grid_offset, but need grid_offset in the
+        # overall init call for setting origin.
+        self._set_oversampling(oversampling)
 
         # Without any other information we assume the ePSF oversampled
         # grid points start aligned with the left hand edge of a
@@ -574,6 +574,12 @@ class EPSFModel(FittableImageModel):
                                  'or equal to zero, and less than '
                                  '1/oversampling.')
             self.grid_offset = grid_offset
+
+        super().__init__(data=data, flux=flux, x_0=x_0, y_0=y_0,
+                         normalize=normalize,
+                         normalization_correction=normalization_correction,
+                         origin=origin, oversampling=oversampling,
+                         fill_value=fill_value, **kwargs)
 
     def _initial_norm(self, flux, normalize):
         if flux is None:

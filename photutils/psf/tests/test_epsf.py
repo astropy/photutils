@@ -281,9 +281,9 @@ def test_epsf_offset():
                           0:size*oversampling + extra_pixel]
         if offset is None:
             if oversampling == 1:
-                offset = 0.5
+                _offset = 0.5
             else:
-                offset = 0
+                _offset = 0
         else:
             _offset = offset
         xx = xx / oversampling + _offset
