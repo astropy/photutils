@@ -597,9 +597,12 @@ class EPSFModel(FittableImageModel):
         """
 
         # First need the indices of each axis at the oversampled
-        # resolution; if oversampling = 4 then x = [0, 0.25, 0.5, 0.75, ...]
+        # resolution; if oversampling = 4 then x = [0, 0.25, 0.5, 0.75, ...],
+        # plus any correction for an offset grid
         x = np.arange(self._nx, dtype=np.float64) / self.oversampling[0]
         y = np.arange(self._ny, dtype=np.float64) / self.oversampling[1]
+        x += self.grid_offset[0]
+        y += self.grid_offset[1]
 
         # Take indices where the undersampled grid is an integer --
         # i.e., the actual undersampled grid -- and find the cut where
@@ -611,18 +614,25 @@ class EPSFModel(FittableImageModel):
         x_0 /= self.oversampling[0]
         y_0 /= self.oversampling[1]
 
-        # When checking if the index is at the center of a pixel, we
-        # check such that the index number is half that of the
-        # oversampling -- if we oversample by a factor 4 then the middle
-        # pixel of the 0th large pixel is 2 ([0, 1, 2, 3, 4]). For this to
-        # work we require oversampling to be an even number; otherwise,
-        # the ``middle'' pixel will be halfway between two oversampled
-        # pixels.
-        over_index_middle = 1 / 2
+        # To avoid introducing unphysical flux into our ePSF, we need to
+        # only sum one grid point per pixel -- preferably one as close to
+        # the center of the detector pixel as possible, while within N
+        # pixels of the center, as defined by norm_radius. We therefore
+        # create a fake pixel's grid points and find the values in x/y
+        # closest to the middle.
+
+        _x_grid = (np.arange(self.oversampling[0]) / self.oversampling[0] +
+                   self.grid_offset[0])
+        x_closest_offset = _x_grid[np.argmin(np.abs(_x_grid - 0.5))]
+
+        _y_grid = (np.arange(self.oversampling[1]) / self.oversampling[1] +
+                   self.grid_offset[1])
+        y_closest_offset = _y_grid[np.argmin(np.abs(_y_grid - 0.5))]
+
         cut = (((x.reshape(1, -1) - x_0)**2 + (y.reshape(-1, 1) - y_0)**2 <=
                 self._norm_radius**2)
-               & (x.reshape(1, -1) % 1.0 == over_index_middle)
-               & (y.reshape(-1, 1) % 1.0 == over_index_middle))
+               & (x.reshape(1, -1) % 1.0 == x_closest_offset)
+               & (y.reshape(-1, 1) % 1.0 == y_closest_offset))
 
         return np.sum(self._data[cut], dtype=np.float64)
 
