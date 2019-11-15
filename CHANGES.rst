@@ -5,6 +5,18 @@ Bug Fixes
 ^^^^^^^^^
 
 
+0.7.2 (Unreleased)
+------------------
+
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.psf``
+
+  - Fix to algorithm in ``EPSFBuilder``, addressing issues where ePSFs
+    failed to build (yielding striped ePSFs). [#974]
+
+
 0.7.1 (2019-10-09)
 ------------------
 
