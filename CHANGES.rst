@@ -78,6 +78,18 @@ API changes
     ``assert_angle``, and ``pixel_to_icrs_coords``. [#953]
 
 
+0.7.2 (Unreleased)
+------------------
+
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.psf``
+
+  - Fix to algorithm in ``EPSFBuilder``, addressing issues where ePSFs
+    failed to build (yielding striped ePSFs). [#974]
+
+
 0.7.1 (2019-10-09)
 ------------------
 
