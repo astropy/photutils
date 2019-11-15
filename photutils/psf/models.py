@@ -675,8 +675,15 @@ class EPSFModel(FittableImageModel):
     @FittableImageModel.origin.setter
     def origin(self, origin):
         if origin is None:
-            self._x_origin = (self._nx - 1) / 2.0 / self.oversampling[0]
-            self._y_origin = (self._ny - 1) / 2.0 / self.oversampling[1]
+            # If left hand pixel does not sit exactly on the edge of
+            # a detector pixel, we do not have the extra grid point,
+            # representing the left hand grid point of an imaginary
+            # detector neighboring pixel, so we must ensure we take
+            # that into account in the ePSF grid shape.
+            x_sub = 1 if self.grid_offset[0] == 0 else 0
+            y_sub = 1 if self.grid_offset[1] == 0 else 0
+            self._x_origin = (self._nx - x_sub) / 2.0 / self.oversampling[0]
+            self._y_origin = (self._ny - y_sub) / 2.0 / self.oversampling[1]
         elif (hasattr(origin, '__iter__') and len(origin) == 2):
             self._x_origin, self._y_origin = origin
         else:
@@ -748,6 +755,10 @@ class EPSFModel(FittableImageModel):
         # pixel grid, going from 0 to len(undersampled_grid)
         x = np.arange(self._nx, dtype=np.float) / self.oversampling[0]
         y = np.arange(self._ny, dtype=np.float) / self.oversampling[1]
+        # The interpolator also has to account for any offsets in the
+        # interpolation points
+        x += self.grid_offset[0]
+        y += self.grid_offset[1]
         self.interpolator = RectBivariateSpline(
             x, y, self._data.T, kx=degx, ky=degy, s=smoothness)
 
