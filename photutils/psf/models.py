@@ -527,11 +527,19 @@ class EPSFModel(FittableImageModel):
         The fractional undersampled pixel amount (equivalent to an
         integer oversampled pixel value) at which to evaluate the
         asymmetric ePSF centroid corrections.
+
+    grid_offset : float or tuple of two floats, optional
+        The fractional detector pixel amount by which to offset the
+        ePSF interpolation points, relative to the left hand edge of
+        a pixel. A scalar is interpreted as having the same offset
+        in both x and y, otherwise it is treated as
+        ``(x_grid_offset, y_grid_offset)``.
     """
 
     def __init__(self, data, flux=1.0, x_0=0.0, y_0=0.0, normalize=True,
                  normalization_correction=1.0, origin=None, oversampling=1,
-                 fill_value=0.0, norm_radius=5.5, shift_val=0.5, **kwargs):
+                 fill_value=0.0, norm_radius=5.5, shift_val=0.5,
+                 grid_offset=None, **kwargs):
 
         self._norm_radius = norm_radius
         self._shift_val = shift_val
@@ -541,6 +549,31 @@ class EPSFModel(FittableImageModel):
                          normalization_correction=normalization_correction,
                          origin=origin, oversampling=oversampling,
                          fill_value=fill_value, **kwargs)
+
+        # Without any other information we assume the ePSF oversampled
+        # grid points start aligned with the left hand edge of a
+        # detector pixel, except when there is no oversampling, for
+        # which the assumption is that the grid points lie in the middle
+        # of each detector pixel.
+        if grid_offset is None:
+            self.grid_offset = np.array([0.5 if i == 1 else 0 for i in
+                                         self.oversampling])
+        else:
+            try:
+                grid_offset = np.asleast_1d(grid_offset).astype(float)
+                if len(grid_offset) == 1:
+                    grid_offset = np.repeat(grid_offset, 2)
+            except ValueError:
+                raise ValueError('Grid offset must be a scalar.')
+            # Keep the grid offset within its principle range, to avoid
+            # pixels "falling off the edge" of the ePSF region in question
+            # with larger shifts than the spacing between grid points.
+            if (np.any(grid_offset < 0) or np.any(grid_offset >
+                                                  1/self.oversampling)):
+                raise ValueError('Grid offset should be greater than '
+                                 'or equal to zero, and less than '
+                                 '1/oversampling.')
+            self.grid_offset = grid_offset
 
     def _initial_norm(self, flux, normalize):
         if flux is None:
