@@ -279,8 +279,15 @@ def test_epsf_offset():
         extra_pixel = 1 if offset is not None else 0
         yy, xx = np.mgrid[0:size*oversampling + extra_pixel,
                           0:size*oversampling + extra_pixel]
-        xx = xx / oversampling + offset
-        yy = yy / oversampling + offset
+        if offset is None:
+            if oversampling == 1:
+                offset = 0.5
+            else:
+                offset = 0
+        else:
+            _offset = offset
+        xx = xx / oversampling + _offset
+        yy = yy / oversampling + _offset
         truth_epsf = m(xx, yy)
 
         stars = extract_stars(nddata, stars_tbl, size=size)
