@@ -443,17 +443,36 @@ class EPSFBuilder:
             if len(shape) == 1:
                 shape = np.repeat(shape, 2)
         else:
-            # Stars class should have odd-sized dimensions, and thus we
-            # get the oversampled shape as oversampling * len + 1; if
-            # len=25, then newlen=101, for example.
+            # Stars class should have an extra grid point if there is no
+            # grid offset, and thus we get the oversampled shape as
+            # oversampling * len + 1; if len=25, then newlen=101, for
+            # example. If the ePSF grid points are offset, however, all
+            # grid points are self-contained in each detector pixel, so
+            # we do not need the extra grid point.
+            x_extra_grid = 1 if self.grid_offset[0] == 0 else 0
+            y_extra_grid = 1 if self.grid_offset[1] == 0 else 0
             x_shape = np.int(np.ceil(stars._max_shape[0]) * oversampling[0]
-                             + 1)
+                             + x_extra_grid)
             y_shape = np.int(np.ceil(stars._max_shape[1]) * oversampling[1]
-                             + 1)
+                             + y_extra_grid)
             shape = np.array((y_shape, x_shape))
 
-        # verify odd sizes of shape
-        shape = [(i + 1) if i % 2 == 0 else i for i in shape]
+        # Verify the sizes of shape
+        for i in range(len(shape)):
+            if self.grid_offset[i] == 0:
+                # If there is no grid offset, there needs to be
+                # `oversampling` grid points per pixel plus one more;
+                # can enforce the extra grid point if not provided
+                if shape[i] % self.oversampling[i] == 0:
+                    shape[i] += 1
+                if shape[i] % self.oversampling[i] != 1:
+                    raise ValueError('ePSF grid shape and grid offset '
+                                     'incompatible with one another.')
+            else:
+                # For grid offsets, we do not want the extra grid point
+                if shape[i] % self.oversampling[i] != 0:
+                    raise ValueError('ePSF grid shape and grid offset '
+                                     'incompatible with one another.')
 
         data = np.zeros(shape, dtype=np.float)
 
@@ -507,15 +526,21 @@ class EPSFBuilder:
         stardata = (star._data_values_normalized -
                     epsf.evaluate(x=x, y=y, flux=1.0, x_0=0.0, y_0=0.0))
 
-        x = epsf.oversampling[0] * star._xidx_centered
-        y = epsf.oversampling[1] * star._yidx_centered
+        # Account for whether there's an extra left-hand-edge pixel
+        # for non-offset grids or not
+        x_extra_pix = 1 if self.grid_offset[0] == 0 else 0
+        y_extra_pix = 1 if self.grid_offset[1] == 0 else 0
+        epsf_xcenter = int((epsf.data.shape[1] - x_extra_pix) /
+                           2) / self.oversampling[0]
+        epsf_ycenter = int((epsf.data.shape[0] - y_extra_pix) /
+                           2) / self.oversampling[1]
 
-        epsf_xcenter, epsf_ycenter = (int((epsf.data.shape[1] -
-                                           1) / 2),
-                                      int((epsf.data.shape[0] -
-                                           1) / 2))
-        xidx = _py2intround(x + epsf_xcenter)
-        yidx = _py2intround(y + epsf_ycenter)
+        _xvals, _yvals = (np.arange(epsf.data.shape[1], float) /
+                          self.oversampling[0] + self.grid_offset[0],
+                          np.arange(epsf.data.shape[0], float) /
+                          self.oversampling[1] + self.grid_offset[1])
+        xidx = _nearestfloatidx(x + epsf_xcenter, _xvals)
+        yidx = _nearestfloatidx(y + epsf_ycenter, _yvals)
 
         resampled_img = np.full(epsf.shape, np.nan)
 
@@ -659,13 +684,16 @@ class EPSFBuilder:
         epsf = EPSFModel(data=epsf._data, origin=epsf.origin,
                          oversampling=epsf.oversampling,
                          norm_radius=epsf._norm_radius,
-                         shift_val=epsf._shift_val, normalize=False)
+                         shift_val=epsf._shift_val, normalize=False,
+                         grid_offset=self.grid_offset)
 
         xcenter, ycenter = epsf.origin
 
         y, x = np.indices(epsf._data.shape, dtype=np.float)
         x /= epsf.oversampling[0]
         y /= epsf.oversampling[1]
+        x += epsf.grid_offset[0]
+        y += epsf.grid_offset[1]
 
         dx_total, dy_total = 0, 0
         iter_num = 0
@@ -795,7 +823,8 @@ class EPSFBuilder:
         epsf = EPSFModel(data=new_epsf, origin=epsf.origin,
                          oversampling=epsf.oversampling,
                          norm_radius=epsf._norm_radius,
-                         shift_val=epsf._shift_val, normalize=False)
+                         shift_val=epsf._shift_val, normalize=False,
+                         grid_offset=epsf.grid_offset)
 
         epsf._data = self._recenter_epsf(
             epsf, centroid_func=self.recentering_func,
@@ -810,7 +839,8 @@ class EPSFBuilder:
         return EPSFModel(data=epsf._data, origin=(xcenter, ycenter),
                          oversampling=epsf.oversampling,
                          norm_radius=epsf._norm_radius,
-                         shift_val=epsf._shift_val)
+                         shift_val=epsf._shift_val,
+                         grid_offset=epsf.grid_offset)
 
     def build_epsf(self, stars, init_epsf=None):
         """
@@ -912,6 +942,17 @@ def _py2intround(a):
         value = np.asscalar(value)
 
     return value
+
+
+def _nearestfloatidx(a, b):
+    """
+    Return index of entry in ``b`` which is closest to each element
+    of ``a``.
+    """
+
+    idxs = np.array([np.abs(a - b[i]).argmin() for i in range(len(b))])
+
+    return idxs
 
 
 def _interpolate_missing_data(data, mask, method='cubic'):
