@@ -234,9 +234,9 @@ def test_epsf_build_with_noise():
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_epsf_offset():
     size = 25
-    sigma = 0.5
+    sigma = 4
 
-    Nstars = 40
+    Nstars = 50
     xdim = np.ceil(np.sqrt(Nstars)).astype(int)
     ydim = np.ceil(Nstars / xdim).astype(int)
     xarray = np.arange((size-1)/2+2, (size-1)/2+2 + xdim*size, size)
@@ -269,22 +269,33 @@ def test_epsf_offset():
     data -= 20
     nddata = NDData(data=data)
 
-    for oversampling, offset in zip([4, 1, 3, 3], [None, None, None, 1/6]):
+    for oversampling, offset in zip([1, 4, 3, 3, [1, 2]],
+                                    [None, None, None, 1/6, [0, 0.25]]):
+        _oversampling = np.atleast_1d(oversampling)
+        if len(_oversampling) == 1:
+            _oversampling = np.repeat(_oversampling, 2)
+
         # should be "truth" ePSF
         m = IntegratedGaussianPRF(sigma=sigma, x_0=12.5, y_0=12.5, flux=1)
-        extra_pixel = 1 if offset is not None else 0
-        yy, xx = np.mgrid[0:size*oversampling + extra_pixel,
-                          0:size*oversampling + extra_pixel]
         if offset is None:
-            if oversampling == 1:
-                _offset = 0.5
-            else:
-                _offset = 0
+            _offset = [0, 0]
+            for i in range(2):
+                if _oversampling[i] == 1:
+                    _offset[i] = 0.5
         else:
-            _offset = offset
-        xx = xx / oversampling + _offset
-        yy = yy / oversampling + _offset
+            _offset = np.atleast_1d(offset)
+            if len(_offset) == 1:
+                _offset = np.repeat(_offset, 2)
+        extra_pixel = [1 if i == 0 else 0 for i in _offset]
+        yy, xx = np.mgrid[0:size*_oversampling[1] + extra_pixel[1],
+                          0:size*_oversampling[0] + extra_pixel[0]]
+        xx = xx / _oversampling[0] + _offset[0]
+        yy = yy / _oversampling[1] + _offset[1]
+
         truth_epsf = m(xx, yy)
+
+        x0 = int((xx.shape[1] - extra_pixel[0]) / 2) / _oversampling[0]
+        y0 = int((xx.shape[0] - extra_pixel[1]) / 2) / _oversampling[1]
 
         stars = extract_stars(nddata, stars_tbl, size=size)
 
@@ -292,17 +303,18 @@ def test_epsf_offset():
             star.cutout_center = centroid_com(star.data)
 
         epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=5,
-                                   progress_bar=False, norm_radius=7.5,
+                                   progress_bar=False, norm_radius=25,
                                    recentering_func=centroid_com,
                                    grid_offset=offset)
         epsf, fitted_stars = epsf_builder(stars)
         # Test built ePSF via EPSFBuilder
         assert np.all(epsf.data.shape == truth_epsf.shape)
-        assert_allclose(epsf.data, truth_epsf, rtol=1e-1, atol=5e-2)
+        assert_allclose(epsf.data, truth_epsf, rtol=0.05, atol=0.03)
 
         # Test ePSF via re-creation through EPSFModel independently
         new_epsf = EPSFModel(epsf.data, oversampling=oversampling,
-                             grid_offset=offset)
-        epsf_data = new_epsf.evaluate(xx, yy, 1, 0, 0)
+                             grid_offset=offset, norm_radius=25)
+        epsf_data = new_epsf.evaluate(xx, yy, 1, x0, y0)
+
         assert np.all(epsf_data.shape == truth_epsf.shape)
-        assert_allclose(epsf_data, truth_epsf, rtol=1e-1, atol=5e-2)
+        assert_allclose(epsf_data, truth_epsf, rtol=0.05, atol=0.03)

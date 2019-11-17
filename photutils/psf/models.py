@@ -556,7 +556,7 @@ class EPSFModel(FittableImageModel):
         # which the assumption is that the grid points lie in the middle
         # of each detector pixel.
         if grid_offset is None:
-            self.grid_offset = np.array([0.5 if i == 1 else 0 for i in
+            self.grid_offset = np.array([0.5 if i == 1 else 0. for i in
                                          self.oversampling])
         else:
             try:
@@ -610,10 +610,12 @@ class EPSFModel(FittableImageModel):
         x += self.grid_offset[0]
         y += self.grid_offset[1]
 
-        # Take indices where the undersampled grid is an integer --
-        # i.e., the actual undersampled grid -- and find the cut where
-        # sqrt(dx**2 + dy**2) <= radius
-        x_0, y_0 = int((self._nx - 1) / 2), int((self._ny - 1) / 2)
+        # Take one grid index point per undersampled detector pixel and
+        # find the cut where sqrt(dx**2 + dy**2) <= radius
+        x_extra_grid = 1 if self.grid_offset[0] == 0 else 0
+        y_extra_grid = 1 if self.grid_offset[1] == 0 else 0
+        x_0 = ((self._nx - x_extra_grid) / 2)
+        y_0 = ((self._ny - y_extra_grid) / 2)
 
         # However, as we are in units of the undersampled grid, we must
         # convert to undersampled units by the same factor of oversampling
@@ -637,8 +639,8 @@ class EPSFModel(FittableImageModel):
 
         cut = (((x.reshape(1, -1) - x_0)**2 + (y.reshape(-1, 1) - y_0)**2 <=
                 self._norm_radius**2)
-               & (x.reshape(1, -1) % 1.0 == x_closest_offset)
-               & (y.reshape(-1, 1) % 1.0 == y_closest_offset))
+               & (np.abs((x.reshape(1, -1) % 1.0) - x_closest_offset) < 0.01)
+               & (np.abs((y.reshape(-1, 1) % 1.0) - y_closest_offset) < 0.01))
 
         return np.sum(self._data[cut], dtype=np.float64)
 

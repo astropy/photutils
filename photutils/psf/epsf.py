@@ -339,11 +339,11 @@ class EPSFBuilder:
         # which the assumption is that the grid points lie in the middle
         # of each detector pixel.
         if grid_offset is None:
-            self.grid_offset = np.array([0.5 if i == 1 else 0 for i in
+            self.grid_offset = np.array([0.5 if i == 1 else 0. for i in
                                          self.oversampling])
         else:
             try:
-                grid_offset = np.asleast_1d(grid_offset).astype(float)
+                grid_offset = np.atleast_1d(grid_offset).astype(float)
                 if len(grid_offset) == 1:
                     grid_offset = np.repeat(grid_offset, 2)
             except ValueError:
@@ -470,17 +470,30 @@ class EPSFBuilder:
                              + y_extra_grid)
             shape = np.array((y_shape, x_shape))
 
-        # Verify the sizes of shape
+        # Verify the sizes of shape -- remembering shape should be (y, x)
         for i in range(len(shape)):
             if self.grid_offset[i] == 0:
-                # If there is no grid offset, there needs to be
-                # `oversampling` grid points per pixel plus one more;
-                # can enforce the extra grid point if not provided
-                if shape[i] % self.oversampling[i] == 0:
-                    shape[i] += 1
-                if shape[i] % self.oversampling[i] != 1:
-                    raise ValueError('ePSF grid shape and grid offset '
-                                     'incompatible with one another.')
+                if self.oversampling[i] > 1:
+                    # If there is no grid offset, there needs to be
+                    # `oversampling` grid points per pixel plus one more;
+                    # can enforce the extra grid point if not provided
+                    if shape[len(shape)-1-i] % self.oversampling[i] == 0:
+                        shape[len(shape)-1-i] += 1
+                    if shape[len(shape)-1-i] % self.oversampling[i] != 1:
+                        raise ValueError('ePSF grid shape and grid offset '
+                                         'incompatible with one another.')
+                else:
+                    # For oversampling of 1, % operations don't work, so we
+                    # assume that we have one more grid point than the
+                    # largest star cutout.
+                    print(shape[len(shape)-1-i], np.ceil(stars._max_shape[i]))
+                    if (shape[len(shape)-1-i] -
+                            np.ceil(stars._max_shape[i]) == 0):
+                        shape[len(shape)-1-i] += 1
+                    if (shape[len(shape)-1-i] -
+                            np.ceil(stars._max_shape[i]) != 1):
+                        raise ValueError('ePSF grid shape and grid offset '
+                                         'incompatible with one another.')
             else:
                 # For grid offsets, we do not want the extra grid point
                 if shape[i] % self.oversampling[i] != 0:
@@ -499,7 +512,7 @@ class EPSFBuilder:
 
         epsf = EPSFModel(data=data, origin=(xcenter, ycenter),
                          oversampling=oversampling, norm_radius=norm_radius,
-                         shift_val=shift_val)
+                         shift_val=shift_val, grid_offset=self.grid_offset)
 
         return epsf
 
@@ -701,6 +714,16 @@ class EPSFBuilder:
                          grid_offset=self.grid_offset)
 
         xcenter, ycenter = epsf.origin
+
+        # If oversampling is 1 then we have to correct for the fact that
+        # overlap_slices requires pixel centers to be integers and we've
+        # assumed pixel centers are at (v.5, w.5), unlike in
+        # oversampling > 1 cases, where xcenter*oversampling[0] should
+        # cause the oversampled index position to become an integer.
+        if self.oversampling[0] == 1:
+            xcenter -= 0.5
+        if self.oversampling[1] == 1:
+            ycenter -= 0.5
 
         y, x = np.indices(epsf._data.shape, dtype=np.float)
         x /= epsf.oversampling[0]
