@@ -135,6 +135,42 @@ class TestEPSFBuild:
         with pytest.raises(TypeError):
             EPSFBuilder(fitter=LevMarLSQFitter, maxiters=3)
 
+    def test_epsf_input(self):
+        """
+        Test various inputs raise errors as expected.
+        """
+
+        size = 25
+
+        for oversampling, grid_offset in zip([4, 4, 1, 1], [0, 0.25, 0, 0.5]):
+            if oversampling == 4:
+                shape = (99, 101)
+            else:
+                shape = (24, 26)
+            stars = extract_stars(self.nddata, self.init_stars, size=size)
+            epsf_builder = EPSFBuilder(oversampling=oversampling, maxiters=8,
+                                       progress_bar=False, norm_radius=25,
+                                       recentering_maxiters=5, shape=shape,
+                                       grid_offset=grid_offset)
+
+            with pytest.raises(ValueError):
+                epsf, fitted_stars = epsf_builder(stars)
+
+        oversampling = 4
+        for grid_offset in ['a', -1, 0.3, [0, 0.4], [0.5, 0.1]]:
+            stars = extract_stars(self.nddata, self.init_stars, size=size)
+            with pytest.raises(ValueError):
+                epsf_builder = EPSFBuilder(oversampling=oversampling,
+                                           maxiters=8, progress_bar=False,
+                                           norm_radius=25,
+                                           recentering_maxiters=5,
+                                           grid_offset=grid_offset)
+
+            with pytest.raises(ValueError):
+                EPSFModel(data=np.arange(30).reshape(5, 6),
+                          grid_offset=grid_offset,
+                          oversampling=oversampling)
+
 
 def test_epsfbuilder_inputs():
     with pytest.raises(ValueError):

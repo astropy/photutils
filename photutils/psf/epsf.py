@@ -481,10 +481,16 @@ class EPSFBuilder:
                         raise ValueError('ePSF grid shape and grid offset '
                                          'incompatible with one another.')
             else:
-                # For grid offsets, we do not want the extra grid point
-                if shape[i] % self.oversampling[i] != 0:
-                    raise ValueError('ePSF grid shape and grid offset '
-                                     'incompatible with one another.')
+                if self.oversampling[i] > 1:
+                    # For grid offsets, we do not want the extra grid point
+                    if shape[i] % self.oversampling[i] != 0:
+                        raise ValueError('ePSF grid shape and grid offset '
+                                         'incompatible with one another.')
+                else:
+                    if (shape[len(shape)-1-i] -
+                            np.ceil(stars._max_shape[i]) != 0):
+                        raise ValueError('ePSF grid shape and grid offset '
+                                         'incompatible with one another.')
 
         data = np.zeros(shape, dtype=np.float)
 
