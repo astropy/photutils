@@ -496,7 +496,8 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
     return np.array(xcentroids), np.array(ycentroids)
 
 
-def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
+def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5,
+                  grid_offset=0):
     """
     Calculates centering shift of data using pixel symmetry, as
     described by Anderson and King (2000; PASP 112, 1360) in their
@@ -523,6 +524,11 @@ def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
         The undersampled value at which to compute the shifts. Default
         is half a pixel. If supplied, must be a strictly positive
         number.
+    grid_offset : float or tuple of two floats, optional
+        The relative undersampled offset of grid points relative to
+        detector pixel values, giving offsets from the left hand edge
+        of a pixel. A scalar is interpreted as having the same offset
+        in x and y, but a tuple is treated as ``(x_grid_off, y_grid_off)``.
 
     Returns
     -------
@@ -535,6 +541,19 @@ def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
         oversampling = np.repeat(oversampling, 2)
     if np.any(oversampling <= 0):
         raise ValueError('Oversampling factors must all be positive numbers.')
+
+    # centroid_epsf requires that there is a grid point exactly on top of
+    # the middle of the central detector pixel. This is the case when
+    # there is even oversampling and zero grid offset, or odd oversampling
+    # and grid offsets exactly half a grid spacing.
+    if not np.all(((oversampling % 2 == 0) & (grid_offset == 0)) |
+                  ((oversampling % 2 == 1) & (np.abs(grid_offset -
+                                              0.5/oversampling) < 0.01))):
+        raise TypeError('centroid_epsf cannot be used if '
+                        'there is not a grid point exactly representing '
+                        'the middle of a detector pixel. Please select '
+                        'a different centroiding algorithm '
+                        'or change oversampling/offset factors.')
 
     data = data.astype(float)
 

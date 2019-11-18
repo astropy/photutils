@@ -315,7 +315,7 @@ class EPSFBuilder:
     """
 
     def __init__(self, oversampling=4., shape=None,
-                 smoothing_kernel='quartic', recentering_func=centroid_com,
+                 smoothing_kernel='quartic', recentering_func=centroid_epsf,
                  recentering_maxiters=20, fitter=EPSFFitter(), maxiters=10,
                  progress_bar=True, norm_radius=5.5, shift_val=0.5,
                  recentering_boxsize=(5, 5), center_accuracy=1.0e-3,
@@ -357,19 +357,6 @@ class EPSFBuilder:
                                  'or equal to zero, and less than '
                                  '1/oversampling.')
             self.grid_offset = grid_offset
-
-        # To use centroid_epsf as the centroiding algorithm for EPSFBuilder
-        # requires even oversampling with zero offset, such that there
-        # is a grid point exactly on top of the middle of the central
-        # detector pixel.
-        if (recentering_func is centroid_epsf and
-                np.any((self.oversampling % 2 != 0) |
-                       (self.grid_offset > 0))):
-            raise TypeError('centroid_epsf cannot be used if '
-                            'oversampling is not even or grid '
-                            'offset is not zero. Please select '
-                            'a different centroiding algorithm '
-                            'or change oversampling/offset factors.')
 
         self.shape = self._init_img_params(shape)
         if self.shape is not None:
@@ -756,10 +743,10 @@ class EPSFBuilder:
                 # find a new center position
                 xcenter_new, ycenter_new = centroid_func(
                     epsf_cutout, mask=mask, oversampling=epsf.oversampling,
-                    shift_val=epsf._shift_val)
+                    shift_val=epsf._shift_val, grid_offset=epsf.grid_offset)
             except TypeError:
                 # centroid_func doesn't accept oversampling and/or shift_val
-                # keywords - try oversampling alone
+                # or grid_offset keywords - try oversampling alone
                 try:
                     xcenter_new, ycenter_new = centroid_func(
                         epsf_cutout, mask=mask,
