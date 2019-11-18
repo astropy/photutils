@@ -878,8 +878,10 @@ class EPSFBuilder:
 
         # Return the new ePSF object, but with undersampled grid pixel
         # coordinates.
-        xcenter = (epsf._data.shape[1] - 1) / 2. / epsf.oversampling[0]
-        ycenter = (epsf._data.shape[0] - 1) / 2. / epsf.oversampling[1]
+        xcenter = (epsf._data.shape[1] - (1 if self.grid_offset[0] == 0
+                   else 0)) / 2. / epsf.oversampling[0]
+        ycenter = (epsf._data.shape[0] - (1 if self.grid_offset[1] == 0
+                   else 0)) / 2. / epsf.oversampling[1]
 
         return EPSFModel(data=epsf._data, origin=(xcenter, ycenter),
                          oversampling=epsf.oversampling,
