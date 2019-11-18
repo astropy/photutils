@@ -486,7 +486,6 @@ class EPSFBuilder:
                     # For oversampling of 1, % operations don't work, so we
                     # assume that we have one more grid point than the
                     # largest star cutout.
-                    print(shape[len(shape)-1-i], np.ceil(stars._max_shape[i]))
                     if (shape[len(shape)-1-i] -
                             np.ceil(stars._max_shape[i]) == 0):
                         shape[len(shape)-1-i] += 1
