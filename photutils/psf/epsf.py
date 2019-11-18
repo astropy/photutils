@@ -366,7 +366,7 @@ class EPSFBuilder:
                 np.any((self.oversampling % 2 != 0) |
                        (self.grid_offset > 0))):
             raise TypeError('centroid_epsf cannot be used if '
-                            'oversampling is not even and grid '
+                            'oversampling is not even or grid '
                             'offset is not zero. Please select '
                             'a different centroiding algorithm '
                             'or change oversampling/offset factors.')
