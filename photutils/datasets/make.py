@@ -518,7 +518,7 @@ def make_gaussian_sources_image(shape, source_table, oversample=1):
         table['y_mean'] = [70, 40, 25, 60]
         table['x_stddev'] = [15.2, 5.1, 3., 8.1]
         table['y_stddev'] = [2.6, 2.5, 3., 4.7]
-        table['theta'] = np.array([145., 20., 0., 60.]) * np.pi / 180.
+        table['theta'] = np.radians(np.array([145., 20., 0., 60.]))
 
         # make an image of the sources without noise, with Gaussian
         # noise, and with Poisson noise
@@ -686,7 +686,7 @@ def make_4gaussians_image(noise=True):
     table['y_mean'] = [70, 40, 25, 60]
     table['x_stddev'] = [15.2, 5.1, 3., 8.1]
     table['y_stddev'] = [2.6, 2.5, 3., 4.7]
-    table['theta'] = np.array([145., 20., 0., 60.]) * np.pi / 180.
+    table['theta'] = np.radians(np.array([145., 20., 0., 60.]))
 
     shape = (100, 200)
     data = make_gaussian_sources_image(shape, table) + 5.
