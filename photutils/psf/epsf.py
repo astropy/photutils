@@ -767,10 +767,9 @@ class EPSFBuilder:
                 xcenter_new += slices_large[1].start/self.oversampling[0]
                 ycenter_new += slices_large[0].start/self.oversampling[1]
 
-            # Default centroiding algorithm, centroid_com, cannot handle
-            # grid offsets, as it assumes indices to detector pixel mapping
-            # is index / oversampling (i.e., zero-indexed fractions). We
-            # therefore correct for this here
+            # centroid_com cannot handle grid offsets, as it assumes indices
+            # to detector pixel mapping is index / oversampling (i.e.,
+            # zero-indexed fractions). We therefore correct for this here
             if self.recentering_func == centroid_com:
                 xcenter_new += self.grid_offset[0]
                 ycenter_new += self.grid_offset[1]
