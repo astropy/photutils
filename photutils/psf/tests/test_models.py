@@ -13,7 +13,7 @@ from numpy.testing import assert_allclose
 import pytest
 
 from ..models import (FittableImageModel, GriddedPSFModel,
-                      IntegratedGaussianPRF, PRFAdapter)
+                      IntegratedGaussianPRF, PRFAdapter, EPSFModel)
 from ...segmentation import detect_sources, source_properties
 
 try:
@@ -390,3 +390,13 @@ class TestPRFAdapter:
         # it's a bit of a guess that the above itol is appropriate, but
         # it should be close
         assert_allclose(np.sum(eval11), np.sum(eval22), atol=itol*100)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def epsfmodel_test_offsets():
+    oversampling = 4
+    for grid_offset in ['a', -1, 0.3, [0, 0.4], [0.5, 0.1]]:
+        with pytest.raises(ValueError):
+            EPSFModel(data=np.arange(30).reshape(5, 6),
+                      grid_offset=grid_offset,
+                      oversampling=oversampling)

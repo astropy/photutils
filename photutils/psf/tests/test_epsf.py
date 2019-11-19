@@ -166,11 +166,6 @@ class TestEPSFBuild:
                                            recentering_maxiters=5,
                                            grid_offset=grid_offset)
 
-            with pytest.raises(ValueError):
-                EPSFModel(data=np.arange(30).reshape(5, 6),
-                          grid_offset=grid_offset,
-                          oversampling=oversampling)
-
 
 def test_epsfbuilder_inputs():
     with pytest.raises(ValueError):
