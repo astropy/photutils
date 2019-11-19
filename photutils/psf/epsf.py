@@ -451,10 +451,10 @@ class EPSFBuilder:
             # we do not need the extra grid point.
             x_extra_grid = 1 if self.grid_offset[0] == 0 else 0
             y_extra_grid = 1 if self.grid_offset[1] == 0 else 0
-            x_shape = np.int(np.ceil(stars._max_shape[0]) * oversampling[0]
-                             + x_extra_grid)
-            y_shape = np.int(np.ceil(stars._max_shape[1]) * oversampling[1]
-                             + y_extra_grid)
+            x_shape = np.int(np.ceil(stars._max_shape[0]) * oversampling[0] +
+                             x_extra_grid)
+            y_shape = np.int(np.ceil(stars._max_shape[1]) * oversampling[1] +
+                             y_extra_grid)
             shape = np.array((y_shape, x_shape))
 
         # Verify the sizes of shape -- remembering shape should be (y, x)

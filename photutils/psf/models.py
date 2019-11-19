@@ -638,9 +638,9 @@ class EPSFModel(FittableImageModel):
         y_closest_offset = _y_grid[np.argmin(np.abs(_y_grid - 0.5))]
 
         cut = (((x.reshape(1, -1) - x_0)**2 + (y.reshape(-1, 1) - y_0)**2 <=
-                self._norm_radius**2)
-               & (np.abs((x.reshape(1, -1) % 1.0) - x_closest_offset) < 0.01)
-               & (np.abs((y.reshape(-1, 1) % 1.0) - y_closest_offset) < 0.01))
+                self._norm_radius**2) &
+               (np.abs((x.reshape(1, -1) % 1.0) - x_closest_offset) < 0.01) &
+               (np.abs((y.reshape(-1, 1) % 1.0) - y_closest_offset) < 0.01))
 
         return np.sum(self._data[cut], dtype=np.float64)
 
