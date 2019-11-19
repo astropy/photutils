@@ -273,3 +273,19 @@ def test_centroid_exceptions():
     data[10, 10] = np.inf
     with pytest.raises(ValueError):
         centroid_epsf(data)
+
+    # These combinations should fail due to being incompatible
+    # with centroid_epsf
+    for oversampling, grid_offset in zip([1, 2, 4, 3, 5],
+                                         [0, 0.1, 0.2, 0, 0.01]):
+        with pytest.raises(TypeError):
+            centroid_epsf(data, oversampling=oversampling,
+                          grid_offset=grid_offset)
+
+    data = np.ones((11, 11), dtype=float)
+    # These should return a value successfully
+    for oversampling, grid_offset, shift_val in zip([1, 2, 4, 3, 5],
+                                                    [0.5, 0, 0, 1/6, 0.1],
+                                                    [1, 0.5, 0.5, 0.5, 0.5]):
+        centroid_epsf(data, oversampling=oversampling,
+                      grid_offset=grid_offset)
