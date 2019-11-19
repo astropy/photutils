@@ -76,7 +76,8 @@ matrix:
         # All tests (with remote data) and coverage checks with the
         # latest Python version.  The duration of the slowest 50 tests
         # will also be listed.
-        - env: PYTHON_VERSION=3.8
+        - env: PYTHON_VERSION=3.8 NUMPY_VERSION='' CONDA_DEPENDENCIES=''
+               PIP_DEPENDENCIES='Cython numpy scipy scikit-learn matplotlib scikit-image>0.14.1'
                SETUP_CMD='test --coverage --remote-data -a "--durations=50"'
 
         # Check for Sphinx doc build warnings
