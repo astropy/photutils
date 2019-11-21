@@ -11,6 +11,15 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.psf``
+
+  - Removed the restriction on ``oversampling`` having to be even
+    in ``EPSFModel`` and ``EPSFBuilder``, allowing all integer
+    oversampling factors now. [#989]
+
+  - Added the ability for arbitrary offsets between ePSF grid points
+    and detector pixel edges to be used. [#989]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -37,6 +46,10 @@ API changes
   - Removed the deprecated ``ax`` keyword in
     ``Background2D.plot_meshes``. [#953]
 
+- ``photutils.centroid``
+
+  - Added the ``grid_offset`` keyword to ``centroid_epsf``. [#989]
+
 - ``photutils.datasets``
 
   - Removed the deprecated ``type`` keyword in ``make_noise_image``.
@@ -52,6 +65,9 @@ API changes
   - Added ``extra_output_cols`` as a parameter to
     ``BasicPSFPhotometry``, ``IterativelySubtractedPSFPhotometry`` and
     ``DAOPhotPSFPhotometry``. [#745]
+
+  - Added ``grid_offset`` as a parameter to ``EPSFModel`` and
+    ``EPSFBuilder``. [#989]
 
 - ``photutils.segmentation``
 
