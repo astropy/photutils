@@ -301,18 +301,19 @@ def test_epsf_offset():
     nddata = NDData(data=data)
 
     for oversampling, offset in zip([1, 4, 3, 3, [1, 2]],
-                                    [None, None, None, 1/6, [0, 0.25]]):
+                                    ["center", "center", "center", 1/6,
+                                     [0, 0.25]]):
         _oversampling = np.atleast_1d(oversampling)
         if len(_oversampling) == 1:
             _oversampling = np.repeat(_oversampling, 2)
 
         # should be "truth" ePSF
         m = IntegratedGaussianPRF(sigma=sigma, x_0=12.5, y_0=12.5, flux=1)
-        if offset is None:
+        if offset == "center":
             _offset = [0, 0]
             for i in range(2):
-                if _oversampling[i] == 1:
-                    _offset[i] = 0.5
+                if _oversampling[i] % 2 != 0:
+                    _offset[i] = 0.5/_oversampling[i]
         else:
             _offset = np.atleast_1d(offset)
             if len(_offset) == 1:
@@ -349,3 +350,11 @@ def test_epsf_offset():
 
         assert np.all(epsf_data.shape == truth_epsf.shape)
         assert_allclose(epsf_data, truth_epsf, rtol=0.05, atol=0.03)
+
+    for oversampling, grid_offset in zip([1, 2, 4, 5, [1, 2], [2, 1], [2, 2],
+                                          [4, 4], [4, 5]],
+                                         [[0.5, 0.5], [0, 0], [0, 0],
+                                          [0.1, 0.1], [0.5, 0], [0, 0.5],
+                                          [0, 0], [0, 0], [0, 0.1]]):
+        a = EPSFBuilder(oversampling=oversampling)
+        assert np.all(a.grid_offset == grid_offset)

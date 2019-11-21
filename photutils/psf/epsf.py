@@ -306,12 +306,14 @@ class EPSFBuilder:
             less than ``center_accuracy`` pixels between iterations.  All
             stars must meet this condition for the loop to exit.
 
-    grid_offset : float or tuple of two floats, optional
+    grid_offset : float or tuple of two floats, or "center", optional
         The fractional detector pixel amount by which to offset the
         ePSF interpolation points, relative to the left hand edge of
         a pixel. A scalar is interpreted as having the same offset
         in both x and y, otherwise it is treated as
-        ``(x_grid_offset, y_grid_offset)``.
+        ``(x_grid_offset, y_grid_offset)``. The string "center" is also
+        accepted, treating the grid offset in both dimensions such that
+        there is a grid point exactly at 0.5 detector pixel spacing.
     """
 
     def __init__(self, oversampling=4., shape=None,
@@ -319,7 +321,7 @@ class EPSFBuilder:
                  recentering_maxiters=20, fitter=EPSFFitter(), maxiters=10,
                  progress_bar=True, norm_radius=5.5, shift_val=0.5,
                  recentering_boxsize=(5, 5), center_accuracy=1.0e-3,
-                 grid_offset=None):
+                 grid_offset="center"):
         flux_residual_sigclip = SigmaClip(sigma=3, cenfunc='median', maxiters=10)  # TODO: replace with kwarg in 8.0
 
         if oversampling is None:
@@ -334,12 +336,11 @@ class EPSFBuilder:
         self.oversampling = oversampling
 
         # Without any other information we assume the ePSF oversampled
-        # grid points start aligned with the left hand edge of a
-        # detector pixel, except when there is no oversampling, for
-        # which the assumption is that the grid points lie in the middle
-        # of each detector pixel.
-        if grid_offset is None:
-            self.grid_offset = np.array([0.5 if i == 1 else 0. for i in
+        # grid points have a grid point in the exact middle of a
+        # detector pixel. For even oversampling this requires no offset,
+        # but odd oversampling needs a half-oversampling spacing shift.
+        if grid_offset == "center":
+            self.grid_offset = np.array([0 if i % 2 == 0 else 0.5/i for i in
                                          self.oversampling])
         else:
             try:
