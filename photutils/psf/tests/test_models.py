@@ -400,3 +400,11 @@ def epsfmodel_test_offsets():
             EPSFModel(data=np.arange(30).reshape(5, 6),
                       grid_offset=grid_offset,
                       oversampling=oversampling)
+
+    for oversampling, grid_offset in zip([1, 2, 4, 5, [1, 2], [2, 1], [2, 2],
+                                          [4, 4], [4, 5]],
+                                         [[0.5, 0.5], [0, 0], [0, 0],
+                                          [0.1, 0.1], [0.5, 0], [0, 0.5],
+                                          [0, 0], [0, 0], [0, 0.1]]):
+        a = EPSFModel(oversampling=oversampling)
+        assert np.all(a.grid_offset == grid_offset)

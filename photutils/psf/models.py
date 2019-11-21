@@ -557,7 +557,7 @@ class EPSFModel(FittableImageModel):
         # detector pixel, except when there is no oversampling, for
         # which the assumption is that the grid points lie in the middle
         # of each detector pixel.
-        if grid_offset == "center":
+        if isinstance(grid_offset, str) and grid_offset == "center":
             self.grid_offset = np.array([0 if i % 2 == 0 else 0.5/i for i in
                                          self.oversampling])
         else:

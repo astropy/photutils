@@ -339,7 +339,7 @@ class EPSFBuilder:
         # grid points have a grid point in the exact middle of a
         # detector pixel. For even oversampling this requires no offset,
         # but odd oversampling needs a half-oversampling spacing shift.
-        if grid_offset == "center":
+        if isinstance(grid_offset, str) and grid_offset == "center":
             self.grid_offset = np.array([0 if i % 2 == 0 else 0.5/i for i in
                                          self.oversampling])
         else:
