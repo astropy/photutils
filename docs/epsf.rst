@@ -314,13 +314,20 @@ Finally, let's show the constructed ePSF:
     plt.imshow(epsf.data, norm=norm, origin='lower', cmap='viridis')
     plt.colorbar()
 
-We could also use a non-even oversampling factor -- say, 3:
+We could also use a non-even oversampling factor -- say, 5 -- with an arbitrary grid
+offset, say ``grid_offset=0.1``, representing a shift of a tenth of a detector
+pixel in all ePSF grid point mappings. Note that because grid offsets are defined as
+being the amount the grid points are offset from the initial point mapping to the edge
+of the detector pixel, for ``oversampling=5`` a shift of one-tenth of a pixel
+would put a grid point back exactly representing the case where a star is perfectly
+centered on its central pixel, crucial for correctly building the PRF of such an
+undersampled detector.
 
 .. doctest-requires:: scipy
 
     >>> from photutils import EPSFBuilder
-    >>> epsf_builder = EPSFBuilder(oversampling=3, maxiters=3,
-    ...                            progress_bar=False)  # doctest: +REMOTE_DATA
+    >>> epsf_builder = EPSFBuilder(oversampling=5, maxiters=3,
+    ...                            progress_bar=False, grid_offset=0.1)  # doctest: +REMOTE_DATA
     >>> epsf, fitted_stars = epsf_builder(stars)  # doctest: +REMOTE_DATA
 
 Let's again plot the results:
@@ -370,8 +377,8 @@ Let's again plot the results:
     stars = extract_stars(nddata, stars_tbl, size=25)
 
     from photutils import EPSFBuilder
-    epsf_builder = EPSFBuilder(oversampling=3, maxiters=3,
-                               progress_bar=False)
+    epsf_builder = EPSFBuilder(oversampling=5, maxiters=3,
+                               progress_bar=False, grid_offset=0.1)
     epsf, fitted_stars = epsf_builder(stars)
 
     import matplotlib.pyplot as plt
@@ -379,6 +386,8 @@ Let's again plot the results:
     plt.imshow(epsf.data, norm=norm, origin='lower', cmap='viridis')
     plt.colorbar()
 
+Here we can see the effect the increased oversampling factor has on the resultant
+ePSF, as the grid is finer than the ``oversampling=4`` case.
 
 
 The :class:`~photutils.psf.EPSFModel` object is a subclass of
