@@ -714,8 +714,7 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
 
             # n_start = 2 because it starts in the second iteration
             # since the first iteration is above
-            output_table = self._do_photometry(init_guesses.colnames,
-                                               n_start=2)
+            output_table = self._do_photometry(n_start=2)
             output_table = vstack([table, output_table])
         else:
             if self.bkg_estimator is not None:
@@ -730,20 +729,16 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
                     self.aperture_radius = (self.psf_model.sigma.value *
                                             gaussian_sigma_to_fwhm)
 
-            output_table = self._do_photometry(['x_0', 'y_0', 'flux_0'])
+            output_table = self._do_photometry()
         return output_table
 
-    def _do_photometry(self, param_tab, n_start=1):
+    def _do_photometry(self, n_start=1):
         """
         Helper function which performs the iterations of the photometry
         process.
 
         Parameters
         ----------
-        param_names : list
-            Names of the columns which represent the initial guesses.
-            For example, ['x_0', 'y_0', 'flux_0'], for intial guesses on
-            the center positions and the flux.
         n_start : int
             Integer representing the start index of the iteration.  It
             is 1 if init_guesses are None, and 2 otherwise.
