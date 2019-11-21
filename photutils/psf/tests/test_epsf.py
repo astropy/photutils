@@ -301,7 +301,7 @@ def test_epsf_offset():
     nddata = NDData(data=data)
 
     for oversampling, offset in zip([1, 4, 3, 3, [1, 2]],
-                                    ["center", "center", "center", 1/6,
+                                    ["center", "center", "center", 0,
                                      [0, 0.25]]):
         _oversampling = np.atleast_1d(oversampling)
         if len(_oversampling) == 1:
