@@ -251,6 +251,29 @@ def test_centroid_epsf():
         centers = centroid_epsf(data, mask=mask, oversampling=oversampling)
         assert_allclose(centers, offsets+x0, rtol=1e-3, atol=1e-2)
 
+    psf = Gaussian2D()
+    for oversampling in [4, (6, 2)]:
+        if not hasattr(oversampling, '__len__'):
+            _oversampling = (oversampling, oversampling)
+        else:
+            _oversampling = oversampling
+        x = np.arange(1 + 25 * _oversampling[0]) / _oversampling[0]
+        x0 = x[-1] / 2
+        x -= x0
+        y = np.arange(1 + 25 * _oversampling[1]) / _oversampling[1]
+        y0 = y[-1] / 2
+        y -= y0
+        offsets = np.array([0.1, 0.03])
+        data = psf.evaluate(x=x.reshape(1, -1), y=y.reshape(-1, 1),
+                            amplitude=1, x_mean=offsets[0], y_mean=offsets[1],
+                            x_stddev=5, y_stddev=0.5, theta=0)
+
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0, 0] = 1
+        centers = centroid_epsf(data, mask=mask, oversampling=oversampling,
+                                shift_val=0.5)
+        assert_allclose(centers, offsets+x0, rtol=1e-3, atol=1e-3)
+
 
 def test_centroid_exceptions():
     data = np.ones((5, 5), dtype=float)
