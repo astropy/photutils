@@ -168,3 +168,26 @@ class TestFitEllipseSamples:
         assert_allclose(np.mean(b1), -0.0578, atol=0.001)
         assert_allclose(np.mean(a2), 28.781, atol=0.001)
         assert_allclose(np.mean(b2), -63.184, atol=0.001)
+
+    def test_fit_upper_harmonics(self):
+        sample = EllipseSample(self.data1, 40.)
+        s = sample.extract()
+
+        harmonics = fit_first_and_second_harmonics(s[0], s[2])
+        y0, a1, b1, a2, b2 = harmonics[0]
+
+        assert_allclose(np.mean(y0), 200.019, atol=0.001)
+        assert_allclose(np.mean(a1), -0.000138, atol=0.001)
+        assert_allclose(np.mean(b1), 0.000254, atol=0.001)
+        assert_allclose(np.mean(a2), -5.658e-05, atol=0.001)
+        assert_allclose(np.mean(b2), -0.00911, atol=0.001)
+
+        # check that harmonics subtract nicely
+        model = first_and_second_harmonic_function(
+            s[0], np.array([y0, a1, b1, a2, b2]))
+        residual = s[2] - model
+
+        assert_allclose(np.mean(residual), 0., atol=0.001)
+        assert_allclose(np.std(residual), 0.015, atol=0.01)
+
+
