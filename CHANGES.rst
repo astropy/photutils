@@ -14,11 +14,6 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
-- ``photutils.isophote``
-
-  - Fixed computation of upper harmonics ``a3``, ``b3``, ``a4``,
-    ``b4`` is the ellipse fitting algorithm. [#1008]
-
 API changes
 ^^^^^^^^^^^
 
@@ -97,6 +92,11 @@ Bug Fixes
   - Fix to ``IterativelySubtractedPSFPhotometry`` where an error could
     be thrown when a ``Finder`` was passed which did not return ``None``
     if no sources were found. [#986]
+
+- ``photutils.isophote``
+
+  - Fixed computation of upper harmonics ``a3``, ``b3``, ``a4``,
+    ``b4`` is the ellipse fitting algorithm. [#1008]
 
 
 0.7.1 (2019-10-09)
