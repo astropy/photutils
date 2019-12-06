@@ -58,6 +58,7 @@ env:
 
 stages:
    - name: Initial tests
+   - name: Latest versions and docs
    - name: Comprehensive tests
    - name: Cron tests
      if: type = cron
@@ -75,15 +76,19 @@ matrix:
         # All tests (with remote data) and coverage checks with the
         # latest Python version.  The duration of the slowest 50 tests
         # will also be listed.
-        - env: SETUP_CMD='test --coverage --remote-data -a "--durations=50"'
+        - env: PYTHON_VERSION=3.8 NUMPY_VERSION='' CONDA_DEPENDENCIES=''
+               PIP_DEPENDENCIES='Cython numpy scipy scikit-learn matplotlib scikit-image>0.14.1'
+               SETUP_CMD='test --coverage --remote-data -a "--durations=50"'
 
         # Check for Sphinx doc build warnings
-        - env: SETUP_CMD='build_docs -w'
+        - stage: Latest versions and docs
+          env: SETUP_CMD='build_docs -w'
                PIP_DEPENDENCIES='sphinx-astropy scikit-image>0.14.1'
                EVENT_TYPE='push pull_request cron'
 
         # Test with optional dependencies disabled
-        - env: CONDA_DEPENDENCIES=$CONDA_REQUIRED_DEPENDENCIES
+        - stage: Comprehensive tests
+          env: CONDA_DEPENDENCIES=$CONDA_REQUIRED_DEPENDENCIES
                PIP_DEPENDENCIES=''
 
         # Test with Windows
@@ -102,7 +107,7 @@ matrix:
           env: NUMPY_VERSION=1.15
 
         # Test with the Astropy development version
-        - stage: Comprehensive tests
+        - stage: Latest versions and docs
           env: ASTROPY_VERSION=development
                EVENT_TYPE='pull_request push cron'
 
