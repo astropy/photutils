@@ -16,8 +16,8 @@ Bug Fixes
 
 - ``photutils.isophote``
 
-  - Fixed computation of upper harmonics a3,b3,a4,b4 is the ellipse
-    fitting algorithm. [#1008]
+  - Fixed computation of upper harmonics ``a3``, ``b3``, ``a4``,
+    ``b4`` is the ellipse fitting algorithm. [#1008]
 
 API changes
 ^^^^^^^^^^^
