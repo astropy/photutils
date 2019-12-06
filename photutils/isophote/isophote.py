@@ -237,7 +237,7 @@ class Isophote:
                                                        coeffs)
             residual = self.sample.values[2] - model
 
-            c = fit_upper_harmonic(residual, sample.values[2], n)
+            c = fit_upper_harmonic(sample.values[0], residual, n)
             covariance = c[1]
             ce = np.diagonal(covariance)
             c = c[0]
