@@ -554,7 +554,7 @@ def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
     y_0 = np.arange(data.shape[0], dtype=float)[yidx_0] / oversampling[1]
 
     x_shiftidx = np.around((shift_val * oversampling[0])).astype(int)
-    y_shiftidx = np.around((shift_val * oversampling[0])).astype(int)
+    y_shiftidx = np.around((shift_val * oversampling[1])).astype(int)
 
     badidx = ~np.isfinite([data[y, x]
                            for x in [xidx_0, xidx_0+x_shiftidx,
