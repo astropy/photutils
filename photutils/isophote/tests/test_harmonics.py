@@ -186,5 +186,3 @@ class TestFitEllipseSamples:
         assert_allclose(iso.b3_err, 5.24e-5, atol=1.e-7)
         assert_allclose(iso.a4_err, 5.28e-5, atol=1.e-7)
         assert_allclose(iso.b4_err, 5.24e-5, atol=1.e-7)
-
-
