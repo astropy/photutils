@@ -96,6 +96,11 @@ Bug Fixes
   - Fix to ``centroid_epsf`` where the wrong oversampling factor was
     used along the y axis. [#1002]
 
+- ``photutils.isophote``
+
+  - Fixed computation of upper harmonics ``a3``, ``b3``, ``a4``,
+    ``b4`` is the ellipse fitting algorithm. [#1008]
+
 
 0.7.1 (2019-10-09)
 ------------------
