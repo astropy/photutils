@@ -310,19 +310,18 @@ def centroid_1dg(data, error=None, mask=None):
         data.mask |= error.mask
 
         error.mask = data.mask
-        xy_error = np.array([np.sqrt(np.ma.sum(error**2, axis=i))
-                             for i in [0, 1]])
+        xy_error = [np.sqrt(np.ma.sum(error**2, axis=i)) for i in [0, 1]]
         xy_weights = [(1.0 / xy_error[i].clip(min=1.e-30)) for i in [0, 1]]
     else:
         xy_weights = [np.ones(data.shape[i]) for i in [1, 0]]
 
-    # assign zero weight to masked pixels
-    if data.mask is not np.ma.nomask:
+    # assign zero weight where an entire row or column is masked
+    if np.any(data.mask):
         bad_idx = [np.all(data.mask, axis=i) for i in [0, 1]]
         for i in [0, 1]:
             xy_weights[i][bad_idx[i]] = 0.
 
-    xy_data = np.array([np.ma.sum(data, axis=i) for i in [0, 1]])
+    xy_data = [np.ma.sum(data, axis=i).data for i in [0, 1]]
 
     constant_init = np.ma.min(data)
     centroid = []
