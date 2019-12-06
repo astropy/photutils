@@ -20,6 +20,9 @@ Bug Fixes
     be thrown when a ``Finder`` was passed which did not return ``None``
     if no sources were found. [#986]
 
+  - Fix to ``centroid_epsf`` where ``y_shiftidx`` was using the wrong
+    oversampling factor in its calculation. [#1002]
+
 
 0.7.1 (2019-10-09)
 ------------------
