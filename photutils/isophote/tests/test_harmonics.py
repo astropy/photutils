@@ -11,6 +11,8 @@ from .make_test_data import make_test_image
 from ..harmonics import (first_and_second_harmonic_function,
                          fit_first_and_second_harmonics, fit_upper_harmonic)
 from ..sample import EllipseSample
+from ..fitter import EllipseFitter
+
 
 try:
     from scipy.optimize import leastsq  # noqa
@@ -170,24 +172,19 @@ class TestFitEllipseSamples:
         assert_allclose(np.mean(b2), -63.184, atol=0.001)
 
     def test_fit_upper_harmonics(self):
-        sample = EllipseSample(self.data1, 40.)
-        s = sample.extract()
+        data = make_test_image(noise=1.e-10, random_state=123)
+        sample = EllipseSample(data, 40)
+        fitter = EllipseFitter(sample)
+        iso = fitter.fit(maxit=400)
 
-        harmonics = fit_first_and_second_harmonics(s[0], s[2])
-        y0, a1, b1, a2, b2 = harmonics[0]
+        assert_allclose(iso.a3, -6.87e-7, atol=1.e-9)
+        assert_allclose(iso.b3, 1.68e-6, atol=1.e-8)
+        assert_allclose(iso.a4, -4.36e-6, atol=1.e-8)
+        assert_allclose(iso.b4, 4.73e-5, atol=1.e-7)
 
-        assert_allclose(np.mean(y0), 200.019, atol=0.001)
-        assert_allclose(np.mean(a1), -0.000138, atol=0.001)
-        assert_allclose(np.mean(b1), 0.000254, atol=0.001)
-        assert_allclose(np.mean(a2), -5.658e-05, atol=0.001)
-        assert_allclose(np.mean(b2), -0.00911, atol=0.001)
-
-        # check that harmonics subtract nicely
-        model = first_and_second_harmonic_function(
-            s[0], np.array([y0, a1, b1, a2, b2]))
-        residual = s[2] - model
-
-        assert_allclose(np.mean(residual), 0., atol=0.001)
-        assert_allclose(np.std(residual), 0.015, atol=0.01)
+        assert_allclose(iso.a3_err, 5.28e-5, atol=1.e-7)
+        assert_allclose(iso.b3_err, 5.24e-5, atol=1.e-7)
+        assert_allclose(iso.a4_err, 5.28e-5, atol=1.e-7)
+        assert_allclose(iso.b4_err, 5.24e-5, atol=1.e-7)
 
 
