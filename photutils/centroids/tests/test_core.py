@@ -89,8 +89,9 @@ def test_centroids_oversampling(xc_ref, yc_ref, x_stddev, y_stddev, theta):
         else:
             _oversampling = oversampling
         xc, yc = centroid_com(data, mask=mask, oversampling=oversampling)
-        assert_allclose([xc, yc], [xc_ref / _oversampling[0], yc_ref / _oversampling[1]],
-                        rtol=0, atol=1.e-3)
+        assert_allclose([xc, yc], [xc_ref / _oversampling[0],
+                                   yc_ref / _oversampling[1]], rtol=0,
+                        atol=1.e-3)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -243,8 +244,8 @@ def test_centroid_epsf():
         y0 = y[-1] / 2
         y -= y0
         offsets = np.array([0.1, 0.03])
-        data = psf.evaluate(x=x.reshape(1, -1), y=y.reshape(-1, 1), flux=1, x_0=offsets[0],
-                            y_0=offsets[1], sigma=sigma)
+        data = psf.evaluate(x=x.reshape(1, -1), y=y.reshape(-1, 1), flux=1,
+                            x_0=offsets[0], y_0=offsets[1], sigma=sigma)
 
         mask = np.zeros(data.shape, dtype=bool)
         mask[0, 0] = 1
