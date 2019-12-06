@@ -1,3 +1,3 @@
 .. _photutils_citation:
 
-.. include:: ../CITATION
+.. include:: ../photutils/CITATION
