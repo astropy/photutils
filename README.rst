@@ -31,15 +31,18 @@ the following acknowledgment::
 where (Bradley et al. 20XX) is a citation to the `Zenodo record
 <https://doi.org/10.5281/zenodo.596036>`_ of the Photutils version
 that was used.  We also encourage citations in the main text wherever
-appropriate.  Please see the `CITATION <photutils/CITATION>`_ file for
-details and an example BibTeX entry.
+appropriate.  Please see the `CITATION
+<https://github.com/astropy/photutils/blob/master/photutils/CITATION>`_
+file for details and an example BibTeX entry.
 
 
 License
 -------
 
 Photutils is licensed under a 3-clause BSD license.  Please see the
-`LICENSE <LICENSE.rst>`_ file for details.
+`LICENSE
+<https://github.com/astropy/photutils/blob/master/LICENSE.rst>`_ file
+for details.
 
 
 .. |PyPI Version| image:: https://img.shields.io/pypi/v/photutils?label=pypi%20package
