@@ -263,6 +263,9 @@ API changes
   - Renamed the ``bounding_boxes`` attribute for pixel-based apertures
     to ``bbox`` for consistency. [#896]
 
+  - Deprecated the ``BoundingBox`` ``as_patch`` method (instead use
+    ``as_artist``). [#851]
+
 - ``photutils.background``
 
   - The ``Background2D`` ``plot_meshes`` keyword ``ax`` was deprecated
@@ -280,9 +283,6 @@ API changes
   - ``DAOStarFinder``, ``IRAFStarFinder``, and ``find_peaks`` now return
     ``None`` if no source/peaks are found.  Also, for this case a
     ``NoDetectionsWarning`` is issued. [#836]
-
-  - Deprecated the ``BoundingBox`` ``as_patch`` method (instead use
-    ``as_artist``). [#851]
 
   - Renamed the ``snr`` (deprecated) keyword to ``nsigma`` in
     ``detect_threshold``. [#917]
@@ -776,7 +776,16 @@ Bug Fixes
     in ``calc_total_error``. [#537]
 
 
-0.3.1 (unreleased)
+0.3.2 (2017-03-31)
+------------------
+
+General
+^^^^^^^
+
+- Fixed file permissions in the released source distribution.
+
+
+0.3.1 (2017-03-02)
 ------------------
 
 General
