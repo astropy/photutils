@@ -78,11 +78,16 @@ API changes
     ``assert_angle``, and ``pixel_to_icrs_coords``. [#953]
 
 
-0.7.2 (Unreleased)
+0.7.2 (2019-12-09)
 ------------------
 
 Bug Fixes
 ^^^^^^^^^
+
+- ``photutils.isophote``
+
+  - Fixed computation of upper harmonics ``a3``, ``b3``, ``a4``, and
+    ``b4`` in the ellipse fitting algorithm. [#1008]
 
 - ``photutils.psf``
 
@@ -95,11 +100,6 @@ Bug Fixes
 
   - Fix to ``centroid_epsf`` where the wrong oversampling factor was
     used along the y axis. [#1002]
-
-- ``photutils.isophote``
-
-  - Fixed computation of upper harmonics ``a3``, ``b3``, ``a4``,
-    ``b4`` is the ellipse fitting algorithm. [#1008]
 
 
 0.7.1 (2019-10-09)
