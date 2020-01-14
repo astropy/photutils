@@ -116,10 +116,10 @@ Bug Fixes
 
 - ``photutils.segmentation``
 
-    - Fixed a labeling bug in ``deblend_sources``. [#961]
+  - Fixed a labeling bug in ``deblend_sources``. [#961]
 
-    - Fixed an issue in ``source_properties`` when the input ``data``
-      is a ``Quantity`` array. [#963]
+  - Fixed an issue in ``source_properties`` when the input ``data``
+    is a ``Quantity`` array. [#963]
 
 
 0.7 (2019-08-14)
@@ -128,12 +128,12 @@ Bug Fixes
 General
 ^^^^^^^
 
- - Any WCS object that supports the `astropy shared interface for WCS
-   <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ is now
-   supported. [#899]
+- Any WCS object that supports the `astropy shared interface for WCS
+  <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ is now
+  supported. [#899]
 
- - Added a new ``photutils.__citation__`` and ``photutils.__bibtex__``
-   attributes which give a citation for photutils in bibtex format. [#926]
+- Added a new ``photutils.__citation__`` and ``photutils.__bibtex__``
+  attributes which give a citation for photutils in bibtex format. [#926]
 
 New Features
 ^^^^^^^^^^^^
@@ -460,7 +460,7 @@ API changes
 General
 ^^^^^^^
 
- - Versions of Numpy <1.11 are no longer supported. [#783]
+- Versions of Numpy <1.11 are no longer supported. [#783]
 
 New Features
 ^^^^^^^^^^^^
