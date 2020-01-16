@@ -953,9 +953,9 @@ class GriddedPSFModel(Fittable2DModel):
 
         return np.sum(data * weights[:, None, None], axis=0) / norm
 
-    def evaluate(self, x, y, flux, x_0, y_0):
+    def _compute_local_model(self, x_0, y_0):
         """
-        Evaluate the `GriddedPSFModel` for the input parameters.
+        Returns `FittableImageModel` for interpolated PSF at some (x_0, y_0)
         """
 
         # NOTE: this is needed because the PSF photometry routines input
@@ -982,11 +982,21 @@ class GriddedPSFModel(Fittable2DModel):
 
             self._psf_interp = self._bilinear_interp(xyref, psfs, x_0, y_0)
 
-        # now evaluate the PSF at the (x_0, y_0) subpixel position on
-        # the input (x, y) values
+        # Construct the model using the interpolated supersampled data
         psfmodel = FittableImageModel(self._psf_interp,
                                       oversampling=self.oversampling)
+        return psfmodel
 
+    def evaluate(self, x, y, flux, x_0, y_0):
+        """
+        Evaluate the `GriddedPSFModel` for the input parameters.
+        """
+
+        # Get the local PSF at the (x_0,y_0)
+        psfmodel = self._compute_local_model(x_0, y_0)
+        
+        # now evaluate the PSF at the (x_0, y_0) subpixel position on
+        # the input (x, y) values
         return psfmodel.evaluate(x, y, flux, x_0, y_0)
 
 

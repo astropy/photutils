@@ -53,6 +53,8 @@ API changes
     ``BasicPSFPhotometry``, ``IterativelySubtractedPSFPhotometry`` and
     ``DAOPhotPSFPhotometry``. [#745]
 
+  - Added method ``_compute_local_model`` method to ``GriddedPSFModel``.
+
 - ``photutils.segmentation``
 
   - Removed the deprecated ``SegmentationImage`` methods ``cmap`` and
