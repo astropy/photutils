@@ -994,7 +994,7 @@ class GriddedPSFModel(Fittable2DModel):
 
         # Get the local PSF at the (x_0,y_0)
         psfmodel = self._compute_local_model(x_0, y_0)
-        
+
         # now evaluate the PSF at the (x_0, y_0) subpixel position on
         # the input (x, y) values
         return psfmodel.evaluate(x, y, flux, x_0, y_0)
