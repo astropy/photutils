@@ -5,7 +5,7 @@ Tests for the mask module.
 
 import astropy.units as u
 import numpy as np
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_almost_equal
 import pytest
 
 from ..bounding_box import BoundingBox
@@ -110,7 +110,7 @@ def test_mask_multiply():
     aper = CircularAperture((25, 25), r=radius)
     mask = aper.to_mask()
     data_weighted = mask.multiply(data)
-    assert np.sum(data_weighted) == radius**2 * np.pi
+    assert_almost_equal(np.sum(data_weighted), radius**2 * np.pi)
 
     # test that multiply() returns a copy
     data[25, 25] = 100.
@@ -125,7 +125,7 @@ def test_mask_multiply_quantity():
 
     data_weighted = mask.multiply(data)
     assert data_weighted.unit == u.adu
-    assert np.sum(data_weighted.value) == radius**2 * np.pi
+    assert_almost_equal(np.sum(data_weighted.value), radius**2 * np.pi)
 
     # test that multiply() returns a copy
     data[25, 25] = 100. * u.adu
