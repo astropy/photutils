@@ -29,7 +29,6 @@ env:
         - PYTHON_VERSION=3.7
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
-        - CONDA_CHANNELS='astropy-ci-extras astropy'
         - CONDA_DEPENDENCIES='Cython scipy scikit-learn matplotlib'
         - PIP_DEPENDENCIES='scikit-image>0.14.1'
         - CONDA_REQUIRED_DEPENDENCIES='Cython'
@@ -89,7 +88,7 @@ matrix:
         # Test with optional dependencies disabled
         - stage: Comprehensive tests
           env: CONDA_DEPENDENCIES=$CONDA_REQUIRED_DEPENDENCIES
-               PIP_DEPENDENCIES=''
+               PIP_DEPENDENCIES='' NUMPY_VERSION=1.17
 
         # Test with Windows
         - stage: Comprehensive tests
@@ -104,7 +103,7 @@ matrix:
 
         # Test with an older numpy version
         - stage: Comprehensive tests
-          env: NUMPY_VERSION=1.15
+          env: NUMPY_VERSION=1.15 ASTROPY_VERSION=3.2
 
         # Test with the Astropy development version
         - stage: Latest versions and docs
