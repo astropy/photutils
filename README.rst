@@ -45,7 +45,7 @@ Photutils is licensed under a 3-clause BSD license.  Please see the
 for details.
 
 
-.. |PyPI Version| image:: https://img.shields.io/pypi/v/photutils?label=pypi%20package
+.. |PyPI Version| image::  https://img.shields.io/pypi/v/photutils.svg?logo=pypi&logoColor=white&label=PyPI
     :target: https://pypi.org/project/photutils/
     :alt: PyPI Latest Release
 
@@ -65,7 +65,7 @@ for details.
     :target: https://zenodo.org/badge/latestdoi/2640766
     :alt: Zenodo Latest DOI
 
-.. |Travis Status| image:: https://img.shields.io/travis/astropy/photutils/master?label=Travis%20CI
+.. |Travis Status| image:: https://img.shields.io/travis/astropy/photutils/master?logo=travis%20ci&logoColor=white&label=Travis%20CI
     :target: https://travis-ci.org/astropy/photutils
     :alt: Travis CI Status
 
@@ -73,15 +73,15 @@ for details.
     :target: https://coveralls.io/github/astropy/photutils
     :alt: Coveralls Status
 
-.. |CircleCI Status| image:: https://img.shields.io/circleci/build/github/astropy/photutils/master?label=CircleCI
+.. |CircleCI Status| image:: https://img.shields.io/circleci/build/github/astropy/photutils/master?logo=circleci&label=CircleCI
     :target: https://circleci.com/gh/astropy/photutils
     :alt: CircleCI Status
 
-.. |Stable RTD Status| image:: https://readthedocs.org/projects/photutils/badge/?version=stable
+.. |Stable RTD Status| image:: https://img.shields.io/readthedocs/photutils/latest.svg?logo=read%20the%20docs&logoColor=white&label=Docs&version=stable
     :target: https://photutils.readthedocs.io/en/stable/
     :alt: Stable Documentation Status
 
-.. |Latest RTD Status| image:: https://readthedocs.org/projects/photutils/badge/?version=latest
+.. |Latest RTD Status| image:: https://img.shields.io/readthedocs/photutils/latest.svg?logo=read%20the%20docs&logoColor=white&label=Docs&version=latest
     :target: https://photutils.readthedocs.io/en/latest/
     :alt: Latest Documentation Status
 
