@@ -162,22 +162,25 @@ def calc_total_error(data, bkg_error, effective_gain):
         if effective_gain.shape != data.shape:
             raise ValueError('If input effective_gain is 2D, then it must '
                              'have the same shape as the input data.')
-    if np.any(effective_gain <= 0):
-        raise ValueError('effective_gain must be strictly positive '
-                         'everywhere.')
+    if np.any(effective_gain < 0):
+        raise ValueError('effective_gain must be non-zero everywhere.')
 
-    # This calculation assumes that data and bkg_error have the same
-    # units.  source_variance is calculated to have units of
-    # (data.unit)**2 so that it can be added with bkg_error**2 below.  The
-    # final returned error will have units of data.unit.  np.maximum is
-    # used to ensure that negative data values do not contribute to the
-    # Poisson noise.
     if use_units:
         unit = data.unit
         data = data.value
         effective_gain = effective_gain.value
-        source_variance = np.maximum(data / effective_gain, 0) * unit**2
-    else:
-        source_variance = np.maximum(data / effective_gain, 0)
+
+    # do not include source variance where effective_gain = 0
+    source_variance = np.where(effective_gain != 0, data / effective_gain, 0)
+
+    # do not include source variance where data is negative (note that
+    # effective_gain cannot be negative)
+    source_variance = np.maximum(source_variance, 0)
+
+    if use_units:
+        # source_variance is calculated to have units of (data.unit)**2
+        # so that it can be added with bkg_error**2 below.  The returned
+        # total error will have units of data.unit.
+        source_variance <<= unit**2
 
     return np.sqrt(bkg_error**2 + source_variance)
