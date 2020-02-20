@@ -18,19 +18,25 @@ def calc_total_error(data, bkg_error, effective_gain):
     Parameters
     ----------
     data : array_like or `~astropy.units.Quantity`
-        The data array.
+        The background-subtracted data array.
 
     bkg_error : array_like or `~astropy.units.Quantity`
-        The pixel-wise Gaussian 1-sigma background-only errors of the
-        input ``data``.  ``bkg_error`` should include all sources of
-        "background" error but *exclude* the Poisson error of the
-        sources.  ``bkg_error`` must have the same shape as ``data``.
-        If ``data`` and ``bkg_error`` are `~astropy.units.Quantity`
-        objects, then they must have the same units.
+        The 1-sigma background-only errors of the input ``data``.
+        ``bkg_error`` should include all sources of "background" error
+        but *exclude* the Poisson error of the sources.  ``bkg_error``
+        must have the same shape as ``data``.  If ``data`` and
+        ``bkg_error`` are `~astropy.units.Quantity` objects, then they
+        must have the same units.
 
     effective_gain : float, array-like, or `~astropy.units.Quantity`
         Ratio of counts (e.g., electrons or photons) to the units of
-        ``data`` used to calculate the Poisson error of the sources.
+        ``data`` used to calculate the Poisson error of the sources.  If
+        ``effective_gain`` is zero (or contains zero values in an
+        array), then the source Poisson noise component will not be
+        included.  In other words, the returned total error value will
+        simply be the ``bkg_error`` value for pixels where
+        ``effective_gain`` is zero.  ``effective_gain`` cannot not be
+        negative or contain negative values.
 
     Returns
     -------
@@ -89,9 +95,15 @@ def calc_total_error(data, bkg_error, effective_gain):
     example, if your input ``data`` are in units of electrons/s then
     ideally ``effective_gain`` should be an exposure-time map.
 
-    Pixels where ``data`` (:math:`I_i)` is negative are excluded from
-    the total error calculation, i.e. :math:`\\sigma_{\\mathrm{tot}, i}
-    = \\sigma_{\\mathrm{bkg}, i}`.
+    The Poisson noise component is not included in the output total
+    error for pixels where ``data`` (:math:`I_i)` is negative.  For such
+    pixels, :math:`\\sigma_{\\mathrm{tot}, i} = \\sigma_{\\mathrm{bkg},
+    i}`.
+
+    The Poisson noise component is also not included in the output total
+    error for pixels where the effective gain (:math:`g_{\\mathrm{eff},
+    i}`) is zero.  For such pixels, :math:`\\sigma_{\\mathrm{tot}, i} =
+    \\sigma_{\\mathrm{bkg}, i}`.
 
     To replicate `SExtractor`_ errors when it is configured to consider
     weight maps as gain maps (i.e. 'WEIGHT_GAIN=Y'; which is the
