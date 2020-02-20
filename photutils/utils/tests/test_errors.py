@@ -14,8 +14,6 @@ from ..errors import calc_total_error
 SHAPE = (5, 5)
 DATAVAL = 2.
 DATA = np.ones(SHAPE) * DATAVAL
-MASK = np.zeros(DATA.shape, dtype=bool)
-MASK[2, 2] = True
 BKG_ERROR = np.ones(SHAPE)
 EFFGAIN = np.ones(SHAPE) * DATAVAL
 BACKGROUND = np.ones(SHAPE)
@@ -31,8 +29,8 @@ class TestCalculateTotalError:
         with pytest.raises(ValueError):
             calc_total_error(DATA, BKG_ERROR, WRONG_SHAPE)
 
-    @pytest.mark.parametrize('effective_gain', (0, -1))
-    def test_gain_le_zero(self, effective_gain):
+    @pytest.mark.parametrize('effective_gain', (-1, -100))
+    def test_gain_negative(self, effective_gain):
         with pytest.raises(ValueError):
             calc_total_error(DATA, BKG_ERROR, effective_gain)
 
@@ -43,6 +41,18 @@ class TestCalculateTotalError:
     def test_gain_array(self):
         error_tot = calc_total_error(DATA, BKG_ERROR, EFFGAIN)
         assert_allclose(error_tot, np.sqrt(2.) * BKG_ERROR)
+
+    def test_gain_zero(self):
+        error_tot = calc_total_error(DATA, BKG_ERROR, 0.)
+        assert_allclose(error_tot, BKG_ERROR)
+
+        effgain = np.copy(EFFGAIN)
+        effgain[0, 0] = 0
+        effgain[1, 1] = 0
+        mask = (effgain == 0)
+        error_tot = calc_total_error(DATA, BKG_ERROR, effgain)
+        assert_allclose(error_tot[mask], BKG_ERROR[mask])
+        assert_allclose(error_tot[~mask], np.sqrt(2))
 
     def test_units(self):
         units = u.electron / u.s
