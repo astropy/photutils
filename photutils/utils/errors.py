@@ -18,19 +18,25 @@ def calc_total_error(data, bkg_error, effective_gain):
     Parameters
     ----------
     data : array_like or `~astropy.units.Quantity`
-        The data array.
+        The background-subtracted data array.
 
     bkg_error : array_like or `~astropy.units.Quantity`
-        The pixel-wise Gaussian 1-sigma background-only errors of the
-        input ``data``.  ``bkg_error`` should include all sources of
-        "background" error but *exclude* the Poisson error of the
-        sources.  ``bkg_error`` must have the same shape as ``data``.
-        If ``data`` and ``bkg_error`` are `~astropy.units.Quantity`
-        objects, then they must have the same units.
+        The 1-sigma background-only errors of the input ``data``.
+        ``bkg_error`` should include all sources of "background" error
+        but *exclude* the Poisson error of the sources.  ``bkg_error``
+        must have the same shape as ``data``.  If ``data`` and
+        ``bkg_error`` are `~astropy.units.Quantity` objects, then they
+        must have the same units.
 
     effective_gain : float, array-like, or `~astropy.units.Quantity`
         Ratio of counts (e.g., electrons or photons) to the units of
-        ``data`` used to calculate the Poisson error of the sources.
+        ``data`` used to calculate the Poisson error of the sources.  If
+        ``effective_gain`` is zero (or contains zero values in an
+        array), then the source Poisson noise component will not be
+        included.  In other words, the returned total error value will
+        simply be the ``bkg_error`` value for pixels where
+        ``effective_gain`` is zero.  ``effective_gain`` cannot not be
+        negative or contain negative values.
 
     Returns
     -------
@@ -89,9 +95,15 @@ def calc_total_error(data, bkg_error, effective_gain):
     example, if your input ``data`` are in units of electrons/s then
     ideally ``effective_gain`` should be an exposure-time map.
 
-    Pixels where ``data`` (:math:`I_i)` is negative are excluded from
-    the total error calculation, i.e. :math:`\\sigma_{\\mathrm{tot}, i}
-    = \\sigma_{\\mathrm{bkg}, i}`.
+    The Poisson noise component is not included in the output total
+    error for pixels where ``data`` (:math:`I_i)` is negative.  For such
+    pixels, :math:`\\sigma_{\\mathrm{tot}, i} = \\sigma_{\\mathrm{bkg},
+    i}`.
+
+    The Poisson noise component is also not included in the output total
+    error for pixels where the effective gain (:math:`g_{\\mathrm{eff},
+    i}`) is zero.  For such pixels, :math:`\\sigma_{\\mathrm{tot}, i} =
+    \\sigma_{\\mathrm{bkg}, i}`.
 
     To replicate `SExtractor`_ errors when it is configured to consider
     weight maps as gain maps (i.e. 'WEIGHT_GAIN=Y'; which is the
@@ -150,22 +162,25 @@ def calc_total_error(data, bkg_error, effective_gain):
         if effective_gain.shape != data.shape:
             raise ValueError('If input effective_gain is 2D, then it must '
                              'have the same shape as the input data.')
-    if np.any(effective_gain <= 0):
-        raise ValueError('effective_gain must be strictly positive '
-                         'everywhere.')
+    if np.any(effective_gain < 0):
+        raise ValueError('effective_gain must be non-zero everywhere.')
 
-    # This calculation assumes that data and bkg_error have the same
-    # units.  source_variance is calculated to have units of
-    # (data.unit)**2 so that it can be added with bkg_error**2 below.  The
-    # final returned error will have units of data.unit.  np.maximum is
-    # used to ensure that negative data values do not contribute to the
-    # Poisson noise.
     if use_units:
         unit = data.unit
         data = data.value
         effective_gain = effective_gain.value
-        source_variance = np.maximum(data / effective_gain, 0) * unit**2
-    else:
-        source_variance = np.maximum(data / effective_gain, 0)
+
+    # do not include source variance where effective_gain = 0
+    source_variance = np.where(effective_gain != 0, data / effective_gain, 0)
+
+    # do not include source variance where data is negative (note that
+    # effective_gain cannot be negative)
+    source_variance = np.maximum(source_variance, 0)
+
+    if use_units:
+        # source_variance is calculated to have units of (data.unit)**2
+        # so that it can be added with bkg_error**2 below.  The returned
+        # total error will have units of data.unit.
+        source_variance <<= unit**2
 
     return np.sqrt(bkg_error**2 + source_variance)

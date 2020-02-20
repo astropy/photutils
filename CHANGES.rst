@@ -14,6 +14,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.utils``
+
+  - The ``effective_gain`` parameter in ``calc_total_error`` can now
+    be zero (or contain zero values). [#1019]
+
 API changes
 ^^^^^^^^^^^
 
