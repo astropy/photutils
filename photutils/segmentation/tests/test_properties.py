@@ -19,12 +19,19 @@ import pytest
 from ..core import SegmentationImage
 from ..detect import detect_sources
 from ..properties import SourceCatalog, SourceProperties, source_properties
+from ...datasets import make_gwcs, make_wcs
 
 try:
     import scipy  # noqa
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
+
+try:
+    import gwcs  # noqa
+    HAS_GWCS = True
+except ImportError:
+    HAS_GWCS = False
 
 XCEN = 51.
 YCEN = 52.7
@@ -98,13 +105,23 @@ class TestSourceProperties:
             SourceProperties(IMAGE, segm, label=label)
 
     def test_wcs(self):
-        mywcs = WCS.WCS(naxis=2)
-        rho = np.pi / 3.
-        scale = 0.1 / 3600.
-        mywcs.wcs.cd = [[scale*np.cos(rho), -scale*np.sin(rho)],
-                        [scale*np.sin(rho), scale*np.cos(rho)]]
-        mywcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+        mywcs = make_wcs(IMAGE.shape)
         props = SourceProperties(IMAGE, self.segm, wcs=mywcs, label=1)
+        assert props.sky_centroid is not None
+        assert props.sky_centroid_icrs is not None
+        assert props.sky_bbox_ll is not None
+        assert props.sky_bbox_ul is not None
+        assert props.sky_bbox_lr is not None
+        assert props.sky_bbox_ur is not None
+
+        tbl = props.to_table()
+        assert len(tbl) == 1
+
+    @pytest.mark.skipif('not HAS_GWCS')
+    def test_gwcs(self):
+        mywcs = make_gwcs(IMAGE.shape)
+        props = SourceProperties(IMAGE, self.segm, wcs=mywcs, label=1)
+        assert props.sky_centroid is not None
         assert props.sky_centroid_icrs is not None
         assert props.sky_bbox_ll is not None
         assert props.sky_bbox_ul is not None
@@ -470,6 +487,34 @@ class TestSourcePropertiesFunction:
         assert cat[0].id == 2
         assert cat[1].id == 3
         assert cat[segm.get_index(label=1000)].id == 1000
+
+    def test_wcs(self):
+        mywcs = make_wcs(IMAGE.shape)
+        props = source_properties(IMAGE, self.segm, wcs=mywcs)
+
+        assert props.sky_centroid is not None
+        assert props.sky_centroid_icrs is not None
+        assert props.sky_bbox_ll is not None
+        assert props.sky_bbox_ul is not None
+        assert props.sky_bbox_lr is not None
+        assert props.sky_bbox_ur is not None
+
+        tbl = props.to_table()
+        assert len(tbl) == 3
+
+    @pytest.mark.skipif('not HAS_GWCS')
+    def test_gwcs(self):
+        mywcs = make_gwcs(IMAGE.shape)
+        props = source_properties(IMAGE, self.segm, wcs=mywcs)
+        assert props.sky_centroid is not None
+        assert props.sky_centroid_icrs is not None
+        assert props.sky_bbox_ll is not None
+        assert props.sky_bbox_ul is not None
+        assert props.sky_bbox_lr is not None
+        assert props.sky_bbox_ur is not None
+
+        tbl = props.to_table()
+        assert len(tbl) == 3
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

@@ -1677,7 +1677,8 @@ class SourceCatalog:
             # SkyCoord array from a loop-generated SkyCoord list.  The
             # assumption here is that the wcs is the same for each
             # SourceProperties instance.
-            return _pixel_to_world(self.xcentroid, self.ycentroid, self.wcs)
+            return _pixel_to_world(self.xcentroid.value, self.ycentroid.value,
+                                   self.wcs)
 
     @lazyproperty
     def sky_centroid_icrs(self):

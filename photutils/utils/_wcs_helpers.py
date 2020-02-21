@@ -34,6 +34,10 @@ def _pixel_to_world(xpos, ypos, wcs):
     if wcs is None:
         return None
 
+    # NOTE: unitless gwcs objects fail with Quantity inputs
+    if isinstance(xpos, u.Quantity) or isinstance(ypos, u.Quantity):
+        raise TypeError('xpos and ypos must not be Quantity objects')
+
     try:
         return wcs.pixel_to_world(xpos, ypos)
     except AttributeError:
