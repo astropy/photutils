@@ -14,6 +14,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.segmentation``
+
+  - Fixed a bug where ``source_properties`` would fail with unitless
+    ``gwcs.wcs.WCS`` objects. [#1020]
+
 - ``photutils.utils``
 
   - The ``effective_gain`` parameter in ``calc_total_error`` can now
