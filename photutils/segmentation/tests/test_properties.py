@@ -27,6 +27,12 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
+try:
+    import gwcs  # noqa
+    HAS_GWCS = True
+except ImportError:
+    HAS_GWCS = False
+
 XCEN = 51.
 YCEN = 52.7
 MAJOR_SIG = 8.
@@ -111,6 +117,7 @@ class TestSourceProperties:
         tbl = props.to_table()
         assert len(tbl) == 1
 
+    @pytest.mark.skipif('not HAS_GWCS')
     def test_gwcs(self):
         mywcs = make_gwcs(IMAGE.shape)
         props = SourceProperties(IMAGE, self.segm, wcs=mywcs, label=1)
@@ -495,10 +502,10 @@ class TestSourcePropertiesFunction:
         tbl = props.to_table()
         assert len(tbl) == 3
 
+    @pytest.mark.skipif('not HAS_GWCS')
     def test_gwcs(self):
         mywcs = make_gwcs(IMAGE.shape)
         props = source_properties(IMAGE, self.segm, wcs=mywcs)
-
         assert props.sky_centroid is not None
         assert props.sky_centroid_icrs is not None
         assert props.sky_bbox_ll is not None
