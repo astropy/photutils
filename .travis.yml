@@ -6,10 +6,6 @@ language: c
 os:
     - linux
 
-stage: Initial tests
-
-# Setting sudo to false opts in to Travis-CI container-based builds.
-sudo: false
 
 # The apt packages below are needed for sphinx builds. A full list of
 # packages that can be included can be found here:
@@ -62,20 +58,23 @@ stages:
    - name: Cron tests
      if: type = cron
 
-matrix:
+jobs:
     # Don't wait for allowed failures
     fast_finish: true
 
     include:
-        - env: SETUP_CMD='egg_info'
+        - stage: Initial tests
+          env: SETUP_CMD='egg_info'
 
         # PEP8/pyflakes test with flake8
-        - env: MAIN_CMD="flake8 photutils --count $FLAKE8_OPT" SETUP_CMD=''
+        - stage: Initial tests
+          env: MAIN_CMD="flake8 photutils --count $FLAKE8_OPT" SETUP_CMD=''
 
         # All tests (with remote data) and coverage checks with the
         # latest Python version.  The duration of the slowest 50 tests
         # will also be listed.
-        - env: PYTHON_VERSION=3.8 NUMPY_VERSION='' CONDA_DEPENDENCIES=''
+        - stage: Initial tests
+          env: PYTHON_VERSION=3.8 NUMPY_VERSION='' CONDA_DEPENDENCIES=''
                PIP_DEPENDENCIES='Cython numpy scipy scikit-learn matplotlib scikit-image>0.14.1'
                SETUP_CMD='test --coverage --remote-data -a "--durations=50"'
 
