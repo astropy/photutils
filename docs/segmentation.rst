@@ -228,7 +228,7 @@ Let's plot one of the deblended sources:
     ax1.set_title('Data')
     cmap1 = segm.make_cmap(random_state=123)
     ax2.imshow(segm.data[slc], origin='lower', cmap=cmap1,
-               interpolation='nearest)
+               interpolation='nearest')
     ax2.set_title('Original Segment')
     cmap2 = segm_deblend.make_cmap(random_state=123)
     ax3.imshow(segm_deblend.data[slc], origin='lower', cmap=cmap2,

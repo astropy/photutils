@@ -361,7 +361,7 @@ apertures (red) on the image:
    annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
 
    norm = simple_norm(data, 'sqrt', percent=99)
-   plt.imshow(data, norm=norm)
+   plt.imshow(data, norm=norm, interpolation='nearest')
    aperture.plot(color='white', lw=2)
    annulus_aperture.plot(color='red', lw=2)
    plt.xlim(0, 170)
@@ -388,7 +388,7 @@ Let's focus on just the first annulus.  Let's plot its aperture mask:
 .. doctest-skip::
 
     >>> import matplotlib.pyplot as plt
-    >>> plt.imshow(annulus_masks[0])
+    >>> plt.imshow(annulus_masks[0], interpolation='nearest')
     >>> plt.colorbar()
 
 .. plot::
@@ -399,7 +399,7 @@ Let's focus on just the first annulus.  Let's plot its aperture mask:
     aperture = CircularAperture(positions, r=5)
     annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
     annulus_masks = annulus_aperture.to_mask(method='center')
-    plt.imshow(annulus_masks[0])
+    plt.imshow(annulus_masks[0], interpolation='nearest')
     plt.colorbar()
 
 We can now use the :meth:`photutils.aperture.ApertureMask.multiply`
@@ -422,7 +422,7 @@ Let's plot the annulus data:
     annulus_masks = annulus_aperture.to_mask(method='center')
     data = make_100gaussians_image()
     annulus_data = annulus_masks[0].multiply(data)
-    plt.imshow(annulus_data)
+    plt.imshow(annulus_data, interpolation='nearest')
     plt.colorbar()
 
 From this 2D array, you can extract a 1D array of data values (e.g. if

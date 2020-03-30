@@ -93,7 +93,8 @@ Let's plot the image and mark the location of detected sources:
     >>> positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
     >>> apertures = CircularAperture(positions, r=4.)
     >>> norm = ImageNormalize(stretch=SqrtStretch())
-    >>> plt.imshow(data, cmap='Greys', origin='lower', norm=norm)
+    >>> plt.imshow(data, cmap='Greys', origin='lower', norm=norm,
+    ...            interpolation='nearest')
     >>> apertures.plot(color='blue', lw=1.5, alpha=0.5)
 
 .. plot::
@@ -113,7 +114,8 @@ Let's plot the image and mark the location of detected sources:
     positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
     apertures = CircularAperture(positions, r=4.)
     norm = ImageNormalize(stretch=SqrtStretch())
-    plt.imshow(data, cmap='Greys', origin='lower', norm=norm)
+    plt.imshow(data, cmap='Greys', origin='lower', norm=norm,
+               interpolation='nearest')
     apertures.plot(color='blue', lw=1.5, alpha=0.5)
 
 
@@ -160,7 +162,8 @@ regions:
     positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
     apertures = CircularAperture(positions, r=4.)
     norm = ImageNormalize(stretch=SqrtStretch())
-    plt.imshow(data, cmap='Greys', origin='lower', norm=norm)
+    plt.imshow(data, cmap='Greys', origin='lower', norm=norm,
+               interpolation='nearest')
     plt.title('Star finder with a mask to exclude regions')
     apertures.plot(color='blue', lw=1.5, alpha=0.5)
     rect1 = RectangularAperture((200, 100), 300, 100, theta=0.)
@@ -228,7 +231,8 @@ And let's plot the location of the detected peaks in the image:
     >>> positions = np.transpose((tbl['x_peak'], tbl['y_peak']))
     >>> apertures = CircularAperture(positions, r=5.)
     >>> norm = simple_norm(data, 'sqrt', percent=99.9)
-    >>> plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm)
+    >>> plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm,
+    ...            interpolation='nearest')
     >>> apertures.plot(color='#0547f9', lw=1.5)
     >>> plt.xlim(0, data.shape[1]-1)
     >>> plt.ylim(0, data.shape[0]-1)
@@ -249,7 +253,8 @@ And let's plot the location of the detected peaks in the image:
     positions = np.transpose((tbl['x_peak'], tbl['y_peak']))
     apertures = CircularAperture(positions, r=5.)
     norm = simple_norm(data, 'sqrt', percent=99.9)
-    plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm)
+    plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm,
+               interpolation='nearest')
     apertures.plot(color='#0547f9', lw=1.5)
     plt.xlim(0, data.shape[1]-1)
     plt.ylim(0, data.shape[0]-1)

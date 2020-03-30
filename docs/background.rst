@@ -59,7 +59,8 @@ Let's plot the image:
     >>> from astropy.visualization import SqrtStretch
     >>> from astropy.visualization.mpl_normalize import ImageNormalize
     >>> norm = ImageNormalize(stretch=SqrtStretch())
-    >>> plt.imshow(data, norm=norm, origin='lower', cmap='Greys_r')
+    >>> plt.imshow(data, norm=norm, origin='lower', cmap='Greys_r',
+    ...            interpolation='nearest')
 
 .. plot::
 
@@ -69,7 +70,8 @@ Let's plot the image:
     from photutils.datasets import make_100gaussians_image
     data = make_100gaussians_image()
     norm = ImageNormalize(stretch=SqrtStretch())
-    plt.imshow(data, norm=norm, origin='lower', cmap='Greys_r')
+    plt.imshow(data, norm=norm, origin='lower', cmap='Greys_r',
+               interpolation='nearest')
 
 The image median and biweight location are both larger than the true
 background level of 5::
@@ -229,7 +231,8 @@ background gradient to the image defined above::
     >>> y, x = np.mgrid[:ny, :nx]
     >>> gradient =  x * y / 5000.
     >>> data2 = data + gradient
-    >>> plt.imshow(data2, norm=norm, origin='lower', cmap='Greys_r')  # doctest: +SKIP
+    >>> plt.imshow(data2, norm=norm, origin='lower', cmap='Greys_r',
+    ...            interpolation='nearest')  # doctest: +SKIP
 
 .. plot::
 
@@ -243,7 +246,8 @@ background gradient to the image defined above::
     gradient =  x * y / 5000.
     data2 = data + gradient
     norm = ImageNormalize(stretch=SqrtStretch())
-    plt.imshow(data2, norm=norm, origin='lower', cmap='Greys_r')
+    plt.imshow(data2, norm=norm, origin='lower', cmap='Greys_r',
+               interpolation='nearest')
 
 We start by creating a `~photutils.background.Background2D` object
 using a box size of 50x50 and a 3x3 median filter.  We will estimate
@@ -280,7 +284,8 @@ Let's plot the background image:
 
 .. doctest-skip::
 
-    >>> plt.imshow(bkg.background, origin='lower', cmap='Greys_r')
+    >>> plt.imshow(bkg.background, origin='lower', cmap='Greys_r',
+    ...            interpolation='nearest')
 
 .. plot::
 
@@ -297,14 +302,15 @@ Let's plot the background image:
     bkg_estimator = MedianBackground()
     bkg = Background2D(data2, (50, 50), filter_size=(3, 3),
                        sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
-    plt.imshow(bkg.background, origin='lower', cmap='Greys_r')
+    plt.imshow(bkg.background, origin='lower', cmap='Greys_r',
+               interpolation='nearest')
 
 and the background-subtracted image:
 
 .. doctest-skip::
 
     >>> plt.imshow(data2 - bkg.background, norm=norm, origin='lower',
-    ...            cmap='Greys_r')
+    ...            cmap='Greys_r', interpolation='nearest')
 
 .. plot::
 
@@ -325,7 +331,7 @@ and the background-subtracted image:
                        sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data2 - bkg.background, norm=norm, origin='lower',
-               cmap='Greys_r')
+               cmap='Greys_r', interpolation='nearest')
 
 
 Masking
@@ -349,7 +355,8 @@ Let's create such an image and plot it (NOTE: this example requires
     >>> from scipy.ndimage import rotate
     >>> data3 = rotate(data2, -45.)
     >>> norm = ImageNormalize(stretch=SqrtStretch())  # doctest: +SKIP
-    >>> plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm)  # doctest: +SKIP
+    >>> plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm,
+    ...            interpolation='nearest')  # doctest: +SKIP
 
 .. plot::
 
@@ -365,7 +372,8 @@ Let's create such an image and plot it (NOTE: this example requires
     data2 = data + gradient
     data3 = rotate(data2, -45.)
     norm = ImageNormalize(stretch=SqrtStretch())
-    plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm)
+    plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm,
+               interpolation='nearest')
 
 Now we create a coverage mask and input it into
 `~photutils.background.Background2D` to exclude the regions where we
@@ -387,7 +395,8 @@ apply the coverage mask to the returned background image:
 
     >>> back3 = bkg3.background * ~mask
     >>> norm = ImageNormalize(stretch=SqrtStretch())  # doctest: +SKIP
-    >>> plt.imshow(back3, origin='lower', cmap='Greys_r', norm=norm)  # doctest: +SKIP
+    >>> plt.imshow(back3, origin='lower', cmap='Greys_r', norm=norm,
+    ...            interpolation='nearest')  # doctest: +SKIP
 
 .. plot::
 
@@ -407,14 +416,16 @@ apply the coverage mask to the returned background image:
     bkg3 = Background2D(data3, (25, 25), filter_size=(3, 3), mask=mask)
     back3 = bkg3.background * ~mask
     norm = ImageNormalize(stretch=SqrtStretch())
-    plt.imshow(back3, origin='lower', cmap='Greys_r', norm=norm)
+    plt.imshow(back3, origin='lower', cmap='Greys_r', norm=norm,
+               interpolation='nearest')
 
 Finally, let's subtract the background from the image and plot it:
 
 .. doctest-skip::
 
     >>> norm = ImageNormalize(stretch=SqrtStretch())
-    >>> plt.imshow(data3 - back3, origin='lower', cmap='Greys_r', norm=norm)
+    >>> plt.imshow(data3 - back3, origin='lower', cmap='Greys_r', norm=norm,
+    ...            interpolation='nearest')
 
 .. plot::
 
@@ -434,7 +445,8 @@ Finally, let's subtract the background from the image and plot it:
     bkg3 = Background2D(data3, (25, 25), filter_size=(3, 3), mask=mask)
     back3 = bkg3.background * ~mask
     norm = ImageNormalize(stretch=SqrtStretch())
-    plt.imshow(data3 - back3, origin='lower', cmap='Greys_r', norm=norm)
+    plt.imshow(data3 - back3, origin='lower', cmap='Greys_r', norm=norm,
+               interpolation='nearest')
 
 If there is any small residual background still present in the image,
 the background subtraction can be improved by masking the sources
@@ -450,7 +462,8 @@ be plotted on the original image using the
 
 .. doctest-skip::
 
-    >>> plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm)
+    >>> plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm,
+    ...            interpolation='nearest')
     >>> bkg3.plot_meshes(outlines=True, color='#1f77b4')
 
 .. plot::
@@ -471,7 +484,8 @@ be plotted on the original image using the
     bkg3 = Background2D(data3, (25, 25), filter_size=(3, 3), mask=mask)
     back3 = bkg3.background * ~mask
     norm = ImageNormalize(stretch=SqrtStretch())
-    plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm)
+    plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm,
+               interpolation='nearest')
     bkg3.plot_meshes(outlines=True, color='#17becf')
 
 The meshes extended beyond the original image on the top and right
