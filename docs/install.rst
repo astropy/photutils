@@ -53,9 +53,9 @@ To install Photutils with `pip`_, run::
 If you want to make sure that none of your existing dependencies get
 upgraded, instead you can do::
 
-    pip install astropy --no-deps
+    pip install photutils --no-deps
 
-Note that you will generally need a C compiler (e.g. ``gcc`` or
+Note that you may need a C compiler (e.g. ``gcc`` or
 ``clang``) to be installed for the installation to succeed.
 
 If you get a ``PermissionError``, this means that you do not have the
