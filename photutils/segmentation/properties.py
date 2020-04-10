@@ -1207,10 +1207,9 @@ class SourceProperties:
     @lazyproperty
     def orientation(self):
         """
-        The angle in radians between the ``x`` axis and the major axis
-        of the 2D Gaussian function that has the same second-order
-        moments as the source.  The angle increases in the
-        counter-clockwise direction.
+        The angle between the ``x`` axis and the major axis of the 2D
+        Gaussian function that has the same second-order moments as the
+        source.  The angle increases in the counter-clockwise direction.
         """
 
         covar_00, covar_01, _, covar_11 = self.covariance.flat
