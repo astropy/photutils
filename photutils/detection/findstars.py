@@ -857,7 +857,8 @@ class DAOStarFinder(StarFinderBase):
 
     References
     ----------
-    .. [1] Stetson, P. 1987; PASP 99, 191 (https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract)
+    .. [1] Stetson, P. 1987; PASP 99, 191
+           (https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract)
     .. [2] https://iraf.net/irafhelp.php?val=daofind
 
     .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind
