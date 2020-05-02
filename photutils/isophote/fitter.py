@@ -83,14 +83,14 @@ class EllipseFitter:
             ratio.  It specifies the maximum acceptable relative error
             in the local radial intensity gradient.  `Busko (1996; ASPC
             101, 139)
-            <http://adsabs.harvard.edu/abs/1996ASPC..101..139B>`_ showed
-            that the fitting precision relates to that relative error.
-            The usual behavior of the gradient relative error is to
-            increase with semimajor axis, being larger in outer, fainter
-            regions of a galaxy image.  In the current implementation,
-            the ``maxgerr`` criterion is triggered only when two
-            consecutive isophotes exceed the value specified by the
-            parameter. This prevents premature stopping caused by
+            <https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstract>`_
+            showed that the fitting precision relates to that relative
+            error.  The usual behavior of the gradient relative error is
+            to increase with semimajor axis, being larger in outer,
+            fainter regions of a galaxy image.  In the current
+            implementation, the ``maxgerr`` criterion is triggered only
+            when two consecutive isophotes exceed the value specified by
+            the parameter. This prevents premature stopping caused by
             contamination such as stars and HII regions.
 
             A number of actions may happen when the gradient error
