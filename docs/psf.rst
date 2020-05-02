@@ -34,7 +34,7 @@ ePSF/PRF are simply called the "PSF", but the distinction can be
 critical when dealing carefully with undersampled data or detectors
 with significant intra-pixel sensitivity variations. For a more
 detailed description of this formalism, see `Anderson & King 2000
-<http://adsabs.harvard.edu/abs/2000PASP..112.1360A>`_.
+<https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_.
 
 All this said, in colloquial usage "PSF photometry" sometimes refers to the more
 general task of model-fitting photometry (with the effects of the PSF either
@@ -59,8 +59,9 @@ to do sub-tasks of PSF photometry. It also provides high-level classes
 that connect these pieces together. In particular, it contains an
 implementation of the DAOPHOT algorithm
 (`~photutils.psf.DAOPhotPSFPhotometry`) proposed by `Stetson in his
-seminal paper <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_
-for crowded-field stellar photometry.
+seminal paper
+<https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_ for
+crowded-field stellar photometry.
 
 The DAOPHOT algorithm consists in applying the loop FIND, GROUP, NSTAR,
 SUBTRACT, FIND until no more stars are detected or a given number of
@@ -695,14 +696,15 @@ References
 <https://keplerscience.arc.nasa.gov/CalibrationPSF.shtml>`_
 
 `The Kepler Pixel Response Function
-<http://adsabs.harvard.edu/abs/2010ApJ...713L..97B>`_
+<https://ui.adsabs.harvard.edu/abs/2010ApJ...713L..97B/abstract>`_
 
-`Stetson, Astronomical Society of the Pacific, Publications, (ISSN 0004-6280),
-vol. 99, March 1987, p. 191-222. <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_
+`Stetson, Astronomical Society of the Pacific, Publications, (ISSN
+0004-6280), vol. 99, March 1987, p. 191-222.
+<https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_
 
 `Anderson & King, Astronomical Society of the Pacific, Publications,
 Volume 112, Issue 776, pp. 1360-1382, Nov 2000
-<http://adsabs.harvard.edu/abs/2000PASP..112.1360A>`_
+<https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_
 
 
 Reference/API

@@ -7,9 +7,11 @@ Introduction
 The `~photutils.isophote` package provides tools to fit elliptical
 isophotes to a galaxy image.  The isophotes in the image are measured
 using an iterative method described by `Jedrzejewski (1987; MNRAS 226,
-747) <http://adsabs.harvard.edu/abs/1987MNRAS.226..747J>`_.  See the
-documentation of the :class:`~photutils.isophote.Ellipse` class for
-details about the algorithm.  Please also see the :ref:`isophote-faq`.
+747)
+<https://ui.adsabs.harvard.edu/abs/1987MNRAS.226..747J/abstract>`_.
+See the documentation of the :class:`~photutils.isophote.Ellipse`
+class for details about the algorithm.  Please also see the
+:ref:`isophote-faq`.
 
 Getting Started
 ---------------

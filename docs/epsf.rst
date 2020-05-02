@@ -8,12 +8,13 @@ The ePSF
 
 The instrumental PSF is a combination of many factors that are
 generally difficult to model.  `Anderson and King (2000; PASP 112,
-1360) <http://adsabs.harvard.edu/abs/2000PASP..112.1360A>`_ showed
-that accurate stellar photometry and astrometry can be derived by
-modeling the net PSF, which they call the effective PSF (ePSF).  The
-ePSF is an empirical model describing what fraction of a star's light
-will land in a particular pixel.  The constructed ePSF is typically
-oversampled with respect to the detector pixels.
+1360)
+<https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_
+showed that accurate stellar photometry and astrometry can be derived
+by modeling the net PSF, which they call the effective PSF (ePSF).
+The ePSF is an empirical model describing what fraction of a star's
+light will land in a particular pixel.  The constructed ePSF is
+typically oversampled with respect to the detector pixels.
 
 
 Building an ePSF
@@ -21,9 +22,10 @@ Building an ePSF
 
 Photutils provides tools for building an ePSF following the
 prescription of `Anderson and King (2000; PASP 112, 1360)
-<http://adsabs.harvard.edu/abs/2000PASP..112.1360A>`_ and subsequent
-enhancements detailed mainly in
-`Anderson (2016), ISR WFC3 2016-12 <www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-12.pdf>`_.
+<https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_ and
+subsequent enhancements detailed mainly in `Anderson (2016), ISR WFC3
+2016-12
+<https://www.stsci.edu/files/live/sites/www/files/home/hst/instrumentation/wfc3/documentation/instrument-science-reports-isrs/_documents/2016/WFC3-2016-12.pdf>`_.
 The process involves iterating between the ePSF itself and the stars
 used to build it.
 

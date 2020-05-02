@@ -10,10 +10,10 @@ Isophote Frequently Asked Questions
 
 The basic elliptical isophote fitting algorithm, as described in
 `Jedrzejewski (1987; MNRAS 226, 747)
-<http://adsabs.harvard.edu/abs/1987MNRAS.226..747J>`_ , computes
-corrections for the current ellipse's geometrical parameters by
-essentially "projecting" the fitted harmonic amplitudes onto the image
-plane:
+<https://ui.adsabs.harvard.edu/abs/1987MNRAS.226..747J/abstract>`_,
+computes corrections for the current ellipse's geometrical parameters
+by essentially "projecting" the fitted harmonic amplitudes onto the
+image plane:
 
 .. math::
 
@@ -66,10 +66,10 @@ small :math:`I'` values lead to large values for the correction terms.
 Thus, :math:`I'` errors may lead to large fluctuations in these terms,
 when :math:`I'` itself is small.  This usually happens at the fainter,
 outer regions of galaxy images.  `Busko (1996; ASPC 101, 139)
-<http://adsabs.harvard.edu/abs/1996ASPC..101..139B>`_ found by
-numerical experiments that the precision to which a given ellipse can
-be fitted is related to the relative error in the local radial
-gradient.
+<https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstract>`_
+found by numerical experiments that the precision to which a given
+ellipse can be fitted is related to the relative error in the local
+radial gradient.
 
 Because of the gradient's critical role, the algorithm has a number of
 features to allow its estimation even under difficult conditions. The
@@ -125,17 +125,17 @@ parameters, on the other hand, cannot be estimated in the same way,
 since these parameters are not computed directly but result from a
 number of updates from a starting guess value. An error analysis based
 on numerical experiments (`Busko 1996; ASPC 101, 139
-<http://adsabs.harvard.edu/abs/1996ASPC..101..139B>`_) showed that the
-best error estimators for these geometrical parameters can be found by
-simply "projecting" the harmonic amplitude errors that come from the
-least-squares covariance matrix by the same formulae in :ref:`Question
-1 <harmonic_ampl>` above used to "project" the associated parameter
-updates. In other words, errors for the ellipse center, ellipticity,
-and position angle are computed by the same formulae as in
-:ref:`Question 1 <harmonic_ampl>`, but replacing the least-squares
-amplitudes by their errors. This is empirical and difficult to justify
-in terms of any theoretical error analysis, but it produces sensible
-error estimators in practice.
+<https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstract>`_)
+showed that the best error estimators for these geometrical parameters
+can be found by simply "projecting" the harmonic amplitude errors that
+come from the least-squares covariance matrix by the same formulae in
+:ref:`Question 1 <harmonic_ampl>` above used to "project" the
+associated parameter updates. In other words, errors for the ellipse
+center, ellipticity, and position angle are computed by the same
+formulae as in :ref:`Question 1 <harmonic_ampl>`, but replacing the
+least-squares amplitudes by their errors. This is empirical and
+difficult to justify in terms of any theoretical error analysis, but
+it produces sensible error estimators in practice.
 
 
 5. How is the image sampled?
@@ -143,9 +143,9 @@ error estimators in practice.
 
 When sampling is done using elliptical sectors (mean or median modes),
 the algorithm described in `Jedrzejewski (1987; MNRAS 226, 747)
-<http://adsabs.harvard.edu/abs/1987MNRAS.226..747J>`_ uses an
-elaborate, high-precision scheme to take into account partial pixels
-that lie along elliptical sector boundaries. In the current
+<https://ui.adsabs.harvard.edu/abs/1987MNRAS.226..747J/abstract>`_
+uses an elaborate, high-precision scheme to take into account partial
+pixels that lie along elliptical sector boundaries. In the current
 implementation of the `~photutils.isophote.Ellipse` algorithm, this
 method was not implemented.  Instead, pixels at sector boundaries are
 either fully included or discarded, depending on the precise position

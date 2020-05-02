@@ -72,9 +72,9 @@ Using conda
 -----------
 
 Photutils can be installed with `conda`_ if you have installed
-`Anaconda <https://www.anaconda.com/distribution/>`_ or `Miniconda
-<https://docs.conda.io/en/latest/miniconda.html>`_.  To install
-Photutils using the `astropy Anaconda channel
+`Anaconda <https://www.anaconda.com/products/individual>`_ or
+`Miniconda <https://docs.conda.io/en/latest/miniconda.html>`_.  To
+install Photutils using the `astropy Anaconda channel
 <https://anaconda.org/astropy>`_, run::
 
     conda install photutils -c astropy
