@@ -25,8 +25,8 @@ class Ellipse:
 
     The isophotes in the image are measured using an iterative method
     described by `Jedrzejewski (1987; MNRAS  226, 747)
-    <http://adsabs.harvard.edu/abs/1987MNRAS.226..747J>`_.  See the
-    **Notes** section below for details about the algorithm.
+    <https://ui.adsabs.harvard.edu/abs/1987MNRAS.226..747J/abstract>`_.
+    See the **Notes** section below for details about the algorithm.
 
     Parameters
     ----------
@@ -54,10 +54,10 @@ class Ellipse:
     -----
     The image is measured using an iterative method described by
     `Jedrzejewski (1987; MNRAS  226, 747)
-    <http://adsabs.harvard.edu/abs/1987MNRAS.226..747J>`_.  Each
-    isophote is fitted at a pre-defined, fixed semimajor axis length.
-    The algorithm starts from a first-guess elliptical isophote defined
-    by approximate values for the (x, y) center coordinates,
+    <https://ui.adsabs.harvard.edu/abs/1987MNRAS.226..747J/abstract>`_.
+    Each isophote is fitted at a pre-defined, fixed semimajor axis
+    length.  The algorithm starts from a first-guess elliptical isophote
+    defined by approximate values for the (x, y) center coordinates,
     ellipticity, and position angle.  Using these values, the image is
     sampled along an elliptical path, producing a 1-dimensional function
     that describes the dependence of intensity (pixel value) with angle
@@ -121,7 +121,7 @@ class Ellipse:
     after the first and second harmonics are subtracted from the raw
     data.  For more details, see the error analysis in `Busko (1996;
     ASPC 101, 139)
-    <http://adsabs.harvard.edu/abs/1996ASPC..101..139B>`_.
+    <https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstract>`_.
 
     After fitting the ellipse that corresponds to a given value of the
     semimajor axis (by the process described above), the axis length is
@@ -291,14 +291,14 @@ class Ellipse:
             ratio.  It specifies the maximum acceptable relative error
             in the local radial intensity gradient.  `Busko (1996; ASPC
             101, 139)
-            <http://adsabs.harvard.edu/abs/1996ASPC..101..139B>`_ showed
-            that the fitting precision relates to that relative error.
-            The usual behavior of the gradient relative error is to
-            increase with semimajor axis, being larger in outer, fainter
-            regions of a galaxy image.  In the current implementation,
-            the ``maxgerr`` criterion is triggered only when two
-            consecutive isophotes exceed the value specified by the
-            parameter. This prevents premature stopping caused by
+            <https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstract>`_
+            showed that the fitting precision relates to that relative
+            error.  The usual behavior of the gradient relative error is
+            to increase with semimajor axis, being larger in outer,
+            fainter regions of a galaxy image.  In the current
+            implementation, the ``maxgerr`` criterion is triggered only
+            when two consecutive isophotes exceed the value specified by
+            the parameter. This prevents premature stopping caused by
             contamination such as stars and HII regions.
 
             A number of actions may happen when the gradient error

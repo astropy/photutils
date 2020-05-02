@@ -90,7 +90,8 @@ class DAOGroup(GroupStarsBase):
     ----------
     [1] Stetson, Astronomical Society of the Pacific, Publications,
         (ISSN 0004-6280), vol. 99, March 1987, p. 191-222.
-        Available at: http://adsabs.harvard.edu/abs/1987PASP...99..191S
+        Available at:
+        https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract
     """
 
     def __init__(self, crit_separation):

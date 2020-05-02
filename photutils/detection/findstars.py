@@ -737,15 +737,17 @@ class StarFinderBase(metaclass=abc.ABCMeta):
 class DAOStarFinder(StarFinderBase):
     """
     Detect stars in an image using the DAOFIND (`Stetson 1987
-    <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_) algorithm.
+    <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_)
+    algorithm.
 
     DAOFIND (`Stetson 1987; PASP 99, 191
-    <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_) searches
-    images for local density maxima that have a peak amplitude greater
-    than ``threshold`` (approximately; ``threshold`` is applied to a
-    convolved image) and have a size and shape similar to the defined 2D
-    Gaussian kernel.  The Gaussian kernel is defined by the ``fwhm``,
-    ``ratio``, ``theta``, and ``sigma_radius`` input parameters.
+    <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_)
+    searches images for local density maxima that have a peak amplitude
+    greater than ``threshold`` (approximately; ``threshold`` is applied
+    to a convolved image) and have a size and shape similar to the
+    defined 2D Gaussian kernel.  The Gaussian kernel is defined by the
+    ``fwhm``, ``ratio``, ``theta``, and ``sigma_radius`` input
+    parameters.
 
     ``DAOStarFinder`` finds the object centroid by fitting the marginal x
     and y 1D distributions of the Gaussian kernel to the marginal x and
@@ -855,7 +857,8 @@ class DAOStarFinder(StarFinderBase):
 
     References
     ----------
-    .. [1] Stetson, P. 1987; PASP 99, 191 (http://adsabs.harvard.edu/abs/1987PASP...99..191S)
+    .. [1] Stetson, P. 1987; PASP 99, 191
+           (https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract)
     .. [2] https://iraf.net/irafhelp.php?val=daofind
 
     .. _DAOFIND: https://iraf.net/irafhelp.php?val=daofind

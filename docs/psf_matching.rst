@@ -296,5 +296,6 @@ Reference/API
     :no-heading:
 
 
-.. _Gordon et al. 2008:  http://adsabs.harvard.edu/abs/2008ApJ...682..336G
-.. _Aniano et al. 2011:  http://adsabs.harvard.edu/abs/2011PASP..123.1218A
+.. _Gordon et al. 2008:  https://ui.adsabs.harvard.edu/abs/2008ApJ...682..336G/abstract
+
+.. _Aniano et al. 2011:  https://ui.adsabs.harvard.edu/abs/2011PASP..123.1218A/abstract

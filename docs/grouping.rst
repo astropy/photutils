@@ -12,7 +12,8 @@ fit simultaneously, i.e. their profiles overlap.
 Photoutils currently provides two classes to group stars:
 
   * :class:`~photutils.psf.DAOGroup`:  An implementation of the
-    `DAOPHOT <http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_
+    `DAOPHOT
+    <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_
     GROUP algorithm.
 
   * :class:`~photutils.psf.DBSCANGroup`:  Grouping is based on the
@@ -24,14 +25,14 @@ DAOPHOT GROUP
 -------------
 
 Stetson, in his seminal paper (`Stetson 1987, PASP 99, 191
-<http://adsabs.harvard.edu/abs/1987PASP...99..191S>`_), provided a
-simple and powerful grouping algorithm to decide whether the profile
-of a given star extends into the fitting region of any other star.
-Stetson defines this in terms of a "critical separation" parameter,
-which is defined as the minimal distance that any two stars must be
-separated by in order to be in different groups.  Stetson gives
-intuitive reasoning to suggest that the critical separation may be
-defined as a multiple of the stellar full width at half maximum
+<https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_),
+provided a simple and powerful grouping algorithm to decide whether
+the profile of a given star extends into the fitting region of any
+other star.  Stetson defines this in terms of a "critical separation"
+parameter, which is defined as the minimal distance that any two stars
+must be separated by in order to be in different groups.  Stetson
+gives intuitive reasoning to suggest that the critical separation may
+be defined as a multiple of the stellar full width at half maximum
 (FWHM).
 
 Photutils provides an implementation of the DAOPHOT GROUP algorithm in

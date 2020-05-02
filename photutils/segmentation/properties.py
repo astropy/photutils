@@ -1358,7 +1358,8 @@ class SourceProperties:
 
         The Gini coefficient is calculated using the prescription from
         `Lotz et al. 2004
-        <http://adsabs.harvard.edu/abs/2004AJ....128..163L>`_ as:
+        <https://ui.adsabs.harvard.edu/abs/2004AJ....128..163L/abstract>`_
+        as:
 
         .. math::
             G = \\frac{1}{\\left | \\bar{x} \\right | n (n - 1)}

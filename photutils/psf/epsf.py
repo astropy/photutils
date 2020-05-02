@@ -234,9 +234,10 @@ class EPSFBuilder:
     Class to build an effective PSF (ePSF).
 
     See `Anderson and King (2000; PASP 112, 1360)
-    <http://adsabs.harvard.edu/abs/2000PASP..112.1360A>`_ and
-    `Anderson (2016), ISR WFC3 2016-12
-    <www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-12.pdf>`_ for details.
+    <https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_
+    and `Anderson (2016), ISR WFC3 2016-12
+    <https://www.stsci.edu/files/live/sites/www/files/home/hst/instrumentation/wfc3/documentation/instrument-science-reports-isrs/_documents/2016/WFC3-2016-12.pdf>`_
+    for details.
 
     Parameters
     ----------

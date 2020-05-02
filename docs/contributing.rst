@@ -24,15 +24,14 @@ Like the `Astropy`_ project, Photutils is made both by and for its
 users.  We accept contributions at all levels, spanning the gamut from
 fixing a typo in the documentation to developing a major new feature.
 We welcome contributors who will abide by the `Python Software
-Foundation Code of Conduct
-<https://www.python.org/psf/codeofconduct/>`_.
+Foundation Code of Conduct <https://www.python.org/psf/conduct/>`_.
 
 Photutils follows the same workflow and coding guidelines as
 `Astropy`_.  The following pages will help you get started with
 contributing fixes, code, or documentation (no git or GitHub
 experience necessary):
 
-* `How to make a code contribution <https://astropy.readthedocs.io/en/stable/development/workflow/development_workflow.html>`_
+* `How to make a code contribution <https://docs.astropy.org/en/stable/development/workflow/development_workflow.html>`_
 
 * `Coding Guidelines <https://docs.astropy.org/en/latest/development/codeguide.html>`_
 
