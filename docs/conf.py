@@ -225,3 +225,11 @@ for line in open('nitpick-exceptions'):
     dtype, target = line.split(None, 1)
     target = target.strip()
     nitpick_ignore.append((dtype, target))
+
+
+# -- Options for linkcheck output -------------------------------------------
+linkcheck_retry = 5
+linkcheck_ignore = ['http://data.astropy.org',
+                    r'https://github\.com/astropy/photutils/(?:issues|pull)/\d+']
+linkcheck_timeout = 180
+linkcheck_anchors = False
