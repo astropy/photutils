@@ -7,7 +7,6 @@ from astropy.convolution import Gaussian2DKernel
 from astropy.tests.helper import catch_warnings
 import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
-import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
