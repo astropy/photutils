@@ -205,7 +205,8 @@ class DBSCANGroup(GroupStarsBase):
     Notes
     -----
     * The attribute ``crit_separation`` corresponds to ``eps`` in
-      `sklearn.cluster.DBSCAN <https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html#sklearn.cluster.DBSCAN>`_.
+      `sklearn.cluster.DBSCAN
+      <https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html#sklearn.cluster.DBSCAN>`_.
 
     * This class provides more general algorithms than
       `photutils.psf.DAOGroup`.  More precisely,

@@ -50,7 +50,8 @@ class BasicPSFPhotometry:
         ``y_0``, and ``group_id``. The column ``group_id`` should cotain
         integers starting from ``1`` that indicate which group a given
         source belongs to. See, e.g., `~photutils.psf.DAOGroup`.
-    bkg_estimator : callable, instance of any `~photutils.background.BackgroundBase` subclass, or None
+    bkg_estimator : callable, instance of any \
+            `~photutils.background.BackgroundBase` subclass, or None
         ``bkg_estimator`` should be able to compute either a scalar
         background or a 2D background of a given 2D image. See, e.g.,
         `~photutils.background.MedianBackground`.  If None, no
@@ -72,7 +73,8 @@ class BasicPSFPhotometry:
         means to fit only at the following relative pixel positions:
         [-2, -1, 0, 1, 2].  Each element of ``fitshape`` must be an odd
         number.
-    finder : callable or instance of any `~photutils.detection.StarFinderBase` subclasses or None
+    finder : callable or instance of any \
+            `~photutils.detection.StarFinderBase` subclasses or None
         ``finder`` should be able to identify stars, i.e. compute a
         rough estimate of the centroids, in a given 2D image.
         ``finder`` receives as input a 2D image and returns an
@@ -184,7 +186,8 @@ class BasicPSFPhotometry:
 
         Returns
         -------
-        residual_image : 2D array-like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
+        residual_image : 2D array-like, `~astropy.io.fits.ImageHDU`, \
+            `~astropy.io.fits.HDUList`
         """
 
         return self._residual_image
@@ -214,7 +217,8 @@ class BasicPSFPhotometry:
 
         Parameters
         ----------
-        image : 2D array-like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
+        image : 2D array-like, `~astropy.io.fits.ImageHDU`, \
+                `~astropy.io.fits.HDUList`
             Image to perform photometry.
         init_guesses: `~astropy.table.Table`
             Table which contains the initial guesses (estimates) for the
@@ -556,7 +560,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         ``y_0``, and ``group_id``. The column ``group_id`` should cotain
         integers starting from ``1`` that indicate which group a given
         source belongs to. See, e.g., `~photutils.psf.DAOGroup`.
-    bkg_estimator : callable, instance of any `~photutils.background.BackgroundBase` subclass, or None
+    bkg_estimator : callable, instance of any \
+            `~photutils.background.BackgroundBase` subclass, or None
         ``bkg_estimator`` should be able to compute either a scalar
         background or a 2D background of a given 2D image. See, e.g.,
         `~photutils.background.MedianBackground`.  If None, no
@@ -578,7 +583,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         means to fit only at the following relative pixel positions:
         [-2, -1, 0, 1, 2].  Each element of ``fitshape`` must be an odd
         number.
-    finder : callable or instance of any `~photutils.detection.StarFinderBase` subclasses
+    finder : callable or instance of any \
+            `~photutils.detection.StarFinderBase` subclasses
         ``finder`` should be able to identify stars, i.e. compute a
         rough estimate of the centroids, in a given 2D image.
         ``finder`` receives as input a 2D image and returns an
@@ -681,7 +687,8 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
 
         Parameters
         ----------
-        image : 2D array-like, `~astropy.io.fits.ImageHDU`, `~astropy.io.fits.HDUList`
+        image : 2D array-like, `~astropy.io.fits.ImageHDU`, \
+                `~astropy.io.fits.HDUList`
             Image to perform photometry.
         init_guesses: `~astropy.table.Table`
             Table which contains the initial guesses (estimates) for the

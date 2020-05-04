@@ -736,7 +736,8 @@ def _isophote_list_to_table(isophote_list):
 
     Parameters
     ----------
-    isophote_list : list of `~photutils.isophote.Isophote` or a `~photutils.isophote.IsophoteList` instance
+    isophote_list : list of `~photutils.isophote.Isophote` or \
+            `~photutils.isophote.IsophoteList` instance
         A list of isophotes.
 
     Returns
