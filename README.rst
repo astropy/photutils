@@ -4,7 +4,7 @@ Photutils
 
 |PyPI Version| |Conda Version| |Conda Downloads| |Astropy|
 
-|Travis Status| |CircleCI Status| |Coveralls Status| |Latest RTD Status| |LGTM Grade|
+|Travis Status| |CircleCI Status| |Codecov Status| |Latest RTD Status| |LGTM Grade|
 
 Photutils is an `Astropy`_ package for detection and photometry of
 astronomical sources.
@@ -32,7 +32,7 @@ where (Bradley et al. 20XX) is a citation to the `Zenodo record
 <https://doi.org/10.5281/zenodo.596036>`_ of the Photutils version
 that was used.  We also encourage citations in the main text wherever
 appropriate.  Please see the `CITATION
-<https://github.com/astropy/photutils/blob/master/photutils/CITATION>`_
+<https://github.com/astropy/photutils/blob/master/photutils/CITATION.rst>`_
 file for details and an example BibTeX entry.
 
 
@@ -69,9 +69,9 @@ for details.
     :target: https://travis-ci.org/astropy/photutils
     :alt: Travis CI Status
 
-.. |Coveralls Status| image:: https://coveralls.io/repos/astropy/photutils/badge.svg?branch=master
-    :target: https://coveralls.io/github/astropy/photutils
-    :alt: Coveralls Status
+.. |Codecov Status| image:: https://img.shields.io/codecov/c/github/astropy/photutils?logo=codecov
+    :target: https://codecov.io/gh/astropy/photutils
+    :alt: Coverage Status
 
 .. |CircleCI Status| image:: https://img.shields.io/circleci/build/github/astropy/photutils/master?logo=circleci&label=CircleCI
     :target: https://circleci.com/gh/astropy/photutils
