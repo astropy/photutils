@@ -306,14 +306,21 @@ class EPSFBuilder:
             iterations will stop if the centers of all the stars change by
             less than ``center_accuracy`` pixels between iterations.  All
             stars must meet this condition for the loop to exit.
+
+    flux_residual_sigclip : `~astropy.stats.SigmaClip` object, optional
+        A `~astropy.stats.SigmaClip` object used to determine which pixels
+        are ignored based on the star sampling flux residuals, when
+        computing the average residual of ePSF grid points in each iteration
+        step.
     """
 
     def __init__(self, oversampling=4., shape=None,
                  smoothing_kernel='quartic', recentering_func=centroid_epsf,
                  recentering_maxiters=20, fitter=EPSFFitter(), maxiters=10,
                  progress_bar=True, norm_radius=5.5, shift_val=0.5,
-                 recentering_boxsize=(5, 5), center_accuracy=1.0e-3):
-        flux_residual_sigclip = SigmaClip(sigma=3, cenfunc='median', maxiters=10)  # TODO: replace with kwarg in 8.0
+                 recentering_boxsize=(5, 5), center_accuracy=1.0e-3,
+                 flux_residual_sigclip=SigmaClip(sigma=3, cenfunc='median',
+                                                 maxiters=10)):
 
         if oversampling is None:
             raise ValueError("'oversampling' must be specified.")

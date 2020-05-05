@@ -6,6 +6,7 @@ Tests for the epsf module.
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata import NDData
 from astropy.table import Table
+from astropy.stats import SigmaClip
 import numpy as np
 from numpy.testing import assert_allclose, assert_almost_equal
 import pytest
@@ -137,6 +138,7 @@ class TestEPSFBuild:
 
 
 def test_epsfbuilder_inputs():
+    # invalid inputs
     with pytest.raises(ValueError):
         EPSFBuilder(oversampling=None)
     with pytest.raises(ValueError):
@@ -149,6 +151,19 @@ def test_epsfbuilder_inputs():
         EPSFBuilder(oversampling=[3, 6])
     with pytest.raises(ValueError):
         EPSFBuilder(oversampling=[-1, 4])
+
+    # valid inputs
+    EPSFBuilder(oversampling=6)
+    EPSFBuilder(oversampling=[4, 6])
+
+    # invalid inputs
+    for sigclip in [None, [], 'a']:
+        with pytest.raises(ValueError):
+            EPSFBuilder(flux_residual_sigclip=sigclip)
+
+    # valid inputs
+    EPSFBuilder(flux_residual_sigclip=SigmaClip(sigma=2.5, cenfunc='mean',
+                                                maxiters=2))
 
 
 def test_epsfmodel_inputs():
