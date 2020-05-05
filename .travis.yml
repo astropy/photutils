@@ -56,7 +56,7 @@ matrix:
           language: c
           name: Python 3.7 with required dependencies
           stage: Cron tests
-          env: PYTHON_VERSION=3.7 TOXENV=py37-test
+          env: PYTHON_VERSION=3.7 TOXENV=py37-test-alldeps
 
         # Do a regular build on Linux with Python 3.8, with cov
         # For Linux we use language: python to avoid using conda.
@@ -64,7 +64,7 @@ matrix:
           python: 3.8
           name: Python 3.8 with required dependencies and measure coverage
           stage: Initial tests
-          env: TOXENV=py38-test-cov
+          env: TOXENV=py38-test-alldeps-cov
 
         # Check for sphinx doc build warnings
         - os: linux
@@ -78,14 +78,14 @@ matrix:
           python: 3.8
           name: Python 3.8 with developer version of astropy
           stage: Comprehensive tests
-          env: TOXENV=py38-test-devdeps
+          env: TOXENV=py38-test-alldeps-devdeps
 
         # And with an older Python, Astropy LTS, and the oldest supported Numpy
         - os: linux
           python: 3.6
           name: Python 3.6 astropy LTS and Numpy 1.16
           stage: Comprehensive tests
-          env: TOXENV=py36-test-astropylts-numpy116
+          env: TOXENV=py36-test-alldeps-astropylts-numpy116
 
         # Add a job that runs from cron only and tests against astropy dev and
         # numpy dev to give a change for early discovery of issues and feedback
@@ -94,7 +94,7 @@ matrix:
           python: 3.8
           name: Python 3.8 latest developer version of key dependencies
           stage: Cron tests
-          env: TOXENV=py38-test-devdeps
+          env: TOXENV=py38-test-alldeps-devdeps
 
         # Try on Windows.
         - os: windows
