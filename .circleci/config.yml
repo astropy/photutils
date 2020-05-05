@@ -7,8 +7,8 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Install dependencies
-          command: /opt/python/cp36-cp36m/bin/pip install numpy scipy astropy "pytest<5.1" pytest-astropy pytest-xdist Cython
+          name: Install dependencies for Python 3.7
+          command: /opt/python/cp37-cp37m/bin/pip install tox
       - run:
-          name: Run tests
-          command: PYTHONHASHSEED=42 /opt/python/cp36-cp36m/bin/python setup.py test --parallel=4
+          name: Run tests for Python 3.7
+          command: /opt/python/cp37-cp37m/bin/python -m tox -e py37-test

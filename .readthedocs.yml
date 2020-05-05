@@ -10,10 +10,6 @@ python:
       path: .
       extra_requirements:
         - docs
-    - requirements: docs/rtd_requirements.txt
+        - all
 
-submodules:
-  include: all
-
-# Don't build any extra formats
 formats: []
