@@ -259,9 +259,20 @@ class _DAOFindProperties:
     def roundness1(self):
         # set the central (peak) pixel to zero
         cutout_conv = self.cutout.convdata.copy()
-        cutout_conv[self.ycenter, self.xcenter] = 0.0
+        cutout_conv[self.ycenter, self.xcenter] = 0.0  # for sum4
 
-        # calculate the four roundness quadrants
+        # calculate the four roundness quadrants.
+        # the cutout size always matches the kernel size, which have odd
+        # dimensions.
+        # quad1 = bottom right
+        # quad2 = bottom left
+        # quad3 = top left
+        # quad4 = top right
+        # 3 3 4 4 4
+        # 3 3 4 4 4
+        # 3 3 x 1 1
+        # 2 2 2 1 1
+        # 2 2 2 1 1
         quad1 = cutout_conv[0:self.ycenter + 1, self.xcenter + 1:]
         quad2 = cutout_conv[0:self.ycenter, 0:self.xcenter + 1]
         quad3 = cutout_conv[self.ycenter:, 0:self.xcenter]
