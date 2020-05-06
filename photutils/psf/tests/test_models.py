@@ -254,17 +254,17 @@ class TestGriddedPSFModel:
 
         shape = (200, 200)
         data = np.zeros(shape)
-        eval_xshape = np.int(np.ceil(self.psfmodel.data.shape[2] /
-                                     self.psfmodel.oversampling))
-        eval_yshape = np.int(np.ceil(self.psfmodel.data.shape[1] /
-                                     self.psfmodel.oversampling))
+        eval_xshape = (np.ceil(self.psfmodel.data.shape[2] /
+                               self.psfmodel.oversampling)).astype(int)
+        eval_yshape = (np.ceil(self.psfmodel.data.shape[1] /
+                               self.psfmodel.oversampling)).astype(int)
 
         xx = [40, 50, 160, 160]
         yy = [60, 150, 50, 140]
         zz = [100, 100, 100, 100]
         for xxi, yyi, zzi in zip(xx, yy, zz):
-            x0 = np.int(np.floor(xxi - (eval_xshape - 1) / 2.))
-            y0 = np.int(np.floor(yyi - (eval_yshape - 1) / 2.))
+            x0 = np.floor(xxi - (eval_xshape - 1) / 2.).astype(int)
+            y0 = np.floor(yyi - (eval_yshape - 1) / 2.).astype(int)
             x1 = x0 + eval_xshape
             y1 = y0 + eval_yshape
 

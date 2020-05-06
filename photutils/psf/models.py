@@ -138,7 +138,7 @@ class FittableImageModel(Fittable2DModel):
                              "positive.")
         self._normalization_correction = normalization_correction
 
-        self._data = np.array(data, copy=True, dtype=np.float64)
+        self._data = np.array(data, copy=True, dtype=float)
 
         if not np.all(np.isfinite(self._data)):
             raise ValueError("All elements of input 'data' must be finite.")
@@ -182,7 +182,7 @@ class FittableImageModel(Fittable2DModel):
             computed.
 
         """
-        return np.sum(self._data, dtype=np.float64)
+        return np.sum(self._data, dtype=float)
 
     def _compute_normalization(self, normalize):
         """
@@ -459,8 +459,8 @@ class FittableImageModel(Fittable2DModel):
 
         smoothness = kwargs.get('s', 0)
 
-        x = np.arange(self._nx, dtype=np.float)
-        y = np.arange(self._ny, dtype=np.float)
+        x = np.arange(self._nx, dtype=float)
+        y = np.arange(self._ny, dtype=float)
         self.interpolator = RectBivariateSpline(
             x, y, self._data.T, kx=degx, ky=degy, s=smoothness
         )
@@ -565,8 +565,8 @@ class EPSFModel(FittableImageModel):
 
         # First need the indices of each axis at the oversampled
         # resolution; if oversampling = 4 then x = [0, 0.25, 0.5, 0.75, ...]
-        x = np.arange(self._nx, dtype=np.float64) / self.oversampling[0]
-        y = np.arange(self._ny, dtype=np.float64) / self.oversampling[1]
+        x = np.arange(self._nx, dtype=float) / self.oversampling[0]
+        y = np.arange(self._ny, dtype=float) / self.oversampling[1]
 
         # Take indices where the undersampled grid is an integer --
         # i.e., the actual undersampled grid -- and find the cut where
@@ -591,7 +591,7 @@ class EPSFModel(FittableImageModel):
                & (x.reshape(1, -1) % 1.0 == over_index_middle)
                & (y.reshape(-1, 1) % 1.0 == over_index_middle))
 
-        return np.sum(self._data[cut], dtype=np.float64)
+        return np.sum(self._data[cut], dtype=float)
 
     def _compute_normalization(self):
         """
@@ -719,8 +719,8 @@ class EPSFModel(FittableImageModel):
 
         # Interpolator must be set to interpolate on the undersampled
         # pixel grid, going from 0 to len(undersampled_grid)
-        x = np.arange(self._nx, dtype=np.float) / self.oversampling[0]
-        y = np.arange(self._ny, dtype=np.float) / self.oversampling[1]
+        x = np.arange(self._nx, dtype=float) / self.oversampling[0]
+        y = np.arange(self._ny, dtype=float) / self.oversampling[1]
         self.interpolator = RectBivariateSpline(
             x, y, self._data.T, kx=degx, ky=degy, s=smoothness)
 
@@ -806,7 +806,7 @@ class GriddedPSFModel(Fittable2DModel):
         if not np.isscalar(data.meta['oversampling']):
             raise ValueError('oversampling must be a scalar value')
 
-        self.data = np.array(data.data, copy=True, dtype=np.float)
+        self.data = np.array(data.data, copy=True, dtype=float)
         self.meta = data.meta
         self.grid_xypos = data.meta['grid_xypos']
         self.oversampling = data.meta['oversampling']
