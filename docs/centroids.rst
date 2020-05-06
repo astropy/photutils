@@ -65,7 +65,7 @@ similar, we also include an inset plot zoomed in near the centroid:
     x2, y2 = centroid_1dg(data)
     x3, y3 = centroid_2dg(data)
     fig, ax = plt.subplots(1, 1)
-    ax.imshow(data, origin='lower', interpolation='nearest', cmap='viridis')
+    ax.imshow(data, origin='lower', interpolation='nearest')
     marker = '+'
     ms, mew = 30, 2.
     plt.plot(x1, y1, color='#1f77b4', marker=marker, ms=ms, mew=mew)
@@ -75,8 +75,8 @@ similar, we also include an inset plot zoomed in near the centroid:
     from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
     from mpl_toolkits.axes_grid1.inset_locator import mark_inset
     ax2 = zoomed_inset_axes(ax, zoom=6, loc=9)
-    ax2.imshow(data, interpolation='nearest', origin='lower',
-               cmap='viridis', vmin=190, vmax=220)
+    ax2.imshow(data, vmin=190, vmax=220, origin='lower',
+               interpolation='nearest')
     ax2.plot(x1, y1, color='#1f77b4', marker=marker, ms=ms, mew=mew)
     ax2.plot(x2, y2, color='#17becf', marker=marker, ms=ms, mew=mew)
     ax2.plot(x3, y3, color='#d62728', marker=marker, ms=ms, mew=mew)
