@@ -34,7 +34,7 @@ def make_test_image(nx=512, ny=512, x0=None, y0=None,
         The ellipticity of the reference isophote.
     pa : float, optional
         The position angle of the reference isophote.
-    random_state : int or `~numpy.random.mtrand.RandomState`, optional
+    random_state : int or `~numpy.random.RandomState`, optional
         Pseudo-random number generator state used for random sampling.
         Separate function calls with the same ``random_state`` will
         generate the identical noise image.

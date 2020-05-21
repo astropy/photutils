@@ -12,22 +12,22 @@ __all__ = ['check_random_state']
 
 def check_random_state(seed):
     """
-    Turn seed into a `numpy.random.mtrand.RandomState` instance.
+    Turn seed into a `numpy.random.RandomState` instance.
 
     Parameters
     ----------
-    seed : `None`, int, or `numpy.random.mtrand.RandomState`
+    seed : `None`, int, or `numpy.random.RandomState`
         If ``seed`` is `None`, return the
-        `~numpy.random.mtrand.RandomState` singleton used by
+        `~numpy.random.RandomState` singleton used by
         ``numpy.random``.  If ``seed`` is an `int`, return a new
-        `~numpy.random.mtrand.RandomState` instance seeded with
+        `~numpy.random.RandomState` instance seeded with
         ``seed``.  If ``seed`` is already a
-        `~numpy.random.mtrand.RandomState`, return it.  Otherwise raise
+        `~numpy.random.RandomState`, return it.  Otherwise raise
         ``ValueError``.
 
     Returns
     -------
-    random_state : `numpy.random.mtrand.RandomState`
+    random_state : `numpy.random.RandomState`
         RandomState object.
 
     Notes

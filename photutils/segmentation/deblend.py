@@ -219,7 +219,7 @@ def _deblend_source(data, segment_img, npixels, nlevels=32, contrast=0.001,
     """
 
     from scipy.ndimage import label as ndilabel
-    from skimage.morphology import watershed
+    from skimage.segmentation import watershed
 
     if nlevels < 1:
         raise ValueError('nlevels must be >= 1, got "{0}"'.format(nlevels))
