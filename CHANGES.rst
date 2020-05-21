@@ -20,7 +20,7 @@ Bug Fixes
 - ``photutils.isophote``
 
   - Fix a bug that ``build_ellipse_model`` falls into an infinite loop
-    when the pixel to fit is outside of the image. [#1038]
+    when the pixel to fit is outside of the image. [#1039]
 
 - ``photutils.segmentation``
 
