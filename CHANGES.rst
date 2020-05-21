@@ -17,6 +17,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.isophote``
+
+  - Fix a bug that ``build_ellipse_model`` falls into an infinite loop
+    when the pixel to fit is outside of the image. [#1038]
+
 - ``photutils.segmentation``
 
   - Fixed a bug where ``source_properties`` would fail with unitless
