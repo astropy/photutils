@@ -128,7 +128,6 @@ def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
             i = int(x)
             j = int(y)
 
-            # if outside image boundaries, ignore.
             if (i > 0 and i < shape[1] - 1 and j > 0 and j < shape[0] - 1):
                 # get fractional deviations relative to target array
                 fx = x - float(i)
@@ -150,6 +149,9 @@ def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
                 # step towards next pixel on ellipse
                 phi = max((phi + 0.75 / r), geometry._phi_min)
                 r = geometry.radius(phi)
+            # if outside image boundaries, ignore.
+            else:
+                break
 
     # zero weight values must be set to 1.
     weight[np.where(weight <= 0.)] = 1.
