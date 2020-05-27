@@ -73,13 +73,6 @@ matrix:
           stage: Comprehensive tests
           env: TOXENV=build_docs
 
-        # Now try Astropy dev with the latest Python
-        - os: linux
-          python: 3.8
-          name: Python 3.8 with developer version of astropy
-          stage: Comprehensive tests
-          env: TOXENV=py38-test-alldeps-devdeps
-
         # And with an older Python, Astropy LTS, and the oldest supported Numpy
         - os: linux
           python: 3.6
@@ -113,13 +106,6 @@ matrix:
           name: Python 3.7 with astropy 3.2 and Numpy 1.17
           stage: Comprehensive tests
           env: TOXENV=py37-test-astropy32-numpy117
-
-        # Do a code style check
-        - os: linux
-          python: 3.8
-          name: Code style checks
-          stage: Initial tests
-          env: TOXENV=codestyle
 
     allow_failures:
         # Do a PEP8 test with flake8
