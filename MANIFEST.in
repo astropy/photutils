@@ -1,6 +1,6 @@
 include CHANGES.rst
 include CITATION.rst
-include photutils/CITATION
+include photutils/CITATION.rst
 include LICENSE.rst
 include README.rst
 include pyproject.toml
