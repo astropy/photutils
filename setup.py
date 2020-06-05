@@ -4,11 +4,7 @@
 # NOTE: The configuration for the package, including the name, version, and
 # other information are set in the setup.cfg file.
 
-import os
 import sys
-
-from setuptools import setup
-from extension_helpers import get_extensions
 
 # First provide helpful messages if contributors try and run legacy commands
 # for tests or docs.
@@ -73,6 +69,13 @@ try:
 except Exception:
     version = '{version}'
 """.lstrip()
+
+
+# Import these after the above checks to ensure they are printed even if
+# extensions_helpers is not installed
+import os  # noqa
+from setuptools import setup  # noqa
+from extension_helpers import get_extensions  # noqa
 
 setup(use_scm_version={'write_to': os.path.join('photutils', 'version.py'),
                        'write_to_template': VERSION_TEMPLATE},
