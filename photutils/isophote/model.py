@@ -120,7 +120,7 @@ def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
                 harm = (a3_array[index] * np.sin(3.*phi) +
                         b3_array[index] * np.cos(3.*phi) +
                         a4_array[index] * np.sin(4.*phi) +
-                        b4_array[index] * np.cos(4.*phi) / 4.)
+                        b4_array[index] * np.cos(4.*phi)) / 4.
 
             # get image coordinates of (r, phi) pixel
             x = r * np.cos(phi + pa) + x0
