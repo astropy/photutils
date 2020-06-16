@@ -19,8 +19,11 @@ Bug Fixes
 
 - ``photutils.isophote``
 
-  - Fix a bug that ``build_ellipse_model`` falls into an infinite loop
-    when the pixel to fit is outside of the image. [#1039]
+  - Fixed a bug where ``build_ellipse_model`` falls into an infinite
+    loop when the pixel to fit is outside of the image. [#1039]
+
+  - Fixed a typo in the calculation of the ``b4`` higher-order
+    harmonic coefficient in ``build_ellipse_model``. [#1052]
 
 - ``photutils.segmentation``
 
