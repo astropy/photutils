@@ -148,7 +148,7 @@ def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
 
                 # step towards next pixel on ellipse
                 phi = max((phi + 0.75 / r), geometry._phi_min)
-                r = geometry.radius(phi)
+                r = max(geometry.radius(phi), 0.5)
             # if outside image boundaries, ignore.
             else:
                 break
