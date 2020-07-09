@@ -26,7 +26,6 @@ def pytest_configure(config):
         PYTEST_HEADER_MODULES['Matplotlib'] = 'matplotlib'  # noqa
         PYTEST_HEADER_MODULES['scikit-image'] = 'skimage'  # noqa
         PYTEST_HEADER_MODULES['scikit-learn'] = 'sklearn'  # noqa
-        PYTEST_HEADER_MODULES['Astropy'] = 'astropy'  # noqa
         PYTEST_HEADER_MODULES.pop('Pandas', None)  # noqa
         PYTEST_HEADER_MODULES.pop('h5py', None)  # noqa
 
