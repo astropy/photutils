@@ -281,7 +281,7 @@ class Background2D:
     be a constant image.
     """
 
-    def __init__(self, data, box_size, mask=None,
+    def __init__(self, data, box_size, *, mask=None,
                  exclude_percentile=10.0, filter_size=(3, 3),
                  filter_threshold=None, edge_method='pad',
                  sigma_clip=SIGMA_CLIP,
