@@ -88,7 +88,8 @@ class TestDetectThreshold:
             detect_threshold(DATA, nsigma=2., error=wrong_shape)
 
     def test_background_error(self):
-        threshold = detect_threshold(DATA, nsigma=2.0, background=10., error=1.)
+        threshold = detect_threshold(DATA, nsigma=2.0, background=10.,
+                                     error=1.)
         ref = 12. * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
