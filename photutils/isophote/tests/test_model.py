@@ -5,6 +5,7 @@ Tests for the model module.
 
 from astropy.io import fits
 import numpy as np
+import os.path as op
 import pytest
 
 from .make_test_data import make_test_image
@@ -63,12 +64,13 @@ def test_model_simulated_data():
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_model_minimum_radius():
-
     # This test requires a "defective" image that drives the
     # model building algorithm into a corner, where it fails.
     # With the algorithm fixed, it bypasses the failure and
     # succeeds in building the model image.
-    hdu = fits.open('data/minimum_radius_test.fits')
+    filepath = op.join(op.dirname(op.abspath(__file__)), 'data',
+                       'minimum_radius_test.fits')
+    hdu = fits.open(filepath)
     data = hdu[0].data
 
     g = EllipseGeometry(50., 45, 530., 0.1, 10. / 180. * np.pi)
