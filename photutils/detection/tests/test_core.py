@@ -182,9 +182,8 @@ class TestFindPeaks:
         """Test border exclusion."""
         with catch_warnings(NoDetectionsWarning) as warning_lines:
             tbl = find_peaks(PEAKDATA, 0.1, box_size=3, border_width=3)
+            assert len(warning_lines) > 0
             assert tbl is None
-
-            assert warning_lines[0].category == NoDetectionsWarning
             assert ('No local peaks were found.' in
                     str(warning_lines[0].message))
 
@@ -238,9 +237,8 @@ class TestFindPeaks:
         data = np.ones((10, 10))
         with catch_warnings(NoDetectionsWarning) as warning_lines:
             tbl = find_peaks(data, 0.)
+            assert len(warning_lines) > 0
             assert tbl is None
-
-            assert warning_lines[0].category == NoDetectionsWarning
             assert ('Input data is constant.' in
                     str(warning_lines[0].message))
 
