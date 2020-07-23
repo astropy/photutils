@@ -337,18 +337,21 @@ and the background-subtracted image:
 Masking
 ^^^^^^^
 
-Masks can also be input into `~photutils.background.Background2D`.  As
-described above, this can be employed to mask sources in the image
+Masks can also be input into `~photutils.background.Background2D`. The
+``mask`` keyword can be used to mask sources or bad pixels in the image
 prior to estimating the background levels.
 
-Additionally, input masks are often necessary if your data array
-includes regions without data coverage (e.g., from a rotated image or
-an image from a mosaic).  Otherwise, the data values in the regions
-without coverage (usually zeros or NaNs) will adversely contribute to
-the background statistics.
+Additionally, the ``coverage_mask`` keyword can be used to mask blank
+regions without data coverage (e.g., from a rotated image or an image
+from a mosaic). Otherwise, the data values in the regions without
+coverage (usually zeros or NaNs) will adversely affect the background
+statistics. Unlike ``mask``, ``coverage_mask`` is applied to the output
+background and background RMS maps. The ``fill_value`` keyword defines
+the value assigned in the output background and background RMS maps
+where the input ``coverage_mask`` is `True`.
 
-Let's create such an image and plot it (NOTE: this example requires
-`scipy`_):
+Let's create a rotated image that has blank areas and plot it (NOTE:
+this example requires `scipy`_):
 
 .. doctest-requires:: scipy
 
@@ -377,25 +380,24 @@ Let's create such an image and plot it (NOTE: this example requires
 
 Now we create a coverage mask and input it into
 `~photutils.background.Background2D` to exclude the regions where we
-have no data.  For real data, one can usually create a coverage mask
-from a weight or noise image.  In this example we also use a smaller
-box size to help capture the strong gradient in the background:
+have no data. For this example, we set the ``fill_value`` to 0.0. For
+real data, one can usually create a coverage mask from a weight or noise
+image. In this example we also use a smaller box size to help capture
+the strong gradient in the background:
 
 .. doctest-requires:: scipy
 
-    >>> mask = (data3 == 0)
-    >>> bkg3 = Background2D(data3, (25, 25), filter_size=(3, 3), mask=mask)
+    >>> coverage_mask = (data3 == 0)
+    >>> bkg3 = Background2D(data3, (25, 25), filter_size=(3, 3),
+    ...                     coverage_mask=coverage_mask, fill_value=0.0)
 
-The input masks are never applied to the returned background image
-because the input ``mask`` can represent either a coverage mask or a
-source mask, or a combination of both.  Therefore, we need to manually
-apply the coverage mask to the returned background image:
+Note that the ``coverage_mask`` is applied to the output background
+image (values assigned to ``fill_value``):
 
 .. doctest-requires:: scipy
 
-    >>> back3 = bkg3.background * ~mask
     >>> norm = ImageNormalize(stretch=SqrtStretch())  # doctest: +SKIP
-    >>> plt.imshow(back3, origin='lower', cmap='Greys_r', norm=norm,
+    >>> plt.imshow(bkg3.background, origin='lower', cmap='Greys_r', norm=norm,
     ...            interpolation='nearest')  # doctest: +SKIP
 
 .. plot::
@@ -412,11 +414,11 @@ apply the coverage mask to the returned background image:
     gradient =  x * y / 5000.
     data2 = data + gradient
     data3 = rotate(data2, -45.)
-    mask = (data3 == 0)
-    bkg3 = Background2D(data3, (25, 25), filter_size=(3, 3), mask=mask)
-    back3 = bkg3.background * ~mask
+    coverage_mask = (data3 == 0)
+    bkg3 = Background2D(data3, (25, 25), filter_size=(3, 3),
+                        coverage_mask=coverage_mask, fill_value=0.0)
     norm = ImageNormalize(stretch=SqrtStretch())
-    plt.imshow(back3, origin='lower', cmap='Greys_r', norm=norm,
+    plt.imshow(bkg3.background, origin='lower', cmap='Greys_r', norm=norm,
                interpolation='nearest')
 
 Finally, let's subtract the background from the image and plot it:
@@ -424,8 +426,8 @@ Finally, let's subtract the background from the image and plot it:
 .. doctest-skip::
 
     >>> norm = ImageNormalize(stretch=SqrtStretch())
-    >>> plt.imshow(data3 - back3, origin='lower', cmap='Greys_r', norm=norm,
-    ...            interpolation='nearest')
+    >>> plt.imshow(data3 - bkg3.background, origin='lower', cmap='Greys_r',
+    ...            norm=norm, interpolation='nearest')
 
 .. plot::
 
@@ -441,12 +443,12 @@ Finally, let's subtract the background from the image and plot it:
     gradient =  x * y / 5000.
     data2 = data + gradient
     data3 = rotate(data2, -45.)
-    mask = (data3 == 0)
-    bkg3 = Background2D(data3, (25, 25), filter_size=(3, 3), mask=mask)
-    back3 = bkg3.background * ~mask
+    coverage_mask = (data3 == 0)
+    bkg3 = Background2D(data3, (25, 25), filter_size=(3, 3),
+                        coverage_mask=coverage_mask, fill_value=0.0)
     norm = ImageNormalize(stretch=SqrtStretch())
-    plt.imshow(data3 - back3, origin='lower', cmap='Greys_r', norm=norm,
-               interpolation='nearest')
+    plt.imshow(data3 - bkg3.background, origin='lower', cmap='Greys_r',
+               norm=norm, interpolation='nearest')
 
 If there is any small residual background still present in the image,
 the background subtraction can be improved by masking the sources
@@ -480,9 +482,9 @@ be plotted on the original image using the
     gradient =  x * y / 5000.
     data2 = data + gradient
     data3 = rotate(data2, -45.)
-    mask = (data3 == 0)
-    bkg3 = Background2D(data3, (25, 25), filter_size=(3, 3), mask=mask)
-    back3 = bkg3.background * ~mask
+    coverage_mask = (data3 == 0)
+    bkg3 = Background2D(data3, (25, 25), filter_size=(3, 3),
+                        coverage_mask=coverage_mask, fill_value=0.0)
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm,
                interpolation='nearest')

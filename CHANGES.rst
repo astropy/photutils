@@ -14,6 +14,11 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.background``
+
+  - Added ``coverage_mask`` and ``fill_value`` keyword options to
+    ``Background2D``. [#1061]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -60,6 +65,9 @@ API changes
 
   - Removed the deprecated ``ax`` keyword in
     ``Background2D.plot_meshes``. [#953]
+
+  - ``Background2D`` keyword options can not be input as positional
+    arguments. [#1061]
 
 - ``photutils.datasets``
 

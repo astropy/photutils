@@ -192,8 +192,26 @@ class Background2D:
 
     mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is
+        masked. Masked data are excluded from calculations. ``mask`` is
+        intended to mask sources or bad pixels. Use ``coverage_mask``
+        to mask blank areas of an image. ``mask`` and ``coverage_mask``
+        differ only in that ``coverage_mask`` is applied to the output
+        background and background RMS maps (see ``fill_value``).
+
+    coverage_mask : array_like (bool), optional
+        A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
-        Masked data are excluded from calculations.
+        ``coverage_mask`` should be `True` where there is no coverage
+        (i.e., no data) for a given pixel (e.g., blank areas in a mosaic
+        image). It should not be used for bad pixels (in that case use
+        ``mask`` instead). ``mask`` and ``coverage_mask`` differ only in
+        that ``coverage_mask`` is applied to the output background and
+        background RMS maps (see ``fill_value``).
+
+    fill_value : float, optional
+        The value used to fill the output background and background RMS
+        maps where the input ``coverage_mask`` is `True`.
 
     exclude_percentile : float in the range of [0, 100], optional
         The percentage of masked pixels in a mesh, used as a threshold
@@ -281,8 +299,8 @@ class Background2D:
     be a constant image.
     """
 
-    def __init__(self, data, box_size, mask=None,
-                 exclude_percentile=10.0, filter_size=(3, 3),
+    def __init__(self, data, box_size, *, mask=None, coverage_mask=None,
+                 fill_value=0.0, exclude_percentile=10.0, filter_size=(3, 3),
                  filter_threshold=None, edge_method='pad',
                  sigma_clip=SIGMA_CLIP,
                  bkg_estimator=SExtractorBackground(sigma_clip=None),
@@ -302,13 +320,21 @@ class Background2D:
             mask = np.asanyarray(mask)
             if mask.shape != data.shape:
                 raise ValueError('mask and data must have the same shape')
+        if coverage_mask is not None:
+            coverage_mask = np.asanyarray(coverage_mask)
+            if coverage_mask.shape != data.shape:
+                raise ValueError('coverage_mask and data must have the same '
+                                 'shape')
 
         if exclude_percentile < 0 or exclude_percentile > 100:
             raise ValueError('exclude_percentile must be between 0 and 100 '
                              '(inclusive).')
 
         self.data = data
-        self.mask = mask
+        self._mask = mask
+        self.coverage_mask = coverage_mask
+        self.fill_value = fill_value
+        self.mask = self._combine_masks()
         self.exclude_percentile = exclude_percentile
 
         filter_size = np.atleast_1d(filter_size)
@@ -331,6 +357,16 @@ class Background2D:
         self._prepare_data()
         self._calc_bkg_bkgrms()
         self._calc_coordinates()
+
+    def _combine_masks(self):
+        if self._mask is None and self.coverage_mask is None:
+            return None
+        if self._mask is None:
+            return self.coverage_mask
+        elif self.coverage_mask is None:
+            return self._mask
+        else:
+            return np.logical_or(self._mask, self.coverage_mask)
 
     def _pad_data(self, yextra, xextra):
         """
@@ -778,14 +814,18 @@ class Background2D:
     @lazyproperty
     def background(self):
         """A 2D `~numpy.ndarray` containing the background image."""
-
-        return self.interpolator(self.background_mesh, self)
+        bkg = self.interpolator(self.background_mesh, self)
+        if self.coverage_mask is not None:
+            bkg[self.coverage_mask] = self.fill_value
+        return bkg
 
     @lazyproperty
     def background_rms(self):
         """A 2D `~numpy.ndarray` containing the background RMS image."""
-
-        return self.interpolator(self.background_rms_mesh, self)
+        bkg_rms = self.interpolator(self.background_rms_mesh, self)
+        if self.coverage_mask is not None:
+            bkg_rms[self.coverage_mask] = self.fill_value
+        return bkg_rms
 
     def plot_meshes(self, axes=None, marker='+', color='blue', outlines=False,
                     **kwargs):
