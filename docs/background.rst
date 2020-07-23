@@ -396,7 +396,6 @@ image (values assigned to ``fill_value``):
 
 .. doctest-requires:: scipy
 
-    >>> back3 = bkg3.background * ~mask
     >>> norm = ImageNormalize(stretch=SqrtStretch())  # doctest: +SKIP
     >>> plt.imshow(bkg3.background, origin='lower', cmap='Greys_r', norm=norm,
     ...            interpolation='nearest')  # doctest: +SKIP
@@ -483,9 +482,9 @@ be plotted on the original image using the
     gradient =  x * y / 5000.
     data2 = data + gradient
     data3 = rotate(data2, -45.)
-    mask = (data3 == 0)
-    bkg3 = Background2D(data3, (25, 25), filter_size=(3, 3), mask=mask)
-    back3 = bkg3.background * ~mask
+    coverage_mask = (data3 == 0)
+    bkg3 = Background2D(data3, (25, 25), filter_size=(3, 3),
+                        coverage_mask=coverage_mask, fill_value=0.0)
     norm = ImageNormalize(stretch=SqrtStretch())
     plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm,
                interpolation='nearest')
