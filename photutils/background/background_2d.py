@@ -192,12 +192,12 @@ class Background2D:
 
     mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is masked.
-        Masked data are excluded from calculations. ``mask`` is intended
-        to mask bad pixels. Use ``coverage_mask`` to mask blank areas
-        of an image. ``mask`` and ``coverage_mask`` differ only in
-        that ``coverage_mask`` is applied to the output background and
-        background RMS maps (see ``fill_value``).
+        value indicates the corresponding element of ``data`` is
+        masked. Masked data are excluded from calculations. ``mask`` is
+        intended to mask sources or bad pixels. Use ``coverage_mask``
+        to mask blank areas of an image. ``mask`` and ``coverage_mask``
+        differ only in that ``coverage_mask`` is applied to the output
+        background and background RMS maps (see ``fill_value``).
 
     coverage_mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
