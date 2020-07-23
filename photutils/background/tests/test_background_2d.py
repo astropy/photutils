@@ -136,6 +136,17 @@ class TestBackground2D:
         assert_equal(b1.background[:50, :50], fill_value)
         assert_equal(b1.background_rms[:50, :50], fill_value)
 
+        # test combination of masks
+        mask = np.zeros(DATA.shape, dtype=bool)
+        coverage_mask = np.zeros(DATA.shape, dtype=bool)
+        mask[:50, :25] = True
+        coverage_mask[:50, 25:50] = True
+        b2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
+                          coverage_mask=mask, fill_value=0.0,
+                          bkg_estimator=MeanBackground())
+        assert_equal(b1.background_mesh, b2.background_mesh)
+        assert_equal(b1.background_rms_mesh, b2.background_rms_mesh)
+
     def test_completely_masked(self):
         with pytest.raises(ValueError):
             mask = np.ones(DATA.shape, dtype=bool)
@@ -202,6 +213,11 @@ class TestBackground2D:
         with pytest.raises(ValueError):
             Background2D(DATA, (25, 25), filter_size=(1, 1),
                          mask=np.zeros((2, 2)))
+
+    def test_coverage_mask_badshape(self):
+        with pytest.raises(ValueError):
+            Background2D(DATA, (25, 25), filter_size=(1, 1),
+                         coverage_mask=np.zeros((2, 2)))
 
     def test_invalid_edge_method(self):
         with pytest.raises(ValueError):
