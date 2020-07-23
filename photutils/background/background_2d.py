@@ -197,7 +197,7 @@ class Background2D:
         to mask bad pixels. Use ``coverage_mask`` to mask blank areas
         of an image. ``mask`` and ``coverage_mask`` differ only in
         that ``coverage_mask`` is applied to the output background and
-        background RMS maps.
+        background RMS maps (see ``fill_value``).
 
     coverage_mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
@@ -207,7 +207,11 @@ class Background2D:
         image). It should not be used for bad pixels (in that case use
         ``mask`` instead). ``mask`` and ``coverage_mask`` differ only in
         that ``coverage_mask`` is applied to the output background and
-        background RMS maps.
+        background RMS maps (see ``fill_value``).
+
+    fill_value : float, optional
+        The value used to fill the output background and background RMS
+        maps where the input ``coverage_mask`` is `True`.
 
     exclude_percentile : float in the range of [0, 100], optional
         The percentage of masked pixels in a mesh, used as a threshold
@@ -296,7 +300,7 @@ class Background2D:
     """
 
     def __init__(self, data, box_size, *, mask=None, coverage_mask=None,
-                 exclude_percentile=10.0, filter_size=(3, 3),
+                 fill_value=0.0, exclude_percentile=10.0, filter_size=(3, 3),
                  filter_threshold=None, edge_method='pad',
                  sigma_clip=SIGMA_CLIP,
                  bkg_estimator=SExtractorBackground(sigma_clip=None),
@@ -329,6 +333,7 @@ class Background2D:
         self.data = data
         self._mask = mask
         self.coverage_mask = coverage_mask
+        self.fill_value = fill_value
         self.mask = self._combine_masks()
         self.exclude_percentile = exclude_percentile
 
@@ -811,7 +816,7 @@ class Background2D:
         """A 2D `~numpy.ndarray` containing the background image."""
         bkg = self.interpolator(self.background_mesh, self)
         if self.coverage_mask is not None:
-            bkg *= np.logical_not(self.coverage_mask)
+            bkg[self.coverage_mask] = self.fill_value
         return bkg
 
     @lazyproperty
@@ -819,7 +824,7 @@ class Background2D:
         """A 2D `~numpy.ndarray` containing the background RMS image."""
         bkg_rms = self.interpolator(self.background_rms_mesh, self)
         if self.coverage_mask is not None:
-            bkg_rms *= np.logical_not(self.coverage_mask)
+            bkg_rms[self.coverage_mask] = self.fill_value
         return bkg_rms
 
     def plot_meshes(self, axes=None, marker='+', color='blue', outlines=False,
