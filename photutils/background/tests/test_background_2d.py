@@ -125,6 +125,17 @@ class TestBackground2D:
         assert np.ma.count(b2.background_rms_mesh_ma) < b2.nboxes
         assert np.ma.is_masked(b2.mesh_nmasked)
 
+    @pytest.mark.parametrize('fill_value', [0., np.nan, -1.])
+    def test_coverage_mask(self, fill_value):
+        data = np.copy(DATA)
+        data[:50, :50] = np.nan
+        mask = np.isnan(data)
+        b1 = Background2D(data, (25, 25), filter_size=(1, 1),
+                          coverage_mask=mask, fill_value=fill_value,
+                          bkg_estimator=MeanBackground())
+        assert_equal(b1.background[:50, :50], fill_value)
+        assert_equal(b1.background_rms[:50, :50], fill_value)
+
     def test_completely_masked(self):
         with pytest.raises(ValueError):
             mask = np.ones(DATA.shape, dtype=bool)
