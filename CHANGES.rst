@@ -33,6 +33,11 @@ Bug Fixes
   - Fixed a bug where ``build_ellipse_model`` falls into an infinite
     loop under certain image/parameters input combinations. [#1056]
 
+- ``photutils.psf``
+
+  - Fixed a bug in ``subtract_psf`` caused by using a fill_value of
+    np.nan with an integer input array. [#1062]
+
 - ``photutils.segmentation``
 
   - Fixed a bug where ``source_properties`` would fail with unitless

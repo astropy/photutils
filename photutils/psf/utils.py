@@ -244,8 +244,9 @@ def subtract_psf(data, psf, posflux, subshape=None):
         for row in posflux:
             x_0, y_0 = row['x_fit'], row['y_fit']
 
-            y = extract_array(indices[0], subshape, (y_0, x_0))
-            x = extract_array(indices[1], subshape, (y_0, x_0))
+            # float dtype needed for fill_value=np.nan
+            y = extract_array(indices[0].astype(float), subshape, (y_0, x_0))
+            x = extract_array(indices[1].astype(float), subshape, (y_0, x_0))
 
             getattr(psf, xname).value = x_0
             getattr(psf, yname).value = y_0
