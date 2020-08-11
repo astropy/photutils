@@ -5,13 +5,12 @@ Tests for the core module.
 
 import itertools
 
-from astropy.modeling.models import Gaussian1D, Gaussian2D
+from astropy.modeling.models import Gaussian2D
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from ..core import (centroid_1dg, centroid_2dg, centroid_com, centroid_epsf,
-                    fit_2dgaussian, gaussian1d_moments)
+from ..core import centroid_com, centroid_epsf
 from ...psf import IntegratedGaussianPRF
 
 try:
@@ -45,30 +44,6 @@ def test_centroids(xc_ref, yc_ref, x_stddev, y_stddev, theta):
 
     xc, yc = centroid_com(data)
     assert_allclose([xc_ref, yc_ref], [xc, yc], rtol=0, atol=1.e-3)
-
-    xc2, yc2 = centroid_1dg(data)
-    assert_allclose([xc_ref, yc_ref], [xc2, yc2], rtol=0, atol=1.e-3)
-
-    xc3, yc3 = centroid_2dg(data)
-    assert_allclose([xc_ref, yc_ref], [xc3, yc3], rtol=0, atol=1.e-3)
-
-
-@pytest.mark.skipif('not HAS_SCIPY')
-@pytest.mark.parametrize(
-    ('xc_ref', 'yc_ref', 'x_stddev', 'y_stddev', 'theta'),
-    list(itertools.product(XCS, YCS, XSTDDEVS, YSTDDEVS, THETAS)))
-def test_centroids_witherror(xc_ref, yc_ref, x_stddev, y_stddev, theta):
-    model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=x_stddev,
-                       y_stddev=y_stddev, theta=theta)
-    y, x = np.mgrid[0:50, 0:50]
-    data = model(x, y)
-    error = np.sqrt(data)
-
-    xc2, yc2 = centroid_1dg(data, error=error)
-    assert_allclose([xc_ref, yc_ref], [xc2, yc2], rtol=0, atol=1.e-3)
-
-    xc3, yc3 = centroid_2dg(data, error=error)
-    assert_allclose([xc_ref, yc_ref], [xc3, yc3], rtol=0, atol=1.e-3)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -107,12 +82,6 @@ def test_centroids_withmask():
     xc, yc = centroid_com(data, mask=mask)
     assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
 
-    xc2, yc2 = centroid_1dg(data, mask=mask)
-    assert_allclose([xc2, yc2], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
-
-    xc3, yc3 = centroid_2dg(data, mask=mask)
-    assert_allclose([xc3, yc3], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
-
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_centroids_withmask_nonbool():
@@ -144,16 +113,11 @@ def test_centroids_nan_withmask(use_mask):
     assert_allclose(xc, xc_ref, rtol=0, atol=1.e-3)
     assert yc > yc_ref
 
-    xc2, yc2 = centroid_1dg(data, mask=mask)
-    assert_allclose([xc2, yc2], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
-
-    xc3, yc3 = centroid_2dg(data, mask=mask)
-    assert_allclose([xc3, yc3], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
-
 
 def test_centroid_com_mask():
-    """Test centroid_com with and without an image_mask."""
-
+    """
+    Test centroid_com with and without an image_mask.
+    """
     data = np.ones((2, 2)).astype(float)
     mask = [[False, False], [True, True]]
     centroid = centroid_com(data, mask=None)
@@ -168,64 +132,11 @@ def test_invalid_mask_shape():
     Test if ValueError raises if mask shape doesn't match data
     shape.
     """
-
     data = np.zeros((4, 4))
     mask = np.zeros((2, 2), dtype=bool)
 
     with pytest.raises(ValueError):
         centroid_com(data, mask=mask)
-
-    with pytest.raises(ValueError):
-        centroid_1dg(data, mask=mask)
-
-    with pytest.raises(ValueError):
-        centroid_2dg(data, mask=mask)
-
-    with pytest.raises(ValueError):
-        gaussian1d_moments(data, mask=mask)
-
-
-@pytest.mark.skipif('not HAS_SCIPY')
-def test_invalid_error_shape():
-    """
-    Test if ValueError raises if error shape doesn't match data
-    shape.
-    """
-
-    error = np.zeros((2, 2), dtype=bool)
-    with pytest.raises(ValueError):
-        centroid_1dg(np.zeros((4, 4)), error=error)
-
-    with pytest.raises(ValueError):
-        centroid_2dg(np.zeros((4, 4)), error=error)
-
-
-def test_gaussian1d_moments():
-    x = np.arange(100)
-    desired = (75, 50, 5)
-    g = Gaussian1D(*desired)
-    data = g(x)
-    result = gaussian1d_moments(data)
-    assert_allclose(result, desired, rtol=0, atol=1.e-6)
-
-    data[0] = 1.e5
-    mask = np.zeros(data.shape).astype(bool)
-    mask[0] = True
-    result = gaussian1d_moments(data, mask=mask)
-    assert_allclose(result, desired, rtol=0, atol=1.e-6)
-
-    data[0] = np.nan
-    mask = np.zeros(data.shape).astype(bool)
-    mask[0] = True
-    result = gaussian1d_moments(data, mask=mask)
-    assert_allclose(result, desired, rtol=0, atol=1.e-6)
-
-
-@pytest.mark.skipif('not HAS_SCIPY')
-def test_fit2dgaussian_dof():
-    data = np.ones((2, 2))
-    with pytest.raises(ValueError):
-        fit_2dgaussian(data)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
