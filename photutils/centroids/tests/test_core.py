@@ -21,11 +21,12 @@ except ImportError:
     HAS_SCIPY = False
 
 
-XCS = [25.7]
-YCS = [26.2]
-XSTDDEVS = [3.2, 4.0]
-YSTDDEVS = [5.7, 4.1]
+XCEN = 25.7
+YCEN = 26.2
+XSTDS = [3.2, 4.0]
+YSTDS = [5.7, 4.1]
 THETAS = np.array([30., 45.]) * np.pi / 180.
+
 DATA = np.zeros((3, 3))
 DATA[0:2, 1] = 1.
 DATA[1, 0:2] = 1.
@@ -33,72 +34,40 @@ DATA[1, 1] = 2.
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-@pytest.mark.parametrize(
-    ('xc_ref', 'yc_ref', 'x_stddev', 'y_stddev', 'theta'),
-    list(itertools.product(XCS, YCS, XSTDDEVS, YSTDDEVS, THETAS)))
-def test_centroids(xc_ref, yc_ref, x_stddev, y_stddev, theta):
-    model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=x_stddev,
-                       y_stddev=y_stddev, theta=theta)
+@pytest.mark.parametrize(('x_std', 'y_std', 'theta'),
+                         list(itertools.product(XSTDS, YSTDS, THETAS)))
+def test_centroid_com(x_std, y_std, theta):
+    model = Gaussian2D(2.4, XCEN, YCEN, x_stddev=x_std, y_stddev=y_std,
+                       theta=theta)
     y, x = np.mgrid[0:50, 0:47]
     data = model(x, y)
-
     xc, yc = centroid_com(data)
-    assert_allclose([xc_ref, yc_ref], [xc, yc], rtol=0, atol=1.e-3)
+    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.e-3)
 
-
-@pytest.mark.skipif('not HAS_SCIPY')
-@pytest.mark.parametrize(
-    ('xc_ref', 'yc_ref', 'x_stddev', 'y_stddev', 'theta'),
-    list(itertools.product(XCS, YCS, XSTDDEVS, YSTDDEVS, THETAS)))
-def test_centroids_oversampling(xc_ref, yc_ref, x_stddev, y_stddev, theta):
-    model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=x_stddev,
-                       y_stddev=y_stddev, theta=theta)
-    y, x = np.mgrid[0:50, 0:50]
-    data = model(x, y)
+    # test with mask
     mask = np.zeros(data.shape, dtype=bool)
     data[10, 10] = 1.e5
     mask[10, 10] = True
+    xc, yc = centroid_com(data, mask=mask)
+    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.e-3)
+
+    # test with oversampling
     for oversampling in [4, (4, 6)]:
         if not hasattr(oversampling, '__len__'):
             _oversampling = (oversampling, oversampling)
         else:
             _oversampling = oversampling
         xc, yc = centroid_com(data, mask=mask, oversampling=oversampling)
-        assert_allclose([xc, yc], [xc_ref / _oversampling[0],
-                                   yc_ref / _oversampling[1]], rtol=0,
-                        atol=1.e-3)
 
-
-@pytest.mark.skipif('not HAS_SCIPY')
-def test_centroids_withmask():
-    xc_ref, yc_ref = 24.7, 25.2
-    model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
-    y, x = np.mgrid[0:50, 0:50]
-    data = model(x, y)
-    mask = np.zeros(data.shape, dtype=bool)
-    data[10, 10] = 1.e5
-    mask[10, 10] = True
-
-    xc, yc = centroid_com(data, mask=mask)
-    assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
-
-
-@pytest.mark.skipif('not HAS_SCIPY')
-def test_centroids_withmask_nonbool():
-    data = np.arange(16).reshape(4, 4)
-    mask = np.zeros(data.shape)
-    mask[0:2, :] = 1
-    mask2 = np.array(mask, dtype=bool)
-
-    xc1, yc1 = centroid_com(data, mask=mask)
-    xc2, yc2 = centroid_com(data, mask=mask2)
-    assert_allclose([xc1, yc1], [xc2, yc2])
+        desired = [XCEN / _oversampling[0], YCEN / _oversampling[1]]
+        assert_allclose((xc, yc), desired, rtol=0, atol=1.e-3)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
 @pytest.mark.parametrize('use_mask', [True, False])
-def test_centroids_nan_withmask(use_mask):
-    xc_ref, yc_ref = 24.7, 25.2
+def test_centroid_com_nan_withmask(use_mask):
+    xc_ref = 24.7
+    yc_ref = 25.2
     model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
     y, x = np.mgrid[0:50, 0:50]
     data = model(x, y)
@@ -114,95 +83,57 @@ def test_centroids_nan_withmask(use_mask):
     assert yc > yc_ref
 
 
-def test_centroid_com_mask():
-    """
-    Test centroid_com with and without an image_mask.
-    """
-    data = np.ones((2, 2)).astype(float)
-    mask = [[False, False], [True, True]]
-    centroid = centroid_com(data, mask=None)
-    centroid_mask = centroid_com(data, mask=mask)
-    assert_allclose([0.5, 0.5], centroid, rtol=0, atol=1.e-6)
-    assert_allclose([0.5, 0.0], centroid_mask, rtol=0, atol=1.e-6)
-
-
 @pytest.mark.skipif('not HAS_SCIPY')
-def test_invalid_mask_shape():
-    """
-    Test if ValueError raises if mask shape doesn't match data
-    shape.
-    """
+def test_centroid_com_invalid_inputs():
     data = np.zeros((4, 4))
     mask = np.zeros((2, 2), dtype=bool)
-
     with pytest.raises(ValueError):
         centroid_com(data, mask=mask)
+    with pytest.raises(ValueError):
+        centroid_com(data, oversampling=-1)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
-def test_centroid_epsf():
+@pytest.mark.parametrize('oversampling', (4, (4, 6)))
+def test_centroid_epsf(oversampling):
     sigma = 0.5
     psf = IntegratedGaussianPRF(sigma=sigma)
-    for oversampling in [4, (4, 6)]:
-        if not hasattr(oversampling, '__len__'):
-            _oversampling = (oversampling, oversampling)
-        else:
-            _oversampling = oversampling
-        x = np.arange(1 + 25 * _oversampling[0]) / _oversampling[0]
-        x0 = x[-1] / 2
-        x -= x0
-        y = np.arange(1 + 25 * _oversampling[1]) / _oversampling[1]
-        y0 = y[-1] / 2
-        y -= y0
-        offsets = np.array([0.1, 0.03])
-        data = psf.evaluate(x=x.reshape(1, -1), y=y.reshape(-1, 1), flux=1,
-                            x_0=offsets[0], y_0=offsets[1], sigma=sigma)
+    offsets = np.array((0.1, 0.03))
 
-        mask = np.zeros(data.shape, dtype=bool)
-        mask[0, 0] = 1
-        centers = centroid_epsf(data, mask=mask, oversampling=oversampling)
-        assert_allclose(centers, offsets+x0, rtol=1e-3, atol=1e-2)
+    if not hasattr(oversampling, '__len__'):
+        _oversampling = (oversampling, oversampling)
+    else:
+        _oversampling = oversampling
 
-    psf = Gaussian2D()
-    for oversampling in [4, (6, 2)]:
-        if not hasattr(oversampling, '__len__'):
-            _oversampling = (oversampling, oversampling)
-        else:
-            _oversampling = oversampling
-        x = np.arange(1 + 25 * _oversampling[0]) / _oversampling[0]
-        x0 = x[-1] / 2
-        x -= x0
-        y = np.arange(1 + 25 * _oversampling[1]) / _oversampling[1]
-        y0 = y[-1] / 2
-        y -= y0
-        offsets = np.array([0.1, 0.03])
-        data = psf.evaluate(x=x.reshape(1, -1), y=y.reshape(-1, 1),
-                            amplitude=1, x_mean=offsets[0], y_mean=offsets[1],
-                            x_stddev=5, y_stddev=0.5, theta=0)
+    x = np.arange(1 + 25 * _oversampling[0]) / _oversampling[0]
+    y = np.arange(1 + 25 * _oversampling[1]) / _oversampling[1]
+    x0 = x[-1] / 2
+    y0 = y[-1] / 2
+    x -= x0
+    y -= y0
 
-        mask = np.zeros(data.shape, dtype=bool)
-        mask[0, 0] = 1
-        centers = centroid_epsf(data, mask=mask, oversampling=oversampling,
-                                shift_val=0.5)
-        assert_allclose(centers, offsets+x0, rtol=1e-3, atol=1e-3)
+    data = psf.evaluate(x=x.reshape(1, -1), y=y.reshape(-1, 1), flux=1.,
+                        x_0=offsets[0], y_0=offsets[1], sigma=sigma)
+
+    mask = np.zeros(data.shape, dtype=bool)
+    data[25, 25] = 1000.
+    mask[25, 25] = True
+    xc, yc = centroid_epsf(data, mask=mask, oversampling=oversampling)
+    desired = np.array((x0, y0)) + offsets
+    assert_allclose((xc, yc), desired, rtol=1e-3, atol=1e-2)
 
 
-def test_centroid_exceptions():
+def test_centroid_epsf_exceptions():
     data = np.ones((5, 5), dtype=float)
     mask = np.zeros((4, 5), dtype=int)
     mask[2, 2] = 1
 
-    # Test data and mask having the same shape
     with pytest.raises(ValueError):
         centroid_epsf(data, mask)
-
     with pytest.raises(ValueError):
         centroid_epsf(data, shift_val=-1)
-
     with pytest.raises(ValueError):
         centroid_epsf(data, oversampling=-1)
-    with pytest.raises(ValueError):
-        centroid_com(data, oversampling=-1)
 
     data = np.ones((21, 21), dtype=float)
     data[10, 10] = np.inf
