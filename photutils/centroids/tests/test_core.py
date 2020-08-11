@@ -4,8 +4,10 @@ Tests for the core module.
 """
 
 import itertools
+import warnings
 
 from astropy.modeling.models import Gaussian2D
+from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
@@ -75,12 +77,18 @@ def test_centroid_com_nan_withmask(use_mask):
     if use_mask:
         mask = np.zeros(data.shape, dtype=bool)
         mask[20, :] = True
+        nwarn = 0
     else:
         mask = None
+        nwarn = 1
 
-    xc, yc = centroid_com(data, mask=mask)
-    assert_allclose(xc, xc_ref, rtol=0, atol=1.e-3)
-    assert yc > yc_ref
+    with warnings.catch_warnings(record=True) as warnlist:
+        xc, yc = centroid_com(data, mask=mask)
+        assert_allclose(xc, xc_ref, rtol=0, atol=1.e-3)
+        assert yc > yc_ref
+    assert len(warnlist) == nwarn
+    if nwarn == 1:
+        assert issubclass(warnlist[0].category, AstropyUserWarning)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')

@@ -4,8 +4,10 @@ Tests for the core module.
 """
 
 import itertools
+import warnings
 
 from astropy.modeling.models import Gaussian1D, Gaussian2D
+from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
@@ -75,13 +77,24 @@ def test_centroids_nan_withmask(use_mask):
     if use_mask:
         mask = np.zeros(data.shape, dtype=bool)
         mask[20, :] = True
+        nwarn = 0
     else:
         mask = None
+        nwarn = 1
 
-    xc, yc = centroid_1dg(data, mask=mask)
-    assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
-    xc, yc = centroid_2dg(data, mask=mask)
-    assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
+    with warnings.catch_warnings(record=True) as warnlist:
+        xc, yc = centroid_1dg(data, mask=mask)
+        assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
+    assert len(warnlist) == nwarn
+    if nwarn == 1:
+        assert issubclass(warnlist[0].category, AstropyUserWarning)
+
+    with warnings.catch_warnings(record=True) as warnlist:
+        xc, yc = centroid_2dg(data, mask=mask)
+        assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.e-3)
+    assert len(warnlist) == nwarn
+    if nwarn == 1:
+        assert issubclass(warnlist[0].category, AstropyUserWarning)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
@@ -123,8 +136,11 @@ def test_gaussian1d_moments():
     data[0] = np.nan
     mask = np.zeros(data.shape).astype(bool)
     mask[0] = True
-    result = gaussian1d_moments(data, mask=mask)
-    assert_allclose(result, desired, rtol=0, atol=1.e-6)
+    with warnings.catch_warnings(record=True) as warnlist:
+        result = gaussian1d_moments(data, mask=mask)
+        assert_allclose(result, desired, rtol=0, atol=1.e-6)
+    assert len(warnlist) == 1
+    assert issubclass(warnlist[0].category, AstropyUserWarning)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
