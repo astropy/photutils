@@ -1,4 +1,4 @@
-0.8 (unreleased)
+1.0 (unreleased)
 ----------------
 
 General
@@ -73,6 +73,14 @@ API changes
 
   - ``Background2D`` keyword options can not be input as positional
     arguments. [#1061]
+
+- ``photutils.centroids``
+
+  - ``centroid_1dg``, ``centroid_2dg``, ``gaussian1d_moments``,
+    ``fit_2dgaussian``, and ``GaussianConst2D`` have been moved to a new
+    ``photutils.centroids.gaussian`` module. [#1064]
+
+  - Deprecated ``fit_2dgaussian`` and ``GaussianConst2D``. [#1064]
 
 - ``photutils.datasets``
 
