@@ -59,8 +59,9 @@ def centroid_com(data, mask=None, oversampling=1):
 
     badmask = ~np.isfinite(data)
     if np.any(badmask):
-        warnings.warn('Input data contains non-finite values (e.g., NaNs or infs) '
-                      'that were automatically masked.', AstropyUserWarning)
+        warnings.warn('Input data contains non-finite values (e.g., NaN or '
+                      'inf) that were automatically masked.',
+                      AstropyUserWarning)
         data[badmask] = 0.
 
     total = np.sum(data)
@@ -166,8 +167,8 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
     xcentroids = []
     ycentroids = []
     for xp, yp in zip(xpos, ypos):
-        slices_large, slices_small = overlap_slices(data.shape, footprint.shape,
-                                                    (yp, xp))
+        slices_large, slices_small = overlap_slices(data.shape,
+                                                    footprint.shape, (yp, xp))
         data_cutout = data[slices_large]
 
         mask_cutout = None
@@ -255,16 +256,17 @@ def centroid_epsf(data, mask=None, oversampling=4, shift_val=0.5):
     x_shiftidx = np.around((shift_val * oversampling[0])).astype(int)
     y_shiftidx = np.around((shift_val * oversampling[1])).astype(int)
 
-    badidx = ~np.isfinite([data[y, x]
-                           for x in [xidx_0, xidx_0+x_shiftidx,
-                                     xidx_0+x_shiftidx-1, xidx_0+x_shiftidx+1]
-                           for y in [yidx_0, yidx_0+y_shiftidx,
-                                     yidx_0+y_shiftidx-1,
-                                     yidx_0+y_shiftidx+1]])
+    badmask = ~np.isfinite([data[y, x]
+                            for x in [xidx_0, xidx_0 + x_shiftidx,
+                                      xidx_0 + x_shiftidx - 1,
+                                      xidx_0 + x_shiftidx + 1]
+                            for y in [yidx_0, yidx_0 + y_shiftidx,
+                                      yidx_0 + y_shiftidx - 1,
+                                      yidx_0 + y_shiftidx + 1]])
 
     if np.any(badmask):
-        raise ValueError('One or more centroiding pixels is set to a non-finite '
-                         'value, e.g., NaN or inf.')
+        raise ValueError('One or more centroiding pixels is set to a '
+                         'non-finite value, e.g., NaN or inf.')
 
     # In Anderson & King (2000) notation this is psi_E(0.5, 0.0) and
     # values used to compute derivatives.
