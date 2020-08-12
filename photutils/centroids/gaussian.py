@@ -21,10 +21,8 @@ def centroid_1dg(data, error=None, mask=None):
     Calculate the centroid of a 2D array by fitting 1D Gaussians to the
     marginal ``x`` and ``y`` distributions of the array.
 
-    Invalid values (e.g. NaNs or infs) in the ``data`` or ``error``
-    arrays are automatically masked.  The mask for invalid values
-    represents the combination of the invalid-value masks for the
-    ``data`` and ``error`` arrays.
+    Non-finite values (e.g., NaN or inf) in the ``data`` or ``error``
+    arrays are automatically masked. These masks are combined.
 
     Parameters
     ----------
@@ -53,28 +51,29 @@ def centroid_1dg(data, error=None, mask=None):
 
     if np.any(~np.isfinite(data)):
         data = np.ma.masked_invalid(data)
-        warnings.warn('Input data contains input values (e.g. NaNs or infs), '
-                      'which were automatically masked.', AstropyUserWarning)
+        warnings.warn('Input data contains non-finite values (e.g., NaN or '
+                      'inf) that were automatically masked.',
+                      AstropyUserWarning)
 
     if error is not None:
         error = np.ma.masked_invalid(error)
         if data.shape != error.shape:
             raise ValueError('data and error must have the same shape.')
         data.mask |= error.mask
-
         error.mask = data.mask
-        xy_error = [np.sqrt(np.ma.sum(error**2, axis=i)) for i in [0, 1]]
-        xy_weights = [(1.0 / xy_error[i].clip(min=1.e-30)) for i in [0, 1]]
+
+        xy_error = [np.sqrt(np.ma.sum(error**2, axis=i)) for i in (0, 1)]
+        xy_weights = [(1.0 / xy_error[i].clip(min=1.e-30)) for i in (0, 1)]
     else:
-        xy_weights = [np.ones(data.shape[i]) for i in [1, 0]]
+        xy_weights = [np.ones(data.shape[i]) for i in (1, 0)]
 
     # assign zero weight where an entire row or column is masked
     if np.any(data.mask):
-        bad_idx = [np.all(data.mask, axis=i) for i in [0, 1]]
-        for i in [0, 1]:
+        bad_idx = [np.all(data.mask, axis=i) for i in (0, 1)]
+        for i in (0, 1):
             xy_weights[i][bad_idx[i]] = 0.
 
-    xy_data = [np.ma.sum(data, axis=i).data for i in [0, 1]]
+    xy_data = [np.ma.sum(data, axis=i).data for i in (0, 1)]
 
     constant_init = np.ma.min(data)
     centroid = []
@@ -112,8 +111,9 @@ def gaussian1d_moments(data, mask=None):
     """
     if np.any(~np.isfinite(data)):
         data = np.ma.masked_invalid(data)
-        warnings.warn('Input data contains input values (e.g. NaNs or infs), '
-                      'which were automatically masked.', AstropyUserWarning)
+        warnings.warn('Input data contains non-finite values (e.g., NaN or '
+                      'inf) that were automatically masked.',
+                      AstropyUserWarning)
     else:
         data = np.ma.array(data)
 
@@ -139,10 +139,8 @@ def centroid_2dg(data, error=None, mask=None):
     Calculate the centroid of a 2D array by fitting a 2D Gaussian (plus
     a constant) to the array.
 
-    Invalid values (e.g. NaNs or infs) in the ``data`` or ``error``
-    arrays are automatically masked.  The mask for invalid values
-    represents the combination of the invalid-value masks for the
-    ``data`` and ``error`` arrays.
+    Non-finite values (e.g., NaN or inf) in the ``data`` or ``error``
+    arrays are automatically masked. These masks are combined.
 
     Parameters
     ----------
@@ -170,10 +168,8 @@ def fit_2dgaussian(data, error=None, mask=None):
     """
     Fit a 2D Gaussian plus a constant to a 2D image.
 
-    Invalid values (e.g. NaNs or infs) in the ``data`` or ``error``
-    arrays are automatically masked.  The mask for invalid values
-    represents the combination of the invalid-value masks for the
-    ``data`` and ``error`` arrays.
+    Non-finite values (e.g., NaN or inf) in the ``data`` or ``error``
+    arrays are automatically masked. These masks are combined.
 
     Parameters
     ----------
@@ -204,8 +200,9 @@ def fit_2dgaussian(data, error=None, mask=None):
 
     if np.any(~np.isfinite(data)):
         data = np.ma.masked_invalid(data)
-        warnings.warn('Input data contains input values (e.g. NaNs or infs), '
-                      'which were automatically masked.', AstropyUserWarning)
+        warnings.warn('Input data contains non-finite values (e.g., NaN or '
+                      'infs) that were automatically masked.',
+                      AstropyUserWarning)
 
     if error is not None:
         error = np.ma.masked_invalid(error)
@@ -225,13 +222,13 @@ def fit_2dgaussian(data, error=None, mask=None):
         weights[data.mask] = 0.
 
     mask = data.mask
-    data.fill_value = 0.0
+    data.fill_value = 0.
     data = data.filled()
 
-    # Subtract the minimum of the data as a crude background estimate.
+    # Subtract the minimum of the data as a rough background estimate.
     # This will also make the data values positive, preventing issues with
-    # the moment estimation in data_properties (moments from negative data
-    # values can yield undefined Gaussian parameters, e.g. x/y_stddev).
+    # the moment estimation in data_properties. Moments from negative data
+    # values can yield undefined Gaussian parameters, e.g., x/y_stddev.
     props = data_properties(data - np.min(data), mask=mask)
 
     init_const = 0.  # subtracted data minimum above
