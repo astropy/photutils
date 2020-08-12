@@ -12,8 +12,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from ..gaussian import (centroid_1dg, centroid_2dg, fit_2dgaussian,
-                        gaussian1d_moments)
+from ..gaussian import centroid_1dg, centroid_2dg, gaussian1d_moments
 
 try:
     # the fitting routines in astropy use scipy.optimize
@@ -119,6 +118,13 @@ def test_invalid_error_shape():
         centroid_2dg(np.zeros((4, 4)), error=error)
 
 
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_centroid_2dg_dof():
+    data = np.ones((2, 2))
+    with pytest.raises(ValueError):
+        centroid_2dg(data)
+
+
 def test_gaussian1d_moments():
     x = np.arange(100)
     desired = (75, 50, 5)
@@ -141,10 +147,3 @@ def test_gaussian1d_moments():
         assert_allclose(result, desired, rtol=0, atol=1.e-6)
     assert len(warnlist) == 1
     assert issubclass(warnlist[0].category, AstropyUserWarning)
-
-
-@pytest.mark.skipif('not HAS_SCIPY')
-def test_fit2dgaussian_dof():
-    data = np.ones((2, 2))
-    with pytest.raises(ValueError):
-        fit_2dgaussian(data)
