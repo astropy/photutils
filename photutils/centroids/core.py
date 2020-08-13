@@ -125,7 +125,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         calculate the centroid of a 2D array. The ``centroid_func``
         must accept a 2D `~numpy.ndarray`, have a ``mask`` keyword and
         optionally an ``error`` keyword. The callable object must return
-        a tuple of two 1D `~numpy.ndarray`s, representing the x and y
+        a tuple of two 1D `~numpy.ndarray`, representing the x and y
         centroids. The default is `~photutils.centroids.centroid_com`.
 
     Returns

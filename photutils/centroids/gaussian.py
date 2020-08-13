@@ -7,8 +7,7 @@ import warnings
 
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.modeling.fitting import LevMarLSQFitter
-from astropy.modeling.models import (CONSTRAINTS_DOC, Const1D, Const2D,
-                                     Gaussian1D, Gaussian2D)
+from astropy.modeling.models import Const1D, Const2D, Gaussian1D, Gaussian2D
 from astropy.utils import deprecated
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
@@ -320,14 +319,14 @@ class GaussianConst2D(Fittable2DModel):
         Mean of the Gaussian in y.
 
     x_stddev : float
-        Standard deviation of the Gaussian in x.
-        ``x_stddev`` and ``y_stddev`` must be specified unless a covariance
-        matrix (``cov_matrix``) is input.
+        Standard deviation of the Gaussian in x. ``x_stddev`` and
+        ``y_stddev`` must be specified unless a covariance matrix
+        (``cov_matrix``) is input.
 
     y_stddev : float
-        Standard deviation of the Gaussian in y.
-        ``x_stddev`` and ``y_stddev`` must be specified unless a covariance
-        matrix (``cov_matrix``) is input.
+        Standard deviation of the Gaussian in y. ``x_stddev`` and
+        ``y_stddev`` must be specified unless a covariance matrix
+        (``cov_matrix``) is input.
 
     theta : float, optional
         Rotation angle in radians. The rotation angle increases
@@ -351,6 +350,3 @@ class GaussianConst2D(Fittable2DModel):
                                                      y_mean, x_stddev,
                                                      y_stddev, theta)(x, y)
         return model
-
-
-GaussianConst2D.__doc__ += CONSTRAINTS_DOC

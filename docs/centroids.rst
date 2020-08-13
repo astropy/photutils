@@ -5,7 +5,7 @@ Introduction
 ------------
 
 `photutils.centroids` provides several functions to calculate the
-centroid of a single source.  The centroid methods are:
+centroid of a single source:
 
 * :func:`~photutils.centroids.centroid_com`: Calculates the object
   "center of mass" from 2D image moments.
@@ -20,6 +20,11 @@ centroid of a single source.  The centroid methods are:
 Masks can be input into each of these functions to mask bad pixels.
 Error arrays can be input into the two fitting methods to weight the
 fits.
+
+To calculate the centroids of many sources in an image, use the
+:func:`~photutils.centroids.centroid_sources` function. This function
+can be used with any of the above centroiding functions or a custom
+user-defined centroiding function.  See zzzzz
 
 
 Getting Started
@@ -67,19 +72,20 @@ similar, we also include an inset plot zoomed in near the centroid:
     fig, ax = plt.subplots(1, 1)
     ax.imshow(data, origin='lower', interpolation='nearest')
     marker = '+'
-    ms, mew = 30, 2.
-    plt.plot(x1, y1, color='#1f77b4', marker=marker, ms=ms, mew=mew)
-    plt.plot(x2, y2, color='#17becf', marker=marker, ms=ms, mew=mew)
-    plt.plot(x3, y3, color='#d62728', marker=marker, ms=ms, mew=mew)
+    ms, mew = 15, 2.
+    plt.plot(x1, y1, color='black', marker=marker, ms=ms, mew=mew)
+    plt.plot(x2, y2, color='white', marker=marker, ms=ms, mew=mew)
+    plt.plot(x3, y3, color='red', marker=marker, ms=ms, mew=mew)
 
     from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
     from mpl_toolkits.axes_grid1.inset_locator import mark_inset
     ax2 = zoomed_inset_axes(ax, zoom=6, loc=9)
     ax2.imshow(data, vmin=190, vmax=220, origin='lower',
                interpolation='nearest')
-    ax2.plot(x1, y1, color='#1f77b4', marker=marker, ms=ms, mew=mew)
-    ax2.plot(x2, y2, color='#17becf', marker=marker, ms=ms, mew=mew)
-    ax2.plot(x3, y3, color='#d62728', marker=marker, ms=ms, mew=mew)
+    ms, mew = 30, 2.
+    ax2.plot(x1, y1, color='white', marker=marker, ms=ms, mew=mew)
+    ax2.plot(x2, y2, color='black', marker=marker, ms=ms, mew=mew)
+    ax2.plot(x3, y3, color='red', marker=marker, ms=ms, mew=mew)
     ax2.set_xlim(13, 15)
     ax2.set_ylim(16, 18)
     mark_inset(ax, ax2, loc1=3, loc2=4, fc='none', ec='0.5')
@@ -87,6 +93,52 @@ similar, we also include an inset plot zoomed in near the centroid:
     ax2.axes.get_yaxis().set_visible(False)
     ax.set_xlim(0, data.shape[1]-1)
     ax.set_ylim(0, data.shape[0]-1)
+
+
+
+Centroiding several sources in an image
+---------------------------------------
+
+The :func:`~photutils.centroids.centroid_sources` function can be used
+to calculate the centroids of many sources in a single image given
+initial guesses for their positions. This function can be used with any
+of the above centroiding functions or a custom user-defined centroiding
+function.
+
+Here is a simple example using
+:func:`~photutils.centroids.centroid_com`. A cutout image is made
+centered at each initial position of size ``box_size``. A centroid is
+then calculated within the cutout image for each source:
+
+.. doctest-requires:: scipy
+
+    >>> from photutils import centroid_sources
+    >>> data = make_4gaussians_image()
+    >>> x_init = (25, 91, 151, 160)
+    >>> y_init = (40, 61, 24, 71)
+    >>> x, y = centroid_sources(data, x_init, y_init, box_size=21,
+    ...                         centroid_func=centroid_com)
+    >>> print(x)  # doctest: +FLOAT_CMP
+    [ 24.98911515  90.43056554 150.20332399 159.87234831]
+    >>> print(y)  # doctest: +FLOAT_CMP
+    [40.08504359 60.56869612 24.74216925 70.32723054]
+
+Let's plot the results:
+
+.. plot::
+    :include-source:
+
+    from photutils.datasets import make_4gaussians_image
+    from photutils import centroid_sources, centroid_com
+    data = make_4gaussians_image()
+    x_init = (25, 91, 151, 160)
+    y_init = (40, 61, 24, 71)
+    x, y = centroid_sources(data, x_init, y_init, box_size=21,
+                            centroid_func=centroid_com)
+    plt.figure(figsize=(8, 4))
+    plt.imshow(data, origin='lower', interpolation='nearest')
+    plt.scatter(x, y, marker='+', s=80, color='red')
+    plt.tight_layout()
 
 
 Reference/API
