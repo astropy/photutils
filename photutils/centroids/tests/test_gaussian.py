@@ -7,12 +7,14 @@ import itertools
 import warnings
 
 from astropy.modeling.models import Gaussian1D, Gaussian2D
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from ..gaussian import centroid_1dg, centroid_2dg, gaussian1d_moments
+from ..gaussian import (centroid_1dg, centroid_2dg, gaussian1d_moments,
+                        fit_2dgaussian)
 
 try:
     # the fitting routines in astropy use scipy.optimize
@@ -147,3 +149,17 @@ def test_gaussian1d_moments():
         assert_allclose(result, desired, rtol=0, atol=1.e-6)
     assert len(warnlist) == 1
     assert issubclass(warnlist[0].category, AstropyUserWarning)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_fitgaussian2d():
+    model = Gaussian2D(2.4, XCEN, YCEN, x_stddev=3.2, y_stddev=5.7,
+                       theta=np.pi/6.)
+    y, x = np.mgrid[0:50, 0:47]
+    data = model(x, y)
+    error = np.ones(data.shape, dtype=float)
+    mask = np.zeros(data.shape, dtype=bool)
+    with pytest.warns(AstropyDeprecationWarning):
+        gfit = fit_2dgaussian(data, error=error, mask=mask)
+    assert_allclose(gfit.x_mean.value, XCEN)
+    assert_allclose(gfit.y_mean.value, YCEN)
