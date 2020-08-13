@@ -4,3 +4,4 @@ This subpackage contains tools for centroiding sources.
 """
 
 from .core import *  # noqa
+from .gaussian import *  # noqa
