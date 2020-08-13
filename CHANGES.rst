@@ -1,4 +1,4 @@
-0.8 (unreleased)
+1.0 (unreleased)
 ----------------
 
 General
