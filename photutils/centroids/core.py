@@ -10,6 +10,8 @@ from astropy.nddata.utils import overlap_slices
 from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
+from ..utils._round import _py2intround
+
 __all__ = ['centroid_com', 'centroid_quadratic', 'centroid_sources',
            'centroid_epsf']
 
@@ -127,8 +129,6 @@ def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
     centroid : `~numpy.ndarray`
         The ``x, y`` coordinates of the centroid.
     """
-    from ..psf.epsf import _py2intround
-
     if ((xpeak is None and ypeak is not None)
             or (xpeak is not None and ypeak is None)):
         raise ValueError('xpeak and ypeak must both be input or "None"')
