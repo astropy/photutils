@@ -8,7 +8,6 @@ import warnings
 
 from astropy.nddata.utils import overlap_slices
 from astropy.utils.exceptions import AstropyUserWarning
-from ..psf.epsf import _py2intround
 import numpy as np
 
 __all__ = ['centroid_com', 'centroid_quadratic', 'centroid_sources',
@@ -74,237 +73,181 @@ def centroid_com(data, mask=None, oversampling=1):
                      for axis in range(data.ndim)])[::-1]
 
 
-def centroid_quadratic(image_data, xmax=None, ymax=None, peak_fit_box=5,
-                       peak_search_box=None, mask=None):
+def centroid_quadratic(data, xpeak=None, ypeak=None, fit_boxsize=5,
+                       search_boxsize=None, mask=None):
     """
-    Find location of the peak in an array. This is done by fitting a second
-    degree 2D polynomial to the data within a `peak_fit_box` and computing the
-    location of its maximum. When `xmax` and `ymax` are both `None`, an initial
-    estimate of the position of the maximum will be performed by searching
-    for the location of the pixel/array element with the maximum value. This
-    kind of initial brute-force search can be performed even when
-    `xmax` and `ymax` are provided but when one suspects that these input
-    coordinates may not be very accurate by specifying an expanded
-    brute-force search box through parameter `peak_search_box`.
+    Calculate the centroid of an n-dimensional array by fitting a 2D
+    quadratic polynomial.
+
+    A second degree 2D polynomial is fit within a small region of the
+    data defined by ``fit_boxsize`` to calculate the centroid position.
+    The initial center of the fitting box can specified using the
+    ``xpeak`` and ``ypeak`` keywords. If both ``xpeak`` and ``ypeak``
+    are `None`, then the box will be centered at the position of the
+    maximum value in the input ``data``.
+
+    If ``xmax`` and ``ymax`` are specified, the ``search_boxsize``
+    optional keyword can be used to further refine the initial center of
+    the fitting box by searching for the position of the maximum pixel
+    within a box of size ``search_boxsize``.
 
     Parameters
     ----------
     image_data : numpy.ndarray
         Image data.
 
-    xmax : float, None, optional
-        Initial guess of the x-coordinate of the peak. When both `xmax` and
-        `ymax` are `None`, the initial (pre-fit) estimate of the location
-        of the peak will be obtained by a brute-force search for the location
-        of the maximum-value pixel in the *entire* `image_data` array,
-        regardless of the value of ``peak_search_box`` parameter.
+    xpeak, ypeak : float or `None`, optional
+        The initial guess of the position of the centroid. When both
+        ``xpeak`` and ``ypeak`` are `None` then the position of the
+        maximum value in the input ``data`` will be used as the initial
+        guess.
 
-    ymax : float, None, optional
-        Initial guess of the x-coordinate of the peak. When both `xmax` and
-        `ymax` are `None`, the initial (pre-fit) estimate of the location
-        of the peak will be obtained by a brute-force search for the location
-        of the maximum-value pixel in the *entire* `image_data` array,
-        regardless of the value of ``peak_search_box`` parameter.
+    fit_boxsize : int or tuple of int, optional
+        The size (in pixels) of the box used to define the fitting
+        region. If ``fit_boxsize`` has two elements, they should be in
+        ``(ny, nx)`` order. If ``fit_boxsize`` is a scalar then a square
+        box of size ``fit_boxsize`` will be used.
 
-    peak_fit_box : int, tuple of int, optional
-        Size (in pixels) of the box around the input estimate of the maximum
-        (given by ``xmax`` and ``ymax``) to be used for quadratic fitting from
-        which peak location is computed. If a single integer
-        number is provided, then it is assumed that fitting box is a square
-        with sides of length given by ``peak_fit_box``. If a tuple of two
-        values is provided, then first value indicates the width of the box and
-        the second value indicates the height of the box.
+    search_boxsize: int or tuple of int, optional
+        The size (in pixels) of the box used to search for the maximum
+        pixel value if ``xpeak`` and ``ypeak`` are both `None`. If
+        ``fit_boxsize`` has two elements, they should be in ``(ny, nx)``
+        order. If ``fit_boxsize`` is a scalar then a square box of size
+        ``fit_boxsize`` will be used.  This parameter is ignored when
+        ``xmax`` and ``ymax`` are both `None`.  In that case, the entire
+        array is search for the maximum value.
 
-    peak_search_box : str {'all', 'off', 'fitbox'}, int, tuple of int, None,\
-optional
-        Size (in pixels) of the box around the input estimate of the maximum
-        (given by ``xmax`` and ``ymax``) to be used for brute-force search of
-        the maximum value pixel. This search is performed before quadratic
-        fitting in order to improve the original estimate of the peak
-        given by input ``xmax`` and ``ymax``. If a single integer
-        number is provided, then it is assumed that search box is a square
-        with sides of length given by ``peak_fit_box``. If a tuple of two
-        values is provided, then first value indicates the width of the box
-        and the second value indicates the height of the box. ``'off'`` or
-        `None` turns off brute-force search of the maximum. When
-        ``peak_search_box`` is ``'all'`` then the entire ``image_data``
-        data array is searched for maximum and when it is set to ``'fitbox'``
-        then the brute-force search is performed in the same box as
-        ``peak_fit_box``.
-
-        .. note::
-            This parameter is ignored when both `xmax` and `ymax` are `None`
-            since in that case the brute-force search for the maximum is
-            performed in the entire input array.
-
-    mask : numpy.ndarray, optional
-        A boolean type `~numpy.ndarray` indicating "good" pixels in image data
-        (`True`) and "bad" pixels (`False`). If not provided all pixels
-        in `image_data` will be used for fitting.
+    mask : bool `~numpy.ndarray`, optional
+        A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        Masked data are excluded from calculations.
 
     Returns
     -------
-    coord : tuple of float
-        A pair of coordinates of the peak.
-
+    centroid : `~numpy.ndarray`
+        The ``x, y`` coordinates of the centroid.
     """
-    # check arguments:
-    if ((xmax is None and ymax is not None)
-            or (ymax is None and xmax is not None)):
-        raise ValueError("Both 'xmax' and 'ymax' must be either None or not "
-                         "None")
+    from ..psf.epsf import _py2intround
 
-    image_data = np.asarray(image_data, dtype=np.float64)
-    ny, nx = image_data.shape
+    if ((xpeak is None and ypeak is not None)
+            or (xpeak is not None and ypeak is None)):
+        raise ValueError('xpeak and ypeak must both be input or "None"')
 
-    # process peak search box:
-    if peak_search_box == 'fitbox':
-        peak_search_box = peak_fit_box
+    data = np.asanyarray(data, dtype=float)
+    ny, nx = data.shape
 
-    elif peak_search_box == 'off':
-        peak_search_box = None
+    badmask = ~np.isfinite(data)
+    if np.any(badmask):
+        warnings.warn('Input data contains non-finite values (e.g., NaN or '
+                      'inf) that were automatically masked.',
+                      AstropyUserWarning)
+        data[badmask] = np.nan
 
-    elif peak_search_box == 'all':
-        peak_search_box = image_data.shape
+    if mask is not None:
+        if data.shape != mask.shape:
+            raise ValueError('data and mask must have the same shape.')
+        data[mask] = np.nan
 
-    if xmax is None:
-        # find index of the pixel having maximum value:
-        if mask is None:
-            jmax, imax = np.unravel_index(np.argmax(image_data),
-                                          image_data.shape)
-            coord = (float(imax), float(jmax))
+    fit_boxsize = _process_boxsize(fit_boxsize, data.shape)
 
-        else:
-            j, i = np.indices(image_data.shape)
-            i = i[mask]
-            j = j[mask]
-            ind = np.argmax(image_data[mask])
-            imax = i[ind]
-            jmax = j[ind]
-            coord = (float(imax), float(jmax))
+    if np.product(fit_boxsize) < 6:
+        raise ValueError('fit_boxsize is too small.  6 values are required '
+                         'to fit a 2D quadratic polynomial.')
 
-        auto_expand_search = False  # we have already searched the data
-
+    if xpeak is None:  # and ypeak too
+        yidx, xidx = np.unravel_index(np.nanargmax(data), data.shape)
     else:
-        imax = _py2intround(xmax)
-        jmax = _py2intround(ymax)
-        coord = (xmax, ymax)
+        xidx = _py2intround(xpeak)
+        yidx = _py2intround(ypeak)
 
-        if peak_search_box is not None:
-            sbx, sby = _process_box_pars(peak_search_box)
+        if search_boxsize is not None:
+            search_boxsize = _process_boxsize(search_boxsize, data.shape)
 
-            # choose a box around maxval pixel:
-            x1 = max(0, imax - sbx // 2)
-            x2 = min(nx, x1 + sbx)
-            y1 = max(0, jmax - sby // 2)
-            y2 = min(ny, y1 + sby)
+            slc_data, slc_cutout = overlap_slices(data.shape, search_boxsize,
+                                                  (yidx, xidx), mode='trim')
+            cutout = data[slc_data]
+            yidx, xidx = np.unravel_index(np.nanargmax(cutout), cutout.shape)
+            xidx += slc_data[1].start
+            yidx += slc_data[0].start
 
-            if x1 < x2 and y1 < y2:
-                search_cutout = image_data[y1:y2, x1:x2]
-                jmax, imax = np.unravel_index(
-                    np.argmax(search_cutout),
-                    search_cutout.shape
-                )
-                imax += x1
-                jmax += y1
-                coord = (float(imax), float(jmax))
+    # if peak is at the edge of the data, return the position of the maximum
+    if xidx == 0 or xidx == nx - 1 or yidx == 0 or yidx == ny - 1:
+        warnings.warn('maximum value is at the edge of the data and its '
+                      'position was returned; no quadratic fit was '
+                      'performed', AstropyUserWarning)
+        return np.array((xidx, yidx), dtype=float)
 
-        auto_expand_search = (sbx != nx or sby != ny)
+    # extract the fitting region
+    slc_data, slc_cutout = overlap_slices(data.shape, fit_boxsize,
+                                          (yidx, xidx), mode='trim')
+    xidx0, xidx1 = (slc_data[1].start, slc_data[1].stop)
+    yidx0, yidx1 = (slc_data[0].start, slc_data[0].stop)
 
-    wx, wy = _process_box_pars(peak_fit_box)
+    # shift the fitting box if it was clipped by the data edge
+    if (xidx1 - xidx0) < fit_boxsize[1]:
+        if xidx0 == 0:
+            xidx1 = min(nx, xidx0 + fit_boxsize[1])
+        if xidx1 == nx:
+            xidx0 = max(0, xidx1 - fit_boxsize[1])
+    if (yidx1 - yidx0) < fit_boxsize[0]:
+        if yidx0 == 0:
+            yidx1 = min(ny, yidx0 + fit_boxsize[0])
+        if yidx1 == ny:
+            yidx0 = max(0, yidx1 - fit_boxsize[0])
 
-    if wx * wy < 6:
-        # we need at least 6 points to fit a 2D quadratic polynomial
-        return coord
+    cutout = data[yidx0:yidx1, xidx0:xidx1].ravel()
+    if np.count_nonzero(~np.isnan(cutout)) < 6:
+        warnings.warn('at least 6 unmasked data points are required to '
+                      'perform a 2D quadratic fit',
+                      AstropyUserWarning)
+        return np.array((np.nan, np.nan))
 
-    # choose a box around maxval pixel:
-    x1 = max(0, imax - wx // 2)
-    x2 = min(nx, x1 + wx)
-    y1 = max(0, jmax - wy // 2)
-    y2 = min(ny, y1 + wy)
-
-    # if peak is at the edge of the box, return integer indices of the max:
-    if imax == x1 or imax == x2 or jmax == y1 or jmax == y2:
-        return (float(imax), float(jmax))
-
-    # expand the box if needed:
-    if (x2 - x1) < wx:
-        if x1 == 0:
-            x2 = min(nx, x1 + wx)
-        if x2 == nx:
-            x1 = max(0, x2 - wx)
-    if (y2 - y1) < wy:
-        if y1 == 0:
-            y2 = min(ny, y1 + wy)
-        if y2 == ny:
-            y1 = max(0, y2 - wy)
-
-    if (x2 - x1) * (y2 - y1) < 6:
-        # we need at least 6 points to fit a 2D quadratic polynomial
-        return coord
-
-    # fit a 2D 2nd degree polynomial to data:
-    xi = np.arange(x1, x2)
-    yi = np.arange(y1, y2)
+    # fit a 2D quadratic polynomial to the fitting region
+    xi = np.arange(xidx0, xidx1)
+    yi = np.arange(yidx0, yidx1)
     x, y = np.meshgrid(xi, yi)
     x = x.ravel()
     y = y.ravel()
-    v = np.vstack((np.ones_like(x), x, y, x * y, x * x, y * y)).T
-    d = image_data[y1:y2, x1:x2].ravel()
-    if mask is not None:
-        m = mask[y1:y2, x1:x2].ravel()
-        v = v[m]
-        d = d[m]
-        if d.size < 6:
-            # we need at least 6 points to fit a 2D quadratic polynomial
-            return coord
+    coeff_matrix = np.vstack((np.ones_like(x), x, y, x * y, x * x, y * y)).T
+
     try:
-        c = np.linalg.lstsq(v, d)[0]
+        c = np.linalg.lstsq(coeff_matrix, cutout, rcond=None)[0]
     except np.linalg.LinAlgError:
-        if auto_expand_search:
-            return centroid_quadratic(image_data, xmax=None, ymax=None,
-                                      peak_fit_box=(wx, wy), mask=mask)
-        else:
-            return coord
+        warnings.warn('quadratic fit failed', AstropyUserWarning)
+        return np.array((np.nan, np.nan))
 
-    # find maximum of the polynomial:
+    # analytically find the maximum of the polynomial
     _, c10, c01, c11, c20, c02 = c
-    d = 4 * c02 * c20 - c11**2
-    if d <= 0 or ((c20 > 0.0 and c02 >= 0.0) or (c20 >= 0.0 and c02 > 0.0)):
-        # polynomial is does not have max. return middle of the window:
-        if auto_expand_search:
-            return centroid_quadratic(image_data, xmax=None, ymax=None,
-                                      peak_fit_box=(wx, wy), mask=mask)
-        else:
-            return ((x1 + x2) / 2.0, (y1 + y2) / 2.0)
+    det = 4 * c20 * c02 - c11**2
+    if det <= 0 or ((c20 > 0.0 and c02 >= 0.0) or (c20 >= 0.0 and c02 > 0.0)):
+        warnings.warn('quadratic fit does not have a maximum',
+                      AstropyUserWarning)
+        return np.array((np.nan, np.nan))
 
-    xm = (c01 * c11 - 2.0 * c02 * c10) / d
-    ym = (c10 * c11 - 2.0 * c01 * c20) / d
-
+    xm = (c01 * c11 - 2.0 * c02 * c10) / det
+    ym = (c10 * c11 - 2.0 * c20 * c01) / det
     if xm > 0.0 and xm < (nx - 1.0) and ym > 0.0 and ym < (ny - 1.0):
-        coord = (xm, ym)
-    elif auto_expand_search:
-        coord = centroid_quadratic(image_data, xmax=None, ymax=None,
-                                   peak_fit_box=(wx, wy), mask=mask)
-
-    return coord
-
-
-def _process_box_pars(par):
-    if hasattr(par, '__iter__'):
-        if len(par) != 2:
-            raise TypeError("Box specification must be either a scalar or "
-                            "an iterable with two elements.")
-        wx = int(par[0])
-        wy = int(par[1])
+        xycen = np.array((xm, ym), dtype=float)
     else:
-        wx = int(par)
-        wy = int(par)
+        warnings.warn('quadratic polynomial maximum value falls outside '
+                      'of the image', AstropyUserWarning)
+        return np.array((np.nan, np.nan))
 
-    if wx < 1 or wy < 1:
-        raise ValueError("Box dimensions must be positive integer numbers.")
+    return xycen
 
-    return (wx, wy)
+
+def _process_boxsize(box_size, data_shape):
+    box_size = np.round(np.atleast_1d(box_size)).astype(int)
+    if len(box_size) == 1:
+        box_size = np.repeat(box_size, 2)
+    if len(box_size) > 2:
+        raise ValueError('box size must contain only 1 or 2 values')
+    if np.any(box_size < 0):
+        raise ValueError('box size must be >= 0')
+    # box_size cannot be larger than the data shape
+    box_size = (min(box_size[0], data_shape[0]),
+                min(box_size[1], data_shape[1]))
+    return box_size
 
 
 def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
