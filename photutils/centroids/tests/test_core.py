@@ -12,7 +12,8 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from ..core import centroid_com, centroid_sources, centroid_epsf
+from ..core import (centroid_com, centroid_quadratic, centroid_sources,
+                    centroid_epsf)
 from ..gaussian import centroid_1dg
 from ...psf import IntegratedGaussianPRF
 
@@ -47,12 +48,18 @@ def test_centroid_com(x_std, y_std, theta):
     xc, yc = centroid_com(data)
     assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.e-3)
 
+    xc, yc = centroid_quadratic(data)
+    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=0.015)
+
     # test with mask
     mask = np.zeros(data.shape, dtype=bool)
     data[10, 10] = 1.e5
     mask[10, 10] = True
     xc, yc = centroid_com(data, mask=mask)
     assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=1.e-3)
+
+    xc, yc = centroid_quadratic(data, mask=mask)
+    assert_allclose((xc, yc), (XCEN, YCEN), rtol=0, atol=0.015)
 
     # test with oversampling
     for oversampling in [4, (4, 6)]:
@@ -91,6 +98,13 @@ def test_centroid_com_nan_withmask(use_mask):
     if nwarn == 1:
         assert issubclass(warnlist[0].category, AstropyUserWarning)
 
+    with warnings.catch_warnings(record=True) as warnlist:
+        xc, yc = centroid_quadratic(data, mask=mask)
+        assert_allclose(xc, xc_ref, rtol=0, atol=0.15)
+    assert len(warnlist) == nwarn
+    if nwarn == 1:
+        assert issubclass(warnlist[0].category, AstropyUserWarning)
+
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_centroid_com_invalid_inputs():
@@ -100,6 +114,14 @@ def test_centroid_com_invalid_inputs():
         centroid_com(data, mask=mask)
     with pytest.raises(ValueError):
         centroid_com(data, oversampling=-1)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_centroid_quadratic_invalid_inputs():
+    data = np.zeros((4, 4))
+    mask = np.zeros((2, 2), dtype=bool)
+    with pytest.raises(ValueError):
+        centroid_com(data, mask=mask)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
