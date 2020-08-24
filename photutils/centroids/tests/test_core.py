@@ -101,7 +101,7 @@ def test_centroid_com_nan_withmask(use_mask):
     with warnings.catch_warnings(record=True) as warnlist:
         xc, yc = centroid_quadratic(data, mask=mask)
         assert_allclose(xc, xc_ref, rtol=0, atol=0.15)
-    assert len(warnlist) == nwarn
+    assert len(warnlist) == 1  # always warns because of NaN
     if nwarn == 1:
         assert issubclass(warnlist[0].category, AstropyUserWarning)
 
@@ -117,17 +117,72 @@ def test_centroid_com_invalid_inputs():
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
+def test_centroid_quadratic_xypeak():
+    data = np.zeros((11, 11))
+    data[4:7, 4:7] = 10
+    data[5, 5] = 100
+    xycen1 = centroid_quadratic(data)
+    xycen2 = centroid_quadratic(data, xpeak=5, ypeak=5)
+    xycen3 = centroid_quadratic(data, xpeak=5, ypeak=5, search_boxsize=3)
+    assert_allclose(xycen1, xycen2)
+    assert_allclose(xycen1, xycen3)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_centroid_quadratic_npts():
+    data = np.zeros((3, 3))
+    data[1, 1] = 1
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[0, :] = True
+    mask[2, :] = True
+    with warnings.catch_warnings(record=True) as warnlist:
+        centroid_quadratic(data, mask=mask)
+    assert issubclass(warnlist[0].category, AstropyUserWarning)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
 def test_centroid_quadratic_invalid_inputs():
     data = np.zeros((4, 4))
     mask = np.zeros((2, 2), dtype=bool)
     with pytest.raises(ValueError):
-        centroid_com(data, mask=mask)
+        centroid_quadratic(data, xpeak=3, ypeak=None)
+    with pytest.raises(ValueError):
+        centroid_quadratic(data, xpeak=None, ypeak=3)
+    with pytest.raises(ValueError):
+        centroid_quadratic(data, fit_boxsize=(2, 2, 2))
+    with pytest.raises(ValueError):
+        centroid_quadratic(data, fit_boxsize=(-2, 2))
+    with pytest.raises(ValueError):
+        centroid_quadratic(data, fit_boxsize=(2, 2))
+    with pytest.raises(ValueError):
+        centroid_quadratic(data, mask=mask)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_centroid_quadratic_edge():
+    data = np.zeros((11, 11))
+    data[1, 1] = 100
+    data[9, 9] = 100
+
+    xycen = centroid_quadratic(data, xpeak=1, ypeak=1, fit_boxsize=5)
+    assert_allclose(xycen, (0.923077, 0.923077))
+
+    xycen = centroid_quadratic(data, xpeak=9, ypeak=9, fit_boxsize=5)
+    assert_allclose(xycen, (9.076923, 9.076923))
+
+    data = np.zeros((5, 5))
+    data[0, 0] = 100
+    with warnings.catch_warnings(record=True) as warnlist:
+        xycen = centroid_quadratic(data)
+    assert_allclose(xycen, (0, 0))
+    assert issubclass(warnlist[0].category, AstropyUserWarning)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_centroid_sources():
+    theta = np.pi / 6.
     model = Gaussian2D(2.4, XCEN, YCEN, x_stddev=3.2, y_stddev=5.7,
-                       theta=np.pi/6.)
+                       theta=theta)
     y, x = np.mgrid[0:50, 0:47]
     data = model(x, y)
     error = np.ones(data.shape, dtype=float)
