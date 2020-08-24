@@ -10,6 +10,9 @@ centroid of a single source:
 * :func:`~photutils.centroids.centroid_com`: Calculates the object
   "center of mass" from 2D image moments.
 
+* :func:`~photutils.centroids.centroid_quadratic`: Calculates the
+  centroid by fitting a 2D quadratic polynomial to the data.
+
 * :func:`~photutils.centroids.centroid_1dg`: Calculates the centroid
   by fitting 1D Gaussians to the marginal ``x`` and ``y``
   distributions of the data.
@@ -18,13 +21,13 @@ centroid of a single source:
   by fitting a 2D Gaussian to the 2D distribution of the data.
 
 Masks can be input into each of these functions to mask bad pixels.
-Error arrays can be input into the two fitting methods to weight the
-fits.
+Error arrays can be input into the two Gaussian fitting methods to
+weight the fits.
 
 To calculate the centroids of many sources in an image, use the
 :func:`~photutils.centroids.centroid_sources` function. This function
 can be used with any of the above centroiding functions or a custom
-user-defined centroiding function.  See zzzzz
+user-defined centroiding function.
 
 
 Getting Started
