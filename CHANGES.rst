@@ -19,6 +19,11 @@ New Features
   - Added ``coverage_mask`` and ``fill_value`` keyword options to
     ``Background2D``. [#1061]
 
+- ``photutils.centroids``
+
+  - Added quadratic centroid estimator function
+    (``centroid_quadratic``). [#1067]
+
 Bug Fixes
 ^^^^^^^^^
 
