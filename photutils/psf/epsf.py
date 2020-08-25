@@ -19,6 +19,7 @@ import numpy as np
 from .epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
 from .models import EPSFModel
 from ..centroids import centroid_epsf
+from ..utils._round import _py2intround
 
 try:
     import bottleneck  # pylint: disable=W0611
@@ -872,23 +873,6 @@ class EPSFBuilder:
             dt = time.time() - t_start
 
         return epsf, stars
-
-
-def _py2intround(a):
-    """
-    Round the input to the nearest integer.
-
-    If two integers are equally close, rounding is done away from 0.
-    """
-
-    data = np.asanyarray(a)
-    value = np.where(data >= 0, np.floor(data + 0.5),
-                     np.ceil(data - 0.5)).astype(int)
-
-    if not hasattr(a, '__iter__'):
-        value = np.asscalar(value)
-
-    return value
 
 
 def _interpolate_missing_data(data, mask, method='cubic'):
