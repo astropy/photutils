@@ -1457,7 +1457,9 @@ class SourceProperties:
         given by:
 
         .. math::
-            r_i^2 = cxx(x_i - \\bar{x})^2 + cxx \\ cyy (x_i - \\bar{x})(y_i - \\bar{y}) + cyy(y_i - \\bar{y})^2
+            r_i^2 = cxx(x_i - \\bar{x})^2 +
+                cxx \\ cyy (x_i - \\bar{x})(y_i - \\bar{y}) +
+                cyy(y_i - \\bar{y})^2
 
         where :math:`\\bar{x}` and :math:`\\bar{y}` represent the source
         centroid.
