@@ -4,6 +4,7 @@ This module provides tools for calculating the properties of sources
 defined by a segmentation image.
 """
 
+from copy import deepcopy
 import warnings
 
 from astropy.coordinates import SkyCoord
@@ -1447,12 +1448,28 @@ class SourceProperties:
         return flux_numer[0] / flux_denom[0]
 
     @lazyproperty
+    def kron_aperture(self):
+        """
+        The Kron aperture.
+        """
+        a = self.semimajor_axis_sigma.value
+        b = self.semiminor_axis_sigma.value
+        if self.kron_radius * np.sqrt(a * b) < self.kron_params[2]:
+            # use circular aperture with radius=self.kron_params[2]
+            xypos = (self.xcentroid.value, self.ycentroid.value)
+            aperture = CircularAperture(xypos, r=self.kron_params[2])
+        else:
+            radius = self.kron_radius * self.kron_params[1]
+            aperture = self._elliptical_aperture(radius=radius)
+
+        return aperture
+
+    @lazyproperty
     def kron_flux(self):
         """
         The Kron flux.
         """
-        radius = self.kron_radius * self.kron_params[1]
-        aperture = self._elliptical_aperture(radius=radius)
+        aperture = deepcopy(self.kron_aperture)
         aperture_mask = aperture.to_mask()
         aperture_slices = aperture_mask.bbox.slices
 
@@ -1473,6 +1490,9 @@ class SourceProperties:
 
     @lazyproperty
     def kron_fluxerr(self):
+        """
+        The Kron flux error.
+        """
         if self._kron_fluxerr is None:
             _ = self.kron_flux
         return self._kron_fluxerr
