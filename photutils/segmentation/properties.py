@@ -124,23 +124,26 @@ class SourceProperties:
         properties will be set to `None`.
 
     kron_params : tuple of list, optional
-        A list of parameters used to determine the Kron radius and flux.
-        The first item represents how data pixels are masked around the
-        source.  It must be one of:
+        A list of three parameters used to determine how the Kron radius
+        and flux are calculated. The first item represents how data
+        pixels are masked around the source. It must be one of:
 
-          * 'none':  do not mask any pixels.
-          * 'mask':  mask pixels assigned to neighboring sources.
+          * 'none':  do not mask any pixels (equivalent to
+                     MASK_TYPE=NONE in SourceExtractor).
+          * 'mask':  mask pixels assigned to neighboring sources
+                     (equivalent to MASK_TYPE=BLANK in SourceExtractor)
           * 'mask_all':  mask all pixels outside of the source segment.
           * 'correct':  replace pixels assigned to neighboring sources
                         by replacing them with pixels on the opposite
-                        side of the source.
+                        side of the source (equivalent to
+                        MASK_TYPE=CORRECT in SourceExtractor).
 
         The second item represents the scaling parameter of the Kron
         radius as a scalar float. The third item represents the minimum
         circular radius as a scalar float. If the Kron radius times
-        sqrt(semimajor_axis_sigma * semiminor_axis_sigma) is less than
-        than this radius, then the Kron flux will be measured in a
-        circle with this minimum radius.
+        sqrt(``semimajor_axis_sigma`` * ``semiminor_axis_sigma``) is
+        less than than this radius, then the Kron flux will be measured
+        in a circle with this minimum radius.
 
     Notes
     -----
@@ -1439,9 +1442,26 @@ class SourceProperties:
     @lazyproperty
     def kron_radius(self):
         """
-        The Kron radius.
-        """
+        The unscaled first-moment Kron radius.
 
+        The unscaled first-moment Kron radius is given by:
+
+        .. math::
+            k_r = \\frac{\\sum_{i \\in A} \\ r_i I_i}{\\sum_{i \\in A} I_i}
+
+        where the sum is over all pixels in an elliptical aperture whose
+        axes are defined by six times the ``semimajor_axis_sigma`` and
+        ``semiminor_axis_sigma`` at the calculated ``orientation``
+        (all properties derived from the central image moments of the
+        source). :math:`r_i` is the elliptical "radius" to the pixel
+        given by:
+
+        .. math::
+            r_i^2 = cxx(x_i - \\bar{x})^2 + cxx \\ cyy (x_i - \\bar{x})(y_i - \\bar{y}) + cyy(y_i - \\bar{y})^2
+
+        where :math:`\\bar{x}` and :math:`\\bar{y}` represent the source
+        centroid.
+        """
         aperture = self._elliptical_aperture(radius=6.0)
         aperture_mask = aperture.to_mask()
 
@@ -1485,7 +1505,7 @@ class SourceProperties:
     @lazyproperty
     def kron_flux(self):
         """
-        The Kron flux.
+        The flux in the Kron aperture.
         """
         aperture = deepcopy(self.kron_aperture)
         aperture_mask = aperture.to_mask()
@@ -1507,7 +1527,7 @@ class SourceProperties:
     @lazyproperty
     def kron_fluxerr(self):
         """
-        The Kron flux error.
+        The flux error in the Kron aperture.
         """
         if self._kron_fluxerr is None:
             _ = self.kron_flux
