@@ -174,7 +174,7 @@ class SourceProperties:
 
     def __init__(self, data, segment_img, label, filtered_data=None,
                  error=None, mask=None, background=None, wcs=None,
-                 kron_params=('mask', 2.5, 1.5)):
+                 kron_params=('mask', 2.5, 0.0)):
 
         if not isinstance(segment_img, SegmentationImage):
             segment_img = SegmentationImage(segment_img)
@@ -1369,38 +1369,38 @@ class SourceProperties:
         theta = self.orientation.to(u.radian).value
         return EllipticalAperture(position, a, b, theta=theta)
 
-    def _prepare_kron_mask(self, aperture_slices):
+    def _prepare_kron_mask(self, aperture_mask):
         segm_mask = None
         mask_method = self.kron_params[0]
 
+        segment_img = aperture_mask.cutout(self._segment_img.data,
+                                           copy=True)
+
         # mask all pixels outside of the source segment
         if mask_method in ('mask_all', ):
-            segm_mask = (self._segment_img.data[aperture_slices] != self.id)
+            segm_mask = (segment_img != self.id)
 
         # mask pixels *only* in neighboring segments (not including
         # background pixels)
         if mask_method in ('mask', 'correct'):
-            segm_mask1 = (self._segment_img.data[aperture_slices] != self.id)
-            segm_mask2 = (self._segment_img.data[aperture_slices] != 0)
-            segm_mask = np.logical_and(segm_mask1, segm_mask2)
+            segm_mask = np.logical_and(segment_img != self.id,
+                                       segment_img != 0)
 
         return segm_mask
 
-    def _prepare_kron_data(self, aperture_slices):
-        data = np.copy(self._filtered_data)
-
+    def _prepare_kron_data(self, aperture_mask):
         mask = ~np.isfinite(self._data)
         if self._mask is not None:
             mask |= self._mask
 
-        data = data[aperture_slices]
-        segm_mask = self._prepare_kron_mask(aperture_slices)
+        data = aperture_mask.cutout(self._filtered_data, copy=True)
+
+        segm_mask = self._prepare_kron_mask(aperture_mask)
         if segm_mask is not None:
             data[segm_mask] = 0.
 
         if self._error is not None:
-            error = np.copy(self._error)
-            error = error[aperture_slices]
+            error = aperture_mask.cutout(self._error, copy=True)
             if segm_mask is not None:
                 error[segm_mask] = 0.
         else:
@@ -1425,11 +1425,10 @@ class SourceProperties:
 
         aperture = self._elliptical_aperture(radius=6.0)
         aperture_mask = aperture.to_mask()
-        aperture_slices = aperture_mask.bbox.slices
 
         # prepare cutouts of the data and error arrays based on the
         # aperture size
-        data, error = self._prepare_kron_data(aperture_slices)
+        data, error = self._prepare_kron_data(aperture_mask)
         aperture.positions -= (aperture_mask.bbox.ixmin,
                                aperture_mask.bbox.iymin)
 
@@ -1471,9 +1470,7 @@ class SourceProperties:
         """
         aperture = deepcopy(self.kron_aperture)
         aperture_mask = aperture.to_mask()
-        aperture_slices = aperture_mask.bbox.slices
-
-        data, error = self._prepare_kron_data(aperture_slices)
+        data, error = self._prepare_kron_data(aperture_mask)
         aperture.positions -= (aperture_mask.bbox.ixmin,
                                aperture_mask.bbox.iymin)
 
