@@ -1354,12 +1354,12 @@ class SourceProperties:
                 ((1. / self.semimajor_axis_sigma**2) -
                  (1. / self.semiminor_axis_sigma**2)))
 
-    def _kron_aperture(self, radius=6.):
+    def _elliptical_aperture(self, radius=6.):
         """
         Parameters
         ----------
         radius : float, optional
-            The elliptical "radius". The default value of 6. is roughly
+            The elliptical "radius". The default value of 6.0 is roughly
             two times the isophotal extent of the source.
         """
         position = (self.xcentroid.value, self.ycentroid.value)
@@ -1368,62 +1368,53 @@ class SourceProperties:
         theta = self.orientation.to(u.radian).value
         return EllipticalAperture(position, a, b, theta=theta)
 
-    def _kron_data(self, radius=6.):
-        data = np.copy(self._filtered_data)
-        if self._error is not None:
-            error = np.copy(self._error)
-        else:
-            error = None
-        mask = ~np.isfinite(self._data)
-        data[mask] = 0.
-        if self._error is not None:
-            error[mask] = 0.
-        if self._mask is not None:
-            data[self._mask] = 0.
-            if self._error is not None:
-                error[self._mask] = 0.
-
-        kron_aperture = self._kron_aperture(radius=radius)
-        apermask = kron_aperture.to_mask()
-        aper_slices = apermask.bbox.slices
-        data = data[aper_slices]
-        if self._error is not None:
-            error = error[aper_slices]
-        kron_aperture.positions -= (apermask.bbox.ixmin, apermask.bbox.iymin)
-
+    def _prepare_kron_mask(self, aperture_slices):
+        segm_mask = None
         mask_method = self.kron_params[0]
+
         # mask all pixels outside of the source segment
         if mask_method in ('mask_all', ):
-            segm_mask = (self._segment_img.data[aper_slices] != self.id)
-            data[segm_mask] = 0
-            if self._error is not None:
-                error[segm_mask] = 0
+            segm_mask = (self._segment_img.data[aperture_slices] != self.id)
 
         # mask pixels *only* in neighboring segments (not including
         # background pixels)
         if mask_method in ('mask', 'correct'):
-            segm_mask1 = (self._segment_img.data[aper_slices] != self.id)
-            segm_mask2 = (self._segment_img.data[aper_slices] != 0)
+            segm_mask1 = (self._segment_img.data[aperture_slices] != self.id)
+            segm_mask2 = (self._segment_img.data[aperture_slices] != 0)
             segm_mask = np.logical_and(segm_mask1, segm_mask2)
-            data[segm_mask] = 0
-            if self._error is not None:
-                error[segm_mask] = 0
+
+        return segm_mask
+
+    def _prepare_kron_data(self, aperture_slices):
+        data = np.copy(self._filtered_data)
+
+        mask = ~np.isfinite(self._data)
+        if self._mask is not None:
+            mask |= self._mask
+
+        data = data[aperture_slices]
+        segm_mask = self._prepare_kron_mask(aperture_slices)
+        if segm_mask is not None:
+            data[segm_mask] = 0.
+
+        if self._error is not None:
+            error = np.copy(self._error)
+            error = error[aperture_slices]
+            if segm_mask is not None:
+                error[segm_mask] = 0.
+        else:
+            error = None
 
         # Correct masked pixels in neighboring segments.  Masked pixels
         # are replaced with pixels on the opposite side of the source.
-        if mask_method == 'correct':
+        if self.kron_params[0] == 'correct':
             from ..utils.interpolation import _mask_to_mirrored_num
             xypos = (self.xcentroid.value, self.ycentroid.value)
             data = _mask_to_mirrored_num(data, segm_mask, xypos)
             if self._error is not None:
                 error = _mask_to_mirrored_num(error, segm_mask, xypos)
 
-        x = (np.arange(data.shape[1]) - self.xcentroid.value +
-             apermask.bbox.ixmin)
-        y = (np.arange(data.shape[0]) - self.ycentroid.value +
-             apermask.bbox.iymin)
-
-        return data, error, kron_aperture, x, y
+        return data, error
 
     @lazyproperty
     def kron_radius(self):
@@ -1431,38 +1422,54 @@ class SourceProperties:
         The Kron radius.
         """
 
-        kron_data, kron_error, kron_aper, x, y = self._kron_data(radius=6.)
+        aperture = self._elliptical_aperture(radius=6.0)
+        aperture_mask = aperture.to_mask()
+        aperture_slices = aperture_mask.bbox.slices
+
+        # prepare cutouts of the data and error arrays based on the
+        # aperture size
+        data, error = self._prepare_kron_data(aperture_slices)
+        aperture.positions -= (aperture_mask.bbox.ixmin,
+                               aperture_mask.bbox.iymin)
+
+        x = (np.arange(data.shape[1]) - self.xcentroid.value +
+             aperture_mask.bbox.ixmin)
+        y = (np.arange(data.shape[0]) - self.ycentroid.value +
+             aperture_mask.bbox.iymin)
         xx, yy = np.meshgrid(x, y)
         rr = np.sqrt(self.cxx.value * xx**2 + self.cxy.value * xx * yy
                      + self.cyy.value * yy**2)
 
         # TODO: allow alternative aperture methods?
         method = 'center'
-        flux_numer, _ = kron_aper.do_photometry(kron_data*rr, method=method)
-        flux_denom, _ = kron_aper.do_photometry(kron_data, method=method)
-        kron_radius = flux_numer[0] / flux_denom[0]
-
-        return kron_radius
+        flux_numer, _ = aperture.do_photometry(data * rr, method=method)
+        flux_denom, _ = aperture.do_photometry(data, method=method)
+        return flux_numer[0] / flux_denom[0]
 
     @lazyproperty
     def kron_flux(self):
+        """
+        The Kron flux.
+        """
+        radius = self.kron_radius * self.kron_params[1]
+        aperture = self._elliptical_aperture(radius=radius)
+        aperture_mask = aperture.to_mask()
+        aperture_slices = aperture_mask.bbox.slices
 
-        radius = self.kron_radius * 2.5
-        #if r < self.min_kron_radius:
-        #    r = self.min_kron_radius
-
-        kron_data, kron_error, kron_aper, _, _ = self._kron_data(radius=radius)
+        data, error = self._prepare_kron_data(aperture_slices)
+        aperture.positions -= (aperture_mask.bbox.ixmin,
+                               aperture_mask.bbox.iymin)
 
         # TODO: allow alternative aperture methods?
         method = 'center'
-        kron_flux, kron_fluxerr = kron_aper.do_photometry(kron_data,
-                                                          error=kron_error,
-                                                          method=method)
-        if len(kron_fluxerr) > 0:
-            self._kron_fluxerr = kron_fluxerr[0]
+        flux, fluxerr = aperture.do_photometry(data, error=error,
+                                               method=method)
+        if len(fluxerr) > 0:
+            self._kron_fluxerr = fluxerr[0]
         else:
             self._kron_fluxerr = None
-        return kron_flux[0]
+
+        return flux[0]
 
     @lazyproperty
     def kron_fluxerr(self):
