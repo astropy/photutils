@@ -123,6 +123,25 @@ class SourceProperties:
         `astropy.wcs.WCS`, `gwcs.wcs.WCS`).  If `None`, then all sky-based
         properties will be set to `None`.
 
+    kron_params : tuple of list, optional
+        A list of parameters used to determine the Kron radius and flux.
+        The first item represents how data pixels are masked around the
+        source.  It must be one of:
+
+          * 'none':  do not mask any pixels.
+          * 'mask':  mask pixels assigned to neighboring sources.
+          * 'mask_all':  mask all pixels outside of the source segment.
+          * 'correct':  replace pixels assigned to neighboring sources
+                        by replacing them with pixels on the opposite
+                        side of the source.
+
+        The second item represents the scaling parameter of the Kron
+        radius as a scalar float. The third item represents the minimum
+        circular radius as a scalar float. If the Kron radius times
+        sqrt(semimajor_axis_sigma * semiminor_axis_sigma) is less than
+        than this radius, then the Kron flux will be measured in a
+        circle with this minimum radius.
+
     Notes
     -----
     ``data`` (and optional ``filtered_data``) should be
@@ -1533,7 +1552,7 @@ class SourceProperties:
 
 def source_properties(data, segment_img, error=None, mask=None,
                       background=None, filter_kernel=None, wcs=None,
-                      labels=None, kron_params=('mask', 2.5, 1.5)):
+                      labels=None, kron_params=('mask', 2.5, 0.0)):
     """
     Calculate photometry and morphological properties of sources defined
     by a labeled segmentation image.
@@ -1602,6 +1621,28 @@ def source_properties(data, segment_img, error=None, mask=None,
         The segmentation labels for which to calculate source
         properties.  If `None` (default), then the properties will be
         calculated for all labeled sources.
+
+    kron_params : tuple of list, optional
+        A list of three parameters used to determine how the Kron radius
+        and flux are calculated. The first item represents how data
+        pixels are masked around the source. It must be one of:
+
+          * 'none':  do not mask any pixels (equivalent to
+                     MASK_TYPE=NONE in SourceExtractor).
+          * 'mask':  mask pixels assigned to neighboring sources
+                     (equivalent to MASK_TYPE=BLANK in SourceExtractor)
+          * 'mask_all':  mask all pixels outside of the source segment.
+          * 'correct':  replace pixels assigned to neighboring sources
+                        by replacing them with pixels on the opposite
+                        side of the source (equivalent to
+                        MASK_TYPE=CORRECT in SourceExtractor).
+
+        The second item represents the scaling parameter of the Kron
+        radius as a scalar float. The third item represents the minimum
+        circular radius as a scalar float. If the Kron radius times
+        sqrt(``semimajor_axis_sigma`` * ``semiminor_axis_sigma``) is
+        less than than this radius, then the Kron flux will be measured
+        in a circle with this minimum radius.
 
     Returns
     -------
