@@ -14,7 +14,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from .core import SegmentationImage
-from ..aperture import BoundingBox, EllipticalAperture
+from ..aperture import BoundingBox, CircularAperture, EllipticalAperture
 from ..utils._convolution import _filter_data
 from ..utils._moments import _moments, _moments_central
 from ..utils._wcs_helpers import _pixel_to_world
@@ -37,7 +37,7 @@ DEFAULT_COLUMNS = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
                    'semimajor_axis_sigma', 'semiminor_axis_sigma',
                    'orientation', 'eccentricity', 'ellipticity', 'elongation',
                    'covar_sigx2', 'covar_sigxy', 'covar_sigy2', 'cxx', 'cxy',
-                   'cyy', 'gini', 'kron_radius']
+                   'cyy', 'gini']
 
 
 class SourceProperties:
@@ -246,6 +246,8 @@ class SourceProperties:
         self.segment = segment_img[segment_img.get_index(label)]
         self.slices = self.segment.slices
 
+        if kron_params[0] not in ('none', 'mask', 'mask_all', 'correct'):
+            raise ValueError('Invalid value for kron_params[0]')
         self.kron_params = kron_params
 
     def __str__(self):
@@ -1352,31 +1354,50 @@ class SourceProperties:
                 ((1. / self.semimajor_axis_sigma**2) -
                  (1. / self.semiminor_axis_sigma**2)))
 
-    @lazyproperty
-    def kron_radius(self):
+    def _kron_aperture(self, radius=6.):
         """
-        The Kron radius.
+        Parameters
+        ----------
+        radius : float, optional
+            The elliptical "radius". The default value of 6. is roughly
+            two times the isophotal extent of the source.
         """
-        r = 6.  # roughly 2x isophotal extent
         position = (self.xcentroid.value, self.ycentroid.value)
-        a = self.semimajor_axis_sigma.value * r
-        b = self.semiminor_axis_sigma.value * r
+        a = self.semimajor_axis_sigma.value * radius
+        b = self.semiminor_axis_sigma.value * radius
         theta = self.orientation.to(u.radian).value
-        aper = EllipticalAperture(position, a, b, theta=theta)
-        apermask = aper.to_mask()
-        aper_slices = apermask.bbox.slices
+        return EllipticalAperture(position, a, b, theta=theta)
 
+    def _kron_data(self, radius=6.):
         data = np.copy(self._filtered_data)
-        data[~np.isfinite(self._data)] = 0.
+        if self._error is not None:
+            error = np.copy(self._error)
+        else:
+            error = None
+        mask = ~np.isfinite(self._data)
+        data[mask] = 0.
+        if self._error is not None:
+            error[mask] = 0.
         if self._mask is not None:
             data[self._mask] = 0.
+            if self._error is not None:
+                error[self._mask] = 0.
+
+        kron_aperture = self._kron_aperture(radius=radius)
+        apermask = kron_aperture.to_mask()
+        aper_slices = apermask.bbox.slices
         data = data[aper_slices]
+        if self._error is not None:
+            error = error[aper_slices]
+        kron_aperture.positions -= (apermask.bbox.ixmin, apermask.bbox.iymin)
 
         mask_method = self.kron_params[0]
         # mask all pixels outside of the source segment
         if mask_method in ('mask_all', ):
             segm_mask = (self._segment_img.data[aper_slices] != self.id)
             data[segm_mask] = 0
+            if self._error is not None:
+                error[segm_mask] = 0
 
         # mask pixels *only* in neighboring segments (not including
         # background pixels)
@@ -1385,6 +1406,8 @@ class SourceProperties:
             segm_mask2 = (self._segment_img.data[aper_slices] != 0)
             segm_mask = np.logical_and(segm_mask1, segm_mask2)
             data[segm_mask] = 0
+            if self._error is not None:
+                error[segm_mask] = 0
 
         # Correct masked pixels in neighboring segments.  Masked pixels
         # are replaced with pixels on the opposite side of the source.
@@ -1392,27 +1415,60 @@ class SourceProperties:
             from ..utils.interpolation import _mask_to_mirrored_num
             xypos = (self.xcentroid.value, self.ycentroid.value)
             data = _mask_to_mirrored_num(data, segm_mask, xypos)
+            if self._error is not None:
+                error = _mask_to_mirrored_num(error, segm_mask, xypos)
 
-        # need to deal with sources near edges
-        aper.positions -= (apermask.bbox.ixmin, apermask.bbox.iymin)
         x = (np.arange(data.shape[1]) - self.xcentroid.value +
              apermask.bbox.ixmin)
         y = (np.arange(data.shape[0]) - self.ycentroid.value +
              apermask.bbox.iymin)
+
+        return data, error, kron_aperture, x, y
+
+    @lazyproperty
+    def kron_radius(self):
+        """
+        The Kron radius.
+        """
+
+        kron_data, kron_error, kron_aper, x, y = self._kron_data(radius=6.)
         xx, yy = np.meshgrid(x, y)
         rr = np.sqrt(self.cxx.value * xx**2 + self.cxy.value * xx * yy
                      + self.cyy.value * yy**2)
 
         # TODO: allow alternative aperture methods?
         method = 'center'
-        flux_numer, _ = aper.do_photometry(data*rr, method=method)
-        flux_denom, _ = aper.do_photometry(data, method=method)
+        flux_numer, _ = kron_aper.do_photometry(kron_data*rr, method=method)
+        flux_denom, _ = kron_aper.do_photometry(kron_data, method=method)
         kron_radius = flux_numer[0] / flux_denom[0]
 
-        #if kron_radius < self.min_kron_radius:
-        #    kron_radius = self.min_kron_radius
-
         return kron_radius
+
+    @lazyproperty
+    def kron_flux(self):
+
+        radius = self.kron_radius * 2.5
+        #if r < self.min_kron_radius:
+        #    r = self.min_kron_radius
+
+        kron_data, kron_error, kron_aper, _, _ = self._kron_data(radius=radius)
+
+        # TODO: allow alternative aperture methods?
+        method = 'center'
+        kron_flux, kron_fluxerr = kron_aper.do_photometry(kron_data,
+                                                          error=kron_error,
+                                                          method=method)
+        if len(kron_fluxerr) > 0:
+            self._kron_fluxerr = kron_fluxerr[0]
+        else:
+            self._kron_fluxerr = None
+        return kron_flux[0]
+
+    @lazyproperty
+    def kron_fluxerr(self):
+        if self._kron_fluxerr is None:
+            _ = self.kron_flux
+        return self._kron_fluxerr
 
     @lazyproperty
     def gini(self):
