@@ -24,6 +24,11 @@ New Features
   - Added quadratic centroid estimator function
     (``centroid_quadratic``). [#1067]
 
+- ``photutils.segmentation``
+
+  - Added Kron radius, flux, flux error, and aperture to
+    ``SourceProperties``. [#1068]
+
 Bug Fixes
 ^^^^^^^^^
 
