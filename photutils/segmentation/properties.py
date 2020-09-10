@@ -1415,7 +1415,7 @@ class SourceProperties:
         if self._mask is not None:
             mask |= self._mask
 
-        data = aperture_mask.cutout(self._filtered_data, copy=True)
+        data = aperture_mask.cutout(self._data, copy=True)
 
         segm_mask = self._prepare_kron_mask(aperture_mask)
         if segm_mask is not None:
