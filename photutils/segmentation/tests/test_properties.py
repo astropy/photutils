@@ -335,6 +335,10 @@ class TestSourcePropertiesFunction:
         for shape in shapes:
             assert shape == (4, 4)
 
+        assert obj.kron_radius < 1.3
+        assert obj.kron_flux < 16700.
+        assert obj.kron_fluxerr is None
+
     def test_properties_background_notnone(self):
         value = 1.
         props = source_properties(IMAGE, self.segm, background=value)
