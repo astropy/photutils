@@ -304,8 +304,11 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         ``theta=0`` the width side is along the ``x`` axis.
 
     h_out : float
-        The outer full height of the rectangular annulus in pixels.  The
-        inner full height is calculated as:
+        The outer full height of the rectangular annulus in pixels.
+
+    h_in : `None` or float
+        The inner full height of the rectangular annulus in pixels.
+        If `None`, then the inner full height is calculated as:
 
             .. math:: h_{in} = h_{out}
                 \\left(\\frac{w_{in}}{w_{out}}\\right)
@@ -340,22 +343,30 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     >>> aper = RectangularAnnulus((pos1, pos2, pos3), 3., 8., 5., theta=np.pi)
     """
 
-    _shape_params = ('w_in', 'w_out', 'h_out', 'theta')
+    _shape_params = ('w_in', 'w_out', 'h_in', 'h_out', 'theta')
     positions = PixelPositions('positions')
     w_in = PositiveScalar('w_in')
     w_out = PositiveScalar('w_out')
+    h_in = PositiveScalar('h_in')
     h_out = PositiveScalar('h_out')
     theta = Scalar('theta')
 
-    def __init__(self, positions, w_in, w_out, h_out, theta=0.):
+    def __init__(self, positions, w_in, w_out, h_out, h_in=None, theta=0.):
         if not w_out > w_in:
-            raise ValueError("'w_out' must be greater than 'w_in'")
+            raise ValueError('"w_out" must be greater than "w_in"')
 
         self.positions = positions
         self.w_in = w_in
         self.w_out = w_out
         self.h_out = h_out
-        self.h_in = self.w_in * self.h_out / self.w_out
+
+        if h_in is None:
+            h_in = self.w_in * self.h_out / self.w_out
+        else:
+            if not h_out > h_in:
+                raise ValueError('"h_out" must be greater than "h_in"')
+        self.h_in = h_in
+
         self.theta = theta
 
     @property
@@ -483,8 +494,8 @@ class SkyRectangularAperture(SkyAperture):
 
     def __init__(self, positions, w, h, theta=0.*u.deg):
         if w.unit.physical_type != h.unit.physical_type:
-            raise ValueError("'w' and 'h' should either both be angles or "
-                             "in pixels")
+            raise ValueError('"w" and "h" should either both be angles or '
+                             'in pixels')
 
         self.positions = positions
         self.w = w
@@ -538,7 +549,12 @@ class SkyRectangularAnnulus(SkyAperture):
 
     h_out : scalar `~astropy.units.Quantity`
         The outer full height of the rectangular annulus, either in
-        angular or pixel units.  The inner full height is calculated as:
+        angular or pixel units.
+
+    h_in : `None` or scalar `~astropy.units.Quantity`
+        The outer full height of the rectangular annulus, either in
+        angular or pixel units.  If `None`, then the inner full height
+        is calculated as:
 
             .. math:: h_{in} = h_{out}
                 \\left(\\frac{w_{in}}{w_{out}}\\right)
@@ -561,27 +577,40 @@ class SkyRectangularAnnulus(SkyAperture):
     ...                              5.0*u.arcsec)
     """
 
-    _shape_params = ('w_in', 'w_out', 'h_out', 'theta')
+    _shape_params = ('w_in', 'w_out', 'h_in', 'h_out', 'theta')
     positions = SkyCoordPositions('positions')
     w_in = AngleOrPixelScalarQuantity('w_in')
     w_out = AngleOrPixelScalarQuantity('w_out')
+    h_in = AngleOrPixelScalarQuantity('h_in')
     h_out = AngleOrPixelScalarQuantity('h_out')
     theta = AngleScalarQuantity('theta')
 
-    def __init__(self, positions, w_in, w_out, h_out, theta=0.*u.deg):
+    def __init__(self, positions, w_in, w_out, h_out, h_in=None,
+                 theta=0.*u.deg):
         if w_in.unit.physical_type != w_out.unit.physical_type:
-            raise ValueError("w_in and w_out should either both be angles or "
-                             "in pixels")
-
+            raise ValueError('w_in and w_out should either both be angles or '
+                             'in pixels')
         if w_out.unit.physical_type != h_out.unit.physical_type:
-            raise ValueError("w_out and h_out should either both be angles "
-                             "or in pixels")
+            raise ValueError('w_out and h_out should either both be angles '
+                             'or in pixels')
+        if not w_out > w_in:
+            raise ValueError('"w_out" must be greater than "w_in".')
 
         self.positions = positions
         self.w_in = w_in
         self.w_out = w_out
         self.h_out = h_out
-        self.h_in = self.w_in * self.h_out / self.w_out
+
+        if h_in is None:
+            h_in = self.w_in * self.h_out / self.w_out
+        else:
+            if h_in.unit.physical_type != h_out.unit.physical_type:
+                raise ValueError('h_in and h_out should either both be '
+                                 'angles or in pixels')
+            if not h_out > h_in:
+                raise ValueError('"h_out" must be greater than "h_in".')
+        self.h_in = h_in
+
         self.theta = theta
 
     def to_pixel(self, wcs):

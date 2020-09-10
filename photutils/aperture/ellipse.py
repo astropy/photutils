@@ -276,7 +276,10 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
     b_out : float
         The outer semiminor axis of the elliptical annulus in pixels.
-        The inner semiminor axis is calculated as:
+
+    b_in : `None` or float, optional
+        The inner semiminor axis of the elliptical annulus in pixels.
+        If `None`, then the the inner semiminor axis is calculated as:
 
             .. math:: b_{in} = b_{out}
                 \\left(\\frac{a_{in}}{a_{out}}\\right)
@@ -309,14 +312,15 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
     >>> aper = EllipticalAnnulus((pos1, pos2, pos3), 3., 8., 5., theta=np.pi)
     """
 
-    _shape_params = ('a_in', 'a_out', 'b_out', 'theta')
+    _shape_params = ('a_in', 'a_out', 'b_in', 'b_out', 'theta')
     positions = PixelPositions('positions')
     a_in = PositiveScalar('a_in')
     a_out = PositiveScalar('a_out')
+    b_in = PositiveScalar('b_in')
     b_out = PositiveScalar('b_out')
     theta = Scalar('theta')
 
-    def __init__(self, positions, a_in, a_out, b_out, theta=0.):
+    def __init__(self, positions, a_in, a_out, b_out, b_in=None, theta=0.):
         if not a_out > a_in:
             raise ValueError('"a_out" must be greater than "a_in".')
 
@@ -324,7 +328,14 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         self.a_in = a_in
         self.a_out = a_out
         self.b_out = b_out
-        self.b_in = self.b_out * self.a_in / self.a_out
+
+        if b_in is None:
+            b_in = self.b_out * self.a_in / self.a_out
+        else:
+            if not b_out > b_in:
+                raise ValueError('"b_out" must be greater than "b_in".')
+        self.b_in = b_in
+
         self.theta = theta
 
     @property
@@ -443,8 +454,8 @@ class SkyEllipticalAperture(SkyAperture):
 
     def __init__(self, positions, a, b, theta=0.*u.deg):
         if a.unit.physical_type != b.unit.physical_type:
-            raise ValueError("a and b should either both be angles "
-                             "or in pixels")
+            raise ValueError('a and b should either both be angles '
+                             'or in pixels')
 
         self.positions = positions
         self.a = a
@@ -493,8 +504,11 @@ class SkyEllipticalAnnulus(SkyAperture):
         The outer semimajor axis, either in angular or pixel units.
 
     b_out : scalar `~astropy.units.Quantity`
-        The outer semiminor axis, either in angular or pixel units.  The
-        inner semiminor axis is calculated as:
+        The outer semiminor axis, either in angular or pixel units.
+
+    b_in : `None` or scalar `~astropy.units.Quantity`
+        The inner semiminor axis, either in angular or pixel units.
+        If `None`, then the inner semiminor axis is calculated as:
 
             .. math:: b_{in} = b_{out}
                 \\left(\\frac{a_{in}}{a_{out}}\\right)
@@ -515,27 +529,40 @@ class SkyEllipticalAnnulus(SkyAperture):
     ...                             1.0*u.arcsec)
     """
 
-    _shape_params = ('a_in', 'a_out', 'b_out', 'theta')
+    _shape_params = ('a_in', 'a_out', 'b_in', 'b_out', 'theta')
     positions = SkyCoordPositions('positions')
     a_in = AngleOrPixelScalarQuantity('a_in')
     a_out = AngleOrPixelScalarQuantity('a_out')
+    b_in = AngleOrPixelScalarQuantity('b_in')
     b_out = AngleOrPixelScalarQuantity('b_out')
     theta = AngleScalarQuantity('theta')
 
-    def __init__(self, positions, a_in, a_out, b_out, theta=0.*u.deg):
+    def __init__(self, positions, a_in, a_out, b_out, b_in=None,
+                 theta=0.*u.deg):
         if a_in.unit.physical_type != a_out.unit.physical_type:
-            raise ValueError("a_in and a_out should either both be angles "
-                             "or in pixels")
-
+            raise ValueError('a_in and a_out should either both be angles '
+                             'or in pixels')
         if a_out.unit.physical_type != b_out.unit.physical_type:
-            raise ValueError("a_out and b_out should either both be angles "
-                             "or in pixels")
+            raise ValueError('a_out and b_out should either both be angles '
+                             'or in pixels')
+        if not a_out > a_in:
+            raise ValueError('"a_out" must be greater than "a_in".')
 
         self.positions = positions
         self.a_in = a_in
         self.a_out = a_out
         self.b_out = b_out
-        self.b_in = self.b_out * self.a_in / self.a_out
+
+        if b_in is None:
+            b_in = self.b_out * self.a_in / self.a_out
+        else:
+            if b_in.unit.physical_type != b_out.unit.physical_type:
+                raise ValueError('b_in and b_out should either both be '
+                                 'angles or in pixels')
+            if not b_out > b_in:
+                raise ValueError('"b_out" must be greater than "b_in".')
+        self.b_in = b_in
+
         self.theta = theta
 
     def to_pixel(self, wcs):
