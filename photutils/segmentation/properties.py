@@ -4,6 +4,7 @@ This module provides tools for calculating the properties of sources
 defined by a segmentation image.
 """
 
+from copy import deepcopy
 import warnings
 
 from astropy.coordinates import SkyCoord
@@ -14,7 +15,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from .core import SegmentationImage
-from ..aperture import BoundingBox
+from ..aperture import BoundingBox, CircularAperture, EllipticalAperture
 from ..utils._convolution import _filter_data
 from ..utils._moments import _moments, _moments_central
 from ..utils._wcs_helpers import _pixel_to_world
@@ -122,6 +123,31 @@ class SourceProperties:
         `astropy.wcs.WCS`, `gwcs.wcs.WCS`).  If `None`, then all sky-based
         properties will be set to `None`.
 
+    kron_params : tuple of list, optional
+        A list of five parameters used to determine how the Kron radius
+        and flux are calculated. The first item represents how data
+        pixels are masked around the source. It must be one of:
+
+          * 'none':  do not mask any pixels (equivalent to
+                     MASK_TYPE=NONE in SourceExtractor).
+          * 'mask':  mask pixels assigned to neighboring sources
+                     (equivalent to MASK_TYPE=BLANK in SourceExtractor)
+          * 'mask_all':  mask all pixels outside of the source segment.
+          * 'correct':  replace pixels assigned to neighboring sources
+                        by replacing them with pixels on the opposite
+                        side of the source (equivalent to
+                        MASK_TYPE=CORRECT in SourceExtractor).
+
+        The second item represents the scaling parameter of the Kron
+        radius as a scalar float. The third item represents the minimum
+        circular radius as a scalar float. If the Kron radius times
+        sqrt(``semimajor_axis_sigma`` * ``semiminor_axis_sigma``) is
+        less than than this radius, then the Kron flux will be measured
+        in a circle with this minimum radius. The forth and fifth items
+        represent the :func:`~photutils.aperture.aperture_photometry`
+        keywords ``method`` and ``subpixels``, respectively, which are
+        used to measure the flux in the Kron aperture.
+
     Notes
     -----
     ``data`` (and optional ``filtered_data``) should be
@@ -172,7 +198,8 @@ class SourceProperties:
     """
 
     def __init__(self, data, segment_img, label, filtered_data=None,
-                 error=None, mask=None, background=None, wcs=None):
+                 error=None, mask=None, background=None, wcs=None,
+                 kron_params=('mask', 2.5, 0.0, 'exact', 5)):
 
         if not isinstance(segment_img, SegmentationImage):
             segment_img = SegmentationImage(segment_img)
@@ -244,6 +271,10 @@ class SourceProperties:
 
         self.segment = segment_img[segment_img.get_index(label)]
         self.slices = self.segment.slices
+
+        if kron_params[0] not in ('none', 'mask', 'mask_all', 'correct'):
+            raise ValueError('Invalid value for kron_params[0]')
+        self.kron_params = kron_params
 
     def __str__(self):
         cls_name = '<{0}.{1}>'.format(self.__class__.__module__,
@@ -1349,6 +1380,164 @@ class SourceProperties:
                 ((1. / self.semimajor_axis_sigma**2) -
                  (1. / self.semiminor_axis_sigma**2)))
 
+    def _elliptical_aperture(self, radius=6.):
+        """
+        Parameters
+        ----------
+        radius : float, optional
+            The elliptical "radius". The default value of 6.0 is roughly
+            two times the isophotal extent of the source.
+        """
+        position = (self.xcentroid.value, self.ycentroid.value)
+        a = self.semimajor_axis_sigma.value * radius
+        b = self.semiminor_axis_sigma.value * radius
+        theta = self.orientation.to(u.radian).value
+        return EllipticalAperture(position, a, b, theta=theta)
+
+    def _prepare_kron_mask(self, aperture_mask):
+        segm_mask = None
+        mask_method = self.kron_params[0]
+
+        segment_img = aperture_mask.cutout(self._segment_img.data,
+                                           copy=True)
+
+        # mask all pixels outside of the source segment
+        if mask_method in ('mask_all', ):
+            segm_mask = (segment_img != self.id)
+
+        # mask pixels *only* in neighboring segments (not including
+        # background pixels)
+        if mask_method in ('mask', 'correct'):
+            segm_mask = np.logical_and(segment_img != self.id,
+                                       segment_img != 0)
+
+        return segm_mask
+
+    def _prepare_kron_data(self, aperture_mask):
+        mask = ~np.isfinite(self._data)
+        if self._mask is not None:
+            mask |= self._mask
+
+        data = aperture_mask.cutout(self._data, copy=True)
+
+        segm_mask = self._prepare_kron_mask(aperture_mask)
+        if segm_mask is not None:
+            data[segm_mask] = 0.
+
+        if self._error is not None:
+            error = aperture_mask.cutout(self._error, copy=True)
+            if segm_mask is not None:
+                error[segm_mask] = 0.
+        else:
+            error = None
+
+        # Correct masked pixels in neighboring segments.  Masked pixels
+        # are replaced with pixels on the opposite side of the source.
+        if self.kron_params[0] == 'correct':
+            from ..utils.interpolation import _mask_to_mirrored_num
+            xypos = (self.xcentroid.value, self.ycentroid.value)
+            data = _mask_to_mirrored_num(data, segm_mask, xypos)
+            if self._error is not None:
+                error = _mask_to_mirrored_num(error, segm_mask, xypos)
+
+        return data, error
+
+    @lazyproperty
+    def kron_radius(self):
+        """
+        The unscaled first-moment Kron radius.
+
+        The unscaled first-moment Kron radius is given by:
+
+        .. math::
+            k_r = \\frac{\\sum_{i \\in A} \\ r_i I_i}{\\sum_{i \\in A} I_i}
+
+        where the sum is over all pixels in an elliptical aperture whose
+        axes are defined by six times the ``semimajor_axis_sigma`` and
+        ``semiminor_axis_sigma`` at the calculated ``orientation``
+        (all properties derived from the central image moments of the
+        source). :math:`r_i` is the elliptical "radius" to the pixel
+        given by:
+
+        .. math::
+            r_i^2 = cxx(x_i - \\bar{x})^2 +
+                cxx \\ cyy (x_i - \\bar{x})(y_i - \\bar{y}) +
+                cyy(y_i - \\bar{y})^2
+
+        where :math:`\\bar{x}` and :math:`\\bar{y}` represent the source
+        centroid.
+        """
+        aperture = self._elliptical_aperture(radius=6.0)
+        aperture_mask = aperture.to_mask()
+
+        # prepare cutouts of the data and error arrays based on the
+        # aperture size
+        data, error = self._prepare_kron_data(aperture_mask)
+        aperture.positions -= (aperture_mask.bbox.ixmin,
+                               aperture_mask.bbox.iymin)
+
+        x = (np.arange(data.shape[1]) - self.xcentroid.value +
+             aperture_mask.bbox.ixmin)
+        y = (np.arange(data.shape[0]) - self.ycentroid.value +
+             aperture_mask.bbox.iymin)
+        xx, yy = np.meshgrid(x, y)
+        rr = np.sqrt(self.cxx.value * xx**2 + self.cxy.value * xx * yy
+                     + self.cyy.value * yy**2)
+
+        method = 'center'  # need whole pixel to compute Kron radius
+        flux_numer, _ = aperture.do_photometry(data * rr, method=method)
+        flux_denom, _ = aperture.do_photometry(data, method=method)
+        return flux_numer[0] / flux_denom[0]
+
+    @lazyproperty
+    def kron_aperture(self):
+        """
+        The Kron aperture.
+        """
+        a = self.semimajor_axis_sigma.value
+        b = self.semiminor_axis_sigma.value
+        if self.kron_radius * np.sqrt(a * b) < self.kron_params[2]:
+            # use circular aperture with radius=self.kron_params[2]
+            xypos = (self.xcentroid.value, self.ycentroid.value)
+            aperture = CircularAperture(xypos, r=self.kron_params[2])
+        else:
+            radius = self.kron_radius * self.kron_params[1]
+            aperture = self._elliptical_aperture(radius=radius)
+
+        return aperture
+
+    @lazyproperty
+    def kron_flux(self):
+        """
+        The flux in the Kron aperture.
+        """
+        aperture = deepcopy(self.kron_aperture)
+        aperture_mask = aperture.to_mask()
+        data, error = self._prepare_kron_data(aperture_mask)
+        aperture.positions -= (aperture_mask.bbox.ixmin,
+                               aperture_mask.bbox.iymin)
+
+        method = self.kron_params[3]
+        subpixels = self.kron_params[4]
+        flux, fluxerr = aperture.do_photometry(data, error=error,
+                                               method=method,
+                                               subpixels=subpixels)
+        if len(fluxerr) > 0:
+            self._kron_fluxerr = fluxerr[0]
+        else:
+            self._kron_fluxerr = None
+
+        return flux[0]
+
+    @lazyproperty
+    def kron_fluxerr(self):
+        """
+        The flux error in the Kron aperture.
+        """
+        if self._kron_fluxerr is None:
+            _ = self.kron_flux
+        return self._kron_fluxerr
+
     @lazyproperty
     def gini(self):
         """
@@ -1388,7 +1577,8 @@ class SourceProperties:
 
 def source_properties(data, segment_img, error=None, mask=None,
                       background=None, filter_kernel=None, wcs=None,
-                      labels=None):
+                      labels=None,
+                      kron_params=('mask', 2.5, 0.0, 'exact', 5)):
     """
     Calculate photometry and morphological properties of sources defined
     by a labeled segmentation image.
@@ -1457,6 +1647,31 @@ def source_properties(data, segment_img, error=None, mask=None,
         The segmentation labels for which to calculate source
         properties.  If `None` (default), then the properties will be
         calculated for all labeled sources.
+
+    kron_params : tuple of list, optional
+        A list of five parameters used to determine how the Kron radius
+        and flux are calculated. The first item represents how data
+        pixels are masked around the source. It must be one of:
+
+          * 'none':  do not mask any pixels (equivalent to
+                     MASK_TYPE=NONE in SourceExtractor).
+          * 'mask':  mask pixels assigned to neighboring sources
+                     (equivalent to MASK_TYPE=BLANK in SourceExtractor)
+          * 'mask_all':  mask all pixels outside of the source segment.
+          * 'correct':  replace pixels assigned to neighboring sources
+                        by replacing them with pixels on the opposite
+                        side of the source (equivalent to
+                        MASK_TYPE=CORRECT in SourceExtractor).
+
+        The second item represents the scaling parameter of the Kron
+        radius as a scalar float. The third item represents the minimum
+        circular radius as a scalar float. If the Kron radius times
+        sqrt(``semimajor_axis_sigma`` * ``semiminor_axis_sigma``) is
+        less than than this radius, then the Kron flux will be measured
+        in a circle with this minimum radius. The forth and fifth items
+        represent the :func:`~photutils.aperture.aperture_photometry`
+        keywords ``method`` and ``subpixels``, respectively, which are
+        used to measure the flux in the Kron aperture.
 
     Returns
     -------
@@ -1574,7 +1789,8 @@ def source_properties(data, segment_img, error=None, mask=None,
 
         sources_props.append(SourceProperties(
             data, segment_img, label, filtered_data=filtered_data,
-            error=error, mask=mask, background=background, wcs=wcs))
+            error=error, mask=mask, background=background, wcs=wcs,
+            kron_params=kron_params))
 
     if not sources_props:
         raise ValueError('No sources are defined.')
