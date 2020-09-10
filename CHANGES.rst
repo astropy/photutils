@@ -13,6 +13,11 @@ General
 
 New Features
 ^^^^^^^^^^^^
+- ``photutils.aperture``
+
+  - Added ``b_in`` as an optional ellipse annulus keyword. [#1070]
+
+  - Added ``h_in`` as an optional rectangle annulus keyword. [#1070]
 
 - ``photutils.background``
 
