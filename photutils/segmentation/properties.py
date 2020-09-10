@@ -124,7 +124,7 @@ class SourceProperties:
         properties will be set to `None`.
 
     kron_params : tuple of list, optional
-        A list of three parameters used to determine how the Kron radius
+        A list of five parameters used to determine how the Kron radius
         and flux are calculated. The first item represents how data
         pixels are masked around the source. It must be one of:
 
@@ -143,7 +143,10 @@ class SourceProperties:
         circular radius as a scalar float. If the Kron radius times
         sqrt(``semimajor_axis_sigma`` * ``semiminor_axis_sigma``) is
         less than than this radius, then the Kron flux will be measured
-        in a circle with this minimum radius.
+        in a circle with this minimum radius. The forth and fifth items
+        represent the :func:`~photutils.aperture.aperture_photometry`
+        keywords ``method`` and ``subpixels``, respectively, which are
+        used to measure the flux in the Kron aperture.
 
     Notes
     -----
@@ -196,7 +199,7 @@ class SourceProperties:
 
     def __init__(self, data, segment_img, label, filtered_data=None,
                  error=None, mask=None, background=None, wcs=None,
-                 kron_params=('mask', 2.5, 0.0)):
+                 kron_params=('mask', 2.5, 0.0, 'exact', 5)):
 
         if not isinstance(segment_img, SegmentationImage):
             segment_img = SegmentationImage(segment_img)
@@ -1481,8 +1484,7 @@ class SourceProperties:
         rr = np.sqrt(self.cxx.value * xx**2 + self.cxy.value * xx * yy
                      + self.cyy.value * yy**2)
 
-        # TODO: allow alternative aperture methods?
-        method = 'center'
+        method = 'center'  # need whole pixel to compute Kron radius
         flux_numer, _ = aperture.do_photometry(data * rr, method=method)
         flux_denom, _ = aperture.do_photometry(data, method=method)
         return flux_numer[0] / flux_denom[0]
@@ -1515,10 +1517,11 @@ class SourceProperties:
         aperture.positions -= (aperture_mask.bbox.ixmin,
                                aperture_mask.bbox.iymin)
 
-        # TODO: allow alternative aperture methods?
-        method = 'center'
+        method = self.kron_params[3]
+        subpixels = self.kron_params[4]
         flux, fluxerr = aperture.do_photometry(data, error=error,
-                                               method=method)
+                                               method=method,
+                                               subpixels=subpixels)
         if len(fluxerr) > 0:
             self._kron_fluxerr = fluxerr[0]
         else:
@@ -1574,7 +1577,8 @@ class SourceProperties:
 
 def source_properties(data, segment_img, error=None, mask=None,
                       background=None, filter_kernel=None, wcs=None,
-                      labels=None, kron_params=('mask', 2.5, 0.0)):
+                      labels=None,
+                      kron_params=('mask', 2.5, 0.0, 'exact', 5)):
     """
     Calculate photometry and morphological properties of sources defined
     by a labeled segmentation image.
@@ -1645,7 +1649,7 @@ def source_properties(data, segment_img, error=None, mask=None,
         calculated for all labeled sources.
 
     kron_params : tuple of list, optional
-        A list of three parameters used to determine how the Kron radius
+        A list of five parameters used to determine how the Kron radius
         and flux are calculated. The first item represents how data
         pixels are masked around the source. It must be one of:
 
@@ -1664,7 +1668,10 @@ def source_properties(data, segment_img, error=None, mask=None,
         circular radius as a scalar float. If the Kron radius times
         sqrt(``semimajor_axis_sigma`` * ``semiminor_axis_sigma``) is
         less than than this radius, then the Kron flux will be measured
-        in a circle with this minimum radius.
+        in a circle with this minimum radius. The forth and fifth items
+        represent the :func:`~photutils.aperture.aperture_photometry`
+        keywords ``method`` and ``subpixels``, respectively, which are
+        used to measure the flux in the Kron aperture.
 
     Returns
     -------
