@@ -4,11 +4,6 @@ PSF Photometry (`photutils.psf`)
 The `photutils.psf` module contains tools for model-fitting photometry, often
 called "PSF photometry".
 
-.. warning::
-    The PSF photometry API is currently considered *experimental* and may change
-    in the future.  We will aim to keep compatibility where practical, but will
-    not finalize the API until sufficient user feedback has been accumulated.
-
 .. _psf-terminology:
 
 Terminology
