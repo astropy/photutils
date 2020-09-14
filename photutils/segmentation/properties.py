@@ -126,7 +126,7 @@ class SourceProperties:
         `astropy.wcs.WCS`, `gwcs.wcs.WCS`).  If `None`, then all sky-based
         properties will be set to `None`.
 
-    localbkg_width: `None` or positive float, optional
+    localbkg_width : `None` or positive int, optional
         The width of the rectangular annulus used to compute a local
         background around each source. If `None` then no local
         background subtraction is performed. The local background
@@ -1636,7 +1636,7 @@ class SourceProperties:
 
 def source_properties(data, segment_img, error=None, mask=None,
                       background=None, filter_kernel=None, wcs=None,
-                      labels=None,
+                      labels=None, localbkg_width=None,
                       kron_params=('mask', 2.5, 0.0, 'exact', 5)):
     """
     Calculate photometry and morphological properties of sources defined
@@ -1706,6 +1706,15 @@ def source_properties(data, segment_img, error=None, mask=None,
         The segmentation labels for which to calculate source
         properties.  If `None` (default), then the properties will be
         calculated for all labeled sources.
+
+    localbkg_width : `None` or positive int, optional
+        The width of the rectangular annulus used to compute a local
+        background around each source. If `None` then no local
+        background subtraction is performed. The local background
+        affects the ``source_sum``, ``max_value`` (and its position),
+        ``min_value`` (and its position) and ``kron_flux`` properties.
+        It does not affect the moment-based morphological properties of
+        the source.
 
     kron_params : tuple of list, optional
         A list of five parameters used to determine how the Kron radius
@@ -1849,7 +1858,7 @@ def source_properties(data, segment_img, error=None, mask=None,
         sources_props.append(SourceProperties(
             data, segment_img, label, filtered_data=filtered_data,
             error=error, mask=mask, background=background, wcs=wcs,
-            kron_params=kron_params))
+            localbkg_width=localbkg_width, kron_params=kron_params))
 
     if not sources_props:
         raise ValueError('No sources are defined.')
