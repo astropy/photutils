@@ -329,11 +329,8 @@ class SExtractorBackground(BackgroundBase):
     SExtractor algorithm.
 
     The background is calculated using a mode estimator of the form
-    ``(2.5 * median) - (1.5 * mean)``.
-
-    If ``(mean - median) / std > 0.3`` then the median is used instead.
-    Despite what the `SExtractor`_ User's Manual says, this is the
-    method it *always* uses.
+    ``(2.5 * median) - (1.5 * mean)``. If ``(mean - median) / std >
+    0.3`` then the median is used instead.
 
     .. _SExtractor: https://www.astromatic.net/software/sextractor
 

@@ -8,6 +8,7 @@ from copy import deepcopy
 import warnings
 
 from astropy.coordinates import SkyCoord
+from astropy.stats import SigmaClip
 from astropy.table import QTable
 import astropy.units as u
 from astropy.utils import lazyproperty
@@ -15,7 +16,9 @@ from astropy.utils.exceptions import AstropyUserWarning
 import numpy as np
 
 from .core import SegmentationImage
-from ..aperture import BoundingBox, CircularAperture, EllipticalAperture
+from ..background import SExtractorBackground
+from ..aperture import (BoundingBox, CircularAperture, EllipticalAperture,
+                        RectangularAnnulus)
 from ..utils._convolution import _filter_data
 from ..utils._moments import _moments, _moments_central
 from ..utils._wcs_helpers import _pixel_to_world
@@ -123,6 +126,15 @@ class SourceProperties:
         `astropy.wcs.WCS`, `gwcs.wcs.WCS`).  If `None`, then all sky-based
         properties will be set to `None`.
 
+    localbkg_width: `None` or positive float, optional
+        The width of the rectangular annulus used to compute a local
+        background around each source. If `None` then no local
+        background subtraction is performed. The local background
+        affects the ``source_sum``, ``max_value`` (and its position),
+        ``min_value`` (and its position) and ``kron_flux`` properties.
+        It does not affect the moment-based morphological properties of
+        the source.
+
     kron_params : tuple of list, optional
         A list of five parameters used to determine how the Kron radius
         and flux are calculated. The first item represents how data
@@ -199,6 +211,7 @@ class SourceProperties:
 
     def __init__(self, data, segment_img, label, filtered_data=None,
                  error=None, mask=None, background=None, wcs=None,
+                 localbkg_width=None,
                  kron_params=('mask', 2.5, 0.0, 'exact', 5)):
 
         if not isinstance(segment_img, SegmentationImage):
@@ -271,6 +284,10 @@ class SourceProperties:
 
         self.segment = segment_img[segment_img.get_index(label)]
         self.slices = self.segment.slices
+
+        if localbkg_width is not None and localbkg_width <= 0:
+            raise ValueError('localbkg_width must be >= 0')
+        self.localbkg_width = localbkg_width
 
         if kron_params[0] not in ('none', 'mask', 'mask_all', 'correct'):
             raise ValueError('Invalid value for kron_params[0]')
@@ -1380,6 +1397,47 @@ class SourceProperties:
                 ((1. / self.semimajor_axis_sigma**2) -
                  (1. / self.semiminor_axis_sigma**2)))
 
+    @lazyproperty
+    def local_background_aperture(self):
+        if self.localbkg_width is None:
+            return None
+
+        xpos = 0.5 * (self.bbox.ixmin + self.bbox.ixmax - 1)
+        ypos = 0.5 * (self.bbox.iymin + self.bbox.iymax - 1)
+        scale = 1.5
+        width_bbox = self.bbox.ixmax - self.bbox.ixmin
+        width_in = width_bbox * scale
+        width_out = width_in + 2 * self.localbkg_width
+        height_bbox = self.bbox.iymax - self.bbox.iymin
+        height_in = height_bbox * scale
+        height_out = height_in + 2 * self.localbkg_width
+
+        return RectangularAnnulus((xpos, ypos), width_in, width_out,
+                                  height_out, height_in, theta=0.)
+
+    @lazyproperty
+    def local_background(self):
+        if self.localbkg_width is None:
+            return 0.
+
+        aperture = self.local_background_aperture
+        aperture_mask = aperture.to_mask(method='exact')
+
+        mask = ~np.isfinite(self._data)
+        if self._mask is not None:
+            mask |= self._mask
+
+        data = aperture_mask.cutout(self._data, copy=True)
+
+        segm_mask = self._mask_neighbors(aperture_mask, method='mask')
+        if segm_mask is not None:
+            data[segm_mask] = 0.
+
+        pix1d = aperture_mask.multiply(data)[~aperture_mask._mask]
+        sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
+        bkg_func = SExtractorBackground(sigma_clip)
+        return bkg_func(pix1d)
+
     def _elliptical_aperture(self, radius=6.):
         """
         Parameters
@@ -1394,20 +1452,20 @@ class SourceProperties:
         theta = self.orientation.to(u.radian).value
         return EllipticalAperture(position, a, b, theta=theta)
 
-    def _prepare_kron_mask(self, aperture_mask):
-        segm_mask = None
-        mask_method = self.kron_params[0]
+    def _mask_neighbors(self, aperture_mask, method='none'):
+        if method == 'none':
+            return None
 
         segment_img = aperture_mask.cutout(self._segment_img.data,
                                            copy=True)
 
         # mask all pixels outside of the source segment
-        if mask_method in ('mask_all', ):
+        if method in ('mask_all', ):
             segm_mask = (segment_img != self.id)
 
         # mask pixels *only* in neighboring segments (not including
         # background pixels)
-        if mask_method in ('mask', 'correct'):
+        if method in ('mask', 'correct'):
             segm_mask = np.logical_and(segment_img != self.id,
                                        segment_img != 0)
 
@@ -1420,7 +1478,8 @@ class SourceProperties:
 
         data = aperture_mask.cutout(self._data, copy=True)
 
-        segm_mask = self._prepare_kron_mask(aperture_mask)
+        segm_mask = self._mask_neighbors(aperture_mask,
+                                         method=self.kron_params[0])
         if segm_mask is not None:
             data[segm_mask] = 0.
 
