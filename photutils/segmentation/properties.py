@@ -1593,8 +1593,8 @@ class SourceProperties:
 
         method = self.kron_params[3]
         subpixels = self.kron_params[4]
-        flux, fluxerr = aperture.do_photometry(data, error=error,
-                                               method=method,
+        flux, fluxerr = aperture.do_photometry(data - self.local_background,
+                                               error=error, method=method,
                                                subpixels=subpixels)
         if len(fluxerr) > 0:
             self._kron_fluxerr = fluxerr[0]
