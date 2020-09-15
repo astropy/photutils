@@ -1441,6 +1441,8 @@ class SourceProperties:
         if segm_mask is not None:
             mask |= segm_mask
         pix1d = aperture_mask.multiply(data)[~mask]
+        if len(pix1d) < 10:  # not enough unmasked pixels
+            return 0.
         sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
         bkg_func = SExtractorBackground(sigma_clip)
         if isinstance(pix1d, u.Quantity):
