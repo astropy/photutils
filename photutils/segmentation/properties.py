@@ -1557,9 +1557,11 @@ class SourceProperties:
                      + self.cyy.value * yy**2)
 
         method = 'center'  # need whole pixel to compute Kron radius
+        if isinstance(data, u.Quantity):
+            data = data.value
         flux_numer, _ = aperture.do_photometry(data * rr, method=method)
         flux_denom, _ = aperture.do_photometry(data, method=method)
-        return flux_numer[0] / flux_denom[0]
+        return (flux_numer[0] / flux_denom[0]) << u.pixel
 
     @lazyproperty
     def kron_aperture(self):
@@ -1568,12 +1570,12 @@ class SourceProperties:
         """
         a = self.semimajor_axis_sigma.value
         b = self.semiminor_axis_sigma.value
-        if self.kron_radius * np.sqrt(a * b) < self.kron_params[2]:
+        if self.kron_radius.value * np.sqrt(a * b) < self.kron_params[2]:
             # use circular aperture with radius=self.kron_params[2]
             xypos = (self.xcentroid.value, self.ycentroid.value)
             aperture = CircularAperture(xypos, r=self.kron_params[2])
         else:
-            radius = self.kron_radius * self.kron_params[1]
+            radius = self.kron_radius.value * self.kron_params[1]
             aperture = self._elliptical_aperture(radius=radius)
 
         return aperture
