@@ -1399,6 +1399,10 @@ class SourceProperties:
 
     @lazyproperty
     def local_background_aperture(self):
+        """
+        The rectangular annulus aperture used to estimate the local
+        background.
+        """
         if self.localbkg_width is None:
             return None
 
@@ -1417,6 +1421,10 @@ class SourceProperties:
 
     @lazyproperty
     def local_background(self):
+        """
+        The local background value estimated using a rectangular annulus
+        aperture around the source.
+        """
         if self.localbkg_width is None:
             return 0.
 
