@@ -130,10 +130,9 @@ class SourceProperties:
         The width of the rectangular annulus used to compute a local
         background around each source. If `None` then no local
         background subtraction is performed. The local background
-        affects the ``source_sum``, ``max_value`` (and its position),
-        ``min_value`` (and its position) and ``kron_flux`` properties.
-        It does not affect the moment-based morphological properties of
-        the source.
+        affects the ``source_sum``, ``max_value``, ``min_value``, and
+        ``kron_flux`` properties. It does not affect the moment-based
+        morphological properties of the source.
 
     kron_params : tuple of list, optional
         A list of five parameters used to determine how the Kron radius
@@ -826,7 +825,7 @@ class SourceProperties:
         if self._is_completely_masked:
             return np.nan * self._data_unit
         else:
-            return np.min(self._data_values)
+            return np.min(self._data_values - self.local_background)
 
     @lazyproperty
     def max_value(self):
@@ -838,7 +837,7 @@ class SourceProperties:
         if self._is_completely_masked:
             return np.nan * self._data_unit
         else:
-            return np.max(self._data_values)
+            return np.max(self._data_values - self.local_background)
 
     @lazyproperty
     def minval_cutout_pos(self):
@@ -978,7 +977,8 @@ class SourceProperties:
         if self._is_completely_masked:
             return np.nan * self._data_unit  # table output needs unit
         else:
-            return np.sum(self._data_values)
+            return (np.sum(self._data_values) -
+                    self.local_background * self.area.value)
 
     @lazyproperty
     def source_sum_err(self):
@@ -1428,6 +1428,7 @@ class SourceProperties:
             mask |= self._mask
 
         data = aperture_mask.cutout(self._data, copy=True)
+        mask = aperture_mask.cutout(mask)
         segm_mask = self._mask_neighbors(aperture_mask, method='mask')
 
         # need to define new aperture mask
@@ -1436,7 +1437,7 @@ class SourceProperties:
                                aperture_mask.bbox.iymin)
         aperture_mask = aperture.to_mask(method='center')
 
-        mask = aperture_mask._mask
+        mask |= aperture_mask._mask
         if segm_mask is not None:
             mask |= segm_mask
         pix1d = aperture_mask.multiply(data)[~mask]
@@ -1485,6 +1486,8 @@ class SourceProperties:
             mask |= self._mask
 
         data = aperture_mask.cutout(self._data, copy=True)
+        mask = aperture_mask.cutout(mask)
+        data[mask] = 0.
 
         segm_mask = self._mask_neighbors(aperture_mask,
                                          method=self.kron_params[0])
@@ -1719,10 +1722,9 @@ def source_properties(data, segment_img, error=None, mask=None,
         The width of the rectangular annulus used to compute a local
         background around each source. If `None` then no local
         background subtraction is performed. The local background
-        affects the ``source_sum``, ``max_value`` (and its position),
-        ``min_value`` (and its position) and ``kron_flux`` properties.
-        It does not affect the moment-based morphological properties of
-        the source.
+        affects the ``source_sum``, ``max_value``, ``min_value``, and
+        ``kron_flux`` properties. It does not affect the moment-based
+        morphological properties of the source.
 
     kron_params : tuple of list, optional
         A list of five parameters used to determine how the Kron radius
