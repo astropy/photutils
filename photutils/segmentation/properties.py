@@ -1421,21 +1421,29 @@ class SourceProperties:
             return 0.
 
         aperture = self.local_background_aperture
-        aperture_mask = aperture.to_mask(method='exact')
+        aperture_mask = aperture.to_mask(method='center')
 
         mask = ~np.isfinite(self._data)
         if self._mask is not None:
             mask |= self._mask
 
         data = aperture_mask.cutout(self._data, copy=True)
-
         segm_mask = self._mask_neighbors(aperture_mask, method='mask')
-        if segm_mask is not None:
-            data[segm_mask] = 0.
 
-        pix1d = aperture_mask.multiply(data)[~aperture_mask._mask]
+        # need to define new aperture mask
+        aperture = deepcopy(self.local_background_aperture)
+        aperture.positions -= (aperture_mask.bbox.ixmin,
+                               aperture_mask.bbox.iymin)
+        aperture_mask = aperture.to_mask(method='center')
+
+        mask = aperture_mask._mask
+        if segm_mask is not None:
+            mask |= segm_mask
+        pix1d = aperture_mask.multiply(data)[~mask]
         sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
         bkg_func = SExtractorBackground(sigma_clip)
+        if isinstance(pix1d, u.Quantity):
+            return bkg_func(pix1d.value) << self._data_unit
         return bkg_func(pix1d)
 
     def _elliptical_aperture(self, radius=6.):
