@@ -335,7 +335,7 @@ class TestSourcePropertiesFunction:
         for shape in shapes:
             assert shape == (4, 4)
 
-        assert obj.kron_radius < 1.3
+        assert obj.kron_radius.value < 1.3
         assert obj.kron_flux < 16700.
         assert obj.kron_fluxerr is None
 
@@ -491,6 +491,10 @@ class TestSourcePropertiesFunction:
         assert cat[0].id == 2
         assert cat[1].id == 3
         assert cat[segm.get_index(label=1000)].id == 1000
+
+    def test_local_background(self):
+        props = source_properties(IMAGE, self.segm, localbkg_width=24)
+        assert_allclose(props[0].local_background, 0., atol=1.e-7)
 
     def test_wcs(self):
         mywcs = make_wcs(IMAGE.shape)
