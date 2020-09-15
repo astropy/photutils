@@ -34,6 +34,8 @@ New Features
   - Added Kron radius, flux, flux error, and aperture to
     ``SourceProperties``. [#1068]
 
+  - Added local background to ``SourceProperties``. [#1075]
+
 Bug Fixes
 ^^^^^^^^^
 
