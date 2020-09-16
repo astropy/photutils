@@ -622,12 +622,6 @@ class EPSFModel(FittableImageModel):
             value = np.atleast_1d(value).astype(int)
             if len(value) == 1:
                 value = np.repeat(value, 2)
-            # We need oversampling to be a factor of 2 for ``middle of
-            # pixel'' in the undersampled regime to have a pixel placed at
-            # it in the oversampled regime.
-            if np.any(value % 2 != 0) and np.logical_not(np.all(value == 1)):
-                raise ValueError('Oversampling factor must be a multiple of '
-                                 'two')
         except ValueError:
             raise ValueError('Oversampling factor must be a scalar')
         if np.any(value <= 0):
