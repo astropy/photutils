@@ -12,6 +12,8 @@ from astropy.nddata import NDData
 from astropy.utils.exceptions import AstropyWarning
 import numpy as np
 
+from ..aperture import CircularAperture
+
 __all__ = ['NonNormalizable', 'FittableImageModel', 'EPSFModel',
            'GriddedPSFModel', 'IntegratedGaussianPRF', 'PRFAdapter']
 
@@ -507,6 +509,12 @@ class EPSFModel(FittableImageModel):
     """
     A class that models an effective PSF (ePSF).
 
+    The EPSFModel is normalized such that the sum of the PSF over the
+    (undersampled) pixels within the the input ``norm_radius`` is 1.0.
+    This means that when the EPSF is fit to stars, the resulting flux
+    corresponds to aperture photometry within a circular aperture of
+    radius ``norm_radius``.
+
     While this class is a subclass of `FittableImageModel`, it is very
     similar.  The primary differences/motivation are a few additional
     parameters necessary specifically for ePSFs.
@@ -557,41 +565,16 @@ class EPSFModel(FittableImageModel):
 
     def _compute_raw_image_norm(self):
         """
-        Helper function that computes the normalization of input image
-        data.  This quantity is computed as the sum of all undersampled
-        integer pixel values within radius pixels of the center of the
-        ePSF.
+        Compute the normalization of input image data as the flux
+        within a given radius.
         """
-
-        # First need the indices of each axis at the oversampled
-        # resolution; if oversampling = 4 then x = [0, 0.25, 0.5, 0.75, ...]
-        x = np.arange(self._nx, dtype=float) / self.oversampling[0]
-        y = np.arange(self._ny, dtype=float) / self.oversampling[1]
-
-        # Take indices where the undersampled grid is an integer --
-        # i.e., the actual undersampled grid -- and find the cut where
-        # sqrt(dx**2 + dy**2) <= radius
-        x_0, y_0 = int((self._nx - 1) / 2), int((self._ny - 1) / 2)
-
-        # However, as we are in units of the undersampled grid, we must
-        # convert to undersampled units by the same factor of oversampling
-        x_0 /= self.oversampling[0]
-        y_0 /= self.oversampling[1]
-
-        # When checking if the index is at the center of a pixel, we
-        # check such that the index number is half that of the
-        # oversampling -- if we oversample by a factor 4 then the middle
-        # pixel of the 0th large pixel is 2 ([0, 1, 2, 3, 4]). For this to
-        # work we require oversampling to be an even number; otherwise,
-        # the ``middle'' pixel will be halfway between two oversampled
-        # pixels.
-        over_index_middle = 1 / 2
-        cut = (((x.reshape(1, -1) - x_0)**2 + (y.reshape(-1, 1) - y_0)**2 <=
-                self._norm_radius**2)
-               & (x.reshape(1, -1) % 1.0 == over_index_middle)
-               & (y.reshape(-1, 1) % 1.0 == over_index_middle))
-
-        return np.sum(self._data[cut], dtype=float)
+        xypos = (self._nx / 2., self._ny / 2.)
+        # TODO: generalize "radius" (ellipse?) is oversampling is
+        # different along x/y axes
+        radius = self._norm_radius * self.oversampling[0]
+        aper = CircularAperture(xypos, r=radius)
+        flux, _ = aper.do_photometry(self._data, method='exact')
+        return flux[0] / np.product(self.oversampling)
 
     def _compute_normalization(self):
         """
@@ -622,12 +605,6 @@ class EPSFModel(FittableImageModel):
             value = np.atleast_1d(value).astype(int)
             if len(value) == 1:
                 value = np.repeat(value, 2)
-            # We need oversampling to be a factor of 2 for ``middle of
-            # pixel'' in the undersampled regime to have a pixel placed at
-            # it in the oversampled regime.
-            if np.any(value % 2 != 0) and np.logical_not(np.all(value == 1)):
-                raise ValueError('Oversampling factor must be a multiple of '
-                                 'two')
         except ValueError:
             raise ValueError('Oversampling factor must be a scalar')
         if np.any(value <= 0):

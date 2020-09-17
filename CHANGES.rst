@@ -13,6 +13,7 @@ General
 
 New Features
 ^^^^^^^^^^^^
+
 - ``photutils.aperture``
 
   - Added ``b_in`` as an optional ellipse annulus keyword. [#1070]
@@ -28,6 +29,11 @@ New Features
 
   - Added quadratic centroid estimator function
     (``centroid_quadratic``). [#1067]
+
+- ``photutils.psf``
+
+  - Added the ability to use odd oversampling factors in
+    ``EPSFBuilder``. [#1076]
 
 - ``photutils.segmentation``
 

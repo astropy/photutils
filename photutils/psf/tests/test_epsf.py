@@ -3,6 +3,8 @@
 Tests for the epsf module.
 """
 
+import itertools
+
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.nddata import NDData
 from astropy.table import Table
@@ -146,10 +148,6 @@ def test_epsfbuilder_inputs():
     with pytest.raises(ValueError):
         EPSFBuilder(maxiters=-1)
     with pytest.raises(ValueError):
-        EPSFBuilder(oversampling=3)
-    with pytest.raises(ValueError):
-        EPSFBuilder(oversampling=[3, 6])
-    with pytest.raises(ValueError):
         EPSFBuilder(oversampling=[-1, 4])
 
     # valid inputs
@@ -181,7 +179,7 @@ def test_epsfmodel_inputs():
         EPSFModel(data, flux=None)
 
     data[2, 2] = 1
-    for oversampling in [3, np.NaN, 'a', -1, [3, 4], [-2, 4]]:
+    for oversampling in [np.NaN, 'a', -1, [-2, 4]]:
         with pytest.raises(ValueError):
             EPSFModel(data, oversampling=oversampling)
 
@@ -248,3 +246,42 @@ def test_epsf_build_with_noise():
                                shift_val=0.5)
     epsf, fitted_stars = epsf_builder(stars)
     assert_allclose(epsf.data, truth_epsf, rtol=1e-1, atol=5e-2)
+
+
+@pytest.mark.skipif('not HAS_SCIPY')
+def test_odd_oversampling(oversamp=3):
+    offsets = np.arange(oversamp) * 1./oversamp - 0.5 + 1./(2. * oversamp)
+    xydithers = np.array(list(itertools.product(offsets, offsets)))
+    xdithers = np.transpose(xydithers)[0]
+    ydithers = np.transpose(xydithers)[1]
+
+    nstars = oversamp**2
+    sigma = 3.0
+    sources = Table()
+    size = oversamp * 100 + 100
+    y, x = np.mgrid[0:oversamp, 0:oversamp] * 100. + 100.
+    sources['amplitude'] = np.full((nstars,), 100.0)
+    sources['x_0'] = x.ravel() + xdithers
+    sources['y_0'] = y.ravel() + ydithers
+    sources['sigma'] = np.full((nstars,), sigma)
+
+    data = make_gaussian_prf_sources_image((size, size), sources)
+    nddata = NDData(data=data)
+    stars_tbl = Table()
+    stars_tbl['x'] = sources['x_0']
+    stars_tbl['y'] = sources['y_0']
+
+    stars = extract_stars(nddata, stars_tbl, size=25)
+    epsf_builder = EPSFBuilder(oversampling=oversamp, maxiters=5,
+                               progress_bar=False)
+    epsf, fitted_stars = epsf_builder(stars)
+
+    # input PSF shape
+    size = epsf.data.shape[0]
+    cen = (size - 1) / 2
+    sigma2 = oversamp * sigma
+    m = IntegratedGaussianPRF(sigma2, x_0=cen, y_0=cen, flux=1)
+    yy, xx = np.mgrid[0:size, 0:size]
+    data2 = m(xx, yy)
+
+    assert_allclose(epsf.data/np.sum(epsf.data), data2, atol=1.e-4)
