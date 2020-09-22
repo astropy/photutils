@@ -48,14 +48,14 @@ class EPSFStar:
         linked star (a single star extracted from different images).
 
     wcs_large : `None` or WCS object, optional
-        A WCS object associated with the large image from which the
-        cutout array was extracted.  It should not be the WCS object of
-        the input cutout ``data`` array.  The WCS object must support
-        the `astropy shared interface for WCS
-        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
-        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).  ``origin`` and
-        ``wcs_large`` must both be input for a linked star (a single
-        star extracted from different images).
+        A WCS object associated with the large image from which
+        the cutout array was extracted. It should not be the
+        WCS object of the input cutout ``data`` array. The WCS
+        object must support the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`). ``origin`` and ``wcs_large``
+        must both be input for a linked star (a single star extracted
+        from different images).
 
     id_label : int, str, or `None`, optional
         An optional identification number or label for the star.
@@ -370,7 +370,7 @@ class EPSFStars:
     def all_stars(self):
         """
         A list of all `EPSFStar` objects stored in this object,
-        including those that comprise linked stars (i.e.
+        including those that comprise linked stars (i.e.,
         `LinkedEPSFStar`), as a flat list.
         """
 
@@ -388,7 +388,7 @@ class EPSFStars:
         """
         A list of all `EPSFStar` objects stored in this object that have
         not been excluded from fitting, including those that comprise
-        linked stars (i.e. `LinkedEPSFStar`), as a flat list.
+        linked stars (i.e., `LinkedEPSFStar`), as a flat list.
         """
 
         stars = []
@@ -471,7 +471,7 @@ class LinkedEPSFStar(EPSFStars):
 
     def constrain_centers(self):
         """
-        Constrain the centers of linked `EPSFStar` objects (i.e. the
+        Constrain the centers of linked `EPSFStar` objects (i.e., the
         same physical star) to have the same sky coordinate.
 
         Only `EPSFStar` objects that have not been excluded during the
@@ -549,9 +549,9 @@ def extract_stars(data, catalogs, size=(11, 11)):
     data : `~astropy.nddata.NDData` or list of `~astropy.nddata.NDData`
         A `~astropy.nddata.NDData` object or a list of
         `~astropy.nddata.NDData` objects containing the 2D image(s) from
-        which to extract the stars.  If the input ``catalogs`` contain
-        only the sky coordinates (i.e. not the pixel coordinates) of the
-        stars then each of the `~astropy.nddata.NDData` objects must
+        which to extract the stars. If the input ``catalogs`` contain
+        only the sky coordinates (i.e., not the pixel coordinates) of
+        the stars then each of the `~astropy.nddata.NDData` objects must
         have a valid ``wcs`` attribute.
 
     catalogs : `~astropy.table.Table`, list of `~astropy.table.Table`
@@ -562,12 +562,12 @@ def extract_stars(data, catalogs, size=(11, 11)):
 
         If a list of catalogs is input (or a single catalog with a
         single `~astropy.nddata.NDData` object), they are assumed to
-        correspond to the list of `~astropy.nddata.NDData` objects input
-        in ``data`` (i.e. a separate source catalog for each 2D image).
-        For this case, the center of each source can be defined either
-        in pixel coordinates (in ``x`` and ``y`` columns) or sky
-        coordinates (in a ``skycoord`` column containing a
-        `~astropy.coordinates.SkyCoord` object).  If both are specified,
+        correspond to the list of `~astropy.nddata.NDData` objects
+        input in ``data`` (i.e., a separate source catalog for each
+        2D image). For this case, the center of each source can be
+        defined either in pixel coordinates (in ``x`` and ``y`` columns)
+        or sky coordinates (in a ``skycoord`` column containing a
+        `~astropy.coordinates.SkyCoord` object). If both are specified,
         then the pixel coordinates will be used.
 
         If a single source catalog is input with multiple
@@ -670,8 +670,8 @@ def extract_stars(data, catalogs, size=(11, 11)):
         # transpose the list of lists, to associate linked stars
         stars = list(map(list, zip(*stars)))
 
-        # remove 'None' stars (i.e. no or partial overlap in one or more
-        # images) and handle the case of only one "linked" star
+        # remove 'None' stars (i.e., no or partial overlap in one or
+        # more images) and handle the case of only one "linked" star
         stars_out = []
         n_input = len(catalogs[0]) * len(data)
         n_extracted = 0
@@ -713,10 +713,10 @@ def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
     ----------
     data : `~astropy.nddata.NDData`
         A `~astropy.nddata.NDData` object containing the 2D image from
-        which to extract the stars.  If the input ``catalog`` contains
-        only the sky coordinates (i.e. not the pixel coordinates) of the
-        stars then the `~astropy.nddata.NDData` object must have a valid
-        ``wcs`` attribute.
+        which to extract the stars. If the input ``catalog`` contains
+        only the sky coordinates (i.e., not the pixel coordinates) of
+        the stars then the `~astropy.nddata.NDData` object must have a
+        valid ``wcs`` attribute.
 
     catalogs : `~astropy.table.Table`
         A single catalog of sources to be extracted from the input
@@ -738,9 +738,8 @@ def _extract_stars(data, catalog, size=(11, 11), use_xy=True):
     use_xy : bool, optional
         Whether to use the ``x`` and ``y`` pixel positions when both
         pixel and sky coordinates are present in the input catalog
-        table.  If `False` then sky coordinates are used instead of
-        pixel coordinates (e.g. for linked stars).  The default is
-        `True`.
+        table. If `False` then sky coordinates are used instead of pixel
+        coordinates (e.g., for linked stars). The default is `True`.
 
     Returns
     -------

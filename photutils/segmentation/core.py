@@ -74,9 +74,9 @@ class Segment:
     def data(self):
         """
         A cutout array of the segment using the minimal bounding box,
-        where pixels outside of the labeled region are set to zero (i.e.
-        neighboring segments within the rectangular cutout array are not
-        shown).
+        where pixels outside of the labeled region are set to zero
+        (i.e., neighboring segments within the rectangular cutout array
+        are not shown).
         """
 
         cutout = np.copy(self._segment_data[self.slices])
@@ -91,7 +91,7 @@ class Segment:
         minimal bounding box.
 
         The mask is `True` for pixels outside of the source segment
-        (i.e. neighboring segments within the rectangular cutout array
+        (i.e., neighboring segments within the rectangular cutout array
         are masked).
         """
 
@@ -120,7 +120,7 @@ class Segment:
         If ``masked_array`` is `False` (default), then the returned
         cutout array is simply a `~numpy.ndarray`.  The returned cutout
         is a view (not a copy) of the input ``data``.  No pixels are
-        altered (e.g. set to zero) within the bounding box.
+        altered (e.g., set to zero) within the bounding box.
 
         If ``masked_array` is `True`, then the returned cutout array is
         a `~numpy.ma.MaskedArray`, where the mask is `True` for pixels
@@ -168,7 +168,7 @@ class SegmentationImage:
         different positive integer values.  A value of zero is reserved
         for the background.  The segmentation image must contain at
         least one non-zero pixel and must not contain any non-finite
-        values (e.g. NaN, inf).
+        values (e.g., NaN, inf).
     """
 
     def __init__(self, data):
@@ -280,7 +280,7 @@ class SegmentationImage:
     def data(self, value):
         if np.any(~np.isfinite(value)):
             raise ValueError('data must not contain any non-finite values '
-                             '(e.g. NaN, inf)')
+                             '(e.g., NaN, inf)')
 
         value = np.asarray(value, dtype=int)
         if not np.any(value):

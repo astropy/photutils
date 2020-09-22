@@ -152,7 +152,7 @@ class EllipseGeometry:
         Find the center of a galaxy.
 
         If the algorithm is successful the (x, y) coordinates in this
-        `~photutils.isophote.EllipseGeometry` (i.e. the ``x0`` and
+        `~photutils.isophote.EllipseGeometry` (i.e., the ``x0`` and
         ``y0`` attributes) instance will be modified.
 
         The isophote fit algorithm requires an initial guess for the
@@ -169,7 +169,7 @@ class EllipseGeometry:
             assumes that centering should always be done on valid pixels.
         threshold : float, optional
             The centerer threshold.  To turn off the centerer, set this
-            to a large value (i.e. >> 1).  The default is 0.1.
+            to a large value (i.e., >> 1).  The default is 0.1.
         verbose : bool, optional
             Whether to print object centering information.  The default is
             `True`.
@@ -187,15 +187,15 @@ class EllipseGeometry:
         place to reflect the solution of the object centerer algorithm.
 
         In some cases the object centerer algorithm may fail even though
-        there is enough signal-to-noise to start a fit (e.g. objects
-        with very high ellipticity).  In those cases the sensitivity of
-        the algorithm can be decreased by decreasing the value of the
-        object centerer threshold parameter.  The centerer works by
+        there is enough signal-to-noise to start a fit (e.g., objects
+        with very high ellipticity). In those cases the sensitivity
+        of the algorithm can be decreased by decreasing the value of
+        the object centerer threshold parameter. The centerer works by
         looking where a quantity akin to a signal-to-noise ratio is
-        maximized within the 10x10 window.  The centerer can thus be
-        shut off entirely by setting the threshold to a large value
-        (i.e. >> 1; meaning no location inside the search window will
-        achieve that signal-to-noise ratio).
+        maximized within the 10x10 window. The centerer can thus be shut
+        off entirely by setting the threshold to a large value (i.e.,
+        >> 1; meaning no location inside the search window will achieve
+        that signal-to-noise ratio).
         """
 
         self._centerer_mask_half_size = len(IN_MASK) / 2

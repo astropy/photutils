@@ -20,9 +20,9 @@ def _pixel_to_world(xpos, ypos, wcs):
         The x and y pixel position(s).
 
     wcs : WCS object or `None`
-        A world coordinate system (WCS) transformation that supports the
-        `astropy shared interface for WCS
-        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
         `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
     Returns
@@ -59,9 +59,9 @@ def _world_to_pixel(skycoord, wcs):
         The sky coordinate(s).
 
     wcs : WCS object or `None`
-        A world coordinate system (WCS) transformation that supports the
-        `astropy shared interface for WCS
-        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
         `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
     Returns
@@ -95,9 +95,9 @@ def _pixel_scale_angle_at_skycoord(skycoord, wcs, offset=1.0*u.arcsec):
         The SkyCoord coordinate.
 
     wcs : WCS object
-        A world coordinate system (WCS) transformation that supports the
-        `astropy shared interface for WCS
-        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
         `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
     offset : `~astropy.units.Quantity`
@@ -124,10 +124,10 @@ def _pixel_scale_angle_at_skycoord(skycoord, wcs, offset=1.0*u.arcsec):
     try:
         x, y = wcs.world_to_pixel(skycoord)
 
-        # We take a point directly North (i.e. latitude offset) the input
-        # sky coordinate and convert it to pixel coordinates, then we use the
-        # pixel deltas between the input and offset sky coordinate to
-        # calculate the pixel scale and angle.
+        # We take a point directly North (i.e., latitude offset) the
+        # input sky coordinate and convert it to pixel coordinates,
+        # then we use the pixel deltas between the input and offset sky
+        # coordinate to calculate the pixel scale and angle.
         skycoord_offset = skycoord.directional_offset_by(0.0, offset)
         x_offset, y_offset = wcs.world_to_pixel(skycoord_offset)
     except AttributeError:

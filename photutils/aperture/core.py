@@ -94,7 +94,7 @@ class Aperture(metaclass=abc.ABCMeta):
     @property
     def isscalar(self):
         """
-        Whether the instance is scalar (i.e. a single position).
+        Whether the instance is scalar (i.e., a single position).
         """
 
         return self.shape == ()
@@ -418,7 +418,7 @@ class PixelAperture(Aperture):
     def _define_patch_params(self, origin=(0, 0), **kwargs):
         """
         Define the aperture patch position and set any default
-        matplotlib patch keywords (e.g. ``fill=False``).
+        matplotlib patch keywords (e.g., ``fill=False``).
 
         Parameters
         ----------
@@ -514,10 +514,10 @@ class PixelAperture(Aperture):
         Parameters
         ----------
         wcs : WCS object
-            A world coordinate system (WCS) transformation that supports
-            the `astropy shared interface for WCS
-            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
-            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+            A world coordinate system (WCS) transformation that
+            supports the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
+            (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -558,10 +558,10 @@ class PixelAperture(Aperture):
         Parameters
         ----------
         wcs : WCS object
-            A world coordinate system (WCS) transformation that supports
-            the `astropy shared interface for WCS
-            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
-            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+            A world coordinate system (WCS) transformation that
+            supports the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
+            (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -586,10 +586,10 @@ class SkyAperture(Aperture):
         Parameters
         ----------
         wcs : WCS object
-            A world coordinate system (WCS) transformation that supports
-            the `astropy shared interface for WCS
-            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
-            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+            A world coordinate system (WCS) transformation that
+            supports the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
+            (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -635,10 +635,10 @@ class SkyAperture(Aperture):
         Parameters
         ----------
         wcs : WCS object
-            A world coordinate system (WCS) transformation that supports
-            the `astropy shared interface for WCS
-            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
-            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+            A world coordinate system (WCS) transformation that
+            supports the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
+            (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------

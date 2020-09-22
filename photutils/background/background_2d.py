@@ -77,7 +77,7 @@ class BkgZoomInterpolator:
 
         if bkg2d_obj.edge_method == 'pad':
             # The mesh is first resized to the larger padded-data size
-            # (i.e. zoom_factor should be an integer) and then cropped
+            # (i.e., zoom_factor should be an integer) and then cropped
             # back to the final data size.
             zoom_factor = (int(bkg2d_obj.nyboxes * bkg2d_obj.box_size[0] /
                                mesh.shape[0]),
@@ -219,8 +219,8 @@ class Background2D:
         than ``exclude_percentile`` percent of its pixels masked then it
         will be excluded from the low-resolution map.  Masked pixels
         include those from the input ``mask``, those resulting from the
-        data padding (i.e. if ``edge_method='pad'``), and those
-        resulting from any sigma clipping (i.e. if ``sigma_clip`` is
+        data padding (i.e., if ``edge_method='pad'``), and those
+        resulting from any sigma clipping (i.e., if ``sigma_clip`` is
         used).  Setting ``exclude_percentile=0`` will exclude meshes
         that have any masked pixels.  Setting ``exclude_percentile=100``
         will only exclude meshes that are completely masked.  Note that
@@ -692,7 +692,7 @@ class Background2D:
             data_sigclip = self._mesh_data
         del self._mesh_data
 
-        # preform mesh rejection on sigma-clipped data (i.e. for any
+        # preform mesh rejection on sigma-clipped data (i.e., for any
         # newly-masked pixels)
         idx = self._select_meshes(data_sigclip)
         self.mesh_idx = self.mesh_idx[idx]  # indices for the output mesh

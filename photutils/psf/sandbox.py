@@ -319,10 +319,10 @@ class Reproject:
         Parameters
         ----------
         wcs1, wcs2 : WCS objects
-            World coordinate system (WCS) transformations that support
-            the `astropy shared interface for WCS
-            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
-            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+            World coordinate system (WCS) transformations that
+            support the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
+            (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------

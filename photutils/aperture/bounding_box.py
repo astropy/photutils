@@ -159,7 +159,7 @@ class BoundingBox:
         """
         The bounding box as a tuple of `slice` objects.
 
-        The slice tuple is in numpy axis order (i.e. ``(y, x)``) and
+        The slice tuple is in numpy axis order (i.e., ``(y, x)``) and
         therefore can be used to slice numpy arrays.
         """
 
@@ -174,8 +174,8 @@ class BoundingBox:
         pixel.
 
         The upper edges here are the actual pixel positions of the
-        edges, i.e. they are not "exclusive" indices used for python
-        indexing.  This is useful for plotting the bounding box using
+        edges, i.e., they are not "exclusive" indices used for python
+        indexing. This is useful for plotting the bounding box using
         Matplotlib.
         """
 

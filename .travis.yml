@@ -40,7 +40,7 @@ env:
         - TOXARGS='-v'
         - TOXPOSARGS=''
 
-        # The following is needed to avoid issues if e.g. Matplotlib tries
+        # The following is needed to avoid issues if e.g., Matplotlib tries
         # to open a GUI window.
         - SETUP_XVFB=True
 

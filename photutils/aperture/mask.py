@@ -16,8 +16,8 @@ class ApertureMask:
     Parameters
     ----------
     data : array_like
-        A 2D array representing the fractional overlap of an aperture on
-        the pixel grid.  This should be the full-sized (i.e. not
+        A 2D array representing the fractional overlap of an aperture
+        on the pixel grid. This should be the full-sized (i.e., not
         truncated) array that is the direct output of one of the
         low-level `photutils.geometry` functions.
 
@@ -98,7 +98,7 @@ class ApertureMask:
     def _to_image_partial_overlap(self, image):
         """
         Return an image of the mask in a 2D array, where the mask
-        is not fully within the image (i.e. partial or no overlap).
+        is not fully within the image (i.e., partial or no overlap).
         """
 
         # find the overlap of the mask on the output image shape
@@ -164,7 +164,7 @@ class ApertureMask:
             array will be a view into the input ``data``.  In cases
             where the mask partially overlaps or has no overlap with the
             input ``data``, the returned cutout array will always hold a
-            copy of the input ``data`` (i.e. this keyword has no
+            copy of the input ``data`` (i.e., this keyword has no
             effect).
 
         Returns

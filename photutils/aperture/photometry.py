@@ -86,10 +86,10 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         ** 2`` subpixels.
 
     wcs : WCS object, optional
-        A world coordinate system (WCS) transformation that supports the
-        `astropy shared interface for WCS
-        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
-        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).  Used only if the input
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`). Used only if the input
         ``apertures`` contains a `SkyAperture` object.
 
     Returns

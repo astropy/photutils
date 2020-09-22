@@ -252,7 +252,7 @@ New Features
 - ``photutils.segmentation``
 
   - Significantly improved the performance of relabeling in
-    segmentation images (e.g. ``remove_labels``, ``keep_labels``).
+    segmentation images (e.g., ``remove_labels``, ``keep_labels``).
     [#810]
 
   - Added new ``background_area`` attribute to ``SegmentationImage``.
@@ -287,7 +287,7 @@ New Features
     subclasses. [#916]
 
   - Significantly improved the performance of ``deblend_sources``.  It
-    is ~40-50% faster for large images (e.g. 4k x 4k) with a few
+    is ~40-50% faster for large images (e.g., 4k x 4k) with a few
     thousand of sources. [#924]
 
 - ``photutils.utils``
@@ -440,7 +440,7 @@ API changes
 
   - The ``EllipseSample`` ``update`` method now needs to know the
     fix/fit state of each individual parameter.  This can be passed to
-    it via a ``Geometry`` instance, e.g. ``update(geometry.fix)``.
+    it via a ``Geometry`` instance, e.g., ``update(geometry.fix)``.
     [#922]
 
 - ``photutils.psf``
@@ -500,7 +500,7 @@ API changes
     [#863]
 
   - The ``xmin/ymin`` and ``xmax/ymax`` properties have been
-    deprecated with the replacements having a ``bbox_`` prefix (e.g.
+    deprecated with the replacements having a ``bbox_`` prefix (e.g.,
     ``bbox_xmin``). [#863]
 
   - The ``orientation`` property is now returned as a ``Quantity``

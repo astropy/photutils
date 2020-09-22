@@ -114,7 +114,7 @@ class TestDAOStarFinder:
 
     def test_daofind_negative_fit_peak(self):
         """
-        Regression test that sources with negative fit peaks (i.e.
+        Regression test that sources with negative fit peaks (i.e.,
         hx/hy<=0) are excluded.
         """
 

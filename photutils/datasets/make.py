@@ -41,7 +41,7 @@ def apply_poisson_noise(data, random_state=None):
     ----------
     data : array-like
         The array on which to apply Poisson noise.  Every pixel in the
-        array must have a positive value (i.e. counts).
+        array must have a positive value (i.e., counts).
 
     random_state : int or `~numpy.random.RandomState`, optional
         Pseudo-random number generator state used for random sampling.
@@ -236,8 +236,8 @@ def make_random_models_table(n_sources, param_ranges, random_state=None):
     sources = Table()
     for param_name, (lower, upper) in param_ranges.items():
         # Generate a column for every item in param_ranges, even if it
-        # is not in the model (e.g. flux).  However, such columns will
-        # be ignored when rendering the image.
+        # is not in the model (e.g., flux). However, such columns will be
+        # ignored when rendering the image.
         sources[param_name] = prng.uniform(lower, upper, n_sources)
 
     return sources
@@ -442,8 +442,8 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
             params_to_set.append(param)
 
     # Save the initial parameter values so we can set them back when
-    # done with the loop.  It's best not to copy a model, because some
-    # models (e.g. PSF models) may have substantial amounts of data in
+    # done with the loop. It's best not to copy a model, because some
+    # models (e.g., PSF models) may have substantial amounts of data in
     # them.
     init_params = {param: getattr(model, param) for param in params_to_set}
 

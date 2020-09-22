@@ -285,7 +285,7 @@ class ShepardIDWInterpolator:
 def _mask_to_mirrored_num(image, mask_image, center_position, bbox=None):
     """
     Replace masked pixels with the value of the pixel mirrored across a
-    given ``center_position``.  If the mirror pixel is unavailable (i.e.
+    given ``center_position``. If the mirror pixel is unavailable (i.e.,
     itself masked or outside of the image), then the masked pixel value
     is set to zero.
 

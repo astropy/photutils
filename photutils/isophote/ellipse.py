@@ -157,8 +157,8 @@ class Ellipse:
     to reflect the solution of the object centerer algorithm.
 
     In some cases the object centerer algorithm may fail, even though
-    there is enough signal-to-noise to start a fit (e.g. in objects with
-    very high ellipticity).  In those cases the sensitivity of the
+    there is enough signal-to-noise to start a fit (e.g., in objects
+    with very high ellipticity). In those cases the sensitivity of the
     algorithm can be decreased by decreasing the value of the object
     centerer threshold parameter. The centerer works by looking to where
     a quantity akin to a signal-to-noise ratio is maximized within the

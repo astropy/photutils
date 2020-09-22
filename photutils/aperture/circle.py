@@ -201,10 +201,10 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         Parameters
         ----------
         wcs : WCS object
-            A world coordinate system (WCS) transformation that supports
-            the `astropy shared interface for WCS
-            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
-            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+            A world coordinate system (WCS) transformation that
+            supports the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
+            (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -328,10 +328,10 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         Parameters
         ----------
         wcs : WCS object
-            A world coordinate system (WCS) transformation that supports
-            the `astropy shared interface for WCS
-            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
-            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+            A world coordinate system (WCS) transformation that
+            supports the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
+            (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -383,10 +383,10 @@ class SkyCircularAperture(SkyAperture):
         Parameters
         ----------
         wcs : WCS object
-            A world coordinate system (WCS) transformation that supports
-            the `astropy shared interface for WCS
-            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
-            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+            A world coordinate system (WCS) transformation that
+            supports the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
+            (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -449,10 +449,10 @@ class SkyCircularAnnulus(SkyAperture):
         Parameters
         ----------
         wcs : WCS object
-            A world coordinate system (WCS) transformation that supports
-            the `astropy shared interface for WCS
-            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
-            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+            A world coordinate system (WCS) transformation that
+            supports the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
+            (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------

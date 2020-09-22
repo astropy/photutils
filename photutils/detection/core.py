@@ -187,12 +187,12 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         peak intensities will be returned.
 
     centroid_func : callable, optional
-        A callable object (e.g. function or class) that is used to
-        calculate the centroid of a 2D array.  The ``centroid_func``
+        A callable object (e.g., function or class) that is used to
+        calculate the centroid of a 2D array. The ``centroid_func``
         must accept a 2D `~numpy.ndarray`, have a ``mask`` keyword, and
-        optionally an ``error`` keyword.  The callable object must
-        return a tuple of two 1D `~numpy.ndarray`\\s, representing the x
-        and y centroids, respectively.
+        optionally an ``error`` keyword. The callable object must return
+        a tuple of two 1D `~numpy.ndarray`\\s, representing the x and y
+        centroids, respectively.
 
     error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
@@ -200,11 +200,11 @@ def find_peaks(data, threshold, box_size=3, footprint=None, mask=None,
         ``error`` array is passed directly to the ``centroid_func``).
 
     wcs : `None` or WCS object, optional
-        A world coordinate system (WCS) transformation that supports the
-        `astropy shared interface for WCS
-        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
-        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).  If `None`, then the sky
-        coordinates will not be returned in the output
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
+        (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`). If `None`, then
+        the sky coordinates will not be returned in the output
         `~astropy.table.Table`.
 
     Returns

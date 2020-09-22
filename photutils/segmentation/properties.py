@@ -120,11 +120,11 @@ class SourceProperties:
         be masked using the ``mask`` keyword.
 
     wcs : WCS object or `None`, optional
-        A world coordinate system (WCS) transformation that supports the
-        `astropy shared interface for WCS
-        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
-        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).  If `None`, then all sky-based
-        properties will be set to `None`.
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`). If `None`, then all
+        sky-based properties will be set to `None`.
 
     localbkg_width : `None` or positive int, optional
         The width of the rectangular annulus used to compute a local
@@ -165,21 +165,22 @@ class SourceProperties:
     background-subtracted for accurate source photometry and properties.
 
     `SExtractor`_'s centroid and morphological parameters are always
-    calculated from a filtered "detection" image, i.e. the image used to
-    define the segmentation image.  The usual downside of the filtering
-    is the sources will be made more circular than they actually are.
-    If you wish to reproduce `SExtractor`_ centroid and morphology
-    results, then input a filtered and background-subtracted "detection"
-    image into the ``filtered_data`` keyword.  If ``filtered_data`` is
-    `None`, then the unfiltered ``data`` will be used for the source
-    centroid and morphological parameters.
+    calculated from a filtered "detection" image, i.e., the image
+    used to define the segmentation image. The usual downside of
+    the filtering is the sources will be made more circular than
+    they actually are. If you wish to reproduce `SExtractor`_
+    centroid and morphology results, then input a filtered and
+    background-subtracted "detection" image into the ``filtered_data``
+    keyword. If ``filtered_data`` is `None`, then the unfiltered
+    ``data`` will be used for the source centroid and morphological
+    parameters.
 
-    Negative data values (``filtered_data`` or ``data``) within the
-    source segment are set to zero when calculating morphological
-    properties based on image moments.  Negative values could occur, for
-    example, if the segmentation image was defined from a different
-    image (e.g., different bandpass) or if the background was
-    oversubtracted. Note that
+    Negative data values (``filtered_data`` or ``data``)
+    within the source segment are set to zero when calculating
+    morphological properties based on image moments. Negative
+    values could occur, for example, if the segmentation
+    image was defined from a different image (e.g., different
+    bandpass) or if the background was oversubtracted. Note that
     `~photutils.segmentation.SourceProperties.source_sum` always
     includes the contribution of negative ``data`` values.
 
@@ -423,9 +424,9 @@ class SourceProperties:
         minimal bounding box of the source segment.
 
         If ``masked_array`` is `False` (default), then the returned
-        cutout array is simply a `~numpy.ndarray`.  The returned cutout
-        is a view (not a copy) of the input ``data``.  No pixels are
-        altered (e.g. set to zero) within the bounding box.
+        cutout array is simply a `~numpy.ndarray`. The returned cutout
+        is a view (not a copy) of the input ``data``. No pixels are
+        altered (e.g., set to zero) within the bounding box.
 
         If ``masked_array` is `True`, then the returned cutout array is
         a `~numpy.ma.MaskedArray`.  The mask is `True` for pixels
@@ -1107,7 +1108,7 @@ class SourceProperties:
         defined by a 4-pixel connectivity.
 
         If any masked pixels make holes within the source segment, then
-        the perimeter around the inner hole (e.g. an annulus) will also
+        the perimeter around the inner hole (e.g., an annulus) will also
         contribute to the total perimeter.
 
         References
@@ -1713,15 +1714,15 @@ def source_properties(data, segment_img, error=None, mask=None,
     filter_kernel : array-like (2D) or `~astropy.convolution.Kernel2D`, optional
         The 2D array of the kernel used to filter the data prior to
         calculating the source centroid and morphological parameters.
-        The kernel should be the same one used in defining the source
-        segments, i.e. the detection image (e.g., see
-        :func:`~photutils.segmentation.detect_sources`).  If `None`,
-        then the unfiltered ``data`` will be used instead.
+        The kernel should be the same one used in defining the
+        source segments, i.e., the detection image (e.g., see
+        :func:`~photutils.segmentation.detect_sources`). If `None`, then
+        the unfiltered ``data`` will be used instead.
 
     wcs : `None` or WCS object, optional
         A world coordinate system (WCS) transformation that supports the
         `astropy shared interface for WCS
-        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
         `astropy.wcs.WCS`, `gwcs.wcs.WCS`).  If `None`, then all sky-based
         properties will be set to `None`.
 
@@ -1772,14 +1773,15 @@ def source_properties(data, segment_img, error=None, mask=None,
     Notes
     -----
     `SExtractor`_'s centroid and morphological parameters are always
-    calculated from a filtered "detection" image, i.e. the image used to
-    define the segmentation image.  The usual downside of the filtering
-    is the sources will be made more circular than they actually are.
-    If you wish to reproduce `SExtractor`_ centroid and morphology
-    results, then input a filtered and background-subtracted "detection"
-    image into the ``filtered_data`` keyword.  If ``filtered_data`` is
-    `None`, then the unfiltered ``data`` will be used for the source
-    centroid and morphological parameters.
+    calculated from a filtered "detection" image, i.e., the image
+    used to define the segmentation image. The usual downside of
+    the filtering is the sources will be made more circular than
+    they actually are. If you wish to reproduce `SExtractor`_
+    centroid and morphology results, then input a filtered and
+    background-subtracted "detection" image into the ``filtered_data``
+    keyword. If ``filtered_data`` is `None`, then the unfiltered
+    ``data`` will be used for the source centroid and morphological
+    parameters.
 
     Negative data values (``filtered_data`` or ``data``) within the
     source segment are set to zero when calculating morphological
@@ -2030,11 +2032,11 @@ class SourceCatalog:
         `~astropy.table.QTable` will include a default list of
         scalar-valued properties.
 
-        Multi-dimensional properties, e.g.
-        `~photutils.segmentation.SourceProperties.data_cutout`, can be
-        included in the ``columns`` input, but they will not be
-        preserved when writing the table to a file.  This is a
-        limitation of multi-dimensional columns in astropy tables.
+        Multi-dimensional properties, e.g.,
+        `~photutils.segmentation.SourceProperties.data_cutout`, can
+        be included in the ``columns`` input, but they will not be
+        preserved when writing the table to a file. This is a limitation
+        of multi-dimensional columns in astropy tables.
 
         Parameters
         ----------
@@ -2170,9 +2172,9 @@ def _calc_sky_bbox_corner(bbox, corner, wcs):
             * 'ur':  upper right
 
     wcs : `None` or WCS object
-        A world coordinate system (WCS) transformation that supports the
-        `astropy shared interface for WCS
-        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
         `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
     Returns

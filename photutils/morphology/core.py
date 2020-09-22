@@ -12,7 +12,7 @@ __all__ = ['data_properties']
 def data_properties(data, mask=None, background=None):
     """
     Calculate the morphological properties (and centroid) of a 2D array
-    (e.g. an image cutout of an object) using image moments.
+    (e.g., an image cutout of an object) using image moments.
 
     Parameters
     ----------

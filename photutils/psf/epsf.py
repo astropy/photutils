@@ -42,7 +42,7 @@ class EPSFFitter:
     fit_boxsize : int, tuple of int, or `None`, optional
         The size (in pixels) of the box centered on the star to be used
         for ePSF fitting.  This allows using only a small number of
-        central pixels of the star (i.e. where the star is brightest)
+        central pixels of the star (i.e., where the star is brightest)
         for fitting.  If ``fit_boxsize`` is a scalar then a square box
         of size ``fit_boxsize`` will be used.  If ``fit_boxsize`` has
         two elements, they should be in ``(ny, nx)`` order.  The size
@@ -266,10 +266,10 @@ class EPSFBuilder:
         no smoothing will be performed.
 
     recentering_func : callable, optional
-        A callable object (e.g. function or class) that is used to
-        calculate the centroid of a 2D array.  The callable must accept
+        A callable object (e.g., function or class) that is used to
+        calculate the centroid of a 2D array. The callable must accept
         a 2D `~numpy.ndarray`, have a ``mask`` keyword and optionally
-        ``error`` and ``oversampling`` keywords.  The callable object
+        ``error`` and ``oversampling`` keywords. The callable object
         must return a tuple of two 1D `~numpy.ndarray` variables,
         representing the x and y centroids.
 
@@ -605,12 +605,12 @@ class EPSFBuilder:
             The ePSF model.
 
         centroid_func : callable, optional
-            A callable object (e.g. function or class) that is used to
-            calculate the centroid of a 2D array.  The callable must
-            accept a 2D `~numpy.ndarray`, have a ``mask`` keyword and
-            optionally an ``error`` keyword.  The callable object must
-            return a tuple of two 1D `~numpy.ndarray` variables, representing
-            the x and y centroids.
+            A callable object (e.g., function or class) that is used
+            to calculate the centroid of a 2D array. The callable must
+            accept a 2D `~numpy.ndarray`, have a ``mask`` keyword
+            and optionally an ``error`` keyword. The callable object
+            must return a tuple of two 1D `~numpy.ndarray` variables,
+            representing the x and y centroids.
         box_size : float or tuple of two floats, optional
             The size (in pixels) of the box used to calculate the
             centroid of the ePSF during each build iteration.  If a

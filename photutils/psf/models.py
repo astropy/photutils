@@ -236,8 +236,9 @@ class FittableImageModel(Fittable2DModel):
     @property
     def oversampling(self):
         """
-        The factor by which the stored image is oversampled.  I.e., an
-        input to this model is multipled by this factor to yield the
+        The factor by which the stored image is oversampled.
+
+        An input to this model is multipled by this factor to yield the
         index into the stored image.
         """
 
@@ -884,8 +885,8 @@ class GriddedPSFModel(Fittable2DModel):
             A list of 4 ``(x, y)`` pairs that form a rectangle.
 
         refdata : 3D `~numpy.ndarray`
-            A 3D `~numpy.ndarray` of shape ``(4, nx, ny)``.  The first
-            axis corresponds to ``xyref``, i.e. ``refdata[0, :, :]`` is
+            A 3D `~numpy.ndarray` of shape ``(4, nx, ny)``. The first
+            axis corresponds to ``xyref``, i.e., ``refdata[0, :, :]`` is
             the 2D array located at ``xyref[0]``.
 
         xi, yi : float
@@ -985,9 +986,9 @@ class IntegratedGaussianPRF(Fittable2DModel):
     PSF (see :ref:`psf-terminology` for more about the terminology used
     here.)
 
-    This model is a Gaussian *integrated* over an area of ``1`` (in
-    units of the model input coordinates, e.g. 1 pixel).  This is in
-    contrast to the apparently similar
+    This model is a Gaussian *integrated* over an area of
+    ``1`` (in units of the model input coordinates, e.g., 1
+    pixel). This is in contrast to the apparently similar
     `astropy.modeling.functional_models.Gaussian2D`, which is the value
     of a 2D Gaussian *at* the input coordinates, with no integration.
     So this model is equivalent to assuming the PSF is Gaussian at a

@@ -106,7 +106,7 @@ def calc_total_error(data, bkg_error, effective_gain):
     \\sigma_{\\mathrm{bkg}, i}`.
 
     To replicate `SExtractor`_ errors when it is configured to consider
-    weight maps as gain maps (i.e. 'WEIGHT_GAIN=Y'; which is the
+    weight maps as gain maps (i.e., 'WEIGHT_GAIN=Y'; which is the
     default), one should input an ``effective_gain`` calculated as:
 
     .. math:: g_{\\mathrm{eff}}^{\\prime} = g_{\\mathrm{eff}} \\left(
@@ -151,7 +151,7 @@ def calc_total_error(data, bkg_error, effective_gain):
         datagain_unit = data.unit * effective_gain.unit
         if datagain_unit not in count_units:
             raise u.UnitsError('(data * effective_gain) has units of "{0}", '
-                               'but it must have count units (e.g. '
+                               'but it must have count units (e.g., '
                                'u.electron or u.photon).'
                                .format(datagain_unit))
 

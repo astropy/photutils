@@ -75,10 +75,10 @@ Other Tips
 
 - To skip only the testing on Travis CI use ``[skip travis]``.
 
-- When contributing trivial documentation fixes (i.e. fixes to typos,
-  spelling, grammar) that do not contain any special markup and are
-  not associated with code changes, please include the string ``[docs
-  only]`` in your commit message.
+- When contributing trivial documentation fixes (e.g., fixes to typos,
+  spelling, grammar) that do not contain any special markup and are not
+  associated with code changes, please include the string ``[docs only]``
+  in your commit message.
 
       $ git commit -m "Fixed typo [docs only]"
 

@@ -38,7 +38,7 @@ def build_ellipse_model(shape, isolist, fill=0., high_harmonics=False):
         no contribution from any isophote, it will be assigned this
         value.  The default is 0.
     high_harmonics : bool, optional
-        Whether to add the higher-order harmonics (i.e. ``a3``, ``b3``,
+        Whether to add the higher-order harmonics (i.e., ``a3``, ``b3``,
         ``a4``, and ``b4``; see `~photutils.isophote.Isophote` for
         details) to the result.
 

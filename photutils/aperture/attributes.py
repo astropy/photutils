@@ -54,7 +54,7 @@ class PixelPositions(ApertureAttribute):
 
     def __set__(self, instance, value):
         # This is needed for zip to work seamlessly in Python 3
-        # (e.g. positions = zip(xpos, ypos))
+        # (e.g., positions = zip(xpos, ypos))
         if isinstance(value, zip):
             value = tuple(value)
 
@@ -67,7 +67,7 @@ class PixelPositions(ApertureAttribute):
         if value.ndim == 2 and value.shape[1] != 2 and value.shape[0] == 2:
             raise ValueError('Input positions must be an (x, y) pixel '
                              'position or a list or array of (x, y) pixel '
-                             'positions, e.g. [(x1, y1), (x2, y2), '
+                             'positions, e.g., [(x1, y1), (x2, y2), '
                              '(x3, y3)].')
 
         instance.__dict__[self.name] = value
@@ -77,7 +77,7 @@ class PixelPositions(ApertureAttribute):
             raise u.UnitsError('{} must be in pixel units'.format(self.name))
 
         if np.any(~np.isfinite(value)):
-            raise ValueError('{} must not contain any non-finite (e.g. NaN '
+            raise ValueError('{} must not contain any non-finite (e.g., NaN '
                              'or inf) positions'.format(self.name))
 
         value = np.atleast_2d(value)

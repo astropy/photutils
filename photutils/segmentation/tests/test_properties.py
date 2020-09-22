@@ -148,10 +148,9 @@ class TestSourceProperties:
 
     def test_masks(self):
         """
-        Test masks, including automatic masking of all non-finite (e.g.
+        Test masks, including automatic masking of all non-finite (e.g.,
         NaN, inf) values in the data array.
         """
-
         error = np.ones(IMAGE.shape) * 5.1
         error[41, 35] = np.nan
         error[42, 36] = np.inf

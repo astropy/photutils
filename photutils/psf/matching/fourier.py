@@ -50,12 +50,12 @@ def create_matching_kernel(source_psf, target_psf, window=None):
     ----------
     source_psf : 2D `~numpy.ndarray`
         The source PSF.  The source PSF should have higher resolution
-        (i.e. narrower) than the target PSF.  ``source_psf`` and
+        (i.e., narrower) than the target PSF.  ``source_psf`` and
         ``target_psf`` must have the same shape and pixel scale.
 
     target_psf : 2D `~numpy.ndarray`
         The target PSF.  The target PSF should have lower resolution
-        (i.e. broader) than the source PSF.  ``source_psf`` and
+        (i.e., broader) than the source PSF.  ``source_psf`` and
         ``target_psf`` must have the same shape and pixel scale.
 
     window : callable, optional
@@ -85,7 +85,7 @@ def create_matching_kernel(source_psf, target_psf, window=None):
 
     if source_psf.shape != target_psf.shape:
         raise ValueError('source_psf and target_psf must have the same shape '
-                         '(i.e. registered with the same pixel scale).')
+                         '(i.e., registered with the same pixel scale).')
 
     # ensure input PSFs are normalized
     source_psf /= source_psf.sum()

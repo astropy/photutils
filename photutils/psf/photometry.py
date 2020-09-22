@@ -67,15 +67,15 @@ class BasicPSFPhotometry:
         ``flux``.  `~photutils.psf.prepare_psf_model` can be used to
         prepare any 2D model to match this assumption.
     fitshape : int or length-2 array-like
-        Rectangular shape around the center of a star which will be used
-        to collect the data to do the fitting. Can be an integer to be
-        the same along both axes. E.g., 5 is the same as (5, 5), which
-        means to fit only at the following relative pixel positions:
-        [-2, -1, 0, 1, 2].  Each element of ``fitshape`` must be an odd
-        number.
+        Rectangular shape around the center of a star which will be
+        used to collect the data to do the fitting. Can be an integer
+        to be the same along both axes. For example, 5 is the same as
+        (5, 5), which means to fit only at the following relative pixel
+        positions: [-2, -1, 0, 1, 2]. Each element of ``fitshape`` must
+        be an odd number.
     finder : callable or instance of any \
             `~photutils.detection.StarFinderBase` subclasses or None
-        ``finder`` should be able to identify stars, i.e. compute a
+        ``finder`` should be able to identify stars, i.e., compute a
         rough estimate of the centroids, in a given 2D image.
         ``finder`` receives as input a 2D image and returns an
         `~astropy.table.Table` object which contains columns with names:
@@ -95,13 +95,13 @@ class BasicPSFPhotometry:
         estimates for the fluxes of sources.  ``aperture_radius`` must
         be set if initial flux guesses are not input to the photometry
         class via the ``init_guesses`` keyword.  For tabular PSF models
-        (e.g. an `EPSFModel`), you must input the ``aperture_radius``
+        (e.g., an `EPSFModel`), you must input the ``aperture_radius``
         keyword.  For analytical PSF models, alternatively you may
         define a FWHM attribute on your input psf_model.
     extra_output_cols : list of str, optional
         List of additional columns for parameters derived by any of the
-        intermediate fitting steps (e.g., ``finder``), such as roundness or
-        sharpness.
+        intermediate fitting steps (e.g., ``finder``), such as roundness
+        or sharpness.
 
     Notes
     -----
@@ -114,7 +114,7 @@ class BasicPSFPhotometry:
     If there are problems with fitting large groups, change the
     parameters of the grouping algorithm to reduce the number of sources
     in each group or input a ``star_groups`` table that only includes
-    the groups that are relevant (e.g. manually remove all entries that
+    the groups that are relevant (e.g., manually remove all entries that
     coincide with artifacts).
 
     References
@@ -261,7 +261,7 @@ class BasicPSFPhotometry:
             if init_guesses is None:
                 raise ValueError('aperture_radius was not input and could '
                                  'not be determined by the input psf_model '
-                                 '(e.g. an EPSFModel).  For tabular PSF '
+                                 '(e.g., an EPSFModel).  For tabular PSF '
                                  'models, you must input the aperture_radius '
                                  'keyword.  For analytical PSF models, you '
                                  'must either input the aperture_radius '
@@ -275,7 +275,7 @@ class BasicPSFPhotometry:
                                  'cannot be calculated because '
                                  'aperture_radius must was not input and '
                                  'could not be determined by the input '
-                                 'psf_model (e.g. an EPSFModel).  For '
+                                 'psf_model (e.g., an EPSFModel).  For '
                                  'analytical PSF models, you must either '
                                  'input the aperture_radius keyword or '
                                  'define a fwhm or sigma attribute on your '
@@ -577,15 +577,15 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         ``flux``.  `~photutils.psf.prepare_psf_model` can be used to
         prepare any 2D model to match this assumption.
     fitshape : int or length-2 array-like
-        Rectangular shape around the center of a star which will be used
-        to collect the data to do the fitting. Can be an integer to be
-        the same along both axes. E.g., 5 is the same as (5, 5), which
-        means to fit only at the following relative pixel positions:
-        [-2, -1, 0, 1, 2].  Each element of ``fitshape`` must be an odd
-        number.
+        Rectangular shape around the center of a star which will be
+        used to collect the data to do the fitting. Can be an integer
+        to be the same along both axes. For example, 5 is the same as
+        (5, 5), which means to fit only at the following relative pixel
+        positions: [-2, -1, 0, 1, 2]. Each element of ``fitshape`` must
+        be an odd number.
     finder : callable or instance of any \
             `~photutils.detection.StarFinderBase` subclasses
-        ``finder`` should be able to identify stars, i.e. compute a
+        ``finder`` should be able to identify stars, i.e., compute a
         rough estimate of the centroids, in a given 2D image.
         ``finder`` receives as input a 2D image and returns an
         `~astropy.table.Table` object which contains columns with names:
@@ -611,15 +611,15 @@ class IterativelySubtractedPSFPhotometry(BasicPSFPhotometry):
         subtraction to create new sources infinitely.
     extra_output_cols : list of str, optional
         List of additional columns for parameters derived by any of the
-        intermediate fitting steps (e.g., ``finder``), such as roundness or
-        sharpness.
+        intermediate fitting steps (e.g., ``finder``), such as roundness
+        or sharpness.
 
     Notes
     -----
     If there are problems with fitting large groups, change the
     parameters of the grouping algorithm to reduce the number of sources
     in each group or input a ``star_groups`` table that only includes
-    the groups that are relevant (e.g. manually remove all entries that
+    the groups that are relevant (e.g., manually remove all entries that
     coincide with artifacts).
 
     References
@@ -861,12 +861,12 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
         ``flux``.  `~photutils.psf.prepare_psf_model` can be used to
         prepare any 2D model to match this assumption.
     fitshape : int or length-2 array-like
-        Rectangular shape around the center of a star which will be used
-        to collect the data to do the fitting. Can be an integer to be
-        the same along both axes. E.g., 5 is the same as (5, 5), which
-        means to fit only at the following relative pixel positions:
-        [-2, -1, 0, 1, 2].  Each element of ``fitshape`` must be an odd
-        number.
+        Rectangular shape around the center of a star which will be
+        used to collect the data to do the fitting. Can be an integer
+        to be the same along both axes. For example, 5 is the same as
+        (5, 5), which means to fit only at the following relative pixel
+        positions: [-2, -1, 0, 1, 2]. Each element of ``fitshape`` must
+        be an odd number.
     sigma : float, optional
         Number of standard deviations used to perform sigma clip with a
         `astropy.stats.SigmaClip` object.
@@ -907,15 +907,15 @@ class DAOPhotPSFPhotometry(IterativelySubtractedPSFPhotometry):
         be used if it can be determined from the ```psf_model``.
     extra_output_cols : list of str, optional
         List of additional columns for parameters derived by any of the
-        intermediate fitting steps (e.g., ``finder``), such as roundness or
-        sharpness.
+        intermediate fitting steps (e.g., ``finder``), such as roundness
+        or sharpness.
 
     Notes
     -----
     If there are problems with fitting large groups, change the
     parameters of the grouping algorithm to reduce the number of sources
     in each group or input a ``star_groups`` table that only includes
-    the groups that are relevant (e.g. manually remove all entries that
+    the groups that are relevant (e.g., manually remove all entries that
     coincide with artifacts).
 
     References

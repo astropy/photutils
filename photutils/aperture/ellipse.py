@@ -236,10 +236,10 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         Parameters
         ----------
         wcs : WCS object
-            A world coordinate system (WCS) transformation that supports
-            the `astropy shared interface for WCS
-            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
-            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+            A world coordinate system (WCS) transformation that
+            supports the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
+            (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -396,10 +396,10 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         Parameters
         ----------
         wcs : WCS object
-            A world coordinate system (WCS) transformation that supports
-            the `astropy shared interface for WCS
-            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
-            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+            A world coordinate system (WCS) transformation that
+            supports the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
+            (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -470,10 +470,10 @@ class SkyEllipticalAperture(SkyAperture):
         Parameters
         ----------
         wcs : WCS object
-            A world coordinate system (WCS) transformation that supports
-            the `astropy shared interface for WCS
-            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
-            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+            A world coordinate system (WCS) transformation that
+            supports the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
+            (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
@@ -573,10 +573,10 @@ class SkyEllipticalAnnulus(SkyAperture):
         Parameters
         ----------
         wcs : WCS object
-            A world coordinate system (WCS) transformation that supports
-            the `astropy shared interface for WCS
-            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.
-            `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+            A world coordinate system (WCS) transformation that
+            supports the `astropy shared interface for WCS
+            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
+            (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         Returns
         -------
