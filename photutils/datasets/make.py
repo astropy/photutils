@@ -689,8 +689,8 @@ def make_4gaussians_image(noise=True):
     data = make_gaussian_sources_image(shape, table) + 5.
 
     if noise:
-        data += make_noise_image(shape, distribution='gaussian', mean=0.,
-                                 stddev=5., random_state=12345)
+        rng = np.random.RandomState(12345)
+        data += rng.normal(loc=0., scale=5., size=shape)
 
     return data
 
