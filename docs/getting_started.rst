@@ -54,7 +54,7 @@ detected sources are returned as an Astropy `~astropy.table.Table`:
     152 111.52575  195.73192 0.45827852 ...   0 8109 7.9278607    -2.24789
     Length = 152 rows
 
-Using the source locations (i.e. the ``xcentroid`` and ``ycentroid``
+Using the source locations (i.e., the ``xcentroid`` and ``ycentroid``
 columns), we now define circular apertures centered at these positions
 with a radius of 4 pixels and compute the sum of the pixel values
 within the apertures.  The

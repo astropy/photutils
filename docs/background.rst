@@ -169,9 +169,9 @@ dimensions.  If that is not the case, the ``edge_method`` keyword
 determines whether to pad or crop the image such that there is an
 integer multiple of the ``box_size`` in both dimensions.
 
-The background level in each of the meshes is calculated using the
-function or callable object (e.g. class instance) input via
-``bkg_estimator`` keyword.  Photutils provides a several background
+The background level in each of the meshes is calculated using
+the function or callable object (e.g., class instance) input via
+``bkg_estimator`` keyword. Photutils provides a several background
 classes that can be used:
 
 * `~photutils.background.MeanBackground`

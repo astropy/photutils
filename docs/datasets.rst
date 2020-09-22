@@ -21,7 +21,7 @@ available from the `astropy-data`_ repository and loaded into the
 Astropy cache on the user's machine on first load.
 
 Functions that start with ``make_*`` generate simple simulated data
-(e.g. Gaussian sources on a flat background with Poisson or Gaussian
+(e.g., Gaussian sources on a flat background with Poisson or Gaussian
 noise).  Note that there are other tools like `skymaker`_ that can
 simulate much more realistic astronomical images.
 

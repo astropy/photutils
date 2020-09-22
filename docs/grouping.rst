@@ -7,7 +7,7 @@ Introduction
 In Point Spread Function (PSF) photometry, a grouping algorithm is
 used to separate stars into optimum groups.  The stars in each group
 are defined as those close enough together such that they need to be
-fit simultaneously, i.e. their profiles overlap.
+fit simultaneously, i.e., their profiles overlap.
 
 Photoutils currently provides two classes to group stars:
 
@@ -101,7 +101,7 @@ to measure the FWHM of the stellar profiles.
     >>> daogroup = DAOGroup(crit_separation=2.5*fwhm)
 
 ``daogroup`` is a `~photutils.psf.DAOGroup` instance that can be used
-as a calling function that receives as input a table of stars (e.g.
+as a calling function that receives as input a table of stars (e.g.,
 ``starlist``):
 
 .. doctest-skip::

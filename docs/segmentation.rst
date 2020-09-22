@@ -68,7 +68,7 @@ background, we do not subtract the background from the data here.
 
 Let's find sources that have 5 connected pixels that are each greater
 than the corresponding pixel-wise ``threshold`` level defined above
-(i.e. 2 sigma per pixel above the background noise).  Note that by
+(i.e., 2 sigma per pixel above the background noise).  Note that by
 default "connected pixels" means "8-connected" pixels, where pixels
 touch along their edges or corners.  One can also use "4-connected"
 pixels that touch only along their edges by setting ``connectivity=4``
@@ -562,11 +562,10 @@ Photometric Errors
 ^^^^^^^^^^^^^^^^^^
 
 :func:`~photutils.segmentation.source_properties` requires inputting a
-*total* error array, i.e. the background-only error plus Poisson noise
-due to individual sources.  The
-:func:`~photutils.utils.calc_total_error` function can be used to
-calculate the total error array from a background-only error array and
-an effective gain.
+*total* error array, i.e., the background-only error plus Poisson noise
+due to individual sources. The :func:`~photutils.utils.calc_total_error`
+function can be used to calculate the total error array from a
+background-only error array and an effective gain.
 
 The ``effective_gain``, which is the ratio of counts (electrons or
 photons) to the units of the data, is used to include the Poisson
@@ -619,7 +618,7 @@ segments:
 Pixel Masking
 ^^^^^^^^^^^^^
 
-Pixels can be completely ignored/excluded (e.g. bad pixels) when
+Pixels can be completely ignored/excluded (e.g., bad pixels) when
 measuring the source properties by providing a boolean mask image via
 the ``mask`` keyword (`True` pixel values are masked) to the
 :func:`~photutils.segmentation.source_properties` function or

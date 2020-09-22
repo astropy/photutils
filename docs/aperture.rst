@@ -89,7 +89,7 @@ Converting Between Pixel and Sky Apertures
 The pixel apertures can be converted to sky apertures, and vice versa.
 To accomplish this, use the
 :meth:`~photutils.aperture.PixelAperture.to_sky` method for pixel
-apertures, e.g.:
+apertures, e.g.,:
 
 .. doctest-skip::
 
@@ -97,7 +97,7 @@ apertures, e.g.:
     >>> sky_aperture = aperture.to_sky(wcs)
 
 and the :meth:`~photutils.aperture.SkyAperture.to_pixel` method for
-sky apertures, e.g.:
+sky apertures, e.g.,:
 
 .. doctest-skip::
 
@@ -270,8 +270,8 @@ using a nearby aperture or annulus aperture surrounding each source.
 The simplest method for doing so would be to perform photometry in an
 annulus aperture to define the mean background level.  Alternatively,
 one can use aperture masks to directly access the pixel values in an
-aperture (e.g. an annulus), and thus apply more advanced statistics
-(e.g. a sigma-clipped median within the annulus).  We show examples of
+aperture (e.g., an annulus), and thus apply more advanced statistics
+(e.g., a sigma-clipped median within the annulus).  We show examples of
 both below.
 
 Simple mean within a circular annulus
@@ -301,8 +301,8 @@ We then perform the photometry in both apertures::
       2      40      40      28.274334      87.964594
 
 The ``aperture_sum_0`` column refers to the first aperture in the list
-of input apertures (i.e. the circular aperture) and the
-``aperture_sum_1`` column refers to the second aperture (i.e. the
+of input apertures (i.e., the circular aperture) and the
+``aperture_sum_1`` column refers to the second aperture (i.e., the
 circular annulus).  Note that we cannot simply subtract the aperture
 sums because the apertures have different areas.
 
@@ -376,7 +376,7 @@ The result is a list of `~photutils.aperture.ApertureMask` objects,
 one for each aperture position.  The values in these aperture masks
 are either 0 or 1 because we specified ``method='center'``.
 Alternatively, one could use the "exact" (``method='exact'``) mask,
-but it produces partial-pixel masks (i.e. values between 0 and 1) and
+but it produces partial-pixel masks (i.e., values between 0 and 1) and
 thus one would need to use statistical functions that can handle
 partial-pixel weights.  That introduces unnecessary complexity when
 the aperture is simply being used to estimate the local background.
@@ -425,9 +425,9 @@ Let's plot the annulus data:
     plt.imshow(annulus_data, interpolation='nearest')
     plt.colorbar()
 
-From this 2D array, you can extract a 1D array of data values (e.g. if
-you don't care about their spatial positions, which is probably the
-most common case)::
+From this 2D array, you can extract a 1D array of data values (e.g., if
+you don't care about their spatial positions, which is probably the most
+common case)::
 
    >>> mask = annulus_masks[0].data
    >>> annulus_data_1d = annulus_data[mask > 0]

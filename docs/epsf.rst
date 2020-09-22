@@ -32,12 +32,12 @@ used to build it.
 To begin, we must first define a sample of stars used to build the
 ePSF.  Ideally these stars should be bright (high S/N) and isolated to
 prevent contamination from nearby stars.  One may use the star-finding
-tools in Photutils (e.g.  :class:`~photutils.detection.DAOStarFinder`
+tools in Photutils (e.g., :class:`~photutils.detection.DAOStarFinder`
 or :class:`~photutils.detection.IRAFStarFinder`) to identify an
 initial sample of stars.  However, the step of creating a good sample
 of stars will also likely require visual inspection and manual
 selection to ensure stars are sufficiently isolated and of good
-quality (e.g. no cosmic rays, detector artifacts, etc.).
+quality (e.g., no cosmic rays, detector artifacts, etc.).
 
 Let's start by loading a simulated HST/WFC3 image in the F160W band::
 
@@ -133,7 +133,7 @@ Now let's create the table of good star positions:
 The star cutouts from which we build the ePSF must have the background
 subtracted.  Here we'll use the sigma-clipped median value as the
 background level.  If the background in the image varies across the
-image, one should use more sophisticated methods (e.g.
+image, one should use more sophisticated methods (e.g.,
 `~photutils.background.Background2D`).
 
 Let's subtract the background from the image::
@@ -159,7 +159,7 @@ a single catalog.  When using a single catalog, the star positions
 must be in sky coordinates (as `~astropy.coordinates.SkyCoord`
 objects) and the `~astropy.nddata.NDData` objects must contain valid
 `~astropy.wcs.WCS` objects.  In the case of using multiple images
-(i.e. dithered images) and a single catalog, the same physical star
+(i.e., dithered images) and a single catalog, the same physical star
 will be "linked" across images, meaning it will be constrained to have
 the same sky coordinate in each input image.
 
@@ -317,9 +317,9 @@ Finally, let's show the constructed ePSF:
     plt.colorbar()
 
 The :class:`~photutils.psf.EPSFModel` object is a subclass of
-:class:`~photutils.psf.FittableImageModel`, thus it can be used as a
-PSF model for the `PSF-fitting machinery in Photutils
-<https://photutils.readthedocs.io/en/latest/psf.html>`_ (i.e.
-`~photutils.psf.BasicPSFPhotometry`,
+:class:`~photutils.psf.FittableImageModel`, thus it can be used
+as a PSF model for the `PSF-fitting machinery in Photutils
+<https://photutils.readthedocs.io/en/latest/psf.html>`_
+(i.e., `~photutils.psf.BasicPSFPhotometry`,
 `~photutils.psf.IterativelySubtractedPSFPhotometry`, or
 `~photutils.psf.DAOPhotPSFPhotometry`).

@@ -10,7 +10,7 @@ Photutils contains functions for:
 
 * performing PSF-fitting photometry
 
-* detecting and extracting point-like sources (e.g. stars) in
+* detecting and extracting point-like sources (e.g., stars) in
   astronomical images
 
 * detecting and extracting extended sources using image segmentation
