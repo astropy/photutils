@@ -83,9 +83,9 @@ matrix:
         # And with an older Python, Astropy LTS, and the oldest supported Numpy
         - os: linux
           python: 3.6
-          name: Python 3.6 astropy LTS and Numpy 1.16
+          name: Python 3.6 astropy LTS and Numpy 1.17
           stage: Comprehensive tests
-          env: TOXENV=py36-test-alldeps-astropylts-numpy116
+          env: TOXENV=py36-test-alldeps-astropylts-numpy117
 
         # Add a job that runs from cron only and tests against astropy dev and
         # numpy dev to give a change for early discovery of issues and feedback
