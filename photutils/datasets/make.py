@@ -741,17 +741,25 @@ def make_100gaussians_image(noise=True):
                           ('y_mean', ymean_range),
                           ('x_stddev', xstddev_range),
                           ('y_stddev', ystddev_range),
-                          ('theta', [0, 2*np.pi])])
+                          ('theta', [0, 2 * np.pi])])
 
-    sources = make_random_gaussians_table(n_sources, params,
-                                          random_state=12345)
+    rng = np.random.RandomState(12345)
+    sources = Table()
+    for param_name, (lower, upper) in params.items():
+        # Generate a column for every item in param_ranges, even if it
+        # is not in the model (e.g., flux).  However, such columns will
+        # be ignored when rendering the image.
+        sources[param_name] = rng.uniform(lower, upper, n_sources)
+    xstd = sources['x_stddev']
+    ystd = sources['y_stddev']
+    sources['amplitude'] = sources['flux'] / (2. * np.pi * xstd * ystd)
 
     shape = (300, 500)
     data = make_gaussian_sources_image(shape, sources) + 5.
 
     if noise:
-        data += make_noise_image(shape, distribution='gaussian', mean=0.,
-                                 stddev=2., random_state=12345)
+        rng = np.random.RandomState(12345)
+        data += rng.normal(loc=0., scale=2., size=shape)
 
     return data
 
