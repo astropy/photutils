@@ -9,17 +9,17 @@ Photutils has the following strict requirements:
 
 * `Python <https://www.python.org/>`_ 3.6 or later
 
-* `Numpy <https://numpy.org/>`_ 1.13 or later
+* `Numpy <https://numpy.org/>`_ 1.17 or later
 
 * `Astropy`_ 3.2 or later
 
 Photutils also optionally depends on other packages for some features:
 
-* `Scipy <https://www.scipy.org/>`_ 0.19 or later:  To power a variety of features in several
-  modules (strongly recommended).
+* `Scipy <https://www.scipy.org/>`_ 0.19 or later:  To power a variety of
+  features in several modules (strongly recommended).
 
 * `matplotlib <https://matplotlib.org/>`_ 2.2 or later:  To power a
-  variety of plotting features (e.g. plotting apertures).
+  variety of plotting features (e.g., plotting apertures).
 
 * `scikit-image <https://scikit-image.org/>`_ 0.14.2 or later:  Used in
   `~photutils.segmentation.deblend_sources` for deblending segmented
@@ -28,7 +28,7 @@ Photutils also optionally depends on other packages for some features:
 * `scikit-learn <https://scikit-learn.org/>`_ 0.19 or later:  Used in
   `~photutils.psf.DBSCANGroup` to create star groups.
 
-* `gwcs <https://github.com/spacetelescope/gwcs>`_ 0.11 or later:
+* `gwcs <https://github.com/spacetelescope/gwcs>`_ 0.12 or later:
   Used in `~photutils.datasets.make_gwcs` to create a simple celestial
   gwcs object.
 
@@ -55,8 +55,8 @@ upgraded, instead you can do::
 
     pip install photutils --no-deps
 
-Note that you may need a C compiler (e.g. ``gcc`` or
-``clang``) to be installed for the installation to succeed.
+Note that you may need a C compiler (e.g., ``gcc`` or ``clang``) to be
+installed for the installation to succeed.
 
 If you get a ``PermissionError``, this means that you do not have the
 required administrative access to install new packages to your Python
