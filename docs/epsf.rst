@@ -85,18 +85,18 @@ stars:
     >>> print(peaks_tbl)  # doctest: +REMOTE_DATA
     x_peak y_peak peak_value
     ------ ------ ----------
-       849      2  1077.6815
-       182      4  1715.4047
-       324      4  3017.0213
-       100      9  1142.7459
-       824      9  1296.9274
+       849      2  1076.7026
+       182      4  1709.5671
+       324      4  3006.0086
+       100      9  1142.9915
+       824      9  1302.8604
        ...    ...        ...
-       751    992   809.9401
-       114    994   1583.773
-       299    994  656.79885
-       207    998  2808.3181
-       691    999  2614.8846
-    Length = 429 rows
+       751    992  801.23834
+       114    994  1595.2804
+       299    994  648.18539
+       207    998  2810.6503
+       691    999  2611.0464
+    Length = 431 rows
 
 Note that the stars are sufficiently separated in the simulated image
 that we do not need to exclude any stars due to crowding.  In practice
