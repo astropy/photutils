@@ -107,12 +107,11 @@ matrix:
         # the Numpy developers have taken care of testing Numpy with different
         # versions of Python, we can vary Python and Numpy versions at the same
         # time.
-
         - os: linux
           python: 3.7
-          name: Python 3.7 with astropy 3.2 and Numpy 1.17
+          name: Python 3.7 with astropy 4.0 and Numpy 1.17
           stage: Comprehensive tests
-          env: TOXENV=py37-test-astropy32-numpy117
+          env: TOXENV=py37-test-astropy40-numpy117
 
         # Do a code style check
         - os: linux

@@ -11,7 +11,7 @@ Photutils has the following strict requirements:
 
 * `Numpy <https://numpy.org/>`_ 1.17 or later
 
-* `Astropy`_ 3.2 or later
+* `Astropy`_ 4.0 or later
 
 Photutils also optionally depends on other packages for some features:
 
