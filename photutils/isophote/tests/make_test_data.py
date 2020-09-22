@@ -12,7 +12,7 @@ from ...datasets import make_noise_image
 
 def make_test_image(nx=512, ny=512, x0=None, y0=None,
                     background=100., noise=1.e-6, i0=100., sma=40.,
-                    eps=0.2, pa=0., random_state=None):
+                    eps=0.2, pa=0., seed=None):
     """
     Make a simulated image for testing the isophote subpackage.
 
@@ -34,10 +34,9 @@ def make_test_image(nx=512, ny=512, x0=None, y0=None,
         The ellipticity of the reference isophote.
     pa : float, optional
         The position angle of the reference isophote.
-    random_state : int or `~numpy.random.RandomState`, optional
-        Pseudo-random number generator state used for random sampling.
-        Separate function calls with the same ``random_state`` will
-        generate the identical noise image.
+    seed : int, optional
+        A seed to initialize the `numpy.random.BitGenerator`. If `None`,
+        then fresh, unpredictable entropy will be pulled from the OS.
 
     Returns
     -------
@@ -68,14 +67,14 @@ def make_test_image(nx=512, ny=512, x0=None, y0=None,
                                    image[int(xcen), int(ycen + 1)]) / 4.
 
     image += make_noise_image(image.shape, distribution='gaussian', mean=0.,
-                              stddev=noise, random_state=random_state)
+                              stddev=noise, seed=seed)
 
     return image
 
 
 def make_fits_test_image(name, nx=512, ny=512, x0=None, y0=None,
                          background=100., noise=1.e-6, i0=100., sma=40.,
-                         eps=0.2, pa=0., random_state=None):
+                         eps=0.2, pa=0., seed=None):
     """
     Make a simulated image and write it to a FITS file.
 
@@ -86,17 +85,17 @@ def make_fits_test_image(name, nx=512, ny=512, x0=None, y0=None,
     import numpy as np
     pa = np.pi / 4.
     make_fits_test_image('synth_lowsnr.fits', noise=40., pa=pa,
-                         random_state=123)
+                         seed=0)
     make_fits_test_image('synth_highsnr.fits', noise=1.e-12, pa=pa,
-                         random_state=123)
-    make_fits_test_image('synth.fits', pa=pa, random_state=123)
+                         seed=0)
+    make_fits_test_image('synth.fits', pa=pa, seed=0)
     """
 
     if not name.endswith('.fits'):
         name += '.fits'
 
     array = make_test_image(nx, ny, x0, y0, background, noise, i0, sma, eps,
-                            pa, random_state=random_state)
+                            pa, seed=seed)
 
     hdu = fits.PrimaryHDU(array)
     hdulist = fits.HDUList([hdu])

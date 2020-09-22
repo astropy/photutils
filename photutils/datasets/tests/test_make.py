@@ -132,8 +132,7 @@ def test_make_random_gaussians_table():
                          ('y_mean', [0, 300]), ('x_stddev', [1, 5]),
                          ('y_stddev', [1, 5]), ('theta', [0, np.pi])])
 
-    table = make_random_gaussians_table(n_sources, param_ranges,
-                                        random_state=12345)
+    table = make_random_gaussians_table(n_sources, param_ranges, seed=0)
     assert len(table) == n_sources
 
 
@@ -142,8 +141,7 @@ def test_make_random_gaussians_table_flux():
     param_ranges = dict([('flux', [500, 1000]), ('x_mean', [0, 500]),
                          ('y_mean', [0, 300]), ('x_stddev', [1, 5]),
                          ('y_stddev', [1, 5]), ('theta', [0, np.pi])])
-    table = make_random_gaussians_table(n_sources, param_ranges,
-                                        random_state=12345)
+    table = make_random_gaussians_table(n_sources, param_ranges, seed=0)
     assert 'amplitude' in table.colnames
     assert len(table) == n_sources
 

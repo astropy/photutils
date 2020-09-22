@@ -184,7 +184,7 @@ class TestSegmentationImage:
 
         assert_allclose(self.segm._cmap.colors,
                         self.segm.make_cmap(background_color='#000000',
-                                            random_state=1234).colors)
+                                            seed=0).colors)
 
     def test_reassign_labels(self):
         segm = SegmentationImage(self.data)

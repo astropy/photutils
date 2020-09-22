@@ -7,6 +7,7 @@ segment within a segmentation image.
 from copy import deepcopy
 
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated_renamed_argument
 import numpy as np
 
 from ..aperture import BoundingBox
@@ -212,7 +213,7 @@ class SegmentationImage:
         This is very useful for plotting the segmentation array.
         """
 
-        return self.make_cmap(background_color='#000000', random_state=1234)
+        return self.make_cmap(background_color='#000000', seed=0)
 
     @staticmethod
     def _get_labels(data):
@@ -533,7 +534,8 @@ class SegmentationImage:
             else:
                 raise ValueError('labels {} are invalid'.format(bad_labels))
 
-    def make_cmap(self, background_color='#000000', random_state=None):
+    @deprecated_renamed_argument('random_state', 'seed', '1.0')
+    def make_cmap(self, background_color='#000000', seed=None):
         """
         Define a matplotlib colormap consisting of (random) muted
         colors.
@@ -548,10 +550,11 @@ class SegmentationImage:
             background color (label = 0) when plotting the segmentation
             array.  The default is black ('#000000').
 
-        random_state : int or `~numpy.random.RandomState`, optional
-            The pseudo-random number generator state used for random
-            sampling.  Separate function calls with the same
-            ``random_state`` will generate the same colormap.
+        seed : int, optional
+            A seed to initialize the `numpy.random.BitGenerator`. If
+            `None`, then fresh, unpredictable entropy will be pulled
+            from the OS.  Separate function calls with the same ``seed``
+            will generate the same colormap.
 
         Returns
         -------
@@ -561,7 +564,7 @@ class SegmentationImage:
 
         from matplotlib import colors
 
-        cmap = make_random_cmap(self.max_label + 1, random_state=random_state)
+        cmap = make_random_cmap(self.max_label + 1, seed=seed)
 
         if background_color is not None:
             cmap.colors[0] = colors.hex2color(background_color)

@@ -18,6 +18,6 @@ except ImportError:
 @pytest.mark.skipif('not HAS_MATPLOTLIB')
 def test_colormap():
     ncolors = 100
-    cmap = make_random_cmap(ncolors, random_state=12345)
+    cmap = make_random_cmap(ncolors, seed=0)
     assert len(cmap.colors) == ncolors
-    assert_allclose(cmap.colors[0], [0.9234715, 0.64837165, 0.76454726])
+    assert_allclose(cmap.colors[0], [0.36951484, 0.42125961, 0.65984082])

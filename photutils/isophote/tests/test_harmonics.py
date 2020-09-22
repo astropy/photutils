@@ -104,10 +104,10 @@ def test_harmonics_3():
 class TestFitEllipseSamples:
     def setup_class(self):
         # major axis parallel to X image axis
-        self.data1 = make_test_image(random_state=123)
+        self.data1 = make_test_image(seed=0)
 
         # major axis tilted 45 deg wrt X image axis
-        self.data2 = make_test_image(pa=np.pi/4, random_state=123)
+        self.data2 = make_test_image(pa=np.pi/4, seed=0)
 
     def test_fit_ellipsesample_1(self):
         sample = EllipseSample(self.data1, 40.)
@@ -172,7 +172,7 @@ class TestFitEllipseSamples:
         assert_allclose(np.mean(b2), -63.184, atol=0.001)
 
     def test_fit_upper_harmonics(self):
-        data = make_test_image(noise=1.e-10, random_state=123)
+        data = make_test_image(noise=1.e-10, seed=0)
         sample = EllipseSample(data, 40)
         fitter = EllipseFitter(sample)
         iso = fitter.fit(maxit=400)

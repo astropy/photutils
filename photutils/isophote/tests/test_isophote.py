@@ -35,7 +35,7 @@ class TestIsophote:
 
     def test_fit(self):
         # low noise image, fitted perfectly by sample
-        data = make_test_image(noise=1.e-10, random_state=123)
+        data = make_test_image(noise=1.e-10, seed=0)
         sample = EllipseSample(data, 40)
         fitter = EllipseFitter(sample)
         iso = fitter.fit(maxit=400)
@@ -121,7 +121,7 @@ class TestIsophote:
 
 class TestIsophoteList:
     def setup_class(self):
-        data = make_test_image(random_state=123)
+        data = make_test_image(seed=0)
         self.slen = 5
         self.isolist_sma10 = self.build_list(data, sma0=10., slen=self.slen)
         self.isolist_sma100 = self.build_list(data, sma0=100., slen=self.slen)

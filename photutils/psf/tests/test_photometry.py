@@ -122,9 +122,9 @@ def test_psf_photometry_niters(sigma_psf, sources):
     # background noise (Poisson)
     image = (make_gaussian_prf_sources_image(img_shape, sources) +
              make_noise_image(img_shape, distribution='poisson', mean=6.,
-                              random_state=1) +
+                              seed=0) +
              make_noise_image(img_shape, distribution='gaussian', mean=0.,
-                              stddev=2., random_state=1))
+                              stddev=2., seed=0))
     cp_image = image.copy()
     sigma_clip = SigmaClip(sigma=3.)
     bkgrms = StdBackgroundRMS(sigma_clip)
@@ -178,9 +178,9 @@ def test_psf_photometry_oneiter(sigma_psf, sources):
     # background noise (Poisson)
     image = (make_gaussian_prf_sources_image(img_shape, sources) +
              make_noise_image(img_shape, distribution='poisson', mean=6.,
-                              random_state=1) +
+                              seed=0) +
              make_noise_image(img_shape, distribution='gaussian', mean=0.,
-                              stddev=2., random_state=1))
+                              stddev=2., seed=0))
     cp_image = image.copy()
 
     sigma_clip = SigmaClip(sigma=3.)
@@ -314,7 +314,7 @@ def test_finder_positions_warning():
 
     image = (make_gaussian_prf_sources_image((32, 32), sources1) +
              make_noise_image((32, 32), distribution='poisson', mean=6.,
-                              random_state=1))
+                              seed=0))
 
     with catch_warnings(AstropyUserWarning):
         result_tab = basic_phot_obj(image=image, init_guesses=positions)
@@ -336,9 +336,9 @@ def test_aperture_radius():
     # background noise (Poisson)
     image = (make_gaussian_prf_sources_image(img_shape, sources1) +
              make_noise_image(img_shape, distribution='poisson', mean=6.,
-                              random_state=1) +
+                              seed=0) +
              make_noise_image(img_shape, distribution='gaussian', mean=0.,
-                              stddev=2., random_state=1))
+                              stddev=2., seed=0))
 
     basic_phot_obj = make_psf_photometry_objs()[0]
 
@@ -615,9 +615,9 @@ def test_psf_extra_output_cols(sigma_psf, sources):
     tshape = (32, 32)
     image = (make_gaussian_prf_sources_image(tshape, sources) +
              make_noise_image(tshape, distribution='poisson', mean=6.,
-                              random_state=1) +
+                              seed=0) +
              make_noise_image(tshape, distribution='gaussian', mean=0.,
-                              stddev=2., random_state=1))
+                              stddev=2., seed=0))
 
     init_guess1 = None
     init_guess2 = Table(names=['x_0', 'y_0', 'sharpness', 'roundness1',

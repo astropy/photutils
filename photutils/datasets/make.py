@@ -12,11 +12,11 @@ from astropy.io import fits
 from astropy.modeling import models
 from astropy.table import Table
 import astropy.units as u
+from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.wcs import WCS
 import numpy as np
 
 from ..psf import IntegratedGaussianPRF
-from ..utils import check_random_state
 
 __all__ = ['apply_poisson_noise', 'make_noise_image',
            'make_random_models_table', 'make_random_gaussians_table',
@@ -28,7 +28,8 @@ __all__ = ['apply_poisson_noise', 'make_noise_image',
 __doctest_requires__ = {('make_gwcs'): ['gwcs']}
 
 
-def apply_poisson_noise(data, random_state=None):
+@deprecated_renamed_argument('random_state', 'seed', '1.0')
+def apply_poisson_noise(data, seed=None):
     """
     Apply Poisson noise to an array, where the value of each element in
     the input array represents the expected number of counts.
@@ -43,8 +44,9 @@ def apply_poisson_noise(data, random_state=None):
         The array on which to apply Poisson noise.  Every pixel in the
         array must have a positive value (i.e., counts).
 
-    random_state : int or `~numpy.random.RandomState`, optional
-        Pseudo-random number generator state used for random sampling.
+    seed : int, optional
+        A seed to initialize the `numpy.random.BitGenerator`. If `None`,
+        then fresh, unpredictable entropy will be pulled from the OS.
 
     Returns
     -------
@@ -63,7 +65,7 @@ def apply_poisson_noise(data, random_state=None):
         from photutils.datasets import make_4gaussians_image
         from photutils.datasets import apply_poisson_noise
         data1 = make_4gaussians_image(noise=False)
-        data2 = apply_poisson_noise(data1, random_state=12345)
+        data2 = apply_poisson_noise(data1, seed=0)
 
         # plot the images
         import matplotlib.pyplot as plt
@@ -78,13 +80,14 @@ def apply_poisson_noise(data, random_state=None):
     if np.any(data < 0):
         raise ValueError('data must not contain any negative values')
 
-    prng = check_random_state(random_state)
+    rng = np.random.default_rng(seed)
 
-    return prng.poisson(data)
+    return rng.poisson(data)
 
 
+@deprecated_renamed_argument('random_state', 'seed', '1.0')
 def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
-                     random_state=None):
+                     seed=None):
     """
     Make a noise image containing Gaussian or Poisson noise.
 
@@ -109,10 +112,9 @@ def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
         Poisson noise (the variance of the Poisson distribution is equal
         to its mean).
 
-    random_state : int or `~numpy.random.RandomState`, optional
-        Pseudo-random number generator state used for random sampling.
-        Separate function calls with the same noise parameters and
-        ``random_state`` will generate the identical noise image.
+    seed : int, optional
+        A seed to initialize the `numpy.random.BitGenerator`. If `None`,
+        then fresh, unpredictable entropy will be pulled from the OS.
 
     Returns
     -------
@@ -147,14 +149,14 @@ def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
     if mean is None:
         raise ValueError('"mean" must be input')
 
-    prng = check_random_state(random_state)
+    rng = np.random.default_rng(seed)
 
     if distribution == 'gaussian':
         if stddev is None:
             raise ValueError('"stddev" must be input for Gaussian noise')
-        image = prng.normal(loc=mean, scale=stddev, size=shape)
+        image = rng.normal(loc=mean, scale=stddev, size=shape)
     elif distribution == 'poisson':
-        image = prng.poisson(lam=mean, size=shape)
+        image = rng.poisson(lam=mean, size=shape)
     else:
         raise ValueError('Invalid distribution: {0}. Use either "gaussian" '
                          'or "poisson".'.format(distribution))
@@ -162,7 +164,8 @@ def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
     return image
 
 
-def make_random_models_table(n_sources, param_ranges, random_state=None):
+@deprecated_renamed_argument('random_state', 'seed', '1.0')
+def make_random_models_table(n_sources, param_ranges, seed=None):
     """
     Make a `~astropy.table.Table` containing randomly generated
     parameters for an Astropy model to simulate a set of sources.
@@ -184,8 +187,9 @@ def make_random_models_table(n_sources, param_ranges, random_state=None):
         as a `dict` mapping the parameter name to its ``(lower, upper)``
         bounds.
 
-    random_state : int or `~numpy.random.RandomState`, optional
-        Pseudo-random number generator state used for random sampling.
+    seed : int, optional
+        A seed to initialize the `numpy.random.BitGenerator`. If `None`,
+        then fresh, unpredictable entropy will be pulled from the OS.
 
     Returns
     -------
@@ -203,7 +207,7 @@ def make_random_models_table(n_sources, param_ranges, random_state=None):
     -----
     To generate identical parameter values from separate function calls,
     ``param_ranges`` must be input as an `~collections.OrderedDict` with
-    the same parameter ranges and ``random_state`` must be the same.
+    the same parameter ranges and the ``seed`` must be the same.
 
     Examples
     --------
@@ -218,32 +222,33 @@ def make_random_models_table(n_sources, param_ranges, random_state=None):
     ...                 ('theta', [0, np.pi])]
     >>> param_ranges = OrderedDict(param_ranges)
     >>> sources = make_random_models_table(n_sources, param_ranges,
-    ...                                    random_state=12345)
+    ...                                    seed=0)
     >>> for col in sources.colnames:
     ...     sources[col].info.format = '%.8g'  # for consistent table output
     >>> print(sources)
-    amplitude   x_mean    y_mean   x_stddev  y_stddev   theta
-    --------- --------- --------- --------- --------- ----------
-    964.80805 297.77235 224.31444 3.6256447 3.5699013  2.2923859
-    658.18778 482.25726 288.39202 4.2392502 3.8698145  3.1227889
-    591.95941 326.58855 2.5164894 4.4887037  2.870396  2.1264615
-    602.28014 374.45332 31.933313 4.8585904 2.3023387  2.4844422
-    783.86251 326.78494 89.611114 3.8947414 2.7585784 0.53694298
+    amplitude   x_mean    y_mean    x_stddev  y_stddev   theta
+    --------- --------- ---------- --------- --------- ---------
+    818.48084 456.37779  244.75607 1.7026225 1.1132787 1.2053586
+    634.89336 303.31789 0.82155005 4.4527157 1.4971331 3.1328274
+    520.48676 364.74828  257.22128 3.1658449 3.6824977 3.0813851
+    508.26382  271.8125  10.075673 2.1988476  3.588758 2.1536937
+    906.63512 467.53621  218.89663 2.6907489 3.4615404 2.0434781
     """
 
-    prng = check_random_state(random_state)
+    rng = np.random.default_rng(seed)
 
     sources = Table()
     for param_name, (lower, upper) in param_ranges.items():
         # Generate a column for every item in param_ranges, even if it
         # is not in the model (e.g., flux). However, such columns will be
         # ignored when rendering the image.
-        sources[param_name] = prng.uniform(lower, upper, n_sources)
+        sources[param_name] = rng.uniform(lower, upper, n_sources)
 
     return sources
 
 
-def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
+@deprecated_renamed_argument('random_state', 'seed', '1.0')
+def make_random_gaussians_table(n_sources, param_ranges, seed=None):
     """
     Make a `~astropy.table.Table` containing randomly generated
     parameters for 2D Gaussian sources.
@@ -274,8 +279,9 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
         ignored.  Model parameters not defined in ``param_ranges`` will
         be set to the default value.
 
-    random_state : int or `~numpy.random.RandomState`, optional
-        Pseudo-random number generator state used for random sampling.
+    seed : int, optional
+        A seed to initialize the `numpy.random.BitGenerator`. If `None`,
+        then fresh, unpredictable entropy will be pulled from the OS.
 
     Returns
     -------
@@ -292,7 +298,7 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
     -----
     To generate identical parameter values from separate function calls,
     ``param_ranges`` must be input as an `~collections.OrderedDict` with
-    the same parameter ranges and ``random_state`` must be the same.
+    the same parameter ranges and the ``seed`` must be the same.
 
     Examples
     --------
@@ -307,17 +313,17 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
     ...                 ('theta', [0, np.pi])]
     >>> param_ranges = OrderedDict(param_ranges)
     >>> sources = make_random_gaussians_table(n_sources, param_ranges,
-    ...                                       random_state=12345)
+    ...                                       seed=0)
     >>> for col in sources.colnames:
     ...     sources[col].info.format = '%.8g'  # for consistent table output
     >>> print(sources)
-    amplitude   x_mean    y_mean   x_stddev  y_stddev   theta
-    --------- --------- --------- --------- --------- ----------
-    964.80805 297.77235 224.31444 3.6256447 3.5699013  2.2923859
-    658.18778 482.25726 288.39202 4.2392502 3.8698145  3.1227889
-    591.95941 326.58855 2.5164894 4.4887037  2.870396  2.1264615
-    602.28014 374.45332 31.933313 4.8585904 2.3023387  2.4844422
-    783.86251 326.78494 89.611114 3.8947414 2.7585784 0.53694298
+    amplitude   x_mean    y_mean    x_stddev  y_stddev   theta
+    --------- --------- ---------- --------- --------- ---------
+    818.48084 456.37779  244.75607 1.7026225 1.1132787 1.2053586
+    634.89336 303.31789 0.82155005 4.4527157 1.4971331 3.1328274
+    520.48676 364.74828  257.22128 3.1658449 3.6824977 3.0813851
+    508.26382  271.8125  10.075673 2.1988476  3.588758 2.1536937
+    906.63512 467.53621  218.89663 2.6907489 3.4615404 2.0434781
 
     To specifying the flux range instead of the amplitude range:
 
@@ -329,17 +335,17 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
     ...                 ('theta', [0, np.pi])]
     >>> param_ranges = OrderedDict(param_ranges)
     >>> sources = make_random_gaussians_table(n_sources, param_ranges,
-    ...                                       random_state=12345)
+    ...                                       seed=0)
     >>> for col in sources.colnames:
     ...     sources[col].info.format = '%.8g'  # for consistent table output
     >>> print(sources)
-       flux     x_mean    y_mean   x_stddev  y_stddev   theta    amplitude
-    --------- --------- --------- --------- --------- ---------- ---------
-    964.80805 297.77235 224.31444 3.6256447 3.5699013  2.2923859 11.863685
-    658.18778 482.25726 288.39202 4.2392502 3.8698145  3.1227889 6.3854388
-    591.95941 326.58855 2.5164894 4.4887037  2.870396  2.1264615 7.3122209
-    602.28014 374.45332 31.933313 4.8585904 2.3023387  2.4844422 8.5691781
-    783.86251 326.78494 89.611114 3.8947414 2.7585784 0.53694298 11.611707
+       flux     x_mean    y_mean    x_stddev  y_stddev   theta   amplitude
+    --------- --------- ---------- --------- --------- --------- ---------
+    818.48084 456.37779  244.75607 1.7026225 1.1132787 1.2053586 68.723678
+    634.89336 303.31789 0.82155005 4.4527157 1.4971331 3.1328274 15.157778
+    520.48676 364.74828  257.22128 3.1658449 3.6824977 3.0813851 7.1055501
+    508.26382  271.8125  10.075673 2.1988476  3.588758 2.1536937 10.251089
+    906.63512 467.53621  218.89663 2.6907489 3.4615404 2.0434781 15.492093
 
     Note that in this case the output table contains both a flux and
     amplitude column.  The flux column will be ignored when generating
@@ -347,7 +353,7 @@ def make_random_gaussians_table(n_sources, param_ranges, random_state=None):
     """
 
     sources = make_random_models_table(n_sources, param_ranges,
-                                       random_state=random_state)
+                                       seed=seed)
 
     # convert Gaussian2D flux to amplitude
     if 'flux' in param_ranges and 'amplitude' not in param_ranges:
@@ -427,7 +433,7 @@ def make_model_sources_image(shape, model, source_table, oversample=1):
                         ('alpha', [1, 2])]
         param_ranges = OrderedDict(param_ranges)
         sources = make_random_models_table(n_sources, param_ranges,
-                                           random_state=12345)
+                                           seed=0)
 
         data = make_model_sources_image(shape, model, sources)
         plt.imshow(data)

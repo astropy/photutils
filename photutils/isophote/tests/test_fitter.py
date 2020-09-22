@@ -24,7 +24,7 @@ except ImportError:
     HAS_SCIPY = False
 
 
-DATA = make_test_image(random_state=123)
+DATA = make_test_image(seed=0)
 DEFAULT_POS = 256
 
 DEFAULT_FIX = np.array([False, False, False, False])
@@ -95,7 +95,7 @@ def test_fitting_eps():
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_fitting_pa():
-    data = make_test_image(pa=np.pi/4, noise=0.01, random_state=123)
+    data = make_test_image(pa=np.pi/4, noise=0.01, seed=0)
 
     # initial guess is off in the pa parameter
     sample = EllipseSample(data, 40)
@@ -110,7 +110,7 @@ def test_fitting_pa():
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_fitting_xy():
     pos = DEFAULT_POS - 5
-    data = make_test_image(x0=pos, y0=pos, random_state=123)
+    data = make_test_image(x0=pos, y0=pos, seed=0)
 
     # initial guess is off in the x0 and y0 parameters
     sample = EllipseSample(data, 40)
@@ -131,8 +131,7 @@ def test_fitting_all():
     pos = DEFAULT_POS - 5
     angle = np.pi / 4
     eps = 2 * 0.2
-    data = make_test_image(x0=pos, y0=pos, eps=eps, pa=angle,
-                           random_state=123)
+    data = make_test_image(x0=pos, y0=pos, eps=eps, pa=angle, seed=0)
     sma = 60.
 
     # initial guess is off in all parameters. We find that the initial
