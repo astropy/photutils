@@ -29,8 +29,8 @@ WRONG_SHAPE = np.ones((2, 2))
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestShepardIDWInterpolator:
     def setup_class(self):
-        np.random.seed(123)
-        self.x = np.random.random(100)
+        self.rng = np.random.default_rng(0)
+        self.x = self.rng.random(100)
         self.y = np.sin(self.x)
         self.f = idw(self.x, self.y)
 
@@ -46,7 +46,7 @@ class TestShepardIDWInterpolator:
         assert_allclose(f(pos), np.sin(pos), atol=1e-2)
 
     def test_idw_2d(self):
-        pos = np.random.rand(1000, 2)
+        pos = self.rng.random((1000, 2))
         val = np.sin(pos[:, 0] + pos[:, 1])
         f = idw(pos, val)
         x = 0.5
@@ -76,7 +76,7 @@ class TestShepardIDWInterpolator:
             idw(self.x, self.y, weights=-self.y)
 
     def test_n_neighbors_one(self):
-        assert_allclose(self.f(0.5, n_neighbors=1), 0.48103656)
+        assert_allclose(self.f(0.5, n_neighbors=1), [0.479334], rtol=3e-7)
 
     def test_n_neighbors_negative(self):
         with pytest.raises(ValueError):
@@ -92,7 +92,7 @@ class TestShepardIDWInterpolator:
 
     def test_positions_0d_nomatch(self):
         """test when position ndim doesn't match coordinates ndim"""
-        pos = np.random.rand(10, 2)
+        pos = self.rng.random((10, 2))
         val = np.sin(pos[:, 0] + pos[:, 1])
         f = idw(pos, val)
         with pytest.raises(ValueError):
@@ -100,7 +100,7 @@ class TestShepardIDWInterpolator:
 
     def test_positions_1d_nomatch(self):
         """test when position ndim doesn't match coordinates ndim"""
-        pos = np.random.rand(10, 2)
+        pos = self.rng.random((10, 2))
         val = np.sin(pos[:, 0] + pos[:, 1])
         f = idw(pos, val)
         with pytest.raises(ValueError):
