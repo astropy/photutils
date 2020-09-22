@@ -16,8 +16,7 @@ import pytest
 from ..epsf import EPSFBuilder, EPSFFitter
 from ..epsf_stars import extract_stars, EPSFStar, EPSFStars
 from ..models import IntegratedGaussianPRF, EPSFModel
-from ...datasets import make_gaussian_prf_sources_image, apply_poisson_noise
-from ...centroids import centroid_com
+from ...datasets import make_gaussian_prf_sources_image
 
 try:
     import scipy  # noqa
@@ -212,7 +211,7 @@ def test_epsf_build_oversampling(oversamp):
     stars_tbl['y'] = sources['y_0']
     stars = extract_stars(nddata, stars_tbl, size=25)
     epsf_builder = EPSFBuilder(oversampling=oversamp, maxiters=10,
-                            progress_bar=False)
+                               progress_bar=False)
     epsf, fitted_stars = epsf_builder(stars)
 
     # input PSF shape
