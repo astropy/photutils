@@ -45,9 +45,8 @@ def test_model():
 
 @pytest.mark.skipif('not HAS_SCIPY')
 def test_model_simulated_data():
-    data = make_test_image(nx=200, ny=200, i0=10., sma=5.,
-                           eps=0.5, pa=np.pi/3., noise=0.05,
-                           random_state=123)
+    data = make_test_image(nx=200, ny=200, i0=10., sma=5., eps=0.5,
+                           pa=np.pi/3., noise=0.05, seed=0)
 
     g = EllipseGeometry(100., 100., 5., 0.5, np.pi/3.)
     ellipse = Ellipse(data, geometry=g, threshold=1.e5)

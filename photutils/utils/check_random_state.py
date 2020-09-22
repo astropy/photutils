@@ -6,10 +6,12 @@ This module provides tools to seed a numpy RandomState instance.
 import numbers
 
 import numpy as np
+from astropy.utils import deprecated
 
 __all__ = ['check_random_state']
 
 
+@deprecated('1.0')
 def check_random_state(seed):
     """
     Turn seed into a `numpy.random.RandomState` instance.

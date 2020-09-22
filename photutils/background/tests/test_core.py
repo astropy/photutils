@@ -17,7 +17,7 @@ from ...datasets.make import make_noise_image
 BKG = 0.0
 STD = 0.5
 DATA = make_noise_image((100, 100), distribution='gaussian', mean=BKG,
-                        stddev=STD, random_state=12345)
+                        stddev=STD, seed=0)
 
 BKG_CLASS0 = [MeanBackground, MedianBackground, ModeEstimatorBackground,
               MMMBackground, SExtractorBackground]
@@ -46,7 +46,7 @@ def test_background(bkg_class):
     bkg = bkg_class(sigma_clip=SIGMA_CLIP)
     bkgval = bkg.calc_background(DATA)
     assert not np.ma.isMaskedArray(bkgval)
-    assert_allclose(bkgval, BKG, atol=1.e-2)
+    assert_allclose(bkgval, BKG, atol=0.02)
     assert_allclose(bkg(DATA), bkg.calc_background(DATA))
 
 

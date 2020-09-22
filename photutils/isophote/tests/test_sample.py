@@ -13,7 +13,7 @@ from ..sample import EllipseSample
 
 DEFAULT_FIX = np.array([False, False, False, False])
 
-DATA = make_test_image(background=100., i0=0., noise=10., random_state=123)
+DATA = make_test_image(background=100., i0=0., noise=10., seed=0)
 
 
 # the median is not so good at estimating rms

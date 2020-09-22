@@ -232,8 +232,8 @@ class BoundingBox:
             bbox = BoundingBox(2, 7, 3, 8)
             fig = plt.figure()
             ax = fig.add_subplot(1, 1, 1)
-            np.random.seed(12345)
-            ax.imshow(np.random.random((10, 10)), interpolation='nearest',
+            rng = np.random.default_rng(0)
+            ax.imshow(rng.random((10, 10)), interpolation='nearest',
                       cmap='viridis')
             ax.add_patch(bbox.as_artist(facecolor='none', edgecolor='white',
                          lw=2.))

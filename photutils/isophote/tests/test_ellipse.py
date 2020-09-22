@@ -31,14 +31,14 @@ PA = 10. / 180. * np.pi
 # EllipseGeometry. The code may eventually modify it's contents. The safe
 # bet is to build it wherever it's needed. The cost is negligible.
 OFFSET_GALAXY = make_test_image(x0=POS, y0=POS, pa=PA, noise=1.e-12,
-                                random_state=123)
+                                seed=0)
 
 
 @pytest.mark.skipif('not HAS_SCIPY')
 class TestEllipse:
     def setup_class(self):
         # centered, tilted galaxy
-        self.data = make_test_image(pa=PA, random_state=123)
+        self.data = make_test_image(pa=PA, seed=0)
 
     @pytest.mark.remote_data
     def test_find_center(self):
@@ -136,7 +136,7 @@ class TestEllipse:
         g = Gaussian2D(100., nx / 2., ny / 2., 20, 12, theta=40.*np.pi/180.)
         y, x = np.mgrid[0:ny, 0:nx]
         noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.,
-                                 stddev=2., random_state=12345)
+                                 stddev=2., seed=0)
         data = g(x, y) + noise
         ellipse = Ellipse(data)  # estimates initial center
         isolist = ellipse.fit_image()

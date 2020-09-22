@@ -112,6 +112,11 @@ API changes
   - Removed the deprecated ``type`` keyword in ``make_noise_image``.
     [#953]
 
+  - Renamed the ``random_state`` keyword (deprecated) to
+    ``seed`` in ``apply_poisson_noise``, ``make_noise_image``,
+    ``make_random_models_table``, and ``make_random_gaussians_table``
+    functions. [#1080]
+
 - ``photutils.detection``
 
   - Removed the deprecated ``snr`` keyword in ``detect_threshold``.
@@ -140,6 +145,9 @@ API changes
   - Removed the deprecated ``snr`` and ``mask_value`` keywords in
     ``make_source_mask``. [#953]
 
+  - Renamed the ``random_state`` keyword (deprecated) to ``seed`` in the
+    ``make_cmap`` method. [#1080]
+
 - ``photutils.utils``
 
   - Removed the deprecated ``random_cmap``, ``mask_to_mirrored_num``,
@@ -149,6 +157,11 @@ API changes
   - Removed the deprecated ``wcs_helpers`` functions
     ``pixel_scale_angle_at_skycoord``, ``assert_angle_or_pixel``,
     ``assert_angle``, and ``pixel_to_icrs_coords``. [#953]
+
+  - Deprecated the ``check_random_state`` function. [#1080]
+
+  - Renamed the ``random_state`` keyword (deprecated) to ``seed`` in the
+    ``make_random_cmap`` function. [#1080]
 
 
 0.7.2 (2019-12-09)
