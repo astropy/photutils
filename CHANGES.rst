@@ -8,6 +8,8 @@ General
 
 - The minimum required astropy version is 3.2. [#952]
 
+- The minimum required numpy version is 1.17. [#1079]
+
 - Removed ``astropy-helpers`` and updated the package infrastructure
   as described in Astropy APE 17. [#915]
 

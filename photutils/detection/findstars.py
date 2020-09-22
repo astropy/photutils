@@ -656,13 +656,11 @@ def _find_stars(data, kernel, threshold_eff, min_separation=None,
         ypad = kernel.yradius
         xpad = kernel.xradius
         pad = ((ypad, ypad), (xpad, xpad))
-        # mode must be a string for numpy < 0.11
-        # (see https://github.com/numpy/numpy/issues/7112)
-        mode = str('constant')
-        data = np.pad(data, pad, mode=mode, constant_values=[0.])
+        pad_mode = 'constant'
+        data = np.pad(data, pad, mode=pad_mode, constant_values=[0.])
         if mask is not None:
-            mask = np.pad(mask, pad, mode=mode, constant_values=[0.])
-        convolved_data = np.pad(convolved_data, pad, mode=mode,
+            mask = np.pad(mask, pad, mode=pad_mode, constant_values=[0.])
+        convolved_data = np.pad(convolved_data, pad, mode=pad_mode,
                                 constant_values=[0.])
 
     # find local peaks in the convolved data

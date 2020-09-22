@@ -396,11 +396,7 @@ class Background2D:
         if xextra > 0:
             xpad = self.box_size[1] - xextra
         pad_width = ((0, ypad), (0, xpad))
-
-        # mode must be a string for numpy < 0.11
-        # (see https://github.com/numpy/numpy/issues/7112)
-        mode = str('constant')
-        data = np.pad(self.data, pad_width, mode=mode,
+        data = np.pad(self.data, pad_width, mode='constant',
                       constant_values=[1.e10])
 
         # mask the padded regions
@@ -412,7 +408,7 @@ class Background2D:
 
         # pad the input mask separately (there is no np.ma.pad function)
         if self.mask is not None:
-            mask = np.pad(self.mask, pad_width, mode=mode,
+            mask = np.pad(self.mask, pad_width, mode='constant',
                           constant_values=[True])
             mask = np.logical_or(mask, pad_mask)
         else:
