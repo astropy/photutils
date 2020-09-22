@@ -25,7 +25,7 @@ For this example, let's create a simple simulated galaxy image::
     >>> ny = nx = 150
     >>> y, x = np.mgrid[0:ny, 0:nx]
     >>> noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.,
-    ...                          stddev=2., random_state=12345)
+    ...                          stddev=2., seed=123)
     >>> data = g(x, y) + noise
 
 .. plot::
@@ -38,7 +38,7 @@ For this example, let's create a simple simulated galaxy image::
     ny = nx = 150
     y, x = np.mgrid[0:ny, 0:nx]
     noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.,
-                             stddev=2., random_state=12345)
+                             stddev=2., seed=123)
     data = g(x, y) + noise
     plt.imshow(data, origin='lower')
 
@@ -76,7 +76,7 @@ Let's show this initial ellipse guess:
     ny = nx = 150
     y, x = np.mgrid[0:ny, 0:nx]
     noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.,
-                             stddev=2., random_state=12345)
+                             stddev=2., seed=123)
     data = g(x, y) + noise
 
     geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
@@ -155,7 +155,7 @@ position as a function of the semimajor axis length:
     ny = nx = 150
     y, x = np.mgrid[0:ny, 0:nx]
     noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.,
-                             stddev=2., random_state=12345)
+                             stddev=2., seed=123)
     data = g(x, y) + noise
     geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
                                pa=20.*np.pi/180.)
@@ -215,7 +215,7 @@ isophotes, the elliptical model image, and the residual image:
     ny = nx = 150
     y, x = np.mgrid[0:ny, 0:nx]
     noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.,
-                             stddev=2., random_state=12345)
+                             stddev=2., seed=123)
     data = g(x, y) + noise
     geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
                                pa=20.*np.pi/180.)

@@ -65,8 +65,7 @@ sources and the latter will make an actual image using that table.
                           ('y_stddev', [sigma_psf, sigma_psf]),
                           ('theta', [0, np.pi])])
 
-    starlist = make_random_gaussians_table(n_sources, params,
-                                           random_state=1234)
+    starlist = make_random_gaussians_table(n_sources, params, seed=123)
 
     shape = (256, 256)
     sim_image = make_gaussian_sources_image(shape, starlist)
@@ -150,7 +149,7 @@ in the same group have the same aperture color:
     >>> from photutils.utils import make_random_cmap
     >>> plt.imshow(sim_image, origin='lower', interpolation='nearest',
     ...            cmap='Greys_r')
-    >>> cmap = make_random_cmap(random_state=12345)
+    >>> cmap = make_random_cmap(seed=123)
     >>> for i, group in enumerate(star_groups.groups):
     >>>     xypos = np.transpose([group['x_0'], group['y_0']])
     >>>     ap = CircularAperture(xypos, r=fwhm)
@@ -184,8 +183,7 @@ in the same group have the same aperture color:
                           ('y_stddev', [sigma_psf, sigma_psf]),
                           ('theta', [0, np.pi])])
 
-    starlist = make_random_gaussians_table(n_sources, params,
-                                           random_state=1234)
+    starlist = make_random_gaussians_table(n_sources, params, seed=123)
 
     shape = (256, 256)
     sim_image = make_gaussian_sources_image(shape, starlist)
@@ -201,7 +199,7 @@ in the same group have the same aperture color:
     plt.imshow(sim_image, origin='lower', interpolation='nearest',
                cmap='Greys_r')
 
-    cmap = make_random_cmap(random_state=12345)
+    cmap = make_random_cmap(seed=123)
     for i, group in enumerate(star_groups.groups):
         xypos = np.transpose([group['x_0'], group['y_0']])
         ap = CircularAperture(xypos, r=fwhm)
@@ -251,8 +249,7 @@ to use :class:`~photutils.psf.DBSCANGroup`.
                           ('y_stddev', [sigma_psf, sigma_psf]),
                           ('theta', [0, np.pi])])
 
-    starlist = make_random_gaussians_table(n_sources, params,
-                                           random_state=1234)
+    starlist = make_random_gaussians_table(n_sources, params, seed=123)
 
     shape = (256, 256)
     sim_image = make_gaussian_sources_image(shape, starlist)
@@ -268,7 +265,7 @@ to use :class:`~photutils.psf.DBSCANGroup`.
     plt.imshow(sim_image, origin='lower', interpolation='nearest',
                cmap='Greys_r')
 
-    cmap = make_random_cmap(random_state=12345)
+    cmap = make_random_cmap(seed=123)
     for i, group in enumerate(star_groups.groups):
         xypos = np.transpose([group['x_0'], group['y_0']])
         ap = CircularAperture(xypos, r=fwhm)

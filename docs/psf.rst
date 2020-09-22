@@ -227,9 +227,9 @@ First let's create an image with four overlapping stars::
     >>> tshape = (32, 32)
     >>> image = (make_gaussian_sources_image(tshape, sources) +
     ...          make_noise_image(tshape, distribution='poisson', mean=6.,
-    ...                           random_state=1) +
+    ...                           seed=123) +
     ...          make_noise_image(tshape, distribution='gaussian', mean=0.,
-    ...                           stddev=2., random_state=1))
+    ...                           stddev=2., seed=123))
 
 .. doctest-requires:: matplotlib
 
@@ -261,9 +261,9 @@ First let's create an image with four overlapping stars::
     tshape = (32, 32)
     image = (make_gaussian_sources_image(tshape, sources) +
              make_noise_image(tshape, distribution='poisson', mean=6.,
-                              random_state=1) +
+                              seed=123) +
              make_noise_image(tshape, distribution='gaussian', mean=0.,
-                              stddev=2., random_state=1))
+                              stddev=2., seed=123))
 
     from matplotlib import rcParams
     rcParams['font.size'] = 13
@@ -354,9 +354,9 @@ Now, let's compare the simulated and the residual images:
     tshape = (32, 32)
     image = (make_gaussian_sources_image(tshape, sources) +
              make_noise_image(tshape, distribution='poisson', mean=6.,
-                              random_state=1) +
+                              seed=123) +
              make_noise_image(tshape, distribution='gaussian', mean=0.,
-                              stddev=2., random_state=1))
+                              stddev=2., seed=123))
 
     from photutils.detection import IRAFStarFinder
     from photutils.psf import IntegratedGaussianPRF, DAOGroup
@@ -463,9 +463,9 @@ IntegratedGaussianPRF(sigma=sigma_psf)``:
     tshape = (32, 32)
     image = (make_gaussian_sources_image(tshape, sources) +
              make_noise_image(tshape, distribution='poisson', mean=6.,
-                              random_state=1) +
+                              seed=123) +
              make_noise_image(tshape, distribution='gaussian', mean=0.,
-                              stddev=2., random_state=1))
+                              stddev=2., seed=123))
 
     from photutils.detection import IRAFStarFinder
     from photutils.psf import IntegratedGaussianPRF, DAOGroup
@@ -583,9 +583,9 @@ the fainter star as well. Also, note that both of the stars have
     tshape = (32, 32)
     image = (make_gaussian_sources_image(tshape, sources) +
              make_noise_image(tshape, distribution='poisson', mean=6.,
-                              random_state=1) +
+                              seed=123) +
              make_noise_image(tshape, distribution='gaussian', mean=0.,
-                              stddev=2., random_state=1))
+                              stddev=2., seed=123))
 
     vmin, vmax = np.percentile(image, [5, 95])
     plt.imshow(image, cmap='viridis', aspect=1, interpolation='nearest',
@@ -661,9 +661,9 @@ Let's take a look at the residual image::
     tshape = (32, 32)
     image = (make_gaussian_sources_image(tshape, sources) +
              make_noise_image(tshape, distribution='poisson', mean=6.,
-                              random_state=1) +
+                              seed=123) +
              make_noise_image(tshape, distribution='gaussian', mean=0.,
-                              stddev=2., random_state=1))
+                              stddev=2., seed=123))
 
     daogroup = DAOGroup(crit_separation=8)
     mmm_bkg = MMMBackground()
