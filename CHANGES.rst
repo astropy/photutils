@@ -6,7 +6,7 @@ General
 
 - The minimum required python version is 3.6. [#952]
 
-- The minimum required astropy version is 3.2. [#952]
+- The minimum required astropy version is 4.0. [#1081]
 
 - The minimum required numpy version is 1.17. [#1079]
 
