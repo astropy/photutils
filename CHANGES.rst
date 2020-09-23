@@ -12,7 +12,7 @@ Bug Fixes
 
 - ``photutils.psf``
 
-    - Fixed checks on ``oversampling`` factors. [#1086]
+  - Fixed checks on ``oversampling`` factors. [#1086]
 
 
 1.0.0 (2020-09-22)
