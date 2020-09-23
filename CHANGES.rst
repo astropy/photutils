@@ -1,5 +1,16 @@
-1.0 (2020-09-22)
-----------------
+1.0.1 (unreleased)
+------------------
+
+Bug Fixes
+^^^^^^^^^
+
+- ``photutils.psf``
+
+    - Fixed checks on ``oversampling`` factors. [#1086]
+
+
+1.0.0 (2020-09-22)
+------------------
 
 General
 ^^^^^^^
