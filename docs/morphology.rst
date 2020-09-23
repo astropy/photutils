@@ -15,8 +15,8 @@ added in the future.
 If you have a segmentation image, the
 :func:`~photutils.segmentation.source_properties` function can be used
 to calculate the properties for all (or a specified subset) of the
-segmented sources.  Please see `Source Photometry and Properties from
-Image Segmentation <segmentation.html>`_ for more details.
+segmented sources. Please see :ref:`Source Photometry and Properties
+from Image Segmentation <image_segmentation>` for more details.
 
 
 Getting Started

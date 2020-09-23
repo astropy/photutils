@@ -113,9 +113,9 @@ Masking Sources
 ^^^^^^^^^^^^^^^
 
 An even better procedure is to exclude the sources in the image by
-masking them.  Of course, this technique requires one to `identify the
-sources in the data <detection.html>`_, which in turn depends on the
-background and background noise.  Therefore, this method for
+masking them. Of course, this technique requires one to :ref:`identify
+the sources in the data <source_detection>`, which in turn depends
+on the background and background noise. Therefore, this method for
 estimating the background and background RMS requires an iterative
 procedure.
 

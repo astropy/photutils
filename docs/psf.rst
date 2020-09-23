@@ -1,3 +1,5 @@
+.. _psf_photometry:
+
 PSF Photometry (`photutils.psf`)
 ================================
 
